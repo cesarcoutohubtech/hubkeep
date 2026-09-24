@@ -13,7 +13,9 @@
     "test": "turbo run test && vitest run",
     "db:testar-dev": "node scripts/ops/testar-banco-dev.mjs",
     "db:papeis": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/configurar-papeis.ts",
-    "db:verificar-papeis": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/verificar-papeis.ts"
+    "db:verificar-papeis": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/verificar-papeis.ts",
+    "db:types": "pnpm --filter @hubkeep/db db:types",
+    "db:fumaca": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/fumaca-db.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

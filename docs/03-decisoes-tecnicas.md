@@ -156,3 +156,16 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Sem rede, não há banco para desenvolver. O domínio (`packages/dominio`) continua testável offline.
 - O teste de concorrência de contexto (F0-04) roda na CI, contra o Supabase local do runner.
 - **Em análise:** um projeto de dev por desenvolvedor ou o branching do Supabase (um banco por PR), conforme o custo.
+
+## ADR-016 — Acesso ao banco por fábrica, com tipos qualificados por schema
+
+**Status:** aprovada por Cesar em 24/09/2026 (revisão do PR #5), com a guarda de papel.
+
+**Decisão:**
+- `packages/db` exporta `criarAcessoBanco({ app, worker })`, que devolve `withContext`, `withSistema`, `executar` e `executarComoSistema`. O pool e o Kysely ficam no closure da fábrica. O esboço do doc 02 mostrava um `withContext` de módulo com um `dbApp` global; a regra ("o pool não é exportado; só o acesso com contexto é") continua a mesma, só que a configuração (URL, tamanho do pool) entra pela raiz de composição de cada app em vez de uma variável de ambiente lida dentro do pacote.
+- Os tipos do Kysely são gerados com os nomes **qualificados por schema** (`app.bandeira`, `staging.carga`). Assim nenhuma consulta depende do `search_path` da conexão, que o Supavisor em modo transação não garante.
+- A CI de banco roda `kysely-codegen --verify` contra o banco recém-migrado: migração nova sem `pnpm db:types` quebra a CI.
+- **Guarda de papel.** A fábrica é assíncrona e, antes de devolver o acesso, faz a primeira conexão de cada pool e confere `session_user` e `current_user` contra o papel esperado: `hk_app` para `withContext`/`executar`, `hk_worker` para `withSistema`/`executarComoSistema`. Também confere que o papel não é superusuário nem tem BYPASSRLS. Se algo não bate, ela fecha os pools e rejeita, sem devolver nada com que se consulte. O `session_user` pega o dono que fez `SET ROLE hk_app`: um `RESET ROLE` devolveria o acesso dele. Motivo: uma URL trocada pela do dono faria tudo "funcionar" enxergando todos os tenants, sem erro nenhum. Teste negativo na CI e no dev: a URL do `postgres` e os papéis trocados entre si são recusados.
+- Escrita de negócio só em `packages/db/src/repositorios`, que recebe a unidade de trabalho (nunca a transação). `transacaoDe()` não sai pelo index, e o lint proíbe o construtor de escrita do Kysely e esse import fora dos repositórios.
+
+**Motivo:** um singleton de módulo lendo variável de ambiente acopla o pacote ao runtime (Vercel, worker, testes) e dificulta o teste com dois pools diferentes no mesmo processo, que é justamente o que o aceite da F0-04 exige.
