@@ -12,10 +12,10 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(28);
+select plan(30);
 
 -- pgTAP precisa ser executável pelos papéis testados (só nesta transação)
-grant usage on schema extensions to csc_app, csc_worker, csc_backoffice;
+grant usage on schema extensions to hk_app, hk_worker, hk_backoffice;
 
 -- ---------------------------------------------------------------------------
 -- Fixtures (inseridas como postgres)
@@ -108,9 +108,9 @@ select throws_ok(
 );
 
 -- ---------------------------------------------------------------------------
--- Leitura por papel (csc_app)
+-- Leitura por papel (hk_app)
 -- ---------------------------------------------------------------------------
-set local role csc_app;
+set local role hk_app;
 
 -- Sem contexto: falha fechada
 select is_empty('select id from app.hotel', 'sem contexto de sessão, nenhum hotel é visível');
@@ -169,7 +169,7 @@ select results_eq('select nome from app.hotel', $$ values ('Hotel B1') $$,
   'admin B vê só o tenant B');
 
 -- ---------------------------------------------------------------------------
--- Escrita e escalada (csc_app)
+-- Escrita e escalada (hk_app)
 -- ---------------------------------------------------------------------------
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000004', true),
        set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
@@ -231,14 +231,26 @@ select is((select nome from app.local where id = '11110000-0000-0000-0000-000000
 -- ---------------------------------------------------------------------------
 -- Papéis de sistema
 -- ---------------------------------------------------------------------------
-set local role csc_worker;
+set local role hk_worker;
 select from (select set_config('app.usuario_id', '', true),
        set_config('app.tenant_id', '10000000-0000-0000-0000-000000000000', true)) ctx;
 select results_eq('select count(*)::int from app.hotel', $$ values (2) $$,
   'worker processando o tenant A vê só os hotéis de A');
+select lives_ok(
+  $$ insert into app.evento_dominio (id, tenant_id, tipo, entidade, registro_id, payload)
+     values ('e1000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000',
+             'local.promovido', 'local', '11110000-0000-0000-0000-000000000001', '{}') $$,
+  'worker publica evento no outbox do tenant que está processando (ADR-013)'
+);
+select throws_ok(
+  $$ insert into app.evento_dominio (id, tenant_id, tipo, entidade, registro_id, payload)
+     values ('e1000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000000',
+             'local.promovido', 'local', '21110000-0000-0000-0000-000000000001', '{}') $$,
+  '42501', null, 'worker processando o tenant A não publica evento no tenant B'
+);
 reset role;
 
-set local role csc_backoffice;
+set local role hk_backoffice;
 select results_eq(
   'select tenant_nome, hoteis_ativos::int, uhs_ativas::int from licenca.uso() order by tenant_nome',
   $$ values ('Grupo A', 1, 2), ('Grupo B', 1, 1) $$,
@@ -249,7 +261,7 @@ reset role;
 
 set local role anon;
 select throws_ok('select * from app.hotel', '42501', null,
-  'anon (Data API do Supabase) não lê tabelas da CSC');
+  'anon (Data API do Supabase) não lê tabelas do HubKeep');
 reset role;
 
 select * from finish();

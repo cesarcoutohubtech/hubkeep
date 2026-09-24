@@ -25,13 +25,13 @@ flowchart LR
   T -->|HTTPS + JWT| W
   U1 -.login.-> AUTH
   U2 -.login.-> AUTH
-  W -->|csc_app + contexto| DB
-  CR -->|csc_worker, 1 tenant por transação| W
+  W -->|hk_app + contexto| DB
+  CR -->|hk_worker, 1 tenant por transação| W
   W -->|URLs assinadas| ST
   U2 -->|upload direto por URL assinada| ST
   AG -->|lê, somente leitura| TOTVS
   AG -->|HTTPS, credencial do agente| W
-  W -->|csc_ingestao| DB
+  W -->|hk_ingestao| DB
 ```
 
 ## Componentes
@@ -40,29 +40,29 @@ flowchart LR
 
 **apps/tecnico (PWA).** App React + Vite com service worker, IndexedDB e fila de sincronização. Fala só com a API `/api/v1`, com o access token do Supabase no cabeçalho. Cada operação offline leva uma chave de idempotência gerada no aparelho, e a API ignora repetições.
 
-**apps/conector (agente local).** Container Node rodando dentro da rede do cliente. Lê as views acordadas do TOTVS com usuário somente leitura e envia lotes por HTTPS para `/api/v1/ingestao/lotes`. Ele não tem nenhuma credencial do banco da CSC, só uma credencial de agente revogável por tenant. Não precisa de VPN: a conexão sai do cliente em HTTPS. O contrato de dados é o de `packages/contratos` (adaptador de sistema hoteleiro); o TOTVS é o primeiro adaptador.
+**apps/conector (agente local).** Container Node rodando dentro da rede do cliente. Lê as views acordadas do TOTVS com usuário somente leitura e envia lotes por HTTPS para `/api/v1/ingestao/lotes`. Ele não tem nenhuma credencial do banco do HubKeep, só uma credencial de agente revogável por tenant. Não precisa de VPN: a conexão sai do cliente em HTTPS. O contrato de dados é o de `packages/contratos` (adaptador de sistema hoteleiro); o TOTVS é o primeiro adaptador.
 
-**Supabase.** PostgreSQL com os schemas da CSC fora da Data API; Auth para convite por e-mail e, se a Slaviero tiver, SSO SAML (Entra ID); Storage com bucket privado, acessado só por URLs assinadas emitidas pela API depois da checagem de escopo.
+**Supabase.** PostgreSQL com os schemas do HubKeep fora da Data API; Auth para convite por e-mail e, se a Slaviero tiver, SSO SAML (Entra ID); Storage com bucket privado, acessado só por URLs assinadas emitidas pela API depois da checagem de escopo.
 
-**Vercel Cron.** Aciona rotas protegidas por `CRON_SECRET`. Cada rota abre conexão com `csc_worker`, lista os tenants e processa um tenant por transação.
+**Vercel Cron.** Aciona rotas protegidas por `CRON_SECRET`. Cada rota abre conexão com `hk_worker`, lista os tenants e processa um tenant por transação.
 
 ## Fluxos
 
 ### Requisição de usuário
 
 1. O middleware valida a sessão do Supabase Auth (cookie no web, Bearer no PWA) e extrai `sub`, o id do usuário.
-2. A API lê o tenant ativo (cookie ou cabeçalho `x-csc-tenant`). Ele não precisa ser confiável: o banco só aceita tenants dos quais o usuário é membro ativo.
-3. `withContext({ usuarioId, tenantId }, fn)` abre uma transação no pool `csc_app` (Supavisor, modo transação), executa `set_config('app.usuario_id', …, true)` e `set_config('app.tenant_id', …, true)` e roda `fn`.
+2. A API lê o tenant ativo (cookie ou cabeçalho `x-hubkeep-tenant`). Ele não precisa ser confiável: o banco só aceita tenants dos quais o usuário é membro ativo.
+3. `withContext({ usuarioId, tenantId }, fn)` abre uma transação no pool `hk_app` (Supavisor, modo transação), executa `set_config('app.usuario_id', …, true)` e `set_config('app.tenant_id', …, true)` e roda `fn`.
 4. O caso de uso aplica as regras de negócio e a permissão de ação. As policies garantem o escopo.
 5. Escritas passam pela unit of work: mudança, auditoria e evento de domínio na mesma transação.
 
 ### Ingestão do TOTVS
 
-1. O agente monta um lote (entidade, registros, hash do lote) e envia com `Authorization: Agent csc_<tenant_id>_<segredo>`.
-2. A API extrai o `tenant_id` do prefixo e abre transação com `csc_ingestao` e `app.tenant_id`. Depois busca a credencial (a RLS limita ao tenant) e compara o hash do segredo.
+1. O agente monta um lote (entidade, registros, hash do lote) e envia com `Authorization: Agent hk_<tenant_id>_<segredo>`.
+2. A API extrai o `tenant_id` do prefixo e abre transação com `hk_ingestao` e `app.tenant_id`. Depois busca a credencial (a RLS limita ao tenant) e compara o hash do segredo.
 3. Se o lote já foi recebido (`staging.carga` com o mesmo `lote_hash`), a API responde 200 e não reprocessa.
 4. Grava os registros em `staging.registro_externo` com upsert por chave e hash.
-5. Um job (`csc_worker`) promove UHs para `app.local`, aplicando a regra de licença na aplicação.
+5. Um job (`hk_worker`) promove UHs para `app.local`, aplicando a regra de licença na aplicação.
 
 O limite de 4,5 MB de corpo das funções da Vercel define o tamanho máximo do lote; o agente divide em lotes menores.
 
@@ -83,18 +83,19 @@ O limite de 4,5 MB de corpo das funções da Vercel define o tamanho máximo do 
 
 | Papel | Quem usa | Pode |
 |---|---|---|
-| `csc_app` | API e telas | Dados de negócio no escopo do usuário da sessão |
-| `csc_worker` | Rotas de cron | Dados de um tenant por transação, sem usuário |
-| `csc_ingestao` | Endpoint de ingestão | Só `staging`, do tenant da credencial |
-| `csc_backoffice` | Backoffice EasyGov | Só `licenca.contrato` e `licenca.uso()` |
-| `csc_authz` | Dono das funções de autorização | Leitura das tabelas de escopo; sem LOGIN |
+| `hk_app` | API e telas | Dados de negócio no escopo do usuário da sessão |
+| `hk_worker` | Rotas de cron | Dados de um tenant por transação, sem usuário; publica eventos no outbox (ADR-013) |
+| `hk_ingestao` | Endpoint de ingestão | Só `staging`, do tenant da credencial |
+| `hk_backoffice` | Backoffice EasyGov | Só `licenca.contrato` e `licenca.uso()` |
+| `hk_authz` | Dono das funções de autorização | Leitura das tabelas de escopo; sem LOGIN |
 | `postgres` | Migrações e operação | Nunca usado pela aplicação em execução |
 
 ## Ambientes
 
 | Ambiente | Supabase | Vercel |
 |---|---|---|
-| Local | `supabase start` | `pnpm dev` |
+| Dev | Projeto próprio na nuvem (`HubKeep-dev`), região São Paulo, sem dados reais (ADR-015) | `pnpm dev` na máquina, apontando para o dev |
+| CI | `supabase start` no runner do GitHub Actions, descartável | — |
 | Staging | Projeto próprio, região São Paulo | Previews e branch `staging` |
 | Produção | Projeto próprio, região São Paulo, PITR | Branch `main` |
 

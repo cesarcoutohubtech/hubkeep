@@ -4,7 +4,7 @@ Cole o texto abaixo na primeira sessão do Claude Code, com este pacote já na r
 
 ---
 
-Você vai iniciar o desenvolvimento da Central de Manutenção EasyGov (CSC) do zero.
+Você vai iniciar o desenvolvimento do HubKeep do zero.
 
 Antes de escrever qualquer código:
 

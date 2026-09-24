@@ -1,0 +1,39 @@
+# Testes de banco na CI: Supabase local no runner (descartável), migrações do
+# zero e pgTAP. É o único lugar onde o Supabase roda em Docker (ADR-015), e o
+# check que se torna obrigatório para merge em main na F0-02.
+name: banco
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: banco-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pgtap:
+    name: pgTAP (meta e isolamento)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Só o banco e o Auth (que cria auth.users, referenciada por app.membro).
+      # Os demais serviços não entram nos testes e só custariam tempo de pull.
+      - name: Subir Supabase local no runner
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta,mailpit
+
+      - name: Aplicar migrações do zero
+        run: supabase db reset
+
+      - name: Testes pgTAP (meta e isolamento)
+        run: supabase test db

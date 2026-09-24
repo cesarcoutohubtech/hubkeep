@@ -17,21 +17,21 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - A dependência do Supabase Auth fica atrás de uma porta em `packages/aplicacao`, para permitir troca futura.
 - **A confirmar na fase 0:** plano Vercel Pro (uso comercial e cron por minuto) e plano Supabase com SSO SAML, caso a Slaviero use Entra ID.
 
-## ADR-002 — Data API do Supabase fechada para os dados da CSC
+## ADR-002 — Data API do Supabase fechada para os dados do HubKeep
 
 **Status:** aprovada.
 
-**Decisão:** o navegador não lê nem grava tabelas da CSC via PostgREST. `anon` e `authenticated` não têm privilégio em `app`, `staging`, `licenca` e `authz`. Toda leitura e escrita passa pela API.
+**Decisão:** o navegador não lê nem grava tabelas do HubKeep via PostgREST. `anon` e `authenticated` não têm privilégio em `app`, `staging`, `licenca` e `authz`. Toda leitura e escrita passa pela API.
 
 **Motivo:** a regra de negócio está na aplicação. Se o cliente pudesse gravar direto nas tabelas com o próprio JWT, só a RLS protegeria as regras, e isso obrigaria a colocar regra de negócio no banco.
 
-**Consequências:** sem Realtime nas tabelas da CSC no MVP. A `service_role`/secret key é usada só para administração do Auth (convites).
+**Consequências:** sem Realtime nas tabelas do HubKeep no MVP. A `service_role`/secret key é usada só para administração do Auth (convites).
 
 ## ADR-003 — Contexto por transação com papel dedicado
 
 **Status:** aprovada.
 
-**Decisão:** a API conecta com `csc_app` via Supavisor (modo transação) e define `app.usuario_id` e `app.tenant_id` com `set_config(…, true)` no início de cada transação. O banco valida que o usuário é membro ativo do tenant.
+**Decisão:** a API conecta com `hk_app` via Supavisor (modo transação) e define `app.usuario_id` e `app.tenant_id` com `set_config(…, true)` no início de cada transação. O banco valida que o usuário é membro ativo do tenant.
 
 **Motivo:** o contexto morre com a transação, o que evita vazamento entre requisições que compartilham conexão. A validação da associação no banco impede que um tenant forjado pela aplicação dê acesso.
 
@@ -53,7 +53,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Exceções aceitas:** `licenca.uso()`, que existe para o backoffice ver agregados sem acessar tabelas de negócio (motivo de segurança, não de negócio); e defaults de `now()` em colunas de data de criação.
 
-**Consequências:** a criação do perfil de membro acontece no fluxo de aceite do convite, na aplicação, e não por trigger em `auth.users`. `atualizado_em` é definido pela aplicação.
+**Consequências:** a criação do perfil de membro acontece na aplicação, e não por trigger em `auth.users`. *(O momento — "no aceite do convite" — foi revisto pelo ADR-014: o membro nasce no convite.)* `atualizado_em` é definido pela aplicação.
 
 ## ADR-006 — Auditoria e outbox pela unit of work
 
@@ -67,7 +67,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Status:** aprovada. **Revisa** "pg-boss" da proposta de 23/09/2026.
 
-**Decisão:** o outbox roda a cada minuto, o monitor de SLA a cada 5 minutos e a geração de preventiva uma vez por dia. As rotas são protegidas por `CRON_SECRET`, usam `csc_worker`, processam um tenant por transação e usam `for update skip locked`.
+**Decisão:** o outbox roda a cada minuto, o monitor de SLA a cada 5 minutos e a geração de preventiva uma vez por dia. As rotas são protegidas por `CRON_SECRET`, usam `hk_worker`, processam um tenant por transação e usam `for update skip locked`.
 
 **Consequências:** a latência de notificação é de até cerca de 1 minuto, suficiente para o MVP. Se o volume ou a latência exigirem, migrar para Supabase Queues ou para um serviço de jobs duráveis sem mudar o modelo de outbox.
 
@@ -75,9 +75,9 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Status:** aprovada. **Revisa** "worker separado com driver SQL Server via VPN".
 
-**Decisão:** o agente roda na rede do cliente, lê as views do TOTVS com usuário somente leitura e envia lotes para `/api/v1/ingestao/lotes` com credencial de agente (`csc_<tenant_id>_<segredo>`, guardada só como hash). O endpoint grava em `staging` com o papel `csc_ingestao`.
+**Decisão:** o agente roda na rede do cliente, lê as views do TOTVS com usuário somente leitura e envia lotes para `/api/v1/ingestao/lotes` com credencial de agente (`hk_<tenant_id>_<segredo>`, guardada só como hash). O endpoint grava em `staging` com o papel `hk_ingestao`.
 
-**Motivo:** a Vercel não mantém VPN nem processo contínuo. O agente com saída HTTPS não exige abrir portas na rede do cliente e não carrega credencial do banco da CSC.
+**Motivo:** a Vercel não mantém VPN nem processo contínuo. O agente com saída HTTPS não exige abrir portas na rede do cliente e não carrega credencial do banco do HubKeep.
 
 ## ADR-009 — Kysely com tipos gerados; migrações SQL como única fonte
 
@@ -102,3 +102,57 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 **Decisão:** nenhum papel da aplicação recebe UPDATE em `id`, `tenant_id` ou `hotel_id`, nem DELETE em tabela alguma. Mover um registro de escopo exige operação explícita da aplicação (novo registro e desativação do antigo). Papel e escopo de uma atribuição também são imutáveis.
 
 **Motivo:** mudar o escopo de uma linha é o caminho mais curto para vazar dados entre hotéis. Com o GRANT por coluna, o próprio PostgreSQL recusa a operação.
+
+## ADR-012 — Nome do produto: HubKeep, prefixo `hk_`
+
+**Status:** aprovada por Cesar em 24/09/2026.
+
+**Decisão:** o produto se chama **HubKeep**. O pacote de fundação chegou com o nome "Central de Manutenção EasyGov (CSC)"; os identificadores técnicos passam a:
+
+| Antes | Depois |
+|---|---|
+| papéis `csc_app`, `csc_worker`, `csc_ingestao`, `csc_backoffice`, `csc_authz` | `hk_app`, `hk_worker`, `hk_ingestao`, `hk_backoffice`, `hk_authz` |
+| cabeçalho `x-csc-tenant` | `x-hubkeep-tenant` |
+| credencial do agente `csc_<tenant_id>_<segredo>` | `hk_<tenant_id>_<segredo>` |
+| view do TOTVS `vw_csc_hoteis` | `vw_hubkeep_hoteis` |
+| pacotes do monorepo | `@hubkeep/*` |
+
+**O que não muda:** **CSC** continua sendo a equipe central de manutenção do grupo cliente ("o CSC", papel `gestor_csc`), que não é o nome do produto. As menções à EasyGov como operadora do backoffice de licença e à integração futura com o EasyTools ficam como estão até decisão comercial própria.
+
+**Por que editar a migração em vez de criar outra:** a regra do projeto é não editar migração *aplicada em staging ou produção*, e a fundação não foi aplicada em ambiente nenhum. Uma migração de rename logo depois da primeira só deixaria ruído permanente no histórico.
+
+## ADR-013 — O worker publica eventos no outbox
+
+**Status:** aprovada por Cesar em 24/09/2026. Corrige uma lacuna da migração de fundação.
+
+**Contexto:** o ADR-006 diz que toda escrita de negócio grava auditoria e evento na mesma transação. O `hk_worker` escreve (promove UH de staging para `app.local` na F0-08; gera OS preventiva na fase 1b; escala SLA na 1c), mas a fundação só lhe dava SELECT e UPDATE em `app.evento_dominio`. A primeira unit of work rodando no worker falharia com `permission denied`.
+
+**Decisão:** `hk_worker` recebe INSERT em `app.evento_dominio`, com a policy `worker_insert` limitada a `tenant_id = authz.tenant_sistema()` — o mesmo recorte que ele já tem para ler, atualizar e gravar auditoria.
+
+**Verificação:** dois casos novos no teste de isolamento — o worker publica no tenant que está processando e não publica em outro.
+
+## ADR-014 — O membro nasce no convite, não no aceite
+
+**Status:** aprovada por Cesar em 24/09/2026. Revisa a consequência do ADR-005 e o texto da F0-05 ("o aceite do convite cria o `app.membro`").
+
+**Contexto:** a policy `app_insert` de `app.membro` exige que o usuário da sessão seja Admin do grupo ou Implantador no tenant. Quem está aceitando um convite ainda não é membro de nada — `authz.tenant_id()` devolve nulo para ele —, então o INSERT no aceite seria recusado pela RLS. Afrouxar a policy para aceitar "o próprio usuário se inserindo" abriria autoinscrição em qualquer tenant.
+
+**Decisão:** o `app.membro` (e as atribuições iniciais) é criado **no ato do convite**, na unit of work do usuário que convida, dentro do seu contexto e sob as policies existentes. O `auth-admin` chama o convite do Supabase Auth, que cria a linha em `auth.users` na hora e devolve o id; a mesma requisição grava o membro com esse id. O aceite só estabelece a sessão do convidado no Supabase Auth — não grava nada nas tabelas do HubKeep.
+
+**Consequências:**
+- Se o convite do Auth der certo e a gravação do membro falhar, sobra um usuário do Auth sem vínculo. Ele não vê nada (falha fechada) e o reenvio do convite reaproveita o mesmo usuário; o caso de uso trata o reenvio como idempotente.
+- Nenhuma policy nem grant muda.
+
+## ADR-015 — Desenvolvimento sem Supabase local
+
+**Status:** aprovada em 24/09/2026. Altera a tarefa F0-02 e os comandos do `CLAUDE.md`. (No pacote de fundação atualizado esta decisão era o "ADR-012"; foi renumerada porque 012 a 014 já estavam em uso neste repositório.)
+
+**Decisão:** as máquinas da equipe não rodam o Supabase nem outro banco em Docker. O desenvolvimento usa um projeto Supabase de dev na nuvem (`HubKeep-dev`, região São Paulo, sem dados reais). O Supabase local roda só na CI, em runner descartável, onde `supabase db reset` e `supabase test db` bloqueiam o merge.
+
+**Motivo:** espaço em disco limitado nas máquinas de desenvolvimento. O Supabase local soma alguns GB de imagens.
+
+**Consequências:**
+- O banco de dev é compartilhado. Uma migração experimental quebra o ambiente de todos, então migração só vai para o dev depois de passar na CI do PR.
+- Sem rede, não há banco para desenvolver. O domínio (`packages/dominio`) continua testável offline.
+- O teste de concorrência de contexto (F0-04) roda na CI, contra o Supabase local do runner.
+- **Em análise:** um projeto de dev por desenvolvedor ou o branching do Supabase (um banco por PR), conforme o custo.

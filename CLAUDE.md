@@ -1,4 +1,4 @@
-# CLAUDE.md — Central de Manutenção EasyGov (CSC)
+# CLAUDE.md — HubKeep
 
 Plataforma de manutenção preventiva e corretiva para redes hoteleiras multi-propriedade. Primeiro cliente: grupo Slaviero (40+ hotéis). Produto multi-tenant, não projeto sob medida.
 
@@ -10,7 +10,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 2. **Sem regra de negócio no banco.** O banco guarda estrutura, integridade referencial e autorização por escopo (quem vê, em que escopo escreve, sem escalada). Cálculo de SLA, transição de status, geração de OS, limite de licença, permissão de ação (quem ativa hotel, quem muda status): tudo em `packages/dominio` e `packages/aplicacao`.
 3. **Sem triggers.** Existe meta-teste que falha com qualquer trigger. Exceção só por ADR aprovado e com o teste atualizado no mesmo PR.
 4. **Função nova no banco só por ADR.** A lista de funções permitidas está fechada no meta-teste 11. As funções existentes são de autorização (`authz.*`) e o agregado de licença (`licenca.uso`).
-5. **Toda leitura e escrita de dados de negócio passa pelo servidor**, com o papel `csc_app` e o contexto do usuário na transação (`withContext`). O navegador nunca acessa tabelas via Data API do Supabase. A `service_role`/secret key só é usada no módulo `auth-admin` (convites) e nunca para ler ou gravar dados de negócio.
+5. **Toda leitura e escrita de dados de negócio passa pelo servidor**, com o papel `hk_app` e o contexto do usuário na transação (`withContext`). O navegador nunca acessa tabelas via Data API do Supabase. A `service_role`/secret key só é usada no módulo `auth-admin` (convites) e nunca para ler ou gravar dados de negócio.
 6. **Escrita sempre por unit of work**, que grava auditoria e evento de domínio (outbox) na mesma transação.
 7. **Toda exigência de cliente vira configuração ou política** (SLA, horário, escalonamento, papéis), nunca `if (tenant === 'slaviero')`.
 8. **TOTVS CM é somente leitura.** Nada é escrito no CM. O conector só envia dados para o endpoint de ingestão.
@@ -53,18 +53,29 @@ Dependências permitidas: `apps → aplicacao → dominio`; `aplicacao → porta
 - IDs são UUID v7 gerados pela aplicação.
 - Ao criar tabela de negócio, siga o modelo em `docs/02-seguranca-multitenant-rls.md` (seção "Modelo para tabela nova") e adicione os casos no teste de isolamento.
 
+## Ambiente de desenvolvimento (sem Docker local)
+
+As máquinas da equipe não rodam `supabase start` nem outro banco em Docker (ADR-015). O desenvolvimento usa o projeto Supabase de dev na nuvem (`HubKeep-dev`), e o Supabase local em Docker roda só na CI, em runner descartável.
+
+- O projeto de dev não tem dados reais de cliente. Os dados de teste são fictícios.
+- Não rode `supabase db reset` contra staging ou produção. Contra o dev, só com aviso à equipe, porque o banco é compartilhado.
+- Migração nova vai para o dev por `supabase db push` só depois de passar na CI do PR.
+- Os testes pgTAP abrem transação e fazem rollback; rodar contra o dev não deixa dados.
+
 ## Comandos
 
 ```bash
 pnpm install
-supabase start                 # banco, auth e storage locais
-supabase db reset              # recria o banco a partir das migrações
-supabase test db               # pgTAP: meta-testes e isolamento
-pnpm db:types                  # gera tipos Kysely do banco local
-pnpm test                      # Vitest (unitários e integração)
+supabase link --project-ref <ref-do-dev>   # uma vez por máquina
+supabase db push                           # aplica migrações pendentes no dev
+psql "$DEV_SESSION_POOLER" -f supabase/tests/database/<arquivo>.sql   # pgTAP contra o dev, sem Docker
+pnpm db:types                              # gera tipos Kysely a partir do dev
+pnpm test                                  # Vitest (unitários e integração)
 pnpm lint && pnpm typecheck
-pnpm dev                       # web e técnico em modo dev
+pnpm dev                                   # web e técnico em modo dev, apontando para o dev
 ```
+
+Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `supabase test db` a cada PR. Esse é o controle que bloqueia o merge.
 
 ## Pronto quer dizer
 
@@ -77,11 +88,11 @@ pnpm dev                       # web e técnico em modo dev
 ## Nunca faça
 
 - Usar `service_role`/secret key para acessar dados de negócio.
-- Conceder qualquer privilégio a `anon`, `authenticated` ou `public` nos schemas da CSC.
+- Conceder qualquer privilégio a `anon`, `authenticated` ou `public` nos schemas do HubKeep.
 - Expor os schemas `app`, `staging`, `licenca` ou `authz` na Data API.
-- Criar trigger, regra de negócio em função SQL, ou policy com `using (true)` para `csc_app`.
+- Criar trigger, regra de negócio em função SQL, ou policy com `using (true)` para `hk_app`.
 - Consultar o banco fora de `withContext`, ou abrir transação sem definir o contexto.
-- Deixar credencial de banco da CSC no agente conector.
+- Deixar credencial de banco do HubKeep no agente conector.
 - Apontar deploy de preview para o banco de produção.
 
 ## Idioma

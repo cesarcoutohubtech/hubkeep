@@ -8,30 +8,36 @@ Montar pnpm + Turborepo, TypeScript strict, ESLint com regra de fronteiras entre
 
 **Aceite:** `pnpm lint`, `pnpm typecheck` e `pnpm test` rodam na CI; um import proibido (ex.: `dominio` importando `db`) faz o lint falhar.
 
-## F0-02 — Supabase local e testes de banco
+## F0-02 — Supabase de dev e testes de banco na CI
 
-Rodar `supabase init`, manter a migração `20260924000001_fundacao.sql` e os testes em `supabase/tests/database`. Em `config.toml`, deixar os schemas da CSC fora de `[api] schemas`. Colocar `supabase start`, `supabase db reset` e `supabase test db` na CI.
+O projeto Supabase de dev (`HubKeep-dev`) já existe na nuvem (ADR-015). O `supabase init` já foi rodado e a pasta `supabase/` está no repositório; em `config.toml`, os schemas do HubKeep ficam fora de `[api] schemas`. Vincular o repositório ao dev com `supabase link` e aplicar a migração com `supabase db push`.
 
-**Aceite:** 40 testes pgTAP passando na CI (12 meta e 28 de isolamento). Verificar os quatro pontos da seção "Pontos a verificar" em `02-seguranca-multitenant-rls.md` e registrar o resultado no PR.
+Tornar obrigatório para merge em `main` o workflow `.github/workflows/banco.yml`, que roda `supabase start`, `supabase db reset` e `supabase test db` no runner a cada PR.
+
+**Aceite:**
+- 43 testes pgTAP passando na CI (13 meta e 30 de isolamento; os 2 de isolamento a mais vêm do ADR-013 e o meta-teste 13, da revisão do PR #1).
+- Os mesmos testes passando contra o dev, via `psql` pelo Session pooler (ver `06-setup-supabase-dev.md`).
+- Os quatro pontos da seção "Pontos a verificar" de `02-seguranca-multitenant-rls.md` conferidos no dev, com o resultado registrado no PR.
+- Na Data API do dev, as tabelas do HubKeep não aparecem e uma chamada com a chave pública a `app.hotel` falha.
 
 ## F0-03 — Papéis por ambiente
 
-Criar o script de operação `scripts/ops/configurar-papeis.ts`, executado por pessoa autorizada com `DATABASE_URL_OWNER`, nunca na Vercel. Ele define LOGIN e senha de `csc_app`, `csc_worker`, `csc_ingestao` e `csc_backoffice` em staging e produção. `csc_authz` nunca recebe LOGIN.
+Criar o script de operação `scripts/ops/configurar-papeis.ts`, executado por pessoa autorizada com `DATABASE_URL_OWNER`, nunca na Vercel. Ele define LOGIN e senha de `hk_app`, `hk_worker`, `hk_ingestao` e `hk_backoffice` em staging e produção. `hk_authz` nunca recebe LOGIN.
 
-**Aceite:** a API em staging conecta como `csc_app` pelo Supavisor em modo transação; a conexão como `csc_authz` falha.
+**Aceite:** a API em staging conecta como `hk_app` pelo Supavisor em modo transação; a conexão como `hk_authz` falha.
 
 ## F0-04 — packages/db: contexto, repositórios e unit of work
 
 Implementar Kysely com `kysely-codegen`, `withContext`, `withSistema` e `unitOfWork` (auditoria e outbox). O pool não é exportado. Criar regra de lint que proíbe escrita fora de `packages/db/src/repositorios`.
 
 **Aceite:**
-- Teste de integração com duas requisições concorrentes de usuários de tenants diferentes no mesmo pool, sem vazamento de contexto.
+- Teste de integração com duas requisições concorrentes de usuários de tenants diferentes no mesmo pool, sem vazamento de contexto (roda na CI, contra o Supabase do runner).
 - Teste de consulta sem contexto retornando vazio.
 - Teste de unit of work gravando mudança, auditoria e evento na mesma transação, e desfazendo as três quando há erro.
 
 ## F0-05 — Autenticação e tenant ativo
 
-Configurar o Supabase Auth no Next.js (`@supabase/ssr`, cookies), validar o JWT no servidor e extrair o usuário. O PWA manda o token como Bearer. Seleção de tenant por cookie/cabeçalho. Fluxo de convite no módulo `auth-admin`, único que usa a secret key; o aceite do convite cria o `app.membro` pela aplicação.
+Configurar o Supabase Auth no Next.js (`@supabase/ssr`, cookies), validar o JWT no servidor e extrair o usuário. O PWA manda o token como Bearer. Seleção de tenant por cookie/cabeçalho. Fluxo de convite no módulo `auth-admin`, único que usa a secret key. O `app.membro` é criado **no convite**, na unit of work de quem convida; o aceite só estabelece a sessão do convidado (ADR-014).
 
 **Aceite:** usuário convidado entra e vê só o próprio tenant; trocar o cookie de tenant para outro não mostra nada; a secret key não aparece em nenhum pacote além de `auth-admin` (checado na CI).
 
@@ -49,13 +55,13 @@ Criar os route handlers em `/api/v1` com contratos Zod em `packages/contratos`, 
 
 ## F0-08 — Ingestão e agente conector
 
-Criar o endpoint `/api/v1/ingestao/lotes` com credencial de agente, papel `csc_ingestao`, idempotência por `lote_hash` e limite de tamanho. Criar `apps/conector` com a interface de adaptador de `packages/contratos`, um adaptador de arquivo (planilha/CSV, que é o fallback da fase 0) e o esqueleto do adaptador SQL Server para o TOTVS. Criar o job que promove UHs de staging para `app.local`, aplicando a regra de licença na aplicação.
+Criar o endpoint `/api/v1/ingestao/lotes` com credencial de agente, papel `hk_ingestao`, idempotência por `lote_hash` e limite de tamanho. Criar `apps/conector` com a interface de adaptador de `packages/contratos`, um adaptador de arquivo (planilha/CSV, que é o fallback da fase 0) e o esqueleto do adaptador SQL Server para o TOTVS. Criar o job que promove UHs de staging para `app.local`, aplicando a regra de licença na aplicação.
 
-**Aceite:** reenvio do mesmo lote não duplica nada; credencial revogada recebe 401; UH nova sem saldo entra como `pendente_licenca`; o agente não tem nenhuma variável de conexão com o banco da CSC.
+**Aceite:** reenvio do mesmo lote não duplica nada; credencial revogada recebe 401; UH nova sem saldo entra como `pendente_licenca`; o agente não tem nenhuma variável de conexão com o banco do HubKeep.
 
 ## F0-09 — Outbox e cron
 
-Criar as rotas de cron (`/api/cron/outbox`, `/api/cron/sla`, `/api/cron/preventiva`) com `CRON_SECRET`, `csc_worker`, laço por tenant, `for update skip locked`, backoff e handlers idempotentes. Criar um handler de e-mail de exemplo (convite).
+Criar as rotas de cron (`/api/cron/outbox`, `/api/cron/sla`, `/api/cron/preventiva`) com `CRON_SECRET`, `hk_worker`, laço por tenant, `for update skip locked`, backoff e handlers idempotentes. Criar um handler de e-mail de exemplo (convite).
 
 **Aceite:** evento processado uma vez mesmo com duas execuções simultâneas; falha gera nova tentativa com atraso; um tenant com erro não bloqueia os outros.
 
@@ -92,3 +98,7 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - Provedor de e-mail transacional (ex.: Resend ou SES) com domínio da EasyGov.
 - Domínios: web e técnico no mesmo domínio raiz, para simplificar cookies e CORS.
 - Parque de aparelhos dos técnicos (proporção Android e iOS), por causa do push no iOS.
+- Onde mora o módulo `auth-admin` (pacote próprio ou dentro de `apps/web`): decidir na F0-05.
+- Backoffice da EasyGov: o papel `hk_backoffice` existe no banco, mas nenhuma tarefa da fase 0 cria a aplicação nem a variável de conexão dele.
+- Banco de dev: um projeto por desenvolvedor ou branching do Supabase (ADR-015).
+- Versão do PostgreSQL: o pacote foi validado em 16; o `supabase init` e os projetos novos do Supabase usam 17. Os testes deste repo rodam em 17.

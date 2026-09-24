@@ -1,5 +1,5 @@
 -- ============================================================================
--- CSC — Migração 0001: fundação de multi-tenancy, identidade, escopo e RLS
+-- HubKeep — Migração 0001: fundação de multi-tenancy, identidade, escopo e RLS
 -- ----------------------------------------------------------------------------
 -- Regras desta base (detalhe em docs/02-seguranca-multitenant-rls.md):
 --   * Sem regra de negócio no banco. Aqui só existe estrutura, integridade
@@ -7,7 +7,7 @@
 --   * Sem triggers.
 --   * RLS habilitada e FORÇADA em toda tabela dos schemas app, staging e licenca.
 --   * Nenhum papel da aplicação tem BYPASSRLS nem é dono de tabela.
---   * anon e authenticated (Supabase) não acessam nenhum schema da CSC.
+--   * anon e authenticated (Supabase) não acessam nenhum schema do HubKeep.
 --   * Campos de escopo (id, tenant_id, hotel_id) são imutáveis: o UPDATE é
 --     concedido por coluna, sem esses campos.
 -- ============================================================================
@@ -15,15 +15,15 @@
 
 -- 1. Papéis de banco ---------------------------------------------------------
 -- Criados sem LOGIN. LOGIN e senha são definidos por ambiente, fora do git.
---   csc_app        API e telas, sempre em nome de um usuário autenticado
---   csc_worker     jobs agendados (outbox, SLA, preventiva), um tenant por transação
---   csc_ingestao   endpoint que recebe dados do agente do TOTVS (só staging)
---   csc_backoffice EasyGov: só licença, nunca dados de negócio
---   csc_authz      dono das funções de autorização; nunca recebe LOGIN
+--   hk_app         API e telas, sempre em nome de um usuário autenticado
+--   hk_worker      jobs agendados (outbox, SLA, preventiva), um tenant por transação
+--   hk_ingestao    endpoint que recebe dados do agente do TOTVS (só staging)
+--   hk_backoffice  EasyGov: só licença, nunca dados de negócio
+--   hk_authz       dono das funções de autorização; nunca recebe LOGIN
 do $$
 declare r text;
 begin
-  foreach r in array array['csc_app','csc_worker','csc_ingestao','csc_backoffice','csc_authz'] loop
+  foreach r in array array['hk_app','hk_worker','hk_ingestao','hk_backoffice','hk_authz'] loop
     if not exists (select 1 from pg_roles where rolname = r) then
       execute format('create role %I nologin noinherit nobypassrls', r);
     end if;
@@ -31,7 +31,7 @@ begin
 end $$;
 
 -- Necessário para transferir a posse das funções e para os testes (set role).
-grant csc_app, csc_worker, csc_ingestao, csc_backoffice, csc_authz to postgres;
+grant hk_app, hk_worker, hk_ingestao, hk_backoffice, hk_authz to postgres;
 
 
 -- 2. Schemas ------------------------------------------------------------------
@@ -272,7 +272,7 @@ create table licenca.contrato (
 
 -- 8. Funções de autorização ---------------------------------------------------
 -- Única lógica permitida no banco: quem vê e em que escopo escreve.
--- Todas com search_path vazio. As SECURITY DEFINER pertencem a csc_authz,
+-- Todas com search_path vazio. As SECURITY DEFINER pertencem a hk_authz,
 -- que só tem SELECT nas tabelas de escopo e nenhum LOGIN.
 
 -- Contexto da sessão, definido pela API em cada transação (set_config local).
@@ -398,12 +398,17 @@ as $$
 $$;
 
 -- Posse e execução
-alter function authz.tenant_id()                   owner to csc_authz;
-alter function authz.hoteis_com_papel(app.papel[]) owner to csc_authz;
-alter function authz.locais_proprietario()         owner to csc_authz;
-alter function authz.eh_admin_grupo()              owner to csc_authz;
-alter function authz.membro_privilegiado(uuid)     owner to csc_authz;
-alter function licenca.uso()                       owner to csc_authz;
+-- No Supabase o postgres não é superusuário, e o PostgreSQL só transfere a posse
+-- de uma função se o novo dono tiver CREATE no schema dela. O CREATE vale só
+-- durante a transferência e é revogado logo abaixo: hk_authz não cria nada.
+grant create on schema authz, licenca to hk_authz;
+alter function authz.tenant_id()                   owner to hk_authz;
+alter function authz.hoteis_com_papel(app.papel[]) owner to hk_authz;
+alter function authz.locais_proprietario()         owner to hk_authz;
+alter function authz.eh_admin_grupo()              owner to hk_authz;
+alter function authz.membro_privilegiado(uuid)     owner to hk_authz;
+alter function licenca.uso()                       owner to hk_authz;
+revoke create on schema authz, licenca from hk_authz;
 
 revoke all on all functions in schema authz, licenca from public;
 
@@ -411,64 +416,66 @@ grant execute on function
   authz.usuario_id(), authz.tenant_id(), authz.hoteis_com_papel(app.papel[]),
   authz.hoteis_leitura(), authz.hoteis_escrita(), authz.locais_proprietario(),
   authz.eh_admin_grupo(), authz.membro_privilegiado(uuid)
-to csc_app;
+to hk_app;
 
-grant execute on function authz.tenant_sistema() to csc_worker, csc_ingestao;
-grant execute on function licenca.uso() to csc_backoffice;
-grant execute on function authz.usuario_id() to csc_authz;
+grant execute on function authz.tenant_sistema() to hk_worker, hk_ingestao;
+grant execute on function licenca.uso() to hk_backoffice;
+grant execute on function authz.usuario_id() to hk_authz;
 
 
 -- 9. Privilégios em schemas e tabelas -----------------------------------------
-grant usage on schema app     to csc_app, csc_worker, csc_authz;
-grant usage on schema authz   to csc_app, csc_worker, csc_ingestao, csc_authz;
-grant usage on schema staging to csc_app, csc_worker, csc_ingestao;
-grant usage on schema licenca to csc_app, csc_worker, csc_backoffice, csc_authz;
+grant usage on schema app     to hk_app, hk_worker, hk_authz;
+grant usage on schema authz   to hk_app, hk_worker, hk_ingestao, hk_authz;
+grant usage on schema staging to hk_app, hk_worker, hk_ingestao;
+grant usage on schema licenca to hk_app, hk_worker, hk_backoffice, hk_authz;
 
--- csc_authz: somente leitura das tabelas que definem escopo
+-- hk_authz: somente leitura das tabelas que definem escopo
 grant select on app.tenant, app.membro, app.hotel, app.local,
                 app.local_proprietario, app.atribuicao_escopo, licenca.contrato
-to csc_authz;
+to hk_authz;
 
--- csc_app (sem DELETE em nenhuma tabela; UPDATE só nas colunas mutáveis)
-grant select on app.tenant, app.bandeira to csc_app;
+-- hk_app (sem DELETE em nenhuma tabela; UPDATE só nas colunas mutáveis)
+grant select on app.tenant, app.bandeira to hk_app;
 grant select, insert on app.membro, app.hotel, app.local, app.proprietario,
-                       app.local_proprietario, app.atribuicao_escopo to csc_app;
-grant insert (tenant_id, id, nome) on app.bandeira to csc_app;
-grant update (nome) on app.bandeira to csc_app;
-grant update (nome, email, ativo, atualizado_em) on app.membro to csc_app;
+                       app.local_proprietario, app.atribuicao_escopo to hk_app;
+grant insert (tenant_id, id, nome) on app.bandeira to hk_app;
+grant update (nome) on app.bandeira to hk_app;
+grant update (nome, email, ativo, atualizado_em) on app.membro to hk_app;
 grant update (bandeira_id, nome, fuso, status, sistema_origem, cod_externo,
-              easytools_hotel_id, atualizado_em) on app.hotel to csc_app;
-grant update (tipo, nome, andar, status, cod_externo, atualizado_em) on app.local to csc_app;
-grant update (nome, documento) on app.proprietario to csc_app;
-grant update (vigencia_inicio, vigencia_fim) on app.local_proprietario to csc_app;
-grant update (valido_ate, revogado_em, revogado_por) on app.atribuicao_escopo to csc_app;
-grant select, insert on app.auditoria to csc_app;
-grant insert on app.evento_dominio to csc_app;
-grant select, insert on staging.credencial_agente to csc_app;
-grant update (descricao, revogado_em) on staging.credencial_agente to csc_app;
-grant select on staging.carga, staging.registro_externo to csc_app;
-grant select on licenca.contrato to csc_app;
+              easytools_hotel_id, atualizado_em) on app.hotel to hk_app;
+grant update (tipo, nome, andar, status, cod_externo, atualizado_em) on app.local to hk_app;
+grant update (nome, documento) on app.proprietario to hk_app;
+grant update (vigencia_inicio, vigencia_fim) on app.local_proprietario to hk_app;
+grant update (valido_ate, revogado_em, revogado_por) on app.atribuicao_escopo to hk_app;
+grant select, insert on app.auditoria to hk_app;
+grant insert on app.evento_dominio to hk_app;
+grant select, insert on staging.credencial_agente to hk_app;
+grant update (descricao, revogado_em) on staging.credencial_agente to hk_app;
+grant select on staging.carga, staging.registro_externo to hk_app;
+grant select on licenca.contrato to hk_app;
 
--- csc_worker
+-- hk_worker
 grant select on app.tenant, app.membro, app.bandeira, app.hotel, app.local,
-                app.proprietario, app.local_proprietario, app.atribuicao_escopo to csc_worker;
-grant insert on app.local to csc_worker;
-grant update (tipo, nome, andar, status, cod_externo, atualizado_em) on app.local to csc_worker;
-grant insert on app.auditoria to csc_worker;
-grant select on app.evento_dominio to csc_worker;
-grant update (processado_em, tentativas, erro, disponivel_em) on app.evento_dominio to csc_worker;
-grant select on staging.registro_externo, staging.carga to csc_worker;
-grant select on licenca.contrato to csc_worker;
+                app.proprietario, app.local_proprietario, app.atribuicao_escopo to hk_worker;
+grant insert on app.local to hk_worker;
+grant update (tipo, nome, andar, status, cod_externo, atualizado_em) on app.local to hk_worker;
+grant insert on app.auditoria to hk_worker;
+-- O worker também escreve (promove UH, gera OS preventiva) e toda escrita
+-- publica evento pela unit of work (ADR-006), então ele precisa inserir (ADR-013).
+grant select, insert on app.evento_dominio to hk_worker;
+grant update (processado_em, tentativas, erro, disponivel_em) on app.evento_dominio to hk_worker;
+grant select on staging.registro_externo, staging.carga to hk_worker;
+grant select on licenca.contrato to hk_worker;
 
--- csc_ingestao
-grant select on staging.credencial_agente to csc_ingestao;
-grant select, insert on staging.carga, staging.registro_externo to csc_ingestao;
-grant update (finalizada_em, linhas, erro) on staging.carga to csc_ingestao;
-grant update (payload, hash, recebido_em) on staging.registro_externo to csc_ingestao;
+-- hk_ingestao
+grant select on staging.credencial_agente to hk_ingestao;
+grant select, insert on staging.carga, staging.registro_externo to hk_ingestao;
+grant update (finalizada_em, linhas, erro) on staging.carga to hk_ingestao;
+grant update (payload, hash, recebido_em) on staging.registro_externo to hk_ingestao;
 
--- csc_backoffice: só o contrato de licença
-grant select, insert on licenca.contrato to csc_backoffice;
-grant update (max_hoteis, max_uhs, atualizado_em, atualizado_por) on licenca.contrato to csc_backoffice;
+-- hk_backoffice: só o contrato de licença
+grant select, insert on licenca.contrato to hk_backoffice;
+grant update (max_hoteis, max_uhs, atualizado_em, atualizado_por) on licenca.contrato to hk_backoffice;
 
 
 -- 10. RLS ---------------------------------------------------------------------
@@ -485,36 +492,36 @@ begin
   end loop;
 end $$;
 
--- csc_authz: leitura irrestrita das tabelas de escopo (evita recursão de policy).
-create policy authz_leitura on app.tenant             for select to csc_authz using (true);
-create policy authz_leitura on app.membro             for select to csc_authz using (true);
-create policy authz_leitura on app.hotel              for select to csc_authz using (true);
-create policy authz_leitura on app.local              for select to csc_authz using (true);
-create policy authz_leitura on app.local_proprietario for select to csc_authz using (true);
-create policy authz_leitura on app.atribuicao_escopo  for select to csc_authz using (true);
-create policy authz_leitura on licenca.contrato       for select to csc_authz using (true);
+-- hk_authz: leitura irrestrita das tabelas de escopo (evita recursão de policy).
+create policy authz_leitura on app.tenant             for select to hk_authz using (true);
+create policy authz_leitura on app.membro             for select to hk_authz using (true);
+create policy authz_leitura on app.hotel              for select to hk_authz using (true);
+create policy authz_leitura on app.local              for select to hk_authz using (true);
+create policy authz_leitura on app.local_proprietario for select to hk_authz using (true);
+create policy authz_leitura on app.atribuicao_escopo  for select to hk_authz using (true);
+create policy authz_leitura on licenca.contrato       for select to hk_authz using (true);
 
 -- tenant
-create policy app_select on app.tenant for select to csc_app
+create policy app_select on app.tenant for select to hk_app
   using (id = (select authz.tenant_id()));
-create policy worker_select on app.tenant for select to csc_worker
+create policy worker_select on app.tenant for select to hk_worker
   using (true);  -- o worker lista tenants para processar um por transação
 
 -- membro: proprietário vê só a si mesmo; demais papéis veem os membros do tenant
-create policy app_select on app.membro for select to csc_app
+create policy app_select on app.membro for select to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and (usuario_id = (select authz.usuario_id())
          or exists (select 1 from authz.hoteis_escrita()))
   );
-create policy app_insert on app.membro for insert to csc_app
+create policy app_insert on app.membro for insert to hk_app
   with check (
     tenant_id = (select authz.tenant_id())
     and ((select authz.eh_admin_grupo())
          or (exists (select 1 from authz.hoteis_com_papel(array['implantador']::app.papel[]))
              and not authz.membro_privilegiado(usuario_id)))
   );
-create policy app_update on app.membro for update to csc_app
+create policy app_update on app.membro for update to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and ((select authz.eh_admin_grupo())
@@ -522,94 +529,94 @@ create policy app_update on app.membro for update to csc_app
              and not authz.membro_privilegiado(usuario_id)))
   )
   with check (tenant_id = (select authz.tenant_id()));
-create policy worker_select on app.membro for select to csc_worker
+create policy worker_select on app.membro for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
 
 -- bandeira
-create policy app_select on app.bandeira for select to csc_app
+create policy app_select on app.bandeira for select to hk_app
   using (tenant_id = (select authz.tenant_id()));
-create policy app_insert on app.bandeira for insert to csc_app
+create policy app_insert on app.bandeira for insert to hk_app
   with check (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()));
-create policy app_update on app.bandeira for update to csc_app
+create policy app_update on app.bandeira for update to hk_app
   using (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()))
   with check (tenant_id = (select authz.tenant_id()));
-create policy worker_select on app.bandeira for select to csc_worker
+create policy worker_select on app.bandeira for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
 
 -- hotel: escrita só do Admin do grupo (bandeira_id define escopo de terceiros)
-create policy app_select on app.hotel for select to csc_app
+create policy app_select on app.hotel for select to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and (id in (select authz.hoteis_leitura())
          or id in (select lp.hotel_id from authz.locais_proprietario() lp))
   );
-create policy app_insert on app.hotel for insert to csc_app
+create policy app_insert on app.hotel for insert to hk_app
   with check (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()));
-create policy app_update on app.hotel for update to csc_app
+create policy app_update on app.hotel for update to hk_app
   using (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()))
   with check (tenant_id = (select authz.tenant_id()));
-create policy worker_select on app.hotel for select to csc_worker
+create policy worker_select on app.hotel for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
 
 -- local
-create policy app_select on app.local for select to csc_app
+create policy app_select on app.local for select to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and (hotel_id in (select authz.hoteis_leitura())
          or id in (select lp.local_id from authz.locais_proprietario() lp))
   );
-create policy app_insert on app.local for insert to csc_app
+create policy app_insert on app.local for insert to hk_app
   with check (tenant_id = (select authz.tenant_id())
               and hotel_id in (select authz.hoteis_escrita()));
-create policy app_update on app.local for update to csc_app
+create policy app_update on app.local for update to hk_app
   using (tenant_id = (select authz.tenant_id())
          and hotel_id in (select authz.hoteis_escrita()))
   with check (tenant_id = (select authz.tenant_id())
               and hotel_id in (select authz.hoteis_escrita()));
-create policy worker_select on app.local for select to csc_worker
+create policy worker_select on app.local for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
-create policy worker_insert on app.local for insert to csc_worker
+create policy worker_insert on app.local for insert to hk_worker
   with check (tenant_id = (select authz.tenant_sistema()));
-create policy worker_update on app.local for update to csc_worker
+create policy worker_update on app.local for update to hk_worker
   using (tenant_id = (select authz.tenant_sistema()))
   with check (tenant_id = (select authz.tenant_sistema()));
 
 -- proprietario: dado pessoal; só o Admin do grupo lê no MVP
-create policy app_select on app.proprietario for select to csc_app
+create policy app_select on app.proprietario for select to hk_app
   using (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()));
-create policy app_insert on app.proprietario for insert to csc_app
+create policy app_insert on app.proprietario for insert to hk_app
   with check (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()));
-create policy app_update on app.proprietario for update to csc_app
+create policy app_update on app.proprietario for update to hk_app
   using (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()))
   with check (tenant_id = (select authz.tenant_id()));
-create policy worker_select on app.proprietario for select to csc_worker
+create policy worker_select on app.proprietario for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
 
 -- local_proprietario
-create policy app_select on app.local_proprietario for select to csc_app
+create policy app_select on app.local_proprietario for select to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and ((select authz.eh_admin_grupo())
          or local_id in (select lp.local_id from authz.locais_proprietario() lp))
   );
-create policy app_insert on app.local_proprietario for insert to csc_app
+create policy app_insert on app.local_proprietario for insert to hk_app
   with check (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()));
-create policy app_update on app.local_proprietario for update to csc_app
+create policy app_update on app.local_proprietario for update to hk_app
   using (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()))
   with check (tenant_id = (select authz.tenant_id()));
-create policy worker_select on app.local_proprietario for select to csc_worker
+create policy worker_select on app.local_proprietario for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
 
 -- atribuicao_escopo: sem escalada. O Implantador só concede papéis abaixo do
 -- próprio, só nos hotéis do seu escopo, e não altera a própria concessão.
-create policy app_select on app.atribuicao_escopo for select to csc_app
+create policy app_select on app.atribuicao_escopo for select to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and ((select authz.eh_admin_grupo())
          or usuario_id = (select authz.usuario_id())
          or hotel_id in (select authz.hoteis_com_papel(array['implantador']::app.papel[])))
   );
-create policy app_insert on app.atribuicao_escopo for insert to csc_app
+create policy app_insert on app.atribuicao_escopo for insert to hk_app
   with check (
     tenant_id = (select authz.tenant_id())
     and concedido_por = (select authz.usuario_id())
@@ -618,7 +625,7 @@ create policy app_insert on app.atribuicao_escopo for insert to csc_app
              and escopo_tipo = 'hotel'
              and hotel_id in (select authz.hoteis_com_papel(array['implantador']::app.papel[]))))
   );
-create policy app_update on app.atribuicao_escopo for update to csc_app
+create policy app_update on app.atribuicao_escopo for update to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and ((select authz.eh_admin_grupo())
@@ -632,79 +639,81 @@ create policy app_update on app.atribuicao_escopo for update to csc_app
              and escopo_tipo = 'hotel'
              and hotel_id in (select authz.hoteis_com_papel(array['implantador']::app.papel[]))))
   );
-create policy worker_select on app.atribuicao_escopo for select to csc_worker
+create policy worker_select on app.atribuicao_escopo for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
 
 -- auditoria: sem UPDATE nem DELETE para nenhum papel
-create policy app_select on app.auditoria for select to csc_app
+create policy app_select on app.auditoria for select to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and ((select authz.eh_admin_grupo()) or hotel_id in (select authz.hoteis_escrita()))
   );
-create policy app_insert on app.auditoria for insert to csc_app
+create policy app_insert on app.auditoria for insert to hk_app
   with check (
     tenant_id = (select authz.tenant_id())
     and usuario_id = (select authz.usuario_id())
     and (hotel_id is null or hotel_id in (select authz.hoteis_escrita()))
   );
-create policy worker_insert on app.auditoria for insert to csc_worker
+create policy worker_insert on app.auditoria for insert to hk_worker
   with check (tenant_id = (select authz.tenant_sistema()) and usuario_id is null);
 
--- evento_dominio: a API só publica; o worker consome
-create policy app_insert on app.evento_dominio for insert to csc_app
+-- evento_dominio: a API só publica; o worker publica (ADR-013) e consome
+create policy app_insert on app.evento_dominio for insert to hk_app
   with check (tenant_id = (select authz.tenant_id()));
-create policy worker_select on app.evento_dominio for select to csc_worker
+create policy worker_insert on app.evento_dominio for insert to hk_worker
+  with check (tenant_id = (select authz.tenant_sistema()));
+create policy worker_select on app.evento_dominio for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
-create policy worker_update on app.evento_dominio for update to csc_worker
+create policy worker_update on app.evento_dominio for update to hk_worker
   using (tenant_id = (select authz.tenant_sistema()))
   with check (tenant_id = (select authz.tenant_sistema()));
 
 -- staging.credencial_agente
-create policy app_select on staging.credencial_agente for select to csc_app
+create policy app_select on staging.credencial_agente for select to hk_app
   using (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()));
-create policy app_insert on staging.credencial_agente for insert to csc_app
+create policy app_insert on staging.credencial_agente for insert to hk_app
   with check (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()));
-create policy app_update on staging.credencial_agente for update to csc_app
+create policy app_update on staging.credencial_agente for update to hk_app
   using (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()))
   with check (tenant_id = (select authz.tenant_id()));
-create policy ingestao_select on staging.credencial_agente for select to csc_ingestao
+create policy ingestao_select on staging.credencial_agente for select to hk_ingestao
   using (tenant_id = (select authz.tenant_sistema()) and revogado_em is null);
 
 -- staging.carga e staging.registro_externo
-create policy app_select on staging.carga for select to csc_app
+create policy app_select on staging.carga for select to hk_app
   using (tenant_id = (select authz.tenant_id()) and (select authz.eh_admin_grupo()));
-create policy worker_select on staging.carga for select to csc_worker
+create policy worker_select on staging.carga for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
-create policy ingestao_select on staging.carga for select to csc_ingestao
+create policy ingestao_select on staging.carga for select to hk_ingestao
   using (tenant_id = (select authz.tenant_sistema()));
-create policy ingestao_insert on staging.carga for insert to csc_ingestao
+create policy ingestao_insert on staging.carga for insert to hk_ingestao
   with check (tenant_id = (select authz.tenant_sistema()));
-create policy ingestao_update on staging.carga for update to csc_ingestao
+create policy ingestao_update on staging.carga for update to hk_ingestao
   using (tenant_id = (select authz.tenant_sistema()))
   with check (tenant_id = (select authz.tenant_sistema()));
 
-create policy app_select on staging.registro_externo for select to csc_app
+create policy app_select on staging.registro_externo for select to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and ((select authz.eh_admin_grupo())
          or exists (select 1 from authz.hoteis_com_papel(array['implantador']::app.papel[])))
   );
-create policy worker_select on staging.registro_externo for select to csc_worker
+create policy worker_select on staging.registro_externo for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
-create policy ingestao_select on staging.registro_externo for select to csc_ingestao
+create policy ingestao_select on staging.registro_externo for select to hk_ingestao
   using (tenant_id = (select authz.tenant_sistema()));
-create policy ingestao_insert on staging.registro_externo for insert to csc_ingestao
+create policy ingestao_insert on staging.registro_externo for insert to hk_ingestao
   with check (tenant_id = (select authz.tenant_sistema()));
-create policy ingestao_update on staging.registro_externo for update to csc_ingestao
+create policy ingestao_update on staging.registro_externo for update to hk_ingestao
   using (tenant_id = (select authz.tenant_sistema()))
   with check (tenant_id = (select authz.tenant_sistema()));
 
 -- licenca.contrato
-create policy app_select on licenca.contrato for select to csc_app
+create policy app_select on licenca.contrato for select to hk_app
   using (tenant_id = (select authz.tenant_id()));
-create policy worker_select on licenca.contrato for select to csc_worker
+create policy worker_select on licenca.contrato for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
-create policy backoffice_select on licenca.contrato for select to csc_backoffice using (true);
-create policy backoffice_insert on licenca.contrato for insert to csc_backoffice with check (true);
-create policy backoffice_update on licenca.contrato for update to csc_backoffice
+create policy backoffice_select on licenca.contrato for select to hk_backoffice using (true);
+create policy backoffice_insert on licenca.contrato for insert to hk_backoffice with check (true);
+create policy backoffice_update on licenca.contrato for update to hk_backoffice
   using (true) with check (true);

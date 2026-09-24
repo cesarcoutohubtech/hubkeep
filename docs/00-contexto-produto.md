@@ -4,7 +4,7 @@ Resumo para o desenvolvimento. A fonte de verdade de produto é o `contexto-cent
 
 ## O que é
 
-A Central de Manutenção (CSC) é o módulo do EasyTools/EasyGov para manutenção preventiva e corretiva em redes hoteleiras multi-propriedade. Posicionamento: plataforma de manutenção para a operação hoteleira brasileira, simples para quem executa e completa para quem gerencia.
+O HubKeep é a plataforma de manutenção preventiva e corretiva para redes hoteleiras multi-propriedade. (O pacote de fundação o chamava de "Central de Manutenção EasyGov — CSC"; o nome mudou pelo ADR-012.) Posicionamento: plataforma de manutenção para a operação hoteleira brasileira, simples para quem executa e completa para quem gerencia.
 
 Primeiro cliente: grupo Slaviero (40+ hotéis). Implantação com piloto em 2 a 3 hotéis e rollout em ondas de cerca de 10.
 
@@ -16,6 +16,8 @@ Primeiro cliente: grupo Slaviero (40+ hotéis). Implantação com piloto em 2 a 
 - Aproveitar hotéis e UHs do TOTVS CM sem recadastro, em modo somente leitura.
 
 ## Hierarquia e papéis
+
+**CSC**, neste documento, é a equipe central de manutenção do grupo cliente (papel `gestor_csc`), e não o produto.
 
 Grupo (tenant) → bandeira → hotel → local (UH ou área comum) → ativo. O proprietário ou locador se liga a UHs específicas (condo-hotel) ou a um hotel inteiro.
 
@@ -33,13 +35,13 @@ Grupo (tenant) → bandeira → hotel → local (UH ou área comum) → ativo. O
 
 | Dado | Quem cadastra | Origem |
 |---|---|---|
-| Hotéis | Admin do grupo | Staging do TOTVS (`vw_csc_hoteis`), fallback por planilha |
+| Hotéis | Admin do grupo | Staging do TOTVS (`vw_hubkeep_hoteis`), fallback por planilha |
 | UHs e status | Automático | TOTVS CM via agente conector |
 | Bandeiras | Admin do grupo | Manual |
 | Usuários e papéis | Admin do grupo e Implantador | Convite por e-mail ou SSO da Slaviero |
 | Limite de hotéis e UHs | EasyGov (backoffice) | `licenca.contrato` |
 
-A CSC é o sistema de registro da manutenção. No MVP não há integração com o EasyTools. No futuro, o EasyTools consome os eventos `hotel.criado` e `hotel.alterado` da CSC.
+O HubKeep é o sistema de registro da manutenção. No MVP não há integração com o EasyTools. No futuro, o EasyTools consome os eventos `hotel.criado` e `hotel.alterado` do HubKeep.
 
 ## Licença
 
