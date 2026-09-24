@@ -6,6 +6,8 @@
 //   HK_TESTE_URL_APP     hk_app
 //   HK_TESTE_URL_WORKER  hk_worker
 //   HK_TESTE_URL_DONO    postgres (fixtures e conferência do que foi gravado)
+//   HK_TESTE_VIA_POOLER  1 quando APP/WORKER apontam para o Supavisor em modo
+//                        transação (pnpm db:fumaca-dev), não para o Postgres direto
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import pg from 'pg';
@@ -16,6 +18,7 @@ import { criarKysely, criarPool, emTransacao } from '../src/conexao';
 const URL_APP = process.env.HK_TESTE_URL_APP;
 const URL_WORKER = process.env.HK_TESTE_URL_WORKER;
 const URL_DONO = process.env.HK_TESTE_URL_DONO;
+const VIA_POOLER = process.env.HK_TESTE_VIA_POOLER === '1';
 const temBanco = Boolean(URL_APP && URL_WORKER && URL_DONO);
 /** Só chamado dentro da suíte, que é pulada quando falta URL. */
 const url = (v: string | undefined): string => {
@@ -79,7 +82,7 @@ describe.skipIf(!temBanco)('packages/db contra Postgres real', { timeout: 60_000
     await semear(A, 'A');
     await semear(B, 'B');
     // max 2: força que as 40 requisições abaixo disputem e reusem as mesmas conexões.
-    banco = criarAcessoBanco({
+    banco = await criarAcessoBanco({
       app: { url: url(URL_APP), max: 2 },
       worker: { url: url(URL_WORKER), max: 1 },
     });
@@ -117,8 +120,15 @@ describe.skipIf(!temBanco)('packages/db contra Postgres real', { timeout: 60_000
       expect(linha.usuario).toBe(esperado.usuario);
       expect(hoteis).toEqual([esperado.hotel]);
     }
-    // Prova de que houve reuso: 40 transações em no máximo 2 conexões do pool.
-    expect(pids.size).toBeLessThanOrEqual(2);
+    if (VIA_POOLER) {
+      // Pelo Supavisor, cada transação pode cair num backend diferente do pool do
+      // pooler — que é compartilhado entre clientes. O que importa ali é o que já
+      // se conferiu acima: nenhuma transação viu contexto de outra.
+      console.info(`Supavisor: 40 transações em ${pids.size} backend(s) do pooler.`);
+    } else {
+      // Conexão direta: prova de reuso, 40 transações em no máximo 2 conexões do pool.
+      expect(pids.size).toBeLessThanOrEqual(2);
+    }
   });
 
   it('consulta sem contexto retorna vazio, inclusive na conexão que acabou de ter contexto', async () => {
@@ -139,6 +149,20 @@ describe.skipIf(!temBanco)('packages/db contra Postgres real', { timeout: 60_000
     } finally {
       await pool.end();
     }
+  });
+
+  it('guarda de papel: a fábrica recusa conexão que não seja do papel esperado', async () => {
+    // Dono (BYPASSRLS) no lugar do hk_app: o erro que esta guarda existe para pegar.
+    await expect(criarAcessoBanco({ app: { url: url(URL_DONO), max: 1 } })).rejects.toThrow(
+      /Acesso ao banco recusado: .*esperado hk_app/,
+    );
+    // Papéis trocados entre si também não passam.
+    await expect(criarAcessoBanco({ app: { url: url(URL_WORKER), max: 1 } })).rejects.toThrow(
+      /esperado hk_app/,
+    );
+    await expect(criarAcessoBanco({ worker: { url: url(URL_APP), max: 1 } })).rejects.toThrow(
+      /esperado hk_worker/,
+    );
   });
 
   it('tenant forjado (usuário que não é membro dele) não vê nada', async () => {

@@ -9,6 +9,7 @@ import {
   criarPool,
   emTransacao,
   validarUuid,
+  verificarPapel,
 } from './conexao';
 import { gravarAuditoriaEOutbox } from './repositorios/auditoria-outbox';
 import { type UnidadeDeTrabalho, criarUnidade } from './unidade-de-trabalho';
@@ -33,9 +34,24 @@ export interface ConfigAcessoBanco {
   worker?: ConfigConexao;
 }
 
-export function criarAcessoBanco(cfg: ConfigAcessoBanco): AcessoBanco {
+/**
+ * Assíncrona porque confere o papel de cada pool antes de devolver o acesso
+ * (verificarPapel, ADR-016): com URL do papel errado, rejeita e não devolve
+ * nada com que se possa consultar.
+ */
+export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBanco> {
   const app = cfg.app ? criarKysely(criarPool(cfg.app)) : null;
   const worker = cfg.worker ? criarKysely(criarPool(cfg.worker)) : null;
+
+  try {
+    await Promise.all([
+      app ? verificarPapel(app, 'hk_app') : undefined,
+      worker ? verificarPapel(worker, 'hk_worker') : undefined,
+    ]);
+  } catch (e) {
+    await Promise.allSettled([app?.destroy(), worker?.destroy()]);
+    throw e;
+  }
 
   const exigir = <K>(db: K | null, papel: string): K => {
     if (!db) throw new Error(`Acesso ao banco criado sem conexão ${papel}.`);

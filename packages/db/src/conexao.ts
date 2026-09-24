@@ -47,6 +47,39 @@ export function criarPool(cfg: ConfigConexao): pg.Pool {
 export const criarKysely = (pool: pg.Pool) =>
   new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
 
+export type PapelAplicacao = 'hk_app' | 'hk_worker';
+
+/**
+ * Guarda de papel (ADR-016). A RLS só protege se quem conecta não a ignora:
+ * uma URL trocada por engano pela do dono (BYPASSRLS) faria o withContext
+ * "funcionar" enxergando todos os tenants, sem erro nenhum. Por isso a
+ * primeira conexão de cada pool confere, antes de qualquer uso:
+ *   - session_user e current_user iguais ao papel esperado (session_user pega o
+ *     dono que fez SET ROLE: um RESET ROLE devolveria o acesso dele);
+ *   - o papel não é superusuário nem tem BYPASSRLS.
+ */
+export async function verificarPapel(db: Kysely<DB>, esperado: PapelAplicacao): Promise<void> {
+  const r = await sql<{ sessao: string; atual: string; superusuario: boolean; bypassrls: boolean }>`
+    select session_user::text as sessao, current_user::text as atual,
+           r.rolsuper as superusuario, r.rolbypassrls as bypassrls
+    from pg_roles r where r.rolname = current_user`.execute(db);
+  const linha = r.rows[0];
+  const problemas: string[] = [];
+  if (!linha) problemas.push('papel da conexão não encontrado em pg_roles');
+  else {
+    if (linha.sessao !== esperado || linha.atual !== esperado) {
+      problemas.push(
+        `conectado como ${linha.sessao} (current_user ${linha.atual}), esperado ${esperado}`,
+      );
+    }
+    if (linha.superusuario) problemas.push('o papel é superusuário');
+    if (linha.bypassrls) problemas.push('o papel tem BYPASSRLS');
+  }
+  if (problemas.length > 0) {
+    throw new Error(`Acesso ao banco recusado: ${problemas.join('; ')}.`);
+  }
+}
+
 /**
  * Abre uma transação e fixa o contexto nela. set_config(..., true) é local à
  * transação: morre no COMMIT/ROLLBACK e não vaza para a próxima requisição que
