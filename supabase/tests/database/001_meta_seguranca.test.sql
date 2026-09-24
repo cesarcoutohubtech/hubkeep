@@ -135,6 +135,9 @@ $$, 'anon e authenticated não executam funções de autorização');
 --     qualquer schema e qualquer relação, inclusive privilégio herdado de PUBLIC
 --     e grant por coluna (has_any_column_privilege cobre os dois casos).
 --     Schemas temporários de sessão ficam de fora: não são objetos do banco.
+--     Única exceção nomeada: UPDATE em pg_catalog.pg_settings, que o próprio
+--     PostgreSQL concede a PUBLIC (system_views.sql). A view não guarda dado:
+--     o UPDATE nela equivale a SET de parâmetro da sessão, que todo papel já faz.
 select is_empty($$
   select 'CREATE em ' || n.nspname
   from pg_namespace n
@@ -147,6 +150,7 @@ select is_empty($$
   cross join (values ('INSERT'), ('UPDATE'), ('DELETE')) p(priv)
   where c.relkind in ('r', 'p', 'v', 'm', 'f')
     and n.nspname not like 'pg\_temp\_%' and n.nspname not like 'pg\_toast\_temp\_%'
+    and not (n.nspname = 'pg_catalog' and c.relname = 'pg_settings' and priv = 'UPDATE')
     and case priv
           when 'DELETE' then has_table_privilege('hk_authz', c.oid, 'DELETE')
           else has_any_column_privilege('hk_authz', c.oid, priv)
