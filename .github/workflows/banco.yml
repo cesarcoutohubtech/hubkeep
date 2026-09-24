@@ -60,6 +60,28 @@ jobs:
           pnpm -s db:papeis --ambiente ci
           pnpm -s db:papeis --ambiente ci
           pnpm -s db:verificar-papeis --ambiente ci
+          # URLs dos papéis para os testes de integração do passo seguinte
+          # (senhas já mascaradas acima; o runner é descartável).
+          base="127.0.0.1:54322/postgres"
+          {
+            echo "HK_TESTE_URL_APP=postgresql://hk_app:${HK_APP_SENHA_CI}@${base}"
+            echo "HK_TESTE_URL_WORKER=postgresql://hk_worker:${HK_WORKER_SENHA_CI}@${base}"
+            echo "HK_TESTE_URL_DONO=${CI_DATABASE_URL_OWNER}"
+          } >> "$GITHUB_ENV"
+
+      # Os tipos do Kysely (packages/db/src/tipos-banco.ts) são gerados do banco.
+      # Aqui se confere que batem com as migrações: migração nova sem
+      # `pnpm db:types` quebra a CI em vez de virar tipo mentindo.
+      - name: Tipos do Kysely em dia com as migrações
+        working-directory: packages/db
+        run: pnpm exec kysely-codegen --dialect postgres --url "env(HK_TESTE_URL_DONO)" --include-pattern "{app,staging,licenca}.*" --out-file src/tipos-banco.ts --verify
+
+      # F0-04: withContext, withSistema e unit of work contra o banco real.
+      # HK_EXIGIR_BANCO transforma "suíte pulada por falta de URL" em falha.
+      - name: Integração do packages/db
+        env:
+          HK_EXIGIR_BANCO: '1'
+        run: pnpm --filter @hubkeep/db test
 
       - name: pgTAP de novo, com os papéis configurados
         run: supabase test db

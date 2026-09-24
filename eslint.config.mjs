@@ -34,7 +34,10 @@ export default tseslint.config(
     settings: {
       'boundaries/elements': ELEMENTOS,
       'import/resolver': {
-        typescript: { project: ['tsconfig.base.json', '*/*/tsconfig.json'] },
+        typescript: {
+          project: ['tsconfig.base.json', '*/*/tsconfig.json'],
+          noWarnOnMultipleProjects: true,
+        },
       },
     },
     rules: {
@@ -72,6 +75,37 @@ export default tseslint.config(
               disallow: {
                 to: { module: { origin: 'external', source: ['kysely', 'pg', 'postgres'] } },
               },
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // ADR-006: escrita de negócio só em packages/db/src/repositorios, que recebe a
+    // unidade de trabalho — é ela que grava auditoria e outbox na mesma transação.
+    // Pega o construtor de query do Kysely; SQL cru de escrita fora dos
+    // repositórios fica para a revisão de PR.
+    files: ['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'],
+    ignores: ['packages/db/src/repositorios/**', 'packages/**/test/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'CallExpression[callee.property.name=/^(insertInto|updateTable|deleteFrom|replaceInto|mergeInto)$/]',
+          message:
+            'Escrita só em packages/db/src/repositorios, pela unidade de trabalho (ADR-006).',
+        },
+      ],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/unidade-de-trabalho'],
+              importNames: ['transacaoDe'],
+              message: 'transacaoDe é só para packages/db/src/repositorios (ADR-006).',
             },
           ],
         },

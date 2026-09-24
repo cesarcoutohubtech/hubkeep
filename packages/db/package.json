@@ -9,10 +9,20 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "db:types": "kysely-codegen --dialect postgres --url \"env(DEV_SESSION_POOLER)\" --include-pattern \"{app,staging,licenca}.*\" --out-file src/tipos-banco.ts"
   },
   "dependencies": {
     "@hubkeep/aplicacao": "workspace:*",
-    "@hubkeep/dominio": "workspace:*"
+    "@hubkeep/dominio": "workspace:*",
+    "kysely": "^0.29.6",
+    "pg": "^8.23.0",
+    "uuid": "^14.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/pg": "^8.23.1",
+    "kysely-codegen": "^0.20.0",
+    "vitest": "^5.0.1"
   }
 }

@@ -2,3 +2,4 @@ pnpm-lock.yaml
 supabase/
 docs/
 *.md
+packages/db/src/tipos-banco.ts
