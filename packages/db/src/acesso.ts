@@ -42,7 +42,9 @@ export function criarAcessoBanco(cfg: ConfigAcessoBanco): AcessoBanco {
     return db;
   };
 
-  const withContext: AcessoBanco['withContext'] = (ctx, fn) => {
+  // async de propósito: contexto inválido vira Promise rejeitada, como qualquer
+  // outra falha de banco, e não uma exceção síncrona que escapa do await.
+  const withContext: AcessoBanco['withContext'] = async (ctx, fn) => {
     validarUuid(ctx.usuarioId, 'usuarioId');
     validarUuid(ctx.tenantId, 'tenantId');
     return emTransacao(exigir(app, 'hk_app'), ctx.usuarioId, ctx.tenantId, fn);
@@ -50,7 +52,7 @@ export function criarAcessoBanco(cfg: ConfigAcessoBanco): AcessoBanco {
 
   // O worker não age em nome de ninguém: app.usuario_id vazio, e as policies
   // de hk_worker leem só authz.tenant_sistema().
-  const withSistema: AcessoBanco['withSistema'] = (ctx, fn) => {
+  const withSistema: AcessoBanco['withSistema'] = async (ctx, fn) => {
     validarUuid(ctx.tenantId, 'tenantId');
     return emTransacao(exigir(worker, 'hk_worker'), '', ctx.tenantId, fn);
   };
