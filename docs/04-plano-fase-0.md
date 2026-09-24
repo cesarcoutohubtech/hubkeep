@@ -52,7 +52,7 @@ Implementar Kysely com `kysely-codegen`, `withContext`, `withSistema` e `unitOfW
 
 ## F0-05 — Autenticação e tenant ativo
 
-Configurar o Supabase Auth no Next.js (`@supabase/ssr`, cookies), validar o JWT no servidor e extrair o usuário. O PWA manda o token como Bearer. Seleção de tenant por cookie/cabeçalho. Fluxo de convite no módulo `auth-admin`, único que usa a secret key. O `app.membro` é criado **no convite**, na unit of work de quem convida; o aceite só estabelece a sessão do convidado (ADR-014).
+Configurar o Supabase Auth no Next.js (`@supabase/ssr`, cookies), validar o JWT no servidor **pelas chaves públicas do projeto (JWKS)** e extrair o usuário (ADR-017). O PWA manda o token como Bearer. Seleção de tenant por cookie/cabeçalho. Fluxo de convite no pacote `packages/auth-admin`, único que usa a secret key, com o envio atrás da porta `ProvedorDeConvite` (e-mail padrão do Supabase no dev; SMTP próprio depois, sem retrabalho). O `app.membro` é criado **no convite**, na unit of work de quem convida; o aceite só estabelece a sessão do convidado (ADR-014).
 
 **Aceite:** usuário convidado entra e vê só o próprio tenant; trocar o cookie de tenant para outro não mostra nada; a secret key não aparece em nenhum pacote além de `auth-admin` (checado na CI).
 
@@ -113,7 +113,6 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - Provedor de e-mail transacional (ex.: Resend ou SES) com domínio da EasyGov.
 - Domínios: web e técnico no mesmo domínio raiz, para simplificar cookies e CORS.
 - Parque de aparelhos dos técnicos (proporção Android e iOS), por causa do push no iOS.
-- Onde mora o módulo `auth-admin` (pacote próprio ou dentro de `apps/web`): decidir na F0-05.
 - Backoffice da EasyGov: o papel `hk_backoffice` existe no banco, mas nenhuma tarefa da fase 0 cria a aplicação nem a variável de conexão dele.
 - Banco de dev: um projeto por desenvolvedor ou branching do Supabase (ADR-015).
 - TypeScript fixado em `~6.0` (F0-01): o `typescript-eslint` 8.70 aceita só TypeScript `< 6.1`, e a `latest` do npm já é a 7 (compilador nativo). Subir para a 7 quando o `typescript-eslint` suportar.

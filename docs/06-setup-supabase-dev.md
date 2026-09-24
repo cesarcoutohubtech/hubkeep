@@ -16,9 +16,12 @@ Checklist para criar o ambiente de dev na nuvem (ADR-015). Não precisa de Docke
 
 - [ ] **Data API:** em *Exposed schemas*, deixe só os padrões (`public`, `graphql_public`). Nunca adicione `app`, `authz`, `staging` ou `licenca`. Se o painel permitir desligar a Data API por completo, pode desligar: o HubKeep não usa, e o Auth continua funcionando.
 - [ ] **Auth → cadastro público desligado** (*Allow new users to sign up* = off). No HubKeep, usuário só entra por convite.
-- [ ] **Auth → URL do site:** `http://localhost:3000` no dev. As URLs de redirecionamento dos previews da Vercel entram na F0-12.
+- [ ] **Auth → URL do site:** `http://localhost:3000` no dev. Em *Redirect URLs*, acrescente `http://localhost:3000/auth/confirmar`. As URLs dos previews da Vercel entram na F0-12.
+- [ ] **Auth → chaves de assinatura (JWT Signing Keys):** a chave em uso tem de ser **assimétrica** (ECC P-256/ES256 ou RSA). A API valida o token pelo JWKS público e recusa HS256 (ADR-017). O HubKeep-dev já nasceu com ES256.
+- [ ] **Auth → Email Templates → Invite user:** assunto `Convite para o HubKeep` e o conteúdo de `supabase/templates/convite.html`. O link tem de ser `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=invite`; com o template padrão, o aceite não funciona (o token vem no fragmento da URL, que o servidor não lê).
+- [ ] **E-mail padrão do Supabase:** serve para o dev, mas tem limite baixo de envio por hora e só entrega para e-mails da equipe do projeto. Por isso o convite está atrás da porta `ProvedorDeConvite`: SMTP próprio entra como outro adaptador, sem retrabalho.
 - [ ] **Realtime:** não habilite em nenhuma tabela.
-- [ ] Anote, no gerenciador de senhas: *Project ref*, *Project URL*, *publishable key* (anon) e *secret key* (service_role). A secret key só vai para o módulo `auth-admin`.
+- [ ] Anote, no gerenciador de senhas: *Project ref*, *Project URL*, *publishable key* (anon) e *secret key* (service_role). A secret key só vai para `packages/auth-admin`, pela variável `SUPABASE_SECRET_KEY`.
 
 ## 3. Aplicar a migração de fundação
 
