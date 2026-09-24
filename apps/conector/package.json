@@ -1,0 +1,17 @@
+{
+  "name": "@hubkeep/conector",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Agente local que lê o sistema hoteleiro e envia lotes por HTTPS (F0-08). Nunca tem credencial do banco.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@hubkeep/contratos": "workspace:*"
+  }
+}

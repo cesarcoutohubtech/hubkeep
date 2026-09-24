@@ -101,4 +101,5 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - Onde mora o módulo `auth-admin` (pacote próprio ou dentro de `apps/web`): decidir na F0-05.
 - Backoffice da EasyGov: o papel `hk_backoffice` existe no banco, mas nenhuma tarefa da fase 0 cria a aplicação nem a variável de conexão dele.
 - Banco de dev: um projeto por desenvolvedor ou branching do Supabase (ADR-015).
+- TypeScript fixado em `~6.0` (F0-01): o `typescript-eslint` 8.70 aceita só TypeScript `< 6.1`, e a `latest` do npm já é a 7 (compilador nativo). Subir para a 7 quando o `typescript-eslint` suportar.
 - Versão do PostgreSQL: o pacote foi validado em 16; o `supabase init` e os projetos novos do Supabase usam 17. Os testes deste repo rodam em 17.

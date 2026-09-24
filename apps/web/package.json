@@ -1,0 +1,20 @@
+{
+  "name": "@hubkeep/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Next.js: telas do CSC e gestores, API /api/v1 e rotas de cron (framework entra na F0-05/F0-07).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@hubkeep/aplicacao": "workspace:*",
+    "@hubkeep/contratos": "workspace:*",
+    "@hubkeep/db": "workspace:*",
+    "@hubkeep/dominio": "workspace:*"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@hubkeep/dominio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Regras de negócio puras, sem IO.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {}
+}
