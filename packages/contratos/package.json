@@ -1,0 +1,15 @@
+{
+  "name": "@hubkeep/contratos",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Schemas Zod da API e do adaptador de sistema hoteleiro.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Scripts de instalação ficam bloqueados por padrão (pnpm >= 10). O unrs-resolver
+# (resolver do eslint-import-resolver-typescript) traz binário pré-compilado e
+# não precisa do postinstall.
+allowBuilds:
+  unrs-resolver: false
