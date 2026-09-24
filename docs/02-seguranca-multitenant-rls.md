@@ -167,7 +167,7 @@ Conferência oficial (ADR-015). Migração aplicada por `supabase db push`; cons
 |---|---|
 | 1 | ✅ `postgres`: `rolsuper = false`, `rolbypassrls = true`. |
 | 2 | ✅ `db push` aplicou a fundação sem erro. As funções `SECURITY DEFINER` de `authz` e `licenca` pertencem a `hk_authz`; nenhum `hk_*` tem CREATE em schema algum. |
-| 3 | ⏳ Continua para a F0-03 (os papéis ainda não têm LOGIN; conferido: nenhum `hk_*` com LOGIN no dev). |
+| 3 | ✅ (F0-03) `hk_app` conecta pelo Supavisor em modo transação (6543, usuário `hk_app.<ref>`) com senha definida por verificador SCRAM. `hk_authz` e `hk_backoffice` são barrados no próprio pooler (`EAUTHQUERY user not found`). O contexto não vaza entre transações na mesma conexão do pooler (10 rodadas), e sem contexto nada é visível, com dado presente. `pnpm db:verificar-papeis --ambiente dev`: 6/6, duas execuções. |
 | 4 | ✅ `anon` e `authenticated` sem USAGE em `app`. Mais forte que o pedido: a Data API do dev não expõe schema nenhum (`db_schema` vazio na configuração do PostgREST, lida pela Management API). Com a chave pública, `GET /rest/v1/hotel` com `Accept-Profile: app` e a RPC em `authz` devolvem `503 PGRST002`, sem dado. |
 
 Também conferido: nenhum event trigger de RLS automática no projeto, uma única migração registrada (`20260924000001`) e tabelas de `app` vazias depois dos testes (rollback).
