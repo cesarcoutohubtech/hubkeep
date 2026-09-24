@@ -161,8 +161,11 @@ $$, 'hk_authz não tem CREATE em schema algum nem INSERT, UPDATE ou DELETE em re
 --     PR, com a justificativa no cabeçalho da migração, e este teste junto.
 select results_eq(
   $$
-    select r.rolname::text, r.rolconnlimit,
-           array(select c from unnest(coalesce(r.rolconfig, '{}')) c order by c collate "C")
+    -- Colunas do catálogo têm collation "C"; os valores esperados, a padrão.
+    -- Sem o collate explícito, o results_eq não sabe como comparar os registros.
+    select r.rolname::text collate "default", r.rolconnlimit,
+           array(select c collate "default" from unnest(coalesce(r.rolconfig, '{}')) c
+                 order by c collate "C")
     from pg_roles r
     where r.rolname in ('hk_app', 'hk_worker', 'hk_ingestao')
     order by r.rolname collate "C"
