@@ -37,12 +37,13 @@ Se o `db push` falhar, anote a mensagem. Os pontos mais prováveis eram o `grant
 
 ## 4. Rodar os testes pgTAP contra o dev
 
-O `supabase test db` da CLI pode depender de Docker para executar o pg_prove. Sem Docker, rode os arquivos com `psql`, usando a string de conexão **Session pooler** do botão *Connect* (é IPv4 e funciona na maioria das redes):
+O `supabase test db` da CLI depende de Docker para executar o pg_prove. Sem Docker, os arquivos rodam com `psql`, usando a string de conexão **Session pooler** do botão *Connect* (é IPv4 e funciona na maioria das redes). Guarde essa string na variável de ambiente `DEV_SESSION_POOLER` e rode:
 
 ```bash
-psql "<string-session-pooler>" -f supabase/tests/database/001_meta_seguranca.test.sql
-psql "<string-session-pooler>" -f supabase/tests/database/002_isolamento_escopo.test.sql
+pnpm db:testar-dev
 ```
+
+O script (`scripts/ops/testar-banco-dev.mjs`) roda cada arquivo de `supabase/tests/database`, confere o total de `ok` contra o plano declarado e sai com erro se algo falhar. A string contém a senha: o script a entrega ao `psql` pelas variáveis `PG*`, nunca pela linha de comando (que fica visível na lista de processos), e recusa o Transaction pooler (porta 6543), onde o `SET LOCAL ROLE` dos testes não funciona.
 
 O esperado é `1..13` com 13 linhas `ok`, e `1..30` com 30 linhas `ok`. Os testes fazem rollback; não sobra dado no banco. No Windows, o `psql` vem no instalador do cliente PostgreSQL (dá para instalar só as ferramentas de linha de comando).
 

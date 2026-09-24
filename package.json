@@ -10,7 +10,8 @@
     "lint": "eslint . --max-warnings 0 && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit -p . && turbo run typecheck",
-    "test": "turbo run test && vitest run"
+    "test": "turbo run test && vitest run",
+    "db:testar-dev": "node scripts/ops/testar-banco-dev.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -19,6 +20,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-boundaries": "^7.2.0",
+    "globals": "^17.12.0",
     "prettier": "^3.9.9",
     "turbo": "^2.11.3",
     "typescript": "~6.0.3",

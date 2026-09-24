@@ -93,6 +93,7 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 
 ## Pendências técnicas desta fase
 
+- **Check obrigatório para merge (F0-02):** o GitHub não oferece proteção de branch nem ruleset em repositório privado no plano gratuito (`403 Upgrade to GitHub Pro`). Tornar o `banco` obrigatório exige GitHub Pro na conta, ou mover o repositório para uma organização com plano Team. Decisão de custo do Cesar.
 - Plano Vercel Pro (uso comercial e cron por minuto) e plano Supabase (PITR, SSO SAML).
 - SSO corporativo da Slaviero: Entra ID, Google ou nenhum.
 - Provedor de e-mail transacional (ex.: Resend ou SES) com domínio da EasyGov.
