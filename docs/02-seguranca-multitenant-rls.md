@@ -158,3 +158,18 @@ Rodado antes do ADR-015, na máquina de desenvolvimento. A partir dele a confer�
 | 4 | ✅ `config.toml` gerado pelo `supabase init` expõe só `public` e `graphql_public`. O painel do projeto de staging se confere na F0-03. |
 
 `supabase test db`: 42/42, duas execuções com `supabase db reset` no meio (antes do meta-teste 13).
+
+### Resultado no `HubKeep-dev` (PostgreSQL 17.6, sa-east-1 — 24/09/2026, F0-02)
+
+Conferência oficial (ADR-015). Migração aplicada por `supabase db push`; consultas feitas pelo Session pooler.
+
+| # | Resultado |
+|---|---|
+| 1 | ✅ `postgres`: `rolsuper = false`, `rolbypassrls = true`. |
+| 2 | ✅ `db push` aplicou a fundação sem erro. As funções `SECURITY DEFINER` de `authz` e `licenca` pertencem a `hk_authz`; nenhum `hk_*` tem CREATE em schema algum. |
+| 3 | ⏳ Continua para a F0-03 (os papéis ainda não têm LOGIN; conferido: nenhum `hk_*` com LOGIN no dev). |
+| 4 | ✅ `anon` e `authenticated` sem USAGE em `app`. Mais forte que o pedido: a Data API do dev não expõe schema nenhum (`db_schema` vazio na configuração do PostgREST, lida pela Management API). Com a chave pública, `GET /rest/v1/hotel` com `Accept-Profile: app` e a RPC em `authz` devolvem `503 PGRST002`, sem dado. |
+
+Também conferido: nenhum event trigger de RLS automática no projeto, uma única migração registrada (`20260924000001`) e tabelas de `app` vazias depois dos testes (rollback).
+
+`pnpm db:testar-dev`: **43/43** (13 meta + 30 isolamento), duas execuções.

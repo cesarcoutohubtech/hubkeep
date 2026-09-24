@@ -9,6 +9,7 @@
 import js from '@eslint/js';
 import boundaries from 'eslint-plugin-boundaries';
 import prettier from 'eslint-config-prettier';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 const ELEMENTOS = [
@@ -76,6 +77,11 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    // Scripts de operação e configs da raiz rodam direto no Node.
+    files: ['scripts/**/*.mjs', '*.mjs'],
+    languageOptions: { globals: globals.node },
   },
   prettier,
 );
