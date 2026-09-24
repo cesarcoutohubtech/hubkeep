@@ -17,6 +17,7 @@ const ELEMENTOS = [
   { type: 'aplicacao', pattern: 'packages/aplicacao' },
   { type: 'db', pattern: 'packages/db' },
   { type: 'contratos', pattern: 'packages/contratos' },
+  { type: 'auth-admin', pattern: 'packages/auth-admin' },
   { type: 'web', pattern: 'apps/web' },
   { type: 'tecnico', pattern: 'apps/tecnico' },
   { type: 'conector', pattern: 'apps/conector' },
@@ -30,6 +31,9 @@ export default tseslint.config(
   ...tseslint.configs.strict,
   {
     files: ['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'],
+    // Testes semeiam fixtures conectando como dono (pg direto); as fronteiras
+    // valem para o código que vai para produção.
+    ignores: ['apps/*/test/**', 'packages/*/test/**'],
     plugins: { boundaries },
     settings: {
       'boundaries/elements': ELEMENTOS,
@@ -57,9 +61,11 @@ export default tseslint.config(
 
             { from: { element: { type: 'aplicacao' } }, allow: para('dominio') },
             { from: { element: { type: 'db' } }, allow: para('aplicacao', 'dominio') },
+            // auth-admin implementa a porta de convite; único dono da secret key.
+            { from: { element: { type: 'auth-admin' } }, allow: para('aplicacao') },
             {
               from: { element: { type: 'web' } },
-              allow: para('aplicacao', 'dominio', 'contratos', 'db'),
+              allow: para('aplicacao', 'dominio', 'contratos', 'db', 'auth-admin'),
             },
             { from: { element: { type: 'tecnico' } }, allow: para('dominio', 'contratos') },
             { from: { element: { type: 'conector' } }, allow: para('contratos') },
@@ -101,6 +107,34 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          patterns: [
+            {
+              group: ['**/unidade-de-trabalho'],
+              importNames: ['transacaoDe'],
+              message: 'transacaoDe é só para packages/db/src/repositorios (ADR-006).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // A secret key mora em @hubkeep/auth-admin; dentro do web, só o código de
+    // servidor (src/servidor) pode importá-lo — nunca página, componente ou proxy.
+    files: ['apps/**/*.{ts,tsx}'],
+    ignores: ['apps/web/src/servidor/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@hubkeep/auth-admin',
+              message: 'auth-admin (secret key) só em apps/web/src/servidor.',
+            },
+          ],
+          // Repetido do bloco do ADR-006: no flat config, este bloco SUBSTITUI a
+          // regra anterior nestes arquivos em vez de somar.
           patterns: [
             {
               group: ['**/unidade-de-trabalho'],

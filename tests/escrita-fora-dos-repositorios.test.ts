@@ -6,7 +6,11 @@ import { ESLint } from 'eslint';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 const eslint = new ESLint({ cwd: process.cwd() });
-const REGRAS = new Set(['no-restricted-syntax', 'no-restricted-imports']);
+const REGRAS = new Set([
+  'no-restricted-syntax',
+  'no-restricted-imports',
+  'boundaries/dependencies',
+]);
 
 beforeAll(async () => {
   await eslint.lintText('export {};\n', { filePath: 'packages/db/src/aquecimento.ts' });
@@ -22,6 +26,7 @@ async function violacoes(arquivo: string, codigo: string): Promise<string[]> {
 
 const escrita = (metodo: string) =>
   `declare const tx: { ${metodo}(t: string): unknown };\nexport const x = tx.${metodo}('app.hotel');\n`;
+const importaAuthAdmin = `import { criarProvedorConviteSupabase } from '@hubkeep/auth-admin';\nexport const x = criarProvedorConviteSupabase;\n`;
 const importaTx = (origem: string) =>
   `import { transacaoDe } from '${origem}';\nexport const x = transacaoDe;\n`;
 
@@ -39,6 +44,17 @@ describe('escrita só em packages/db/src/repositorios', () => {
       'packages/db/src/x.ts',
       importaTx('./unidade-de-trabalho'),
     ],
+    [
+      'transacaoDe importada num app (bloco da secret key não pode apagar esta regra)',
+      'apps/web/src/app/x.ts',
+      importaTx('../../../../packages/db/src/unidade-de-trabalho'),
+    ],
+    [
+      'auth-admin (secret key) importado numa página do web',
+      'apps/web/src/app/x.ts',
+      importaAuthAdmin,
+    ],
+    ['auth-admin importado pelo PWA do técnico', 'apps/tecnico/src/x.ts', importaAuthAdmin],
   ];
 
   it.each(proibidos)('proíbe: %s', async (_n, arquivo, codigo) => {
@@ -54,6 +70,7 @@ describe('escrita só em packages/db/src/repositorios', () => {
       importaTx('../unidade-de-trabalho'),
     ],
     ['leitura (selectFrom) num app', 'apps/web/src/x.ts', escrita('selectFrom')],
+    ['auth-admin importado pelo servidor do web', 'apps/web/src/servidor/x.ts', importaAuthAdmin],
   ];
 
   it.each(permitidos)('permite: %s', async (_n, arquivo, codigo) => {

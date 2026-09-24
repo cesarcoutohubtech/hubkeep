@@ -2,19 +2,37 @@
   "name": "@hubkeep/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Next.js: telas do CSC e gestores, API /api/v1 e rotas de cron (framework entra na F0-05/F0-07).",
+  "description": "Next.js: telas do CSC e gestores, API /api/v1 e rotas de cron.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p .",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --noEmit -p .",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@hubkeep/aplicacao": "workspace:*",
+    "@hubkeep/auth-admin": "workspace:*",
     "@hubkeep/contratos": "workspace:*",
     "@hubkeep/db": "workspace:*",
-    "@hubkeep/dominio": "workspace:*"
+    "@hubkeep/dominio": "workspace:*",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.1",
+    "jose": "^6.2.12",
+    "next": "^16.3.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "pg": "^8.23.0",
+    "vitest": "^5.0.1"
   }
 }

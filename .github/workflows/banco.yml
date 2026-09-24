@@ -28,10 +28,18 @@ jobs:
         with:
           version: latest
 
-      # Só o banco e o Auth (que cria auth.users, referenciada por app.membro).
-      # Os demais serviços não entram nos testes e só custariam tempo de pull.
+      # Chave ES256 do Auth do runner, como a do HubKeep-dev: a API valida o JWT
+      # pelo JWKS público (F0-05). Gerada aqui, fora do git, e morre com o runner;
+      # a CLI grava no arquivo e não imprime a parte privada.
+      - name: Chave de assinatura JWT (ES256) do runner
+        run: |
+          echo '[]' > supabase/signing_keys.json
+          supabase gen signing-key --algorithm ES256 --append --yes > /dev/null
+
+      # Banco, Auth (e Kong, que o expõe) e o Mailpit, onde chega o e-mail de
+      # convite da F0-05. Os demais serviços não entram nos testes.
       - name: Subir Supabase local no runner
-        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta,mailpit
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta
 
       - name: Aplicar migrações do zero
         run: supabase db reset
@@ -82,6 +90,32 @@ jobs:
         env:
           HK_EXIGIR_BANCO: '1'
         run: pnpm --filter @hubkeep/db test
+
+      # F0-05: ambiente do Supabase local para o app web. A secret key vai só
+      # para o processo de teste (o auth-admin a lê); mascarada no log.
+      - name: Ambiente do Supabase local para o web
+        run: |
+          eval "$(supabase status -o env | sed 's/^/SB_/')"
+          publica="${SB_PUBLISHABLE_KEY:-$SB_ANON_KEY}"
+          secreta="${SB_SECRET_KEY:-$SB_SERVICE_ROLE_KEY}"
+          echo "::add-mask::$secreta"
+          test -n "$SB_API_URL" && test -n "$publica" && test -n "$secreta"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$SB_API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$publica"
+            echo "SUPABASE_SECRET_KEY=$secreta"
+            echo "HK_MAILPIT_URL=${SB_MAILPIT_URL:-${SB_INBUCKET_URL:-http://127.0.0.1:54324}}"
+            echo "DATABASE_URL_APP=$HK_TESTE_URL_APP"
+            echo "HK_BANCO_SEM_TLS=1"
+          } >> "$GITHUB_ENV"
+          # O JWKS tem de publicar a chave ES256 gerada acima.
+          curl -sf "$SB_API_URL/auth/v1/.well-known/jwks.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const k=JSON.parse(s).keys||[];console.log("JWKS:",k.map(x=>x.alg).join(","));if(!k.some(x=>x.alg==="ES256"))process.exit(1)})'
+
+      # F0-05: convite → e-mail no Mailpit → aceite → sessão em cookie → API.
+      - name: Integração do web (autenticação e tenant ativo)
+        env:
+          HK_EXIGIR_BANCO: '1'
+        run: pnpm --filter @hubkeep/web test
 
       - name: pgTAP de novo, com os papéis configurados
         run: supabase test db
