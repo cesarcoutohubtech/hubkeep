@@ -80,7 +80,7 @@ export default tseslint.config(
   },
   {
     // Scripts de operação e configs da raiz rodam direto no Node.
-    files: ['scripts/**/*.mjs', '*.mjs'],
+    files: ['scripts/**/*.{mjs,ts}', '*.mjs'],
     languageOptions: { globals: globals.node },
   },
   prettier,

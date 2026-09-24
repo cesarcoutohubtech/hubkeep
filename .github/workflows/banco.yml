@@ -1,6 +1,7 @@
 # Testes de banco na CI: Supabase local no runner (descartável), migrações do
 # zero e pgTAP. É o único lugar onde o Supabase roda em Docker (ADR-015), e o
-# check que se torna obrigatório para merge em main na F0-02.
+# check obrigatório para merge em main (ruleset "main: CI de banco obrigatória").
+# O nome do job é o do check exigido pelo ruleset: renomear quebra o merge.
 name: banco
 
 on:
@@ -36,4 +37,29 @@ jobs:
         run: supabase db reset
 
       - name: Testes pgTAP (meta e isolamento)
+        run: supabase test db
+
+      # Scripts de operação da F0-03 contra o banco do runner. Credenciais do
+      # Postgres local são as fixas e descartáveis do Supabase CLI; as senhas
+      # dos papéis são geradas aqui, mascaradas no log e morrem com o runner.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Papéis por ambiente — configurar (duas vezes) e verificar
+        env:
+          CI_DATABASE_URL_OWNER: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          gerar() { openssl rand -base64 48 | tr -d '\n=+/'; }
+          export HK_APP_SENHA_CI="$(gerar)" HK_WORKER_SENHA_CI="$(gerar)" HK_INGESTAO_SENHA_CI="$(gerar)"
+          for s in "$HK_APP_SENHA_CI" "$HK_WORKER_SENHA_CI" "$HK_INGESTAO_SENHA_CI"; do echo "::add-mask::$s"; done
+          pnpm -s db:papeis --ambiente ci --dry-run
+          pnpm -s db:papeis --ambiente ci
+          pnpm -s db:papeis --ambiente ci
+          pnpm -s db:verificar-papeis --ambiente ci
+
+      - name: pgTAP de novo, com os papéis configurados
         run: supabase test db
