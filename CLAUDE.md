@@ -53,18 +53,29 @@ Dependências permitidas: `apps → aplicacao → dominio`; `aplicacao → porta
 - IDs são UUID v7 gerados pela aplicação.
 - Ao criar tabela de negócio, siga o modelo em `docs/02-seguranca-multitenant-rls.md` (seção "Modelo para tabela nova") e adicione os casos no teste de isolamento.
 
+## Ambiente de desenvolvimento (sem Docker local)
+
+As máquinas da equipe não rodam `supabase start` nem outro banco em Docker (ADR-015). O desenvolvimento usa o projeto Supabase de dev na nuvem (`HubKeep-dev`), e o Supabase local em Docker roda só na CI, em runner descartável.
+
+- O projeto de dev não tem dados reais de cliente. Os dados de teste são fictícios.
+- Não rode `supabase db reset` contra staging ou produção. Contra o dev, só com aviso à equipe, porque o banco é compartilhado.
+- Migração nova vai para o dev por `supabase db push` só depois de passar na CI do PR.
+- Os testes pgTAP abrem transação e fazem rollback; rodar contra o dev não deixa dados.
+
 ## Comandos
 
 ```bash
 pnpm install
-supabase start                 # banco, auth e storage locais
-supabase db reset              # recria o banco a partir das migrações
-supabase test db               # pgTAP: meta-testes e isolamento
-pnpm db:types                  # gera tipos Kysely do banco local
-pnpm test                      # Vitest (unitários e integração)
+supabase link --project-ref <ref-do-dev>   # uma vez por máquina
+supabase db push                           # aplica migrações pendentes no dev
+psql "$DEV_SESSION_POOLER" -f supabase/tests/database/<arquivo>.sql   # pgTAP contra o dev, sem Docker
+pnpm db:types                              # gera tipos Kysely a partir do dev
+pnpm test                                  # Vitest (unitários e integração)
 pnpm lint && pnpm typecheck
-pnpm dev                       # web e técnico em modo dev
+pnpm dev                                   # web e técnico em modo dev, apontando para o dev
 ```
+
+Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `supabase test db` a cada PR. Esse é o controle que bloqueia o merge.
 
 ## Pronto quer dizer
 

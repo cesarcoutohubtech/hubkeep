@@ -142,3 +142,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 **Consequências:**
 - Se o convite do Auth der certo e a gravação do membro falhar, sobra um usuário do Auth sem vínculo. Ele não vê nada (falha fechada) e o reenvio do convite reaproveita o mesmo usuário; o caso de uso trata o reenvio como idempotente.
 - Nenhuma policy nem grant muda.
+
+## ADR-015 — Desenvolvimento sem Supabase local
+
+**Status:** aprovada em 24/09/2026. Altera a tarefa F0-02 e os comandos do `CLAUDE.md`. (No pacote de fundação atualizado esta decisão era o "ADR-012"; foi renumerada porque 012 a 014 já estavam em uso neste repositório.)
+
+**Decisão:** as máquinas da equipe não rodam o Supabase nem outro banco em Docker. O desenvolvimento usa um projeto Supabase de dev na nuvem (`HubKeep-dev`, região São Paulo, sem dados reais). O Supabase local roda só na CI, em runner descartável, onde `supabase db reset` e `supabase test db` bloqueiam o merge.
+
+**Motivo:** espaço em disco limitado nas máquinas de desenvolvimento. O Supabase local soma alguns GB de imagens.
+
+**Consequências:**
+- O banco de dev é compartilhado. Uma migração experimental quebra o ambiente de todos, então migração só vai para o dev depois de passar na CI do PR.
+- Sem rede, não há banco para desenvolver. O domínio (`packages/dominio`) continua testável offline.
+- O teste de concorrência de contexto (F0-04) roda na CI, contra o Supabase local do runner.
+- **Em análise:** um projeto de dev por desenvolvedor ou o branching do Supabase (um banco por PR), conforme o custo.

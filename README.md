@@ -16,13 +16,15 @@ O repositório nasceu do pacote de fundação "Central de Manutenção EasyGov (
 | `docs/04-plano-fase-0.md` | Tarefas F0-01 a F0-13 com critério de aceite |
 | `docs/05-prompt-inicial-claude-code.md` | Texto para abrir a primeira sessão |
 | `supabase/migrations/20260924000001_fundacao.sql` | Papéis, schemas, identidade, escopo, licença, staging, RLS |
-| `supabase/tests/database/` | pgTAP: 12 meta-testes e 30 testes de isolamento |
+| `supabase/tests/database/` | pgTAP: 13 meta-testes e 30 testes de isolamento |
+| `docs/06-setup-supabase-dev.md` | Checklist para criar o projeto Supabase de dev |
+| `.github/workflows/banco.yml` | CI com Supabase no runner e testes pgTAP |
 | `.env.example` | Variáveis por aplicação |
 
 ## Como usar
 
 1. Crie um repositório vazio e copie este pacote para a raiz.
-2. Instale a Supabase CLI e rode `supabase init` (mantenha a pasta `supabase/` existente).
+2. Crie o projeto Supabase de dev seguindo `docs/06-setup-supabase-dev.md`. Não é preciso Docker na máquina (ADR-015).
 3. Abra o Claude Code na raiz e cole o prompt de `docs/05-prompt-inicial-claude-code.md`.
 
-A migração e os testes foram validados em PostgreSQL 16 com stubs de `auth.users`, `anon` e `authenticated`. O primeiro `supabase test db` no ambiente real faz parte da tarefa F0-02.
+A migração e os testes foram validados em PostgreSQL 16 com stubs de `auth.users`, `anon` e `authenticated`. O primeiro `supabase test db` no Supabase real faz parte da tarefa F0-02.

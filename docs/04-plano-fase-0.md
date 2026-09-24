@@ -8,11 +8,17 @@ Montar pnpm + Turborepo, TypeScript strict, ESLint com regra de fronteiras entre
 
 **Aceite:** `pnpm lint`, `pnpm typecheck` e `pnpm test` rodam na CI; um import proibido (ex.: `dominio` importando `db`) faz o lint falhar.
 
-## F0-02 — Supabase local e testes de banco
+## F0-02 — Supabase de dev e testes de banco na CI
 
-Rodar `supabase init`, manter a migração `20260924000001_fundacao.sql` e os testes em `supabase/tests/database`. Em `config.toml`, deixar os schemas do HubKeep fora de `[api] schemas`. Colocar `supabase start`, `supabase db reset` e `supabase test db` na CI.
+O projeto Supabase de dev (`HubKeep-dev`) já existe na nuvem (ADR-015). O `supabase init` já foi rodado e a pasta `supabase/` está no repositório; em `config.toml`, os schemas do HubKeep ficam fora de `[api] schemas`. Vincular o repositório ao dev com `supabase link` e aplicar a migração com `supabase db push`.
 
-**Aceite:** 42 testes pgTAP passando na CI (12 meta e 30 de isolamento; os 2 a mais vêm do ADR-013). Verificar os quatro pontos da seção "Pontos a verificar" em `02-seguranca-multitenant-rls.md` e registrar o resultado no PR.
+Tornar obrigatório para merge em `main` o workflow `.github/workflows/banco.yml`, que roda `supabase start`, `supabase db reset` e `supabase test db` no runner a cada PR.
+
+**Aceite:**
+- 43 testes pgTAP passando na CI (13 meta e 30 de isolamento; os 2 de isolamento a mais vêm do ADR-013 e o meta-teste 13, da revisão do PR #1).
+- Os mesmos testes passando contra o dev, via `psql` pelo Session pooler (ver `06-setup-supabase-dev.md`).
+- Os quatro pontos da seção "Pontos a verificar" de `02-seguranca-multitenant-rls.md` conferidos no dev, com o resultado registrado no PR.
+- Na Data API do dev, as tabelas do HubKeep não aparecem e uma chamada com a chave pública a `app.hotel` falha.
 
 ## F0-03 — Papéis por ambiente
 
@@ -25,7 +31,7 @@ Criar o script de operação `scripts/ops/configurar-papeis.ts`, executado por p
 Implementar Kysely com `kysely-codegen`, `withContext`, `withSistema` e `unitOfWork` (auditoria e outbox). O pool não é exportado. Criar regra de lint que proíbe escrita fora de `packages/db/src/repositorios`.
 
 **Aceite:**
-- Teste de integração com duas requisições concorrentes de usuários de tenants diferentes no mesmo pool, sem vazamento de contexto.
+- Teste de integração com duas requisições concorrentes de usuários de tenants diferentes no mesmo pool, sem vazamento de contexto (roda na CI, contra o Supabase do runner).
 - Teste de consulta sem contexto retornando vazio.
 - Teste de unit of work gravando mudança, auditoria e evento na mesma transação, e desfazendo as três quando há erro.
 
@@ -94,4 +100,5 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - Parque de aparelhos dos técnicos (proporção Android e iOS), por causa do push no iOS.
 - Onde mora o módulo `auth-admin` (pacote próprio ou dentro de `apps/web`): decidir na F0-05.
 - Backoffice da EasyGov: o papel `hk_backoffice` existe no banco, mas nenhuma tarefa da fase 0 cria a aplicação nem a variável de conexão dele.
+- Banco de dev: um projeto por desenvolvedor ou branching do Supabase (ADR-015).
 - Versão do PostgreSQL: o pacote foi validado em 16; o `supabase init` e os projetos novos do Supabase usam 17. Os testes deste repo rodam em 17.

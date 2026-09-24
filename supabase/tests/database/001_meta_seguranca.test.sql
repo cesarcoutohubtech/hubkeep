@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(12);
+select plan(13);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -127,6 +127,31 @@ select is_empty($$
     and (has_function_privilege('anon', p.oid, 'execute')
          or has_function_privilege('authenticated', p.oid, 'execute'))
 $$, 'anon e authenticated não executam funções de autorização');
+
+-- 13. hk_authz é dono das funções SECURITY DEFINER: tudo o que ele pode, as
+--     policies podem. Ele só lê. A migração lhe concede CREATE por um instante,
+--     para transferir a posse das funções no Supabase, e revoga em seguida; este
+--     teste garante que a revogação não some numa edição futura. Vale para
+--     qualquer schema e qualquer relação, inclusive privilégio herdado de PUBLIC
+--     e grant por coluna (has_any_column_privilege cobre os dois casos).
+--     Schemas temporários de sessão ficam de fora: não são objetos do banco.
+select is_empty($$
+  select 'CREATE em ' || n.nspname
+  from pg_namespace n
+  where n.nspname not like 'pg\_temp\_%' and n.nspname not like 'pg\_toast\_temp\_%'
+    and has_schema_privilege('hk_authz', n.oid, 'create')
+  union all
+  select priv || ' em ' || n.nspname || '.' || c.relname
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  cross join (values ('INSERT'), ('UPDATE'), ('DELETE')) p(priv)
+  where c.relkind in ('r', 'p', 'v', 'm', 'f')
+    and n.nspname not like 'pg\_temp\_%' and n.nspname not like 'pg\_toast\_temp\_%'
+    and case priv
+          when 'DELETE' then has_table_privilege('hk_authz', c.oid, 'DELETE')
+          else has_any_column_privilege('hk_authz', c.oid, priv)
+        end
+$$, 'hk_authz não tem CREATE em schema algum nem INSERT, UPDATE ou DELETE em relação alguma');
 
 select * from finish();
 rollback;

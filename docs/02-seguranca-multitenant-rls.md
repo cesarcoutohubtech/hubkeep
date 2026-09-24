@@ -139,7 +139,7 @@ Casos mínimos no teste de isolamento para cada tabela nova:
 
 ## Pontos a verificar no primeiro ambiente Supabase
 
-A migração e os testes foram validados em PostgreSQL 16 local, com stubs de `auth.users`, `anon` e `authenticated`. No Supabase real, confirmar:
+A migração e os testes foram validados em PostgreSQL 16 local, com stubs de `auth.users`, `anon` e `authenticated`. No projeto Supabase de dev (e depois em staging e produção), confirmar:
 
 1. Se o papel `postgres` tem BYPASSRLS. Os fixtures dos testes são inseridos como `postgres`. Se ele não tiver, criar um papel de teste com BYPASSRLS só no ambiente local.
 2. Se o `grant ... to postgres` e o `alter function ... owner to hk_authz` funcionam com o `postgres` não superuser do Supabase.
@@ -148,11 +148,13 @@ A migração e os testes foram validados em PostgreSQL 16 local, com stubs de `a
 
 ### Resultado no Supabase local (CLI 2.116, PostgreSQL 17.6 — 24/09/2026)
 
+Rodado antes do ADR-015, na máquina de desenvolvimento. A partir dele a conferência oficial é no `HubKeep-dev` (F0-02).
+
 | # | Resultado |
 |---|---|
 | 1 | ✅ `postgres` tem BYPASSRLS (e não é superuser). Os fixtures funcionam sem papel extra. |
-| 2 | ⚠️→✅ `grant ... to postgres` funciona. **`alter function ... owner to hk_authz` falhava** com `permission denied for schema authz`: sem superuser, o PostgreSQL exige que o novo dono tenha CREATE no schema da função. A migração concede CREATE a `hk_authz` só durante a transferência e revoga em seguida; conferido que nenhum `hk_*` fica com CREATE em schema algum. |
+| 2 | ⚠️→✅ `grant ... to postgres` funciona. **`alter function ... owner to hk_authz` falhava** com `permission denied for schema authz`: sem superuser, o PostgreSQL exige que o novo dono tenha CREATE no schema da função. A migração concede CREATE a `hk_authz` só durante a transferência e revoga em seguida; conferido que nenhum `hk_*` fica com CREATE em schema algum. Virou o **meta-teste 13**: `hk_authz` sem CREATE em schema algum e sem INSERT/UPDATE/DELETE em relação alguma. |
 | 3 | ⏳ Não se verifica localmente (o CLI não sobe o Supavisor com papéis customizados). Fica para a F0-03, em staging. |
 | 4 | ✅ `config.toml` gerado pelo `supabase init` expõe só `public` e `graphql_public`. O painel do projeto de staging se confere na F0-03. |
 
-`supabase test db`: 42/42, duas execuções com `supabase db reset` no meio.
+`supabase test db`: 42/42, duas execuções com `supabase db reset` no meio (antes do meta-teste 13).

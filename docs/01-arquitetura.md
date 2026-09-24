@@ -94,7 +94,8 @@ O limite de 4,5 MB de corpo das funções da Vercel define o tamanho máximo do 
 
 | Ambiente | Supabase | Vercel |
 |---|---|---|
-| Local | `supabase start` | `pnpm dev` |
+| Dev | Projeto próprio na nuvem (`HubKeep-dev`), região São Paulo, sem dados reais (ADR-015) | `pnpm dev` na máquina, apontando para o dev |
+| CI | `supabase start` no runner do GitHub Actions, descartável | — |
 | Staging | Projeto próprio, região São Paulo | Previews e branch `staging` |
 | Produção | Projeto próprio, região São Paulo, PITR | Branch `main` |
 
