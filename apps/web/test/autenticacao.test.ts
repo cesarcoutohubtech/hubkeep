@@ -123,7 +123,7 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     );
     await dono.query(
       `insert into auth.identities (id, user_id, provider_id, provider, identity_data, created_at, updated_at)
-       values (gen_random_uuid(), $1, $1::text, 'email', $2::jsonb, now(), now())`,
+       values (gen_random_uuid(), $1::uuid, $1::uuid::text, 'email', $2::jsonb, now(), now())`,
       [id, JSON.stringify({ sub: id, email: mail, email_verified: true })],
     );
   };
