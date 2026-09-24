@@ -1,0 +1,90 @@
+// Implementação das portas de packages/aplicacao sobre o acesso ao banco.
+// Leitura com withContext, escrita com executar (unit of work): o que cada
+// método vê ou grava é o que a RLS permite ao usuário do contexto.
+import type { PortaAtribuicoes, PortaHoteis } from '@hubkeep/aplicacao';
+import type { Atribuicao, Escopo } from '@hubkeep/dominio';
+import type { AcessoBanco } from './acesso';
+import type { Tx } from './conexao';
+import { listarHoteisVisiveis } from './consultas';
+import { concederPapel, revogarPapel } from './repositorios/membros';
+
+interface LinhaAtribuicao {
+  id: string;
+  usuario_id: string;
+  papel: Atribuicao['papel'];
+  escopo_tipo: Escopo['tipo'];
+  bandeira_id: string | null;
+  hotel_id: string | null;
+  proprietario_id: string | null;
+  valido_ate: Date | null;
+  revogado_em: Date | null;
+}
+
+function escopoDe(l: LinhaAtribuicao): Escopo {
+  // A constraint escopo_coerente garante que a coluna do tipo está preenchida.
+  switch (l.escopo_tipo) {
+    case 'grupo':
+      return { tipo: 'grupo' };
+    case 'bandeira':
+      return { tipo: 'bandeira', bandeiraId: l.bandeira_id ?? '' };
+    case 'hotel':
+      return { tipo: 'hotel', hotelId: l.hotel_id ?? '' };
+    case 'proprietario':
+      return { tipo: 'proprietario', proprietarioId: l.proprietario_id ?? '' };
+  }
+}
+
+const paraAtribuicao = (l: LinhaAtribuicao): Atribuicao => ({
+  id: l.id,
+  usuarioId: l.usuario_id,
+  papel: l.papel,
+  escopo: escopoDe(l),
+  validoAte: l.valido_ate,
+  revogadoEm: l.revogado_em,
+});
+
+const COLUNAS = [
+  'id',
+  'usuario_id',
+  'papel',
+  'escopo_tipo',
+  'bandeira_id',
+  'hotel_id',
+  'proprietario_id',
+  'valido_ate',
+  'revogado_em',
+] as const;
+
+const selecionar = (tx: Tx) => tx.selectFrom('app.atribuicao_escopo').select(COLUNAS);
+
+export function criarPortasDeAplicacao(banco: AcessoBanco): {
+  hoteis: PortaHoteis;
+  atribuicoes: PortaAtribuicoes;
+} {
+  return {
+    hoteis: { listarVisiveis: (ctx) => banco.withContext(ctx, listarHoteisVisiveis) },
+    atribuicoes: {
+      doUsuario: (ctx) =>
+        banco.withContext(ctx, async (tx) =>
+          (await selecionar(tx).where('usuario_id', '=', ctx.usuarioId).execute()).map(
+            paraAtribuicao,
+          ),
+        ),
+      buscar: (ctx, id) =>
+        banco.withContext(ctx, async (tx) => {
+          const l = await selecionar(tx).where('id', '=', id).executeTakeFirst();
+          return l ? paraAtribuicao(l) : null;
+        }),
+      conceder: (ctx, pedido) =>
+        banco.executar(ctx, (uow) =>
+          concederPapel(uow, {
+            usuarioId: pedido.usuarioId,
+            papel: pedido.papel,
+            escopo: pedido.escopo,
+            validoAte: pedido.validoAte ?? null,
+          }),
+        ),
+      revogar: (ctx, id) => banco.executar(ctx, (uow) => revogarPapel(uow, id)),
+    },
+  };
+}

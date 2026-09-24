@@ -203,9 +203,28 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     expect(await mensagensPara(email.barrado)).toEqual([]);
   });
 
-  it('falha parcial (combinação recusada) e reconvite completam o cadastro sem duplicar', async () => {
-    // Implantador sem validade: a constraint recusa; o usuário do Auth fica criado
-    // e o membro não (ADR-014) — o reconvite reaproveita o mesmo usuário.
+  it('pedido inválido pela regra do domínio é recusado antes de o e-mail sair (F0-06)', async () => {
+    // Implantador sem validade: a regra recusa com mensagem clara, sem criar
+    // usuário no Auth e sem convite.
+    const r = await convidar(
+      req('/api/v1/convites', {
+        metodo: 'POST',
+        cabecalhos: { authorization: `Bearer ${tokenAdmin}`, 'x-hubkeep-tenant': A.tenant },
+        corpo: { email: email.barrado, nome: 'Barrado', papel: 'implantador', hotelId: A.hotel },
+      }),
+    );
+    expect(r.status).toBe(422);
+    expect(((await r.json()) as { erro: { codigo: string } }).erro.codigo).toBe(
+      'implantador_exige_hotel_e_validade',
+    );
+    await new Promise((ok) => setTimeout(ok, 1000));
+    expect(await mensagensPara(email.barrado)).toEqual([]);
+  });
+
+  it('falha parcial (banco recusa depois do convite) e reconvite completam o cadastro sem duplicar', async () => {
+    // Hotel de OUTRO tenant: a regra do domínio não sabe de que tenant é o hotel,
+    // então o convite sai; a FK composta recusa a atribuição. O usuário do Auth
+    // fica criado e o membro não (ADR-014) — o reconvite reaproveita o usuário.
     const primeiro = await convidar(
       req('/api/v1/convites', {
         metodo: 'POST',
@@ -213,12 +232,17 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
         corpo: {
           email: email.convidado,
           nome: 'Convidada',
-          papel: 'implantador',
-          hotelId: A.hotel,
+          papel: 'gerente_hotel',
+          hotelId: B.hotel,
         },
       }),
     );
     expect(primeiro.status).toBe(422);
+    const semMembro = await dono.query(
+      `select count(*)::int as n from app.membro where email = $1`,
+      [email.convidado],
+    );
+    expect(semMembro.rows[0]).toEqual({ n: 0 });
 
     const segundo = await convidar(
       req('/api/v1/convites', {

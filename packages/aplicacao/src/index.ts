@@ -1,5 +1,4 @@
-// @hubkeep/aplicacao — casos de uso e portas. As portas de identidade chegam
-// na F0-05; os casos de uso e as permissões de ação, na F0-06.
+// @hubkeep/aplicacao — casos de uso e portas (orquestração e permissão de ação).
 export { TokenInvalido } from './portas/identidade';
 export type {
   EnviadorDeEmail,
@@ -8,3 +7,14 @@ export type {
   UsuarioVerificado,
   VerificadorDeToken,
 } from './portas/identidade';
+export type { HotelVisivel, PortaAtribuicoes, PortaHoteis, Relogio } from './portas/papeis';
+export {
+  REGRAS_DO_DOMINIO,
+  criarCasosDeUsoDePapeis,
+  relogioDoSistema,
+} from './casos-de-uso/papeis';
+export type {
+  CasosDeUsoDePapeis,
+  DependenciasDePapeis,
+  RegrasDePapeis,
+} from './casos-de-uso/papeis';

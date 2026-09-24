@@ -5,23 +5,6 @@
 import { sql } from 'kysely';
 import type { Tx } from './conexao';
 
-/**
- * O usuário do contexto pode convidar membros? É a mesma pergunta que a policy
- * de INSERT de app.membro faz (Admin do grupo, ou Implantador em algum hotel),
- * feita às mesmas funções authz.* — sem reimplementar a regra aqui. Existe
- * para o convite recusar ANTES de acionar o provedor de identidade: senão
- * qualquer usuário autenticado dispararia e-mails de convite, mesmo com a
- * gravação do membro recusada depois. A regra completa de concessão (qual papel
- * e em que escopo), com mensagem clara, é da F0-06; a RLS continua valendo.
- */
-export async function podeConvidar(tx: Tx): Promise<boolean> {
-  const r = await sql<{ pode: boolean }>`
-    select authz.eh_admin_grupo()
-        or exists (select 1 from authz.hoteis_com_papel(array['implantador']::app.papel[]))
-        as pode`.execute(tx);
-  return r.rows[0]?.pode === true;
-}
-
 export interface HotelVisivel {
   id: string;
   nome: string;

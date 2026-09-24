@@ -1,6 +1,8 @@
 // Respostas HTTP da API. O formato único de erro, com request_id e log
 // estruturado, é da F0-07; aqui fica o mínimo para os handlers da F0-05.
 
+import { ErroDeDominio, NaoEncontrado, PermissaoNegada } from '@hubkeep/dominio';
+
 export class ErroHttp extends Error {
   constructor(
     readonly status: number,
@@ -22,6 +24,10 @@ export function handler(fn: (req: Request) => Promise<Response>) {
     } catch (e) {
       if (e instanceof ErroHttp) {
         return json(e.status, { erro: { codigo: e.codigo, mensagem: e.message } });
+      }
+      if (e instanceof ErroDeDominio) {
+        const status = e instanceof PermissaoNegada ? 403 : e instanceof NaoEncontrado ? 404 : 422;
+        return json(status, { erro: { codigo: e.codigo, mensagem: e.message } });
       }
       const codigo = (e as { code?: string }).code;
       // 42501: a RLS recusou a escrita — é permissão, não defeito.

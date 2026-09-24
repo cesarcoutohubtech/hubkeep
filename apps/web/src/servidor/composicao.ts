@@ -2,8 +2,14 @@
 // acesso ao banco, o verificador de token e o provedor de convite. Único ponto
 // do app que lê as variáveis de ambiente do servidor.
 import { criarProvedorConviteSupabase } from '@hubkeep/auth-admin';
-import type { ProvedorDeConvite, VerificadorDeToken } from '@hubkeep/aplicacao';
-import { type AcessoBanco, criarAcessoBanco } from '@hubkeep/db';
+import {
+  type CasosDeUsoDePapeis,
+  type ProvedorDeConvite,
+  type VerificadorDeToken,
+  criarCasosDeUsoDePapeis,
+  relogioDoSistema,
+} from '@hubkeep/aplicacao';
+import { type AcessoBanco, criarAcessoBanco, criarPortasDeAplicacao } from '@hubkeep/db';
 import { criarVerificadorJwks } from './identidade';
 
 function exigirEnv(nome: string): string {
@@ -29,6 +35,17 @@ export function acessoBanco(): Promise<AcessoBanco> {
     throw e;
   });
   return banco;
+}
+
+let papeis: Promise<CasosDeUsoDePapeis> | undefined;
+export function casosDeUsoDePapeis(): Promise<CasosDeUsoDePapeis> {
+  papeis ??= acessoBanco().then((banco) =>
+    criarCasosDeUsoDePapeis({ ...criarPortasDeAplicacao(banco), relogio: relogioDoSistema }),
+  );
+  return papeis.catch((e: unknown) => {
+    papeis = undefined;
+    throw e;
+  });
 }
 
 let verificador: VerificadorDeToken | undefined;

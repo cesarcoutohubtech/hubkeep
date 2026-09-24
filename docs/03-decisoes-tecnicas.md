@@ -172,14 +172,14 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-017 — Identidade no servidor: JWT pelo JWKS, secret key isolada, convite atrás de porta
 
-**Status:** proposta na F0-05 (24/09/2026), para aprovação no PR.
+**Status:** aprovada por Cesar em 24/09/2026 (merge do PR #6). Um item revisto na F0-06, marcado abaixo.
 
 **Decisão:**
 - **O servidor valida o access token pelas chaves públicas do projeto** (JWKS em `/auth/v1/.well-known/jwks.json`), com emissor, audiência (`authenticated`) e expiração conferidos. Só algoritmos assimétricos são aceitos (ES256/RS256): um token HS256 do segredo compartilhado legado é recusado. A sessão que o `@supabase/ssr` guarda no cookie é só de onde se tira o token; o conteúdo do cookie nunca autentica sozinho. O PWA manda o mesmo token como `Bearer`.
 - **A secret key mora em `packages/auth-admin`**, que a lê da própria variável de ambiente: a raiz de composição do app não a manipula. Só `apps/web/src/servidor` pode importar o pacote (lint). Um teste varre o repositório e falha se a chave ou os marcadores dela aparecerem fora do pacote, da CI e da documentação.
 - **O convite está atrás da porta `ProvedorDeConvite`** (`packages/aplicacao`). No dev, o adaptador usa o e-mail padrão do Supabase (`inviteUserByEmail`), que tem limite baixo de envio. Para SMTP próprio, entra outro adaptador (link gerado pelo Admin API + porta `EnviadorDeEmail`) sem tocar na rota.
 - **O template do convite leva à rota `/auth/confirmar` com o `token_hash`**, que troca o token por sessão em cookie no servidor. O template padrão do Supabase devolve o token no fragmento da URL, que o servidor não enxerga.
-- **Quem não pode convidar é barrado antes de o provedor ser acionado.** A pergunta é feita às mesmas funções `authz.*` da policy de INSERT de `app.membro`, sem reimplementar a regra; a RLS continua valendo na gravação. A regra completa de concessão, com mensagem clara, é da F0-06.
+- **Quem não pode convidar é barrado antes de o provedor ser acionado.** *(Revisto na F0-06.)* Na F0-05 a pré-checagem perguntava às funções `authz.*` da policy de `app.membro`; desde a F0-06 é a regra completa do domínio (`podeConcederPapel`: papel, escopo e validade), com mensagem clara, antes de qualquer usuário ser criado no Auth. A RLS continua valendo na gravação, e o teste de paridade da CI prova que domínio e RLS concordam.
 - **Lista de tenants do usuário para a tela vem de `app_metadata.hk_tenants`**, gravado pelo convite (só com a secret key) e assinado no JWT. É só sugestão: a RLS de `app.membro` não permite listar tenants de que o usuário não está com contexto, e uma função `SECURITY DEFINER` para isso exigiria ADR. Quem decide o acesso continua sendo o banco.
 
 **Consequências:** o projeto Supabase de cada ambiente precisa de chave de assinatura assimétrica (o HubKeep-dev já usa ES256) e do template de convite configurado (docs/06).
