@@ -48,7 +48,7 @@ export async function withContext<T>(
 
 Regras:
 
-- O pool `hk_app` não é exportado de `packages/db`; só `withContext` é.
+- O pool `hk_app` não é exportado de `packages/db`; só o acesso com contexto é. Na implementação (ADR-016), `withContext` é método do objeto devolvido por `criarAcessoBanco()`, e o esboço acima é ilustrativo.
 - `usuarioId` vem exclusivamente do JWT validado no servidor, nunca do corpo da requisição.
 - Conexão via Supavisor em modo transação (porta 6543), com prepared statements desligados.
 - O worker usa `withSistema({ tenantId }, fn)`, com o pool `hk_worker`, uma transação por tenant.
