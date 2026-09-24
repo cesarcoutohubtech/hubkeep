@@ -222,7 +222,10 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-enable_signup = false
+# HubKeep: apesar do nome, na CLI isto liga o PROVEDOR de e-mail inteiro — com
+# false ninguém entra por e-mail e senha. O bloqueio de autocadastro é o
+# enable_signup = false de [auth], acima.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
