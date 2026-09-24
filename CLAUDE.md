@@ -1,0 +1,89 @@
+# CLAUDE.md — Central de Manutenção EasyGov (CSC)
+
+Plataforma de manutenção preventiva e corretiva para redes hoteleiras multi-propriedade. Primeiro cliente: grupo Slaviero (40+ hotéis). Produto multi-tenant, não projeto sob medida.
+
+Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03-decisoes-tecnicas.md`. Contexto de produto em `docs/00-contexto-produto.md`; arquitetura em `docs/01-arquitetura.md`; plano atual em `docs/04-plano-fase-0.md`.
+
+## Regras inegociáveis
+
+1. **Isolamento de dados na camada de banco.** Toda tabela nova em `app`, `staging` ou `licenca` tem `tenant_id NOT NULL`, RLS habilitada e forçada, policies por papel e teste pgTAP de isolamento. Os meta-testes em `supabase/tests/database/001_meta_seguranca.test.sql` quebram a pipeline se isso faltar.
+2. **Sem regra de negócio no banco.** O banco guarda estrutura, integridade referencial e autorização por escopo (quem vê, em que escopo escreve, sem escalada). Cálculo de SLA, transição de status, geração de OS, limite de licença, permissão de ação (quem ativa hotel, quem muda status): tudo em `packages/dominio` e `packages/aplicacao`.
+3. **Sem triggers.** Existe meta-teste que falha com qualquer trigger. Exceção só por ADR aprovado e com o teste atualizado no mesmo PR.
+4. **Função nova no banco só por ADR.** A lista de funções permitidas está fechada no meta-teste 11. As funções existentes são de autorização (`authz.*`) e o agregado de licença (`licenca.uso`).
+5. **Toda leitura e escrita de dados de negócio passa pelo servidor**, com o papel `csc_app` e o contexto do usuário na transação (`withContext`). O navegador nunca acessa tabelas via Data API do Supabase. A `service_role`/secret key só é usada no módulo `auth-admin` (convites) e nunca para ler ou gravar dados de negócio.
+6. **Escrita sempre por unit of work**, que grava auditoria e evento de domínio (outbox) na mesma transação.
+7. **Toda exigência de cliente vira configuração ou política** (SLA, horário, escalonamento, papéis), nunca `if (tenant === 'slaviero')`.
+8. **TOTVS CM é somente leitura.** Nada é escrito no CM. O conector só envia dados para o endpoint de ingestão.
+9. **Sem ML preditivo, IoT ou IA no MVP.**
+10. **Escopo do MVP é fechado.** Se uma tarefa exigir algo de fase 2, pare e registre como pendência em vez de implementar.
+
+## Stack
+
+- Monorepo pnpm + Turborepo, TypeScript strict em tudo.
+- `apps/web`: Next.js (App Router) na Vercel — telas do CSC e gestores, API REST `/api/v1`, rotas de cron.
+- `apps/tecnico`: React + Vite PWA (offline, IndexedDB, fila de sincronização), na Vercel como site estático.
+- `apps/conector`: agente Node em Docker, roda na rede do cliente, lê views do TOTVS e envia lotes por HTTPS.
+- `packages/dominio`: regras de negócio puras, sem IO, 100% testáveis com Vitest.
+- `packages/aplicacao`: casos de uso e portas (repositórios, relógio, notificador, armazenamento).
+- `packages/db`: Kysely com tipos gerados do banco, `withContext`, repositórios, unit of work.
+- `packages/contratos`: schemas Zod da API e do adaptador de sistema hoteleiro; OpenAPI gerado a partir deles.
+- Supabase: PostgreSQL, Auth, Storage (bucket privado com URLs assinadas). Região São Paulo.
+- Vercel: funções em `gru1`; Vercel Cron para outbox, SLA e preventiva.
+- Sentry para erros; logs estruturados com `tenant_id`, `hotel_id`, `usuario_id` e `request_id`.
+
+## Onde cada coisa mora
+
+| Tipo de código | Lugar |
+|---|---|
+| Regra de negócio (SLA, status, preventiva, licença) | `packages/dominio` |
+| Orquestração de caso de uso, permissão de ação | `packages/aplicacao` |
+| SQL, transação, contexto de sessão | `packages/db` |
+| Validação de entrada e saída HTTP | `packages/contratos` |
+| Handler HTTP, página, componente | `apps/*` (fino, sem regra) |
+| Estrutura, FK, check de integridade, RLS | `supabase/migrations` |
+
+Dependências permitidas: `apps → aplicacao → dominio`; `aplicacao → portas` implementadas por `db`. `dominio` não importa nada de IO. `apps` não importa Kysely nem o pool diretamente. Isso é verificado por lint de fronteiras.
+
+## Banco de dados
+
+- Migrações em SQL no `supabase/migrations`, criadas com `supabase migration new`. São a única fonte do schema; tipos TypeScript são gerados a partir do banco (`pnpm db:types`).
+- Nunca editar uma migração já aplicada em staging ou produção; criar uma nova.
+- Campos de escopo (`id`, `tenant_id`, `hotel_id`) não recebem GRANT de UPDATE. Nenhum papel da aplicação recebe DELETE; exclusão é lógica.
+- Toda FK entre tabelas de negócio é composta com `tenant_id` (ou `hotel_id`), para que referência entre tenants seja impossível.
+- IDs são UUID v7 gerados pela aplicação.
+- Ao criar tabela de negócio, siga o modelo em `docs/02-seguranca-multitenant-rls.md` (seção "Modelo para tabela nova") e adicione os casos no teste de isolamento.
+
+## Comandos
+
+```bash
+pnpm install
+supabase start                 # banco, auth e storage locais
+supabase db reset              # recria o banco a partir das migrações
+supabase test db               # pgTAP: meta-testes e isolamento
+pnpm db:types                  # gera tipos Kysely do banco local
+pnpm test                      # Vitest (unitários e integração)
+pnpm lint && pnpm typecheck
+pnpm dev                       # web e técnico em modo dev
+```
+
+## Pronto quer dizer
+
+- Testes de domínio para toda regra nova; teste de integração para todo caso de uso que escreve.
+- `supabase test db` passando, com casos de isolamento para tabela nova ou policy alterada.
+- Lint, typecheck e testes verdes na CI.
+- Nenhum segredo no código ou no git; variáveis novas adicionadas ao `.env.example`.
+- Decisão técnica nova registrada em `docs/03-decisoes-tecnicas.md`.
+
+## Nunca faça
+
+- Usar `service_role`/secret key para acessar dados de negócio.
+- Conceder qualquer privilégio a `anon`, `authenticated` ou `public` nos schemas da CSC.
+- Expor os schemas `app`, `staging`, `licenca` ou `authz` na Data API.
+- Criar trigger, regra de negócio em função SQL, ou policy com `using (true)` para `csc_app`.
+- Consultar o banco fora de `withContext`, ou abrir transação sem definir o contexto.
+- Deixar credencial de banco da CSC no agente conector.
+- Apontar deploy de preview para o banco de produção.
+
+## Idioma
+
+Código, nomes de tabelas e colunas em português sem acento (como no schema existente). Mensagens de commit, documentação e textos de interface em português do Brasil.
