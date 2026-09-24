@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(13);
+select plan(15);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -156,6 +156,32 @@ select is_empty($$
           else has_any_column_privilege('hk_authz', c.oid, priv)
         end
 $$, 'hk_authz não tem CREATE em schema algum nem INSERT, UPDATE ou DELETE em relação alguma');
+
+-- 14. Limites por papel (migração 0002). Mudar um valor é decisão revisada em
+--     PR, com a justificativa no cabeçalho da migração, e este teste junto.
+select results_eq(
+  $$
+    select r.rolname::text, r.rolconnlimit,
+           array(select c from unnest(coalesce(r.rolconfig, '{}')) c order by c collate "C")
+    from pg_roles r
+    where r.rolname in ('hk_app', 'hk_worker', 'hk_ingestao')
+    order by r.rolname collate "C"
+  $$,
+  $$
+    values
+      ('hk_app',      30, array['idle_in_transaction_session_timeout=10s', 'statement_timeout=8s']),
+      ('hk_ingestao',  5, array['idle_in_transaction_session_timeout=10s', 'statement_timeout=15s']),
+      ('hk_worker',    5, array['idle_in_transaction_session_timeout=15s', 'statement_timeout=30s'])
+  $$,
+  'hk_app, hk_worker e hk_ingestao têm connection limit, statement_timeout e idle_in_transaction definidos'
+);
+
+-- 15. Só hk_app, hk_worker e hk_ingestao recebem LOGIN (por ambiente, fora do
+--     git). hk_backoffice ganha LOGIN quando o backoffice existir; hk_authz, nunca.
+select is_empty($$
+  select rolname from pg_roles
+  where rolname in ('hk_backoffice', 'hk_authz') and rolcanlogin
+$$, 'hk_backoffice e hk_authz não têm LOGIN');
 
 select * from finish();
 rollback;

@@ -16,7 +16,7 @@ O repositório nasceu do pacote de fundação "Central de Manutenção EasyGov (
 | `docs/04-plano-fase-0.md` | Tarefas F0-01 a F0-13 com critério de aceite |
 | `docs/05-prompt-inicial-claude-code.md` | Texto para abrir a primeira sessão |
 | `supabase/migrations/20260924000001_fundacao.sql` | Papéis, schemas, identidade, escopo, licença, staging, RLS |
-| `supabase/tests/database/` | pgTAP: 13 meta-testes e 30 testes de isolamento |
+| `supabase/tests/database/` | pgTAP: 15 meta-testes e 30 testes de isolamento |
 | `docs/06-setup-supabase-dev.md` | Checklist para criar o projeto Supabase de dev |
 | `.github/workflows/banco.yml` | CI com Supabase no runner e testes pgTAP |
 | `.env.example` | Variáveis por aplicação |

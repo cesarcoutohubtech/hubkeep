@@ -22,9 +22,24 @@ Tornar obrigatório para merge em `main` o workflow `.github/workflows/banco.yml
 
 ## F0-03 — Papéis por ambiente
 
-Criar o script de operação `scripts/ops/configurar-papeis.ts`, executado por pessoa autorizada com `DATABASE_URL_OWNER`, nunca na Vercel. Ele define LOGIN e senha de `hk_app`, `hk_worker`, `hk_ingestao` e `hk_backoffice` em staging e produção. `hk_authz` nunca recebe LOGIN.
+Criar o script de operação `scripts/ops/configurar-papeis.ts` (`pnpm db:papeis --ambiente <amb>`), executado por pessoa autorizada na própria máquina, nunca na Vercel. Ele leva os papéis ao estado desejado, de forma idempotente:
 
-**Aceite:** a API em staging conecta como `hk_app` pelo Supavisor em modo transação; a conexão como `hk_authz` falha.
+- `hk_app`, `hk_worker` e `hk_ingestao`: LOGIN, com a senha de `HK_<PAPEL>_SENHA_<AMBIENTE>`.
+- `hk_backoffice` e `hk_authz`: NOLOGIN, sem senha. O backoffice recebe LOGIN quando for construído; o `hk_authz`, nunca.
+
+A senha não é transmitida: o script calcula o verificador SCRAM-SHA-256 localmente e o `ALTER ROLE ... PASSWORD` recebe só ele, para a senha não aparecer em log do Postgres/Supabase. Nenhuma senha entra por argumento de linha de comando nem sai na tela. O `--dry-run` mostra os comandos com o verificador omitido. Produção exige `--confirmar-producao`.
+
+Limites por papel ficam em migração, não no script (`20260924000002_limites_papeis.sql`): `connection limit`, `statement_timeout` e `idle_in_transaction_session_timeout`, conferidos pelo meta-teste 14. O meta-teste 15 confere que `hk_backoffice` e `hk_authz` não têm LOGIN.
+
+**Aceite no `HubKeep-dev`** (`pnpm db:verificar-papeis --ambiente dev`):
+- `hk_app` conecta pelo Supavisor em modo transação (porta 6543, usuário `hk_app.<ref>`);
+- `hk_authz` e `hk_backoffice` não conectam;
+- numa mesma conexão do pooler, o contexto de uma transação não aparece na seguinte;
+- consulta sem contexto retorna vazio, com dado presente (fixture fictícia, apagada no fim) e com o controle de que o mesmo papel, com contexto válido, vê esse dado.
+
+Na CI, os dois scripts rodam contra o Postgres do runner (conexão direta, sem Supavisor): configurar duas vezes, para provar a idempotência, e verificar.
+
+**A repetição deste aceite em staging fica na F0-12**, quando o projeto de staging existir.
 
 ## F0-04 — packages/db: contexto, repositórios e unit of work
 

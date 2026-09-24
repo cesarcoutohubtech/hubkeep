@@ -11,16 +11,20 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit -p . && turbo run typecheck",
     "test": "turbo run test && vitest run",
-    "db:testar-dev": "node scripts/ops/testar-banco-dev.mjs"
+    "db:testar-dev": "node scripts/ops/testar-banco-dev.mjs",
+    "db:papeis": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/configurar-papeis.ts",
+    "db:verificar-papeis": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/verificar-papeis.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.2",
+    "@types/pg": "^8.23.1",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-boundaries": "^7.2.0",
     "globals": "^17.12.0",
+    "pg": "^8.23.0",
     "prettier": "^3.9.9",
     "turbo": "^2.11.3",
     "typescript": "~6.0.3",

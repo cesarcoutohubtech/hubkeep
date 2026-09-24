@@ -69,6 +69,8 @@ pnpm install
 supabase link --project-ref <ref-do-dev>   # uma vez por máquina
 supabase db push                           # aplica migrações pendentes no dev
 pnpm db:testar-dev                         # pgTAP contra o dev via psql (lê DEV_SESSION_POOLER), sem Docker
+pnpm db:papeis --ambiente dev --dry-run    # LOGIN e senha dos papéis (verificador SCRAM); sem --dry-run, aplica
+pnpm db:verificar-papeis --ambiente dev    # aceite da F0-03: Supavisor, contexto, falha fechada
 pnpm db:types                              # gera tipos Kysely a partir do dev
 pnpm test                                  # Vitest (unitários e integração)
 pnpm lint && pnpm typecheck
