@@ -6,9 +6,16 @@
 // configuração quebrasse e proibisse tudo, os casos proibidos continuariam
 // verdes e só estes acusariam.
 import { ESLint } from 'eslint';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 const eslint = new ESLint({ cwd: process.cwd() });
+
+// O primeiro lint carrega a config, o typescript-eslint e o resolver — vários
+// segundos a frio. Sem este aquecimento, o custo caía no primeiro caso e ele
+// estourava o timeout padrão de 5 s de forma intermitente.
+beforeAll(async () => {
+  await eslint.lintText('export {};\n', { filePath: 'packages/dominio/src/aquecimento.ts' });
+}, 60_000);
 
 async function violacoes(arquivo: string, codigo: string): Promise<string[]> {
   const [resultado] = await eslint.lintText(codigo, { filePath: arquivo });
