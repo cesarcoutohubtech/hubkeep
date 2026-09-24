@@ -1,6 +1,8 @@
-# Central de Manutenção EasyGov (CSC) — pacote de fundação
+# HubKeep
 
-Premissas e ponto de partida para o desenvolvimento com o Claude Code.
+Manutenção preventiva e corretiva para redes hoteleiras multi-propriedade. Primeiro cliente: grupo Slaviero.
+
+O repositório nasceu do pacote de fundação "Central de Manutenção EasyGov (CSC)" (primeiro commit, sem alterações); o nome e os identificadores mudaram pelo ADR-012.
 
 ## Conteúdo
 
@@ -14,7 +16,7 @@ Premissas e ponto de partida para o desenvolvimento com o Claude Code.
 | `docs/04-plano-fase-0.md` | Tarefas F0-01 a F0-13 com critério de aceite |
 | `docs/05-prompt-inicial-claude-code.md` | Texto para abrir a primeira sessão |
 | `supabase/migrations/20260924000001_fundacao.sql` | Papéis, schemas, identidade, escopo, licença, staging, RLS |
-| `supabase/tests/database/` | pgTAP: 12 meta-testes e 28 testes de isolamento |
+| `supabase/tests/database/` | pgTAP: 12 meta-testes e 30 testes de isolamento |
 | `.env.example` | Variáveis por aplicação |
 
 ## Como usar

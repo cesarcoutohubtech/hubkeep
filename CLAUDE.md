@@ -1,4 +1,4 @@
-# CLAUDE.md — Central de Manutenção EasyGov (CSC)
+# CLAUDE.md — HubKeep
 
 Plataforma de manutenção preventiva e corretiva para redes hoteleiras multi-propriedade. Primeiro cliente: grupo Slaviero (40+ hotéis). Produto multi-tenant, não projeto sob medida.
 
@@ -10,7 +10,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 2. **Sem regra de negócio no banco.** O banco guarda estrutura, integridade referencial e autorização por escopo (quem vê, em que escopo escreve, sem escalada). Cálculo de SLA, transição de status, geração de OS, limite de licença, permissão de ação (quem ativa hotel, quem muda status): tudo em `packages/dominio` e `packages/aplicacao`.
 3. **Sem triggers.** Existe meta-teste que falha com qualquer trigger. Exceção só por ADR aprovado e com o teste atualizado no mesmo PR.
 4. **Função nova no banco só por ADR.** A lista de funções permitidas está fechada no meta-teste 11. As funções existentes são de autorização (`authz.*`) e o agregado de licença (`licenca.uso`).
-5. **Toda leitura e escrita de dados de negócio passa pelo servidor**, com o papel `csc_app` e o contexto do usuário na transação (`withContext`). O navegador nunca acessa tabelas via Data API do Supabase. A `service_role`/secret key só é usada no módulo `auth-admin` (convites) e nunca para ler ou gravar dados de negócio.
+5. **Toda leitura e escrita de dados de negócio passa pelo servidor**, com o papel `hk_app` e o contexto do usuário na transação (`withContext`). O navegador nunca acessa tabelas via Data API do Supabase. A `service_role`/secret key só é usada no módulo `auth-admin` (convites) e nunca para ler ou gravar dados de negócio.
 6. **Escrita sempre por unit of work**, que grava auditoria e evento de domínio (outbox) na mesma transação.
 7. **Toda exigência de cliente vira configuração ou política** (SLA, horário, escalonamento, papéis), nunca `if (tenant === 'slaviero')`.
 8. **TOTVS CM é somente leitura.** Nada é escrito no CM. O conector só envia dados para o endpoint de ingestão.
@@ -77,11 +77,11 @@ pnpm dev                       # web e técnico em modo dev
 ## Nunca faça
 
 - Usar `service_role`/secret key para acessar dados de negócio.
-- Conceder qualquer privilégio a `anon`, `authenticated` ou `public` nos schemas da CSC.
+- Conceder qualquer privilégio a `anon`, `authenticated` ou `public` nos schemas do HubKeep.
 - Expor os schemas `app`, `staging`, `licenca` ou `authz` na Data API.
-- Criar trigger, regra de negócio em função SQL, ou policy com `using (true)` para `csc_app`.
+- Criar trigger, regra de negócio em função SQL, ou policy com `using (true)` para `hk_app`.
 - Consultar o banco fora de `withContext`, ou abrir transação sem definir o contexto.
-- Deixar credencial de banco da CSC no agente conector.
+- Deixar credencial de banco do HubKeep no agente conector.
 - Apontar deploy de preview para o banco de produção.
 
 ## Idioma

@@ -19,8 +19,8 @@ Consequência: a RLS não impede, por exemplo, que um técnico mude o status de 
 
 ## Camadas de proteção
 
-1. **Data API fechada.** `anon` e `authenticated` não têm USAGE em nenhum schema da CSC. A chave pública do Supabase no navegador só serve para autenticar.
-2. **Papel sem privilégio.** A API usa `csc_app`, que não é superuser, não tem BYPASSRLS, não é dono de tabela, não tem DELETE e só faz UPDATE em colunas mutáveis.
+1. **Data API fechada.** `anon` e `authenticated` não têm USAGE em nenhum schema do HubKeep. A chave pública do Supabase no navegador só serve para autenticar.
+2. **Papel sem privilégio.** A API usa `hk_app`, que não é superuser, não tem BYPASSRLS, não é dono de tabela, não tem DELETE e só faz UPDATE em colunas mutáveis.
 3. **RLS forçada** em todas as tabelas, inclusive para o dono.
 4. **Contexto verificado pelo banco.** `authz.tenant_id()` só retorna o tenant se o usuário for membro ativo dele. Um `app.tenant_id` forjado resulta em nenhum acesso.
 5. **Falha fechada.** Sem contexto, as funções retornam nulo e todas as policies negam.
@@ -48,10 +48,10 @@ export async function withContext<T>(
 
 Regras:
 
-- O pool `csc_app` não é exportado de `packages/db`; só `withContext` é.
+- O pool `hk_app` não é exportado de `packages/db`; só `withContext` é.
 - `usuarioId` vem exclusivamente do JWT validado no servidor, nunca do corpo da requisição.
 - Conexão via Supavisor em modo transação (porta 6543), com prepared statements desligados.
-- O worker usa `withSistema({ tenantId }, fn)`, com o pool `csc_worker`, uma transação por tenant.
+- O worker usa `withSistema({ tenantId }, fn)`, com o pool `hk_worker`, uma transação por tenant.
 
 ## Funções de autorização
 
@@ -99,23 +99,23 @@ create index chamado_hotel_idx on app.chamado (tenant_id, hotel_id);
 alter table app.chamado enable row level security;
 alter table app.chamado force  row level security;
 
-grant select, insert on app.chamado to csc_app;
-grant update (/* só colunas mutáveis; nunca id, tenant_id, hotel_id */) on app.chamado to csc_app;
+grant select, insert on app.chamado to hk_app;
+grant update (/* só colunas mutáveis; nunca id, tenant_id, hotel_id */) on app.chamado to hk_app;
 
-create policy app_select on app.chamado for select to csc_app
+create policy app_select on app.chamado for select to hk_app
   using (
     tenant_id = (select authz.tenant_id())
     and (hotel_id in (select authz.hoteis_leitura())
          or local_id in (select lp.local_id from authz.locais_proprietario() lp))
   );
-create policy app_insert on app.chamado for insert to csc_app
+create policy app_insert on app.chamado for insert to hk_app
   with check (tenant_id = (select authz.tenant_id())
               and hotel_id in (select authz.hoteis_escrita()));
-create policy app_update on app.chamado for update to csc_app
+create policy app_update on app.chamado for update to hk_app
   using      (tenant_id = (select authz.tenant_id()) and hotel_id in (select authz.hoteis_escrita()))
   with check (tenant_id = (select authz.tenant_id()) and hotel_id in (select authz.hoteis_escrita()));
 
-create policy worker_select on app.chamado for select to csc_worker
+create policy worker_select on app.chamado for select to hk_worker
   using (tenant_id = (select authz.tenant_sistema()));
 ```
 
@@ -142,6 +142,17 @@ Casos mínimos no teste de isolamento para cada tabela nova:
 A migração e os testes foram validados em PostgreSQL 16 local, com stubs de `auth.users`, `anon` e `authenticated`. No Supabase real, confirmar:
 
 1. Se o papel `postgres` tem BYPASSRLS. Os fixtures dos testes são inseridos como `postgres`. Se ele não tiver, criar um papel de teste com BYPASSRLS só no ambiente local.
-2. Se o `grant ... to postgres` e o `alter function ... owner to csc_authz` funcionam com o `postgres` não superuser do Supabase.
-3. Se o Supavisor aceita login dos papéis customizados (`csc_app.<ref_do_projeto>`) em modo transação.
-4. Se os schemas da CSC estão fora da lista de schemas expostos em `supabase/config.toml` (seção `[api]`) e no painel.
+2. Se o `grant ... to postgres` e o `alter function ... owner to hk_authz` funcionam com o `postgres` não superuser do Supabase.
+3. Se o Supavisor aceita login dos papéis customizados (`hk_app.<ref_do_projeto>`) em modo transação.
+4. Se os schemas do HubKeep estão fora da lista de schemas expostos em `supabase/config.toml` (seção `[api]`) e no painel.
+
+### Resultado no Supabase local (CLI 2.116, PostgreSQL 17.6 — 24/09/2026)
+
+| # | Resultado |
+|---|---|
+| 1 | ✅ `postgres` tem BYPASSRLS (e não é superuser). Os fixtures funcionam sem papel extra. |
+| 2 | ⚠️→✅ `grant ... to postgres` funciona. **`alter function ... owner to hk_authz` falhava** com `permission denied for schema authz`: sem superuser, o PostgreSQL exige que o novo dono tenha CREATE no schema da função. A migração concede CREATE a `hk_authz` só durante a transferência e revoga em seguida; conferido que nenhum `hk_*` fica com CREATE em schema algum. |
+| 3 | ⏳ Não se verifica localmente (o CLI não sobe o Supavisor com papéis customizados). Fica para a F0-03, em staging. |
+| 4 | ✅ `config.toml` gerado pelo `supabase init` expõe só `public` e `graphql_public`. O painel do projeto de staging se confere na F0-03. |
+
+`supabase test db`: 42/42, duas execuções com `supabase db reset` no meio.

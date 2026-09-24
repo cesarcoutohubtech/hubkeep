@@ -32,7 +32,7 @@ select is_empty($$
     )
 $$, 'toda tabela de negócio, staging e licença tem tenant_id NOT NULL');
 
--- 3. Nenhuma trigger nos schemas da CSC
+-- 3. Nenhuma trigger nos schemas do HubKeep
 select is_empty($$
   select n.nspname || '.' || c.relname || '.' || t.tgname
   from pg_trigger t
@@ -40,19 +40,19 @@ select is_empty($$
   join pg_namespace n on n.oid = c.relnamespace
   where n.nspname in ('app', 'staging', 'licenca', 'authz')
     and not t.tgisinternal
-$$, 'nenhuma trigger nos schemas da CSC');
+$$, 'nenhuma trigger nos schemas do HubKeep');
 
 -- 4. Papéis da aplicação sem superuser, sem BYPASSRLS e sem LOGIN no git
 select is_empty($$
   select rolname from pg_roles
-  where rolname in ('csc_app', 'csc_worker', 'csc_ingestao', 'csc_backoffice', 'csc_authz')
+  where rolname in ('hk_app', 'hk_worker', 'hk_ingestao', 'hk_backoffice', 'hk_authz')
     and (rolsuper or rolbypassrls or rolcreaterole or rolcreatedb)
 $$, 'papéis da aplicação sem superuser, BYPASSRLS, CREATEROLE ou CREATEDB');
 
--- 5. csc_authz nunca pode fazer login
+-- 5. hk_authz nunca pode fazer login
 select ok(
-  not (select rolcanlogin from pg_roles where rolname = 'csc_authz'),
-  'csc_authz não tem LOGIN'
+  not (select rolcanlogin from pg_roles where rolname = 'hk_authz'),
+  'hk_authz não tem LOGIN'
 );
 
 -- 6. Papéis da aplicação não são donos de tabelas
@@ -62,7 +62,7 @@ select is_empty($$
   join pg_roles r on r.oid = c.relowner
   join pg_namespace n on n.oid = c.relnamespace
   where n.nspname in ('app', 'staging', 'licenca')
-    and r.rolname in ('csc_app', 'csc_worker', 'csc_ingestao', 'csc_backoffice', 'csc_authz')
+    and r.rolname in ('hk_app', 'hk_worker', 'hk_ingestao', 'hk_backoffice', 'hk_authz')
 $$, 'nenhum papel da aplicação é dono de tabela (FORCE RLS vale para todos)');
 
 -- 7. anon e authenticated (Data API do Supabase) sem acesso aos schemas
@@ -73,7 +73,7 @@ select is_empty($$
               where nspname in ('app', 'staging', 'licenca', 'authz')) s
   where r.rolname in ('anon', 'authenticated')
     and has_schema_privilege(r.rolname, s.nspname, 'usage')
-$$, 'anon e authenticated não têm USAGE nos schemas da CSC');
+$$, 'anon e authenticated não têm USAGE nos schemas do HubKeep');
 
 -- 8. Nenhuma policy para PUBLIC, anon ou authenticated
 select is_empty($$
@@ -83,13 +83,13 @@ select is_empty($$
     and roles && array['public', 'anon', 'authenticated']::name[]
 $$, 'nenhuma policy aplicada a public, anon ou authenticated');
 
--- 9. Nenhum DELETE concedido nos schemas da CSC (exclusão é lógica)
+-- 9. Nenhum DELETE concedido nos schemas do HubKeep (exclusão é lógica)
 select is_empty($$
   select table_schema || '.' || table_name || ':' || grantee
   from information_schema.role_table_grants
   where table_schema in ('app', 'staging', 'licenca')
     and privilege_type in ('DELETE', 'TRUNCATE')
-    and grantee like 'csc\_%'
+    and grantee like 'hk\_%'
 $$, 'nenhum papel da aplicação tem DELETE ou TRUNCATE');
 
 -- 10. Funções SECURITY DEFINER sempre com search_path fixo
@@ -116,7 +116,7 @@ select is(
     'authz.hoteis_leitura', 'authz.locais_proprietario', 'authz.membro_privilegiado',
     'authz.tenant_id', 'authz.tenant_sistema', 'authz.usuario_id', 'licenca.uso'
   ]::text[],
-  'somente as funções de autorização aprovadas existem nos schemas da CSC'
+  'somente as funções de autorização aprovadas existem nos schemas do HubKeep'
 );
 
 -- 12. Funções de autorização não executáveis por anon ou authenticated
