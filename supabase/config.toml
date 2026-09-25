@@ -421,3 +421,34 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# ---------------------------------------------------------------------------
+# HubKeep-dev (projeto remoto). Tudo acima serve à CI (Supabase local no
+# runner, com Mailpit e 127.0.0.1). Este bloco é o estado final do dev definido
+# pelo Cesar em 24/09/2026, depois do incidente registrado em
+# docs/diario-fase-0.md: com ele, a configuração efetiva para o dev bate com o
+# painel. Quem aplica no dev é só o Cesar (`supabase config push` não tem
+# dry-run e, sem terminal interativo, aplica sem perguntar).
+# O template de convite vem de [auth.email.template.invite], acima.
+# ---------------------------------------------------------------------------
+[remotes.dev]
+project_id = "jpolhvkqdorojoysrejm"
+
+[remotes.dev.api]
+# Data API desligada (ADR-002; o HubKeep não usa PostgREST).
+enabled = false
+
+[remotes.dev.auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000/auth/confirmar", "http://localhost:3000/auth/confirmar"]
+# Usuário só entra por convite (ADR-014).
+enable_signup = false
+
+[remotes.dev.auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[remotes.dev.auth.email]
+enable_confirmations = true
+max_frequency = "1m"
+otp_length = 8
