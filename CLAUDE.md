@@ -6,7 +6,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 
 ## Regras inegociáveis
 
-1. **Isolamento de dados na camada de banco.** Toda tabela nova em `app`, `staging` ou `licenca` tem `tenant_id NOT NULL`, RLS habilitada e forçada, policies por papel e teste pgTAP de isolamento. Os meta-testes em `supabase/tests/database/001_meta_seguranca.test.sql` quebram a pipeline se isso faltar.
+1. **Isolamento de dados na camada de banco.** Toda tabela nova em `app`, `staging` ou `licenca` tem `tenant_id NOT NULL` (exceto `app.tenant`, que é a raiz), RLS habilitada e forçada, policies por papel e teste pgTAP de isolamento. Os meta-testes em `supabase/tests/database/001_meta_seguranca.test.sql` quebram a pipeline se isso faltar.
 2. **Sem regra de negócio no banco.** O banco guarda estrutura, integridade referencial e autorização por escopo (quem vê, em que escopo escreve, sem escalada). Cálculo de SLA, transição de status, geração de OS, limite de licença, permissão de ação (quem ativa hotel, quem muda status): tudo em `packages/dominio` e `packages/aplicacao`.
 3. **Sem triggers.** Existe meta-teste que falha com qualquer trigger. Exceção só por ADR aprovado e com o teste atualizado no mesmo PR.
 4. **Função nova no banco só por ADR.** A lista de funções permitidas está fechada no meta-teste 11. As funções existentes são de autorização (`authz.*`) e o agregado de licença (`licenca.uso`).

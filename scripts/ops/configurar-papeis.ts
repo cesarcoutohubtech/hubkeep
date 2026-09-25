@@ -15,6 +15,7 @@
 // Limites de conexão e timeouts não moram aqui: são da migração 0002.
 import pg from 'pg';
 import {
+  type Ambiente,
   PAPEIS_COM_LOGIN,
   PAPEIS_SEM_LOGIN,
   conexaoDono,
@@ -25,13 +26,18 @@ import {
 } from './ambiente.ts';
 import { validarSenha, verificadorScram } from './scram.ts';
 
+// Todos os ambientes: o script só altera papéis (LOGIN e senha), não grava nem
+// apaga dado. Produção exige --confirmar-producao; staging, por ora, não. No
+// dev, a string de conexão precisa conter o ref de [remotes.dev] (conexaoDono).
+const AMBIENTES_PERMITIDOS: readonly Ambiente[] = ['ci', 'dev', 'staging', 'producao'];
+
 interface Comando {
   texto: string; // o que se mostra
   sql: string; // o que se executa
 }
 
 async function main() {
-  const { ambiente, dryRun, producao } = lerArgs(process.argv.slice(2));
+  const { ambiente, dryRun, producao } = lerArgs(process.argv.slice(2), AMBIENTES_PERMITIDOS);
   exigirConfirmacaoProducao(ambiente, producao);
 
   // Senhas: presença, formato e unicidade. Em --dry-run a ausência só é avisada.

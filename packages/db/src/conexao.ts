@@ -18,7 +18,10 @@ export interface ConfigConexao {
   url: string;
   /** Tamanho máximo do pool deste processo. */
   max?: number;
-  /** TLS: o pooler do Supabase exige; a CI conecta sem TLS ao Postgres do runner. */
+  /**
+   * TLS: o pooler do Supabase exige; a CI conecta sem TLS ao Postgres do runner.
+   * Quem monta a config decide com tlsDaConexao (./tls), que só aceita sem TLS com host local.
+   */
   ssl?: boolean;
 }
 

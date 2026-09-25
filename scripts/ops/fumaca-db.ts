@@ -13,13 +13,19 @@
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import {
+  type Ambiente,
   conexaoDono,
   conexaoPapel,
   descrever,
-  exigirConfirmacaoProducao,
   lerArgs,
   variavelSenha,
 } from './ambiente.ts';
+
+// A suíte grava e apaga fixtures com o dono: só no dev, conferido pelo ref de
+// [remotes.dev] antes de conectar (conexaoDono). Na CI a mesma suíte já roda
+// direto, sem Supavisor. Staging fica para a F0-12 (pendência em docs/04);
+// produção, nunca.
+const AMBIENTES_PERMITIDOS: readonly Ambiente[] = ['dev'];
 
 function url(c: ReturnType<typeof conexaoDono>): string {
   const u = new URL('postgresql://h');
@@ -33,10 +39,7 @@ function url(c: ReturnType<typeof conexaoDono>): string {
   return u.toString();
 }
 
-const { ambiente, producao } = lerArgs(process.argv.slice(2));
-exigirConfirmacaoProducao(ambiente, producao);
-if (ambiente === 'ci')
-  throw new Error('Na CI a suíte já roda direto; a fumaça é para ambientes Supabase.');
+const { ambiente } = lerArgs(process.argv.slice(2), AMBIENTES_PERMITIDOS);
 
 const senha = (papel: 'hk_app' | 'hk_worker') => {
   const v = process.env[variavelSenha(papel, ambiente)];

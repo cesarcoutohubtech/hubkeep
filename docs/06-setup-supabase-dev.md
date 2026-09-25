@@ -46,7 +46,7 @@ O `supabase test db` da CLI depende de Docker para executar o pg_prove. Sem Dock
 pnpm db:testar-dev
 ```
 
-O script (`scripts/ops/testar-banco-dev.mjs`) roda cada arquivo de `supabase/tests/database`, confere o total de `ok` contra o plano declarado e sai com erro se algo falhar. A string contém a senha: o script a entrega ao `psql` pelas variáveis `PG*`, nunca pela linha de comando (que fica visível na lista de processos), e recusa o Transaction pooler (porta 6543), onde o `SET LOCAL ROLE` dos testes não funciona.
+O script (`scripts/ops/testar-banco-dev.mjs`) roda cada arquivo de `supabase/tests/database`, confere o total de `ok` contra o plano declarado e sai com erro se algo falhar. A string contém a senha: o script a entrega ao `psql` pelas variáveis `PG*`, nunca pela linha de comando (que fica visível na lista de processos), e recusa o Transaction pooler (porta 6543), onde o `SET LOCAL ROLE` dos testes não funciona. Também recusa, antes de chamar o `psql`, uma string que não contenha o ref do dev (`project_id` de `[remotes.dev]` no `supabase/config.toml`).
 
 O esperado é `1..15` com 15 linhas `ok`, e `1..30` com 30 linhas `ok`. Os testes fazem rollback; não sobra dado no banco. No Windows, o `psql` vem no instalador do cliente PostgreSQL (dá para instalar só as ferramentas de linha de comando).
 

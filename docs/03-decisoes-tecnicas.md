@@ -103,6 +103,10 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Motivo:** mudar o escopo de uma linha é o caminho mais curto para vazar dados entre hotéis. Com o GRANT por coluna, o próprio PostgreSQL recusa a operação.
 
+**Exceção:** `app.hotel.bandeira_id` recebe UPDATE do `hk_app`, embora defina o escopo dos gestores de bandeira. Trocar um hotel de bandeira é operação de cadastro do grupo, e a RLS só a permite ao Admin do grupo (policy `app_update` de `app.hotel`; "Regras de escalada" no doc 02). Como o escopo é calculado na fonte (ADR-004), a troca vale na hora para quem ganha e para quem perde o acesso. O meta-teste de UPDATE em campo de escopo lista esta coluna explicitamente, como exceção nomeada. *(Esse meta-teste ainda não existe em `supabase/tests`: está nas pendências de `docs/04-plano-fase-0.md`, e esta exceção entra nele desde o primeiro PR.)*
+
+**Nota — `app.hotel.easytools_hotel_id`:** coluna reservada para a integração futura com o EasyTools, por decisão de 24/09/2026, sem uso no MVP (nada além dos tipos gerados a lê ou grava). Veio no pacote de fundação (commit `ba6860a`, migração `20260924000001_fundacao.sql`) e foi mantida no rename do ADR-012, que deixa a integração futura com o EasyTools como está até decisão comercial própria. Não é campo de escopo: o UPDATE nela é o das demais colunas de cadastro do hotel.
+
 ## ADR-012 — Nome do produto: HubKeep, prefixo `hk_`
 
 **Status:** aprovada por Cesar em 24/09/2026.

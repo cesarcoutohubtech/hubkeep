@@ -3,7 +3,7 @@
 // dev (HubKeep-dev), pelo Session pooler, sem Docker (ADR-015).
 //
 //   DEV_SESSION_POOLER=<string do botão Connect → Session pooler>  (variável de ambiente)
-//   node scripts/ops/testar-banco-dev.mjs
+//   pnpm db:testar-dev
 //
 // A string de conexão contém a senha. Ela nunca vai para o argv do psql (fica
 // visível na lista de processos) nem para a saída: é desmontada aqui e entregue
@@ -12,9 +12,19 @@
 //
 // Sai com código 1 se algum teste falhar, se o total de "ok" não bater com o
 // plano declarado (1..N) ou se o psql abortar.
+//
+// Roda com --experimental-strip-types (package.json) para usar a mesma
+// conferência de alvo dos outros scripts de operação (ambiente.ts).
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { conferirAlvo, lerArgs, lerRefDoDev } from './ambiente.ts';
+
+// Só o dev, conferido pelo ref de [remotes.dev] antes de chamar o psql: os
+// testes fazem rollback, mas gravam dentro da transação, e a string de outro
+// projeto colada em DEV_SESSION_POOLER levaria isso para lá.
+const AMBIENTES_PERMITIDOS = ['dev'];
+const { ambiente } = lerArgs(process.argv.slice(2), AMBIENTES_PERMITIDOS, 'dev');
 
 const DIR_TESTES = 'supabase/tests/database';
 
@@ -43,6 +53,12 @@ function ambienteDeConexao() {
     console.error(
       'DEV_SESSION_POOLER não parece ser o Session pooler (host *.pooler.supabase.com, porta 5432).',
     );
+    process.exit(2);
+  }
+  try {
+    conferirAlvo(ambiente, 'DEV_SESSION_POOLER', bruta, lerRefDoDev());
+  } catch (e) {
+    console.error(e.message);
     process.exit(2);
   }
   return {

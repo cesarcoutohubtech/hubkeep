@@ -17,13 +17,19 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import {
+  type Ambiente,
   conexaoDono,
   conexaoPapel,
   descrever,
-  exigirConfirmacaoProducao,
   lerArgs,
   variavelSenha,
 } from './ambiente.ts';
+
+// Grava e apaga a fixture (inclusive em auth.users) com o dono: só na CI
+// (Postgres local do runner) e no dev, conferido pelo ref de [remotes.dev]
+// antes de conectar (conexaoDono). Staging fica para a F0-12 (pendência em
+// docs/04); produção, nunca.
+const AMBIENTES_PERMITIDOS: readonly Ambiente[] = ['ci', 'dev'];
 
 const FIX = {
   tenant: 'f0030000-0000-4000-8000-000000000001',
@@ -91,8 +97,7 @@ async function conectaComo(amb: Parameters<typeof conexaoPapel>[0], papel: strin
 }
 
 async function main() {
-  const { ambiente, producao } = lerArgs(process.argv.slice(2));
-  exigirConfirmacaoProducao(ambiente, producao);
+  const { ambiente } = lerArgs(process.argv.slice(2), AMBIENTES_PERMITIDOS);
   const senhaApp = process.env[variavelSenha('hk_app', ambiente)];
   if (!senhaApp) throw new Error(`${variavelSenha('hk_app', ambiente)} não está definida.`);
 

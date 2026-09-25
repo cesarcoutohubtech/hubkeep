@@ -3,7 +3,7 @@
 // do app que lê as variáveis de ambiente do servidor.
 import { criarProvedorConviteSupabase } from '@hubkeep/auth-admin';
 import type { ProvedorDeConvite, VerificadorDeToken } from '@hubkeep/aplicacao';
-import { type AcessoBanco, criarAcessoBanco } from '@hubkeep/db';
+import { type AcessoBanco, criarAcessoBanco, tlsDaConexao } from '@hubkeep/db';
 import { criarVerificadorJwks } from './identidade';
 
 function exigirEnv(nome: string): string {
@@ -15,15 +15,19 @@ function exigirEnv(nome: string): string {
 export const urlSupabase = () => exigirEnv('NEXT_PUBLIC_SUPABASE_URL');
 export const chavePublicaSupabase = () => exigirEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
 
-// TLS para o pooler do Supabase; a CI conecta ao Postgres do runner sem TLS.
-const ssl = () => process.env.HK_BANCO_SEM_TLS !== '1';
+// TLS para o pooler do Supabase. HK_BANCO_SEM_TLS=1 (a CI, no Postgres do
+// runner) só vale com host local; com host remoto a inicialização falha.
+const conexao = (nome: string) => {
+  const url = exigirEnv(nome);
+  return { url, ssl: tlsDaConexao(url, process.env.HK_BANCO_SEM_TLS === '1') };
+};
 
 let banco: Promise<AcessoBanco> | undefined;
 export function acessoBanco(): Promise<AcessoBanco> {
   // A fábrica é assíncrona (guarda de papel, ADR-016). Se falhar, o próximo
   // pedido tenta de novo em vez de ficar preso a uma Promise rejeitada.
   banco ??= criarAcessoBanco({
-    app: { url: exigirEnv('DATABASE_URL_APP'), ssl: ssl() },
+    app: conexao('DATABASE_URL_APP'),
   }).catch((e: unknown) => {
     banco = undefined;
     throw e;

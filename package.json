@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit -p . && turbo run typecheck",
     "test": "turbo run test && vitest run",
-    "db:testar-dev": "node scripts/ops/testar-banco-dev.mjs",
+    "db:testar-dev": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/testar-banco-dev.mjs",
     "db:papeis": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/configurar-papeis.ts",
     "db:verificar-papeis": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/verificar-papeis.ts",
     "db:types": "pnpm --filter @hubkeep/db db:types",

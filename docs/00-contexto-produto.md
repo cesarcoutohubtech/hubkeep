@@ -41,7 +41,7 @@ Grupo (tenant) → bandeira → hotel → local (UH ou área comum) → ativo. O
 | Usuários e papéis | Admin do grupo e Implantador | Convite por e-mail ou SSO da Slaviero |
 | Limite de hotéis e UHs | EasyGov (backoffice) | `licenca.contrato` |
 
-O HubKeep é o sistema de registro da manutenção. No MVP não há integração com o EasyTools. No futuro, o EasyTools consome os eventos `hotel.criado` e `hotel.alterado` do HubKeep.
+O HubKeep é o sistema de registro da manutenção. No MVP não há integração com o EasyTools; a coluna `app.hotel.easytools_hotel_id` fica reservada para ela (decisão de 24/09/2026, nota no ADR-011) e não é usada. No futuro, o EasyTools consome os eventos `hotel.criado` e `hotel.alterado` do HubKeep.
 
 ## Licença
 

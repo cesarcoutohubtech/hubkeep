@@ -5,6 +5,7 @@
 export { criarAcessoBanco } from './acesso';
 export type { AcessoBanco, ConfigAcessoBanco } from './acesso';
 export type { ConfigConexao, Contexto, Tx } from './conexao';
+export { tlsDaConexao } from './tls';
 export type { EventoDominio, RegistroAuditoria, UnidadeDeTrabalho } from './unidade-de-trabalho';
 export { criarBandeira } from './repositorios/bandeiras';
 export type { Bandeira } from './repositorios/bandeiras';
