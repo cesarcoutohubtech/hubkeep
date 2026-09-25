@@ -116,6 +116,5 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - Backoffice da EasyGov: o papel `hk_backoffice` existe no banco, mas nenhuma tarefa da fase 0 cria a aplicação nem a variável de conexão dele.
 - Banco de dev: um projeto por desenvolvedor ou branching do Supabase (ADR-015).
 - TypeScript fixado em `~6.0` (F0-01): o `typescript-eslint` 8.70 aceita só TypeScript `< 6.1`, e a `latest` do npm já é a 7 (compilador nativo). Subir para a 7 quando o `typescript-eslint` suportar.
-- Scripts de `scripts/ops` que gravam ou apagam dado só aceitam `ci` e `dev` (`verificar-papeis.ts` os dois, `fumaca-db.ts` só o dev), com o dev conferido pelo ref de `[remotes.dev]` do `supabase/config.toml`. A repetição do aceite da F0-03 em staging (F0-12) depende de liberar staging nesses scripts, com conferência equivalente.
-- Meta-teste que proíbe UPDATE em campo de escopo (`id`, `tenant_id`, `hotel_id`, e os demais que definem escopo), listando `app.hotel.bandeira_id` como exceção nomeada (ADR-011). Mexe em `supabase/tests`.
+- Scripts de `scripts/ops` que gravam ou apagam dado só aceitam `ci` e `dev` (`verificar-papeis.ts` os dois, `fumaca-db.ts` só o dev), com o dev conferido pelo ref de `[remotes.dev]` do `supabase/config.toml` (ADR-019). A repetição do aceite da F0-03 em staging (F0-12) depende de liberar staging nesses scripts, com conferência equivalente.
 - Versão do PostgreSQL: o pacote foi validado em 16; o `supabase init` e os projetos novos do Supabase usam 17. Os testes deste repo rodam em 17.

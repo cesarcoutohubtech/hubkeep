@@ -103,7 +103,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Motivo:** mudar o escopo de uma linha é o caminho mais curto para vazar dados entre hotéis. Com o GRANT por coluna, o próprio PostgreSQL recusa a operação.
 
-**Exceção:** `app.hotel.bandeira_id` recebe UPDATE do `hk_app`, embora defina o escopo dos gestores de bandeira. Trocar um hotel de bandeira é operação de cadastro do grupo, e a RLS só a permite ao Admin do grupo (policy `app_update` de `app.hotel`; "Regras de escalada" no doc 02). Como o escopo é calculado na fonte (ADR-004), a troca vale na hora para quem ganha e para quem perde o acesso. O meta-teste de UPDATE em campo de escopo lista esta coluna explicitamente, como exceção nomeada. *(Esse meta-teste ainda não existe em `supabase/tests`: está nas pendências de `docs/04-plano-fase-0.md`, e esta exceção entra nele desde o primeiro PR.)*
+**Exceção:** `app.hotel.bandeira_id` recebe UPDATE do `hk_app`, embora defina o escopo dos gestores de bandeira. Trocar um hotel de bandeira é operação de cadastro do grupo, e a RLS só a permite ao Admin do grupo (policy `app_update` de `app.hotel`; "Regras de escalada" no doc 02). Como o escopo é calculado na fonte (ADR-004), a troca vale na hora para quem ganha e para quem perde o acesso. O meta-teste 18 (UPDATE em campo de escopo, `001_meta_seguranca.test.sql`) lista esta coluna como a única exceção nomeada.
 
 **Nota — `app.hotel.easytools_hotel_id`:** coluna reservada para a integração futura com o EasyTools, por decisão de 24/09/2026, sem uso no MVP (nada além dos tipos gerados a lê ou grava). Veio no pacote de fundação (commit `ba6860a`, migração `20260924000001_fundacao.sql`) e foi mantida no rename do ADR-012, que deixa a integração futura com o EasyTools como está até decisão comercial própria. Não é campo de escopo: o UPDATE nela é o das demais colunas de cadastro do hotel.
 
@@ -187,3 +187,19 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Lista de tenants do usuário para a tela vem de `app_metadata.hk_tenants`**, gravado pelo convite (só com a secret key) e assinado no JWT. É só sugestão: a RLS de `app.membro` não permite listar tenants de que o usuário não está com contexto, e uma função `SECURITY DEFINER` para isso exigiria ADR. Quem decide o acesso continua sendo o banco.
 
 **Consequências:** o projeto Supabase de cada ambiente precisa de chave de assinatura assimétrica (o HubKeep-dev já usa ES256) e do template de convite configurado (docs/06).
+
+## ADR-019 — TLS só desligável com banco local; scripts de operação com ambientes declarados
+
+**Status:** aprovada por Cesar em 25/09/2026 (decisões sobre a auditoria da `main`).
+
+**Decisão:**
+- `HK_BANCO_SEM_TLS=1` só é aceito quando o host da string de conexão (e o `?host=`, se houver) é `localhost`, `127.0.0.1` ou `::1`. Com qualquer outro host, a inicialização falha sem imprimir a string. A regra é a função pura `tlsDaConexao`, em `packages/db`.
+- Cada script de `scripts/ops` declara no topo os ambientes em que roda (`AMBIENTES_PERMITIDOS`). Antes de qualquer conexão, a string é conferida contra o ambiente pedido:
+  - `ci`: host local;
+  - `dev`: a string contém o ref do `[remotes.dev]` do `supabase/config.toml`.
+- Scripts que gravam fixture ou apagam dado (`verificar-papeis`, `fumaca-db` e o `testar-banco-dev`, que grava em transação com rollback) só rodam em `ci` e `dev`.
+- `configurar-papeis` continua aceitando staging e produção; produção exige `--confirmar-producao`.
+
+**Motivo:** o nome da variável não prova o alvo. Uma string de staging colada em `DEV_SESSION_POOLER`, ou a flag sem TLS esquecida na Vercel, faria tudo "funcionar" no banco errado ou em claro, sem erro nenhum.
+
+**Consequência:** a repetição do aceite da F0-03 em staging (F0-12) exige liberar staging no `verificar-papeis`, com conferência equivalente pelo ref do staging.
