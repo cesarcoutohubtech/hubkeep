@@ -30,9 +30,14 @@ jobs:
 
       # Chave ES256 do Auth do runner, como a do HubKeep-dev: a API valida o JWT
       # pelo JWKS público (F0-05). Gerada aqui, fora do git, e morre com o runner;
-      # a CLI grava no arquivo e não imprime a parte privada.
+      # a CLI grava no arquivo e não imprime a parte privada. O config.toml traz
+      # o signing_keys_path comentado (sem o arquivo, a CLI recusaria db push na
+      # máquina de quem opera o dev); só aqui ele é ligado, antes de gerar a
+      # chave, e o grep falha o passo se a troca não acontecer.
       - name: Chave de assinatura JWT (ES256) do runner
         run: |
+          sed -i 's|^# signing_keys_path = "./signing_keys.json"$|signing_keys_path = "./signing_keys.json"|' supabase/config.toml
+          grep -qx 'signing_keys_path = "./signing_keys.json"' supabase/config.toml
           echo '[]' > supabase/signing_keys.json
           supabase gen signing-key --algorithm ES256 --append --yes > /dev/null
 
