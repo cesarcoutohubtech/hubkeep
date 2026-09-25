@@ -11,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  AMBIENTES,
+  AMBIENTES_COM_SENHA_EM_VARIAVEL,
   CONEXAO_DONO,
   PAPEIS_COM_LOGIN,
   variavelSenha,
@@ -79,7 +79,7 @@ function variaveisLidas(): Map<string, Set<string>> {
     }
   }
   for (const nome of Object.values(CONEXAO_DONO)) anotar(nome, CONSTANTES);
-  for (const amb of AMBIENTES) {
+  for (const amb of AMBIENTES_COM_SENHA_EM_VARIAVEL) {
     for (const papel of PAPEIS_COM_LOGIN) anotar(variavelSenha(papel, amb), CONSTANTES);
   }
   return achadas;
@@ -119,7 +119,7 @@ describe('.env.example cobre as variáveis lidas no repositório', () => {
     ['chave de env: no workflow', 'CI_DATABASE_URL_OWNER', '.github/workflows/banco.yml'],
     ['export no workflow', 'HK_APP_SENHA_CI', '.github/workflows/banco.yml'],
     ['echo para o GITHUB_ENV', 'HK_TESTE_URL_WORKER', '.github/workflows/banco.yml'],
-    ['nome montado em scripts/ops', 'HK_APP_SENHA_PRODUCAO', CONSTANTES],
+    ['nome montado em scripts/ops', 'HK_APP_SENHA_DEV', CONSTANTES],
   ])('a varredura enxerga %s (controle: %s em %s)', (_forma, nome, arquivo) => {
     expect([...(lidas().get(nome) ?? [])]).toContain(arquivo);
   });
