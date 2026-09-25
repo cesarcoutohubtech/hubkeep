@@ -86,6 +86,12 @@ Criar bucket privado, sem policies para `authenticated`, com URLs assinadas de u
 
 **Aceite:** upload direto do navegador pela URL assinada funciona; acesso sem URL assinada é negado; usuário de outro hotel não consegue URL para o registro.
 
+**Miniaturas das fotos (decisão a tomar nesta tarefa).** A transformação de imagem do Supabase Storage está desligada no `config.toml`, no topo e no `[remotes.dev]`, desde 25/09/2026. Antes de religá-la para gerar miniaturas, esta tarefa decide entre:
+- miniatura gerada no aparelho, junto da compressão que o PWA já faz antes do upload (ver "Upload de fotos e anexos" no doc 01), enviada como um segundo objeto no mesmo caminho;
+- transformação do Storage: exige plano Pro, tem custo por imagem transformada e precisa de URL assinada também para a versão transformada.
+
+A decisão vira ADR.
+
 ## F0-11 — Esqueleto do PWA do técnico
 
 Criar `apps/tecnico` com Vite, `vite-plugin-pwa`, login, shell offline, fila em IndexedDB com chave de idempotência por operação e tela vazia de "fila do dia".

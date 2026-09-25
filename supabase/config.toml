@@ -128,8 +128,10 @@ file_size_limit = "50MiB"
 enabled = true
 
 # Image transformation API is available to Supabase Pro plan.
-# [storage.image_transformation]
-# enabled = true
+# HubKeep: desligada (decisão de 25/09/2026). As miniaturas das fotos de OS
+# são decididas na F0-10 (docs/04).
+[storage.image_transformation]
+enabled = false
 
 # Store analytical data in S3 for running ETL jobs over Iceberg Catalog
 # This feature is only available on the hosted platform.
@@ -456,4 +458,9 @@ otp_length = 8
 [remotes.dev.storage.analytics]
 # Desligado no dev pelo config push de 24/09/2026 (true → false); o bloco de
 # topo, usado pela CI, já tem o mesmo valor.
+enabled = false
+
+[remotes.dev.storage.image_transformation]
+# Desligada (decisão de 25/09/2026); no dev estava ligada, padrão do projeto.
+# O config push fica com o Cesar.
 enabled = false
