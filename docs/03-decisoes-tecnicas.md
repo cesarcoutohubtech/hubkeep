@@ -241,7 +241,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-021 — Outbox, auditoria do grupo e contrato de licença restritos por papel
 
-**Status:** Proposta (25/09/2026), para aprovação do Cesar no PR. Migração `20260925165636_rls_outbox_auditoria_contrato.sql`.
+**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #18). Migração `20260925165636_rls_outbox_auditoria_contrato.sql`.
 
 **Contexto:** os casos mínimos por tabela (`003_isolamento_por_tabela`) mostraram três policies que liberavam a qualquer membro ativo do tenant, inclusive ao proprietário (somente leitura) e ao implantador vencido: publicar em `app.evento_dominio`, gravar `app.auditoria` com `hotel_id` nulo e ler `licenca.contrato`.
 
