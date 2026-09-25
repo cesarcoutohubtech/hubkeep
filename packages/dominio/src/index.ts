@@ -1,5 +1,5 @@
 // @hubkeep/dominio — regras de negócio puras, sem IO (CLAUDE.md, regra 2).
-export { ErroDeDominio, NaoEncontrado, PermissaoNegada, RegraViolada } from './erros';
+export { Conflito, ErroDeDominio, NaoEncontrado, PermissaoNegada, RegraViolada } from './erros';
 export {
   ehAdminGrupo,
   exigir,

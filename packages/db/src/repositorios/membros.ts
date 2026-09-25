@@ -9,9 +9,15 @@ import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 /** Escopo de uma concessão — o mesmo tipo do domínio. */
 export type EscopoConcessao = Escopo;
 
+/**
+ * Grava o membro e publica membro.convidado. O payload leva o que o worker
+ * precisa para enviar o e-mail depois do commit (ADR-018): o convite nunca sai
+ * antes de o acesso estar gravado.
+ */
 export async function criarMembro(
   uow: UnidadeDeTrabalho,
   membro: { usuarioId: string; nome: string; email: string },
+  convite?: { nomeTenant: string; redirecionarPara: string },
 ): Promise<void> {
   await transacaoDe(uow)
     .insertInto('app.membro')
@@ -32,7 +38,7 @@ export async function criarMembro(
     tipo: 'membro.convidado',
     entidade: 'membro',
     registroId: membro.usuarioId,
-    payload: { usuarioId: membro.usuarioId, email: membro.email },
+    payload: { usuarioId: membro.usuarioId, email: membro.email, nome: membro.nome, ...convite },
   });
 }
 

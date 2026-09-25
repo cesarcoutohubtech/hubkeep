@@ -3,6 +3,7 @@
 // Ficam aqui para que os apps não montem query Kysely (CLAUDE.md: "apps não
 // importam Kysely").
 import { sql } from 'kysely';
+import type { Escopo } from '@hubkeep/dominio';
 import type { Tx } from './conexao';
 
 export interface HotelVisivel {
@@ -34,4 +35,40 @@ export async function ehMembro(
       ? consulta.where('usuario_id', '=', quem.usuarioId)
       : consulta.where(sql<string>`lower(email)`, '=', quem.email.toLowerCase());
   return (await consulta.executeTakeFirst()) !== undefined;
+}
+
+/**
+ * O escopo existe e é visível para quem pergunta? Pela RLS: hotel, bandeira ou
+ * proprietário de outro tenant (ou fora do alcance de quem pergunta) não
+ * aparece. É a etapa (b) do convite: escopo invisível → 404 sem tocar no Auth.
+ */
+export async function escopoVisivel(tx: Tx, escopo: Escopo): Promise<boolean> {
+  switch (escopo.tipo) {
+    case 'grupo':
+      return true;
+    case 'hotel':
+      return (
+        (await tx
+          .selectFrom('app.hotel')
+          .select('id')
+          .where('id', '=', escopo.hotelId)
+          .executeTakeFirst()) !== undefined
+      );
+    case 'bandeira':
+      return (
+        (await tx
+          .selectFrom('app.bandeira')
+          .select('id')
+          .where('id', '=', escopo.bandeiraId)
+          .executeTakeFirst()) !== undefined
+      );
+    case 'proprietario':
+      return (
+        (await tx
+          .selectFrom('app.proprietario')
+          .select('id')
+          .where('id', '=', escopo.proprietarioId)
+          .executeTakeFirst()) !== undefined
+      );
+  }
 }

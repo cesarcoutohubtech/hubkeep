@@ -170,16 +170,35 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Motivo:** um singleton de módulo lendo variável de ambiente acopla o pacote ao runtime (Vercel, worker, testes) e dificulta o teste com dois pools diferentes no mesmo processo, que é justamente o que o aceite da F0-04 exige.
 
-## ADR-017 — Identidade no servidor: JWT pelo JWKS, secret key isolada, convite atrás de porta
+## ADR-017 — Identidade no servidor: JWT pelo JWKS, secret key isolada, tenants sugeridos no token
 
-**Status:** aprovada por Cesar em 24/09/2026 (merge do PR #6). Um item revisto na F0-06, marcado abaixo.
+**Status:** Proposta (F0-05, 24/09/2026). Implementada no PR #6, aguardando aprovação decisão a decisão. O fluxo do convite saiu daqui para o ADR-018.
 
 **Decisão:**
 - **O servidor valida o access token pelas chaves públicas do projeto** (JWKS em `/auth/v1/.well-known/jwks.json`), com emissor, audiência (`authenticated`) e expiração conferidos. Só algoritmos assimétricos são aceitos (ES256/RS256): um token HS256 do segredo compartilhado legado é recusado. A sessão que o `@supabase/ssr` guarda no cookie é só de onde se tira o token; o conteúdo do cookie nunca autentica sozinho. O PWA manda o mesmo token como `Bearer`.
 - **A secret key mora em `packages/auth-admin`**, que a lê da própria variável de ambiente: a raiz de composição do app não a manipula. Só `apps/web/src/servidor` pode importar o pacote (lint). Um teste varre o repositório e falha se a chave ou os marcadores dela aparecerem fora do pacote, da CI e da documentação.
-- **O convite está atrás da porta `ProvedorDeConvite`** (`packages/aplicacao`). No dev, o adaptador usa o e-mail padrão do Supabase (`inviteUserByEmail`), que tem limite baixo de envio. Para SMTP próprio, entra outro adaptador (link gerado pelo Admin API + porta `EnviadorDeEmail`) sem tocar na rota.
+- *(O fluxo do convite — portas, ordem das etapas e envio do e-mail — está no ADR-018.)*
 - **O template do convite leva à rota `/auth/confirmar` com o `token_hash`**, que troca o token por sessão em cookie no servidor. O template padrão do Supabase devolve o token no fragmento da URL, que o servidor não enxerga.
-- **Quem não pode convidar é barrado antes de o provedor ser acionado.** *(Revisto na F0-06.)* Na F0-05 a pré-checagem perguntava às funções `authz.*` da policy de `app.membro`; desde a F0-06 é a regra completa do domínio (`podeConcederPapel`: papel, escopo e validade), com mensagem clara, antes de qualquer usuário ser criado no Auth. A RLS continua valendo na gravação, e o teste de paridade da CI prova que domínio e RLS concordam.
 - **Lista de tenants do usuário para a tela vem de `app_metadata.hk_tenants`**, gravado pelo convite (só com a secret key) e assinado no JWT. É só sugestão: a RLS de `app.membro` não permite listar tenants de que o usuário não está com contexto, e uma função `SECURITY DEFINER` para isso exigiria ADR. Quem decide o acesso continua sendo o banco.
 
 **Consequências:** o projeto Supabase de cada ambiente precisa de chave de assinatura assimétrica (o HubKeep-dev já usa ES256) e do template de convite configurado (docs/06).
+
+## ADR-018 — Convite: acesso gravado antes do e-mail, envio pelo worker
+
+**Status:** Proposta (revisão do PR #7, 24/09/2026). Substitui, no ADR-014 e no ADR-017, a ordem "convidar pelo provedor e depois gravar o membro".
+
+**Contexto:** na ordem anterior, o e-mail de convite saía antes de o acesso estar gravado. Se a gravação falhasse (escopo de outro tenant, conflito, queda), existia convite sem acesso, e usuário no Auth sem membro.
+
+**Decisão:** o convite segue esta ordem (caso de uso `convidarMembro`, `packages/aplicacao`):
+1. **Regra do domínio** (`podeConcederPapel`: papel, escopo, validade) antes de qualquer IO externo.
+2. **Situação do pedido no contexto de quem convida** (RLS): tenant, escopo visível, membro existente. Escopo não visível ao concedente → **404, sem tocar no Auth**. Já membro → 409.
+3. **Usuário no Auth sem e-mail** (`admin.createUser`, sem confirmação; `admin.createUser` nunca envia nada). Usuário que já existe é reaproveitado.
+4. **Membro, atribuição, auditoria e o evento `membro.convidado`** numa só unit of work. Se falhar, o usuário **criado nesta requisição** é removido (compensação); usuário pré-existente nunca é removido.
+5. **O worker envia o e-mail a partir do evento**, pela porta `EnvioDeConvite` (implementada em `packages/auth-admin`), e acrescenta o tenant ao `app_metadata`. O outbox só pega tipos que têm manipulador; falha no envio adia com backoff.
+
+**Portas:** `ProvedorDeIdentidade` (garantir, remover, vincular tenant — nenhum método envia e-mail) e `EnvioDeConvite` substituem a `ProvedorDeConvite`. SMTP próprio entra como outro adaptador de `EnvioDeConvite`.
+
+**Consequências:**
+- O e-mail chega com a latência do worker (até ~1 min com o cron da F0-09). Até a F0-09, `processarOutboxDoTenant` existe e é testado, mas nenhuma rota de cron o chama em produção.
+- Quem já tem conta ativa (membro de outro tenant) não recebe e-mail pelo adaptador do Supabase (`email_exists`): entra e vê o novo grupo. O aviso por e-mail a essa pessoa fica para o SMTP próprio.
+- A compensação é provada por teste do caso de uso com portas em memória: no banco real não há falha determinística a provocar depois do passo 3.

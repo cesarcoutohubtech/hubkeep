@@ -18,6 +18,7 @@ import { POST as convidar } from '../src/app/api/v1/convites/route';
 import { GET as hoteis } from '../src/app/api/v1/hoteis/route';
 import { GET as sessao } from '../src/app/api/v1/sessao/route';
 import { GET as confirmar } from '../src/app/auth/confirmar/route';
+import { processarOutboxDoTenant } from '../src/servidor/composicao';
 
 const URL_SUPABASE = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const CHAVE_PUBLICA = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
@@ -45,6 +46,7 @@ const email = {
   tecnico: `tecnico-${sufixo}@hubkeep.test`,
   convidado: `convidado-${sufixo}@hubkeep.test`,
   barrado: `barrado-${sufixo}@hubkeep.test`,
+  outroTenant: `outro-tenant-${sufixo}@hubkeep.test`,
 };
 const SENHA = `Senha-de-teste-${sufixo}`;
 
@@ -221,30 +223,33 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     expect(await mensagensPara(email.barrado)).toEqual([]);
   });
 
-  it('falha parcial (banco recusa depois do convite) e reconvite completam o cadastro sem duplicar', async () => {
-    // Hotel de OUTRO tenant: a regra do domínio não sabe de que tenant é o hotel,
-    // então o convite sai; a FK composta recusa a atribuição. O usuário do Auth
-    // fica criado e o membro não (ADR-014) — o reconvite reaproveita o usuário.
-    const primeiro = await convidar(
+  it('convite para hotel de outro tenant: 404, sem usuário no Auth e sem evento (ADR-018)', async () => {
+    const r = await convidar(
       req('/api/v1/convites', {
         metodo: 'POST',
         cabecalhos: { authorization: `Bearer ${tokenAdmin}`, 'x-hubkeep-tenant': A.tenant },
         corpo: {
-          email: email.convidado,
-          nome: 'Convidada',
+          email: email.outroTenant,
+          nome: 'Outro',
           papel: 'gerente_hotel',
           hotelId: B.hotel,
         },
       }),
     );
-    expect(primeiro.status).toBe(422);
-    const semMembro = await dono.query(
-      `select count(*)::int as n from app.membro where email = $1`,
-      [email.convidado],
+    expect(r.status).toBe(404);
+    const auth = await dono.query(`select count(*)::int as n from auth.users where email = $1`, [
+      email.outroTenant,
+    ]);
+    expect(auth.rows[0]).toEqual({ n: 0 });
+    const ev = await dono.query(
+      `select count(*)::int as n from app.evento_dominio where payload->>'email' = $1`,
+      [email.outroTenant],
     );
-    expect(semMembro.rows[0]).toEqual({ n: 0 });
+    expect(ev.rows[0]).toEqual({ n: 0 });
+  });
 
-    const segundo = await convidar(
+  it('convite válido: 201 com acesso gravado e evento pendente — e nenhum e-mail ainda', async () => {
+    const r = await convidar(
       req('/api/v1/convites', {
         metodo: 'POST',
         cabecalhos: { authorization: `Bearer ${tokenAdmin}`, 'x-hubkeep-tenant': A.tenant },
@@ -256,17 +261,26 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
         },
       }),
     );
-    expect(segundo.status).toBe(201);
-    idConvidado = ((await segundo.json()) as { usuarioId: string }).usuarioId;
+    expect(r.status).toBe(201);
+    idConvidado = ((await r.json()) as { usuarioId: string }).usuarioId;
 
-    const terceiro = await convidar(
+    const ev = await dono.query(
+      `select tipo, processado_em from app.evento_dominio where tenant_id = $1 and registro_id = $2`,
+      [A.tenant, idConvidado],
+    );
+    expect(ev.rows).toEqual([{ tipo: 'membro.convidado', processado_em: null }]);
+    await new Promise((ok) => setTimeout(ok, 1000));
+    expect(await mensagensPara(email.convidado)).toEqual([]);
+
+    // Reconvite de quem já é membro: 409, sem tocar no Auth nem gerar evento.
+    const deNovo = await convidar(
       req('/api/v1/convites', {
         metodo: 'POST',
         cabecalhos: { authorization: `Bearer ${tokenAdmin}`, 'x-hubkeep-tenant': A.tenant },
         corpo: { email: email.convidado, nome: 'Convidada', papel: 'tecnico', hotelId: A.hotel },
       }),
     );
-    expect(terceiro.status).toBe(409);
+    expect(deNovo.status).toBe(409);
   });
 
   it('o convite grava membro, papel, auditoria e evento na unit of work de quem convidou', async () => {
@@ -284,7 +298,8 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
       [A.tenant, idConvidado],
     );
     const ev = await dono.query(
-      `select tipo from app.evento_dominio where tenant_id = $1 and registro_id = $2`,
+      `select tipo, payload->>'email' as email, payload->>'redirecionarPara' as destino
+       from app.evento_dominio where tenant_id = $1 and registro_id = $2`,
       [A.tenant, idConvidado],
     );
     expect(m.rows).toEqual([{ nome: 'Convidada' }]);
@@ -292,7 +307,21 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
       { papel: 'gerente_hotel', escopo_tipo: 'hotel', hotel_id: A.hotel, concedido_por: A.admin },
     ]);
     expect(aud.rows).toEqual([{ entidade: 'membro', usuario_id: A.admin }]);
-    expect(ev.rows).toEqual([{ tipo: 'membro.convidado' }]);
+    expect(ev.rows).toEqual([
+      { tipo: 'membro.convidado', email: email.convidado, destino: `${SITE}/auth/confirmar` },
+    ]);
+  });
+
+  it('o worker processa o evento e só então o e-mail sai; segunda rodada não reenvia', async () => {
+    expect(await processarOutboxDoTenant(A.tenant)).toEqual({ processados: 1, falhas: 0 });
+    const ev = await dono.query(
+      `select processado_em is not null as processado, tentativas from app.evento_dominio
+       where tenant_id = $1 and registro_id = $2`,
+      [A.tenant, idConvidado],
+    );
+    expect(ev.rows).toEqual([{ processado: true, tentativas: 0 }]);
+    expect(await linkDoConvite(email.convidado)).toContain('token_hash=');
+    expect(await processarOutboxDoTenant(A.tenant)).toEqual({ processados: 0, falhas: 0 });
   });
 
   it('o convidado abre o link do e-mail e sai com sessão em cookie', async () => {

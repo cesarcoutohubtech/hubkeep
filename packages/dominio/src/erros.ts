@@ -33,3 +33,14 @@ export class NaoEncontrado extends ErroDeDominio {
     this.name = 'NaoEncontrado';
   }
 }
+
+/** O pedido colide com o estado atual (vira 409) — ex.: convidar quem já é membro. */
+export class Conflito extends ErroDeDominio {
+  constructor(
+    readonly codigo: string,
+    mensagem: string,
+  ) {
+    super(mensagem);
+    this.name = 'Conflito';
+  }
+}

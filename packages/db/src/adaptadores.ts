@@ -1,11 +1,12 @@
 // Implementação das portas de packages/aplicacao sobre o acesso ao banco.
 // Leitura com withContext, escrita com executar (unit of work): o que cada
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
-import type { PortaAtribuicoes, PortaHoteis } from '@hubkeep/aplicacao';
+import type { PortaAtribuicoes, PortaConvites, PortaHoteis } from '@hubkeep/aplicacao';
 import type { Atribuicao, Escopo } from '@hubkeep/dominio';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
-import { listarHoteisVisiveis } from './consultas';
+import { ehMembro, escopoVisivel, listarHoteisVisiveis, nomeDoTenant } from './consultas';
+import { gravarConvite } from './repositorios/convites';
 import { concederPapel, revogarPapel } from './repositorios/membros';
 
 interface LinhaAtribuicao {
@@ -60,8 +61,18 @@ const selecionar = (tx: Tx) => tx.selectFrom('app.atribuicao_escopo').select(COL
 export function criarPortasDeAplicacao(banco: AcessoBanco): {
   hoteis: PortaHoteis;
   atribuicoes: PortaAtribuicoes;
+  convites: PortaConvites;
 } {
   return {
+    convites: {
+      situacao: (ctx, pedido) =>
+        banco.withContext(ctx, async (tx) => ({
+          nomeTenant: await nomeDoTenant(tx),
+          escopoVisivel: await escopoVisivel(tx, pedido.escopo),
+          jaMembro: await ehMembro(tx, { email: pedido.email }),
+        })),
+      gravar: (ctx, g) => banco.executar(ctx, (uow) => gravarConvite(uow, g)),
+    },
     hoteis: { listarVisiveis: (ctx) => banco.withContext(ctx, listarHoteisVisiveis) },
     atribuicoes: {
       doUsuario: (ctx) =>
