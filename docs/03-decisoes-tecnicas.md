@@ -238,3 +238,19 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 **Motivo:** o nome da variável não prova o alvo. Uma string de staging colada em `DEV_SESSION_POOLER`, ou a flag sem TLS esquecida na Vercel, faria tudo "funcionar" no banco errado ou em claro, sem erro nenhum.
 
 **Consequência:** a repetição do aceite da F0-03 em staging (F0-12) exige liberar staging no `verificar-papeis`, com conferência equivalente pelo ref do staging.
+
+## ADR-021 — Outbox, auditoria do grupo e contrato de licença restritos por papel
+
+**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #18). Migração `20260925165636_rls_outbox_auditoria_contrato.sql`.
+
+**Contexto:** os casos mínimos por tabela (`003_isolamento_por_tabela`) mostraram três policies que liberavam a qualquer membro ativo do tenant, inclusive ao proprietário (somente leitura) e ao implantador vencido: publicar em `app.evento_dominio`, gravar `app.auditoria` com `hotel_id` nulo e ler `licenca.contrato`.
+
+**Decisão:**
+- **Evento no outbox:** publicar em `app.evento_dominio` exige Admin do grupo (`authz.eh_admin_grupo()`) ou papel de escrita vigente em algum hotel (`authz.hoteis_escrita()`).
+- **Auditoria sem hotel** (nível do grupo): só o Admin do grupo ou o Implantador vigente, que são quem escreve no nível do grupo (membro, papel). Auditoria com hotel continua restrita aos hotéis em que o usuário escreve. A autoauditoria de quem edita o próprio perfil ganha regra própria quando essa edição existir (fase 1a).
+- **Contrato de licença:** `licenca.contrato` pelo `hk_app`, só o Admin do grupo lê: é ele quem ativa hotel e consome licença.
+- **Tenant e bandeiras:** a linha de `app.tenant` e as bandeiras do tenant continuam visíveis a qualquer membro ativo, mesmo sem papel vigente. É decisão tomada: nome do grupo e das bandeiras não são dado sensível e aparecem na navegação de qualquer membro.
+- O `hk_worker` e o `hk_backoffice` seguem com as policies próprias.
+
+**Consequência:** um evento publicado por quem não pode escrever já não chega ao worker (ex.: um `membro.convidado` forjado dispararia e-mail).
+
