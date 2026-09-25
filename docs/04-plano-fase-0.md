@@ -96,6 +96,8 @@ Criar `apps/tecnico` com Vite, `vite-plugin-pwa`, login, shell offline, fila em 
 
 Criar os projetos Vercel (`web`, `tecnico`) com funções em `gru1`, variáveis por ambiente e previews ligados só ao Supabase de staging. Workflow de migrações: automático para staging, aprovação manual para produção.
 
+Antes de criar o projeto de staging, o access token pessoal do Supabase (`sbp_…`) passa a ter prazo de validade, sai do ambiente da máquina quando não estiver em uso e nunca é usado contra staging nem produção (regra do incidente 2, `docs/diario-fase-0.md`). O `scripts/ops/ler-config-remota.ts` já recusa qualquer ambiente que não seja o dev.
+
 **Aceite:** PR gera preview funcional contra staging; merge em `main` com aprovação aplica a migração e publica em produção.
 
 ## F0-13 — Operação e segurança
