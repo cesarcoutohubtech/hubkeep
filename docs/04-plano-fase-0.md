@@ -96,6 +96,8 @@ Criar `apps/tecnico` com Vite, `vite-plugin-pwa`, login, shell offline, fila em 
 
 Criar os projetos Vercel (`web`, `tecnico`) com funções em `gru1`, variáveis por ambiente e previews ligados só ao Supabase de staging. Workflow de migrações: automático para staging, aprovação manual para produção.
 
+Antes de criar o projeto de staging, o access token pessoal do Supabase (`sbp_…`) passa a ter prazo de validade, sai do ambiente da máquina quando não estiver em uso e nunca é usado contra staging nem produção (regra do incidente 2, `docs/diario-fase-0.md`). O `scripts/ops/ler-config-remota.ts` já recusa qualquer ambiente que não seja o dev.
+
 **Aceite:** PR gera preview funcional contra staging; merge em `main` com aprovação aplica a migração e publica em produção.
 
 ## F0-13 — Operação e segurança
@@ -116,5 +118,5 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - Backoffice da EasyGov: o papel `hk_backoffice` existe no banco, mas nenhuma tarefa da fase 0 cria a aplicação nem a variável de conexão dele.
 - Banco de dev: um projeto por desenvolvedor ou branching do Supabase (ADR-015).
 - TypeScript fixado em `~6.0` (F0-01): o `typescript-eslint` 8.70 aceita só TypeScript `< 6.1`, e a `latest` do npm já é a 7 (compilador nativo). Subir para a 7 quando o `typescript-eslint` suportar.
-- Scripts de `scripts/ops` que gravam ou apagam dado só aceitam `ci` e `dev` (`verificar-papeis.ts` os dois, `fumaca-db.ts` só o dev), com o dev conferido pelo ref de `[remotes.dev]` do `supabase/config.toml` (ADR-019). A repetição do aceite da F0-03 em staging (F0-12) depende de liberar staging nesses scripts, com conferência equivalente.
+- Scripts de `scripts/ops` que gravam ou apagam dado só aceitam `ci` e `dev` (`verificar-papeis.ts` os dois, `fumaca-db.ts` só o dev), com o dev conferido pelo ref de `[remotes.dev]` do `supabase/config.toml` (ADR-020). A repetição do aceite da F0-03 em staging (F0-12) depende de liberar staging nesses scripts, com conferência equivalente.
 - Versão do PostgreSQL: o pacote foi validado em 16; o `supabase init` e os projetos novos do Supabase usam 17. Os testes deste repo rodam em 17.

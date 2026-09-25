@@ -128,6 +128,8 @@ Casos mínimos no teste de isolamento para cada tabela nova:
 - Sem contexto, nada é visível.
 - FK composta rejeita referência a hotel ou local de outro tenant.
 
+Os casos de cada tabela ficam em `supabase/tests/database/003_isolamento_por_tabela.test.sql`, junto com os do `hk_ingestao`. Quando um caso não se aplica à tabela (sem `hotel_id`, ou sem FK para outra tabela do tenant), o motivo fica escrito no bloco dela. Tabela nova entra ali, nos seis blocos.
+
 ## Checklist de PR que mexe no banco
 
 - [ ] Tabela nova segue o modelo acima e tem casos no teste de isolamento.

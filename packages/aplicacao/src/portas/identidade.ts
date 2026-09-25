@@ -31,22 +31,34 @@ export class TokenInvalido extends Error {
 }
 
 /**
- * Cria (ou reaproveita) a identidade do convidado no provedor e faz o convite
- * chegar a ele. Devolve o id do usuário, que o convite grava em app.membro na
- * mesma requisição (ADR-014).
- *
- * É a porta do envio: no dev, o adaptador usa o e-mail padrão do Supabase
- * (limite baixo de envio); para SMTP próprio, outro adaptador gera o link de
- * convite no provedor e o entrega por um EnviadorDeEmail — sem tocar no caso
- * de uso.
+ * Identidade do convidado no provedor (ADR-018). NENHUM método daqui envia
+ * e-mail: o convite só é enviado depois que o acesso está gravado, pelo worker,
+ * a partir do evento membro.convidado (EnvioDeConvite).
  */
-export interface ProvedorDeConvite {
-  convidar(pedido: PedidoDeConvite): Promise<{ usuarioId: string }>;
+export interface ProvedorDeIdentidade {
   /**
-   * Acrescenta o tenant à lista de sugestão do usuário (tenantsSugeridos).
-   * Chamado depois que o membro foi gravado.
+   * Cria o usuário, sem e-mail e sem confirmação, ou devolve o id de quem já
+   * existe. `criadoAgora` diz se foi esta chamada que criou — só esse pode ser
+   * removido na compensação.
    */
+  garantirUsuario(pedido: {
+    email: string;
+    nome: string;
+    tenantId: string;
+    nomeTenant: string;
+  }): Promise<{ usuarioId: string; criadoAgora: boolean }>;
+  /** Compensação: remove o usuário criado nesta requisição, se a gravação do acesso falhou. */
+  removerUsuario(usuarioId: string): Promise<void>;
+  /** Acrescenta o tenant à lista de sugestão do usuário (idempotente). */
   vincularTenant(usuarioId: string, tenantId: string): Promise<void>;
+}
+
+/**
+ * Envio do e-mail de convite — a porta que troca o e-mail padrão do Supabase
+ * (dev, limite baixo) por SMTP próprio sem retrabalho. Chamada pelo worker.
+ */
+export interface EnvioDeConvite {
+  enviarConvite(convite: PedidoDeConvite): Promise<{ enviado: boolean; motivo?: string }>;
 }
 
 export interface PedidoDeConvite {
