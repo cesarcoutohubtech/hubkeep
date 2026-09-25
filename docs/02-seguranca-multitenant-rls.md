@@ -76,6 +76,8 @@ Nas policies, chame sempre dentro de subconsulta, `(select authz.tenant_id())` e
 - Ninguém altera a própria concessão de Implantador. Papel e escopo de uma concessão são imutáveis (sem GRANT de UPDATE); para mudar, revoga-se e concede-se de novo.
 - `concedido_por` e `revogado_por` precisam ser o próprio usuário da sessão.
 - O Implantador não altera membros que tenham papel Admin ou Implantador.
+- Publicar evento no outbox exige ser Admin do grupo ou ter papel de escrita vigente em algum hotel. Gravar auditoria sem hotel, só o Admin do grupo ou o Implantador vigente. Proprietário e quem perdeu o papel não publicam nem auditam (ADR-021).
+- O contrato de licença (`licenca.contrato`) só o Admin do grupo lê pelo `hk_app` (ADR-021).
 
 ## Modelo para tabela nova
 
