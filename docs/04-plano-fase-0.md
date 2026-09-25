@@ -66,7 +66,7 @@ Criar em `packages/dominio` os tipos `Contexto`, `Papel`, os erros de domínio e
 
 Criar os route handlers em `/api/v1` com contratos Zod em `packages/contratos`, OpenAPI gerado a partir deles, formato único de erro, `request_id`, logs estruturados e Sentry.
 
-**Aceite:** OpenAPI publicado em rota interna; erro de validação e erro de permissão com formato padronizado; logs com `tenant_id` e `usuario_id`.
+**Aceite:** OpenAPI publicado em rota interna; erro de validação e erro de permissão com formato padronizado; logs com `tenant_id` e `usuario_id`; **erros e validações saem como código e parâmetros, nunca como frase** (`{ erro: { codigo, parametros } }`; quem exibe traduz pelo catálogo, ADR-022). A mensagem dos erros de domínio fica só para log.
 
 ## F0-08 — Ingestão e agente conector
 
@@ -92,11 +92,30 @@ Criar bucket privado, sem policies para `authenticated`, com URLs assinadas de u
 
 A decisão vira ADR.
 
+## F0-10b — Fundação de i18n
+
+Tarefa nova (ADR-022), antes da F0-11, para o PWA já nascer traduzível. Leva o sufixo "b" para não renumerar F0-11 a F0-13, citadas no diário e nas regras de processo. Está dentro da autonomia de F0-07 a F0-11; a escolha da biblioteca (atualização do ADR-022), a migração, o lint e o `CLAUDE.md` vão em PR que para para aprovação do Cesar.
+
+- **Biblioteca ICU:** escolher entre next-intl e FormatJS no web, com o critério de funcionar nos Server Components e no cliente do Next, no PWA Vite e no worker (Node) com os mesmos catálogos. Registrar a escolha no ADR-022.
+- **`packages/i18n`:** catálogos JSON por idioma (pt-BR, en, es, fr) com chaves semânticas; lista de idiomas e de formatos regionais; resolução do idioma (perfil do membro → hotel → tenant → navegador antes do login → pt-BR); formatação de data, número e moeda por `Intl`, com o fuso.
+- **Lint e pipeline:** o lint barra texto fixo em JSX/TSX dos apps; a CI reprova chave usada sem pt-BR ou en e mensagem ICU inválida.
+- **Pseudo-idioma:** acentos e texto cerca de 35% mais longo, disponível em dev e homologação, para achar texto fixo e quebra de layout.
+- **Migração:** colunas de país (ISO 3166-1), subdivisão (ISO 3166-2), moeda (ISO 4217) e idioma padrão em `app.tenant` e `app.hotel`, e de idioma, formato regional e fuso em `app.membro`. Idioma com restrição na coluna, a partir da lista do código; demais códigos com check de formato. Fuso validado na aplicação.
+- **Extração dos textos da F0-05 e da F0-09:** login, definição de senha e mensagens exibidas (F0-05) e o e-mail de convite enviado pelo worker (F0-09) vão para o catálogo. Enquanto o envio for pelo template único do Supabase, o e-mail sai em pt-BR; o texto já fica no catálogo para o SMTP próprio.
+
+**Aceite:**
+- lint verde, e um texto fixo proposital num componente derruba o lint (caso em `tests/fronteiras.test.ts` ou equivalente);
+- telas da F0-05 nos quatro idiomas e no pseudo-idioma, trocando pelo idioma do membro;
+- textos do e-mail de convite da F0-09 no catálogo, nos quatro idiomas, com o template usado pelo envio vindo do catálogo em pt-BR;
+- a CI reprova chave faltando em pt-BR ou en e mensagem ICU inválida;
+- o mesmo catálogo formata uma mensagem no web, no build do PWA e no worker;
+- as colunas novas recusam idioma fora da lista (banco) e fuso inválido (aplicação), com os casos de isolamento das tabelas alteradas mantidos.
+
 ## F0-11 — Esqueleto do PWA do técnico
 
 Criar `apps/tecnico` com Vite, `vite-plugin-pwa`, login, shell offline, fila em IndexedDB com chave de idempotência por operação e tela vazia de "fila do dia".
 
-**Aceite:** o app instala no Android e no iOS, abre sem rede e sincroniza uma operação de exemplo quando a rede volta, sem duplicar.
+**Aceite:** o app instala no Android e no iOS, abre sem rede e sincroniza uma operação de exemplo quando a rede volta, sem duplicar. Nenhum texto fixo: tudo pelo catálogo da F0-10b, que vai no build junto com o app.
 
 ## F0-12 — Deploy e ambientes
 
@@ -126,3 +145,4 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - TypeScript fixado em `~6.0` (F0-01): o `typescript-eslint` 8.70 aceita só TypeScript `< 6.1`, e a `latest` do npm já é a 7 (compilador nativo). Subir para a 7 quando o `typescript-eslint` suportar.
 - Scripts de `scripts/ops` que gravam ou apagam dado só aceitam `ci` e `dev` (`verificar-papeis.ts` os dois, `fumaca-db.ts` só o dev), com o dev conferido pelo ref de `[remotes.dev]` do `supabase/config.toml` (ADR-020). A repetição do aceite da F0-03 em staging (F0-12) depende de liberar staging nesses scripts, com conferência equivalente.
 - Versão do PostgreSQL: o pacote foi validado em 16; o `supabase init` e os projetos novos do Supabase usam 17. Os testes deste repo rodam em 17.
+- **i18n (ADR-022):** base dos textos (en-US, es-419, fr-FR, proposta); tradução profissional ou automática com revisão interna; quem usa espanhol e francês no início (piloto ou só rollout); termos de uso nos outros idiomas; efeito no prazo do piloto (+1 a +3 semanas, segundo o levantamento em `docs/referencia/i18n-levantamento.md`); e-mail de convite por idioma, que depende do SMTP próprio.

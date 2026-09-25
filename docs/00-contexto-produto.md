@@ -52,7 +52,7 @@ O HubKeep é o sistema de registro da manutenção. No MVP não há integração
 
 ## Escopo do MVP (fase 1)
 
-Identidade e escopo; cadastros (hotéis e UHs do CM, ativos com campos estendidos e anexos, QR); implantação de ativos (planilha, cadastro pelo celular, modelos por categoria, QR em lote); chamados corretivos com abertura mínima, prioridade padrão por política, registro de equipamento parado e aceite; OS com checklist tipado, horas, fotos e materiais em texto livre; preventiva por tempo com geração automática de OS; políticas com herança grupo → bandeira → hotel; PWA do técnico offline; notificações por e-mail e push; indicadores (backlog, % SLA, MTTR, % preventiva em dia); auditoria; impressão de OS e exportação CSV (proposta).
+Multi-idioma desde o MVP: interface em pt-BR (idioma-fonte), inglês, espanhol e francês, com formato regional separado do idioma e fuso por hotel; conteúdo cadastrado e texto livre ficam no idioma em que foram escritos, e e-mail, push, PDF e exportações saem em pt-BR no MVP (ADR-022). Identidade e escopo; cadastros (hotéis e UHs do CM, ativos com campos estendidos e anexos, QR); implantação de ativos (planilha, cadastro pelo celular, modelos por categoria, QR em lote); chamados corretivos com abertura mínima, prioridade padrão por política, registro de equipamento parado e aceite; OS com checklist tipado, horas, fotos e materiais em texto livre; preventiva por tempo com geração automática de OS; políticas com herança grupo → bandeira → hotel; PWA do técnico offline; notificações por e-mail e push; indicadores (backlog, % SLA, MTTR, % preventiva em dia); auditoria; impressão de OS e exportação CSV (proposta).
 
 ## Fora do MVP
 
