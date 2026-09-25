@@ -256,7 +256,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-022 — Multi-idioma no MVP: catálogos ICU compartilhados e nenhum texto fixo
 
-**Status:** Proposta (25/09/2026). Registra a decisão do Cesar de o HubKeep sair multi-idioma no MVP e as adaptações obrigatórias que ele definiu; vale com a aprovação no PR. A escolha da biblioteca fica para a F0-10b.
+**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #19). Registra a decisão de o HubKeep sair multi-idioma no MVP e as adaptações obrigatórias. A escolha da biblioteca fica para a F0-10b, que atualiza este ADR num PR próprio.
 
 **Contexto:** o levantamento está em `docs/referencia/i18n-levantamento.md`. Ele foi escrito sobre a stack antiga (NestJS, Keycloak/Auth0) e propõe tabela global de idioma, trigger de fuso, função com `unaccent` e tabela global de feriado, que contrariam o ADR-005 e as regras 1, 3 e 4 do `CLAUDE.md`. O conteúdo de produto continua valendo; as adaptações abaixo substituem o que ele diz de banco e de stack.
 

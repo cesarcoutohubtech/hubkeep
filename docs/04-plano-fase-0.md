@@ -94,18 +94,19 @@ A decisão vira ADR.
 
 ## F0-10b — Fundação de i18n
 
-Tarefa nova (ADR-022), antes da F0-11, para o PWA já nascer traduzível. Leva o sufixo "b" para não renumerar F0-11 a F0-13, citadas no diário e nas regras de processo.
+Tarefa nova (ADR-022), antes da F0-11, para o PWA já nascer traduzível. Leva o sufixo "b" para não renumerar F0-11 a F0-13, citadas no diário e nas regras de processo. Está dentro da autonomia de F0-07 a F0-11; a escolha da biblioteca (atualização do ADR-022), a migração, o lint e o `CLAUDE.md` vão em PR que para para aprovação do Cesar.
 
 - **Biblioteca ICU:** escolher entre next-intl e FormatJS no web, com o critério de funcionar nos Server Components e no cliente do Next, no PWA Vite e no worker (Node) com os mesmos catálogos. Registrar a escolha no ADR-022.
 - **`packages/i18n`:** catálogos JSON por idioma (pt-BR, en, es, fr) com chaves semânticas; lista de idiomas e de formatos regionais; resolução do idioma (perfil do membro → hotel → tenant → navegador antes do login → pt-BR); formatação de data, número e moeda por `Intl`, com o fuso.
 - **Lint e pipeline:** o lint barra texto fixo em JSX/TSX dos apps; a CI reprova chave usada sem pt-BR ou en e mensagem ICU inválida.
 - **Pseudo-idioma:** acentos e texto cerca de 35% mais longo, disponível em dev e homologação, para achar texto fixo e quebra de layout.
 - **Migração:** colunas de país (ISO 3166-1), subdivisão (ISO 3166-2), moeda (ISO 4217) e idioma padrão em `app.tenant` e `app.hotel`, e de idioma, formato regional e fuso em `app.membro`. Idioma com restrição na coluna, a partir da lista do código; demais códigos com check de formato. Fuso validado na aplicação.
-- **Extração dos textos da F0-05:** login, definição de senha e mensagens exibidas vão para o catálogo. O e-mail de convite segue no template único do Supabase, em pt-BR, até o SMTP próprio, com o texto já no catálogo.
+- **Extração dos textos da F0-05 e da F0-09:** login, definição de senha e mensagens exibidas (F0-05) e o e-mail de convite enviado pelo worker (F0-09) vão para o catálogo. Enquanto o envio for pelo template único do Supabase, o e-mail sai em pt-BR; o texto já fica no catálogo para o SMTP próprio.
 
 **Aceite:**
 - lint verde, e um texto fixo proposital num componente derruba o lint (caso em `tests/fronteiras.test.ts` ou equivalente);
 - telas da F0-05 nos quatro idiomas e no pseudo-idioma, trocando pelo idioma do membro;
+- textos do e-mail de convite da F0-09 no catálogo, nos quatro idiomas, com o template usado pelo envio vindo do catálogo em pt-BR;
 - a CI reprova chave faltando em pt-BR ou en e mensagem ICU inválida;
 - o mesmo catálogo formata uma mensagem no web, no build do PWA e no worker;
 - as colunas novas recusam idioma fora da lista (banco) e fuso inválido (aplicação), com os casos de isolamento das tabelas alteradas mantidos.
