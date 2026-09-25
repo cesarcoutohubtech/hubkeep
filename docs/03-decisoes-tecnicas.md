@@ -212,6 +212,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - Se a compensação falhar, vale o erro original.
   - No Auth, a corrida volta como 500 `Database error creating new user`, não como `email_exists`. Só nesse erro, casado pelo texto da mensagem, a criação é repetida uma vez; nenhum outro erro é repetido. Se o Supabase mudar esse texto, o perdedor volta a receber 500 (falha segura).
 
+## ADR-019 — Fronteiras de import: servidor do web, pacotes só pelo nome e Kysely só em `packages/db`
+
+**Status:** aprovada por Cesar em 25/09/2026 (decisões sobre a auditoria da `main`). Complementa o ADR-010 e o ADR-016.
+
+**Decisão** (verificada por lint, com os casos em `tests/fronteiras.test.ts`):
+- No `apps/web`, só `src/servidor` importa `@hubkeep/db` e `@hubkeep/auth-admin`. Rota, página, componente e proxy chegam ao banco e ao Auth por ele.
+- Entre pacotes e apps, o import é sempre pelo nome (`@hubkeep/...`), nunca por caminho relativo. Um caminho relativo até os fontes de outro pacote alcança o que o index não exporta (pool, Kysely, `transacaoDe`); o lint deixava passar.
+- Fora de `packages/db`, ninguém importa `kysely` (nem o `sql` de SQL cru) nem executa consulta direto (`executeQuery`, `CompiledQuery`).
+
+**Limite:** as pastas de teste (`apps/*/test`, `packages/*/test`) ficam fora dessas regras.
+
 ## ADR-020 — TLS só desligável com banco local; scripts de operação com ambientes declarados
 
 **Status:** aprovada por Cesar em 25/09/2026 (decisões sobre a auditoria da `main`).

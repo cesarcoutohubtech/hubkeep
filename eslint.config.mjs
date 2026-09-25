@@ -4,6 +4,9 @@
 //   apps → aplicacao → dominio          db → aplicacao, dominio (implementa as portas)
 //   dominio não importa nada de IO      conector só conhece contratos (nunca o banco)
 //   apps não importam Kysely nem pg     tecnico (PWA) fala só com a API
+//   no web, só src/servidor importa db e auth-admin
+//   entre pacotes, só pelo nome (@hubkeep/...), nunca por caminho relativo
+//   Kysely e execução direta de consulta, só em packages/db
 //
 // A prova de que a regra morde está em tests/fronteiras.test.ts.
 import js from '@eslint/js';
@@ -18,12 +21,30 @@ const ELEMENTOS = [
   { type: 'db', pattern: 'packages/db' },
   { type: 'contratos', pattern: 'packages/contratos' },
   { type: 'auth-admin', pattern: 'packages/auth-admin' },
+  // Filho de web: o código de servidor do Next (raiz de composição, contexto,
+  // http). É o único trecho do web que enxerga db e auth-admin; rota, página e
+  // componente chegam ao banco e ao Auth por ele.
+  { type: 'web-servidor', pattern: 'apps/web/src/servidor' },
   { type: 'web', pattern: 'apps/web' },
   { type: 'tecnico', pattern: 'apps/tecnico' },
   { type: 'conector', pattern: 'apps/conector' },
 ];
+const TIPOS = ELEMENTOS.map((e) => e.type);
 
 const para = (...types) => ({ to: { element: { types: { anyOf: types } } } });
+
+// Usados em mais de um bloco: no flat config, um bloco posterior que configura
+// a mesma regra SUBSTITUI a anterior nos arquivos em comum, em vez de somar.
+const ESCRITA = {
+  selector:
+    'CallExpression[callee.property.name=/^(insertInto|updateTable|deleteFrom|replaceInto|mergeInto)$/]',
+  message: 'Escrita só em packages/db/src/repositorios, pela unidade de trabalho (ADR-006).',
+};
+const TRANSACAO_DE = {
+  group: ['**/unidade-de-trabalho'],
+  importNames: ['transacaoDe'],
+  message: 'transacaoDe é só para packages/db/src/repositorios (ADR-006).',
+};
 
 export default tseslint.config(
   { ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/.turbo/**', 'supabase/**'] },
@@ -45,6 +66,8 @@ export default tseslint.config(
       },
     },
     rules: {
+      // Vale a ÚLTIMA política que casar com a dependência: cada proibição vem
+      // depois da liberação que ela restringe.
       'boundaries/dependencies': [
         'error',
         {
@@ -63,8 +86,13 @@ export default tseslint.config(
             { from: { element: { type: 'db' } }, allow: para('aplicacao', 'dominio') },
             // auth-admin implementa a porta de convite; único dono da secret key.
             { from: { element: { type: 'auth-admin' } }, allow: para('aplicacao') },
+            // Rota, página, componente e proxy não importam db nem auth-admin.
             {
               from: { element: { type: 'web' } },
+              allow: para('aplicacao', 'dominio', 'contratos', 'web-servidor'),
+            },
+            {
+              from: { element: { type: 'web-servidor' } },
               allow: para('aplicacao', 'dominio', 'contratos', 'db', 'auth-admin'),
             },
             { from: { element: { type: 'tecnico' } }, allow: para('dominio', 'contratos') },
@@ -77,11 +105,33 @@ export default tseslint.config(
             },
             // Apps não tocam o banco diretamente; só pelos repositórios de packages/db.
             {
-              from: { element: { types: { anyOf: ['web', 'tecnico', 'conector'] } } },
-              disallow: {
-                to: { module: { origin: 'external', source: ['kysely', 'pg', 'postgres'] } },
+              from: {
+                element: { types: { anyOf: ['web', 'web-servidor', 'tecnico', 'conector'] } },
               },
+              disallow: { to: { module: { origin: 'external', source: ['pg', 'postgres'] } } },
             },
+            // Kysely, inclusive o `sql` de SQL cru, só em packages/db (ADR-016): fora
+            // dele uma consulta escaparia dos repositórios. As fronteiras olham
+            // import, export ... from, import() e require.
+            {
+              from: { element: { types: { anyOf: TIPOS.filter((t) => t !== 'db') } } },
+              disallow: { to: { module: { origin: 'external', source: 'kysely' } } },
+              message: 'Kysely só em packages/db; fora dele, use os repositórios (ADR-016).',
+            },
+            // Entre elementos, só pelo nome do pacote. Um caminho relativo até os
+            // fontes de outro pacote (../../../../packages/db/src/conexao) alcança o
+            // que o index não exporta — pool, Kysely, transacaoDe — e passava sempre
+            // que o par de elementos era permitido.
+            {
+              disallow: { ...para(...TIPOS), dependency: { source: '!@hubkeep/**' } },
+              message: 'Importe outro pacote pelo nome (@hubkeep/...), não por caminho relativo.',
+            },
+            // ...e devolve o caminho relativo a quem é do mesmo app ou pacote: o
+            // próprio elemento e a rota/página chamando o servidor do web. O plugin
+            // não reconhece web-servidor como filho de web (parents vem vazio), por
+            // isso o par é liberado pelo tipo, não pela relação.
+            { allow: { dependency: { relationship: { to: 'internal' } } } },
+            { from: { element: { type: 'web' } }, allow: para('web-servidor') },
           ],
         },
       ],
@@ -95,25 +145,29 @@ export default tseslint.config(
     files: ['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'],
     ignores: ['packages/db/src/repositorios/**', 'packages/**/test/**'],
     rules: {
+      'no-restricted-syntax': ['error', ESCRITA],
+      'no-restricted-imports': ['error', { patterns: [TRANSACAO_DE] }],
+    },
+  },
+  {
+    // ADR-016: fora de packages/db, nada de executar consulta por fora dos
+    // repositórios. O import de kysely já é barrado pelas fronteiras; isto pega
+    // o executor que chegasse por outro caminho (um objeto repassado, um `any`).
+    files: ['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'],
+    ignores: ['packages/db/**', 'packages/**/test/**'],
+    rules: {
       'no-restricted-syntax': [
         'error',
+        // Repetido do bloco do ADR-006, que este substitui nestes arquivos.
+        ESCRITA,
         {
           selector:
-            'CallExpression[callee.property.name=/^(insertInto|updateTable|deleteFrom|replaceInto|mergeInto)$/]',
-          message:
-            'Escrita só em packages/db/src/repositorios, pela unidade de trabalho (ADR-006).',
+            "MemberExpression[property.name='executeQuery'], MemberExpression[property.value='executeQuery']",
+          message: 'Execução direta de consulta só em packages/db (ADR-016).',
         },
-      ],
-      'no-restricted-imports': [
-        'error',
         {
-          patterns: [
-            {
-              group: ['**/unidade-de-trabalho'],
-              importNames: ['transacaoDe'],
-              message: 'transacaoDe é só para packages/db/src/repositorios (ADR-006).',
-            },
-          ],
+          selector: "Identifier[name='CompiledQuery']",
+          message: 'CompiledQuery só em packages/db (ADR-016).',
         },
       ],
     },
@@ -121,6 +175,7 @@ export default tseslint.config(
   {
     // A secret key mora em @hubkeep/auth-admin; dentro do web, só o código de
     // servidor (src/servidor) pode importá-lo — nunca página, componente ou proxy.
+    // As fronteiras já barram; aqui a mensagem diz o porquê.
     files: ['apps/**/*.{ts,tsx}'],
     ignores: ['apps/web/src/servidor/**'],
     rules: {
@@ -133,15 +188,8 @@ export default tseslint.config(
               message: 'auth-admin (secret key) só em apps/web/src/servidor.',
             },
           ],
-          // Repetido do bloco do ADR-006: no flat config, este bloco SUBSTITUI a
-          // regra anterior nestes arquivos em vez de somar.
-          patterns: [
-            {
-              group: ['**/unidade-de-trabalho'],
-              importNames: ['transacaoDe'],
-              message: 'transacaoDe é só para packages/db/src/repositorios (ADR-006).',
-            },
-          ],
+          // Repetido do bloco do ADR-006, que este substitui nestes arquivos.
+          patterns: [TRANSACAO_DE],
         },
       ],
     },
