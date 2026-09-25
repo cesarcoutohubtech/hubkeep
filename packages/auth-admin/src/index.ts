@@ -38,13 +38,28 @@ export function criarAdministracaoDoAuth(opcoes: { url: string }): {
 
   const identidade: ProvedorDeIdentidade = {
     async garantirUsuario({ email, nome, tenantId, nomeTenant }) {
-      const criado = await admin.auth.admin.createUser({
-        email,
-        email_confirm: false,
-        // O template do convite usa {{ .Data.nome }} e {{ .Data.tenant }}.
-        user_metadata: { nome, tenant: nomeTenant },
-        app_metadata: { hk_tenants: [tenantId] },
-      });
+      const criar = () =>
+        admin.auth.admin.createUser({
+          email,
+          email_confirm: false,
+          // O template do convite usa {{ .Data.nome }} e {{ .Data.tenant }}.
+          user_metadata: { nome, tenant: nomeTenant },
+          app_metadata: { hk_tenants: [tenantId] },
+        });
+      let criado = await criar();
+      // Convite simultâneo para o mesmo e-mail: os dois pedidos passam pela
+      // checagem de e-mail do Auth e o banco dele recusa o segundo com erro
+      // genérico, não com email_exists. Uma única nova tentativa devolve
+      // email_exists e cai no caminho de sempre, abaixo. Nenhum outro erro é
+      // repetido. O casamento é pelo TEXTO da mensagem do Supabase: se esse
+      // texto mudar, a nova tentativa deixa de acontecer e o convite perdedor
+      // volta a receber 500 (falha segura, sem acesso a mais).
+      if (
+        criado.error?.status === 500 &&
+        criado.error.message === 'Database error creating new user'
+      ) {
+        criado = await criar();
+      }
       if (!criado.error && criado.data.user) {
         return { usuarioId: criado.data.user.id, criadoAgora: true };
       }
@@ -57,7 +72,8 @@ export function criarAdministracaoDoAuth(opcoes: { url: string }): {
         );
       }
       throw new Error(
-        `Identidade recusada pelo provedor: ${criado.error?.message ?? 'sem usuário'}.`,
+        `Identidade recusada pelo provedor: ${criado.error?.message ?? 'sem usuário'} ` +
+          `(status ${criado.error?.status ?? '?'}, code ${criado.error?.code ?? '?'}).`,
       );
     },
 
