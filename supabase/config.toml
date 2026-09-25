@@ -452,3 +452,8 @@ verify_enabled = true
 enable_confirmations = true
 max_frequency = "1m"
 otp_length = 8
+
+[remotes.dev.storage.analytics]
+# Desligado no dev pelo config push de 24/09/2026 (true → false); o bloco de
+# topo, usado pela CI, já tem o mesmo valor.
+enabled = false
