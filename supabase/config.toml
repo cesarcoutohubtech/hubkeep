@@ -168,8 +168,11 @@ jwt_expiry = 3600
 # jwt_issuer = ""
 # Path to JWT signing key. DO NOT commit your signing keys file to git.
 # HubKeep: chave ES256 gerada no runner da CI (supabase gen signing-key), como a
-# do HubKeep-dev; a API valida o JWT pelo JWKS público. Arquivo no .gitignore.
-signing_keys_path = "./signing_keys.json"
+# do HubKeep-dev; a API valida o JWT pelo JWKS público. O arquivo tem a chave
+# privada e está no .gitignore. A linha fica comentada: com ela ativa, a CLI
+# exige o arquivo em todo comando que valida a config (db push, por exemplo), e
+# ele só existe no runner. A CI a liga antes de gerar a chave (banco.yml).
+# signing_keys_path = "./signing_keys.json"
 # If disabled, the refresh token will never expire.
 enable_refresh_token_rotation = true
 # Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
