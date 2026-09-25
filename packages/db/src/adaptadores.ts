@@ -2,7 +2,7 @@
 // Leitura com withContext, escrita com executar (unit of work): o que cada
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
 import type { PortaAtribuicoes, PortaConvites, PortaHoteis } from '@hubkeep/aplicacao';
-import type { Atribuicao, Escopo } from '@hubkeep/dominio';
+import { type Atribuicao, Conflito, type Escopo } from '@hubkeep/dominio';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
 import { ehMembro, escopoVisivel, listarHoteisVisiveis, nomeDoTenant } from './consultas';
@@ -71,7 +71,20 @@ export function criarPortasDeAplicacao(banco: AcessoBanco): {
           escopoVisivel: await escopoVisivel(tx, pedido.escopo),
           jaMembro: await ehMembro(tx, { email: pedido.email }),
         })),
-      gravar: (ctx, g) => banco.executar(ctx, (uow) => gravarConvite(uow, g)),
+      gravar: async (ctx, g) => {
+        try {
+          await banco.executar(ctx, (uow) => gravarConvite(uow, g));
+        } catch (e) {
+          // Dois convites simultâneos para a mesma pessoa: os dois passam pela
+          // checagem de membro antes de qualquer commit, e a chave primária
+          // decide quem fica. Quem perde recebe o mesmo 409 do reconvite.
+          const { code, constraint } = e as { code?: string; constraint?: string };
+          if (code === '23505' && constraint === 'membro_pkey') {
+            throw new Conflito('ja_e_membro', 'Esta pessoa já é membro deste grupo.');
+          }
+          throw e;
+        }
+      },
     },
     hoteis: { listarVisiveis: (ctx) => banco.withContext(ctx, listarHoteisVisiveis) },
     atribuicoes: {

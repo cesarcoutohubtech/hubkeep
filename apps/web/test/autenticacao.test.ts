@@ -47,6 +47,7 @@ const email = {
   convidado: `convidado-${sufixo}@hubkeep.test`,
   barrado: `barrado-${sufixo}@hubkeep.test`,
   outroTenant: `outro-tenant-${sufixo}@hubkeep.test`,
+  simultaneo: `simultaneo-${sufixo}@hubkeep.test`,
 };
 const SENHA = `Senha-de-teste-${sufixo}`;
 
@@ -405,5 +406,51 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
       req('/api/v1/hoteis', { cabecalhos: { authorization: `Bearer ${tokenAdmin}` } }),
     );
     expect(r.status).toBe(400);
+  });
+
+  it('dois convites simultâneos para a mesma pessoa: um 201, outro 409, um usuário e um acesso', async () => {
+    // Os dois passam pela checagem de membro antes de qualquer commit; o Auth e
+    // a chave primária de app.membro decidem quem fica. Quem perde não pode
+    // apagar o usuário que o outro gravou (compensação, ADR-018).
+    const pedir = () =>
+      convidar(
+        req('/api/v1/convites', {
+          metodo: 'POST',
+          cabecalhos: { authorization: `Bearer ${tokenAdmin}`, 'x-hubkeep-tenant': A.tenant },
+          corpo: {
+            email: email.simultaneo,
+            nome: 'Simultânea',
+            papel: 'tecnico',
+            hotelId: A.hotel,
+          },
+        }),
+      );
+    const respostas = await Promise.all([pedir(), pedir()]);
+    expect(respostas.map((r) => r.status).sort()).toEqual([201, 409]);
+
+    const [ganhou, perdeu] = respostas[0]?.status === 201 ? respostas : [...respostas].reverse();
+    const { usuarioId } = (await ganhou?.json()) as { usuarioId: string };
+    expect(((await perdeu?.json()) as { erro: { codigo: string } }).erro.codigo).toBe(
+      'ja_e_membro',
+    );
+
+    const auth = await dono.query(`select id from auth.users where email = $1`, [email.simultaneo]);
+    expect(auth.rows).toEqual([{ id: usuarioId }]);
+    const membro = await dono.query(
+      `select usuario_id from app.membro where tenant_id = $1 and email = $2`,
+      [A.tenant, email.simultaneo],
+    );
+    expect(membro.rows).toEqual([{ usuario_id: usuarioId }]);
+    const papeis = await dono.query(
+      `select count(*)::int as n from app.atribuicao_escopo where tenant_id = $1 and usuario_id = $2`,
+      [A.tenant, usuarioId],
+    );
+    expect(papeis.rows[0]).toEqual({ n: 1 });
+    const ev = await dono.query(
+      `select count(*)::int as n from app.evento_dominio
+       where tenant_id = $1 and tipo = 'membro.convidado' and registro_id = $2`,
+      [A.tenant, usuarioId],
+    );
+    expect(ev.rows[0]).toEqual({ n: 1 });
   });
 });

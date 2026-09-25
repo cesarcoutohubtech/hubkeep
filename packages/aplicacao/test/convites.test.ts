@@ -27,6 +27,7 @@ function montar(opcoes: {
   situacao?: Partial<SituacaoDoConvite>;
   jaExisteNoAuth?: boolean;
   gravarFalha?: Error;
+  removerFalha?: boolean;
 }) {
   const log: string[] = [];
   const identidade: ProvedorDeIdentidade = {
@@ -34,7 +35,10 @@ function montar(opcoes: {
       log.push('auth:garantir');
       return { usuarioId: 'u1', criadoAgora: !opcoes.jaExisteNoAuth };
     },
-    removerUsuario: async (id) => void log.push(`auth:remover:${id}`),
+    removerUsuario: async (id) => {
+      log.push(`auth:remover:${id}`);
+      if (opcoes.removerFalha) throw new Error('Auth fora do ar');
+    },
     vincularTenant: async (id, t) => void log.push(`auth:vincular:${id}:${t}`),
   };
   const convites: PortaConvites = {
@@ -104,6 +108,20 @@ describe('convidar membro — ordem das etapas (ADR-018)', () => {
     });
     await expect(caso.convidarMembro(ctx, pedido)).rejects.toBeInstanceOf(Conflito);
     expect(log).not.toContain('auth:remover:u1');
+  });
+
+  it('d) convite simultâneo gravou antes: o usuário criado aqui NÃO é removido', async () => {
+    // Esta requisição criou o usuário, mas a outra (que o reaproveitou) gravou
+    // o membro primeiro. Remover o usuário apagaria o acesso gravado pela outra.
+    const { caso, log } = montar({ gravarFalha: new Conflito('ja_e_membro', 'x') });
+    await expect(caso.convidarMembro(ctx, pedido)).rejects.toBeInstanceOf(Conflito);
+    expect(log).not.toContain('auth:remover:u1');
+  });
+
+  it('d) a compensação falha: vale o erro original da gravação', async () => {
+    const { caso, log } = montar({ gravarFalha: new Error('falhou'), removerFalha: true });
+    await expect(caso.convidarMembro(ctx, pedido)).rejects.toThrow('falhou');
+    expect(log).toContain('auth:remover:u1');
   });
 });
 

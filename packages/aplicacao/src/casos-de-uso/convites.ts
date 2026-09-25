@@ -86,8 +86,15 @@ export function criarCasoDeUsoDeConvites(deps: DependenciasDeConvites): CasoDeUs
         });
       } catch (e) {
         // Só quem esta requisição criou: usuário pré-existente (membro de outro
-        // tenant) nunca é removido por uma falha aqui.
-        if (criadoAgora) await deps.identidade.removerUsuario(usuarioId);
+        // tenant) nunca é removido por uma falha aqui. Conflito de membro quer
+        // dizer que um convite simultâneo gravou o acesso com este mesmo
+        // usuário: removê-lo apagaria o convite do outro.
+        const outroConviteGravou = e instanceof Conflito && e.codigo === 'ja_e_membro';
+        if (criadoAgora && !outroConviteGravou) {
+          // Se a remoção falhar, vale o erro original: usuário do Auth sem
+          // membro não vê nada (falha fechada, ADR-014).
+          await deps.identidade.removerUsuario(usuarioId).catch(() => undefined);
+        }
         throw e;
       }
       return { usuarioId };
