@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(docker *)",
+      "Bash(supabase start*)",
+      "Bash(supabase db reset --linked*)",
+      "Bash(git push --force*)",
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.*.local)",
+      "Bash(cat .env)",
+      "Bash(cat .env.local)",
+      "Bash(cat .env.*.local)",
+      "PowerShell(docker *)",
+      "PowerShell(supabase start*)",
+      "PowerShell(supabase db reset --linked*)",
+      "PowerShell(git push --force*)",
+      "PowerShell(Get-Content .env)",
+      "PowerShell(Get-Content .env.local)",
+      "PowerShell(Get-Content .env.*.local)"
+    ],
+    "ask": [
+      "Bash(supabase db push*)",
+      "Bash(supabase config push*)",
+      "PowerShell(supabase db push*)",
+      "PowerShell(supabase config push*)"
+    ]
+  }
+}
