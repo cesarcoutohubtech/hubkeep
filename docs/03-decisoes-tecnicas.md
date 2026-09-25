@@ -238,3 +238,36 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 **Motivo:** o nome da variável não prova o alvo. Uma string de staging colada em `DEV_SESSION_POOLER`, ou a flag sem TLS esquecida na Vercel, faria tudo "funcionar" no banco errado ou em claro, sem erro nenhum.
 
 **Consequência:** a repetição do aceite da F0-03 em staging (F0-12) exige liberar staging no `verificar-papeis`, com conferência equivalente pelo ref do staging.
+
+## ADR-022 — Multi-idioma no MVP: catálogos ICU compartilhados e nenhum texto fixo
+
+**Status:** Proposta (25/09/2026). Registra a decisão do Cesar de o HubKeep sair multi-idioma no MVP e as adaptações obrigatórias que ele definiu; vale com a aprovação no PR. A escolha da biblioteca fica para a F0-10b.
+
+**Contexto:** o levantamento está em `docs/referencia/i18n-levantamento.md`. Ele foi escrito sobre a stack antiga (NestJS, Keycloak/Auth0) e propõe tabela global de idioma, trigger de fuso, função com `unaccent` e tabela global de feriado, que contrariam o ADR-005 e as regras 1, 3 e 4 do `CLAUDE.md`. O conteúdo de produto continua valendo; as adaptações abaixo substituem o que ele diz de banco e de stack.
+
+**Decisão:**
+- **Idiomas:** pt-BR (idioma-fonte), en, es e fr. O formato regional (datas, números, moeda) é escolha separada do idioma, de uma lista fixa no código.
+- **O que se traduz:** textos fixos das telas e mensagens padrão do sistema, status e prioridades padrão. Não se traduzem conteúdo cadastrado, nomes próprios e texto livre. E-mail, push, PDF e exportações saem em pt-BR no MVP, mas escritos no catálogo.
+- **Nenhum texto de interface fixo no código** (regra 11 do `CLAUDE.md`). Tudo sai por chave de um pacote compartilhado, `@hubkeep/i18n`: catálogos JSON por idioma, sintaxe ICU, os mesmos para web, PWA e worker. O lint barra texto fixo; a CI barra chave sem pt-BR ou en e mensagem ICU inválida; há pseudo-idioma para teste.
+- **API:** erros e validações saem como código e parâmetros, nunca como frase (critério de aceite da F0-07). Quem exibe traduz. A mensagem dos erros de domínio fica só para log.
+- **Biblioteca ICU:** next-intl ou FormatJS no web, com o mesmo catálogo no PWA Vite e no worker; escolha e motivo registrados neste ADR na F0-10b. Ponto de partida para a comparação:
+  - FormatJS (`@formatjs/intl` no servidor e no worker, `react-intl` no cliente) tem lint oficial (`eslint-plugin-formatjs`) e é o mesmo motor nos três runtimes;
+  - next-intl integra melhor com os Server Components, e o `use-intl` dele roda no PWA e no Node.
+- **Resolução do idioma:** perfil do membro → idioma padrão do hotel → do tenant → navegador (antes do login) → pt-BR.
+- **Dados** (migração da F0-10b):
+  - `app.tenant`: país, subdivisão, moeda e idioma padrão;
+  - `app.hotel`: os mesmos, com nulo herdando do tenant; o fuso IANA já existe;
+  - `app.membro`: idioma, formato regional e fuso, com nulo herdando.
+
+**Adaptações obrigatórias à stack atual:**
+- **Fuso sem trigger:** o fuso IANA é validado na aplicação (ADR-005, regra 3).
+- **Busca sem `unaccent` e sem função:** a aplicação grava uma coluna normalizada (sem acento, minúscula), que é a indexada (regra 4).
+- **Sem tabela global de idioma:** a lista mora no código (`@hubkeep/i18n`), e a coluna tem restrição com os valores dela (regra 1: toda tabela tem `tenant_id`). Idioma novo exige migração que amplia a restrição.
+- **Feriados:** os nacionais e regionais vêm de biblioteca na aplicação; no banco ficam só os do hotel, como tabela de negócio com `tenant_id` e RLS (fase 1c).
+- **Login no nosso catálogo:** o Supabase Auth não tem tela. Login, definição de senha e aceite do convite são páginas do HubKeep, traduzidas pelo catálogo. O e-mail de convite do Supabase tem template único (pt-BR) até o SMTP próprio, pela porta `EnvioDeConvite`.
+
+**Consequências:**
+- Tarefa nova na fase 0, a F0-10b, de 1 a 1,5 semana-dev pelo levantamento; ao longo da fase 1, de 2 a 3 semanas-dev de textos no catálogo.
+- Toda tarefa com tela ou mensagem passa a ter "sem texto fixo" no pronto.
+- O prazo do piloto e a tradução (en, es, fr) ficam nas pendências do `docs/04`.
+

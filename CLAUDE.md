@@ -16,6 +16,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 8. **TOTVS CM é somente leitura.** Nada é escrito no CM. O conector só envia dados para o endpoint de ingestão.
 9. **Sem ML preditivo, IoT ou IA no MVP.**
 10. **Escopo do MVP é fechado.** Se uma tarefa exigir algo de fase 2, pare e registre como pendência em vez de implementar.
+11. **Nenhum texto de interface fixo no código.** Tela, mensagem exibida, e-mail e push saem de catálogo ICU (`packages/i18n`, criado na F0-10b), com pt-BR como idioma-fonte e en, es e fr traduzidos. A API devolve erro e validação como código e parâmetros, nunca frase. O lint barra texto fixo (ADR-022).
 
 ## Stack
 
@@ -27,6 +28,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 - `packages/aplicacao`: casos de uso e portas (repositórios, relógio, notificador, armazenamento).
 - `packages/db`: Kysely com tipos gerados do banco, `withContext`, repositórios, unit of work.
 - `packages/contratos`: schemas Zod da API e do adaptador de sistema hoteleiro; OpenAPI gerado a partir deles.
+- `packages/i18n`: catálogos ICU por idioma (pt-BR, en, es, fr), resolução do idioma e formatação de data, número e moeda; usado por web, PWA e worker (F0-10b, ADR-022).
 - Supabase: PostgreSQL, Auth, Storage (bucket privado com URLs assinadas). Região São Paulo.
 - Vercel: funções em `gru1`; Vercel Cron para outbox, SLA e preventiva.
 - Sentry para erros; logs estruturados com `tenant_id`, `hotel_id`, `usuario_id` e `request_id`.
@@ -39,6 +41,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 | Orquestração de caso de uso, permissão de ação | `packages/aplicacao` |
 | SQL, transação, contexto de sessão | `packages/db` |
 | Validação de entrada e saída HTTP | `packages/contratos` |
+| Texto de interface, mensagem exibida, e-mail, push | `packages/i18n` (catálogos) |
 | Handler HTTP, página, componente | `apps/*` (fino, sem regra) |
 | Estrutura, FK, check de integridade, RLS | `supabase/migrations` |
 
@@ -96,7 +99,8 @@ Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `
 - Consultar o banco fora de `withContext`, ou abrir transação sem definir o contexto.
 - Deixar credencial de banco do HubKeep no agente conector.
 - Apontar deploy de preview para o banco de produção.
+- Escrever texto de interface direto em componente, handler, e-mail ou push, ou devolver frase pronta na resposta de erro da API.
 
 ## Idioma
 
-Código, nomes de tabelas e colunas em português sem acento (como no schema existente). Mensagens de commit, documentação e textos de interface em português do Brasil.
+Código, nomes de tabelas e colunas em português sem acento (como no schema existente). Mensagens de commit e documentação em português do Brasil. Textos de interface nos catálogos de `packages/i18n`, com pt-BR como idioma-fonte (regra 11, ADR-022).
