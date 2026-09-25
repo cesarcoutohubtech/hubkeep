@@ -20,7 +20,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(120);
+select plan(121);
 
 -- pgTAP precisa ser executável pelos papéis testados (só nesta transação)
 grant usage on schema extensions to hk_app, hk_ingestao;
@@ -439,8 +439,8 @@ select is_empty($$ update app.local set nome = nome returning 1 $$,
 
 -- ---------------------------------------------------------------------------
 -- Outbox, auditoria do grupo e contrato de licença (migração 0003, ADR-021):
--- publicar evento e auditar sem hotel exige Admin do grupo ou papel de escrita
--- vigente; o contrato só o Admin do grupo lê.
+-- publicar evento exige Admin do grupo ou papel de escrita vigente; auditar sem
+-- hotel, só Admin do grupo ou Implantador vigente; o contrato só o Admin lê.
 -- ---------------------------------------------------------------------------
 select throws_ok(
   $$ insert into app.evento_dominio (id, tenant_id, tipo, entidade, registro_id, payload) values
@@ -472,11 +472,11 @@ select lives_ok(
      ('e1000000-0000-0000-0000-0000000000c2', '10000000-0000-0000-0000-000000000000',
       'x', 'x', '11100000-0000-0000-0000-000000000001', '{}') $$,
   'gerente A1 publica evento (papel de escrita vigente)');
-select lives_ok(
+select throws_ok(
   $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
      ('c1000000-0000-0000-0000-0000000000d2', '10000000-0000-0000-0000-000000000000', null,
       'x', '11100000-0000-0000-0000-000000000001', 'x', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
-  'gerente A1 grava auditoria do grupo');
+  '42501', null, 'gerente A1 não grava auditoria do grupo (só Admin ou Implantador vigente)');
 select is_empty('select 1 from licenca.contrato', 'gerente A1 não lê o contrato de licença');
 
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000004', true)) ctx;
@@ -485,6 +485,11 @@ select lives_ok(
      ('e1000000-0000-0000-0000-0000000000c4', '10000000-0000-0000-0000-000000000000',
       'x', 'x', '11100000-0000-0000-0000-000000000002', '{}') $$,
   'implantador válido publica evento');
+select lives_ok(
+  $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
+     ('c1000000-0000-0000-0000-0000000000d4', '10000000-0000-0000-0000-000000000000', null,
+      'membro', 'aaaaaaaa-0000-0000-0000-000000000007', 'x', 'aaaaaaaa-0000-0000-0000-000000000004') $$,
+  'implantador válido grava auditoria do grupo');
 
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000001', true)) ctx;
 select results_eq('select tenant_id::text from licenca.contrato',
