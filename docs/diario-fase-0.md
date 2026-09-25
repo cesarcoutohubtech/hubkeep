@@ -4,6 +4,7 @@ Uma entrada por tarefa de `docs/04-plano-fase-0.md`, com até 10 linhas: o que e
 
 Processo (Cesar, 24/09/2026):
 - F0-07 a F0-11 seguem em sequência sem aprovação entre tarefas, **mas essa autonomia só começa depois de resolvidos os itens do incidente abaixo**.
+- (25/09/2026) A autonomia começa depois do merge do #19 e do #21. Ordem: F0-07 (com erros e validações como código e parâmetros), F0-08, F0-09, F0-10, **F0-10b** (fundação de i18n) e F0-11. Na F0-10b, a escolha da biblioteca ICU (atualização do ADR-022), a migração, o lint e o `CLAUDE.md` vão em PR que para para aprovação.
 - O merge do próprio PR com CI verde é permitido, exceto quando o PR toca zona protegida: `supabase/migrations`, `supabase/tests`, `supabase/config.toml`, `.github/workflows`, a config do lint de fronteiras, `CLAUDE.md`, `docs/03-decisoes-tecnicas.md`. Nesse caso o PR é aberto e o trabalho para.
 - ADR só vale com aprovação explícita.
 - **`supabase db push` e `supabase config push` no HubKeep-dev são executados só pelo Cesar.**

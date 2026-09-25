@@ -74,6 +74,18 @@ select has_schema_privilege('anon', 'app', 'usage')          as anon_app,
 - Ponto 3 (login dos papéis pelo Supavisor): fica para a F0-03, quando os papéis recebem LOGIN.
 - Ponto 4: as duas colunas devem ser `false`.
 
+## `config push` e a Data API
+
+A CLI (2.118) lê `api.enabled = true` no HubKeep-dev mesmo com a Data API desligada no painel e `db_schema` vazio. Por isso, **todo `config push` vai listar `api.enabled` como mudança** (de `true` para `false`), e o `config diff` o mostra como diferença. A mudança pode ser confirmada: o push não liga nada, e o valor declarado é `false`.
+
+A prova de que a Data API está desligada é o comportamento, não a leitura da CLI:
+
+```bash
+pnpm ops:config-remota --ambiente dev --sonda-data-api
+```
+
+O esperado: raiz `/rest/v1/` com 401 ("Secret API key required", vale em qualquer caso) e as tabelas, no schema padrão e em `app`, com **503 `PGRST002`**. Uma tabela respondendo 200 ou 404 de PostgREST quer dizer que a Data API está ligada: pare e confira o painel.
+
 ## Não faça no dev
 
 - Criar tabela ou coluna pelo Table Editor. Toda mudança de schema é migração no git.
