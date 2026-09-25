@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(15);
+select plan(22);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -185,6 +185,141 @@ select is_empty($$
   select rolname from pg_roles
   where rolname in ('hk_backoffice', 'hk_authz') and rolcanlogin
 $$, 'hk_backoffice e hk_authz não têm LOGIN');
+
+-- 16. Nenhum event trigger além dos do próprio Supabase. Um event trigger vale
+--     para o banco inteiro (o "Enable automatic RLS" do painel cria um), então o
+--     teste 3 não o pegaria. As exceções são por nome E dono: um event trigger
+--     com um desses nomes criado por outro papel também quebra o teste.
+select is_empty($$
+  select e.evtname || ' (dono ' || pg_get_userbyid(e.evtowner) || ')'
+  from pg_event_trigger e
+  where (e.evtname, pg_get_userbyid(e.evtowner)) not in (
+    values ('issue_graphql_placeholder', 'supabase_admin'),
+           ('issue_pg_cron_access',      'supabase_admin'),
+           ('issue_pg_graphql_access',   'supabase_admin'),
+           ('issue_pg_net_access',       'supabase_admin'),
+           ('pgrst_ddl_watch',           'supabase_admin'),
+           ('pgrst_drop_watch',          'supabase_admin')
+  )
+$$, 'nenhum event trigger além dos do Supabase (por nome e dono)');
+
+-- 17. Nenhuma trigger em auth.users. É o atalho clássico para criar o perfil
+--     do usuário no banco (ADR-005 e ADR-014: o membro nasce na aplicação).
+--     O Supabase não cria trigger nessa tabela; se um dia criar, a exceção
+--     entra aqui por nome e dono da função, como no teste 16.
+select is_empty($$
+  select t.tgname || ' (função de ' || pg_get_userbyid(p.proowner) || ')'
+  from pg_trigger t
+  join pg_proc p on p.oid = t.tgfoid
+  where t.tgrelid = 'auth.users'::regclass
+    and not t.tgisinternal
+$$, 'nenhuma trigger em auth.users');
+
+-- 18. Campos de escopo não recebem UPDATE de nenhum papel da aplicação
+--     (ADR-011): mudar o escopo de uma linha é o caminho mais curto para vazar
+--     dados. column_privileges cobre grant por coluna e grant de tabela inteira.
+--     Única exceção: app.hotel.bandeira_id, que só o Admin do grupo altera
+--     (policy app_update de app.hotel), registrada no ADR-011.
+select is_empty($$
+  select table_schema || '.' || table_name || '.' || column_name || ':' || grantee
+  from information_schema.column_privileges
+  where table_schema in ('app', 'staging', 'licenca')
+    and privilege_type = 'UPDATE'
+    and grantee like 'hk\_%'
+    and column_name in ('id', 'tenant_id', 'hotel_id', 'local_id', 'usuario_id',
+                        'proprietario_id', 'bandeira_id', 'papel', 'escopo_tipo',
+                        'concedido_por')
+    and not (table_schema = 'app' and table_name = 'hotel'
+             and column_name = 'bandeira_id' and grantee = 'hk_app')
+$$, 'nenhum UPDATE em campo de escopo (exceto app.hotel.bandeira_id, só Admin)');
+
+-- 19. Policy que libera tudo (using/with check = true) só nas exceções
+--     conhecidas: a leitura de hk_authz nas tabelas de escopo (evita recursão),
+--     o backoffice no contrato de licença e o worker listando tenants.
+--     Nunca para hk_app.
+select is_empty($$
+  select schemaname || '.' || tablename || '.' || policyname
+  from pg_policies
+  where schemaname in ('app', 'staging', 'licenca')
+    and (qual = 'true' or with_check = 'true')
+    and (schemaname, tablename, policyname, roles::text) not in (
+      values ('app',     'tenant',             'authz_leitura',     '{hk_authz}'),
+             ('app',     'membro',             'authz_leitura',     '{hk_authz}'),
+             ('app',     'hotel',              'authz_leitura',     '{hk_authz}'),
+             ('app',     'local',              'authz_leitura',     '{hk_authz}'),
+             ('app',     'local_proprietario', 'authz_leitura',     '{hk_authz}'),
+             ('app',     'atribuicao_escopo',  'authz_leitura',     '{hk_authz}'),
+             ('licenca', 'contrato',           'authz_leitura',     '{hk_authz}'),
+             ('licenca', 'contrato',           'backoffice_select', '{hk_backoffice}'),
+             ('licenca', 'contrato',           'backoffice_insert', '{hk_backoffice}'),
+             ('licenca', 'contrato',           'backoffice_update', '{hk_backoffice}'),
+             ('app',     'tenant',             'worker_select',     '{hk_worker}')
+    )
+$$, 'policy com using/with check (true) só nas exceções de hk_authz, backoffice e worker em tenant');
+
+-- 20. Nenhum privilégio de tabela ou de coluna para anon, authenticated ou
+--     PUBLIC nos schemas do HubKeep. O teste 7 olha o USAGE do schema; este
+--     pega o grant que ficaria pronto para quando alguém concedesse o USAGE.
+select is_empty($$
+  select n.nspname || '.' || c.relname || ':' ||
+         coalesce(nullif(pg_get_userbyid(a.grantee), '-'), 'public') || ':' || a.privilege_type
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  cross join lateral aclexplode(c.relacl) a
+  where n.nspname in ('app', 'staging', 'licenca', 'authz')
+    and (a.grantee = 0 or pg_get_userbyid(a.grantee) in ('anon', 'authenticated'))
+  union all
+  select n.nspname || '.' || c.relname || '.' || att.attname || ':' ||
+         coalesce(nullif(pg_get_userbyid(a.grantee), '-'), 'public') || ':' || a.privilege_type
+  from pg_attribute att
+  join pg_class c on c.oid = att.attrelid
+  join pg_namespace n on n.oid = c.relnamespace
+  cross join lateral aclexplode(att.attacl) a
+  where n.nspname in ('app', 'staging', 'licenca', 'authz')
+    and (a.grantee = 0 or pg_get_userbyid(a.grantee) in ('anon', 'authenticated'))
+$$, 'nenhum grant de tabela ou coluna para anon, authenticated ou public');
+
+-- 21. Toda FK entre tabelas do HubKeep é composta e leva tenant_id ou hotel_id
+--     do lado de quem referencia: uma linha do tenant A não aponta para linha do
+--     tenant B nem por engano. Exceção: a FK para a raiz app.tenant(id), que é o
+--     próprio tenant da linha.
+select is_empty($$
+  select n.nspname || '.' || c.relname || '.' || k.conname
+  from pg_constraint k
+  join pg_class c on c.oid = k.conrelid
+  join pg_namespace n on n.oid = c.relnamespace
+  join pg_class alvo on alvo.oid = k.confrelid
+  join pg_namespace na on na.oid = alvo.relnamespace
+  where k.contype = 'f'
+    and n.nspname in ('app', 'staging', 'licenca')
+    and na.nspname in ('app', 'staging', 'licenca')
+    and k.confrelid <> 'app.tenant'::regclass
+    and not (
+      cardinality(k.conkey) >= 2
+      and exists (
+        select 1 from pg_attribute a
+        where a.attrelid = k.conrelid and a.attnum = any (k.conkey)
+          and a.attname in ('tenant_id', 'hotel_id')
+      )
+    )
+$$, 'toda FK entre tabelas do HubKeep é composta com tenant_id ou hotel_id');
+
+-- 22. Nenhuma função do projeto fora dos schemas do HubKeep. O teste 11 fecha a
+--     lista dentro de app, authz, licenca e staging; uma função criada em public
+--     (ou em qualquer outro schema) pela migração passaria por ele. Ficam de
+--     fora as funções de extensões e as dos papéis do próprio Supabase: a
+--     migração roda como postgres, então é o dono que denuncia a origem.
+select is_empty($$
+  select n.nspname || '.' || p.proname || ' (dono ' || pg_get_userbyid(p.proowner) || ')'
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname not in ('app', 'authz', 'licenca', 'staging', 'pg_catalog', 'information_schema')
+    and (pg_get_userbyid(p.proowner) = 'postgres' or pg_get_userbyid(p.proowner) like 'hk\_%')
+    and not exists (
+      select 1 from pg_depend d
+      where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e'
+    )
+$$, 'nenhuma função de postgres ou hk_* fora dos schemas do HubKeep (exceto extensões)');
 
 select * from finish();
 rollback;
