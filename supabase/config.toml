@@ -421,32 +421,3 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
-
-# ---------------------------------------------------------------------------
-# HubKeep-dev (projeto remoto). A config acima serve à CI (Supabase local no
-# runner). Aqui fica o que é do dev, para que um `supabase config push` mude
-# SÓ o que foi decidido — template de convite (herdado de [auth.email.template.invite]),
-# redirect URL do aceite e cadastro público desligado — e preserve o resto do
-# estado do projeto: Data API desligada, confirmação de e-mail, MFA TOTP,
-# limites do e-mail padrão. PROPOSTA: aplicar só com aprovação explícita.
-# ---------------------------------------------------------------------------
-[remotes.dev]
-project_id = "jpolhvkqdorojoysrejm"
-
-[remotes.dev.api]
-# Data API desligada no dev (ADR-002; o HubKeep não usa PostgREST).
-enabled = false
-
-[remotes.dev.auth]
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["http://localhost:3000/auth/confirmar"]
-enable_signup = false
-
-[remotes.dev.auth.mfa.totp]
-enroll_enabled = true
-verify_enabled = true
-
-[remotes.dev.auth.email]
-enable_confirmations = true
-max_frequency = "1m0s"
-otp_length = 8
