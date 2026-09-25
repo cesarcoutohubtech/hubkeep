@@ -106,6 +106,7 @@ jobs:
             echo "SUPABASE_SECRET_KEY=$secreta"
             echo "HK_MAILPIT_URL=${SB_MAILPIT_URL:-${SB_INBUCKET_URL:-http://127.0.0.1:54324}}"
             echo "DATABASE_URL_APP=$HK_TESTE_URL_APP"
+            echo "DATABASE_URL_WORKER=$HK_TESTE_URL_WORKER"
             echo "HK_BANCO_SEM_TLS=1"
           } >> "$GITHUB_ENV"
           # O JWKS tem de publicar a chave ES256 gerada acima.

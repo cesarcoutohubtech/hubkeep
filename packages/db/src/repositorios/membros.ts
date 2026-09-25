@@ -1,18 +1,23 @@
-// Membro e atribuição de papel — o que o convite grava (ADR-014): o membro
-// nasce na unit of work de quem convida, com o id que o provedor de identidade
-// devolveu. Quem pode convidar e que papel pode conceder é garantido pela RLS
-// (sem escalada); as mensagens de erro claras da regra de concessão vêm com o
-// caso de uso da F0-06.
-import type { AppPapel as Papel } from '../tipos-banco';
+// Membro e atribuição de papel. O membro nasce na unit of work de quem convida,
+// com o id que o provedor de identidade devolveu (ADR-014). Quem pode conceder
+// ou revogar o quê é decidido duas vezes: pelo caso de uso (mensagem clara,
+// packages/aplicacao) e pela RLS (a garantia).
+import { type Escopo, NaoEncontrado, type Papel } from '@hubkeep/dominio';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 
-export type EscopoConcessao =
-  { tipo: 'grupo' } | { tipo: 'bandeira'; bandeiraId: string } | { tipo: 'hotel'; hotelId: string };
+/** Escopo de uma concessão — o mesmo tipo do domínio. */
+export type EscopoConcessao = Escopo;
 
+/**
+ * Grava o membro e publica membro.convidado. O payload leva o que o worker
+ * precisa para enviar o e-mail depois do commit (ADR-018): o convite nunca sai
+ * antes de o acesso estar gravado.
+ */
 export async function criarMembro(
   uow: UnidadeDeTrabalho,
   membro: { usuarioId: string; nome: string; email: string },
+  convite?: { nomeTenant: string; redirecionarPara: string },
 ): Promise<void> {
   await transacaoDe(uow)
     .insertInto('app.membro')
@@ -33,7 +38,7 @@ export async function criarMembro(
     tipo: 'membro.convidado',
     entidade: 'membro',
     registroId: membro.usuarioId,
-    payload: { usuarioId: membro.usuarioId, email: membro.email },
+    payload: { usuarioId: membro.usuarioId, email: membro.email, nome: membro.nome, ...convite },
   });
 }
 
@@ -55,6 +60,7 @@ export async function concederPapel(
       escopo_tipo: escopo.tipo,
       bandeira_id: escopo.tipo === 'bandeira' ? escopo.bandeiraId : null,
       hotel_id: hotelId,
+      proprietario_id: escopo.tipo === 'proprietario' ? escopo.proprietarioId : null,
       valido_ate: concessao.validoAte ?? null,
       concedido_por: uow.usuarioId,
     })
@@ -73,4 +79,35 @@ export async function concederPapel(
     payload: { usuarioId: concessao.usuarioId, papel: concessao.papel, escopo: concessao.escopo },
   });
   return { id };
+}
+
+/**
+ * Revoga uma atribuição (exclusão lógica: revogado_em/revogado_por, ADR-011).
+ * Se a RLS esconde a linha de quem revoga, o UPDATE não afeta nada e não dá
+ * erro — por isso o retorno é conferido: nada revogado é NaoEncontrado.
+ */
+export async function revogarPapel(uow: UnidadeDeTrabalho, atribuicaoId: string): Promise<void> {
+  if (!uow.usuarioId) throw new Error('Revogação de papel exige um usuário na sessão.');
+  const r = await transacaoDe(uow)
+    .updateTable('app.atribuicao_escopo')
+    .set({ revogado_em: new Date(), revogado_por: uow.usuarioId })
+    .where('id', '=', atribuicaoId)
+    .where('revogado_em', 'is', null)
+    .returning(['usuario_id', 'papel', 'escopo_tipo', 'hotel_id'])
+    .executeTakeFirst();
+  if (!r) throw new NaoEncontrado('Atribuição não encontrada ou já revogada.');
+  uow.auditar({
+    entidade: 'atribuicao_escopo',
+    registroId: atribuicaoId,
+    acao: 'revogar',
+    hotelId: r.hotel_id,
+    antes: { usuarioId: r.usuario_id, papel: r.papel, escopo: r.escopo_tipo, revogadoEm: null },
+    depois: { revogadoPor: uow.usuarioId },
+  });
+  uow.publicar({
+    tipo: 'papel.revogado',
+    entidade: 'atribuicao_escopo',
+    registroId: atribuicaoId,
+    payload: { usuarioId: r.usuario_id, papel: r.papel },
+  });
 }

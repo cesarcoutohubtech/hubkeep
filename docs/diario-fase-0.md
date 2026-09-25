@@ -81,4 +81,51 @@ Os dois pushes foram precedidos de `db push --dry-run`, mas **eu não mostrei es
 
 **`config push` do Cesar antes do merge do #10.** O Cesar rodou `supabase config push` no HubKeep-dev com o `config.toml` da `main`, ainda sem o `[remotes.dev]`. Segundo a saída: API e Auth sem mudança (o remoto seguiu no estado do incidente) e `storage.analytics.enabled` de **true para false**, porque a config de topo já tinha `false`. Leitura por GET em `config/storage` confirma `icebergCatalog.enabled = false`. O #10 passou a declarar também `[remotes.dev.storage.analytics] enabled = false`, para o arquivo espelhar o remoto. Próximo passo: merge do #10, novo `config push` pelo Cesar e nova leitura por GET.
 
+**Fechamento (24/09/2026) — pendente de um item.** O Cesar fez o merge do #10 e rodou `config push` com a `main` atualizada. Pela saída, aplicou Auth e deixou storage "up to date". Depois fiz duas conferências só de leitura:
+- **GET na Management API** (`config/auth`, `postgrest`, `config/storage`): todos os campos do `[remotes.dev]` batem com o remoto. `db_schema` vazio, `site_url` localhost, as duas redirect URLs, cadastro público desligado, MFA TOTP ligado, confirmação de e-mail ligada (`mailer_autoconfirm = false`), `max_frequency` 60s, OTP de 8 dígitos, template de convite igual ao arquivo, `storage.analytics` desligado.
+- **`supabase config diff --project-ref`** (a CLI declara o comando como somente leitura). Acusou 5 diferenças:
+  - `api.enabled`: arquivo false, remoto **true**. O GET mostra `db_schema` vazio, e a CLI já dava `false` no mesmo estado antes do incidente. Então ela lê essa flag de outro lugar. **Este é o item que falta**: conferir no painel se a Data API está desligada.
+  - `auth.sms.twilio.enabled`: arquivo false, remoto true. O remoto tem `sms_provider = twilio` (padrão do projeto), mas `external_phone_enabled = false` e nenhuma credencial. Login por telefone continua desligado.
+  - `db.pooler.default_pool_size` 20/15 e `max_client_conn` 100/200: são os valores do Supavisor do plano. Não afetam segurança; os limites por papel estão na migração 0002.
+  - `storage.image_transformation.enabled = true`, só no remoto e não declarado no arquivo.
+- **Segurança fora do `config.toml`** (a CLI não compara): o banco aceita conexão de qualquer IP (`0.0.0.0/0` e `::/0`) e não exige SSL. Fica para a F0-13, e em staging e produção precisa estar fechado.
+- **Segredo no transcript:** virou o segundo incidente, registrado abaixo.
+
+O incidente fecha quando o `api.enabled` estiver conferido no painel.
+
+**Conferência do `api.enabled` (25/09/2026).**
+- No painel, o Cesar viu *Enable Data API* desligado, com o aviso "No schemas can be queried".
+- O `ler-config-remota` mostra `db_schema` vazio.
+- O `config diff` da CLI continua lendo `api.enabled = true` no remoto, e a origem dessa flag não é o `db_schema`. Fica registrado como divergência de leitura da CLI, sem exposição: sem schema exposto, o PostgREST não devolve dado.
+- **Com isso, as configurações alteradas pelo incidente estão de volta ao estado final.**
+- Fica um ponto novo: na mesma leitura, `storage.analytics` (`icebergCatalog.enabled`) aparece `true`, embora estivesse `false` depois do `config push` do Cesar e o `config.toml` declare `false`. Aguarda decisão: voltar no painel ou declarar no arquivo.
+
 **Causa.** Tratei como prévia um comando que escreve no remoto, sem verificar o comportamento dele, e depois tentei corrigir com outra escrita não autorizada. As duas ações contrariam o pedido explícito de ver o diff antes de aplicar.
+
+## Incidente 2 — segredo HS256 do HubKeep-dev no registro local da sessão (24/09/2026, ~23h)
+
+**O que aconteceu.** Na conferência depois do `config push`, eu li `GET /v1/projects/{ref}/postgrest` da Management API e salvei a resposta num arquivo temporário. Depois rodei um `node -e` que imprimia os campos de SMS do `config/auth` e, na mesma linha, `JSON.stringify` da resposta **inteira** do `postgrest`. Essa resposta traz o `jwt_secret`, o segredo HS256 legado do projeto. O valor ficou na saída do comando e, com ela, no registro local da sessão do Claude Code (`~/.claude/projects/C--Cesar-HubKeep-Dev-hubkeep/<sessão>.jsonl`, duas ocorrências). Não foi para o git, para o GitHub nem para o chat. Apaguei os arquivos temporários com a resposta.
+
+**Risco.** A chave HS256 estava `previously_used`: o Supabase ainda aceitava tokens assinados com ela. Com o segredo, dá para montar um token `service_role` que o Storage e o PostgREST aceitam. A API do HubKeep recusa HS256 (ADR-017).
+
+**Varredura dos registros locais** (`~/.claude/projects` e a pasta temporária do Claude Code), feita por script que compara em memória e imprime só tipo, arquivo e contagem:
+- Comparação exata com os valores atuais: senha do `postgres`, senhas `hk_app`/`hk_worker`/`hk_ingestao` do dev, senha da `DEV_SESSION_POOLER`, access token do Supabase e o `jwt_secret`. **Só o `jwt_secret` aparece**, e só no arquivo acima.
+- Por padrão: nenhuma secret key `sb_secret_`, nenhuma chave de API legada em JWT (`anon`/`service_role`) e nenhum outro token `sbp_`.
+- Strings de conexão com senha: nas sessões que citam o HubKeep, só um exemplo com ref fictício (`postgres.xxx`), que não é nenhuma senha atual, e um padrão de regex num subagente. As outras ocorrências são de sessões do HubSupplyFlow e ficam fora deste registro.
+- Limite: a comparação exata só reconhece os valores atuais. Uma senha já rotacionada não seria detectada.
+
+**Uso das chaves legadas antes da revogação.** Nada do HubKeep usa as chaves de API legadas do HubKeep-dev:
+- O código lê só `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SECRET_KEY`.
+- A CI usa o Supabase local do runner, com fallback para `ANON_KEY`/`SERVICE_ROLE_KEY` desse Supabase local, não do dev.
+- O repositório não tem secrets nem environments no GitHub, e não há `vercel.json`.
+- Na máquina do Cesar, nenhuma variável de ambiente guarda chave de API; as que existem são senhas, a string do pooler e o access token pessoal.
+
+Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**, conferida pelo `ler-config-remota` (`HS256`: `revoked`; `ES256`: `in_use`). O segredo que ficou no registro local não assina mais nada que o Supabase aceite.
+
+**Causa.** Filtrei os campos na primeira leitura, mas na segunda imprimi a resposta inteira de um endpoint que devolve segredo, sem conferir o que ele traz.
+
+**Regra** (aprovada pelo Cesar em 25/09/2026; implementação no PR #12):
+1. Resposta da Management API ou de qualquer endpoint de configuração nunca é impressa inteira. O script declara a lista dos campos que imprime (allowlist); nunca se imprime por exclusão.
+2. Endpoints que sabidamente devolvem segredo: `postgrest` (`jwt_secret`), `api-keys`, `config/auth` (senha SMTP, segredos de hook, de SMS e de provedores externos). Nesses, a resposta não vai nem para arquivo; é lida em memória e filtrada no mesmo processo.
+3. Para garantir, um script único de leitura (`scripts/ops/ler-config-remota.ts`, com allowlist por endpoint) e uma regra `deny` no `.claude/settings.json` para `curl` e `fetch` direto em `api.supabase.com`, de modo que o script seja o único caminho.
+4. Na F0-12, antes de criar staging: o access token `sbp_` passa a ter prazo de validade, sai do ambiente quando não estiver em uso e nunca é usado contra staging nem produção (acrescentado ao `docs/04`).

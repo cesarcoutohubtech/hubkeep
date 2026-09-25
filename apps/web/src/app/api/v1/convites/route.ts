@@ -1,28 +1,23 @@
-// POST /api/v1/convites — convida alguém para o tenant ativo (ADR-014). Aqui só
-// o contexto verificado e a leitura do pedido; o fluxo (permissão, provedor,
-// unit of work) está em servidor/convites.ts.
+// POST /api/v1/convites — convida alguém para o tenant ativo.
+//
+// O fluxo inteiro mora no caso de uso (packages/aplicacao, ADR-018): regra do
+// domínio → escopo visível → usuário no Auth SEM e-mail → membro, atribuição e
+// evento numa unit of work (com compensação se falhar) → o worker envia o
+// e-mail a partir do evento. Não existe convite sem acesso gravado.
 //
 // A validação de entrada com Zod e o formato único de erro são da F0-07.
-import { convidar, type Papel, type PedidoDeConvite } from '../../../../servidor/convites';
+import { PAPEIS, type Escopo, type Papel } from '@hubkeep/dominio';
+import { casoDeUsoDeConvites } from '../../../../servidor/composicao';
 import { resolverContexto } from '../../../../servidor/contexto';
 import { ErroHttp, handler, json } from '../../../../servidor/http';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const PAPEIS: readonly Papel[] = [
-  'admin_grupo',
-  'gestor_csc',
-  'implantador',
-  'gerente_hotel',
-  'tecnico',
-  'solicitante',
-  'proprietario',
-];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function lerPedido(corpo: unknown): PedidoDeConvite {
+function lerPedido(corpo: unknown) {
   const c = (corpo ?? {}) as Record<string, unknown>;
   const invalido = (m: string) => new ErroHttp(422, 'entrada_invalida', m);
   if (typeof c['email'] !== 'string' || !EMAIL.test(c['email'])) throw invalido('email inválido.');
@@ -32,11 +27,19 @@ function lerPedido(corpo: unknown): PedidoDeConvite {
   if (hotelId !== null && (typeof hotelId !== 'string' || !UUID.test(hotelId))) {
     throw invalido('hotelId inválido.');
   }
+  let validoAte: Date | null = null;
+  if (c['validoAte'] !== undefined && c['validoAte'] !== null) {
+    validoAte = typeof c['validoAte'] === 'string' ? new Date(c['validoAte']) : new Date(NaN);
+    if (Number.isNaN(validoAte.getTime())) throw invalido('validoAte inválido (use data ISO).');
+  }
+  const escopo: Escopo =
+    typeof hotelId === 'string' ? { tipo: 'hotel', hotelId } : { tipo: 'grupo' };
   return {
     email: c['email'].trim().toLowerCase(),
     nome: c['nome'].trim(),
     papel: c['papel'] as Papel,
-    hotelId: hotelId as string | null,
+    escopo,
+    validoAte,
   };
 }
 
@@ -50,6 +53,8 @@ function urlDeAceite(req: Request): string {
 export const POST = handler(async (req) => {
   const ctx = await resolverContexto(req);
   const pedido = lerPedido(await req.json().catch(() => null));
-  const { usuarioId } = await convidar(ctx, pedido, urlDeAceite(req));
+  const { usuarioId } = await (
+    await casoDeUsoDeConvites()
+  ).convidarMembro(ctx, { ...pedido, redirecionarPara: urlDeAceite(req) });
   return json(201, { usuarioId });
 });
