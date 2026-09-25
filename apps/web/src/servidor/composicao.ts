@@ -18,6 +18,7 @@ import {
   criarAcessoBanco,
   criarPortasDeAplicacao,
   processarOutbox,
+  tlsDaConexao,
 } from '@hubkeep/db';
 import { criarVerificadorJwks } from './identidade';
 
@@ -30,8 +31,12 @@ function exigirEnv(nome: string): string {
 export const urlSupabase = () => exigirEnv('NEXT_PUBLIC_SUPABASE_URL');
 export const chavePublicaSupabase = () => exigirEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
 
-// TLS para o pooler do Supabase; a CI conecta ao Postgres do runner sem TLS.
-const ssl = () => process.env.HK_BANCO_SEM_TLS !== '1';
+// TLS para o pooler do Supabase. HK_BANCO_SEM_TLS=1 (a CI, no Postgres do
+// runner) só vale com host local; com host remoto a inicialização falha.
+const conexao = (nome: string) => {
+  const url = exigirEnv(nome);
+  return { url, ssl: tlsDaConexao(url, process.env.HK_BANCO_SEM_TLS === '1') };
+};
 
 /** Memoiza uma Promise, sem ficar preso a ela se rejeitar (o próximo pedido tenta de novo). */
 function memo<T>(criar: () => Promise<T>): () => Promise<T> {
@@ -47,10 +52,10 @@ function memo<T>(criar: () => Promise<T>): () => Promise<T> {
 
 // A fábrica é assíncrona: confere o papel de cada pool (guarda de papel, ADR-016).
 export const acessoBanco = memo<AcessoBanco>(() =>
-  criarAcessoBanco({ app: { url: exigirEnv('DATABASE_URL_APP'), ssl: ssl() } }),
+  criarAcessoBanco({ app: conexao('DATABASE_URL_APP') }),
 );
 const acessoBancoDoWorker = memo<AcessoBanco>(() =>
-  criarAcessoBanco({ worker: { url: exigirEnv('DATABASE_URL_WORKER'), ssl: ssl() } }),
+  criarAcessoBanco({ worker: conexao('DATABASE_URL_WORKER') }),
 );
 
 let auth: ReturnType<typeof criarAdministracaoDoAuth> | undefined;

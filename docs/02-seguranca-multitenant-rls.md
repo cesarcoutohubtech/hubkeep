@@ -79,7 +79,7 @@ Nas policies, chame sempre dentro de subconsulta, `(select authz.tenant_id())` e
 
 ## Modelo para tabela nova
 
-Toda tabela de negócio segue este modelo. Exemplo com o chamado da fase 1a:
+Toda tabela de negócio segue este modelo. A única tabela sem `tenant_id` é `app.tenant`, que é a raiz (exceção nomeada no meta-teste 2). Exemplo com o chamado da fase 1a:
 
 ```sql
 create table app.chamado (
