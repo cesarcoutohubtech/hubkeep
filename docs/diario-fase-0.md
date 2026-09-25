@@ -4,6 +4,7 @@ Uma entrada por tarefa de `docs/04-plano-fase-0.md`, com até 10 linhas: o que e
 
 Processo (Cesar, 24/09/2026):
 - F0-07 a F0-11 seguem em sequência sem aprovação entre tarefas, **mas essa autonomia só começa depois de resolvidos os itens do incidente abaixo**.
+- (25/09/2026) A autonomia começa depois do merge do #19 e do #21. Ordem: F0-07 (com erros e validações como código e parâmetros), F0-08, F0-09, F0-10, **F0-10b** (fundação de i18n) e F0-11. Na F0-10b, a escolha da biblioteca ICU (atualização do ADR-022), a migração, o lint e o `CLAUDE.md` vão em PR que para para aprovação.
 - O merge do próprio PR com CI verde é permitido, exceto quando o PR toca zona protegida: `supabase/migrations`, `supabase/tests`, `supabase/config.toml`, `.github/workflows`, a config do lint de fronteiras, `CLAUDE.md`, `docs/03-decisoes-tecnicas.md`. Nesse caso o PR é aberto e o trabalho para.
 - ADR só vale com aprovação explícita.
 - **`supabase db push` e `supabase config push` no HubKeep-dev são executados só pelo Cesar.**
@@ -39,11 +40,12 @@ Processo (Cesar, 24/09/2026):
 - Aceite na CI: convite → e-mail no Mailpit → `/auth/confirmar` → cookie → vê só o próprio tenant; trocar o cookie de tenant não mostra nada.
 - Pendente: ADR-017 em Proposta.
 
-## F0-06 — Domínio e aplicação — PR #7 (aberto; toca `docs/03`)
+## F0-06 — Domínio e aplicação — PR #7
 - Permissões de papel no domínio (44 testes), casos de uso com regras injetáveis, portas implementadas em `packages/db`.
 - Aceite: com a checagem da aplicação removida, a RLS bloqueia a escalada; paridade domínio × RLS em 280 pedidos sem divergência.
 - Revisão: convite reordenado (ADR-018: Auth sem e-mail → unit of work com compensação → worker envia pelo evento), outbox mínimo, fumaça no dev 16/16.
-- Pendente: ADR-017 e ADR-018 em Proposta; **incidente de 24/09 no HubKeep-dev** (`config push` aplicou sem prompt), reversão aguardando decisão do Cesar; proposta `[remotes.dev]` não aplicada.
+- Teste de convites simultâneos: o perdedor recebe 409, e a corrida no Auth (500 "Database error creating new user") ganha uma única nova tentativa, casada pelo texto da mensagem.
+- ADR-017 e ADR-018 aprovados em 25/09/2026. O `[remotes.dev]` proposto aqui foi revertido e substituído pelo #10.
 
 ## Incidente — escrita não autorizada na configuração do HubKeep-dev (24/09/2026, ~22h)
 
@@ -129,3 +131,28 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
 2. Endpoints que sabidamente devolvem segredo: `postgrest` (`jwt_secret`), `api-keys`, `config/auth` (senha SMTP, segredos de hook, de SMS e de provedores externos). Nesses, a resposta não vai nem para arquivo; é lida em memória e filtrada no mesmo processo.
 3. Para garantir, um script único de leitura (`scripts/ops/ler-config-remota.ts`, com allowlist por endpoint) e uma regra `deny` no `.claude/settings.json` para `curl` e `fetch` direto em `api.supabase.com`, de modo que o script seja o único caminho.
 4. Na F0-12, antes de criar staging: o access token `sbp_` passa a ter prazo de validade, sai do ambiente quando não estiver em uso e nunca é usado contra staging nem produção (acrescentado ao `docs/04`).
+
+## Pós-auditoria da `main` — PRs #13 a #20 e aplicações no HubKeep-dev (25/09/2026)
+
+**Mergeados:**
+- **#13**, testes de banco: seis casos mínimos em toda tabela, `hk_ingestao` e meta-testes 16 a 22.
+- **#15**, lint: servidor do web, pacotes só pelo nome, Kysely só em `db`; ADR-019.
+- **#14**, TLS só com banco local, scripts com ambientes declarados, `.env.example` completo e exceções registradas; ADR-020.
+- **#16**, `configurar-papeis` interativo em staging e produção, e a sonda da Data API.
+- **#17**, `image_transformation` desligada no `config.toml`.
+- **#18**, migração 0003: outbox, auditoria do grupo e contrato de licença; ADR-021.
+- **#20**, `signing_keys_path` ligado só na CI, para o `db push` rodar sem o arquivo.
+
+**Aberto:** #19, a proposta de multi-idioma (ADR-022), aguardando aprovação.
+
+**Aplicado no HubKeep-dev pelo Cesar:**
+- `db push` da `20260925165636_rls_outbox_auditoria_contrato.sql`;
+- `config push` com `storage.image_transformation.enabled = false` e, também listado pela CLI, `api.enabled = false`.
+
+**Conferência só por leitura:**
+- **Migrações:** o dev registra exatamente as três da `main` (`20260924000001`, `20260924000002` e `20260925165636`). A consulta rodou em transação `read only`.
+- **Policies da 0003 ativas no dev:** evento exige Admin ou papel de escrita vigente; auditoria sem hotel só Admin ou Implantador vigente; contrato só Admin.
+- **Storage:** `imageTransformation.enabled = false` e `icebergCatalog.enabled = false`.
+- **Data API:** `db_schema` vazio. Pela sonda com a chave publishable, a raiz dá 401 e as tabelas (`public` e `app`) dão 503 `PGRST002`, ou seja, recusadas.
+- **`config diff`:** continua mostrando `api.enabled` (arquivo false, remoto true), mesmo depois do push com `false`. Fica confirmado que é leitura da CLI, porque o comportamento é o de Data API desligada. As outras diferenças restantes são o SMS Twilio (padrão do projeto, sem login por telefone) e o pool do Supavisor (valores do plano).
+
