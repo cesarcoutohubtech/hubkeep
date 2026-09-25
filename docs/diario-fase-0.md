@@ -117,7 +117,8 @@ Decisão do Cesar: revogar a HS256 legada.
 
 **Causa.** Filtrei os campos na primeira leitura, mas na segunda imprimi a resposta inteira de um endpoint que devolve segredo, sem conferir o que ele traz.
 
-**Regra proposta** (aguarda aprovação):
+**Regra** (aprovada pelo Cesar em 25/09/2026; implementação no PR #12):
 1. Resposta da Management API ou de qualquer endpoint de configuração nunca é impressa inteira. O script declara a lista dos campos que imprime (allowlist); nunca se imprime por exclusão.
 2. Endpoints que sabidamente devolvem segredo: `postgrest` (`jwt_secret`), `api-keys`, `config/auth` (senha SMTP, segredos de hook, de SMS e de provedores externos). Nesses, a resposta não vai nem para arquivo; é lida em memória e filtrada no mesmo processo.
 3. Para garantir, um script único de leitura (`scripts/ops/ler-config-remota.ts`, com allowlist por endpoint) e uma regra `deny` no `.claude/settings.json` para `curl` e `fetch` direto em `api.supabase.com`, de modo que o script seja o único caminho.
+4. Na F0-12, antes de criar staging: o access token `sbp_` passa a ter prazo de validade, sai do ambiente quando não estiver em uso e nunca é usado contra staging nem produção (acrescentado ao `docs/04`).
