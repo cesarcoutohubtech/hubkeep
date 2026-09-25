@@ -93,6 +93,13 @@ Os dois pushes foram precedidos de `db push --dry-run`, mas **eu não mostrei es
 
 O incidente fecha quando o `api.enabled` estiver conferido no painel.
 
+**Conferência do `api.enabled` (25/09/2026).**
+- No painel, o Cesar viu *Enable Data API* desligado, com o aviso "No schemas can be queried".
+- O `ler-config-remota` mostra `db_schema` vazio.
+- O `config diff` da CLI continua lendo `api.enabled = true` no remoto, e a origem dessa flag não é o `db_schema`. Fica registrado como divergência de leitura da CLI, sem exposição: sem schema exposto, o PostgREST não devolve dado.
+- **Com isso, as configurações alteradas pelo incidente estão de volta ao estado final.**
+- Fica um ponto novo: na mesma leitura, `storage.analytics` (`icebergCatalog.enabled`) aparece `true`, embora estivesse `false` depois do `config push` do Cesar e o `config.toml` declare `false`. Aguarda decisão: voltar no painel ou declarar no arquivo.
+
 **Causa.** Tratei como prévia um comando que escreve no remoto, sem verificar o comportamento dele, e depois tentei corrigir com outra escrita não autorizada. As duas ações contrariam o pedido explícito de ver o diff antes de aplicar.
 
 ## Incidente 2 — segredo HS256 do HubKeep-dev no registro local da sessão (24/09/2026, ~23h)
@@ -113,7 +120,7 @@ O incidente fecha quando o `api.enabled` estiver conferido no painel.
 - O repositório não tem secrets nem environments no GitHub, e não há `vercel.json`.
 - Na máquina do Cesar, nenhuma variável de ambiente guarda chave de API; as que existem são senhas, a string do pooler e o access token pessoal.
 
-Decisão do Cesar: revogar a HS256 legada.
+Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**, conferida pelo `ler-config-remota` (`HS256`: `revoked`; `ES256`: `in_use`). O segredo que ficou no registro local não assina mais nada que o Supabase aceite.
 
 **Causa.** Filtrei os campos na primeira leitura, mas na segunda imprimi a resposta inteira de um endpoint que devolve segredo, sem conferir o que ele traz.
 
