@@ -172,7 +172,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-017 — Identidade no servidor: JWT pelo JWKS, secret key isolada, tenants sugeridos no token
 
-**Status:** Proposta (F0-05, 24/09/2026). Implementada no PR #6, aguardando aprovação decisão a decisão. O fluxo do convite saiu daqui para o ADR-018.
+**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #7), decisão a decisão. Proposta na F0-05 e implementada no PR #6. O fluxo do convite saiu daqui para o ADR-018. Conferido antes da aprovação: o HubKeep-dev assina com ES256 (`in_use`), e o JWKS publica só essa chave, para verificação.
 
 **Decisão:**
 - **O servidor valida o access token pelas chaves públicas do projeto** (JWKS em `/auth/v1/.well-known/jwks.json`), com emissor, audiência (`authenticated`) e expiração conferidos. Só algoritmos assimétricos são aceitos (ES256/RS256): um token HS256 do segredo compartilhado legado é recusado. A sessão que o `@supabase/ssr` guarda no cookie é só de onde se tira o token; o conteúdo do cookie nunca autentica sozinho. O PWA manda o mesmo token como `Bearer`.
@@ -185,7 +185,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-018 — Convite: acesso gravado antes do e-mail, envio pelo worker
 
-**Status:** Proposta (revisão do PR #7, 24/09/2026). Substitui, no ADR-014 e no ADR-017, a ordem "convidar pelo provedor e depois gravar o membro".
+**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #7). Substitui, no ADR-014 e no ADR-017, a ordem "convidar pelo provedor e depois gravar o membro".
 
 **Contexto:** na ordem anterior, o e-mail de convite saía antes de o acesso estar gravado. Se a gravação falhasse (escopo de outro tenant, conflito, queda), existia convite sem acesso, e usuário no Auth sem membro.
 
@@ -202,3 +202,8 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - O e-mail chega com a latência do worker (até ~1 min com o cron da F0-09). Até a F0-09, `processarOutboxDoTenant` existe e é testado, mas nenhuma rota de cron o chama em produção.
 - Quem já tem conta ativa (membro de outro tenant) não recebe e-mail pelo adaptador do Supabase (`email_exists`): entra e vê o novo grupo. O aviso por e-mail a essa pessoa fica para o SMTP próprio.
 - A compensação é provada por teste do caso de uso com portas em memória: no banco real não há falha determinística a provocar depois do passo 3.
+- **Convites simultâneos para a mesma pessoa** (teste de integração na CI): um recebe 201 e o outro 409, com um só usuário no Auth, um membro, uma atribuição e um evento.
+  - A chave primária de `app.membro` decide qual convite fica, e quem perde recebe o 409 do reconvite.
+  - Um conflito de membro não dispara a compensação, porque o usuário é o do outro convite.
+  - Se a compensação falhar, vale o erro original.
+  - No Auth, a corrida volta como 500 `Database error creating new user`, não como `email_exists`. Só nesse erro, casado pelo texto da mensagem, a criação é repetida uma vez; nenhum outro erro é repetido. Se o Supabase mudar esse texto, o perdedor volta a receber 500 (falha segura).
