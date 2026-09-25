@@ -183,3 +183,14 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Lista de tenants do usuário para a tela vem de `app_metadata.hk_tenants`**, gravado pelo convite (só com a secret key) e assinado no JWT. É só sugestão: a RLS de `app.membro` não permite listar tenants de que o usuário não está com contexto, e uma função `SECURITY DEFINER` para isso exigiria ADR. Quem decide o acesso continua sendo o banco.
 
 **Consequências:** o projeto Supabase de cada ambiente precisa de chave de assinatura assimétrica (o HubKeep-dev já usa ES256) e do template de convite configurado (docs/06).
+
+## ADR-020 — Fronteiras de import: servidor do web, pacotes só pelo nome e Kysely só em `packages/db`
+
+**Status:** aprovada por Cesar em 25/09/2026 (decisões sobre a auditoria da `main`). Complementa o ADR-010 e o ADR-016.
+
+**Decisão** (verificada por lint, com os casos em `tests/fronteiras.test.ts`):
+- No `apps/web`, só `src/servidor` importa `@hubkeep/db` e `@hubkeep/auth-admin`. Rota, página, componente e proxy chegam ao banco e ao Auth por ele.
+- Entre pacotes e apps, o import é sempre pelo nome (`@hubkeep/...`), nunca por caminho relativo. Um caminho relativo até os fontes de outro pacote alcança o que o index não exporta (pool, Kysely, `transacaoDe`); o lint deixava passar.
+- Fora de `packages/db`, ninguém importa `kysely` (nem o `sql` de SQL cru) nem executa consulta direto (`executeQuery`, `CompiledQuery`).
+
+**Limite:** as pastas de teste (`apps/*/test`, `packages/*/test`) ficam fora dessas regras.
