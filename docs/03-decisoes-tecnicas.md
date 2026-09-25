@@ -238,3 +238,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 **Motivo:** o nome da variável não prova o alvo. Uma string de staging colada em `DEV_SESSION_POOLER`, ou a flag sem TLS esquecida na Vercel, faria tudo "funcionar" no banco errado ou em claro, sem erro nenhum.
 
 **Consequência:** a repetição do aceite da F0-03 em staging (F0-12) exige liberar staging no `verificar-papeis`, com conferência equivalente pelo ref do staging.
+
+## ADR-021 — Outbox, auditoria do grupo e contrato de licença restritos por papel
+
+**Status:** Proposta (25/09/2026), para aprovação do Cesar no PR. Migração `20260925165636_rls_outbox_auditoria_contrato.sql`.
+
+**Contexto:** os casos mínimos por tabela (`003_isolamento_por_tabela`) mostraram três policies que liberavam a qualquer membro ativo do tenant, inclusive ao proprietário (somente leitura) e ao implantador vencido: publicar em `app.evento_dominio`, gravar `app.auditoria` com `hotel_id` nulo e ler `licenca.contrato`.
+
+**Decisão:**
+- Publicar evento e gravar auditoria sem hotel exige Admin do grupo (`authz.eh_admin_grupo()`) ou papel de escrita vigente em algum hotel (`authz.hoteis_escrita()`). Auditoria com hotel continua restrita aos hotéis em que o usuário escreve.
+- `licenca.contrato` pelo `hk_app` só o Admin do grupo lê: é ele quem ativa hotel e consome licença.
+- O `hk_worker` e o `hk_backoffice` seguem com as policies próprias.
+
+**Consequência:** um evento publicado por quem não pode escrever já não chega ao worker (ex.: um `membro.convidado` forjado dispararia e-mail). Continua em aberto, sem decisão: qualquer membro ativo vê a linha de `app.tenant` e as bandeiras do tenant.
+
