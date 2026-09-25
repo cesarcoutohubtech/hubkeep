@@ -6,8 +6,14 @@
 // Executado por pessoa autorizada, na própria máquina; nunca na Vercel.
 //
 // Estado desejado (declarativo, idempotente — rodar de novo chega ao mesmo lugar):
-//   hk_app, hk_worker, hk_ingestao  LOGIN, senha de HK_<PAPEL>_SENHA_<AMBIENTE>
+//   hk_app, hk_worker, hk_ingestao  LOGIN, com senha
 //   hk_backoffice, hk_authz         NOLOGIN, sem senha
+//
+// De onde vem a senha:
+//   ci e dev            HK_<PAPEL>_SENHA_<AMBIENTE>
+//   staging e produção  digitada, sem eco, duas vezes por papel, num terminal
+//                       interativo; antes, a pessoa confirma o alvo digitando
+//                       o project ref dele
 //
 // A senha nunca sai desta máquina: o script calcula o verificador SCRAM-SHA-256
 // localmente e o ALTER ROLE recebe só ele. Senha não entra por argumento, não é
@@ -22,14 +28,32 @@ import {
   descrever,
   exigirConfirmacaoProducao,
   lerArgs,
+  refDoAlvo,
   variavelSenha,
 } from './ambiente.ts';
 import { validarSenha, verificadorScram } from './scram.ts';
+import {
+  confirmacaoConfere,
+  exigirTerminalInterativo,
+  perguntar,
+  perguntarOculto,
+} from './terminal.ts';
 
 // Todos os ambientes: o script só altera papéis (LOGIN e senha), não grava nem
-// apaga dado. Produção exige --confirmar-producao; staging, por ora, não. No
-// dev, a string de conexão precisa conter o ref de [remotes.dev] (conexaoDono).
+// apaga dado. No dev, a string de conexão precisa conter o ref de [remotes.dev]
+// (conexaoDono). Staging e produção são interativos (MODO_INTERATIVO); produção
+// ainda exige --confirmar-producao.
 const AMBIENTES_PERMITIDOS: readonly Ambiente[] = ['ci', 'dev', 'staging', 'producao'];
+const MODO_INTERATIVO: readonly Ambiente[] = ['staging', 'producao'];
+
+async function senhaDigitada(papel: string): Promise<string> {
+  const senha = await perguntarOculto(`Senha de ${papel}: `);
+  const repetida = await perguntarOculto(`Repita a senha de ${papel}: `);
+  if (senha !== repetida) {
+    throw new Error(`As duas senhas de ${papel} não conferem. Nada foi alterado.`);
+  }
+  return senha;
+}
 
 interface Comando {
   texto: string; // o que se mostra
@@ -39,15 +63,34 @@ interface Comando {
 async function main() {
   const { ambiente, dryRun, producao } = lerArgs(process.argv.slice(2), AMBIENTES_PERMITIDOS);
   exigirConfirmacaoProducao(ambiente, producao);
+  const interativo = MODO_INTERATIVO.includes(ambiente);
+  if (interativo) {
+    exigirTerminalInterativo(Boolean(process.stdin.isTTY), Boolean(process.stdout.isTTY), ambiente);
+  }
 
-  // Senhas: presença, formato e unicidade. Em --dry-run a ausência só é avisada.
+  const dono = conexaoDono(ambiente);
+  if (interativo) {
+    // Antes de conectar: a pessoa vê o alvo e o confirma digitando o ref.
+    const ref = refDoAlvo(dono);
+    if (!ref) throw new Error('Não foi possível tirar o project ref da string de conexão.');
+    console.log(`Ambiente: ${ambiente}\nAlvo:     ${descrever(dono)}`);
+    const digitado = await perguntar('Digite o project ref do alvo para confirmar: ');
+    if (!confirmacaoConfere(digitado, ref)) {
+      throw new Error('Confirmação não confere com o alvo. Nada foi conectado.');
+    }
+  }
+
+  // Senhas: presença, formato e unicidade. Em --dry-run a ausência só é avisada
+  // e, nos ambientes interativos, nenhuma senha é pedida.
   const senhas = new Map<string, string>();
   const problemas: string[] = [];
   for (const papel of PAPEIS_COM_LOGIN) {
-    const nome = variavelSenha(papel, ambiente);
-    const senha = process.env[nome];
+    const nome = interativo ? `senha de ${papel}` : variavelSenha(papel, ambiente);
+    let senha: string | undefined;
+    if (!interativo) senha = process.env[nome];
+    else if (!dryRun) senha = await senhaDigitada(papel);
     if (!senha) {
-      problemas.push(`${nome} não está definida.`);
+      if (!interativo) problemas.push(`${nome} não está definida.`);
       continue;
     }
     try {
@@ -63,7 +106,6 @@ async function main() {
   }
   if (problemas.length > 0 && !dryRun) throw new Error(problemas.join('\n'));
 
-  const dono = conexaoDono(ambiente);
   const cliente = new pg.Client(dono);
   await cliente.connect();
   try {

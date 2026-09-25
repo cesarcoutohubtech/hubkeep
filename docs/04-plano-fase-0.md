@@ -24,7 +24,7 @@ Tornar obrigatório para merge em `main` o workflow `.github/workflows/banco.yml
 
 Criar o script de operação `scripts/ops/configurar-papeis.ts` (`pnpm db:papeis --ambiente <amb>`), executado por pessoa autorizada na própria máquina, nunca na Vercel. Ele leva os papéis ao estado desejado, de forma idempotente:
 
-- `hk_app`, `hk_worker` e `hk_ingestao`: LOGIN, com a senha de `HK_<PAPEL>_SENHA_<AMBIENTE>`.
+- `hk_app`, `hk_worker` e `hk_ingestao`: LOGIN, com senha. Em `ci` e `dev`, a senha vem de `HK_<PAPEL>_SENHA_<AMBIENTE>`. Em staging e produção, o script só roda num terminal interativo: a pessoa confirma o alvo digitando o project ref e digita cada senha duas vezes, sem eco (ADR-020).
 - `hk_backoffice` e `hk_authz`: NOLOGIN, sem senha. O backoffice recebe LOGIN quando for construído; o `hk_authz`, nunca.
 
 A senha não é transmitida: o script calcula o verificador SCRAM-SHA-256 localmente e o `ALTER ROLE ... PASSWORD` recebe só ele, para a senha não aparecer em log do Postgres/Supabase. Nenhuma senha entra por argumento de linha de comando nem sai na tela. O `--dry-run` mostra os comandos com o verificador omitido. Produção exige `--confirmar-producao`.
@@ -85,6 +85,12 @@ Criar as rotas de cron (`/api/cron/outbox`, `/api/cron/sla`, `/api/cron/preventi
 Criar bucket privado, sem policies para `authenticated`, com URLs assinadas de upload e download emitidas pela API depois da checagem de escopo, e caminho `{tenant_id}/{hotel_id}/{entidade}/{registro_id}/{uuid}`.
 
 **Aceite:** upload direto do navegador pela URL assinada funciona; acesso sem URL assinada é negado; usuário de outro hotel não consegue URL para o registro.
+
+**Miniaturas das fotos (decisão a tomar nesta tarefa).** A transformação de imagem do Supabase Storage está desligada no `config.toml`, no topo e no `[remotes.dev]`, desde 25/09/2026. Antes de religá-la para gerar miniaturas, esta tarefa decide entre:
+- miniatura gerada no aparelho, junto da compressão que o PWA já faz antes do upload (ver "Upload de fotos e anexos" no doc 01), enviada como um segundo objeto no mesmo caminho;
+- transformação do Storage: exige plano Pro, tem custo por imagem transformada e precisa de URL assinada também para a versão transformada.
+
+A decisão vira ADR.
 
 ## F0-11 — Esqueleto do PWA do técnico
 

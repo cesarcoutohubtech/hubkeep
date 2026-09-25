@@ -233,7 +233,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - `ci`: host local;
   - `dev`: a string contém o ref do `[remotes.dev]` do `supabase/config.toml`.
 - Scripts que gravam fixture ou apagam dado (`verificar-papeis`, `fumaca-db` e o `testar-banco-dev`, que grava em transação com rollback) só rodam em `ci` e `dev`.
-- `configurar-papeis` continua aceitando staging e produção; produção exige `--confirmar-producao`.
+- `configurar-papeis` continua aceitando staging e produção, mas só num terminal interativo (sem TTY, recusa antes de conectar). A pessoa confirma o alvo digitando o project ref dele e digita cada senha duas vezes, sem eco; nesses ambientes não existe variável de senha. Produção ainda exige `--confirmar-producao`.
 
 **Motivo:** o nome da variável não prova o alvo. Uma string de staging colada em `DEV_SESSION_POOLER`, ou a flag sem TLS esquecida na Vercel, faria tudo "funcionar" no banco errado ou em claro, sem erro nenhum.
 
