@@ -2,6 +2,7 @@
 // ÚNICO caminho para isso (regra do incidente 2, docs/diario-fase-0.md).
 //
 //   pnpm ops:config-remota --ambiente dev [--endpoint auth|postgrest|storage|rede|ssl|chaves|pooler]
+//   pnpm ops:config-remota --ambiente dev --sonda-data-api
 //
 // Regras:
 //   - só GET; nada aqui escreve no remoto;
@@ -150,12 +151,78 @@ function refDoDev(): string {
   return bloco[1];
 }
 
+/**
+ * Resumo da resposta da Data API para a sonda: status e os campos de erro do
+ * PostgREST, sem a chave usada na chamada (se o corpo a ecoasse, sai mascarada).
+ */
+export function resumirRespostaDaDataApi(
+  status: number,
+  corpo: string,
+  chave: string,
+): Record<string, unknown> {
+  const mascarar = (v: unknown) =>
+    typeof v === 'string' ? v.split(chave).join('<chave>').slice(0, 300) : undefined;
+  let json: Record<string, unknown>;
+  try {
+    json = JSON.parse(corpo) as Record<string, unknown>;
+  } catch {
+    return { status, corpo_nao_json: true };
+  }
+  return {
+    status,
+    code: mascarar(json['code']),
+    message: mascarar(json['message']),
+    hint: mascarar(json['hint']),
+  };
+}
+
+/**
+ * Sonda da Data API pelo comportamento: chama /rest/v1/ com a chave publishable
+ * do projeto. A chave é lida da Management API e usada no mesmo processo; nunca
+ * é impressa. A lista de chaves é pedida sem `reveal`, então as secret keys vêm
+ * mascaradas e nem chegam à memória.
+ */
+async function sondarDataApi(ref: string, token: string): Promise<Record<string, unknown>> {
+  const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/api-keys`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return { erro_http_api_keys: r.status };
+  const chaves = (await r.json()) as { type?: string; api_key?: string }[];
+  const chave = chaves.find((c) => c.type === 'publishable')?.api_key;
+  if (!chave) return { erro: 'o projeto não tem chave publishable' };
+  // A raiz publica o OpenAPI e exige secret key em qualquer caso; o caminho de
+  // tabela (inexistente, no schema padrão e no app) mostra o comportamento real.
+  const saida: Record<string, unknown> = {};
+  for (const [nome, caminho, perfil] of [
+    ['raiz', '/rest/v1/', undefined],
+    ['tabela_public', '/rest/v1/hk_sonda_inexistente', undefined],
+    ['tabela_app', '/rest/v1/hotel', 'app'],
+  ] as const) {
+    const resposta = await fetch(`https://${ref}.supabase.co${caminho}`, {
+      method: 'GET',
+      headers: { apikey: chave, ...(perfil ? { 'Accept-Profile': perfil } : {}) },
+    });
+    saida[nome] = resumirRespostaDaDataApi(resposta.status, await resposta.text(), chave);
+  }
+  return saida;
+}
+
 async function principal(argv: string[]): Promise<void> {
   const i = argv.indexOf('--ambiente');
   if (argv[i + 1] !== 'dev') {
     throw new Error(
       'Só --ambiente dev: o access token pessoal não é usado em staging nem em produção (F0-12).',
     );
+  }
+  if (argv.includes('--sonda-data-api')) {
+    const token = process.env['SUPABASE_ACCESS_TOKEN'];
+    if (!token) throw new Error('SUPABASE_ACCESS_TOKEN não está definida.');
+    const ref = refDoDev();
+    console.log(
+      JSON.stringify({ projeto: ref, data_api: await sondarDataApi(ref, token) }, null, 2),
+    );
+    return;
   }
   const j = argv.indexOf('--endpoint');
   const pedido = j >= 0 ? argv[j + 1] : undefined;

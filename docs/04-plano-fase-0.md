@@ -24,7 +24,7 @@ Tornar obrigatório para merge em `main` o workflow `.github/workflows/banco.yml
 
 Criar o script de operação `scripts/ops/configurar-papeis.ts` (`pnpm db:papeis --ambiente <amb>`), executado por pessoa autorizada na própria máquina, nunca na Vercel. Ele leva os papéis ao estado desejado, de forma idempotente:
 
-- `hk_app`, `hk_worker` e `hk_ingestao`: LOGIN, com a senha de `HK_<PAPEL>_SENHA_<AMBIENTE>`.
+- `hk_app`, `hk_worker` e `hk_ingestao`: LOGIN, com senha. Em `ci` e `dev`, a senha vem de `HK_<PAPEL>_SENHA_<AMBIENTE>`. Em staging e produção, o script só roda num terminal interativo: a pessoa confirma o alvo digitando o project ref e digita cada senha duas vezes, sem eco (ADR-020).
 - `hk_backoffice` e `hk_authz`: NOLOGIN, sem senha. O backoffice recebe LOGIN quando for construído; o `hk_authz`, nunca.
 
 A senha não é transmitida: o script calcula o verificador SCRAM-SHA-256 localmente e o `ALTER ROLE ... PASSWORD` recebe só ele, para a senha não aparecer em log do Postgres/Supabase. Nenhuma senha entra por argumento de linha de comando nem sai na tela. O `--dry-run` mostra os comandos com o verificador omitido. Produção exige `--confirmar-producao`.

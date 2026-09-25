@@ -28,6 +28,19 @@ export const CONEXAO_DONO: Record<Ambiente, string> = {
 };
 
 /** HK_APP_SENHA_DEV, HK_WORKER_SENHA_STAGING, ... */
+/**
+ * Ambientes em que a senha dos papéis vem de variável (HK_<PAPEL>_SENHA_<AMB>).
+ * Em staging e produção ela é digitada no terminal (configurar-papeis).
+ */
+export const AMBIENTES_COM_SENHA_EM_VARIAVEL: readonly Ambiente[] = ['ci', 'dev'];
+
+/** Project ref do alvo, tirado da string de conexão (Supavisor ou conexão direta). */
+export function refDoAlvo(dono: { user?: string | undefined; host?: string | undefined }): string {
+  const usuario = String(dono.user ?? '');
+  if (usuario.startsWith('postgres.')) return usuario.slice('postgres.'.length);
+  return /^db\.([a-z]{20})\.supabase\.co$/.exec(String(dono.host ?? ''))?.[1] ?? '';
+}
+
 export const variavelSenha = (papel: PapelComLogin, amb: Ambiente) =>
   `${papel.toUpperCase()}_SENHA_${amb.toUpperCase()}`;
 
