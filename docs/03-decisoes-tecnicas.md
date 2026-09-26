@@ -286,3 +286,31 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Toda tarefa com tela ou mensagem passa a ter "sem texto fixo" no pronto.
 - O prazo do piloto e a tradução (en, es, fr) ficam nas pendências do `docs/04`.
 
+## ADR-023 — PR de zona protegida só é mergeado pelo Cesar
+
+**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR.
+
+**Contexto:** as regras de processo (diário da fase 0) dizem que PR de zona protegida é aberto e para, e que o merge é do Cesar. Hoje isso depende só da disciplina do Claude Code. O `gh` da máquina de trabalho está autenticado com a conta do Cesar (`cesarcoutohubtech`), então, para o GitHub, um merge feito pelo Claude é um merge do Cesar. O ruleset do `main` exige só o pgTAP e não tem bypass configurado.
+
+**Decisão:**
+- **Check `zona protegida`** (`.github/workflows/zona-protegida.yml`): falha em todo PR que altere
+  - `supabase/migrations/`, `supabase/tests/` ou `supabase/config.toml`;
+  - `.github/workflows/`, `eslint.config.mjs` ou `CLAUDE.md`;
+  - `docs/03-decisoes-tecnicas.md` ou `.claude/`.
+
+  PR fora dessa lista passa.
+- **Ruleset do `main`**, que o Cesar configura no GitHub:
+  - o check `zona protegida` passa a ser **obrigatório**;
+  - o **bypass** fica só com o papel de **admin do repositório**.
+
+  Com isso, PR de zona protegida só entra por quem usa o bypass na tela do GitHub.
+- **`.claude/settings.json`**: `deny` para as formas de o Claude Code contornar a regra:
+  - `gh pr merge --admin`;
+  - merge pela API (`gh api .../merge`);
+  - edição de ruleset ou de proteção de branch pela API;
+  - `git push` direto no `main`.
+
+**Limite:** como a conta é a mesma, o GitHub não distingue o Cesar do Claude. A barreira contra o bypass é o `deny` do Claude Code, e não o GitHub. A separação completa exige uma identidade própria para o Claude: um token fine-grained sem papel de admin, só com `contents` e `pull_requests` de escrita. Com ela, o bypass fica impossível pelo próprio GitHub. Recomendado para antes da F0-12.
+
+**Consequência:** PR fora da zona protegida segue a regra do diário, com o Claude mergeando com a CI verde. PR de zona protegida fica com o check vermelho até o Cesar mergear com bypass. O vermelho é esperado e não é defeito.
+
