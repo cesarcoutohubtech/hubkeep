@@ -280,3 +280,18 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - (c) a recusada aparece para o técnico com o motivo pelo código, até ele dispensar;
   - (d) a limpeza da `app.operacao_offline` por partição mensal descartada por migração, como pendência no `docs/04`.
 - A F0-12 não começa sem o Cesar. A lista de pré-requisitos foi passada a ele.
+
+## Decisões do Cesar de 26/09/2026, depois do #32
+- **Ambientes:** só o dev até alguns dias antes do piloto, que só será confirmado com o cliente depois de 01/10.
+  - A F0-12 fica suspensa: staging, produção, GitHub Environments, workflow de migração, conta de máquina e Vercel.
+  - As definições para a retomada estão no `docs/04`: conta de máquina com token clássico (`repo`, `workflow`, `read:org`) só pelo `GH_TOKEN` do `.claude/settings.local.json`, sem `gh auth login`; staging pela CI com a senha do Environment; produção manual pelo Cesar (ADR-020) até depois do piloto.
+- **Endereços por célula, não por tenant:** `app.hubkeep.com.br` (web) e `tecnico.hubkeep.com.br` (PWA). Isso revisa a proposta de 24/09 de um subdomínio por tenant (`docs/01`, "Endereços", e `docs/04`).
+- **Vercel:** nenhum projeto por enquanto. Quando for preciso, Pro com um membro, o Cesar.
+- **Sentry:** adiado até o piloto. Confirmado que a aplicação funciona sem DSN, só com os logs estruturados: sem `SENTRY_DSN`, o SDK não inicia e nada é enviado. `apps/web/test/sentry.test.ts` prova isso.
+- **Protótipo navegável da reunião com o cliente:** feito fora do repositório. Nada de protótipo no `hubkeep`.
+- **Escopo do MVP, fase 1c** (`docs/00`):
+  - impressão da OS, com fotos, checklist e assinatura;
+  - exportação CSV de listas e indicadores, respeitando o escopo do usuário;
+  - indicador de produtividade por equipe e por hotel, para o Gestor CSC e o Gerente do hotel. A visão individual por técnico é política, desligada por padrão.
+- **Próximo trabalho:** F0-13 no que não depende de produção; depois, o plano da fase 1a (`docs/05-plano-fase-1a.md`), que para para aprovação.
+- **`.gitignore`:** passa a cobrir `.claude/settings.local.json`, onde o `GH_TOKEN` vai morar.

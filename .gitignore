@@ -8,3 +8,6 @@ dist/
 !.env.example
 apps/web/next-env.d.ts
 *.tsbuildinfo
+
+# Configuração local do Claude Code (terá o GH_TOKEN da conta de máquina, F0-12).
+.claude/settings.local.json

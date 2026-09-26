@@ -153,7 +153,20 @@ O service worker guarda só a casca do app, e os quatro catálogos vão no build
 | Staging | Projeto próprio, região São Paulo | Previews e branch `staging` |
 | Produção | Projeto próprio, região São Paulo, PITR | Branch `main` |
 
-Previews nunca apontam para produção. Migrações vão para staging automaticamente e para produção com aprovação manual na CI.
+Staging e produção ainda não existem: a F0-12 está suspensa até alguns dias antes do piloto (decisão de 26/09/2026, `docs/04`). Previews nunca apontam para produção. Migrações vão para staging automaticamente pela CI; para produção, até depois do piloto, são aplicadas pelo Cesar no terminal interativo (ADR-020).
+
+## Endereços
+
+Por **célula**, não por tenant (decisão do Cesar, 26/09/2026, que revisa a proposta de 24/09 de um subdomínio por tenant):
+
+| Endereço | O quê |
+|---|---|
+| `app.hubkeep.com.br` | web: telas do CSC, gestores e administração, API `/api/v1` e cron |
+| `tecnico.hubkeep.com.br` | PWA do técnico (site estático) |
+
+Uma célula é um conjunto web, PWA e banco que atende vários tenants. O tenant ativo vem da sessão (cookie `hk_tenant` ou cabeçalho `x-hubkeep-tenant`), e o banco só aceita tenant de que o usuário é membro ativo, nunca pelo endereço. Uma célula nova, se vier, ganha endereços próprios.
+
+O PWA chama a API de outra origem, e o CORS libera só `tecnico.hubkeep.com.br`. Os dois ficam no mesmo domínio raiz. Os endereços entram em uso na F0-12, que está suspensa até perto do piloto (`docs/04`); até lá, só existe o dev.
 
 ## LGPD e operação
 
