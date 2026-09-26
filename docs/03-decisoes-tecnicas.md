@@ -256,7 +256,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-022 — Multi-idioma no MVP: catálogos ICU compartilhados e nenhum texto fixo
 
-**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #19). Registra a decisão de o HubKeep sair multi-idioma no MVP e as adaptações obrigatórias. A escolha da biblioteca foi feita na F0-10b (item "Biblioteca ICU", **Proposta** em 26/09/2026, para aprovação do Cesar no PR).
+**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #19). Registra a decisão de o HubKeep sair multi-idioma no MVP e as adaptações obrigatórias. A escolha da biblioteca foi feita na F0-10b (item "Biblioteca ICU"), aprovada por Cesar em 26/09/2026 (revisão do PR #27).
 
 **Contexto:** o levantamento está em `docs/referencia/i18n-levantamento.md`. Ele foi escrito sobre a stack antiga (NestJS, Keycloak/Auth0) e propõe tabela global de idioma, trigger de fuso, função com `unaccent` e tabela global de feriado, que contrariam o ADR-005 e as regras 1, 3 e 4 do `CLAUDE.md`. O conteúdo de produto continua valendo; as adaptações abaixo substituem o que ele diz de banco e de stack.
 
@@ -265,7 +265,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **O que se traduz:** textos fixos das telas e mensagens padrão do sistema, status e prioridades padrão. Não se traduzem conteúdo cadastrado, nomes próprios e texto livre. E-mail, push, PDF e exportações saem em pt-BR no MVP, mas escritos no catálogo.
 - **Nenhum texto de interface fixo no código** (regra 11 do `CLAUDE.md`). Tudo sai por chave de um pacote compartilhado, `@hubkeep/i18n`: catálogos JSON por idioma, sintaxe ICU, os mesmos para web, PWA e worker. O lint barra texto fixo; a CI barra chave sem pt-BR ou en e mensagem ICU inválida; há pseudo-idioma para teste.
 - **API:** erros e validações saem como código e parâmetros, nunca como frase (critério de aceite da F0-07). Quem exibe traduz. A mensagem dos erros de domínio fica só para log.
-- **Biblioteca ICU: FormatJS** (F0-10b, Proposta). O mesmo motor (`@formatjs/intl`) e os mesmos catálogos nos três runtimes:
+- **Biblioteca ICU: FormatJS** (F0-10b, aprovada em 26/09/2026). O mesmo motor (`@formatjs/intl`) e os mesmos catálogos nos três runtimes:
   - web, Server Components: `createIntl` de `react-intl/server`, uma instância por requisição (`cache` do React);
   - web, Client Components, e PWA: `react-intl` (`IntlProvider`, `useIntl`);
   - worker (e-mail, push): `@formatjs/intl`, sem React.
@@ -303,7 +303,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-023 — PR de zona protegida só é mergeado pelo Cesar
 
-**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR.
+**Status:** aprovada por Cesar em 26/09/2026, de forma explícita, depois do merge do PR #25. Ruleset do `main` configurado por ele no mesmo dia.
 
 **Contexto:** as regras de processo (diário da fase 0) dizem que PR de zona protegida é aberto e para, e que o merge é do Cesar. Hoje isso depende só da disciplina do Claude Code. O `gh` da máquina de trabalho está autenticado com a conta do Cesar (`cesarcoutohubtech`), então, para o GitHub, um merge feito pelo Claude é um merge do Cesar. O ruleset do `main` exige só o pgTAP e não tem bypass configurado.
 
@@ -331,7 +331,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-024 — Anexos no Storage: bucket privado, URL assinada pelo auth-admin e miniatura no aparelho
 
-**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR da F0-10.
+**Status:** aprovada por Cesar em 26/09/2026, depois do merge do PR #26, condicionada a quatro confirmações, todas feitas no código da `main` e cobertas por teste: (a) o módulo expõe só as duas funções de URL, nunca o cliente do Supabase (travado por teste no PR #28); (b) caminho vindo de registro visível pela RLS e validado contra `{tenant}/{hotel}/{entidade}/{registro}/{uuid}.{ext}`; (c) upload sem sobrescrita; (d) validade das URLs de upload e download. O limite de tipo e tamanho do bucket está no meta-teste 23.
 
 **Contexto:** a F0-10 pede bucket privado, sem policy para `authenticated`, com URL assinada emitida pela API depois da checagem de escopo. No Supabase, sem policy para o usuário, só a secret key emite URL assinada. A regra 5 do `CLAUDE.md` e o ADR-002 restringiam a secret key ao Auth (convites).
 
