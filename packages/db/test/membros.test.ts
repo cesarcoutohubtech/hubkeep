@@ -150,13 +150,16 @@ describe.skipIf(!temBanco)('A3 — membros e papéis', { timeout: 60_000 }, () =
 
   it('desativado pelo admin, o técnico perde o acesso ao tenant; reativado, volta', async () => {
     expect(await banco.withContext(ctx(U.tecnico), listarHoteisVisiveis)).toHaveLength(1);
+    // A paridade acima também audita; aqui contam só as linhas deste teste.
+    const inicio = (await dono.query<{ agora: Date }>(`select clock_timestamp() as agora`)).rows[0]
+      ?.agora;
     await casos.desativarMembro(ctx(U.admin), U.tecnico);
     expect(await banco.withContext(ctx(U.tecnico), listarHoteisVisiveis)).toEqual([]);
     await casos.reativarMembro(ctx(U.admin), U.tecnico);
     expect(await banco.withContext(ctx(U.tecnico), listarHoteisVisiveis)).toHaveLength(1);
     const { rows } = await dono.query(
-      `select acao from app.auditoria where tenant_id = $1 and entidade = 'membro' and registro_id = $2 order by em`,
-      [TENANT, U.tecnico],
+      `select acao from app.auditoria where tenant_id = $1 and entidade = 'membro' and registro_id = $2 and em > $3 order by em`,
+      [TENANT, U.tecnico, inicio],
     );
     expect(rows.map((r) => r.acao)).toEqual(['desativar', 'reativar']);
   });
