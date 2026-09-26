@@ -480,6 +480,7 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
       '/api/v1/credenciais-agente/{id}/revogacao',
       '/api/v1/hoteis',
       '/api/v1/ingestao/lotes',
+      '/api/v1/preferencias',
       '/api/v1/sessao',
     ]);
   });
