@@ -91,9 +91,13 @@ export interface AppHotel {
   easytools_hotel_id: string | null;
   fuso: string;
   id: string;
+  idioma_padrao: string | null;
+  moeda: string | null;
   nome: string;
+  pais: string | null;
   sistema_origem: string | null;
   status: AppHotelStatus;
+  subdivisao: string | null;
   tenant_id: string;
 }
 
@@ -129,6 +133,16 @@ export interface AppMembro {
   usuario_id: string;
 }
 
+export interface AppPreferenciaMembro {
+  atualizado_em: Generated<Timestamp>;
+  criado_em: Generated<Timestamp>;
+  formato_regional: string | null;
+  fuso: string | null;
+  idioma: string | null;
+  tenant_id: string;
+  usuario_id: string;
+}
+
 export interface AppProprietario {
   criado_em: Generated<Timestamp>;
   documento: string | null;
@@ -140,7 +154,11 @@ export interface AppProprietario {
 export interface AppTenant {
   criado_em: Generated<Timestamp>;
   id: string;
+  idioma_padrao: Generated<string>;
+  moeda: Generated<string>;
   nome: string;
+  pais: Generated<string>;
+  subdivisao: string | null;
 }
 
 export interface LicencaContrato {
@@ -191,6 +209,7 @@ export interface DB {
   "app.local": AppLocal;
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
+  "app.preferencia_membro": AppPreferenciaMembro;
   "app.proprietario": AppProprietario;
   "app.tenant": AppTenant;
   "licenca.contrato": LicencaContrato;

@@ -64,3 +64,10 @@ export {
   criarCasosDeUsoDeAnexos,
 } from './casos-de-uso/anexos';
 export type { CasosDeUsoDeAnexos, DependenciasDeAnexos, TipoDeAnexo } from './casos-de-uso/anexos';
+export type {
+  PadroesDoTenant,
+  PortaPreferencias,
+  PreferenciasGravadas,
+} from './portas/preferencias';
+export { criarCasosDeUsoDePreferencias, validarPreferencias } from './casos-de-uso/preferencias';
+export type { CasosDeUsoDePreferencias, PreferenciasResolvidas } from './casos-de-uso/preferencias';

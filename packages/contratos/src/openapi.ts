@@ -11,12 +11,13 @@ import {
 } from './anexos';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
+import { PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 import { ErroApi } from './erro';
 
 type Esquema = z.ZodType;
 
 export interface Rota {
-  metodo: 'get' | 'post';
+  metodo: 'get' | 'post' | 'put';
   caminho: string;
   resumo: string;
   /** Rota que precisa do tenant ativo (cabeçalho x-hubkeep-tenant ou cookie). */
@@ -136,6 +137,34 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'URL de download (5 minutos)', esquema: RespostaDeUrlDeDownload },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Anexo fora do escopo do usuário (anexo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/preferencias',
+    resumo: 'Idioma, formato regional, fuso e moeda de quem usa, já resolvidos (ADR-022).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Preferências resolvidas e as gravadas', esquema: RespostaDePreferencias },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/preferencias',
+    resumo: 'Grava as preferências de idioma e região do próprio usuário.',
+    exigeTenant: true,
+    corpo: PedidoDePreferencias,
+    respostas: {
+      200: {
+        descricao: 'Preferências resolvidas depois da gravação',
+        esquema: RespostaDePreferencias,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO(
+        'Entrada inválida (entrada_invalida), formato regional fora da lista ' +
+          '(formato_regional_nao_aceito) ou fuso inválido (fuso_invalido).',
+      ),
     },
   },
 ];

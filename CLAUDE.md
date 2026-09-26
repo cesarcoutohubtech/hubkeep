@@ -16,7 +16,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 8. **TOTVS CM é somente leitura.** Nada é escrito no CM. O conector só envia dados para o endpoint de ingestão.
 9. **Sem ML preditivo, IoT ou IA no MVP.**
 10. **Escopo do MVP é fechado.** Se uma tarefa exigir algo de fase 2, pare e registre como pendência em vez de implementar.
-11. **Nenhum texto de interface fixo no código.** Tela, mensagem exibida, e-mail e push saem de catálogo ICU (`packages/i18n`, criado na F0-10b), com pt-BR como idioma-fonte e en, es e fr traduzidos. A API devolve erro e validação como código e parâmetros, nunca frase. O lint barra texto fixo (ADR-022).
+11. **Nenhum texto de interface fixo no código.** Tela, mensagem exibida, e-mail e push saem de catálogo ICU (`packages/i18n`, FormatJS), com pt-BR como idioma-fonte e en, es e fr traduzidos. A API devolve erro e validação como código e parâmetros, nunca frase; todo código de erro tem mensagem no catálogo. O lint barra texto fixo nos apps (`formatjs/no-literal-string-in-jsx`, ADR-022).
 
 ## Stack
 
@@ -28,7 +28,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 - `packages/aplicacao`: casos de uso e portas (repositórios, relógio, notificador, armazenamento).
 - `packages/db`: Kysely com tipos gerados do banco, `withContext`, repositórios, unit of work.
 - `packages/contratos`: schemas Zod da API e do adaptador de sistema hoteleiro; OpenAPI gerado a partir deles.
-- `packages/i18n`: catálogos ICU por idioma (pt-BR, en, es, fr), resolução do idioma e formatação de data, número e moeda; usado por web, PWA e worker (F0-10b, ADR-022).
+- `packages/i18n`: catálogos ICU por idioma (pt-BR, en, es, fr), resolução do idioma e formatação de data, número e moeda; usado por web e PWA (`react-intl`) e worker (`@formatjs/intl`), sem módulo do Node (ADR-022).
 - Supabase: PostgreSQL, Auth, Storage (bucket privado com URLs assinadas). Região São Paulo.
 - Vercel: funções em `gru1`; Vercel Cron para outbox, SLA e preventiva.
 - Sentry para erros; logs estruturados com `tenant_id`, `hotel_id`, `usuario_id` e `request_id`.
@@ -77,6 +77,7 @@ pnpm db:verificar-papeis --ambiente dev    # aceite da F0-03: Supavisor, context
 pnpm db:types                              # gera tipos Kysely a partir do dev
 pnpm test                                  # Vitest (unitários e integração)
 pnpm lint && pnpm typecheck
+HK_ATUALIZAR_TEMPLATES=1 pnpm exec vitest run tests/i18n-templates.test.ts  # regenera o template do convite a partir do catálogo
 pnpm dev                                   # web e técnico em modo dev, apontando para o dev
 ```
 

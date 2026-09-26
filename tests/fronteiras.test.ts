@@ -15,6 +15,7 @@ const REGRAS = new Set([
   'boundaries/dependencies',
   'no-restricted-syntax',
   'no-restricted-imports',
+  'formatjs/no-literal-string-in-jsx',
 ]);
 
 // O primeiro lint carrega a config, o typescript-eslint e o resolver — vários
@@ -103,6 +104,11 @@ describe('fronteiras entre pacotes', () => {
       'apps/conector/src/x.ts',
       '../../../packages/contratos/src/index.ts',
     ],
+    // i18n vai no bundle do navegador; dominio continua puro; o conector não exibe nada.
+    ['i18n importando módulo do Node', 'packages/i18n/src/x.ts', 'node:fs'],
+    ['i18n importando dominio', 'packages/i18n/src/x.ts', '@hubkeep/dominio'],
+    ['dominio importando i18n', 'packages/dominio/src/x.ts', '@hubkeep/i18n'],
+    ['conector importando i18n', 'apps/conector/src/x.ts', '@hubkeep/i18n'],
   ];
 
   it.each(proibidos)('proíbe: %s', async (_nome, arquivo, origem) => {
@@ -125,6 +131,15 @@ describe('fronteiras entre pacotes', () => {
     ['dominio importando arquivo do próprio pacote', 'packages/dominio/src/x.ts', './index.ts'],
     ['rota da API importando o servidor do web', ROTA, '../../../../servidor/composicao'],
     ['servidor do web importando arquivo do próprio servidor', COMPOSICAO, './http'],
+    [
+      'aplicacao importando i18n (valida idioma e fuso)',
+      'packages/aplicacao/src/x.ts',
+      '@hubkeep/i18n',
+    ],
+    ['página importando i18n', PAGINA, '@hubkeep/i18n'],
+    ['servidor do web importando i18n', COMPOSICAO, '@hubkeep/i18n'],
+    ['PWA importando i18n', 'apps/tecnico/src/x.ts', '@hubkeep/i18n'],
+    ['i18n importando formatjs', 'packages/i18n/src/x.ts', '@formatjs/intl'],
   ];
 
   it.each(permitidos)('permite: %s', async (_nome, arquivo, origem) => {
@@ -166,5 +181,50 @@ describe('Kysely e execução direta de consulta só em packages/db (ADR-016)', 
 
   it.each(permitidos)('permite: %s', async (_n, arquivo, codigo) => {
     expect(await violacoes(arquivo, codigo)).toEqual([]);
+  });
+});
+
+// Aceite da F0-10b: "um texto fixo proposital num componente derruba o lint"
+// (regra 11 do CLAUDE.md, ADR-022). O texto de tela sai do catálogo.
+describe('nenhum texto de interface fixo nos apps (ADR-022)', () => {
+  const COMPONENTE = 'apps/web/src/app/componente-de-teste.tsx';
+  const PWA = 'apps/tecnico/src/componente-de-teste.tsx';
+  const tela = (jsx: string) =>
+    `declare const t: (c: string) => string;
+export const C = () => ${jsx};
+`;
+
+  const proibidos: [string, string, string][] = [
+    ['texto solto no JSX', COMPONENTE, '<p>Salvar alterações</p>'],
+    ['texto em expressão no JSX', COMPONENTE, "<p>{'Salvar'}</p>"],
+    ['texto em ternário no JSX', COMPONENTE, "<p>{Math.random() > 0.5 ? 'Sim' : 'Não'}</p>"],
+    ['placeholder fixo', COMPONENTE, '<input placeholder="E-mail" />'],
+    ['aria-label fixo', COMPONENTE, '<button aria-label="Fechar" />'],
+    ['alt fixo', COMPONENTE, '<img alt="Logo" src="/x.png" />'],
+    ['label fixo em componente', COMPONENTE, '<Campo label="Nome" />'],
+    ['texto solto no PWA', PWA, '<p>Fila do dia</p>'],
+  ];
+
+  it.each(proibidos)('proíbe: %s', async (_n, arquivo, jsx) => {
+    const codigo =
+      _n === 'label fixo em componente'
+        ? `declare const Campo: (p: { label: string }) => null;
+${tela(jsx)}`
+        : tela(jsx);
+    expect(await violacoes(arquivo, codigo)).not.toEqual([]);
+  });
+
+  const permitidos: [string, string, string][] = [
+    ['texto do catálogo', COMPONENTE, "<p>{t('app.nome')}</p>"],
+    ['placeholder do catálogo', COMPONENTE, "<input placeholder={t('login.campo.email')} />"],
+    [
+      'atributo técnico (type, name, autoComplete)',
+      COMPONENTE,
+      '<input type="email" name="email" autoComplete="email" />',
+    ],
+  ];
+
+  it.each(permitidos)('permite: %s', async (_n, arquivo, jsx) => {
+    expect(await violacoes(arquivo, tela(jsx))).toEqual([]);
   });
 });

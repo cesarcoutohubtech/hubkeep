@@ -113,6 +113,8 @@ Tarefa nova (ADR-022), antes da F0-11, para o PWA já nascer traduzível. Leva o
 - o mesmo catálogo formata uma mensagem no web, no build do PWA e no worker;
 - as colunas novas recusam idioma fora da lista (banco) e fuso inválido (aplicação), com os casos de isolamento das tabelas alteradas mantidos.
 
+O PWA ainda não existe: a parte "no build do PWA" do aceite é provada na F0-11, que já exige o catálogo no build. Na F0-10b, a prova é no web (telas renderizadas pelo `react-intl`) e no worker (`@formatjs/intl` no Node, e-mail de convite).
+
 ## F0-11 — Esqueleto do PWA do técnico
 
 Criar `apps/tecnico` com Vite, `vite-plugin-pwa`, login, shell offline, fila em IndexedDB com chave de idempotência por operação e tela vazia de "fila do dia".
@@ -147,4 +149,4 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - TypeScript fixado em `~6.0` (F0-01): o `typescript-eslint` 8.70 aceita só TypeScript `< 6.1`, e a `latest` do npm já é a 7 (compilador nativo). Subir para a 7 quando o `typescript-eslint` suportar.
 - Scripts de `scripts/ops` que gravam ou apagam dado só aceitam `ci` e `dev` (`verificar-papeis.ts` os dois, `fumaca-db.ts` só o dev), com o dev conferido pelo ref de `[remotes.dev]` do `supabase/config.toml` (ADR-020). A repetição do aceite da F0-03 em staging (F0-12) depende de liberar staging nesses scripts, com conferência equivalente.
 - Versão do PostgreSQL: o pacote foi validado em 16; o `supabase init` e os projetos novos do Supabase usam 17. Os testes deste repo rodam em 17.
-- **i18n (ADR-022):** base dos textos (en-US, es-419, fr-FR, proposta); tradução profissional ou automática com revisão interna; quem usa espanhol e francês no início (piloto ou só rollout); termos de uso nos outros idiomas; efeito no prazo do piloto (+1 a +3 semanas, segundo o levantamento em `docs/referencia/i18n-levantamento.md`); e-mail de convite por idioma, que depende do SMTP próprio.
+- **i18n (ADR-022):** traduções en, es e fr da F0-10b escritas pelo Claude, provisórias até a revisão; base dos textos (en-US, es-419, fr-FR, proposta); tradução profissional ou automática com revisão interna; quem usa espanhol e francês no início (piloto ou só rollout); termos de uso nos outros idiomas; efeito no prazo do piloto (+1 a +3 semanas, segundo o levantamento em `docs/referencia/i18n-levantamento.md`); e-mail de convite por idioma, que depende do SMTP próprio.

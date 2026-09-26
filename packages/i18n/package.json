@@ -1,0 +1,23 @@
+{
+  "name": "@hubkeep/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Catálogos ICU (pt-BR, en, es, fr), resolução do idioma e formatação; usado por web, PWA e worker (ADR-022).",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalogos/*": "./catalogos/*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@formatjs/icu-messageformat-parser": "^3.5.20",
+    "@formatjs/intl": "^6.1.2"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  }
+}

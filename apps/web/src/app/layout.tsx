@@ -1,10 +1,17 @@
+import { PSEUDO_IDIOMA, criarTradutor, mensagensDe } from '@hubkeep/i18n';
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { ProvedorDeIdioma } from '../i18n/cliente';
+import { idiomaDaRequisicao, pseudoIdiomaLiberado } from '../i18n/servidor';
 
-export const metadata = { title: 'HubKeep' };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: criarTradutor(await idiomaDaRequisicao()).t('app.nome') };
+}
 
-export default function Layout({ children }: { children: ReactNode }) {
+export default async function Layout({ children }: { children: ReactNode }) {
+  const idioma = await idiomaDaRequisicao();
   return (
-    <html lang="pt-BR">
+    <html lang={idioma === PSEUDO_IDIOMA ? 'en' : idioma}>
       <body
         style={{
           fontFamily: 'system-ui, sans-serif',
@@ -13,7 +20,13 @@ export default function Layout({ children }: { children: ReactNode }) {
           padding: '0 16px',
         }}
       >
-        {children}
+        <ProvedorDeIdioma
+          idioma={idioma}
+          mensagens={mensagensDe(idioma)}
+          pseudoLiberado={pseudoIdiomaLiberado()}
+        >
+          {children}
+        </ProvedorDeIdioma>
       </body>
     </html>
   );
