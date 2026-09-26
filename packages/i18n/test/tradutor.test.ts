@@ -5,9 +5,11 @@ import {
   EXPANSAO_PSEUDO,
   IDIOMAS,
   PSEUDO_IDIOMA,
+  QUEDA_DE_TRADUCAO,
   criarFormatador,
   criarTradutor,
   mensagensDe,
+  mesclarPelaQueda,
   pseudoMensagem,
 } from '../src/index';
 
@@ -32,7 +34,29 @@ describe('tradutor (worker, Node)', () => {
     expect(() => criarTradutor('pt-BR').t('email.convite.saudacao')).toThrow();
   });
 
-  it('queda de es/fr para en e pt-BR: chave ausente no arquivo ainda tem texto', () => {
+  it('queda por idioma: es → pt-BR → en; fr → en → pt-BR', () => {
+    const catalogos = {
+      'pt-BR': { a: 'pt-a', b: 'pt-b', c: 'pt-c' },
+      en: { a: 'en-a', b: 'en-b', c: 'en-c' },
+      es: { a: 'es-a' },
+      fr: { a: 'fr-a' },
+    };
+    expect(mesclarPelaQueda(QUEDA_DE_TRADUCAO.es, catalogos)).toEqual({
+      a: 'es-a',
+      b: 'pt-b',
+      c: 'pt-c',
+    });
+    expect(mesclarPelaQueda(QUEDA_DE_TRADUCAO.fr, catalogos)).toEqual({
+      a: 'fr-a',
+      b: 'en-b',
+      c: 'en-c',
+    });
+    // Sem pt-BR, o espanhol cai para o inglês.
+    expect(mesclarPelaQueda(QUEDA_DE_TRADUCAO.es, { ...catalogos, 'pt-BR': {} }).b).toBe('en-b');
+    expect(QUEDA_DE_TRADUCAO.en).toEqual(['en', 'pt-BR']);
+  });
+
+  it('com a queda, todo idioma tem texto para toda chave', () => {
     for (const idioma of IDIOMAS) {
       const mensagens = mensagensDe(idioma);
       expect(Object.keys(mensagens).sort()).toEqual(Object.keys(CATALOGOS['pt-BR']).sort());

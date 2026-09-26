@@ -63,12 +63,20 @@ export function nomeDoIdioma(idioma: IdiomaDeExibicao): string {
   return new Intl.DisplayNames([codigo], { type: 'language' }).of(codigo) ?? codigo;
 }
 
-/** Grava o idioma da tela no cookie e pede ao servidor a página de novo. */
+/**
+ * Cookie hk_idioma: vale só sem sessão (tela de login). Com sessão, o layout
+ * resolve pelo perfil e o cookie é ignorado (i18n/servidor.ts).
+ */
+export function gravarCookieDeIdioma(idioma: IdiomaDeExibicao): void {
+  document.cookie = `hk_idioma=${idioma}; path=/; max-age=31536000; samesite=lax`;
+}
+
+/** Grava o idioma no cookie e pede ao servidor a página de novo. */
 export function useTrocarIdioma(): (idioma: IdiomaDeExibicao) => void {
   const router = useRouter();
   return useCallback(
     (idioma) => {
-      document.cookie = `hk_idioma=${idioma}; path=/; max-age=31536000; samesite=lax`;
+      gravarCookieDeIdioma(idioma);
       router.refresh();
     },
     [router],

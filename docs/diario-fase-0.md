@@ -220,7 +220,7 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
 
 ## F0-10b — Fundação de i18n — PR próprio (toca migração, testes de banco, lint, `CLAUDE.md` e `docs/03`)
 - Biblioteca ICU: FormatJS, aprovada por Cesar em 26/09/2026 (PR #27, atualização do ADR-022).
-- Preferências do membro em `app.preferencia_membro`, por decisão do Cesar (26/09/2026), no lugar de colunas em `app.membro`. A atualização do ADR-022 que registra isso vai como Proposta.
+- Preferências do membro em `app.preferencia_membro`, por decisão do Cesar (26/09/2026), no lugar de colunas em `app.membro`.
 - `packages/i18n`:
   - catálogos pt-BR, en, es e fr (traduções provisórias até a revisão);
   - resolução do idioma e formatação por `Intl`;
@@ -236,7 +236,16 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - CI dos catálogos (`packages/i18n/test/catalogos.test.ts`);
   - idioma recusado pelo banco (pgTAP 004 e `tests/i18n-banco.test.ts`) e fuso recusado pela aplicação.
 - O mesmo catálogo formata no web e no worker (Node). No PWA, a prova fica na F0-11.
-- Pendente:
-  - `db push` da 0005 no dev e `pnpm db:types`, pelo Cesar;
-  - colar o template regenerado no painel do dev (docs/06);
-  - revisão das traduções.
+- #29 mergeado pelo Cesar. No dev, ele aplicou o `db push` da 0005 e o `config push` do template de convite (com o `api.enabled` de sempre). Conferido só por leitura em 26/09/2026:
+  - migrações do dev iguais às da `main`, de 0001 a 0005 (`supabase_migrations.schema_migrations`, em transação read only);
+  - template de convite no remoto com SHA-256 `e16de514…`, igual ao `supabase/templates/convite.html`; assunto `Convite para o HubKeep`;
+  - `pnpm db:testar-dev` com 213 testes ok em 4 arquivos (24 + 30 + 121 + 38);
+  - tipos do Kysely: o passo `kysely-codegen --verify` passou na CI do #29 (4eae7b0), e o `pnpm db:types` não é preciso.
+- Atualização do ADR-022 aprovada pelo Cesar, com ajustes, aplicados num PR próprio depois do #29:
+  - (a) queda es → pt-BR → en e fr → en → pt-BR;
+  - (b) os quatro catálogos completos antes do piloto, pendência no `docs/04`;
+  - (c) com sessão, o perfil decide e o cookie `hk_idioma` não passa por cima;
+  - (d) pseudo-idioma desligado com `VERCEL_ENV=production`.
+- O template de convite vai pelo `config.toml` (`[auth.email.template.invite]`, herdado pelo `[remotes.dev]`) e pelo `config push` do Cesar, não pelo painel.
+- (26/09/2026) Regra do Cesar: falar com ele sempre em português do Brasil. Registrada no `CLAUDE.md`, seção Idioma.
+- Pendente: revisão das traduções; os quatro catálogos completos antes do piloto.

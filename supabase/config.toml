@@ -256,8 +256,9 @@ otp_expiry = 3600
 # sender_name = "Admin"
 
 # HubKeep: o link do convite leva à rota /auth/confirmar com o token_hash
-# (fluxo que funciona com sessão em cookie no servidor). No projeto de dev, o
-# mesmo template é configurado no painel (docs/06).
+# (fluxo que funciona com sessão em cookie no servidor). No dev, o [remotes.dev]
+# herda este bloco e o template chega pelo config push (Cesar). Assunto e
+# arquivo saem do catálogo pt-BR (tests/i18n-templates.test.ts).
 [auth.email.template.invite]
 subject = "Convite para o HubKeep"
 content_path = "./supabase/templates/convite.html"
