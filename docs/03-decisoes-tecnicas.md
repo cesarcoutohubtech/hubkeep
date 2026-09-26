@@ -350,7 +350,13 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - edição de ruleset ou de proteção de branch pela API;
   - `git push` direto no `main`.
 
-**Limite:** como a conta é a mesma, o GitHub não distingue o Cesar do Claude. A barreira contra o bypass é o `deny` do Claude Code, e não o GitHub. A separação completa exige uma identidade própria para o Claude: um token fine-grained sem papel de admin, só com `contents` e `pull_requests` de escrita. Com ela, o bypass fica impossível pelo próprio GitHub. Recomendado para antes da F0-12.
+**Limite:** como a conta é a mesma, o GitHub não distingue o Cesar do Claude. A barreira contra o bypass é o `deny` do Claude Code, e não o GitHub. A separação completa exige uma identidade própria para o Claude, uma conta de máquina sem papel de admin. Com ela, o bypass fica impossível pelo próprio GitHub.
+
+**Atualização (Cesar, 26/09/2026):**
+- a conta de máquina entra quando a F0-12 for retomada, perto do piloto;
+- ela usa **token clássico** com `repo`, `workflow` e `read:org`. O fine-grained não serve para colaborador em repositório pessoal nem para a API de checks;
+- sem `gh auth login`: o token entra só nas sessões do HubKeep, pelo `GH_TOKEN` no `.claude/settings.local.json`, que o `.gitignore` cobre;
+- até lá, o `.claude/settings.json` também nega `gh auth *`.
 
 **Consequência:** PR fora da zona protegida segue a regra do diário, com o Claude mergeando com a CI verde. PR de zona protegida fica com o check vermelho até o Cesar mergear com bypass. O vermelho é esperado e não é defeito.
 
