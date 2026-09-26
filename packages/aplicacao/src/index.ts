@@ -28,3 +28,25 @@ export type {
 } from './casos-de-uso/convites';
 export { criarManipuladoresDeEventos } from './casos-de-uso/eventos';
 export type { EventoPendente, Manipulador } from './casos-de-uso/eventos';
+export { CredencialInvalida, formatarCredencial, lerCredencial } from './credencial-agente';
+export type {
+  Criptografia,
+  HotelParaPromocao,
+  LocalExistente,
+  LoteRecebido,
+  PortaCredenciaisDeAgente,
+  PortaIngestao,
+  PortaPromocaoDeUhs,
+  RegistroComHash,
+  RegistroRecebido,
+  ResultadoDoLote,
+  SessaoDeIngestao,
+  SessaoDePromocao,
+  UhDoStaging,
+} from './portas/ingestao';
+export { criarCasosDeUsoDeIngestao, hashDoLote } from './casos-de-uso/ingestao';
+export type {
+  CasosDeUsoDeIngestao,
+  DependenciasDeIngestao,
+  ResultadoDaPromocao,
+} from './casos-de-uso/ingestao';

@@ -4,10 +4,12 @@
 import { criarAdministracaoDoAuth } from '@hubkeep/auth-admin';
 import {
   type CasoDeUsoDeConvites,
+  type CasosDeUsoDeIngestao,
   type CasosDeUsoDePapeis,
   type Manipulador,
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
+  criarCasosDeUsoDeIngestao,
   criarCasosDeUsoDePapeis,
   criarManipuladoresDeEventos,
   relogioDoSistema,
@@ -17,6 +19,8 @@ import {
   type ResultadoOutbox,
   criarAcessoBanco,
   criarPortasDeAplicacao,
+  criarPortasDeIngestao,
+  criptografiaDoServidor,
   processarOutbox,
   tlsDaConexao,
 } from '@hubkeep/db';
@@ -57,6 +61,10 @@ export const acessoBanco = memo<AcessoBanco>(() =>
 const acessoBancoDoWorker = memo<AcessoBanco>(() =>
   criarAcessoBanco({ worker: conexao('DATABASE_URL_WORKER') }),
 );
+// Só a rota de ingestão abre este pool (hk_ingestao, só staging; ADR-008).
+const acessoBancoDaIngestao = memo<AcessoBanco>(() =>
+  criarAcessoBanco({ ingestao: conexao('DATABASE_URL_INGESTAO') }),
+);
 
 let auth: ReturnType<typeof criarAdministracaoDoAuth> | undefined;
 const administracaoDoAuth = () => (auth ??= criarAdministracaoDoAuth({ url: urlSupabase() }));
@@ -75,6 +83,37 @@ export const casoDeUsoDeConvites = memo<CasoDeUsoDeConvites>(async () =>
     identidade: administracaoDoAuth().identidade,
   }),
 );
+
+/** Recebimento de lotes do agente: só o pool hk_ingestao (F0-08). */
+export const recebimentoDeLotes = memo<Pick<CasosDeUsoDeIngestao, 'receberLote'>>(async () =>
+  criarCasosDeUsoDeIngestao({
+    ingestao: criarPortasDeIngestao(await acessoBancoDaIngestao()).ingestao,
+    cripto: criptografiaDoServidor,
+  }),
+);
+
+/** Criar e revogar credencial do agente, pelo Admin do grupo (hk_app). */
+export const credenciaisDeAgente = memo<
+  Pick<CasosDeUsoDeIngestao, 'criarCredencial' | 'revogarCredencial'>
+>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeIngestao({
+    credenciais: criarPortasDeIngestao(banco).credenciais,
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+    cripto: criptografiaDoServidor,
+  });
+});
+
+/**
+ * Promove as UHs do staging de um tenant para app.local (hk_worker). A rota de
+ * cron que chama isto para todos os tenants é da F0-09.
+ */
+export async function promoverUhsDoTenant(tenantId: string) {
+  return criarCasosDeUsoDeIngestao({
+    promocao: criarPortasDeIngestao(await acessoBancoDoWorker()).promocao,
+  }).promoverUhs(tenantId);
+}
 
 let manipuladores: Record<string, Manipulador> | undefined;
 /**

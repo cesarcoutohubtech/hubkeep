@@ -79,6 +79,7 @@ jobs:
           {
             echo "HK_TESTE_URL_APP=postgresql://hk_app:${HK_APP_SENHA_CI}@${base}"
             echo "HK_TESTE_URL_WORKER=postgresql://hk_worker:${HK_WORKER_SENHA_CI}@${base}"
+            echo "HK_TESTE_URL_INGESTAO=postgresql://hk_ingestao:${HK_INGESTAO_SENHA_CI}@${base}"
             echo "HK_TESTE_URL_DONO=${CI_DATABASE_URL_OWNER}"
           } >> "$GITHUB_ENV"
 
@@ -90,6 +91,7 @@ jobs:
         run: pnpm exec kysely-codegen --dialect postgres --url "env(HK_TESTE_URL_DONO)" --include-pattern "{app,staging,licenca}.*" --out-file src/tipos-banco.ts --verify
 
       # F0-04: withContext, withSistema e unit of work contra o banco real.
+      # F0-08: ingestão (hk_ingestao), credencial, promoção de UHs e paridade de licença.
       # HK_EXIGIR_BANCO transforma "suíte pulada por falta de URL" em falha.
       - name: Integração do packages/db
         env:
@@ -112,12 +114,14 @@ jobs:
             echo "HK_MAILPIT_URL=${SB_MAILPIT_URL:-${SB_INBUCKET_URL:-http://127.0.0.1:54324}}"
             echo "DATABASE_URL_APP=$HK_TESTE_URL_APP"
             echo "DATABASE_URL_WORKER=$HK_TESTE_URL_WORKER"
+            echo "DATABASE_URL_INGESTAO=$HK_TESTE_URL_INGESTAO"
             echo "HK_BANCO_SEM_TLS=1"
           } >> "$GITHUB_ENV"
           # O JWKS tem de publicar a chave ES256 gerada acima.
           curl -sf "$SB_API_URL/auth/v1/.well-known/jwks.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const k=JSON.parse(s).keys||[];console.log("JWKS:",k.map(x=>x.alg).join(","));if(!k.some(x=>x.alg==="ES256"))process.exit(1)})'
 
       # F0-05: convite → e-mail no Mailpit → aceite → sessão em cookie → API.
+      # F0-07: formato de erro e OpenAPI. F0-08: rota de ingestão.
       - name: Integração do web (autenticação e tenant ativo)
         env:
           HK_EXIGIR_BANCO: '1'

@@ -20,6 +20,7 @@ export type ErroApi = z.infer<typeof ErroApi>;
 /** Códigos gerais da camada HTTP. Os de regra vêm do domínio. */
 export const CODIGOS_HTTP = {
   entradaInvalida: 'entrada_invalida',
+  corpoGrande: 'corpo_grande',
   naoAutenticado: 'nao_autenticado',
   tenantAusente: 'tenant_ausente',
   semPermissao: 'sem_permissao',

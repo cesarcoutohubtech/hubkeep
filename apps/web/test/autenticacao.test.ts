@@ -474,7 +474,10 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     expect(doc.openapi).toBe('3.1.0');
     expect(Object.keys(doc.paths).sort()).toEqual([
       '/api/v1/convites',
+      '/api/v1/credenciais-agente',
+      '/api/v1/credenciais-agente/{id}/revogacao',
       '/api/v1/hoteis',
+      '/api/v1/ingestao/lotes',
       '/api/v1/sessao',
     ]);
   });

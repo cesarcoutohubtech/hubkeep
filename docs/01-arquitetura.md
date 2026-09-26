@@ -75,13 +75,14 @@ flowchart LR
 - **Log estruturado:** uma linha JSON por requisição, com `rota`, `metodo`, `status`, `duracao_ms`, `request_id`, `tenant_id` e `usuario_id`. Erro inesperado gera também uma linha `erro_inesperado`. Corpo, token, cookie e senha nunca entram.
 - **Sentry:** só erro inesperado, com as marcas de escopo (ids). A coleta de dados do SDK fica desligada por categoria: usuário, cookies, cabeçalhos, corpos, query, dados de consulta e variáveis locais. Sem `SENTRY_DSN`, nada é enviado.
 
-### Ingestão do TOTVS
+### Ingestão do TOTVS (F0-08)
 
-1. O agente monta um lote (entidade, registros, hash do lote) e envia com `Authorization: Agent hk_<tenant_id>_<segredo>`.
-2. A API extrai o `tenant_id` do prefixo e abre transação com `hk_ingestao` e `app.tenant_id`. Depois busca a credencial (a RLS limita ao tenant) e compara o hash do segredo.
-3. Se o lote já foi recebido (`staging.carga` com o mesmo `lote_hash`), a API responde 200 e não reprocessa.
-4. Grava os registros em `staging.registro_externo` com upsert por chave e hash.
-5. Um job (`hk_worker`) promove UHs para `app.local`, aplicando a regra de licença na aplicação.
+1. O agente monta um lote (`fonte`, `entidade`, `registros` com `chave` e `dados`, contrato `LoteDeIngestao`) e envia para `POST /api/v1/ingestao/lotes` com `Authorization: Agent hk_<tenant_id>_<segredo>`. Os lotes são divididos antes, para caber no limite de 2.000 registros e 4 MB.
+2. A API extrai o `tenant_id` do prefixo e abre uma transação com `hk_ingestao` e `app.tenant_id`. Lê as credenciais (a RLS só mostra as não revogadas do tenant) e compara o hash do segredo em tempo constante. Credencial que não confere recebe 401.
+3. O hash do lote é **calculado pelo servidor** sobre o conteúdo canônico (registros em ordem de chave, dados com as chaves ordenadas). Lote igual tem hash igual: a API responde 200 com `novo: false` e não reprocessa. Lote novo recebe 201.
+4. Os registros entram em `staging.registro_externo` com upsert por chave. Um registro só é regravado quando o hash do conteúdo muda. O staging não passa pela unit of work (`hk_ingestao` nem enxerga `app`); o registro do lote é a própria `staging.carga`.
+5. A promoção de UHs para `app.local` roda no `hk_worker`, uma unit of work por tenant, com auditoria e evento `local.promovido`. A regra de licença é da aplicação (`statusDaUhNova` no domínio): a UH nova só entra ativa em hotel ativo e com saldo; senão, entra `pendente_licenca`. Hotel em implantação não consome licença. A contagem de uso é a mesma de `licenca.uso()`, com teste de paridade na CI. A rota de cron que chama a promoção para todos os tenants é da F0-09.
+6. A credencial é criada e revogada pelo Admin do grupo (`/api/v1/credenciais-agente`). O segredo aparece só na resposta da criação; o banco guarda `sha256:` do segredo.
 
 O limite de 4,5 MB de corpo das funções da Vercel define o tamanho máximo do lote; o agente divide em lotes menores.
 

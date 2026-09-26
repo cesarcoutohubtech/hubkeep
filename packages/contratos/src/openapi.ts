@@ -3,6 +3,8 @@
 // pacote confere que cada schema de corpo e de resposta está no documento.
 import { z } from 'zod';
 import { PedidoDeConvite, RespostaDeConvite, RespostaDeHoteis, RespostaDeSessao } from './api';
+import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
+import { LoteDeIngestao, RespostaDeLote } from './ingestao';
 import { ErroApi } from './erro';
 
 type Esquema = z.ZodType;
@@ -13,6 +15,8 @@ export interface Rota {
   resumo: string;
   /** Rota que precisa do tenant ativo (cabeçalho x-hubkeep-tenant ou cookie). */
   exigeTenant: boolean;
+  /** Quem chama: usuário (padrão, Bearer ou cookie) ou o agente conector. */
+  autenticacao?: 'usuario' | 'agente';
   corpo?: Esquema;
   respostas: Record<number, { descricao: string; esquema?: Esquema }>;
 }
@@ -57,6 +61,49 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO('Entrada inválida (entrada_invalida) ou regra do domínio violada.'),
     },
   },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ingestao/lotes',
+    resumo: 'O agente conector envia um lote do sistema hoteleiro para o staging (ADR-008).',
+    exigeTenant: false,
+    autenticacao: 'agente',
+    corpo: LoteDeIngestao,
+    respostas: {
+      200: {
+        descricao: 'Lote já recebido; nada reprocessado (novo: false)',
+        esquema: RespostaDeLote,
+      },
+      201: { descricao: 'Lote novo gravado no staging', esquema: RespostaDeLote },
+      401: ERRO('Credencial ausente, inválida, revogada ou de outro tenant (nao_autenticado).'),
+      413: ERRO('Lote acima do limite (corpo_grande); o agente divide antes.'),
+      422: ERRO('Entrada inválida (entrada_invalida) ou chave repetida (lote_com_chave_repetida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/credenciais-agente',
+    resumo: 'O Admin do grupo cria a credencial do agente; ela sai só nesta resposta.',
+    exigeTenant: true,
+    corpo: PedidoDeCredencial,
+    respostas: {
+      201: { descricao: 'Credencial criada', esquema: RespostaDeCredencial },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (credencial_de_agente_so_admin).'),
+      422: ERRO('Entrada inválida (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/credenciais-agente/{id}/revogacao',
+    resumo: 'O Admin do grupo revoga a credencial do agente.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Credencial revogada', esquema: RespostaDeRevogacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (credencial_de_agente_so_admin).'),
+      404: ERRO('Credencial não encontrada ou já revogada (credencial_nao_encontrada).'),
+    },
+  },
 ];
 
 const referencia = (id: string) => ({ $ref: `#/components/schemas/${id}` });
@@ -97,6 +144,7 @@ export function gerarOpenApi(): Record<string, unknown> {
     }
     (paths[rota.caminho] ??= {})[rota.metodo] = {
       summary: rota.resumo,
+      ...(rota.autenticacao === 'agente' && { security: [{ agente: [] }] }),
       ...(rota.exigeTenant && { parameters: [{ $ref: '#/components/parameters/Tenant' }] }),
       ...(rota.corpo && {
         requestBody: {
@@ -133,6 +181,12 @@ export function gerarOpenApi(): Record<string, unknown> {
       securitySchemes: {
         bearer: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
         cookie: { type: 'apiKey', in: 'cookie', name: 'sb-<ref>-auth-token' },
+        agente: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'Authorization',
+          description: 'Agent hk_<tenant_id>_<segredo> (credencial do agente conector).',
+        },
       },
     },
   };

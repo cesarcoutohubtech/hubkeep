@@ -166,3 +166,18 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
 - Erros de domínio com código próprio e parâmetros (antes, `PermissaoNegada` e `NaoEncontrado` tinham código genérico). A frase fica para log.
 - Aceite: `apps/web/test/http.test.ts` (9, sem banco) e integração na CI (OpenAPI com e sem sessão, 403 com código e `requestId`, 422 `entrada_invalida`).
 
+## F0-08 — Ingestão e agente conector — PR #23 (toca `.github/workflows`)
+- `POST /api/v1/ingestao/lotes`:
+  - credencial `Agent hk_<tenant>_<segredo>` conferida pelo hash, em tempo constante, contra as não revogadas;
+  - hash do lote calculado pelo servidor sobre o conteúdo canônico;
+  - 201 para lote novo e 200 com `novo: false` para repetido;
+  - 413 acima de 4 MB.
+- Credencial criada e revogada pelo Admin (`/api/v1/credenciais-agente`); o segredo sai uma vez.
+- Promoção de UHs pelo `hk_worker`, com unit of work, auditoria e evento. A regra de licença está no domínio: UH ativa só em hotel ativo com saldo, senão `pendente_licenca`.
+- Conector (`apps/conector`): adaptador de planilha (CSV), esqueleto do TOTVS (só SELECT, com o driver entrando junto com as views) e envio em lotes.
+- Paridade `licenca.uso()` × contagem da promoção: fecha o item (a) da auditoria.
+- Aceite:
+  - integração no banco e na rota (CI): reenvio sem duplicar, revogada com 401, `pendente_licenca`, paridade;
+  - `tests/conector-sem-banco.test.ts`: o agente não tem variável, dependência nem URL de banco.
+- O `banco.yml` passa a exportar a URL do `hk_ingestao` para a integração. É zona protegida: PR aberto e parado.
+
