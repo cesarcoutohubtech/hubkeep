@@ -131,7 +131,12 @@ describe.skipIf(!temBanco)('A3 — membros e papéis', { timeout: 60_000 }, () =
             [TENANT, alvo],
           );
         } catch (e) {
-          if (!(e instanceof NaoEncontrado)) throw e;
+          // Recusa do banco: nenhuma linha pela policy de membro (NaoEncontrado), ou
+          // 42501 na auditoria. Este é o caso de quem desativa a si mesmo: na mesma
+          // transação ele já não é membro ativo, authz.tenant_id() fica nulo e a
+          // auditoria é recusada. O banco também barra a autodesativação.
+          const codigo = (e as { code?: string }).code;
+          if (!(e instanceof NaoEncontrado) && codigo !== '42501') throw e;
           rls = false;
         }
         const regraPropria = eu === alvo; // ninguém altera o próprio acesso (só do domínio)
