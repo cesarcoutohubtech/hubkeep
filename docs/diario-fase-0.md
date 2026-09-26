@@ -156,3 +156,13 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
 - **Data API:** `db_schema` vazio. Pela sonda com a chave publishable, a raiz dá 401 e as tabelas (`public` e `app`) dão 503 `PGRST002`, ou seja, recusadas.
 - **`config diff`:** continua mostrando `api.enabled` (arquivo false, remoto true), mesmo depois do push com `false`. Fica confirmado que é leitura da CLI, porque o comportamento é o de Data API desligada. As outras diferenças restantes são o SMS Twilio (padrão do projeto, sem login por telefone) e o pool do Supavisor (valores do plano).
 
+## F0-07 — API v1 — PR #22
+- Contratos Zod em `packages/contratos` (convites, hotéis, sessão), com o OpenAPI 3.1 gerado deles e servido em `/api/interno/openapi` (exige sessão).
+- Invólucro `rota()`:
+  - formato único de erro `{ erro: { codigo, parametros, requestId } }`, sem frase (critério de i18n, ADR-022);
+  - `x-request-id`;
+  - uma linha de log JSON por requisição, com `tenant_id` e `usuario_id`;
+  - Sentry só para erro inesperado, com a coleta de dados do SDK desligada.
+- Erros de domínio com código próprio e parâmetros (antes, `PermissaoNegada` e `NaoEncontrado` tinham código genérico). A frase fica para log.
+- Aceite: `apps/web/test/http.test.ts` (9, sem banco) e integração na CI (OpenAPI com e sem sessão, 403 com código e `requestId`, 422 `entrada_invalida`).
+

@@ -1,0 +1,225 @@
+// Aceite da F0-07 sem banco: formato único de erro (código e parâmetros, sem
+// frase), request_id, logs com tenant_id e usuario_id, e o Sentry só para o
+// que é inesperado. O contexto e o usuário são falsos; o resto é o invólucro real.
+import { PedidoDeConvite, RespostaDeConvite } from '@hubkeep/contratos';
+import { PermissaoNegada, RegraViolada } from '@hubkeep/dominio';
+import { describe, expect, it } from 'vitest';
+import { ErroHttp, type Dependencias, rota } from '../src/servidor/http';
+import type { CamposDeLog, Nivel } from '../src/servidor/log';
+
+const TENANT = '10000000-0000-4000-8000-000000000001';
+const USUARIO = 'aaaaaaaa-0000-4000-8000-000000000001';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function montar() {
+  const logs: { nivel: Nivel; evento: string; campos: CamposDeLog }[] = [];
+  const relatados: { erro: unknown; marcas: Record<string, unknown> }[] = [];
+  const deps: Dependencias = {
+    resolverContexto: async () => ({ usuarioId: USUARIO, tenantId: TENANT }),
+    usuarioDaRequisicao: async () => ({ usuarioId: USUARIO, email: null, tenantsSugeridos: [] }),
+    registrar: (nivel, evento, campos) => void logs.push({ nivel, evento, campos }),
+    relatar: (erro, marcas) => void relatados.push({ erro, marcas }),
+  };
+  return { deps, logs, relatados };
+}
+
+const pedir = (corpo?: unknown, cabecalhos: Record<string, string> = {}) =>
+  new Request('http://127.0.0.1/api/v1/teste', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...cabecalhos },
+    ...(corpo === undefined
+      ? {}
+      : { body: typeof corpo === 'string' ? corpo : JSON.stringify(corpo) }),
+  });
+
+const corpoDe = async (r: Response) =>
+  (await r.json()) as {
+    erro: { codigo: string; parametros: Record<string, unknown>; requestId: string };
+  };
+
+describe('rota(): sucesso, request_id e log', () => {
+  it('responde pelo contrato, com x-request-id e uma linha de log com tenant e usuário', async () => {
+    const { deps, logs } = montar();
+    const post = rota(
+      'teste.criar',
+      async (r) => {
+        await r.contexto();
+        return r.responder(201, RespostaDeConvite, { usuarioId: USUARIO });
+      },
+      deps,
+    );
+    const resposta = await post(pedir());
+    expect(resposta.status).toBe(201);
+    const requestId = resposta.headers.get('x-request-id');
+    expect(requestId).toMatch(UUID);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({
+      nivel: 'info',
+      evento: 'http',
+      campos: {
+        rota: 'teste.criar',
+        metodo: 'POST',
+        status: 201,
+        request_id: requestId,
+        tenant_id: TENANT,
+        usuario_id: USUARIO,
+      },
+    });
+  });
+
+  it('reaproveita o x-request-id recebido só se for UUID', async () => {
+    const { deps } = montar();
+    const get = rota('teste.ler', async (r) => r.json(200, {}), deps);
+    const recebido = '3f2c1d5e-8a9b-4c7d-9e0f-1a2b3c4d5e6f';
+    expect(
+      (await get(pedir(undefined, { 'x-request-id': recebido }))).headers.get('x-request-id'),
+    ).toBe(recebido);
+    const forjado = (
+      await get(pedir(undefined, { 'x-request-id': 'x"} {"nivel":"error' }))
+    ).headers.get('x-request-id');
+    expect(forjado).toMatch(UUID);
+  });
+});
+
+describe('rota(): formato único de erro', () => {
+  it('erro de domínio: código e parâmetros, sem frase, com o mesmo request_id do cabeçalho', async () => {
+    const { deps, relatados } = montar();
+    const post = rota(
+      'teste.criar',
+      async () => {
+        throw new PermissaoNegada('implantador_nao_concede_papel', 'frase que não sai', {
+          papel: 'admin_grupo',
+        });
+      },
+      deps,
+    );
+    const resposta = await post(pedir());
+    expect(resposta.status).toBe(403);
+    const corpo = await corpoDe(resposta);
+    expect(corpo).toEqual({
+      erro: {
+        codigo: 'implantador_nao_concede_papel',
+        parametros: { papel: 'admin_grupo' },
+        requestId: resposta.headers.get('x-request-id'),
+      },
+    });
+    expect(JSON.stringify(corpo)).not.toContain('frase que não sai');
+    expect(relatados).toHaveLength(0);
+  });
+
+  it('regra violada vira 422 e erro HTTP mantém o status dele', async () => {
+    const { deps } = montar();
+    const regra = rota(
+      't',
+      async () => {
+        throw new RegraViolada('validade_no_passado', 'x');
+      },
+      deps,
+    );
+    expect((await regra(pedir())).status).toBe(422);
+    const http = rota(
+      't',
+      async () => {
+        throw new ErroHttp(400, 'tenant_ausente', { cabecalho: 'x-hubkeep-tenant' });
+      },
+      deps,
+    );
+    const r = await http(pedir());
+    expect(r.status).toBe(400);
+    expect((await corpoDe(r)).erro).toMatchObject({
+      codigo: 'tenant_ausente',
+      parametros: { cabecalho: 'x-hubkeep-tenant' },
+    });
+  });
+
+  it('entrada fora do contrato: 422 entrada_invalida com os problemas por campo', async () => {
+    const { deps } = montar();
+    const post = rota(
+      'convites.criar',
+      async (r) => r.json(200, await r.corpo(PedidoDeConvite)),
+      deps,
+    );
+    const resposta = await post(pedir({ email: 'nao-e-email', nome: '', papel: 'rei' }));
+    expect(resposta.status).toBe(422);
+    const { erro } = await corpoDe(resposta);
+    expect(erro.codigo).toBe('entrada_invalida');
+    const problemas = erro.parametros['problemas'] as { campo: string; codigo: string }[];
+    expect(problemas.map((p) => p.campo)).toEqual(['email', 'nome', 'papel']);
+    expect(JSON.stringify(erro)).not.toContain('nao-e-email');
+  });
+
+  it('JSON inválido também é entrada_invalida', async () => {
+    const { deps } = montar();
+    const post = rota('t', async (r) => r.json(200, await r.corpo(PedidoDeConvite)), deps);
+    const resposta = await post(pedir('{nao e json'));
+    expect(resposta.status).toBe(422);
+    expect((await corpoDe(resposta)).erro).toMatchObject({
+      codigo: 'entrada_invalida',
+      parametros: { motivo: 'json_invalido' },
+    });
+  });
+
+  it('a RLS recusando (42501) vira 403 sem_permissao, sem Sentry', async () => {
+    const { deps, relatados } = montar();
+    const post = rota(
+      't',
+      async () => {
+        throw Object.assign(new Error('new row violates row-level security'), { code: '42501' });
+      },
+      deps,
+    );
+    const resposta = await post(pedir());
+    expect(resposta.status).toBe(403);
+    expect((await corpoDe(resposta)).erro.codigo).toBe('sem_permissao');
+    expect(relatados).toHaveLength(0);
+  });
+});
+
+describe('rota(): erro inesperado', () => {
+  it('500 erro_interno sem detalhe; Sentry e log de erro com request_id, tenant e usuário', async () => {
+    const { deps, logs, relatados } = montar();
+    const post = rota(
+      'teste.criar',
+      async (r) => {
+        await r.contexto();
+        throw new Error('detalhe interno que não sai');
+      },
+      deps,
+    );
+    const resposta = await post(pedir());
+    expect(resposta.status).toBe(500);
+    const corpo = await corpoDe(resposta);
+    expect(corpo.erro).toMatchObject({ codigo: 'erro_interno', parametros: {} });
+    expect(JSON.stringify(corpo)).not.toContain('detalhe interno');
+
+    const requestId = resposta.headers.get('x-request-id');
+    expect(relatados).toHaveLength(1);
+    expect(relatados[0]?.marcas).toEqual({
+      rota: 'teste.criar',
+      request_id: requestId,
+      tenant_id: TENANT,
+      usuario_id: USUARIO,
+    });
+    expect(logs.map((l) => [l.nivel, l.evento])).toEqual([
+      ['error', 'erro_inesperado'],
+      ['error', 'http'],
+    ]);
+    expect(logs[1]?.campos).toMatchObject({
+      status: 500,
+      codigo: 'erro_interno',
+      tenant_id: TENANT,
+    });
+  });
+
+  it('resposta que não bate com o contrato é defeito: 500, e nada fora do contrato sai', async () => {
+    const { deps, relatados } = montar();
+    const post = rota(
+      't',
+      async (r) => r.responder(201, RespostaDeConvite, { usuarioId: 'nao-e-uuid' }),
+      deps,
+    );
+    const resposta = await post(pedir());
+    expect(resposta.status).toBe(500);
+    expect(relatados).toHaveLength(1);
+  });
+});

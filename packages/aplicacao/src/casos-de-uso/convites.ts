@@ -58,9 +58,11 @@ export function criarCasoDeUsoDeConvites(deps: DependenciasDeConvites): CasoDeUs
         escopo: pedido.escopo,
       });
       if (situacao.nomeTenant === null) {
-        throw new PermissaoNegada('Você não é membro deste grupo.');
+        throw new PermissaoNegada('nao_e_membro_do_grupo', 'Você não é membro deste grupo.');
       }
-      if (!situacao.escopoVisivel) throw new NaoEncontrado('Escopo do convite não encontrado.');
+      if (!situacao.escopoVisivel) {
+        throw new NaoEncontrado('escopo_nao_encontrado', 'Escopo do convite não encontrado.');
+      }
       if (situacao.jaMembro) {
         throw new Conflito('ja_e_membro', 'Esta pessoa já é membro deste grupo.');
       }

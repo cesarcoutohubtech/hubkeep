@@ -56,6 +56,25 @@ flowchart LR
 4. O caso de uso aplica as regras de negócio e a permissão de ação. As policies garantem o escopo.
 5. Escritas passam pela unit of work: mudança, auditoria e evento de domínio na mesma transação.
 
+### Contrato da API `/api/v1` (F0-07)
+
+- **Contratos:** entrada e saída de cada rota são schemas Zod em `packages/contratos`. O handler valida o corpo antes do caso de uso e a resposta antes de enviar; resposta fora do contrato é defeito (500). O OpenAPI 3.1 é gerado desses schemas e servido em `/api/interno/openapi`, que exige sessão válida.
+- **Formato único de erro:** `{ "erro": { "codigo", "parametros", "requestId" } }`, nunca frase (ADR-022). Quem exibe traduz pelo catálogo. A frase dos erros de domínio fica só no log.
+
+| Origem | Status | Código |
+|---|---|---|
+| Regra do domínio | 403, 404, 409 ou 422, pela classe do erro | o do domínio |
+| Entrada fora do contrato | 422 | `entrada_invalida`, com `parametros.problemas` por campo (sem o valor recebido) |
+| Sem sessão ou token inválido | 401 | `nao_autenticado` |
+| Tenant não informado | 400 | `tenant_ausente` |
+| RLS recusou (42501) | 403 | `sem_permissao` |
+| Integridade recusou (23503/23514) | 422 | `recusado_pela_integridade` |
+| Qualquer outra coisa | 500 | `erro_interno`, sem detalhe |
+
+- **`request_id`:** o `x-request-id` recebido, se for UUID, ou um novo. Volta no cabeçalho da resposta, no corpo do erro e no log.
+- **Log estruturado:** uma linha JSON por requisição, com `rota`, `metodo`, `status`, `duracao_ms`, `request_id`, `tenant_id` e `usuario_id`. Erro inesperado gera também uma linha `erro_inesperado`. Corpo, token, cookie e senha nunca entram.
+- **Sentry:** só erro inesperado, com as marcas de escopo (ids). A coleta de dados do SDK fica desligada por categoria: usuário, cookies, cabeçalhos, corpos, query, dados de consulta e variáveis locais. Sem `SENTRY_DSN`, nada é enviado.
+
 ### Ingestão do TOTVS
 
 1. O agente monta um lote (entidade, registros, hash do lote) e envia com `Authorization: Agent hk_<tenant_id>_<segredo>`.

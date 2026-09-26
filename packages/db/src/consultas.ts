@@ -5,11 +5,12 @@
 import { sql } from 'kysely';
 import type { Escopo } from '@hubkeep/dominio';
 import type { Tx } from './conexao';
+import type { AppHotelStatus } from './tipos-banco';
 
 export interface HotelVisivel {
   id: string;
   nome: string;
-  status: string;
+  status: AppHotelStatus;
 }
 
 export const listarHoteisVisiveis = (tx: Tx): Promise<HotelVisivel[]> =>

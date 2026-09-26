@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POST as convidar } from '../src/app/api/v1/convites/route';
 import { GET as hoteis } from '../src/app/api/v1/hoteis/route';
 import { GET as sessao } from '../src/app/api/v1/sessao/route';
+import { GET as openapi } from '../src/app/api/interno/openapi/route';
 import { GET as confirmar } from '../src/app/auth/confirmar/route';
 import { processarOutboxDoTenant } from '../src/servidor/composicao';
 
@@ -201,7 +202,11 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
       }),
     );
     expect(r.status).toBe(403);
-    expect(((await r.json()) as { erro: { codigo: string } }).erro.codigo).toBe('sem_permissao');
+    // F0-07: código e parâmetros, sem frase, com o request_id do cabeçalho.
+    const corpo = (await r.json()) as { erro: Record<string, unknown> };
+    expect(Object.keys(corpo.erro).sort()).toEqual(['codigo', 'parametros', 'requestId']);
+    expect(corpo.erro['codigo']).toBe('concessao_so_admin_ou_implantador');
+    expect(corpo.erro['requestId']).toBe(r.headers.get('x-request-id'));
     await new Promise((ok) => setTimeout(ok, 1000));
     expect(await mensagensPara(email.barrado)).toEqual([]);
   });
@@ -452,5 +457,41 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
       [A.tenant, usuarioId],
     );
     expect(ev.rows[0]).toEqual({ n: 1 });
+  });
+
+  it('F0-07: OpenAPI na rota interna, só com sessão válida', async () => {
+    const semSessao = await openapi(req('/api/interno/openapi'));
+    expect(semSessao.status).toBe(401);
+    expect(((await semSessao.json()) as { erro: { codigo: string } }).erro.codigo).toBe(
+      'nao_autenticado',
+    );
+
+    const comSessao = await openapi(
+      req('/api/interno/openapi', { cabecalhos: { authorization: `Bearer ${tokenAdmin}` } }),
+    );
+    expect(comSessao.status).toBe(200);
+    const doc = (await comSessao.json()) as { openapi: string; paths: Record<string, unknown> };
+    expect(doc.openapi).toBe('3.1.0');
+    expect(Object.keys(doc.paths).sort()).toEqual([
+      '/api/v1/convites',
+      '/api/v1/hoteis',
+      '/api/v1/sessao',
+    ]);
+  });
+
+  it('F0-07: entrada fora do contrato vira 422 entrada_invalida, antes do caso de uso', async () => {
+    const r = await convidar(
+      req('/api/v1/convites', {
+        metodo: 'POST',
+        cabecalhos: { authorization: `Bearer ${tokenAdmin}`, 'x-hubkeep-tenant': A.tenant },
+        corpo: { email: 'nao-e-email', nome: 'X', papel: 'tecnico' },
+      }),
+    );
+    expect(r.status).toBe(422);
+    const { erro } = (await r.json()) as {
+      erro: { codigo: string; parametros: { problemas: { campo: string }[] } };
+    };
+    expect(erro.codigo).toBe('entrada_invalida');
+    expect(erro.parametros.problemas.map((p) => p.campo)).toEqual(['email']);
   });
 });

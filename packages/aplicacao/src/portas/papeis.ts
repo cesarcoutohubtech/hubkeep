@@ -10,7 +10,7 @@ export interface Relogio {
 export interface HotelVisivel {
   id: string;
   nome: string;
-  status: string;
+  status: 'em_implantacao' | 'ativo' | 'desativado';
 }
 
 export interface PortaHoteis {
