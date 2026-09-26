@@ -382,7 +382,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-025 — Sincronização offline do PWA: fila no aparelho e chave de idempotência gravada com o efeito
 
-**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR da F0-11.
+**Status:** aprovada por Cesar em 26/09/2026, depois do merge do #31, com os ajustes (a) a (d), aplicados no PR de ajustes do ADR-025.
 
 **Contexto:** o `docs/01` diz que cada operação offline leva uma chave de idempotência gerada no aparelho e que a API ignora repetições, mas não diz onde a chave fica nem como a repetição é detectada. O aceite da F0-11 pede sincronizar uma operação quando a rede volta, sem duplicar. A duplicação vem de dois casos:
 - a resposta se perde no caminho de volta, e o aparelho reenvia algo que o servidor já aplicou;
@@ -391,11 +391,13 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 **Decisão:**
 - **No aparelho (`apps/tecnico/src/fila`):**
   - cada operação é um registro no IndexedDB, com a chave (`crypto.randomUUID()`) criada junto com ela;
-  - a fila sobrevive a fechar o app e só perde a operação quando o servidor confirma ou recusa.
+  - **(a) a operação guarda o usuário que a criou** e só é lida, mostrada e enviada na sessão dele. Se outra pessoa entrar no mesmo aparelho, as pendentes da anterior não saem com a sessão nova e ficam guardadas até a dona entrar de novo. O envio recusa, como segunda barreira, mandar operação de outro usuário com o token atual;
+  - **(b) ao sair, os dados locais de quem sai são apagados:** a fila (pendentes e recusadas) e o tenant ativo. A fila do dia ainda não guarda nada no aparelho e entra nessa limpeza quando guardar (fase 1a). Se houver operação ainda não enviada, o app tenta enviar e, se sobrar alguma, pede confirmação antes de apagar. O service worker guarda só a casca, sem dado de ninguém;
+  - a fila sobrevive a fechar o app e só perde a operação quando o servidor confirma, quando o técnico dispensa uma recusada ou quando ele sai.
 - **Envio, uma operação por vez e na ordem em que foram feitas:**
   - a passada para na primeira que não sai, e uma operação mais nova nunca passa na frente de uma mais velha;
   - sem rede, com 5xx, 401, 408 ou 429, a operação espera: 5 s, dobrando até 5 min. A volta da rede, a abertura do app e o botão "Enviar agora" ignoram a espera;
-  - 4xx de regra deixa a operação como rejeitada, visível na tela e sem reenvio. Operação fora do contrato é recusada no próprio aparelho;
+  - **(c) recusada não some em silêncio:** 4xx de regra deixa a operação como rejeitada, com o código do motivo. Ela aparece para o técnico com o nome da operação e o motivo traduzido (`erro.<codigo>` do catálogo), até ele dispensar. Não há reenvio. Operação fora do contrato é recusada no próprio aparelho, com `entrada_invalida`;
   - duas passadas ao mesmo tempo viram uma.
 - **No servidor (`POST /api/v1/sincronizacao/operacoes`):**
   - a chave é gravada em `app.operacao_offline` (migração 0006) **na mesma unit of work do efeito**;
@@ -411,7 +413,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   Os quatro catálogos vão no JS do build (ADR-022). Nome e descrição do manifesto e título do HTML saem do catálogo pt-BR.
 
 **Consequências:**
-- **Crescimento da tabela:** `app.operacao_offline` cresce uma linha por operação sincronizada, e a limpeza das antigas exige um papel com DELETE, que a aplicação não tem. Pendência no `docs/04`.
+- **(d) Limpeza de `app.operacao_offline`:** a tabela cresce uma linha por operação sincronizada, e nenhum papel da aplicação tem DELETE. A proposta é partição mensal, com as partições antigas descartadas por migração (`drop` ou `detach`), passada a janela em que um reenvio ainda pode chegar. Pendência no `docs/04`.
 - **Conflito de edição entre pessoas** (duas pessoas mexendo na mesma OS offline) é regra de domínio da fase 1a, não da fila.
 - **Instalação em Android e iOS:** exige HTTPS fora de `localhost`. A prova em aparelho fica para depois do deploy da F0-12. A F0-11 prova o que dá sem aparelho: manifesto, ícones, service worker, abertura sem rede no navegador e a sincronização.
 - **API em outra origem em produção:** vai exigir CORS ou o mesmo domínio raiz, pendência já listada no `docs/04`. No dev, o Vite repassa `/api` para o web.

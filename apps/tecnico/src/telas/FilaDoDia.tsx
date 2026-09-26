@@ -1,12 +1,37 @@
 // Fila do dia (F0-11): vazia até a fase 1a, quando as OS chegam. A tela já
 // mostra o estado da rede e da fila offline, e o seletor de idioma é a
 // operação de exemplo: funciona sem rede e sincroniza quando ela volta.
-import type { IdiomaDeExibicao } from '@hubkeep/i18n';
+// Operação recusada pelo servidor aparece aqui, com o motivo pelo código de
+// erro da API, até o técnico dispensar (ADR-025, ajuste (c)).
+import type { Chave, IdiomaDeExibicao } from '@hubkeep/i18n';
+import { useIntl } from 'react-intl';
+import type { OperacaoNaFila } from '../fila/banco';
 import { nomeDoIdioma, opcoesDeIdioma, useT } from '../i18n';
+
+export interface OperacaoRecusada {
+  chave: string;
+  tipo: OperacaoNaFila['tipo'];
+  /** Código de erro da API (ex.: fuso_invalido) ou entrada_invalida, se recusada no aparelho. */
+  codigo: string;
+}
 
 export interface EstadoDaFila {
   pendentes: number;
-  rejeitadas: number;
+  rejeitadas: OperacaoRecusada[];
+}
+
+const ROTULO_DA_OPERACAO: Record<OperacaoNaFila['tipo'], Chave> = {
+  'preferencias.gravar': 'tecnico.operacao.preferencias_gravar',
+};
+
+/** Motivo pelo catálogo (erro.<codigo>); código desconhecido aparece como está. */
+function useMotivo(): (codigo: string) => string {
+  const intl = useIntl();
+  const t = useT();
+  return (codigo) =>
+    `erro.${codigo}` in intl.messages
+      ? intl.formatMessage({ id: `erro.${codigo}` })
+      : t('tecnico.rejeitada.codigo_desconhecido', { codigo });
 }
 
 export function FilaDoDia(props: {
@@ -15,9 +40,11 @@ export function FilaDoDia(props: {
   fila: EstadoDaFila;
   aoTrocarIdioma: (idioma: IdiomaDeExibicao) => void;
   aoEnviarAgora: () => void;
+  aoDispensar: (chave: string) => void;
   aoSair: () => void;
 }) {
   const t = useT();
+  const motivo = useMotivo();
   return (
     <main className="cartao">
       <header className="linha">
@@ -35,8 +62,26 @@ export function FilaDoDia(props: {
           <button onClick={props.aoEnviarAgora}>{t('tecnico.sincronizacao.enviar_agora')}</button>
         )}
       </section>
-      {props.fila.rejeitadas > 0 && (
-        <p role="alert">{t('tecnico.sincronizacao.rejeitadas', { n: props.fila.rejeitadas })}</p>
+
+      {props.fila.rejeitadas.length > 0 && (
+        <section role="alert">
+          <h2>{t('tecnico.sincronizacao.rejeitadas', { n: props.fila.rejeitadas.length })}</h2>
+          <ul>
+            {props.fila.rejeitadas.map((r) => (
+              <li key={r.chave} className="linha" data-codigo={r.codigo}>
+                <span>
+                  {t('tecnico.rejeitada.item', {
+                    operacao: t(ROTULO_DA_OPERACAO[r.tipo]),
+                    motivo: motivo(r.codigo),
+                  })}
+                </span>
+                <button onClick={() => props.aoDispensar(r.chave)}>
+                  {t('tecnico.rejeitada.dispensar')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <label className="linha">

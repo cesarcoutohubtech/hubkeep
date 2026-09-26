@@ -10,6 +10,8 @@
 //
 // A ordem é mantida: a passada para na primeira operação que não sai (sem rede
 // ou ainda esperando), e uma mais nova nunca passa na frente de uma mais velha.
+// Só vão as operações do usuário da sessão: as de outra pessoa que usou o
+// aparelho ficam paradas até ela entrar de novo (ADR-025, ajuste (a)).
 // Quem chama é o app: ao abrir, depois de enfileirar, quando a rede volta e no
 // botão "Enviar agora" (esses dois últimos ignoram a espera). Duas passadas ao
 // mesmo tempo viram uma (a segunda espera a primeira).
@@ -38,6 +40,8 @@ export interface ResumoDaPassada {
 let emAndamento: Promise<ResumoDaPassada> | null = null;
 
 export interface OpcoesDaPassada {
+  /** Usuário da sessão atual: só as operações dele são enviadas. */
+  usuarioId: string;
   agora?: () => number;
   /** A rede acabou de voltar, ou o técnico pediu: não espera o backoff. */
   ignorarEspera?: boolean;
@@ -46,11 +50,12 @@ export interface OpcoesDaPassada {
 export function sincronizar(
   fila: FilaDeOperacoes,
   enviar: Envio,
-  opcoes: OpcoesDaPassada = {},
+  opcoes: OpcoesDaPassada,
 ): Promise<ResumoDaPassada> {
   emAndamento ??= passada(
     fila,
     enviar,
+    opcoes.usuarioId,
     opcoes.agora ?? Date.now,
     opcoes.ignorarEspera ?? false,
   ).finally(() => {
@@ -62,11 +67,12 @@ export function sincronizar(
 async function passada(
   fila: FilaDeOperacoes,
   enviar: Envio,
+  usuarioId: string,
   agora: () => number,
   ignorarEspera: boolean,
 ): Promise<ResumoDaPassada> {
   const resumo: ResumoDaPassada = { enviadas: 0, recusadas: 0, adiadas: 0 };
-  const pendentes = (await fila.todas()).filter((op) => op.estado === 'pendente');
+  const pendentes = (await fila.doUsuario(usuarioId)).filter((op) => op.estado === 'pendente');
   for (const [i, op] of pendentes.entries()) {
     if (!ignorarEspera && op.proximaTentativaEm > agora()) {
       resumo.adiadas += pendentes.length - i;

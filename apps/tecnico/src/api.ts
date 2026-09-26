@@ -6,6 +6,8 @@ import type { OperacaoNaFila } from './fila/banco';
 import { type Envio, type ResultadoDoEnvio, vaiTentarDeNovo } from './fila/sincronizar';
 
 export interface Credenciais {
+  /** Usuário da sessão atual (sub do token); null sem sessão. */
+  usuarioId: () => string | null;
   token: () => Promise<string | null>;
   tenant: () => string | null;
 }
@@ -27,6 +29,9 @@ async function cabecalhos(c: Credenciais): Promise<Record<string, string> | null
 /** Envio de uma operação da fila; qualquer falha de rede vira tentar_depois. */
 export function criarEnvio(c: Credenciais, requisitar: typeof fetch = fetch): Envio {
   return async (op: OperacaoNaFila): Promise<ResultadoDoEnvio> => {
+    // Segunda barreira do ajuste (a): operação de outro usuário nunca sai com
+    // o token desta sessão (a passada já filtra por usuário).
+    if (op.usuarioId !== c.usuarioId()) return { tipo: 'tentar_depois', motivo: 'outra_sessao' };
     const h = await cabecalhos(c);
     if (!h) return { tipo: 'tentar_depois', motivo: 'sem_sessao' };
     // Fora do contrato não adianta reenviar: recusa aqui, sem travar a fila.

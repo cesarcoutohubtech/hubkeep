@@ -273,3 +273,10 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - instalação em Android e iOS, que exige HTTPS, no primeiro deploy da F0-12;
   - retenção de `app.operacao_offline`;
   - CORS ou domínio único em produção (`docs/04`).
+- 26/09/2026: #30 e #31 mergeados pelo Cesar, e `db push` da 0006 no dev feito por ele. Conferido só por leitura: as 6 migrações do dev batem com a `main`, e o `pnpm db:testar-dev` passou com 227 testes ok em 5 arquivos.
+- ADR-025 aprovado pelo Cesar com ajustes, aplicados num PR próprio depois do #31:
+  - (a) a operação guarda o usuário e só sai na sessão dele, com teste de outro usuário no mesmo aparelho;
+  - (b) sair apaga a fila e o tenant de quem sai, com confirmação se houver pendente;
+  - (c) a recusada aparece para o técnico com o motivo pelo código, até ele dispensar;
+  - (d) a limpeza da `app.operacao_offline` por partição mensal descartada por migração, como pendência no `docs/04`.
+- A F0-12 não começa sem o Cesar. A lista de pré-requisitos foi passada a ele.

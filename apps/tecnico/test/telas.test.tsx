@@ -15,13 +15,18 @@ const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
     "'",
   );
 
-const fila = (online: boolean, pendentes: number) => (
+const fila = (
+  online: boolean,
+  pendentes: number,
+  rejeitadas: { chave: string; tipo: 'preferencias.gravar'; codigo: string }[] = [],
+) => (
   <FilaDoDia
     idioma="pt-BR"
     online={online}
-    fila={{ pendentes, rejeitadas: 0 }}
+    fila={{ pendentes, rejeitadas }}
     aoTrocarIdioma={() => undefined}
     aoEnviarAgora={() => undefined}
+    aoDispensar={() => undefined}
     aoSair={() => undefined}
   />
 );
@@ -52,6 +57,21 @@ describe('telas do PWA em cada idioma', () => {
       .filter(Boolean);
     expect(textos.length).toBeGreaterThan(4);
     for (const texto of textos) expect(texto, texto).toMatch(/^\[.*\]$/s);
+  });
+
+  it('(c) recusada aparece para o técnico, com o motivo pelo código de erro da API', () => {
+    const rejeitadas = [
+      { chave: 'k1', tipo: 'preferencias.gravar' as const, codigo: 'fuso_invalido' },
+      { chave: 'k2', tipo: 'preferencias.gravar' as const, codigo: 'codigo_novo_da_api' },
+    ];
+    const pt = renderizar('pt-BR', fila(true, 0, rejeitadas));
+    expect(pt).toContain('2 operações recusadas pelo servidor.');
+    expect(pt).toContain('Troca de idioma: Fuso horário inválido.');
+    expect(pt).toContain('Troca de idioma: Recusada pelo servidor (código codigo_novo_da_api).');
+    expect(pt.match(/Dispensar/g)).toHaveLength(2);
+    expect(renderizar('en', fila(true, 0, rejeitadas))).toContain(
+      'Language change: Invalid time zone.',
+    );
   });
 
   it('o seletor não oferece o pseudo-idioma sem VITE_PSEUDO_IDIOMA', () => {

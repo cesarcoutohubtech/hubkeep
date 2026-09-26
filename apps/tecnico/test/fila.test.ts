@@ -2,16 +2,25 @@
 // IndexedDB e é enviada quando a rede volta, sem duplicar. O servidor falso
 // guarda as chaves como a API (ADR-025): reenvio de chave conhecida não
 // aplica de novo. O envio é o de verdade (src/api.ts), sobre um fetch falso.
+// Ajustes do ADR-025: (a) a operação só sai na sessão de quem a criou;
+// (b) sair apaga os dados locais de quem sai; (c) a recusada fica, com o
+// código do motivo, até o técnico dispensar.
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { criarEnvio } from '../src/api';
 import { type FilaDeOperacoes, abrirFila } from '../src/fila/banco';
 import { ESPERA_INICIAL_MS, sincronizar } from '../src/fila/sincronizar';
+import { apagarDadosLocais } from '../src/saida';
+
+const A = 'aaaaaaaa-0000-4000-8000-000000000001';
+const B = 'bbbbbbbb-0000-4000-8000-000000000002';
 
 /** Servidor falso: aplica uma vez por chave, como POST /api/v1/sincronizacao/operacoes. */
 function servidor() {
   const aplicadas: string[] = [];
+  /** Token de quem enviou cada operação aplicada. */
+  const enviadasPor: string[] = [];
   const chaves = new Set<string>();
   let rede = true;
   /** Aplica e perde a resposta no caminho de volta (o caso que exige idempotência). */
@@ -31,6 +40,7 @@ function servidor() {
     if (!repetida) {
       chaves.add(corpo.chave);
       aplicadas.push(String(corpo.dados.idioma));
+      enviadasPor.push(new Headers(init?.headers).get('authorization') ?? '');
     }
     if (perderProximaResposta) {
       perderProximaResposta = false;
@@ -43,6 +53,7 @@ function servidor() {
   };
   return {
     aplicadas,
+    enviadasPor,
     fetchFalso,
     semRede: () => void (rede = false),
     comRede: () => void (rede = true),
@@ -50,8 +61,14 @@ function servidor() {
   };
 }
 
-const credenciais = { token: async () => 'token', tenant: () => 'tenant' };
-const preferencia = (idioma: string, fuso: string | null = null) => ({
+const sessaoDe = (usuarioId: string) => ({
+  usuarioId: () => usuarioId,
+  token: async () => `token-${usuarioId}`,
+  tenant: () => 'tenant',
+});
+const credenciais = sessaoDe(A);
+const preferencia = (idioma: string, fuso: string | null = null, usuarioId = A) => ({
+  usuarioId,
   tipo: 'preferencias.gravar' as const,
   dados: { idioma: idioma as 'es', formatoRegional: null, fuso },
 });
@@ -68,7 +85,7 @@ describe('fila offline no IndexedDB', () => {
     await fila.enfileirar(preferencia('es'), 1_000);
     fila.fechar();
     const reaberta = await abrirFila();
-    const todas = await reaberta.todas();
+    const todas = await reaberta.doUsuario(A);
     expect(todas).toHaveLength(1);
     expect(todas[0]).toMatchObject({ tipo: 'preferencias.gravar', estado: 'pendente' });
     expect(todas[0]?.chave).toMatch(/^[0-9a-f-]{36}$/);
@@ -82,14 +99,18 @@ describe('sincronização', () => {
     await fila.enfileirar(preferencia('es'), 1_000);
 
     s.semRede();
-    const semRede = await sincronizar(fila, enviar, { agora: () => 1_000 });
+    const semRede = await sincronizar(fila, enviar, { usuarioId: A, agora: () => 1_000 });
     expect(semRede).toEqual({ enviadas: 0, recusadas: 0, adiadas: 1 });
-    expect((await fila.todas())[0]).toMatchObject({ tentativas: 1, ultimoErro: 'sem_rede' });
+    expect((await fila.doUsuario(A))[0]).toMatchObject({ tentativas: 1, ultimoErro: 'sem_rede' });
 
     s.comRede();
-    const comRede = await sincronizar(fila, enviar, { agora: () => 2_000, ignorarEspera: true });
+    const comRede = await sincronizar(fila, enviar, {
+      usuarioId: A,
+      agora: () => 2_000,
+      ignorarEspera: true,
+    });
     expect(comRede.enviadas).toBe(1);
-    expect(await fila.todas()).toEqual([]);
+    expect(await fila.doUsuario(A)).toEqual([]);
     expect(s.aplicadas).toEqual(['es']);
   });
 
@@ -99,11 +120,11 @@ describe('sincronização', () => {
     await fila.enfileirar(preferencia('fr'), 1_000);
 
     s.perderResposta();
-    await sincronizar(fila, enviar, { agora: () => 1_000 });
-    expect(await fila.todas()).toHaveLength(1); // o aparelho não sabe que chegou
+    await sincronizar(fila, enviar, { usuarioId: A, agora: () => 1_000 });
+    expect(await fila.doUsuario(A)).toHaveLength(1); // o aparelho não sabe que chegou
 
-    await sincronizar(fila, enviar, { agora: () => 1_000, ignorarEspera: true });
-    expect(await fila.todas()).toEqual([]);
+    await sincronizar(fila, enviar, { usuarioId: A, agora: () => 1_000, ignorarEspera: true });
+    expect(await fila.doUsuario(A)).toEqual([]);
     expect(s.aplicadas).toEqual(['fr']); // uma vez só
   });
 
@@ -114,13 +135,16 @@ describe('sincronização', () => {
     await fila.enfileirar(preferencia('fr'), 1_001);
 
     s.semRede();
-    await sincronizar(fila, enviar, { agora: () => 1_000 });
+    await sincronizar(fila, enviar, { usuarioId: A, agora: () => 1_000 });
     s.comRede();
     // Ainda dentro da espera da primeira: nenhuma sai.
-    const cedo = await sincronizar(fila, enviar, { agora: () => 1_000 + ESPERA_INICIAL_MS - 1 });
+    const cedo = await sincronizar(fila, enviar, {
+      usuarioId: A,
+      agora: () => 1_000 + ESPERA_INICIAL_MS - 1,
+    });
     expect(cedo).toEqual({ enviadas: 0, recusadas: 0, adiadas: 2 });
     // Passada a espera: as duas, na ordem em que foram feitas.
-    await sincronizar(fila, enviar, { agora: () => 1_000 + ESPERA_INICIAL_MS });
+    await sincronizar(fila, enviar, { usuarioId: A, agora: () => 1_000 + ESPERA_INICIAL_MS });
     expect(s.aplicadas).toEqual(['es', 'fr']);
   });
 
@@ -129,9 +153,9 @@ describe('sincronização', () => {
     const enviar = criarEnvio(credenciais, s.fetchFalso);
     await fila.enfileirar(preferencia('es'), 0);
     s.semRede();
-    await sincronizar(fila, enviar, { agora: () => 0 });
-    await sincronizar(fila, enviar, { agora: () => 0, ignorarEspera: true });
-    const [op] = await fila.todas();
+    await sincronizar(fila, enviar, { usuarioId: A, agora: () => 0 });
+    await sincronizar(fila, enviar, { usuarioId: A, agora: () => 0, ignorarEspera: true });
+    const [op] = await fila.doUsuario(A);
     expect(op?.tentativas).toBe(2);
     expect(op?.proximaTentativaEm).toBe(2 * ESPERA_INICIAL_MS);
   });
@@ -141,12 +165,12 @@ describe('sincronização', () => {
     const enviar = criarEnvio(credenciais, s.fetchFalso);
     await fila.enfileirar(preferencia('es', 'America/Atlantida'), 1_000);
     await fila.enfileirar(preferencia('fr'), 1_001);
-    const r = await sincronizar(fila, enviar);
+    const r = await sincronizar(fila, enviar, { usuarioId: A });
     expect(r).toEqual({ enviadas: 1, recusadas: 1, adiadas: 0 });
-    expect(await fila.todas()).toMatchObject([
+    expect(await fila.doUsuario(A)).toMatchObject([
       { estado: 'rejeitada', ultimoErro: 'fuso_invalido' },
     ]);
-    expect((await sincronizar(fila, enviar)).enviadas).toBe(0);
+    expect((await sincronizar(fila, enviar, { usuarioId: A })).enviadas).toBe(0);
     expect(s.aplicadas).toEqual(['fr']);
   });
 
@@ -155,23 +179,92 @@ describe('sincronização', () => {
     const enviar = criarEnvio(credenciais, s.fetchFalso);
     await fila.enfileirar(preferencia('xx'), 1_000);
     s.semRede();
-    expect((await sincronizar(fila, enviar)).recusadas).toBe(1);
-    expect((await fila.todas())[0]?.ultimoErro).toBe('entrada_invalida');
+    expect((await sincronizar(fila, enviar, { usuarioId: A })).recusadas).toBe(1);
+    expect((await fila.doUsuario(A))[0]?.ultimoErro).toBe('entrada_invalida');
   });
 
   it('duas passadas ao mesmo tempo (online + botão) enviam uma vez', async () => {
     const s = servidor();
     const enviar = criarEnvio(credenciais, s.fetchFalso);
     await fila.enfileirar(preferencia('es'), 1_000);
-    await Promise.all([sincronizar(fila, enviar), sincronizar(fila, enviar)]);
+    await Promise.all([
+      sincronizar(fila, enviar, { usuarioId: A }),
+      sincronizar(fila, enviar, { usuarioId: A }),
+    ]);
     expect(s.aplicadas).toEqual(['es']);
   });
 
   it('sem sessão, a operação espera (não é recusada nem perdida)', async () => {
     const s = servidor();
-    const enviar = criarEnvio({ token: async () => null, tenant: () => null }, s.fetchFalso);
+    const enviar = criarEnvio(
+      { usuarioId: () => A, token: async () => null, tenant: () => null },
+      s.fetchFalso,
+    );
     await fila.enfileirar(preferencia('es'), 1_000);
-    await sincronizar(fila, enviar);
-    expect((await fila.todas())[0]).toMatchObject({ estado: 'pendente', ultimoErro: 'sem_sessao' });
+    await sincronizar(fila, enviar, { usuarioId: A });
+    expect((await fila.doUsuario(A))[0]).toMatchObject({
+      estado: 'pendente',
+      ultimoErro: 'sem_sessao',
+    });
+  });
+});
+
+describe('(a) a operação é de quem a criou', () => {
+  it('outro usuário no aparelho: as pendentes do anterior não saem com a sessão nova', async () => {
+    const s = servidor();
+    await fila.enfileirar(preferencia('es'), 1_000);
+    await fila.enfileirar(preferencia('fr'), 1_001);
+
+    // B entra no mesmo aparelho, com rede.
+    const r = await sincronizar(fila, criarEnvio(sessaoDe(B), s.fetchFalso), { usuarioId: B });
+    expect(r).toEqual({ enviadas: 0, recusadas: 0, adiadas: 0 });
+    expect(s.aplicadas).toEqual([]);
+    expect(await fila.doUsuario(B)).toEqual([]);
+    expect(await fila.doUsuario(A)).toHaveLength(2); // continuam guardadas para A
+
+    // A volta: saem com o token de A.
+    await sincronizar(fila, criarEnvio(sessaoDe(A), s.fetchFalso), { usuarioId: A });
+    expect(s.aplicadas).toEqual(['es', 'fr']);
+    expect(s.enviadasPor).toEqual([`Bearer token-${A}`, `Bearer token-${A}`]);
+  });
+
+  it('segunda barreira: o envio recusa mandar operação de A com a sessão de B', async () => {
+    const s = servidor();
+    const op = await fila.enfileirar(preferencia('es'), 1_000);
+    const r = await criarEnvio(sessaoDe(B), s.fetchFalso)(op);
+    expect(r).toEqual({ tipo: 'tentar_depois', motivo: 'outra_sessao' });
+    expect(s.aplicadas).toEqual([]);
+  });
+});
+
+describe('(b) sair apaga os dados locais', () => {
+  it('a fila de quem sai é apagada, com o tenant; a de outra pessoa fica intocada', async () => {
+    await fila.enfileirar(preferencia('es'), 1_000);
+    await fila.enfileirar(preferencia('fr', 'America/Atlantida'), 1_001);
+    await fila.enfileirar(preferencia('en', null, B), 1_002);
+    const removidas: string[] = [];
+    await apagarDadosLocais(fila, A, { removeItem: (k) => void removidas.push(k) });
+    expect(await fila.doUsuario(A)).toEqual([]);
+    expect(await fila.doUsuario(B)).toHaveLength(1);
+    expect(removidas).toEqual(['hk_tenant']);
+    // E não volta ao reabrir o app.
+    fila.fechar();
+    expect(await (await abrirFila()).doUsuario(A)).toEqual([]);
+  });
+});
+
+describe('(c) recusada volta ao aparelho com o código e não some em silêncio', () => {
+  it('fica guardada com o código do motivo até o técnico dispensar', async () => {
+    const s = servidor();
+    const enviar = criarEnvio(credenciais, s.fetchFalso);
+    const op = await fila.enfileirar(preferencia('es', 'America/Atlantida'), 1_000);
+    await sincronizar(fila, enviar, { usuarioId: A });
+    // Várias passadas depois, continua lá, com o código.
+    await sincronizar(fila, enviar, { usuarioId: A, ignorarEspera: true });
+    expect(await fila.doUsuario(A)).toMatchObject([
+      { chave: op.chave, estado: 'rejeitada', ultimoErro: 'fuso_invalido' },
+    ]);
+    await fila.remover(op.chave); // o botão "Dispensar"
+    expect(await fila.doUsuario(A)).toEqual([]);
   });
 });
