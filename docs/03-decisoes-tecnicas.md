@@ -256,7 +256,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-022 — Multi-idioma no MVP: catálogos ICU compartilhados e nenhum texto fixo
 
-**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #19). Registra a decisão de o HubKeep sair multi-idioma no MVP e as adaptações obrigatórias. A escolha da biblioteca fica para a F0-10b, que atualiza este ADR num PR próprio.
+**Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #19). Registra a decisão de o HubKeep sair multi-idioma no MVP e as adaptações obrigatórias. A escolha da biblioteca foi feita na F0-10b (item "Biblioteca ICU"), aprovada por Cesar em 26/09/2026 (revisão do PR #27).
 
 **Contexto:** o levantamento está em `docs/referencia/i18n-levantamento.md`. Ele foi escrito sobre a stack antiga (NestJS, Keycloak/Auth0) e propõe tabela global de idioma, trigger de fuso, função com `unaccent` e tabela global de feriado, que contrariam o ADR-005 e as regras 1, 3 e 4 do `CLAUDE.md`. O conteúdo de produto continua valendo; as adaptações abaixo substituem o que ele diz de banco e de stack.
 
@@ -265,9 +265,24 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **O que se traduz:** textos fixos das telas e mensagens padrão do sistema, status e prioridades padrão. Não se traduzem conteúdo cadastrado, nomes próprios e texto livre. E-mail, push, PDF e exportações saem em pt-BR no MVP, mas escritos no catálogo.
 - **Nenhum texto de interface fixo no código** (regra 11 do `CLAUDE.md`). Tudo sai por chave de um pacote compartilhado, `@hubkeep/i18n`: catálogos JSON por idioma, sintaxe ICU, os mesmos para web, PWA e worker. O lint barra texto fixo; a CI barra chave sem pt-BR ou en e mensagem ICU inválida; há pseudo-idioma para teste.
 - **API:** erros e validações saem como código e parâmetros, nunca como frase (critério de aceite da F0-07). Quem exibe traduz. A mensagem dos erros de domínio fica só para log.
-- **Biblioteca ICU:** next-intl ou FormatJS no web, com o mesmo catálogo no PWA Vite e no worker; escolha e motivo registrados neste ADR na F0-10b. Ponto de partida para a comparação:
-  - FormatJS (`@formatjs/intl` no servidor e no worker, `react-intl` no cliente) tem lint oficial (`eslint-plugin-formatjs`) e é o mesmo motor nos três runtimes;
-  - next-intl integra melhor com os Server Components, e o `use-intl` dele roda no PWA e no Node.
+- **Biblioteca ICU: FormatJS** (F0-10b, aprovada em 26/09/2026). O mesmo motor (`@formatjs/intl`) e os mesmos catálogos nos três runtimes:
+  - web, Server Components: `createIntl` de `react-intl/server`, uma instância por requisição (`cache` do React);
+  - web, Client Components, e PWA: `react-intl` (`IntlProvider`, `useIntl`);
+  - worker (e-mail, push): `@formatjs/intl`, sem React.
+
+  O `@hubkeep/i18n` guarda os catálogos, a lista de idiomas e de formatos regionais, a resolução do idioma e os formatadores, e expõe um tradutor sobre `@formatjs/intl`. As chaves são tipadas pelo catálogo pt-BR: chave inexistente é erro de typecheck.
+- **Lint e CI dos catálogos:**
+  - `eslint-plugin-formatjs` (oficial) com `no-literal-string-in-jsx` nos apps: texto fixo em JSX, `alt` ou `aria-label` derruba o lint;
+  - um teste lê os catálogos JSON com `@formatjs/icu-messageformat-parser`, o mesmo parser do runtime, e reprova mensagem ICU inválida, chave sem pt-BR ou en e variável que difere entre idiomas. O lint da FormatJS valida ICU só no código, não em JSON.
+- **Sem plugin no `next.config`:** as chaves são explícitas no catálogo. O plugin SWC da FormatJS, que pré-compila as mensagens, fica como otimização se o tamanho do bundle do PWA pedir.
+- **Por que não next-intl:**
+  - ele integra melhor com os Server Components (`getTranslations`) e já tipa as chaves. As duas vantagens se cobrem com pouco código: um auxiliar por requisição no web e a tipagem no `@hubkeep/i18n`;
+  - o diferencial dele é a negociação de idioma e a rota por idioma, que o HubKeep não usa: o idioma vem do perfil (membro → hotel → tenant → navegador), sem prefixo na URL;
+  - não tem lint oficial de texto fixo, que a regra 11 exige;
+  - o `next-intl` 4.14 exige o plugin no `next.config` e traz binários nativos (`@swc/core`, `@parcel/watcher`) e os pacotes do extrator (`@eloqnt/*`). O `react-intl` depende só da FormatJS, em JavaScript puro;
+  - no motor, empatam: o `use-intl` do next-intl também roda no PWA e no Node.
+- **Versões conferidas no npm em 26/09/2026:** `react-intl` 12.1.3, `@formatjs/intl` 6.1.2, `eslint-plugin-formatjs` 8.1.0 (ESLint 9 ou 10; o repositório usa o 10); `next-intl` 4.14.7 (aceita Next 16).
+- **Reversível:** os catálogos em JSON com ICU padrão servem às duas bibliotecas. Trocar custa os pontos de uso nos apps, não os catálogos.
 - **Resolução do idioma:** perfil do membro → idioma padrão do hotel → do tenant → navegador (antes do login) → pt-BR.
 - **Dados** (migração da F0-10b):
   - `app.tenant`: país, subdivisão, moeda e idioma padrão;
@@ -307,7 +322,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-023 — PR de zona protegida só é mergeado pelo Cesar
 
-**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR.
+**Status:** aprovada por Cesar em 26/09/2026, de forma explícita, depois do merge do PR #25. Ruleset do `main` configurado por ele no mesmo dia.
 
 **Contexto:** as regras de processo (diário da fase 0) dizem que PR de zona protegida é aberto e para, e que o merge é do Cesar. Hoje isso depende só da disciplina do Claude Code. O `gh` da máquina de trabalho está autenticado com a conta do Cesar (`cesarcoutohubtech`), então, para o GitHub, um merge feito pelo Claude é um merge do Cesar. O ruleset do `main` exige só o pgTAP e não tem bypass configurado.
 
@@ -335,7 +350,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-024 — Anexos no Storage: bucket privado, URL assinada pelo auth-admin e miniatura no aparelho
 
-**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR da F0-10.
+**Status:** aprovada por Cesar em 26/09/2026, depois do merge do PR #26, condicionada a quatro confirmações, todas feitas no código da `main` e cobertas por teste: (a) o módulo expõe só as duas funções de URL, nunca o cliente do Supabase (travado por teste no PR #28); (b) caminho vindo de registro visível pela RLS e validado contra `{tenant}/{hotel}/{entidade}/{registro}/{uuid}.{ext}`; (c) upload sem sobrescrita; (d) validade das URLs de upload e download. O limite de tipo e tamanho do bucket está no meta-teste 23.
 
 **Contexto:** a F0-10 pede bucket privado, sem policy para `authenticated`, com URL assinada emitida pela API depois da checagem de escopo. No Supabase, sem policy para o usuário, só a secret key emite URL assinada. A regra 5 do `CLAUDE.md` e o ADR-002 restringiam a secret key ao Auth (convites).
 
