@@ -105,21 +105,20 @@ export const credenciaisDeAgente = memo<
   });
 });
 
-/**
- * Promove as UHs do staging de um tenant para app.local (hk_worker). A rota de
- * cron que chama isto para todos os tenants é da F0-09.
- */
+/** Promove as UHs do staging de um tenant (hk_worker); /api/cron/promocao chama para todos. */
 export async function promoverUhsDoTenant(tenantId: string) {
   return criarCasosDeUsoDeIngestao({
     promocao: criarPortasDeIngestao(await acessoBancoDoWorker()).promocao,
   }).promoverUhs(tenantId);
 }
 
+/** Tenants para os jobs de cron (hk_worker). */
+export async function tenantsDoSistema(): Promise<string[]> {
+  return (await acessoBancoDoWorker()).listarTenants();
+}
+
 let manipuladores: Record<string, Manipulador> | undefined;
-/**
- * Processa o outbox de um tenant (hk_worker). A rota de cron que chama isto
- * para todos os tenants, com CRON_SECRET, é da F0-09.
- */
+/** Processa o outbox de um tenant (hk_worker); a rota /api/cron/outbox chama para todos. */
 export async function processarOutboxDoTenant(tenantId: string): Promise<ResultadoOutbox> {
   manipuladores ??= criarManipuladoresDeEventos(administracaoDoAuth());
   return processarOutbox(await acessoBancoDoWorker(), tenantId, manipuladores);

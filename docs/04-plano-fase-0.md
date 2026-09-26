@@ -80,6 +80,8 @@ Criar as rotas de cron (`/api/cron/outbox`, `/api/cron/sla`, `/api/cron/preventi
 
 **Aceite:** evento processado uma vez mesmo com duas execuções simultâneas; falha gera nova tentativa com atraso; um tenant com erro não bloqueia os outros.
 
+**E-mail na fase 0 (decisão de 26/09/2026):** o convite segue pelo adaptador atual, com o e-mail padrão do Supabase no dev e o Mailpit na CI. O SMTP próprio não entra agora. **Antes do piloto** são necessários o provedor de e-mail de produção e o domínio de envio com SPF, DKIM e DMARC. O adaptador SMTP (porta `EnvioDeConvite`, com `EnviadorDeEmail`) entra na fase 1c, junto com as notificações.
+
 ## F0-10 — Storage
 
 Criar bucket privado, sem policies para `authenticated`, com URLs assinadas de upload e download emitidas pela API depois da checagem de escopo, e caminho `{tenant_id}/{hotel_id}/{entidade}/{registro_id}/{uuid}`.
