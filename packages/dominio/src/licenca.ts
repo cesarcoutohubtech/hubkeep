@@ -31,3 +31,39 @@ export const saldoDeUhs = (s: SaldoDeUhs): number => Math.max(0, s.contratadas -
 export function statusDaUhNova(hotel: StatusDeHotel, saldo: number): StatusDeLocal {
   return hotel === 'ativo' && saldo > 0 ? 'ativo' : 'pendente_licenca';
 }
+
+/** O que conta como uso da licença de hotéis: hotel ativo (mesma métrica de licenca.uso()). */
+export const contaComoHotel = (hotel: { status: StatusDeHotel }): boolean =>
+  hotel.status === 'ativo';
+
+export interface SaldoDeHoteis {
+  /** max_hoteis do contrato; sem contrato, 0 (nenhum hotel é ativado). */
+  contratados: number;
+  /** Hotéis que já contam como uso. */
+  emUso: number;
+}
+
+export const saldoDeHoteis = (s: SaldoDeHoteis): number => Math.max(0, s.contratados - s.emUso);
+
+/**
+ * Ativação de hotel (fase 1a, A1). O hotel entra em implantação sem consumir
+ * licença; ativar consome uma licença de hotel. Sem saldo, a ativação é
+ * bloqueada e a EasyGov é avisada (docs/00). Ativar de novo um hotel ativo é
+ * conflito, não erro silencioso.
+ */
+export type DecisaoDeAtivacao =
+  | { ativar: true; uhsALiberar: number }
+  | { ativar: false; motivo: 'ja_ativo' | 'sem_saldo_de_hoteis' };
+
+export function decidirAtivacao(entrada: {
+  status: StatusDeHotel;
+  hoteis: SaldoDeHoteis;
+  uhs: SaldoDeUhs;
+  /** UHs do hotel que estão pendentes de licença, na ordem em que serão liberadas. */
+  uhsPendentes: number;
+}): DecisaoDeAtivacao {
+  if (entrada.status === 'ativo') return { ativar: false, motivo: 'ja_ativo' };
+  if (saldoDeHoteis(entrada.hoteis) <= 0) return { ativar: false, motivo: 'sem_saldo_de_hoteis' };
+  // Ao ativar, as UHs pendentes do hotel entram até onde o saldo de UHs deixar.
+  return { ativar: true, uhsALiberar: Math.min(entrada.uhsPendentes, saldoDeUhs(entrada.uhs)) };
+}

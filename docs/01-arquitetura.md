@@ -83,6 +83,11 @@ flowchart LR
 4. Os registros entram em `staging.registro_externo` com upsert por chave. Um registro só é regravado quando o hash do conteúdo muda. O staging não passa pela unit of work (`hk_ingestao` nem enxerga `app`); o registro do lote é a própria `staging.carga`.
 5. A promoção de UHs para `app.local` roda no `hk_worker`, uma unit of work por tenant, com auditoria e evento `local.promovido`. A regra de licença é da aplicação (`statusDaUhNova` no domínio): a UH nova só entra ativa em hotel ativo e com saldo; senão, entra `pendente_licenca`. Hotel em implantação não consome licença. A contagem de uso é a mesma de `licenca.uso()`, com teste de paridade na CI. A rota de cron que chama a promoção para todos os tenants é da F0-09.
 6. A credencial é criada e revogada pelo Admin do grupo (`/api/v1/credenciais-agente`). O segredo aparece só na resposta da criação; o banco guarda `sha256:` do segredo.
+7. **Hotéis (fase 1a, A1):** o hotel chega ao staging como entidade `hotel` (`DadosDeHotel`: nome e fuso opcional) e não é promovido sozinho. O Admin do grupo, em `/admin/hoteis`:
+   - traz o hotel para implantação (`POST /api/v1/hoteis/importacoes`), que o cria em `app.hotel` como `em_implantacao`, sem consumir licença;
+   - depois ativa (`POST /api/v1/hoteis/{id}/ativacao`), consumindo uma licença de hotel (`decidirAtivacao` no domínio). As UHs `pendente_licenca` do hotel entram até onde o saldo de UHs deixar.
+
+   Sem saldo, a ativação é recusada com 409 `licenca_hoteis_sem_saldo`: a tentativa vai para a auditoria, e o evento `licenca.sem_saldo` vai para o outbox, para a notificação à EasyGov da fase 1c. A ativação e a promoção de UHs travam a licença do tenant (advisory lock de transação) antes de ler o saldo, para duas não gastarem a mesma licença.
 
 O limite de 4,5 MB de corpo das funções da Vercel define o tamanho máximo do lote; o agente divide em lotes menores.
 

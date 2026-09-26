@@ -4,6 +4,7 @@
 import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
+  PortaHoteisDoStaging,
   PortaConvites,
   PortaCredenciaisDeAgente,
   PortaHoteis,
@@ -26,6 +27,13 @@ import {
   respostaDaOperacao,
 } from './consultas';
 import { gravarConvite } from './repositorios/convites';
+import {
+  hoteisCadastrados,
+  hoteisDoStaging,
+  sessaoDeHoteis,
+  travarLicenca,
+  usoDaLicenca,
+} from './repositorios/hoteis';
 import { criarCredencialDeAgente, revogarCredencialDeAgente } from './repositorios/credenciais';
 import { concederPapel, revogarPapel } from './repositorios/membros';
 import { OperacaoJaRecebida, registrarOperacao } from './repositorios/operacoes-offline';
@@ -145,6 +153,23 @@ export function criarPortaPreferencias(banco: AcessoBanco): PortaPreferencias {
   };
 }
 
+/** Hotéis a partir do staging (fase 1a, A1): listar, importar e ativar, pelo hk_app. */
+export function criarPortaHoteisDoStaging(banco: AcessoBanco): PortaHoteisDoStaging {
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) => ({
+        staging: await hoteisDoStaging(tx),
+        cadastrados: await hoteisCadastrados(tx),
+        uso: await usoDaLicenca(tx),
+      })),
+    emSessao: (ctx, fn) =>
+      banco.executar(ctx, async (uow) => {
+        await travarLicenca(uow);
+        return fn(sessaoDeHoteis(uow));
+      }),
+  };
+}
+
 /**
  * Operações offline do PWA (F0-11, ADR-025): o efeito e a chave na mesma unit
  * of work. Reenvio de chave conhecida devolve a resposta guardada sem repetir;
@@ -195,7 +220,11 @@ export function criarPortasDeIngestao(banco: AcessoBanco): {
     },
     promocao: {
       emSessao: (tenantId, fn) =>
-        banco.executarComoSistema({ tenantId }, (uow) => fn(sessaoDePromocao(uow))),
+        // Mesmo lock da ativação de hotel: a promoção também consome saldo de UH.
+        banco.executarComoSistema({ tenantId }, async (uow) => {
+          await travarLicenca(uow);
+          return fn(sessaoDePromocao(uow));
+        }),
     },
   };
 }

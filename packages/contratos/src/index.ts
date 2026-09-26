@@ -14,6 +14,7 @@ export {
   FONTES,
   LIMITE_BYTES_LOTE,
   LIMITE_REGISTROS_LOTE,
+  DadosDeHotel,
   DadosDeUh,
   LoteDeIngestao,
   RegistroExterno,
@@ -36,6 +37,13 @@ export {
   RespostaDeOperacaoOffline,
   TIPOS_DE_OPERACAO_OFFLINE,
 } from './sincronizacao';
+export {
+  HotelParaAtivacao,
+  PedidoDeImportacaoDeHotel,
+  RespostaDeAtivacaoDeHotel,
+  RespostaDeHoteisDoStaging,
+  RespostaDeImportacaoDeHotel,
+} from './hoteis';
 export { IDIOMAS_API, PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 export { CODIGOS_HTTP, ErroApi, type ProblemaDeEntrada, problemasDe } from './erro';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';

@@ -82,3 +82,16 @@ export type {
   OperacaoOffline,
   ResultadoDaOperacao,
 } from './casos-de-uso/sincronizacao';
+export type {
+  HotelCadastrado,
+  HotelDoStaging,
+  PortaHoteisDoStaging,
+  SessaoDeHoteis,
+  UsoDaLicenca,
+} from './portas/hoteis';
+export { criarCasosDeUsoDeHoteis } from './casos-de-uso/hoteis';
+export type {
+  CasosDeUsoDeHoteis,
+  HotelParaAtivacao,
+  ResultadoDaAtivacao,
+} from './casos-de-uso/hoteis';

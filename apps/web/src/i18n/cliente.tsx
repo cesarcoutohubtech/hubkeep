@@ -57,6 +57,30 @@ export function useT(): (chave: Chave, valores?: ValoresDeMensagem) => string {
 
 export const useIdioma = () => useContext(ContextoDeIdioma);
 
+/**
+ * Mensagem de um erro da API pelo catálogo (erro.<codigo>), com os parâmetros
+ * simples do erro. Código sem mensagem cai para a genérica.
+ */
+export function useMensagemDeErro(): (erro: {
+  codigo: string;
+  parametros?: Record<string, unknown>;
+}) => string {
+  const intl = useIntl();
+  return useCallback(
+    (erro) => {
+      const valores: Record<string, string | number> = {};
+      for (const [k, v] of Object.entries(erro.parametros ?? {})) {
+        if (typeof v === 'string' || typeof v === 'number') valores[k] = v;
+      }
+      const id = `erro.${erro.codigo}`;
+      return id in intl.messages
+        ? intl.formatMessage({ id }, valores)
+        : intl.formatMessage({ id: 'erro.erro_interno' });
+    },
+    [intl],
+  );
+}
+
 /** Nome do idioma nele mesmo (endônimo), sem texto no catálogo: vem do Intl. */
 export function nomeDoIdioma(idioma: IdiomaDeExibicao): string {
   const codigo = idioma === PSEUDO_IDIOMA ? 'en-XA' : idioma;

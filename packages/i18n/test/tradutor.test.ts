@@ -1,4 +1,5 @@
 // O motor no Node, sem React: é o mesmo caminho do worker (e-mail, push).
+import { type MessageFormatElement, TYPE, parse } from '@formatjs/icu-messageformat-parser';
 import { describe, expect, it } from 'vitest';
 import {
   CATALOGOS,
@@ -79,23 +80,25 @@ describe('pseudo-idioma', () => {
 
   it('toda chave formata no pseudo-idioma', () => {
     const t = criarTradutor(PSEUDO_IDIOMA);
+    const fonte = CATALOGOS['pt-BR'];
     for (const chave of Object.keys(mensagensDe(PSEUDO_IDIOMA))) {
-      const valores = {
-        nome: 'N',
-        tenant: 'T',
-        minimo: 8,
-        status: 'ativo',
-        email: 'e',
-        n: 2,
-        operacao: 'O',
-        motivo: 'M',
-        codigo: 'c',
+      // Valores de teste para as variáveis da mensagem, lidas pelo parser.
+      const valores: Record<string, string | number | ((p: string[]) => string)> = {};
+      const visitar = (els: MessageFormatElement[]) => {
+        for (const el of els) {
+          if (el.type === TYPE.argument) valores[el.value] = 'x';
+          if (el.type === TYPE.number || el.type === TYPE.plural) valores[el.value] = 2;
+          if (el.type === TYPE.select) valores[el.value] = 'outro';
+          if (el.type === TYPE.tag) valores[el.value] = (p: string[]) => p.join('');
+          if (el.type === TYPE.plural || el.type === TYPE.select) {
+            for (const op of Object.values(el.options)) visitar(op.value);
+          }
+          if (el.type === TYPE.tag) visitar(el.children);
+        }
       };
-      const texto = t.intl.formatMessage(
-        { id: chave },
-        { ...valores, b: (p: string[]) => p.join('') },
-      );
-      expect(String(texto)).toMatch(/^\[.*\]$/s);
+      visitar(parse(fonte[chave] ?? ''));
+      const texto = t.intl.formatMessage({ id: chave }, valores);
+      expect(String(texto), chave).toMatch(/^\[.*\]$/s);
     }
   });
 });
