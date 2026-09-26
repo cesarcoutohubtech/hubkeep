@@ -13,5 +13,9 @@
   },
   "dependencies": {
     "@hubkeep/contratos": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "vitest": "^5.0.1"
   }
 }

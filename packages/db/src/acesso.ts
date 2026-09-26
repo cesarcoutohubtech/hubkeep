@@ -26,12 +26,19 @@ export interface AcessoBanco {
     ctx: { tenantId: string },
     fn: (uow: UnidadeDeTrabalho) => Promise<T>,
   ): Promise<T>;
+  /**
+   * Endpoint de ingestão, papel hk_ingestao, tenant do prefixo da credencial:
+   * só o staging desse tenant (ADR-008). Staging não é dado de negócio, não
+   * passa pela unit of work: a própria staging.carga é o registro do lote.
+   */
+  withIngestao<T>(ctx: { tenantId: string }, fn: (tx: Tx) => Promise<T>): Promise<T>;
   encerrar(): Promise<void>;
 }
 
 export interface ConfigAcessoBanco {
   app?: ConfigConexao;
   worker?: ConfigConexao;
+  ingestao?: ConfigConexao;
 }
 
 /**
@@ -42,14 +49,16 @@ export interface ConfigAcessoBanco {
 export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBanco> {
   const app = cfg.app ? criarKysely(criarPool(cfg.app)) : null;
   const worker = cfg.worker ? criarKysely(criarPool(cfg.worker)) : null;
+  const ingestao = cfg.ingestao ? criarKysely(criarPool(cfg.ingestao)) : null;
 
   try {
     await Promise.all([
       app ? verificarPapel(app, 'hk_app') : undefined,
       worker ? verificarPapel(worker, 'hk_worker') : undefined,
+      ingestao ? verificarPapel(ingestao, 'hk_ingestao') : undefined,
     ]);
   } catch (e) {
-    await Promise.allSettled([app?.destroy(), worker?.destroy()]);
+    await Promise.allSettled([app?.destroy(), worker?.destroy(), ingestao?.destroy()]);
     throw e;
   }
 
@@ -73,9 +82,17 @@ export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBa
     return emTransacao(exigir(worker, 'hk_worker'), '', ctx.tenantId, fn);
   };
 
+  // Como o worker: sem usuário, e as policies de hk_ingestao leem só
+  // authz.tenant_sistema().
+  const withIngestao: AcessoBanco['withIngestao'] = async (ctx, fn) => {
+    validarUuid(ctx.tenantId, 'tenantId');
+    return emTransacao(exigir(ingestao, 'hk_ingestao'), '', ctx.tenantId, fn);
+  };
+
   return {
     withContext,
     withSistema,
+    withIngestao,
     executar: (ctx, fn) =>
       withContext(ctx, async (tx) => {
         const uow = criarUnidade(tx, ctx.tenantId, ctx.usuarioId);
@@ -91,7 +108,7 @@ export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBa
         return resultado;
       }),
     encerrar: async () => {
-      await Promise.all([app?.destroy(), worker?.destroy()]);
+      await Promise.all([app?.destroy(), worker?.destroy(), ingestao?.destroy()]);
     },
   };
 }

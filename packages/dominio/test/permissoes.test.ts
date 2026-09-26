@@ -9,6 +9,7 @@ import {
   exigir,
   podeAtivarHotel,
   podeConcederPapel,
+  podeGerenciarCredencialDeAgente,
   podeRevogarPapel,
 } from '../src/index';
 
@@ -186,6 +187,13 @@ describe('ativar hotel e exigir()', () => {
   it('só o Admin do grupo ativa hotel', () => {
     expect(podeAtivarHotel(ADMIN, AGORA)).toEqual({ permitido: true });
     expect(podeAtivarHotel(IMPLANTADOR_H1, AGORA).permitido).toBe(false);
+  });
+
+  it('só o Admin do grupo cria e revoga credencial do agente conector', () => {
+    expect(podeGerenciarCredencialDeAgente(ADMIN, AGORA)).toEqual({ permitido: true });
+    const negado = podeGerenciarCredencialDeAgente(IMPLANTADOR_H1, AGORA);
+    expect(negado.permitido ? null : negado.erro.codigo).toBe('credencial_de_agente_so_admin');
+    expect(podeGerenciarCredencialDeAgente(GERENTE_H1, AGORA).permitido).toBe(false);
   });
 
   it('exigir() lança o erro do resultado negado e não faz nada no permitido', () => {

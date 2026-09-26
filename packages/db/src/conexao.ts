@@ -50,7 +50,7 @@ export function criarPool(cfg: ConfigConexao): pg.Pool {
 export const criarKysely = (pool: pg.Pool) =>
   new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
 
-export type PapelAplicacao = 'hk_app' | 'hk_worker';
+export type PapelAplicacao = 'hk_app' | 'hk_worker' | 'hk_ingestao';
 
 /**
  * Guarda de papel (ADR-016). A RLS só protege se quem conecta não a ignora:

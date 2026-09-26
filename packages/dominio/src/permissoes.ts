@@ -184,6 +184,24 @@ export function podeAtivarHotel(atribuicoes: readonly Atribuicao[], agora: Date)
     : negar(new PermissaoNegada('ativacao_so_admin', 'Só o Admin do grupo ativa hotéis.'));
 }
 
+/**
+ * Criar e revogar credencial do agente conector: só o Admin do grupo. A
+ * credencial grava no staging do tenant inteiro (ADR-008).
+ */
+export function podeGerenciarCredencialDeAgente(
+  atribuicoes: readonly Atribuicao[],
+  agora: Date,
+): Resultado {
+  return ehAdminGrupo(atribuicoes, agora)
+    ? PERMITIDO
+    : negar(
+        new PermissaoNegada(
+          'credencial_de_agente_so_admin',
+          'Só o Admin do grupo cria e revoga credenciais do agente conector.',
+        ),
+      );
+}
+
 /** Lança o erro de um resultado negado. */
 export function exigir(resultado: Resultado): void {
   if (!resultado.permitido) throw resultado.erro;

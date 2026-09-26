@@ -47,8 +47,14 @@ export interface Requisicao {
   contexto(): Promise<Contexto>;
   /** Só o usuário, para rota que não depende de tenant. */
   usuario(): Promise<UsuarioVerificado>;
-  /** Corpo JSON validado pelo contrato; inválido vira 422 entrada_invalida. */
-  corpo<T extends z.ZodType>(contrato: T): Promise<z.output<T>>;
+  /**
+   * Corpo JSON validado pelo contrato; inválido vira 422 entrada_invalida.
+   * Com `limiteBytes`, corpo maior vira 413 corpo_grande (conferido no que foi
+   * lido, não só no content-length, que o cliente pode omitir).
+   */
+  corpo<T extends z.ZodType>(contrato: T, opcoes?: { limiteBytes?: number }): Promise<z.output<T>>;
+  /** Tenant de quem não é usuário (ex.: o agente, pelo prefixo da credencial), para o log. */
+  marcarTenant(tenantId: string): void;
   /** Resposta validada pelo contrato: o que sai é o que o OpenAPI promete. */
   responder<T extends z.ZodType>(status: number, contrato: T, dados: z.input<T>): Response;
   /** Resposta sem contrato (ex.: o próprio OpenAPI). */
@@ -127,9 +133,19 @@ export function rota(
         escopo.usuario_id = u.usuarioId;
         return u;
       },
-      async corpo(contrato) {
-        const bruto: unknown = await req.json().catch(() => undefined);
-        if (bruto === undefined) {
+      async corpo(contrato, opcoes = {}) {
+        const limite = opcoes.limiteBytes;
+        if (limite !== undefined && Number(req.headers.get('content-length') ?? 0) > limite) {
+          throw new ErroHttp(413, CODIGOS_HTTP.corpoGrande, { limiteBytes: limite });
+        }
+        const textoBruto = await req.text().catch(() => '');
+        if (limite !== undefined && new TextEncoder().encode(textoBruto).length > limite) {
+          throw new ErroHttp(413, CODIGOS_HTTP.corpoGrande, { limiteBytes: limite });
+        }
+        let bruto: unknown;
+        try {
+          bruto = JSON.parse(textoBruto);
+        } catch {
           throw new ErroHttp(422, CODIGOS_HTTP.entradaInvalida, { motivo: 'json_invalido' });
         }
         const lido = contrato.safeParse(bruto);
@@ -137,6 +153,9 @@ export function rota(
           throw new ErroDeEntrada(problemasDe(lido.error));
         }
         return lido.data;
+      },
+      marcarTenant(tenantId) {
+        escopo.tenant_id = tenantId;
       },
       responder(status, contrato, dados) {
         return Response.json(contrato.parse(dados), { status });

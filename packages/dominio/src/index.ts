@@ -7,10 +7,13 @@ export {
   hoteisComoImplantador,
   podeAtivarHotel,
   podeConcederPapel,
+  podeGerenciarCredencialDeAgente,
   podeRevogarPapel,
   rotulo,
   vigente,
 } from './permissoes';
 export type { Resultado } from './permissoes';
+export { contaComoUh, saldoDeUhs, statusDaUhNova } from './licenca';
+export type { SaldoDeUhs, StatusDeHotel, StatusDeLocal, TipoDeLocal } from './licenca';
 export { PAPEIS } from './tipos';
 export type { Atribuicao, Contexto, Escopo, Papel, PedidoDeConcessao } from './tipos';

@@ -1,13 +1,23 @@
 // Implementação das portas de packages/aplicacao sobre o acesso ao banco.
 // Leitura com withContext, escrita com executar (unit of work): o que cada
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
-import type { PortaAtribuicoes, PortaConvites, PortaHoteis } from '@hubkeep/aplicacao';
+import type {
+  PortaAtribuicoes,
+  PortaConvites,
+  PortaCredenciaisDeAgente,
+  PortaHoteis,
+  PortaIngestao,
+  PortaPromocaoDeUhs,
+} from '@hubkeep/aplicacao';
 import { type Atribuicao, Conflito, type Escopo } from '@hubkeep/dominio';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
 import { ehMembro, escopoVisivel, listarHoteisVisiveis, nomeDoTenant } from './consultas';
 import { gravarConvite } from './repositorios/convites';
+import { criarCredencialDeAgente, revogarCredencialDeAgente } from './repositorios/credenciais';
 import { concederPapel, revogarPapel } from './repositorios/membros';
+import { sessaoDePromocao } from './repositorios/promocao';
+import { credenciaisAtivas, registrarLote } from './repositorios/staging';
 
 interface LinhaAtribuicao {
   id: string;
@@ -109,6 +119,33 @@ export function criarPortasDeAplicacao(banco: AcessoBanco): {
           }),
         ),
       revogar: (ctx, id) => banco.executar(ctx, (uow) => revogarPapel(uow, id)),
+    },
+  };
+}
+
+/** Portas da ingestão (F0-08): staging pelo hk_ingestao, credenciais pelo hk_app, promoção pelo hk_worker. */
+export function criarPortasDeIngestao(banco: AcessoBanco): {
+  ingestao: PortaIngestao;
+  credenciais: PortaCredenciaisDeAgente;
+  promocao: PortaPromocaoDeUhs;
+} {
+  return {
+    ingestao: {
+      emSessao: (tenantId, fn) =>
+        banco.withIngestao({ tenantId }, (tx) =>
+          fn({
+            credenciaisAtivas: () => credenciaisAtivas(tx),
+            registrarLote: (lote, loteHash) => registrarLote(tx, tenantId, lote, loteHash),
+          }),
+        ),
+    },
+    credenciais: {
+      criar: (ctx, c) => banco.executar(ctx, (uow) => criarCredencialDeAgente(uow, c)),
+      revogar: (ctx, id) => banco.executar(ctx, (uow) => revogarCredencialDeAgente(uow, id)),
+    },
+    promocao: {
+      emSessao: (tenantId, fn) =>
+        banco.executarComoSistema({ tenantId }, (uow) => fn(sessaoDePromocao(uow))),
     },
   };
 }
