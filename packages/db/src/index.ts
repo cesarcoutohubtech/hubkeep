@@ -12,7 +12,12 @@ export type { Bandeira } from './repositorios/bandeiras';
 export { concederPapel, criarMembro, revogarPapel } from './repositorios/membros';
 export type { EscopoConcessao } from './repositorios/membros';
 export { ehMembro, escopoVisivel, listarHoteisVisiveis, nomeDoTenant } from './consultas';
-export { criarPortasDeAplicacao, criarPortasDeIngestao } from './adaptadores';
+export {
+  criarPortaEscopoDeAnexo,
+  criarPortasDeAplicacao,
+  criarPortasDeIngestao,
+} from './adaptadores';
+export { novoId } from './ids';
 export { criptografiaDoServidor } from './criptografia';
 export { atrasoDaTentativa, processarOutbox } from './repositorios/outbox';
 export type { ResultadoOutbox } from './repositorios/outbox';

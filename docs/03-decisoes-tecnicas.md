@@ -286,3 +286,23 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Toda tarefa com tela ou mensagem passa a ter "sem texto fixo" no pronto.
 - O prazo do piloto e a tradução (en, es, fr) ficam nas pendências do `docs/04`.
 
+## ADR-024 — Anexos no Storage: bucket privado, URL assinada pelo auth-admin e miniatura no aparelho
+
+**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR da F0-10.
+
+**Contexto:** a F0-10 pede bucket privado, sem policy para `authenticated`, com URL assinada emitida pela API depois da checagem de escopo. No Supabase, sem policy para o usuário, só a secret key emite URL assinada. A regra 5 do `CLAUDE.md` e o ADR-002 restringiam a secret key ao Auth (convites).
+
+**Decisão:**
+- **Bucket `anexos` privado** (migração 0004), com 20 MB por arquivo e só JPEG, PNG, WebP e PDF. **Nenhuma policy** em `storage.objects` para `anon`, `authenticated` ou `public`, garantido pelos meta-testes 23 e 24. Sem URL assinada, nem a chave pública nem o JWT do usuário leem ou gravam.
+- **A secret key também emite URL assinada do Storage**, isolada no `packages/auth-admin`, o único dono dela (regra 5 atualizada). Ela só emite URL depois de a aplicação conferir o escopo pela RLS, no `hk_app`, para um caminho calculado pela API. Não lê nem lista objetos e não toca tabela do HubKeep.
+- **Caminho** `{tenant_id}/{hotel_id}/{entidade}/{registro_id}/{uuid}.{ext}`, calculado pela API. O cliente só informa o registro e o tipo.
+- **Escopo:**
+  - upload exige que o registro seja visível e que o hotel esteja entre os que o usuário escreve (`authz.hoteis_escrita`); o proprietário, que só lê, não anexa;
+  - download confere de novo o tenant, que o hotel está entre os que o usuário lê e que o registro pertence ao hotel. Qualquer falha é 404.
+- **Validade:** o download vale 5 minutos; o upload, 2 horas (padrão do Supabase).
+- **Miniatura gerada no aparelho**, junto da compressão que o PWA já faz, enviada como um segundo objeto no mesmo registro. A transformação de imagem do Storage continua desligada: ela exigiria plano Pro, cobra por imagem transformada e precisaria de URL assinada também para a versão transformada.
+
+**Consequências:**
+- Na fase 0, recebem anexo `hotel` e `local`; OS, chamado e ativo entram na fase 1a, com a tabela de anexos e o registro do anexo na unit of work.
+- O download pelo proprietário (UH própria) fica para quando existirem anexos de OS: hoje a leitura usa `authz.hoteis_leitura`, que não inclui o proprietário por UH.
+- A CI sobe o `storage-api` para o teste de upload real.

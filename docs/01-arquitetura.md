@@ -92,12 +92,22 @@ O limite de 4,5 MB de corpo das funções da Vercel define o tamanho máximo do 
 2. O cron do outbox (a cada minuto) seleciona eventos pendentes do tenant com `for update skip locked`, chama os handlers (e-mail, push, futuramente WhatsApp e EasyTools) e marca `processado_em`.
 3. Em falha, incrementa `tentativas`, registra `erro` e empurra `disponivel_em` com backoff. Os handlers são idempotentes pelo id do evento.
 
-### Upload de fotos e anexos
+### Upload de fotos e anexos (F0-10, ADR-024)
 
-1. O PWA pede à API uma URL de upload para uma entidade (ex.: OS).
-2. A API checa o escopo dentro de `withContext` e gera a URL assinada de upload no caminho `{tenant_id}/{hotel_id}/{entidade}/{registro_id}/{uuid}`.
-3. O aparelho comprime a foto e envia direto para o Storage, sem passar pela função da Vercel.
-4. A API registra o anexo. Downloads usam URLs assinadas de curta duração.
+1. O PWA pede à API uma URL de upload (`POST /api/v1/anexos/url-de-upload`) para um registro (`entidade`, `registroId`) e um tipo de arquivo.
+2. A API confere o escopo dentro de `withContext`, pela RLS e pelas funções `authz.*`:
+   - o registro precisa ser visível ao usuário;
+   - o hotel dele precisa estar entre os que o usuário escreve.
+
+   Depois calcula o caminho `{tenant_id}/{hotel_id}/{entidade}/{registro_id}/{uuid}.{ext}` e pede ao `auth-admin` a URL assinada.
+3. O aparelho comprime a foto e envia direto para o Storage (PUT na URL), sem passar pela função da Vercel. A miniatura é gerada no aparelho e vai como um segundo objeto (ADR-024).
+4. O download usa URL assinada de 5 minutos (`/api/v1/anexos/url-de-download`). A API confere de novo:
+   - o tenant do caminho;
+   - que o hotel está entre os que o usuário lê;
+   - que o registro é daquele hotel.
+
+   Fora do escopo, 404.
+5. O bucket `anexos` é privado e não tem policy para `anon`, `authenticated` ou `public` (meta-teste 24): sem URL assinada, ninguém lê nem grava. O registro do anexo numa tabela de negócio entra com a OS, na fase 1a.
 
 ## Papéis de banco
 

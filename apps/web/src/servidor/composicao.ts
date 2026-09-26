@@ -1,14 +1,16 @@
 // Raiz de composição do servidor: cria uma vez, por instância de função, o
 // acesso ao banco, o verificador de token e os casos de uso. Único ponto do app
 // que lê as variáveis de ambiente do servidor.
-import { criarAdministracaoDoAuth } from '@hubkeep/auth-admin';
+import { criarAdministracaoDoAuth, criarArmazenamentoDeAnexos } from '@hubkeep/auth-admin';
 import {
   type CasoDeUsoDeConvites,
+  type CasosDeUsoDeAnexos,
   type CasosDeUsoDeIngestao,
   type CasosDeUsoDePapeis,
   type Manipulador,
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
+  criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeIngestao,
   criarCasosDeUsoDePapeis,
   criarManipuladoresDeEventos,
@@ -18,9 +20,11 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaEscopoDeAnexo,
   criarPortasDeAplicacao,
   criarPortasDeIngestao,
   criptografiaDoServidor,
+  novoId,
   processarOutbox,
   tlsDaConexao,
 } from '@hubkeep/db';
@@ -114,6 +118,16 @@ export async function promoverUhsDoTenant(tenantId: string) {
     promocao: criarPortasDeIngestao(await acessoBancoDoWorker()).promocao,
   }).promoverUhs(tenantId);
 }
+
+/** URLs assinadas de anexo (F0-10): escopo pela RLS, URL pelo auth-admin. */
+export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () =>
+  criarCasosDeUsoDeAnexos({
+    escopo: criarPortaEscopoDeAnexo(await acessoBanco()),
+    armazenamento: criarArmazenamentoDeAnexos({ url: urlSupabase() }),
+    relogio: relogioDoSistema,
+    novoId,
+  }),
+);
 
 let manipuladores: Record<string, Manipulador> | undefined;
 /**

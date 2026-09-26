@@ -181,3 +181,14 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - `tests/conector-sem-banco.test.ts`: o agente não tem variável, dependência nem URL de banco.
 - O `banco.yml` passa a exportar a URL do `hk_ingestao` para a integração. É zona protegida: PR aberto e parado.
 
+## F0-10 — Storage — PR #26 (toca migração, testes de banco, workflow, `CLAUDE.md` e `docs/03`)
+- Migração 0004: bucket `anexos` privado (20 MB; JPEG, PNG, WebP e PDF), sem policy em `storage.objects` para `anon`, `authenticated` ou `public` (meta-testes 23 e 24).
+- `POST /api/v1/anexos/url-de-upload` e `url-de-download`:
+  - escopo pela RLS e pelas `authz.*` no `hk_app`; o caminho é calculado pela API;
+  - a URL assinada vem do `auth-admin` (ADR-024, Proposta: a secret key passa a emitir também a URL do Storage, sem tocar tabela de negócio).
+- Miniatura no aparelho, com a transformação do Storage desligada (decisão da F0-10, no ADR-024).
+- Aceite, na integração com Storage real na CI:
+  - upload por URL assinada funciona;
+  - acesso sem URL é negado (chave pública, JWT do usuário, URL pública);
+  - gerente de outro hotel recebe 404 no upload e no download.
+- Pendente: `db push` da migração 0004 no dev, pelo Cesar; aprovação do ADR-024.

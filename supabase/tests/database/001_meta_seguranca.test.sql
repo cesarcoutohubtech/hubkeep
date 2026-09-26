@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(22);
+select plan(24);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -320,6 +320,23 @@ select is_empty($$
       where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e'
     )
 $$, 'nenhuma função de postgres ou hk_* fora dos schemas do HubKeep (exceto extensões)');
+
+-- 23. Bucket de anexos existe e é privado (F0-10, ADR-024): sem URL pública.
+select results_eq(
+  $$ select public from storage.buckets where id = 'anexos' $$,
+  $$ values (false) $$,
+  'bucket anexos existe e é privado'
+);
+
+-- 24. Nenhuma policy de storage.objects para anon, authenticated ou public: o
+--     arquivo só sai por URL assinada emitida pela API depois da checagem de
+--     escopo. Uma policy dessas abriria o bucket para a chave pública ou para
+--     o JWT do usuário, sem passar pela RLS do HubKeep.
+select is_empty($$
+  select policyname from pg_policies
+  where schemaname = 'storage' and tablename = 'objects'
+    and roles && array['public', 'anon', 'authenticated']::name[]
+$$, 'storage.objects sem policy para anon, authenticated ou public');
 
 select * from finish();
 rollback;

@@ -3,6 +3,12 @@
 // pacote confere que cada schema de corpo e de resposta está no documento.
 import { z } from 'zod';
 import { PedidoDeConvite, RespostaDeConvite, RespostaDeHoteis, RespostaDeSessao } from './api';
+import {
+  PedidoDeUrlDeDownload,
+  PedidoDeUrlDeUpload,
+  RespostaDeUrlDeDownload,
+  RespostaDeUrlDeUpload,
+} from './anexos';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
 import { ErroApi } from './erro';
@@ -102,6 +108,34 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (credencial_de_agente_so_admin).'),
       404: ERRO('Credencial não encontrada ou já revogada (credencial_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/anexos/url-de-upload',
+    resumo: 'URL assinada para enviar um anexo direto ao Storage (ADR-024).',
+    exigeTenant: true,
+    corpo: PedidoDeUrlDeUpload,
+    respostas: {
+      200: { descricao: 'URL de upload (PUT do arquivo)', esquema: RespostaDeUrlDeUpload },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem só lê o hotel não anexa (anexo_sem_escrita_no_hotel).'),
+      404: ERRO('Registro fora do escopo do usuário (registro_nao_encontrado).'),
+      422: ERRO(
+        'Entrada inválida (entrada_invalida) ou tipo não aceito (tipo_de_arquivo_nao_aceito).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/anexos/url-de-download',
+    resumo: 'URL assinada de curta duração para baixar um anexo do escopo do usuário.',
+    exigeTenant: true,
+    corpo: PedidoDeUrlDeDownload,
+    respostas: {
+      200: { descricao: 'URL de download (5 minutos)', esquema: RespostaDeUrlDeDownload },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Anexo fora do escopo do usuário (anexo_nao_encontrado).'),
     },
   },
 ];

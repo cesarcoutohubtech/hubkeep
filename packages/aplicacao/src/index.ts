@@ -50,3 +50,15 @@ export type {
   DependenciasDeIngestao,
   ResultadoDaPromocao,
 } from './casos-de-uso/ingestao';
+export { ENTIDADES_COM_ANEXO } from './portas/anexos';
+export type {
+  ArmazenamentoDeArquivos,
+  EntidadeComAnexo,
+  PortaEscopoDeAnexo,
+} from './portas/anexos';
+export {
+  SEGUNDOS_URL_DE_DOWNLOAD,
+  TIPOS_DE_ANEXO,
+  criarCasosDeUsoDeAnexos,
+} from './casos-de-uso/anexos';
+export type { CasosDeUsoDeAnexos, DependenciasDeAnexos, TipoDeAnexo } from './casos-de-uso/anexos';

@@ -41,10 +41,11 @@ jobs:
           echo '[]' > supabase/signing_keys.json
           supabase gen signing-key --algorithm ES256 --append --yes > /dev/null
 
-      # Banco, Auth (e Kong, que o expõe) e o Mailpit, onde chega o e-mail de
-      # convite da F0-05. Os demais serviços não entram nos testes.
+      # Banco, Auth (e Kong, que o expõe), o Mailpit, onde chega o e-mail de
+      # convite da F0-05, e o Storage, para o upload por URL assinada da F0-10.
+      # Os demais serviços não entram nos testes.
       - name: Subir Supabase local no runner
-        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
 
       - name: Aplicar migrações do zero
         run: supabase db reset
