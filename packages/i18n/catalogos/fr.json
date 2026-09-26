@@ -24,6 +24,16 @@
   "inicio.hoteis.titulo": "Hôtels",
   "inicio.hoteis.vazio": "Aucun hôtel visible pour vous dans ce groupe.",
 
+  "tecnico.nome": "HubKeep Technicien",
+  "tecnico.descricao": "Les ordres de travail de maintenance du jour, avec ou sans réseau.",
+  "tecnico.fila.titulo": "File du jour",
+  "tecnico.fila.vazia": "Aucun ordre de travail pour aujourd’hui.",
+  "tecnico.rede.online": "Connecté",
+  "tecnico.rede.offline": "Pas de connexion. Ce que vous faites est enregistré et envoyé au retour du réseau.",
+  "tecnico.sincronizacao.pendentes": "{n, plural, =0 {Tout est envoyé.} one {# opération en attente d’envoi.} other {# opérations en attente d’envoi.}}",
+  "tecnico.sincronizacao.rejeitadas": "{n, plural, one {# opération refusée par le serveur.} other {# opérations refusées par le serveur.}}",
+  "tecnico.sincronizacao.enviar_agora": "Envoyer maintenant",
+
   "hotel.status": "{status, select, em_implantacao {en déploiement} ativo {actif} desativado {désactivé} other {{status}}}",
 
   "email.convite.assunto": "Invitation à HubKeep",

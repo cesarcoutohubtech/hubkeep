@@ -38,7 +38,7 @@ flowchart LR
 
 **apps/web (Next.js na Vercel).** Serve as telas do CSC, gestores e administração, e expõe a API `/api/v1`, usada também pelo PWA e pelo agente. Os handlers são finos: validam a entrada com Zod, montam o `Contexto` e chamam um caso de uso de `packages/aplicacao`. Server Components podem chamar casos de uso diretamente, sempre com `Contexto`.
 
-**apps/tecnico (PWA).** App React + Vite com service worker, IndexedDB e fila de sincronização. Fala só com a API `/api/v1`, com o access token do Supabase no cabeçalho. Cada operação offline leva uma chave de idempotência gerada no aparelho, e a API ignora repetições.
+**apps/tecnico (PWA).** App React + Vite com service worker, IndexedDB e fila de sincronização. Fala só com a API `/api/v1`, com o access token do Supabase no cabeçalho. Cada operação offline leva uma chave de idempotência gerada no aparelho, e a API ignora repetições: a chave é gravada em `app.operacao_offline` na mesma unit of work do efeito (ADR-025, fluxo em "Sincronização offline do PWA").
 
 **apps/conector (agente local).** Container Node rodando dentro da rede do cliente. Lê as views acordadas do TOTVS com usuário somente leitura e envia lotes por HTTPS para `/api/v1/ingestao/lotes`. Ele não tem nenhuma credencial do banco do HubKeep, só uma credencial de agente revogável por tenant. Não precisa de VPN: a conexão sai do cliente em HTTPS. O contrato de dados é o de `packages/contratos` (adaptador de sistema hoteleiro); o TOTVS é o primeiro adaptador.
 
@@ -108,6 +108,19 @@ O limite de 4,5 MB de corpo das funções da Vercel define o tamanho máximo do 
 
    Fora do escopo, 404.
 5. O bucket `anexos` é privado e não tem policy para `anon`, `authenticated` ou `public` (meta-teste 24): sem URL assinada, ninguém lê nem grava. O registro do anexo numa tabela de negócio entra com a OS, na fase 1a.
+
+### Sincronização offline do PWA (F0-11, ADR-025)
+
+1. O técnico faz a operação, com ou sem rede. Ela entra na fila do IndexedDB com uma chave nova (`crypto.randomUUID()`).
+2. O app manda a fila ao abrir, depois de cada operação, quando a rede volta e a cada 30 s. Vai uma por vez, na ordem em que foram feitas, para `POST /api/v1/sincronizacao/operacoes`.
+3. A API valida e aplica o efeito numa unit of work. Na mesma transação grava a chave em `app.operacao_offline`, com a resposta.
+4. Respostas:
+   - **201:** aplicada;
+   - **200 com `repetida: true`:** a chave já tinha chegado, porque a resposta se perdeu ou o envio foi duplo. Nada é aplicado de novo;
+   - **422:** operação recusada. A chave não é guardada, e o aparelho a mostra como rejeitada.
+5. Sem rede, com 5xx ou 401, a operação espera (5 s, dobrando até 5 min), e nenhuma operação mais nova passa na frente.
+
+O service worker guarda só a casca do app, e os quatro catálogos vão no build. A API nunca é servida do cache.
 
 ### Idioma e região (F0-10b, ADR-022)
 

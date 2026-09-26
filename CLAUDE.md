@@ -79,6 +79,7 @@ pnpm test                                  # Vitest (unitários e integração)
 pnpm lint && pnpm typecheck
 HK_ATUALIZAR_TEMPLATES=1 pnpm exec vitest run tests/i18n-templates.test.ts  # regenera o template do convite a partir do catálogo
 pnpm dev                                   # web e técnico em modo dev, apontando para o dev
+pnpm --filter @hubkeep/tecnico dev         # só o PWA (Vite, porta 5173; /api vai para o web em localhost:3000)
 ```
 
 Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `supabase test db` a cada PR. Esse é o controle que bloqueia o merge.

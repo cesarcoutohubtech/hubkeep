@@ -133,6 +133,15 @@ export interface AppMembro {
   usuario_id: string;
 }
 
+export interface AppOperacaoOffline {
+  chave: string;
+  recebida_em: Generated<Timestamp>;
+  resposta: Json;
+  tenant_id: string;
+  tipo: string;
+  usuario_id: string;
+}
+
 export interface AppPreferenciaMembro {
   atualizado_em: Generated<Timestamp>;
   criado_em: Generated<Timestamp>;
@@ -209,6 +218,7 @@ export interface DB {
   "app.local": AppLocal;
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
+  "app.operacao_offline": AppOperacaoOffline;
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.proprietario": AppProprietario;
   "app.tenant": AppTenant;

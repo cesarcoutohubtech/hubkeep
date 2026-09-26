@@ -8,6 +8,7 @@ import {
   type CasosDeUsoDeIngestao,
   type CasosDeUsoDePapeis,
   type CasosDeUsoDePreferencias,
+  type CasosDeUsoDeSincronizacao,
   type Manipulador,
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
@@ -15,6 +16,7 @@ import {
   criarCasosDeUsoDeIngestao,
   criarCasosDeUsoDePapeis,
   criarCasosDeUsoDePreferencias,
+  criarCasosDeUsoDeSincronizacao,
   criarManipuladoresDeEventos,
   relogioDoSistema,
 } from '@hubkeep/aplicacao';
@@ -23,6 +25,7 @@ import {
   type ResultadoOutbox,
   criarAcessoBanco,
   criarPortaEscopoDeAnexo,
+  criarPortaOperacoesOffline,
   criarPortaPreferencias,
   criarPortasDeAplicacao,
   criarPortasDeIngestao,
@@ -136,6 +139,11 @@ export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () =>
 /** Idioma e região do próprio usuário (F0-10b), pelo hk_app. */
 export const casosDeUsoDePreferencias = memo<CasosDeUsoDePreferencias>(async () =>
   criarCasosDeUsoDePreferencias({ preferencias: criarPortaPreferencias(await acessoBanco()) }),
+);
+
+/** Operações offline do PWA do técnico (F0-11, ADR-025), pelo hk_app. */
+export const casosDeUsoDeSincronizacao = memo<CasosDeUsoDeSincronizacao>(async () =>
+  criarCasosDeUsoDeSincronizacao({ operacoes: criarPortaOperacoesOffline(await acessoBanco()) }),
 );
 
 let manipuladores: Record<string, Manipulador> | undefined;

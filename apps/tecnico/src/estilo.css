@@ -1,0 +1,33 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #0f172a;
+  background: #ffffff;
+}
+body {
+  margin: 0;
+  padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+}
+.cartao {
+  display: grid;
+  gap: 12px;
+  max-width: 480px;
+  margin: 24px auto;
+}
+.linha {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+.online {
+  color: #0f766e;
+}
+.offline {
+  color: #b45309;
+}
+input,
+select,
+button {
+  font: inherit;
+  padding: 10px;
+}

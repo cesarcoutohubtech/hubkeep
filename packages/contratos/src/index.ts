@@ -31,6 +31,11 @@ export {
   RespostaDeUrlDeUpload,
   TIPOS_DE_ANEXO_API,
 } from './anexos';
+export {
+  PedidoDeOperacaoOffline,
+  RespostaDeOperacaoOffline,
+  TIPOS_DE_OPERACAO_OFFLINE,
+} from './sincronizacao';
 export { IDIOMAS_API, PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 export { CODIGOS_HTTP, ErroApi, type ProblemaDeEntrada, problemasDe } from './erro';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';

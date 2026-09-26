@@ -80,7 +80,7 @@ describe('pseudo-idioma', () => {
   it('toda chave formata no pseudo-idioma', () => {
     const t = criarTradutor(PSEUDO_IDIOMA);
     for (const chave of Object.keys(mensagensDe(PSEUDO_IDIOMA))) {
-      const valores = { nome: 'N', tenant: 'T', minimo: 8, status: 'ativo', email: 'e' };
+      const valores = { nome: 'N', tenant: 'T', minimo: 8, status: 'ativo', email: 'e', n: 2 };
       const texto = t.intl.formatMessage(
         { id: chave },
         { ...valores, b: (p: string[]) => p.join('') },

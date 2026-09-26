@@ -121,6 +121,8 @@ Criar `apps/tecnico` com Vite, `vite-plugin-pwa`, login, shell offline, fila em 
 
 **Aceite:** o app instala no Android e no iOS, abre sem rede e sincroniza uma operação de exemplo quando a rede volta, sem duplicar. Nenhum texto fixo: tudo pelo catálogo da F0-10b, que vai no build junto com o app.
 
+A instalação em aparelho pede HTTPS fora de `localhost`. A F0-11 prova no build e no navegador o que o Android e o iOS exigem (manifesto, ícones 192/512 e maskable, `apple-touch-icon`, service worker e abertura sem rede). O teste nos dois aparelhos fica para o primeiro deploy da F0-12 (ADR-025).
+
 ## F0-12 — Deploy e ambientes
 
 Criar os projetos Vercel (`web`, `tecnico`) com funções em `gru1`, variáveis por ambiente e previews ligados só ao Supabase de staging. Workflow de migrações: automático para staging, aprovação manual para produção.
@@ -142,7 +144,9 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - Plano Vercel Pro (uso comercial e cron por minuto) e plano Supabase (PITR, SSO SAML).
 - SSO corporativo da Slaviero: Entra ID, Google ou nenhum.
 - Provedor de e-mail transacional (ex.: Resend ou SES) com domínio da EasyGov.
-- Domínios: web e técnico no mesmo domínio raiz, para simplificar cookies e CORS.
+- Domínios: web e técnico no mesmo domínio raiz, para simplificar cookies e CORS. O PWA chama `/api/v1` de outra origem em produção; no dev, o Vite repassa `/api` para o web (F0-11).
+- Retenção de `app.operacao_offline` (ADR-025): uma linha por operação sincronizada, sem DELETE para a aplicação. Definir o prazo e quem limpa (papel próprio ou backoffice) antes do rollout.
+- Teste de instalação do PWA em Android e iOS, no primeiro deploy com HTTPS (F0-12).
 - Parque de aparelhos dos técnicos (proporção Android e iOS), por causa do push no iOS.
 - Backoffice da EasyGov: o papel `hk_backoffice` existe no banco, mas nenhuma tarefa da fase 0 cria a aplicação nem a variável de conexão dele.
 - Banco de dev: um projeto por desenvolvedor ou branching do Supabase (ADR-015).

@@ -45,6 +45,19 @@ export async function preferenciasDoUsuario(tx: Tx) {
   };
 }
 
+/** Resposta guardada de uma operação offline do próprio usuário, se a chave já veio. */
+export async function respostaDaOperacao(
+  tx: Tx,
+  chave: string,
+): Promise<Record<string, string | number | boolean | null> | null> {
+  const linha = await tx
+    .selectFrom('app.operacao_offline')
+    .select('resposta')
+    .where('chave', '=', chave)
+    .executeTakeFirst();
+  return (linha?.resposta as Record<string, string | number | boolean | null> | undefined) ?? null;
+}
+
 /**
  * Já existe membro com este usuário ou este e-mail no tenant do contexto?
  * (Reconvite vira 409, não erro de chave.)
