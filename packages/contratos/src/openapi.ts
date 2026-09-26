@@ -11,6 +11,12 @@ import {
 } from './anexos';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
+import {
+  PedidoDeImportacaoDeHotel,
+  RespostaDeAtivacaoDeHotel,
+  RespostaDeHoteisDoStaging,
+  RespostaDeImportacaoDeHotel,
+} from './hoteis';
 import { PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from './sincronizacao';
 import { ErroApi } from './erro';
@@ -165,6 +171,50 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'Entrada inválida (entrada_invalida), formato regional fora da lista ' +
           '(formato_regional_nao_aceito) ou fuso inválido (fuso_invalido).',
+      ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/staging',
+    resumo:
+      'Hotéis do sistema hoteleiro (staging), com o cadastro e o uso da licença. Só o Admin do grupo.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Hotéis do staging', esquema: RespostaDeHoteisDoStaging },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (ativacao_so_admin).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/importacoes',
+    resumo: 'Traz um hotel do staging para implantação, sem consumir licença.',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeHotel,
+    respostas: {
+      201: { descricao: 'Hotel em implantação', esquema: RespostaDeImportacaoDeHotel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (ativacao_so_admin).'),
+      404: ERRO('Hotel fora do staging (hotel_nao_encontrado_no_staging).'),
+      409: ERRO('Hotel já importado (hotel_ja_importado).'),
+      422: ERRO(
+        'Sem nome no staging, fuso ausente ou inválido (hotel_sem_nome_no_staging, fuso_obrigatorio, fuso_invalido).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/ativacao',
+    resumo: 'Ativa o hotel, consumindo uma licença; libera as UHs pendentes até o saldo de UHs.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Hotel ativo', esquema: RespostaDeAtivacaoDeHotel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (ativacao_so_admin, sem_permissao).'),
+      404: ERRO('Hotel não encontrado (hotel_nao_encontrado).'),
+      409: ERRO(
+        'Hotel já ativo ou sem licença de hotel (hotel_ja_ativo, licenca_hoteis_sem_saldo).',
       ),
     },
   },

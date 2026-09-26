@@ -13,7 +13,21 @@ export {
   vigente,
 } from './permissoes';
 export type { Resultado } from './permissoes';
-export { contaComoUh, saldoDeUhs, statusDaUhNova } from './licenca';
-export type { SaldoDeUhs, StatusDeHotel, StatusDeLocal, TipoDeLocal } from './licenca';
+export {
+  contaComoHotel,
+  contaComoUh,
+  decidirAtivacao,
+  saldoDeHoteis,
+  saldoDeUhs,
+  statusDaUhNova,
+} from './licenca';
+export type {
+  DecisaoDeAtivacao,
+  SaldoDeHoteis,
+  SaldoDeUhs,
+  StatusDeHotel,
+  StatusDeLocal,
+  TipoDeLocal,
+} from './licenca';
 export { PAPEIS } from './tipos';
 export type { Atribuicao, Contexto, Escopo, Papel, PedidoDeConcessao } from './tipos';

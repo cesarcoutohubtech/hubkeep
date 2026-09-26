@@ -5,6 +5,7 @@ import { criarAdministracaoDoAuth, criarArmazenamentoDeAnexos } from '@hubkeep/a
 import {
   type CasoDeUsoDeConvites,
   type CasosDeUsoDeAnexos,
+  type CasosDeUsoDeHoteis,
   type CasosDeUsoDeIngestao,
   type CasosDeUsoDePapeis,
   type CasosDeUsoDePreferencias,
@@ -13,6 +14,7 @@ import {
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
+  criarCasosDeUsoDeHoteis,
   criarCasosDeUsoDeIngestao,
   criarCasosDeUsoDePapeis,
   criarCasosDeUsoDePreferencias,
@@ -25,6 +27,7 @@ import {
   type ResultadoOutbox,
   criarAcessoBanco,
   criarPortaEscopoDeAnexo,
+  criarPortaHoteisDoStaging,
   criarPortaOperacoesOffline,
   criarPortaPreferencias,
   criarPortasDeAplicacao,
@@ -135,6 +138,16 @@ export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () =>
     novoId,
   }),
 );
+
+/** Hotéis a partir do staging (fase 1a, A1): listar, importar e ativar, pelo hk_app. */
+export const casosDeUsoDeHoteis = memo<CasosDeUsoDeHoteis>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeHoteis({
+    hoteis: criarPortaHoteisDoStaging(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
 
 /** Idioma e região do próprio usuário (F0-10b), pelo hk_app. */
 export const casosDeUsoDePreferencias = memo<CasosDeUsoDePreferencias>(async () =>
