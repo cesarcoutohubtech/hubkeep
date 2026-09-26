@@ -24,6 +24,16 @@
   "inicio.hoteis.titulo": "Hotéis",
   "inicio.hoteis.vazio": "Nenhum hotel visível para você neste grupo.",
 
+  "tecnico.nome": "HubKeep Técnico",
+  "tecnico.descricao": "Ordens de serviço de manutenção do dia, com ou sem rede.",
+  "tecnico.fila.titulo": "Fila do dia",
+  "tecnico.fila.vazia": "Nenhuma ordem de serviço para hoje.",
+  "tecnico.rede.online": "Conectado",
+  "tecnico.rede.offline": "Sem conexão. O que você fizer fica guardado e é enviado quando a rede voltar.",
+  "tecnico.sincronizacao.pendentes": "{n, plural, =0 {Tudo enviado.} one {# operação aguardando envio.} other {# operações aguardando envio.}}",
+  "tecnico.sincronizacao.rejeitadas": "{n, plural, one {# operação recusada pelo servidor.} other {# operações recusadas pelo servidor.}}",
+  "tecnico.sincronizacao.enviar_agora": "Enviar agora",
+
   "hotel.status": "{status, select, em_implantacao {em implantação} ativo {ativo} desativado {desativado} other {{status}}}",
 
   "email.convite.assunto": "Convite para o HubKeep",

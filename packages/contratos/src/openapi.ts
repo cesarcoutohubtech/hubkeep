@@ -12,6 +12,7 @@ import {
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
 import { PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
+import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from './sincronizacao';
 import { ErroApi } from './erro';
 
 type Esquema = z.ZodType;
@@ -164,6 +165,24 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'Entrada inválida (entrada_invalida), formato regional fora da lista ' +
           '(formato_regional_nao_aceito) ou fuso inválido (fuso_invalido).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/sincronizacao/operacoes',
+    resumo: 'Uma operação feita offline no PWA, com chave de idempotência (ADR-025).',
+    exigeTenant: true,
+    corpo: PedidoDeOperacaoOffline,
+    respostas: {
+      201: { descricao: 'Operação aplicada agora', esquema: RespostaDeOperacaoOffline },
+      200: {
+        descricao: 'Chave já recebida: resposta guardada, nada aplicado de novo',
+        esquema: RespostaDeOperacaoOffline,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO(
+        'Operação inválida (entrada_invalida ou o código da regra); a chave não é guardada.',
       ),
     },
   },

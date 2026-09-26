@@ -8,6 +8,7 @@ import type {
   PortaCredenciaisDeAgente,
   PortaHoteis,
   PortaIngestao,
+  PortaOperacoesOffline,
   PortaPreferencias,
   PortaPromocaoDeUhs,
 } from '@hubkeep/aplicacao';
@@ -22,10 +23,12 @@ import {
   listarHoteisVisiveis,
   nomeDoTenant,
   preferenciasDoUsuario,
+  respostaDaOperacao,
 } from './consultas';
 import { gravarConvite } from './repositorios/convites';
 import { criarCredencialDeAgente, revogarCredencialDeAgente } from './repositorios/credenciais';
 import { concederPapel, revogarPapel } from './repositorios/membros';
+import { OperacaoJaRecebida, registrarOperacao } from './repositorios/operacoes-offline';
 import { gravarPreferencias } from './repositorios/preferencias';
 import { sessaoDePromocao } from './repositorios/promocao';
 import { credenciaisAtivas, registrarLote } from './repositorios/staging';
@@ -139,6 +142,34 @@ export function criarPortaPreferencias(banco: AcessoBanco): PortaPreferencias {
   return {
     ler: (ctx) => banco.withContext(ctx, preferenciasDoUsuario),
     gravar: (ctx, p) => banco.executar(ctx, (uow) => gravarPreferencias(uow, p)),
+  };
+}
+
+/**
+ * Operações offline do PWA (F0-11, ADR-025): o efeito e a chave na mesma unit
+ * of work. Reenvio de chave conhecida devolve a resposta guardada sem repetir;
+ * dois envios simultâneos: o que perde volta inteiro e lê a resposta do outro.
+ */
+export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOffline {
+  const guardada = (ctx: Parameters<AcessoBanco['withContext']>[0], chave: string) =>
+    banco.withContext(ctx, (tx) => respostaDaOperacao(tx, chave));
+  return {
+    async aplicarUmaVez(ctx, operacao, efeito) {
+      const antes = await guardada(ctx, operacao.chave);
+      if (antes) return { repetida: true, resposta: antes };
+      try {
+        return await banco.executar(ctx, async (uow) => {
+          const resposta = await efeito({ gravarPreferencias: (p) => gravarPreferencias(uow, p) });
+          await registrarOperacao(uow, operacao, resposta);
+          return { repetida: false, resposta };
+        });
+      } catch (e) {
+        if (!(e instanceof OperacaoJaRecebida)) throw e;
+        const depois = await guardada(ctx, operacao.chave);
+        if (!depois) throw e;
+        return { repetida: true, resposta: depois };
+      }
+    },
   };
 }
 

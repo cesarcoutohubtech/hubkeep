@@ -250,3 +250,26 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
 - (26/09/2026) Regra do Cesar: falar com ele sempre em português do Brasil. Registrada no `CLAUDE.md`, seção Idioma.
 - (26/09/2026) A conta de máquina do GitHub fica para o início da F0-12, como pré-requisito do primeiro deploy (`docs/04`). Até lá, vale a conta do Cesar, e o `.claude/settings.json` nega `gh auth *` em Bash e PowerShell.
 - Pendente: revisão das traduções; os quatro catálogos completos antes do piloto.
+
+## F0-11 — Esqueleto do PWA do técnico — PR próprio (toca migração, testes de banco, `CLAUDE.md` e `docs/03`)
+- `apps/tecnico`:
+  - Vite 8 e `vite-plugin-pwa`;
+  - login pelo Supabase Auth, com a sessão guardada no aparelho;
+  - casca offline no service worker;
+  - fila de operações no IndexedDB, com chave de idempotência por operação;
+  - tela "Fila do dia" (vazia até a fase 1a), com o estado da rede e da fila.
+- Operação de exemplo: a troca de idioma, que funciona sem rede e sincroniza quando a rede volta.
+- Servidor:
+  - `POST /api/v1/sincronizacao/operacoes`;
+  - migração 0006 (`app.operacao_offline`), com a chave gravada na mesma unit of work do efeito;
+  - ADR-025 (Proposta).
+- Aceite:
+  - fila e sincronização (`apps/tecnico/test/fila.test.ts`, com IndexedDB falso): sem rede fica guardada, inclusive depois de fechar o app; volta a rede e sai uma vez; resposta perdida não duplica; ordem mantida; espera que dobra; recusada sem travar as outras;
+  - servidor com banco real (`apps/web/test/sincronizacao.test.ts`): reenvio é 200 repetida sem efeito; dois envios simultâneos, um efeito; mesma chave de outro usuário é outra operação; inválida é 422 sem guardar a chave;
+  - pgTAP `005_operacao_offline`;
+  - build (`apps/tecnico/test/build.test.ts`): manifesto instalável, `apple-touch-icon`, service worker com a casca e os quatro catálogos no build. É a parte da F0-10b que ficou para cá;
+  - no navegador (preview do build): service worker ativo, manifesto válido e app aberto do cache com o servidor parado.
+- Pendente:
+  - instalação em Android e iOS, que exige HTTPS, no primeiro deploy da F0-12;
+  - retenção de `app.operacao_offline`;
+  - CORS ou domínio único em produção (`docs/04`).

@@ -71,3 +71,14 @@ export type {
 } from './portas/preferencias';
 export { criarCasosDeUsoDePreferencias, validarPreferencias } from './casos-de-uso/preferencias';
 export type { CasosDeUsoDePreferencias, PreferenciasResolvidas } from './casos-de-uso/preferencias';
+export type {
+  PortaOperacoesOffline,
+  RespostaDeOperacao,
+  SessaoDeOperacao,
+} from './portas/sincronizacao';
+export { criarCasosDeUsoDeSincronizacao } from './casos-de-uso/sincronizacao';
+export type {
+  CasosDeUsoDeSincronizacao,
+  OperacaoOffline,
+  ResultadoDaOperacao,
+} from './casos-de-uso/sincronizacao';

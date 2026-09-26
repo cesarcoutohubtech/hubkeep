@@ -379,3 +379,39 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Na fase 0, recebem anexo `hotel` e `local`; OS, chamado e ativo entram na fase 1a, com a tabela de anexos e o registro do anexo na unit of work.
 - O download pelo proprietário (UH própria) fica para quando existirem anexos de OS: hoje a leitura usa `authz.hoteis_leitura`, que não inclui o proprietário por UH.
 - A CI sobe o `storage-api` para o teste de upload real.
+
+## ADR-025 — Sincronização offline do PWA: fila no aparelho e chave de idempotência gravada com o efeito
+
+**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR da F0-11.
+
+**Contexto:** o `docs/01` diz que cada operação offline leva uma chave de idempotência gerada no aparelho e que a API ignora repetições, mas não diz onde a chave fica nem como a repetição é detectada. O aceite da F0-11 pede sincronizar uma operação quando a rede volta, sem duplicar. A duplicação vem de dois casos:
+- a resposta se perde no caminho de volta, e o aparelho reenvia algo que o servidor já aplicou;
+- dois envios da mesma operação chegam juntos (evento `online` e botão).
+
+**Decisão:**
+- **No aparelho (`apps/tecnico/src/fila`):**
+  - cada operação é um registro no IndexedDB, com a chave (`crypto.randomUUID()`) criada junto com ela;
+  - a fila sobrevive a fechar o app e só perde a operação quando o servidor confirma ou recusa.
+- **Envio, uma operação por vez e na ordem em que foram feitas:**
+  - a passada para na primeira que não sai, e uma operação mais nova nunca passa na frente de uma mais velha;
+  - sem rede, com 5xx, 401, 408 ou 429, a operação espera: 5 s, dobrando até 5 min. A volta da rede, a abertura do app e o botão "Enviar agora" ignoram a espera;
+  - 4xx de regra deixa a operação como rejeitada, visível na tela e sem reenvio. Operação fora do contrato é recusada no próprio aparelho;
+  - duas passadas ao mesmo tempo viram uma.
+- **No servidor (`POST /api/v1/sincronizacao/operacoes`):**
+  - a chave é gravada em `app.operacao_offline` (migração 0006) **na mesma unit of work do efeito**;
+  - reenvio de chave conhecida devolve 200 com `repetida: true` e a resposta guardada, sem aplicar de novo;
+  - com dois envios simultâneos, o `INSERT ... ON CONFLICT DO NOTHING` do segundo espera o primeiro. Se o primeiro gravou, a unit of work do segundo volta inteira, com o efeito junto, e ele devolve a resposta guardada;
+  - operação inválida é 422, e a chave não é guardada.
+- **A chave é do usuário:** a chave primária é `(tenant_id, usuario_id, chave)`, com RLS da própria linha. A mesma chave de outro usuário não colide nem revela nada. Sem UPDATE e sem DELETE: a linha nasce com a resposta e não muda.
+- **Tipos de operação:** discriminados no contrato (`PedidoDeOperacaoOffline`). A fase 0 tem um, `preferencias.gravar`, que serve de exemplo real: a troca de idioma funciona sem rede. Os da OS entram na fase 1a.
+- **Service worker (`vite-plugin-pwa`, `generateSW`):**
+  - guarda a casca do app: HTML, JS, CSS, ícones e manifesto;
+  - a API nunca vem do cache.
+
+  Os quatro catálogos vão no JS do build (ADR-022). Nome e descrição do manifesto e título do HTML saem do catálogo pt-BR.
+
+**Consequências:**
+- **Crescimento da tabela:** `app.operacao_offline` cresce uma linha por operação sincronizada, e a limpeza das antigas exige um papel com DELETE, que a aplicação não tem. Pendência no `docs/04`.
+- **Conflito de edição entre pessoas** (duas pessoas mexendo na mesma OS offline) é regra de domínio da fase 1a, não da fila.
+- **Instalação em Android e iOS:** exige HTTPS fora de `localhost`. A prova em aparelho fica para depois do deploy da F0-12. A F0-11 prova o que dá sem aparelho: manifesto, ícones, service worker, abertura sem rede no navegador e a sincronização.
+- **API em outra origem em produção:** vai exigir CORS ou o mesmo domínio raiz, pendência já listada no `docs/04`. No dev, o Vite repassa `/api` para o web.
