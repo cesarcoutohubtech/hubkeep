@@ -50,3 +50,5 @@ export type {
   DependenciasDeIngestao,
   ResultadoDaPromocao,
 } from './casos-de-uso/ingestao';
+export { rodarPorTenant } from './casos-de-uso/por-tenant';
+export type { ResultadoPorTenant } from './casos-de-uso/por-tenant';

@@ -32,6 +32,12 @@ export interface AcessoBanco {
    * passa pela unit of work: a própria staging.carga é o registro do lote.
    */
   withIngestao<T>(ctx: { tenantId: string }, fn: (tx: Tx) => Promise<T>): Promise<T>;
+  /**
+   * Tenants para os jobs (hk_worker): a única leitura do worker sem tenant na
+   * sessão. A policy worker_select de app.tenant libera a lista; tudo o mais do
+   * worker é um tenant por transação (withSistema, ADR-007).
+   */
+  listarTenants(): Promise<string[]>;
   encerrar(): Promise<void>;
 }
 
@@ -89,10 +95,18 @@ export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBa
     return emTransacao(exigir(ingestao, 'hk_ingestao'), '', ctx.tenantId, fn);
   };
 
+  // Contexto explicitamente vazio (usuário e tenant ''): nenhuma policy de
+  // tenant libera nada, só a lista de app.tenant do worker.
+  const listarTenants: AcessoBanco['listarTenants'] = () =>
+    emTransacao(exigir(worker, 'hk_worker'), '', '', async (tx) =>
+      (await tx.selectFrom('app.tenant').select('id').orderBy('id').execute()).map((t) => t.id),
+    );
+
   return {
     withContext,
     withSistema,
     withIngestao,
+    listarTenants,
     executar: (ctx, fn) =>
       withContext(ctx, async (tx) => {
         const uow = criarUnidade(tx, ctx.tenantId, ctx.usuarioId);

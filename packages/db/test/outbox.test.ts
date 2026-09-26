@@ -1,6 +1,6 @@
 // Núcleo do outbox (ADR-007/018) contra Postgres real, papel hk_worker.
 import { randomUUID } from 'node:crypto';
-import type { Manipulador } from '@hubkeep/aplicacao';
+import { type Manipulador, rodarPorTenant } from '@hubkeep/aplicacao';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -110,5 +110,38 @@ describe.skipIf(!temBanco)('processarOutbox contra Postgres real', { timeout: 60
     ]);
     expect((a?.processados ?? 0) + (b?.processados ?? 0)).toBe(10);
     expect([...vistos].sort()).toEqual([...ids].sort());
+  });
+
+  it('F0-09: o laço por tenant lista pelo worker e um tenant com erro não para os outros', async () => {
+    const [T2, T3] = [randomUUID(), randomUUID()];
+    for (const t of [T2, T3]) {
+      await dono.query(`insert into app.tenant (id, nome) values ($1, 'Outbox laço')`, [t]);
+      await dono.query(
+        `insert into app.evento_dominio (id, tenant_id, tipo, entidade, registro_id, payload)
+         values ($1, $2, 'teste.laco', 'teste', $3, '{}')`,
+        [randomUUID(), t, randomUUID()],
+      );
+    }
+    try {
+      const todos = await banco.listarTenants();
+      expect(todos).toEqual(expect.arrayContaining([T, T2, T3]));
+
+      const manipuladores: Record<string, Manipulador> = { 'teste.laco': async () => undefined };
+      // O do meio falha antes de abrir a transação (id inválido): o laço segue.
+      const r = await rodarPorTenant(
+        async () => [T2, 'nao-e-uuid', T3],
+        (t) => processarOutbox(banco, t, manipuladores),
+      );
+      expect(r.concluidos.map((c) => [c.tenantId, c.resultado.processados])).toEqual([
+        [T2, 1],
+        [T3, 1],
+      ]);
+      expect(r.falhas.map((f) => f.tenantId)).toEqual(['nao-e-uuid']);
+    } finally {
+      await dono.query(`delete from app.evento_dominio where tenant_id = any($1::uuid[])`, [
+        [T2, T3],
+      ]);
+      await dono.query(`delete from app.tenant where id = any($1::uuid[])`, [[T2, T3]]);
+    }
   });
 });

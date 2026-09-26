@@ -55,6 +55,11 @@ export interface Requisicao {
   corpo<T extends z.ZodType>(contrato: T, opcoes?: { limiteBytes?: number }): Promise<z.output<T>>;
   /** Tenant de quem não é usuário (ex.: o agente, pelo prefixo da credencial), para o log. */
   marcarTenant(tenantId: string): void;
+  /**
+   * Erro que a rota tratou sem falhar (ex.: um tenant do cron): vai para o log
+   * e para o Sentry com o request_id, e a rota segue.
+   */
+  registrarErro(erro: unknown, campos: { tenant_id?: string | null }): void;
   /** Resposta validada pelo contrato: o que sai é o que o OpenAPI promete. */
   responder<T extends z.ZodType>(status: number, contrato: T, dados: z.input<T>): Response;
   /** Resposta sem contrato (ex.: o próprio OpenAPI). */
@@ -156,6 +161,14 @@ export function rota(
       },
       marcarTenant(tenantId) {
         escopo.tenant_id = tenantId;
+      },
+      registrarErro(erro, campos) {
+        const marcas = { rota: nome, request_id: requestId, ...escopo, ...campos };
+        d.relatar(erro, marcas);
+        d.registrar('error', 'erro_tratado', {
+          ...marcas,
+          erro: erro instanceof Error ? { nome: erro.name, mensagem: erro.message } : String(erro),
+        });
       },
       responder(status, contrato, dados) {
         return Response.json(contrato.parse(dados), { status });

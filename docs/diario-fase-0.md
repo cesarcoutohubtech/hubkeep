@@ -181,3 +181,16 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - `tests/conector-sem-banco.test.ts`: o agente não tem variável, dependência nem URL de banco.
 - O `banco.yml` passa a exportar a URL do `hk_ingestao` para a integração. É zona protegida: PR aberto e parado.
 
+## F0-09 — Outbox e cron — PR #24
+- Rotas `/api/cron/{outbox,promocao,sla,preventiva}`:
+  - conferem `CRON_SECRET` em tempo constante, com falha fechada: sem o segredo, 503; com o errado, 401;
+  - rodam com `hk_worker`, um tenant por transação (`rodarPorTenant`);
+  - um tenant com erro vai para o log e o Sentry, e o laço segue.
+- `sla` e `preventiva` já têm rota e laço; a tarefa de cada tenant entra nas fases 1c e 1b.
+- `apps/web/vercel.json`: região `gru1` e os agendamentos do ADR-007 (outbox a cada minuto, SLA a cada 5 min, preventiva diária) e da promoção de UHs (a cada 15 min).
+- Aceite:
+  - evento processado uma vez com duas execuções simultâneas (`skip locked`, teste da F0-06);
+  - falha com nova tentativa e atraso (backoff de 30 s dobrando até 1 h);
+  - tenant com erro não bloqueia os outros: `por-tenant.test.ts`, `cron.test.ts` e integração no banco com o laço real.
+- E-mail: segue o adaptador do Supabase e o Mailpit na CI. Provedor de produção e domínio (SPF, DKIM, DMARC) antes do piloto; SMTP na fase 1c (`docs/04`).
+
