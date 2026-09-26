@@ -306,3 +306,17 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
 - ADR-023: nota da decisão de 26/09 sobre a conta de máquina, com token clássico e `GH_TOKEN` local.
 - Pendência nova no `docs/04`: leitura de dado de negócio não é auditada.
 - Fica para a retomada da F0-12: PITR, membros de produção e Vercel.
+
+## Plano da fase 1a — PR #35 (toca `docs/03`)
+- Plano em `docs/05-plano-fase-1a.md`: etapas A (estrutura e administração), B (locais e ativos), C (corretiva) e D (auditoria por registro).
+- Decisões do Cesar (26/09/2026):
+  - ADRs 026 a 029 aprovados com condições:
+    - cópia da política no chamado, formato validado no domínio, mudança auditada, estrutura pronta para bandeira;
+    - nomes em quatro idiomas, com volta ao catálogo;
+    - tipos de campo comuns com o checklist da 1b, com rótulos em quatro idiomas;
+    - recusa pelo fluxo do ADR-025.
+  - Proprietário de hotel inteiro: tabela própria com vigência, calculada na fonte (ADR-031, texto para aprovação).
+  - Busca por trecho com `pg_trgm` (ADR-030, texto para aprovação).
+- `docs/05-prompt-inicial-claude-code.md` foi para `docs/referencia/`.
+- Pendência de auditoria de leitura (`docs/04`): marcado o caso da leitura de dados pessoais do proprietário (LGPD).
+- Depois do merge do #35: etapa A com autonomia, parando ao fim da etapa.
