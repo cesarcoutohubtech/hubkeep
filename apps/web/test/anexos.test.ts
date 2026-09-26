@@ -2,6 +2,9 @@
 //   - upload direto pela URL assinada funciona;
 //   - acesso sem URL assinada é negado (chave pública, JWT do usuário, URL pública);
 //   - usuário de outro hotel não consegue URL para o registro.
+// E as condições do ADR-024 que só o Storage real prova: a URL de upload não
+// sobrescreve, as validades são as declaradas e o bucket recusa tipo e tamanho
+// fora do limite mesmo com URL válida.
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
@@ -36,6 +39,16 @@ const PNG = Buffer.from(
   'base64',
 );
 
+/** Validade gravada no token da URL assinada (exp - iat), em segundos. */
+const validadeDoToken = (token: string): number => {
+  const carga = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString()) as {
+    iat: number;
+    exp: number;
+  };
+  return carga.exp - carga.iat;
+};
+const tokenDaUrl = (url: string): string => new URL(url).searchParams.get('token') ?? '';
+
 const req = (caminho: string, token: string, corpo: unknown) =>
   new Request(`http://127.0.0.1:3000${caminho}`, {
     method: 'POST',
@@ -52,6 +65,19 @@ describe.skipIf(!temAmbiente)('F0-10 — anexos por URL assinada', { timeout: 60
   let tokenAdmin = '';
   let tokenGerente = '';
   let caminho = '';
+  let urlDeEnvio = '';
+
+  const novaUrlDeUpload = async () => {
+    const r = await urlDeUpload(
+      req('/api/v1/anexos/url-de-upload', tokenAdmin, {
+        entidade: 'local',
+        registroId: T.local,
+        tipo: 'image/png',
+      }),
+    );
+    expect(r.status).toBe(200);
+    return (await r.json()) as { caminho: string; url: string; token: string; expiraEm: string };
+  };
 
   const semearUsuario = async (id: string, mail: string) => {
     await dono.query(
@@ -133,16 +159,9 @@ describe.skipIf(!temAmbiente)('F0-10 — anexos por URL assinada', { timeout: 60
   });
 
   it('upload direto do navegador pela URL assinada funciona', async () => {
-    const r = await urlDeUpload(
-      req('/api/v1/anexos/url-de-upload', tokenAdmin, {
-        entidade: 'local',
-        registroId: T.local,
-        tipo: 'image/png',
-      }),
-    );
-    expect(r.status).toBe(200);
-    const corpo = (await r.json()) as { caminho: string; url: string };
+    const corpo = await novaUrlDeUpload();
     caminho = corpo.caminho;
+    urlDeEnvio = corpo.url;
     expect(caminho.startsWith(`${T.tenant}/${T.h1}/local/${T.local}/`)).toBe(true);
     expect(caminho.endsWith('.png')).toBe(true);
 
@@ -152,6 +171,43 @@ describe.skipIf(!temAmbiente)('F0-10 — anexos por URL assinada', { timeout: 60
       body: PNG,
     });
     expect(envio.status).toBe(200);
+  });
+
+  it('a URL de upload vale 2 horas, como a API declara', async () => {
+    const corpo = await novaUrlDeUpload();
+    expect(validadeDoToken(tokenDaUrl(corpo.url))).toBe(2 * 60 * 60);
+    const declarada = (new Date(corpo.expiraEm).getTime() - Date.now()) / 1000;
+    expect(Math.abs(declarada - 2 * 60 * 60)).toBeLessThan(60);
+  });
+
+  it('a mesma URL de upload não sobrescreve o arquivo já enviado', async () => {
+    const outro = Buffer.concat([PNG, Buffer.from('sobrescrita')]);
+    const r = await fetch(urlDeEnvio, {
+      method: 'PUT',
+      headers: { 'content-type': 'image/png' },
+      body: outro,
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it('o bucket recusa tipo fora da lista, mesmo com URL de upload válida', async () => {
+    const corpo = await novaUrlDeUpload();
+    const r = await fetch(corpo.url, {
+      method: 'PUT',
+      headers: { 'content-type': 'text/html' },
+      body: '<script>alert(1)</script>',
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it('o bucket recusa arquivo acima de 20 MB, mesmo com URL de upload válida', async () => {
+    const corpo = await novaUrlDeUpload();
+    const r = await fetch(corpo.url, {
+      method: 'PUT',
+      headers: { 'content-type': 'image/png' },
+      body: Buffer.alloc(20 * 1024 * 1024 + 1),
+    });
+    expect(r.ok).toBe(false);
   });
 
   it('acesso sem URL assinada é negado (chave pública, JWT do usuário, URL pública)', async () => {
@@ -170,10 +226,11 @@ describe.skipIf(!temAmbiente)('F0-10 — anexos por URL assinada', { timeout: 60
     }
   });
 
-  it('a URL de download assinada devolve o arquivo', async () => {
+  it('a URL de download assinada vale 5 minutos e devolve o arquivo original', async () => {
     const r = await urlDeDownload(req('/api/v1/anexos/url-de-download', tokenAdmin, { caminho }));
     expect(r.status).toBe(200);
     const { url } = (await r.json()) as { url: string };
+    expect(validadeDoToken(tokenDaUrl(url))).toBe(300);
     const arquivo = await fetch(url);
     expect(arquivo.status).toBe(200);
     expect(Buffer.from(await arquivo.arrayBuffer()).equals(PNG)).toBe(true);

@@ -321,11 +321,15 @@ select is_empty($$
     )
 $$, 'nenhuma função de postgres ou hk_* fora dos schemas do HubKeep (exceto extensões)');
 
--- 23. Bucket de anexos existe e é privado (F0-10, ADR-024): sem URL pública.
+-- 23. Bucket de anexos existe e é privado (F0-10, ADR-024): sem URL pública,
+--     20 MB por arquivo e só os tipos que a API aceita. O limite vale no
+--     próprio Storage, mesmo para quem tiver uma URL de upload válida.
 select results_eq(
-  $$ select public from storage.buckets where id = 'anexos' $$,
-  $$ values (false) $$,
-  'bucket anexos existe e é privado'
+  $$ select public, file_size_limit, allowed_mime_types
+     from storage.buckets where id = 'anexos' $$,
+  $$ values (false, 20971520::bigint,
+       array['image/jpeg', 'image/png', 'image/webp', 'application/pdf']::text[]) $$,
+  'bucket anexos existe, é privado e limita tamanho (20 MB) e tipo'
 );
 
 -- 24. Nenhuma policy de storage.objects para anon, authenticated ou public: o

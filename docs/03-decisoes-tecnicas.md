@@ -286,6 +286,34 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Toda tarefa com tela ou mensagem passa a ter "sem texto fixo" no pronto.
 - O prazo do piloto e a tradução (en, es, fr) ficam nas pendências do `docs/04`.
 
+## ADR-023 — PR de zona protegida só é mergeado pelo Cesar
+
+**Status:** Proposta (26/09/2026), para aprovação do Cesar no PR.
+
+**Contexto:** as regras de processo (diário da fase 0) dizem que PR de zona protegida é aberto e para, e que o merge é do Cesar. Hoje isso depende só da disciplina do Claude Code. O `gh` da máquina de trabalho está autenticado com a conta do Cesar (`cesarcoutohubtech`), então, para o GitHub, um merge feito pelo Claude é um merge do Cesar. O ruleset do `main` exige só o pgTAP e não tem bypass configurado.
+
+**Decisão:**
+- **Check `zona protegida`** (`.github/workflows/zona-protegida.yml`): falha em todo PR que altere
+  - `supabase/migrations/`, `supabase/tests/` ou `supabase/config.toml`;
+  - `.github/workflows/`, `eslint.config.mjs` ou `CLAUDE.md`;
+  - `docs/03-decisoes-tecnicas.md` ou `.claude/`.
+
+  PR fora dessa lista passa.
+- **Ruleset do `main`**, que o Cesar configura no GitHub:
+  - o check `zona protegida` passa a ser **obrigatório**;
+  - o **bypass** fica só com o papel de **admin do repositório**.
+
+  Com isso, PR de zona protegida só entra por quem usa o bypass na tela do GitHub.
+- **`.claude/settings.json`**: `deny` para as formas de o Claude Code contornar a regra:
+  - `gh pr merge --admin`;
+  - merge pela API (`gh api .../merge`);
+  - edição de ruleset ou de proteção de branch pela API;
+  - `git push` direto no `main`.
+
+**Limite:** como a conta é a mesma, o GitHub não distingue o Cesar do Claude. A barreira contra o bypass é o `deny` do Claude Code, e não o GitHub. A separação completa exige uma identidade própria para o Claude: um token fine-grained sem papel de admin, só com `contents` e `pull_requests` de escrita. Com ela, o bypass fica impossível pelo próprio GitHub. Recomendado para antes da F0-12.
+
+**Consequência:** PR fora da zona protegida segue a regra do diário, com o Claude mergeando com a CI verde. PR de zona protegida fica com o check vermelho até o Cesar mergear com bypass. O vermelho é esperado e não é defeito.
+
 ## ADR-024 — Anexos no Storage: bucket privado, URL assinada pelo auth-admin e miniatura no aparelho
 
 **Status:** Proposta (26/09/2026), para aprovação do Cesar no PR da F0-10.
@@ -299,7 +327,12 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Escopo:**
   - upload exige que o registro seja visível e que o hotel esteja entre os que o usuário escreve (`authz.hoteis_escrita`); o proprietário, que só lê, não anexa;
   - download confere de novo o tenant, que o hotel está entre os que o usuário lê e que o registro pertence ao hotel. Qualquer falha é 404.
+- **Sem sobrescrita:** a URL de upload sai com `upsert: false`, para um caminho novo (UUID v7) a cada pedido; o Storage recusa um segundo envio para o mesmo caminho.
 - **Validade:** o download vale 5 minutos; o upload, 2 horas (padrão do Supabase).
+- **Verificação:** cada condição tem teste:
+  - só as duas funções no `auth-admin` e na porta (`tests/secret-key-so-no-auth-admin.test.ts`);
+  - bucket privado, com tipo e tamanho limitados (meta-teste 23) e sem policy (meta-teste 24);
+  - no Storage real (`apps/web/test/anexos.test.ts`): escopo, sobrescrita recusada, validade gravada no token das duas URLs e recusa de tipo e de tamanho fora do limite mesmo com URL válida.
 - **Miniatura gerada no aparelho**, junto da compressão que o PWA já faz, enviada como um segundo objeto no mesmo registro. A transformação de imagem do Storage continua desligada: ela exigiria plano Pro, cobra por imagem transformada e precisaria de URL assinada também para a versão transformada.
 
 **Consequências:**

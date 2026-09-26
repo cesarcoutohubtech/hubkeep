@@ -138,7 +138,9 @@ export function criarArmazenamentoDeAnexos(opcoes: { url: string }): Armazenamen
   const bucket = clienteAdmin(opcoes.url).storage.from(BUCKET_DE_ANEXOS);
   return {
     async urlDeUpload(caminho) {
-      const { data, error } = await bucket.createSignedUploadUrl(caminho);
+      // upsert: false (o padrão, dito aqui de propósito): a URL não sobrescreve
+      // objeto que já existe; o Storage recusa o segundo envio.
+      const { data, error } = await bucket.createSignedUploadUrl(caminho, { upsert: false });
       if (error || !data)
         throw new Error(`URL de upload recusada pelo Storage: ${error?.message ?? '?'}.`);
       return { url: data.signedUrl, token: data.token };
