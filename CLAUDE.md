@@ -104,4 +104,6 @@ Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `
 
 ## Idioma
 
+Converse com o Cesar sempre em português do Brasil, em toda resposta, inclusive relatórios curtos e avisos de CI.
+
 Código, nomes de tabelas e colunas em português sem acento (como no schema existente). Mensagens de commit e documentação em português do Brasil. Textos de interface nos catálogos de `packages/i18n`, com pt-BR como idioma-fonte (regra 11, ADR-022).

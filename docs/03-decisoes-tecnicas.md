@@ -301,7 +301,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Toda tarefa com tela ou mensagem passa a ter "sem texto fixo" no pronto.
 - O prazo do piloto e a tradução (en, es, fr) ficam nas pendências do `docs/04`.
 
-**Atualização da F0-10b (Proposta, 26/09/2026, para aprovação do Cesar no PR da F0-10b):**
+**Atualização da F0-10b:** aprovada por Cesar em 26/09/2026, com os ajustes (a) a (d) abaixo, aplicados no PR de ajustes do ADR-022, depois do #29. A tabela separada, a autoauditoria só da própria preferência e o pseudo-idioma foram aprovados com eles.
 - **Preferências do membro em tabela própria, `app.preferencia_membro`** (decisão do Cesar na F0-10b, no lugar das colunas em `app.membro`):
   - colunas: idioma, formato regional e fuso, nulos herdando;
   - FK composta para `app.membro`;
@@ -316,9 +316,15 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - país (ISO 3166-1), subdivisão (ISO 3166-2, do mesmo país), moeda (ISO 4217) e formato regional (BCP 47) por formato;
   - fuso pela aplicação (`fusoValido`), com recusa de deslocamento fixo como `-03:00`.
 - **Tenants que já existem:** ficam com BR, BRL e pt-BR (padrão da coluna).
-- **Queda de tradução:** es e fr → en → pt-BR. A CI exige pt-BR e en completos.
-- **Onde o idioma é decidido na tela:** cookie `hk_idioma` (escolha de exibição, que não autoriza nada), `Accept-Language` e pt-BR. Depois do login, a tela inicial alinha o cookie ao idioma resolvido do membro. Com isso, as páginas do web passam a ser dinâmicas.
-- **Pseudo-idioma `en-XA`:** liberado por `HK_PSEUDO_IDIOMA=1`, só em dev e homologação. Nunca é gravado no banco.
+- **(a) Queda de tradução por idioma:** es → pt-BR → en; fr → en → pt-BR; en → pt-BR (`QUEDA_DE_TRADUCAO`). Hoje a CI exige pt-BR e en completos.
+- **(b) Antes do piloto,** a CI passa a exigir os quatro catálogos completos (pendência no `docs/04`).
+- **(c) Onde o idioma é decidido na tela:**
+  - com sessão e tenant, o layout resolve pelo perfil (membro → tenant), a mesma resolução de `GET /api/v1/preferencias`, e o cookie `hk_idioma` não passa por cima;
+  - sem sessão (login, definir senha), valem o cookie (escolha no seletor), o `Accept-Language` e pt-BR, nessa ordem;
+  - o cookie é só escolha de exibição e não autoriza nada.
+
+  Com isso, as páginas do web passam a ser dinâmicas.
+- **(d) Pseudo-idioma `en-XA`:** liberado por `HK_PSEUDO_IDIOMA=1`, só em dev e homologação. Com `VERCEL_ENV=production` fica desligado mesmo com a variável ligada, e então não aparece no seletor. Nunca é gravado no banco.
 
 ## ADR-023 — PR de zona protegida só é mergeado pelo Cesar
 

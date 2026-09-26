@@ -20,7 +20,7 @@ export {
   resolverIdioma,
 } from './resolucao';
 export type { NiveisDeIdioma } from './resolucao';
-export { CATALOGOS, mensagensDe } from './catalogos';
+export { CATALOGOS, QUEDA_DE_TRADUCAO, mensagensDe, mesclarPelaQueda } from './catalogos';
 export type { Chave, Mensagens } from './catalogos';
 export { EXPANSAO_PSEUDO, pseudoMensagem } from './pseudo';
 export { criarTradutor, localeDoMotor } from './tradutor';

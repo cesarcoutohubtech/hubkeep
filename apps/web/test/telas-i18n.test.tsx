@@ -61,6 +61,16 @@ describe('telas da F0-05 em cada idioma', () => {
     expect(login).toMatch(/>français</i);
   });
 
+  it('(d) sem liberação, o pseudo-idioma não aparece no seletor', () => {
+    const html = renderToString(
+      <ProvedorDeIdioma idioma="pt-BR" mensagens={mensagensDe('pt-BR')} pseudoLiberado={false}>
+        <Login />
+      </ProvedorDeIdioma>,
+    );
+    expect(html).not.toContain(`value="${PSEUDO_IDIOMA}"`);
+    expect(renderizar('pt-BR', <Login />)).toContain(`value="${PSEUDO_IDIOMA}"`);
+  });
+
   it('pseudo-idioma: todo texto visível da tela vem do catálogo (entre colchetes)', () => {
     const html = renderizar(PSEUDO_IDIOMA, <Login />);
     // Texto entre tags, sem o seletor (nomes de idioma vêm do Intl, não do catálogo).

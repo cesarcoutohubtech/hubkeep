@@ -1,14 +1,21 @@
 'use client';
 // Página inicial mínima da F0-05: escolhe o tenant (cookie hk_tenant) e lista
 // os hotéis visíveis. Tudo passa pela API, que verifica o token no servidor.
-// Com o tenant escolhido, a tela segue o idioma do membro (F0-10b): se o
-// resolvido pela API for outro, grava o cookie hk_idioma e pede a página de
-// novo; o seletor grava a escolha no perfil (PUT /api/v1/preferencias).
+// Idioma (F0-10b): o layout já resolve pelo perfil (membro → tenant). Aqui o
+// seletor grava a escolha no perfil (PUT /api/v1/preferencias), e o idioma
+// resolvido vai para o cookie hk_idioma só para a tela de login seguir nele
+// depois de sair. Se o tenant escolhido mudou o idioma, a página é pedida de novo.
 import { type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { supabaseNavegador } from '../cliente/supabase';
-import { SeletorDeIdioma, useIdioma, useT, useTrocarIdioma } from '../i18n/cliente';
+import {
+  SeletorDeIdioma,
+  gravarCookieDeIdioma,
+  useIdioma,
+  useT,
+  useTrocarIdioma,
+} from '../i18n/cliente';
 
 interface Sessao {
   email: string | null;
@@ -58,9 +65,9 @@ export default function Inicio() {
       const p = (await rp.json()) as Preferencias;
       setPreferencias(p);
       // O pseudo-idioma (dev) não é gravado no perfil: fica até trocar à mão.
-      if (idioma !== PSEUDO_IDIOMA && ehIdioma(p.idioma) && p.idioma !== idioma) {
-        trocarIdioma(p.idioma);
-      }
+      if (idioma === PSEUDO_IDIOMA || !ehIdioma(p.idioma)) return;
+      if (p.idioma !== idioma) trocarIdioma(p.idioma);
+      else gravarCookieDeIdioma(p.idioma);
     },
     [idioma, trocarIdioma],
   );
