@@ -295,3 +295,14 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - indicador de produtividade por equipe e por hotel, para o Gestor CSC e o Gerente do hotel. A visão individual por técnico é política, desligada por padrão.
 - **Próximo trabalho:** F0-13 no que não depende de produção; depois, o plano da fase 1a (`docs/05-plano-fase-1a.md`), que para para aprovação.
 - **`.gitignore`:** passa a cobrir `.claude/settings.local.json`, onde o `GH_TOKEN` vai morar.
+
+## F0-13 — Operação e segurança, parte sem produção — PR próprio (toca `.github/workflows` e `docs/03`)
+- Documento de resposta a incidente de vazamento: `docs/07-resposta-a-incidente.md`.
+  - papéis e o enquadramento LGPD: o cliente é o controlador e a EasyGov é operadora; prazos e texto do aviso ficam para o jurídico;
+  - inventário das credenciais atuais, com como revogar e quem revoga;
+  - evidências e alcance, comunicação, correção e fechamento.
+- Auditoria de dependências na CI: `pnpm audit --audit-level high` no job obrigatório "lint, typecheck e testes", mais execução semanal (segunda, 9h). Hoje: nenhuma vulnerabilidade conhecida.
+- Checklist de MFA e acessos: `docs/08-checklist-acessos.md` (GitHub, Supabase, Vercel quando existir, máquinas). O Cesar preenche e revisa, que é o aceite da F0-13.
+- ADR-023: nota da decisão de 26/09 sobre a conta de máquina, com token clássico e `GH_TOKEN` local.
+- Pendência nova no `docs/04`: leitura de dado de negócio não é auditada.
+- Fica para a retomada da F0-12: PITR, membros de produção e Vercel.
