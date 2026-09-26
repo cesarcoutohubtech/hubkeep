@@ -7,10 +7,13 @@
 //   no web, só src/servidor importa db e auth-admin
 //   entre pacotes, só pelo nome (@hubkeep/...), nunca por caminho relativo
 //   Kysely e execução direta de consulta, só em packages/db
+//   i18n (catálogos) roda também no navegador: sem módulo do Node
+//   nenhum texto de interface fixo nos apps: sai do catálogo (ADR-022)
 //
 // A prova de que a regra morde está em tests/fronteiras.test.ts.
 import js from '@eslint/js';
 import boundaries from 'eslint-plugin-boundaries';
+import formatjs from 'eslint-plugin-formatjs';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -21,6 +24,7 @@ const ELEMENTOS = [
   { type: 'db', pattern: 'packages/db' },
   { type: 'contratos', pattern: 'packages/contratos' },
   { type: 'auth-admin', pattern: 'packages/auth-admin' },
+  { type: 'i18n', pattern: 'packages/i18n' },
   // Filho de web: o código de servidor do Next (raiz de composição, contexto,
   // http). É o único trecho do web que enxerga db e auth-admin; rota, página e
   // componente chegam ao banco e ao Auth por ele.
@@ -82,26 +86,33 @@ export default tseslint.config(
             { allow: { to: { module: { origin: 'external' } } } },
             { allow: { to: { module: { origin: 'core' } } } },
 
-            { from: { element: { type: 'aplicacao' } }, allow: para('dominio') },
+            // aplicacao valida idioma, formato regional e fuso pelas listas do i18n.
+            { from: { element: { type: 'aplicacao' } }, allow: para('dominio', 'i18n') },
             { from: { element: { type: 'db' } }, allow: para('aplicacao', 'dominio') },
             // auth-admin implementa a porta de convite; único dono da secret key.
             { from: { element: { type: 'auth-admin' } }, allow: para('aplicacao') },
             // Rota, página, componente e proxy não importam db nem auth-admin.
             {
               from: { element: { type: 'web' } },
-              allow: para('aplicacao', 'dominio', 'contratos', 'web-servidor'),
+              allow: para('aplicacao', 'dominio', 'contratos', 'i18n', 'web-servidor'),
             },
             {
               from: { element: { type: 'web-servidor' } },
-              allow: para('aplicacao', 'dominio', 'contratos', 'db', 'auth-admin'),
+              allow: para('aplicacao', 'dominio', 'contratos', 'i18n', 'db', 'auth-admin'),
             },
-            { from: { element: { type: 'tecnico' } }, allow: para('dominio', 'contratos') },
+            { from: { element: { type: 'tecnico' } }, allow: para('dominio', 'contratos', 'i18n') },
             { from: { element: { type: 'conector' } }, allow: para('contratos') },
 
             // dominio é puro: nenhum pacote externo e nenhum módulo do Node.
             {
               from: { element: { type: 'dominio' } },
               disallow: { to: { module: { origin: ['external', 'core'] } } },
+            },
+            // i18n vai no bundle do navegador (web e PWA): nenhum módulo do Node.
+            {
+              from: { element: { type: 'i18n' } },
+              disallow: { to: { module: { origin: 'core' } } },
+              message: 'packages/i18n roda no navegador: sem módulo do Node.',
             },
             // Apps não tocam o banco diretamente; só pelos repositórios de packages/db.
             {
@@ -191,6 +202,21 @@ export default tseslint.config(
           // Repetido do bloco do ADR-006, que este substitui nestes arquivos.
           patterns: [TRANSACAO_DE],
         },
+      ],
+    },
+  },
+  {
+    // Regra 11 do CLAUDE.md (ADR-022): nenhum texto de interface fixo nos apps.
+    // Texto em JSX e em atributos exibidos (aria-*, placeholder, title, alt,
+    // label) sai do catálogo de @hubkeep/i18n. A prova está em
+    // tests/fronteiras.test.ts.
+    files: ['apps/**/*.tsx'],
+    ignores: ['apps/*/test/**'],
+    plugins: { formatjs },
+    rules: {
+      'formatjs/no-literal-string-in-jsx': [
+        'error',
+        { props: { include: [['*', '{label,placeholder,title,alt,aria-label}']] } },
       ],
     },
   },

@@ -31,6 +31,7 @@ export {
   RespostaDeUrlDeUpload,
   TIPOS_DE_ANEXO_API,
 } from './anexos';
+export { IDIOMAS_API, PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 export { CODIGOS_HTTP, ErroApi, type ProblemaDeEntrada, problemasDe } from './erro';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';

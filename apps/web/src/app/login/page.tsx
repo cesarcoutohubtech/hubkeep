@@ -1,13 +1,16 @@
 'use client';
+import type { Chave } from '@hubkeep/i18n';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useState } from 'react';
 import { supabaseNavegador } from '../../cliente/supabase';
+import { SeletorDeIdioma, useT } from '../../i18n/cliente';
 
 function FormularioLogin() {
+  const t = useT();
   const router = useRouter();
   const erroDoLink = useSearchParams().get('erro');
-  const [erro, setErro] = useState<string | null>(
-    erroDoLink === 'link_invalido' ? 'O link de convite é inválido ou expirou.' : null,
+  const [erro, setErro] = useState<Chave | null>(
+    erroDoLink === 'link_invalido' ? 'login.erro.link_invalido' : null,
   );
 
   async function entrar(e: FormEvent<HTMLFormElement>) {
@@ -17,24 +20,31 @@ function FormularioLogin() {
       email: String(dados.get('email')),
       password: String(dados.get('senha')),
     });
-    if (error) setErro('E-mail ou senha incorretos.');
+    if (error) setErro('login.erro.credenciais');
     else router.replace('/');
   }
 
   return (
     <form onSubmit={entrar} style={{ display: 'grid', gap: 12 }}>
-      <h1>Entrar no HubKeep</h1>
-      <input name="email" type="email" placeholder="E-mail" autoComplete="email" required />
+      <SeletorDeIdioma />
+      <h1>{t('login.titulo')}</h1>
+      <input
+        name="email"
+        type="email"
+        placeholder={t('login.campo.email')}
+        autoComplete="email"
+        required
+      />
       <input
         name="senha"
         type="password"
-        placeholder="Senha"
+        placeholder={t('login.campo.senha')}
         autoComplete="current-password"
         required
       />
-      <button type="submit">Entrar</button>
-      {erro && <p role="alert">{erro}</p>}
-      <p>O acesso é por convite. Não tem conta? Peça ao administrador do seu grupo.</p>
+      <button type="submit">{t('login.acao.entrar')}</button>
+      {erro && <p role="alert">{t(erro)}</p>}
+      <p>{t('login.aviso_convite')}</p>
     </form>
   );
 }

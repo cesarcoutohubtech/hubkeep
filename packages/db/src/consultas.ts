@@ -23,6 +23,29 @@ export async function nomeDoTenant(tx: Tx): Promise<string | null> {
 }
 
 /**
+ * Preferências do próprio usuário (a RLS só mostra a dele) e os padrões do
+ * tenant do contexto. tenant null: o usuário não é membro ativo dele.
+ */
+export async function preferenciasDoUsuario(tx: Tx) {
+  const membro = await tx
+    .selectFrom('app.preferencia_membro')
+    .select(['idioma', 'formato_regional', 'fuso'])
+    .executeTakeFirst();
+  const tenant = await tx
+    .selectFrom('app.tenant')
+    .select(['idioma_padrao', 'moeda', 'pais'])
+    .executeTakeFirst();
+  return {
+    membro: membro
+      ? { idioma: membro.idioma, formatoRegional: membro.formato_regional, fuso: membro.fuso }
+      : null,
+    tenant: tenant
+      ? { idiomaPadrao: tenant.idioma_padrao, moeda: tenant.moeda, pais: tenant.pais }
+      : null,
+  };
+}
+
+/**
  * Já existe membro com este usuário ou este e-mail no tenant do contexto?
  * (Reconvite vira 409, não erro de chave.)
  */

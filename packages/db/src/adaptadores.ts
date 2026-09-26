@@ -8,6 +8,7 @@ import type {
   PortaCredenciaisDeAgente,
   PortaHoteis,
   PortaIngestao,
+  PortaPreferencias,
   PortaPromocaoDeUhs,
 } from '@hubkeep/aplicacao';
 import { type Atribuicao, Conflito, type Escopo } from '@hubkeep/dominio';
@@ -20,10 +21,12 @@ import {
   hotelNoEscopo,
   listarHoteisVisiveis,
   nomeDoTenant,
+  preferenciasDoUsuario,
 } from './consultas';
 import { gravarConvite } from './repositorios/convites';
 import { criarCredencialDeAgente, revogarCredencialDeAgente } from './repositorios/credenciais';
 import { concederPapel, revogarPapel } from './repositorios/membros';
+import { gravarPreferencias } from './repositorios/preferencias';
 import { sessaoDePromocao } from './repositorios/promocao';
 import { credenciaisAtivas, registrarLote } from './repositorios/staging';
 
@@ -128,6 +131,14 @@ export function criarPortasDeAplicacao(banco: AcessoBanco): {
         ),
       revogar: (ctx, id) => banco.executar(ctx, (uow) => revogarPapel(uow, id)),
     },
+  };
+}
+
+/** Preferências de idioma e região do próprio usuário (F0-10b), pelo hk_app. */
+export function criarPortaPreferencias(banco: AcessoBanco): PortaPreferencias {
+  return {
+    ler: (ctx) => banco.withContext(ctx, preferenciasDoUsuario),
+    gravar: (ctx, p) => banco.executar(ctx, (uow) => gravarPreferencias(uow, p)),
   };
 }
 

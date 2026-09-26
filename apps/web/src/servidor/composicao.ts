@@ -7,12 +7,14 @@ import {
   type CasosDeUsoDeAnexos,
   type CasosDeUsoDeIngestao,
   type CasosDeUsoDePapeis,
+  type CasosDeUsoDePreferencias,
   type Manipulador,
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeIngestao,
   criarCasosDeUsoDePapeis,
+  criarCasosDeUsoDePreferencias,
   criarManipuladoresDeEventos,
   relogioDoSistema,
 } from '@hubkeep/aplicacao';
@@ -21,6 +23,7 @@ import {
   type ResultadoOutbox,
   criarAcessoBanco,
   criarPortaEscopoDeAnexo,
+  criarPortaPreferencias,
   criarPortasDeAplicacao,
   criarPortasDeIngestao,
   criptografiaDoServidor,
@@ -128,6 +131,11 @@ export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () =>
     relogio: relogioDoSistema,
     novoId,
   }),
+);
+
+/** Idioma e região do próprio usuário (F0-10b), pelo hk_app. */
+export const casosDeUsoDePreferencias = memo<CasosDeUsoDePreferencias>(async () =>
+  criarCasosDeUsoDePreferencias({ preferencias: criarPortaPreferencias(await acessoBanco()) }),
 );
 
 let manipuladores: Record<string, Manipulador> | undefined;

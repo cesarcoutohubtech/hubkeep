@@ -14,6 +14,7 @@ export type { EscopoConcessao } from './repositorios/membros';
 export { ehMembro, escopoVisivel, listarHoteisVisiveis, nomeDoTenant } from './consultas';
 export {
   criarPortaEscopoDeAnexo,
+  criarPortaPreferencias,
   criarPortasDeAplicacao,
   criarPortasDeIngestao,
 } from './adaptadores';

@@ -12,6 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@hubkeep/dominio": "workspace:*"
+    "@hubkeep/dominio": "workspace:*",
+    "@hubkeep/i18n": "workspace:*"
   }
 }

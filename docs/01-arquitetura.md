@@ -109,6 +109,17 @@ O limite de 4,5 MB de corpo das funções da Vercel define o tamanho máximo do 
    Fora do escopo, 404.
 5. O bucket `anexos` é privado e não tem policy para `anon`, `authenticated` ou `public` (meta-teste 24): sem URL assinada, ninguém lê nem grava. O registro do anexo numa tabela de negócio entra com a OS, na fase 1a.
 
+### Idioma e região (F0-10b, ADR-022)
+
+- **Catálogos:** `packages/i18n` guarda um JSON por idioma (pt-BR, en, es, fr) com chaves semânticas e sintaxe ICU. pt-BR é o idioma-fonte e define as chaves, que são tipadas: chave inexistente não compila. Faltando tradução, es e fr caem para en e depois para pt-BR.
+- **Motor:** FormatJS. No web, `react-intl`, com o `IntlProvider` montado pelo layout. No worker (e-mail, push), `@formatjs/intl`, sem React. No PWA, `react-intl` (F0-11).
+- **Resolução do idioma:** membro → hotel em foco → tenant → navegador → pt-BR.
+  - `GET /api/v1/preferencias` devolve o idioma, o formato regional, o fuso e a moeda já resolvidos; `PUT` grava os do próprio usuário, em `app.preferencia_membro`, com auditoria.
+  - Na tela, o layout lê o cookie `hk_idioma` (ou o `Accept-Language`) e entrega ao cliente só as mensagens daquele idioma. A tela inicial grava no cookie o idioma resolvido do membro e pede a página de novo.
+- **Formatação:** data, número e moeda por `Intl`, com o formato regional (escolha separada do idioma) e o fuso de quem vê.
+- **Pseudo-idioma `en-XA`:** acentos, texto ~35% mais longo e colchetes. Só com `HK_PSEUDO_IDIOMA=1` (dev e homologação).
+- **E-mail de convite:** montado por `emailDeConvite` a partir do catálogo. O template do Supabase (`supabase/templates/convite.html`) é gerado dele em pt-BR, e um teste confere o arquivo e o assunto no `config.toml`.
+
 ## Papéis de banco
 
 | Papel | Quem usa | Pode |

@@ -218,5 +218,25 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
 - Ruleset do `main` configurado pelo Cesar: `zona protegida`, lint e pgTAP obrigatórios, branch atualizada exigida, bypass só para Repository admin e só por PR.
 - ADR-023 aprovado por Cesar em 26/09/2026.
 
-## F0-10b — Fundação de i18n
+## F0-10b — Fundação de i18n — PR próprio (toca migração, testes de banco, lint, `CLAUDE.md` e `docs/03`)
 - Biblioteca ICU: FormatJS, aprovada por Cesar em 26/09/2026 (PR #27, atualização do ADR-022).
+- Preferências do membro em `app.preferencia_membro`, por decisão do Cesar (26/09/2026), no lugar de colunas em `app.membro`. A atualização do ADR-022 que registra isso vai como Proposta.
+- `packages/i18n`:
+  - catálogos pt-BR, en, es e fr (traduções provisórias até a revisão);
+  - resolução do idioma e formatação por `Intl`;
+  - pseudo-idioma `en-XA`;
+  - e-mail de convite (texto da F0-09).
+- Migração 0005 (tenant, hotel, `preferencia_membro`, autoauditoria), pgTAP 004 e `GET/PUT /api/v1/preferencias`.
+- Web: `react-intl` no layout, telas da F0-05 no catálogo e seletor de idioma. A lint `formatjs/no-literal-string-in-jsx` acusou os 21 textos fixos da F0-05 antes da extração.
+- Aceite:
+  - lint barra texto fixo (`tests/fronteiras.test.ts`);
+  - telas nos quatro idiomas e no pseudo (`apps/web/test/telas-i18n.test.tsx`);
+  - troca pelo idioma do membro, na rota com banco real (`apps/web/test/preferencias.test.ts`);
+  - e-mail de convite nos quatro idiomas, com o template do Supabase gerado do catálogo pt-BR (`tests/i18n-templates.test.ts`);
+  - CI dos catálogos (`packages/i18n/test/catalogos.test.ts`);
+  - idioma recusado pelo banco (pgTAP 004 e `tests/i18n-banco.test.ts`) e fuso recusado pela aplicação.
+- O mesmo catálogo formata no web e no worker (Node). No PWA, a prova fica na F0-11.
+- Pendente:
+  - `db push` da 0005 no dev e `pnpm db:types`, pelo Cesar;
+  - colar o template regenerado no painel do dev (docs/06);
+  - revisão das traduções.
