@@ -125,9 +125,22 @@ A instalação em aparelho pede HTTPS fora de `localhost`. A F0-11 prova no buil
 
 ## F0-12 — Deploy e ambientes
 
+**Suspensa (decisão do Cesar, 26/09/2026).** Até alguns dias antes do piloto só existe o ambiente dev. O piloto só será confirmado com o cliente depois de 01/10. Staging, produção, GitHub Environments, workflow de migração, conta de máquina e projetos na Vercel entram nesse momento. Nada é criado na Vercel antes disso.
+
 Criar os projetos Vercel (`web`, `tecnico`) com funções em `gru1`, variáveis por ambiente e previews ligados só ao Supabase de staging. Workflow de migrações: automático para staging, aprovação manual para produção.
 
-**Pré-requisito, antes do primeiro deploy:** criar a conta de máquina do GitHub para o Claude Code (decisão do Cesar, 26/09/2026; ADR-023). É uma conta sem papel de admin e com token fine-grained só com `contents` e `pull_requests` de escrita. Com ela, o bypass do ruleset fica impossível pelo próprio GitHub. Até lá, o `gh` segue com a conta do Cesar, e o `.claude/settings.json` nega `gh auth *` (login, switch, token, logout) para o Claude não trocar nem ler a credencial.
+**Definições para quando a F0-12 for retomada:**
+- **Conta de máquina do GitHub** para o Claude Code (ADR-023), sem papel de admin:
+  - **token clássico** com `repo`, `workflow` e `read:org`. O fine-grained não serve para colaborador em repositório pessoal nem para a API de checks;
+  - sem `gh auth login`: o token entra só nas sessões do HubKeep, pelo `GH_TOKEN` no `.claude/settings.local.json`, que o `.gitignore` cobre e nunca vai para o git;
+  - até lá, o `gh` segue com a conta do Cesar, e o `.claude/settings.json` nega `gh auth *` (login, switch, token, logout);
+  - com a conta de máquina, o bypass do ruleset fica impossível pelo próprio GitHub.
+- **Migrações:**
+  - **staging:** automático pela CI, com a senha do banco como segredo do Environment `staging`;
+  - **produção:** manual, pelo Cesar, no terminal interativo (ADR-020), até depois do piloto.
+- **Endereços:** `app.hubkeep.com.br` (web) e `tecnico.hubkeep.com.br` (PWA), por célula e não por tenant (`docs/01`, "Endereços").
+- **Vercel:** plano Pro com um membro (o Cesar).
+- **Sentry:** adiado até o piloto. Sem `SENTRY_DSN`, a aplicação funciona normalmente, só com os logs estruturados (teste `apps/web/test/sentry.test.ts`).
 
 Antes de criar o projeto de staging, o access token pessoal do Supabase (`sbp_…`) passa a ter prazo de validade, sai do ambiente da máquina quando não estiver em uso e nunca é usado contra staging nem produção (regra do incidente 2, `docs/diario-fase-0.md`). O `scripts/ops/ler-config-remota.ts` já recusa qualquer ambiente que não seja o dev.
 
@@ -143,10 +156,10 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 
 ## Pendências técnicas desta fase
 
-- Plano Vercel Pro (uso comercial e cron por minuto) e plano Supabase (PITR, SSO SAML).
+- Plano Vercel Pro (uso comercial e cron por minuto), com um membro, quando a F0-12 for retomada; plano Supabase (PITR, SSO SAML).
 - SSO corporativo da Slaviero: Entra ID, Google ou nenhum.
 - Provedor de e-mail transacional (ex.: Resend ou SES) com domínio da EasyGov.
-- Domínios: web e técnico no mesmo domínio raiz, para simplificar cookies e CORS. O PWA chama `/api/v1` de outra origem em produção; no dev, o Vite repassa `/api` para o web (F0-11).
+- Domínios (decisão do Cesar, 26/09/2026): `app.hubkeep.com.br` (web) e `tecnico.hubkeep.com.br` (PWA), por célula e não por tenant, no mesmo domínio raiz. O PWA chama `/api/v1` em `app.hubkeep.com.br`, de outra origem, e isso exige CORS só para `tecnico.hubkeep.com.br` na F0-12. No dev, o Vite repassa `/api` para o web (F0-11).
 - Limpeza de `app.operacao_offline` (ADR-025, ajuste (d)): a tabela cresce uma linha por operação sincronizada, e nenhum papel tem DELETE. Proposta: partição mensal por `recebida_em`, com a partição antiga descartada por migração depois da janela de reenvio (ex.: 3 meses). A conversão da tabela para particionada e o prazo ficam definidos antes do rollout.
 - Teste de instalação do PWA em Android e iOS, no primeiro deploy com HTTPS (F0-12).
 - Parque de aparelhos dos técnicos (proporção Android e iOS), por causa do push no iOS.

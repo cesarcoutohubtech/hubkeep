@@ -52,7 +52,11 @@ O HubKeep é o sistema de registro da manutenção. No MVP não há integração
 
 ## Escopo do MVP (fase 1)
 
-Multi-idioma desde o MVP: interface em pt-BR (idioma-fonte), inglês, espanhol e francês, com formato regional separado do idioma e fuso por hotel; conteúdo cadastrado e texto livre ficam no idioma em que foram escritos, e e-mail, push, PDF e exportações saem em pt-BR no MVP (ADR-022). Identidade e escopo; cadastros (hotéis e UHs do CM, ativos com campos estendidos e anexos, QR); implantação de ativos (planilha, cadastro pelo celular, modelos por categoria, QR em lote); chamados corretivos com abertura mínima, prioridade padrão por política, registro de equipamento parado e aceite; OS com checklist tipado, horas, fotos e materiais em texto livre; preventiva por tempo com geração automática de OS; políticas com herança grupo → bandeira → hotel; PWA do técnico offline; notificações por e-mail e push; indicadores (backlog, % SLA, MTTR, % preventiva em dia); auditoria; impressão de OS e exportação CSV (proposta).
+Multi-idioma desde o MVP: interface em pt-BR (idioma-fonte), inglês, espanhol e francês, com formato regional separado do idioma e fuso por hotel; conteúdo cadastrado e texto livre ficam no idioma em que foram escritos, e e-mail, push, PDF e exportações saem em pt-BR no MVP (ADR-022). Identidade e escopo; cadastros (hotéis e UHs do CM, ativos com campos estendidos e anexos, QR); implantação de ativos (planilha, cadastro pelo celular, modelos por categoria, QR em lote); chamados corretivos com abertura mínima, prioridade padrão por política, registro de equipamento parado e aceite; OS com checklist tipado, horas, fotos e materiais em texto livre; preventiva por tempo com geração automática de OS; políticas com herança grupo → bandeira → hotel; PWA do técnico offline; notificações por e-mail e push; indicadores (backlog, % SLA, MTTR, % preventiva em dia e produtividade por equipe e por hotel); auditoria; impressão de OS e exportação CSV.
+
+Decisões de escopo de 26/09/2026 (Cesar), ambas na fase 1c:
+- **Impressão da OS**, com fotos, checklist e assinatura, e **exportação CSV** de listas e indicadores. As duas respeitam o escopo do usuário: só sai o que ele enxerga na tela.
+- **Indicador de produtividade por equipe e por hotel**, visível para o Gestor CSC e o Gerente do hotel. A visão individual por técnico existe como política e vem **desligada por padrão**; quem liga é o cliente, na configuração.
 
 ## Fora do MVP
 
@@ -65,7 +69,7 @@ Fase 2: contexto da UH (ocupação prevista), inspeções com OS automática, Wh
 | 0 — Descoberta e fundação | 5 a 7 semanas | Fundação técnica, RLS com testes, conector, fila de eventos, protótipo |
 | 1a — Corretiva | 5 a 6 semanas | Ativos, chamados, OS, parada, aceite, auditoria, telas de administração |
 | 1b — Preventiva e implantação | 5 a 6 semanas | Planos, checklist tipado, geração de OS, importação, QR em lote |
-| 1c — SLA, app e indicadores | 4 a 5 semanas | Políticas, notificações, PWA offline, painéis, impressão e CSV |
+| 1c — SLA, app e indicadores | 4 a 5 semanas | Políticas, notificações, PWA offline, painéis (com produtividade por equipe e hotel), impressão da OS e CSV |
 | Piloto | 4 semanas | 2 a 3 hotéis |
 
 Prazo até o piloto: 19 a 24 semanas. Equipe: 3 desenvolvedores, 1 PO com apoio de UX e QA parcial.
