@@ -74,6 +74,35 @@ describe('auth-admin: uso do Storage restrito às duas URLs assinadas (ADR-024)'
     expect(fonte).toMatch(/createSignedUploadUrl\(caminho, \{ upsert: false \}\)/);
   });
 
+  it('o módulo não exporta o cliente do Supabase, nem em tipo', () => {
+    const exportados = [
+      ...fonte.matchAll(/^export\s+(?:async\s+)?(?:const|function|class|type|interface)\s+(\w+)/gm),
+    ].map((m) => m[1]);
+    expect(exportados).toEqual([
+      'criarAdministracaoDoAuth',
+      'BUCKET_DE_ANEXOS',
+      'criarArmazenamentoDeAnexos',
+    ]);
+    expect(fonte).not.toMatch(/^export\s*(?:\*|\{)/m);
+    const assinaturas = fonte.split('\n').filter((l) => l.startsWith('export'));
+    expect(assinaturas.join('\n')).not.toMatch(/SupabaseClient/);
+  });
+
+  it('em execução, o armazenamento entrega só as duas funções de URL', async () => {
+    const { criarArmazenamentoDeAnexos } = await import('../packages/auth-admin/src/index');
+    const anterior = process.env.SUPABASE_SECRET_KEY;
+    process.env.SUPABASE_SECRET_KEY = 'chave-falsa-so-para-montar-o-cliente';
+    try {
+      // Montar o cliente não faz rede; nenhuma URL é pedida aqui.
+      const armazenamento = criarArmazenamentoDeAnexos({ url: 'http://127.0.0.1:9' });
+      expect(Object.keys(armazenamento).sort()).toEqual(['urlDeDownload', 'urlDeUpload']);
+      for (const f of Object.values(armazenamento)) expect(typeof f).toBe('function');
+    } finally {
+      if (anterior === undefined) delete process.env.SUPABASE_SECRET_KEY;
+      else process.env.SUPABASE_SECRET_KEY = anterior;
+    }
+  });
+
   it('a porta tem exatamente as duas funções', () => {
     const porta = readFileSync('packages/aplicacao/src/portas/anexos.ts', 'utf8');
     const bloco = /interface ArmazenamentoDeArquivos \{([\s\S]*?)\n\}/.exec(porta)?.[1] ?? '';
