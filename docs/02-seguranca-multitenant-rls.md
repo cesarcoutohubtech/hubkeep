@@ -75,7 +75,7 @@ Nas policies, chame sempre dentro de subconsulta, `(select authz.tenant_id())` e
 - O Implantador concede papéis que não sejam Admin, Implantador ou Proprietário, só com escopo de hotel e só nos hotéis em que é Implantador.
 - Ninguém altera a própria concessão de Implantador. Papel e escopo de uma concessão são imutáveis (sem GRANT de UPDATE); para mudar, revoga-se e concede-se de novo.
 - `concedido_por` e `revogado_por` precisam ser o próprio usuário da sessão.
-- O Implantador não altera membros que tenham papel Admin ou Implantador.
+- Só o Admin do grupo altera `app.membro` (desativar, reativar), desde a migração 0007 (fase 1a, A3). O Implantador convida (INSERT de membro sem papel Admin ou Implantador) e tira o acesso ao hotel dele revogando o papel, mas não altera membro: a desativação vale para o tenant inteiro, e ele não enxerga os papéis do membro em outros hotéis.
 - Publicar evento no outbox exige ser Admin do grupo ou ter papel de escrita vigente em algum hotel. Gravar auditoria sem hotel, só o Admin do grupo ou o Implantador vigente. Proprietário e quem perdeu o papel não publicam nem auditam (ADR-021).
 - O contrato de licença (`licenca.contrato`) só o Admin do grupo lê pelo `hk_app` (ADR-021).
 

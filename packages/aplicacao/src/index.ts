@@ -95,3 +95,6 @@ export type {
   HotelParaAtivacao,
   ResultadoDaAtivacao,
 } from './casos-de-uso/hoteis';
+export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
+export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
+export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';

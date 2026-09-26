@@ -17,6 +17,15 @@ import {
   RespostaDeHoteisDoStaging,
   RespostaDeImportacaoDeHotel,
 } from './hoteis';
+import {
+  PedidoDeConcessaoDePapel,
+  PedidoDeValidade,
+  RespostaDeAtivoDoMembro,
+  RespostaDeConcessaoDePapel,
+  RespostaDeMembros,
+  RespostaDeRevogacaoDePapel,
+  RespostaDeValidade,
+} from './membros';
 import { PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from './sincronizacao';
 import { ErroApi } from './erro';
@@ -216,6 +225,89 @@ export const ROTAS: readonly Rota[] = [
       409: ERRO(
         'Hotel já ativo ou sem licença de hotel (hotel_ja_ativo, licenca_hoteis_sem_saldo).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/membros',
+    resumo: 'Membros do tenant com as atribuições visíveis (Admin do grupo e Implantador).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Membros', esquema: RespostaDeMembros },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo e o Implantador (gestao_de_membros_so_admin_ou_implantador).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/atribuicoes',
+    resumo: 'Concede um papel num escopo (regras de escalada do domínio e da RLS).',
+    exigeTenant: true,
+    corpo: PedidoDeConcessaoDePapel,
+    respostas: {
+      201: { descricao: 'Papel concedido', esquema: RespostaDeConcessaoDePapel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Concessão fora do alcance de quem concede (códigos de papel).'),
+      422: ERRO(
+        'Pedido inválido (entrada_invalida, validade_no_passado, implantador_exige_hotel_e_validade).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/atribuicoes/{id}/revogacao',
+    resumo: 'Revoga uma atribuição (exclusão lógica).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Atribuição revogada', esquema: RespostaDeRevogacaoDePapel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Revogação fora do alcance (códigos de papel).'),
+      404: ERRO('Atribuição não encontrada (atribuicao_nao_encontrada).'),
+      422: ERRO('Já revogada (ja_revogada).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/atribuicoes/{id}/validade',
+    resumo: 'Muda a validade de uma atribuição (ex.: prorrogar o Implantador).',
+    exigeTenant: true,
+    corpo: PedidoDeValidade,
+    respostas: {
+      200: { descricao: 'Validade alterada', esquema: RespostaDeValidade },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO(
+        'Fora do alcance (validade_so_admin_ou_implantador, implantador_nao_altera_validade_do_papel).',
+      ),
+      404: ERRO('Atribuição não encontrada (atribuicao_nao_encontrada).'),
+      422: ERRO(
+        'Validade inválida (validade_no_passado, implantador_exige_hotel_e_validade, ja_revogada).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/membros/{usuarioId}/desativacao',
+    resumo: 'Desativa o membro no tenant: perde o acesso na hora. Só o Admin do grupo.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Membro desativado', esquema: RespostaDeAtivoDoMembro },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (ativacao_de_membro_so_admin).'),
+      404: ERRO('Membro não encontrado ou já desativado (membro_nao_encontrado).'),
+      422: ERRO('Não altera o próprio acesso (nao_altera_o_proprio_acesso).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/membros/{usuarioId}/reativacao',
+    resumo: 'Reativa o membro no tenant. Só o Admin do grupo.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Membro reativado', esquema: RespostaDeAtivoDoMembro },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (ativacao_de_membro_so_admin).'),
+      404: ERRO('Membro não encontrado ou já ativo (membro_nao_encontrado).'),
+      422: ERRO('Não altera o próprio acesso (nao_altera_o_proprio_acesso).'),
     },
   },
   {

@@ -9,6 +9,7 @@ import type {
   PortaCredenciaisDeAgente,
   PortaHoteis,
   PortaIngestao,
+  PortaMembros,
   PortaOperacoesOffline,
   PortaPreferencias,
   PortaPromocaoDeUhs,
@@ -35,7 +36,12 @@ import {
   usoDaLicenca,
 } from './repositorios/hoteis';
 import { criarCredencialDeAgente, revogarCredencialDeAgente } from './repositorios/credenciais';
-import { concederPapel, revogarPapel } from './repositorios/membros';
+import {
+  alterarValidadeDaAtribuicao,
+  concederPapel,
+  definirAtivoDoMembro,
+  revogarPapel,
+} from './repositorios/membros';
 import { OperacaoJaRecebida, registrarOperacao } from './repositorios/operacoes-offline';
 import { gravarPreferencias } from './repositorios/preferencias';
 import { sessaoDePromocao } from './repositorios/promocao';
@@ -142,6 +148,32 @@ export function criarPortasDeAplicacao(banco: AcessoBanco): {
         ),
       revogar: (ctx, id) => banco.executar(ctx, (uow) => revogarPapel(uow, id)),
     },
+  };
+}
+
+/** Gestão de membros (fase 1a, A3), pelo hk_app: o que cada um vê é da RLS. */
+export function criarPortaMembros(banco: AcessoBanco): PortaMembros {
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const membros = await tx
+          .selectFrom('app.membro')
+          .select(['usuario_id', 'nome', 'email', 'ativo'])
+          .orderBy('nome')
+          .execute();
+        const atribuicoes = (await selecionar(tx).orderBy('papel').execute()).map(paraAtribuicao);
+        return membros.map((m) => ({
+          usuarioId: m.usuario_id,
+          nome: m.nome,
+          email: m.email,
+          ativo: m.ativo,
+          atribuicoes: atribuicoes.filter((a) => a.usuarioId === m.usuario_id),
+        }));
+      }),
+    definirAtivo: (ctx, usuarioId, ativo) =>
+      banco.executar(ctx, (uow) => definirAtivoDoMembro(uow, usuarioId, ativo)),
+    alterarValidade: (ctx, id, validoAte) =>
+      banco.executar(ctx, (uow) => alterarValidadeDaAtribuicao(uow, id, validoAte)),
   };
 }
 
