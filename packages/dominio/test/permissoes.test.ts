@@ -74,9 +74,9 @@ describe('conceder papel — Admin do grupo', () => {
       AMANHA,
       'implantador_exige_hotel_e_validade',
     ],
-    ['Proprietário no grupo', 'proprietario', GRUPO, null, 'escopo_invalido'],
-    ['Proprietário na bandeira', 'proprietario', BANDEIRA, null, 'escopo_invalido'],
-    ['escopo de proprietário para Técnico', 'tecnico', PROPRIETARIO, null, 'escopo_invalido'],
+    ['Proprietário no grupo', 'proprietario', GRUPO, null, 'proprietario_escopo_invalido'],
+    ['Proprietário na bandeira', 'proprietario', BANDEIRA, null, 'proprietario_escopo_invalido'],
+    ['escopo de proprietário para Técnico', 'tecnico', PROPRIETARIO, null, 'escopo_proprietario_so_para_proprietario'],
     ['validade no passado', 'tecnico', H1, ONTEM, 'validade_no_passado'],
     ['validade igual a agora', 'tecnico', H1, AGORA, 'validade_no_passado'],
   ])('recusa pedido inválido: %s', (_n, papel, escopo, validade, codigo) => {
@@ -129,11 +129,13 @@ describe('conceder papel — quem não concede', () => {
   ])('%s não concede nem Técnico no próprio hotel', (_n, atribuicoes) => {
     const erro = erroDe(podeConcederPapel(atribuicoes, pedido('tecnico', H1), AGORA));
     expect(erro).toBeInstanceOf(PermissaoNegada);
-    expect(erro?.codigo).toBe('sem_permissao');
+    expect(erro?.codigo).toBe('concessao_so_admin_ou_implantador');
   });
 
-  it('a mensagem diz o motivo', () => {
+  it('o motivo sai como código e parâmetros; a frase fica para log (ADR-022)', () => {
     const erro = erroDe(podeConcederPapel(IMPLANTADOR_H1, pedido('admin_grupo', GRUPO), AGORA));
+    expect(erro?.codigo).toBe('implantador_nao_concede_papel');
+    expect(erro?.parametros).toEqual({ papel: 'admin_grupo' });
     expect(erro?.message).toBe('O Implantador não concede o papel Admin do grupo.');
   });
 });

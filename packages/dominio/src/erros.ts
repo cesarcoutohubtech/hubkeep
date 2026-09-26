@@ -1,15 +1,28 @@
-// Erros de domínio. Cada um carrega um código estável (para a API mapear em
-// HTTP e o front traduzir) e uma mensagem clara para quem pediu a ação.
+// Erros de domínio. Cada um carrega um código estável e os parâmetros que a
+// tela precisa para montar a frase no idioma de quem lê (ADR-022): a API
+// devolve só código e parâmetros. A mensagem em pt-BR é para log e para quem
+// lê o código; nunca chega à tela.
+
+/** Valores que a tela interpola na mensagem traduzida (ICU). */
+export type Parametros = Readonly<Record<string, string | number | boolean | null>>;
 
 export abstract class ErroDeDominio extends Error {
   abstract readonly codigo: string;
+  readonly parametros: Parametros;
+  constructor(mensagem: string, parametros: Parametros = {}) {
+    super(mensagem);
+    this.parametros = parametros;
+  }
 }
 
 /** Quem pediu não tem permissão para esta ação (vira 403). */
 export class PermissaoNegada extends ErroDeDominio {
-  readonly codigo = 'sem_permissao';
-  constructor(mensagem: string) {
-    super(mensagem);
+  constructor(
+    readonly codigo: string,
+    mensagem: string,
+    parametros?: Parametros,
+  ) {
+    super(mensagem, parametros);
     this.name = 'PermissaoNegada';
   }
 }
@@ -19,17 +32,21 @@ export class RegraViolada extends ErroDeDominio {
   constructor(
     readonly codigo: string,
     mensagem: string,
+    parametros?: Parametros,
   ) {
-    super(mensagem);
+    super(mensagem, parametros);
     this.name = 'RegraViolada';
   }
 }
 
 /** O alvo da ação não existe ou não é visível para quem pediu (vira 404). */
 export class NaoEncontrado extends ErroDeDominio {
-  readonly codigo = 'nao_encontrado';
-  constructor(mensagem: string) {
-    super(mensagem);
+  constructor(
+    readonly codigo: string,
+    mensagem: string,
+    parametros?: Parametros,
+  ) {
+    super(mensagem, parametros);
     this.name = 'NaoEncontrado';
   }
 }
@@ -39,8 +56,9 @@ export class Conflito extends ErroDeDominio {
   constructor(
     readonly codigo: string,
     mensagem: string,
+    parametros?: Parametros,
   ) {
-    super(mensagem);
+    super(mensagem, parametros);
     this.name = 'Conflito';
   }
 }

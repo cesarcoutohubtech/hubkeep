@@ -66,7 +66,7 @@ export function criarCasosDeUsoDePapeis(deps: DependenciasDePapeis): CasosDeUsoD
 
     async revogarPapel(ctx, atribuicaoId) {
       const alvo = await deps.atribuicoes.buscar(ctx, atribuicaoId);
-      if (!alvo) throw new NaoEncontrado('Atribuição não encontrada.');
+      if (!alvo) throw new NaoEncontrado('atribuicao_nao_encontrada', 'Atribuição não encontrada.');
       const minhas = await deps.atribuicoes.doUsuario(ctx);
       exigir(regras.podeRevogar(minhas, alvo, deps.relogio.agora()));
       await deps.atribuicoes.revogar(ctx, atribuicaoId);

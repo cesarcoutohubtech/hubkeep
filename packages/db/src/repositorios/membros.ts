@@ -95,7 +95,9 @@ export async function revogarPapel(uow: UnidadeDeTrabalho, atribuicaoId: string)
     .where('revogado_em', 'is', null)
     .returning(['usuario_id', 'papel', 'escopo_tipo', 'hotel_id'])
     .executeTakeFirst();
-  if (!r) throw new NaoEncontrado('Atribuição não encontrada ou já revogada.');
+  if (!r) {
+    throw new NaoEncontrado('atribuicao_nao_encontrada', 'Atribuição não encontrada ou já revogada.');
+  }
   uow.auditar({
     entidade: 'atribuicao_escopo',
     registroId: atribuicaoId,

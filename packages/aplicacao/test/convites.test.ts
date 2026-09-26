@@ -57,7 +57,7 @@ function montar(opcoes: {
     papeis: {
       verificarConcessao: async () => {
         log.push('regra');
-        if (opcoes.regraNega) throw new PermissaoNegada('negado');
+        if (opcoes.regraNega) throw new PermissaoNegada('negado', 'negado');
       },
     },
   });

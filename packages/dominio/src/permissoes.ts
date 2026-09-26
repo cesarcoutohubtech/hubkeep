@@ -55,16 +55,18 @@ function validarPedido(pedido: PedidoDeConcessao, agora: Date): Resultado {
   if (papel === 'proprietario' && escopo.tipo !== 'proprietario' && escopo.tipo !== 'hotel') {
     return negar(
       new RegraViolada(
-        'escopo_invalido',
+        'proprietario_escopo_invalido',
         'O papel Proprietário só vale para UHs de um proprietário ou para um hotel inteiro.',
+        { escopo: escopo.tipo },
       ),
     );
   }
   if (escopo.tipo === 'proprietario' && papel !== 'proprietario') {
     return negar(
       new RegraViolada(
-        'escopo_invalido',
+        'escopo_proprietario_so_para_proprietario',
         'O escopo de proprietário só serve ao papel Proprietário.',
+        { papel },
       ),
     );
   }
@@ -96,18 +98,37 @@ export function podeConcederPapel(
   if (!ehAdminGrupo(atribuicoes, agora)) {
     const hoteis = hoteisComoImplantador(atribuicoes, agora);
     if (hoteis.size === 0) {
-      return negar(new PermissaoNegada('Só o Admin do grupo e o Implantador concedem papéis.'));
+      return negar(
+        new PermissaoNegada(
+          'concessao_so_admin_ou_implantador',
+          'Só o Admin do grupo e o Implantador concedem papéis.',
+        ),
+      );
     }
     if (FORA_DO_ALCANCE_DO_IMPLANTADOR.includes(pedido.papel)) {
       return negar(
-        new PermissaoNegada(`O Implantador não concede o papel ${rotulo(pedido.papel)}.`),
+        new PermissaoNegada(
+          'implantador_nao_concede_papel',
+          `O Implantador não concede o papel ${rotulo(pedido.papel)}.`,
+          { papel: pedido.papel },
+        ),
       );
     }
     if (pedido.escopo.tipo !== 'hotel') {
-      return negar(new PermissaoNegada('O Implantador só concede papéis no escopo de um hotel.'));
+      return negar(
+        new PermissaoNegada(
+          'implantador_so_concede_em_hotel',
+          'O Implantador só concede papéis no escopo de um hotel.',
+          { escopo: pedido.escopo.tipo },
+        ),
+      );
     }
     if (!hoteis.has(pedido.escopo.hotelId)) {
-      return negar(new PermissaoNegada('Você não é Implantador neste hotel.'));
+      return negar(
+        new PermissaoNegada('nao_e_implantador_no_hotel', 'Você não é Implantador neste hotel.', {
+          hotelId: pedido.escopo.hotelId,
+        }),
+      );
     }
   }
   return validarPedido(pedido, agora);
@@ -129,13 +150,29 @@ export function podeRevogarPapel(
 
   const hoteis = hoteisComoImplantador(atribuicoes, agora);
   if (hoteis.size === 0) {
-    return negar(new PermissaoNegada('Só o Admin do grupo e o Implantador revogam papéis.'));
+    return negar(
+      new PermissaoNegada(
+        'revogacao_so_admin_ou_implantador',
+        'Só o Admin do grupo e o Implantador revogam papéis.',
+      ),
+    );
   }
   if (FORA_DO_ALCANCE_DO_IMPLANTADOR.includes(alvo.papel)) {
-    return negar(new PermissaoNegada(`O Implantador não revoga o papel ${rotulo(alvo.papel)}.`));
+    return negar(
+      new PermissaoNegada(
+        'implantador_nao_revoga_papel',
+        `O Implantador não revoga o papel ${rotulo(alvo.papel)}.`,
+        { papel: alvo.papel },
+      ),
+    );
   }
   if (alvo.escopo.tipo !== 'hotel' || !hoteis.has(alvo.escopo.hotelId)) {
-    return negar(new PermissaoNegada('Você não é Implantador no hotel desta atribuição.'));
+    return negar(
+      new PermissaoNegada(
+        'nao_e_implantador_no_hotel_da_atribuicao',
+        'Você não é Implantador no hotel desta atribuição.',
+      ),
+    );
   }
   return PERMITIDO;
 }
@@ -144,7 +181,7 @@ export function podeRevogarPapel(
 export function podeAtivarHotel(atribuicoes: readonly Atribuicao[], agora: Date): Resultado {
   return ehAdminGrupo(atribuicoes, agora)
     ? PERMITIDO
-    : negar(new PermissaoNegada('Só o Admin do grupo ativa hotéis.'));
+    : negar(new PermissaoNegada('ativacao_so_admin', 'Só o Admin do grupo ativa hotéis.'));
 }
 
 /** Lança o erro de um resultado negado. */
