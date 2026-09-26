@@ -32,7 +32,9 @@
       "Bash(git push*origin main*)",
       "PowerShell(git push*origin main*)",
       "Bash(git push*:main*)",
-      "PowerShell(git push*:main*)"
+      "PowerShell(git push*:main*)",
+      "Bash(gh auth *)",
+      "PowerShell(gh auth *)"
     ],
     "ask": [
       "Bash(supabase db push*)",

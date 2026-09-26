@@ -125,6 +125,8 @@ Criar `apps/tecnico` com Vite, `vite-plugin-pwa`, login, shell offline, fila em 
 
 Criar os projetos Vercel (`web`, `tecnico`) com funções em `gru1`, variáveis por ambiente e previews ligados só ao Supabase de staging. Workflow de migrações: automático para staging, aprovação manual para produção.
 
+**Pré-requisito, antes do primeiro deploy:** criar a conta de máquina do GitHub para o Claude Code (decisão do Cesar, 26/09/2026; ADR-023). É uma conta sem papel de admin e com token fine-grained só com `contents` e `pull_requests` de escrita. Com ela, o bypass do ruleset fica impossível pelo próprio GitHub. Até lá, o `gh` segue com a conta do Cesar, e o `.claude/settings.json` nega `gh auth *` (login, switch, token, logout) para o Claude não trocar nem ler a credencial.
+
 Antes de criar o projeto de staging, o access token pessoal do Supabase (`sbp_…`) passa a ter prazo de validade, sai do ambiente da máquina quando não estiver em uso e nunca é usado contra staging nem produção (regra do incidente 2, `docs/diario-fase-0.md`). O `scripts/ops/ler-config-remota.ts` já recusa qualquer ambiente que não seja o dev.
 
 **Aceite:** PR gera preview funcional contra staging; merge em `main` com aprovação aplica a migração e publica em produção.

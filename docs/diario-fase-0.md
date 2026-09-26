@@ -248,4 +248,5 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - (d) pseudo-idioma desligado com `VERCEL_ENV=production`.
 - O template de convite vai pelo `config.toml` (`[auth.email.template.invite]`, herdado pelo `[remotes.dev]`) e pelo `config push` do Cesar, não pelo painel.
 - (26/09/2026) Regra do Cesar: falar com ele sempre em português do Brasil. Registrada no `CLAUDE.md`, seção Idioma.
+- (26/09/2026) A conta de máquina do GitHub fica para o início da F0-12, como pré-requisito do primeiro deploy (`docs/04`). Até lá, vale a conta do Cesar, e o `.claude/settings.json` nega `gh auth *` em Bash e PowerShell.
 - Pendente: revisão das traduções; os quatro catálogos completos antes do piloto.
