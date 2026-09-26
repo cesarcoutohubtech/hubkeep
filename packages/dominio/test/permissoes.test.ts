@@ -76,7 +76,13 @@ describe('conceder papel — Admin do grupo', () => {
     ],
     ['Proprietário no grupo', 'proprietario', GRUPO, null, 'proprietario_escopo_invalido'],
     ['Proprietário na bandeira', 'proprietario', BANDEIRA, null, 'proprietario_escopo_invalido'],
-    ['escopo de proprietário para Técnico', 'tecnico', PROPRIETARIO, null, 'escopo_proprietario_so_para_proprietario'],
+    [
+      'escopo de proprietário para Técnico',
+      'tecnico',
+      PROPRIETARIO,
+      null,
+      'escopo_proprietario_so_para_proprietario',
+    ],
     ['validade no passado', 'tecnico', H1, ONTEM, 'validade_no_passado'],
     ['validade igual a agora', 'tecnico', H1, AGORA, 'validade_no_passado'],
   ])('recusa pedido inválido: %s', (_n, papel, escopo, validade, codigo) => {

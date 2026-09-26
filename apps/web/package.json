@@ -20,6 +20,7 @@
     "@hubkeep/contratos": "workspace:*",
     "@hubkeep/db": "workspace:*",
     "@hubkeep/dominio": "workspace:*",
+    "@sentry/nextjs": "^11.0.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.1",
     "jose": "^6.2.12",

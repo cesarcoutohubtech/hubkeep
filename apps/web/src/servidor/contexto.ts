@@ -10,7 +10,7 @@ import { TokenInvalido } from '@hubkeep/aplicacao';
 import type { Contexto } from '@hubkeep/db';
 import { createServerClient, parseCookieHeader } from '@supabase/ssr';
 import { chavePublicaSupabase, urlSupabase, verificadorDeToken } from './composicao';
-import { ErroHttp } from './http';
+import { ErroHttp } from './erro-http';
 
 export const CABECALHO_TENANT = 'x-hubkeep-tenant';
 export const COOKIE_TENANT = 'hk_tenant';
@@ -28,7 +28,7 @@ async function tokenDaRequisicao(req: Request): Promise<string | null> {
   if (autorizacao) {
     const [esquema, token] = autorizacao.split(' ');
     if (esquema?.toLowerCase() !== 'bearer' || !token) {
-      throw new ErroHttp(401, 'nao_autenticado', 'Cabeçalho Authorization malformado.');
+      throw new ErroHttp(401, 'nao_autenticado', { motivo: 'cabecalho_malformado' });
     }
     return token;
   }
@@ -43,11 +43,14 @@ async function tokenDaRequisicao(req: Request): Promise<string | null> {
 
 export async function usuarioDaRequisicao(req: Request) {
   const token = await tokenDaRequisicao(req);
-  if (!token) throw new ErroHttp(401, 'nao_autenticado', 'Sessão ausente.');
+  if (!token) throw new ErroHttp(401, 'nao_autenticado', { motivo: 'sessao_ausente' });
   try {
     return await verificadorDeToken().verificar(token);
   } catch (e) {
-    if (e instanceof TokenInvalido) throw new ErroHttp(401, 'nao_autenticado', e.message);
+    // O motivo detalhado (assinatura, expiração) fica fora da resposta.
+    if (e instanceof TokenInvalido) {
+      throw new ErroHttp(401, 'nao_autenticado', { motivo: 'token_invalido' });
+    }
     throw e;
   }
 }
@@ -64,7 +67,7 @@ export async function resolverContexto(req: Request): Promise<Contexto> {
   const usuario = await usuarioDaRequisicao(req);
   const tenantId = tenantDaRequisicao(req);
   if (!tenantId) {
-    throw new ErroHttp(400, 'tenant_ausente', `Informe o tenant (${CABECALHO_TENANT}).`);
+    throw new ErroHttp(400, 'tenant_ausente', { cabecalho: CABECALHO_TENANT });
   }
   return { usuarioId: usuario.usuarioId, tenantId };
 }
