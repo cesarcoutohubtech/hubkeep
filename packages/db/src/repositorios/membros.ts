@@ -116,3 +116,86 @@ export async function revogarPapel(uow: UnidadeDeTrabalho, atribuicaoId: string)
     payload: { usuarioId: r.usuario_id, papel: r.papel },
   });
 }
+
+/**
+ * Desativa ou reativa o membro (fase 1a, A3). Desativado, ele perde o acesso ao
+ * tenant na transação seguinte. Se a RLS não deixar (quem não é Admin nem
+ * Implantador, ou membro com papel privilegiado), nada muda: NaoEncontrado.
+ */
+export async function definirAtivoDoMembro(
+  uow: UnidadeDeTrabalho,
+  usuarioId: string,
+  ativo: boolean,
+): Promise<void> {
+  const r = await transacaoDe(uow)
+    .updateTable('app.membro')
+    .set({ ativo, atualizado_em: new Date() })
+    .where('usuario_id', '=', usuarioId)
+    .where('ativo', '=', !ativo)
+    .returning(['usuario_id'])
+    .executeTakeFirst();
+  if (!r) {
+    throw new NaoEncontrado(
+      'membro_nao_encontrado',
+      ativo ? 'Membro não encontrado ou já ativo.' : 'Membro não encontrado ou já desativado.',
+    );
+  }
+  uow.auditar({
+    entidade: 'membro',
+    registroId: usuarioId,
+    acao: ativo ? 'reativar' : 'desativar',
+    antes: { ativo: !ativo },
+    depois: { ativo },
+  });
+  uow.publicar({
+    tipo: ativo ? 'membro.reativado' : 'membro.desativado',
+    entidade: 'membro',
+    registroId: usuarioId,
+    payload: { usuarioId },
+  });
+}
+
+/** Muda a validade de uma atribuição vigente (fase 1a, A3). */
+export async function alterarValidadeDaAtribuicao(
+  uow: UnidadeDeTrabalho,
+  atribuicaoId: string,
+  validoAte: Date | null,
+): Promise<void> {
+  const tx = transacaoDe(uow);
+  const antes = await tx
+    .selectFrom('app.atribuicao_escopo')
+    .select(['valido_ate'])
+    .where('id', '=', atribuicaoId)
+    .executeTakeFirst();
+  const r = await tx
+    .updateTable('app.atribuicao_escopo')
+    .set({ valido_ate: validoAte })
+    .where('id', '=', atribuicaoId)
+    .where('revogado_em', 'is', null)
+    .returning(['usuario_id', 'papel', 'hotel_id'])
+    .executeTakeFirst();
+  if (!r) {
+    throw new NaoEncontrado(
+      'atribuicao_nao_encontrada',
+      'Atribuição não encontrada ou já revogada.',
+    );
+  }
+  uow.auditar({
+    entidade: 'atribuicao_escopo',
+    registroId: atribuicaoId,
+    acao: 'alterar_validade',
+    hotelId: r.hotel_id,
+    antes: { validoAte: antes?.valido_ate ?? null },
+    depois: { validoAte },
+  });
+  uow.publicar({
+    tipo: 'papel.validade_alterada',
+    entidade: 'atribuicao_escopo',
+    registroId: atribuicaoId,
+    payload: {
+      usuarioId: r.usuario_id,
+      papel: r.papel,
+      validoAte: validoAte?.toISOString() ?? null,
+    },
+  });
+}

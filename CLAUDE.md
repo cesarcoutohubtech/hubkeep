@@ -92,6 +92,11 @@ Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `
 - Nenhum segredo no código ou no git; variáveis novas adicionadas ao `.env.example`.
 - Decisão técnica nova registrada em `docs/03-decisoes-tecnicas.md`.
 
+## Comandos na máquina (incidente 3)
+
+- Antes de qualquer `pnpm`, `npm` ou `npx`, confirme que o diretório atual é a raiz de um checkout do HubKeep (existe `pnpm-workspace.yaml` ali) e aborte se não for. Ex.: `test -f pnpm-workspace.yaml && pnpm ...`.
+- Nenhuma cadeia com `;` em comandos que alteram arquivos, fazem merge ou instalam pacotes: só `&&`, para um passo que falhou não deixar o seguinte rodar no lugar errado.
+
 ## Nunca faça
 
 - Usar `service_role`/secret key para acessar dados de negócio.
