@@ -194,7 +194,7 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - tenant com erro não bloqueia os outros: `por-tenant.test.ts`, `cron.test.ts` e integração no banco com o laço real.
 - E-mail: segue o adaptador do Supabase e o Mailpit na CI. Provedor de produção e domínio (SPF, DKIM, DMARC) antes do piloto; SMTP na fase 1c (`docs/04`).
 
-## F0-10 — Storage — PR #26 (toca migração, testes de banco, workflow, `CLAUDE.md` e `docs/03`)
+## F0-10 — Storage — PR #26, mergeado pelo Cesar (toca migração, testes de banco, workflow, `CLAUDE.md` e `docs/03`)
 - Migração 0004: bucket `anexos` privado (20 MB; JPEG, PNG, WebP e PDF), sem policy em `storage.objects` para `anon`, `authenticated` ou `public` (meta-testes 23 e 24).
 - `POST /api/v1/anexos/url-de-upload` e `url-de-download`:
   - escopo pela RLS e pelas `authz.*` no `hk_app`; o caminho é calculado pela API;
@@ -204,4 +204,18 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - upload por URL assinada funciona;
   - acesso sem URL é negado (chave pública, JWT do usuário, URL pública);
   - gerente de outro hotel recebe 404 no upload e no download.
-- Pendente: `db push` da migração 0004 no dev, pelo Cesar; aprovação do ADR-024.
+- Antes do merge, as cinco condições do ADR-024 ganharam teste:
+  - só as duas funções de URL no `auth-admin` e na porta;
+  - caminho vindo de registro visível pela RLS e validado;
+  - upload sem sobrescrita (`upsert: false`), recusado no Storage real;
+  - validade gravada no token (upload 2 h, download 5 min);
+  - tipo e tamanho limitados no bucket (meta-teste 23) e recusados no Storage real mesmo com URL válida.
+- 26/09/2026: `db push` da 0004 no dev pelo Cesar; `pnpm db:testar-dev` com 175 testes ok em 3 arquivos, incluindo o meta-teste 23 no dev.
+- Pendente: aprovação explícita do ADR-024 (continua Proposta no `docs/03`).
+
+## ADR-023 — Zona protegida — PR #25, mergeado pelo Cesar
+- Ruleset do `main` configurado pelo Cesar: `zona protegida`, lint e pgTAP obrigatórios, branch atualizada exigida, bypass só para Repository admin e só por PR.
+- Pendente: aprovação explícita do ADR-023 (continua Proposta no `docs/03`).
+
+## F0-10b — Fundação de i18n
+- Escolha da biblioteca ICU: FormatJS, proposta como atualização do ADR-022 em PR próprio, que para para aprovação. O restante da F0-10b (pacote, catálogos, lint, pseudo-idioma, migração, extração dos textos da F0-05 e da F0-09) começa depois da aprovação.
