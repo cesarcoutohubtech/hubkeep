@@ -1,0 +1,38 @@
+# ADR-023: PR que toca zona protegida só é mergeado pelo Cesar.
+#
+# Este check falha sempre que o PR altera um caminho da lista abaixo. Com ele
+# obrigatório no ruleset do main, o merge desses PRs só acontece por quem tem
+# bypass (o Cesar, como admin, no GitHub). O Claude Code não usa bypass: o
+# `gh pr merge --admin` está negado no .claude/settings.json.
+#
+# A lista é a das regras de processo do diário (docs/diario-fase-0.md), mais
+# este próprio arquivo (está em .github/workflows) e o .claude/.
+name: zona protegida
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  zona-protegida:
+    name: zona protegida
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: PR toca zona protegida?
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          padrao='^(supabase/migrations/|supabase/tests/|supabase/config\.toml$|\.github/workflows/|eslint\.config\.mjs$|CLAUDE\.md$|docs/03-decisoes-tecnicas\.md$|\.claude/)'
+          tocados="$(git diff --name-only "$BASE"...HEAD | grep -E "$padrao" || true)"
+          if [ -n "$tocados" ]; then
+            echo "::error::Este PR toca zona protegida (ADR-023). Merge só pelo Cesar, com bypass:"
+            echo "$tocados" | sed 's/^/  - /'
+            exit 1
+          fi
+          echo "Nenhum arquivo de zona protegida."

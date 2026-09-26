@@ -20,7 +20,19 @@
       "PowerShell(Get-Content .env.*.local)",
       "Bash(*api.supabase.com*)",
       "PowerShell(*api.supabase.com*)",
-      "WebFetch(domain:api.supabase.com)"
+      "WebFetch(domain:api.supabase.com)",
+      "Bash(gh pr merge*--admin*)",
+      "PowerShell(gh pr merge*--admin*)",
+      "Bash(gh api*/merge*)",
+      "PowerShell(gh api*/merge*)",
+      "Bash(gh api*rulesets*)",
+      "PowerShell(gh api*rulesets*)",
+      "Bash(gh api*branches/*/protection*)",
+      "PowerShell(gh api*branches/*/protection*)",
+      "Bash(git push*origin main*)",
+      "PowerShell(git push*origin main*)",
+      "Bash(git push*:main*)",
+      "PowerShell(git push*:main*)"
     ],
     "ask": [
       "Bash(supabase db push*)",
