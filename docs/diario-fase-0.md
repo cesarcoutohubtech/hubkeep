@@ -7,6 +7,7 @@ Processo (Cesar, 24/09/2026):
 - (25/09/2026) A autonomia começa depois do merge do #19 e do #21. Ordem: F0-07 (com erros e validações como código e parâmetros), F0-08, F0-09, F0-10, **F0-10b** (fundação de i18n) e F0-11. Na F0-10b, a escolha da biblioteca ICU (atualização do ADR-022), a migração, o lint e o `CLAUDE.md` vão em PR que para para aprovação.
 - O merge do próprio PR com CI verde é permitido, exceto quando o PR toca zona protegida: `supabase/migrations`, `supabase/tests`, `supabase/config.toml`, `.github/workflows`, a config do lint de fronteiras, `CLAUDE.md`, `docs/03-decisoes-tecnicas.md`. Nesse caso o PR é aberto e o trabalho para.
 - ADR só vale com aprovação explícita.
+- (26/09/2026) Merge não conta como aprovação de ADR. Quando um PR com ADR em Proposta for mergeado, perguntar ao Cesar antes de marcar como aprovado.
 - **`supabase db push` e `supabase config push` no HubKeep-dev são executados só pelo Cesar.**
 - Parar no início da F0-12 e da F0-13.
 - As sessões de trabalho no HubKeep abrem a partir de `C:\Cesar\HubKeep\Dev\hubkeep`, para carregar o CLAUDE.md do HubKeep.
@@ -194,7 +195,7 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - tenant com erro não bloqueia os outros: `por-tenant.test.ts`, `cron.test.ts` e integração no banco com o laço real.
 - E-mail: segue o adaptador do Supabase e o Mailpit na CI. Provedor de produção e domínio (SPF, DKIM, DMARC) antes do piloto; SMTP na fase 1c (`docs/04`).
 
-## F0-10 — Storage — PR #26 (toca migração, testes de banco, workflow, `CLAUDE.md` e `docs/03`)
+## F0-10 — Storage — PR #26, mergeado pelo Cesar (toca migração, testes de banco, workflow, `CLAUDE.md` e `docs/03`)
 - Migração 0004: bucket `anexos` privado (20 MB; JPEG, PNG, WebP e PDF), sem policy em `storage.objects` para `anon`, `authenticated` ou `public` (meta-testes 23 e 24).
 - `POST /api/v1/anexos/url-de-upload` e `url-de-download`:
   - escopo pela RLS e pelas `authz.*` no `hk_app`; o caminho é calculado pela API;
@@ -204,4 +205,18 @@ Decisão do Cesar: revogar a HS256 legada. **Revogada em 25/09/2026, 12:36 UTC**
   - upload por URL assinada funciona;
   - acesso sem URL é negado (chave pública, JWT do usuário, URL pública);
   - gerente de outro hotel recebe 404 no upload e no download.
-- Pendente: `db push` da migração 0004 no dev, pelo Cesar; aprovação do ADR-024.
+- Antes do merge, as cinco condições do ADR-024 ganharam teste:
+  - só as duas funções de URL no `auth-admin` e na porta;
+  - caminho vindo de registro visível pela RLS e validado;
+  - upload sem sobrescrita (`upsert: false`), recusado no Storage real;
+  - validade gravada no token (upload 2 h, download 5 min);
+  - tipo e tamanho limitados no bucket (meta-teste 23) e recusados no Storage real mesmo com URL válida.
+- 26/09/2026: `db push` da 0004 no dev pelo Cesar; `pnpm db:testar-dev` com 175 testes ok em 3 arquivos, incluindo o meta-teste 23 no dev.
+- ADR-024 aprovado por Cesar em 26/09/2026, condicionado às quatro confirmações (a)–(d), feitas; o teste de que o `auth-admin` não expõe o cliente do Supabase entrou no PR #28.
+
+## ADR-023 — Zona protegida — PR #25, mergeado pelo Cesar
+- Ruleset do `main` configurado pelo Cesar: `zona protegida`, lint e pgTAP obrigatórios, branch atualizada exigida, bypass só para Repository admin e só por PR.
+- ADR-023 aprovado por Cesar em 26/09/2026.
+
+## F0-10b — Fundação de i18n
+- Biblioteca ICU: FormatJS, aprovada por Cesar em 26/09/2026 (PR #27, atualização do ADR-022).
