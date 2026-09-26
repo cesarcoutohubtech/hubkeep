@@ -23,6 +23,14 @@ export {
   type Fonte,
 } from './ingestao';
 export { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
+export {
+  ENTIDADES_COM_ANEXO_API,
+  PedidoDeUrlDeDownload,
+  PedidoDeUrlDeUpload,
+  RespostaDeUrlDeDownload,
+  RespostaDeUrlDeUpload,
+  TIPOS_DE_ANEXO_API,
+} from './anexos';
 export { CODIGOS_HTTP, ErroApi, type ProblemaDeEntrada, problemasDe } from './erro';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';

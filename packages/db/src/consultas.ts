@@ -73,3 +73,45 @@ export async function escopoVisivel(tx: Tx, escopo: Escopo): Promise<boolean> {
       );
   }
 }
+
+/** Hotel do registro, se o usuário do contexto o enxerga (RLS); senão null. */
+export async function hotelDoRegistro(
+  tx: Tx,
+  entidade: 'hotel' | 'local',
+  registroId: string,
+): Promise<string | null> {
+  if (entidade === 'hotel') {
+    const h = await tx
+      .selectFrom('app.hotel')
+      .select('id')
+      .where('id', '=', registroId)
+      .executeTakeFirst();
+    return h?.id ?? null;
+  }
+  const l = await tx
+    .selectFrom('app.local')
+    .select('hotel_id')
+    .where('id', '=', registroId)
+    .executeTakeFirst();
+  return l?.hotel_id ?? null;
+}
+
+/**
+ * O hotel está entre os que o usuário escreve (ou lê)? A pergunta vai às
+ * mesmas funções authz.* das policies, sem reimplementar a regra (ADR-017).
+ */
+export async function hotelNoEscopo(
+  tx: Tx,
+  hotelId: string,
+  modo: 'escrita' | 'leitura',
+): Promise<boolean> {
+  const r =
+    modo === 'escrita'
+      ? await sql<{
+          ok: boolean;
+        }>`select ${hotelId}::uuid in (select authz.hoteis_escrita()) as ok`.execute(tx)
+      : await sql<{
+          ok: boolean;
+        }>`select ${hotelId}::uuid in (select authz.hoteis_leitura()) as ok`.execute(tx);
+  return r.rows[0]?.ok === true;
+}

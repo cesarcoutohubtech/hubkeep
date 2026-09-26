@@ -2,6 +2,7 @@
 // Leitura com withContext, escrita com executar (unit of work): o que cada
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
 import type {
+  PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaConvites,
   PortaCredenciaisDeAgente,
@@ -12,7 +13,14 @@ import type {
 import { type Atribuicao, Conflito, type Escopo } from '@hubkeep/dominio';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
-import { ehMembro, escopoVisivel, listarHoteisVisiveis, nomeDoTenant } from './consultas';
+import {
+  ehMembro,
+  escopoVisivel,
+  hotelDoRegistro,
+  hotelNoEscopo,
+  listarHoteisVisiveis,
+  nomeDoTenant,
+} from './consultas';
 import { gravarConvite } from './repositorios/convites';
 import { criarCredencialDeAgente, revogarCredencialDeAgente } from './repositorios/credenciais';
 import { concederPapel, revogarPapel } from './repositorios/membros';
@@ -147,5 +155,17 @@ export function criarPortasDeIngestao(banco: AcessoBanco): {
       emSessao: (tenantId, fn) =>
         banco.executarComoSistema({ tenantId }, (uow) => fn(sessaoDePromocao(uow))),
     },
+  };
+}
+
+/** Escopo dos anexos (F0-10): tudo pela RLS e pelas funções authz.*, no hk_app. */
+export function criarPortaEscopoDeAnexo(banco: AcessoBanco): PortaEscopoDeAnexo {
+  return {
+    hotelDoRegistro: (ctx, entidade, id) =>
+      banco.withContext(ctx, (tx) => hotelDoRegistro(tx, entidade, id)),
+    escreveNoHotel: (ctx, hotelId) =>
+      banco.withContext(ctx, (tx) => hotelNoEscopo(tx, hotelId, 'escrita')),
+    leNoHotel: (ctx, hotelId) =>
+      banco.withContext(ctx, (tx) => hotelNoEscopo(tx, hotelId, 'leitura')),
   };
 }

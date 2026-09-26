@@ -473,6 +473,8 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     const doc = (await comSessao.json()) as { openapi: string; paths: Record<string, unknown> };
     expect(doc.openapi).toBe('3.1.0');
     expect(Object.keys(doc.paths).sort()).toEqual([
+      '/api/v1/anexos/url-de-download',
+      '/api/v1/anexos/url-de-upload',
       '/api/v1/convites',
       '/api/v1/credenciais-agente',
       '/api/v1/credenciais-agente/{id}/revogacao',

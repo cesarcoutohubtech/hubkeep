@@ -55,3 +55,29 @@ describe('secret key do Supabase só em packages/auth-admin', () => {
     expect(MARCADORES.test(fonte)).toBe(true);
   });
 });
+
+// ADR-024: no Storage, a secret key só emite as duas URLs assinadas do bucket
+// de anexos. Não lê, não lista, não apaga objeto, não sobrescreve e não chega
+// a tabela nem a função do banco.
+describe('auth-admin: uso do Storage restrito às duas URLs assinadas (ADR-024)', () => {
+  const fonte = readFileSync('packages/auth-admin/src/index.ts', 'utf8');
+
+  it('só createSignedUploadUrl e createSignedUrl no bucket', () => {
+    const chamadas = new Set([...fonte.matchAll(/\bbucket\.(\w+)\(/g)].map((m) => m[1]));
+    expect([...chamadas].sort()).toEqual(['createSignedUploadUrl', 'createSignedUrl']);
+  });
+
+  it('o único .from() é o do bucket de anexos; sem rpc, schema ou upsert ligado', () => {
+    const froms = [...fonte.matchAll(/(\w+(?:\([^)]*\))?)\.from\(([^)]*)\)/g)].map((m) => m[0]);
+    expect(froms).toEqual(['storage.from(BUCKET_DE_ANEXOS)']);
+    expect(fonte).not.toMatch(/\.rpc\(|\.schema\(|upsert:\s*true/);
+    expect(fonte).toMatch(/createSignedUploadUrl\(caminho, \{ upsert: false \}\)/);
+  });
+
+  it('a porta tem exatamente as duas funções', () => {
+    const porta = readFileSync('packages/aplicacao/src/portas/anexos.ts', 'utf8');
+    const bloco = /interface ArmazenamentoDeArquivos \{([\s\S]*?)\n\}/.exec(porta)?.[1] ?? '';
+    const metodos = [...bloco.matchAll(/^\s+(\w+)\(/gm)].map((m) => m[1]);
+    expect(metodos).toEqual(['urlDeUpload', 'urlDeDownload']);
+  });
+});

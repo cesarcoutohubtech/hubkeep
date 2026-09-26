@@ -1,13 +1,18 @@
 // @hubkeep/auth-admin — o ÚNICO pacote que usa a secret key do Supabase
-// (CLAUDE.md, regra 5). Ela serve só para administrar o Auth (convites) e
-// nunca para ler ou gravar dados de negócio. A chave é lida aqui dentro, da
+// (CLAUDE.md, regra 5). Ela serve para administrar o Auth (convites) e para
+// emitir URL assinada do Storage (ADR-024), e nunca para ler ou gravar tabela
+// de negócio. A chave é lida aqui dentro, da
 // variável SUPABASE_SECRET_KEY: quem compõe o app não a manipula, e a CI
 // (tests/secret-key-so-no-auth-admin.test.ts) falha se ela aparecer fora daqui.
 //
 // Importável só por apps/web/src/servidor (lint), para nunca entrar num bundle
 // de navegador.
 import { type SupabaseClient, createClient } from '@supabase/supabase-js';
-import type { EnvioDeConvite, ProvedorDeIdentidade } from '@hubkeep/aplicacao';
+import type {
+  ArmazenamentoDeArquivos,
+  EnvioDeConvite,
+  ProvedorDeIdentidade,
+} from '@hubkeep/aplicacao';
 
 function clienteAdmin(url: string): SupabaseClient {
   const chave = process.env.SUPABASE_SECRET_KEY;
@@ -119,4 +124,32 @@ export function criarAdministracaoDoAuth(opcoes: { url: string }): {
   };
 
   return { identidade, envio };
+}
+
+/** Bucket privado da migração 0004. */
+export const BUCKET_DE_ANEXOS = 'anexos';
+
+/**
+ * URL assinada do Storage (F0-10, ADR-024). O bucket não tem policy para o
+ * usuário: só a secret key emite a URL, e só depois de a aplicação conferir o
+ * escopo pela RLS. Nada aqui lê ou lista objetos, nem toca tabela do HubKeep.
+ */
+export function criarArmazenamentoDeAnexos(opcoes: { url: string }): ArmazenamentoDeArquivos {
+  const bucket = clienteAdmin(opcoes.url).storage.from(BUCKET_DE_ANEXOS);
+  return {
+    async urlDeUpload(caminho) {
+      // upsert: false (o padrão, dito aqui de propósito): a URL não sobrescreve
+      // objeto que já existe; o Storage recusa o segundo envio.
+      const { data, error } = await bucket.createSignedUploadUrl(caminho, { upsert: false });
+      if (error || !data)
+        throw new Error(`URL de upload recusada pelo Storage: ${error?.message ?? '?'}.`);
+      return { url: data.signedUrl, token: data.token };
+    },
+    async urlDeDownload(caminho, segundos) {
+      const { data, error } = await bucket.createSignedUrl(caminho, segundos);
+      if (error || !data)
+        throw new Error(`URL de download recusada pelo Storage: ${error?.message ?? '?'}.`);
+      return data.signedUrl;
+    },
+  };
 }
