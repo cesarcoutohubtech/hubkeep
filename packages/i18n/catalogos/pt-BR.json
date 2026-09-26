@@ -34,6 +34,12 @@
   "tecnico.sincronizacao.rejeitadas": "{n, plural, one {# operação recusada pelo servidor.} other {# operações recusadas pelo servidor.}}",
   "tecnico.sincronizacao.enviar_agora": "Enviar agora",
 
+  "tecnico.rejeitada.item": "{operacao}: {motivo}",
+  "tecnico.rejeitada.dispensar": "Dispensar",
+  "tecnico.rejeitada.codigo_desconhecido": "Recusada pelo servidor (código {codigo}).",
+  "tecnico.operacao.preferencias_gravar": "Troca de idioma",
+  "tecnico.sair.pendentes": "{n, plural, one {# operação ainda não foi enviada e será apagada deste aparelho.} other {# operações ainda não foram enviadas e serão apagadas deste aparelho.}} Sair mesmo assim?",
+
   "hotel.status": "{status, select, em_implantacao {em implantação} ativo {ativo} desativado {desativado} other {{status}}}",
 
   "email.convite.assunto": "Convite para o HubKeep",

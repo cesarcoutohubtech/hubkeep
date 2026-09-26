@@ -147,7 +147,7 @@ MFA obrigatório na organização Supabase e na Vercel, lista mínima de membros
 - SSO corporativo da Slaviero: Entra ID, Google ou nenhum.
 - Provedor de e-mail transacional (ex.: Resend ou SES) com domínio da EasyGov.
 - Domínios: web e técnico no mesmo domínio raiz, para simplificar cookies e CORS. O PWA chama `/api/v1` de outra origem em produção; no dev, o Vite repassa `/api` para o web (F0-11).
-- Retenção de `app.operacao_offline` (ADR-025): uma linha por operação sincronizada, sem DELETE para a aplicação. Definir o prazo e quem limpa (papel próprio ou backoffice) antes do rollout.
+- Limpeza de `app.operacao_offline` (ADR-025, ajuste (d)): a tabela cresce uma linha por operação sincronizada, e nenhum papel tem DELETE. Proposta: partição mensal por `recebida_em`, com a partição antiga descartada por migração depois da janela de reenvio (ex.: 3 meses). A conversão da tabela para particionada e o prazo ficam definidos antes do rollout.
 - Teste de instalação do PWA em Android e iOS, no primeiro deploy com HTTPS (F0-12).
 - Parque de aparelhos dos técnicos (proporção Android e iOS), por causa do push no iOS.
 - Backoffice da EasyGov: o papel `hk_backoffice` existe no banco, mas nenhuma tarefa da fase 0 cria a aplicação nem a variável de conexão dele.
