@@ -423,3 +423,80 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Conflito de edição entre pessoas** (duas pessoas mexendo na mesma OS offline) é regra de domínio da fase 1a, não da fila.
 - **Instalação em Android e iOS:** exige HTTPS fora de `localhost`. A prova em aparelho fica para depois do deploy da F0-12. A F0-11 prova o que dá sem aparelho: manifesto, ícones, service worker, abertura sem rede no navegador e a sincronização.
 - **API em outra origem em produção:** vai exigir CORS ou o mesmo domínio raiz, pendência já listada no `docs/04`. No dev, o Vite repassa `/api` para o web.
+
+## ADR-026 — Políticas configuráveis, com cópia no registro que as usou
+
+**Status:** aprovada por Cesar em 26/09/2026 (revisão do plano da fase 1a, PR #35), com as condições incorporadas abaixo.
+
+**Contexto:** a regra 7 manda que toda exigência de cliente vire configuração ou política. Na 1a entram a prioridade padrão por categoria e o aceite automático, que fica desligado. Na 1c entram o SLA com herança grupo → bandeira → hotel e a visão individual de produtividade.
+
+**Decisão:**
+- **Tabela `app.politica`** (tenant, `escopo_tipo` grupo, bandeira ou hotel, `bandeira_id` ou `hotel_id`, chave, valor `jsonb`, vigência), com RLS e isolamento.
+  - A estrutura já comporta o nível bandeira: a 1c o liga sem migração nova.
+  - Na 1a, a resolução usa hotel → grupo → padrão do código.
+- **Formato validado no domínio:** cada chave tem o formato do valor definido e validado em `packages/dominio`, em TypeScript puro, porque o domínio não importa Zod. O contrato da API repete o formato para o OpenAPI, e um teste compara os dois.
+- **Mudança de política auditada**, pela unit of work, com antes e depois.
+- **Cópia no registro:** o chamado guarda, na abertura, uma cópia da política aplicada (`politica_aplicada jsonb`: prioridade, prazos e regras usadas). Mudar a política não altera chamado já aberto. O mesmo vale para qualquer registro que use política no futuro (OS, preventiva).
+
+**Consequências:** a resolução é regra de domínio, testada sem banco. O banco guarda só estrutura e escopo (regra 2).
+
+## ADR-027 — Estados canônicos no domínio; situações e prioridades configuráveis por tenant
+
+**Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição dos nomes em quatro idiomas.
+
+**Decisão:**
+- **Estados canônicos fixos no domínio**, porque o SLA e os indicadores dependem deles. Por exemplo: aberto, em triagem, em execução, aguardando aceite, concluído, cancelado. As transições permitidas, e quem pode fazer cada uma por papel, são regra do `packages/dominio`.
+- **Situações configuráveis pelo tenant** (nome, ordem, cor), cada uma ligada a um estado canônico. A tela mostra a situação, e as regras usam o estado.
+- **Prioridades do tenant** (nome, ordem, peso). As padrão nascem com o tenant.
+- **Nomes em quatro idiomas:** situações e prioridades têm nome em pt-BR, en, es e fr (`nomes jsonb`, parcial) e uma `chave_padrao` do catálogo, quando a linha é uma das padrão. Na exibição vale:
+  1. o nome do tenant no idioma de quem vê;
+  2. o nome padrão do catálogo (`chave_padrao`) nesse idioma;
+  3. o nome do tenant no idioma padrão do tenant.
+
+## ADR-028 — Campos tipados por definição (ativo na 1a, checklist na 1b)
+
+**Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição de tipos comuns com o checklist e rótulos em quatro idiomas.
+
+**Decisão:**
+- **A categoria do ativo define os campos estendidos:** chave, tipo, obrigatório e rótulo. Os valores ficam em `jsonb` na linha do ativo, validados pela aplicação contra a definição. Sem EAV, sem função e sem regra no banco.
+- **Tipos de campo:** texto curto, número com unidade, data, lista (opções definidas) e sim/não. São os mesmos que o checklist tipado da 1b vai usar, definidos e validados num módulo comum de `packages/dominio`.
+- **Rótulos (e opções de lista) em pt-BR, en, es e fr,** com a mesma volta do ADR-027: idioma de quem vê → padrão do catálogo → idioma padrão do tenant.
+- **Mudança de definição não invalida o que já foi gravado:** campo novo obrigatório vale para gravações novas.
+
+## ADR-029 — Concorrência por versão, com a recusa pelo fluxo da fila offline
+
+**Status:** aprovada por Cesar em 26/09/2026 (PR #35).
+
+**Decisão:**
+- **Coluna `versao`** nas tabelas que mais de uma pessoa edita: ativo, chamado e OS.
+- O `UPDATE` leva `WHERE versao = $esperada` e incrementa a versão. Sem linha afetada, o caso de uso devolve 409 `conflito_de_versao`, com a versão atual nos parâmetros.
+- **No PWA, a recusa segue o fluxo do ADR-025:** a operação offline recusada por conflito fica como rejeitada, com o código, e aparece para o técnico até ele dispensar. Não há reenvio nem mescla automática.
+
+## ADR-030 — Busca por trecho, sem acento, com `pg_trgm`
+
+**Status:** decisão do Cesar em 26/09/2026 (busca por trecho, com `pg_trgm`; revisão do PR #35). Texto proposto para aprovação no PR #35.
+
+**Contexto:** a busca de locais, ativos e chamados precisa achar "açúcar" digitando "acucar", e achar por trecho no meio da palavra (ex.: "frig" em "Refrigerador"). O ADR-022 já fixou a coluna normalizada pela aplicação, sem `unaccent` e sem função no banco (regra 4).
+
+**Decisão:**
+- **Coluna `busca`** nas tabelas pesquisáveis: o texto sem acento e em minúsculas, gravado pela aplicação com a função de normalização de `packages/i18n` (ADR-022).
+- **Extensão `pg_trgm`** no schema `extensions`, criada por migração. Índice GIN `gin_trgm_ops` na coluna `busca`.
+- A consulta usa `busca ILIKE '%' || $termo || '%'`, com o termo normalizado pela mesma função. É o operador padrão do Postgres, sem função nova no projeto.
+- **Termo mínimo de 3 caracteres,** porque o índice de trigramas precisa de ao menos um trigrama. Abaixo disso, a API responde com código próprio.
+- **Meta-testes:** a lista fechada de funções (meta-teste 11) segue só para os schemas do HubKeep. As funções da extensão ficam na exceção de extensões do meta-teste 22. Um meta-teste novo fecha a lista de extensões permitidas (`pg_trgm` e as do Supabase).
+
+**Consequências:** o custo de escrita do índice é pequeno para os volumes previstos, dezenas de milhares de ativos por tenant. Ordenar por semelhança (`similarity`) exigiria usar função da extensão numa consulta e fica fora; se vier, é outro ADR.
+
+## ADR-031 — Proprietário de hotel inteiro, com vigência, calculado na fonte
+
+**Status:** decisão do Cesar em 26/09/2026 (tabela própria de vínculo proprietário-hotel com vigência, calculada na fonte pelas funções de autorização; revisão do PR #35). Texto proposto para aprovação no PR #35.
+
+**Contexto:** o proprietário ou locador se liga a UHs (condo-hotel) ou a um hotel inteiro (`docs/00`). Hoje só existe o vínculo com UHs (`app.local_proprietario`).
+
+**Decisão:**
+- **Tabela `app.hotel_proprietario`** (tenant, id, proprietário, hotel, vigência início e fim), com FK composta, RLS, escrita só pelo Admin do grupo e os seis casos de isolamento.
+- **Calculado na fonte (ADR-004):** a função `authz.locais_proprietario()` passa a devolver também todos os locais (UHs e áreas comuns) dos hotéis vinculados ao proprietário, dentro da vigência. As policies que já usam a função (hotel, local, e as tabelas da 1a, como chamado e OS) cobrem o caso sem mudança, e UH nova do CM entra no escopo sozinha.
+- A função muda por migração nova, com o meta-teste 11 atualizado no mesmo PR (regra 4). Continua `security definer`, dona `hk_authz`, com `search_path` fixo.
+- O proprietário continua somente leitura: nada disso entra em `authz.hoteis_escrita()`.
+
+**Consequências:** o custo da função cresce com um `union`, desprezível para os volumes previstos (reavaliação da carga na 1c, ADR-004).
