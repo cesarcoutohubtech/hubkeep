@@ -65,6 +65,15 @@ export {
   RespostaDeMembroDaEquipe,
 } from './equipes';
 export { IDIOMAS_API, PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
+export {
+  BandeiraApi,
+  PedidoDeBandeira,
+  PedidoDeBandeiraDoHotel,
+  RespostaDeBandeiraAlterada,
+  RespostaDeBandeiraCriada,
+  RespostaDeBandeiraDoHotel,
+  RespostaDeBandeiras,
+} from './bandeiras';
 export { CODIGOS_HTTP, ErroApi, type ProblemaDeEntrada, problemasDe } from './erro';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';

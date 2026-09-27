@@ -98,6 +98,9 @@ export type {
 export type { EquipeDoHotel, PortaEquipes } from './portas/equipes';
 export { criarCasosDeUsoDeEquipes } from './casos-de-uso/equipes';
 export type { CasosDeUsoDeEquipes } from './casos-de-uso/equipes';
+export type { BandeiraCadastrada, PortaBandeiras } from './portas/bandeiras';
+export { criarCasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
+export type { CasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
 export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
 export type { HotelEmImplantacao, PortaImplantacao } from './portas/implantacao';
 export { criarCasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';

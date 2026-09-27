@@ -6,6 +6,7 @@ import {
   type CasoDeUsoDeConvites,
   type CasosDeUsoDeAnexos,
   type CasosDeUsoDeEquipes,
+  type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeHoteis,
   type CasosDeUsoDeImplantacao,
   type CasosDeUsoDeMembros,
@@ -18,6 +19,7 @@ import {
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeEquipes,
+  criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeHoteis,
   criarCasosDeUsoDeImplantacao,
   criarCasosDeUsoDeMembros,
@@ -33,6 +35,7 @@ import {
   type ResultadoOutbox,
   criarAcessoBanco,
   criarPortaEquipes,
+  criarPortaBandeiras,
   criarPortaEscopoDeAnexo,
   criarPortaHoteisDoStaging,
   criarPortaImplantacao,
@@ -163,6 +166,16 @@ export const casosDeUsoDeHoteis = memo<CasosDeUsoDeHoteis>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeHoteis({
     hoteis: criarPortaHoteisDoStaging(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Bandeiras (fase 1a, A2), pelo hk_app. */
+export const casosDeUsoDeBandeiras = memo<CasosDeUsoDeBandeiras>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeBandeiras({
+    bandeiras: criarPortaBandeiras(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });

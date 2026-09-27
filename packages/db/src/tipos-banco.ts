@@ -63,6 +63,7 @@ export interface AppAuditoria {
 }
 
 export interface AppBandeira {
+  ativa: Generated<boolean>;
   criado_em: Generated<Timestamp>;
   id: string;
   nome: string;
