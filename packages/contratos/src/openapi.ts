@@ -9,6 +9,14 @@ import {
   RespostaDeUrlDeDownload,
   RespostaDeUrlDeUpload,
 } from './anexos';
+import {
+  PedidoDeBandeira,
+  PedidoDeBandeiraDoHotel,
+  RespostaDeBandeiraAlterada,
+  RespostaDeBandeiraCriada,
+  RespostaDeBandeiraDoHotel,
+  RespostaDeBandeiras,
+} from './bandeiras';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import { RespostaDeImplantacao } from './implantacao';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
@@ -188,6 +196,85 @@ export const ROTAS: readonly Rota[] = [
         'Entrada inválida (entrada_invalida), formato regional fora da lista ' +
           '(formato_regional_nao_aceito) ou fuso inválido (fuso_invalido).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/bandeiras',
+    resumo: 'Bandeiras do tenant (ativas e desativadas).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Bandeiras', esquema: RespostaDeBandeiras },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/bandeiras',
+    resumo: 'Cria uma bandeira. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeBandeira,
+    respostas: {
+      201: { descricao: 'Bandeira criada', esquema: RespostaDeBandeiraCriada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (bandeiras_so_admin).'),
+      409: ERRO('Nome repetido (bandeira_nome_repetido).'),
+      422: ERRO('Nome inválido (bandeira_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/bandeiras/{id}',
+    resumo: 'Renomeia a bandeira. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeBandeira,
+    respostas: {
+      200: { descricao: 'Bandeira renomeada', esquema: RespostaDeBandeiraAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (bandeiras_so_admin).'),
+      404: ERRO('Bandeira não encontrada (bandeira_nao_encontrada).'),
+      409: ERRO('Nome repetido (bandeira_nome_repetido).'),
+      422: ERRO('Nome inválido (bandeira_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/bandeiras/{id}/desativacao',
+    resumo: 'Desativa a bandeira: deixa de ser oferecida para novos hotéis.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Bandeira desativada', esquema: RespostaDeBandeiraAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (bandeiras_so_admin).'),
+      404: ERRO('Bandeira não encontrada (bandeira_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/bandeiras/{id}/reativacao',
+    resumo: 'Reativa a bandeira.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Bandeira reativada', esquema: RespostaDeBandeiraAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (bandeiras_so_admin).'),
+      404: ERRO('Bandeira não encontrada (bandeira_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/hoteis/{id}/bandeira',
+    resumo: 'Troca (ou tira) a bandeira do hotel; o escopo do Gestor CSC da bandeira muda na hora.',
+    exigeTenant: true,
+    corpo: PedidoDeBandeiraDoHotel,
+    respostas: {
+      200: { descricao: 'Bandeira do hotel trocada', esquema: RespostaDeBandeiraDoHotel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (bandeiras_so_admin).'),
+      404: ERRO(
+        'Hotel ou bandeira não encontrado (hotel_nao_encontrado, bandeira_nao_encontrada).',
+      ),
+      422: ERRO('Bandeira desativada (bandeira_desativada).'),
     },
   },
   {

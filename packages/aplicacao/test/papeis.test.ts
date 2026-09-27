@@ -23,7 +23,11 @@ function portas(minhas: Atribuicao[], outras: Atribuicao[] = []) {
   };
   const casos = criarCasosDeUsoDePapeis({
     atribuicoes,
-    hoteis: { listarVisiveis: async () => [{ id: 'h1', nome: 'Hotel 1', status: 'ativo' }] },
+    hoteis: {
+      listarVisiveis: async () => [
+        { id: 'h1', nome: 'Hotel 1', status: 'ativo', bandeiraId: null },
+      ],
+    },
     relogio: { agora: () => AGORA },
   });
   return { casos, gravadas, revogadas };
@@ -46,7 +50,7 @@ describe('casos de uso de papéis', () => {
   it('lista hotéis pela porta', async () => {
     const { casos } = portas([]);
     expect(await casos.listarHoteisVisiveis(ctx)).toEqual([
-      { id: 'h1', nome: 'Hotel 1', status: 'ativo' },
+      { id: 'h1', nome: 'Hotel 1', status: 'ativo', bandeiraId: null },
     ]);
   });
 

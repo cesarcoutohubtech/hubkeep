@@ -28,6 +28,7 @@ export type {
   PrioridadePadraoPorCategoria,
   ValoresDePolitica,
 } from './politicas';
+export { normalizarNomeDeBandeira, podeGerirBandeiras, podeLigarHotelABandeira } from './bandeiras';
 export { PENDENCIAS_DE_IMPLANTACAO, podeVerImplantacao, resumirImplantacao } from './implantacao';
 export type {
   LocalParaImplantacao,
