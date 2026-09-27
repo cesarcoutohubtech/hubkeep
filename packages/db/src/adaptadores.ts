@@ -5,6 +5,7 @@ import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaConfiguracao,
+  PortaImplantacao,
   ConfiguracaoDoHotel,
   ConfiguracaoDoTenant,
   PortaHoteisDoStaging,
@@ -221,6 +222,32 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
       banco.executar(ctx, (uow) => configurarHotel(uow, hotelId, c)),
     gravarPolitica: (ctx, chave, escopo, valor) =>
       banco.executar(ctx, (uow) => gravarPolitica(uow, chave, escopo, valor)),
+  };
+}
+
+/** Painel de implantação do hotel (fase 1a, A5), pelo hk_app: hotel e locais pela RLS. */
+export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.hotel')
+            .select(['id', 'nome', 'status'])
+            .where('id', '=', hotelId)
+            .executeTakeFirst()) ?? null,
+      ),
+    locais: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.local')
+            .select(['tipo', 'status'])
+            .where('hotel_id', '=', hotelId)
+            .execute()
+        ).map((l) => ({ tipo: l.tipo, status: l.status })),
+      ),
   };
 }
 

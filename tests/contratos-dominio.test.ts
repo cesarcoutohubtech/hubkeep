@@ -7,8 +7,14 @@ import {
   FORMATOS_DE_POLITICA_API,
   IDIOMAS_API,
   PAPEIS_API,
+  PENDENCIAS_DE_IMPLANTACAO_API,
 } from '../packages/contratos/src/index';
-import { CHAVES_DE_POLITICA, PAPEIS, POLITICAS } from '../packages/dominio/src/index';
+import {
+  CHAVES_DE_POLITICA,
+  PAPEIS,
+  PENDENCIAS_DE_IMPLANTACAO,
+  POLITICAS,
+} from '../packages/dominio/src/index';
 import { IDIOMAS } from '../packages/i18n/src/index';
 
 describe('contratos × domínio', () => {
@@ -56,5 +62,9 @@ describe('contratos × domínio', () => {
         ]);
       }
     }
+  });
+
+  it('as pendências do painel de implantação são as do domínio', () => {
+    expect([...PENDENCIAS_DE_IMPLANTACAO_API]).toEqual([...PENDENCIAS_DE_IMPLANTACAO]);
   });
 });

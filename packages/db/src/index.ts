@@ -15,6 +15,7 @@ export { ehMembro, escopoVisivel, listarHoteisVisiveis, nomeDoTenant } from './c
 export {
   criarPortaConfiguracao,
   criarPortaEscopoDeAnexo,
+  criarPortaImplantacao,
   criarPortaMembros,
   criarPortaHoteisDoStaging,
   criarPortaOperacoesOffline,
