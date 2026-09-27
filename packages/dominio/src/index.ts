@@ -13,6 +13,21 @@ export {
   vigente,
 } from './permissoes';
 export type { Resultado } from './permissoes';
+export {
+  CHAVES_DE_POLITICA,
+  POLITICAS,
+  ehChaveDePolitica,
+  podeGerirPoliticas,
+  resolverPolitica,
+  validarPolitica,
+  validarRegiao,
+} from './politicas';
+export type {
+  AceiteAutomatico,
+  ChaveDePolitica,
+  PrioridadePadraoPorCategoria,
+  ValoresDePolitica,
+} from './politicas';
 export { podeAlterarAtivoDoMembro, podeAlterarValidade, podeGerirMembros } from './membros';
 export {
   contaComoHotel,

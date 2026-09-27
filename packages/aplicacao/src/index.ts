@@ -95,6 +95,15 @@ export type {
   HotelParaAtivacao,
   ResultadoDaAtivacao,
 } from './casos-de-uso/hoteis';
+export type {
+  ConfiguracaoDoHotel,
+  ConfiguracaoDoTenant,
+  EscopoDePolitica,
+  PoliticaGravada,
+  PortaConfiguracao,
+} from './portas/configuracao';
+export { criarCasosDeUsoDeConfiguracao } from './casos-de-uso/configuracao';
+export type { CasosDeUsoDeConfiguracao, PoliticaResolvida } from './casos-de-uso/configuracao';
 export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
 export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';

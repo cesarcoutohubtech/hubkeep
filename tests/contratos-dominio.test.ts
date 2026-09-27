@@ -2,8 +2,13 @@
 // contratos), então repete a lista de papéis e a de idiomas. Este teste impede
 // que divirjam.
 import { describe, expect, it } from 'vitest';
-import { IDIOMAS_API, PAPEIS_API } from '../packages/contratos/src/index';
-import { PAPEIS } from '../packages/dominio/src/index';
+import {
+  CHAVES_DE_POLITICA_API,
+  FORMATOS_DE_POLITICA_API,
+  IDIOMAS_API,
+  PAPEIS_API,
+} from '../packages/contratos/src/index';
+import { CHAVES_DE_POLITICA, PAPEIS, POLITICAS } from '../packages/dominio/src/index';
 import { IDIOMAS } from '../packages/i18n/src/index';
 
 describe('contratos × domínio', () => {
@@ -13,5 +18,43 @@ describe('contratos × domínio', () => {
 
   it('os idiomas aceitos pela API são exatamente os do @hubkeep/i18n', () => {
     expect([...IDIOMAS_API]).toEqual([...IDIOMAS]);
+  });
+
+  it('as políticas da API são as do domínio, com o mesmo formato (ADR-026)', () => {
+    expect([...CHAVES_DE_POLITICA_API].sort()).toEqual([...CHAVES_DE_POLITICA].sort());
+    const U = '0193a000-0000-4000-8000-000000000001';
+    const amostras: Record<(typeof CHAVES_DE_POLITICA)[number], unknown[]> = {
+      'os.aceite_automatico': [
+        { ligado: true, dias: 1 },
+        { ligado: false, dias: 60 },
+        { ligado: true, dias: 0 },
+        { ligado: true, dias: 61 },
+        { ligado: true, dias: 2.5 },
+        { ligado: 'sim', dias: 7 },
+        { ligado: true, dias: 7, extra: 1 },
+        { ligado: true },
+        [true, 7],
+        null,
+      ],
+      'chamado.prioridade_padrao_por_categoria': [
+        {},
+        { [U]: U },
+        { x: U },
+        { [U]: 'x' },
+        { [U]: 1 },
+        [],
+        null,
+      ],
+    };
+    for (const chave of CHAVES_DE_POLITICA) {
+      expect(FORMATOS_DE_POLITICA_API[chave].safeParse(POLITICAS[chave].padrao).success).toBe(true);
+      for (const v of amostras[chave]) {
+        expect([chave, v, FORMATOS_DE_POLITICA_API[chave].safeParse(v).success]).toEqual([
+          chave,
+          v,
+          POLITICAS[chave].valido(v),
+        ]);
+      }
+    }
   });
 });
