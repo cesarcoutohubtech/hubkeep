@@ -94,16 +94,16 @@ describe.skipIf(!temBanco)('A5 — Implantador e painel de implantação', { tim
       extra = '',
     ) =>
       dono.query(
-        `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, hotel_id, concedido_por, valido_ate, revogado_em)
-         values ($1, $2, $3, $4, $5, $6, $7, ${extra || 'null, null'})`,
+        `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, hotel_id, concedido_por, valido_ate, revogado_em, revogado_por)
+         values ($1, $2, $3, $4, $5, $6, $7, ${extra || 'null, null, null'})`,
         [randomUUID(), TENANT, usuario, papel, escopo, hotel, U.admin],
       );
     await atribuir(U.admin, 'admin_grupo', 'grupo', null);
-    await atribuir(U.implantador, 'implantador', 'hotel', H1, `now() + interval '30 days', null`);
-    await atribuir(U.vencido, 'implantador', 'hotel', H1, `now() - interval '1 day', null`);
+    await atribuir(U.implantador, 'implantador', 'hotel', H1, `now() + interval '30 days', null, null`);
+    await atribuir(U.vencido, 'implantador', 'hotel', H1, `now() - interval '1 day', null, null`);
     await atribuir(U.gerenteH2, 'gerente_hotel', 'hotel', H2);
     await atribuir(U.tecnico, 'tecnico', 'hotel', H1);
-    await atribuir(U.antigo, 'tecnico', 'hotel', H1, `null, now() - interval '1 day'`);
+    await atribuir(U.antigo, 'tecnico', 'hotel', H1, `null, now() - interval '1 day', $7`);
     banco = await criarAcessoBanco({ app: { url: URL_APP ?? '', max: 2 } });
     const portas = criarPortasDeAplicacao(banco);
     const deps = {
