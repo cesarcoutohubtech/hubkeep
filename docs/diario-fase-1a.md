@@ -55,3 +55,115 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - validade auditada, no passado dá 422;
   - o Implantador não mexe na validade de outro Implantador.
 - Falso alarme registrado: a suspeita de que o Implantador estendesse a própria validade pelo banco não procede. O `WITH CHECK` da policy de atribuição barra, e o pgTAP 002 já testa.
+
+### A2 — Bandeiras (PR #38, migração 0008)
+- Migração 0008: `ativa` em `app.bandeira` (desativação lógica), com UPDATE só nessa coluna, além do nome. pgTAP 007 (10 casos).
+- Domínio (`bandeiras.ts`): `podeGerirBandeiras` e `podeLigarHotelABandeira` (só o Admin do grupo) e `normalizarNomeDeBandeira`.
+- Casos de uso: listar, criar, renomear, desativar e reativar bandeira, e ligar ou desligar o hotel da bandeira. Nome repetido dá 409 `bandeira_nome_repetido`, pela restrição única do banco.
+- Rotas:
+  - `GET/POST /api/v1/bandeiras` e `PUT /api/v1/bandeiras/{id}`;
+  - `POST /api/v1/bandeiras/{id}/desativacao|reativacao`;
+  - `PUT /api/v1/hoteis/{id}/bandeira`.
+- `HotelVisivel` ganhou `bandeiraId`. Tela `/admin/bandeiras`.
+- O teste de OpenAPI passou a comparar o documento com a lista derivada de `ROTAS`, em vez de uma lista fixa. A mesma troca foi feita em A4, A5, A6 e A7, para os PRs paralelos não conflitarem.
+- Aceite: `packages/db/test/bandeiras.test.ts`, com paridade domínio × RLS.
+
+### A4 — Proprietários, de UH e de hotel inteiro (PR #41, migração 0011, ADR-031)
+- Migração 0011:
+  - `app.hotel_proprietario`, com vigência e FK composta. Leitura e escrita só pelo Admin do grupo, como em `app.proprietario`. Sem DELETE; só a vigência muda.
+  - `authz.locais_proprietario()` passa a incluir todos os locais dos hotéis vinculados, dentro da vigência. As policies existentes cobrem o caso, e UH nova no hotel entra no escopo sozinha. O proprietário continua só leitura.
+- Meta-teste 11b (novo): impressão (md5 do `prosrc`) do corpo de cada função, para que mudar o que uma função de autorização calcula exija o teste atualizado no mesmo PR. Meta-teste 19 com a exceção `authz_leitura` da tabela nova. pgTAP 010 (24 casos).
+- Domínio (`proprietarios.ts`):
+  - gestão só pelo Admin;
+  - nome e documento normalizados;
+  - vigência yyyy-mm-dd, com os dois extremos valendo;
+  - sem sobreposição de vínculos do mesmo proprietário com o mesmo alvo;
+  - vínculo por local só com UH.
+- Rotas:
+  - `GET/POST /api/v1/proprietarios` e `PUT /api/v1/proprietarios/{id}`;
+  - `POST /api/v1/proprietarios/{id}/vinculos`;
+  - `PUT /api/v1/vinculos-de-proprietario/{id}/vigencia`;
+  - `GET /api/v1/hoteis/{id}/locais`, mínima, que a B1 amplia.
+
+  O convite aceita `proprietarioId`, para convidar alguém direto como proprietário.
+- A auditoria de proprietário e vínculo não guarda nome nem documento (LGPD).
+- Tela `/admin/proprietarios`: cadastro, vínculo, vigência, dar acesso a um membro e convite.
+- Aceite (`packages/db/test/proprietarios.test.ts`): o dono vê o hotel inteiro, a UH nova e a UH vinculada; encerrar a vigência tira o acesso; recusas com código; paridade com a checagem removida; auditoria sem dado pessoal.
+- CI: a primeira execução falhou na verificação dos tipos gerados (`kysely-codegen --verify`), porque `AppHotelProprietario` estava fora da ordem alfabética em `tipos-banco.ts`. Corrigido no mesmo PR.
+- Limite conhecido: hotel vinculado sem nenhum local não aparece ao proprietário até chegar o primeiro local.
+- Pendente: aprovação explícita do texto dos ADRs 030 e 031 (pedida no PR #41).
+
+### A5 — Fluxos do Implantador e painel de implantação (PR #42, mergeado, sem migração)
+- Domínio (`implantacao.ts`):
+  - quem vê: o Admin do grupo ou o Implantador vigente do hotel;
+  - resumo de locais;
+  - pessoas com papel vigente no hotel, por papel;
+  - pessoas que ficaram sem papel vigente;
+  - pendências `sem_locais`, `uhs_pendentes_de_licenca`, `sem_gerente`, `sem_tecnico` e `pessoas_sem_papel_vigente`.
+- Rota `GET /api/v1/hoteis/{id}/implantacao` e tela `/admin/implantacao`. O cadastro de pessoas é o da tela de membros (A3), com as regras de concessão da F0-06.
+- Aceite (`packages/db/test/implantacao.test.ts`):
+  - painel do Implantador;
+  - concessão de gerente, com o painel refletindo;
+  - 403 com código ao conceder acima do próprio papel ou em outro hotel;
+  - ativar é só do Admin;
+  - vencido e gerente não veem;
+  - sem a checagem, a RLS esconde o hotel.
+- CI: a primeira execução falhou no seed do teste (atribuição revogada sem `revogado_por`, recusada pelo check `revogacao_consistente`), e a segunda no Prettier do mesmo arquivo, porque a checagem local estava num pipe com `tail`, que esconde a falha. As duas foram corrigidas no PR.
+- Pendente para a etapa B: as pendências de ativos (locais sem ativo, ativos sem categoria) e o cadastro de locais, ativos e QR.
+
+### A6 — Equipes do hotel (PR #39, migração 0009)
+- Migração 0009:
+  - `app.equipe` (nome, ativa) e `app.equipe_membro` (equipe, usuário, ativo), com FKs compostas por tenant e hotel;
+  - leitura para quem lê o hotel;
+  - gestão por Admin, Gestor CSC, Implantador e Gerente do hotel;
+  - sem DELETE.
+
+  pgTAP 008 (19 casos).
+- Domínio (`equipes.ts`): quem gere (papel e escopo cobrindo o hotel) e nome normalizado. Nome repetido no hotel dá 409 `equipe_nome_repetido`.
+- Rotas:
+  - `GET/POST /api/v1/hoteis/{id}/equipes` e `PUT /api/v1/equipes/{id}`;
+  - `POST /api/v1/equipes/{id}/desativacao|reativacao`;
+  - `POST /api/v1/equipes/{id}/membros` e `.../membros/{usuarioId}/remocao`.
+- Tela `/admin/equipes`.
+- Aceite (`packages/db/test/equipes.test.ts`): técnico em duas equipes; pôr de novo reativa, sem duplicar; desativação lógica; o técnico lê e não gerencia; outro hotel não vê; paridade com a checagem removida.
+
+### A7 — Configuração do tenant e do hotel e políticas (PR #40, migração 0010, ADR-026)
+- Migração 0010:
+  - `app.politica`: valor jsonb por chave e escopo (grupo, bandeira ou hotel), com uma linha por chave em cada escopo;
+  - gravação só pelo Admin, com `atualizado_por` igual a quem grava; sem DELETE, e voltar a herdar é `ativa = false`;
+  - leitura por escopo: a política do hotel só para quem lê o hotel; a do grupo, para quem tem papel vigente;
+  - `app.tenant` ganha UPDATE de país, subdivisão, moeda e idioma padrão, só pelo Admin.
+
+  pgTAP 009 (22 casos).
+- Correção feita antes do merge: a primeira versão deixava todo membro do tenant ler qualquer política. Isso furava dois dos seis casos do docs/02: o gerente de outro hotel via a política do hotel, e o implantador vencido via as do grupo. A leitura passou a ser por escopo, com os casos no pgTAP.
+- Domínio (`politicas.ts`):
+  - `os.aceite_automatico` (`{ligado, dias 1..60}`), desligado por padrão, com job na 1c;
+  - `chamado.prioridade_padrao_por_categoria`, para B2 e C1;
+  - resolução hotel → grupo → padrão;
+  - valor fora do formato cai para o nível seguinte;
+  - região ISO.
+- Os contratos repetem o formato, e `tests/contratos-dominio` compara os dois lados.
+- Rotas:
+  - `GET/PUT /api/v1/configuracao`;
+  - `PUT /api/v1/hoteis/{id}/configuracao`;
+  - `PUT /api/v1/politicas`.
+- Tela `/admin/configuracao`.
+- Aceite (`packages/db/test/configuracao.test.ts`): o hotel vence o grupo; null volta a herdar sem duplicar a linha; auditoria de cada gravação; recusas com código; paridade com a checagem removida.
+
+### Fim da etapa A — resumo
+- **PRs:**
+  - A1 #36 e A3 #37, mergeados;
+  - A2 #38, A6 #39, A7 #40 e A4 #41, com migração, abertos para revisão e merge do Cesar;
+  - A5 #42, sem migração, mergeado depois da CI verde.
+- **Migrações:**
+  - no dev até a 0006;
+  - para `db push`, nesta ordem: 0007 (#37), 0008 (#38), 0009 (#39), 0010 (#40) e 0011 (#41). Se os merges saírem de ordem, usar `supabase db push --include-all`.
+- **Telas novas:**
+  - `/admin/hoteis`, `/admin/membros`, `/admin/bandeiras`, `/admin/equipes`;
+  - `/admin/configuracao`, `/admin/proprietarios`, `/admin/implantacao`.
+- **Decisão de processo para o Cesar:** o docs/02 manda pôr os casos de cada tabela nova no `003_isolamento_por_tabela`. Nesta etapa, cada tabela ganhou arquivo próprio (007 a 010), com os seis casos, para os PRs paralelos não conflitarem no mesmo arquivo. A escolha é entre mover tudo para o 003 depois dos merges ou ajustar o docs/02 para aceitar arquivo por tabela.
+- **Pendente:**
+  - aprovação dos textos dos ADRs 030 e 031;
+  - desativar hotel;
+  - pendências de ativos no painel (etapa B);
+  - hotel vinculado sem local invisível ao proprietário até o primeiro local.
