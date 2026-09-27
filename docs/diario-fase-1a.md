@@ -93,7 +93,7 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 - Limite conhecido: hotel vinculado sem nenhum local não aparece ao proprietário até chegar o primeiro local.
 - Pendente: aprovação explícita do texto dos ADRs 030 e 031 (pedida no PR #41).
 
-### A5 — Fluxos do Implantador e painel de implantação (PR #42, sem migração)
+### A5 — Fluxos do Implantador e painel de implantação (PR #42, mergeado, sem migração)
 - Domínio (`implantacao.ts`):
   - quem vê: o Admin do grupo ou o Implantador vigente do hotel;
   - resumo de locais;
@@ -108,6 +108,7 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - ativar é só do Admin;
   - vencido e gerente não veem;
   - sem a checagem, a RLS esconde o hotel.
+- CI: a primeira execução falhou no seed do teste (atribuição revogada sem `revogado_por`, recusada pelo check `revogacao_consistente`), e a segunda no Prettier do mesmo arquivo, porque a checagem local estava num pipe com `tail`, que esconde a falha. As duas foram corrigidas no PR.
 - Pendente para a etapa B: as pendências de ativos (locais sem ativo, ativos sem categoria) e o cadastro de locais, ativos e QR.
 
 ### A6 — Equipes do hotel (PR #39, migração 0009)
@@ -153,7 +154,7 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 - **PRs:**
   - A1 #36 e A3 #37, mergeados;
   - A2 #38, A6 #39, A7 #40 e A4 #41, com migração, abertos para revisão e merge do Cesar;
-  - A5 #42, sem migração, com merge próprio depois da CI verde.
+  - A5 #42, sem migração, mergeado depois da CI verde.
 - **Migrações:**
   - no dev até a 0006;
   - para `db push`, nesta ordem: 0007 (#37), 0008 (#38), 0009 (#39), 0010 (#40) e 0011 (#41). Se os merges saírem de ordem, usar `supabase db push --include-all`.
