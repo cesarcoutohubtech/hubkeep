@@ -4,10 +4,12 @@
 import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
-  PortaConfiguracao,
+  PortaProprietarios,
   PortaEquipes,
   PortaBandeiras,
   PortaImplantacao,
+  LocalDoHotel,
+  PortaConfiguracao,
   ConfiguracaoDoHotel,
   ConfiguracaoDoTenant,
   PortaHoteisDoStaging,
@@ -21,6 +23,7 @@ import type {
   PortaPromocaoDeUhs,
 } from '@hubkeep/aplicacao';
 import { type Atribuicao, Conflito, type Escopo } from '@hubkeep/dominio';
+import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
 import {
@@ -42,6 +45,12 @@ import {
 } from './repositorios/bandeiras';
 import { gravarConvite } from './repositorios/convites';
 import { alterarEquipe, criarEquipe, definirMembroDaEquipe } from './repositorios/equipes';
+import {
+  alterarProprietario,
+  alterarVigenciaDoVinculo,
+  criarProprietario,
+  vincularProprietario,
+} from './repositorios/proprietarios';
 import {
   hoteisCadastrados,
   hoteisDoStaging,
@@ -165,72 +174,128 @@ export function criarPortasDeAplicacao(banco: AcessoBanco): {
   };
 }
 
-/** Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026), pelo hk_app. */
-export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
+/** Proprietários e vínculos com UH ou hotel inteiro (fase 1a, A4; ADR-031), pelo hk_app. */
+export function criarPortaProprietarios(banco: AcessoBanco): PortaProprietarios {
+  const local = (l: {
+    id: string;
+    hotel_id: string;
+    nome: string;
+    tipo: string;
+    status: string;
+  }): LocalDoHotel => ({
+    id: l.id,
+    hotelId: l.hotel_id,
+    nome: l.nome,
+    tipo: l.tipo as LocalDoHotel['tipo'],
+    status: l.status,
+  });
   return {
-    tenant: (ctx) =>
+    listar: (ctx) =>
       banco.withContext(ctx, async (tx) => {
-        const t = await tx
-          .selectFrom('app.tenant')
-          .select(['nome', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
-          .executeTakeFirst();
-        return t
-          ? {
-              nome: t.nome,
-              pais: t.pais,
-              subdivisao: t.subdivisao,
-              moeda: t.moeda,
-              idiomaPadrao: t.idioma_padrao as ConfiguracaoDoTenant['idiomaPadrao'],
-            }
-          : null;
+        const proprietarios = await tx
+          .selectFrom('app.proprietario')
+          .select(['id', 'nome', 'documento'])
+          .orderBy('nome')
+          .execute();
+        const porUh = await tx
+          .selectFrom('app.local_proprietario as lp')
+          .innerJoin('app.local as l', (j) =>
+            j.onRef('l.tenant_id', '=', 'lp.tenant_id').onRef('l.id', '=', 'lp.local_id'),
+          )
+          .innerJoin('app.hotel as h', (j) =>
+            j.onRef('h.tenant_id', '=', 'l.tenant_id').onRef('h.id', '=', 'l.hotel_id'),
+          )
+          .select([
+            'lp.id',
+            'lp.proprietario_id',
+            'l.hotel_id',
+            'h.nome as hotel_nome',
+            'l.id as local_id',
+            'l.nome as local_nome',
+            sql<string>`lp.vigencia_inicio::text`.as('inicio'),
+            sql<string | null>`lp.vigencia_fim::text`.as('fim'),
+          ])
+          .execute();
+        const porHotel = await tx
+          .selectFrom('app.hotel_proprietario as hp')
+          .innerJoin('app.hotel as h', (j) =>
+            j.onRef('h.tenant_id', '=', 'hp.tenant_id').onRef('h.id', '=', 'hp.hotel_id'),
+          )
+          .select([
+            'hp.id',
+            'hp.proprietario_id',
+            'hp.hotel_id',
+            'h.nome as hotel_nome',
+            sql<string>`hp.vigencia_inicio::text`.as('inicio'),
+            sql<string | null>`hp.vigencia_fim::text`.as('fim'),
+          ])
+          .execute();
+        return {
+          proprietarios,
+          vinculos: [
+            ...porUh.map((v) => ({
+              id: v.id,
+              tipo: 'uh' as const,
+              proprietarioId: v.proprietario_id,
+              hotelId: v.hotel_id,
+              hotelNome: v.hotel_nome,
+              localId: v.local_id,
+              localNome: v.local_nome,
+              vigencia: { inicio: v.inicio, fim: v.fim },
+            })),
+            ...porHotel.map((v) => ({
+              id: v.id,
+              tipo: 'hotel' as const,
+              proprietarioId: v.proprietario_id,
+              hotelId: v.hotel_id,
+              hotelNome: v.hotel_nome,
+              localId: null,
+              localNome: null,
+              vigencia: { inicio: v.inicio, fim: v.fim },
+            })),
+          ].sort(
+            (a, b) =>
+              a.hotelNome.localeCompare(b.hotelNome) ||
+              a.vigencia.inicio.localeCompare(b.vigencia.inicio),
+          ),
+        };
       }),
     hotel: (ctx, hotelId) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.hotel')
+            .select(['id', 'nome'])
+            .where('id', '=', hotelId)
+            .executeTakeFirst()) ?? null,
+      ),
+    local: (ctx, localId) =>
       banco.withContext(ctx, async (tx) => {
-        const h = await tx
-          .selectFrom('app.hotel')
-          .select(['id', 'nome', 'fuso', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
-          .where('id', '=', hotelId)
+        const l = await tx
+          .selectFrom('app.local')
+          .select(['id', 'hotel_id', 'nome', 'tipo', 'status'])
+          .where('id', '=', localId)
           .executeTakeFirst();
-        return h
-          ? {
-              id: h.id,
-              nome: h.nome,
-              fuso: h.fuso,
-              pais: h.pais,
-              subdivisao: h.subdivisao,
-              moeda: h.moeda,
-              idiomaPadrao: h.idioma_padrao as ConfiguracaoDoHotel['idiomaPadrao'],
-            }
-          : null;
+        return l ? local(l) : null;
       }),
-    politicas: (ctx, hotelId) =>
-      banco.withContext(ctx, async (tx) => {
-        let q = tx
-          .selectFrom('app.politica')
-          .select(['chave', 'escopo_tipo', 'hotel_id', 'valor'])
-          .where('ativa', '=', true);
-        q = hotelId
-          ? q.where((eb) =>
-              eb.or([
-                eb('escopo_tipo', '=', 'grupo'),
-                eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
-              ]),
-            )
-          : q.where('escopo_tipo', '=', 'grupo');
-        return (await q.execute()).map((p) => ({
-          chave: p.chave,
-          escopo:
-            p.escopo_tipo === 'hotel' && p.hotel_id
-              ? { tipo: 'hotel' as const, hotelId: p.hotel_id }
-              : { tipo: 'grupo' as const },
-          valor: p.valor,
-        }));
-      }),
-    configurarTenant: (ctx, c) => banco.executar(ctx, (uow) => configurarTenant(uow, c)),
-    configurarHotel: (ctx, hotelId, c) =>
-      banco.executar(ctx, (uow) => configurarHotel(uow, hotelId, c)),
-    gravarPolitica: (ctx, chave, escopo, valor) =>
-      banco.executar(ctx, (uow) => gravarPolitica(uow, chave, escopo, valor)),
+    locaisDoHotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.local')
+            .select(['id', 'hotel_id', 'nome', 'tipo', 'status'])
+            .where('hotel_id', '=', hotelId)
+            .orderBy('tipo')
+            .orderBy('nome')
+            .execute()
+        ).map(local),
+      ),
+    criar: (ctx, dados) => banco.executar(ctx, (uow) => criarProprietario(uow, dados)),
+    alterar: (ctx, id, dados) => banco.executar(ctx, (uow) => alterarProprietario(uow, id, dados)),
+    vincular: (ctx, v) => banco.executar(ctx, (uow) => vincularProprietario(uow, v)),
+    alterarVigencia: (ctx, tipo, id, vigencia) =>
+      banco.executar(ctx, (uow) => alterarVigenciaDoVinculo(uow, tipo, id, vigencia)),
   };
 }
 
@@ -351,6 +416,75 @@ export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
       banco.executar(ctx, (uow) => alterarEquipe(uow, id, { ativa })),
     definirMembro: (ctx, equipeId, usuarioId, ativo) =>
       banco.executar(ctx, (uow) => definirMembroDaEquipe(uow, equipeId, usuarioId, ativo)),
+  };
+}
+
+/** Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026), pelo hk_app. */
+export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
+  return {
+    tenant: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const t = await tx
+          .selectFrom('app.tenant')
+          .select(['nome', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+          .executeTakeFirst();
+        return t
+          ? {
+              nome: t.nome,
+              pais: t.pais,
+              subdivisao: t.subdivisao,
+              moeda: t.moeda,
+              idiomaPadrao: t.idioma_padrao as ConfiguracaoDoTenant['idiomaPadrao'],
+            }
+          : null;
+      }),
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'nome', 'fuso', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h
+          ? {
+              id: h.id,
+              nome: h.nome,
+              fuso: h.fuso,
+              pais: h.pais,
+              subdivisao: h.subdivisao,
+              moeda: h.moeda,
+              idiomaPadrao: h.idioma_padrao as ConfiguracaoDoHotel['idiomaPadrao'],
+            }
+          : null;
+      }),
+    politicas: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        let q = tx
+          .selectFrom('app.politica')
+          .select(['chave', 'escopo_tipo', 'hotel_id', 'valor'])
+          .where('ativa', '=', true);
+        q = hotelId
+          ? q.where((eb) =>
+              eb.or([
+                eb('escopo_tipo', '=', 'grupo'),
+                eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
+              ]),
+            )
+          : q.where('escopo_tipo', '=', 'grupo');
+        return (await q.execute()).map((p) => ({
+          chave: p.chave,
+          escopo:
+            p.escopo_tipo === 'hotel' && p.hotel_id
+              ? { tipo: 'hotel' as const, hotelId: p.hotel_id }
+              : { tipo: 'grupo' as const },
+          valor: p.valor,
+        }));
+      }),
+    configurarTenant: (ctx, c) => banco.executar(ctx, (uow) => configurarTenant(uow, c)),
+    configurarHotel: (ctx, hotelId, c) =>
+      banco.executar(ctx, (uow) => configurarHotel(uow, hotelId, c)),
+    gravarPolitica: (ctx, chave, escopo, valor) =>
+      banco.executar(ctx, (uow) => gravarPolitica(uow, chave, escopo, valor)),
   };
 }
 

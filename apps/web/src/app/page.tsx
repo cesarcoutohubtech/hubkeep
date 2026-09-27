@@ -102,6 +102,7 @@ export default function Inicio() {
           <button onClick={sair}>{t('inicio.sair')}</button>
         </span>
       </header>
+      <a href="/admin/proprietarios">{t('inicio.proprietarios')}</a>
       <SeletorDeIdioma aoEscolher={(i) => void escolherIdioma(i)} />
       <a href="/admin/equipes">{t('inicio.equipes')}</a>
       <a href="/admin/hoteis">{t('inicio.administracao')}</a>

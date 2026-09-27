@@ -17,6 +17,7 @@ export {
   criarPortaEquipes,
   criarPortaBandeiras,
   criarPortaEscopoDeAnexo,
+  criarPortaProprietarios,
   criarPortaImplantacao,
   criarPortaMembros,
   criarPortaHoteisDoStaging,

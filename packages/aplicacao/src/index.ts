@@ -96,6 +96,19 @@ export type {
   ResultadoDaAtivacao,
 } from './casos-de-uso/hoteis';
 export type {
+  LocalDoHotel,
+  PortaProprietarios,
+  Proprietario,
+  TipoDeVinculo,
+  VinculoDeProprietario,
+} from './portas/proprietarios';
+export { criarCasosDeUsoDeProprietarios } from './casos-de-uso/proprietarios';
+export type {
+  AlvoDoVinculo,
+  CasosDeUsoDeProprietarios,
+  ProprietarioComVinculos,
+} from './casos-de-uso/proprietarios';
+export type {
   ConfiguracaoDoHotel,
   ConfiguracaoDoTenant,
   EscopoDePolitica,

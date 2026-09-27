@@ -11,6 +11,7 @@ import {
   type CasosDeUsoDeHoteis,
   type CasosDeUsoDeImplantacao,
   type CasosDeUsoDeMembros,
+  type CasosDeUsoDeProprietarios,
   type CasosDeUsoDeIngestao,
   type CasosDeUsoDePapeis,
   type CasosDeUsoDePreferencias,
@@ -25,6 +26,7 @@ import {
   criarCasosDeUsoDeHoteis,
   criarCasosDeUsoDeImplantacao,
   criarCasosDeUsoDeMembros,
+  criarCasosDeUsoDeProprietarios,
   criarCasosDeUsoDeIngestao,
   criarCasosDeUsoDePapeis,
   criarCasosDeUsoDePreferencias,
@@ -43,6 +45,7 @@ import {
   criarPortaHoteisDoStaging,
   criarPortaImplantacao,
   criarPortaMembros,
+  criarPortaProprietarios,
   criarPortaOperacoesOffline,
   criarPortaPreferencias,
   criarPortasDeAplicacao,
@@ -185,6 +188,16 @@ export const casosDeUsoDeBandeiras = memo<CasosDeUsoDeBandeiras>(async () => {
 });
 
 /** Gestão de membros (fase 1a, A3): lista, desativação e validade, pelo hk_app. */
+/** Proprietários e vínculos (fase 1a, A4; ADR-031), pelo hk_app. */
+export const casosDeUsoDeProprietarios = memo<CasosDeUsoDeProprietarios>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeProprietarios({
+    proprietarios: criarPortaProprietarios(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
 export const casosDeUsoDeMembros = memo<CasosDeUsoDeMembros>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeMembros({

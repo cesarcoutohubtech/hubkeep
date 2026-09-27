@@ -14,6 +14,17 @@ export {
 } from './permissoes';
 export type { Resultado } from './permissoes';
 export {
+  diaDe,
+  exigirSemSobreposicao,
+  normalizarDocumento,
+  normalizarNomeDeProprietario,
+  podeGerirProprietarios,
+  validarVigencia,
+  vigenciaCobre,
+  vigenciasSobrepostas,
+} from './proprietarios';
+export type { Vigencia } from './proprietarios';
+export {
   CHAVES_DE_POLITICA,
   POLITICAS,
   ehChaveDePolitica,

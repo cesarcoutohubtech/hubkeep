@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(24);
+select plan(25);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -117,6 +117,32 @@ select is(
     'authz.tenant_id', 'authz.tenant_sistema', 'authz.usuario_id', 'licenca.uso'
   ]::text[],
   'somente as funções de autorização aprovadas existem nos schemas do HubKeep'
+);
+
+-- 11b. O corpo de cada função também é fechado: mudar o que uma função de
+--      autorização calcula exige ADR e a impressão (md5 do prosrc) atualizada
+--      aqui no mesmo PR (regra 4). authz.locais_proprietario mudou na migração
+--      0011 (ADR-031: locais dos hotéis vinculados ao proprietário).
+select is(
+  array(
+    select n.nspname::text || '.' || p.proname::text || ':' || md5(p.prosrc)
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('app', 'authz', 'licenca', 'staging')
+    order by (n.nspname::text || '.' || p.proname::text) collate "C"
+  ),
+  array[
+    'authz.eh_admin_grupo:fb7e38bca20953a574c9058dc4b13f1d',
+    'authz.hoteis_com_papel:a124350b101993fe7019ac0b3dd23248',
+    'authz.hoteis_escrita:e5e2e4e572738251e60b87872364034f',
+    'authz.hoteis_leitura:35b1e215481eb99c7b2f01ed503fdbcc',
+    'authz.locais_proprietario:4dd32f437195d692fa3fc0b3f4b2474b',
+    'authz.membro_privilegiado:d0f3166ae8d59adbb9ff0d9f1364f4f1',
+    'authz.tenant_id:8c1f2279c07d6f5c86f4648182d93f29',
+    'authz.tenant_sistema:45fc9046e9d6e9c2ecdcc4f6448fe67f',
+    'authz.usuario_id:0b65b0c38489aa104f516c29eb7fe115',
+    'licenca.uso:1265e9c74b95beaa5100a901c0f0ca9c'
+  ]::text[],
+  'o corpo de cada função de autorização é o aprovado (md5 do prosrc)'
 );
 
 -- 12. Funções de autorização não executáveis por anon ou authenticated
@@ -248,6 +274,7 @@ select is_empty($$
              ('app',     'hotel',              'authz_leitura',     '{hk_authz}'),
              ('app',     'local',              'authz_leitura',     '{hk_authz}'),
              ('app',     'local_proprietario', 'authz_leitura',     '{hk_authz}'),
+             ('app',     'hotel_proprietario', 'authz_leitura',     '{hk_authz}'),
              ('app',     'atribuicao_escopo',  'authz_leitura',     '{hk_authz}'),
              ('licenca', 'contrato',           'authz_leitura',     '{hk_authz}'),
              ('licenca', 'contrato',           'backoffice_select', '{hk_backoffice}'),

@@ -49,6 +49,15 @@ import {
   RespostaDeConfiguracao,
 } from './configuracao';
 import { PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
+import {
+  PedidoDeProprietario,
+  PedidoDeVigenciaDoVinculo,
+  PedidoDeVinculoDeProprietario,
+  RespostaDeLocaisDoHotel,
+  RespostaDeProprietarioAlterado,
+  RespostaDeProprietarios,
+  RespostaDeVinculoDeProprietario,
+} from './proprietarios';
 import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from './sincronizacao';
 import { ErroApi } from './erro';
 
@@ -77,6 +86,87 @@ export const ROTAS: readonly Rota[] = [
     respostas: {
       200: { descricao: 'Sessão', esquema: RespostaDeSessao },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/proprietarios',
+    resumo:
+      'Proprietários com os vínculos (UH ou hotel inteiro) e a vigência. Só o Admin do grupo.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Proprietários', esquema: RespostaDeProprietarios },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (proprietarios_so_admin).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/proprietarios',
+    resumo: 'Cadastra um proprietário ou locador. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeProprietario,
+    respostas: {
+      201: { descricao: 'Proprietário cadastrado', esquema: RespostaDeProprietarioAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (proprietarios_so_admin).'),
+      422: ERRO('proprietario_nome_invalido, proprietario_documento_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/proprietarios/{id}',
+    resumo: 'Altera nome e documento do proprietário. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeProprietario,
+    respostas: {
+      200: { descricao: 'Proprietário alterado', esquema: RespostaDeProprietarioAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (proprietarios_so_admin).'),
+      404: ERRO('Proprietário não encontrado (proprietario_nao_encontrado).'),
+      422: ERRO('proprietario_nome_invalido, proprietario_documento_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/proprietarios/{id}/vinculos',
+    resumo:
+      'Vincula o proprietário a uma UH ou a um hotel inteiro, com vigência (ADR-031). Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeVinculoDeProprietario,
+    respostas: {
+      201: { descricao: 'Vínculo gravado', esquema: RespostaDeVinculoDeProprietario },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (proprietarios_so_admin).'),
+      404: ERRO('proprietario_nao_encontrado, local_nao_encontrado ou hotel_nao_encontrado.'),
+      409: ERRO('Já existe vínculo nesse período (vinculo_sobreposto).'),
+      422: ERRO('vigencia_invalida, vinculo_so_com_uh ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/vinculos-de-proprietario/{id}/vigencia',
+    resumo: 'Altera ou encerra a vigência do vínculo. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeVigenciaDoVinculo,
+    respostas: {
+      200: { descricao: 'Vigência alterada', esquema: RespostaDeVinculoDeProprietario },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (proprietarios_so_admin).'),
+      404: ERRO('Vínculo não encontrado (vinculo_nao_encontrado).'),
+      409: ERRO('Já existe vínculo nesse período (vinculo_sobreposto).'),
+      422: ERRO('vigencia_invalida ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/locais',
+    resumo: 'Locais (UHs e áreas comuns) do hotel, no escopo de quem pede.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Locais do hotel', esquema: RespostaDeLocaisDoHotel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
     },
   },
   {

@@ -28,7 +28,11 @@ export const POST = rota('convites.criar', async (r) => {
     email: pedido.email,
     nome: pedido.nome,
     papel: pedido.papel,
-    escopo: pedido.hotelId ? { tipo: 'hotel', hotelId: pedido.hotelId } : { tipo: 'grupo' },
+    escopo: pedido.proprietarioId
+      ? { tipo: 'proprietario', proprietarioId: pedido.proprietarioId }
+      : pedido.hotelId
+        ? { tipo: 'hotel', hotelId: pedido.hotelId }
+        : { tipo: 'grupo' },
     validoAte: pedido.validoAte ? new Date(pedido.validoAte) : null,
     redirecionarPara: urlDeAceite(r.req),
   });

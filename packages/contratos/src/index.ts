@@ -42,6 +42,16 @@ export {
 } from './anexos';
 export { PENDENCIAS_DE_IMPLANTACAO_API, RespostaDeImplantacao } from './implantacao';
 export {
+  PedidoDeProprietario,
+  PedidoDeVigenciaDoVinculo,
+  PedidoDeVinculoDeProprietario,
+  RespostaDeLocaisDoHotel,
+  RespostaDeProprietarioAlterado,
+  RespostaDeProprietarios,
+  RespostaDeVinculoDeProprietario,
+  VinculoDeProprietarioApi,
+} from './proprietarios';
+export {
   PedidoDeOperacaoOffline,
   RespostaDeOperacaoOffline,
   TIPOS_DE_OPERACAO_OFFLINE,
