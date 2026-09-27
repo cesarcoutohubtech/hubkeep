@@ -99,7 +99,13 @@ describe.skipIf(!temBanco)('A5 — Implantador e painel de implantação', { tim
         [randomUUID(), TENANT, usuario, papel, escopo, hotel, U.admin],
       );
     await atribuir(U.admin, 'admin_grupo', 'grupo', null);
-    await atribuir(U.implantador, 'implantador', 'hotel', H1, `now() + interval '30 days', null, null`);
+    await atribuir(
+      U.implantador,
+      'implantador',
+      'hotel',
+      H1,
+      `now() + interval '30 days', null, null`,
+    );
     await atribuir(U.vencido, 'implantador', 'hotel', H1, `now() - interval '1 day', null, null`);
     await atribuir(U.gerenteH2, 'gerente_hotel', 'hotel', H2);
     await atribuir(U.tecnico, 'tecnico', 'hotel', H1);
