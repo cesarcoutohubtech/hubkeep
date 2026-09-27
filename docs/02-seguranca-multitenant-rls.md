@@ -63,7 +63,7 @@ Regras:
 | `authz.hoteis_com_papel(papeis)` | Hotéis em que o usuário tem algum dos papéis (grupo, bandeira ou hotel), com validade |
 | `authz.hoteis_leitura()` | Hotéis com qualquer papel |
 | `authz.hoteis_escrita()` | Hotéis com papel diferente de proprietário |
-| `authz.locais_proprietario()` | UHs do proprietário vinculado ao usuário, com vigência |
+| `authz.locais_proprietario()` | Locais do proprietário vinculado ao usuário, com vigência: as UHs vinculadas (`app.local_proprietario`) e todos os locais dos hotéis vinculados por inteiro (`app.hotel_proprietario`, ADR-031) |
 | `authz.eh_admin_grupo()` | Se o usuário é Admin do grupo no tenant |
 | `authz.membro_privilegiado(usuario)` | Se o usuário alvo é Admin ou Implantador |
 
@@ -125,7 +125,7 @@ Casos mínimos no teste de isolamento para cada tabela nova:
 
 - Admin do tenant B não vê linhas do tenant A.
 - Gerente de um hotel não vê nem grava linhas de outro hotel.
-- Proprietário vê só linhas das próprias UHs e não grava.
+- Proprietário vê só linhas das próprias UHs (ou do hotel inteiro vinculado a ele) e não grava.
 - Implantador vencido não vê nada.
 - Sem contexto, nada é visível.
 - FK composta rejeita referência a hotel ou local de outro tenant.

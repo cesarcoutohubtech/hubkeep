@@ -95,6 +95,19 @@ export type {
   HotelParaAtivacao,
   ResultadoDaAtivacao,
 } from './casos-de-uso/hoteis';
+export type {
+  LocalDoHotel,
+  PortaProprietarios,
+  Proprietario,
+  TipoDeVinculo,
+  VinculoDeProprietario,
+} from './portas/proprietarios';
+export { criarCasosDeUsoDeProprietarios } from './casos-de-uso/proprietarios';
+export type {
+  AlvoDoVinculo,
+  CasosDeUsoDeProprietarios,
+  ProprietarioComVinculos,
+} from './casos-de-uso/proprietarios';
 export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
 export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';

@@ -4,6 +4,8 @@
 import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
+  PortaProprietarios,
+  LocalDoHotel,
   PortaHoteisDoStaging,
   PortaConvites,
   PortaCredenciaisDeAgente,
@@ -15,6 +17,7 @@ import type {
   PortaPromocaoDeUhs,
 } from '@hubkeep/aplicacao';
 import { type Atribuicao, Conflito, type Escopo } from '@hubkeep/dominio';
+import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
 import {
@@ -28,6 +31,12 @@ import {
   respostaDaOperacao,
 } from './consultas';
 import { gravarConvite } from './repositorios/convites';
+import {
+  alterarProprietario,
+  alterarVigenciaDoVinculo,
+  criarProprietario,
+  vincularProprietario,
+} from './repositorios/proprietarios';
 import {
   hoteisCadastrados,
   hoteisDoStaging,
@@ -148,6 +157,131 @@ export function criarPortasDeAplicacao(banco: AcessoBanco): {
         ),
       revogar: (ctx, id) => banco.executar(ctx, (uow) => revogarPapel(uow, id)),
     },
+  };
+}
+
+/** Proprietários e vínculos com UH ou hotel inteiro (fase 1a, A4; ADR-031), pelo hk_app. */
+export function criarPortaProprietarios(banco: AcessoBanco): PortaProprietarios {
+  const local = (l: {
+    id: string;
+    hotel_id: string;
+    nome: string;
+    tipo: string;
+    status: string;
+  }): LocalDoHotel => ({
+    id: l.id,
+    hotelId: l.hotel_id,
+    nome: l.nome,
+    tipo: l.tipo as LocalDoHotel['tipo'],
+    status: l.status,
+  });
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const proprietarios = await tx
+          .selectFrom('app.proprietario')
+          .select(['id', 'nome', 'documento'])
+          .orderBy('nome')
+          .execute();
+        const porUh = await tx
+          .selectFrom('app.local_proprietario as lp')
+          .innerJoin('app.local as l', (j) =>
+            j.onRef('l.tenant_id', '=', 'lp.tenant_id').onRef('l.id', '=', 'lp.local_id'),
+          )
+          .innerJoin('app.hotel as h', (j) =>
+            j.onRef('h.tenant_id', '=', 'l.tenant_id').onRef('h.id', '=', 'l.hotel_id'),
+          )
+          .select([
+            'lp.id',
+            'lp.proprietario_id',
+            'l.hotel_id',
+            'h.nome as hotel_nome',
+            'l.id as local_id',
+            'l.nome as local_nome',
+            sql<string>`lp.vigencia_inicio::text`.as('inicio'),
+            sql<string | null>`lp.vigencia_fim::text`.as('fim'),
+          ])
+          .execute();
+        const porHotel = await tx
+          .selectFrom('app.hotel_proprietario as hp')
+          .innerJoin('app.hotel as h', (j) =>
+            j.onRef('h.tenant_id', '=', 'hp.tenant_id').onRef('h.id', '=', 'hp.hotel_id'),
+          )
+          .select([
+            'hp.id',
+            'hp.proprietario_id',
+            'hp.hotel_id',
+            'h.nome as hotel_nome',
+            sql<string>`hp.vigencia_inicio::text`.as('inicio'),
+            sql<string | null>`hp.vigencia_fim::text`.as('fim'),
+          ])
+          .execute();
+        return {
+          proprietarios,
+          vinculos: [
+            ...porUh.map((v) => ({
+              id: v.id,
+              tipo: 'uh' as const,
+              proprietarioId: v.proprietario_id,
+              hotelId: v.hotel_id,
+              hotelNome: v.hotel_nome,
+              localId: v.local_id,
+              localNome: v.local_nome,
+              vigencia: { inicio: v.inicio, fim: v.fim },
+            })),
+            ...porHotel.map((v) => ({
+              id: v.id,
+              tipo: 'hotel' as const,
+              proprietarioId: v.proprietario_id,
+              hotelId: v.hotel_id,
+              hotelNome: v.hotel_nome,
+              localId: null,
+              localNome: null,
+              vigencia: { inicio: v.inicio, fim: v.fim },
+            })),
+          ].sort(
+            (a, b) =>
+              a.hotelNome.localeCompare(b.hotelNome) ||
+              a.vigencia.inicio.localeCompare(b.vigencia.inicio),
+          ),
+        };
+      }),
+    hotel: (ctx, hotelId) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.hotel')
+            .select(['id', 'nome'])
+            .where('id', '=', hotelId)
+            .executeTakeFirst()) ?? null,
+      ),
+    local: (ctx, localId) =>
+      banco.withContext(ctx, async (tx) => {
+        const l = await tx
+          .selectFrom('app.local')
+          .select(['id', 'hotel_id', 'nome', 'tipo', 'status'])
+          .where('id', '=', localId)
+          .executeTakeFirst();
+        return l ? local(l) : null;
+      }),
+    locaisDoHotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.local')
+            .select(['id', 'hotel_id', 'nome', 'tipo', 'status'])
+            .where('hotel_id', '=', hotelId)
+            .orderBy('tipo')
+            .orderBy('nome')
+            .execute()
+        ).map(local),
+      ),
+    criar: (ctx, dados) => banco.executar(ctx, (uow) => criarProprietario(uow, dados)),
+    alterar: (ctx, id, dados) => banco.executar(ctx, (uow) => alterarProprietario(uow, id, dados)),
+    vincular: (ctx, v) => banco.executar(ctx, (uow) => vincularProprietario(uow, v)),
+    alterarVigencia: (ctx, tipo, id, vigencia) =>
+      banco.executar(ctx, (uow) => alterarVigenciaDoVinculo(uow, tipo, id, vigencia)),
   };
 }
 

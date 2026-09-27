@@ -33,6 +33,16 @@ export {
   TIPOS_DE_ANEXO_API,
 } from './anexos';
 export {
+  PedidoDeProprietario,
+  PedidoDeVigenciaDoVinculo,
+  PedidoDeVinculoDeProprietario,
+  RespostaDeLocaisDoHotel,
+  RespostaDeProprietarioAlterado,
+  RespostaDeProprietarios,
+  RespostaDeVinculoDeProprietario,
+  VinculoDeProprietarioApi,
+} from './proprietarios';
+export {
   PedidoDeOperacaoOffline,
   RespostaDeOperacaoOffline,
   TIPOS_DE_OPERACAO_OFFLINE,

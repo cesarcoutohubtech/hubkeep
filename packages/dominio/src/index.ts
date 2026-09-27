@@ -13,6 +13,17 @@ export {
   vigente,
 } from './permissoes';
 export type { Resultado } from './permissoes';
+export {
+  diaDe,
+  exigirSemSobreposicao,
+  normalizarDocumento,
+  normalizarNomeDeProprietario,
+  podeGerirProprietarios,
+  validarVigencia,
+  vigenciaCobre,
+  vigenciasSobrepostas,
+} from './proprietarios';
+export type { Vigencia } from './proprietarios';
 export { podeAlterarAtivoDoMembro, podeAlterarValidade, podeGerirMembros } from './membros';
 export {
   contaComoHotel,

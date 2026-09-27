@@ -33,6 +33,8 @@ export const PedidoDeConvite = z
     papel: z.enum(PAPEIS_API),
     /** Sem hotel, o papel vale para o grupo inteiro. */
     hotelId: z.guid().nullish(),
+    /** Só com o papel proprietario: o escopo é o do proprietário (A4). */
+    proprietarioId: z.guid().nullish(),
     /** Obrigatória para o Implantador (regra do domínio). */
     validoAte: z.iso.datetime({ offset: true }).nullish(),
   })
