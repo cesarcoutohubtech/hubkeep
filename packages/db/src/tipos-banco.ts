@@ -101,6 +101,16 @@ export interface AppHotel {
   tenant_id: string;
 }
 
+export interface AppHotelProprietario {
+  criado_em: Generated<Timestamp>;
+  hotel_id: string;
+  id: string;
+  proprietario_id: string;
+  tenant_id: string;
+  vigencia_fim: Timestamp | null;
+  vigencia_inicio: Timestamp;
+}
+
 export interface AppLocal {
   andar: string | null;
   atualizado_em: Generated<Timestamp>;
@@ -112,16 +122,6 @@ export interface AppLocal {
   status: AppLocalStatus;
   tenant_id: string;
   tipo: AppLocalTipo;
-}
-
-export interface AppHotelProprietario {
-  criado_em: Generated<Timestamp>;
-  hotel_id: string;
-  id: string;
-  proprietario_id: string;
-  tenant_id: string;
-  vigencia_fim: Timestamp | null;
-  vigencia_inicio: Timestamp;
 }
 
 export interface AppLocalProprietario {
@@ -225,8 +225,8 @@ export interface DB {
   "app.bandeira": AppBandeira;
   "app.evento_dominio": AppEventoDominio;
   "app.hotel": AppHotel;
-  "app.local": AppLocal;
   "app.hotel_proprietario": AppHotelProprietario;
+  "app.local": AppLocal;
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
   "app.operacao_offline": AppOperacaoOffline;
