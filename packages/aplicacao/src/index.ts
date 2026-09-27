@@ -95,6 +95,9 @@ export type {
   HotelParaAtivacao,
   ResultadoDaAtivacao,
 } from './casos-de-uso/hoteis';
+export type { BandeiraCadastrada, PortaBandeiras } from './portas/bandeiras';
+export { criarCasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
+export type { CasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
 export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
 export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';

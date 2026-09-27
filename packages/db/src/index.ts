@@ -13,6 +13,7 @@ export { concederPapel, criarMembro, revogarPapel } from './repositorios/membros
 export type { EscopoConcessao } from './repositorios/membros';
 export { ehMembro, escopoVisivel, listarHoteisVisiveis, nomeDoTenant } from './consultas';
 export {
+  criarPortaBandeiras,
   criarPortaEscopoDeAnexo,
   criarPortaMembros,
   criarPortaHoteisDoStaging,

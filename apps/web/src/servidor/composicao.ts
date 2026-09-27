@@ -5,6 +5,7 @@ import { criarAdministracaoDoAuth, criarArmazenamentoDeAnexos } from '@hubkeep/a
 import {
   type CasoDeUsoDeConvites,
   type CasosDeUsoDeAnexos,
+  type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeHoteis,
   type CasosDeUsoDeMembros,
   type CasosDeUsoDeIngestao,
@@ -15,6 +16,7 @@ import {
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
+  criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeHoteis,
   criarCasosDeUsoDeMembros,
   criarCasosDeUsoDeIngestao,
@@ -28,6 +30,7 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaBandeiras,
   criarPortaEscopoDeAnexo,
   criarPortaHoteisDoStaging,
   criarPortaMembros,
@@ -141,6 +144,16 @@ export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () =>
     novoId,
   }),
 );
+
+/** Bandeiras (fase 1a, A2), pelo hk_app. */
+export const casosDeUsoDeBandeiras = memo<CasosDeUsoDeBandeiras>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeBandeiras({
+    bandeiras: criarPortaBandeiras(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
 
 /** Hotéis a partir do staging (fase 1a, A1): listar, importar e ativar, pelo hk_app. */
 export const casosDeUsoDeHoteis = memo<CasosDeUsoDeHoteis>(async () => {

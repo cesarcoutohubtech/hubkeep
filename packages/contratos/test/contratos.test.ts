@@ -80,7 +80,14 @@ describe('OpenAPI', () => {
   it('a resposta de hotéis valida o que o banco devolve', () => {
     expect(
       RespostaDeHoteis.parse({
-        hoteis: [{ id: '11100000-0000-0000-0000-000000000001', nome: 'H', status: 'ativo' }],
+        hoteis: [
+          {
+            id: '11100000-0000-0000-0000-000000000001',
+            nome: 'H',
+            status: 'ativo',
+            bandeiraId: null,
+          },
+        ],
       }).hoteis,
     ).toHaveLength(1);
   });
