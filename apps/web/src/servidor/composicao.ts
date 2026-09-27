@@ -6,6 +6,7 @@ import {
   type CasoDeUsoDeConvites,
   type CasosDeUsoDeAnexos,
   type CasosDeUsoDeHoteis,
+  type CasosDeUsoDeImplantacao,
   type CasosDeUsoDeMembros,
   type CasosDeUsoDeIngestao,
   type CasosDeUsoDePapeis,
@@ -16,6 +17,7 @@ import {
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeHoteis,
+  criarCasosDeUsoDeImplantacao,
   criarCasosDeUsoDeMembros,
   criarCasosDeUsoDeIngestao,
   criarCasosDeUsoDePapeis,
@@ -30,6 +32,7 @@ import {
   criarAcessoBanco,
   criarPortaEscopoDeAnexo,
   criarPortaHoteisDoStaging,
+  criarPortaImplantacao,
   criarPortaMembros,
   criarPortaOperacoesOffline,
   criarPortaPreferencias,
@@ -156,6 +159,17 @@ export const casosDeUsoDeHoteis = memo<CasosDeUsoDeHoteis>(async () => {
 export const casosDeUsoDeMembros = memo<CasosDeUsoDeMembros>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeMembros({
+    membros: criarPortaMembros(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Painel de implantação do hotel (fase 1a, A5), pelo hk_app. */
+export const casosDeUsoDeImplantacao = memo<CasosDeUsoDeImplantacao>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeImplantacao({
+    implantacao: criarPortaImplantacao(banco),
     membros: criarPortaMembros(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,

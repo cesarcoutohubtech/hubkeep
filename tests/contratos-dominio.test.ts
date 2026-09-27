@@ -2,8 +2,12 @@
 // contratos), então repete a lista de papéis e a de idiomas. Este teste impede
 // que divirjam.
 import { describe, expect, it } from 'vitest';
-import { IDIOMAS_API, PAPEIS_API } from '../packages/contratos/src/index';
-import { PAPEIS } from '../packages/dominio/src/index';
+import {
+  IDIOMAS_API,
+  PAPEIS_API,
+  PENDENCIAS_DE_IMPLANTACAO_API,
+} from '../packages/contratos/src/index';
+import { PAPEIS, PENDENCIAS_DE_IMPLANTACAO } from '../packages/dominio/src/index';
 import { IDIOMAS } from '../packages/i18n/src/index';
 
 describe('contratos × domínio', () => {
@@ -13,5 +17,9 @@ describe('contratos × domínio', () => {
 
   it('os idiomas aceitos pela API são exatamente os do @hubkeep/i18n', () => {
     expect([...IDIOMAS_API]).toEqual([...IDIOMAS]);
+  });
+
+  it('as pendências do painel de implantação são as do domínio', () => {
+    expect([...PENDENCIAS_DE_IMPLANTACAO_API]).toEqual([...PENDENCIAS_DE_IMPLANTACAO]);
   });
 });
