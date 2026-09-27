@@ -99,5 +99,8 @@ export type { BandeiraCadastrada, PortaBandeiras } from './portas/bandeiras';
 export { criarCasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
 export type { CasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
 export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
+export type { HotelEmImplantacao, PortaImplantacao } from './portas/implantacao';
+export { criarCasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
+export type { CasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
 export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';

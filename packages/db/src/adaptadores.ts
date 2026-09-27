@@ -5,6 +5,7 @@ import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaBandeiras,
+  PortaImplantacao,
   PortaHoteisDoStaging,
   PortaConvites,
   PortaCredenciaisDeAgente,
@@ -183,6 +184,32 @@ export function criarPortaBandeiras(banco: AcessoBanco): PortaBandeiras {
       banco.executar(ctx, (uow) => definirAtivaDaBandeira(uow, id, ativa)),
     definirBandeiraDoHotel: (ctx, hotelId, bandeiraId) =>
       banco.executar(ctx, (uow) => definirBandeiraDoHotel(uow, hotelId, bandeiraId)),
+  };
+}
+
+/** Painel de implantação do hotel (fase 1a, A5), pelo hk_app: hotel e locais pela RLS. */
+export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.hotel')
+            .select(['id', 'nome', 'status'])
+            .where('id', '=', hotelId)
+            .executeTakeFirst()) ?? null,
+      ),
+    locais: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.local')
+            .select(['tipo', 'status'])
+            .where('hotel_id', '=', hotelId)
+            .execute()
+        ).map((l) => ({ tipo: l.tipo, status: l.status })),
+      ),
   };
 }
 
