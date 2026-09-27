@@ -1,0 +1,93 @@
+// Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026).
+//
+// Repete o formato de cada política de @hubkeep/dominio (politicas.ts) porque
+// contratos não depende de outros pacotes; tests/contratos-dominio falha se as
+// chaves divergirem ou se um valor aceito por um for recusado pelo outro. País,
+// subdivisão e moeda são conferidos no caso de uso, com código por campo.
+import { z } from 'zod';
+import { IDIOMAS_API } from './preferencias';
+
+const AceiteAutomatico = z.strictObject({ ligado: z.boolean(), dias: z.int().min(1).max(60) });
+const PrioridadePadraoPorCategoria = z.record(z.guid(), z.guid());
+
+export const FORMATOS_DE_POLITICA_API = {
+  'os.aceite_automatico': AceiteAutomatico,
+  'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria,
+} as const;
+
+export const CHAVES_DE_POLITICA_API = Object.keys(
+  FORMATOS_DE_POLITICA_API,
+) as (keyof typeof FORMATOS_DE_POLITICA_API)[];
+
+const EscopoDePolitica = z.discriminatedUnion('tipo', [
+  z.object({ tipo: z.literal('grupo') }),
+  z.object({ tipo: z.literal('hotel'), hotelId: z.guid() }),
+]);
+
+/** Valor null: o escopo volta a herdar (grupo → padrão; hotel → grupo). */
+export const PedidoDePolitica = z
+  .discriminatedUnion('chave', [
+    z.object({
+      chave: z.literal('os.aceite_automatico'),
+      escopo: EscopoDePolitica,
+      valor: AceiteAutomatico.nullable(),
+    }),
+    z.object({
+      chave: z.literal('chamado.prioridade_padrao_por_categoria'),
+      escopo: EscopoDePolitica,
+      valor: PrioridadePadraoPorCategoria.nullable(),
+    }),
+  ])
+  .meta({ id: 'PedidoDePolitica' });
+
+const Origem = z.enum(['hotel', 'grupo', 'padrao']);
+const resolvida = <C extends string, V extends z.ZodType>(chave: C, valor: V) =>
+  z.object({
+    chave: z.literal(chave),
+    padrao: valor,
+    grupo: valor.nullable(),
+    hotel: valor.nullable(),
+    efetiva: valor,
+    origem: Origem,
+  });
+
+const Regiao = {
+  /** ISO 3166-1 alfa-2. */
+  pais: z.string().max(8),
+  /** ISO 3166-2, do mesmo país. */
+  subdivisao: z.string().max(8).nullable(),
+  /** ISO 4217. */
+  moeda: z.string().max(8),
+  idiomaPadrao: z.enum(IDIOMAS_API),
+};
+
+export const PedidoDeConfiguracaoDoTenant = z
+  .object(Regiao)
+  .meta({ id: 'PedidoDeConfiguracaoDoTenant' });
+
+/** Nulo em país, subdivisão, moeda e idioma: herda do tenant. */
+export const PedidoDeConfiguracaoDoHotel = z
+  .object({
+    /** Fuso IANA (ex.: America/Sao_Paulo). */
+    fuso: z.string().max(64),
+    pais: Regiao.pais.nullable(),
+    subdivisao: Regiao.subdivisao,
+    moeda: Regiao.moeda.nullable(),
+    idiomaPadrao: Regiao.idiomaPadrao.nullable(),
+  })
+  .meta({ id: 'PedidoDeConfiguracaoDoHotel' });
+
+export const RespostaDeConfiguracao = z
+  .object({
+    tenant: z.object({ nome: z.string(), ...Regiao }),
+    hotel: z
+      .object({ id: z.guid(), nome: z.string(), ...PedidoDeConfiguracaoDoHotel.shape })
+      .nullable(),
+    politicas: z.array(
+      z.discriminatedUnion('chave', [
+        resolvida('os.aceite_automatico', AceiteAutomatico),
+        resolvida('chamado.prioridade_padrao_por_categoria', PrioridadePadraoPorCategoria),
+      ]),
+    ),
+  })
+  .meta({ id: 'RespostaDeConfiguracao' });

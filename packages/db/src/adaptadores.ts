@@ -4,9 +4,12 @@
 import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
+  PortaConfiguracao,
   PortaEquipes,
   PortaBandeiras,
   PortaImplantacao,
+  ConfiguracaoDoHotel,
+  ConfiguracaoDoTenant,
   PortaHoteisDoStaging,
   PortaConvites,
   PortaCredenciaisDeAgente,
@@ -30,6 +33,7 @@ import {
   preferenciasDoUsuario,
   respostaDaOperacao,
 } from './consultas';
+import { configurarHotel, configurarTenant, gravarPolitica } from './repositorios/configuracao';
 import {
   criarBandeira,
   definirAtivaDaBandeira,
@@ -161,6 +165,129 @@ export function criarPortasDeAplicacao(banco: AcessoBanco): {
   };
 }
 
+/** Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026), pelo hk_app. */
+export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
+  return {
+    tenant: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const t = await tx
+          .selectFrom('app.tenant')
+          .select(['nome', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+          .executeTakeFirst();
+        return t
+          ? {
+              nome: t.nome,
+              pais: t.pais,
+              subdivisao: t.subdivisao,
+              moeda: t.moeda,
+              idiomaPadrao: t.idioma_padrao as ConfiguracaoDoTenant['idiomaPadrao'],
+            }
+          : null;
+      }),
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'nome', 'fuso', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h
+          ? {
+              id: h.id,
+              nome: h.nome,
+              fuso: h.fuso,
+              pais: h.pais,
+              subdivisao: h.subdivisao,
+              moeda: h.moeda,
+              idiomaPadrao: h.idioma_padrao as ConfiguracaoDoHotel['idiomaPadrao'],
+            }
+          : null;
+      }),
+    politicas: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        let q = tx
+          .selectFrom('app.politica')
+          .select(['chave', 'escopo_tipo', 'hotel_id', 'valor'])
+          .where('ativa', '=', true);
+        q = hotelId
+          ? q.where((eb) =>
+              eb.or([
+                eb('escopo_tipo', '=', 'grupo'),
+                eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
+              ]),
+            )
+          : q.where('escopo_tipo', '=', 'grupo');
+        return (await q.execute()).map((p) => ({
+          chave: p.chave,
+          escopo:
+            p.escopo_tipo === 'hotel' && p.hotel_id
+              ? { tipo: 'hotel' as const, hotelId: p.hotel_id }
+              : { tipo: 'grupo' as const },
+          valor: p.valor,
+        }));
+      }),
+    configurarTenant: (ctx, c) => banco.executar(ctx, (uow) => configurarTenant(uow, c)),
+    configurarHotel: (ctx, hotelId, c) =>
+      banco.executar(ctx, (uow) => configurarHotel(uow, hotelId, c)),
+    gravarPolitica: (ctx, chave, escopo, valor) =>
+      banco.executar(ctx, (uow) => gravarPolitica(uow, chave, escopo, valor)),
+  };
+}
+
+/** Painel de implantação do hotel (fase 1a, A5), pelo hk_app: hotel e locais pela RLS. */
+export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.hotel')
+            .select(['id', 'nome', 'status'])
+            .where('id', '=', hotelId)
+            .executeTakeFirst()) ?? null,
+      ),
+    locais: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.local')
+            .select(['tipo', 'status'])
+            .where('hotel_id', '=', hotelId)
+            .execute()
+        ).map((l) => ({ tipo: l.tipo, status: l.status })),
+      ),
+  };
+}
+
+/** Bandeiras (fase 1a, A2), pelo hk_app: ler é de todo membro, gravar é do Admin (RLS). */
+export function criarPortaBandeiras(banco: AcessoBanco): PortaBandeiras {
+  const colunas = ['id', 'nome', 'ativa'] as const;
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, (tx) =>
+        tx.selectFrom('app.bandeira').select(colunas).orderBy('nome').execute(),
+      ),
+    buscar: (ctx, id) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.bandeira')
+            .select(colunas)
+            .where('id', '=', id)
+            .executeTakeFirst()) ?? null,
+      ),
+    criar: (ctx, nome) =>
+      banco.executar(ctx, async (uow) => ({ id: (await criarBandeira(uow, nome)).id })),
+    renomear: (ctx, id, nome) => banco.executar(ctx, (uow) => renomearBandeira(uow, id, nome)),
+    definirAtiva: (ctx, id, ativa) =>
+      banco.executar(ctx, (uow) => definirAtivaDaBandeira(uow, id, ativa)),
+    definirBandeiraDoHotel: (ctx, hotelId, bandeiraId) =>
+      banco.executar(ctx, (uow) => definirBandeiraDoHotel(uow, hotelId, bandeiraId)),
+  };
+}
+
 /** Equipes do hotel (fase 1a, A6), pelo hk_app: o que cada um vê e grava é da RLS. */
 export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
   const hotelDe = (tx: Tx, hotelId: string) =>
@@ -224,60 +351,6 @@ export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
       banco.executar(ctx, (uow) => alterarEquipe(uow, id, { ativa })),
     definirMembro: (ctx, equipeId, usuarioId, ativo) =>
       banco.executar(ctx, (uow) => definirMembroDaEquipe(uow, equipeId, usuarioId, ativo)),
-  };
-}
-
-/** Painel de implantação do hotel (fase 1a, A5), pelo hk_app: hotel e locais pela RLS. */
-export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
-  return {
-    hotel: (ctx, hotelId) =>
-      banco.withContext(
-        ctx,
-        async (tx) =>
-          (await tx
-            .selectFrom('app.hotel')
-            .select(['id', 'nome', 'status'])
-            .where('id', '=', hotelId)
-            .executeTakeFirst()) ?? null,
-      ),
-    locais: (ctx, hotelId) =>
-      banco.withContext(ctx, async (tx) =>
-        (
-          await tx
-            .selectFrom('app.local')
-            .select(['tipo', 'status'])
-            .where('hotel_id', '=', hotelId)
-            .execute()
-        ).map((l) => ({ tipo: l.tipo, status: l.status })),
-      ),
-  };
-}
-
-/** Bandeiras (fase 1a, A2), pelo hk_app: ler é de todo membro, gravar é do Admin (RLS). */
-export function criarPortaBandeiras(banco: AcessoBanco): PortaBandeiras {
-  const colunas = ['id', 'nome', 'ativa'] as const;
-  return {
-    listar: (ctx) =>
-      banco.withContext(ctx, (tx) =>
-        tx.selectFrom('app.bandeira').select(colunas).orderBy('nome').execute(),
-      ),
-    buscar: (ctx, id) =>
-      banco.withContext(
-        ctx,
-        async (tx) =>
-          (await tx
-            .selectFrom('app.bandeira')
-            .select(colunas)
-            .where('id', '=', id)
-            .executeTakeFirst()) ?? null,
-      ),
-    criar: (ctx, nome) =>
-      banco.executar(ctx, async (uow) => ({ id: (await criarBandeira(uow, nome)).id })),
-    renomear: (ctx, id, nome) => banco.executar(ctx, (uow) => renomearBandeira(uow, id, nome)),
-    definirAtiva: (ctx, id, ativa) =>
-      banco.executar(ctx, (uow) => definirAtivaDaBandeira(uow, id, ativa)),
-    definirBandeiraDoHotel: (ctx, hotelId, bandeiraId) =>
-      banco.executar(ctx, (uow) => definirBandeiraDoHotel(uow, hotelId, bandeiraId)),
   };
 }
 
