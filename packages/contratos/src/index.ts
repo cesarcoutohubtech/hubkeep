@@ -32,6 +32,7 @@ export {
   RespostaDeUrlDeUpload,
   TIPOS_DE_ANEXO_API,
 } from './anexos';
+export { PENDENCIAS_DE_IMPLANTACAO_API, RespostaDeImplantacao } from './implantacao';
 export {
   PedidoDeOperacaoOffline,
   RespostaDeOperacaoOffline,

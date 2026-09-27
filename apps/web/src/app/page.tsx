@@ -120,6 +120,7 @@ export default function Inicio() {
           </select>
         </label>
       )}
+      <a href="/admin/implantacao">{t('inicio.implantacao')}</a>
       <section>
         <h2>{t('inicio.hoteis.titulo')}</h2>
         {hoteis === null ? (
