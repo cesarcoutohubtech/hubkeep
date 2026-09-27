@@ -49,7 +49,12 @@ export const RespostaDeConvite = z
 // GET /api/v1/hoteis
 // ---------------------------------------------------------------------------
 export const HotelVisivel = z
-  .object({ id: z.guid(), nome: z.string(), status: z.enum(STATUS_HOTEL_API) })
+  .object({
+    id: z.guid(),
+    nome: z.string(),
+    status: z.enum(STATUS_HOTEL_API),
+    bandeiraId: z.guid().nullable(),
+  })
   .meta({ id: 'HotelVisivel' });
 
 export const RespostaDeHoteis = z

@@ -11,10 +11,15 @@ export interface HotelVisivel {
   id: string;
   nome: string;
   status: AppHotelStatus;
+  bandeiraId: string | null;
 }
 
 export const listarHoteisVisiveis = (tx: Tx): Promise<HotelVisivel[]> =>
-  tx.selectFrom('app.hotel').select(['id', 'nome', 'status']).orderBy('nome').execute();
+  tx
+    .selectFrom('app.hotel')
+    .select(['id', 'nome', 'status', 'bandeira_id as bandeiraId'])
+    .orderBy('nome')
+    .execute();
 
 /** Nome do tenant do contexto, ou null se o usuário não é membro ativo dele. */
 export async function nomeDoTenant(tx: Tx): Promise<string | null> {

@@ -5,6 +5,7 @@ import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaProprietarios,
+  PortaBandeiras,
   PortaImplantacao,
   LocalDoHotel,
   PortaHoteisDoStaging,
@@ -31,6 +32,12 @@ import {
   preferenciasDoUsuario,
   respostaDaOperacao,
 } from './consultas';
+import {
+  criarBandeira,
+  definirAtivaDaBandeira,
+  definirBandeiraDoHotel,
+  renomearBandeira,
+} from './repositorios/bandeiras';
 import { gravarConvite } from './repositorios/convites';
 import {
   alterarProprietario,
@@ -309,6 +316,34 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
             .execute()
         ).map((l) => ({ tipo: l.tipo, status: l.status })),
       ),
+  };
+}
+
+/** Bandeiras (fase 1a, A2), pelo hk_app: ler é de todo membro, gravar é do Admin (RLS). */
+export function criarPortaBandeiras(banco: AcessoBanco): PortaBandeiras {
+  const colunas = ['id', 'nome', 'ativa'] as const;
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, (tx) =>
+        tx.selectFrom('app.bandeira').select(colunas).orderBy('nome').execute(),
+      ),
+    buscar: (ctx, id) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.bandeira')
+            .select(colunas)
+            .where('id', '=', id)
+            .executeTakeFirst()) ?? null,
+      ),
+    criar: (ctx, nome) =>
+      banco.executar(ctx, async (uow) => ({ id: (await criarBandeira(uow, nome)).id })),
+    renomear: (ctx, id, nome) => banco.executar(ctx, (uow) => renomearBandeira(uow, id, nome)),
+    definirAtiva: (ctx, id, ativa) =>
+      banco.executar(ctx, (uow) => definirAtivaDaBandeira(uow, id, ativa)),
+    definirBandeiraDoHotel: (ctx, hotelId, bandeiraId) =>
+      banco.executar(ctx, (uow) => definirBandeiraDoHotel(uow, hotelId, bandeiraId)),
   };
 }
 

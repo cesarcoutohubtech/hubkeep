@@ -11,6 +11,7 @@ export interface HotelVisivel {
   id: string;
   nome: string;
   status: 'em_implantacao' | 'ativo' | 'desativado';
+  bandeiraId: string | null;
 }
 
 export interface PortaHoteis {
