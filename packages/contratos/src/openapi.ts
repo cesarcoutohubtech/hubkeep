@@ -10,6 +10,7 @@ import {
   RespostaDeUrlDeUpload,
 } from './anexos';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
+import { RespostaDeImplantacao } from './implantacao';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
 import {
   PedidoDeImportacaoDeHotel,
@@ -225,6 +226,19 @@ export const ROTAS: readonly Rota[] = [
       409: ERRO(
         'Hotel já ativo ou sem licença de hotel (hotel_ja_ativo, licenca_hoteis_sem_saldo).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/implantacao',
+    resumo:
+      'Painel de implantação do hotel: locais, papéis vigentes e pendências. Admin do grupo ou Implantador do hotel.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Resumo da implantação', esquema: RespostaDeImplantacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (implantacao_fora_do_escopo).'),
+      404: ERRO('Hotel não encontrado (hotel_nao_encontrado).'),
     },
   },
   {
