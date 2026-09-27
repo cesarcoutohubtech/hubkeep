@@ -4,6 +4,7 @@
 import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
+  PortaEquipes,
   PortaBandeiras,
   PortaImplantacao,
   PortaHoteisDoStaging,
@@ -36,6 +37,7 @@ import {
   renomearBandeira,
 } from './repositorios/bandeiras';
 import { gravarConvite } from './repositorios/convites';
+import { alterarEquipe, criarEquipe, definirMembroDaEquipe } from './repositorios/equipes';
 import {
   hoteisCadastrados,
   hoteisDoStaging,
@@ -159,31 +161,69 @@ export function criarPortasDeAplicacao(banco: AcessoBanco): {
   };
 }
 
-/** Bandeiras (fase 1a, A2), pelo hk_app: ler é de todo membro, gravar é do Admin (RLS). */
-export function criarPortaBandeiras(banco: AcessoBanco): PortaBandeiras {
-  const colunas = ['id', 'nome', 'ativa'] as const;
+/** Equipes do hotel (fase 1a, A6), pelo hk_app: o que cada um vê e grava é da RLS. */
+export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
+  const hotelDe = (tx: Tx, hotelId: string) =>
+    tx
+      .selectFrom('app.hotel')
+      .select(['id', 'bandeira_id'])
+      .where('id', '=', hotelId)
+      .executeTakeFirst();
   return {
-    listar: (ctx) =>
-      banco.withContext(ctx, (tx) =>
-        tx.selectFrom('app.bandeira').select(colunas).orderBy('nome').execute(),
-      ),
-    buscar: (ctx, id) =>
-      banco.withContext(
-        ctx,
-        async (tx) =>
-          (await tx
-            .selectFrom('app.bandeira')
-            .select(colunas)
-            .where('id', '=', id)
-            .executeTakeFirst()) ?? null,
-      ),
-    criar: (ctx, nome) =>
-      banco.executar(ctx, async (uow) => ({ id: (await criarBandeira(uow, nome)).id })),
-    renomear: (ctx, id, nome) => banco.executar(ctx, (uow) => renomearBandeira(uow, id, nome)),
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await hotelDe(tx, hotelId);
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    hotelDaEquipe: (ctx, equipeId) =>
+      banco.withContext(ctx, async (tx) => {
+        const e = await tx
+          .selectFrom('app.equipe')
+          .select('hotel_id')
+          .where('id', '=', equipeId)
+          .executeTakeFirst();
+        const h = e ? await hotelDe(tx, e.hotel_id) : undefined;
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    listar: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const equipes = await tx
+          .selectFrom('app.equipe')
+          .select(['id', 'nome', 'ativa'])
+          .where('hotel_id', '=', hotelId)
+          .orderBy('nome')
+          .execute();
+        const membros = await tx
+          .selectFrom('app.equipe_membro as em')
+          .innerJoin('app.membro as m', (j) =>
+            j.onRef('m.tenant_id', '=', 'em.tenant_id').onRef('m.usuario_id', '=', 'em.usuario_id'),
+          )
+          .select(['em.equipe_id', 'em.usuario_id', 'em.ativo', 'm.nome'])
+          .where('em.hotel_id', '=', hotelId)
+          .orderBy('m.nome')
+          .execute();
+        const disponiveis = await tx
+          .selectFrom('app.membro')
+          .select(['usuario_id', 'nome'])
+          .where('ativo', '=', true)
+          .orderBy('nome')
+          .execute();
+        return {
+          equipes: equipes.map((e) => ({
+            ...e,
+            membros: membros
+              .filter((m) => m.equipe_id === e.id)
+              .map((m) => ({ usuarioId: m.usuario_id, nome: m.nome, ativo: m.ativo })),
+          })),
+          disponiveis: disponiveis.map((m) => ({ usuarioId: m.usuario_id, nome: m.nome })),
+        };
+      }),
+    criar: (ctx, hotelId, nome) => banco.executar(ctx, (uow) => criarEquipe(uow, hotelId, nome)),
+    renomear: (ctx, id, nome) => banco.executar(ctx, (uow) => alterarEquipe(uow, id, { nome })),
     definirAtiva: (ctx, id, ativa) =>
-      banco.executar(ctx, (uow) => definirAtivaDaBandeira(uow, id, ativa)),
-    definirBandeiraDoHotel: (ctx, hotelId, bandeiraId) =>
-      banco.executar(ctx, (uow) => definirBandeiraDoHotel(uow, hotelId, bandeiraId)),
+      banco.executar(ctx, (uow) => alterarEquipe(uow, id, { ativa })),
+    definirMembro: (ctx, equipeId, usuarioId, ativo) =>
+      banco.executar(ctx, (uow) => definirMembroDaEquipe(uow, equipeId, usuarioId, ativo)),
   };
 }
 
@@ -210,6 +250,34 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
             .execute()
         ).map((l) => ({ tipo: l.tipo, status: l.status })),
       ),
+  };
+}
+
+/** Bandeiras (fase 1a, A2), pelo hk_app: ler é de todo membro, gravar é do Admin (RLS). */
+export function criarPortaBandeiras(banco: AcessoBanco): PortaBandeiras {
+  const colunas = ['id', 'nome', 'ativa'] as const;
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, (tx) =>
+        tx.selectFrom('app.bandeira').select(colunas).orderBy('nome').execute(),
+      ),
+    buscar: (ctx, id) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.bandeira')
+            .select(colunas)
+            .where('id', '=', id)
+            .executeTakeFirst()) ?? null,
+      ),
+    criar: (ctx, nome) =>
+      banco.executar(ctx, async (uow) => ({ id: (await criarBandeira(uow, nome)).id })),
+    renomear: (ctx, id, nome) => banco.executar(ctx, (uow) => renomearBandeira(uow, id, nome)),
+    definirAtiva: (ctx, id, ativa) =>
+      banco.executar(ctx, (uow) => definirAtivaDaBandeira(uow, id, ativa)),
+    definirBandeiraDoHotel: (ctx, hotelId, bandeiraId) =>
+      banco.executar(ctx, (uow) => definirBandeiraDoHotel(uow, hotelId, bandeiraId)),
   };
 }
 
