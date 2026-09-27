@@ -11,6 +11,7 @@
 // primeiro admin é semeado no banco pelo dono, e o convite passa pela rota,
 // que usa @hubkeep/auth-admin como em produção.
 import { randomUUID } from 'node:crypto';
+import { ROTAS } from '@hubkeep/contratos';
 import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -472,27 +473,9 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     expect(comSessao.status).toBe(200);
     const doc = (await comSessao.json()) as { openapi: string; paths: Record<string, unknown> };
     expect(doc.openapi).toBe('3.1.0');
-    expect(Object.keys(doc.paths).sort()).toEqual([
-      '/api/v1/anexos/url-de-download',
-      '/api/v1/anexos/url-de-upload',
-      '/api/v1/atribuicoes',
-      '/api/v1/atribuicoes/{id}/revogacao',
-      '/api/v1/atribuicoes/{id}/validade',
-      '/api/v1/convites',
-      '/api/v1/credenciais-agente',
-      '/api/v1/credenciais-agente/{id}/revogacao',
-      '/api/v1/hoteis',
-      '/api/v1/hoteis/importacoes',
-      '/api/v1/hoteis/staging',
-      '/api/v1/hoteis/{id}/ativacao',
-      '/api/v1/ingestao/lotes',
-      '/api/v1/membros',
-      '/api/v1/membros/{usuarioId}/desativacao',
-      '/api/v1/membros/{usuarioId}/reativacao',
-      '/api/v1/preferencias',
-      '/api/v1/sessao',
-      '/api/v1/sincronizacao/operacoes',
-    ]);
+    // Exatamente as rotas declaradas em packages/contratos (ROTAS): nenhuma a
+    // mais nem a menos no documento servido.
+    expect(Object.keys(doc.paths).sort()).toEqual([...new Set(ROTAS.map((r) => r.caminho))].sort());
   });
 
   it('F0-07: entrada fora do contrato vira 422 entrada_invalida, antes do caso de uso', async () => {
