@@ -5,6 +5,7 @@ import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaProprietarios,
+  PortaImplantacao,
   LocalDoHotel,
   PortaHoteisDoStaging,
   PortaConvites,
@@ -282,6 +283,32 @@ export function criarPortaProprietarios(banco: AcessoBanco): PortaProprietarios 
     vincular: (ctx, v) => banco.executar(ctx, (uow) => vincularProprietario(uow, v)),
     alterarVigencia: (ctx, tipo, id, vigencia) =>
       banco.executar(ctx, (uow) => alterarVigenciaDoVinculo(uow, tipo, id, vigencia)),
+  };
+}
+
+/** Painel de implantação do hotel (fase 1a, A5), pelo hk_app: hotel e locais pela RLS. */
+export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.hotel')
+            .select(['id', 'nome', 'status'])
+            .where('id', '=', hotelId)
+            .executeTakeFirst()) ?? null,
+      ),
+    locais: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.local')
+            .select(['tipo', 'status'])
+            .where('hotel_id', '=', hotelId)
+            .execute()
+        ).map((l) => ({ tipo: l.tipo, status: l.status })),
+      ),
   };
 }
 
