@@ -55,6 +55,14 @@ export {
   RespostaDeRevogacaoDePapel,
   RespostaDeValidade,
 } from './membros';
+export {
+  EquipeApi,
+  PedidoDeEquipe,
+  PedidoDeMembroDaEquipe,
+  RespostaDeEquipeAlterada,
+  RespostaDeEquipes,
+  RespostaDeMembroDaEquipe,
+} from './equipes';
 export { IDIOMAS_API, PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 export { CODIGOS_HTTP, ErroApi, type ProblemaDeEntrada, problemasDe } from './erro';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';

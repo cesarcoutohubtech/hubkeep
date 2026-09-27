@@ -103,6 +103,7 @@ export default function Inicio() {
         </span>
       </header>
       <SeletorDeIdioma aoEscolher={(i) => void escolherIdioma(i)} />
+      <a href="/admin/equipes">{t('inicio.equipes')}</a>
       <a href="/admin/hoteis">{t('inicio.administracao')}</a>
       <a href="/admin/membros">{t('inicio.membros')}</a>
       {sessao.tenants.length === 0 ? (

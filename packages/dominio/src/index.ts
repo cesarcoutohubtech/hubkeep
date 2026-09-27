@@ -13,6 +13,12 @@ export {
   vigente,
 } from './permissoes';
 export type { Resultado } from './permissoes';
+export {
+  PAPEIS_QUE_GERENCIAM_EQUIPES,
+  escopoCobreHotel,
+  normalizarNomeDeEquipe,
+  podeGerirEquipes,
+} from './equipes';
 export { podeAlterarAtivoDoMembro, podeAlterarValidade, podeGerirMembros } from './membros';
 export {
   contaComoHotel,

@@ -95,6 +95,9 @@ export type {
   HotelParaAtivacao,
   ResultadoDaAtivacao,
 } from './casos-de-uso/hoteis';
+export type { EquipeDoHotel, PortaEquipes } from './portas/equipes';
+export { criarCasosDeUsoDeEquipes } from './casos-de-uso/equipes';
+export type { CasosDeUsoDeEquipes } from './casos-de-uso/equipes';
 export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
 export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';
