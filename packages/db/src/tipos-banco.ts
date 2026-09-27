@@ -70,6 +70,26 @@ export interface AppBandeira {
   tenant_id: string;
 }
 
+export interface AppEquipe {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  criado_em: Generated<Timestamp>;
+  hotel_id: string;
+  id: string;
+  nome: string;
+  tenant_id: string;
+}
+
+export interface AppEquipeMembro {
+  ativo: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  criado_em: Generated<Timestamp>;
+  equipe_id: string;
+  hotel_id: string;
+  tenant_id: string;
+  usuario_id: string;
+}
+
 export interface AppEventoDominio {
   criado_em: Generated<Timestamp>;
   disponivel_em: Generated<Timestamp>;
@@ -228,6 +248,8 @@ export interface DB {
   "app.atribuicao_escopo": AppAtribuicaoEscopo;
   "app.auditoria": AppAuditoria;
   "app.bandeira": AppBandeira;
+  "app.equipe": AppEquipe;
+  "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;
   "app.hotel": AppHotel;
   "app.local": AppLocal;
