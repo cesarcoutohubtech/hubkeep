@@ -108,6 +108,9 @@ export type {
   CasosDeUsoDeProprietarios,
   ProprietarioComVinculos,
 } from './casos-de-uso/proprietarios';
+export type { EquipeDoHotel, PortaEquipes } from './portas/equipes';
+export { criarCasosDeUsoDeEquipes } from './casos-de-uso/equipes';
+export type { CasosDeUsoDeEquipes } from './casos-de-uso/equipes';
 export type { BandeiraCadastrada, PortaBandeiras } from './portas/bandeiras';
 export { criarCasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
 export type { CasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';

@@ -5,6 +5,7 @@ import { criarAdministracaoDoAuth, criarArmazenamentoDeAnexos } from '@hubkeep/a
 import {
   type CasoDeUsoDeConvites,
   type CasosDeUsoDeAnexos,
+  type CasosDeUsoDeEquipes,
   type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeHoteis,
   type CasosDeUsoDeImplantacao,
@@ -18,6 +19,7 @@ import {
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
+  criarCasosDeUsoDeEquipes,
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeHoteis,
   criarCasosDeUsoDeImplantacao,
@@ -34,6 +36,7 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaEquipes,
   criarPortaBandeiras,
   criarPortaEscopoDeAnexo,
   criarPortaHoteisDoStaging,
@@ -151,11 +154,11 @@ export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () =>
   }),
 );
 
-/** Bandeiras (fase 1a, A2), pelo hk_app. */
-export const casosDeUsoDeBandeiras = memo<CasosDeUsoDeBandeiras>(async () => {
+/** Equipes do hotel (fase 1a, A6), pelo hk_app. */
+export const casosDeUsoDeEquipes = memo<CasosDeUsoDeEquipes>(async () => {
   const banco = await acessoBanco();
-  return criarCasosDeUsoDeBandeiras({
-    bandeiras: criarPortaBandeiras(banco),
+  return criarCasosDeUsoDeEquipes({
+    equipes: criarPortaEquipes(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });
@@ -166,6 +169,16 @@ export const casosDeUsoDeHoteis = memo<CasosDeUsoDeHoteis>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeHoteis({
     hoteis: criarPortaHoteisDoStaging(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Bandeiras (fase 1a, A2), pelo hk_app. */
+export const casosDeUsoDeBandeiras = memo<CasosDeUsoDeBandeiras>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeBandeiras({
+    bandeiras: criarPortaBandeiras(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });

@@ -18,6 +18,13 @@ import {
   RespostaDeBandeiras,
 } from './bandeiras';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
+import {
+  PedidoDeEquipe,
+  PedidoDeMembroDaEquipe,
+  RespostaDeEquipeAlterada,
+  RespostaDeEquipes,
+  RespostaDeMembroDaEquipe,
+} from './equipes';
 import { RespostaDeImplantacao } from './implantacao';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
 import {
@@ -252,6 +259,99 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'URL de download (5 minutos)', esquema: RespostaDeUrlDeDownload },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Anexo fora do escopo do usuário (anexo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/equipes',
+    resumo: 'Equipes do hotel, com os membros, e os membros disponíveis para entrar.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Equipes do hotel', esquema: RespostaDeEquipes },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/equipes',
+    resumo: 'Cria uma equipe no hotel (Admin, Gestor CSC, Implantador ou Gerente do hotel).',
+    exigeTenant: true,
+    corpo: PedidoDeEquipe,
+    respostas: {
+      201: { descricao: 'Equipe criada', esquema: RespostaDeEquipeAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (equipes_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      409: ERRO('Nome repetido no hotel (equipe_nome_repetido).'),
+      422: ERRO('Nome inválido (equipe_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/equipes/{id}',
+    resumo: 'Renomeia a equipe.',
+    exigeTenant: true,
+    corpo: PedidoDeEquipe,
+    respostas: {
+      200: { descricao: 'Equipe renomeada', esquema: RespostaDeEquipeAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (equipes_fora_do_escopo).'),
+      404: ERRO('Equipe não encontrada (equipe_nao_encontrada).'),
+      409: ERRO('Nome repetido no hotel (equipe_nome_repetido).'),
+      422: ERRO('Nome inválido (equipe_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/equipes/{id}/desativacao',
+    resumo: 'Desativa a equipe.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Equipe desativada', esquema: RespostaDeEquipeAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (equipes_fora_do_escopo).'),
+      404: ERRO('Equipe não encontrada (equipe_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/equipes/{id}/reativacao',
+    resumo: 'Reativa a equipe.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Equipe reativada', esquema: RespostaDeEquipeAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (equipes_fora_do_escopo).'),
+      404: ERRO('Equipe não encontrada (equipe_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/equipes/{id}/membros',
+    resumo: 'Põe (ou reativa) um membro na equipe.',
+    exigeTenant: true,
+    corpo: PedidoDeMembroDaEquipe,
+    respostas: {
+      200: { descricao: 'Membro na equipe', esquema: RespostaDeMembroDaEquipe },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (equipes_fora_do_escopo).'),
+      404: ERRO('Equipe não encontrada (equipe_nao_encontrada).'),
+      422: ERRO('Quem não é membro do tenant (recusado_pela_integridade).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/equipes/{id}/membros/{usuarioId}/remocao',
+    resumo: 'Tira o membro da equipe (desativação lógica).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Membro fora da equipe', esquema: RespostaDeMembroDaEquipe },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (equipes_fora_do_escopo).'),
+      404: ERRO(
+        'Equipe ou participação não encontrada (equipe_nao_encontrada, membro_nao_encontrado).',
+      ),
     },
   },
   {
