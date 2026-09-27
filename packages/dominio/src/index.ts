@@ -13,6 +13,7 @@ export {
   vigente,
 } from './permissoes';
 export type { Resultado } from './permissoes';
+export { normalizarNomeDeBandeira, podeGerirBandeiras, podeLigarHotelABandeira } from './bandeiras';
 export { PENDENCIAS_DE_IMPLANTACAO, podeVerImplantacao, resumirImplantacao } from './implantacao';
 export type {
   LocalParaImplantacao,
