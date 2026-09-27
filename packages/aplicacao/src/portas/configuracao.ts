@@ -1,6 +1,6 @@
 // Porta da configuração do tenant e do hotel e das políticas (fase 1a, A7;
-// ADR-026). Implementada por packages/db, com o contexto do usuário: todos
-// leem, só o Admin do grupo grava (RLS).
+// ADR-026). Implementada por packages/db, com o contexto do usuário: leitura
+// por escopo (a do hotel, quem lê o hotel), gravação só do Admin do grupo (RLS).
 import type { Contexto } from '@hubkeep/dominio';
 import type { Idioma } from '@hubkeep/i18n';
 

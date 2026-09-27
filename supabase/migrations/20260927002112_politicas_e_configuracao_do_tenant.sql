@@ -7,7 +7,8 @@
 --    1c liga com o SLA sem migração nova; na 1a a resolução usa hotel → grupo
 --    → padrão do código. O formato de cada chave é validado no domínio (a
 --    coluna só confere o formato do nome da chave). Sem DELETE: voltar a herdar
---    é ativa = false. Todos os membros leem (a resolução roda para todos);
+--    é ativa = false. Leitura por escopo (a do hotel, quem lê o hotel; a do
+--    grupo, quem tem papel vigente no tenant);
 --    grava só o Admin do grupo.
 -- 2. app.tenant: o Admin do grupo passa a alterar país, subdivisão, moeda e
 --    idioma padrão do próprio tenant (colunas da F0-10b). Antes, o hk_app não
@@ -55,8 +56,20 @@ grant select, insert on app.politica to hk_app;
 grant update (valor, ativa, atualizado_por, atualizado_em) on app.politica to hk_app;
 grant select on app.politica to hk_worker;
 
+-- Leitura por escopo (casos do doc 02): a política de um hotel, só quem lê o
+-- hotel (inclui o proprietário de UH dele); a do grupo ou da bandeira, quem
+-- tem papel vigente no tenant. O Admin lê tudo, mesmo sem hotel cadastrado.
+-- Implantador vencido não vê nada.
 create policy app_select on app.politica for select to hk_app
-  using (tenant_id = (select authz.tenant_id()));
+  using (
+    tenant_id = (select authz.tenant_id())
+    and ((select authz.eh_admin_grupo())
+         or hotel_id in (select authz.hoteis_leitura())
+         or hotel_id in (select lp.hotel_id from authz.locais_proprietario() lp)
+         or (hotel_id is null
+             and (exists (select 1 from authz.hoteis_leitura())
+                  or exists (select 1 from authz.locais_proprietario()))))
+  );
 create policy app_insert on app.politica for insert to hk_app
   with check (
     tenant_id = (select authz.tenant_id())
