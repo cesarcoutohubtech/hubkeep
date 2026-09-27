@@ -9,6 +9,9 @@ import type {
   PortaBandeiras,
   PortaImplantacao,
   LocalDoHotel,
+  PortaConfiguracao,
+  ConfiguracaoDoHotel,
+  ConfiguracaoDoTenant,
   PortaHoteisDoStaging,
   PortaConvites,
   PortaCredenciaisDeAgente,
@@ -33,6 +36,7 @@ import {
   preferenciasDoUsuario,
   respostaDaOperacao,
 } from './consultas';
+import { configurarHotel, configurarTenant, gravarPolitica } from './repositorios/configuracao';
 import {
   criarBandeira,
   definirAtivaDaBandeira,
@@ -412,6 +416,75 @@ export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
       banco.executar(ctx, (uow) => alterarEquipe(uow, id, { ativa })),
     definirMembro: (ctx, equipeId, usuarioId, ativo) =>
       banco.executar(ctx, (uow) => definirMembroDaEquipe(uow, equipeId, usuarioId, ativo)),
+  };
+}
+
+/** Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026), pelo hk_app. */
+export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
+  return {
+    tenant: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const t = await tx
+          .selectFrom('app.tenant')
+          .select(['nome', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+          .executeTakeFirst();
+        return t
+          ? {
+              nome: t.nome,
+              pais: t.pais,
+              subdivisao: t.subdivisao,
+              moeda: t.moeda,
+              idiomaPadrao: t.idioma_padrao as ConfiguracaoDoTenant['idiomaPadrao'],
+            }
+          : null;
+      }),
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'nome', 'fuso', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h
+          ? {
+              id: h.id,
+              nome: h.nome,
+              fuso: h.fuso,
+              pais: h.pais,
+              subdivisao: h.subdivisao,
+              moeda: h.moeda,
+              idiomaPadrao: h.idioma_padrao as ConfiguracaoDoHotel['idiomaPadrao'],
+            }
+          : null;
+      }),
+    politicas: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        let q = tx
+          .selectFrom('app.politica')
+          .select(['chave', 'escopo_tipo', 'hotel_id', 'valor'])
+          .where('ativa', '=', true);
+        q = hotelId
+          ? q.where((eb) =>
+              eb.or([
+                eb('escopo_tipo', '=', 'grupo'),
+                eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
+              ]),
+            )
+          : q.where('escopo_tipo', '=', 'grupo');
+        return (await q.execute()).map((p) => ({
+          chave: p.chave,
+          escopo:
+            p.escopo_tipo === 'hotel' && p.hotel_id
+              ? { tipo: 'hotel' as const, hotelId: p.hotel_id }
+              : { tipo: 'grupo' as const },
+          valor: p.valor,
+        }));
+      }),
+    configurarTenant: (ctx, c) => banco.executar(ctx, (uow) => configurarTenant(uow, c)),
+    configurarHotel: (ctx, hotelId, c) =>
+      banco.executar(ctx, (uow) => configurarHotel(uow, hotelId, c)),
+    gravarPolitica: (ctx, chave, escopo, valor) =>
+      banco.executar(ctx, (uow) => gravarPolitica(uow, chave, escopo, valor)),
   };
 }
 

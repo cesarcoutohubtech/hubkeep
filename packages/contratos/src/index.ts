@@ -25,6 +25,14 @@ export {
 } from './ingestao';
 export { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 export {
+  CHAVES_DE_POLITICA_API,
+  FORMATOS_DE_POLITICA_API,
+  PedidoDeConfiguracaoDoHotel,
+  PedidoDeConfiguracaoDoTenant,
+  PedidoDePolitica,
+  RespostaDeConfiguracao,
+} from './configuracao';
+export {
   ENTIDADES_COM_ANEXO_API,
   PedidoDeUrlDeDownload,
   PedidoDeUrlDeUpload,

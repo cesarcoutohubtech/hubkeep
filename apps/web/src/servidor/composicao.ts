@@ -5,6 +5,7 @@ import { criarAdministracaoDoAuth, criarArmazenamentoDeAnexos } from '@hubkeep/a
 import {
   type CasoDeUsoDeConvites,
   type CasosDeUsoDeAnexos,
+  type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
   type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeHoteis,
@@ -19,6 +20,7 @@ import {
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
+  criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeEquipes,
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeHoteis,
@@ -36,6 +38,7 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaConfiguracao,
   criarPortaEquipes,
   criarPortaBandeiras,
   criarPortaEscopoDeAnexo,
@@ -199,6 +202,16 @@ export const casosDeUsoDeMembros = memo<CasosDeUsoDeMembros>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeMembros({
     membros: criarPortaMembros(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026), pelo hk_app. */
+export const casosDeUsoDeConfiguracao = memo<CasosDeUsoDeConfiguracao>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeConfiguracao({
+    configuracao: criarPortaConfiguracao(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });

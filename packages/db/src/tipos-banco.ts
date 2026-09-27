@@ -173,6 +173,20 @@ export interface AppOperacaoOffline {
   usuario_id: string;
 }
 
+export interface AppPolitica {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  atualizado_por: string;
+  bandeira_id: string | null;
+  chave: string;
+  criado_em: Generated<Timestamp>;
+  escopo_tipo: string;
+  hotel_id: string | null;
+  id: string;
+  tenant_id: string;
+  valor: Json;
+}
+
 export interface AppPreferenciaMembro {
   atualizado_em: Generated<Timestamp>;
   criado_em: Generated<Timestamp>;
@@ -253,6 +267,7 @@ export interface DB {
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
   "app.operacao_offline": AppOperacaoOffline;
+  "app.politica": AppPolitica;
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.proprietario": AppProprietario;
   "app.tenant": AppTenant;

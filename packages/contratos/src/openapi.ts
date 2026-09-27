@@ -42,6 +42,12 @@ import {
   RespostaDeRevogacaoDePapel,
   RespostaDeValidade,
 } from './membros';
+import {
+  PedidoDeConfiguracaoDoHotel,
+  PedidoDeConfiguracaoDoTenant,
+  PedidoDePolitica,
+  RespostaDeConfiguracao,
+} from './configuracao';
 import { PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 import {
   PedidoDeProprietario,
@@ -617,6 +623,63 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'Operação inválida (entrada_invalida ou o código da regra); a chave não é guardada.',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/configuracao',
+    resumo:
+      'Configuração do tenant e, com ?hotelId=, a do hotel; políticas com o valor de cada nível ' +
+      'e o efetivo (hotel → grupo → padrão). Qualquer membro.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Configuração e políticas', esquema: RespostaDeConfiguracao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/configuracao',
+    resumo: 'País, subdivisão, moeda e idioma padrão do tenant. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeConfiguracaoDoTenant,
+    respostas: {
+      200: { descricao: 'Configuração depois da gravação', esquema: RespostaDeConfiguracao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (configuracao_so_admin).'),
+      422: ERRO('pais_invalido, subdivisao_invalida, moeda_invalida ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/hoteis/{id}/configuracao',
+    resumo: 'Fuso, país, subdivisão, moeda e idioma do hotel (nulo herda). Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeConfiguracaoDoHotel,
+    respostas: {
+      200: { descricao: 'Configuração depois da gravação', esquema: RespostaDeConfiguracao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (configuracao_so_admin).'),
+      404: ERRO('Hotel não encontrado (hotel_nao_encontrado).'),
+      422: ERRO(
+        'fuso_invalido, pais_invalido, subdivisao_invalida, moeda_invalida ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/politicas',
+    resumo:
+      'Grava a política no grupo ou no hotel; valor null volta a herdar. Só o Admin do grupo (ADR-026).',
+    exigeTenant: true,
+    corpo: PedidoDePolitica,
+    respostas: {
+      200: { descricao: 'Configuração depois da gravação', esquema: RespostaDeConfiguracao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (configuracao_so_admin).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      422: ERRO('Formato fora da política (politica_valor_invalido) ou entrada_invalida.'),
     },
   },
 ];

@@ -25,6 +25,21 @@ export {
 } from './proprietarios';
 export type { Vigencia } from './proprietarios';
 export {
+  CHAVES_DE_POLITICA,
+  POLITICAS,
+  ehChaveDePolitica,
+  podeGerirPoliticas,
+  resolverPolitica,
+  validarPolitica,
+  validarRegiao,
+} from './politicas';
+export type {
+  AceiteAutomatico,
+  ChaveDePolitica,
+  PrioridadePadraoPorCategoria,
+  ValoresDePolitica,
+} from './politicas';
+export {
   PAPEIS_QUE_GERENCIAM_EQUIPES,
   escopoCobreHotel,
   normalizarNomeDeEquipe,
