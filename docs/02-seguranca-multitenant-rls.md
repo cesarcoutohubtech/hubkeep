@@ -63,7 +63,8 @@ Regras:
 | `authz.hoteis_com_papel(papeis)` | Hotéis em que o usuário tem algum dos papéis (grupo, bandeira ou hotel), com validade |
 | `authz.hoteis_leitura()` | Hotéis com qualquer papel |
 | `authz.hoteis_escrita()` | Hotéis com papel diferente de proprietário |
-| `authz.locais_proprietario()` | Locais do proprietário vinculado ao usuário, com vigência: as UHs vinculadas (`app.local_proprietario`) e todos os locais dos hotéis vinculados por inteiro (`app.hotel_proprietario`, ADR-031) |
+| `authz.locais_proprietario()` | Locais do proprietário vinculado ao usuário, com vigência: as UHs vinculadas (`app.local_proprietario`) e todos os locais dos hotéis vinculados por inteiro (`app.hotel_proprietario`, ADR-031). Só locais de verdade: nunca devolve `local_id` nulo (pgTAP 010) |
+| `authz.hoteis_proprietario()` | Hotéis vinculados por inteiro ao proprietário do usuário, com vigência, com ou sem locais (adendo ao ADR-031). Usada só na leitura de `app.hotel` e `app.politica` |
 | `authz.eh_admin_grupo()` | Se o usuário é Admin do grupo no tenant |
 | `authz.membro_privilegiado(usuario)` | Se o usuário alvo é Admin ou Implantador |
 

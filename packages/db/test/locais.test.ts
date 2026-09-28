@@ -5,8 +5,8 @@
 //     leitura (422 local_so_leitura);
 //   - o técnico lê e não gere (403); gerente de outro hotel não vê (404); pela
 //     porta, sem a checagem da aplicação, a RLS ainda barra o outro hotel;
-//   - pendência da A4 (migração 0012): o proprietário do hotel inteiro vê o
-//     hotel ainda sem locais, e nenhum local.
+//   - pendência da A4 (migração 0012, authz.hoteis_proprietario): o
+//     proprietário do hotel inteiro vê o hotel ainda sem locais, e nenhum local.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';

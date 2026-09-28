@@ -183,3 +183,30 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - o próximo PR de zona protegida só abre depois do merge do anterior.
 
   Registrado no `CLAUDE.md`.
+
+## Etapa B — Locais e ativos
+
+### B1 — Locais e o hotel inteiro sem locais (migração 0012)
+- Domínio (`locais.ts`):
+  - a UH vem do sistema hoteleiro e é só leitura (`local_so_leitura`); o status dela é da licença;
+  - a área comum é cadastrada à mão e não conta licença;
+  - quem gere: Admin, Gestor CSC, Implantador e Gerente, no escopo do hotel. Técnico e solicitante têm escrita no hotel pela RLS, então esse limite por papel é regra de ação (regra 2);
+  - nome e andar normalizados; nome repetido entre as áreas comuns ativas dá 409 `local_nome_repetido`.
+- Rotas:
+  - `GET/POST /api/v1/hoteis/{id}/locais`; o GET veio da A4 e agora devolve origem, andar e se o local é editável;
+  - `PUT /api/v1/locais/{id}`;
+  - `POST /api/v1/locais/{id}/desativacao|reativacao`.
+- Tela `/admin/locais`.
+- **Pendência da A4, o hotel sem locais:**
+  - a primeira versão usava `left join` em `authz.locais_proprietario()`, que passava a devolver `(nulo, hotel)`;
+  - o Cesar pediu que a função devolva só locais de verdade e escolheu a função nova `authz.hoteis_proprietario()`, usada nas policies de `app.hotel` e `app.politica` (adendo ao ADR-031, aguarda aprovação);
+  - o pgTAP 010 garante que `locais_proprietario()` nunca devolve `local_id` nulo;
+  - meta-testes 11 e 11b atualizados.
+- Aceite (`packages/db/test/locais.test.ts`):
+  - área comum sem consumo de licença;
+  - a UH do CM é só leitura;
+  - nome repetido;
+  - desativar e reativar;
+  - auditoria;
+  - o técnico não gere; outro hotel não vê; a RLS barra pela porta;
+  - o dono do hotel inteiro vê o hotel sem locais, e nenhum local.
