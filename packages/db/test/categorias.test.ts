@@ -12,7 +12,12 @@ import { criarCasosDeUsoDeCategorias, relogioDoSistema } from '@hubkeep/aplicaca
 import { CATEGORIAS_PADRAO } from '@hubkeep/dominio';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type AcessoBanco, criarAcessoBanco, criarPortaCategorias, criarPortasDeAplicacao } from '../src/index';
+import {
+  type AcessoBanco,
+  criarAcessoBanco,
+  criarPortaCategorias,
+  criarPortasDeAplicacao,
+} from '../src/index';
 
 const URL_APP = process.env.HK_TESTE_URL_APP;
 const URL_DONO = process.env.HK_TESTE_URL_DONO;
@@ -25,7 +30,13 @@ const TENANT = randomUUID();
 const H1 = randomUUID();
 const U = { admin: randomUUID(), gerente: randomUUID(), tecnico: randomUUID() };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
-const potencia = { chave: 'potencia', tipo: 'numero', obrigatorio: true, rotulos: { 'pt-BR': 'Potência' }, unidade: 'kW' };
+const potencia = {
+  chave: 'potencia',
+  tipo: 'numero',
+  obrigatorio: true,
+  rotulos: { 'pt-BR': 'Potência' },
+  unidade: 'kW',
+};
 
 describe.skipIf(!temBanco)('B2 — categorias de ativo', { timeout: 60_000 }, () => {
   let dono: pg.Client;
@@ -37,19 +48,23 @@ describe.skipIf(!temBanco)('B2 — categorias de ativo', { timeout: 60_000 }, ()
   beforeAll(async () => {
     dono = new pg.Client({ connectionString: URL_DONO });
     await dono.connect();
-    await dono.query(`insert into app.tenant (id, nome, idioma_padrao) values ($1, 'Grupo B2', 'es')`, [TENANT]);
-    await dono.query(`insert into app.hotel (id, tenant_id, nome, fuso, status) values ($1, $2, 'Hotel 1', 'UTC', 'ativo')`, [
-      H1,
-      TENANT,
-    ]);
+    await dono.query(
+      `insert into app.tenant (id, nome, idioma_padrao) values ($1, 'Grupo B2', 'es')`,
+      [TENANT],
+    );
+    await dono.query(
+      `insert into app.hotel (id, tenant_id, nome, fuso, status) values ($1, $2, 'Hotel 1', 'UTC', 'ativo')`,
+      [H1, TENANT],
+    );
     for (const [nome, id] of Object.entries(U)) {
-      await dono.query(`insert into auth.users (id, email) values ($1, $2)`, [id, `${id}@hubkeep.invalid`]);
-      await dono.query(`insert into app.membro (tenant_id, usuario_id, nome, email) values ($1, $2, $3, $4)`, [
-        TENANT,
+      await dono.query(`insert into auth.users (id, email) values ($1, $2)`, [
         id,
-        nome,
         `${id}@hubkeep.invalid`,
       ]);
+      await dono.query(
+        `insert into app.membro (tenant_id, usuario_id, nome, email) values ($1, $2, $3, $4)`,
+        [TENANT, id, nome, `${id}@hubkeep.invalid`],
+      );
     }
     const atribuir = (usuario: string, papel: string, escopo: string, hotel: string | null) =>
       dono.query(
@@ -73,7 +88,14 @@ describe.skipIf(!temBanco)('B2 — categorias de ativo', { timeout: 60_000 }, ()
   afterAll(async () => {
     await banco?.encerrar();
     if (!dono) return;
-    for (const t of ['app.evento_dominio', 'app.auditoria', 'app.categoria_ativo', 'app.atribuicao_escopo', 'app.hotel', 'app.membro']) {
+    for (const t of [
+      'app.evento_dominio',
+      'app.auditoria',
+      'app.categoria_ativo',
+      'app.atribuicao_escopo',
+      'app.hotel',
+      'app.membro',
+    ]) {
       await dono.query(`delete from ${t} where tenant_id = $1`, [TENANT]);
     }
     await dono.query(`delete from app.tenant where id = $1`, [TENANT]);
@@ -81,12 +103,20 @@ describe.skipIf(!temBanco)('B2 — categorias de ativo', { timeout: 60_000 }, ()
   });
 
   it('instala as padrão uma vez e cria a do tenant; o técnico lê', async () => {
-    expect(await casos.instalarCategoriasPadrao(ctx(U.admin))).toEqual({ instaladas: CATEGORIAS_PADRAO.length });
+    expect(await casos.instalarCategoriasPadrao(ctx(U.admin))).toEqual({
+      instaladas: CATEGORIAS_PADRAO.length,
+    });
     expect(await casos.instalarCategoriasPadrao(ctx(U.admin))).toEqual({ instaladas: 0 });
-    ({ id: sauna } = await casos.criarCategoria(ctx(U.admin), { 'pt-BR': ' Saunas ', es: 'Saunas' }, [potencia]));
+    ({ id: sauna } = await casos.criarCategoria(
+      ctx(U.admin),
+      { 'pt-BR': ' Saunas ', es: 'Saunas' },
+      [potencia],
+    ));
     const { idiomaPadrao, categorias } = await casos.listarCategorias(ctx(U.tecnico));
     expect(idiomaPadrao).toBe('es');
-    expect(categorias.filter((c) => c.chavePadrao).map((c) => c.chavePadrao)).toEqual([...CATEGORIAS_PADRAO]);
+    expect(categorias.filter((c) => c.chavePadrao).map((c) => c.chavePadrao)).toEqual([
+      ...CATEGORIAS_PADRAO,
+    ]);
     expect(categorias.find((c) => c.id === sauna)).toMatchObject({
       chavePadrao: null,
       nomes: { 'pt-BR': 'Saunas', es: 'Saunas' },
@@ -97,33 +127,58 @@ describe.skipIf(!temBanco)('B2 — categorias de ativo', { timeout: 60_000 }, ()
 
   it('definição inválida e mudança de tipo são recusadas; campo novo obrigatório entra', async () => {
     await expect(
-      casos.alterarCategoria(ctx(U.admin), sauna, { 'pt-BR': 'Saunas' }, [{ chave: 'Potência', tipo: 'numero', rotulos: { 'pt-BR': 'x' } }]),
-    ).rejects.toMatchObject({ codigo: 'definicao_de_campo_invalida', parametros: { campo: '0', motivo: 'chave' } });
+      casos.alterarCategoria(ctx(U.admin), sauna, { 'pt-BR': 'Saunas' }, [
+        { chave: 'Potência', tipo: 'numero', rotulos: { 'pt-BR': 'x' } },
+      ]),
+    ).rejects.toMatchObject({
+      codigo: 'definicao_de_campo_invalida',
+      parametros: { campo: '0', motivo: 'chave' },
+    });
     await expect(
-      casos.alterarCategoria(ctx(U.admin), sauna, { 'pt-BR': 'Saunas' }, [{ ...potencia, tipo: 'texto', unidade: null }]),
+      casos.alterarCategoria(ctx(U.admin), sauna, { 'pt-BR': 'Saunas' }, [
+        { ...potencia, tipo: 'texto', unidade: null },
+      ]),
     ).rejects.toMatchObject({ codigo: 'campo_muda_de_tipo', parametros: { campo: 'potencia' } });
-    await expect(casos.criarCategoria(ctx(U.admin), {}, [])).rejects.toMatchObject({ codigo: 'categoria_nome_invalido' });
+    await expect(casos.criarCategoria(ctx(U.admin), {}, [])).rejects.toMatchObject({
+      codigo: 'categoria_nome_invalido',
+    });
     await casos.alterarCategoria(ctx(U.admin), sauna, { 'pt-BR': 'Saunas' }, [
       potencia,
       { chave: 'serie', tipo: 'texto', obrigatorio: true, rotulos: { 'pt-BR': 'Número de série' } },
     ]);
     const { categorias } = await casos.listarCategorias(ctx(U.admin));
-    expect(categorias.find((c) => c.id === sauna)?.campos.map((c) => c.chave)).toEqual(['potencia', 'serie']);
+    expect(categorias.find((c) => c.id === sauna)?.campos.map((c) => c.chave)).toEqual([
+      'potencia',
+      'serie',
+    ]);
   });
 
   it('desativar e reativar; a padrão aceita nome próprio', async () => {
     const { categorias } = await casos.listarCategorias(ctx(U.admin));
     const refrigeracao = categorias.find((c) => c.chavePadrao === 'refrigeracao');
-    await casos.alterarCategoria(ctx(U.admin), refrigeracao?.id ?? '', { 'pt-BR': 'Climatização' }, []);
+    await casos.alterarCategoria(
+      ctx(U.admin),
+      refrigeracao?.id ?? '',
+      { 'pt-BR': 'Climatização' },
+      [],
+    );
     await casos.desativarCategoria(ctx(U.admin), sauna);
-    expect((await casos.listarCategorias(ctx(U.gerente))).categorias.find((c) => c.id === sauna)?.ativa).toBe(false);
+    expect(
+      (await casos.listarCategorias(ctx(U.gerente))).categorias.find((c) => c.id === sauna)?.ativa,
+    ).toBe(false);
     await casos.reativarCategoria(ctx(U.admin), sauna);
   });
 
   it('o gerente não gere; com a checagem removida, a RLS ainda barra', async () => {
-    await expect(casos.criarCategoria(ctx(U.gerente), { 'pt-BR': 'X' }, [])).rejects.toMatchObject({ codigo: 'categorias_so_admin' });
-    await expect(semChecagem.criarCategoria(ctx(U.gerente), { 'pt-BR': 'X' }, [])).rejects.toMatchObject({ code: '42501' });
-    await expect(semChecagem.desativarCategoria(ctx(U.gerente), sauna)).rejects.toMatchObject({ codigo: 'categoria_nao_encontrada' });
+    await expect(casos.criarCategoria(ctx(U.gerente), { 'pt-BR': 'X' }, [])).rejects.toMatchObject({
+      codigo: 'categorias_so_admin',
+    });
+    await expect(
+      semChecagem.criarCategoria(ctx(U.gerente), { 'pt-BR': 'X' }, []),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(semChecagem.desativarCategoria(ctx(U.gerente), sauna)).rejects.toMatchObject({
+      codigo: 'categoria_nao_encontrada',
+    });
   });
 
   it('cada gravação vai para a auditoria', async () => {
