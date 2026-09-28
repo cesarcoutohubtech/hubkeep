@@ -25,6 +25,14 @@ export {
 } from './ingestao';
 export { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 export {
+  LocalApi,
+  PedidoDeAreaComum,
+  RespostaDeLocaisDoHotel,
+  RespostaDeLocalAlterado,
+  STATUS_DE_LOCAL_API,
+  TIPOS_DE_LOCAL_API,
+} from './locais';
+export {
   CHAVES_DE_POLITICA_API,
   FORMATOS_DE_POLITICA_API,
   PedidoDeConfiguracaoDoHotel,
@@ -45,7 +53,6 @@ export {
   PedidoDeProprietario,
   PedidoDeVigenciaDoVinculo,
   PedidoDeVinculoDeProprietario,
-  RespostaDeLocaisDoHotel,
   RespostaDeProprietarioAlterado,
   RespostaDeProprietarios,
   RespostaDeVinculoDeProprietario,

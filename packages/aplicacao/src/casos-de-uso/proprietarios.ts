@@ -25,7 +25,6 @@ import {
   vigenciaCobre,
 } from '@hubkeep/dominio';
 import type {
-  LocalDoHotel,
   PortaProprietarios,
   Proprietario,
   TipoDeVinculo,
@@ -41,7 +40,6 @@ export type AlvoDoVinculo = { tipo: 'uh'; localId: string } | { tipo: 'hotel'; h
 
 export interface CasosDeUsoDeProprietarios {
   listarProprietarios(ctx: Contexto): Promise<ProprietarioComVinculos[]>;
-  locaisDoHotel(ctx: Contexto, hotelId: string): Promise<LocalDoHotel[]>;
   criarProprietario(ctx: Contexto, nome: string, documento: string | null): Promise<{ id: string }>;
   alterarProprietario(
     ctx: Contexto,
@@ -88,13 +86,6 @@ export function criarCasosDeUsoDeProprietarios(deps: {
           .filter((v) => v.proprietarioId === p.id)
           .map((v) => ({ ...v, vigente: vigenciaCobre(v.vigencia, hoje) })),
       }));
-    },
-
-    async locaisDoHotel(ctx, hotelId) {
-      if (!(await deps.proprietarios.hotel(ctx, hotelId))) {
-        throw new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
-      }
-      return deps.proprietarios.locaisDoHotel(ctx, hotelId);
     },
 
     async criarProprietario(ctx, nome, documento) {

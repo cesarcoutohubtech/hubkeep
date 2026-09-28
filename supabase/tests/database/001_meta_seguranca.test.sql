@@ -122,7 +122,8 @@ select is(
 -- 11b. O corpo de cada função também é fechado: mudar o que uma função de
 --      autorização calcula exige ADR e a impressão (md5 do prosrc) atualizada
 --      aqui no mesmo PR (regra 4). authz.locais_proprietario mudou na migração
---      0011 (ADR-031: locais dos hotéis vinculados ao proprietário).
+--      0011 (ADR-031: locais dos hotéis vinculados ao proprietário) e na 0012
+--      (hotel vinculado sem locais também aparece; pendência da A4).
 select is(
   array(
     select n.nspname::text || '.' || p.proname::text || ':' || md5(p.prosrc)
@@ -135,7 +136,7 @@ select is(
     'authz.hoteis_com_papel:a124350b101993fe7019ac0b3dd23248',
     'authz.hoteis_escrita:e5e2e4e572738251e60b87872364034f',
     'authz.hoteis_leitura:35b1e215481eb99c7b2f01ed503fdbcc',
-    'authz.locais_proprietario:4dd32f437195d692fa3fc0b3f4b2474b',
+    'authz.locais_proprietario:f0587708f5cb173e8ed394fb0271d522',
     'authz.membro_privilegiado:d0f3166ae8d59adbb9ff0d9f1364f4f1',
     'authz.tenant_id:8c1f2279c07d6f5c86f4648182d93f29',
     'authz.tenant_sistema:45fc9046e9d6e9c2ecdcc4f6448fe67f',

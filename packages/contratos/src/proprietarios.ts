@@ -54,16 +54,3 @@ export const PedidoDeVigenciaDoVinculo = z
 export const RespostaDeVinculoDeProprietario = z
   .object({ id: z.guid() })
   .meta({ id: 'RespostaDeVinculoDeProprietario' });
-
-export const RespostaDeLocaisDoHotel = z
-  .object({
-    locais: z.array(
-      z.object({
-        id: z.guid(),
-        nome: z.string(),
-        tipo: z.enum(['uh', 'area_comum']),
-        status: z.string(),
-      }),
-    ),
-  })
-  .meta({ id: 'RespostaDeLocaisDoHotel' });
