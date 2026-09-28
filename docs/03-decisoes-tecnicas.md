@@ -388,7 +388,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-025 — Sincronização offline do PWA: fila no aparelho e chave de idempotência gravada com o efeito
 
-**Status:** aprovada por Cesar em 26/09/2026, depois do merge do #31, com os ajustes (a) a (d), aplicados no PR de ajustes do ADR-025.
+**Status:** aprovada por Cesar em 26/09/2026, depois do merge do #31, com os ajustes (a) a (d), aplicados no PR de ajustes do ADR-025. **Adendo de 28/09/2026 (dados guardados no aparelho, B3b da fase 1a):** proposta, aguarda aprovação do Cesar.
 
 **Contexto:** o `docs/01` diz que cada operação offline leva uma chave de idempotência gerada no aparelho e que a API ignora repetições, mas não diz onde a chave fica nem como a repetição é detectada. O aceite da F0-11 pede sincronizar uma operação quando a rede volta, sem duplicar. A duplicação vem de dois casos:
 - a resposta se perde no caminho de volta, e o aparelho reenvia algo que o servidor já aplicou;
@@ -398,7 +398,13 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **No aparelho (`apps/tecnico/src/fila`):**
   - cada operação é um registro no IndexedDB, com a chave (`crypto.randomUUID()`) criada junto com ela;
   - **(a) a operação guarda o usuário que a criou** e só é lida, mostrada e enviada na sessão dele. Se outra pessoa entrar no mesmo aparelho, as pendentes da anterior não saem com a sessão nova e ficam guardadas até a dona entrar de novo. O envio recusa, como segunda barreira, mandar operação de outro usuário com o token atual;
-  - **(b) ao sair, os dados locais de quem sai são apagados:** a fila (pendentes e recusadas) e o tenant ativo. A fila do dia ainda não guarda nada no aparelho e entra nessa limpeza quando guardar (fase 1a). Se houver operação ainda não enviada, o app tenta enviar e, se sobrar alguma, pede confirmação antes de apagar. O service worker guarda só a casca, sem dado de ninguém;
+  - **dados de referência (adendo de 28/09/2026, B3b):** para cadastrar e alterar ativo sem rede, o aparelho guarda, num IndexedDB próprio (`hubkeep-tecnico-referencia`, `apps/tecnico/src/referencia`), separado da fila:
+    - os hotéis, os locais (nome e status), as categorias de ativo (nomes e definições dos campos) e os ativos (nome, local, categoria, fabricante, modelo, número de série, campos estendidos e versão) que o usuário vê, lidos da API no escopo dele e validados pelos contratos;
+    - o idioma padrão do tenant e a hora da leitura.
+
+    É um registro por usuário, com o tenant em que foi lido: outra pessoa no aparelho, ou o mesmo usuário em outro tenant, não o enxerga. A referência é relida com sessão e rede e depois de cada envio que tirou algo da fila; sem rede, vale a guardada. Não guarda chamado, OS, anexo, proprietário, contato nem dado pessoal de hóspede;
+  - **o que fica no aparelho, no total:** a fila de operações (IndexedDB), os dados de referência (IndexedDB), o tenant ativo (`localStorage`), a sessão do Supabase Auth (guardada pelo próprio cliente do Auth) e o idioma escolhido (`localStorage`), que é do aparelho, não da pessoa. A fila do dia das OS entra nesta lista na etapa C da fase 1a;
+  - **(b) ao sair, os dados locais de quem sai são apagados:** a fila (pendentes e recusadas), os dados de referência, o tenant ativo e a sessão do Auth. O idioma fica. A fila do dia ainda não guarda nada no aparelho e entra nessa limpeza quando guardar (fase 1a, C4). Se houver operação ainda não enviada, o app tenta enviar e, se sobrar alguma, pede confirmação antes de apagar. O service worker guarda só a casca, sem dado de ninguém;
   - a fila sobrevive a fechar o app e só perde a operação quando o servidor confirma, quando o técnico dispensa uma recusada ou quando ele sai.
 - **Envio, uma operação por vez e na ordem em que foram feitas:**
   - a passada para na primeira que não sai, e uma operação mais nova nunca passa na frente de uma mais velha;
