@@ -279,3 +279,28 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - paridade com a checagem removida;
   - auditoria.
 
+### Ponto de retomada (28/09/2026, meio da etapa B, contexto da sessão acima de 60%)
+- **`main`:** `04c57e5`, o merge do #46 (0013).
+- **Dev:** 13 migrações, até a 0013, iguais às da `main`; `pnpm db:testar-dev` com 335 ok em 11 arquivos.
+- **PR aberto:** [#47](https://github.com/cesarcoutohubtech/hubkeep/pull/47), B2, migração 0014, com a CI verde fora a zona protegida. Espera do Cesar:
+  - o merge;
+  - o `db push` da 0014;
+  - a resposta sobre o proprietário ler categorias de ativo (incluído na RLS, para a B3).
+- **Worktrees em `C:\Cesar\HubKeep\Dev\wt\`:**
+  - `b2-categorias` (branch `1a-b2-categorias`, todo enviado);
+  - `b1-locais`, `politica-sem-proprietario` e `decisoes-etapa-b`, de branches já mergeadas, que podem ser removidos com `git worktree remove`.
+
+  Nenhum trabalho local fora do GitHub.
+- **Decisão pendente:** o proprietário lê categorias de ativo? Está no #47.
+- **Próxima tarefa: B3, ativos (ADR-029, concorrência por versão).**
+  - O que ela tem:
+    - `app.ativo` com local, categoria, campos estendidos em `jsonb` (validados por `validarValores` e lidos por `lerValores` de `campos-tipados.ts`), fabricante, modelo, número de série e `versao`;
+    - cadastro no web e no PWA, com as operações offline `ativo.cadastrar` e `ativo.alterar` (ADR-025);
+    - o conflito de versão aparece no aparelho;
+    - nas pendências do painel de implantação (A5), "locais sem ativo" e "ativos sem categoria".
+  - Primeiro passo, depois do merge do #47 e do `db push`:
+    1. conferir o dev só por leitura: histórico até a 0014 e `pnpm db:testar-dev`;
+    2. `git worktree add C:/Cesar/HubKeep/Dev/wt/b3-ativos -b 1a-b3-ativos origin/main`;
+    3. `supabase migration new ativo`;
+    4. ler o ADR-025, o ADR-029 e o código da fila offline (`packages/db/src/repositorios/operacoes-offline.ts`, `PedidoDeOperacaoOffline` em `packages/contratos/src/sincronizacao.ts`).
+
