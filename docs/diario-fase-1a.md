@@ -167,3 +167,19 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - desativar hotel;
   - pendências de ativos no painel (etapa B);
   - hotel vinculado sem local invisível ao proprietário até o primeiro local.
+
+### Decisões do Cesar e conferência do dev (28/09/2026)
+- **Dev:** o Cesar aplicou as migrações 0007 a 0011 por `db push`. Conferência só de leitura:
+  - o histórico do dev é igual às 11 migrações da `main`;
+  - `pnpm db:testar-dev` passou: 312 testes ok em 10 arquivos, 0 falhas.
+- **ADR-030 e ADR-031:** aprovados como estão.
+- **Vínculo com hotel inteiro:** confirmado que só o Admin lê `app.hotel_proprietario`. A pendência do hotel sem locais, que não aparece para o proprietário, fica para a etapa B (B1 no `docs/05`).
+- **Meta-teste 11b:** mantido.
+- **pgTAP:** um arquivo por tabela, `0NN_isolamento_<tabela>.test.sql`, e o docs/02 ajustado, com os seis casos mínimos no checklist.
+  - Os arquivos da etapa A foram renomeados: 007 bandeira, 008 equipe, 009 política e 010 hotel_proprietario.
+  - O 008 cobria duas tabelas e foi dividido: 008 ficou com `equipe`, e o novo 011 cobre `equipe_membro`, com os seis casos completos. Antes, `equipe_membro` só tinha FK, sem contexto e escrita do gerente.
+- **Processo da etapa B:**
+  - worktrees em `C:\Cesar\HubKeep\Dev\wt\`. Os antigos, na pasta temporária, foram removidos: eram todos de branches já mergeadas e estavam limpos;
+  - o próximo PR de zona protegida só abre depois do merge do anterior.
+
+  Registrado no `CLAUDE.md`.

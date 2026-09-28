@@ -474,7 +474,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-030 — Busca por trecho, sem acento, com `pg_trgm`
 
-**Status:** decisão do Cesar em 26/09/2026 (busca por trecho, com `pg_trgm`; revisão do PR #35). Texto proposto para aprovação no PR #35.
+**Status:** aprovada por Cesar em 28/09/2026, com o texto como está (decisão de 26/09/2026, busca por trecho com `pg_trgm`; revisão do PR #35).
 
 **Contexto:** a busca de locais, ativos e chamados precisa achar "açúcar" digitando "acucar", e achar por trecho no meio da palavra (ex.: "frig" em "Refrigerador"). O ADR-022 já fixou a coluna normalizada pela aplicação, sem `unaccent` e sem função no banco (regra 4).
 
@@ -489,7 +489,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-031 — Proprietário de hotel inteiro, com vigência, calculado na fonte
 
-**Status:** decisão do Cesar em 26/09/2026 (tabela própria de vínculo proprietário-hotel com vigência, calculada na fonte pelas funções de autorização; revisão do PR #35). Texto proposto para aprovação no PR #35.
+**Status:** aprovada por Cesar em 28/09/2026, com o texto como está (decisão de 26/09/2026; implementada na migração 0011, PR #41). Confirmado também que só o Admin do grupo lê `app.hotel_proprietario`.
 
 **Contexto:** o proprietário ou locador se liga a UHs (condo-hotel) ou a um hotel inteiro (`docs/00`). Hoje só existe o vínculo com UHs (`app.local_proprietario`).
 
