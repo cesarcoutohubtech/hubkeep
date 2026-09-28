@@ -397,22 +397,22 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 - **ADR-025:** o texto do ajuste (b) passa a citar a referência guardada no aparelho (B3b), num PR de zona protegida. Um PR de zona protegida por vez.
 - **Kit de teste no notebook:** ao fim da etapa C, antes da D, preparar o kit (variáveis do `.env.local` com onde achar cada valor, script de demonstração só para o dev com um usuário por papel criado sem e-mail, roteiro de teste por papel e comandos do PowerShell para subir o web e o PWA). O trabalho para quando o kit estiver pronto. Registrado no `docs/05`, entre as etapas C e D.
 
-### Ponto de retomada (28/09/2026, etapa B, depois da B3c local)
-- **`main`:** `8344e3d` (#48, migração 0015). **Dev:** 15 migrações, até a 0015; `pnpm db:testar-dev` com 381 ok em 13 arquivos. Próxima conferência só depois do `db push` da 0016.
-- **PRs abertos, esperando o Cesar:**
-  - [#49](https://github.com/cesarcoutohubtech/hubkeep/pull/49), B3b (ativos no PWA) e docs (este diário, B3c e kit de teste no `docs/05`). CI verde, fora da zona protegida. O merge automático foi barrado pelo modo automático do Claude Code: merge pelo Cesar;
-  - [#50](https://github.com/cesarcoutohubtech/hubkeep/pull/50), adendo do ADR-025 (dados guardados no aparelho), zona protegida: merge e aprovação do texto.
-- **Branch enviada sem PR:** `1a-b3c-mover-ativo` (worktree `wt/b3c-mover-ativo`, commit `93a0c41`), a B3c inteira:
-  - migração 0016 (`grant update (local_id)` em `app.ativo` e `app.ativo_movimentacao`, só INSERT, com FK composta e RLS que exige o usuário do contexto); meta-teste 18 com a exceção; pgTAP 013 (30 casos) e 014 novo (20);
-  - domínio `podeMoverAtivo` e `validarMovimentacao`; caso de uso `mover` e `listarMovimentacoes`; repositório `moverAtivo` (FOR UPDATE, movimentação, auditoria `mover`, evento `ativo.movido`);
-  - rotas `POST /api/v1/ativos/{id}/movimentacao` e `GET .../movimentacoes`; tela `/admin/ativos` com "Mover" e histórico; 5 textos e 5 códigos de erro nos quatro idiomas;
-  - aceite `packages/db/test/mover-ativo.test.ts`; adendo ao ADR-011 no `docs/03`.
+### B3c — Mover ativo dentro do hotel (migração 0016, adendo ao ADR-011)
+- **Banco** (`20260928225415_mover_ativo.sql`):
+  - `grant update (local_id)` em `app.ativo`: segunda exceção nomeada do meta-teste 18 (a primeira é `app.hotel.bandeira_id`). O `hotel_id` continua imutável, e a FK `(hotel_id, local_id)` da 0015 recusa um local de outro hotel com ou sem a checagem da aplicação;
+  - `app.ativo_movimentacao`: uma linha por movimentação (origem, destino, quando, quem), só INSERT, com FKs compostas para hotel, ativo, os dois locais e o membro, e check de locais distintos;
+  - RLS: lê quem lê o hotel; grava quem escreve no hotel e só em nome do usuário do contexto. **Proposta:** o proprietário não lê movimentações no MVP.
+- **Regra de ação** (`packages/dominio`): `podeMoverAtivo` (os papéis que gerem locais do hotel) e `validarMovimentacao` (`ativo_desativado`, `mover_ativo_entre_hoteis`, `mover_ativo_mesmo_local`, `mover_ativo_local_inativo`).
+- **Caso de uso e repositório:** `mover` e `listarMovimentacoes`. `moverAtivo` lê com FOR UPDATE, confere a versão (ADR-029), troca o local, grava a movimentação, a auditoria `mover` e o evento `ativo.movido` na mesma unit of work.
+- **API e tela:** `POST /api/v1/ativos/{id}/movimentacao` e `GET /api/v1/ativos/{id}/movimentacoes`; em `/admin/ativos`, "Mover" com a lista de destinos e o histórico. 5 textos e 5 códigos de erro nos quatro idiomas.
+- **Aceite:**
+  - pgTAP 013 (30 casos: mover no hotel, recusa para local de outro hotel, o dono da UH antiga deixa de ver) e 014 novo (20 casos de isolamento da movimentação);
+  - `packages/db/test/mover-ativo.test.ts`: movimentação, auditoria e evento; recusas sem gravar nada; sem as regras da aplicação, o banco ainda barra.
+- **Entre hotéis:** continua desativar e cadastrar de novo.
 
-  Lint, typecheck e testes locais verdes. pgTAP e integração ainda não rodaram: só rodam no PR, que abre depois do merge do #50 (um PR de zona protegida por vez).
-- **Worktrees em `C:\Cesar\HubKeep\Dev\wt\`:** `b3b-ativos-pwa` (#49), `adr-025-referencia` (#50), `b3c-mover-ativo` (tudo enviado). Removíveis: `b1-locais`, `b2-categorias`, `b3-ativos`, `politica-sem-proprietario`, `decisoes-etapa-b`.
-- **Decisões pendentes do Cesar:**
-  - aprovar o adendo do ADR-025 (#50) e, quando o PR da B3c abrir, o adendo do ADR-011;
-  - proposta na 0016: o proprietário não lê movimentações no MVP.
-- **Próxima tarefa:**
-  1. depois do merge do #50: na worktree `b3c-mover-ativo`, `git rebase origin/main` (o `docs/03` pode conflitar só no status do ADR-025), acrescentar a entrada "B3c" ao diário, push e `gh pr create --base main`; conferir na CI o pgTAP 013 e 014, o meta-teste 18, o `mover-ativo.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão);
-  2. enquanto isso, a **B4 (anexos de local e ativo)** anda no local: `git worktree add C:/Cesar/HubKeep/Dev/wt/b4-anexos -b 1a-b4-anexos origin/main`; ler o ADR-024 no `docs/03`, `packages/auth-admin`, `apps/web/test/anexos.test.ts`, a migração `20260926135938_storage_anexos.sql` e a linha B4 do `docs/05`. O PR da B4 só abre depois do merge da B3c.
+### Ponto de retomada (28/09/2026, etapa B, PR da B3c aberto)
+- **`main`:** `5d0d0cf` (#49, B3b e docs; #50, adendo do ADR-025). **Dev:** 15 migrações, até a 0015; `pnpm db:testar-dev` com 381 ok em 13 arquivos. Próxima conferência só depois do `db push` da 0016.
+- **PR aberto:** B3c, branch `1a-b3c-mover` (worktree `wt/b3c-mover-ativo`), zona protegida. Espera do Cesar: merge, `db push` da 0016 e as decisões abaixo. Conferir na CI o pgTAP 013 e 014, o meta-teste 18, o `mover-ativo.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão).
+- **Decisões pendentes do Cesar:** aprovar os adendos do ADR-025 e do ADR-011; confirmar que o proprietário não lê movimentações.
+- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`.
+- **Próxima tarefa:** **B4, anexos de local e ativo**, no local: `git worktree add C:/Cesar/HubKeep/Dev/wt/b4-anexos -b 1a-b4-anexos origin/main`; ler o ADR-024 no `docs/03`, `packages/auth-admin`, `apps/web/test/anexos.test.ts`, a migração `20260926135938_storage_anexos.sql` e a linha B4 do `docs/05`. O PR da B4 só abre depois do merge da B3c. Depois: B5, B6, resumo da etapa B, etapa C e o kit de teste (parar quando pronto).
