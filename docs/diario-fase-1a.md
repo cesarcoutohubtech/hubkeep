@@ -386,3 +386,16 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   1. depois do merge do #48 e do `db push`, conferir o dev só por leitura: histórico até a 0015 e `pnpm db:testar-dev` (esperado: 381 ok em 13 arquivos, os 355 mais os 26 do 013);
   2. abrir o PR da B3b: `git rebase origin/main` na worktree `b3b-ativos-pwa`, push e `gh pr create --base main`;
   3. **B4, anexos de local e ativo** (migração, `app.anexo`; talvez ajuste do ADR-024 para o download do proprietário). Primeiro passo: `git worktree add C:/Cesar/HubKeep/Dev/wt/b4-anexos -b 1a-b4-anexos origin/main`, depois ler o ADR-024 e o fluxo de upload da F0-10 (`auth-admin`, URL assinada).
+
+### Dev conferido depois da 0015 (28/09/2026)
+- O Cesar mergeou o #48 e rodou `db push` da 0015.
+- Conferência só de leitura: o histórico do dev tem as 15 migrações da `main`, até a 0015.
+- `pnpm db:testar-dev` passou inteiro: 381 testes ok em 13 arquivos, com o 013 (ativos, 26 casos).
+
+### Decisões do Cesar depois do #48 (28/09/2026)
+- **Mover ativo:** só dentro do mesmo hotel, por uma ação própria de mover, restrita a quem gere o hotel, auditada e com registro de cada movimentação (origem, destino, quando, quem).
+  - O `hotel_id` continua imutável. A exceção no meta-teste 18 vale só para `app.ativo.local_id`, com adendo ao ADR-011.
+  - Entre hotéis, continua desativar e cadastrar de novo.
+  - Entra como tarefa da etapa B: **B3c** no `docs/05`.
+- **ADR-025:** o texto do ajuste (b) passa a citar a referência guardada no aparelho (B3b), num PR de zona protegida. Um PR de zona protegida por vez.
+- **Kit de teste no notebook:** ao fim da etapa C, antes da D, preparar o kit (variáveis do `.env.local` com onde achar cada valor, script de demonstração só para o dev com um usuário por papel criado sem e-mail, roteiro de teste por papel e comandos do PowerShell para subir o web e o PWA). O trabalho para quando o kit estiver pronto. Registrado no `docs/05`, entre as etapas C e D.
