@@ -2,18 +2,15 @@
 
 Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o aceite foi provado, o PR e o que ficou pendente. As regras de processo são as do `docs/diario-fase-0.md` (zona protegida, ADR só com aprovação explícita, `db push` e `config push` só pelo Cesar, merge não aprova ADR). A execução vai uma etapa por vez, com parada e resumo ao fim de cada etapa.
 
-**Ponto de retomada (Cesar, 28/09/2026):** o Cesar abre uma sessão nova do HubKeep a cada etapa. Ao fechar cada etapa, a última entrada dela é uma seção "Ponto de retomada", com:
-- o estado da `main` (último merge) e das migrações no dev;
-- os PRs abertos e o que espera o Cesar (merge, `db push`, aprovação de ADR);
-- os worktrees e branches locais com trabalho não enviado;
-- as decisões pendentes;
-- a próxima tarefa exata, com o primeiro passo.
-
-**Encerramento de sessão (Cesar, 28/09/2026):** ao fechar cada etapa, e também quando a janela de contexto passar de 60%:
-1. parar no próximo ponto seguro (commit feito, nada pela metade, nenhum comando rodando);
-2. registrar o "Ponto de retomada" no diário;
-3. enviar notificação push com "Sessão pode ser encerrada" e o motivo;
-4. terminar a resposta com a mensagem exata para colar na sessão nova.
+**Ponto de retomada e compactação (Cesar, 28/09/2026, revisto no mesmo dia para economizar o limite semanal):**
+- **Quando parar:** ao fechar cada etapa e quando a janela de contexto passar de 60%, no próximo ponto seguro (commit feito, nada pela metade, nenhum comando rodando).
+- **Ao parar:**
+  1. registrar um "Ponto de retomada" **curto e autossuficiente**: com ele e o `CLAUDE.md`, uma sessão nova retoma sem ler o diário nem o plano inteiros. Traz o estado da `main` e das migrações no dev, os PRs abertos e o que espera o Cesar, os worktrees e branches com trabalho não enviado, as decisões pendentes e a próxima tarefa exata, com o primeiro passo e os arquivos a ler;
+  2. enviar push avisando e sugerindo o `/compact`;
+  3. terminar a resposta com a instrução exata para o Cesar usar no `/compact`.
+- **Sessão nova só em caso de problema.** O Cesar não abre mais sessão nova a cada etapa.
+- **Conferência do dev no início** (de sessão ou depois do `/compact`): só quando houve `db push` desde a última conferência.
+- **Saídas de teste:** só o resumo, com o total, as falhas e o nome do que falhou.
 
 ## Etapa A — Estrutura e administração
 
