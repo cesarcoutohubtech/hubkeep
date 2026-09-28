@@ -5,7 +5,9 @@ import {
   normalizarNomeDeAtivo,
   normalizarTextoDoAtivo,
   podeGerirAtivos,
+  podeMoverAtivo,
   validarCamposDoAtivo,
+  validarMovimentacao,
 } from '../src/ativos';
 import type { Atribuicao, DefinicaoDeCampo } from '../src/index';
 
@@ -114,5 +116,43 @@ describe('ativos (B3)', () => {
     const e = conflitoDeVersao(3);
     expect(e.codigo).toBe('conflito_de_versao');
     expect(e.parametros).toEqual({ versaoAtual: 3 });
+  });
+
+  it('mover: só quem gere o hotel; o técnico cadastra, mas não move', () => {
+    const hotel = { tipo: 'hotel', hotelId: 'h1' } as const;
+    for (const papel of ['gerente_hotel', 'implantador'] as const) {
+      expect(podeMoverAtivo([atr(papel, hotel)], H1, AGORA).permitido).toBe(true);
+    }
+    expect(podeMoverAtivo([atr('admin_grupo', { tipo: 'grupo' })], H1, AGORA).permitido).toBe(true);
+    expect(
+      podeMoverAtivo([atr('gestor_csc', { tipo: 'bandeira', bandeiraId: 'b1' })], H1, AGORA)
+        .permitido,
+    ).toBe(true);
+    for (const papel of ['tecnico', 'solicitante'] as const) {
+      const r = podeMoverAtivo([atr(papel, hotel)], H1, AGORA);
+      expect(r.permitido).toBe(false);
+      if (!r.permitido) expect(r.erro.codigo).toBe('mover_ativo_fora_do_escopo');
+    }
+    expect(
+      podeMoverAtivo([atr('gerente_hotel', { tipo: 'hotel', hotelId: 'h2' })], H1, AGORA).permitido,
+    ).toBe(false);
+  });
+
+  it('mover: outro local do mesmo hotel, ativo; ativo desativado não se move', () => {
+    const ativo = { hotelId: 'h1', localId: 'l1', desativado: false };
+    const destino = { id: 'l2', hotelId: 'h1', status: 'ativo' } as const;
+    expect(() => validarMovimentacao(ativo, destino)).not.toThrow();
+    expect(() =>
+      validarMovimentacao(ativo, { ...destino, status: 'pendente_licenca' }),
+    ).not.toThrow();
+    const recusa = (
+      a: typeof ativo,
+      d: Parameters<typeof validarMovimentacao>[1],
+      codigo: string,
+    ) => expect(() => validarMovimentacao(a, d)).toThrow(expect.objectContaining({ codigo }));
+    recusa(ativo, { ...destino, hotelId: 'h2' }, 'mover_ativo_entre_hoteis');
+    recusa(ativo, { ...destino, id: 'l1' }, 'mover_ativo_mesmo_local');
+    recusa(ativo, { ...destino, status: 'inativo' }, 'mover_ativo_local_inativo');
+    recusa({ ...ativo, desativado: true }, destino, 'ativo_desativado');
   });
 });

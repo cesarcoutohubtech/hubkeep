@@ -9,16 +9,18 @@
 --   5. sem contexto, nada;
 --   6. FK composta rejeita hotel, local e categoria de outro tenant, e local
 --      de outro hotel.
--- Mais: checks de nome, campos e versão; hotel_id e local_id não são
--- alteráveis (ADR-011, meta-teste 18); o UPDATE
--- com versão velha não afeta linha (ADR-029); sem DELETE; worker vê só o
--- tenant do job.
+-- Mais: checks de nome, campos e versão; hotel_id não é alterável (ADR-011,
+-- meta-teste 18); o UPDATE com versão velha não afeta linha (ADR-029); sem
+-- DELETE; worker vê só o tenant do job.
+-- Mover (migração 0016, B3c, adendo ao ADR-011): local_id muda só para local
+-- do mesmo hotel (a FK recusa outro hotel); o proprietário da UH nova passa a
+-- ver o ativo, e o da antiga deixa de ver; o proprietário não move.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(26);
+select plan(30);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -149,10 +151,6 @@ select lives_ok(
       '11110000-0000-0000-0000-000000000002', 'TV da 102') $$,
   'gerente cria ativo no hotel dele');
 select throws_ok(
-  $$ update app.ativo set local_id = '11120000-0000-0000-0000-000000000001'
-     where id = 'a1000000-0000-0000-0000-000000000002' $$,
-  '42501', null, 'local_id não é alterável');
-select throws_ok(
   $$ update app.ativo set hotel_id = '11100000-0000-0000-0000-000000000002'
      where id = 'a1000000-0000-0000-0000-000000000002' $$,
   '42501', null, 'hotel_id não é alterável');
@@ -164,17 +162,38 @@ select is_empty(
   $$ update app.ativo set nome = 'Ar 102', versao = versao + 1
      where id = 'a1000000-0000-0000-0000-000000000002' and versao = 1 returning 1 $$,
   'UPDATE com versão velha não afeta linha');
+select throws_ok(
+  $$ update app.ativo set local_id = '11120000-0000-0000-0000-000000000001'
+     where id = 'a1000000-0000-0000-0000-000000000002' $$,
+  '23503', null, 'mover para local de outro hotel: a FK recusa');
+select isnt_empty(
+  $$ update app.ativo set local_id = '11110000-0000-0000-0000-000000000001', versao = versao + 1
+     where id = 'a1000000-0000-0000-0000-000000000002' and versao = 2 returning 1 $$,
+  'gerente move ativo para outro local do hotel dele (UH 102 → UH 101)');
 
 -- Caso 3 — proprietários veem só os ativos dos locais deles e não gravam
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000006', true)) ctx;
-select results_eq($$ select id from app.ativo $$, $$ values ('a1000000-0000-0000-0000-000000000001'::uuid) $$,
-  'dono de UH vê só o ativo da UH dele');
+select results_eq($$ select id from app.ativo order by id $$,
+  $$ values ('a1000000-0000-0000-0000-000000000001'::uuid), ('a1000000-0000-0000-0000-000000000002'::uuid) $$,
+  'dono de UH vê só os ativos da UH dele, inclusive o que acabou de ser movido para ela');
 select is_empty($$ update app.ativo set nome = 'x' returning 1 $$, 'dono de UH não altera ativo');
+select is_empty(
+  $$ update app.ativo set local_id = '11110000-0000-0000-0000-000000000002'
+     where id = 'a1000000-0000-0000-0000-000000000001' returning 1 $$,
+  'dono de UH não move ativo');
 select throws_ok(
   $$ insert into app.ativo (id, tenant_id, hotel_id, local_id, nome) values
      (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
       '11110000-0000-0000-0000-000000000001', 'x') $$,
   '42501', null, 'dono de UH não cria ativo');
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000002', true)) ctx;
+select isnt_empty(
+  $$ update app.ativo set local_id = '11110000-0000-0000-0000-000000000002', versao = versao + 1
+     where id = 'a1000000-0000-0000-0000-000000000002' and versao = 3 returning 1 $$,
+  'gerente move o ativo de volta (UH 101 → UH 102)');
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000006', true)) ctx;
+select results_eq($$ select id from app.ativo $$, $$ values ('a1000000-0000-0000-0000-000000000001'::uuid) $$,
+  'dono da UH antiga deixa de ver o ativo movido');
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000007', true)) ctx;
 select results_eq($$ select id from app.ativo $$, $$ values ('a3000000-0000-0000-0000-000000000001'::uuid) $$,
   'dono de hotel inteiro vê só os ativos do hotel dele');

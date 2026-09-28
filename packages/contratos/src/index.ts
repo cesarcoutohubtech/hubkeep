@@ -37,10 +37,13 @@ export {
 export {
   AtivoApi,
   PedidoDeAlteracaoDeAtivo,
+  MovimentacaoDeAtivoApi,
   PedidoDeCadastroDeAtivo,
+  PedidoDeMovimentacaoDeAtivo,
   PedidoDeVersaoDeAtivo,
   RespostaDeAtivoGravado,
   RespostaDeAtivosDoHotel,
+  RespostaDeMovimentacoesDoAtivo,
   ValoresDeCampoApi,
 } from './ativos';
 export {

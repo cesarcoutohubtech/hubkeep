@@ -248,8 +248,11 @@ $$, 'nenhuma trigger em auth.users');
 -- 18. Campos de escopo não recebem UPDATE de nenhum papel da aplicação
 --     (ADR-011): mudar o escopo de uma linha é o caminho mais curto para vazar
 --     dados. column_privileges cobre grant por coluna e grant de tabela inteira.
---     Única exceção: app.hotel.bandeira_id, que só o Admin do grupo altera
---     (policy app_update de app.hotel), registrada no ADR-011.
+--     Exceções nomeadas, registradas no ADR-011: app.hotel.bandeira_id, que só
+--     o Admin do grupo altera (policy app_update de app.hotel), e
+--     app.ativo.local_id (adendo de 28/09/2026, B3c), para mover o ativo
+--     dentro do mesmo hotel: o hotel_id continua imutável, e a FK
+--     (hotel_id, local_id) recusa local de outro hotel.
 select is_empty($$
   select table_schema || '.' || table_name || '.' || column_name || ':' || grantee
   from information_schema.column_privileges
@@ -261,7 +264,9 @@ select is_empty($$
                         'concedido_por')
     and not (table_schema = 'app' and table_name = 'hotel'
              and column_name = 'bandeira_id' and grantee = 'hk_app')
-$$, 'nenhum UPDATE em campo de escopo (exceto app.hotel.bandeira_id, só Admin)');
+    and not (table_schema = 'app' and table_name = 'ativo'
+             and column_name = 'local_id' and grantee = 'hk_app')
+$$, 'nenhum UPDATE em campo de escopo (exceto app.hotel.bandeira_id e app.ativo.local_id)');
 
 -- 19. Policy que libera tudo (using/with check = true) só nas exceções
 --     conhecidas: a leitura de hk_authz nas tabelas de escopo (evita recursão),
