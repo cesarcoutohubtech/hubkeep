@@ -27,6 +27,7 @@ type Pendencia =
 interface Painel {
   hotel: { id: string; nome: string; status: string };
   locais: { uhsAtivas: number; uhsPendentes: number; areasComuns: number; inativos: number };
+  ativos: { ativos: number; semCategoria: number; locaisSemAtivo: number };
   papeis: { papel: Papel; pessoas: number }[];
   pessoasSemPapelVigente: { usuarioId: string; nome: string }[];
   pendencias: Pendencia[];
@@ -95,6 +96,8 @@ export default function PainelDeImplantacao() {
           <section>
             <h2>{t('admin.implantacao.locais')}</h2>
             <p>{t('admin.implantacao.resumo_locais', painel.locais)}</p>
+            <h2>{t('admin.implantacao.ativos')}</h2>
+            <p>{t('admin.implantacao.resumo_ativos', painel.ativos)}</p>
           </section>
           <section>
             <h2>{t('admin.implantacao.pessoas')}</h2>

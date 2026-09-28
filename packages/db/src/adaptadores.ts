@@ -2,6 +2,8 @@
 // Leitura com withContext, escrita com executar (unit of work): o que cada
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
 import type {
+  AtivoGravado,
+  PortaAtivos,
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaCategorias,
@@ -46,6 +48,7 @@ import {
   definirBandeiraDoHotel,
   renomearBandeira,
 } from './repositorios/bandeiras';
+import { alterarAtivo, criarAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { gravarConvite } from './repositorios/convites';
 import { alterarLocal, criarAreaComum } from './repositorios/locais';
@@ -310,10 +313,24 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
         (
           await tx
             .selectFrom('app.local')
-            .select(['tipo', 'status'])
+            .select(['id', 'tipo', 'status'])
             .where('hotel_id', '=', hotelId)
             .execute()
-        ).map((l) => ({ tipo: l.tipo, status: l.status })),
+        ).map((l) => ({ id: l.id, tipo: l.tipo, status: l.status })),
+      ),
+    ativos: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.ativo')
+            .select(['local_id', 'categoria_id', 'desativado_em'])
+            .where('hotel_id', '=', hotelId)
+            .execute()
+        ).map((a) => ({
+          localId: a.local_id,
+          categoriaId: a.categoria_id,
+          ativo: a.desativado_em === null,
+        })),
       ),
   };
 }
@@ -571,6 +588,97 @@ export function criarPortaCategorias(banco: AcessoBanco): PortaCategorias {
   };
 }
 
+/** Ativos do hotel (fase 1a, B3; ADR-029), pelo hk_app: o que cada um vê e grava é da RLS. */
+export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
+  const colunas = [
+    'id',
+    'hotel_id',
+    'local_id',
+    'categoria_id',
+    'nome',
+    'fabricante',
+    'modelo',
+    'numero_serie',
+    'campos',
+    'versao',
+    'desativado_em',
+  ] as const;
+  const paraAtivo = (a: {
+    id: string;
+    hotel_id: string;
+    local_id: string;
+    categoria_id: string | null;
+    nome: string;
+    fabricante: string | null;
+    modelo: string | null;
+    numero_serie: string | null;
+    campos: unknown;
+    versao: number;
+    desativado_em: Date | null;
+  }): AtivoGravado => ({
+    id: a.id,
+    hotelId: a.hotel_id,
+    localId: a.local_id,
+    categoriaId: a.categoria_id,
+    nome: a.nome,
+    fabricante: a.fabricante,
+    modelo: a.modelo,
+    numeroSerie: a.numero_serie,
+    campos: a.campos,
+    versao: a.versao,
+    desativadoEm: a.desativado_em,
+  });
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    local: (ctx, localId) =>
+      banco.withContext(ctx, async (tx) => {
+        const l = await tx
+          .selectFrom('app.local')
+          .select(['id', 'hotel_id', 'status'])
+          .where('id', '=', localId)
+          .executeTakeFirst();
+        return l ? { id: l.id, hotelId: l.hotel_id, status: l.status } : null;
+      }),
+    categorias: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        tx.selectFrom('app.categoria_ativo').select(['id', 'ativa', 'campos']).execute(),
+      ),
+    ativos: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.ativo')
+            .select(colunas)
+            .where('hotel_id', '=', hotelId)
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map(paraAtivo),
+      ),
+    ativo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await tx
+          .selectFrom('app.ativo')
+          .select(colunas)
+          .where('id', '=', ativoId)
+          .executeTakeFirst();
+        return a ? paraAtivo(a) : null;
+      }),
+    criar: (ctx, hotelId, localId, dados) =>
+      banco.executar(ctx, (uow) => criarAtivo(uow, hotelId, localId, dados)),
+    alterar: (ctx, ativoId, versaoEsperada, mudanca) =>
+      banco.executar(ctx, (uow) => alterarAtivo(uow, ativoId, versaoEsperada, mudanca)),
+  };
+}
+
 /** Gestão de membros (fase 1a, A3), pelo hk_app: o que cada um vê é da RLS. */
 export function criarPortaMembros(banco: AcessoBanco): PortaMembros {
   return {
@@ -636,7 +744,12 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
       if (antes) return { repetida: true, resposta: antes };
       try {
         return await banco.executar(ctx, async (uow) => {
-          const resposta = await efeito({ gravarPreferencias: (p) => gravarPreferencias(uow, p) });
+          const resposta = await efeito({
+            gravarPreferencias: (p) => gravarPreferencias(uow, p),
+            cadastrarAtivo: (hotelId, localId, dados) => criarAtivo(uow, hotelId, localId, dados),
+            alterarAtivo: (ativoId, versaoEsperada, mudanca) =>
+              alterarAtivo(uow, ativoId, versaoEsperada, mudanca),
+          });
           await registrarOperacao(uow, operacao, resposta);
           return { repetida: false, resposta };
         });

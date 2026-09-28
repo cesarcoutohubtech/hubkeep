@@ -2,9 +2,14 @@
 // a chave de idempotência gerada no aparelho; o reenvio da mesma chave devolve
 // a resposta guardada, sem aplicar de novo.
 import { z } from 'zod';
+import { PedidoDeAlteracaoDeAtivo, PedidoDeCadastroDeAtivo } from './ativos';
 import { PedidoDePreferencias } from './preferencias';
 
-export const TIPOS_DE_OPERACAO_OFFLINE = ['preferencias.gravar'] as const;
+export const TIPOS_DE_OPERACAO_OFFLINE = [
+  'preferencias.gravar',
+  'ativo.cadastrar',
+  'ativo.alterar',
+] as const;
 
 export const PedidoDeOperacaoOffline = z
   .discriminatedUnion('tipo', [
@@ -13,6 +18,17 @@ export const PedidoDeOperacaoOffline = z
       chave: z.guid(),
       tipo: z.literal('preferencias.gravar'),
       dados: PedidoDePreferencias,
+    }),
+    z.object({
+      chave: z.guid(),
+      tipo: z.literal('ativo.cadastrar'),
+      dados: PedidoDeCadastroDeAtivo,
+    }),
+    z.object({
+      chave: z.guid(),
+      tipo: z.literal('ativo.alterar'),
+      /** A versão vista no aparelho; se o ativo mudou, 409 conflito_de_versao (ADR-029). */
+      dados: PedidoDeAlteracaoDeAtivo.extend({ ativoId: z.guid() }),
     }),
   ])
   .meta({ id: 'PedidoDeOperacaoOffline' });

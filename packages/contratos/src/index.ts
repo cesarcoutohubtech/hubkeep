@@ -35,6 +35,15 @@ export {
   TIPOS_DE_CAMPO_API,
 } from './categorias';
 export {
+  AtivoApi,
+  PedidoDeAlteracaoDeAtivo,
+  PedidoDeCadastroDeAtivo,
+  PedidoDeVersaoDeAtivo,
+  RespostaDeAtivoGravado,
+  RespostaDeAtivosDoHotel,
+  ValoresDeCampoApi,
+} from './ativos';
+export {
   LocalApi,
   PedidoDeAreaComum,
   RespostaDeLocaisDoHotel,

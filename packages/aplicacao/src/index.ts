@@ -124,6 +124,17 @@ export type { BandeiraCadastrada, PortaBandeiras } from './portas/bandeiras';
 export { criarCasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
 export type { CasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
 export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
+export type { AtivoGravado, DadosDeAtivo, MudancaDeAtivo, PortaAtivos } from './portas/ativos';
+export { criarCasosDeUsoDeAtivos } from './casos-de-uso/ativos';
+export type {
+  AlteracaoPreparada,
+  AtivoListado,
+  CadastroPreparado,
+  CasosDeUsoDeAtivos,
+  PedidoDeAlteracaoDeAtivo,
+  PedidoDeCadastroDeAtivo,
+  PedidoDeGravacaoDeAtivo,
+} from './casos-de-uso/ativos';
 export type { CategoriaGravada, PortaCategorias } from './portas/categorias';
 export { criarCasosDeUsoDeCategorias } from './casos-de-uso/categorias';
 export type { CasosDeUsoDeCategorias, CategoriaDeAtivo } from './casos-de-uso/categorias';

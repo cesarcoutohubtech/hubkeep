@@ -3,6 +3,7 @@
 // na MESMA unit of work, então a operação acontece uma vez só, mesmo com
 // reenvio (resposta perdida) ou dois envios simultâneos.
 import type { Contexto } from '@hubkeep/dominio';
+import type { DadosDeAtivo, MudancaDeAtivo } from './ativos';
 import type { PreferenciasGravadas } from './preferencias';
 
 /** Resposta guardada com a chave e devolvida igual a cada reenvio. */
@@ -11,6 +12,17 @@ export type RespostaDeOperacao = Record<string, string | number | boolean | null
 /** O que uma operação offline pode escrever, dentro da unit of work dela. */
 export interface SessaoDeOperacao {
   gravarPreferencias(p: PreferenciasGravadas): Promise<void>;
+  cadastrarAtivo(
+    hotelId: string,
+    localId: string,
+    dados: DadosDeAtivo,
+  ): Promise<{ id: string; versao: number }>;
+  /** Versão diferente da esperada: Conflito conflito_de_versao (ADR-029). */
+  alterarAtivo(
+    ativoId: string,
+    versaoEsperada: number,
+    mudanca: MudancaDeAtivo,
+  ): Promise<{ versao: number }>;
 }
 
 export interface PortaOperacoesOffline {
