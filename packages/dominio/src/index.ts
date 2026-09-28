@@ -14,6 +14,17 @@ export {
 } from './permissoes';
 export type { Resultado } from './permissoes';
 export {
+  PAPEIS_QUE_GERENCIAM_LOCAIS,
+  exigirLocalEditavel,
+  localEditavel,
+  mesmoNomeDeLocal,
+  normalizarAndar,
+  normalizarNomeDeLocal,
+  origemDoLocal,
+  podeGerirLocais,
+} from './locais';
+export type { LocalParaRegra, OrigemDoLocal } from './locais';
+export {
   diaDe,
   exigirSemSobreposicao,
   normalizarDocumento,

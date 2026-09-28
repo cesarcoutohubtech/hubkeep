@@ -18,6 +18,7 @@ import {
   RespostaDeBandeiras,
 } from './bandeiras';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
+import { PedidoDeAreaComum, RespostaDeLocaisDoHotel, RespostaDeLocalAlterado } from './locais';
 import {
   PedidoDeEquipe,
   PedidoDeMembroDaEquipe,
@@ -53,7 +54,6 @@ import {
   PedidoDeProprietario,
   PedidoDeVigenciaDoVinculo,
   PedidoDeVinculoDeProprietario,
-  RespostaDeLocaisDoHotel,
   RespostaDeProprietarioAlterado,
   RespostaDeProprietarios,
   RespostaDeVinculoDeProprietario,
@@ -161,12 +161,71 @@ export const ROTAS: readonly Rota[] = [
   {
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/locais',
-    resumo: 'Locais (UHs e áreas comuns) do hotel, no escopo de quem pede.',
+    resumo:
+      'Locais do hotel no escopo de quem pede: UHs do sistema hoteleiro (só leitura, com o status da licença) e áreas comuns.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Locais do hotel', esquema: RespostaDeLocaisDoHotel },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/locais',
+    resumo:
+      'Cadastra uma área comum no hotel (não conta licença). Admin, Gestor CSC, Implantador ou Gerente do hotel.',
+    exigeTenant: true,
+    corpo: PedidoDeAreaComum,
+    respostas: {
+      201: { descricao: 'Área comum cadastrada', esquema: RespostaDeLocalAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (locais_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      409: ERRO('Nome repetido entre as áreas comuns ativas (local_nome_repetido).'),
+      422: ERRO('local_nome_invalido, local_andar_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/locais/{id}',
+    resumo: 'Altera nome e andar da área comum. UH e local do sistema hoteleiro são só leitura.',
+    exigeTenant: true,
+    corpo: PedidoDeAreaComum,
+    respostas: {
+      200: { descricao: 'Área comum alterada', esquema: RespostaDeLocalAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (locais_fora_do_escopo).'),
+      404: ERRO('Local não encontrado (local_nao_encontrado).'),
+      409: ERRO('Nome repetido entre as áreas comuns ativas (local_nome_repetido).'),
+      422: ERRO('local_so_leitura, local_nome_invalido, local_andar_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/locais/{id}/desativacao',
+    resumo: 'Desativa a área comum (exclusão lógica).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Área comum desativada', esquema: RespostaDeLocalAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (locais_fora_do_escopo).'),
+      404: ERRO('Local não encontrado (local_nao_encontrado).'),
+      422: ERRO('UH e local do sistema hoteleiro são só leitura (local_so_leitura).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/locais/{id}/reativacao',
+    resumo: 'Reativa a área comum.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Área comum reativada', esquema: RespostaDeLocalAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (locais_fora_do_escopo).'),
+      404: ERRO('Local não encontrado (local_nao_encontrado).'),
+      409: ERRO('Nome repetido entre as áreas comuns ativas (local_nome_repetido).'),
+      422: ERRO('UH e local do sistema hoteleiro são só leitura (local_so_leitura).'),
     },
   },
   {

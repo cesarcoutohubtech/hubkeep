@@ -113,7 +113,8 @@ select is(
   ),
   array[
     'authz.eh_admin_grupo', 'authz.hoteis_com_papel', 'authz.hoteis_escrita',
-    'authz.hoteis_leitura', 'authz.locais_proprietario', 'authz.membro_privilegiado',
+    'authz.hoteis_leitura', 'authz.hoteis_proprietario', 'authz.locais_proprietario',
+    'authz.membro_privilegiado',
     'authz.tenant_id', 'authz.tenant_sistema', 'authz.usuario_id', 'licenca.uso'
   ]::text[],
   'somente as funções de autorização aprovadas existem nos schemas do HubKeep'
@@ -122,7 +123,9 @@ select is(
 -- 11b. O corpo de cada função também é fechado: mudar o que uma função de
 --      autorização calcula exige ADR e a impressão (md5 do prosrc) atualizada
 --      aqui no mesmo PR (regra 4). authz.locais_proprietario mudou na migração
---      0011 (ADR-031: locais dos hotéis vinculados ao proprietário).
+--      0011 (ADR-031: locais dos hotéis vinculados ao proprietário);
+--      authz.hoteis_proprietario entrou na 0012 (adendo ao ADR-031: hotel
+--      inteiro visível ao proprietário, com ou sem locais).
 select is(
   array(
     select n.nspname::text || '.' || p.proname::text || ':' || md5(p.prosrc)
@@ -135,6 +138,7 @@ select is(
     'authz.hoteis_com_papel:a124350b101993fe7019ac0b3dd23248',
     'authz.hoteis_escrita:e5e2e4e572738251e60b87872364034f',
     'authz.hoteis_leitura:35b1e215481eb99c7b2f01ed503fdbcc',
+    'authz.hoteis_proprietario:6cc95453cb18e2894fbb445952afb706',
     'authz.locais_proprietario:4dd32f437195d692fa3fc0b3f4b2474b',
     'authz.membro_privilegiado:d0f3166ae8d59adbb9ff0d9f1364f4f1',
     'authz.tenant_id:8c1f2279c07d6f5c86f4648182d93f29',

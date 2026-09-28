@@ -8,7 +8,10 @@ import {
   IDIOMAS_API,
   PAPEIS_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
+  STATUS_DE_LOCAL_API,
+  TIPOS_DE_LOCAL_API,
 } from '../packages/contratos/src/index';
+import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
   CHAVES_DE_POLITICA,
   PAPEIS,
@@ -66,5 +69,12 @@ describe('contratos × domínio', () => {
 
   it('as pendências do painel de implantação são as do domínio', () => {
     expect([...PENDENCIAS_DE_IMPLANTACAO_API]).toEqual([...PENDENCIAS_DE_IMPLANTACAO]);
+  });
+
+  it('tipos e status de local da API são os do domínio e do banco (B1)', () => {
+    const tipos: readonly TipoDeLocal[] = TIPOS_DE_LOCAL_API;
+    const status: readonly StatusDeLocal[] = STATUS_DE_LOCAL_API;
+    expect([...tipos].sort()).toEqual(['area_comum', 'uh']);
+    expect([...status].sort()).toEqual(['ativo', 'inativo', 'pendente_licenca']);
   });
 });

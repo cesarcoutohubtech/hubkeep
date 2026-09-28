@@ -4,13 +4,15 @@
 --     só do Admin do grupo, como app.proprietario);
 --   - authz.locais_proprietario(): o proprietário vinculado ao hotel vê todos
 --     os locais dele, inclusive UH nova que chega depois, e o próprio hotel;
---     não grava; vigência encerrada tira o acesso; o vínculo por UH continua.
+--     não grava; vigência encerrada tira o acesso; o vínculo por UH continua;
+--   - authz.hoteis_proprietario() (0012): o hotel vinculado aparece mesmo sem
+--     nenhum local, e authz.locais_proprietario() nunca devolve local_id nulo.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(24);
+select plan(32);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -68,6 +70,21 @@ insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000008', 'proprietario', 'proprietario', null, '11200000-0000-0000-0000-000000000003', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '20000000-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000001', 'admin_grupo', 'grupo', null, null, null, 'bbbbbbbb-0000-0000-0000-000000000001');
 
+-- Hotel 3, vinculado por inteiro e ainda sem nenhum local (migração 0012)
+insert into auth.users (id, email) values ('aaaaaaaa-0000-0000-0000-000000000009', 'dono-sem-locais@a.test');
+insert into app.membro (tenant_id, usuario_id, nome, email) values
+  ('10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000009', 'Dono sem locais', 'dono-sem-locais@a.test');
+insert into app.hotel (id, tenant_id, nome, fuso, status) values
+  ('11100000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', 'Hotel 3', 'UTC', 'em_implantacao');
+insert into app.proprietario (id, tenant_id, nome) values
+  ('11200000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000000', 'Dono do Hotel 3');
+insert into app.hotel_proprietario (id, tenant_id, proprietario_id, hotel_id, vigencia_inicio) values
+  ('11300000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', '11200000-0000-0000-0000-000000000004',
+   '11100000-0000-0000-0000-000000000003', current_date - 1);
+insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, proprietario_id, concedido_por) values
+  (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000009', 'proprietario', 'proprietario',
+   '11200000-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000001');
+
 -- FK composta e vigência (como postgres)
 select throws_ok(
   $$ insert into app.hotel_proprietario (id, tenant_id, proprietario_id, hotel_id, vigencia_inicio) values
@@ -116,17 +133,32 @@ insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
 set local role hk_app;
 select results_eq($$ select nome from app.local order by nome $$, $$ values ('Piscina'), ('UH 101'), ('UH 102') $$,
   'UH nova no hotel vinculado entra no escopo do dono');
+select is_empty('select 1 from authz.locais_proprietario() where local_id is null',
+  'dono do hotel: locais_proprietario() nunca devolve local_id nulo');
+select results_eq('select * from authz.hoteis_proprietario()', $$ values ('11100000-0000-0000-0000-000000000001'::uuid) $$,
+  'dono do hotel: hoteis_proprietario() devolve o hotel vinculado');
+
+-- Dono do Hotel 3, ainda sem locais: vê o hotel, nenhum local, e a função de locais não inventa linha
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000009', true),
+       set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
+select results_eq($$ select nome from app.hotel $$, $$ values ('Hotel 3') $$, 'hotel vinculado sem locais aparece para o dono');
+select is_empty('select 1 from app.local', 'dono do hotel sem locais não vê local nenhum');
+select is_empty('select 1 from authz.locais_proprietario()', 'hotel sem locais: locais_proprietario() vazio, sem linha nula');
+select is_empty($$ update app.hotel set nome = 'x' returning 1 $$, 'dono do hotel sem locais não altera o hotel');
 
 -- Dono com vigência encerrada: nada
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000007', true),
        set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
 select is_empty('select 1 from app.local', 'vigência encerrada: nenhum local');
 select is_empty('select 1 from app.hotel', 'vigência encerrada: nenhum hotel');
+select is_empty('select * from authz.hoteis_proprietario()', 'vigência encerrada: hoteis_proprietario() vazio');
 
 -- Dono de UH: o vínculo por UH continua valendo, só a UH dele
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000008', true),
        set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
 select results_eq($$ select nome from app.local $$, $$ values ('UH 202') $$, 'dono de UH vê só a UH dele');
+select is_empty('select 1 from authz.locais_proprietario() where local_id is null',
+  'dono de UH: locais_proprietario() nunca devolve local_id nulo');
 
 -- Gerente do Hotel 1: não vê nem grava vínculo
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000002', true),

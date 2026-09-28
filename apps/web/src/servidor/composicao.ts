@@ -10,6 +10,7 @@ import {
   type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeHoteis,
   type CasosDeUsoDeImplantacao,
+  type CasosDeUsoDeLocais,
   type CasosDeUsoDeMembros,
   type CasosDeUsoDeProprietarios,
   type CasosDeUsoDeIngestao,
@@ -25,6 +26,7 @@ import {
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeHoteis,
   criarCasosDeUsoDeImplantacao,
+  criarCasosDeUsoDeLocais,
   criarCasosDeUsoDeMembros,
   criarCasosDeUsoDeProprietarios,
   criarCasosDeUsoDeIngestao,
@@ -44,6 +46,7 @@ import {
   criarPortaEscopoDeAnexo,
   criarPortaHoteisDoStaging,
   criarPortaImplantacao,
+  criarPortaLocais,
   criarPortaMembros,
   criarPortaProprietarios,
   criarPortaOperacoesOffline,
@@ -223,6 +226,16 @@ export const casosDeUsoDeImplantacao = memo<CasosDeUsoDeImplantacao>(async () =>
   return criarCasosDeUsoDeImplantacao({
     implantacao: criarPortaImplantacao(banco),
     membros: criarPortaMembros(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Locais do hotel (fase 1a, B1), pelo hk_app. */
+export const casosDeUsoDeLocais = memo<CasosDeUsoDeLocais>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeLocais({
+    locais: criarPortaLocais(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });

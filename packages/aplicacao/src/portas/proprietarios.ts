@@ -38,7 +38,6 @@ export interface PortaProprietarios {
   /** Hotel visível a quem pede; senão null. */
   hotel(ctx: Contexto, hotelId: string): Promise<{ id: string; nome: string } | null>;
   local(ctx: Contexto, localId: string): Promise<LocalDoHotel | null>;
-  locaisDoHotel(ctx: Contexto, hotelId: string): Promise<LocalDoHotel[]>;
   /** Na unit of work, com auditoria (sem o documento: dado pessoal). */
   criar(ctx: Contexto, dados: Omit<Proprietario, 'id'>): Promise<{ id: string }>;
   alterar(ctx: Contexto, id: string, dados: Omit<Proprietario, 'id'>): Promise<void>;

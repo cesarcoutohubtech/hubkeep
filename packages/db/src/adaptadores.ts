@@ -4,6 +4,8 @@
 import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
+  PortaLocais,
+  LocalDoHotelCadastrado,
   PortaProprietarios,
   PortaEquipes,
   PortaBandeiras,
@@ -44,6 +46,7 @@ import {
   renomearBandeira,
 } from './repositorios/bandeiras';
 import { gravarConvite } from './repositorios/convites';
+import { alterarLocal, criarAreaComum } from './repositorios/locais';
 import { alterarEquipe, criarEquipe, definirMembroDaEquipe } from './repositorios/equipes';
 import {
   alterarProprietario,
@@ -279,18 +282,6 @@ export function criarPortaProprietarios(banco: AcessoBanco): PortaProprietarios 
           .executeTakeFirst();
         return l ? local(l) : null;
       }),
-    locaisDoHotel: (ctx, hotelId) =>
-      banco.withContext(ctx, async (tx) =>
-        (
-          await tx
-            .selectFrom('app.local')
-            .select(['id', 'hotel_id', 'nome', 'tipo', 'status'])
-            .where('hotel_id', '=', hotelId)
-            .orderBy('tipo')
-            .orderBy('nome')
-            .execute()
-        ).map(local),
-      ),
     criar: (ctx, dados) => banco.executar(ctx, (uow) => criarProprietario(uow, dados)),
     alterar: (ctx, id, dados) => banco.executar(ctx, (uow) => alterarProprietario(uow, id, dados)),
     vincular: (ctx, v) => banco.executar(ctx, (uow) => vincularProprietario(uow, v)),
@@ -485,6 +476,64 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
       banco.executar(ctx, (uow) => configurarHotel(uow, hotelId, c)),
     gravarPolitica: (ctx, chave, escopo, valor) =>
       banco.executar(ctx, (uow) => gravarPolitica(uow, chave, escopo, valor)),
+  };
+}
+
+/** Locais do hotel (fase 1a, B1), pelo hk_app: o que cada um vê e grava é da RLS. */
+export function criarPortaLocais(banco: AcessoBanco): PortaLocais {
+  const colunas = ['id', 'hotel_id', 'nome', 'tipo', 'andar', 'status', 'cod_externo'] as const;
+  const paraLocal = (l: {
+    id: string;
+    hotel_id: string;
+    nome: string;
+    tipo: LocalDoHotelCadastrado['tipo'];
+    andar: string | null;
+    status: LocalDoHotelCadastrado['status'];
+    cod_externo: string | null;
+  }): LocalDoHotelCadastrado => ({
+    id: l.id,
+    hotelId: l.hotel_id,
+    nome: l.nome,
+    tipo: l.tipo,
+    andar: l.andar,
+    status: l.status,
+    codExterno: l.cod_externo,
+  });
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    locais: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.local')
+            .select(colunas)
+            .where('hotel_id', '=', hotelId)
+            .orderBy('tipo') // enum app.local_tipo: 'uh' antes de 'area_comum' (ordem da declaração)
+            .orderBy('nome')
+            .execute()
+        ).map(paraLocal),
+      ),
+    local: (ctx, localId) =>
+      banco.withContext(ctx, async (tx) => {
+        const l = await tx
+          .selectFrom('app.local')
+          .select(colunas)
+          .where('id', '=', localId)
+          .executeTakeFirst();
+        return l ? paraLocal(l) : null;
+      }),
+    criarAreaComum: (ctx, hotelId, dados) =>
+      banco.executar(ctx, (uow) => criarAreaComum(uow, hotelId, dados)),
+    alterar: (ctx, localId, mudanca) =>
+      banco.executar(ctx, (uow) => alterarLocal(uow, localId, mudanca)),
   };
 }
 
