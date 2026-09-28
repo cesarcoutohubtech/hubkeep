@@ -17,6 +17,12 @@ import {
   RespostaDeBandeiraDoHotel,
   RespostaDeBandeiras,
 } from './bandeiras';
+import {
+  PedidoDeCategoria,
+  RespostaDeCategoriaAlterada,
+  RespostaDeCategorias,
+  RespostaDeCategoriasPadrao,
+} from './categorias';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import { PedidoDeAreaComum, RespostaDeLocaisDoHotel, RespostaDeLocalAlterado } from './locais';
 import {
@@ -739,6 +745,84 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Só o Admin do grupo (configuracao_so_admin).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
       422: ERRO('Formato fora da política (politica_valor_invalido) ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/categorias-de-ativo',
+    resumo:
+      'Categorias de ativo do tenant, com os campos estendidos e o idioma padrão para a volta dos nomes (ADR-027, ADR-028).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Categorias', esquema: RespostaDeCategorias },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/categorias-de-ativo',
+    resumo: 'Cria uma categoria do tenant. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeCategoria,
+    respostas: {
+      201: { descricao: 'Categoria criada', esquema: RespostaDeCategoriaAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (categorias_so_admin).'),
+      422: ERRO(
+        'categoria_nome_invalido, definicao_de_campo_invalida (campo, motivo) ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/categorias-de-ativo/{id}',
+    resumo:
+      'Altera nomes e campos. O tipo de um campo existente não muda; campo novo obrigatório vale para gravações novas.',
+    exigeTenant: true,
+    corpo: PedidoDeCategoria,
+    respostas: {
+      200: { descricao: 'Categoria alterada', esquema: RespostaDeCategoriaAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (categorias_so_admin).'),
+      404: ERRO('Categoria não encontrada (categoria_nao_encontrada).'),
+      422: ERRO(
+        'categoria_nome_invalido, definicao_de_campo_invalida, campo_muda_de_tipo ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/categorias-de-ativo/{id}/desativacao',
+    resumo: 'Desativa a categoria (exclusão lógica).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Categoria desativada', esquema: RespostaDeCategoriaAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (categorias_so_admin).'),
+      404: ERRO('Categoria não encontrada (categoria_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/categorias-de-ativo/{id}/reativacao',
+    resumo: 'Reativa a categoria.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Categoria reativada', esquema: RespostaDeCategoriaAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (categorias_so_admin).'),
+      404: ERRO('Categoria não encontrada (categoria_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/categorias-de-ativo/padrao',
+    resumo: 'Instala as categorias padrão do catálogo que o tenant ainda não tem. Idempotente.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Quantas foram instaladas', esquema: RespostaDeCategoriasPadrao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (categorias_so_admin).'),
     },
   },
 ];

@@ -70,6 +70,17 @@ export interface AppBandeira {
   tenant_id: string;
 }
 
+export interface AppCategoriaAtivo {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  campos: Generated<Json>;
+  chave_padrao: string | null;
+  criado_em: Generated<Timestamp>;
+  id: string;
+  nomes: Generated<Json>;
+  tenant_id: string;
+}
+
 export interface AppEquipe {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -258,6 +269,7 @@ export interface DB {
   "app.atribuicao_escopo": AppAtribuicaoEscopo;
   "app.auditoria": AppAuditoria;
   "app.bandeira": AppBandeira;
+  "app.categoria_ativo": AppCategoriaAtivo;
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;

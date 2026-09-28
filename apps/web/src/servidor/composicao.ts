@@ -5,6 +5,7 @@ import { criarAdministracaoDoAuth, criarArmazenamentoDeAnexos } from '@hubkeep/a
 import {
   type CasoDeUsoDeConvites,
   type CasosDeUsoDeAnexos,
+  type CasosDeUsoDeCategorias,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
   type CasosDeUsoDeBandeiras,
@@ -21,6 +22,7 @@ import {
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
+  criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeEquipes,
   criarCasosDeUsoDeBandeiras,
@@ -40,6 +42,7 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaCategorias,
   criarPortaConfiguracao,
   criarPortaEquipes,
   criarPortaBandeiras,
@@ -236,6 +239,16 @@ export const casosDeUsoDeLocais = memo<CasosDeUsoDeLocais>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeLocais({
     locais: criarPortaLocais(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Categorias de ativo (fase 1a, B2; ADR-028), pelo hk_app. */
+export const casosDeUsoDeCategorias = memo<CasosDeUsoDeCategorias>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeCategorias({
+    categorias: criarPortaCategorias(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });

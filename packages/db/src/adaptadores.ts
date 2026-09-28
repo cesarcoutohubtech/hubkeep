@@ -4,6 +4,7 @@
 import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
+  PortaCategorias,
   PortaLocais,
   LocalDoHotelCadastrado,
   PortaProprietarios,
@@ -45,6 +46,7 @@ import {
   definirBandeiraDoHotel,
   renomearBandeira,
 } from './repositorios/bandeiras';
+import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { gravarConvite } from './repositorios/convites';
 import { alterarLocal, criarAreaComum } from './repositorios/locais';
 import { alterarEquipe, criarEquipe, definirMembroDaEquipe } from './repositorios/equipes';
@@ -534,6 +536,38 @@ export function criarPortaLocais(banco: AcessoBanco): PortaLocais {
       banco.executar(ctx, (uow) => criarAreaComum(uow, hotelId, dados)),
     alterar: (ctx, localId, mudanca) =>
       banco.executar(ctx, (uow) => alterarLocal(uow, localId, mudanca)),
+  };
+}
+
+/** Categorias de ativo (fase 1a, B2; ADR-028), pelo hk_app. */
+export function criarPortaCategorias(banco: AcessoBanco): PortaCategorias {
+  return {
+    idiomaPadrao: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const t = await tx.selectFrom('app.tenant').select('idioma_padrao').executeTakeFirst();
+        return (t?.idioma_padrao ?? 'pt-BR') as Awaited<
+          ReturnType<PortaCategorias['idiomaPadrao']>
+        >;
+      }),
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.categoria_ativo')
+            .select(['id', 'chave_padrao', 'nomes', 'campos', 'ativa'])
+            .orderBy('criado_em')
+            .orderBy('id')
+            .execute()
+        ).map((c) => ({
+          id: c.id,
+          chavePadrao: c.chave_padrao,
+          nomes: c.nomes,
+          campos: c.campos,
+          ativa: c.ativa,
+        })),
+      ),
+    criar: (ctx, c) => banco.executar(ctx, (uow) => criarCategoria(uow, c)),
+    alterar: (ctx, id, mudanca) => banco.executar(ctx, (uow) => alterarCategoria(uow, id, mudanca)),
   };
 }
 

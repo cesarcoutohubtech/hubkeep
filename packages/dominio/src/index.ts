@@ -14,6 +14,32 @@ export {
 } from './permissoes';
 export type { Resultado } from './permissoes';
 export {
+  IDIOMAS_DE_ROTULO,
+  LIMITES_DE_CAMPO,
+  TIPOS_DE_CAMPO,
+  lerDefinicoes,
+  lerValores,
+  normalizarRotulos,
+  validarDefinicoes,
+  validarMudancaDeDefinicoes,
+  validarValores,
+} from './campos-tipados';
+export type {
+  DefinicaoDeCampo,
+  IdiomaDeRotulo,
+  OpcaoDeLista,
+  Rotulos,
+  TipoDeCampo,
+  ValorDeCampo,
+} from './campos-tipados';
+export {
+  CATEGORIAS_PADRAO,
+  ehCategoriaPadrao,
+  podeGerirCategorias,
+  validarNomesDeCategoria,
+} from './categorias';
+export type { CategoriaPadrao } from './categorias';
+export {
   PAPEIS_QUE_GERENCIAM_LOCAIS,
   exigirLocalEditavel,
   localEditavel,

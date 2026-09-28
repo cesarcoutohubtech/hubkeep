@@ -9,6 +9,12 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 - as decisões pendentes;
 - a próxima tarefa exata, com o primeiro passo.
 
+**Encerramento de sessão (Cesar, 28/09/2026):** ao fechar cada etapa, e também quando a janela de contexto passar de 60%:
+1. parar no próximo ponto seguro (commit feito, nada pela metade, nenhum comando rodando);
+2. registrar o "Ponto de retomada" no diário;
+3. enviar notificação push com "Sessão pode ser encerrada" e o motivo;
+4. terminar a resposta com a mensagem exata para colar na sessão nova.
+
 ## Etapa A — Estrutura e administração
 
 ### A1 — Ativação de hotel a partir do staging
@@ -229,4 +235,72 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 - **Dev, conferência só de leitura antes da 0013:** o histórico parava na 0011, sem a 0012. Não existia `authz.hoteis_proprietario()`, e as policies de `app.hotel` e `app.politica` eram as anteriores.
   - `pnpm db:testar-dev` falhou, como se espera sem a 0012: 310 ok. As falhas foram os meta-testes 11 e 11b (lista e impressão das funções) e o 010, que parou no caso 12, na primeira chamada à função que não existe.
   - O resto passou: 002 a 009 e 011.
+
+### Dev conferido depois da 0013 (28/09/2026)
+- O Cesar mergeou o #46 e rodou `db push` (0012 e 0013).
+- Conferência só de leitura:
+  - o histórico do dev é igual às 13 migrações da `main`;
+  - `authz.hoteis_proprietario()` existe, com a impressão esperada;
+  - a leitura de `app.hotel` usa a função, e a de `app.politica` não tem caminho do proprietário.
+- `pnpm db:testar-dev` passou inteiro: 335 testes ok em 11 arquivos, com os meta-testes 11 e 11b e o 010.
+- Confirmado pelo Cesar: nenhum proprietário, de UH ou de hotel inteiro, lê políticas.
+
+### B2 — Categorias de ativo e campos tipados (migração 0014, ADR-028)
+- **Migração 0014, `app.categoria_ativo`:**
+  - colunas: `nomes jsonb` parcial por idioma, `chave_padrao` quando a categoria é uma das padrão, `campos jsonb` com as definições e `ativa`;
+  - uma categoria padrão por tenant; checks de formato da chave e do tipo dos jsonb;
+  - RLS: lê o Admin e quem tem papel vigente, inclusive o proprietário, que vai ver a categoria dos ativos da UH dele na B3; grava só o Admin; sem DELETE;
+  - `chave_padrao` não é alterável.
+
+  pgTAP `012_isolamento_categoria_ativo` (20 casos).
+- **Domínio `campos-tipados.ts`,** o módulo comum com o checklist da 1b:
+  - tipos texto, número (com unidade), data, lista (com opções) e sim/não;
+  - rótulos em quatro idiomas;
+  - `validarDefinicoes` recusa com `definicao_de_campo_invalida`, levando o campo e o motivo;
+  - `validarMudancaDeDefinicoes`: o tipo de um campo existente não muda (`campo_muda_de_tipo`);
+  - `validarValores`, para gravação nova (obrigatório, tipo, campo desconhecido), e `lerValores`, que nunca lança: campo novo obrigatório vale só para gravações novas, e a leitura do que já foi gravado não quebra.
+- **Domínio `categorias.ts`:**
+  - `CATEGORIAS_PADRAO` (10), com o nome no catálogo `categoria_ativo.padrao.<chave>`;
+  - só o Admin gere;
+  - a categoria do tenant precisa de ao menos um nome, e a padrão pode ficar sem.
+- **`@hubkeep/i18n`:** `resolverNome`, com a volta do ADR-027 (nome do tenant no idioma → catálogo → idioma padrão do tenant → qualquer um).
+- **Rotas:**
+  - `GET/POST /api/v1/categorias-de-ativo` e `PUT /api/v1/categorias-de-ativo/{id}`;
+  - `POST .../{id}/desativacao|reativacao`;
+  - `POST /api/v1/categorias-de-ativo/padrao`, idempotente.
+- **Tela** `/admin/categorias`: instalar as padrão, criar, nomes nos quatro idiomas, acrescentar e tirar campo, desativar.
+- **Aceite** (`packages/db/test/categorias.test.ts`):
+  - instalação idempotente;
+  - campos tipados;
+  - definição inválida com o campo e o motivo;
+  - mudança de tipo recusada;
+  - campo novo obrigatório aceito;
+  - a padrão com nome próprio;
+  - paridade com a checagem removida;
+  - auditoria.
+
+### Ponto de retomada (28/09/2026, meio da etapa B, contexto da sessão acima de 60%)
+- **`main`:** `04c57e5`, o merge do #46 (0013).
+- **Dev:** 13 migrações, até a 0013, iguais às da `main`; `pnpm db:testar-dev` com 335 ok em 11 arquivos.
+- **PR aberto:** [#47](https://github.com/cesarcoutohubtech/hubkeep/pull/47), B2, migração 0014, com a CI verde fora a zona protegida. Espera do Cesar:
+  - o merge;
+  - o `db push` da 0014;
+  - a resposta sobre o proprietário ler categorias de ativo (incluído na RLS, para a B3).
+- **Worktrees em `C:\Cesar\HubKeep\Dev\wt\`:**
+  - `b2-categorias` (branch `1a-b2-categorias`, todo enviado);
+  - `b1-locais`, `politica-sem-proprietario` e `decisoes-etapa-b`, de branches já mergeadas, que podem ser removidos com `git worktree remove`.
+
+  Nenhum trabalho local fora do GitHub.
+- **Decisão pendente:** o proprietário lê categorias de ativo? Está no #47.
+- **Próxima tarefa: B3, ativos (ADR-029, concorrência por versão).**
+  - O que ela tem:
+    - `app.ativo` com local, categoria, campos estendidos em `jsonb` (validados por `validarValores` e lidos por `lerValores` de `campos-tipados.ts`), fabricante, modelo, número de série e `versao`;
+    - cadastro no web e no PWA, com as operações offline `ativo.cadastrar` e `ativo.alterar` (ADR-025);
+    - o conflito de versão aparece no aparelho;
+    - nas pendências do painel de implantação (A5), "locais sem ativo" e "ativos sem categoria".
+  - Primeiro passo, depois do merge do #47 e do `db push`:
+    1. conferir o dev só por leitura: histórico até a 0014 e `pnpm db:testar-dev`;
+    2. `git worktree add C:/Cesar/HubKeep/Dev/wt/b3-ativos -b 1a-b3-ativos origin/main`;
+    3. `supabase migration new ativo`;
+    4. ler o ADR-025, o ADR-029 e o código da fila offline (`packages/db/src/repositorios/operacoes-offline.ts`, `PedidoDeOperacaoOffline` em `packages/contratos/src/sincronizacao.ts`).
 

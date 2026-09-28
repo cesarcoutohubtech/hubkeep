@@ -25,6 +25,16 @@ export {
 } from './ingestao';
 export { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 export {
+  CATEGORIAS_PADRAO_API,
+  CategoriaApi,
+  DefinicaoDeCampoApi,
+  PedidoDeCategoria,
+  RespostaDeCategoriaAlterada,
+  RespostaDeCategorias,
+  RespostaDeCategoriasPadrao,
+  TIPOS_DE_CAMPO_API,
+} from './categorias';
+export {
   LocalApi,
   PedidoDeAreaComum,
   RespostaDeLocaisDoHotel,

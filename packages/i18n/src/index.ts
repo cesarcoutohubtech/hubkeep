@@ -20,6 +20,8 @@ export {
   resolverIdioma,
 } from './resolucao';
 export type { NiveisDeIdioma } from './resolucao';
+export { resolverNome } from './nomes';
+export type { NomesPorIdioma } from './nomes';
 export { CATALOGOS, QUEDA_DE_TRADUCAO, mensagensDe, mesclarPelaQueda } from './catalogos';
 export type { Chave, Mensagens } from './catalogos';
 export { EXPANSAO_PSEUDO, pseudoMensagem } from './pseudo';

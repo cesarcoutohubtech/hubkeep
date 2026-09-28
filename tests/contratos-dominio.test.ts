@@ -7,12 +7,17 @@ import {
   FORMATOS_DE_POLITICA_API,
   IDIOMAS_API,
   PAPEIS_API,
+  CATEGORIAS_PADRAO_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
+  TIPOS_DE_CAMPO_API,
   STATUS_DE_LOCAL_API,
   TIPOS_DE_LOCAL_API,
 } from '../packages/contratos/src/index';
 import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
+  CATEGORIAS_PADRAO,
+  IDIOMAS_DE_ROTULO,
+  TIPOS_DE_CAMPO,
   CHAVES_DE_POLITICA,
   PAPEIS,
   PENDENCIAS_DE_IMPLANTACAO,
@@ -76,5 +81,11 @@ describe('contratos × domínio', () => {
     const status: readonly StatusDeLocal[] = STATUS_DE_LOCAL_API;
     expect([...tipos].sort()).toEqual(['area_comum', 'uh']);
     expect([...status].sort()).toEqual(['ativo', 'inativo', 'pendente_licenca']);
+  });
+
+  it('tipos de campo, categorias padrão e idiomas de rótulo da API são os do domínio (ADR-028)', () => {
+    expect([...TIPOS_DE_CAMPO_API]).toEqual([...TIPOS_DE_CAMPO]);
+    expect([...CATEGORIAS_PADRAO_API]).toEqual([...CATEGORIAS_PADRAO]);
+    expect([...IDIOMAS_DE_ROTULO]).toEqual([...IDIOMAS]);
   });
 });
