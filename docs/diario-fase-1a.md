@@ -2,6 +2,13 @@
 
 Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o aceite foi provado, o PR e o que ficou pendente. As regras de processo são as do `docs/diario-fase-0.md` (zona protegida, ADR só com aprovação explícita, `db push` e `config push` só pelo Cesar, merge não aprova ADR). A execução vai uma etapa por vez, com parada e resumo ao fim de cada etapa.
 
+**Ponto de retomada (Cesar, 28/09/2026):** o Cesar abre uma sessão nova do HubKeep a cada etapa. Ao fechar cada etapa, a última entrada dela é uma seção "Ponto de retomada", com:
+- o estado da `main` (último merge) e das migrações no dev;
+- os PRs abertos e o que espera o Cesar (merge, `db push`, aprovação de ADR);
+- os worktrees e branches locais com trabalho não enviado;
+- as decisões pendentes;
+- a próxima tarefa exata, com o primeiro passo.
+
 ## Etapa A — Estrutura e administração
 
 ### A1 — Ativação de hotel a partir do staging
@@ -210,3 +217,16 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - auditoria;
   - o técnico não gere; outro hotel não vê; a RLS barra pela porta;
   - o dono do hotel inteiro vê o hotel sem locais, e nenhum local.
+
+### B1 — ajuste: o proprietário não lê políticas (migração 0013)
+- **Decisões do Cesar (28/09/2026):**
+  - ADR-031 aprovado, com o adendo valendo só para a leitura de `app.hotel`;
+  - o proprietário não lê políticas no MVP, por falta de uso concreto.
+- **Migração 0013:** a leitura de `app.politica` perde todos os caminhos do proprietário.
+  - Sai `hoteis_proprietario()`, posta pela 0012.
+  - Sai também `locais_proprietario()`, desde a 0010, pela qual o dono de UH e o dono de hotel com locais liam a política do hotel e as do grupo. Tirar só a função nova deixaria o dono de hotel com locais lendo.
+- **pgTAP 009 (25 casos):** o dono de UH e o dono de hotel inteiro não leem política nenhuma, nem gravam; o dono de hotel inteiro continua vendo o hotel.
+- **Dev, conferência só de leitura antes da 0013:** o histórico parava na 0011, sem a 0012. Não existia `authz.hoteis_proprietario()`, e as policies de `app.hotel` e `app.politica` eram as anteriores.
+  - `pnpm db:testar-dev` falhou, como se espera sem a 0012: 310 ok. As falhas foram os meta-testes 11 e 11b (lista e impressão das funções) e o 010, que parou no caso 12, na primeira chamada à função que não existe.
+  - O resto passou: 002 a 009 e 011.
+

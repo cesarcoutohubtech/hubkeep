@@ -1,8 +1,10 @@
 -- ============================================================================
 -- Políticas e configuração do tenant (migração 0010, fase 1a A7): os seis
 -- casos do doc 02 para app.politica e o UPDATE de app.tenant.
---   - política do grupo: quem tem papel vigente no tenant lê; política do
---     hotel: só quem lê o hotel (inclui o proprietário de UH dele);
+--   - política do grupo: quem tem papel vigente num hotel lê; política do
+--     hotel: só quem lê o hotel;
+--   - o proprietário, de UH ou de hotel inteiro, não lê política nenhuma
+--     (migração 0013, decisão do Cesar de 28/09/2026);
 --   - implantador vencido e sessão sem contexto não veem nada;
 --   - só o Admin do grupo grava, e só no próprio tenant;
 --   - escopo coerente, uma linha por chave em cada escopo, sem DELETE;
@@ -13,7 +15,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(22);
+select plan(25);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -23,6 +25,7 @@ insert into auth.users (id, email) values
   ('aaaaaaaa-0000-0000-0000-000000000004', 'tecnico@a.test'),
   ('aaaaaaaa-0000-0000-0000-000000000005', 'implantador-vencido@a.test'),
   ('aaaaaaaa-0000-0000-0000-000000000006', 'proprietario@a.test'),
+  ('aaaaaaaa-0000-0000-0000-000000000007', 'dono-hotel@a.test'),
   ('bbbbbbbb-0000-0000-0000-000000000001', 'admin@b.test');
 
 insert into app.tenant (id, nome) values
@@ -34,6 +37,7 @@ insert into app.membro (tenant_id, usuario_id, nome, email) values
   ('10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000004', 'Técnico', 'tecnico@a.test'),
   ('10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000005', 'Implantador vencido', 'implantador-vencido@a.test'),
   ('10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000006', 'Proprietário', 'proprietario@a.test'),
+  ('10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000007', 'Dono do hotel', 'dono-hotel@a.test'),
   ('20000000-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000001', 'Admin B', 'admin@b.test');
 insert into app.hotel (id, tenant_id, nome, fuso, status) values
   ('11100000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Hotel 1', 'UTC', 'ativo'),
@@ -42,7 +46,11 @@ insert into app.hotel (id, tenant_id, nome, fuso, status) values
 insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
   ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH 101', 'ativo');
 insert into app.proprietario (id, tenant_id, nome) values
-  ('11200000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Proprietário P');
+  ('11200000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Proprietário P'),
+  ('11200000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', 'Dono do Hotel 1');
+insert into app.hotel_proprietario (id, tenant_id, proprietario_id, hotel_id, vigencia_inicio) values
+  (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11200000-0000-0000-0000-000000000002',
+   '11100000-0000-0000-0000-000000000001', current_date - 30);
 insert into app.local_proprietario (id, tenant_id, proprietario_id, local_id, vigencia_inicio) values
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11200000-0000-0000-0000-000000000001',
    '11110000-0000-0000-0000-000000000001', current_date - 30);
@@ -52,6 +60,7 @@ insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000004', 'tecnico', 'hotel', '11100000-0000-0000-0000-000000000001', null, null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000005', 'implantador', 'hotel', '11100000-0000-0000-0000-000000000001', null, now() - interval '1 day', 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000006', 'proprietario', 'proprietario', null, '11200000-0000-0000-0000-000000000001', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
+  (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000007', 'proprietario', 'proprietario', null, '11200000-0000-0000-0000-000000000002', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '20000000-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000001', 'admin_grupo', 'grupo', null, null, null, 'bbbbbbbb-0000-0000-0000-000000000001');
 insert into app.politica (id, tenant_id, escopo_tipo, hotel_id, chave, valor, atualizado_por) values
   ('f1000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'grupo', null, 'os.aceite_automatico', '{"ligado": false, "dias": 7}', 'aaaaaaaa-0000-0000-0000-000000000001'),
@@ -104,13 +113,18 @@ select throws_ok(
      (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'hotel', '11100000-0000-0000-0000-000000000002', 'os.aceite_automatico', '{}', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '42501', null, 'gerente não grava política, nem no próprio hotel');
 
--- Proprietário de UH do Hotel 1: lê, não grava
+-- Proprietário de UH do Hotel 1: não lê política nenhuma (0013) e não grava
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000006', true),
        set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
-select results_eq($$ select valor->>'dias' from app.politica order by 1 $$, $$ values ('4'), ('7') $$,
-  'proprietário lê a política do grupo e a do hotel da UH dele');
+select is_empty('select 1 from app.politica', 'proprietário de UH não lê políticas, nem do hotel nem do grupo');
 select is_empty($$ update app.politica set valor = '{}' returning 1 $$, 'proprietário não altera política');
 
+-- Proprietário do Hotel 1 inteiro (hotel com locais): não lê política nenhuma (0013) e não grava
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000007', true),
+       set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
+select results_eq($$ select nome from app.hotel $$, $$ values ('Hotel 1') $$, 'dono do hotel inteiro vê o hotel');
+select is_empty('select 1 from app.politica', 'proprietário de hotel inteiro não lê políticas');
+select is_empty($$ update app.politica set valor = '{}' returning 1 $$, 'proprietário de hotel inteiro não altera política');
 -- Implantador vencido: nada
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000005', true),
        set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
