@@ -304,3 +304,43 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
     3. `supabase migration new ativo`;
     4. ler o ADR-025, o ADR-029 e o código da fila offline (`packages/db/src/repositorios/operacoes-offline.ts`, `PedidoDeOperacaoOffline` em `packages/contratos/src/sincronizacao.ts`).
 
+### Dev conferido depois da 0014 (28/09/2026)
+- O Cesar mergeou o #47 e rodou `db push` da 0014.
+- Conferência só de leitura: o histórico do dev tem as 14 migrações da `main`, até a 0014.
+- `pnpm db:testar-dev` passou inteiro: 355 testes ok em 12 arquivos, com o 012 (categorias, 20 casos).
+- **Decisão do Cesar (28/09/2026):** o proprietário, de UH e de hotel inteiro, continua lendo as categorias de ativo, como está na 0014.
+
+### B3 — Ativos (migração 0015, ADR-028 e ADR-029)
+- **Migração 0015, `app.ativo`:**
+  - colunas: local, categoria opcional, nome, fabricante, modelo, número de série, `campos jsonb` (objeto), `versao` (começa em 1) e `desativado_em` (desativação lógica);
+  - FK composta com o hotel, com o local pelo `(hotel_id, local_id)` e com a categoria pelo `(tenant_id, categoria_id)`;
+  - RLS no modelo do `docs/02`: lê quem lê o hotel e o proprietário, só nos locais dele; grava quem escreve no hotel; sem DELETE;
+  - **o local não muda depois do cadastro.** O meta-teste 18 proíbe UPDATE em `local_id`, e o local decide o que o proprietário vê (ADR-011). Trocar o ativo de local fica como decisão pendente (abaixo).
+
+  pgTAP `013_isolamento_ativo` (26 casos): os seis do `docs/02`, os checks, `hotel_id` e `local_id` não alteráveis, UPDATE com versão velha sem linha, sem DELETE e o worker.
+- **Domínio `ativos.ts`:**
+  - gerem ativos os papéis que gerem locais e o técnico, que cadastra pelo celular (`ativos_fora_do_escopo`);
+  - nome (`ativo_nome_invalido`) e fabricante, modelo e número de série (`ativo_texto_invalido`, com o campo);
+  - local inativo não recebe ativo (`ativo_local_inativo`); UH pendente de licença recebe;
+  - `validarCamposDoAtivo`: sem categoria, nenhum campo estendido; categoria desativada não entra em ativo novo nem em troca (`ativo_categoria_inativa`), mas o ativo que já estava nela segue alterável;
+  - `conflitoDeVersao` (409 `conflito_de_versao`, com `versaoAtual`).
+- **Aplicação:** `criarCasosDeUsoDeAtivos` com `listarAtivos`, `cadastrar`, `alterar`, `desativar` e `reativar`. `prepararCadastro` e `prepararAlteracao` são os mesmos no web e na fila offline.
+- **Banco:** o UPDATE leva `where versao = $esperada` e incrementa. Sem linha, relê a versão depois do UPDATE: se mudou, é conflito; senão, "não encontrado" (fora do escopo ou sem escrita). Reler depois cobre a gravação simultânea que terminou enquanto esta esperava a trava da linha.
+- **Fila offline (ADR-025):** operações `ativo.cadastrar` e `ativo.alterar` no contrato, no caso de uso e na sessão da unit of work. O conflito volta como 409 e a chave não fica guardada; no aparelho, a recusa já segue o fluxo de rejeitada, e o rótulo das operações está nos catálogos.
+- **Rotas:**
+  - `GET /api/v1/hoteis/{id}/ativos`;
+  - `POST /api/v1/ativos`;
+  - `PUT /api/v1/ativos/{id}`;
+  - `POST /api/v1/ativos/{id}/desativacao|reativacao`, com a versão.
+- **Tela** `/admin/ativos`: cadastro com os campos da categoria escolhida, alteração com a versão vista, desativar e reativar.
+- **Painel de implantação (A5):** pendências `locais_sem_ativo` e `ativos_sem_categoria`, e o resumo de ativos.
+- **Aceite** (`packages/db/test/ativos.test.ts`, banco real na CI):
+  - o técnico cadastra com campos estendidos;
+  - obrigatório, campo desconhecido, categoria e local inativos recusados com código;
+  - versão velha dá `conflito_de_versao` com a versão atual;
+  - o solicitante não gere; o gerente de outro hotel não vê; a RLS barra pela porta; o proprietário lê e não grava;
+  - o proprietário vê só o ativo da UH dele;
+  - na fila offline, o reenvio de `ativo.cadastrar` não duplica, e o conflito de `ativo.alterar` não guarda a chave;
+  - auditoria de cada gravação e as contas do painel.
+- **Fica para a B3b** (PR fora da zona protegida): a tela de cadastro no PWA. Ela depende de guardar no aparelho hotéis, locais, categorias e ativos, com a limpeza ao sair (ADR-025 b), e de enfileirar `ativo.cadastrar` e `ativo.alterar`. A parte do servidor e a exibição da recusa já estão nesta B3.
+- **Decisão pendente do Cesar:** trocar o ativo de local. O caminho sem mexer no ADR-011 é desativar e cadastrar de novo. Se mover for necessário, a proposta é uma exceção no meta-teste 18 para `app.ativo.local_id`, com adendo ao ADR-011: o proprietário da UH antiga deixa de ver o ativo.

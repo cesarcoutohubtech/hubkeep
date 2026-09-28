@@ -22,6 +22,8 @@ export interface EstadoDaFila {
 
 const ROTULO_DA_OPERACAO: Record<OperacaoNaFila['tipo'], Chave> = {
   'preferencias.gravar': 'tecnico.operacao.preferencias_gravar',
+  'ativo.cadastrar': 'tecnico.operacao.ativo_cadastrar',
+  'ativo.alterar': 'tecnico.operacao.ativo_alterar',
 };
 
 /** Motivo pelo catálogo (erro.<codigo>); código desconhecido aparece como está. */

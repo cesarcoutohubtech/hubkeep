@@ -50,11 +50,11 @@ describe('painel de implantação (A5)', () => {
     const r = resumirImplantacao(
       H1,
       [
-        { tipo: 'uh', status: 'ativo' },
-        { tipo: 'uh', status: 'ativo' },
-        { tipo: 'uh', status: 'pendente_licenca' },
-        { tipo: 'area_comum', status: 'ativo' },
-        { tipo: 'uh', status: 'inativo' },
+        { id: 'l1', tipo: 'uh', status: 'ativo' },
+        { id: 'l2', tipo: 'uh', status: 'ativo' },
+        { id: 'l3', tipo: 'uh', status: 'pendente_licenca' },
+        { id: 'l4', tipo: 'area_comum', status: 'ativo' },
+        { id: 'l5', tipo: 'uh', status: 'inativo' },
       ],
       [
         {
@@ -90,8 +90,15 @@ describe('painel de implantação (A5)', () => {
         },
       ],
       AGORA,
+      [
+        { localId: 'l1', categoriaId: 'c1', ativo: true },
+        { localId: 'l2', categoriaId: 'c1', ativo: true },
+        { localId: 'l3', categoriaId: 'c1', ativo: true },
+        { localId: 'l4', categoriaId: 'c1', ativo: true },
+      ],
     );
     expect(r.locais).toEqual({ uhsAtivas: 2, uhsPendentes: 1, areasComuns: 1, inativos: 1 });
+    expect(r.ativos).toEqual({ ativos: 4, semCategoria: 0, locaisSemAtivo: 0 });
     expect(r.papeis).toEqual([
       { papel: 'gerente_hotel', pessoas: 1 },
       { papel: 'solicitante', pessoas: 1 },
@@ -99,5 +106,29 @@ describe('painel de implantação (A5)', () => {
     ]);
     expect(r.pessoasSemPapelVigente.map((p) => p.nome)).toEqual(['Revogado', 'Inativo']);
     expect(r.pendencias).toEqual(['uhs_pendentes_de_licenca', 'pessoas_sem_papel_vigente']);
+  });
+
+  it('locais sem ativo e ativos sem categoria (B3): desativado não conta', () => {
+    const r = resumirImplantacao(
+      H1,
+      [
+        { id: 'l1', tipo: 'uh', status: 'ativo' },
+        { id: 'l2', tipo: 'area_comum', status: 'ativo' },
+        { id: 'l3', tipo: 'uh', status: 'inativo' },
+      ],
+      [],
+      AGORA,
+      [
+        { localId: 'l1', categoriaId: null, ativo: true },
+        { localId: 'l2', categoriaId: null, ativo: false },
+      ],
+    );
+    expect(r.ativos).toEqual({ ativos: 1, semCategoria: 1, locaisSemAtivo: 1 });
+    expect(r.pendencias).toEqual([
+      'locais_sem_ativo',
+      'ativos_sem_categoria',
+      'sem_gerente',
+      'sem_tecnico',
+    ]);
   });
 });

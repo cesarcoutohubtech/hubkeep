@@ -33,6 +33,17 @@ export type {
   ValorDeCampo,
 } from './campos-tipados';
 export {
+  LIMITES_DE_ATIVO,
+  PAPEIS_QUE_GERENCIAM_ATIVOS,
+  conflitoDeVersao,
+  exigirLocalParaAtivo,
+  normalizarNomeDeAtivo,
+  normalizarTextoDoAtivo,
+  podeGerirAtivos,
+  validarCamposDoAtivo,
+} from './ativos';
+export type { CampoDeTextoDoAtivo, CategoriaParaAtivo } from './ativos';
+export {
   CATEGORIAS_PADRAO,
   ehCategoriaPadrao,
   podeGerirCategorias,
@@ -85,6 +96,7 @@ export {
 export { normalizarNomeDeBandeira, podeGerirBandeiras, podeLigarHotelABandeira } from './bandeiras';
 export { PENDENCIAS_DE_IMPLANTACAO, podeVerImplantacao, resumirImplantacao } from './implantacao';
 export type {
+  AtivoParaImplantacao,
   LocalParaImplantacao,
   PendenciaDeImplantacao,
   PessoaParaImplantacao,

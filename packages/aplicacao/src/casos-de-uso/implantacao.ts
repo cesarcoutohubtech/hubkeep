@@ -37,11 +37,12 @@ export function criarCasosDeUsoDeImplantacao(deps: {
       exigir(podeVer(await deps.atribuicoes.doUsuario(ctx), hotelId, agora));
       const hotel = await deps.implantacao.hotel(ctx, hotelId);
       if (!hotel) throw new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
-      const [locais, pessoas] = await Promise.all([
+      const [locais, pessoas, ativos] = await Promise.all([
         deps.implantacao.locais(ctx, hotelId),
         deps.membros.listar(ctx),
+        deps.implantacao.ativos(ctx, hotelId),
       ]);
-      return { hotel, ...resumirImplantacao(hotelId, locais, pessoas, agora) };
+      return { hotel, ...resumirImplantacao(hotelId, locais, pessoas, agora, ativos) };
     },
   };
 }

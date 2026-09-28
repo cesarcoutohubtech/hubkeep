@@ -149,8 +149,10 @@ describe.skipIf(!temBanco)('A5 — Implantador e painel de implantação', { tim
       { papel: 'tecnico', pessoas: 1 },
     ]);
     expect(p.pessoasSemPapelVigente.map((x) => x.nome).sort()).toEqual(['antigo', 'vencido']);
+    expect(p.ativos).toEqual({ ativos: 0, semCategoria: 0, locaisSemAtivo: 4 });
     expect(p.pendencias).toEqual([
       'uhs_pendentes_de_licenca',
+      'locais_sem_ativo',
       'sem_gerente',
       'pessoas_sem_papel_vigente',
     ]);

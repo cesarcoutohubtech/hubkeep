@@ -6,6 +6,8 @@ import { PAPEIS_API } from './api';
 export const PENDENCIAS_DE_IMPLANTACAO_API = [
   'sem_locais',
   'uhs_pendentes_de_licenca',
+  'locais_sem_ativo',
+  'ativos_sem_categoria',
   'sem_gerente',
   'sem_tecnico',
   'pessoas_sem_papel_vigente',
@@ -20,6 +22,7 @@ export const RespostaDeImplantacao = z
       areasComuns: z.int(),
       inativos: z.int(),
     }),
+    ativos: z.object({ ativos: z.int(), semCategoria: z.int(), locaisSemAtivo: z.int() }),
     papeis: z.array(z.object({ papel: z.enum(PAPEIS_API), pessoas: z.int() })),
     pessoasSemPapelVigente: z.array(z.object({ usuarioId: z.guid(), nome: z.string() })),
     pendencias: z.array(z.enum(PENDENCIAS_DE_IMPLANTACAO_API)),

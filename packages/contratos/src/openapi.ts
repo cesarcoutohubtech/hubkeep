@@ -24,6 +24,13 @@ import {
   RespostaDeCategoriasPadrao,
 } from './categorias';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
+import {
+  PedidoDeAlteracaoDeAtivo,
+  PedidoDeCadastroDeAtivo,
+  PedidoDeVersaoDeAtivo,
+  RespostaDeAtivoGravado,
+  RespostaDeAtivosDoHotel,
+} from './ativos';
 import { PedidoDeAreaComum, RespostaDeLocaisDoHotel, RespostaDeLocalAlterado } from './locais';
 import {
   PedidoDeEquipe,
@@ -162,6 +169,81 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('Vínculo não encontrado (vinculo_nao_encontrado).'),
       409: ERRO('Já existe vínculo nesse período (vinculo_sobreposto).'),
       422: ERRO('vigencia_invalida ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/ativos',
+    resumo:
+      'Ativos do hotel no escopo de quem pede (o proprietário vê só os dos locais dele), com os campos estendidos lidos pela categoria.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Ativos do hotel', esquema: RespostaDeAtivosDoHotel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos',
+    resumo:
+      'Cadastra um ativo num local. Admin, Gestor CSC, Implantador, Gerente ou Técnico do hotel. Os campos estendidos são validados contra a categoria.',
+    exigeTenant: true,
+    corpo: PedidoDeCadastroDeAtivo,
+    respostas: {
+      201: { descricao: 'Ativo cadastrado', esquema: RespostaDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (ativos_fora_do_escopo).'),
+      404: ERRO('local_nao_encontrado ou categoria_nao_encontrada.'),
+      422: ERRO(
+        'ativo_nome_invalido, ativo_texto_invalido, ativo_local_inativo, ativo_categoria_inativa, campo_obrigatorio, campo_desconhecido, valor_de_campo_invalido ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/ativos/{id}',
+    resumo:
+      'Altera o ativo (o local não muda). Leva a versão vista; se o ativo mudou nesse meio-tempo, 409 (ADR-029).',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDeAtivo,
+    respostas: {
+      200: { descricao: 'Ativo alterado, com a versão nova', esquema: RespostaDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (ativos_fora_do_escopo).'),
+      404: ERRO('ativo_nao_encontrado ou categoria_nao_encontrada.'),
+      409: ERRO('O ativo mudou (conflito_de_versao, com versaoAtual).'),
+      422: ERRO(
+        'ativo_nome_invalido, ativo_texto_invalido, ativo_categoria_inativa, campo_obrigatorio, campo_desconhecido, valor_de_campo_invalido ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/desativacao',
+    resumo: 'Desativa o ativo (exclusão lógica). Leva a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDeAtivo,
+    respostas: {
+      200: { descricao: 'Ativo desativado', esquema: RespostaDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (ativos_fora_do_escopo).'),
+      404: ERRO('Ativo não encontrado (ativo_nao_encontrado).'),
+      409: ERRO('O ativo mudou (conflito_de_versao, com versaoAtual).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/reativacao',
+    resumo: 'Reativa o ativo. Leva a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDeAtivo,
+    respostas: {
+      200: { descricao: 'Ativo reativado', esquema: RespostaDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (ativos_fora_do_escopo).'),
+      404: ERRO('Ativo não encontrado (ativo_nao_encontrado).'),
+      409: ERRO('O ativo mudou (conflito_de_versao, com versaoAtual).'),
     },
   },
   {
@@ -685,6 +767,13 @@ export const ROTAS: readonly Rota[] = [
         esquema: RespostaDeOperacaoOffline,
       },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO(
+        'Fora do escopo (o código da regra, ex.: ativos_fora_do_escopo); a chave não é guardada.',
+      ),
+      404: ERRO('Registro fora do escopo (ex.: ativo_nao_encontrado); a chave não é guardada.'),
+      409: ERRO(
+        'O ativo mudou desde que o aparelho o leu (conflito_de_versao); a chave não é guardada.',
+      ),
       422: ERRO(
         'Operação inválida (entrada_invalida ou o código da regra); a chave não é guardada.',
       ),

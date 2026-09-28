@@ -5,6 +5,7 @@ import { criarAdministracaoDoAuth, criarArmazenamentoDeAnexos } from '@hubkeep/a
 import {
   type CasoDeUsoDeConvites,
   type CasosDeUsoDeAnexos,
+  type CasosDeUsoDeAtivos,
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
@@ -22,6 +23,7 @@ import {
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
+  criarCasosDeUsoDeAtivos,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeEquipes,
@@ -42,6 +44,7 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaAtivos,
   criarPortaCategorias,
   criarPortaConfiguracao,
   criarPortaEquipes,
@@ -254,6 +257,16 @@ export const casosDeUsoDeCategorias = memo<CasosDeUsoDeCategorias>(async () => {
   });
 });
 
+/** Ativos do hotel (fase 1a, B3; ADR-029), pelo hk_app. */
+export const casosDeUsoDeAtivos = memo<CasosDeUsoDeAtivos>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeAtivos({
+    ativos: criarPortaAtivos(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
 /** Idioma e região do próprio usuário (F0-10b), pelo hk_app. */
 export const casosDeUsoDePreferencias = memo<CasosDeUsoDePreferencias>(async () =>
   criarCasosDeUsoDePreferencias({ preferencias: criarPortaPreferencias(await acessoBanco()) }),
@@ -261,7 +274,10 @@ export const casosDeUsoDePreferencias = memo<CasosDeUsoDePreferencias>(async () 
 
 /** Operações offline do PWA do técnico (F0-11, ADR-025), pelo hk_app. */
 export const casosDeUsoDeSincronizacao = memo<CasosDeUsoDeSincronizacao>(async () =>
-  criarCasosDeUsoDeSincronizacao({ operacoes: criarPortaOperacoesOffline(await acessoBanco()) }),
+  criarCasosDeUsoDeSincronizacao({
+    operacoes: criarPortaOperacoesOffline(await acessoBanco()),
+    ativos: await casosDeUsoDeAtivos(),
+  }),
 );
 
 let manipuladores: Record<string, Manipulador> | undefined;
