@@ -364,3 +364,25 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - `ativo.cadastrar` sai no contrato; a alteração com versão velha fica rejeitada com `conflito_de_versao`;
   - a tela nos quatro idiomas e no pseudo-idioma.
 - **Pendência de texto:** o ADR-025 (ajuste (b)) ainda diz que o aparelho só guarda a fila. A atualização vai num PR de zona protegida (`docs/03`), depois do #48.
+
+### Ponto de retomada (28/09/2026, etapa B depois da B3 e da B3b, sessão longa)
+- **`main`:** `807f542`, o merge do #47 (0014).
+- **Dev:** 14 migrações, até a 0014, iguais às da `main`; `pnpm db:testar-dev` com 355 ok em 12 arquivos.
+- **PR aberto:** [#48](https://github.com/cesarcoutohubtech/hubkeep/pull/48), B3, migração 0015. A CI está verde fora a zona protegida: pgTAP com o 013 e o meta-teste 18, lint, typecheck e testes. Espera do Cesar:
+  - o merge;
+  - o `db push` da 0015;
+  - a decisão sobre trocar o ativo de local (abaixo).
+- **Branch enviada sem PR:** `1a-b3b-ativos-pwa` (B3b, fora da zona protegida), feita a partir de `1a-b3-ativos`. O PR abre depois do merge do #48, com a base atualizada para a `main`. Este ponto de retomada está nela.
+- **Worktrees em `C:\Cesar\HubKeep\Dev\wt\`:**
+  - `b3-ativos` (branch `1a-b3-ativos`, todo enviado);
+  - `b3b-ativos-pwa` (branch `1a-b3b-ativos-pwa`, todo enviado);
+  - `b1-locais`, `b2-categorias`, `politica-sem-proprietario` e `decisoes-etapa-b`, de branches já mergeadas, que podem ser removidos com `git worktree remove`.
+
+  Nenhum trabalho local fora do GitHub.
+- **Decisões pendentes:**
+  - trocar o ativo de local: hoje é desativar e cadastrar de novo; mover exige exceção no meta-teste 18 para `app.ativo.local_id` e adendo ao ADR-011;
+  - o texto do ADR-025 (ajuste (b)) passa a citar a referência guardada no aparelho (B3b), num PR de zona protegida depois do #48.
+- **Próxima tarefa:**
+  1. depois do merge do #48 e do `db push`, conferir o dev só por leitura: histórico até a 0015 e `pnpm db:testar-dev` (esperado: 381 ok em 13 arquivos, os 355 mais os 26 do 013);
+  2. abrir o PR da B3b: `git rebase origin/main` na worktree `b3b-ativos-pwa`, push e `gh pr create --base main`;
+  3. **B4, anexos de local e ativo** (migração, `app.anexo`; talvez ajuste do ADR-024 para o download do proprietário). Primeiro passo: `git worktree add C:/Cesar/HubKeep/Dev/wt/b4-anexos -b 1a-b4-anexos origin/main`, depois ler o ADR-024 e o fluxo de upload da F0-10 (`auth-admin`, URL assinada).
