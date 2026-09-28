@@ -27,6 +27,7 @@ const fila = (
     aoTrocarIdioma={() => undefined}
     aoEnviarAgora={() => undefined}
     aoDispensar={() => undefined}
+    aoAbrirAtivos={() => undefined}
     aoSair={() => undefined}
   />
 );

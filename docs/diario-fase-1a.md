@@ -2,18 +2,15 @@
 
 Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o aceite foi provado, o PR e o que ficou pendente. As regras de processo são as do `docs/diario-fase-0.md` (zona protegida, ADR só com aprovação explícita, `db push` e `config push` só pelo Cesar, merge não aprova ADR). A execução vai uma etapa por vez, com parada e resumo ao fim de cada etapa.
 
-**Ponto de retomada (Cesar, 28/09/2026):** o Cesar abre uma sessão nova do HubKeep a cada etapa. Ao fechar cada etapa, a última entrada dela é uma seção "Ponto de retomada", com:
-- o estado da `main` (último merge) e das migrações no dev;
-- os PRs abertos e o que espera o Cesar (merge, `db push`, aprovação de ADR);
-- os worktrees e branches locais com trabalho não enviado;
-- as decisões pendentes;
-- a próxima tarefa exata, com o primeiro passo.
-
-**Encerramento de sessão (Cesar, 28/09/2026):** ao fechar cada etapa, e também quando a janela de contexto passar de 60%:
-1. parar no próximo ponto seguro (commit feito, nada pela metade, nenhum comando rodando);
-2. registrar o "Ponto de retomada" no diário;
-3. enviar notificação push com "Sessão pode ser encerrada" e o motivo;
-4. terminar a resposta com a mensagem exata para colar na sessão nova.
+**Ponto de retomada e compactação (Cesar, 28/09/2026, revisto no mesmo dia para economizar o limite semanal):**
+- **Quando parar:** ao fechar cada etapa e quando a janela de contexto passar de 60%, no próximo ponto seguro (commit feito, nada pela metade, nenhum comando rodando).
+- **Ao parar:**
+  1. registrar um "Ponto de retomada" **curto e autossuficiente**: com ele e o `CLAUDE.md`, uma sessão nova retoma sem ler o diário nem o plano inteiros. Traz o estado da `main` e das migrações no dev, os PRs abertos e o que espera o Cesar, os worktrees e branches com trabalho não enviado, as decisões pendentes e a próxima tarefa exata, com o primeiro passo e os arquivos a ler;
+  2. enviar push avisando e sugerindo o `/compact`;
+  3. terminar a resposta com a instrução exata para o Cesar usar no `/compact`.
+- **Sessão nova só em caso de problema.** O Cesar não abre mais sessão nova a cada etapa.
+- **Conferência do dev no início** (de sessão ou depois do `/compact`): só quando houve `db push` desde a última conferência.
+- **Saídas de teste:** só o resumo, com o total, as falhas e o nome do que falhou.
 
 ## Etapa A — Estrutura e administração
 
@@ -344,3 +341,78 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - auditoria de cada gravação e as contas do painel.
 - **Fica para a B3b** (PR fora da zona protegida): a tela de cadastro no PWA. Ela depende de guardar no aparelho hotéis, locais, categorias e ativos, com a limpeza ao sair (ADR-025 b), e de enfileirar `ativo.cadastrar` e `ativo.alterar`. A parte do servidor e a exibição da recusa já estão nesta B3.
 - **Decisão pendente do Cesar:** trocar o ativo de local. O caminho sem mexer no ADR-011 é desativar e cadastrar de novo. Se mover for necessário, a proposta é uma exceção no meta-teste 18 para `app.ativo.local_id`, com adendo ao ADR-011: o proprietário da UH antiga deixa de ver o ativo.
+
+### B3b — Ativos no PWA (sem migração)
+- **Referência no aparelho** (`apps/tecnico/src/referencia/banco.ts`):
+  - hotéis, locais, categorias e ativos num IndexedDB próprio (`hubkeep-tecnico-referencia`), separado da fila para a atualização de um não mexer no outro;
+  - um registro por usuário, com o tenant em que foi lido: outro tenant ou outra pessoa no aparelho não o enxergam;
+  - relida da API (`lerReferencia`, validada pelos contratos) com sessão e rede, e depois de cada envio que tirou algo da fila; sem rede, vale a guardada;
+  - **sair apaga a referência de quem sai** (ADR-025, ajuste (b)), junto com a fila e o tenant.
+- **Tela de ativos** (`telas/Ativos.tsx`), aberta pela fila do dia:
+  - cadastro com local, categoria e os campos dela, fabricante, modelo e número de série; alteração dos ativos guardados;
+  - o aparelho valida com as mesmas regras do domínio que o servidor (`normalizarNomeDeAtivo`, `validarCamposDoAtivo`, `exigirLocalParaAtivo`); a recusa aparece na hora, com `erro.<codigo>`, sem ir à fila;
+  - a gravação vira operação `ativo.cadastrar` ou `ativo.alterar`, e os cadastros aguardando envio aparecem na tela;
+  - a alteração leva a versão guardada, e a referência passa à versão seguinte, para uma segunda alteração sem rede sair em ordem. Se a primeira for recusada, a segunda também volta com `conflito_de_versao`, na lista de recusadas da fila do dia, até o técnico dispensar (ADR-029).
+- **Textos:** a tela reaproveita as chaves `admin.ativos.*` (catálogo compartilhado) e acrescenta 8 `tecnico.ativos.*` nos quatro idiomas.
+- **Aceite** (`apps/tecnico/test/ativos.test.ts` e `telas-ativos.test.tsx`):
+  - a referência é do usuário e do tenant;
+  - sair apaga só a de quem sai, e ela não volta ao reabrir;
+  - `lerReferencia` monta pelos contratos, e qualquer erro dá null;
+  - `ativo.cadastrar` sai no contrato; a alteração com versão velha fica rejeitada com `conflito_de_versao`;
+  - a tela nos quatro idiomas e no pseudo-idioma.
+- **Pendência de texto:** o ADR-025 (ajuste (b)) ainda diz que o aparelho só guarda a fila. A atualização vai num PR de zona protegida (`docs/03`), depois do #48.
+
+### Ponto de retomada (28/09/2026, etapa B depois da B3 e da B3b, sessão longa)
+- **`main`:** `807f542`, o merge do #47 (0014).
+- **Dev:** 14 migrações, até a 0014, iguais às da `main`; `pnpm db:testar-dev` com 355 ok em 12 arquivos.
+- **PR aberto:** [#48](https://github.com/cesarcoutohubtech/hubkeep/pull/48), B3, migração 0015. A CI está verde fora a zona protegida: pgTAP com o 013 e o meta-teste 18, lint, typecheck e testes. Espera do Cesar:
+  - o merge;
+  - o `db push` da 0015;
+  - a decisão sobre trocar o ativo de local (abaixo).
+- **Branch enviada sem PR:** `1a-b3b-ativos-pwa` (B3b, fora da zona protegida), feita a partir de `1a-b3-ativos`. O PR abre depois do merge do #48, com a base atualizada para a `main`. Este ponto de retomada está nela.
+- **Worktrees em `C:\Cesar\HubKeep\Dev\wt\`:**
+  - `b3-ativos` (branch `1a-b3-ativos`, todo enviado);
+  - `b3b-ativos-pwa` (branch `1a-b3b-ativos-pwa`, todo enviado);
+  - `b1-locais`, `b2-categorias`, `politica-sem-proprietario` e `decisoes-etapa-b`, de branches já mergeadas, que podem ser removidos com `git worktree remove`.
+
+  Nenhum trabalho local fora do GitHub.
+- **Decisões pendentes:**
+  - trocar o ativo de local: hoje é desativar e cadastrar de novo; mover exige exceção no meta-teste 18 para `app.ativo.local_id` e adendo ao ADR-011;
+  - o texto do ADR-025 (ajuste (b)) passa a citar a referência guardada no aparelho (B3b), num PR de zona protegida depois do #48.
+- **Próxima tarefa:**
+  1. depois do merge do #48 e do `db push`, conferir o dev só por leitura: histórico até a 0015 e `pnpm db:testar-dev` (esperado: 381 ok em 13 arquivos, os 355 mais os 26 do 013);
+  2. abrir o PR da B3b: `git rebase origin/main` na worktree `b3b-ativos-pwa`, push e `gh pr create --base main`;
+  3. **B4, anexos de local e ativo** (migração, `app.anexo`; talvez ajuste do ADR-024 para o download do proprietário). Primeiro passo: `git worktree add C:/Cesar/HubKeep/Dev/wt/b4-anexos -b 1a-b4-anexos origin/main`, depois ler o ADR-024 e o fluxo de upload da F0-10 (`auth-admin`, URL assinada).
+
+### Dev conferido depois da 0015 (28/09/2026)
+- O Cesar mergeou o #48 e rodou `db push` da 0015.
+- Conferência só de leitura: o histórico do dev tem as 15 migrações da `main`, até a 0015.
+- `pnpm db:testar-dev` passou inteiro: 381 testes ok em 13 arquivos, com o 013 (ativos, 26 casos).
+
+### Decisões do Cesar depois do #48 (28/09/2026)
+- **Mover ativo:** só dentro do mesmo hotel, por uma ação própria de mover, restrita a quem gere o hotel, auditada e com registro de cada movimentação (origem, destino, quando, quem).
+  - O `hotel_id` continua imutável. A exceção no meta-teste 18 vale só para `app.ativo.local_id`, com adendo ao ADR-011.
+  - Entre hotéis, continua desativar e cadastrar de novo.
+  - Entra como tarefa da etapa B: **B3c** no `docs/05`.
+- **ADR-025:** o texto do ajuste (b) passa a citar a referência guardada no aparelho (B3b), num PR de zona protegida. Um PR de zona protegida por vez.
+- **Kit de teste no notebook:** ao fim da etapa C, antes da D, preparar o kit (variáveis do `.env.local` com onde achar cada valor, script de demonstração só para o dev com um usuário por papel criado sem e-mail, roteiro de teste por papel e comandos do PowerShell para subir o web e o PWA). O trabalho para quando o kit estiver pronto. Registrado no `docs/05`, entre as etapas C e D.
+
+### Ponto de retomada (28/09/2026, etapa B, depois da B3c local)
+- **`main`:** `8344e3d` (#48, migração 0015). **Dev:** 15 migrações, até a 0015; `pnpm db:testar-dev` com 381 ok em 13 arquivos. Próxima conferência só depois do `db push` da 0016.
+- **PRs abertos, esperando o Cesar:**
+  - [#49](https://github.com/cesarcoutohubtech/hubkeep/pull/49), B3b (ativos no PWA) e docs (este diário, B3c e kit de teste no `docs/05`). CI verde, fora da zona protegida. O merge automático foi barrado pelo modo automático do Claude Code: merge pelo Cesar;
+  - [#50](https://github.com/cesarcoutohubtech/hubkeep/pull/50), adendo do ADR-025 (dados guardados no aparelho), zona protegida: merge e aprovação do texto.
+- **Branch enviada sem PR:** `1a-b3c-mover-ativo` (worktree `wt/b3c-mover-ativo`, commit `93a0c41`), a B3c inteira:
+  - migração 0016 (`grant update (local_id)` em `app.ativo` e `app.ativo_movimentacao`, só INSERT, com FK composta e RLS que exige o usuário do contexto); meta-teste 18 com a exceção; pgTAP 013 (30 casos) e 014 novo (20);
+  - domínio `podeMoverAtivo` e `validarMovimentacao`; caso de uso `mover` e `listarMovimentacoes`; repositório `moverAtivo` (FOR UPDATE, movimentação, auditoria `mover`, evento `ativo.movido`);
+  - rotas `POST /api/v1/ativos/{id}/movimentacao` e `GET .../movimentacoes`; tela `/admin/ativos` com "Mover" e histórico; 5 textos e 5 códigos de erro nos quatro idiomas;
+  - aceite `packages/db/test/mover-ativo.test.ts`; adendo ao ADR-011 no `docs/03`.
+
+  Lint, typecheck e testes locais verdes. pgTAP e integração ainda não rodaram: só rodam no PR, que abre depois do merge do #50 (um PR de zona protegida por vez).
+- **Worktrees em `C:\Cesar\HubKeep\Dev\wt\`:** `b3b-ativos-pwa` (#49), `adr-025-referencia` (#50), `b3c-mover-ativo` (tudo enviado). Removíveis: `b1-locais`, `b2-categorias`, `b3-ativos`, `politica-sem-proprietario`, `decisoes-etapa-b`.
+- **Decisões pendentes do Cesar:**
+  - aprovar o adendo do ADR-025 (#50) e, quando o PR da B3c abrir, o adendo do ADR-011;
+  - proposta na 0016: o proprietário não lê movimentações no MVP.
+- **Próxima tarefa:**
+  1. depois do merge do #50: na worktree `b3c-mover-ativo`, `git rebase origin/main` (o `docs/03` pode conflitar só no status do ADR-025), acrescentar a entrada "B3c" ao diário, push e `gh pr create --base main`; conferir na CI o pgTAP 013 e 014, o meta-teste 18, o `mover-ativo.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão);
+  2. enquanto isso, a **B4 (anexos de local e ativo)** anda no local: `git worktree add C:/Cesar/HubKeep/Dev/wt/b4-anexos -b 1a-b4-anexos origin/main`; ler o ADR-024 no `docs/03`, `packages/auth-admin`, `apps/web/test/anexos.test.ts`, a migração `20260926135938_storage_anexos.sql` e a linha B4 do `docs/05`. O PR da B4 só abre depois do merge da B3c.

@@ -52,6 +52,7 @@ Fim da etapa A: resumo com as telas, as rotas, as migrações aplicadas no dev e
 | **B1** Locais | UHs vindas do CM, em que os campos do TOTVS são só leitura e o `pendente_licenca` fica visível ao admin. Áreas comuns cadastradas à mão, com desativação lógica. Pendência da A4 (Cesar, 28/09/2026): o hotel vinculado por inteiro, ainda sem nenhum local, passa a aparecer para o proprietário. | UH pendente não recebe chamado (regra do `docs/00`, conferida em C2). Área comum não conta licença. Isolamento por hotel. Proprietário do hotel inteiro vê o hotel sem locais, e não vê outros. | Talvez: corpo de `authz.locais_proprietario()` (ADR-031, meta-teste 11b) | 031 |
 | **B2** Categorias e campos estendidos | Categorias do tenant, com os campos estendidos definidos por categoria, nos tipos comuns com o checklist da 1b e com rótulos nos quatro idiomas. As categorias padrão vêm do catálogo. | Definição inválida dá 422 com código. A mudança de definição não quebra ativo já cadastrado: o campo novo obrigatório só vale para gravações novas. O rótulo cai para o padrão do catálogo quando falta no idioma. | Sim: `app.categoria_ativo` | 028 |
 | **B3** Ativos | Cadastro no web e no PWA, com local, categoria, campos estendidos, fabricante, modelo e número de série. O cadastro pelo celular é operação offline (`ativo.cadastrar`, `ativo.alterar`). | Os campos estendidos são validados contra a categoria. A operação offline não duplica o ativo (reenvio). Conflito de versão aparece no aparelho. Isolamento. | Sim: `app.ativo` | 029 |
+| **B3c** Mover ativo dentro do hotel | Decisão do Cesar (28/09/2026). Ação própria de mover o ativo para outro local **do mesmo hotel**, só por quem gere o hotel (Admin, Gestor CSC, Implantador e Gerente, no escopo), com a versão (ADR-029), auditada e com registro de cada movimentação: origem, destino, quando e quem. O `hotel_id` continua imutável. Entre hotéis, continua desativar e cadastrar de novo. | Move dentro do hotel e grava a movimentação e a auditoria na mesma unit of work. Destino em outro hotel é recusado pela FK composta, mesmo sem a checagem da aplicação. O técnico e o solicitante não movem (403 com código). O proprietário da UH antiga deixa de ver o ativo na transação seguinte, e o da nova passa a ver. Seis casos de isolamento para a tabela nova. | Sim: GRANT de UPDATE em `app.ativo.local_id` e `app.ativo_movimentacao` | Adendo ao ADR-011 (exceção no meta-teste 18 só para `app.ativo.local_id`) |
 | **B4** Anexos de local e ativo | Tabela de anexos, que registra o arquivo do Storage na unit of work (consequência do ADR-024), com upload pelo fluxo da F0-10 e miniatura no aparelho. | Anexo de outro hotel dá 404. O anexo aparece no registro e na auditoria. O download do proprietário vale para a UH dele (pendência do ADR-024). | Sim: `app.anexo` | Talvez: ajuste do ADR-024 para o proprietário |
 | **B5** QR individual | Código curto e aleatório por ativo, único no tenant, com a rota `tecnico.hubkeep.com.br/q/<codigo>`, que abre o ativo pela API respeitando o escopo. A imagem do QR é gerada no cliente. O QR em lote fica para a 1b. | Código de outro tenant ou fora do escopo dá 404. O código não revela o id do ativo. O QR impresso abre o ativo no PWA, inclusive offline, se o ativo estiver no aparelho. | Sim: `codigo_qr` em `app.ativo` | — |
 | **B6** Busca sem acento | Coluna `busca` (sem acento e minúscula), gravada pela aplicação com a função de `packages/i18n`, em locais, ativos e chamados, com índice GIN de trigramas (`pg_trgm`). | "acucar" acha "Açúcar", e "frig" acha "Refrigerador". Termo com menos de 3 caracteres dá código próprio. Nenhuma função nova no projeto: o meta-teste 11 continua fechado. Um meta-teste novo fecha a lista de extensões. | Sim: extensão, colunas e índices | 030 |
@@ -72,6 +73,20 @@ Fim da etapa B: resumo.
 
 Fim da etapa C: resumo.
 
+### Kit de teste no notebook do Cesar (entre as etapas C e D)
+
+Decisão do Cesar (28/09/2026). Ao fim da etapa C, antes de começar a D, preparar um kit para o Cesar testar a aplicação no notebook dele, ligada ao projeto de dev (`HubKeep-dev`). **O trabalho para quando o kit estiver pronto**, e a etapa D só começa com o aval dele.
+
+- **Variáveis do `.env.local`** do web e do PWA: a lista completa, com onde achar cada valor (painel do Supabase, cofre de senhas dos papéis, Vercel) e o que não pode ir para o git.
+- **Script de dados de demonstração, só para o dev:**
+  - recusa rodar fora do dev (ambiente declarado, ADR-020);
+  - cria um tenant de demonstração, hotéis, bandeira, locais, categorias, ativos e, depois da etapa C, chamados e OS;
+  - cria **um usuário por papel** (Admin do grupo, Gestor CSC, Implantador, Gerente, Técnico, Solicitante, proprietário de UH e de hotel inteiro) **sem e-mail**: conta no Auth com a confirmação já feita e senha de teste, sem convite enviado;
+  - grava pelas unit of work da aplicação (auditoria e outbox), nunca por INSERT direto;
+  - pode rodar de novo sem duplicar.
+- **Roteiro de teste por papel:** o que cada um deve conseguir fazer e o que deve ser barrado, tela por tela, no web e no PWA, incluindo o PWA sem rede.
+- **Comandos do PowerShell** para instalar, subir o web (`localhost:3000`) e o PWA (`localhost:5173`) e rodar o script de demonstração.
+
 ## Etapa D — Auditoria
 
 | Tarefa | O quê | Aceite | Migração | ADR |
@@ -82,8 +97,8 @@ Fim da etapa D e da fase 1a: resumo, com a lista do que ficou para a 1b e a 1c.
 
 ## Resumo de migrações e ADRs
 
-- **Migrações previstas** (cada uma para no PR): A2, A4, A6, A7, B2, B3, B4, B5, B6, C1, C2, C3, C4, C5 e talvez D1. Onde der, as migrações de uma mesma tarefa vão juntas, para reduzir as paradas.
-- **ADRs:** 026 a 029 aprovados com condições; 030 (`pg_trgm`) e 031 (proprietário de hotel) decididos pelo Cesar, com texto para aprovação; talvez um ajuste do ADR-024 (B4, download do proprietário).
+- **Migrações previstas** (cada uma para no PR): A2, A4, A6, A7, B2, B3, B3c, B4, B5, B6, C1, C2, C3, C4, C5 e talvez D1. Onde der, as migrações de uma mesma tarefa vão juntas, para reduzir as paradas.
+- **ADRs:** 026 a 029 aprovados com condições; 030 (`pg_trgm`) e 031 (proprietário de hotel) decididos pelo Cesar, com texto para aprovação; talvez um ajuste do ADR-024 (B4, download do proprietário); adendo ao ADR-011 (B3c, mover ativo dentro do hotel); ajuste de texto do ADR-025 (dados de referência guardados no aparelho, B3b).
 
 ## Decisões do Cesar sobre o plano (26/09/2026)
 
