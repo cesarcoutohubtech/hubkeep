@@ -27,7 +27,7 @@ const ROTULO_DA_OPERACAO: Record<OperacaoNaFila['tipo'], Chave> = {
 };
 
 /** Motivo pelo catálogo (erro.<codigo>); código desconhecido aparece como está. */
-function useMotivo(): (codigo: string) => string {
+export function useMotivo(): (codigo: string) => string {
   const intl = useIntl();
   const t = useT();
   return (codigo) =>
@@ -43,6 +43,7 @@ export function FilaDoDia(props: {
   aoTrocarIdioma: (idioma: IdiomaDeExibicao) => void;
   aoEnviarAgora: () => void;
   aoDispensar: (chave: string) => void;
+  aoAbrirAtivos: () => void;
   aoSair: () => void;
 }) {
   const t = useT();
@@ -99,6 +100,8 @@ export function FilaDoDia(props: {
           ))}
         </select>
       </label>
+
+      <button onClick={props.aoAbrirAtivos}>{t('tecnico.ativos.abrir')}</button>
 
       <section>
         <h2>{t('tecnico.fila.titulo')}</h2>

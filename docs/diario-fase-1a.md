@@ -344,3 +344,23 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - auditoria de cada gravação e as contas do painel.
 - **Fica para a B3b** (PR fora da zona protegida): a tela de cadastro no PWA. Ela depende de guardar no aparelho hotéis, locais, categorias e ativos, com a limpeza ao sair (ADR-025 b), e de enfileirar `ativo.cadastrar` e `ativo.alterar`. A parte do servidor e a exibição da recusa já estão nesta B3.
 - **Decisão pendente do Cesar:** trocar o ativo de local. O caminho sem mexer no ADR-011 é desativar e cadastrar de novo. Se mover for necessário, a proposta é uma exceção no meta-teste 18 para `app.ativo.local_id`, com adendo ao ADR-011: o proprietário da UH antiga deixa de ver o ativo.
+
+### B3b — Ativos no PWA (sem migração)
+- **Referência no aparelho** (`apps/tecnico/src/referencia/banco.ts`):
+  - hotéis, locais, categorias e ativos num IndexedDB próprio (`hubkeep-tecnico-referencia`), separado da fila para a atualização de um não mexer no outro;
+  - um registro por usuário, com o tenant em que foi lido: outro tenant ou outra pessoa no aparelho não o enxergam;
+  - relida da API (`lerReferencia`, validada pelos contratos) com sessão e rede, e depois de cada envio que tirou algo da fila; sem rede, vale a guardada;
+  - **sair apaga a referência de quem sai** (ADR-025, ajuste (b)), junto com a fila e o tenant.
+- **Tela de ativos** (`telas/Ativos.tsx`), aberta pela fila do dia:
+  - cadastro com local, categoria e os campos dela, fabricante, modelo e número de série; alteração dos ativos guardados;
+  - o aparelho valida com as mesmas regras do domínio que o servidor (`normalizarNomeDeAtivo`, `validarCamposDoAtivo`, `exigirLocalParaAtivo`); a recusa aparece na hora, com `erro.<codigo>`, sem ir à fila;
+  - a gravação vira operação `ativo.cadastrar` ou `ativo.alterar`, e os cadastros aguardando envio aparecem na tela;
+  - a alteração leva a versão guardada, e a referência passa à versão seguinte, para uma segunda alteração sem rede sair em ordem. Se a primeira for recusada, a segunda também volta com `conflito_de_versao`, na lista de recusadas da fila do dia, até o técnico dispensar (ADR-029).
+- **Textos:** a tela reaproveita as chaves `admin.ativos.*` (catálogo compartilhado) e acrescenta 8 `tecnico.ativos.*` nos quatro idiomas.
+- **Aceite** (`apps/tecnico/test/ativos.test.ts` e `telas-ativos.test.tsx`):
+  - a referência é do usuário e do tenant;
+  - sair apaga só a de quem sai, e ela não volta ao reabrir;
+  - `lerReferencia` monta pelos contratos, e qualquer erro dá null;
+  - `ativo.cadastrar` sai no contrato; a alteração com versão velha fica rejeitada com `conflito_de_versao`;
+  - a tela nos quatro idiomas e no pseudo-idioma.
+- **Pendência de texto:** o ADR-025 (ajuste (b)) ainda diz que o aparelho só guarda a fila. A atualização vai num PR de zona protegida (`docs/03`), depois do #48.

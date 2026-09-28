@@ -1,8 +1,16 @@
 // Cliente da API /api/v1 para o PWA: o access token do Supabase no cabeçalho
 // Authorization e o tenant em x-hubkeep-tenant (docs/01). O PWA fala só com a
 // API; o navegador nunca acessa tabelas.
-import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from '@hubkeep/contratos';
+import {
+  PedidoDeOperacaoOffline,
+  RespostaDeAtivosDoHotel,
+  RespostaDeCategorias,
+  RespostaDeHoteis,
+  RespostaDeLocaisDoHotel,
+  RespostaDeOperacaoOffline,
+} from '@hubkeep/contratos';
 import type { OperacaoNaFila } from './fila/banco';
+import type { Referencia } from './referencia/banco';
 import { type Envio, type ResultadoDoEnvio, vaiTentarDeNovo } from './fila/sincronizar';
 
 export interface Credenciais {
@@ -77,6 +85,54 @@ export async function lerPreferencias(
   try {
     const r = await requisitar(`${baseDaApi()}/api/v1/preferencias`, { headers: h });
     return r.ok ? ((await r.json()) as PreferenciasDoServidor) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Referência do técnico (B3b): hotéis visíveis, com locais e ativos de cada um,
+ * e as categorias do tenant, validados pelos contratos. null sem rede, sem
+ * sessão ou com qualquer resposta que não seja 200: fica valendo a guardada.
+ */
+export async function lerReferencia(
+  c: Credenciais,
+  requisitar: typeof fetch = fetch,
+): Promise<Referencia | null> {
+  const h = await cabecalhos(c);
+  const usuarioId = c.usuarioId();
+  const tenantId = c.tenant();
+  if (!h || !usuarioId || !tenantId) return null;
+  const ler = async (caminho: string): Promise<unknown> => {
+    const r = await requisitar(`${baseDaApi()}${caminho}`, { headers: h });
+    if (!r.ok) throw new Error(`http_${r.status}`);
+    return r.json();
+  };
+  try {
+    const [{ hoteis }, categorias] = await Promise.all([
+      ler('/api/v1/hoteis').then((d) => RespostaDeHoteis.parse(d)),
+      ler('/api/v1/categorias-de-ativo').then((d) => RespostaDeCategorias.parse(d)),
+    ]);
+    const locais: Referencia['locais'] = {};
+    const ativos: Referencia['ativos'] = {};
+    for (const hotel of hoteis) {
+      const [l, a] = await Promise.all([
+        ler(`/api/v1/hoteis/${hotel.id}/locais`).then((d) => RespostaDeLocaisDoHotel.parse(d)),
+        ler(`/api/v1/hoteis/${hotel.id}/ativos`).then((d) => RespostaDeAtivosDoHotel.parse(d)),
+      ]);
+      locais[hotel.id] = l.locais.map(({ id, nome, status }) => ({ id, nome, status }));
+      ativos[hotel.id] = a.ativos;
+    }
+    return {
+      usuarioId,
+      tenantId,
+      hoteis: hoteis.map(({ id, nome }) => ({ id, nome })),
+      locais,
+      ativos,
+      idiomaPadrao: categorias.idiomaPadrao,
+      categorias: categorias.categorias,
+      lidaEm: Date.now(),
+    };
   } catch {
     return null;
   }
