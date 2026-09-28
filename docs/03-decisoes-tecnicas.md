@@ -501,8 +501,9 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Consequências:** o custo da função cresce com um `union`, desprezível para os volumes previstos (reavaliação da carga na 1c, ADR-004).
 
-**Adendo (28/09/2026, B1; proposto, aguarda aprovação do Cesar):** hotel vinculado por inteiro e ainda sem nenhum local não aparecia para o proprietário, porque a visibilidade do hotel vinha só do `hotel_id` dos locais.
+**Adendo (28/09/2026, B1; aprovado por Cesar em 28/09/2026, valendo só para a leitura de `app.hotel`):** hotel vinculado por inteiro e ainda sem nenhum local não aparecia para o proprietário, porque a visibilidade do hotel vinha só do `hotel_id` dos locais.
 - **Função nova `authz.hoteis_proprietario()`** (migração 0012): devolve os hotéis dos vínculos `app.hotel_proprietario` vigentes do proprietário ligado ao usuário. É `security definer`, dona `hk_authz`, com `search_path` vazio, como as outras. É uma função e não uma leitura direta na policy porque só o Admin lê `app.hotel_proprietario`.
-- **Onde entra:** nas policies de leitura de `app.hotel` (o hotel vinculado, com ou sem locais) e de `app.politica` (a política desse hotel e as do grupo). Não entra em `authz.hoteis_leitura()`: o proprietário não passa a ler o que é escopo só por hotel, como equipes, e continua sem escrita.
+- **Onde entra:** só na policy de leitura de `app.hotel` (o hotel vinculado, com ou sem locais). Não entra em `authz.hoteis_leitura()`: o proprietário não passa a ler o que é escopo só por hotel, como equipes, e continua sem escrita.
+- **Políticas:** o proprietário não lê políticas no MVP, por falta de uso concreto (decisão do Cesar, 28/09/2026). A migração 0013 tira da leitura de `app.politica` todos os caminhos do proprietário: `hoteis_proprietario()`, que a 0012 tinha posto, e `locais_proprietario()`, pela qual o dono de UH e o dono de hotel com locais liam as do hotel e as do grupo desde a 0010.
 - **`authz.locais_proprietario()` continua devolvendo só locais de verdade.** O pgTAP 010 garante que ela nunca devolve `local_id` nulo. Uma primeira versão da B1 usava `left join` e devolvia `(nulo, hotel)` para o hotel sem locais; o Cesar recusou (28/09/2026), porque um nulo no escopo é armadilha para policy futura.
 - A lista do meta-teste 11 e a impressão do 11b ganham a função nova no mesmo PR (regra 4).
