@@ -4,7 +4,9 @@
 // Os campos estendidos são validados contra a categoria; a alteração leva a
 // versão que o usuário viu. O cadastro e a alteração pelo celular chegam pela
 // fila offline (ADR-025) e usam os mesmos preparar*, antes da unit of work da
-// operação. A regra é injetável para o teste provar que a RLS ainda barra.
+// operação. Mover o ativo de local (B3c) é ação própria, só de quem gere o
+// hotel, dentro do mesmo hotel, e não vai pela fila offline (o técnico não
+// move). As regras são injetáveis para o teste provar que o banco ainda barra.
 import {
   type Atribuicao,
   type CategoriaParaAtivo,
@@ -19,9 +21,16 @@ import {
   normalizarNomeDeAtivo,
   normalizarTextoDoAtivo,
   podeGerirAtivos,
+  podeMoverAtivo,
   validarCamposDoAtivo,
+  validarMovimentacao,
 } from '@hubkeep/dominio';
-import type { AtivoGravado, DadosDeAtivo, PortaAtivos } from '../portas/ativos';
+import type {
+  AtivoGravado,
+  DadosDeAtivo,
+  MovimentacaoDeAtivo,
+  PortaAtivos,
+} from '../portas/ativos';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 
 export interface PedidoDeGravacaoDeAtivo {
@@ -38,6 +47,12 @@ export interface PedidoDeCadastroDeAtivo extends PedidoDeGravacaoDeAtivo {
 }
 
 export interface PedidoDeAlteracaoDeAtivo extends PedidoDeGravacaoDeAtivo {
+  /** A versão que o usuário viu (ADR-029). */
+  versao: number;
+}
+
+export interface PedidoDeMovimentacaoDeAtivo {
+  localDestinoId: string;
   /** A versão que o usuário viu (ADR-029). */
   versao: number;
 }
@@ -71,6 +86,12 @@ export interface CasosDeUsoDeAtivos {
   alterar(ctx: Contexto, ativoId: string, p: PedidoDeAlteracaoDeAtivo): Promise<{ versao: number }>;
   desativar(ctx: Contexto, ativoId: string, versao: number): Promise<{ versao: number }>;
   reativar(ctx: Contexto, ativoId: string, versao: number): Promise<{ versao: number }>;
+  mover(
+    ctx: Contexto,
+    ativoId: string,
+    p: PedidoDeMovimentacaoDeAtivo,
+  ): Promise<{ versao: number }>;
+  listarMovimentacoes(ctx: Contexto, ativoId: string): Promise<MovimentacaoDeAtivo[]>;
 }
 
 export function criarCasosDeUsoDeAtivos(deps: {
@@ -83,8 +104,18 @@ export function criarCasosDeUsoDeAtivos(deps: {
     hotel: { id: string; bandeiraId: string | null },
     agora: Date,
   ) => Resultado;
+  /** Padrão: podeMoverAtivo do domínio. Só o teste de aceite troca. */
+  podeMover?: (
+    minhas: readonly Atribuicao[],
+    hotel: { id: string; bandeiraId: string | null },
+    agora: Date,
+  ) => Resultado;
+  /** Padrão: validarMovimentacao do domínio. Só o teste de aceite troca. */
+  validarMover?: typeof validarMovimentacao;
 }): CasosDeUsoDeAtivos {
   const podeGerir = deps.podeGerir ?? podeGerirAtivos;
+  const podeMover = deps.podeMover ?? podeMoverAtivo;
+  const validarMover = deps.validarMover ?? validarMovimentacao;
   const hotelVisivel = async (ctx: Contexto, hotelId: string) => {
     const h = await deps.ativos.hotel(ctx, hotelId);
     if (!h) throw new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
@@ -169,6 +200,27 @@ export function criarCasosDeUsoDeAtivos(deps: {
       const a = await ativoVisivel(ctx, ativoId);
       await exigirNoHotel(ctx, a.hotelId);
       return deps.ativos.alterar(ctx, ativoId, versao, { desativado: false });
+    },
+    async mover(ctx, ativoId, p) {
+      const a = await ativoVisivel(ctx, ativoId);
+      exigir(
+        podeMover(
+          await deps.atribuicoes.doUsuario(ctx),
+          await hotelVisivel(ctx, a.hotelId),
+          deps.relogio.agora(),
+        ),
+      );
+      const destino = await deps.ativos.local(ctx, p.localDestinoId);
+      if (!destino) throw new NaoEncontrado('local_nao_encontrado', 'Local não encontrado.');
+      validarMover(
+        { hotelId: a.hotelId, localId: a.localId, desativado: a.desativadoEm !== null },
+        destino,
+      );
+      return deps.ativos.mover(ctx, ativoId, p.versao, destino.id);
+    },
+    async listarMovimentacoes(ctx, ativoId) {
+      await ativoVisivel(ctx, ativoId);
+      return deps.ativos.movimentacoes(ctx, ativoId);
     },
   };
   return casos;

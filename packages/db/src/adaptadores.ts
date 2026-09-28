@@ -48,7 +48,7 @@ import {
   definirBandeiraDoHotel,
   renomearBandeira,
 } from './repositorios/bandeiras';
-import { alterarAtivo, criarAtivo } from './repositorios/ativos';
+import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { gravarConvite } from './repositorios/convites';
 import { alterarLocal, criarAreaComum } from './repositorios/locais';
@@ -676,6 +676,39 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
       banco.executar(ctx, (uow) => criarAtivo(uow, hotelId, localId, dados)),
     alterar: (ctx, ativoId, versaoEsperada, mudanca) =>
       banco.executar(ctx, (uow) => alterarAtivo(uow, ativoId, versaoEsperada, mudanca)),
+    mover: (ctx, ativoId, versaoEsperada, localDestinoId) =>
+      banco.executar(ctx, (uow) => moverAtivo(uow, ativoId, versaoEsperada, localDestinoId)),
+    movimentacoes: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.ativo_movimentacao as mv')
+            .leftJoin('app.membro as m', (j) =>
+              j
+                .onRef('m.tenant_id', '=', 'mv.tenant_id')
+                .onRef('m.usuario_id', '=', 'mv.usuario_id'),
+            )
+            .select([
+              'mv.id',
+              'mv.local_origem_id',
+              'mv.local_destino_id',
+              'mv.usuario_id',
+              'mv.movido_em',
+              'm.nome',
+            ])
+            .where('mv.ativo_id', '=', ativoId)
+            .orderBy('mv.movido_em', 'desc')
+            .orderBy('mv.id', 'desc')
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          localOrigemId: m.local_origem_id,
+          localDestinoId: m.local_destino_id,
+          usuarioId: m.usuario_id,
+          nomeUsuario: m.nome,
+          movidoEm: m.movido_em,
+        })),
+      ),
   };
 }
 

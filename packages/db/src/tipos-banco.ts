@@ -50,6 +50,17 @@ export interface AppAtivo {
   versao: Generated<number>;
 }
 
+export interface AppAtivoMovimentacao {
+  ativo_id: string;
+  hotel_id: string;
+  id: string;
+  local_destino_id: string;
+  local_origem_id: string;
+  movido_em: Generated<Timestamp>;
+  tenant_id: string;
+  usuario_id: string;
+}
+
 export interface AppAtribuicaoEscopo {
   bandeira_id: string | null;
   concedido_em: Generated<Timestamp>;
@@ -284,6 +295,7 @@ export interface StagingRegistroExterno {
 
 export interface DB {
   "app.ativo": AppAtivo;
+  "app.ativo_movimentacao": AppAtivoMovimentacao;
   "app.atribuicao_escopo": AppAtribuicaoEscopo;
   "app.auditoria": AppAuditoria;
   "app.bandeira": AppBandeira;

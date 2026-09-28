@@ -2,10 +2,12 @@
 // Ativos do hotel (fase 1a, B3; ADR-028 e ADR-029): cadastro com local,
 // categoria, campos estendidos da categoria, fabricante, modelo e número de
 // série; alteração com a versão vista (se outra pessoa gravou antes, a API
-// recusa com conflito_de_versao e a tela recarrega). O local não muda depois
-// do cadastro. Tela funcional, sem acabamento: o layout vem do protótipo.
+// recusa com conflito_de_versao e a tela recarrega). O local só muda pela
+// ação de mover, para outro local do mesmo hotel (B3c), com o histórico das
+// movimentações. Tela funcional, sem acabamento: o layout vem do protótipo.
 import { type Idioma, resolverNome } from '@hubkeep/i18n';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
 import { useIdioma, useMensagemDeErro, useT } from '../../../i18n/cliente';
 
@@ -58,6 +60,15 @@ interface Ativo {
   campos: Record<string, Valor>;
   versao: number;
   ativo: boolean;
+}
+
+interface Movimentacao {
+  id: string;
+  localOrigemId: string;
+  localDestinoId: string;
+  usuarioId: string;
+  nomeUsuario: string | null;
+  movidoEm: string;
 }
 
 type Aviso = { tipo: 'ok' } | { tipo: 'erro'; erro: ErroDaApi };
@@ -234,6 +245,82 @@ function FormularioDeAtivo({
   );
 }
 
+/** Mover o ativo para outro local do hotel (B3c) e ver as movimentações. */
+function MoverAtivo({
+  ativo,
+  locais,
+  executar,
+}: {
+  ativo: Ativo;
+  locais: readonly Local[];
+  executar: (caminho: string, init: RequestInit) => Promise<void>;
+}) {
+  const t = useT();
+  const intl = useIntl();
+  const mensagemDeErro = useMensagemDeErro();
+  const [historico, setHistorico] = useState<Movimentacao[] | null>(null);
+  const [erro, setErro] = useState<ErroDaApi | null>(null);
+  const nomeDoLocal = (id: string) => locais.find((l) => l.id === id)?.nome ?? id;
+  const destinos = locais.filter((l) => l.status !== 'inativo' && l.id !== ativo.localId);
+
+  function mover(ev: FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    const localDestinoId = String(new FormData(ev.currentTarget).get('localDestinoId') ?? '');
+    void executar(`/api/v1/ativos/${ativo.id}/movimentacao`, {
+      method: 'POST',
+      body: JSON.stringify({ localDestinoId, versao: ativo.versao }),
+    });
+  }
+
+  async function verHistorico() {
+    const r = await chamarApi<{ movimentacoes: Movimentacao[] }>(
+      `/api/v1/ativos/${ativo.id}/movimentacoes`,
+    );
+    if (r.ok) setHistorico(r.dados.movimentacoes);
+    else setErro(r.erro);
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 4 }}>
+      {ativo.ativo && destinos.length > 0 && (
+        <form onSubmit={mover} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <select name="localDestinoId" aria-label={t('admin.ativos.mover.destino')} required>
+            {destinos.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nome}
+              </option>
+            ))}
+          </select>
+          <button type="submit">{t('admin.ativos.acao.mover')}</button>
+        </form>
+      )}
+      <button type="button" onClick={() => void verHistorico()}>
+        {t('admin.ativos.acao.ver_movimentacoes')}
+      </button>
+      {erro && <small role="alert">{mensagemDeErro(erro)}</small>}
+      {historico &&
+        (historico.length === 0 ? (
+          <small>{t('admin.ativos.mover.sem_movimentacoes')}</small>
+        ) : (
+          <ul>
+            {historico.map((m) => (
+              <li key={m.id}>
+                <small>
+                  {t('admin.ativos.mover.linha', {
+                    origem: nomeDoLocal(m.localOrigemId),
+                    destino: nomeDoLocal(m.localDestinoId),
+                    quem: m.nomeUsuario ?? m.usuarioId,
+                    quando: intl.formatDate(m.movidoEm, { dateStyle: 'short', timeStyle: 'short' }),
+                  })}
+                </small>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </div>
+  );
+}
+
 export default function AtivosDoHotel() {
   const t = useT();
   const { idioma } = useIdioma();
@@ -334,7 +421,7 @@ export default function AtivosDoHotel() {
             ) : (
               <ul style={{ display: 'grid', gap: 6, padding: 0, listStyle: 'none' }}>
                 {ativos.map((a) => (
-                  <li key={`${a.id}|${a.versao}`}>
+                  <li key={`${a.id}|${a.versao}`} style={{ display: 'grid', gap: 4 }}>
                     <FormularioDeAtivo
                       ativo={a}
                       locais={locais}
@@ -343,6 +430,7 @@ export default function AtivosDoHotel() {
                       rotulo={rotulo}
                       executar={executar}
                     />
+                    <MoverAtivo ativo={a} locais={locais} executar={executar} />
                   </li>
                 ))}
               </ul>

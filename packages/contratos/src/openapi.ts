@@ -27,9 +27,11 @@ import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from '.
 import {
   PedidoDeAlteracaoDeAtivo,
   PedidoDeCadastroDeAtivo,
+  PedidoDeMovimentacaoDeAtivo,
   PedidoDeVersaoDeAtivo,
   RespostaDeAtivoGravado,
   RespostaDeAtivosDoHotel,
+  RespostaDeMovimentacoesDoAtivo,
 } from './ativos';
 import { PedidoDeAreaComum, RespostaDeLocaisDoHotel, RespostaDeLocalAlterado } from './locais';
 import {
@@ -204,7 +206,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'put',
     caminho: '/api/v1/ativos/{id}',
     resumo:
-      'Altera o ativo (o local não muda). Leva a versão vista; se o ativo mudou nesse meio-tempo, 409 (ADR-029).',
+      'Altera o ativo (o local só muda por /movimentacao). Leva a versão vista; se o ativo mudou nesse meio-tempo, 409 (ADR-029).',
     exigeTenant: true,
     corpo: PedidoDeAlteracaoDeAtivo,
     respostas: {
@@ -244,6 +246,36 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Fora do escopo (ativos_fora_do_escopo).'),
       404: ERRO('Ativo não encontrado (ativo_nao_encontrado).'),
       409: ERRO('O ativo mudou (conflito_de_versao, com versaoAtual).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/movimentacao',
+    resumo:
+      'Move o ativo para outro local do mesmo hotel. Admin, Gestor CSC, Implantador ou Gerente do hotel; o técnico não move. Leva a versão vista; grava a movimentação e a auditoria. Entre hotéis: desativar e cadastrar de novo.',
+    exigeTenant: true,
+    corpo: PedidoDeMovimentacaoDeAtivo,
+    respostas: {
+      200: { descricao: 'Ativo movido, com a versão nova', esquema: RespostaDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (mover_ativo_fora_do_escopo).'),
+      404: ERRO('ativo_nao_encontrado ou local_nao_encontrado.'),
+      409: ERRO('O ativo mudou (conflito_de_versao, com versaoAtual).'),
+      422: ERRO(
+        'mover_ativo_entre_hoteis, mover_ativo_mesmo_local, mover_ativo_local_inativo, ativo_desativado ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/ativos/{id}/movimentacoes',
+    resumo:
+      'Movimentações do ativo entre locais do hotel (origem, destino, quem e quando), da mais nova para a mais velha. O proprietário não lê movimentações.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Movimentações do ativo', esquema: RespostaDeMovimentacoesDoAtivo },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
     },
   },
   {
