@@ -516,7 +516,7 @@ export function criarPortaLocais(banco: AcessoBanco): PortaLocais {
             .selectFrom('app.local')
             .select(colunas)
             .where('hotel_id', '=', hotelId)
-            .orderBy('tipo', 'desc')
+            .orderBy('tipo') // enum app.local_tipo: 'uh' antes de 'area_comum' (ordem da declaração)
             .orderBy('nome')
             .execute()
         ).map(paraLocal),
