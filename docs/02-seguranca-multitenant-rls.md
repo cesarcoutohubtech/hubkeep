@@ -130,11 +130,17 @@ Casos mínimos no teste de isolamento para cada tabela nova:
 - Sem contexto, nada é visível.
 - FK composta rejeita referência a hotel ou local de outro tenant.
 
-Os casos de cada tabela ficam em `supabase/tests/database/003_isolamento_por_tabela.test.sql`, junto com os do `hk_ingestao`. Quando um caso não se aplica à tabela (sem `hotel_id`, ou sem FK para outra tabela do tenant), o motivo fica escrito no bloco dela. Tabela nova entra ali, nos seis blocos.
+Cada tabela nova tem arquivo próprio, `supabase/tests/database/0NN_isolamento_<tabela>.test.sql` (decisão do Cesar, 28/09/2026), com os seis casos. Um arquivo por tabela evita que PRs paralelos conflitem no mesmo teste. Quando um caso não se aplica à tabela (sem `hotel_id`, ou sem FK para outra tabela do tenant), o motivo fica escrito no cabeçalho do arquivo. As tabelas da fase 0 continuam no `003_isolamento_por_tabela.test.sql`, junto com os casos do `hk_ingestao`.
 
 ## Checklist de PR que mexe no banco
 
-- [ ] Tabela nova segue o modelo acima e tem casos no teste de isolamento.
+- [ ] Tabela nova segue o modelo acima e tem o arquivo `0NN_isolamento_<tabela>.test.sql` com os seis casos mínimos:
+  - [ ] Admin do tenant B não vê linhas do tenant A;
+  - [ ] gerente de um hotel não vê nem grava linhas de outro hotel;
+  - [ ] proprietário vê só linhas das próprias UHs (ou do hotel inteiro vinculado a ele) e não grava;
+  - [ ] implantador vencido não vê nada;
+  - [ ] sem contexto, nada é visível;
+  - [ ] FK composta rejeita referência a hotel ou local de outro tenant.
 - [ ] Nenhuma trigger, nenhuma função fora da lista, nenhuma regra de negócio em SQL.
 - [ ] Nenhum GRANT para `anon`, `authenticated` ou `public`; nenhum DELETE.
 - [ ] UPDATE concedido só nas colunas mutáveis.
