@@ -21,6 +21,7 @@ import { sincronizar } from './fila/sincronizar';
 import { ProvedorDeIdioma, guardarIdioma, idiomaInicial } from './i18n';
 import { apagarDadosLocais } from './saida';
 import { supabase, tenantDaSessao } from './sessao';
+import { criarFotos } from './anexos/fotos';
 import { Ativos, type CadastroPendente, type GravacaoDeAtivo } from './telas/Ativos';
 import { type EstadoDaFila, FilaDoDia } from './telas/FilaDoDia';
 import { Login } from './telas/Login';
@@ -72,6 +73,7 @@ function Casca(props: {
     }),
     [],
   );
+  const fotos = useMemo(() => criarFotos(credenciais), [credenciais]);
 
   const atualizarEstado = useCallback(async () => {
     const usuarioId = sessaoAtual.current?.user.id;
@@ -266,6 +268,8 @@ function Casca(props: {
         aoCadastrar={cadastrarAtivo}
         aoAlterar={alterarAtivo}
         aoVoltar={() => setTela('fila')}
+        fotos={fotos}
+        online={online}
       />
     );
   }

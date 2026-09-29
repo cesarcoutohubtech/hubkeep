@@ -6,6 +6,11 @@ import { PedidoDeConvite, RespostaDeConvite, RespostaDeHoteis, RespostaDeSessao 
 import {
   PedidoDeUrlDeDownload,
   PedidoDeUrlDeUpload,
+  PedidoDeRegistroDeAnexo,
+  PedidoDeUrlDoAnexo,
+  RespostaDeAnexoRegistrado,
+  RespostaDeAnexoRemovido,
+  RespostaDeAnexos,
   RespostaDeUrlDeDownload,
   RespostaDeUrlDeUpload,
 } from './anexos';
@@ -412,6 +417,60 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'URL de download (5 minutos)', esquema: RespostaDeUrlDeDownload },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Anexo fora do escopo do usuário (anexo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/anexos',
+    resumo:
+      'Registra o arquivo enviado com a URL de upload (e a miniatura gerada no aparelho), com auditoria (B4).',
+    exigeTenant: true,
+    corpo: PedidoDeRegistroDeAnexo,
+    respostas: {
+      201: { descricao: 'Anexo registrado', esquema: RespostaDeAnexoRegistrado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem só lê o hotel não anexa (anexo_sem_escrita_no_hotel).'),
+      404: ERRO('Registro fora do escopo do usuário (registro_nao_encontrado).'),
+      409: ERRO('O arquivo já foi registrado (anexo_ja_registrado).'),
+      422: ERRO(
+        'caminho_de_anexo_invalido, miniatura_invalida, anexo_nome_invalido ou entrada_invalida.',
+      ),
+    },
+  },
+  ...(['hoteis', 'locais', 'ativos'] as const).map((recurso): Rota => ({
+    metodo: 'get',
+    caminho: `/api/v1/${recurso}/{id}/anexos`,
+    resumo:
+      'Anexos do registro, do mais novo para o mais antigo. O proprietário vê os dos locais dele e dos ativos que estão neles (B4).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Anexos', esquema: RespostaDeAnexos },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Registro fora do escopo do usuário (registro_nao_encontrado).'),
+    },
+  })),
+  {
+    metodo: 'post',
+    caminho: '/api/v1/anexos/{id}/url-de-download',
+    resumo: 'URL de 5 minutos para o arquivo ou a miniatura de um anexo registrado (B4).',
+    exigeTenant: true,
+    corpo: PedidoDeUrlDoAnexo,
+    respostas: {
+      200: { descricao: 'URL de download (5 minutos)', esquema: RespostaDeUrlDeDownload },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Anexo fora do escopo, removido ou sem miniatura (anexo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/anexos/{id}/remocao',
+    resumo: 'Remove o anexo (exclusão lógica; o arquivo fica no Storage).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Anexo removido', esquema: RespostaDeAnexoRemovido },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só quem enviou ou quem gere o hotel (remover_anexo_fora_do_escopo).'),
+      404: ERRO('Anexo fora do escopo ou já removido (anexo_nao_encontrado).'),
     },
   },
   {

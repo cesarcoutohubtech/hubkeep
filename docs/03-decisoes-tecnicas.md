@@ -383,8 +383,22 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Consequências:**
 - Na fase 0, recebem anexo `hotel` e `local`; OS, chamado e ativo entram na fase 1a, com a tabela de anexos e o registro do anexo na unit of work.
-- O download pelo proprietário (UH própria) fica para quando existirem anexos de OS: hoje a leitura usa `authz.hoteis_leitura`, que não inclui o proprietário por UH.
+- O download pelo proprietário (UH própria) fica para quando existirem anexos de OS: hoje a leitura usa `authz.hoteis_leitura`, que não inclui o proprietário por UH. Resolvido na B4 pelo download do anexo registrado (adendo abaixo).
 - A CI sobe o `storage-api` para o teste de upload real.
+
+**Adendo — registro do anexo e download do proprietário (B4, migração 0017).** Status: proposta, aguarda aprovação do Cesar.
+- **Registro na unit of work:** depois do envio, o aparelho registra o arquivo em `POST /api/v1/anexos`, com o caminho devolvido pela URL de upload e, se houver, o da miniatura. A API confere o caminho como no download: formato, tenant do contexto, registro visível no hotel do caminho e escrita nesse hotel. Depois grava `app.anexo` com auditoria (`anexo`, `criar`) e evento `anexo.registrado`. O Storage não é consultado, porque o `auth-admin` continua sem ler nem listar objetos: um registro sem arquivo só aparece como download que falha.
+- **`app.anexo`:** uma coluna por entidade (`local_id`, `ativo_id`; o hotel pelo `hotel_id`), com FK composta pelo hotel. Um check exige que o caminho do arquivo e o da miniatura comecem por `{tenant}/{hotel}/{entidade}/{registro}` da própria linha, então nenhuma linha aponta para arquivo de outro tenant, de outro hotel ou de outro registro, nem com erro na aplicação. Cada caminho é registrado uma vez só (`unique`). OS e chamado entram com as tabelas deles, cada um com a sua coluna.
+- **Ativo** passa a receber anexo (`ENTIDADES_COM_ANEXO`: hotel, local e ativo).
+- **Download pelo anexo registrado** (`POST /api/v1/anexos/{id}/url-de-download`, arquivo ou miniatura): a RLS de `app.anexo` decide quem vê. Isso resolve a pendência do proprietário:
+  - o proprietário vê os anexos dos locais dele e dos ativos que estão hoje nesses locais (o local decide, ADR-031); um ativo movido (B3c) leva os anexos junto;
+  - os anexos do próprio hotel ficam fora para o proprietário, pelo mesmo critério das políticas: sem uso concreto no MVP.
+
+  O download pelo caminho (F0-10) continua como estava, só para quem lê o hotel.
+- **Listas:** `GET /api/v1/{hoteis|locais|ativos}/{id}/anexos`, sem o caminho, com quem enviou, se há miniatura e se o usuário pode remover.
+- **Remoção lógica:** `POST /api/v1/anexos/{id}/remocao` grava `removido_em` e `removido_por`, com auditoria e evento `anexo.removido`; o arquivo fica no Storage. Pode remover quem enviou ou quem gere os locais do hotel (regra de ação no domínio); a RLS exige escrita no hotel e o usuário do contexto em `removido_por`.
+- **Miniatura:** o PWA comprime a foto (JPEG, lado maior de 1600 px) e gera a miniatura (320 px) no aparelho. O web do CSC envia o arquivo como está, sem miniatura. A foto sem rede, na fila offline, entra com a C4.
+- **Verificação:** pgTAP 015 (30 casos de isolamento, checks de caminho e remoção); `packages/db/test/anexos.test.ts`, com banco real (anexo de outro hotel dá 404, o proprietário da UH baixa a miniatura, auditoria e evento, e o banco barra sem as regras da aplicação); testes da aplicação e do PWA.
 
 ## ADR-025 — Sincronização offline do PWA: fila no aparelho e chave de idempotência gravada com o efeito
 

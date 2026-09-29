@@ -3,9 +3,10 @@
 // categoria, campos estendidos da categoria, fabricante, modelo e número de
 // série; alteração com a versão vista (se outra pessoa gravou antes, a API
 // recusa com conflito_de_versao e a tela recarrega). O local não muda depois
-// do cadastro. Tela funcional, sem acabamento: o layout vem do protótipo.
+// do cadastro. Cada ativo mostra os anexos (B4). Tela funcional, sem acabamento: o layout vem do protótipo.
 import { type Idioma, resolverNome } from '@hubkeep/i18n';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { AnexosDoRegistro } from '../../../cliente/AnexosDoRegistro';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
 import { useIdioma, useMensagemDeErro, useT } from '../../../i18n/cliente';
 
@@ -343,6 +344,7 @@ export default function AtivosDoHotel() {
                       rotulo={rotulo}
                       executar={executar}
                     />
+                    <AnexosDoRegistro entidade="ativo" registroId={a.id} />
                   </li>
                 ))}
               </ul>
