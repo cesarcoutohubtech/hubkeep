@@ -135,5 +135,56 @@ export {
   codigoQrDeBytes,
   lerCodigoQr,
 } from './qr';
+export {
+  ACOES_DA_OS,
+  ACOES_DO_CHAMADO,
+  ESTADOS_DA_OS,
+  ESTADOS_DO_CHAMADO,
+  LIMITE_MOTIVO,
+  PAPEIS_DA_TRIAGEM,
+  PAPEIS_QUE_ABREM_CHAMADO,
+  TRANSICOES_DA_OS,
+  TRANSICOES_DO_CHAMADO,
+  decidirNaOs,
+  decidirNoChamado,
+  normalizarMotivo,
+  podeAbrirChamado,
+  podeTriar,
+} from './corretiva';
+export type {
+  AcaoDaOs,
+  AcaoDoChamado,
+  AtorDaCorretiva,
+  ChamadoParaRegra,
+  EstadoDaOs,
+  EstadoDoChamado,
+  Responsavel,
+} from './corretiva';
+export {
+  ENTIDADES_COM_SITUACAO,
+  ESTADOS_POR_ENTIDADE,
+  LIMITES_DA_CONFIGURACAO,
+  PRIORIDADES_PADRAO,
+  SITUACOES_PADRAO,
+  ehEstadoDe,
+  exigirPrioridadeRestante,
+  exigirSituacaoRestante,
+  podeGerirPrioridades,
+  podeGerirSituacoes,
+  prioridadePadraoDoChamado,
+  situacaoPara,
+  validarCor,
+  validarEstadoDaSituacao,
+  validarNomesDeConfiguracao,
+  validarOrdem,
+  validarPeso,
+} from './situacoes';
+export type {
+  EntidadeComSituacao,
+  PrioridadePadrao,
+  PrioridadeParaRegra,
+  SituacaoPadrao,
+  SituacaoParaRegra,
+} from './situacoes';
 export { PAPEIS } from './tipos';
 export type { Atribuicao, Contexto, Escopo, Papel, PedidoDeConcessao } from './tipos';

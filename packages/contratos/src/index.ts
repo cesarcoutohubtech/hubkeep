@@ -35,6 +35,22 @@ export {
   TIPOS_DE_CAMPO_API,
 } from './categorias';
 export {
+  ACOES_DA_OS_API,
+  ACOES_DO_CHAMADO_API,
+  ENTIDADES_COM_SITUACAO_API,
+  ESTADOS_DA_OS_API,
+  ESTADOS_DO_CHAMADO_API,
+  PRIORIDADES_PADRAO_API,
+  PedidoDePrioridade,
+  PedidoDeSituacao,
+  PedidoDeSituacaoNova,
+  PrioridadeApi,
+  RespostaDeConfiguracaoAlterada,
+  RespostaDeSituacoesEPrioridades,
+  RespostaDeSituacoesEPrioridadesPadrao,
+  SituacaoApi,
+} from './situacoes';
+export {
   AtivoApi,
   PedidoDeAlteracaoDeAtivo,
   MovimentacaoDeAtivoApi,

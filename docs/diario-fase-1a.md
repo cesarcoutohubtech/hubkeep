@@ -459,6 +459,35 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 - **Decisão do Cesar (29/09/2026):** coluna obrigatória e sem default, com o cálculo num único lugar do repositório (a primeira versão tinha `default ''`).
 - **Fora da B6:** a coluna do chamado entra na C2, com a tabela.
 
+## Etapa C — Corretiva
+
+### C1 — Domínio da corretiva (migração 0020, ADR-027)
+- **Domínio** (`corretiva.ts`): estados canônicos do chamado e da OS, as transições com o reflexo da OS no chamado, e quem faz cada uma, por papel e escopo (`decidirNoChamado`, `decidirNaOs`, `podeAbrirChamado`, `podeTriar`, `normalizarMotivo`). O resumo das regras está no bloco de implementação do ADR-027, no `docs/03`.
+- **Domínio** (`situacoes.ts`):
+  - situações e prioridades padrão;
+  - validação de nome (quatro idiomas, com volta ao catálogo), ordem, cor, peso e estado;
+  - `situacaoPara` (situação ao entrar num estado);
+  - última ativa do estado e última prioridade não saem;
+  - `prioridadePadraoDoChamado`, com a política já resolvida hotel → grupo → padrão.
+- **Banco** (`20260929112214_situacao_prioridade.sql`): `app.situacao` e `app.prioridade`, do tenant, com `nomes jsonb` e `chave_padrao` como a categoria; lê o Admin e quem tem papel vigente (inclusive o proprietário, que vai ver a situação e a prioridade do chamado da UH dele na C2); grava só o Admin; sem DELETE; entidade, estado e chave padrão sem UPDATE; `unique (tenant_id, id)` para as FKs compostas da C2 e da C3. Sem função nem trigger.
+- **Aplicação e API** (sem tela, como pede o plano):
+  - `GET /api/v1/situacoes-e-prioridades` e `POST .../padrao` (idempotente);
+  - `POST /api/v1/situacoes` e `PUT /api/v1/situacoes/{id}`, com desativação e reativação;
+  - as mesmas rotas para `/api/v1/prioridades`;
+  - OpenAPI com as rotas.
+- **Contratos:** estados, ações, entidades e prioridades padrão repetidos do domínio; `tests/contratos-dominio` compara.
+- **Textos:** 21 códigos de erro e os nomes das 12 situações e 4 prioridades padrão, nos quatro idiomas.
+- **Aceite:**
+  - domínio: `corretiva.test.ts` percorre toda ação × estado × papel (14 atores, inclusive vencido, revogado, outro hotel e outra bandeira) contra tabelas esperadas escritas à mão, mais motivo, OS reatribuída e quem abriu; `situacoes.test.ts` cobre padrões, validações, situação ao entrar no estado e a prioridade padrão pela política nos três níveis;
+  - pgTAP `016_isolamento_situacao_prioridade` (35 casos): os seis casos nas duas tabelas, só o Admin grava, campos fixos, sem DELETE, worker;
+  - integração (só na CI, `situacoes.test.ts`): instalação idempotente, leitura pelo técnico e pelo proprietário de hotel inteiro, recusas com código, última ativa, paridade com a checagem removida, auditoria.
+- **Para o Cesar olhar** (escolhas dentro do ADR-027, fáceis de mudar antes da C2):
+  1. o Admin do grupo também faz a triagem (o plano cita o Gestor CSC e o Gerente do hotel); ele não aceita nem executa;
+  2. sem regra para a categoria, o chamado nasce na prioridade ativa de menor peso;
+  3. cancelar a OS cancela o chamado; outra saída seria o chamado voltar para a triagem e ganhar outra OS;
+  4. o Gerente e o Gestor não executam a OS no lugar do técnico (iniciar, pausar, concluir);
+  5. técnico que não responde pela OS recebe 409 (conflito, como a OS reatribuída), e não 403.
+
 ### Ponto de retomada (29/09/2026, etapa B concluída, PR da B6 aberto)
 - **`main`:** `a5dd03d` (#53, B5). **Dev:** 18 migrações, até a 0018; 444 ok em 15 arquivos.
 - **PR aberto:** B6, branch `1a-b6` (worktree `wt/b6-busca`, branch local `1a-b6-busca`; push com `git push origin HEAD:1a-b6`), zona protegida, migração 0019. Conferir na CI o pgTAP 001 (27) e 013 (43), os testes de integração de ativos, locais e ingestão, e o `kysely-codegen --verify` (`busca` como `string`). Depois do merge: `db push` da 0019 (Cesar) e conferir o dev.

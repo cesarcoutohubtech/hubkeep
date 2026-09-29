@@ -28,6 +28,14 @@ import {
   RespostaDeCategorias,
   RespostaDeCategoriasPadrao,
 } from './categorias';
+import {
+  PedidoDePrioridade,
+  PedidoDeSituacao,
+  PedidoDeSituacaoNova,
+  RespostaDeConfiguracaoAlterada,
+  RespostaDeSituacoesEPrioridades,
+  RespostaDeSituacoesEPrioridadesPadrao,
+} from './situacoes';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
   PedidoDeAlteracaoDeAtivo,
@@ -1022,6 +1030,139 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Quantas foram instaladas', esquema: RespostaDeCategoriasPadrao },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (categorias_so_admin).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/situacoes-e-prioridades',
+    resumo:
+      'Situações (ligadas aos estados canônicos do chamado e da OS) e prioridades do tenant, na ordem da tela, com o idioma padrão para a volta dos nomes (ADR-027).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Situações e prioridades', esquema: RespostaDeSituacoesEPrioridades },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/situacoes-e-prioridades/padrao',
+    resumo:
+      'Instala as situações e prioridades padrão do catálogo que o tenant ainda não tem. Idempotente.',
+    exigeTenant: true,
+    respostas: {
+      200: {
+        descricao: 'Quantas foram instaladas',
+        esquema: RespostaDeSituacoesEPrioridadesPadrao,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (situacoes_so_admin ou prioridades_so_admin).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/situacoes',
+    resumo:
+      'Cria uma situação ligada a um estado canônico. A entidade e o estado não mudam depois.',
+    exigeTenant: true,
+    corpo: PedidoDeSituacaoNova,
+    respostas: {
+      201: { descricao: 'Situação criada', esquema: RespostaDeConfiguracaoAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (situacoes_so_admin).'),
+      422: ERRO(
+        'estado_invalido, situacao_nome_invalido, ordem_invalida, cor_invalida ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/situacoes/{id}',
+    resumo: 'Altera nomes, ordem e cor da situação.',
+    exigeTenant: true,
+    corpo: PedidoDeSituacao,
+    respostas: {
+      200: { descricao: 'Situação alterada', esquema: RespostaDeConfiguracaoAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (situacoes_so_admin).'),
+      404: ERRO('Situação não encontrada (situacao_nao_encontrada).'),
+      422: ERRO('situacao_nome_invalido, ordem_invalida, cor_invalida ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/situacoes/{id}/desativacao',
+    resumo: 'Desativa a situação (exclusão lógica).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Situação desativada', esquema: RespostaDeConfiguracaoAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (situacoes_so_admin).'),
+      404: ERRO('Situação não encontrada (situacao_nao_encontrada).'),
+      422: ERRO('É a última situação ativa do estado (ultima_situacao_do_estado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/situacoes/{id}/reativacao',
+    resumo: 'Reativa a situação.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Situação reativada', esquema: RespostaDeConfiguracaoAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (situacoes_so_admin).'),
+      404: ERRO('Situação não encontrada (situacao_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/prioridades',
+    resumo: 'Cria uma prioridade do tenant, com ordem e peso.',
+    exigeTenant: true,
+    corpo: PedidoDePrioridade,
+    respostas: {
+      201: { descricao: 'Prioridade criada', esquema: RespostaDeConfiguracaoAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (prioridades_so_admin).'),
+      422: ERRO('prioridade_nome_invalido, ordem_invalida, peso_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/prioridades/{id}',
+    resumo: 'Altera nomes, ordem e peso da prioridade.',
+    exigeTenant: true,
+    corpo: PedidoDePrioridade,
+    respostas: {
+      200: { descricao: 'Prioridade alterada', esquema: RespostaDeConfiguracaoAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (prioridades_so_admin).'),
+      404: ERRO('Prioridade não encontrada (prioridade_nao_encontrada).'),
+      422: ERRO('prioridade_nome_invalido, ordem_invalida, peso_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/prioridades/{id}/desativacao',
+    resumo: 'Desativa a prioridade (exclusão lógica).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Prioridade desativada', esquema: RespostaDeConfiguracaoAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (prioridades_so_admin).'),
+      404: ERRO('Prioridade não encontrada (prioridade_nao_encontrada).'),
+      422: ERRO('É a última prioridade ativa (ultima_prioridade).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/prioridades/{id}/reativacao',
+    resumo: 'Reativa a prioridade.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Prioridade reativada', esquema: RespostaDeConfiguracaoAlterada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (prioridades_so_admin).'),
+      404: ERRO('Prioridade não encontrada (prioridade_nao_encontrada).'),
     },
   },
 ];
