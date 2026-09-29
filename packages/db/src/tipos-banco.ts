@@ -33,6 +33,23 @@ export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AppAnexo {
+  ativo_id: string | null;
+  caminho: string;
+  criado_em: Generated<Timestamp>;
+  entidade: string;
+  hotel_id: string;
+  id: string;
+  local_id: string | null;
+  miniatura_caminho: string | null;
+  nome: string | null;
+  removido_em: Timestamp | null;
+  removido_por: string | null;
+  tenant_id: string;
+  tipo: string;
+  usuario_id: string;
+}
+
 export interface AppAtivo {
   atualizado_em: Generated<Timestamp>;
   campos: Generated<Json>;
@@ -294,6 +311,7 @@ export interface StagingRegistroExterno {
 }
 
 export interface DB {
+  "app.anexo": AppAnexo;
   "app.ativo": AppAtivo;
   "app.ativo_movimentacao": AppAtivoMovimentacao;
   "app.atribuicao_escopo": AppAtribuicaoEscopo;

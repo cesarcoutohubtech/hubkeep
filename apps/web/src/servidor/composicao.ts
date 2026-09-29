@@ -49,6 +49,7 @@ import {
   criarPortaConfiguracao,
   criarPortaEquipes,
   criarPortaBandeiras,
+  criarPortaAnexos,
   criarPortaEscopoDeAnexo,
   criarPortaHoteisDoStaging,
   criarPortaImplantacao,
@@ -156,15 +157,18 @@ export async function promoverUhsDoTenant(tenantId: string) {
 export async function tenantsDoSistema(): Promise<string[]> {
   return (await acessoBancoDoWorker()).listarTenants();
 }
-/** URLs assinadas de anexo (F0-10): escopo pela RLS, URL pelo auth-admin. */
-export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () =>
-  criarCasosDeUsoDeAnexos({
-    escopo: criarPortaEscopoDeAnexo(await acessoBanco()),
+/** Anexos (F0-10 e B4): escopo e registro pela RLS, URL pelo auth-admin. */
+export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeAnexos({
+    escopo: criarPortaEscopoDeAnexo(banco),
+    anexos: criarPortaAnexos(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     armazenamento: criarArmazenamentoDeAnexos({ url: urlSupabase() }),
     relogio: relogioDoSistema,
     novoId,
-  }),
-);
+  });
+});
 
 /** Equipes do hotel (fase 1a, A6), pelo hk_app. */
 export const casosDeUsoDeEquipes = memo<CasosDeUsoDeEquipes>(async () => {

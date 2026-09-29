@@ -2,7 +2,10 @@
 // Leitura com withContext, escrita com executar (unit of work): o que cada
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
 import type {
+  AnexoGravado,
   AtivoGravado,
+  EntidadeComAnexo,
+  PortaAnexos,
   PortaAtivos,
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
@@ -48,6 +51,7 @@ import {
   definirBandeiraDoHotel,
   renomearBandeira,
 } from './repositorios/bandeiras';
+import { registrarAnexo, removerAnexo } from './repositorios/anexos';
 import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { gravarConvite } from './repositorios/convites';
@@ -836,5 +840,89 @@ export function criarPortaEscopoDeAnexo(banco: AcessoBanco): PortaEscopoDeAnexo 
       banco.withContext(ctx, (tx) => hotelNoEscopo(tx, hotelId, 'escrita')),
     leNoHotel: (ctx, hotelId) =>
       banco.withContext(ctx, (tx) => hotelNoEscopo(tx, hotelId, 'leitura')),
+  };
+}
+
+/** Registro dos anexos (fase 1a, B4): o que cada um vê é da RLS de app.anexo. */
+export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
+  const consulta = (tx: Tx) =>
+    tx
+      .selectFrom('app.anexo as a')
+      .leftJoin('app.membro as m', (j) =>
+        j.onRef('m.tenant_id', '=', 'a.tenant_id').onRef('m.usuario_id', '=', 'a.usuario_id'),
+      )
+      .select([
+        'a.id',
+        'a.hotel_id',
+        'a.entidade',
+        'a.local_id',
+        'a.ativo_id',
+        'a.caminho',
+        'a.miniatura_caminho',
+        'a.tipo',
+        'a.nome',
+        'a.usuario_id',
+        'm.nome as nome_usuario',
+        'a.criado_em',
+        'a.removido_em',
+      ]);
+  const paraAnexo = (a: {
+    id: string;
+    hotel_id: string;
+    entidade: string;
+    local_id: string | null;
+    ativo_id: string | null;
+    caminho: string;
+    miniatura_caminho: string | null;
+    tipo: string;
+    nome: string | null;
+    usuario_id: string;
+    nome_usuario: string | null;
+    criado_em: Date;
+    removido_em: Date | null;
+  }): AnexoGravado => ({
+    id: a.id,
+    hotelId: a.hotel_id,
+    entidade: a.entidade as EntidadeComAnexo,
+    registroId: a.ativo_id ?? a.local_id ?? a.hotel_id,
+    caminho: a.caminho,
+    miniaturaCaminho: a.miniatura_caminho,
+    tipo: a.tipo,
+    nome: a.nome,
+    usuarioId: a.usuario_id,
+    nomeUsuario: a.nome_usuario,
+    criadoEm: a.criado_em,
+    removidoEm: a.removido_em,
+  });
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    anexos: (ctx, entidade, registroId) =>
+      banco.withContext(ctx, async (tx) => {
+        let q = consulta(tx).where('a.entidade', '=', entidade).where('a.removido_em', 'is', null);
+        q =
+          entidade === 'local'
+            ? q.where('a.local_id', '=', registroId)
+            : entidade === 'ativo'
+              ? q.where('a.ativo_id', '=', registroId)
+              : q.where('a.hotel_id', '=', registroId);
+        return (await q.orderBy('a.criado_em', 'desc').orderBy('a.id', 'desc').execute()).map(
+          paraAnexo,
+        );
+      }),
+    anexo: (ctx, anexoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await consulta(tx).where('a.id', '=', anexoId).executeTakeFirst();
+        return a ? paraAnexo(a) : null;
+      }),
+    registrar: (ctx, dados) => banco.executar(ctx, (uow) => registrarAnexo(uow, dados)),
+    remover: (ctx, anexoId) => banco.executar(ctx, (uow) => removerAnexo(uow, anexoId)),
   };
 }

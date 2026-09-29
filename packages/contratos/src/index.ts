@@ -63,9 +63,15 @@ export {
   RespostaDeConfiguracao,
 } from './configuracao';
 export {
+  AnexoApi,
   ENTIDADES_COM_ANEXO_API,
+  PedidoDeRegistroDeAnexo,
   PedidoDeUrlDeDownload,
   PedidoDeUrlDeUpload,
+  PedidoDeUrlDoAnexo,
+  RespostaDeAnexoRegistrado,
+  RespostaDeAnexoRemovido,
+  RespostaDeAnexos,
   RespostaDeUrlDeDownload,
   RespostaDeUrlDeUpload,
   TIPOS_DE_ANEXO_API,
