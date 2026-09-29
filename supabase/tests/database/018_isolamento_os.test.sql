@@ -18,7 +18,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(43);
+select plan(44);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -95,50 +95,55 @@ insert into app.chamado (id, tenant_id, hotel_id, local_id, descricao, busca, es
   ('cb000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '22200000-0000-0000-0000-000000000001', '22210000-0000-0000-0000-000000000001',
    'Chamado B', 'chamado b', 'em_execucao', '5b000000-0000-0000-0000-000000000001', '9b000000-0000-0000-0000-000000000001', '{}', 'bbbbbbbb-0000-0000-0000-000000000001');
 
-insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, equipe_id, criado_por) values
-  ('0a100000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
+insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, equipe_id, criado_por) values
+  ('0a100000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', '11110000-0000-0000-0000-000000000001',
    'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', null, 'aaaaaaaa-0000-0000-0000-000000000002'),
-  ('0a200000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-000000000001',
+  ('0a200000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-000000000001', '11120000-0000-0000-0000-000000000001',
    'atribuida', '5a000000-0000-0000-0000-000000000002', null, 'e2000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001'),
-  ('0a300000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000003', 'c3000000-0000-0000-0000-000000000001',
+  ('0a300000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000003', 'c3000000-0000-0000-0000-000000000001', '11130000-0000-0000-0000-000000000001',
    'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
-  ('0b000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '22200000-0000-0000-0000-000000000001', 'cb000000-0000-0000-0000-000000000001',
+  ('0b000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '22200000-0000-0000-0000-000000000001', 'cb000000-0000-0000-0000-000000000001', '22210000-0000-0000-0000-000000000001',
    'atribuida', '5b000000-0000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-000000000001', null, 'bbbbbbbb-0000-0000-0000-000000000001');
 
 -- Caso 6 — FK composta e checks (como postgres)
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, equipe_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, equipe_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000002',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'e2000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '23503', null, 'equipe de outro hotel');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001', '11120000-0000-0000-0000-000000000001',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '23503', null, 'chamado de outro hotel');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000001',
+             'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
+  '23503', null, 'OS com local diferente do do chamado (0024)');
+select throws_ok(
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000002',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '23503', null, 'técnico de outro tenant');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000002',
              'atribuida', '5b000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '23503', null, 'situação de outro tenant');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000002',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'bbbbbbbb-0000-0000-0000-000000000001') $$,
   '23503', null, 'autor precisa ser membro do tenant');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000002',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '23514', null, 'OS sem responsável');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, equipe_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, equipe_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000002',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'e1000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '23514', null, 'OS com técnico e equipe ao mesmo tempo');
 select throws_ok(
@@ -148,13 +153,13 @@ select throws_ok(
   $$ update app.chamado set motivo_cancelamento = repeat('x', 501) where id = 'c1000000-0000-0000-0000-000000000001' $$,
   '23514', null, 'motivo do chamado acima de 500');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', '11110000-0000-0000-0000-000000000001',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '23505', null, 'segunda OS não cancelada no mesmo chamado');
 select lives_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
-     values ('0a100000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
+     values ('0a100000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', '11110000-0000-0000-0000-000000000001',
              'cancelada', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'Técnico de férias', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   'OS cancelada não conta: convive com a OS em andamento do chamado');
 update app.os set estado = 'concluida' where id = '0a100000-0000-0000-0000-000000000001';
@@ -178,8 +183,8 @@ select from (select set_config('app.usuario_id', 'bbbbbbbb-0000-0000-0000-000000
 select results_eq($$ select count(*)::int from app.os where tenant_id = '10000000-0000-0000-0000-000000000000' $$, $$ values (0) $$,
   'admin B não vê OS do A');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000002',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'bbbbbbbb-0000-0000-0000-000000000001') $$,
   '42501', null, 'admin B não gera OS no A');
 select is_empty($$ update app.os set versao = versao + 1
@@ -192,18 +197,18 @@ select results_eq($$ select id::text from app.os order by id $$,
   $$ values ('0a100000-0000-0000-0000-000000000001'), ('0a100000-0000-0000-0000-000000000002') $$,
   'gerente vê só as OS do Hotel 1');
 select lives_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, equipe_id, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, equipe_id, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '11110000-0000-0000-0000-000000000002',
              'atribuida', '5a000000-0000-0000-0000-000000000002', 'e1000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   'gerente gera OS no Hotel 1, para a equipe do hotel');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, equipe_id, motivo_cancelamento, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-000000000001',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, equipe_id, motivo_cancelamento, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-000000000001', '11120000-0000-0000-0000-000000000001',
              'cancelada', '5a000000-0000-0000-0000-000000000002', 'e2000000-0000-0000-0000-000000000001', 'x', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '42501', null, 'gerente não gera OS em outro hotel');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', '11110000-0000-0000-0000-000000000001',
              'cancelada', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'x', 'aaaaaaaa-0000-0000-0000-000000000001') $$,
   '42501', null, 'gerente não gera OS em nome de outro');
 select isnt_empty($$ update app.os set tecnico_id = null, equipe_id = 'e1000000-0000-0000-0000-000000000001', versao = versao + 1
@@ -233,8 +238,8 @@ select is_empty($$ select 1 from app.atribuicao_escopo where papel = 'tecnico' $
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000004', true)) ctx;
 select results_eq($$ select count(*)::int from app.os $$, $$ values (3) $$, 'técnico vê as OS do Hotel 1');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', '11110000-0000-0000-0000-000000000001',
              'cancelada', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'x', 'aaaaaaaa-0000-0000-0000-000000000004') $$,
   '42501', null, 'técnico não gera OS');
 select is_empty($$ update app.os set versao = versao + 1 where id = '0a100000-0000-0000-0000-000000000001' returning 1 $$,
@@ -249,8 +254,8 @@ select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000
 select results_eq($$ select distinct chamado_id::text from app.os $$,
   $$ values ('c1000000-0000-0000-0000-000000000001') $$, 'dono de UH vê só as OS do chamado da UH dele');
 select throws_ok(
-  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
+  $$ insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', '11110000-0000-0000-0000-000000000001',
              'cancelada', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'x', 'aaaaaaaa-0000-0000-0000-000000000006') $$,
   '42501', null, 'dono de UH não gera OS');
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000007', true)) ctx;

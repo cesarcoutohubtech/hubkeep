@@ -13,6 +13,7 @@ import type {
 export interface ChamadoParaTriagem {
   id: string;
   hotel: { id: string; bandeiraId: string | null };
+  localId: string;
   estado: EstadoDoChamado;
   situacaoId: string;
   prioridadeId: string;
@@ -67,7 +68,14 @@ export interface PortaTriagem {
   /** Grava a OS e o reflexo no chamado; 409 os_em_andamento se o índice recusar. */
   gerarOs(
     ctx: Contexto,
-    g: { chamado: ReflexoNoChamado; hotelId: string; situacaoId: string; responsavel: Responsavel },
+    g: {
+      chamado: ReflexoNoChamado;
+      hotelId: string;
+      /** O local do chamado, que a OS guarda para a leitura do proprietário (0024). */
+      localId: string;
+      situacaoId: string;
+      responsavel: Responsavel;
+    },
   ): Promise<{ id: string; versao: number; versaoDoChamado: number }>;
   reatribuirOs(
     ctx: Contexto,

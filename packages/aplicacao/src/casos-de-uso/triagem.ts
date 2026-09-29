@@ -197,6 +197,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
       const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.gerarOs(ctx, {
         hotelId: chamado.hotel.id,
+        localId: chamado.localId,
         situacaoId: situacaoPara(lista, 'os', d.estado),
         responsavel,
         chamado: {

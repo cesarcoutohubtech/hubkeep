@@ -522,6 +522,11 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Fila do dia:** `GET /api/v1/os/do-dia`, com as OS atribuídas, em execução ou pausadas do Técnico e das equipes dele.
 - **Anexo da OS:** entidade `os`, e a URL de upload aceita um `arquivoId` gerado no aparelho, para o caminho sair igual no reenvio da foto offline (C4b).
 
+**Correção da C4a (migração 0024, 29/09/2026; a aprovar pelo Cesar):**
+- **O problema:** a 0023 fez o UPDATE do chamado ler `app.os` (o ramo do responsável), e a leitura da OS lia `app.chamado` (o ramo do proprietário, 0022). O Postgres recusa esse ciclo ao reescrever a consulta (42P17), e todo UPDATE do chamado pelo `hk_app` falhava. O pgTAP da CI pegou, mas o #66 foi mergeado e a 0023 foi aplicada no dev com a CI vermelha.
+- **A correção:** a OS guarda o local do chamado (`local_id`, sem UPDATE), preso ao dele por FK composta `(hotel_id, chamado_id, local_id)` → `app.chamado (hotel_id, id, local_id)`. A leitura da OS pelo proprietário usa esse local, igual à leitura do chamado, e não lê mais `app.chamado`. Não entra função, trigger nem regra no banco.
+- **Para não voltar:** o meta-teste 27 monta o grafo das policies (tabela da policy → tabelas citadas no `using`/`with check`) e falha com qualquer ciclo. Rodado só por leitura no dev antes da 0024, ele aponta exatamente o ciclo chamado ↔ os.
+
 ## ADR-028 — Campos tipados por definição (ativo na 1a, checklist na 1b)
 
 **Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição de tipos comuns com o checklist e rótulos em quatro idiomas.

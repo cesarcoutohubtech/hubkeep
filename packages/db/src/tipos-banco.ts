@@ -262,6 +262,7 @@ export interface AppOs {
   estado: string;
   hotel_id: string;
   id: string;
+  local_id: string;
   motivo_cancelamento: string | null;
   situacao_id: string;
   tecnico_id: string | null;

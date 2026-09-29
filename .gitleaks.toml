@@ -15,4 +15,9 @@ regexes = [
   '''postgres:postgres@127\.0\.0\.1:54322''',
   # Valor falso do teste que prende a secret key ao auth-admin (o nome diz).
   '''chave-falsa-so-para-montar-o-cliente''',
+  # Meta-teste 11 (001_meta_seguranca): a lista fechada de funções do banco,
+  # cada uma com o md5 do próprio código ('schema.funcao:<md5>'). É hash de
+  # código público do repositório, não segredo; a regra generic-api-key pega
+  # pela entropia. Presa ao formato exato da linha, só nos schemas do HubKeep.
+  '''^\s*'(app|authz|licenca|staging)\.[a-z_]+:[0-9a-f]{32}',?\s*$''',
 ]

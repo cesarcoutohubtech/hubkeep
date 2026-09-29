@@ -709,3 +709,24 @@ Dividida em duas partes, cada uma no seu PR:
   - horas, material e fotos offline, com o `arquivoId` fixo e o envio repetido tratado como feito.
   - Arquivos: `apps/tecnico/src/App.tsx`, `fila/`, `referencia/banco.ts`, `anexos/fotos.ts`, `saida.ts` e `telas/FilaDoDia.tsx`.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### C4a mergeada com a CI vermelha; correção na 0024 (29/09/2026)
+- **O que aconteceu:** o #66 foi mergeado (`732c967`) e a 0023 foi aplicada no dev com três checagens vermelhas:
+  - **zona protegida:** falha por desenho em todo PR de zona protegida;
+  - **gitleaks:** falha desde o S1 (#59) por um falso positivo antigo, os hashes md5 do meta-teste 11 no commit `5025f7d`;
+  - **pgTAP:** falha real. A 0023 criou um ciclo de policies (o UPDATE do chamado lê a OS, e a leitura da OS lia o chamado), e todo UPDATE do chamado pelo `hk_app` falhava com 42P17, no dev e na `main`.
+- **Conferência do dev** (só leitura, depois do push da 0023): 551 ok em 19 arquivos, com a mesma falha da CI. O `017` falha no teste 19 e o `019` aborta depois do 17.
+- **Correção** (branch `1a-c4-correcao`, worktree `wt/c4-correcao`):
+  - **migração 0024:** o `local_id` do chamado vai para a OS, com FK composta, e a leitura da OS não lê mais o chamado;
+  - **meta-teste 27:** falha com qualquer ciclo entre policies. Rodado só por leitura no dev, ele acha o ciclo chamado ↔ os e nenhum outro;
+  - **pgTAP:** fixtures do 018 e do 019 com o `local_id`, e no 018 um caso novo, "OS com local diferente do do chamado";
+  - **aplicação:** a porta e o caso de uso passam o local do chamado ao `gerarOs`;
+  - **gitleaks:** exceção estreita no `.gitleaks.toml`, só para a linha `'schema.funcao:<md5>'` do meta-teste 11.
+- **Local:** typecheck, lint e testes verdes, com 272 testes na raiz.
+- **Lição:** não conto com o aviso de CI. Antes de dar o PR como pronto, confiro `gh pr checks`, e digo ao Cesar quais checagens falharam e se a falha é esperada.
+
+### Ponto de retomada (29/09/2026, correção da C4a aberta)
+- **`main`:** `732c967` (#66). **Dev:** 23 migrações, até a 0023, com o UPDATE do chamado quebrado (42P17) até entrar a 0024.
+- **PR aberto:** #67, branch `1a-c4-correcao` (worktree `wt/c4-correcao`), zona protegida, com a migração 0024. Merge só com o pgTAP, o `segurança` (depois do OK do Cesar à exceção do gitleaks), a verificação dos tipos e a integração do `packages/db` verdes. A "zona protegida" falha por desenho.
+- **Depois do merge:** o Cesar faz o `db push` da 0024. Em seguida, conferir no dev só por leitura: `db:testar-dev` (19 arquivos, sem falha) e `db:types` idêntico.
+- **Próxima tarefa:** C4b (PWA), no local, num worktree novo a partir da `main` depois do merge do #67. O plano está no ponto de retomada "C4a aberta".
