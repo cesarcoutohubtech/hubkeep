@@ -1,6 +1,10 @@
 {
   "app.nome": "HubKeep",
   "comum.carregando": "Cargando…",
+  "comum.busca.rotulo": "Buscar por nombre (sin importar tildes)",
+  "comum.busca.buscar": "Buscar",
+  "comum.busca.limpar": "Limpiar",
+  "comum.busca.sem_resultado": "No se encontró nada para «{termo}».",
   "comum.idioma": "Idioma",
 
   "inicio.configuracao": "Configuración y políticas",
@@ -119,6 +123,7 @@
   "erro.locais_fora_do_escopo": "Usted no gestiona los locales de este hotel.",
   "erro.local_so_leitura": "Las habitaciones y los locales del sistema hotelero son solo de lectura.",
   "erro.local_nome_invalido": "Indique el nombre del local (hasta {maximo} caracteres).",
+  "erro.busca_curta": "Escriba al menos {minimo} caracteres para buscar.",
   "erro.local_andar_invalido": "Piso no válido (hasta {maximo} caracteres).",
   "erro.local_nome_repetido": "Ya existe un área común activa con este nombre en el hotel.",
   "senha.campo.nova": "Nueva contraseña",

@@ -1,6 +1,10 @@
 {
   "app.nome": "HubKeep",
   "comum.carregando": "Chargement…",
+  "comum.busca.rotulo": "Rechercher par nom (accents facultatifs)",
+  "comum.busca.buscar": "Rechercher",
+  "comum.busca.limpar": "Effacer",
+  "comum.busca.sem_resultado": "Aucun résultat pour « {termo} ».",
   "comum.idioma": "Langue",
 
   "inicio.configuracao": "Paramètres et politiques",
@@ -119,6 +123,7 @@
   "erro.locais_fora_do_escopo": "Vous ne gérez pas les emplacements de cet hôtel.",
   "erro.local_so_leitura": "Les chambres et les emplacements du système hôtelier sont en lecture seule.",
   "erro.local_nome_invalido": "Indiquez le nom de l’emplacement ({maximo} caractères au plus).",
+  "erro.busca_curta": "Saisissez au moins {minimo} caractères pour rechercher.",
   "erro.local_andar_invalido": "Étage invalide ({maximo} caractères au plus).",
   "erro.local_nome_repetido": "Il existe déjà un espace commun actif portant ce nom dans l’hôtel.",
   "senha.campo.nova": "Nouveau mot de passe",

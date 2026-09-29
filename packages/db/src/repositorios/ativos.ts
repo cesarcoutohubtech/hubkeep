@@ -4,7 +4,7 @@
 // (42501) e o UPDATE sem linha. Mover (B3c) troca o local_id e grava a
 // movimentação na mesma unit of work; a FK (hotel_id, local_id) recusa local
 // de outro hotel.
-import type { DadosDeAtivo, MudancaDeAtivo } from '@hubkeep/aplicacao';
+import { type DadosDeAtivo, type MudancaDeAtivo, buscaDeAtivo } from '@hubkeep/aplicacao';
 import { NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoCodigoQr, novoId } from '../ids';
@@ -17,6 +17,7 @@ const colunasDeDados = (d: DadosDeAtivo) => ({
   modelo: d.modelo,
   numero_serie: d.numeroSerie,
   campos: JSON.stringify(d.campos),
+  busca: buscaDeAtivo(d),
 });
 
 export async function criarAtivo(

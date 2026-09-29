@@ -52,7 +52,8 @@ export interface PortaAtivos {
   ): Promise<{ id: string; hotelId: string; status: StatusDeLocal } | null>;
   /** Categorias do tenant, com as definições como estão no banco. */
   categorias(ctx: Contexto): Promise<{ id: string; ativa: boolean; campos: unknown }[]>;
-  ativos(ctx: Contexto, hotelId: string): Promise<AtivoGravado[]>;
+  /** Com `termo` (já normalizado, B6), só os que o têm na coluna `busca`. */
+  ativos(ctx: Contexto, hotelId: string, termo?: string): Promise<AtivoGravado[]>;
   ativo(ctx: Contexto, ativoId: string): Promise<AtivoGravado | null>;
   /** O ativo do código do QR no tenant do contexto, se visível (RLS); senão null. */
   ativoPorCodigoQr(ctx: Contexto, codigoQr: string): Promise<AtivoGravado | null>;

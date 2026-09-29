@@ -28,6 +28,7 @@ import {
   validarCamposDoAtivo,
   validarMovimentacao,
 } from '@hubkeep/dominio';
+import { termoDeBusca } from '../busca';
 import type {
   AtivoGravado,
   DadosDeAtivo,
@@ -78,7 +79,8 @@ export interface AlteracaoPreparada {
 }
 
 export interface CasosDeUsoDeAtivos {
-  listarAtivos(ctx: Contexto, hotelId: string): Promise<AtivoListado[]>;
+  /** Com `busca`, só os ativos que têm o termo no nome, fabricante, modelo ou série (B6). */
+  listarAtivos(ctx: Contexto, hotelId: string, busca?: string | null): Promise<AtivoListado[]>;
   /** O ativo do QR (B5), aceitando o código como uma pessoa digitaria. */
   abrirPorCodigoQr(ctx: Contexto, codigo: string): Promise<AtivoListado>;
   prepararCadastro(ctx: Contexto, p: PedidoDeCadastroDeAtivo): Promise<CadastroPreparado>;
@@ -169,10 +171,14 @@ export function criarCasosDeUsoDeAtivos(deps: {
   };
 
   const casos: CasosDeUsoDeAtivos = {
-    async listarAtivos(ctx, hotelId) {
+    async listarAtivos(ctx, hotelId, busca) {
+      const termo = termoDeBusca(busca);
       await hotelVisivel(ctx, hotelId);
       const categorias = await categoriasDoTenant(ctx);
-      return (await deps.ativos.ativos(ctx, hotelId)).map((a) => comCampos(a, categorias));
+      const ativos = await (termo === undefined
+        ? deps.ativos.ativos(ctx, hotelId)
+        : deps.ativos.ativos(ctx, hotelId, termo));
+      return ativos.map((a) => comCampos(a, categorias));
     },
     async abrirPorCodigoQr(ctx, codigo) {
       const lido = lerCodigoQr(codigo);

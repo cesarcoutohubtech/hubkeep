@@ -92,6 +92,8 @@ export interface Rota {
   exigeTenant: boolean;
   /** Quem chama: usuário (padrão, Bearer ou cookie) ou o agente conector. */
   autenticacao?: 'usuario' | 'agente';
+  /** Lista que aceita ?busca= (trecho, sem acento, a partir de 3 caracteres; B6). */
+  busca?: boolean;
   corpo?: Esquema;
   respostas: Record<number, { descricao: string; esquema?: Esquema }>;
 }
@@ -183,12 +185,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/ativos',
     resumo:
-      'Ativos do hotel no escopo de quem pede (o proprietário vê só os dos locais dele), com os campos estendidos lidos pela categoria.',
+      'Ativos do hotel no escopo de quem pede (o proprietário vê só os dos locais dele), com os campos estendidos lidos pela categoria. A busca acha o trecho no nome, fabricante, modelo ou número de série.',
     exigeTenant: true,
+    busca: true,
     respostas: {
       200: { descricao: 'Ativos do hotel', esquema: RespostaDeAtivosDoHotel },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      422: ERRO('Termo com menos de 3 caracteres (busca_curta).'),
     },
   },
   {
@@ -300,12 +304,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/locais',
     resumo:
-      'Locais do hotel no escopo de quem pede: UHs do sistema hoteleiro (só leitura, com o status da licença) e áreas comuns.',
+      'Locais do hotel no escopo de quem pede: UHs do sistema hoteleiro (só leitura, com o status da licença) e áreas comuns. A busca acha o trecho no nome.',
     exigeTenant: true,
+    busca: true,
     respostas: {
       200: { descricao: 'Locais do hotel', esquema: RespostaDeLocaisDoHotel },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      422: ERRO('Termo com menos de 3 caracteres (busca_curta).'),
     },
   },
   {
@@ -1059,7 +1065,12 @@ export function gerarOpenApi(): Record<string, unknown> {
     (paths[rota.caminho] ??= {})[rota.metodo] = {
       summary: rota.resumo,
       ...(rota.autenticacao === 'agente' && { security: [{ agente: [] }] }),
-      ...(rota.exigeTenant && { parameters: [{ $ref: '#/components/parameters/Tenant' }] }),
+      ...((rota.exigeTenant || rota.busca) && {
+        parameters: [
+          ...(rota.exigeTenant ? [{ $ref: '#/components/parameters/Tenant' }] : []),
+          ...(rota.busca ? [{ $ref: '#/components/parameters/Busca' }] : []),
+        ],
+      }),
       ...(rota.corpo && {
         requestBody: {
           required: true,
@@ -1090,6 +1101,15 @@ export function gerarOpenApi(): Record<string, unknown> {
           required: false,
           description: 'Tenant ativo (alternativa ao cookie hk_tenant).',
           schema: { type: 'string', format: 'uuid' },
+        },
+        Busca: {
+          name: 'busca',
+          in: 'query',
+          required: false,
+          description:
+            'Trecho a achar, sem diferença de acento nem de maiúsculas. Vazio: a lista inteira. ' +
+            'Com menos de 3 caracteres: 422 busca_curta.',
+          schema: { type: 'string' },
         },
       },
       securitySchemes: {

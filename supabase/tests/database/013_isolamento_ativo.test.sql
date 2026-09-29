@@ -19,12 +19,15 @@
 -- mesmo código pode existir em outro), não alterável; a busca pelo código
 -- passa pela RLS: outro tenant, outro hotel ou fora da UH do proprietário não
 -- acham o ativo.
+-- Busca (migração 0019, B6; ADR-030): a coluna é gravada pela aplicação; o
+-- ILIKE por trecho passa pela RLS como qualquer leitura, e o worker não grava
+-- a busca do ativo.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(39);
+select plan(42);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -250,6 +253,25 @@ set local role hk_worker;
 select from (select set_config('app.tenant_id', '10000000-0000-0000-0000-000000000000', true)) ctx;
 select results_eq('select count(distinct tenant_id)::int from app.ativo', $$ values (1) $$,
   'worker vê só o tenant do job');
+select throws_ok($$ update app.ativo set busca = 'x' $$, '42501', null,
+  'worker não grava a busca do ativo');
+reset role;
+
+-- Busca por trecho (B6): o texto da coluna vem da aplicação; aqui, direto.
+update app.ativo set busca = 'frigobar 101' where id = 'a1000000-0000-0000-0000-000000000001';
+update app.ativo set busca = 'frigobar h2' where id = 'a2000000-0000-0000-0000-000000000001';
+update app.ativo set busca = 'frigobar b' where id = 'ab000000-0000-0000-0000-000000000001';
+set local role hk_app;
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000002', true),
+       set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
+select results_eq($$ select id from app.ativo where busca ilike '%rigo%' $$,
+  $$ values ('a1000000-0000-0000-0000-000000000001'::uuid) $$,
+  'gerente acha por trecho só os ativos do hotel dele');
+select from (select set_config('app.usuario_id', 'bbbbbbbb-0000-0000-0000-000000000001', true),
+       set_config('app.tenant_id',  '20000000-0000-0000-0000-000000000000', true)) ctx;
+select results_eq($$ select id from app.ativo where busca ilike '%rigo%' $$,
+  $$ values ('ab000000-0000-0000-0000-000000000001'::uuid) $$,
+  'admin de outro tenant acha por trecho só os ativos do tenant dele');
 reset role;
 
 select * from finish();

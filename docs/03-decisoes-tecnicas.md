@@ -514,6 +514,14 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Consequências:** o custo de escrita do índice é pequeno para os volumes previstos, dezenas de milhares de ativos por tenant. Ordenar por semelhança (`similarity`) exigiria usar função da extensão numa consulta e fica fora; se vier, é outro ADR.
 
+**Implementação (B6, migração 0019, 29/09/2026):** sem mudar a decisão.
+- A normalização é `textoDeBusca` em `packages/i18n` (minúsculas, sem acento, espaços reduzidos). O que entra na coluna fica em `packages/aplicacao` (`buscaDeLocal`: nome; `buscaDeAtivo`: nome, fabricante, modelo e número de série), chamado pelos repositórios de `packages/db` em todo INSERT e UPDATE desses campos, incluindo a promoção de UHs do CM. O termo digitado passa por `termoDeBusca`, que dá `busca_curta` (422, com o mínimo) abaixo de 3 caracteres; termo vazio devolve a lista inteira.
+- A coluna é `text not null default ''`: o default só cobre linha gravada fora da aplicação (fixtures dos testes, como superusuário). Os registros existentes foram preenchidos na migração com `translate()` e `lower()`, com o mesmo resultado da função para as letras acentuadas do português, do espanhol e do francês.
+- API: `?busca=` em `GET /hoteis/{id}/locais` e `GET /hoteis/{id}/ativos`. O `%`, o `_` e a barra digitados valem como texto.
+- PWA: filtra os ativos guardados no aparelho, sem rede, com a mesma função e os mesmos campos; abaixo de 3 caracteres, mostra a lista inteira, sem aviso.
+- Meta-testes 25 (lista fechada de extensões: as do Supabase, `pgtap` e `pg_trgm`) e 26 (índices de trigramas só em `busca` de local e ativo, com `pg_trgm` em `extensions`).
+- O chamado ganha a coluna na C2, junto com a tabela.
+
 ## ADR-031 — Proprietário de hotel inteiro, com vigência, calculado na fonte
 
 **Status:** aprovada por Cesar em 28/09/2026, com o texto como está (decisão de 26/09/2026; implementada na migração 0011, PR #41). Confirmado também que só o Admin do grupo lê `app.hotel_proprietario`.

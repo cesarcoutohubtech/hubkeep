@@ -170,14 +170,15 @@ describe.skipIf(!temBanco)(
       const r = await casos.promoverUhs(T.tenant);
       expect(r).toMatchObject({ criadas: 4, ativas: 2, pendentes: 2, semHotel: 0, invalidas: 0 });
       const locais = await dono.query(
-        `select cod_externo, status from app.local where tenant_id = $1 order by cod_externo`,
+        `select cod_externo, status, busca from app.local where tenant_id = $1 order by cod_externo`,
         [T.tenant],
       );
+      // A busca (B6) é gravada na promoção, com o nome da UH.
       expect(locais.rows).toEqual([
-        { cod_externo: '101', status: 'ativo' },
-        { cod_externo: '102', status: 'ativo' },
-        { cod_externo: '103', status: 'pendente_licenca' },
-        { cod_externo: '201', status: 'pendente_licenca' },
+        { cod_externo: '101', status: 'ativo', busca: '101' },
+        { cod_externo: '102', status: 'ativo', busca: '102' },
+        { cod_externo: '103', status: 'pendente_licenca', busca: '103' },
+        { cod_externo: '201', status: 'pendente_licenca', busca: '201' },
       ]);
       // Toda UH promovida grava auditoria (sem usuário) e evento, na mesma transação.
       const trilha = await dono.query(

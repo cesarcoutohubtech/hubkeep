@@ -2,6 +2,7 @@
 // área comum se grava aqui; UH vem da promoção do worker (promocao.ts). A RLS
 // decide por último: quem não tem escrita no hotel tem o INSERT recusado
 // (42501) e o UPDATE sem linha.
+import { buscaDeLocal } from '@hubkeep/aplicacao';
 import { NaoEncontrado } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
@@ -22,6 +23,7 @@ export async function criarAreaComum(
       tipo: 'area_comum',
       status: 'ativo',
       ...dados,
+      busca: buscaDeLocal(dados.nome),
     })
     .execute();
   uow.auditar({
@@ -53,7 +55,11 @@ export async function alterarLocal(
     .executeTakeFirst();
   const r = await tx
     .updateTable('app.local')
-    .set({ ...mudanca, atualizado_em: sql`now()` })
+    .set({
+      ...mudanca,
+      ...('nome' in mudanca ? { busca: buscaDeLocal(mudanca.nome) } : {}),
+      atualizado_em: sql`now()`,
+    })
     .where('id', '=', localId)
     .returning(['hotel_id'])
     .executeTakeFirst();
