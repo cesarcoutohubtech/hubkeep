@@ -9,7 +9,9 @@
 //   - o proprietário vê só o ativo da UH dele;
 //   - pela fila offline, o reenvio de ativo.cadastrar não duplica, e o conflito
 //     de ativo.alterar não guarda a chave;
-//   - cada gravação vai para a auditoria e o painel de implantação conta.
+//   - cada gravação vai para a auditoria e o painel de implantação conta;
+//   - QR (B5): o cadastro gera o código; abrir pelo código respeita o escopo
+//     (outro hotel dá 404) e aceita o código digitado em minúsculas.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -259,6 +261,30 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
   it('o proprietário vê só o ativo da UH dele', async () => {
     const lista = await casos.listarAtivos(ctx(U.dono), H1);
     expect(lista.map((a) => a.id)).toEqual([ar]);
+  });
+
+  it('QR (B5): código gerado no cadastro; abre no escopo e dá 404 fora dele', async () => {
+    const lista = await casos.listarAtivos(ctx(U.gerente), H1);
+    const codigos = lista.map((a) => a.codigoQr);
+    for (const c of codigos) expect(c).toMatch(/^[0-9A-HJKMNP-TV-Z]{10}$/);
+    expect(new Set(codigos).size).toBe(codigos.length);
+    const codigo = lista.find((a) => a.id === ar)?.codigoQr ?? '';
+    expect((await casos.abrirPorCodigoQr(ctx(U.dono), codigo.toLowerCase())).id).toBe(ar);
+    expect((await casos.abrirPorCodigoQr(ctx(U.tecnico), codigo)).campos).toEqual({
+      potencia: 9000,
+    });
+    await expect(casos.abrirPorCodigoQr(ctx(U.gerenteH2), codigo)).rejects.toMatchObject({
+      codigo: 'ativo_nao_encontrado',
+    });
+    await expect(casos.abrirPorCodigoQr(ctx(U.gerente), '../hoteis')).rejects.toMatchObject({
+      codigo: 'ativo_nao_encontrado',
+    });
+    const { rows } = await dono.query(
+      `select depois->>'codigoQr' as codigo from app.auditoria
+        where tenant_id = $1 and entidade = 'ativo' and registro_id = $2 and acao = 'criar'`,
+      [TENANT, ar],
+    );
+    expect(rows[0]?.codigo).toBe(codigo);
   });
 
   it('fila offline: o reenvio não duplica e o conflito não guarda a chave', async () => {

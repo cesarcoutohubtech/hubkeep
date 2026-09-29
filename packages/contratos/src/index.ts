@@ -41,6 +41,7 @@ export {
   PedidoDeCadastroDeAtivo,
   PedidoDeMovimentacaoDeAtivo,
   PedidoDeVersaoDeAtivo,
+  RespostaDeAtivoDoQr,
   RespostaDeAtivoGravado,
   RespostaDeAtivosDoHotel,
   RespostaDeMovimentacoesDoAtivo,

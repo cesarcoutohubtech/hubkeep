@@ -7,7 +7,7 @@
 import type { DadosDeAtivo, MudancaDeAtivo } from '@hubkeep/aplicacao';
 import { NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
 import { sql } from 'kysely';
-import { novoId } from '../ids';
+import { novoCodigoQr, novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 
 const colunasDeDados = (d: DadosDeAtivo) => ({
@@ -26,6 +26,7 @@ export async function criarAtivo(
   dados: DadosDeAtivo,
 ): Promise<{ id: string; versao: number }> {
   const id = novoId();
+  const codigoQr = novoCodigoQr();
   await transacaoDe(uow)
     .insertInto('app.ativo')
     .values({
@@ -33,6 +34,7 @@ export async function criarAtivo(
       tenant_id: uow.tenantId,
       hotel_id: hotelId,
       local_id: localId,
+      codigo_qr: codigoQr,
       ...colunasDeDados(dados),
     })
     .execute();
@@ -41,7 +43,7 @@ export async function criarAtivo(
     registroId: id,
     acao: 'criar',
     hotelId,
-    depois: { localId, ...dados },
+    depois: { localId, codigoQr, ...dados },
   });
   uow.publicar({
     tipo: 'ativo.criado',

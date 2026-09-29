@@ -112,6 +112,7 @@ describe('referência no aparelho', () => {
             campos: {},
             versao: 3,
             ativo: true,
+            codigoQr: '7K3M9QX2AB',
           },
         ],
       },
@@ -126,7 +127,7 @@ describe('referência no aparelho', () => {
       tenantId: TENANT,
       idiomaPadrao: 'es',
       locais: { [H1]: [{ id: L1, nome: 'UH 101', status: 'ativo' }] },
-      ativos: { [H1]: [{ id: ATIVO, versao: 3 }] },
+      ativos: { [H1]: [{ id: ATIVO, versao: 3, codigoQr: '7K3M9QX2AB' }] },
     });
     const semAtivos: typeof fetch = async (url, init) =>
       String(url).endsWith('/ativos') ? json({}, 500) : fetchFalso(url, init);

@@ -606,6 +606,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     'campos',
     'versao',
     'desativado_em',
+    'codigo_qr',
   ] as const;
   const paraAtivo = (a: {
     id: string;
@@ -619,6 +620,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     campos: unknown;
     versao: number;
     desativado_em: Date | null;
+    codigo_qr: string;
   }): AtivoGravado => ({
     id: a.id,
     hotelId: a.hotel_id,
@@ -631,6 +633,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     campos: a.campos,
     versao: a.versao,
     desativadoEm: a.desativado_em,
+    codigoQr: a.codigo_qr,
   });
   return {
     hotel: (ctx, hotelId) =>
@@ -673,6 +676,16 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
           .selectFrom('app.ativo')
           .select(colunas)
           .where('id', '=', ativoId)
+          .executeTakeFirst();
+        return a ? paraAtivo(a) : null;
+      }),
+    ativoPorCodigoQr: (ctx, codigoQr) =>
+      banco.withContext(ctx, async (tx) => {
+        // O tenant vem da RLS (tenant do contexto); o código é único no tenant.
+        const a = await tx
+          .selectFrom('app.ativo')
+          .select(colunas)
+          .where('codigo_qr', '=', codigoQr)
           .executeTakeFirst();
         return a ? paraAtivo(a) : null;
       }),

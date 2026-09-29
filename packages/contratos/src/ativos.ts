@@ -20,8 +20,15 @@ export const AtivoApi = z
     campos: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
     versao: z.number().int().min(1),
     ativo: z.boolean(),
+    /** Código do QR individual (B5): 10 caracteres, imutável. */
+    codigoQr: z.string().regex(/^[0-9A-HJKMNP-TV-Z]{10}$/),
   })
   .meta({ id: 'AtivoApi' });
+
+/** O ativo aberto pelo QR (B5), com o hotel, para o aparelho saber onde ele está. */
+export const RespostaDeAtivoDoQr = z
+  .object({ hotelId: z.guid(), ativo: AtivoApi })
+  .meta({ id: 'RespostaDeAtivoDoQr' });
 
 export const RespostaDeAtivosDoHotel = z
   .object({ ativos: z.array(AtivoApi) })

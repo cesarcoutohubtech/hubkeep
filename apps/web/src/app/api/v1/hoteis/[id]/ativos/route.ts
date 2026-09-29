@@ -27,6 +27,7 @@ export const GET = rota('ativos.listar', async (r) => {
       campos: a.campos,
       versao: a.versao,
       ativo: a.desativadoEm === null,
+      codigoQr: a.codigoQr,
     })),
   });
 });
