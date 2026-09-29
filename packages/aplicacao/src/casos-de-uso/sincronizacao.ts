@@ -1,8 +1,11 @@
 // Recebimento das operações que o PWA do técnico fez sem rede (F0-11, ADR-025).
 //
-// Cada operação chega com a chave gerada no aparelho. A validação roda antes
-// (operação inválida é 422 e não guarda a chave: o aparelho a descarta); a
-// operação válida é aplicada uma vez só, pela porta. Tipos: a troca das
+// Cada operação chega com a chave gerada no aparelho. O reenvio de chave já
+// aplicada devolve a resposta guardada antes de qualquer validação: ela olha
+// o estado de agora (a OS já concluída, a versão já adiante) e recusaria o que
+// já foi feito. A validação roda antes de aplicar (operação inválida é 422 e
+// não guarda a chave: o aparelho a descarta); a operação válida é aplicada
+// uma vez só, pela porta. Tipos: a troca das
 // próprias preferências (fase 0), o cadastro e a alteração de ativo (B3), a
 // abertura do chamado (C2), com a mesma preparação do web, e a execução da OS
 // pelo Técnico (C4: iniciar, pausar, retomar, concluir, horas e material). No
@@ -68,6 +71,8 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
 
   return {
     async receberOperacao(ctx, operacao) {
+      const guardada = await deps.operacoes.respostaGuardada(ctx, operacao.chave);
+      if (guardada) return { chave: operacao.chave, repetida: true, resposta: guardada };
       switch (operacao.tipo) {
         case 'preferencias.gravar': {
           validarPreferencias(operacao.dados);

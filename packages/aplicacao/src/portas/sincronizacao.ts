@@ -45,6 +45,8 @@ export interface SessaoDeOperacao {
 }
 
 export interface PortaOperacoesOffline {
+  /** A resposta guardada da chave, se já foi recebida (do mesmo usuário); senão, null. */
+  respostaGuardada(ctx: Contexto, chave: string): Promise<RespostaDeOperacao | null>;
   /**
    * Roda `efeito` e grava a chave, juntos. Se a chave já foi recebida (do
    * mesmo usuário), não roda nada e devolve a resposta guardada.
