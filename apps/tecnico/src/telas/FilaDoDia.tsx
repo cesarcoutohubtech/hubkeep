@@ -25,6 +25,12 @@ const ROTULO_DA_OPERACAO: Record<OperacaoNaFila['tipo'], Chave> = {
   'ativo.cadastrar': 'tecnico.operacao.ativo_cadastrar',
   'ativo.alterar': 'tecnico.operacao.ativo_alterar',
   'chamado.abrir': 'tecnico.operacao.chamado_abrir',
+  'os.iniciar': 'tecnico.operacao.os_iniciar',
+  'os.pausar': 'tecnico.operacao.os_pausar',
+  'os.retomar': 'tecnico.operacao.os_retomar',
+  'os.concluir': 'tecnico.operacao.os_concluir',
+  'os.apontar_horas': 'tecnico.operacao.os_apontar_horas',
+  'os.registrar_material': 'tecnico.operacao.os_registrar_material',
 };
 
 /** Motivo pelo catálogo (erro.<codigo>); código desconhecido aparece como está. */

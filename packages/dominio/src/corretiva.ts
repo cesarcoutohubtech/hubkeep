@@ -361,3 +361,38 @@ export function decidirNaOs(
     motivo: t.exigeMotivo ? normalizarMotivo(p.motivo) : null,
   };
 }
+
+/** O que o responsável registra na OS, além das transições (C4). */
+export const REGISTROS_NA_OS = ['apontar_horas', 'registrar_material', 'anexar_foto'] as const;
+export type RegistroNaOs = (typeof REGISTROS_NA_OS)[number];
+
+/** Registrar na OS só com ela em execução ou pausada (entre iniciar e concluir). */
+export const ESTADOS_QUE_ACEITAM_REGISTRO: readonly EstadoDaOs[] = ['em_execucao', 'pausada'];
+
+/**
+ * Apontar horas, registrar material ou anexar foto: o Técnico do hotel
+ * responsável pela OS (403 fora do papel; 409 os_de_outro_responsavel), com a
+ * OS em execução ou pausada (409 transicao_invalida).
+ */
+export function decidirRegistroNaOs(
+  registro: RegistroNaOs,
+  p: {
+    ator: AtorDaCorretiva;
+    chamado: ChamadoParaRegra;
+    os: { estado: EstadoDaOs; responsavel: Responsavel };
+    agora: Date;
+  },
+): void {
+  exigirPapel(['responsavel'], registro, p.ator, p.chamado, p.agora);
+  if (!ESTADOS_QUE_ACEITAM_REGISTRO.includes(p.os.estado)) {
+    throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
+      acao: registro,
+      estado: p.os.estado,
+    });
+  }
+  if (!ehResponsavel(p.ator, p.os.responsavel)) {
+    throw new Conflito('os_de_outro_responsavel', 'A OS está com outro responsável.', {
+      acao: registro,
+    });
+  }
+}

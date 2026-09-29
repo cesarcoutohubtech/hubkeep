@@ -5,6 +5,7 @@
 import type { Contexto } from '@hubkeep/dominio';
 import type { DadosDeAtivo, MudancaDeAtivo } from './ativos';
 import type { DadosDeChamado } from './chamados';
+import type { AcaoNaOsDecidida } from './execucao';
 import type { PreferenciasGravadas } from './preferencias';
 
 /** Resposta guardada com a chave e devolvida igual a cada reenvio. */
@@ -26,6 +27,21 @@ export interface SessaoDeOperacao {
   ): Promise<{ versao: number }>;
   /** Abertura do chamado (C2), em nome do usuário do contexto. */
   abrirChamado(hotelId: string, dados: DadosDeChamado): Promise<{ id: string; versao: number }>;
+  /** Iniciar, pausar, retomar ou concluir a OS (C4); versão diferente: conflito_de_versao. */
+  andarComOs(g: AcaoNaOsDecidida): Promise<{ versao: number }>;
+  /** Apontamento de horas do usuário do contexto na OS (C4). */
+  apontarHoras(g: {
+    osId: string;
+    hotelId: string;
+    inicio: Date;
+    fim: Date;
+  }): Promise<{ id: string }>;
+  /** Material em texto livre do usuário do contexto na OS (C4). */
+  registrarMaterial(g: {
+    osId: string;
+    hotelId: string;
+    descricao: string;
+  }): Promise<{ id: string }>;
 }
 
 export interface PortaOperacoesOffline {

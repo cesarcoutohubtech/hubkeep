@@ -44,6 +44,7 @@ export interface AppAnexo {
   local_id: string | null;
   miniatura_caminho: string | null;
   nome: string | null;
+  os_id: string | null;
   removido_em: Timestamp | null;
   removido_por: string | null;
   tenant_id: string;
@@ -268,6 +269,27 @@ export interface AppOs {
   versao: Generated<number>;
 }
 
+export interface AppOsApontamento {
+  criado_em: Generated<Timestamp>;
+  fim: Timestamp;
+  hotel_id: string;
+  id: string;
+  inicio: Timestamp;
+  os_id: string;
+  tenant_id: string;
+  usuario_id: string;
+}
+
+export interface AppOsMaterial {
+  criado_em: Generated<Timestamp>;
+  descricao: string;
+  hotel_id: string;
+  id: string;
+  os_id: string;
+  tenant_id: string;
+  usuario_id: string;
+}
+
 export interface AppPolitica {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -394,6 +416,8 @@ export interface DB {
   "app.membro": AppMembro;
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
+  "app.os_apontamento": AppOsApontamento;
+  "app.os_material": AppOsMaterial;
   "app.politica": AppPolitica;
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.prioridade": AppPrioridade;

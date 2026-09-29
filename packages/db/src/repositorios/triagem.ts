@@ -28,7 +28,7 @@ const colunasDoResponsavel = (r: Responsavel) =>
  * UPDATE, porque uma gravação simultânea pode ter terminado enquanto este
  * esperava a trava); invisível, ou visível sem escrita (RLS), é 404.
  */
-async function semLinha(
+export async function semLinha(
   tx: Tx,
   tabela: 'app.chamado' | 'app.os',
   id: string,
@@ -45,7 +45,7 @@ async function semLinha(
     : new NaoEncontrado('chamado_nao_encontrado', 'Chamado não encontrado.');
 }
 
-async function refletirNoChamado(
+export async function refletirNoChamado(
   uow: UnidadeDeTrabalho,
   c: ReflexoNoChamado,
 ): Promise<{ hotelId: string; versao: number }> {

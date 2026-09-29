@@ -58,6 +58,8 @@ export {
 export {
   ChamadoApi,
   OsApi,
+  OsDoDiaApi,
+  RespostaDeOsDoDia,
   PedidoDeAberturaDeChamado,
   PedidoDeAjusteDePrioridade,
   PedidoDeAtribuicaoDeOs,

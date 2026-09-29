@@ -147,8 +147,11 @@ export {
   PAPEIS_QUE_ABREM_CHAMADO,
   TRANSICOES_DA_OS,
   TRANSICOES_DO_CHAMADO,
+  ESTADOS_QUE_ACEITAM_REGISTRO,
+  REGISTROS_NA_OS,
   decidirNaOs,
   decidirNoChamado,
+  decidirRegistroNaOs,
   exigirChamadoSemOsEmAndamento,
   normalizarMotivo,
   osOcupaOChamado,
@@ -162,8 +165,16 @@ export type {
   ChamadoParaRegra,
   EstadoDaOs,
   EstadoDoChamado,
+  RegistroNaOs,
   Responsavel,
 } from './corretiva';
+export {
+  FOLGA_DO_RELOGIO_MINUTOS,
+  LIMITE_HORAS_POR_APONTAMENTO,
+  LIMITE_MATERIAL,
+  normalizarMaterial,
+  validarApontamento,
+} from './execucao';
 export {
   ENTIDADES_COM_SITUACAO,
   ESTADOS_POR_ENTIDADE,

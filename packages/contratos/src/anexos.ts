@@ -3,7 +3,7 @@
 // aparelho registra o caminho (e o da miniatura, gerada nele).
 import { z } from 'zod';
 
-export const ENTIDADES_COM_ANEXO_API = ['hotel', 'local', 'ativo', 'chamado'] as const;
+export const ENTIDADES_COM_ANEXO_API = ['hotel', 'local', 'ativo', 'chamado', 'os'] as const;
 export const TIPOS_DE_ANEXO_API = [
   'image/jpeg',
   'image/png',
@@ -16,6 +16,12 @@ export const PedidoDeUrlDeUpload = z
     entidade: z.enum(ENTIDADES_COM_ANEXO_API),
     registroId: z.guid(),
     tipo: z.enum(TIPOS_DE_ANEXO_API),
+    /**
+     * Id do arquivo gerado no aparelho (C4): o caminho sai igual no reenvio da
+     * foto offline, e o envio repetido é recusado pelo Storage em vez de
+     * duplicar. Sem ele, o servidor gera um.
+     */
+    arquivoId: z.guid().optional(),
   })
   .meta({ id: 'PedidoDeUrlDeUpload' });
 

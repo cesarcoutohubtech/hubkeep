@@ -510,9 +510,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - a OS preventiva (1b), sem chamado, fica fora da restrição;
   - a regra está no domínio (`osOcupaOChamado`, recusa 409 `os_em_andamento`) e no banco, como integridade (índice único parcial `os_uma_ativa_por_chamado`, que pega as duas triagens simultâneas). O teste de integração confere a paridade para cada estado da OS e o caso das duas triagens juntas;
   - um problema com duas especialidades vira dois chamados no MVP (pergunta ao cliente em `docs/referencia/perguntas-cliente.md`).
-- **Quem recebe a OS:** um Técnico com papel vigente que cobre o hotel, ou uma equipe ativa do hotel (`triagem.ts`); senão, 422 `responsavel_sem_papel_tecnico` ou `equipe_indisponivel`. Para a aplicação conferir o Técnico, a policy de leitura de `app.atribuicao_escopo` passa a mostrar ao Gestor CSC e ao Gerente do hotel as atribuições de papel `tecnico` que cobrem os hotéis em que eles fazem a triagem. Não mostra outras atribuições nem as de outros hotéis. Esta ampliação da leitura aguarda o ok do Cesar.
+- **Quem recebe a OS:** um Técnico com papel vigente que cobre o hotel, ou uma equipe ativa do hotel (`triagem.ts`); senão, 422 `responsavel_sem_papel_tecnico` ou `equipe_indisponivel`. Para a aplicação conferir o Técnico, a policy de leitura de `app.atribuicao_escopo` passa a mostrar ao Gestor CSC e ao Gerente do hotel as atribuições de papel `tecnico` que cobrem os hotéis em que eles fazem a triagem. Não mostra outras atribuições nem as de outros hotéis. Ampliação aprovada pelo Cesar em 29/09/2026, depois do merge do #65.
 - **Ajuste de prioridade:** pelos papéis da triagem, só com prioridade ativa e com o chamado aberto, em triagem ou em execução.
 - **Escrita no banco:** a OS e o UPDATE do chamado (estado, situação, prioridade e motivo) só pelos papéis da triagem (Admin do grupo, Gestor CSC e Gerente do hotel). A C4 amplia para o responsável, e a C6, para o aceite.
+
+**Implementação (C4a, migração 0023, 29/09/2026):**
+- **Execução pelo Técnico responsável** (ele, ou uma equipe ativa de que é membro ativo): iniciar, pausar, retomar e concluir pelo `decidirNaOs`, agora com as equipes do ator preenchidas. Concluir leva o chamado a aguardando aceite.
+- **Registros na OS** (`decidirRegistroNaOs`): apontar horas, registrar material e anexar foto, só com a OS em execução ou pausada. O apontamento tem fim depois do início, até 24 h, e fim até 10 min no futuro (422 `apontamento_invalido`). O material é texto livre de 1 a 500 caracteres (422 `material_invalido`).
+- **Tudo por operação offline** (ADR-025): `os.iniciar`, `os.pausar`, `os.retomar` e `os.concluir` levam a versão que o aparelho calculou; `os.apontar_horas` e `os.registrar_material` não mudam a versão da OS. A regra vem antes da versão: a OS reatribuída com a operação na fila volta como 409 `os_de_outro_responsavel`.
+- **Banco:** `app.os_apontamento` e `app.os_material`, só inserção, pelo responsável, em nome dele mesmo. O UPDATE de `app.os` e de `app.chamado` (este, pela OS não cancelada) ganha o responsável. Risco aceito: o GRANT por coluna vale para todo o `hk_app`, então o responsável tem UPDATE, no banco, em `tecnico_id`/`equipe_id` e em `prioridade_id`; a policy só deixa o resultado com ele como responsável, a aplicação não grava essas colunas por ele, e fica na auditoria.
+- **Fila do dia:** `GET /api/v1/os/do-dia`, com as OS atribuídas, em execução ou pausadas do Técnico e das equipes dele.
+- **Anexo da OS:** entidade `os`, e a URL de upload aceita um `arquivoId` gerado no aparelho, para o caminho sair igual no reenvio da foto offline (C4b).
 
 ## ADR-028 — Campos tipados por definição (ativo na 1a, checklist na 1b)
 

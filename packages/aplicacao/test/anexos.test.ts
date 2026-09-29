@@ -78,6 +78,21 @@ describe('URL de upload', () => {
     expect(emitidas).toEqual([`upload:${CAMINHO}`]);
   });
 
+  it('com o arquivoId do aparelho (foto offline, C4), o caminho sai igual no reenvio', async () => {
+    const { casos } = montar({});
+    const arquivoId = '0193b000-0000-7000-8000-00000000abcd';
+    const pedir = () =>
+      casos.pedirUrlDeUpload(ctx, {
+        entidade: 'local',
+        registroId: LOCAL,
+        tipo: 'image/jpeg',
+        arquivoId,
+      });
+    const [a, b] = [await pedir(), await pedir()];
+    expect(a.caminho).toBe(`${TENANT}/${HOTEL}/local/${LOCAL}/${arquivoId}.jpg`);
+    expect(b.caminho).toBe(a.caminho);
+  });
+
   it('registro fora do escopo (a RLS não mostra): 404, sem URL', async () => {
     const { casos, emitidas } = montar({ hotel: null });
     await expect(

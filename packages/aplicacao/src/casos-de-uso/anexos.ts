@@ -130,7 +130,13 @@ export interface AnexoListado extends Omit<
 export interface CasosDeUsoDeAnexos {
   pedirUrlDeUpload(
     ctx: Contexto,
-    pedido: { entidade: EntidadeComAnexo; registroId: string; tipo: string },
+    pedido: {
+      entidade: EntidadeComAnexo;
+      registroId: string;
+      tipo: string;
+      /** Gerado no aparelho, para o caminho ser o mesmo no reenvio (C4); senão, novo. */
+      arquivoId?: string | undefined;
+    },
   ): Promise<{ caminho: string; url: string; token: string; expiraEm: Date }>;
   pedirUrlDeDownload(ctx: Contexto, caminho: string): Promise<{ url: string; expiraEm: Date }>;
   registrar(ctx: Contexto, pedido: PedidoDeRegistroDeAnexo): Promise<{ id: string }>;
@@ -176,7 +182,7 @@ export function criarCasosDeUsoDeAnexos(deps: DependenciasDeAnexos): CasosDeUsoD
         hotelId,
         pedido.entidade,
         pedido.registroId,
-        `${deps.novoId()}.${ext}`,
+        `${pedido.arquivoId ?? deps.novoId()}.${ext}`,
       ]
         .join('/')
         .toLowerCase();
