@@ -372,13 +372,14 @@ describe.skipIf(!temBanco)('C3 — triagem e atribuição', { timeout: 60_000 },
     for (const estado of ESTADOS_DA_OS) {
       const id = await abrir(`Paridade ${estado}`);
       await dono.query(
-        `insert into app.os (id, tenant_id, hotel_id, chamado_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id, tecnico_id, motivo_cancelamento, criado_por)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           randomUUID(),
           TENANT,
           H1,
           id,
+          L.uh101,
           estado,
           situacaoOsAtribuida,
           U.tecnico,

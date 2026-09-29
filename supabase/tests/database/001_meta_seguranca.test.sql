@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(27);
+select plan(29);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -411,6 +411,42 @@ $$, $$ values ('ativo_busca_trgm_idx', 'ativo', 'busca', 'extensions'),
               ('chamado_busca_trgm_idx', 'chamado', 'busca', 'extensions'),
               ('local_busca_trgm_idx', 'local', 'busca', 'extensions') $$,
   'índices de trigramas só em busca de local, ativo e chamado, com pg_trgm em extensions');
+
+-- 27. Nenhum ciclo entre policies (0024). O Postgres recusa, ao reescrever a
+--     consulta, a policy que chega de volta à própria tabela, direto ou por
+--     outras (42P17, "infinite recursion detected in policy"), e a recusa vale
+--     para toda consulta daquele comando à tabela, de qualquer papel. A 0023
+--     criou um ciclo (o UPDATE do chamado lê a OS; a leitura da OS lia o
+--     chamado) que só aparecia no primeiro UPDATE do chamado. A aresta vai da
+--     tabela da policy a cada tabela dos schemas do HubKeep citada no using ou
+--     no with check; o pg_get_expr qualifica o nome com o schema, que está
+--     fora do search_path. O primeiro teste prova que o grafo enxerga arestas.
+create temporary table aresta_de_policy on commit drop as
+  select distinct p.polrelid as de, r.oid as para
+  from pg_policy p
+  join pg_class t on t.oid = p.polrelid
+  join pg_namespace tn on tn.oid = t.relnamespace
+  cross join lateral regexp_matches(
+    coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+      coalesce(pg_get_expr(p.polwithcheck, p.polrelid), ''),
+    '(app|staging|licenca)\.([a-z_][a-z0-9_]*)', 'g') m
+  join pg_namespace n on n.nspname = m[1]
+  join pg_class r on r.relnamespace = n.oid and r.relname = m[2] and r.relkind in ('r', 'p')
+  where tn.nspname in ('app', 'staging', 'licenca');
+select ok(
+  exists (select 1 from aresta_de_policy
+          where de = 'app.chamado'::regclass and para = 'app.os'::regclass),
+  'o grafo de policies enxerga a aresta chamado → os (UPDATE do Técnico responsável)');
+select is_empty($$
+  with recursive caminho (origem, atual, passos) as (
+    select de, para, 1 from aresta_de_policy
+    union
+    select c.origem, a.para, c.passos + 1
+    from caminho c join aresta_de_policy a on a.de = c.atual
+    where c.passos < 20
+  )
+  select distinct origem::regclass::text from caminho where origem = atual
+$$, 'nenhuma policy chega de volta à própria tabela');
 
 select * from finish();
 rollback;

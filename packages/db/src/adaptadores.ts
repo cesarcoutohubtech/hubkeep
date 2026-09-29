@@ -786,6 +786,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
             'c.id',
             'c.hotel_id',
             'h.bandeira_id',
+            'c.local_id',
             'c.estado',
             'c.situacao_id',
             'c.prioridade_id',
@@ -798,6 +799,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           ? {
               id: c.id,
               hotel: { id: c.hotel_id, bandeiraId: c.bandeira_id },
+              localId: c.local_id,
               estado: c.estado as EstadoDoChamado,
               situacaoId: c.situacao_id,
               prioridadeId: c.prioridade_id,

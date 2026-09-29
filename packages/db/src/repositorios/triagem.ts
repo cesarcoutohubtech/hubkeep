@@ -121,7 +121,13 @@ export async function alterarChamadoNaTriagem(
 
 export async function gerarOs(
   uow: UnidadeDeTrabalho,
-  g: { chamado: ReflexoNoChamado; hotelId: string; situacaoId: string; responsavel: Responsavel },
+  g: {
+    chamado: ReflexoNoChamado;
+    hotelId: string;
+    localId: string;
+    situacaoId: string;
+    responsavel: Responsavel;
+  },
 ): Promise<{ id: string; versao: number; versaoDoChamado: number }> {
   if (!uow.usuarioId) throw new Error('Geração de OS exige usuário no contexto.');
   const id = novoId();
@@ -134,6 +140,7 @@ export async function gerarOs(
       tenant_id: uow.tenantId,
       hotel_id: g.hotelId,
       chamado_id: g.chamado.id,
+      local_id: g.localId,
       estado: 'atribuida',
       situacao_id: g.situacaoId,
       ...colunasDoResponsavel(g.responsavel),
