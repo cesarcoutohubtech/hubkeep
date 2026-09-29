@@ -54,6 +54,7 @@ export interface AppAtivo {
   atualizado_em: Generated<Timestamp>;
   campos: Generated<Json>;
   categoria_id: string | null;
+  codigo_qr: string;
   criado_em: Generated<Timestamp>;
   desativado_em: Timestamp | null;
   fabricante: string | null;

@@ -128,5 +128,12 @@ export type {
   StatusDeLocal,
   TipoDeLocal,
 } from './licenca';
+export {
+  ALFABETO_DO_QR,
+  TAMANHO_DO_CODIGO_QR,
+  caminhoDoQr,
+  codigoQrDeBytes,
+  lerCodigoQr,
+} from './qr';
 export { PAPEIS } from './tipos';
 export type { Atribuicao, Contexto, Escopo, Papel, PedidoDeConcessao } from './tipos';

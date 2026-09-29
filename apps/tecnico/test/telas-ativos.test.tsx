@@ -90,6 +90,28 @@ describe('tela de ativos do PWA', () => {
     expect(html).toContain('TV, em UH 101');
   });
 
+  it('aberta pelo QR (B5): já vem no hotel do ativo, com o ativo aberto', () => {
+    const ativo = referencia.ativos['h1']?.[0];
+    if (!ativo) throw new Error('fixture sem ativo');
+    const html = renderToString(
+      <ProvedorDeIdioma idioma="pt-BR">
+        <Ativos
+          aberto={{ hotelId: 'h1', ativo }}
+          idioma="pt-BR"
+          referencia={referencia}
+          pendentes={[]}
+          aoCadastrar={async () => undefined}
+          aoAlterar={async () => undefined}
+          aoVoltar={() => undefined}
+        />
+      </ProvedorDeIdioma>,
+    );
+    const m = mensagensDe('pt-BR');
+    expect(html).toContain('value="Frigobar"');
+    expect(html).toContain(m['admin.ativos.acao.salvar']);
+    expect(html).not.toContain(m['admin.ativos.novo']);
+  });
+
   it('pseudo-idioma: todo texto visível vem do catálogo (entre colchetes)', () => {
     const html = renderizar(PSEUDO_IDIOMA, referencia).replace(/<select[\s\S]*?<\/select>/g, '');
     const textos = [...html.matchAll(/>([^<>]+)</g)]

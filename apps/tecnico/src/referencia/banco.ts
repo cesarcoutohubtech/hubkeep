@@ -45,6 +45,8 @@ export interface AtivoGuardado {
   campos: Record<string, ValorDeCampo>;
   versao: number;
   ativo: boolean;
+  /** Código do QR (B5). Opcional: a referência guardada antes da B5 não tem. */
+  codigoQr?: string;
 }
 
 export interface Referencia {

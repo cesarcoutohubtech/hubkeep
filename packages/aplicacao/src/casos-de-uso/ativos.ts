@@ -6,7 +6,9 @@
 // fila offline (ADR-025) e usam os mesmos preparar*, antes da unit of work da
 // operação. Mover o ativo de local (B3c) é ação própria, só de quem gere o
 // hotel, dentro do mesmo hotel, e não vai pela fila offline (o técnico não
-// move). As regras são injetáveis para o teste provar que o banco ainda barra.
+// move). Abrir pelo código do QR (B5) passa pela mesma leitura: código de
+// outro tenant, fora do escopo ou mal formado dá 404, sem distinguir os casos.
+// As regras são injetáveis para o teste provar que o banco ainda barra.
 import {
   type Atribuicao,
   type CategoriaParaAtivo,
@@ -16,6 +18,7 @@ import {
   type ValorDeCampo,
   exigir,
   exigirLocalParaAtivo,
+  lerCodigoQr,
   lerDefinicoes,
   lerValores,
   normalizarNomeDeAtivo,
@@ -76,6 +79,8 @@ export interface AlteracaoPreparada {
 
 export interface CasosDeUsoDeAtivos {
   listarAtivos(ctx: Contexto, hotelId: string): Promise<AtivoListado[]>;
+  /** O ativo do QR (B5), aceitando o código como uma pessoa digitaria. */
+  abrirPorCodigoQr(ctx: Contexto, codigo: string): Promise<AtivoListado>;
   prepararCadastro(ctx: Contexto, p: PedidoDeCadastroDeAtivo): Promise<CadastroPreparado>;
   cadastrar(ctx: Contexto, p: PedidoDeCadastroDeAtivo): Promise<{ id: string; versao: number }>;
   prepararAlteracao(
@@ -140,6 +145,10 @@ export function criarCasosDeUsoDeAtivos(deps: {
       ativa: c.ativa,
       definicoes: lerDefinicoes(c.campos),
     }));
+  const comCampos = (a: AtivoGravado, categorias: readonly CategoriaParaAtivo[]): AtivoListado => ({
+    ...a,
+    campos: lerValores(categorias.find((c) => c.id === a.categoriaId)?.definicoes ?? [], a.campos),
+  });
   const dadosDe = async (
     ctx: Contexto,
     p: PedidoDeGravacaoDeAtivo,
@@ -163,13 +172,13 @@ export function criarCasosDeUsoDeAtivos(deps: {
     async listarAtivos(ctx, hotelId) {
       await hotelVisivel(ctx, hotelId);
       const categorias = await categoriasDoTenant(ctx);
-      return (await deps.ativos.ativos(ctx, hotelId)).map((a) => ({
-        ...a,
-        campos: lerValores(
-          categorias.find((c) => c.id === a.categoriaId)?.definicoes ?? [],
-          a.campos,
-        ),
-      }));
+      return (await deps.ativos.ativos(ctx, hotelId)).map((a) => comCampos(a, categorias));
+    },
+    async abrirPorCodigoQr(ctx, codigo) {
+      const lido = lerCodigoQr(codigo);
+      const a = lido === null ? null : await deps.ativos.ativoPorCodigoQr(ctx, lido);
+      if (!a) throw new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
+      return comCampos(a, await categoriasDoTenant(ctx));
     },
     async prepararCadastro(ctx, p) {
       const local = await deps.ativos.local(ctx, p.localId);

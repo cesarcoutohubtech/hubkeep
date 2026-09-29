@@ -16,6 +16,8 @@ export interface AtivoGravado {
   campos: unknown;
   versao: number;
   desativadoEm: Date | null;
+  /** Código do QR individual (B5), gerado no cadastro e imutável. */
+  codigoQr: string;
 }
 
 /** O que uma gravação (cadastro ou alteração) escreve, já validado pelo domínio. */
@@ -52,7 +54,9 @@ export interface PortaAtivos {
   categorias(ctx: Contexto): Promise<{ id: string; ativa: boolean; campos: unknown }[]>;
   ativos(ctx: Contexto, hotelId: string): Promise<AtivoGravado[]>;
   ativo(ctx: Contexto, ativoId: string): Promise<AtivoGravado | null>;
-  /** Na unit of work, com auditoria e evento. */
+  /** O ativo do código do QR no tenant do contexto, se visível (RLS); senão null. */
+  ativoPorCodigoQr(ctx: Contexto, codigoQr: string): Promise<AtivoGravado | null>;
+  /** Na unit of work, com auditoria e evento; o código do QR é gerado aqui. */
   criar(
     ctx: Contexto,
     hotelId: string,
