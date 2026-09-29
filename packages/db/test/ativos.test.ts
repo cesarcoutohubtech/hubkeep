@@ -347,7 +347,8 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
     const achados = async (termo: string, quem = U.gerente) =>
       (await casos.listarAtivos(ctx(quem), H1, termo)).map((a) => a.id);
     expect(await achados('acucar')).toEqual([id]);
-    expect(await achados('FRIG')).toEqual([id]);
+    // Trecho do meio, em maiúsculas; "frig" também acharia o Frigobar 102 do teste anterior.
+    expect(await achados('RIGERA')).toEqual([id]);
     expect(await achados('consul')).toEqual([id]);
     expect(await achados('_50%')).toEqual([id]);
     // % e _ digitados são texto: "sn%50" não casa "sn_50%".
@@ -363,7 +364,7 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
       ...pedido(L.uh102, { nome: 'Geladeira', categoriaId: null, campos: {} }),
       versao,
     });
-    expect(await achados('frig')).toEqual([]);
+    expect(await achados('rigera')).toEqual([]);
     expect(await achados('gela')).toEqual([id]);
   });
 
