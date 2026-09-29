@@ -1,7 +1,7 @@
 // Aceite da F0-07 sem banco: formato único de erro (código e parâmetros, sem
 // frase), request_id, logs com tenant_id e usuario_id, e o Sentry só para o
 // que é inesperado. O contexto e o usuário são falsos; o resto é o invólucro real.
-import { PedidoDeConvite, RespostaDeConvite } from '@hubkeep/contratos';
+import { LIMITE_BYTES_PADRAO, PedidoDeConvite, RespostaDeConvite, z } from '@hubkeep/contratos';
 import { PermissaoNegada, RegraViolada } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import { ErroHttp, type Dependencias, rota } from '../src/servidor/http';
@@ -221,5 +221,89 @@ describe('rota(): erro inesperado', () => {
     const resposta = await post(pedir());
     expect(resposta.status).toBe(500);
     expect(relatados).toHaveLength(1);
+  });
+});
+
+describe('rota(): limite do corpo em toda rota (ADR-032, condição 2)', () => {
+  const grande = (bytes: number) => JSON.stringify({ email: 'a@b.co', nome: 'x'.repeat(bytes) });
+  const post = (deps: Dependencias, limiteBytes?: number) =>
+    rota(
+      't',
+      async (r) =>
+        r.json(200, await r.corpo(PedidoDeConvite, limiteBytes ? { limiteBytes } : undefined)),
+      deps,
+    );
+
+  it('sem limite declarado, vale o padrão: 413 corpo_grande', async () => {
+    const { deps } = montar();
+    const resposta = await post(deps)(pedir(grande(LIMITE_BYTES_PADRAO + 1)));
+    expect(resposta.status).toBe(413);
+    expect((await corpoDe(resposta)).erro).toMatchObject({
+      codigo: 'corpo_grande',
+      parametros: { limiteBytes: LIMITE_BYTES_PADRAO },
+    });
+  });
+
+  it('content-length acima do limite: 413 sem ler o corpo', async () => {
+    const { deps } = montar();
+    const req = pedir('{}', { 'content-length': String(LIMITE_BYTES_PADRAO + 1) });
+    expect((await post(deps)(req)).status).toBe(413);
+    expect(req.bodyUsed).toBe(false);
+  });
+
+  it('sem content-length, a leitura para ao passar do limite e cancela o envio', async () => {
+    const { deps } = montar();
+    let enviados = 0;
+    let cancelado = false;
+    const pedaco = new TextEncoder().encode('x'.repeat(16 * 1024));
+    const fluxo = new ReadableStream<Uint8Array>({
+      pull(c) {
+        enviados += 1;
+        c.enqueue(pedaco);
+      },
+      cancel() {
+        cancelado = true;
+      },
+    });
+    const req = new Request('http://127.0.0.1/api/v1/teste', {
+      method: 'POST',
+      body: fluxo,
+      duplex: 'half',
+    } as RequestInit);
+    expect((await post(deps)(req)).status).toBe(413);
+    expect(cancelado).toBe(true);
+    expect(enviados * pedaco.byteLength).toBeLessThan(LIMITE_BYTES_PADRAO + 4 * pedaco.byteLength);
+  });
+
+  it('rota que declara limite maior aceita o corpo acima do padrão', async () => {
+    const { deps } = montar();
+    const resposta = await post(deps, 1024 * 1024)(pedir(grande(LIMITE_BYTES_PADRAO + 1)));
+    // Passou do limite e chegou ao contrato (nome longo demais): 422, não 413.
+    expect(resposta.status).toBe(422);
+  });
+
+  it('corpo UTF-8 é lido inteiro, com caractere partido entre pedaços', async () => {
+    const { deps } = montar();
+    const texto = JSON.stringify({ email: 'ção@b.co', nome: 'Ção', papel: 'rei' });
+    const bytes = new TextEncoder().encode(texto);
+    const meio = texto.indexOf('ç') + 3; // dentro do "ç" de 2 bytes
+    const fluxo = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(bytes.slice(0, meio));
+        c.enqueue(bytes.slice(meio));
+        c.close();
+      },
+    });
+    const req = new Request('http://127.0.0.1/api/v1/teste', {
+      method: 'POST',
+      body: fluxo,
+      duplex: 'half',
+    } as RequestInit);
+    const resposta = await rota(
+      't',
+      async (r) => r.json(200, await r.corpo(z.object({ nome: z.string() }).loose())),
+      deps,
+    )(req);
+    expect(await resposta.json()).toMatchObject({ nome: 'Ção' });
   });
 });

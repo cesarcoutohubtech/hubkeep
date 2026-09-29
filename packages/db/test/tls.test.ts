@@ -2,7 +2,8 @@
 // Com host remoto, a inicialização falha — e o erro não carrega a string de
 // conexão, que tem a senha.
 import { describe, expect, it } from 'vitest';
-import { tlsDaConexao } from '../src/tls';
+import { CA_DO_SUPABASE } from '../src/ca-supabase';
+import { tlsDaConexao, tlsVerificado } from '../src/tls';
 
 const SENHA = 'senha-que-nunca-pode-aparecer';
 const remotas = [
@@ -53,5 +54,39 @@ describe('tlsDaConexao', () => {
     const erro = erroDe(`nao-e-url ${SENHA}`);
     expect(erro).toMatch(/não é uma URL/);
     expect(erro).not.toContain(SENHA);
+  });
+});
+
+describe('tlsVerificado (ADR-032: certificado conferido)', () => {
+  it('confere o certificado contra a CA do Supabase', () => {
+    expect(tlsVerificado(remotas[0] ?? '')).toEqual({
+      ca: CA_DO_SUPABASE,
+      rejectUnauthorized: true,
+    });
+  });
+
+  it.each([
+    'sslmode=no-verify',
+    'sslmode=require',
+    'ssl=true',
+    'sslrootcert=/tmp/outra.crt',
+    'uselibpqcompat=true&sslmode=verify-ca',
+    'sslnegotiation=direct',
+  ])('URL com %s → erro, sem a string de conexão', (parametro) => {
+    const url = `postgresql://hk_app.ref:${SENHA}@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?${parametro}`;
+    let erro = 'não falhou';
+    try {
+      tlsVerificado(url);
+    } catch (e) {
+      erro = (e as Error).message;
+    }
+    expect(erro).toMatch(/^A string de conexão com o banco traz ssl/);
+    expect(erro).not.toContain(SENHA);
+    expect(erro).not.toContain('hk_app');
+  });
+
+  it('URL inválida → erro que não repete o valor', () => {
+    expect(() => tlsVerificado(`nao-e-url ${SENHA}`)).toThrow(/não é uma URL/);
+    expect(() => tlsVerificado(`nao-e-url ${SENHA}`)).not.toThrow(SENHA);
   });
 });

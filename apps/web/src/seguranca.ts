@@ -90,6 +90,16 @@ export function origemAceita(r: RequisicaoParaOrigem): boolean {
   return !r.cabecalhos.get('cookie') && !r.caminho.startsWith('/auth/');
 }
 
+/**
+ * Corpo declarado acima do teto (ADR-032, condição 2). O proxy recusa pelo
+ * content-length antes de qualquer handler, inclusive os que não passam pela
+ * rota(); quem omite o cabeçalho esbarra no limite da leitura (servidor/http.ts).
+ */
+export function corpoAcimaDoTeto(cabecalhos: Headers, teto: number): boolean {
+  const declarado = Number(cabecalhos.get('content-length') ?? 0);
+  return Number.isFinite(declarado) && declarado > teto;
+}
+
 /** Cabeçalhos fixos de toda resposta (o next.config.ts os aplica). */
 export function cabecalhosFixos(desenvolvimento: boolean): { key: string; value: string }[] {
   return [

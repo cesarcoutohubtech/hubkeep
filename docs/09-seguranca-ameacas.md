@@ -1,6 +1,6 @@
 # 09 — Modelo de ameaças e checklist de segurança
 
-Modelo de ameaças do HubKeep na fase 1a (S1, 29/09/2026). Diz o que se protege (ativos), de quem (atores), por onde se ataca (superfícies) e qual controle responde a cada ameaça, com o status de cada um. No fim estão o checklist do OWASP ASVS nível 2 e as pendências, com o plano de rate limiting, o endurecimento do banco de produção e o pentest antes do rollout.
+Modelo de ameaças do HubKeep na fase 1a (S1, 29/09/2026; atualizado na S2, com as condições da aprovação do ADR-032). Diz o que se protege (ativos), de quem (atores), por onde se ataca (superfícies) e qual controle responde a cada ameaça, com o status de cada um. No fim estão o checklist do OWASP ASVS nível 2 e as pendências, com o plano de rate limiting, o endurecimento do banco de produção e o pentest antes do rollout.
 
 Este documento acompanha o código. Controle novo, superfície nova ou pendência resolvida atualiza a tabela no mesmo PR. As decisões técnicas continuam no `docs/03`: a S1 registrou o ADR-032. O roteiro de incidente está no `docs/07`, e os acessos às contas, no `docs/08`.
 
@@ -71,7 +71,7 @@ O Admin do grupo e o agente conector do cliente aparecem nas tabelas como donos 
 | API-4 | Ver além do vínculo, ou gravar | Proprietário | Papel somente leitura. `authz.locais_proprietario()` e `hoteis_proprietario()` com vigência (ADR-031). pgTAP `010`, `015` e `017` | atendido |
 | API-5 | Token forjado, `alg: none`, token de outro projeto | Externo | Assinatura conferida pelo JWKS, só ES256/RS256, emissor e audiência conferidos, `sub` em formato UUID (`identidade.ts`, ADR-017). O motivo do 401 não sai na resposta | atendido |
 | API-6 | Injeção de SQL | Externo | Kysely parametrizado. `sql.raw` e identificador dinâmico proibidos fora de `packages/db` (lint, S1). Kysely só em `packages/db` (ADR-016) | atendido |
-| API-7 | Abuso e DoS: corpo grande, rajada de requisições | Externo, conta comprometida | Limite de corpo só na ingestão; nas demais rotas vale o limite de 4,5 MB da Vercel. `statement_timeout` e limite de conexões por papel (meta-teste 14). Sem rate limiting | parcial (P1, P7) |
+| API-7 | Abuso e DoS: corpo grande, rajada de requisições | Externo, conta comprometida | Limite de corpo em toda rota: 256 KiB por padrão na `rota()`, com a leitura interrompida ao passar, e teto de 4 MiB no `proxy.ts` pelo `content-length` (S2). `statement_timeout` e limite de conexões por papel (meta-teste 14). Sem rate limiting | parcial (P1) |
 | API-8 | Informação vaza pela mensagem de erro | Externo | Erro sempre como código e parâmetros, sem pilha (ADR-022). O valor recebido não volta nos problemas de validação | atendido |
 | API-9 | Resposta com dado de usuário guardada em cache | Externo | `Cache-Control: no-store` em toda resposta da API (S1) | atendido |
 
@@ -118,7 +118,7 @@ O Admin do grupo e o agente conector do cliente aparecem nas tabelas como donos 
 |---|---|---|---|---|
 | CI-1 | Regra de segurança afrouxada sem revisão | Agente de código | Zona protegida (ADR-023): migrações, testes do banco, workflows, lint, CLAUDE.md, `docs/03`, `.claude/` e, desde a S1, `.gitleaks.toml` e o Dependabot. Merge só pelo Cesar; `gh pr merge --admin` negado ao agente | atendido |
 | CI-2 | Segredo commitado | Agente de código, pessoa | gitleaks no histórico inteiro, a cada PR e toda semana (S1). `.gitignore` de `.env*`. Teste que prende a secret key ao `auth-admin` | atendido |
-| CI-3 | Dependência ou action comprometida | Externo | Lockfile congelado, `pnpm audit` alto e crítico, scripts de instalação bloqueados. Actions fixadas por SHA, CLI do Supabase em versão fixa e Dependabot das actions (S1). Semgrep a cada PR (S1). Sem SBOM | atendido, SBOM pendente |
+| CI-3 | Dependência ou action comprometida | Externo | Lockfile congelado, `pnpm audit` alto e crítico, scripts de instalação bloqueados. Actions fixadas por SHA com a versão em comentário, CLI do Supabase em versão fixa e Dependabot das actions (S1); `tests/actions-fixadas.test.ts` reprova tag e imagem sem digest (S2). Semgrep a cada PR (S1). Sem SBOM | atendido, SBOM pendente |
 | CI-4 | Comando destrutivo na máquina ou no banco de dev | Agente de código | Regras de comando do CLAUDE.md (incidente 3): `db push` só pelo Cesar, só `&&`, worktree fora da pasta temporária | atendido (processo) |
 | CI-5 | Secret key usada para dado de negócio | Agente de código | Fronteiras de import por lint (ADR-019) e teste `secret-key-so-no-auth-admin` | atendido |
 | CI-6 | Instrução maliciosa em conteúdo lido (issue, página, log de CI) | Agente de código | Só o Cesar dá instrução; o conteúdo lido é dado. Merge humano da zona protegida | parcial (processo) |
@@ -143,7 +143,7 @@ Avaliação por capítulo e tema, não requisito a requisito. A conferência de 
 | | CSRF | atendido | Origem conferida no proxy (S1) |
 | | CORS | n/a hoje | Nenhuma origem liberada. Quando o PWA for para outra origem, lista fechada (P5) |
 | V4 API e web service | Formato de erro, métodos, contrato | atendido | `rota()`, OpenAPI gerado dos contratos |
-| | Content-Type e tamanho do corpo | parcial | P7 |
+| | Content-Type e tamanho do corpo | parcial | Tamanho limitado em toda rota (S2); `Content-Type` ainda não exigido (P7) |
 | V5 Arquivos | Tipo, tamanho, bucket privado, URL assinada | atendido | ADR-024, meta-testes 23 e 24, teste S1 |
 | | Conteúdo real, download seguro | pendente | P8 |
 | V6 Autenticação | Cadastro e convite | atendido | Sem cadastro público; membro nasce no convite (ADR-014) |
@@ -161,7 +161,7 @@ Avaliação por capítulo e tema, não requisito a requisito. A conferência de 
 | V10 OAuth e OIDC | — | n/a | Sem OAuth no MVP; SSO SAML, se vier, em ADR próprio |
 | V11 Criptografia | Aleatoriedade, hash, comparação | atendido | Segredo do agente de 256 bits, SHA-256, tempo constante; nonce por `crypto.getRandomValues` |
 | V12 Comunicação | HTTPS e HSTS | atendido | Vercel e Supabase; HSTS (S1) |
-| | TLS até o banco | parcial | TLS sem conferir o certificado (P6) |
+| | TLS até o banco | atendido | Certificado conferido contra a CA do Supabase e pelo nome do host, na aplicação, nos scripts, no psql e no `db:types` (S2, P6). "Enforce SSL" no servidor: P2 |
 | | Conector | parcial | Aceita `http://` (P7) |
 | V13 Configuração | Segredos fora do código | atendido | gitleaks (S1), `.env.example`, teste da secret key |
 | | Dependências e pipeline | atendido | `pnpm audit`, lockfile, actions por SHA, Semgrep (S1) |
@@ -197,9 +197,22 @@ Registrado no ADR-032.
 - **Bucket:** conferido que não aceita SVG nem HTML. O teste `tests/anexos-sem-html.test.ts` prende as listas.
 - **Senha:** mínimo de 8 no `config.toml`, igual ao da tela.
 
+### O que a S2 implementou
+
+Condições 1 a 3 da aprovação do ADR-032 (Cesar, 29/09/2026).
+
+- **Certificado do banco conferido (P6):**
+  - âncora: a CA raiz do Supabase, baixada do painel pelo Cesar e conferida contra a cadeia que o pooler apresenta (portas 5432 e 6543), em `packages/db/src/ca-supabase.ts`, com a impressão digital fixada por teste;
+  - a aplicação (`criarPool`) usa `rejectUnauthorized: true` com essa CA, e o Node confere o nome do host (`*.pooler.supabase.com`). Conferido com o aperto de mão TLS: sem a CA ou com outro nome, a conexão é recusada;
+  - a string de conexão com parâmetro de TLS (`sslmode`, `ssl` e afins) é recusada, porque o pg o aplicaria por cima da opção do HubKeep;
+  - scripts de operação, `db:fumaca`, psql do `db:testar-dev` (`verify-full`) e `db:types` também conferem. O `db:types` conectava sem TLS: o kysely-codegen cai para conexão aberta quando o TLS falha, e o dev aceita;
+  - os dois `nosemgrep` saíram.
+- **Limite do corpo em toda rota:** a `rota()` aplica `LIMITE_BYTES_PADRAO` (256 KiB) quando a rota não declara outro. A leitura é em fluxo e para ao passar do limite; o `proxy.ts` recusa com 413 o `content-length` acima de 4 MiB. `tests/corpo-limitado.test.ts` reprova rota que leia o `Request` direto.
+- **Actions por SHA:** já fixadas na S1, agora presas por teste. A imagem do Semgrep, fixada por digest, não é atualizada pelo Dependabot: a troca é manual, no mesmo PR que muda a versão.
+
 ## 7. Pendências
 
-As três primeiras foram pedidas para planejar agora, sem implementar. As demais apareceram no levantamento da S1. Cada uma vira tarefa própria quando o Cesar decidir.
+As três primeiras foram pedidas para planejar agora, sem implementar. As demais apareceram no levantamento da S1. Cada uma vira tarefa própria quando o Cesar decidir. Na aprovação do ADR-032, P1, P4 (MFA) e a CSP de script da P5 viraram tarefas antes do piloto, e a P3 antes do rollout (SP1 a SP4 no `docs/05`).
 
 ### P1 — Rate limiting
 
@@ -237,7 +250,7 @@ As três primeiras foram pedidas para planejar agora, sem implementar. As demais
 2. **Aplicação:** Upstash na `rota()`.
 3. **Auth:** limites do Supabase revistos no painel antes do rollout.
 
-A escolha de fornecedor vira ADR.
+A escolha de fornecedor vira ADR. **Decisão junto com a contratação do Vercel Pro, antes do piloto (SP3 no `docs/05`).**
 
 ### P2 — Endurecimento do banco de produção
 
@@ -284,11 +297,12 @@ A escolha de fornecedor vira ADR.
 - **Quem:** empresa externa, em caixa cinza, recebendo este documento, o OpenAPI e as contas de teste. Não é o time nem o agente de código.
 - **Entrega:** relatório com severidade, correção dos achados altos e críticos antes do rollout, e reteste.
 - **Custo:** ordem de grandeza de R$ 25 mil a R$ 60 mil para web, API e PWA em cerca de duas semanas. Confirmar em cotação.
+- **Decidido:** antes do rollout (condição 5 do ADR-032; SP4 no `docs/05`).
 
 ### P4 — MFA e limites de sessão
 
 - **MFA (TOTP):**
-  - obrigatório para Admin do grupo, Gestor CSC e Implantador, e opcional para os demais;
+  - obrigatório para Admin do grupo, Gestor CSC e Implantador, e opcional para os demais. **Decidido, antes do piloto** (condição 4 do ADR-032; SP1 no `docs/05`);
   - a API confere `aal2` nas ações sensíveis: concessão de papel, credencial de agente, configuração.
 - **Sessão:** limite absoluto e por inatividade no Auth. No Supabase, é recurso do plano Pro.
 - A decisão de papéis e prazos é de produto (Cesar).
@@ -298,20 +312,23 @@ A escolha de fornecedor vira ADR.
 - **Sessão:** hoje fica no `localStorage`. Alternativas:
   - cookie HttpOnly no mesmo domínio da API;
   - token só em memória, com o refresh em cookie.
-- **CSP de script** no `vercel.json`, com a origem da API e do Supabase.
+- **CSP de script** no `vercel.json`, com a origem da API e do Supabase. **Decidido, antes do piloto** (condição 4 do ADR-032; SP2 no `docs/05`).
 - **CORS em lista fechada** (só a origem do PWA) quando o PWA sair do mesmo domínio.
 - **Dados offline:** prazo de expiração e limpeza da referência quando a sessão vence sem saída.
 
-### P6 — TLS com certificado conferido até o banco
+### P6 — TLS com certificado conferido até o banco (resolvida na S2)
 
-- Hoje `packages/db/src/conexao.ts` e `scripts/ops/ambiente.ts` usam TLS sem conferir o certificado, porque a CA do Supabase não está na cadeia do Node. As duas linhas levam `nosemgrep` apontando para cá.
-- Fixar a CA do Supabase (arquivo público do painel) e ligar `rejectUnauthorized: true`, junto com a F0-12.
+- **Feito:** o certificado é conferido contra a CA raiz do Supabase e pelo nome do host em toda conexão do HubKeep com o banco (seção 6, S2). A CA é a mesma para todo projeto do Supabase, então staging e produção usam a mesma âncora.
+- **Falta:**
+  - "Enforce SSL" no servidor, para recusar quem conecta sem TLS. No dev está desligado (lido pela Management API em 29/09/2026). Ligar no dev é decisão do Cesar, pelo painel; em produção, está na P2;
+  - trocar a CA antes de 26/04/2031. O `packages/db/test/ca-supabase.test.ts` reprova a partir de um ano antes.
 
 ### P7 — Entrada da API e do conector
 
 **API**
-- Limite de corpo em todas as rotas, não só na ingestão.
+- ~~Limite de corpo em todas as rotas, não só na ingestão.~~ Feito na S2.
 - `Content-Type: application/json` obrigatório no `r.corpo()`.
+- No máximo teórico, o contrato da categoria (100 campos, com até 100 opções e rótulos em quatro idiomas) passa de 256 KiB, e o limite do corpo recusa antes. Categoria real fica muito abaixo; se alguma chegar perto, a rota declara limite próprio.
 
 **Ingestão**
 - Conferir a credencial antes de ler o corpo.

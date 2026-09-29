@@ -6,7 +6,7 @@
 //   - formato único de erro: { erro: { codigo, parametros, requestId } }, sem
 //     frase (ADR-022); a frase do domínio fica só no log;
 //   - uma linha de log por requisição e, em erro inesperado, o Sentry.
-import { CODIGOS_HTTP, problemasDe, z } from '@hubkeep/contratos';
+import { CODIGOS_HTTP, LIMITE_BYTES_PADRAO, problemasDe, z } from '@hubkeep/contratos';
 import type { UsuarioVerificado } from '@hubkeep/aplicacao';
 import type { Contexto } from '@hubkeep/db';
 import {
@@ -49,8 +49,9 @@ export interface Requisicao {
   usuario(): Promise<UsuarioVerificado>;
   /**
    * Corpo JSON validado pelo contrato; inválido vira 422 entrada_invalida.
-   * Com `limiteBytes`, corpo maior vira 413 corpo_grande (conferido no que foi
-   * lido, não só no content-length, que o cliente pode omitir).
+   * Corpo acima do limite vira 413 corpo_grande: `limiteBytes` ou, sem ele,
+   * LIMITE_BYTES_PADRAO (ADR-032). Conferido no content-length e no que é lido,
+   * que o cliente pode omitir o cabeçalho; a leitura para ao passar do limite.
    */
   corpo<T extends z.ZodType>(contrato: T, opcoes?: { limiteBytes?: number }): Promise<z.output<T>>;
   /** Tenant de quem não é usuário (ex.: o agente, pelo prefixo da credencial), para o log. */
@@ -139,14 +140,7 @@ export function rota(
         return u;
       },
       async corpo(contrato, opcoes = {}) {
-        const limite = opcoes.limiteBytes;
-        if (limite !== undefined && Number(req.headers.get('content-length') ?? 0) > limite) {
-          throw new ErroHttp(413, CODIGOS_HTTP.corpoGrande, { limiteBytes: limite });
-        }
-        const textoBruto = await req.text().catch(() => '');
-        if (limite !== undefined && new TextEncoder().encode(textoBruto).length > limite) {
-          throw new ErroHttp(413, CODIGOS_HTTP.corpoGrande, { limiteBytes: limite });
-        }
+        const textoBruto = await lerTexto(req, opcoes.limiteBytes ?? LIMITE_BYTES_PADRAO);
         let bruto: unknown;
         try {
           bruto = JSON.parse(textoBruto);
@@ -218,6 +212,39 @@ export function rota(
     });
     return comRequestId(resposta, requestId);
   };
+}
+
+const corpoGrande = (limite: number) =>
+  new ErroHttp(413, CODIGOS_HTTP.corpoGrande, { limiteBytes: limite });
+
+/**
+ * Lê o corpo como texto até `limite` bytes. Passou, cancela a leitura e lança
+ * 413: o resto do envio não chega à memória. Falha de leitura vira texto vazio
+ * (e 422 json_invalido adiante), como antes.
+ */
+async function lerTexto(req: Request, limite: number): Promise<string> {
+  if (Number(req.headers.get('content-length') ?? 0) > limite) throw corpoGrande(limite);
+  if (!req.body) return '';
+  const leitor = req.body.getReader();
+  const decodificador = new TextDecoder();
+  let texto = '';
+  let lidos = 0;
+  try {
+    for (;;) {
+      const { done, value } = await leitor.read();
+      if (done) break;
+      lidos += value.byteLength;
+      if (lidos > limite) {
+        await leitor.cancel().catch(() => {});
+        throw corpoGrande(limite);
+      }
+      texto += decodificador.decode(value, { stream: true });
+    }
+  } catch (e) {
+    if (e instanceof ErroHttp) throw e;
+    return '';
+  }
+  return texto + decodificador.decode();
 }
 
 /** Entrada que não passou no contrato; vira 422 com os problemas por campo. */

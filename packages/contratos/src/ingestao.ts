@@ -19,6 +19,16 @@ export type EntidadeExterna = (typeof ENTIDADES_EXTERNAS)[number];
 export const LIMITE_REGISTROS_LOTE = 2000;
 export const LIMITE_BYTES_LOTE = 4 * 1024 * 1024;
 
+/**
+ * Limites do corpo das demais rotas (ADR-032, condição 2). Toda rota que lê
+ * corpo tem limite: o padrão, se não declara outro. O padrão dá folga ao maior
+ * formulário (categoria com campos, opções e rótulos nos quatro idiomas). O
+ * máximo é o maior limite de qualquer rota (o do lote): o proxy recusa acima
+ * dele pelo content-length, antes de qualquer handler.
+ */
+export const LIMITE_BYTES_PADRAO = 256 * 1024;
+export const LIMITE_BYTES_MAXIMO = LIMITE_BYTES_LOTE;
+
 export const RegistroExterno = z
   .object({
     /** Código no sistema de origem (cod_externo). */

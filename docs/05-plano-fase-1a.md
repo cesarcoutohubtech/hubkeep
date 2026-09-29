@@ -95,10 +95,21 @@ Decisão do Cesar (28/09/2026). Ao fim da etapa C, antes de começar a D, prepar
 
 Fim da etapa D e da fase 1a: resumo, com a lista do que ficou para a 1b e a 1c.
 
+## Segurança antes do piloto e do rollout (ADR-032)
+
+Condições 4 e 5 da aprovação do ADR-032 (Cesar, 29/09/2026). As tarefas S1 (modelo de ameaças e borda do web, PR #59) e S2 (certificado do banco, limite do corpo e actions por SHA) foram feitas antes da C3. As de baixo não fazem parte das etapas A a D, mas **o piloto só começa com SP1 a SP3 feitas**, e o rollout, com SP4. O detalhe de cada uma está no `docs/09`.
+
+| Tarefa | O quê | Aceite | Quando | Pendência no `docs/09` |
+|---|---|---|---|---|
+| **SP1** MFA obrigatório | TOTP obrigatório para Admin do grupo, Gestor CSC e Implantador. Sem o segundo fator, a sessão desses papéis não chega ao nível exigido (AAL2) e a API recusa com código. | Cada um dos três papéis é barrado sem MFA, com teste por papel; os demais papéis seguem sem exigência. Recuperação do segundo fator definida. | Antes do piloto | P4 |
+| **SP2** CSP de script no PWA | CSP com `script-src` sem `unsafe-inline` no `apps/tecnico`, compatível com o service worker e o build do Vite. | Build de produção sem violação de CSP no console, online e offline; teste que prende os cabeçalhos do `vercel.json`. | Antes do piloto | P5 |
+| **SP3** Rate limiting | Decisão de onde e com que ferramenta limitar (Auth do Supabase, Vercel Firewall, Upstash na `rota()`), junto com a contratação do Vercel Pro, e implantação do que for decidido. | Decisão registrada em ADR, com custo; limite ativo nas rotas escolhidas, com teste do 429. | Antes do piloto, com o Vercel Pro | P1 |
+| **SP4** Pentest | Teste de intrusão por terceiro, no ambiente de staging, com o escopo do `docs/09`. | Relatório recebido; achados críticos e altos corrigidos e retestados. | Antes do rollout | P3 |
+
 ## Resumo de migrações e ADRs
 
 - **Migrações previstas** (cada uma para no PR): A2, A4, A6, A7, B2, B3, B3c, B4, B5, B6, C1, C2, C3, C4, C5 e talvez D1. Onde der, as migrações de uma mesma tarefa vão juntas, para reduzir as paradas.
-- **ADRs:** 026 a 029 aprovados com condições; 030 (`pg_trgm`) e 031 (proprietário de hotel) decididos pelo Cesar, com texto para aprovação; talvez um ajuste do ADR-024 (B4, download do proprietário); adendo ao ADR-011 (B3c, mover ativo dentro do hotel); ajuste de texto do ADR-025 (dados de referência guardados no aparelho, B3b).
+- **ADRs:** 026 a 029 aprovados com condições; 030 (`pg_trgm`) e 031 (proprietário de hotel) decididos pelo Cesar, com texto para aprovação; talvez um ajuste do ADR-024 (B4, download do proprietário); adendo ao ADR-011 (B3c, mover ativo dentro do hotel); ajuste de texto do ADR-025 (dados de referência guardados no aparelho, B3b). ADR-032 (segurança da borda do web, S1) aprovado com condições em 29/09/2026.
 
 ## Perguntas para a reunião com o cliente
 
