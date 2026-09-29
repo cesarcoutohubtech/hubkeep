@@ -9,6 +9,7 @@ const config: NextConfig = {
     '@hubkeep/db',
     '@hubkeep/dominio',
     '@hubkeep/i18n',
+    '@hubkeep/imagem',
   ],
   // Driver nativo do Postgres fica fora do bundle do servidor.
   serverExternalPackages: ['pg'],

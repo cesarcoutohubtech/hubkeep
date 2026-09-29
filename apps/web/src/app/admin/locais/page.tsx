@@ -3,6 +3,7 @@
 // status da licença, e áreas comuns cadastradas aqui. Tela funcional, sem
 // acabamento: o layout vem do protótipo validado.
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { AnexosDoRegistro } from '../../../cliente/AnexosDoRegistro';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
 import { useMensagemDeErro, useT } from '../../../i18n/cliente';
 
@@ -169,6 +170,7 @@ export default function LocaisDoHotel() {
                         <small>{t('admin.locais.do_sistema_hoteleiro')}</small>
                       )}
                     </form>
+                    <AnexosDoRegistro entidade="local" registroId={l.id} />
                   </li>
                 ))}
               </ul>

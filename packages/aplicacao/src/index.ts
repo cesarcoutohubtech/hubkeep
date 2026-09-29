@@ -54,8 +54,11 @@ export { rodarPorTenant } from './casos-de-uso/por-tenant';
 export type { ResultadoPorTenant } from './casos-de-uso/por-tenant';
 export { ENTIDADES_COM_ANEXO } from './portas/anexos';
 export type {
+  AnexoGravado,
   ArmazenamentoDeArquivos,
+  DadosDeAnexo,
   EntidadeComAnexo,
+  PortaAnexos,
   PortaEscopoDeAnexo,
 } from './portas/anexos';
 export {
@@ -63,7 +66,13 @@ export {
   TIPOS_DE_ANEXO,
   criarCasosDeUsoDeAnexos,
 } from './casos-de-uso/anexos';
-export type { CasosDeUsoDeAnexos, DependenciasDeAnexos, TipoDeAnexo } from './casos-de-uso/anexos';
+export type {
+  AnexoListado,
+  CasosDeUsoDeAnexos,
+  DependenciasDeAnexos,
+  PedidoDeRegistroDeAnexo,
+  TipoDeAnexo,
+} from './casos-de-uso/anexos';
 export type {
   PadroesDoTenant,
   PortaPreferencias,

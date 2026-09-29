@@ -5,7 +5,9 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ProvedorDeIdioma } from '../src/i18n';
 import type { Referencia } from '../src/referencia/banco';
+import type { PortaDeFotos } from '../src/anexos/fotos';
 import { Ativos } from '../src/telas/Ativos';
+import { FotosDoAtivo } from '../src/telas/FotosDoAtivo';
 
 const referencia: Referencia = {
   usuarioId: 'u',
@@ -33,6 +35,24 @@ const referencia: Referencia = {
   lidaEm: 0,
 };
 
+const fotos: PortaDeFotos = {
+  listar: async () => [],
+  urlDaMiniatura: async () => null,
+  enviar: async () => ({ tipo: 'ok' }),
+};
+
+const renderizarFotos = (idioma: IdiomaDeExibicao, online: boolean) =>
+  renderToString(
+    <ProvedorDeIdioma idioma={idioma}>
+      <FotosDoAtivo
+        ativo={{ id: 'a1', nome: 'Frigobar' }}
+        online={online}
+        fotos={fotos}
+        aoFechar={() => undefined}
+      />
+    </ProvedorDeIdioma>,
+  ).replaceAll('&#x27;', "'");
+
 const renderizar = (idioma: IdiomaDeExibicao, r: Referencia | null) =>
   renderToString(
     <ProvedorDeIdioma idioma={idioma}>
@@ -43,6 +63,8 @@ const renderizar = (idioma: IdiomaDeExibicao, r: Referencia | null) =>
         aoCadastrar={async () => undefined}
         aoAlterar={async () => undefined}
         aoVoltar={() => undefined}
+        fotos={fotos}
+        online
       />
     </ProvedorDeIdioma>,
   ).replaceAll('&#x27;', "'");
@@ -54,6 +76,11 @@ describe('tela de ativos do PWA', () => {
     expect(html).toContain(m['admin.ativos.titulo']);
     expect(html).toContain(m['tecnico.ativos.pendentes_envio']);
     expect(html).toContain(m['tecnico.ativos.acao.alterar']);
+    expect(html).toContain(m['tecnico.fotos.abrir']);
+    const comRede = renderizarFotos(idioma, true);
+    expect(comRede).toContain(m['tecnico.fotos.tirar']);
+    expect(comRede).toContain(m['tecnico.fotos.fechar']);
+    expect(renderizarFotos(idioma, false)).toContain(m['tecnico.fotos.precisa_de_rede']);
     expect(renderizar(idioma, null)).toContain(m['tecnico.ativos.sem_referencia']);
   });
 
@@ -70,5 +97,11 @@ describe('tela de ativos do PWA', () => {
       .filter(Boolean);
     expect(textos.length).toBeGreaterThan(4);
     for (const texto of textos) expect(texto, texto).toMatch(/^\[.*\]$/s);
+    for (const online of [true, false]) {
+      for (const m of renderizarFotos(PSEUDO_IDIOMA, online).matchAll(/>([^<>]+)</g)) {
+        const texto = (m[1] ?? '').trim();
+        if (texto) expect(texto, texto).toMatch(/^\[.*\]$/s);
+      }
+    }
   });
 });

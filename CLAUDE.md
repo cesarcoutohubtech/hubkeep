@@ -28,6 +28,7 @@ Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03
 - `packages/aplicacao`: casos de uso e portas (repositórios, relógio, notificador, armazenamento).
 - `packages/db`: Kysely com tipos gerados do banco, `withContext`, repositórios, unit of work.
 - `packages/contratos`: schemas Zod da API e do adaptador de sistema hoteleiro; OpenAPI gerado a partir deles.
+- `packages/imagem`: compressão da foto e miniatura no navegador (canvas), usada pelas telas do web e pelo PWA; sem pacote externo nem módulo do Node (ADR-024).
 - `packages/i18n`: catálogos ICU por idioma (pt-BR, en, es, fr), resolução do idioma e formatação de data, número e moeda; usado por web e PWA (`react-intl`) e worker (`@formatjs/intl`), sem módulo do Node (ADR-022).
 - Supabase: PostgreSQL, Auth, Storage (bucket privado com URLs assinadas). Região São Paulo.
 - Vercel: funções em `gru1`; Vercel Cron para outbox, SLA e preventiva.

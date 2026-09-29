@@ -46,6 +46,13 @@ export {
 } from './ativos';
 export type { CampoDeTextoDoAtivo, CategoriaParaAtivo } from './ativos';
 export {
+  LIMITE_NOME_DE_ANEXO,
+  TIPOS_DE_MINIATURA,
+  normalizarNomeDeAnexo,
+  podeRemoverAnexo,
+  validarMiniatura,
+} from './anexos';
+export {
   CATEGORIAS_PADRAO,
   ehCategoriaPadrao,
   podeGerirCategorias,

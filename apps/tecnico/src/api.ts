@@ -23,7 +23,7 @@ export interface Credenciais {
 /** Base da API: vazia no dev (o Vite repassa /api para o web) ou VITE_API_URL. */
 export const baseDaApi = (): string => import.meta.env.VITE_API_URL ?? '';
 
-async function cabecalhos(c: Credenciais): Promise<Record<string, string> | null> {
+export async function cabecalhos(c: Credenciais): Promise<Record<string, string> | null> {
   const token = await c.token();
   const tenant = c.tenant();
   if (!token || !tenant) return null;

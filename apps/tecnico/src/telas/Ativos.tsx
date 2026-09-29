@@ -24,7 +24,9 @@ import type {
   LocalGuardado,
   Referencia,
 } from '../referencia/banco';
+import type { PortaDeFotos } from '../anexos/fotos';
 import { useMotivo } from './FilaDoDia';
+import { FotosDoAtivo } from './FotosDoAtivo';
 
 type Valor = string | number | boolean;
 
@@ -227,11 +229,15 @@ export function Ativos(props: {
   aoCadastrar: (localId: string, g: GravacaoDeAtivo) => Promise<void>;
   aoAlterar: (ativo: AtivoGuardado, g: GravacaoDeAtivo) => Promise<void>;
   aoVoltar: () => void;
+  /** Fotos do ativo (B4), com rede; sem a porta, a tela não oferece fotos. */
+  fotos?: PortaDeFotos;
+  online?: boolean;
 }) {
   const t = useT();
   const { referencia } = props;
   const [hotelId, setHotelId] = useState(referencia?.hoteis[0]?.id ?? '');
   const [editando, setEditando] = useState<AtivoGuardado | null>(null);
+  const [fotosDe, setFotosDe] = useState<AtivoGuardado | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'ok' } | { tipo: 'erro'; codigo: string } | null>(
     null,
   );
@@ -286,6 +292,7 @@ export function Ativos(props: {
         onChange={(e) => {
           setHotelId(e.target.value);
           setEditando(null);
+          setFotosDe(null);
         }}
       >
         {referencia.hoteis.map((h) => (
@@ -299,7 +306,14 @@ export function Ativos(props: {
           {aviso.tipo === 'ok' ? t('tecnico.ativos.enfileirado') : motivo(aviso.codigo)}
         </p>
       )}
-      {editando ? (
+      {fotosDe && props.fotos ? (
+        <FotosDoAtivo
+          ativo={fotosDe}
+          online={props.online ?? false}
+          fotos={props.fotos}
+          aoFechar={() => setFotosDe(null)}
+        />
+      ) : editando ? (
         <Formulario
           key={editando.id}
           ativo={editando}
@@ -358,6 +372,9 @@ export function Ativos(props: {
                     <button onClick={() => setEditando(a)}>
                       {t('tecnico.ativos.acao.alterar')}
                     </button>
+                    {props.fotos && (
+                      <button onClick={() => setFotosDe(a)}>{t('tecnico.fotos.abrir')}</button>
+                    )}
                   </li>
                 ))}
               </ul>
