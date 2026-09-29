@@ -466,5 +466,22 @@
   "erro.sem_situacao_para_estado": "No hay una situación activa para este estado. Pida al administrador del grupo que la configure.",
   "erro.sem_prioridade_ativa": "No hay una prioridad activa. Pida al administrador del grupo que la configure.",
   "erro.situacao_nao_encontrada": "Situación no encontrada.",
-  "erro.prioridade_nao_encontrada": "Prioridad no encontrada."
+  "erro.prioridade_nao_encontrada": "Prioridad no encontrada.",
+  "tecnico.operacao.chamado_abrir": "Apertura de solicitud",
+  "tecnico.chamado.abrir": "Abrir solicitud",
+  "tecnico.chamado.titulo": "Nueva solicitud",
+  "tecnico.chamado.enfileirado": "Solicitud guardada en el dispositivo. Se enviará cuando haya conexión.",
+  "tecnico.chamado.hotel": "Hotel",
+  "tecnico.chamado.local": "Lugar",
+  "tecnico.chamado.escolha_o_local": "Elija el lugar",
+  "tecnico.chamado.ativo": "Activo (opcional)",
+  "tecnico.chamado.sem_ativo": "Sin activo",
+  "tecnico.chamado.descricao": "¿Qué está pasando?",
+  "tecnico.chamado.acao.abrir": "Abrir solicitud",
+  "erro.chamado_uh_pendente_licenca": "La habitación está pendiente de licencia y no recibe solicitudes.",
+  "erro.chamado_local_inativo": "El lugar está desactivado y no recibe solicitudes.",
+  "erro.chamado_descricao_invalida": "Describa el problema en hasta {maximo} caracteres.",
+  "erro.chamado_ativo_fora_do_local": "El activo no está en el lugar elegido.",
+  "erro.chamado_ativo_desativado": "El activo está desactivado.",
+  "erro.chamado_nao_encontrado": "Solicitud no encontrada."
 }

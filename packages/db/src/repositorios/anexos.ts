@@ -35,6 +35,7 @@ export async function registrarAnexo(
       entidade: d.entidade,
       local_id: d.entidade === 'local' ? d.registroId : null,
       ativo_id: d.entidade === 'ativo' ? d.registroId : null,
+      chamado_id: d.entidade === 'chamado' ? d.registroId : null,
       caminho: d.caminho,
       miniatura_caminho: d.miniaturaCaminho,
       tipo: d.tipo,
@@ -73,10 +74,10 @@ export async function removerAnexo(uow: UnidadeDeTrabalho, id: string): Promise<
     .set({ removido_em: sql`now()`, removido_por: uow.usuarioId })
     .where('id', '=', id)
     .where('removido_em', 'is', null)
-    .returning(['hotel_id', 'entidade', 'local_id', 'ativo_id', 'caminho'])
+    .returning(['hotel_id', 'entidade', 'local_id', 'ativo_id', 'chamado_id', 'caminho'])
     .executeTakeFirst();
   if (!r) throw new NaoEncontrado('anexo_nao_encontrado', 'Anexo não encontrado.');
-  const registroId = r.ativo_id ?? r.local_id ?? r.hotel_id;
+  const registroId = r.chamado_id ?? r.ativo_id ?? r.local_id ?? r.hotel_id;
   uow.auditar({
     entidade: 'anexo',
     registroId: id,

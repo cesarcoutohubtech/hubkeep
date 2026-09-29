@@ -4,8 +4,8 @@
 // O registro do arquivo (app.anexo, B4) é gravado na unit of work.
 import type { Contexto } from '@hubkeep/dominio';
 
-/** Entidades que recebem anexo; OS e chamado entram com as tabelas deles (etapa C). */
-export const ENTIDADES_COM_ANEXO = ['hotel', 'local', 'ativo'] as const;
+/** Entidades que recebem anexo; o chamado entrou na C2, e a OS entra com a tabela dela (C4). */
+export const ENTIDADES_COM_ANEXO = ['hotel', 'local', 'ativo', 'chamado'] as const;
 export type EntidadeComAnexo = (typeof ENTIDADES_COM_ANEXO)[number];
 
 /** Emissão de URL assinada (implementada em packages/auth-admin). */

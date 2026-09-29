@@ -489,6 +489,29 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   5. técnico que não responde pela OS recebe 409 (mantido).
 - **Meta-teste 26 vermelho desde a B6:** o PR da B6 (#54) e o da C1 (#55) foram mergeados com o pgTAP falhando no 001: "could not determine which collation to use", porque os nomes do catálogo têm collation "C" e os valores esperados, a padrão. As migrações aplicaram, e os outros arquivos do pgTAP passaram; o 001 parava no teste 26. Corrigido com `collate "default"` no PR de ajustes. O `db push` da 0019 e da 0020 espera esse PR ficar verde. Lição: no relatório ao Cesar, não chamar de pendente uma CI que ainda não terminou sem avisar que o merge deve esperar o verde.
 
+### C2 — Chamado (migração 0021)
+- **Banco** (`20260929120937_chamado.sql`):
+  - `app.chamado`: local obrigatório, ativo opcional, descrição, `busca` (ADR-030, com índice de trigramas), estado, situação, prioridade, `politica_aplicada` (ADR-026), `aberto_por` e `versao` (ADR-029), com FKs compostas para hotel, local, ativo, situação, prioridade e membro;
+  - lê quem lê o hotel, o proprietário da UH do chamado e o do hotel inteiro; abre quem tem escrita no hotel, só em nome dele mesmo; sem UPDATE nesta migração (a C3 concede o que a triagem altera); sem DELETE;
+  - `app.anexo` ganha a entidade `chamado` (coluna `chamado_id`, FK pelo hotel, checks de registro e caminho refeitos), e o proprietário lê a foto dos chamados que vê.
+- **Domínio** (`chamados.ts`): descrição (1 a 2000, quebras de linha mantidas), UH pendente de licença e local desativado recusados, ativo no local e ativo, e a cópia da política aplicada.
+- **Aplicação** (`casos-de-uso/chamados.ts`):
+  - `prepararAbertura`, a mesma no web e na operação offline: quem abre (`podeAbrirChamado`), local, ativo, descrição, prioridade padrão pela política (hotel → grupo → padrão) e situação inicial;
+  - `abrir` e `chamado`.
+- **Operação offline** `chamado.abrir` (contrato, sincronização e sessão da unit of work): o reenvio devolve a resposta guardada, sem abrir outro chamado.
+- **API:** `POST /api/v1/chamados`, `GET /api/v1/chamados/{id}` e `GET /api/v1/chamados/{id}/anexos`; os anexos aceitam a entidade `chamado` (a foto vai depois da abertura, pelas rotas de anexo). OpenAPI com as rotas.
+- **PWA:** tela "Abrir chamado", sem rede, a partir da referência guardada (locais e ativos); a UH pendente aparece e é recusada com o motivo; a operação vai para a fila, e a recusa do servidor aparece na fila do dia.
+- **Textos:** 11 do PWA, 6 códigos de erro e o rótulo da operação, nos quatro idiomas.
+- **Aceite:**
+  - domínio: `chamados.test.ts`;
+  - pgTAP `017_isolamento_chamado` (28 casos): os seis casos (inclusive o proprietário de UH e de hotel inteiro e a foto), abertura só em nome próprio, sem UPDATE, sem DELETE, worker; meta-teste 26 com o índice do chamado;
+  - integração (só na CI, `chamados.test.ts`): o Solicitante abre com a prioridade da política e a cópia; mudar a política depois não altera o chamado; sem categoria, a de menor peso; o reenvio offline não duplica; UH pendente, ativo de outro local e descrição vazia com código; isolamento do proprietário (vê e não grava, e a RLS barra sem a checagem) e do gerente de outro hotel; auditoria e evento `chamado.aberto`;
+  - `busca-unica.test.ts` cobre o chamado; PWA com a tela nos quatro idiomas e no pseudo-idioma.
+- **Fora da C2:**
+  - a foto sem rede no PWA entra com a OS (C4), junto com a fila de fotos;
+  - a tela de abertura no web e as listas entram na C7;
+  - o chamado ainda não tem número legível para o usuário (hoje, só o id); fica para a C7, se o cliente pedir.
+
 ### Ponto de retomada (29/09/2026, etapa B concluída, PR da B6 aberto)
 - **`main`:** `a5dd03d` (#53, B5). **Dev:** 18 migrações, até a 0018; 444 ok em 15 arquivos.
 - **PR aberto:** B6, branch `1a-b6` (worktree `wt/b6-busca`, branch local `1a-b6-busca`; push com `git push origin HEAD:1a-b6`), zona protegida, migração 0019. Conferir na CI o pgTAP 001 (27) e 013 (43), os testes de integração de ativos, locais e ingestão, e o `kysely-codegen --verify` (`busca` como `string`). Depois do merge: `db push` da 0019 (Cesar) e conferir o dev.

@@ -188,5 +188,13 @@ export type {
   SituacaoPadrao,
   SituacaoParaRegra,
 } from './situacoes';
+export {
+  LIMITE_DESCRICAO_DO_CHAMADO,
+  exigirAtivoDoChamado,
+  exigirLocalParaChamado,
+  normalizarDescricaoDoChamado,
+  politicaAplicadaNaAbertura,
+} from './chamados';
+export type { PoliticaAplicadaNaAbertura } from './chamados';
 export { PAPEIS } from './tipos';
 export type { Atribuicao, Contexto, Escopo, Papel, PedidoDeConcessao } from './tipos';

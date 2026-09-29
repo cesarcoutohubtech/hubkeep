@@ -6,7 +6,8 @@
 // sessão e rede e depois de cada envio que tirou algo da fila; sem rede, vale
 // a guardada no aparelho. O QR impresso (B5) abre em /q/<codigo>: depois do
 // login e da leitura da referência guardada, o ativo abre pelo aparelho, ou
-// pela API com rede (qr.ts); o caminho volta para / em seguida.
+// pela API com rede (qr.ts); o caminho volta para / em seguida. A abertura
+// de chamado (C2) também vai pela fila (chamado.abrir).
 import { type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,6 +32,7 @@ import {
   type CadastroPendente,
   type GravacaoDeAtivo,
 } from './telas/Ativos';
+import { AbrirChamado, type AberturaDeChamado } from './telas/AbrirChamado';
 import { type EstadoDaFila, FilaDoDia, useMotivo } from './telas/FilaDoDia';
 import { Login } from './telas/Login';
 
@@ -67,7 +69,7 @@ function Casca(props: {
   const guardada = useRef<ReferenciaDoAparelho | null>(null);
   const [referencia, setReferencia] = useState<Referencia | null>(null);
   const [cadastrosPendentes, setCadastrosPendentes] = useState<CadastroPendente[]>([]);
-  const [tela, setTela] = useState<'fila' | 'ativos'>('fila');
+  const [tela, setTela] = useState<'fila' | 'ativos' | 'chamado'>('fila');
   const [referenciaLida, setReferenciaLida] = useState(false);
   const [qr, setQr] = useState<string | null>(() => codigoDoCaminho(window.location.pathname));
   const [aberto, setAberto] = useState<AtivoAberto | null>(null);
@@ -260,6 +262,15 @@ function Casca(props: {
     void enviarFila();
   }
 
+  /** A chave nasce no aparelho: o reenvio não duplica o chamado (ADR-025). */
+  async function abrirChamado(pedido: AberturaDeChamado) {
+    const usuarioId = sessaoAtual.current?.user.id;
+    if (!fila.current || !usuarioId) return;
+    await fila.current.enfileirar({ usuarioId, tipo: 'chamado.abrir', dados: pedido }, Date.now());
+    await atualizarEstado();
+    void enviarFila();
+  }
+
   async function dispensar(chave: string) {
     await fila.current?.remover(chave);
     await atualizarEstado();
@@ -309,6 +320,16 @@ function Casca(props: {
     );
   }
 
+  if (sessao && tela === 'chamado') {
+    return (
+      <AbrirChamado
+        referencia={referencia}
+        aoAbrir={abrirChamado}
+        aoVoltar={() => setTela('fila')}
+      />
+    );
+  }
+
   return sessao ? (
     <>
       {avisoDoQr && <p role="alert">{motivo(avisoDoQr)}</p>}
@@ -323,6 +344,7 @@ function Casca(props: {
           setAvisoDoQr(null);
           setTela('ativos');
         }}
+        aoAbrirChamado={() => setTela('chamado')}
         aoSair={() => void sair()}
       />
     </>

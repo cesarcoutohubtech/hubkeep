@@ -36,6 +36,7 @@ import {
   RespostaDeSituacoesEPrioridades,
   RespostaDeSituacoesEPrioridadesPadrao,
 } from './situacoes';
+import { PedidoDeAberturaDeChamado, RespostaDeChamado, RespostaDeChamadoAberto } from './chamados';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
   PedidoDeAlteracaoDeAtivo,
@@ -496,11 +497,11 @@ export const ROTAS: readonly Rota[] = [
       ),
     },
   },
-  ...(['hoteis', 'locais', 'ativos'] as const).map((recurso): Rota => ({
+  ...(['hoteis', 'locais', 'ativos', 'chamados'] as const).map((recurso): Rota => ({
     metodo: 'get',
     caminho: `/api/v1/${recurso}/{id}/anexos`,
     resumo:
-      'Anexos do registro, do mais novo para o mais antigo. O proprietário vê os dos locais dele e dos ativos que estão neles (B4).',
+      'Anexos do registro, do mais novo para o mais antigo. O proprietário vê os dos locais dele, dos ativos que estão neles (B4) e dos chamados que ele vê (C2).',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Anexos', esquema: RespostaDeAnexos },
@@ -1163,6 +1164,35 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (prioridades_so_admin).'),
       404: ERRO('Prioridade não encontrada (prioridade_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/chamados',
+    resumo:
+      'Abre um chamado no local (UH ou área comum), com ativo opcional do mesmo local. Abre quem tem escrita no hotel, inclusive o Solicitante. A prioridade padrão vem da política por categoria (hotel → grupo → padrão), com a cópia no chamado (ADR-026). A foto vai depois, como anexo do chamado.',
+    exigeTenant: true,
+    corpo: PedidoDeAberturaDeChamado,
+    respostas: {
+      201: { descricao: 'Chamado aberto', esquema: RespostaDeChamadoAberto },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Sem escrita no hotel (chamado_fora_do_escopo).'),
+      404: ERRO('local_nao_encontrado, hotel_nao_encontrado ou ativo_nao_encontrado.'),
+      422: ERRO(
+        'chamado_uh_pendente_licenca, chamado_local_inativo, chamado_descricao_invalida, chamado_ativo_fora_do_local, chamado_ativo_desativado, sem_prioridade_ativa, sem_situacao_para_estado ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/chamados/{id}',
+    resumo:
+      'O chamado, se visível a quem pede: quem lê o hotel, o proprietário da UH do chamado ou do hotel inteiro.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Chamado', esquema: RespostaDeChamado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
     },
   },
 ];

@@ -51,6 +51,12 @@ export {
   SituacaoApi,
 } from './situacoes';
 export {
+  ChamadoApi,
+  PedidoDeAberturaDeChamado,
+  RespostaDeChamado,
+  RespostaDeChamadoAberto,
+} from './chamados';
+export {
   AtivoApi,
   PedidoDeAlteracaoDeAtivo,
   MovimentacaoDeAtivoApi,

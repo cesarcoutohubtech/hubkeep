@@ -3,7 +3,7 @@
 // aparelho registra o caminho (e o da miniatura, gerada nele).
 import { z } from 'zod';
 
-export const ENTIDADES_COM_ANEXO_API = ['hotel', 'local', 'ativo'] as const;
+export const ENTIDADES_COM_ANEXO_API = ['hotel', 'local', 'ativo', 'chamado'] as const;
 export const TIPOS_DE_ANEXO_API = [
   'image/jpeg',
   'image/png',

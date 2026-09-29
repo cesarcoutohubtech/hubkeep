@@ -467,6 +467,8 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Consequências:** a resolução é regra de domínio, testada sem banco. O banco guarda só estrutura e escopo (regra 2).
 
+**Implementação (C2, migração 0021, 29/09/2026):** sem mudar a decisão. O chamado guarda em `politica_aplicada` o que a abertura usou, por chave: para `chamado.prioridade_padrao_por_categoria`, a categoria do ativo, a prioridade escolhida e a origem (`categoria`, pela política resolvida hotel → grupo → padrão, ou `menor_peso`, quando não há regra para a categoria ou a prioridade dela está desativada). O teste de integração muda a política do hotel depois da abertura e confere que o chamado não mudou.
+
 ## ADR-027 — Estados canônicos no domínio; situações e prioridades configuráveis por tenant
 
 **Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição dos nomes em quatro idiomas.

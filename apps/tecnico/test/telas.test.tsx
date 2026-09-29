@@ -28,6 +28,7 @@ const fila = (
     aoEnviarAgora={() => undefined}
     aoDispensar={() => undefined}
     aoAbrirAtivos={() => undefined}
+    aoAbrirChamado={() => undefined}
     aoSair={() => undefined}
   />
 );

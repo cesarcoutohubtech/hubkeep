@@ -36,6 +36,7 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 export interface AppAnexo {
   ativo_id: string | null;
   caminho: string;
+  chamado_id: string | null;
   criado_em: Generated<Timestamp>;
   entidade: string;
   hotel_id: string;
@@ -126,6 +127,24 @@ export interface AppCategoriaAtivo {
   id: string;
   nomes: Generated<Json>;
   tenant_id: string;
+}
+
+export interface AppChamado {
+  aberto_por: string;
+  ativo_id: string | null;
+  atualizado_em: Generated<Timestamp>;
+  busca: string;
+  criado_em: Generated<Timestamp>;
+  descricao: string;
+  estado: string;
+  hotel_id: string;
+  id: string;
+  local_id: string;
+  politica_aplicada: Json;
+  prioridade_id: string;
+  situacao_id: string;
+  tenant_id: string;
+  versao: Generated<number>;
 }
 
 export interface AppEquipe {
@@ -347,6 +366,7 @@ export interface DB {
   "app.auditoria": AppAuditoria;
   "app.bandeira": AppBandeira;
   "app.categoria_ativo": AppCategoriaAtivo;
+  "app.chamado": AppChamado;
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;
