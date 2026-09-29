@@ -40,7 +40,9 @@ export {
   normalizarNomeDeAtivo,
   normalizarTextoDoAtivo,
   podeGerirAtivos,
+  podeMoverAtivo,
   validarCamposDoAtivo,
+  validarMovimentacao,
 } from './ativos';
 export type { CampoDeTextoDoAtivo, CategoriaParaAtivo } from './ativos';
 export {

@@ -30,6 +30,17 @@ export interface DadosDeAtivo {
 
 export type MudancaDeAtivo = DadosDeAtivo | { desativado: boolean };
 
+/** Uma movimentação do ativo entre locais do hotel (B3c). */
+export interface MovimentacaoDeAtivo {
+  id: string;
+  localOrigemId: string;
+  localDestinoId: string;
+  usuarioId: string;
+  /** Nome de quem moveu, quando o membro é visível a quem lê (RLS de app.membro). */
+  nomeUsuario: string | null;
+  movidoEm: Date;
+}
+
 export interface PortaAtivos {
   /** Hotel visível ao usuário, com a bandeira (para a regra de escopo); senão null. */
   hotel(ctx: Contexto, hotelId: string): Promise<{ id: string; bandeiraId: string | null } | null>;
@@ -59,4 +70,17 @@ export interface PortaAtivos {
     versaoEsperada: number,
     mudanca: MudancaDeAtivo,
   ): Promise<{ versao: number }>;
+  /**
+   * Na unit of work, só se a versão ainda for a esperada (ADR-029): troca o
+   * local e grava a movimentação (origem, destino, quem), a auditoria e o
+   * evento. Mesmas recusas de alterar.
+   */
+  mover(
+    ctx: Contexto,
+    ativoId: string,
+    versaoEsperada: number,
+    localDestinoId: string,
+  ): Promise<{ versao: number }>;
+  /** Movimentações do ativo, da mais nova para a mais velha (RLS: quem lê o hotel). */
+  movimentacoes(ctx: Contexto, ativoId: string): Promise<MovimentacaoDeAtivo[]>;
 }

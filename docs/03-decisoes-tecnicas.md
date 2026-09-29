@@ -103,7 +103,14 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Motivo:** mudar o escopo de uma linha é o caminho mais curto para vazar dados entre hotéis. Com o GRANT por coluna, o próprio PostgreSQL recusa a operação.
 
-**Exceção:** `app.hotel.bandeira_id` recebe UPDATE do `hk_app`, embora defina o escopo dos gestores de bandeira. Trocar um hotel de bandeira é operação de cadastro do grupo, e a RLS só a permite ao Admin do grupo (policy `app_update` de `app.hotel`; "Regras de escalada" no doc 02). Como o escopo é calculado na fonte (ADR-004), a troca vale na hora para quem ganha e para quem perde o acesso. O meta-teste 18 (UPDATE em campo de escopo, `001_meta_seguranca.test.sql`) lista esta coluna como a única exceção nomeada.
+**Exceção:** `app.hotel.bandeira_id` recebe UPDATE do `hk_app`, embora defina o escopo dos gestores de bandeira. Trocar um hotel de bandeira é operação de cadastro do grupo, e a RLS só a permite ao Admin do grupo (policy `app_update` de `app.hotel`; "Regras de escalada" no doc 02). Como o escopo é calculado na fonte (ADR-004), a troca vale na hora para quem ganha e para quem perde o acesso. O meta-teste 18 (UPDATE em campo de escopo, `001_meta_seguranca.test.sql`) lista esta coluna como exceção nomeada.
+
+**Adendo de 28/09/2026 — mover ativo dentro do hotel (B3c da fase 1a, migração 0016):** proposta, aguarda aprovação do Cesar.
+- **Decisão do Cesar:** o ativo pode mudar de local só dentro do mesmo hotel, por uma ação própria de mover, restrita a quem gere o hotel (Admin do grupo, Gestor CSC, Implantador e Gerente, no escopo; o técnico cadastra e altera, mas não move), auditada e com registro de cada movimentação. Entre hotéis, continua desativar e cadastrar de novo.
+- **Segunda exceção nomeada no meta-teste 18:** `app.ativo.local_id` recebe UPDATE do `hk_app`. O `hotel_id` do ativo continua imutável, e a FK composta `(hotel_id, local_id) → app.local (hotel_id, id)` faz o PostgreSQL recusar um local de outro hotel, com ou sem a checagem da aplicação.
+- **Efeito no escopo:** o local decide o que o proprietário vê (ADR-031). Como o escopo é calculado na fonte (ADR-004), o dono da UH antiga deixa de ver o ativo na transação seguinte, e o da nova passa a ver.
+- **Registro:** `app.ativo_movimentacao` (origem, destino, quem, quando), só com INSERT, gravada na mesma unit of work da troca, com a auditoria (`mover`) e o evento `ativo.movido`. A RLS exige que quem grava seja o usuário do contexto. Lê quem lê o hotel; o proprietário não lê no MVP.
+- **Concorrência:** a ação leva a versão vista (ADR-029).
 
 **Nota — `app.hotel.easytools_hotel_id`:** coluna reservada para a integração futura com o EasyTools, por decisão de 24/09/2026, sem uso no MVP (nada além dos tipos gerados a lê ou grava). Veio no pacote de fundação (commit `ba6860a`, migração `20260924000001_fundacao.sql`) e foi mantida no rename do ADR-012, que deixa a integração futura com o EasyTools como está até decisão comercial própria. Não é campo de escopo: o UPDATE nela é o das demais colunas de cadastro do hotel.
 

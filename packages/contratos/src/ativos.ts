@@ -52,3 +52,23 @@ export const PedidoDeVersaoDeAtivo = z
 export const RespostaDeAtivoGravado = z
   .object({ id: z.guid(), versao: z.number().int().min(1) })
   .meta({ id: 'RespostaDeAtivoGravado' });
+
+/** Mover o ativo para outro local do mesmo hotel (B3c), com a versão vista. */
+export const PedidoDeMovimentacaoDeAtivo = z
+  .object({ localDestinoId: z.guid(), versao: z.number().int().min(1) })
+  .meta({ id: 'PedidoDeMovimentacaoDeAtivo' });
+
+export const MovimentacaoDeAtivoApi = z
+  .object({
+    id: z.guid(),
+    localOrigemId: z.guid(),
+    localDestinoId: z.guid(),
+    usuarioId: z.guid(),
+    nomeUsuario: z.string().nullable(),
+    movidoEm: z.iso.datetime({ offset: true }),
+  })
+  .meta({ id: 'MovimentacaoDeAtivoApi' });
+
+export const RespostaDeMovimentacoesDoAtivo = z
+  .object({ movimentacoes: z.array(MovimentacaoDeAtivoApi) })
+  .meta({ id: 'RespostaDeMovimentacoesDoAtivo' });

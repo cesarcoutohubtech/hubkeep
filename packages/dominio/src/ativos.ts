@@ -1,8 +1,9 @@
 // Ativos do hotel (fase 1a, B3; ADR-028 e ADR-029).
 //
 // O ativo fica num local do hotel e, opcionalmente, numa categoria do tenant;
-// a categoria define os campos estendidos (campos-tipados.ts). O local não
-// muda depois do cadastro: ele decide o que o proprietário vê (ADR-011).
+// a categoria define os campos estendidos (campos-tipados.ts). O local só
+// muda pela ação de mover, dentro do mesmo hotel (B3c, adendo ao ADR-011): ele
+// decide o que o proprietário vê. Entre hotéis, desativar e cadastrar de novo.
 // Quem cadastra e altera: os papéis que gerem locais e o técnico, que cadastra
 // pelo celular (operação offline, ADR-025), no escopo do hotel. A RLS de
 // app.ativo deixa gravar quem tem escrita no hotel; a restrição por papel é
@@ -106,3 +107,56 @@ export function validarCamposDoAtivo(
 /** Recusa da alteração quando a linha mudou depois que o usuário a leu (ADR-029). */
 export const conflitoDeVersao = (versaoAtual: number): Conflito =>
   new Conflito('conflito_de_versao', 'O registro foi alterado por outra pessoa.', { versaoAtual });
+
+/**
+ * Mover o ativo de local (B3c, adendo ao ADR-011): só quem gere o hotel, que
+ * são os papéis que gerem locais. O técnico cadastra e altera, mas não move.
+ */
+export function podeMoverAtivo(
+  minhas: readonly Atribuicao[],
+  hotel: { id: string; bandeiraId: string | null },
+  agora: Date,
+): Resultado {
+  const pode = minhas.some(
+    (a) =>
+      vigente(a, agora) &&
+      PAPEIS_QUE_GERENCIAM_LOCAIS.includes(a.papel) &&
+      escopoCobreHotel(a, hotel),
+  );
+  return pode
+    ? { permitido: true }
+    : {
+        permitido: false,
+        erro: new PermissaoNegada(
+          'mover_ativo_fora_do_escopo',
+          'Você não move os ativos deste hotel.',
+          {
+            hotelId: hotel.id,
+          },
+        ),
+      };
+}
+
+/**
+ * O destino de uma movimentação: outro local do mesmo hotel, ativo (ou UH
+ * pendente de licença, como no cadastro). O ativo desativado não se move.
+ * Entre hotéis, a recusa tem código próprio; a FK (hotel_id, local_id) do
+ * banco recusa de novo, se esta checagem faltar.
+ */
+export function validarMovimentacao(
+  ativo: { hotelId: string; localId: string; desativado: boolean },
+  destino: { id: string; hotelId: string; status: StatusDeLocal },
+): void {
+  if (ativo.desativado) {
+    throw new RegraViolada('ativo_desativado', 'O ativo está desativado.');
+  }
+  if (destino.hotelId !== ativo.hotelId) {
+    throw new RegraViolada('mover_ativo_entre_hoteis', 'O ativo só muda de local dentro do hotel.');
+  }
+  if (destino.id === ativo.localId) {
+    throw new RegraViolada('mover_ativo_mesmo_local', 'O ativo já está neste local.');
+  }
+  if (destino.status === 'inativo') {
+    throw new RegraViolada('mover_ativo_local_inativo', 'O local de destino está desativado.');
+  }
+}
