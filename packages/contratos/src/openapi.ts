@@ -34,6 +34,7 @@ import {
   PedidoDeCadastroDeAtivo,
   PedidoDeMovimentacaoDeAtivo,
   PedidoDeVersaoDeAtivo,
+  RespostaDeAtivoDoQr,
   RespostaDeAtivoGravado,
   RespostaDeAtivosDoHotel,
   RespostaDeMovimentacoesDoAtivo,
@@ -281,6 +282,18 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Movimentações do ativo', esquema: RespostaDeMovimentacoesDoAtivo },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/ativos/qr/{codigo}',
+    resumo:
+      'Abre o ativo pelo código do QR individual, no escopo de quem pede. Aceita minúsculas, hífens e O, I e L no lugar de 0 e 1. Código mal formado, de outro tenant ou fora do escopo dá o mesmo 404.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'O ativo e o hotel dele', esquema: RespostaDeAtivoDoQr },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Código desconhecido ou fora do escopo (ativo_nao_encontrado).'),
     },
   },
   {

@@ -4,12 +4,13 @@
 // série; alteração com a versão vista (se outra pessoa gravou antes, a API
 // recusa com conflito_de_versao e a tela recarrega). O local só muda pela
 // ação de mover, para outro local do mesmo hotel (B3c), com o histórico das
-// movimentações. Cada ativo mostra os anexos (B4). Tela funcional, sem
+// movimentações. Cada ativo mostra os anexos (B4) e o QR individual (B5). Tela funcional, sem
 // acabamento: o layout vem do protótipo.
 import { type Idioma, resolverNome } from '@hubkeep/i18n';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { AnexosDoRegistro } from '../../../cliente/AnexosDoRegistro';
+import { QrDoAtivo } from '../../../cliente/QrDoAtivo';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
 import { useIdioma, useMensagemDeErro, useT } from '../../../i18n/cliente';
 
@@ -62,6 +63,7 @@ interface Ativo {
   campos: Record<string, Valor>;
   versao: number;
   ativo: boolean;
+  codigoQr: string;
 }
 
 interface Movimentacao {
@@ -433,6 +435,7 @@ export default function AtivosDoHotel() {
                       executar={executar}
                     />
                     <MoverAtivo ativo={a} locais={locais} executar={executar} />
+                    <QrDoAtivo ativo={a} />
                     <AnexosDoRegistro entidade="ativo" registroId={a.id} />
                   </li>
                 ))}

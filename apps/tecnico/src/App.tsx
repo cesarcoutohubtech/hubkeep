@@ -4,7 +4,9 @@
 // Tudo o que a fila lê, mostra, envia ou apaga é do usuário da sessão (ADR-025).
 // A referência (hotéis, locais, categorias e ativos, B3b) é relida da API com
 // sessão e rede e depois de cada envio que tirou algo da fila; sem rede, vale
-// a guardada no aparelho.
+// a guardada no aparelho. O QR impresso (B5) abre em /q/<codigo>: depois do
+// login e da leitura da referência guardada, o ativo abre pelo aparelho, ou
+// pela API com rede (qr.ts); o caminho volta para / em seguida.
 import { type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -22,8 +24,14 @@ import { ProvedorDeIdioma, guardarIdioma, idiomaInicial } from './i18n';
 import { apagarDadosLocais } from './saida';
 import { supabase, tenantDaSessao } from './sessao';
 import { criarFotos } from './anexos/fotos';
-import { Ativos, type CadastroPendente, type GravacaoDeAtivo } from './telas/Ativos';
-import { type EstadoDaFila, FilaDoDia } from './telas/FilaDoDia';
+import { abrirQr, codigoDoCaminho } from './qr';
+import {
+  Ativos,
+  type AtivoAberto,
+  type CadastroPendente,
+  type GravacaoDeAtivo,
+} from './telas/Ativos';
+import { type EstadoDaFila, FilaDoDia, useMotivo } from './telas/FilaDoDia';
 import { Login } from './telas/Login';
 
 const INTERVALO_MS = 30_000;
@@ -51,6 +59,7 @@ function Casca(props: {
 }) {
   const { setIdioma, idiomaAtual } = props;
   const intl = useIntl();
+  const motivo = useMotivo();
   const [sessao, setSessao] = useState<Session | null>(null);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [estado, setEstado] = useState<EstadoDaFila>(FILA_VAZIA);
@@ -59,6 +68,10 @@ function Casca(props: {
   const [referencia, setReferencia] = useState<Referencia | null>(null);
   const [cadastrosPendentes, setCadastrosPendentes] = useState<CadastroPendente[]>([]);
   const [tela, setTela] = useState<'fila' | 'ativos'>('fila');
+  const [referenciaLida, setReferenciaLida] = useState(false);
+  const [qr, setQr] = useState<string | null>(() => codigoDoCaminho(window.location.pathname));
+  const [aberto, setAberto] = useState<AtivoAberto | null>(null);
+  const [avisoDoQr, setAvisoDoQr] = useState<string | null>(null);
   const sessaoAtual = useRef<Session | null>(null);
   const gravadas = useRef<{ formatoRegional: string | null; fuso: string | null }>({
     formatoRegional: null,
@@ -103,6 +116,7 @@ function Casca(props: {
         ? await guardada.current.ler(usuarioId, tenantId)
         : null,
     );
+    if (guardada.current) setReferenciaLida(true);
   }, []);
 
   /** Relê da API e guarda; sem rede ou com erro, fica a guardada. */
@@ -166,6 +180,21 @@ function Casca(props: {
     const intervalo = setInterval(() => void enviarFila(), INTERVALO_MS);
     return () => clearInterval(intervalo);
   }, [sessao, online, enviarFila, atualizarReferencia, credenciais, setIdioma, idiomaAtual]);
+
+  // QR (B5): só depois do login e da leitura da guardada, para não dizer
+  // "sem rede" antes de olhar o aparelho.
+  useEffect(() => {
+    if (!sessao || qr === null || !referenciaLida) return;
+    const codigo = qr;
+    setQr(null);
+    window.history.replaceState(null, '', '/');
+    void abrirQr(codigo, { referencia, online, credenciais }).then((r) => {
+      if (r.tipo === 'erro') return setAvisoDoQr(r.codigo);
+      setAvisoDoQr(null);
+      setAberto({ hotelId: r.hotelId, ativo: r.ativo });
+      setTela('ativos');
+    });
+  }, [sessao, qr, referenciaLida, referencia, online, credenciais]);
 
   useEffect(() => {
     const ligar = () => setOnline(true);
@@ -256,18 +285,24 @@ function Casca(props: {
     setEstado(FILA_VAZIA);
     setReferencia(null);
     setCadastrosPendentes([]);
+    setAberto(null);
     setTela('fila');
   }
 
   if (sessao && tela === 'ativos') {
     return (
       <Ativos
+        key={aberto?.ativo.id ?? 'lista'}
+        aberto={aberto}
         idioma={props.idioma}
         referencia={referencia}
         pendentes={cadastrosPendentes}
         aoCadastrar={cadastrarAtivo}
         aoAlterar={alterarAtivo}
-        aoVoltar={() => setTela('fila')}
+        aoVoltar={() => {
+          setAberto(null);
+          setTela('fila');
+        }}
         fotos={fotos}
         online={online}
       />
@@ -275,16 +310,22 @@ function Casca(props: {
   }
 
   return sessao ? (
-    <FilaDoDia
-      idioma={props.idioma}
-      online={online}
-      fila={estado}
-      aoTrocarIdioma={(i) => void trocarIdioma(i)}
-      aoEnviarAgora={() => void enviarFila(true)}
-      aoDispensar={(chave) => void dispensar(chave)}
-      aoAbrirAtivos={() => setTela('ativos')}
-      aoSair={() => void sair()}
-    />
+    <>
+      {avisoDoQr && <p role="alert">{motivo(avisoDoQr)}</p>}
+      <FilaDoDia
+        idioma={props.idioma}
+        online={online}
+        fila={estado}
+        aoTrocarIdioma={(i) => void trocarIdioma(i)}
+        aoEnviarAgora={() => void enviarFila(true)}
+        aoDispensar={(chave) => void dispensar(chave)}
+        aoAbrirAtivos={() => {
+          setAvisoDoQr(null);
+          setTela('ativos');
+        }}
+        aoSair={() => void sair()}
+      />
+    </>
   ) : (
     <Login />
   );

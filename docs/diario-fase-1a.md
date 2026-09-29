@@ -431,9 +431,23 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - `packages/db/test/anexos.test.ts`, com banco real: anexo de outro hotel dá 404, o proprietário da UH baixa a miniatura, auditoria e evento, e o banco barra sem as regras da aplicação;
   - testes da aplicação, do PWA, do envio pelo web e das fronteiras.
 
-### Ponto de retomada (28/09/2026, etapa B, PR da B4 aberto)
-- **`main`:** `44a43a8` (#51, B3c). **Dev:** 16 migrações, até a 0016; 405 ok em 14 arquivos. Próxima conferência só depois do `db push` da 0017.
-- **PR aberto:** B4, branch `1a-b4` (worktree `wt/b4-anexos`, branch local `1a-b4-anexos`), zona protegida. Espera do Cesar: merge e `db push` da 0017. Conferir na CI o pgTAP 015, o `packages/db/test/anexos.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão).
+### B5 — QR individual do ativo (migração 0018)
+- **Banco** (`20260929002134_codigo_qr_ativo.sql`): `codigo_qr` em `app.ativo`, obrigatório, com 10 caracteres do alfabeto de Crockford em maiúsculas (check), único no tenant e sem GRANT de UPDATE (o código impresso não muda). Os ativos que já existem recebem um código na própria migração, uma vez só; daqui em diante, só a aplicação gera. Sem função nova.
+- **Domínio** (`qr.ts`): o alfabeto, `codigoQrDeBytes` (os bytes aleatórios vêm de fora; o domínio não faz IO), `lerCodigoQr` (aceita minúsculas, hífens e espaços, O por 0, I e L por 1) e `caminhoDoQr`.
+- **Geração:** `novoCodigoQr` em `packages/db/src/ids.ts`, com `crypto.getRandomValues` (50 bits), no `criarAtivo`: vale para o cadastro do web e para o da fila offline. O código vai na auditoria do cadastro.
+- **API:** `GET /api/v1/ativos/qr/{codigo}` devolve o ativo e o hotel. Código mal formado, de outro tenant ou fora do escopo dá o mesmo 404 (`ativo_nao_encontrado`), pela RLS. `AtivoApi` passa a ter `codigoQr`.
+- **Web:** "Ver QR" em `/admin/ativos`. A matriz do QR é calculada no navegador pela `uqr` (dependência nova do web, MIT, sem dependências) e o SVG sai do componente, sem `innerHTML`. O endereço impresso é `NEXT_PUBLIC_URL_DO_TECNICO` + `/q/<codigo>` (variável nova no `.env.example`); sem ela, a tela avisa em vez de gerar um QR errado.
+- **PWA:** `/q/<codigo>` abre o ativo depois do login e da leitura da referência guardada: pelo aparelho, sem rede, se o ativo estiver guardado; senão, com rede, pela API; sem rede e sem o ativo, avisa (`qr_sem_rede`). A tela de ativos abre no hotel do ativo, com ele aberto, e o caminho volta para `/`. O service worker já serve o `index.html` em qualquer navegação; `apps/tecnico/vercel.json` faz o mesmo no primeiro acesso.
+- **Textos:** 5 do web e 2 códigos de erro do PWA nos quatro idiomas.
+- **Aceite:**
+  - pgTAP 013 com 9 casos novos (39): formato, obrigatório, único no tenant e repetível em outro, não alterável, e a busca pelo código só dentro do escopo (outro tenant, outro hotel, UH de onde o ativo saiu);
+  - `packages/db/test/ativos.test.ts`: o cadastro gera códigos distintos no formato; o proprietário abre pelo código digitado em minúsculas; o gerente de outro hotel e o código mal formado dão 404; o código está na auditoria;
+  - testes do domínio, do PWA (aparelho sem rede, API, 404, código mal formado, tela aberta pelo QR) e do web (endereço e SVG).
+- **Fora da B5:** etiqueta de impressão e QR em lote (1b, como no plano).
+
+### Ponto de retomada (28/09/2026, etapa B, PR da B5 aberto)
+- **`main`:** `6e18c11` (#52, B4). **Dev:** 16 migrações, até a 0016; 405 ok em 14 arquivos. Falta o `db push` da 0017 (Cesar); conferir o dev depois dele.
+- **PR aberto:** B5, branch `1a-b5` (worktree `wt/b5-qr`, branch local `1a-b5-qr`; push com `git push origin HEAD:1a-b5`), zona protegida, rebaseada sobre o #52. Espera do Cesar: merge e `db push` da 0018. Conferir na CI o pgTAP 013 (39), o `packages/db/test/ativos.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão).
 - **Decisões pendentes do Cesar:** nenhuma.
-- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `b3c-mover-ativo`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`. Branches remotos velhos: `1a-b3c-mover-ativo` e `1a-b4-anexos` (base antiga da B4).
-- **Próxima tarefa:** **B5, QR individual**, no local: `git worktree add C:/Cesar/HubKeep/Dev/wt/b5-qr -b 1a-b5-qr origin/main`; ler a linha B5 do `docs/05`, a migração `20260928214709_ativo.sql`, `apps/tecnico/src/telas/Ativos.tsx` e o armazenamento offline do PWA (ADR-025). O PR da B5 só abre depois do merge da B4. Depois: B6, resumo da etapa B, etapa C e o kit de teste (parar quando pronto).
+- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `b3c-mover-ativo`, `b4-anexos`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`. Branches remotos velhos: `1a-b3c-mover-ativo`, `1a-b4-anexos`, `1a-b4` e `1a-b5-qr` (base antiga da B5).
+- **Próxima tarefa:** **B6, busca sem acento** (`pg_trgm`, ADR-030), no local, sobre o `1a-b5`: `git worktree add C:/Cesar/HubKeep/Dev/wt/b6-busca -b 1a-b6-busca origin/1a-b5`; ler a linha B6 do `docs/05`, o ADR-030 no `docs/03`, a função sem acento de `packages/i18n` e os meta-testes 11 (funções) do `001_meta_seguranca.test.sql`. O PR da B6 só abre depois do merge da B5. Depois: resumo da etapa B (push e sugestão de `/compact`), etapa C e o kit de teste (parar quando pronto).

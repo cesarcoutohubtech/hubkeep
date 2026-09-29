@@ -4,7 +4,8 @@
 // ADR-025). O aparelho valida com as mesmas regras do domínio que o servidor
 // usa; o servidor confere de novo. A alteração leva a versão guardada: se
 // outra pessoa gravou antes, a operação volta como recusada, com
-// conflito_de_versao, na fila do dia (ADR-029).
+// conflito_de_versao, na fila do dia (ADR-029). Aberta pelo QR (B5), a tela
+// já vem no hotel do ativo, com o ativo aberto.
 import {
   ErroDeDominio,
   NaoEncontrado,
@@ -37,6 +38,12 @@ export interface GravacaoDeAtivo {
   modelo: string | null;
   numeroSerie: string | null;
   campos: Record<string, Valor>;
+}
+
+/** O ativo aberto pelo QR (B5): pode vir da referência ou da API. */
+export interface AtivoAberto {
+  hotelId: string;
+  ativo: AtivoGuardado;
 }
 
 export interface CadastroPendente {
@@ -223,6 +230,8 @@ function Formulario(p: PropsDoFormulario) {
 }
 
 export function Ativos(props: {
+  /** Aberta pelo QR: o hotel e o ativo que abrem primeiro. */
+  aberto?: AtivoAberto | null;
   idioma: IdiomaDeExibicao;
   referencia: Referencia | null;
   pendentes: readonly CadastroPendente[];
@@ -235,8 +244,8 @@ export function Ativos(props: {
 }) {
   const t = useT();
   const { referencia } = props;
-  const [hotelId, setHotelId] = useState(referencia?.hoteis[0]?.id ?? '');
-  const [editando, setEditando] = useState<AtivoGuardado | null>(null);
+  const [hotelId, setHotelId] = useState(props.aberto?.hotelId ?? referencia?.hoteis[0]?.id ?? '');
+  const [editando, setEditando] = useState<AtivoGuardado | null>(props.aberto?.ativo ?? null);
   const [fotosDe, setFotosDe] = useState<AtivoGuardado | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'ok' } | { tipo: 'erro'; codigo: string } | null>(
     null,

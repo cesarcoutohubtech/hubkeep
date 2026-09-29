@@ -101,8 +101,8 @@ describe.skipIf(!temBanco)('B4 — anexos de local e ativo', { timeout: 60_000 }
       [L.uh101, L.uh102, L.h2, TENANT, H1, H2],
     );
     await dono.query(
-      `insert into app.ativo (id, tenant_id, hotel_id, local_id, nome) values
-       ($1, $3, $4, $5, 'Frigobar 101'), ($2, $3, $6, $7, 'Elevador H2')`,
+      `insert into app.ativo (id, tenant_id, hotel_id, local_id, nome, codigo_qr) values
+       ($1, $3, $4, $5, 'Frigobar 101', 'A000000001'), ($2, $3, $6, $7, 'Elevador H2', 'A000000002')`,
       [ATIVO, ATIVO_H2, TENANT, H1, L.uh101, H2, L.h2],
     );
     for (const [nome, id] of Object.entries(U)) {
