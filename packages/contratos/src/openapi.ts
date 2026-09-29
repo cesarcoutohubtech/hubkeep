@@ -473,6 +473,9 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Quem só lê o hotel não anexa (anexo_sem_escrita_no_hotel).'),
       404: ERRO('Registro fora do escopo do usuário (registro_nao_encontrado).'),
+      409: ERRO(
+        'O arquivo do arquivoId já está no Storage (arquivo_ja_enviado, com o caminho), ou a OS não aceita foto (transicao_invalida, os_de_outro_responsavel).',
+      ),
       422: ERRO(
         'Entrada inválida (entrada_invalida) ou tipo não aceito (tipo_de_arquivo_nao_aceito).',
       ),
@@ -502,7 +505,9 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Quem só lê o hotel não anexa (anexo_sem_escrita_no_hotel).'),
       404: ERRO('Registro fora do escopo do usuário (registro_nao_encontrado).'),
-      409: ERRO('O arquivo já foi registrado (anexo_ja_registrado).'),
+      409: ERRO(
+        'O arquivo já foi registrado (anexo_ja_registrado), ou a OS não aceita foto (transicao_invalida, os_de_outro_responsavel).',
+      ),
       422: ERRO(
         'caminho_de_anexo_invalido, miniatura_invalida, anexo_nome_invalido ou entrada_invalida.',
       ),

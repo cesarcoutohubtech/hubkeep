@@ -126,6 +126,22 @@ export function criarAdministracaoDoAuth(opcoes: { url: string }): {
   return { identidade, envio };
 }
 
+/**
+ * O Storage recusa a URL (ou o envio) para caminho que já tem arquivo, com
+ * "409 Duplicate" no corpo; o status HTTP varia entre versões (400 ou 409).
+ */
+function arquivoJaExiste(erro: {
+  message?: string;
+  statusCode?: unknown;
+  status?: unknown;
+}): boolean {
+  return (
+    String(erro.statusCode) === '409' ||
+    erro.status === 409 ||
+    /already exists|duplicate/i.test(erro.message ?? '')
+  );
+}
+
 /** Bucket privado da migração 0004. */
 export const BUCKET_DE_ANEXOS = 'anexos';
 
@@ -141,6 +157,7 @@ export function criarArmazenamentoDeAnexos(opcoes: { url: string }): Armazenamen
       // upsert: false (o padrão, dito aqui de propósito): a URL não sobrescreve
       // objeto que já existe; o Storage recusa o segundo envio.
       const { data, error } = await bucket.createSignedUploadUrl(caminho, { upsert: false });
+      if (error && arquivoJaExiste(error)) return null;
       if (error || !data)
         throw new Error(`URL de upload recusada pelo Storage: ${error?.message ?? '?'}.`);
       return { url: data.signedUrl, token: data.token };

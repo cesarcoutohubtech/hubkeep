@@ -180,6 +180,10 @@ export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () => {
     armazenamento: criarArmazenamentoDeAnexos({ url: urlSupabase() }),
     relogio: relogioDoSistema,
     novoId,
+    // A foto na OS: responsável, com a OS em execução ou pausada (C4).
+    regraParaAnexar: async (ctx, entidade, registroId) => {
+      if (entidade === 'os') await (await casosDeUsoDeExecucao()).exigirFoto(ctx, registroId);
+    },
   });
 });
 

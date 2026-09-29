@@ -24,6 +24,9 @@ const fila = (
     idioma="pt-BR"
     online={online}
     fila={{ pendentes, rejeitadas }}
+    os={[]}
+    lidaEm={null}
+    aoAbrirOs={() => undefined}
     aoTrocarIdioma={() => undefined}
     aoEnviarAgora={() => undefined}
     aoDispensar={() => undefined}

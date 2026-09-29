@@ -8,12 +8,19 @@
 // login e da leitura da referência guardada, o ativo abre pelo aparelho, ou
 // pela API com rede (qr.ts); o caminho volta para / em seguida. A abertura
 // de chamado (C2) também vai pela fila (chamado.abrir).
+// A fila do dia (C4b) é relida da API junto com a referência e guardada no
+// aparelho; a tela mostra a guardada com a fila de operações por cima
+// (os/projecao.ts). As ações da OS, as horas, o material e as fotos vão pela
+// fila, na ordem em que foram feitos.
+import { RegraViolada } from '@hubkeep/dominio';
 import { type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { type Credenciais, criarEnvio, lerPreferencias, lerReferencia } from './api';
-import { type FilaDeOperacoes, abrirFila } from './fila/banco';
+import { type Credenciais, criarEnvio, lerOsDoDia, lerPreferencias, lerReferencia } from './api';
+import { type FilaDeOperacoes, type OperacaoNaFila, abrirFila } from './fila/banco';
+import { type OsDoDiaDoAparelho, type OsDoDiaGuardadas, abrirOsDoDia } from './os/banco';
+import { type AcaoDoTecnico, type OsNoAparelho, projetarOs } from './os/projecao';
 import {
   type AtivoGuardado,
   type Referencia,
@@ -24,7 +31,7 @@ import { sincronizar } from './fila/sincronizar';
 import { ProvedorDeIdioma, guardarIdioma, idiomaInicial } from './i18n';
 import { apagarDadosLocais } from './saida';
 import { supabase, tenantDaSessao } from './sessao';
-import { criarFotos } from './anexos/fotos';
+import { criarEnvioDeFoto, criarFotos, fotoParaFila } from './anexos/fotos';
 import { abrirQr, codigoDoCaminho } from './qr';
 import {
   Ativos,
@@ -35,6 +42,7 @@ import {
 import { AbrirChamado, type AberturaDeChamado } from './telas/AbrirChamado';
 import { type EstadoDaFila, FilaDoDia, useMotivo } from './telas/FilaDoDia';
 import { Login } from './telas/Login';
+import { Os } from './telas/Os';
 
 const INTERVALO_MS = 30_000;
 const FILA_VAZIA: EstadoDaFila = { pendentes: 0, rejeitadas: [] };
@@ -69,7 +77,11 @@ function Casca(props: {
   const guardada = useRef<ReferenciaDoAparelho | null>(null);
   const [referencia, setReferencia] = useState<Referencia | null>(null);
   const [cadastrosPendentes, setCadastrosPendentes] = useState<CadastroPendente[]>([]);
-  const [tela, setTela] = useState<'fila' | 'ativos' | 'chamado'>('fila');
+  const [tela, setTela] = useState<'fila' | 'ativos' | 'chamado' | 'os'>('fila');
+  const guardadasDoDia = useRef<OsDoDiaDoAparelho | null>(null);
+  const [osDoDia, setOsDoDia] = useState<OsDoDiaGuardadas | null>(null);
+  const [minhas, setMinhas] = useState<OperacaoNaFila[]>([]);
+  const [osAberta, setOsAberta] = useState<string | null>(null);
   const [referenciaLida, setReferenciaLida] = useState(false);
   const [qr, setQr] = useState<string | null>(() => codigoDoCaminho(window.location.pathname));
   const [aberto, setAberto] = useState<AtivoAberto | null>(null);
@@ -89,10 +101,19 @@ function Casca(props: {
     [],
   );
   const fotos = useMemo(() => criarFotos(credenciais), [credenciais]);
+  const envio = useMemo(
+    () => criarEnvio(credenciais, fetch, criarEnvioDeFoto(credenciais)),
+    [credenciais],
+  );
+  const os = useMemo<OsNoAparelho[] | null>(
+    () => (osDoDia ? projetarOs(osDoDia.os, minhas) : null),
+    [osDoDia, minhas],
+  );
 
   const atualizarEstado = useCallback(async () => {
     const usuarioId = sessaoAtual.current?.user.id;
     const minhas = usuarioId && fila.current ? await fila.current.doUsuario(usuarioId) : [];
+    setMinhas(minhas);
     setCadastrosPendentes(
       minhas
         .filter((o) => o.estado === 'pendente' && o.tipo === 'ativo.cadastrar')
@@ -119,14 +140,28 @@ function Casca(props: {
         : null,
     );
     if (guardada.current) setReferenciaLida(true);
+    setOsDoDia(
+      usuarioId && tenantId && guardadasDoDia.current
+        ? await guardadasDoDia.current.ler(usuarioId, tenantId)
+        : null,
+    );
   }, []);
 
-  /** Relê da API e guarda; sem rede ou com erro, fica a guardada. */
+  /** Relê da API e guarda (a referência e a fila do dia); sem rede ou com erro, fica a guardada. */
   const atualizarReferencia = useCallback(async () => {
-    const nova = await lerReferencia(credenciais);
-    if (!nova || nova.usuarioId !== sessaoAtual.current?.user.id) return;
-    await guardada.current?.gravar(nova);
-    setReferencia(nova);
+    const [nova, novasOs] = await Promise.all([
+      lerReferencia(credenciais),
+      lerOsDoDia(credenciais),
+    ]);
+    const usuarioId = sessaoAtual.current?.user.id;
+    if (nova && nova.usuarioId === usuarioId) {
+      await guardada.current?.gravar(nova);
+      setReferencia(nova);
+    }
+    if (novasOs && novasOs.usuarioId === usuarioId) {
+      await guardadasDoDia.current?.gravar(novasOs);
+      setOsDoDia(novasOs);
+    }
   }, [credenciais]);
 
   const enviarFila = useCallback(
@@ -134,11 +169,11 @@ function Casca(props: {
       const usuarioId = sessaoAtual.current?.user.id;
       if (!fila.current || !usuarioId) return;
       const antes = (await fila.current.doUsuario(usuarioId)).length;
-      await sincronizar(fila.current, criarEnvio(credenciais), { usuarioId, ignorarEspera });
+      await sincronizar(fila.current, envio, { usuarioId, ignorarEspera });
       await atualizarEstado();
       if ((await fila.current.doUsuario(usuarioId)).length < antes) await atualizarReferencia();
     },
-    [atualizarEstado, atualizarReferencia, credenciais],
+    [atualizarEstado, atualizarReferencia, envio],
   );
 
   useEffect(() => {
@@ -146,8 +181,9 @@ function Casca(props: {
       fila.current = f;
       await atualizarEstado();
     });
-    void abrirReferencia().then(async (r) => {
+    void Promise.all([abrirReferencia(), abrirOsDoDia()]).then(async ([r, o]) => {
       guardada.current = r;
+      guardadasDoDia.current = o;
       await lerGuardada();
     });
     const { data } = supabase().auth.onAuthStateChange((_evento, s) => {
@@ -271,6 +307,38 @@ function Casca(props: {
     void enviarFila();
   }
 
+  /** Enfileira e já tenta enviar; a tela da OS se atualiza pela projeção. */
+  async function enfileirar(op: Pick<OperacaoNaFila, 'tipo' | 'dados'>) {
+    const usuarioId = sessaoAtual.current?.user.id;
+    if (!fila.current || !usuarioId) return;
+    await fila.current.enfileirar({ usuarioId, ...op }, Date.now());
+    await atualizarEstado();
+    void enviarFila();
+  }
+
+  /** A transição leva a versão da OS no aparelho (a guardada mais as transições na fila). */
+  const agirNaOs = (o: OsNoAparelho, acao: AcaoDoTecnico) =>
+    enfileirar({ tipo: `os.${acao}`, dados: { osId: o.id, versao: o.versao } });
+
+  const apontarHoras = (osId: string, inicio: Date, fim: Date) =>
+    enfileirar({
+      tipo: 'os.apontar_horas',
+      dados: { osId, inicio: inicio.toISOString(), fim: fim.toISOString() },
+    });
+
+  const registrarMaterial = (osId: string, descricao: string) =>
+    enfileirar({ tipo: 'os.registrar_material', dados: { osId, descricao } });
+
+  async function fotografarOs(osId: string, arquivo: File) {
+    let dados;
+    try {
+      dados = await fotoParaFila(osId, arquivo, arquivo.name || null);
+    } catch {
+      throw new RegraViolada('foto_ilegivel', 'Foto ilegível.');
+    }
+    await enfileirar({ tipo: 'anexo.foto', dados });
+  }
+
   async function dispensar(chave: string) {
     await fila.current?.remover(chave);
     await atualizarEstado();
@@ -290,11 +358,20 @@ function Casca(props: {
       ) {
         return;
       }
-      await apagarDadosLocais(fila.current, usuarioId, undefined, guardada.current);
+      await apagarDadosLocais(
+        fila.current,
+        usuarioId,
+        undefined,
+        guardada.current,
+        guardadasDoDia.current,
+      );
     }
     await supabase().auth.signOut();
     setEstado(FILA_VAZIA);
     setReferencia(null);
+    setOsDoDia(null);
+    setMinhas([]);
+    setOsAberta(null);
     setCadastrosPendentes([]);
     setAberto(null);
     setTela('fila');
@@ -320,6 +397,23 @@ function Casca(props: {
     );
   }
 
+  const aberta = os?.find((o) => o.id === osAberta);
+  if (sessao && tela === 'os' && aberta) {
+    return (
+      <Os
+        os={aberta}
+        aoAgir={agirNaOs}
+        aoApontar={apontarHoras}
+        aoRegistrarMaterial={registrarMaterial}
+        aoFotografar={fotografarOs}
+        aoVoltar={() => {
+          setOsAberta(null);
+          setTela('fila');
+        }}
+      />
+    );
+  }
+
   if (sessao && tela === 'chamado') {
     return (
       <AbrirChamado
@@ -337,6 +431,12 @@ function Casca(props: {
         idioma={props.idioma}
         online={online}
         fila={estado}
+        os={os}
+        lidaEm={osDoDia?.lidaEm ?? null}
+        aoAbrirOs={(id) => {
+          setOsAberta(id);
+          setTela('os');
+        }}
         aoTrocarIdioma={(i) => void trocarIdioma(i)}
         aoEnviarAgora={() => void enviarFila(true)}
         aoDispensar={(chave) => void dispensar(chave)}

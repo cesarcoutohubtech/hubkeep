@@ -3,6 +3,7 @@
 // escopo; o registro confere o caminho e a miniatura antes de gravar.
 import {
   type Atribuicao,
+  Conflito,
   type Contexto,
   NaoEncontrado,
   PermissaoNegada,
@@ -25,6 +26,9 @@ function montar(opcoes: {
   le?: boolean;
   anexos?: AnexoGravado[];
   minhas?: Atribuicao[];
+  /** Caminhos que já têm arquivo no Storage. */
+  noStorage?: string[];
+  regraParaAnexar?: (ctx: Contexto, entidade: string, registroId: string) => Promise<void>;
 }) {
   const emitidas: string[] = [];
   const registrados: DadosDeAnexo[] = [];
@@ -49,8 +53,10 @@ function montar(opcoes: {
       escreveNoHotel: async () => opcoes.escreve ?? true,
       leNoHotel: async () => opcoes.le ?? true,
     },
+    ...(opcoes.regraParaAnexar ? { regraParaAnexar: opcoes.regraParaAnexar } : {}),
     armazenamento: {
       urlDeUpload: async (c) => {
+        if (opcoes.noStorage?.includes(c)) return null;
         emitidas.push(`upload:${c}`);
         return { url: `https://storage/upload/${c}`, token: 't' };
       },
@@ -91,6 +97,42 @@ describe('URL de upload', () => {
     const [a, b] = [await pedir(), await pedir()];
     expect(a.caminho).toBe(`${TENANT}/${HOTEL}/local/${LOCAL}/${arquivoId}.jpg`);
     expect(b.caminho).toBe(a.caminho);
+  });
+
+  it('reenvio com o arquivo já no Storage: 409 arquivo_ja_enviado, com o caminho', async () => {
+    const arquivoId = '0193b000-0000-7000-8000-00000000abcd';
+    const caminho = `${TENANT}/${HOTEL}/os/${LOCAL}/${arquivoId}.jpg`;
+    const { casos, emitidas } = montar({ noStorage: [caminho] });
+    await expect(
+      casos.pedirUrlDeUpload(ctx, {
+        entidade: 'os',
+        registroId: LOCAL,
+        tipo: 'image/jpeg',
+        arquivoId,
+      }),
+    ).rejects.toMatchObject({ codigo: 'arquivo_ja_enviado', parametros: { caminho } });
+    expect(emitidas).toEqual([]);
+  });
+
+  it('a regra da entidade (a OS, C4) vale no upload e no registro, depois do escopo', async () => {
+    const vistas: string[] = [];
+    const { casos, emitidas, registrados } = montar({
+      regraParaAnexar: async (_c, entidade, registroId) => {
+        vistas.push(`${entidade}:${registroId}`);
+        if (entidade === 'os') throw new Conflito('transicao_invalida', 'OS concluída.');
+      },
+    });
+    await expect(
+      casos.pedirUrlDeUpload(ctx, { entidade: 'os', registroId: LOCAL, tipo: 'image/jpeg' }),
+    ).rejects.toMatchObject({ codigo: 'transicao_invalida' });
+    await expect(
+      casos.registrar(ctx, { caminho: `${TENANT}/${HOTEL}/os/${LOCAL}/${ID}.jpg`, nome: null }),
+    ).rejects.toMatchObject({ codigo: 'transicao_invalida' });
+    expect(emitidas).toEqual([]);
+    expect(registrados).toEqual([]);
+    // As outras entidades passam pela mesma porta e seguem.
+    await casos.pedirUrlDeUpload(ctx, { entidade: 'local', registroId: LOCAL, tipo: 'image/jpeg' });
+    expect(vistas).toEqual([`os:${LOCAL}`, `os:${LOCAL}`, `local:${LOCAL}`]);
   });
 
   it('registro fora do escopo (a RLS não mostra): 404, sem URL', async () => {

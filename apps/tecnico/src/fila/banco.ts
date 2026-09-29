@@ -5,16 +5,34 @@
 // da anterior ficam fora do alcance dela. A fila sobrevive a fechar o app e só
 // perde a operação quando o servidor confirma, quando o técnico dispensa uma
 // recusada ou quando ele sai (apagarDoUsuario).
+// A foto da OS sem rede (C4) também entra aqui, como operação só do aparelho
+// (anexo.foto): na mesma fila, sai na ordem em que foi tirada, antes da
+// conclusão que vem depois dela. Os bytes vão como ArrayBuffer, que o
+// IndexedDB guarda em qualquer navegador; o envio é o de anexos/fotos.ts.
 import type { PedidoDeOperacaoOffline } from '@hubkeep/contratos';
 
 export type EstadoDaOperacao = 'pendente' | 'rejeitada';
+
+/** A foto já preparada no aparelho, com os arquivoIds fixos: o reenvio cai no mesmo caminho. */
+export interface FotoNaFila {
+  entidade: 'os';
+  registroId: string;
+  arquivoId: string;
+  miniaturaArquivoId: string;
+  foto: ArrayBuffer;
+  miniatura: ArrayBuffer;
+  nome: string | null;
+}
+
+export type TipoDaOperacao = PedidoDeOperacaoOffline['tipo'] | 'anexo.foto';
+export type DadosDaOperacao = PedidoDeOperacaoOffline['dados'] | FotoNaFila;
 
 export interface OperacaoNaFila {
   chave: string;
   /** Quem criou a operação (sub do token). Só a sessão dele a envia. */
   usuarioId: string;
-  tipo: PedidoDeOperacaoOffline['tipo'];
-  dados: PedidoDeOperacaoOffline['dados'];
+  tipo: TipoDaOperacao;
+  dados: DadosDaOperacao;
   /** Milissegundos desde 1970, para ordenar e para o backoff. */
   criadaEm: number;
   estado: EstadoDaOperacao;

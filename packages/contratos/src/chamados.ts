@@ -116,6 +116,7 @@ export const OsDoDiaApi = z
     }),
   })
   .meta({ id: 'OsDoDiaApi' });
+export type OsDoDiaApi = z.infer<typeof OsDoDiaApi>;
 
 export const RespostaDeOsDoDia = z
   .object({ os: z.array(OsDoDiaApi) })
