@@ -8,8 +8,8 @@ import {
   RespostaDeUrlDeDownload,
   RespostaDeUrlDeUpload,
 } from '@hubkeep/contratos';
+import { type FotoPreparada, prepararFoto } from '@hubkeep/imagem';
 import { type Credenciais, baseDaApi, cabecalhos } from '../api';
-import { type FotoPreparada, prepararFoto } from './imagem';
 
 export type ResultadoDaFoto = { tipo: 'ok' } | { tipo: 'erro'; codigo: string };
 

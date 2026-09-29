@@ -109,6 +109,12 @@ describe('fronteiras entre pacotes', () => {
     ['i18n importando dominio', 'packages/i18n/src/x.ts', '@hubkeep/dominio'],
     ['dominio importando i18n', 'packages/dominio/src/x.ts', '@hubkeep/i18n'],
     ['conector importando i18n', 'apps/conector/src/x.ts', '@hubkeep/i18n'],
+    // imagem é código de navegador, só para as telas do web e o PWA.
+    ['imagem importando módulo do Node', 'packages/imagem/src/x.ts', 'node:fs'],
+    ['imagem importando pacote externo', 'packages/imagem/src/x.ts', 'zod'],
+    ['imagem importando dominio', 'packages/imagem/src/x.ts', '@hubkeep/dominio'],
+    ['servidor do web importando imagem', COMPOSICAO, '@hubkeep/imagem'],
+    ['aplicacao importando imagem', 'packages/aplicacao/src/x.ts', '@hubkeep/imagem'],
   ];
 
   it.each(proibidos)('proíbe: %s', async (_nome, arquivo, origem) => {
@@ -140,6 +146,8 @@ describe('fronteiras entre pacotes', () => {
     ['servidor do web importando i18n', COMPOSICAO, '@hubkeep/i18n'],
     ['PWA importando i18n', 'apps/tecnico/src/x.ts', '@hubkeep/i18n'],
     ['i18n importando formatjs', 'packages/i18n/src/x.ts', '@formatjs/intl'],
+    ['página importando imagem', PAGINA, '@hubkeep/imagem'],
+    ['PWA importando imagem', 'apps/tecnico/src/x.ts', '@hubkeep/imagem'],
   ];
 
   it.each(permitidos)('permite: %s', async (_nome, arquivo, origem) => {

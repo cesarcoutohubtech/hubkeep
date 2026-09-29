@@ -25,6 +25,7 @@ const ELEMENTOS = [
   { type: 'contratos', pattern: 'packages/contratos' },
   { type: 'auth-admin', pattern: 'packages/auth-admin' },
   { type: 'i18n', pattern: 'packages/i18n' },
+  { type: 'imagem', pattern: 'packages/imagem' },
   // Filho de web: o código de servidor do Next (raiz de composição, contexto,
   // http). É o único trecho do web que enxerga db e auth-admin; rota, página e
   // componente chegam ao banco e ao Auth por ele.
@@ -94,13 +95,16 @@ export default tseslint.config(
             // Rota, página, componente e proxy não importam db nem auth-admin.
             {
               from: { element: { type: 'web' } },
-              allow: para('aplicacao', 'dominio', 'contratos', 'i18n', 'web-servidor'),
+              allow: para('aplicacao', 'dominio', 'contratos', 'i18n', 'imagem', 'web-servidor'),
             },
             {
               from: { element: { type: 'web-servidor' } },
               allow: para('aplicacao', 'dominio', 'contratos', 'i18n', 'db', 'auth-admin'),
             },
-            { from: { element: { type: 'tecnico' } }, allow: para('dominio', 'contratos', 'i18n') },
+            {
+              from: { element: { type: 'tecnico' } },
+              allow: para('dominio', 'contratos', 'i18n', 'imagem'),
+            },
             { from: { element: { type: 'conector' } }, allow: para('contratos') },
 
             // dominio é puro: nenhum pacote externo e nenhum módulo do Node.
@@ -113,6 +117,12 @@ export default tseslint.config(
               from: { element: { type: 'i18n' } },
               disallow: { to: { module: { origin: 'core' } } },
               message: 'packages/i18n roda no navegador: sem módulo do Node.',
+            },
+            // imagem é canvas no navegador (web e PWA): nenhum pacote externo nem módulo do Node.
+            {
+              from: { element: { type: 'imagem' } },
+              disallow: { to: { module: { origin: ['external', 'core'] } } },
+              message: 'packages/imagem roda no navegador: sem pacote externo nem módulo do Node.',
             },
             // Apps não tocam o banco diretamente; só pelos repositórios de packages/db.
             {

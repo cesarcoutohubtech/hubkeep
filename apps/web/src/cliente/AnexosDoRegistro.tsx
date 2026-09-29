@@ -1,15 +1,14 @@
 'use client';
 // Anexos de um hotel, local ou ativo (fase 1a, B4; ADR-024): lista, envio e
-// remoção. O arquivo vai do navegador direto para o Storage, pela URL assinada
-// (PUT), e depois é registrado na API. A miniatura é gerada só no aparelho do
-// técnico (PWA); aqui o arquivo vai como está, e abrir pede uma URL de 5
-// minutos. Tela funcional, sem acabamento: o layout vem do protótipo.
+// remoção. O envio (enviar-anexo) comprime a imagem e gera a miniatura pelo
+// mesmo código do PWA; PDF vai como está. Abrir pede uma URL de 5 minutos.
+// Tela funcional, sem acabamento: o layout vem do protótipo.
 import { useCallback, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useMensagemDeErro, useT } from '../i18n/cliente';
 import { type ErroDaApi, chamarApi } from './api';
+import { type Entidade, enviarAnexo } from './enviar-anexo';
 
-type Entidade = 'hotel' | 'local' | 'ativo';
 const RECURSO: Record<Entidade, string> = { hotel: 'hoteis', local: 'locais', ativo: 'ativos' };
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
@@ -49,22 +48,8 @@ export function AnexosDoRegistro({
     setEnviando(true);
     setErro(null);
     try {
-      const u = await chamarApi<{ caminho: string; url: string }>('/api/v1/anexos/url-de-upload', {
-        method: 'POST',
-        body: JSON.stringify({ entidade, registroId, tipo: arquivo.type }),
-      });
-      if (!u.ok) return setErro(u.erro);
-      const envio = await fetch(u.dados.url, {
-        method: 'PUT',
-        headers: { 'content-type': arquivo.type },
-        body: arquivo,
-      }).catch(() => null);
-      if (!envio?.ok) return setErro({ codigo: 'envio_de_arquivo_falhou', parametros: {} });
-      const r = await chamarApi<{ id: string }>('/api/v1/anexos', {
-        method: 'POST',
-        body: JSON.stringify({ caminho: u.dados.caminho, nome: arquivo.name }),
-      });
-      if (!r.ok) setErro(r.erro);
+      const e = await enviarAnexo({ entidade, registroId }, arquivo);
+      if (e) setErro(e);
       await carregar();
     } finally {
       setEnviando(false);
