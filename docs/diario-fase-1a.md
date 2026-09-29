@@ -609,3 +609,36 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - Primeiro passo: ler a C3 no `docs/05`, `TRANSICOES_DA_OS` em `corretiva.ts`, a migração 0021 e a A6 (equipes).
   - Decisões da C1 em vigor: o Admin do grupo é um grupo à parte; OS cancelada devolve o chamado à triagem, com mais de uma OS por chamado e só uma em andamento.
   - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### C3 — Plano (29/09/2026, antes de implementar)
+Levantamento feito na `main` `c06bfd0`. Decisões de desenho, dentro do que a C1 e o ADR-027 já fixaram:
+- **Migração 0022** (`supabase migration new os`):
+  - `app.os`: `id`, `tenant_id`, `hotel_id`, `chamado_id`, `estado` (check de formato, como o chamado), `situacao_id`, `tecnico_id` **ou** `equipe_id` (check: exatamente um), `motivo_cancelamento` (até 500), `criado_por`, `versao`, `criado_em`, `atualizado_em`.
+    - FKs compostas: `(hotel_id, chamado_id)` → chamado, `(hotel_id, equipe_id)` → equipe, `(tenant_id, tecnico_id)` → membro, `(tenant_id, situacao_id)` → situação, `(tenant_id, criado_por)` → membro. `unique (tenant_id, id)` e `unique (hotel_id, id)`, para a C4.
+    - O técnico se chama `tecnico_id`, não `usuario_id`: o meta-teste 18 proíbe UPDATE em `usuario_id`, e a reatribuição troca o responsável.
+    - **Uma OS não cancelada por chamado:** índice único parcial `(hotel_id, chamado_id) where estado <> 'cancelada'`. É integridade, como a parada da C5. O 23505 vira `Conflito('os_em_andamento')`.
+  - Grants de `app.os`: select e insert; update só em `estado, situacao_id, tecnico_id, equipe_id, motivo_cancelamento, versao, atualizado_em`.
+  - Policies de `app.os`: `app_select` como o chamado (leitura no hotel, proprietário da UH ou do hotel pelo chamado); `app_insert`/`app_update` só com `authz.hoteis_com_papel(array['admin_grupo','gestor_csc','gerente_hotel'])`. A C4 amplia o update para o responsável.
+  - `app.chamado` ganha `motivo_cancelamento`. UPDATE em `estado, situacao_id, prioridade_id, motivo_cancelamento, versao, atualizado_em`, com a mesma policy de triagem. A C4 (concluir) e a C6 (aceite) ampliam.
+  - pgTAP `018_isolamento_os.test.sql` com os seis casos. No `017`, o caso do UPDATE muda: o gerente altera a prioridade (ok), o solicitante não (42501) e a descrição segue sem UPDATE.
+- **Domínio:**
+  - Checagem de quem pode receber a OS: o técnico tem papel `tecnico` vigente que cobre o hotel; a equipe é do hotel e está ativa. Códigos novos nos quatro idiomas.
+  - Ajuste de prioridade só com prioridade ativa, pelo `podeTriar` e com o chamado em `aberto`, `em_triagem` ou `em_execucao`.
+  - Transições pelo `decidirNoChamado`/`decidirNaOs` que já existem.
+- **Aplicação e API** (todas com `versao` e 409 `conflito_de_versao`):
+  - `POST /api/v1/chamados/{id}/triagem` (`aberto` → `em_triagem`, com prioridade opcional);
+  - `POST /chamados/{id}/prioridade`;
+  - `POST /chamados/{id}/cancelamento` (com motivo);
+  - `POST /chamados/{id}/os` (gerar, com o responsável; o chamado vai a `em_execucao`);
+  - `POST /os/{id}/reatribuicao`;
+  - `POST /os/{id}/cancelamento` (com motivo; o chamado volta a `em_triagem`);
+  - `GET /chamados/{id}` passa a trazer as OS.
+  - Situação sempre pela `situacaoPara`.
+  - Auditoria e evento no repositório: `chamado.triado`, `chamado.prioridade_alterada`, `chamado.cancelado`, `os.atribuida` (gerar e reatribuir, com o responsável no payload) e `os.cancelada`. O `os.atribuida` fica pendente no outbox até a 1c, sem handler.
+  - O `podeTriar`/`decidir*` é injetável, como o `podeAbrir`, para o teste provar que a RLS recusa sozinha.
+- **Testes:**
+  - domínio;
+  - integração em `packages/db/test/os.test.ts`: papéis, reenvio, conflito de versão, uma OS ativa, cancelar e gerar outra, auditoria e outbox;
+  - OpenAPI;
+  - tipos regenerados (`pnpm db:types` só depois do `db push` da 0022; antes, na CI com `--verify`).
+- **Fora da C3:** equipes do ator (`AtorDaCorretiva.equipes`, C4), anexo da OS (C4) e a fila do PWA (C4).
