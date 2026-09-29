@@ -517,3 +517,18 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 - **PR aberto:** B6, branch `1a-b6` (worktree `wt/b6-busca`, branch local `1a-b6-busca`; push com `git push origin HEAD:1a-b6`), zona protegida, migração 0019. Conferir na CI o pgTAP 001 (27) e 013 (43), os testes de integração de ativos, locais e ingestão, e o `kysely-codegen --verify` (`busca` como `string`). Depois do merge: `db push` da 0019 (Cesar) e conferir o dev.
 - **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `b3c-mover-ativo`, `b4-anexos`, `b5-qr`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`. Branches remotos velhos: `1a-b3c-mover-ativo`, `1a-b4-anexos`, `1a-b4`, `1a-b5`, `1a-b5-qr` e `1a-b6-busca`.
 - **Próxima tarefa:** etapa C a partir da C1 (domínio da corretiva, `docs/05`), no local, sobre o `1a-b6-busca`; o kit de teste no fim da C (parar quando pronto).
+
+### Ponto de retomada (29/09/2026, etapa C: C1 mergeada, PR da C2 aberto)
+- **`main`:** `8375bff` (#56). **Dev:** 20 migrações, até a 0020; 485 ok em 16 arquivos (conferido depois do `db push` da 0019 e da 0020).
+- **PRs abertos:**
+  - #57, correção do teste de busca da B6, fora da zona protegida, CI verde: falta o merge do Cesar;
+  - #58, C2, zona protegida, migração 0021, branch `1a-c2`, que parte do commit do #57. Conferir na CI o pgTAP 001 (27) e 017 (28), a integração `chamados.test.ts` e o `kysely-codegen --verify`. Depois do merge: `db push` da 0021 (Cesar) e conferir o dev.
+- **Regra reforçada:** merge só com a CI verde. O check `zona protegida` fica vermelho em todo PR de zona protegida, e isso é esperado; o pgTAP, não.
+- **Worktree:** `wt/b6-busca` na branch `1a-c2`. As branches locais `1a-b6-busca`, `1a-c1`, `1a-c1-ajustes` e `1a-b6-teste-busca` já estão no remoto e podem sair. Os worktrees removíveis são os do ponto anterior.
+- **Decisões do Cesar em vigor (C1):**
+  - o Admin do grupo é um grupo à parte da triagem;
+  - OS cancelada devolve o chamado à triagem, então a C3 precisa aceitar mais de uma OS por chamado, com só uma em andamento.
+- **Próxima tarefa:** C3 (triagem e atribuição, `app.os`), no local, sobre a `1a-c2`.
+  - Primeiro passo: ler a C3 no `docs/05`, `TRANSICOES_DA_OS` em `corretiva.ts`, a migração 0021 e a A6 (equipes).
+  - O PR da C3 só abre depois do merge do #58.
+  - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
