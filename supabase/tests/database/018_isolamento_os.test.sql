@@ -237,7 +237,8 @@ select throws_ok(
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
              'cancelada', '5a000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'x', 'aaaaaaaa-0000-0000-0000-000000000004') $$,
   '42501', null, 'técnico não gera OS');
-select is_empty($$ update app.os set versao = versao + 1 returning 1 $$, 'técnico não altera OS na C3');
+select is_empty($$ update app.os set versao = versao + 1 where id = '0a100000-0000-0000-0000-000000000001' returning 1 $$,
+  'técnico não altera a OS da equipe de que não é membro (a C4 dá ao responsável o que é dele)');
 select is_empty($$ update app.chamado set versao = versao + 1 returning 1 $$, 'técnico não altera chamado');
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000008', true)) ctx;
 select is_empty($$ update app.chamado set prioridade_id = '9a000000-0000-0000-0000-000000000002' returning 1 $$,

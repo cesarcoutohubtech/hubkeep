@@ -45,6 +45,7 @@ import {
   RespostaDeChamado,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
+  RespostaDeOsDoDia,
   RespostaDeOsGravada,
 } from './chamados';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
@@ -507,11 +508,11 @@ export const ROTAS: readonly Rota[] = [
       ),
     },
   },
-  ...(['hoteis', 'locais', 'ativos', 'chamados'] as const).map((recurso): Rota => ({
+  ...(['hoteis', 'locais', 'ativos', 'chamados', 'os'] as const).map((recurso): Rota => ({
     metodo: 'get',
     caminho: `/api/v1/${recurso}/{id}/anexos`,
     resumo:
-      'Anexos do registro, do mais novo para o mais antigo. O proprietário vê os dos locais dele, dos ativos que estão neles (B4) e dos chamados que ele vê (C2).',
+      'Anexos do registro, do mais novo para o mais antigo. O proprietário vê os dos locais dele, dos ativos que estão neles (B4) e dos chamados que ele vê (C2); as fotos da OS (C4), quem lê o hotel.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Anexos', esquema: RespostaDeAnexos },
@@ -1315,6 +1316,17 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
       422: ERRO('motivo_obrigatorio, sem_situacao_para_estado ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/os/do-dia',
+    resumo:
+      'A fila do dia do Técnico (C4): as OS atribuídas, em execução ou pausadas dele e das equipes de que é membro ativo, da mais antiga para a mais nova. O PWA guarda no aparelho e apaga ao sair (ADR-025).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'OS do dia', esquema: RespostaDeOsDoDia },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
     },
   },
 ];

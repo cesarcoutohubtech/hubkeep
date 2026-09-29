@@ -118,7 +118,7 @@ export async function escopoVisivel(tx: Tx, escopo: Escopo): Promise<boolean> {
 /** Hotel do registro, se o usuário do contexto o enxerga (RLS); senão null. */
 export async function hotelDoRegistro(
   tx: Tx,
-  entidade: 'hotel' | 'local' | 'ativo' | 'chamado',
+  entidade: 'hotel' | 'local' | 'ativo' | 'chamado' | 'os',
   registroId: string,
 ): Promise<string | null> {
   if (entidade === 'hotel') {
@@ -128,6 +128,14 @@ export async function hotelDoRegistro(
       .where('id', '=', registroId)
       .executeTakeFirst();
     return h?.id ?? null;
+  }
+  if (entidade === 'os') {
+    const o = await tx
+      .selectFrom('app.os')
+      .select('hotel_id')
+      .where('id', '=', registroId)
+      .executeTakeFirst();
+    return o?.hotel_id ?? null;
   }
   if (entidade === 'chamado') {
     const c = await tx

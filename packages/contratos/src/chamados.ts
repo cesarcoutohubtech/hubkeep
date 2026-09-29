@@ -95,3 +95,28 @@ export const RespostaDeChamadoAlterado = z
 export const RespostaDeOsGravada = z
   .object({ id: z.guid(), versao: z.int(), versaoDoChamado: z.int().optional() })
   .meta({ id: 'RespostaDeOsGravada' });
+
+/** Uma OS da fila do dia do Técnico (C4), com o que a tela precisa do chamado. */
+export const OsDoDiaApi = z
+  .object({
+    id: z.guid(),
+    hotelId: z.guid(),
+    estado: z.enum(ESTADOS_DA_OS_API),
+    situacaoId: z.guid(),
+    responsavel: ResponsavelApi,
+    versao: z.int(),
+    criadoEm: z.iso.datetime(),
+    chamado: z.object({
+      id: z.guid(),
+      descricao: z.string(),
+      localId: z.guid(),
+      localNome: z.string(),
+      prioridadeId: z.guid(),
+      estado: z.enum(ESTADOS_DO_CHAMADO_API),
+    }),
+  })
+  .meta({ id: 'OsDoDiaApi' });
+
+export const RespostaDeOsDoDia = z
+  .object({ os: z.array(OsDoDiaApi) })
+  .meta({ id: 'RespostaDeOsDoDia' });

@@ -172,6 +172,9 @@ export type {
   ReflexoNoChamado,
 } from './portas/triagem';
 export { criarCasosDeUsoDeTriagem } from './casos-de-uso/triagem';
+export type { AcaoNaOsDecidida, OsDoDia, PortaExecucao } from './portas/execucao';
+export { criarCasosDeUsoDeExecucao } from './casos-de-uso/execucao';
+export type { AcaoDoTecnico, CasosDeUsoDeExecucao } from './casos-de-uso/execucao';
 export type {
   CasosDeUsoDeTriagem,
   RegrasDaTriagem,

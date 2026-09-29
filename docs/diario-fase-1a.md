@@ -668,3 +668,44 @@ Levantamento feito na `main` `c06bfd0`. Decisões de desenho, dentro do que a C1
 - **Depois do merge:** o Cesar faz o `db push` da 0022. Em seguida, conferir no dev só por leitura: `db:testar-dev` (18 arquivos) e `db:types` idêntico.
 - **Próxima tarefa:** C4 (execução da OS pelo Técnico: iniciar, pausar, retomar, concluir, anexo da OS, equipes do ator e fila do PWA). Pode andar no local enquanto o PR da C3 espera.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### C3 mergeada (29/09/2026)
+- **#65 mergeado** (`main` em `068db9e`). O Cesar fez o `db push` da 0022. Conferido no dev, só por leitura: o `db:testar-dev` deu 556 ok em 18 arquivos, e o `db:types` gerou o arquivo idêntico (28 tabelas).
+- **Aprovado pelo Cesar depois do merge:** a triagem lê as atribuições de Técnico nos hotéis dela (adendo ao ADR-027).
+- O Cesar não vai usar o Remote Control por enquanto, então não há notificação push nas paradas.
+
+### C4 — Plano (29/09/2026)
+Dividida em duas partes, cada uma no seu PR:
+- **C4a, servidor** (zona protegida, migração 0023):
+  - `app.os_apontamento` (início e fim) e `app.os_material` (texto livre, até 500), só inserção, pelo Técnico responsável: ele, ou uma equipe ativa de que é membro. Sem UPDATE: correção fica para depois.
+  - Anexo com a entidade `os`.
+  - O UPDATE de `app.os` e de `app.chamado` (este, só pela OS não cancelada do chamado) ganha o Técnico responsável.
+  - Domínio: iniciar, pausar, retomar e concluir pelo `decidirNaOs`, que já existe, com as equipes do ator preenchidas. Apontar horas e material só com a OS em execução ou pausada. Apontamento com fim depois do início, até 24 h, e fim até 10 min no futuro.
+  - Seis operações offline: `os.iniciar`, `os.pausar`, `os.retomar`, `os.concluir` (com a versão), `os.apontar_horas` e `os.registrar_material`.
+  - `GET /api/v1/os/do-dia`: as OS do Técnico e das equipes dele, atribuídas, em execução ou pausadas.
+  - Anexo com `arquivoId` opcional gerado no aparelho, para o caminho ser o mesmo no reenvio (base da foto offline da C4b).
+- **C4b, PWA:** a fila do dia no aparelho (apagada ao sair, com adendo ao ADR-025), as ações com a versão calculada no aparelho e as fotos offline sem duplicar.
+- **Risco aceito:** o GRANT de UPDATE é por coluna e vale para todos os papéis do `hk_app`, então o Técnico responsável tem, no banco, UPDATE em `tecnico_id`/`equipe_id` da OS e em `prioridade_id` do chamado. A policy só deixa o resultado com ele como responsável, e a aplicação nunca grava essas colunas pelo Técnico. Fica na auditoria.
+
+### C4a — Implementação (29/09/2026)
+- **Migração 0023** (`20260929211202_os_execucao.sql`): apontamento, material, anexo da OS e o UPDATE do responsável em `app.os` e `app.chamado`. pgTAP `019_isolamento_os_execucao` com 37 casos. No `018`, o caso "técnico não altera OS" passou a mirar a OS de uma equipe de que ele não é membro, porque o responsável agora altera a dele.
+- **Domínio:** `decidirRegistroNaOs` em `corretiva.ts` e `execucao.ts` (apontamento e material). Códigos novos nos quatro idiomas: `apontamento_invalido` e `material_invalido`, e os rótulos das seis operações.
+- **Aplicação:**
+  - `criarCasosDeUsoDeExecucao` com `preparar*` e a fila do dia, e as equipes do ator lidas do banco;
+  - seis operações offline no `sincronizacao.ts`;
+  - a regra vem antes da versão, então a OS reatribuída com a operação na fila volta como `os_de_outro_responsavel`.
+- **Banco e API:** repositório `execucao.ts`, que reaproveita o `refletirNoChamado`/`semLinha` da triagem; `criarPortaExecucao`; `GET /api/v1/os/do-dia`; `GET /api/v1/os/{id}/anexos`; e `arquivoId` na URL de upload.
+- **Tipos:** `tipos-banco.ts` à mão, com as duas tabelas e o `os_id` do anexo; a CI confere com `--verify`.
+- **Testes:** no local, typecheck, lint e testes verdes (domínio com 1681). A integração em `packages/db/test/execucao.test.ts` e o pgTAP rodam só na CI.
+
+### Ponto de retomada (29/09/2026, C4a aberta)
+- **`main`:** `068db9e` (#65). **Dev:** 22 migrações, até a 0022; 556 ok em 18 arquivos.
+- **PR aberto:** C4a, branch `1a-c4` (worktree `wt/c4-execucao`), zona protegida, com a migração 0023. Merge só com CI verde (pgTAP, `segurança` e a verificação dos tipos).
+- **Depois do merge:** o Cesar faz o `db push` da 0023. Em seguida, conferir no dev só por leitura: `db:testar-dev` (19 arquivos) e `db:types` idêntico (30 tabelas).
+- **Próxima tarefa:** C4b, o PWA, num worktree novo a partir da `main` depois do merge da C4a:
+  - a fila do dia guardada no IndexedDB, apagada ao sair (adendo ao ADR-025, linhas 426-428 do `docs/03`);
+  - telas da OS com as ações;
+  - a versão calculada no aparelho (a vista mais uma por transição já na fila);
+  - horas, material e fotos offline, com o `arquivoId` fixo e o envio repetido tratado como feito.
+  - Arquivos: `apps/tecnico/src/App.tsx`, `fila/`, `referencia/banco.ts`, `anexos/fotos.ts`, `saida.ts` e `telas/FilaDoDia.tsx`.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

@@ -13,6 +13,7 @@ import type {
   PortaChamados,
   OsGravada,
   PortaTriagem,
+  PortaExecucao,
   PortaPrioridades,
   PortaSituacoes,
   PortaLocais,
@@ -67,6 +68,7 @@ import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { criarChamado } from './repositorios/chamados';
 import { alterarChamadoNaTriagem, cancelarOs, gerarOs, reatribuirOs } from './repositorios/triagem';
+import { andarComOs, apontarHoras, registrarMaterial } from './repositorios/execucao';
 import {
   alterarPrioridade,
   alterarSituacao,
@@ -846,6 +848,85 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
   };
 }
 
+/** Equipes ativas de que o usuário do contexto é membro ativo (a RLS mostra as dos hotéis que ele lê). */
+const equipesDoUsuario = (tx: Tx, usuarioId: string) =>
+  tx
+    .selectFrom('app.equipe_membro as em')
+    .innerJoin('app.equipe as e', (j) =>
+      j.onRef('e.hotel_id', '=', 'em.hotel_id').onRef('e.id', '=', 'em.equipe_id'),
+    )
+    .select('em.equipe_id')
+    .where('em.usuario_id', '=', usuarioId)
+    .where('em.ativo', '=', true)
+    .where('e.ativa', '=', true);
+
+/** Execução da OS pelo Técnico (fase 1a, C4), pelo hk_app. */
+export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
+  return {
+    equipesDoUsuario: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),
+      ),
+    osDoDia: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const linhas = await tx
+          .selectFrom('app.os as o')
+          .innerJoin('app.chamado as c', (j) =>
+            j.onRef('c.hotel_id', '=', 'o.hotel_id').onRef('c.id', '=', 'o.chamado_id'),
+          )
+          .innerJoin('app.local as l', (j) =>
+            j.onRef('l.hotel_id', '=', 'c.hotel_id').onRef('l.id', '=', 'c.local_id'),
+          )
+          .select([
+            'o.id',
+            'o.hotel_id',
+            'o.estado',
+            'o.situacao_id',
+            'o.tecnico_id',
+            'o.equipe_id',
+            'o.versao',
+            'o.criado_em',
+            'c.id as chamado_id',
+            'c.descricao',
+            'c.local_id',
+            'l.nome as local_nome',
+            'c.prioridade_id',
+            'c.estado as chamado_estado',
+          ])
+          .where('o.estado', 'in', ['atribuida', 'em_execucao', 'pausada'])
+          .where((eb) =>
+            eb.or([
+              eb('o.tecnico_id', '=', ctx.usuarioId),
+              eb('o.equipe_id', 'in', equipesDoUsuario(tx, ctx.usuarioId)),
+            ]),
+          )
+          .orderBy('o.criado_em')
+          .orderBy('o.id')
+          .execute();
+        return linhas.map((o) => ({
+          id: o.id,
+          hotelId: o.hotel_id,
+          estado: o.estado as EstadoDaOs,
+          situacaoId: o.situacao_id,
+          responsavel:
+            o.tecnico_id !== null
+              ? { tipo: 'tecnico' as const, usuarioId: o.tecnico_id }
+              : { tipo: 'equipe' as const, equipeId: o.equipe_id ?? '' },
+          versao: o.versao,
+          criadoEm: o.criado_em,
+          chamado: {
+            id: o.chamado_id,
+            descricao: o.descricao,
+            localId: o.local_id,
+            localNome: o.local_nome,
+            prioridadeId: o.prioridade_id,
+            estado: o.chamado_estado as EstadoDoChamado,
+          },
+        }));
+      }),
+  };
+}
+
 /** Situações do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
 export function criarPortaSituacoes(banco: AcessoBanco): PortaSituacoes {
   return {
@@ -1111,6 +1192,9 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
             alterarAtivo: (ativoId, versaoEsperada, mudanca) =>
               alterarAtivo(uow, ativoId, versaoEsperada, mudanca),
             abrirChamado: (hotelId, dados) => criarChamado(uow, hotelId, dados),
+            andarComOs: (g) => andarComOs(uow, g),
+            apontarHoras: (g) => apontarHoras(uow, g),
+            registrarMaterial: (g) => registrarMaterial(uow, g),
           });
           await registrarOperacao(uow, operacao, resposta);
           return { repetida: false, resposta };
@@ -1183,6 +1267,7 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
         'a.local_id',
         'a.ativo_id',
         'a.chamado_id',
+        'a.os_id',
         'a.caminho',
         'a.miniatura_caminho',
         'a.tipo',
@@ -1199,6 +1284,7 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
     local_id: string | null;
     ativo_id: string | null;
     chamado_id: string | null;
+    os_id: string | null;
     caminho: string;
     miniatura_caminho: string | null;
     tipo: string;
@@ -1211,7 +1297,7 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
     id: a.id,
     hotelId: a.hotel_id,
     entidade: a.entidade as EntidadeComAnexo,
-    registroId: a.chamado_id ?? a.ativo_id ?? a.local_id ?? a.hotel_id,
+    registroId: a.os_id ?? a.chamado_id ?? a.ativo_id ?? a.local_id ?? a.hotel_id,
     caminho: a.caminho,
     miniaturaCaminho: a.miniatura_caminho,
     tipo: a.tipo,
@@ -1241,7 +1327,9 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
               ? q.where('a.ativo_id', '=', registroId)
               : entidade === 'chamado'
                 ? q.where('a.chamado_id', '=', registroId)
-                : q.where('a.hotel_id', '=', registroId);
+                : entidade === 'os'
+                  ? q.where('a.os_id', '=', registroId)
+                  : q.where('a.hotel_id', '=', registroId);
         return (await q.orderBy('a.criado_em', 'desc').orderBy('a.id', 'desc').execute()).map(
           paraAnexo,
         );
