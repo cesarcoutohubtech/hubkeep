@@ -12,6 +12,12 @@ import {
   TIPOS_DE_CAMPO_API,
   STATUS_DE_LOCAL_API,
   TIPOS_DE_LOCAL_API,
+  ACOES_DA_OS_API,
+  ACOES_DO_CHAMADO_API,
+  ENTIDADES_COM_SITUACAO_API,
+  ESTADOS_DA_OS_API,
+  ESTADOS_DO_CHAMADO_API,
+  PRIORIDADES_PADRAO_API,
 } from '../packages/contratos/src/index';
 import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
@@ -22,6 +28,12 @@ import {
   PAPEIS,
   PENDENCIAS_DE_IMPLANTACAO,
   POLITICAS,
+  ACOES_DA_OS,
+  ACOES_DO_CHAMADO,
+  ENTIDADES_COM_SITUACAO,
+  ESTADOS_DA_OS,
+  ESTADOS_DO_CHAMADO,
+  PRIORIDADES_PADRAO,
 } from '../packages/dominio/src/index';
 import { IDIOMAS } from '../packages/i18n/src/index';
 
@@ -87,5 +99,14 @@ describe('contratos × domínio', () => {
     expect([...TIPOS_DE_CAMPO_API]).toEqual([...TIPOS_DE_CAMPO]);
     expect([...CATEGORIAS_PADRAO_API]).toEqual([...CATEGORIAS_PADRAO]);
     expect([...IDIOMAS_DE_ROTULO]).toEqual([...IDIOMAS]);
+  });
+
+  it('estados, ações, entidades com situação e prioridades padrão da API são os do domínio (ADR-027)', () => {
+    expect([...ESTADOS_DO_CHAMADO_API]).toEqual([...ESTADOS_DO_CHAMADO]);
+    expect([...ESTADOS_DA_OS_API]).toEqual([...ESTADOS_DA_OS]);
+    expect([...ACOES_DO_CHAMADO_API]).toEqual([...ACOES_DO_CHAMADO]);
+    expect([...ACOES_DA_OS_API]).toEqual([...ACOES_DA_OS]);
+    expect([...ENTIDADES_COM_SITUACAO_API]).toEqual([...ENTIDADES_COM_SITUACAO]);
+    expect([...PRIORIDADES_PADRAO_API]).toEqual(PRIORIDADES_PADRAO.map((p) => p.chave));
   });
 });

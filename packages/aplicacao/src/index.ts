@@ -154,6 +154,14 @@ export type {
 export type { CategoriaGravada, PortaCategorias } from './portas/categorias';
 export { criarCasosDeUsoDeCategorias } from './casos-de-uso/categorias';
 export type { CasosDeUsoDeCategorias, CategoriaDeAtivo } from './casos-de-uso/categorias';
+export type {
+  PortaPrioridades,
+  PortaSituacoes,
+  PrioridadeGravada,
+  SituacaoGravada,
+} from './portas/situacoes';
+export { criarCasosDeUsoDeSituacoes } from './casos-de-uso/situacoes';
+export type { CasosDeUsoDeSituacoes, Prioridade, Situacao } from './casos-de-uso/situacoes';
 export type { LocalDoHotel as LocalDoHotelCadastrado, PortaLocais } from './portas/locais';
 export { criarCasosDeUsoDeLocais } from './casos-de-uso/locais';
 export type { CasosDeUsoDeLocais, LocalListado } from './casos-de-uso/locais';

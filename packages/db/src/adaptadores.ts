@@ -10,6 +10,8 @@ import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaCategorias,
+  PortaPrioridades,
+  PortaSituacoes,
   PortaLocais,
   LocalDoHotelCadastrado,
   PortaProprietarios,
@@ -54,6 +56,12 @@ import {
 import { registrarAnexo, removerAnexo } from './repositorios/anexos';
 import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
+import {
+  alterarPrioridade,
+  alterarSituacao,
+  criarPrioridade,
+  criarSituacao,
+} from './repositorios/situacoes';
 import { gravarConvite } from './repositorios/convites';
 import { alterarLocal, criarAreaComum } from './repositorios/locais';
 import { alterarEquipe, criarEquipe, definirMembroDaEquipe } from './repositorios/equipes';
@@ -597,6 +605,62 @@ export function criarPortaCategorias(banco: AcessoBanco): PortaCategorias {
       ),
     criar: (ctx, c) => banco.executar(ctx, (uow) => criarCategoria(uow, c)),
     alterar: (ctx, id, mudanca) => banco.executar(ctx, (uow) => alterarCategoria(uow, id, mudanca)),
+  };
+}
+
+/** Situações do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
+export function criarPortaSituacoes(banco: AcessoBanco): PortaSituacoes {
+  return {
+    idiomaPadrao: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const t = await tx.selectFrom('app.tenant').select('idioma_padrao').executeTakeFirst();
+        return (t?.idioma_padrao ?? 'pt-BR') as Awaited<ReturnType<PortaSituacoes['idiomaPadrao']>>;
+      }),
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.situacao')
+            .select(['id', 'entidade', 'estado', 'chave_padrao', 'nomes', 'ordem', 'cor', 'ativa'])
+            .execute()
+        ).map((s) => ({
+          id: s.id,
+          entidade: s.entidade as 'chamado' | 'os',
+          estado: s.estado,
+          chavePadrao: s.chave_padrao,
+          nomes: s.nomes,
+          ordem: s.ordem,
+          cor: s.cor,
+          ativa: s.ativa,
+        })),
+      ),
+    criar: (ctx, s) => banco.executar(ctx, (uow) => criarSituacao(uow, s)),
+    alterar: (ctx, id, mudanca) => banco.executar(ctx, (uow) => alterarSituacao(uow, id, mudanca)),
+  };
+}
+
+/** Prioridades do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
+export function criarPortaPrioridades(banco: AcessoBanco): PortaPrioridades {
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.prioridade')
+            .select(['id', 'chave_padrao', 'nomes', 'ordem', 'peso', 'ativa'])
+            .execute()
+        ).map((p) => ({
+          id: p.id,
+          chavePadrao: p.chave_padrao,
+          nomes: p.nomes,
+          ordem: p.ordem,
+          peso: p.peso,
+          ativa: p.ativa,
+        })),
+      ),
+    criar: (ctx, p) => banco.executar(ctx, (uow) => criarPrioridade(uow, p)),
+    alterar: (ctx, id, mudanca) =>
+      banco.executar(ctx, (uow) => alterarPrioridade(uow, id, mudanca)),
   };
 }
 

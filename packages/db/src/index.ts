@@ -18,6 +18,8 @@ export {
   criarPortaBandeiras,
   criarPortaAtivos,
   criarPortaCategorias,
+  criarPortaPrioridades,
+  criarPortaSituacoes,
   criarPortaAnexos,
   criarPortaEscopoDeAnexo,
   criarPortaLocais,

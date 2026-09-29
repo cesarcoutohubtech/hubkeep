@@ -256,11 +256,37 @@ export interface AppPreferenciaMembro {
   usuario_id: string;
 }
 
+export interface AppPrioridade {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  chave_padrao: string | null;
+  criado_em: Generated<Timestamp>;
+  id: string;
+  nomes: Generated<Json>;
+  ordem: number;
+  peso: number;
+  tenant_id: string;
+}
+
 export interface AppProprietario {
   criado_em: Generated<Timestamp>;
   documento: string | null;
   id: string;
   nome: string;
+  tenant_id: string;
+}
+
+export interface AppSituacao {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  chave_padrao: string | null;
+  cor: string;
+  criado_em: Generated<Timestamp>;
+  entidade: string;
+  estado: string;
+  id: string;
+  nomes: Generated<Json>;
+  ordem: number;
   tenant_id: string;
 }
 
@@ -332,7 +358,9 @@ export interface DB {
   "app.operacao_offline": AppOperacaoOffline;
   "app.politica": AppPolitica;
   "app.preferencia_membro": AppPreferenciaMembro;
+  "app.prioridade": AppPrioridade;
   "app.proprietario": AppProprietario;
+  "app.situacao": AppSituacao;
   "app.tenant": AppTenant;
   "licenca.contrato": LicencaContrato;
   "staging.carga": StagingCarga;

@@ -480,6 +480,27 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   2. o nome padrão do catálogo (`chave_padrao`) nesse idioma;
   3. o nome do tenant no idioma padrão do tenant.
 
+**Implementação (C1, migração 0020, 29/09/2026):** sem mudar a decisão.
+- **Estados** (`packages/dominio/src/corretiva.ts`):
+  - chamado: aberto, em triagem, em execução, aguardando aceite, concluído, cancelado;
+  - OS: atribuída, em execução, pausada, concluída, aceita, cancelada.
+- **Transições:** o chamado anda sozinho só na triagem (aberto → em triagem) e no cancelamento antes da OS. Depois, anda a OS, e cada ação dela diz o reflexo no chamado, gravado na mesma unit of work:
+  - gerar (chamado aberto ou em triagem) → OS atribuída, chamado em execução;
+  - reatribuir (OS atribuída, em execução ou pausada) → atribuída;
+  - iniciar, pausar, retomar;
+  - concluir → OS concluída, chamado aguardando aceite;
+  - aceitar → OS aceita, chamado concluído;
+  - reabrir, com motivo → as duas em execução;
+  - cancelar, com motivo → as duas canceladas.
+- **Quem faz:** abre chamado quem tem escrita no hotel (todo papel menos o proprietário); triagem, geração, reatribuição e cancelamento, o Admin do grupo, o Gestor CSC e o Gerente do hotel; iniciar, pausar, retomar e concluir, o Técnico do hotel responsável pela OS (ele, ou uma equipe de que é membro); aceitar e reabrir, quem abriu o chamado (se ainda escreve no hotel) ou o Gerente do hotel.
+- **Recusas:** papel sem a ação, 403 `acao_fora_do_papel`; ação que não vale no estado, 409 `transicao_invalida`; técnico do hotel que não responde pela OS (inclusive a reatribuída com a operação offline na fila), 409 `os_de_outro_responsavel`; motivo ausente, 422 `motivo_obrigatorio`.
+- **Situações e prioridades** (`situacoes.ts`, `app.situacao` e `app.prioridade`):
+  - uma situação padrão por estado (chave `<entidade>_<estado>`) e quatro prioridades padrão (urgente, alta, média, baixa), instaladas por pedido idempotente do Admin, como as categorias;
+  - a entidade e o estado da situação não mudam depois de criada (sem GRANT de UPDATE);
+  - todo estado mantém uma situação ativa, e o tenant mantém uma prioridade ativa;
+  - ao entrar num estado, o registro fica na situação pedida, se for ativa e do estado, ou na ativa de menor ordem.
+- **Prioridade padrão do chamado:** a da categoria do ativo pela política `chamado.prioridade_padrao_por_categoria` (hotel → grupo → padrão), se estiver ativa; senão, ou sem categoria, a ativa de menor peso. A origem vai na cópia da política no chamado (ADR-026, C2).
+
 ## ADR-028 — Campos tipados por definição (ativo na 1a, checklist na 1b)
 
 **Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição de tipos comuns com o checklist e rótulos em quatro idiomas.

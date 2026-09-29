@@ -7,6 +7,7 @@ import {
   type CasosDeUsoDeAnexos,
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeCategorias,
+  type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
   type CasosDeUsoDeBandeiras,
@@ -25,6 +26,7 @@ import {
   criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeAtivos,
   criarCasosDeUsoDeCategorias,
+  criarCasosDeUsoDeSituacoes,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeEquipes,
   criarCasosDeUsoDeBandeiras,
@@ -46,6 +48,8 @@ import {
   criarAcessoBanco,
   criarPortaAtivos,
   criarPortaCategorias,
+  criarPortaPrioridades,
+  criarPortaSituacoes,
   criarPortaConfiguracao,
   criarPortaEquipes,
   criarPortaBandeiras,
@@ -256,6 +260,17 @@ export const casosDeUsoDeCategorias = memo<CasosDeUsoDeCategorias>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeCategorias({
     categorias: criarPortaCategorias(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Situações e prioridades do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
+export const casosDeUsoDeSituacoes = memo<CasosDeUsoDeSituacoes>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeSituacoes({
+    situacoes: criarPortaSituacoes(banco),
+    prioridades: criarPortaPrioridades(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });
