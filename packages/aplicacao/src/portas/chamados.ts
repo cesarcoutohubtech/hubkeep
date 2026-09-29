@@ -16,6 +16,7 @@ export interface ChamadoGravado {
   /** Como está no banco: a cópia da política aplicada na abertura (ADR-026). */
   politicaAplicada: unknown;
   abertoPor: string;
+  motivoCancelamento: string | null;
   versao: number;
   criadoEm: Date;
 }

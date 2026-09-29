@@ -503,6 +503,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - ao entrar num estado, o registro fica na situação pedida, se for ativa e do estado, ou na ativa de menor ordem.
 - **Prioridade padrão do chamado:** a da categoria do ativo pela política `chamado.prioridade_padrao_por_categoria` (hotel → grupo → padrão), se estiver ativa; senão, ou sem categoria, a ativa de menor peso. A origem vai na cópia da política no chamado (ADR-026, C2).
 
+**Implementação (C3, migração 0022, 29/09/2026):**
+- **Uma OS não cancelada por chamado** (decisão do Cesar, 29/09/2026, com condições):
+  - a OS cancelada libera o chamado para outra;
+  - o aceite recusado (reabrir) reabre a mesma OS, sem criar outra;
+  - a OS preventiva (1b), sem chamado, fica fora da restrição;
+  - a regra está no domínio (`osOcupaOChamado`, recusa 409 `os_em_andamento`) e no banco, como integridade (índice único parcial `os_uma_ativa_por_chamado`, que pega as duas triagens simultâneas). O teste de integração confere a paridade para cada estado da OS e o caso das duas triagens juntas;
+  - um problema com duas especialidades vira dois chamados no MVP (pergunta ao cliente em `docs/referencia/perguntas-cliente.md`).
+- **Quem recebe a OS:** um Técnico com papel vigente que cobre o hotel, ou uma equipe ativa do hotel (`triagem.ts`); senão, 422 `responsavel_sem_papel_tecnico` ou `equipe_indisponivel`. Para a aplicação conferir o Técnico, a policy de leitura de `app.atribuicao_escopo` passa a mostrar ao Gestor CSC e ao Gerente do hotel as atribuições de papel `tecnico` que cobrem os hotéis em que eles fazem a triagem. Não mostra outras atribuições nem as de outros hotéis. Esta ampliação da leitura aguarda o ok do Cesar.
+- **Ajuste de prioridade:** pelos papéis da triagem, só com prioridade ativa e com o chamado aberto, em triagem ou em execução.
+- **Escrita no banco:** a OS e o UPDATE do chamado (estado, situação, prioridade e motivo) só pelos papéis da triagem (Admin do grupo, Gestor CSC e Gerente do hotel). A C4 amplia para o responsável, e a C6, para o aceite.
+
 ## ADR-028 — Campos tipados por definição (ativo na 1a, checklist na 1b)
 
 **Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição de tipos comuns com o checklist e rótulos em quatro idiomas.

@@ -195,7 +195,7 @@ select lives_ok(
              '5a000000-0000-0000-0000-000000000001', '9a000000-0000-0000-0000-000000000001', '{}', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   'gerente abre chamado no Hotel 1');
 select throws_ok($$ update app.chamado set descricao = 'x' $$, '42501', null,
-  'nenhum UPDATE em chamado nesta migração');
+  'descrição do chamado sem UPDATE (a 0022 só abre estado, situação, prioridade e motivo)');
 select results_eq($$ select count(*)::int from app.anexo where entidade = 'chamado' $$, $$ values (2) $$,
   'gerente vê as fotos dos chamados do Hotel 1');
 

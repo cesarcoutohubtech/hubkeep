@@ -8,6 +8,7 @@ import {
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
+  type CasosDeUsoDeTriagem,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
@@ -28,6 +29,7 @@ import {
   criarCasosDeUsoDeAtivos,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
+  criarCasosDeUsoDeTriagem,
   criarCasosDeUsoDeSituacoes,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeEquipes,
@@ -51,6 +53,7 @@ import {
   criarPortaAtivos,
   criarPortaCategorias,
   criarPortaChamados,
+  criarPortaTriagem,
   criarPortaPrioridades,
   criarPortaSituacoes,
   criarPortaConfiguracao,
@@ -284,6 +287,18 @@ export const casosDeUsoDeChamados = memo<CasosDeUsoDeChamados>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeChamados({
     chamados: criarPortaChamados(banco),
+    situacoes: criarPortaSituacoes(banco),
+    prioridades: criarPortaPrioridades(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Triagem e OS (fase 1a, C3; ADR-027, ADR-029), pelo hk_app. */
+export const casosDeUsoDeTriagem = memo<CasosDeUsoDeTriagem>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeTriagem({
+    triagem: criarPortaTriagem(banco),
     situacoes: criarPortaSituacoes(banco),
     prioridades: criarPortaPrioridades(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,

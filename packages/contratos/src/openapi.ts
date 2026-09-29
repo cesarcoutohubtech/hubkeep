@@ -36,7 +36,17 @@ import {
   RespostaDeSituacoesEPrioridades,
   RespostaDeSituacoesEPrioridadesPadrao,
 } from './situacoes';
-import { PedidoDeAberturaDeChamado, RespostaDeChamado, RespostaDeChamadoAberto } from './chamados';
+import {
+  PedidoDeAberturaDeChamado,
+  PedidoDeAjusteDePrioridade,
+  PedidoDeAtribuicaoDeOs,
+  PedidoDeCancelamento,
+  PedidoDeTriagem,
+  RespostaDeChamado,
+  RespostaDeChamadoAberto,
+  RespostaDeChamadoAlterado,
+  RespostaDeOsGravada,
+} from './chamados';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
   PedidoDeAlteracaoDeAtivo,
@@ -1187,12 +1197,124 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/chamados/{id}',
     resumo:
-      'O chamado, se visível a quem pede: quem lê o hotel, o proprietário da UH do chamado ou do hotel inteiro.',
+      'O chamado e as OS dele, se visível a quem pede: quem lê o hotel, o proprietário da UH do chamado ou do hotel inteiro.',
     exigeTenant: true,
     respostas: {
-      200: { descricao: 'Chamado', esquema: RespostaDeChamado },
+      200: { descricao: 'Chamado, com as OS', esquema: RespostaDeChamado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/chamados/{id}/triagem',
+    resumo:
+      'Classifica o chamado aberto (vai para em triagem), com prioridade opcional. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista (ADR-029).',
+    exigeTenant: true,
+    corpo: PedidoDeTriagem,
+    respostas: {
+      200: {
+        descricao: 'Chamado em triagem, com a versão nova',
+        esquema: RespostaDeChamadoAlterado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (acao_fora_do_papel).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+      409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
+      422: ERRO('prioridade_indisponivel, sem_situacao_para_estado ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/chamados/{id}/prioridade',
+    resumo:
+      'Ajusta a prioridade do chamado até a execução. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeAjusteDePrioridade,
+    respostas: {
+      200: {
+        descricao: 'Prioridade ajustada, com a versão nova',
+        esquema: RespostaDeChamadoAlterado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (triagem_fora_do_papel).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+      409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
+      422: ERRO('prioridade_indisponivel ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/chamados/{id}/cancelamento',
+    resumo:
+      'Cancela o chamado antes da OS (aberto ou em triagem), com motivo. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeCancelamento,
+    respostas: {
+      200: {
+        descricao: 'Chamado cancelado, com a versão nova',
+        esquema: RespostaDeChamadoAlterado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (acao_fora_do_papel).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+      409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
+      422: ERRO('motivo_obrigatorio, sem_situacao_para_estado ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/chamados/{id}/os',
+    resumo:
+      'Gera a OS do chamado aberto ou em triagem, atribuída a um Técnico do hotel ou a uma equipe do hotel; o chamado vai para em execução. No máximo uma OS não cancelada por chamado. Leva a versão vista do chamado e grava o evento os.atribuida.',
+    exigeTenant: true,
+    corpo: PedidoDeAtribuicaoDeOs,
+    respostas: {
+      201: { descricao: 'OS gerada, com a versão nova do chamado', esquema: RespostaDeOsGravada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (acao_fora_do_papel).'),
+      404: ERRO('chamado_nao_encontrado ou equipe_nao_encontrada.'),
+      409: ERRO('conflito_de_versao (com versaoAtual), os_em_andamento ou transicao_invalida.'),
+      422: ERRO(
+        'responsavel_sem_papel_tecnico, equipe_indisponivel, sem_situacao_para_estado ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/os/{id}/reatribuicao',
+    resumo:
+      'Passa a OS para outro Técnico do hotel ou outra equipe do hotel; ela volta a atribuída. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista da OS e grava o evento os.atribuida.',
+    exigeTenant: true,
+    corpo: PedidoDeAtribuicaoDeOs,
+    respostas: {
+      200: { descricao: 'OS reatribuída, com a versão nova', esquema: RespostaDeOsGravada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (acao_fora_do_papel).'),
+      404: ERRO('os_nao_encontrada ou equipe_nao_encontrada.'),
+      409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
+      422: ERRO(
+        'responsavel_sem_papel_tecnico, equipe_indisponivel, sem_situacao_para_estado ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/os/{id}/cancelamento',
+    resumo:
+      'Cancela a OS, com motivo; o chamado volta para em triagem, para ganhar outra OS. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista da OS.',
+    exigeTenant: true,
+    corpo: PedidoDeCancelamento,
+    respostas: {
+      200: {
+        descricao: 'OS cancelada, com a versão nova do chamado',
+        esquema: RespostaDeOsGravada,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (acao_fora_do_papel).'),
+      404: ERRO('OS fora do escopo (os_nao_encontrada).'),
+      409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
+      422: ERRO('motivo_obrigatorio, sem_situacao_para_estado ou entrada_invalida.'),
     },
   },
 ];

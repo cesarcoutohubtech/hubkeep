@@ -642,3 +642,29 @@ Levantamento feito na `main` `c06bfd0`. Decisões de desenho, dentro do que a C1
   - OpenAPI;
   - tipos regenerados (`pnpm db:types` só depois do `db push` da 0022; antes, na CI com `--verify`).
 - **Fora da C3:** equipes do ator (`AtorDaCorretiva.equipes`, C4), anexo da OS (C4) e a fila do PWA (C4).
+
+### C3 — Condições do Cesar e implementação (29/09/2026)
+- **#64 (S2) mergeado.** O Cesar ligou o "Enforce SSL" no dev. Conferido só por leitura:
+  - conexão sem TLS recusada nas portas 5432 e 6543 (`ESSLREQUIRED`);
+  - `db:testar-dev` passou, com 513 ok em 17 arquivos;
+  - `db:types` gerou o `tipos-banco.ts` idêntico.
+- **Uma OS não cancelada por chamado, aprovada pelo Cesar com condições:**
+  - aceite recusado reabre a mesma OS (a transição `reabrir` já faz isso, e o pgTAP prova que o índice aceita);
+  - OS preventiva (sem chamado) fora da restrição: o predicado do índice é `chamado_id is not null and estado <> 'cancelada'`, pronto para quando a 1b deixar o `chamado_id` opcional;
+  - a mesma regra no domínio (`osOcupaOChamado`, `exigirChamadoSemOsEmAndamento`, chamado pelo `decidirNaOs('gerar')`), com teste de paridade com o banco para cada estado da OS e o caso das duas triagens simultâneas (`packages/db/test/os.test.ts`, com uma barreira que faz as duas passarem juntas pelo domínio);
+  - pergunta ao cliente sobre o problema com duas especialidades (dois chamados no MVP) em `docs/referencia/perguntas-cliente.md`, item 15.
+- **Achado:** o Gerente e o Gestor CSC não liam as atribuições do Técnico (a policy de `app.atribuicao_escopo` só mostra ao Admin, a si mesmo e ao Implantador). Sem isso, a aplicação não confere se quem recebe a OS é Técnico do hotel. A 0022 amplia a leitura só para as atribuições de papel `tecnico` que cobrem os hotéis em que o leitor faz a triagem. Registrado no adendo ao ADR-027, **aguardando o ok do Cesar**.
+- **Migração 0022** (`20260929183205_os.sql`): `app.os`, `motivo_cancelamento` e UPDATE da triagem em `app.chamado`, e a leitura de atribuições acima. pgTAP `018_isolamento_os` com 43 casos; o nome de um caso do `017` foi atualizado.
+- **Domínio:** `triagem.ts` (quem recebe a OS, prioridade ativa, ajuste de prioridade) e a regra da OS em `corretiva.ts`. Códigos novos nos quatro idiomas: `os_em_andamento`, `os_nao_encontrada`, `responsavel_sem_papel_tecnico`, `equipe_indisponivel`, `prioridade_indisponivel`.
+- **Aplicação e API:** `criarCasosDeUsoDeTriagem` (regras injetáveis), `PortaTriagem`, repositório `repositorios/triagem.ts` (a OS é gravada antes do chamado, para a segunda triagem esperar no índice e receber `os_em_andamento`), seis rotas POST e o `GET /chamados/{id}` com as OS.
+- **Tipos:** `tipos-banco.ts` escrito à mão com `app.os` e o `motivo_cancelamento`, no formato do kysely-codegen; a CI confere com `--verify`. Depois do `db push`, o `pnpm db:types` deve dar o mesmo arquivo.
+- **No local:** typecheck, lint e testes verdes (domínio com 1656). O `os.test.ts` e o pgTAP rodam só na CI, porque a 0022 ainda não está no dev.
+
+### Ponto de retomada (29/09/2026, C3 aberta)
+- **`main`:** `4fa95dc`. **Dev:** 21 migrações, até a 0021; Enforce SSL ligado.
+- **PR aberto:** C3, branch `1a-c3` (worktree `wt/c3-triagem`), zona protegida, com a migração 0022.
+  - Merge só com CI verde (pgTAP, `segurança` e a verificação dos tipos).
+  - Pendente do Cesar: ok para a leitura das atribuições de Técnico pela triagem (adendo ao ADR-027).
+- **Depois do merge:** o Cesar faz o `db push` da 0022. Em seguida, conferir no dev só por leitura: `db:testar-dev` (18 arquivos) e `db:types` idêntico.
+- **Próxima tarefa:** C4 (execução da OS pelo Técnico: iniciar, pausar, retomar, concluir, anexo da OS, equipes do ator e fila do PWA). Pode andar no local enquanto o PR da C3 espera.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

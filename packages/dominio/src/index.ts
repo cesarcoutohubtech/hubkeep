@@ -149,7 +149,9 @@ export {
   TRANSICOES_DO_CHAMADO,
   decidirNaOs,
   decidirNoChamado,
+  exigirChamadoSemOsEmAndamento,
   normalizarMotivo,
+  osOcupaOChamado,
   podeAbrirChamado,
   podeTriar,
 } from './corretiva';
@@ -196,5 +198,12 @@ export {
   politicaAplicadaNaAbertura,
 } from './chamados';
 export type { PoliticaAplicadaNaAbertura } from './chamados';
+export {
+  ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
+  exigirPrioridadeAtiva,
+  exigirResponsavelDoHotel,
+  podeAjustarPrioridade,
+} from './triagem';
+export type { CandidatoAResponsavel } from './triagem';
 export { PAPEIS } from './tipos';
 export type { Atribuicao, Contexto, Escopo, Papel, PedidoDeConcessao } from './tipos';

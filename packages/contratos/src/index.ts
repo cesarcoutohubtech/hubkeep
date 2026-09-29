@@ -57,9 +57,17 @@ export {
 } from './situacoes';
 export {
   ChamadoApi,
+  OsApi,
   PedidoDeAberturaDeChamado,
+  PedidoDeAjusteDePrioridade,
+  PedidoDeAtribuicaoDeOs,
+  PedidoDeCancelamento,
+  PedidoDeTriagem,
+  ResponsavelApi,
   RespostaDeChamado,
   RespostaDeChamadoAberto,
+  RespostaDeChamadoAlterado,
+  RespostaDeOsGravada,
 } from './chamados';
 export {
   AtivoApi,

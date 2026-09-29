@@ -60,21 +60,25 @@ Pergunta nova para o cliente entra aqui, e não espalhada pelos docs.
     - Hoje: desligada por padrão; quem liga é o cliente. Há questão trabalhista associada.
     - Fontes: `docs/00-contexto-produto.md`, `docs/referencia/i18n-levantamento.md`.
 
+15. **Um problema com duas especialidades.** No MVP, cada chamado tem no máximo uma ordem de serviço em andamento, com um responsável (um técnico ou uma equipe). Um problema que pede duas especialidades (por exemplo, elétrica e hidráulica no mesmo banheiro) vira dois chamados. Isso atende?
+   - Hoje: dois chamados, um por especialidade. A OS cancelada libera o chamado para outra, e o aceite recusado reabre a mesma OS (Cesar, 29/09/2026).
+   - Fontes: `docs/03-decisoes-tecnicas.md` (adendo ao ADR-027), `docs/diario-fase-1a.md` (C3).
+
 ## Piloto e implantação
 
-15. **Datas e hotéis do piloto.** Quais hotéis e quando? O plano prevê 2 a 3 hotéis e rollout em ondas de cerca de 10; a confirmação é depois de 01/10.
+16. **Datas e hotéis do piloto.** Quais hotéis e quando? O plano prevê 2 a 3 hotéis e rollout em ondas de cerca de 10; a confirmação é depois de 01/10.
     - Fontes: `docs/00-contexto-produto.md`, `docs/04-plano-fase-0.md`, `docs/diario-fase-0.md`.
-16. **Protótipo.** Validar o protótipo de telas, feito fora do repositório, de onde vem o layout definitivo.
+17. **Protótipo.** Validar o protótipo de telas, feito fora do repositório, de onde vem o layout definitivo.
     - Fontes: `docs/05-plano-fase-1a.md`, `docs/diario-fase-0.md`.
 
 ## Jurídico e dados
 
-17. **Contato de segurança.** Quem é o contato de segurança do cliente para incidentes? Quais prazos e texto de aviso entram no contrato (cliente controlador, EasyGov operadora)?
+18. **Contato de segurança.** Quem é o contato de segurança do cliente para incidentes? Quais prazos e texto de aviso entram no contrato (cliente controlador, EasyGov operadora)?
     - Fonte: `docs/07-resposta-a-incidente.md`.
-18. **Leitura de dados do proprietário.** A leitura de dados pessoais do proprietário (pessoa física) precisa ficar registrada?
+19. **Leitura de dados do proprietário.** A leitura de dados pessoais do proprietário (pessoa física) precisa ficar registrada?
     - Hoje: só a escrita é auditada; a leitura aparece nos logs, com a retenção do plano.
     - Fontes: `docs/04-plano-fase-0.md`, `docs/diario-fase-0.md`.
-19. **Termos e privacidade.** Termos de uso e política de privacidade só em pt-BR, ou também nos outros idiomas?
+20. **Termos e privacidade.** Termos de uso e política de privacidade só em pt-BR, ou também nos outros idiomas?
     - Fontes: `docs/referencia/i18n-levantamento.md`, `docs/04-plano-fase-0.md`.
 
 ## Fora da reunião
