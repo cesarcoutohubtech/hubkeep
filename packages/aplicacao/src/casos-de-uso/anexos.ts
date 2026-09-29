@@ -3,7 +3,10 @@
 //   upload    o registro precisa existir para o usuário (RLS) e o hotel dele
 //             estar entre os que o usuário escreve; o caminho é calculado aqui,
 //             {tenant}/{hotel}/{entidade}/{registro}/{id}.{ext}, nunca vem do
-//             cliente. O aparelho envia direto para a URL (docs/01).
+//             cliente. O aparelho envia direto para a URL (docs/01). Com o
+//             arquivoId do aparelho, o caminho do reenvio é o mesmo; se o
+//             arquivo já está lá, 409 arquivo_ja_enviado com o caminho, para
+//             o aparelho seguir para o registro (foto offline, C4).
 //   registro  depois do envio, o aparelho registra o caminho (e o da miniatura,
 //             gerada nele). O caminho é conferido como no download e gravado
 //             na unit of work, com auditoria e evento (B4).
@@ -14,8 +17,12 @@
 //             pertence a esse hotel. Qualquer falha é 404, para não dizer o que
 //             existe fora do escopo.
 //   remoção   lógica; remove quem enviou ou quem gere o hotel (domínio).
+// A entidade pode ter regra própria para anexar (regraParaAnexar): na OS, só
+// o responsável, com a OS em execução ou pausada (C4). Vale no upload e no
+// registro.
 import {
   type Atribuicao,
+  Conflito,
   type Contexto,
   NaoEncontrado,
   PermissaoNegada,
@@ -99,6 +106,12 @@ export interface DependenciasDeAnexos {
   relogio: Relogio;
   /** UUID v7 (packages/db). */
   novoId: () => string;
+  /** Regra da entidade para anexar, depois do escopo (a OS: casos de uso de execução, C4). */
+  regraParaAnexar?: (
+    ctx: Contexto,
+    entidade: EntidadeComAnexo,
+    registroId: string,
+  ) => Promise<void>;
   /** Padrão: podeRemoverAnexo do domínio. Só o teste de aceite troca. */
   podeRemover?: (
     minhas: readonly Atribuicao[],
@@ -175,6 +188,7 @@ export function criarCasosDeUsoDeAnexos(deps: DependenciasDeAnexos): CasosDeUsoD
       const hotelId = await deps.escopo.hotelDoRegistro(ctx, pedido.entidade, pedido.registroId);
       if (!hotelId) throw registroNaoEncontrado(pedido.entidade);
       if (!(await deps.escopo.escreveNoHotel(ctx, hotelId))) throw semEscrita();
+      await deps.regraParaAnexar?.(ctx, pedido.entidade, pedido.registroId);
       // Em minúsculas, como o banco escreve os UUIDs: o registro (B4) confere
       // o caminho contra os ids da própria linha.
       const caminho = [
@@ -186,7 +200,11 @@ export function criarCasosDeUsoDeAnexos(deps: DependenciasDeAnexos): CasosDeUsoD
       ]
         .join('/')
         .toLowerCase();
-      const { url, token } = await deps.armazenamento.urlDeUpload(caminho);
+      const urlDoArquivo = await deps.armazenamento.urlDeUpload(caminho);
+      if (!urlDoArquivo) {
+        throw new Conflito('arquivo_ja_enviado', 'Este arquivo já foi enviado.', { caminho });
+      }
+      const { url, token } = urlDoArquivo;
       return { caminho, url, token, expiraEm: emSegundos(SEGUNDOS_URL_DE_UPLOAD) };
     },
 
@@ -210,6 +228,7 @@ export function criarCasosDeUsoDeAnexos(deps: DependenciasDeAnexos): CasosDeUsoD
       const hotelId = await deps.escopo.hotelDoRegistro(ctx, c.entidade, c.registroId);
       if (hotelId?.toLowerCase() !== c.hotelId) throw registroNaoEncontrado(c.entidade);
       if (!(await deps.escopo.escreveNoHotel(ctx, hotelId))) throw semEscrita();
+      await deps.regraParaAnexar?.(ctx, c.entidade, c.registroId);
       let miniaturaCaminho: string | null = null;
       if (pedido.miniaturaCaminho) {
         const m = lerCaminho(pedido.miniaturaCaminho);

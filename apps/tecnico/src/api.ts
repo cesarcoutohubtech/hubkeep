@@ -8,8 +8,10 @@ import {
   RespostaDeHoteis,
   RespostaDeLocaisDoHotel,
   RespostaDeOperacaoOffline,
+  RespostaDeOsDoDia,
 } from '@hubkeep/contratos';
 import type { OperacaoNaFila } from './fila/banco';
+import type { OsDoDiaGuardadas } from './os/banco';
 import type { Referencia } from './referencia/banco';
 import { type Envio, type ResultadoDoEnvio, vaiTentarDeNovo } from './fila/sincronizar';
 
@@ -34,9 +36,20 @@ export async function cabecalhos(c: Credenciais): Promise<Record<string, string>
   };
 }
 
-/** Envio de uma operação da fila; qualquer falha de rede vira tentar_depois. */
-export function criarEnvio(c: Credenciais, requisitar: typeof fetch = fetch): Envio {
+/**
+ * Envio de uma operação da fila; qualquer falha de rede vira tentar_depois.
+ * A foto da OS (anexo.foto) não é operação da API: vai pelo envioDeFoto
+ * (anexos/fotos.ts); sem ele, fica pendente.
+ */
+export function criarEnvio(
+  c: Credenciais,
+  requisitar: typeof fetch = fetch,
+  envioDeFoto?: Envio,
+): Envio {
   return async (op: OperacaoNaFila): Promise<ResultadoDoEnvio> => {
+    if (op.tipo === 'anexo.foto') {
+      return envioDeFoto ? envioDeFoto(op) : { tipo: 'tentar_depois', motivo: 'sem_envio_de_foto' };
+    }
     // Segunda barreira do ajuste (a): operação de outro usuário nunca sai com
     // o token desta sessão (a passada já filtra por usuário).
     if (op.usuarioId !== c.usuarioId()) return { tipo: 'tentar_depois', motivo: 'outra_sessao' };
@@ -85,6 +98,25 @@ export async function lerPreferencias(
   try {
     const r = await requisitar(`${baseDaApi()}/api/v1/preferencias`, { headers: h });
     return r.ok ? ((await r.json()) as PreferenciasDoServidor) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A fila do dia do técnico (C4b); null sem rede, sem sessão ou com resposta que não seja 200. */
+export async function lerOsDoDia(
+  c: Credenciais,
+  requisitar: typeof fetch = fetch,
+): Promise<OsDoDiaGuardadas | null> {
+  const h = await cabecalhos(c);
+  const usuarioId = c.usuarioId();
+  const tenantId = c.tenant();
+  if (!h || !usuarioId || !tenantId) return null;
+  try {
+    const r = await requisitar(`${baseDaApi()}/api/v1/os/do-dia`, { headers: h });
+    if (!r.ok) return null;
+    const { os } = RespostaDeOsDoDia.parse(await r.json());
+    return { usuarioId, tenantId, os, lidaEm: Date.now() };
   } catch {
     return null;
   }

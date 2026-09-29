@@ -40,6 +40,8 @@ export interface CasosDeUsoDeExecucao {
     ctx: Contexto,
     p: { osId: string; descricao: string },
   ): Promise<{ osId: string; hotelId: string; descricao: string }>;
+  /** A foto na OS (anexos, regraParaAnexar): responsável, com a OS em execução ou pausada. */
+  exigirFoto(ctx: Contexto, osId: string): Promise<void>;
   /** A fila do dia do Técnico: as OS dele e das equipes dele ainda em curso. */
   osDoDia(ctx: Contexto): Promise<OsDoDia[]>;
 }
@@ -130,6 +132,10 @@ export function criarCasosDeUsoDeExecucao(deps: {
     async prepararMaterial(ctx, p) {
       const os = await registro(ctx, 'registrar_material', p.osId);
       return { osId: os.id, hotelId: os.hotelId, descricao: normalizarMaterial(p.descricao) };
+    },
+
+    async exigirFoto(ctx, osId) {
+      await registro(ctx, 'anexar_foto', osId);
     },
 
     osDoDia: (ctx) => deps.execucao.osDoDia(ctx),

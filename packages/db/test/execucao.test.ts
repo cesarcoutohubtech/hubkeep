@@ -322,6 +322,22 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
     expect((await operar(U.outro, 'os.iniciar', osId, 2)).resposta).toMatchObject({ versao: 3 });
   });
 
+  it('foto na OS (C4b): o responsável, com a OS em execução ou pausada', async () => {
+    const { osId } = await osPara({ tipo: 'tecnico', usuarioId: U.tecnico });
+    await expect(execucao.exigirFoto(ctx(U.tecnico), osId)).rejects.toMatchObject({
+      codigo: 'transicao_invalida',
+    });
+    await operar(U.tecnico, 'os.iniciar', osId, 1);
+    await expect(execucao.exigirFoto(ctx(U.tecnico), osId)).resolves.toBeUndefined();
+    await expect(execucao.exigirFoto(ctx(U.outro), osId)).rejects.toMatchObject({
+      codigo: 'os_de_outro_responsavel',
+    });
+    await operar(U.tecnico, 'os.concluir', osId, 2);
+    await expect(execucao.exigirFoto(ctx(U.tecnico), osId)).rejects.toMatchObject({
+      codigo: 'transicao_invalida',
+    });
+  });
+
   it('versão velha: conflito_de_versao; apontamento fora do limite: 422', async () => {
     const { osId } = await osPara({ tipo: 'tecnico', usuarioId: U.tecnico });
     await operar(U.tecnico, 'os.iniciar', osId, 1);

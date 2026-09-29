@@ -740,3 +740,28 @@ Dividida em duas partes, cada uma no seu PR:
   - o `receberOperacao` devolve a resposta guardada antes de validar, para todos os tipos;
   - o `aplicarUmaVez` segue conferindo a chave na transação, para os envios simultâneos;
   - teste de unidade novo para o reenvio depois de o estado mudar. A integração roda na CI.
+
+### C4b — PWA da execução (29/09/2026)
+- **Fila do dia no aparelho** (`apps/tecnico/src/os`): IndexedDB próprio (`hubkeep-tecnico-os`), por usuário e tenant, relido junto com a referência e apagado ao sair. A tela mostra a guardada com as operações pendentes por cima (`projecao.ts`), e cada transição sai com a versão do aparelho.
+- **Tela da OS** (`telas/Os.tsx`): ações pelo estado (`TRANSICOES_DA_OS`); horas e material validados no aparelho com as regras do domínio; concluir pede confirmação.
+- **Foto da OS sem rede:** entra na mesma fila (`anexo.foto`, só do aparelho), com os bytes como `ArrayBuffer` e um `arquivoId` por arquivo. Assim sai antes da conclusão tirada depois dela. No reenvio, contam como feitos:
+  - `arquivo_ja_enviado` (a API devolve o caminho);
+  - o PUT recusado como duplicado;
+  - `anexo_ja_registrado`.
+- **Servidor:**
+  - a porta do Storage devolve `null` quando o caminho já tem arquivo, e a URL de upload vira 409 `arquivo_ja_enviado` com o caminho;
+  - **lacuna da C4a fechada:** a foto na OS não passava pela regra dos registros. Agora a URL e o registro chamam `regraParaAnexar`, que na OS usa `exigirFoto` (responsável, com a OS em execução ou pausada);
+  - teste de integração novo em `execucao.test.ts`.
+- **Docs:** adendo ao ADR-025 (fila do dia e fotos no aparelho, a aprovar pelo Cesar); implementação da C4b no ADR-027; OpenAPI com os 409 novos.
+- **i18n:** 22 chaves novas nos quatro idiomas, com `erro.arquivo_ja_enviado`.
+- **Local:** typecheck, lint e testes verdes: raiz 272, PWA 79 (dois arquivos novos: `os.test.ts` e `telas-os.test.tsx`), aplicação 89. A integração roda na CI.
+- A branch parte do #68 (`1a-c4-reenvio`), para a integração da CI não herdar a falha da `main`.
+
+### Ponto de retomada (29/09/2026, C4b aberta)
+- **`main`:** `b78a025` (#67). **Dev:** 24 migrações, até a 0024; 596 ok em 19 arquivos; `db:types` idêntico (30 tabelas).
+- **PRs abertos:**
+  - #68 (`1a-c4-reenvio`, sem zona protegida), com a CI toda verde;
+  - C4b (`1a-c4b-pwa`, worktree `wt/c4b-pwa`, zona protegida por causa do `docs/03`), apoiada no #68.
+- **Merge:** primeiro o #68, depois a C4b. Os dois só com a CI verde. A C4b não tem migração, então não precisa de `db push`.
+- **Próxima tarefa:** C5, lida no `docs/04`/plano da fase 1a antes de começar, num worktree novo a partir da `main`.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

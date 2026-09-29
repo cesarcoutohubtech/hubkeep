@@ -10,8 +10,12 @@ export type EntidadeComAnexo = (typeof ENTIDADES_COM_ANEXO)[number];
 
 /** Emissão de URL assinada (implementada em packages/auth-admin). */
 export interface ArmazenamentoDeArquivos {
-  /** URL de upload para um caminho novo; o aparelho envia direto para ela. */
-  urlDeUpload(caminho: string): Promise<{ url: string; token: string }>;
+  /**
+   * URL de upload para um caminho novo; o aparelho envia direto para ela.
+   * null: o caminho já tem arquivo (o reenvio da foto offline, com o mesmo
+   * arquivoId; C4).
+   */
+  urlDeUpload(caminho: string): Promise<{ url: string; token: string } | null>;
   /** URL de download de curta duração. */
   urlDeDownload(caminho: string, segundos: number): Promise<string>;
 }
