@@ -481,12 +481,13 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - domínio: `corretiva.test.ts` percorre toda ação × estado × papel (14 atores, inclusive vencido, revogado, outro hotel e outra bandeira) contra tabelas esperadas escritas à mão, mais motivo, OS reatribuída e quem abriu; `situacoes.test.ts` cobre padrões, validações, situação ao entrar no estado e a prioridade padrão pela política nos três níveis;
   - pgTAP `016_isolamento_situacao_prioridade` (35 casos): os seis casos nas duas tabelas, só o Admin grava, campos fixos, sem DELETE, worker;
   - integração (só na CI, `situacoes.test.ts`): instalação idempotente, leitura pelo técnico e pelo proprietário de hotel inteiro, recusas com código, última ativa, paridade com a checagem removida, auditoria.
-- **Para o Cesar olhar** (escolhas dentro do ADR-027, fáceis de mudar antes da C2):
-  1. o Admin do grupo também faz a triagem (o plano cita o Gestor CSC e o Gerente do hotel); ele não aceita nem executa;
-  2. sem regra para a categoria, o chamado nasce na prioridade ativa de menor peso;
-  3. cancelar a OS cancela o chamado; outra saída seria o chamado voltar para a triagem e ganhar outra OS;
-  4. o Gerente e o Gestor não executam a OS no lugar do técnico (iniciar, pausar, concluir);
-  5. técnico que não responde pela OS recebe 409 (conflito, como a OS reatribuída), e não 403.
+- **Decisões do Cesar (29/09/2026)**, aplicadas no PR de ajustes da C1:
+  1. o Admin do grupo fica num grupo à parte (`administracao`, `PAPEIS_DA_ADMINISTRACAO`), porque terá alçadas e permissões a mais que o Gestor CSC e o Gerente; hoje faz as mesmas ações de gestão que a triagem, e não aceita nem executa;
+  2. sem regra para a categoria, o chamado nasce na prioridade ativa de menor peso (mantido);
+  3. cancelar a OS devolve o chamado à triagem, para ganhar outra OS (antes, cancelava o chamado). A C3 precisa aceitar mais de uma OS por chamado, com uma só em andamento;
+  4. o Gerente e o Gestor não executam a OS no lugar do técnico (mantido);
+  5. técnico que não responde pela OS recebe 409 (mantido).
+- **Meta-teste 26 vermelho desde a B6:** o PR da B6 (#54) e o da C1 (#55) foram mergeados com o pgTAP falhando no 001: "could not determine which collation to use", porque os nomes do catálogo têm collation "C" e os valores esperados, a padrão. As migrações aplicaram, e os outros arquivos do pgTAP passaram; o 001 parava no teste 26. Corrigido com `collate "default"` no PR de ajustes. O `db push` da 0019 e da 0020 espera esse PR ficar verde. Lição: no relatório ao Cesar, não chamar de pendente uma CI que ainda não terminou sem avisar que o merge deve esperar o verde.
 
 ### Ponto de retomada (29/09/2026, etapa B concluída, PR da B6 aberto)
 - **`main`:** `a5dd03d` (#53, B5). **Dev:** 18 migrações, até a 0018; 444 ok em 15 arquivos.

@@ -491,8 +491,8 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - concluir → OS concluída, chamado aguardando aceite;
   - aceitar → OS aceita, chamado concluído;
   - reabrir, com motivo → as duas em execução;
-  - cancelar, com motivo → as duas canceladas.
-- **Quem faz:** abre chamado quem tem escrita no hotel (todo papel menos o proprietário); triagem, geração, reatribuição e cancelamento, o Admin do grupo, o Gestor CSC e o Gerente do hotel; iniciar, pausar, retomar e concluir, o Técnico do hotel responsável pela OS (ele, ou uma equipe de que é membro); aceitar e reabrir, quem abriu o chamado (se ainda escreve no hotel) ou o Gerente do hotel.
+  - cancelar, com motivo → OS cancelada, e o chamado volta para a triagem, para ganhar outra OS (decisão do Cesar, 29/09/2026).
+- **Quem faz:** abre chamado quem tem escrita no hotel (todo papel menos o proprietário); triagem, geração, reatribuição e cancelamento, o Gestor CSC e o Gerente do hotel (grupo `triagem`) e o Admin do grupo, num grupo à parte (`administracao`), porque terá alçadas e permissões a mais que os dois (decisão do Cesar, 29/09/2026); iniciar, pausar, retomar e concluir, o Técnico do hotel responsável pela OS (ele, ou uma equipe de que é membro); aceitar e reabrir, quem abriu o chamado (se ainda escreve no hotel) ou o Gerente do hotel.
 - **Recusas:** papel sem a ação, 403 `acao_fora_do_papel`; ação que não vale no estado, 409 `transicao_invalida`; técnico do hotel que não responde pela OS (inclusive a reatribuída com a operação offline na fila), 409 `os_de_outro_responsavel`; motivo ausente, 422 `motivo_obrigatorio`.
 - **Situações e prioridades** (`situacoes.ts`, `app.situacao` e `app.prioridade`):
   - uma situação padrão por estado (chave `<entidade>_<estado>`) e quatro prioridades padrão (urgente, alta, média, baixa), instaladas por pedido idempotente do Admin, como as categorias;
