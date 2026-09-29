@@ -433,7 +433,7 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 
 ### Ponto de retomada (28/09/2026, etapa B, PR da B4 aberto)
 - **`main`:** `44a43a8` (#51, B3c). **Dev:** 16 migrações, até a 0016; 405 ok em 14 arquivos. Próxima conferência só depois do `db push` da 0017.
-- **PR aberto:** B4, branch `1a-b4-anexos` (worktree `wt/b4-anexos`), zona protegida. Espera do Cesar: merge e `db push` da 0017. Conferir na CI o pgTAP 015, o `packages/db/test/anexos.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão).
+- **PR aberto:** B4, branch `1a-b4` (worktree `wt/b4-anexos`, branch local `1a-b4-anexos`), zona protegida. Espera do Cesar: merge e `db push` da 0017. Conferir na CI o pgTAP 015, o `packages/db/test/anexos.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão).
 - **Decisões pendentes do Cesar:** nenhuma.
-- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `b3c-mover-ativo`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`. Branches remotos velhos: `1a-b3c-mover-ativo`.
+- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `b3c-mover-ativo`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`. Branches remotos velhos: `1a-b3c-mover-ativo` e `1a-b4-anexos` (base antiga da B4).
 - **Próxima tarefa:** **B5, QR individual**, no local: `git worktree add C:/Cesar/HubKeep/Dev/wt/b5-qr -b 1a-b5-qr origin/main`; ler a linha B5 do `docs/05`, a migração `20260928214709_ativo.sql`, `apps/tecnico/src/telas/Ativos.tsx` e o armazenamento offline do PWA (ADR-025). O PR da B5 só abre depois do merge da B4. Depois: B6, resumo da etapa B, etapa C e o kit de teste (parar quando pronto).
