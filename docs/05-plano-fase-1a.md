@@ -102,6 +102,8 @@ Fim da etapa D e da fase 1a: resumo, com a lista do que ficou para a 1b e a 1c.
 
 ## Perguntas para a reunião com o cliente
 
+A lista completa, por tema, está em `docs/referencia/perguntas-cliente.md`; pergunta nova entra lá.
+
 - **Equipamento do proprietário na UH (condo-hotel):** os equipamentos da UH podem ser do proprietário. Quando um deles sai da UH (B3c, mover ativo), a movimentação precisa ficar visível para ele? No MVP, o proprietário não lê o histórico de movimentações (Cesar, 28/09/2026): o ativo só deixa de aparecer para ele.
 
 ## Decisões do Cesar sobre o plano (26/09/2026)
