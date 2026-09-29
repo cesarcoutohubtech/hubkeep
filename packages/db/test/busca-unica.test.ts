@@ -3,7 +3,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { colunasPesquisaveisDoAtivo, colunasPesquisaveisDoLocal } from '../src/repositorios/busca';
+import {
+  colunasPesquisaveisDoAtivo,
+  colunasPesquisaveisDoChamado,
+  colunasPesquisaveisDoLocal,
+} from '../src/repositorios/busca';
 
 const SRC = join(__dirname, '..', 'src');
 const fontes = (dir: string): string[] =>
@@ -39,22 +43,31 @@ describe('busca calculada num único lugar', () => {
     });
   });
 
+  it('chamado: a descrição, sem acento e em minúsculas', () => {
+    expect(colunasPesquisaveisDoChamado('Ar-condicionado não GELA')).toEqual({
+      descricao: 'Ar-condicionado não GELA',
+      busca: 'ar-condicionado nao gela',
+    });
+  });
+
   it('nenhum outro fonte de packages/db grava a busca ou a normaliza', () => {
     const fora = trechos.filter((f) => /\bbusca\s*:|textoDeBusca/.test(f.texto));
     expect(fora.map((f) => f.arquivo)).toEqual([]);
   });
 
-  it('nenhuma gravação em app.local ou app.ativo escreve um campo pesquisável direto', () => {
+  it('nenhuma gravação em app.local, app.ativo ou app.chamado escreve um campo pesquisável direto', () => {
     // Do INSERT ou UPDATE até o execute: nome, fabricante, modelo e número de
     // série só entram pelas colunas de repositorios/busca.ts, que trazem a busca.
     const gravacoes = trechos.flatMap((f) =>
       [
-        ...f.texto.matchAll(/(insertInto|updateTable)\(\s*'app\.(local|ativo)'[\s\S]*?\.execute/g),
+        ...f.texto.matchAll(
+          /(insertInto|updateTable)\(\s*'app\.(local|ativo|chamado)'[\s\S]*?\.execute/g,
+        ),
       ].map((m) => ({ arquivo: f.arquivo, trecho: m[0] })),
     );
-    expect(gravacoes.length).toBeGreaterThanOrEqual(6);
+    expect(gravacoes.length).toBeGreaterThanOrEqual(7);
     const diretas = gravacoes.filter((g) =>
-      /\b(nome|fabricante|modelo|numero_serie)\s*:/.test(g.trecho),
+      /\b(nome|fabricante|modelo|numero_serie|descricao)\s*:/.test(g.trecho),
     );
     expect(diretas.map((g) => g.arquivo)).toEqual([]);
   });

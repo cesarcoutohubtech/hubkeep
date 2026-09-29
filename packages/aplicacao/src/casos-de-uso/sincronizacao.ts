@@ -3,7 +3,8 @@
 // Cada operação chega com a chave gerada no aparelho. A validação roda antes
 // (operação inválida é 422 e não guarda a chave: o aparelho a descarta); a
 // operação válida é aplicada uma vez só, pela porta. Tipos: a troca das
-// próprias preferências (fase 0) e o cadastro e a alteração de ativo (B3). No
+// próprias preferências (fase 0), o cadastro e a alteração de ativo (B3) e a
+// abertura do chamado (C2), com a mesma preparação do web. No
 // ativo, a validação que lê o banco (local, categoria, permissão) é a mesma
 // do web (preparar*); a versão é conferida na gravação, e o conflito volta
 // como 409 conflito_de_versao, sem guardar a chave (ADR-029).
@@ -15,6 +16,7 @@ import type {
   PedidoDeAlteracaoDeAtivo,
   PedidoDeCadastroDeAtivo,
 } from './ativos';
+import type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './chamados';
 import { validarPreferencias } from './preferencias';
 
 export type OperacaoOffline =
@@ -24,7 +26,8 @@ export type OperacaoOffline =
       chave: string;
       tipo: 'ativo.alterar';
       dados: PedidoDeAlteracaoDeAtivo & { ativoId: string };
-    };
+    }
+  | { chave: string; tipo: 'chamado.abrir'; dados: PedidoDeAberturaDeChamado };
 
 export interface ResultadoDaOperacao {
   chave: string;
@@ -40,6 +43,8 @@ export interface CasosDeUsoDeSincronizacao {
 export function criarCasosDeUsoDeSincronizacao(deps: {
   operacoes: PortaOperacoesOffline;
   ativos: Pick<CasosDeUsoDeAtivos, 'prepararCadastro' | 'prepararAlteracao'>;
+  /** Opcional só para os testes que não abrem chamado; a composição sempre passa. */
+  chamados?: Pick<CasosDeUsoDeChamados, 'prepararAbertura'>;
 }): CasosDeUsoDeSincronizacao {
   return {
     async receberOperacao(ctx, operacao) {
@@ -66,6 +71,15 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
           const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
             const { versao } = await s.alterarAtivo(c.ativoId, c.versaoEsperada, c.dados);
             return { id: c.ativoId, versao };
+          });
+          return { chave: operacao.chave, ...r };
+        }
+        case 'chamado.abrir': {
+          if (!deps.chamados) throw new Error('chamado.abrir sem os casos de uso de chamados.');
+          const c = await deps.chamados.prepararAbertura(ctx, operacao.dados);
+          const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
+            const { id, versao } = await s.abrirChamado(c.hotelId, c.dados);
+            return { id, versao };
           });
           return { chave: operacao.chave, ...r };
         }

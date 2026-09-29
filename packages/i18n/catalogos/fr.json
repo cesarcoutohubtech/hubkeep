@@ -466,5 +466,22 @@
   "erro.sem_situacao_para_estado": "Aucun statut actif pour cet état. Demandez à l'administrateur du groupe de le configurer.",
   "erro.sem_prioridade_ativa": "Aucune priorité active. Demandez à l'administrateur du groupe de la configurer.",
   "erro.situacao_nao_encontrada": "Statut introuvable.",
-  "erro.prioridade_nao_encontrada": "Priorité introuvable."
+  "erro.prioridade_nao_encontrada": "Priorité introuvable.",
+  "tecnico.operacao.chamado_abrir": "Ouverture de demande",
+  "tecnico.chamado.abrir": "Ouvrir une demande",
+  "tecnico.chamado.titulo": "Nouvelle demande",
+  "tecnico.chamado.enfileirado": "Demande enregistrée sur l'appareil. Elle sera envoyée dès qu'il y aura du réseau.",
+  "tecnico.chamado.hotel": "Hôtel",
+  "tecnico.chamado.local": "Emplacement",
+  "tecnico.chamado.escolha_o_local": "Choisissez l'emplacement",
+  "tecnico.chamado.ativo": "Équipement (facultatif)",
+  "tecnico.chamado.sem_ativo": "Aucun équipement",
+  "tecnico.chamado.descricao": "Que se passe-t-il ?",
+  "tecnico.chamado.acao.abrir": "Ouvrir la demande",
+  "erro.chamado_uh_pendente_licenca": "La chambre est en attente de licence et ne peut pas recevoir de demande.",
+  "erro.chamado_local_inativo": "L'emplacement est désactivé et ne peut pas recevoir de demande.",
+  "erro.chamado_descricao_invalida": "Décrivez le problème en {maximo} caractères au maximum.",
+  "erro.chamado_ativo_fora_do_local": "L'équipement ne se trouve pas à l'emplacement choisi.",
+  "erro.chamado_ativo_desativado": "L'équipement est désactivé.",
+  "erro.chamado_nao_encontrado": "Demande introuvable."
 }

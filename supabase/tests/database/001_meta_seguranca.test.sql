@@ -391,7 +391,7 @@ select is_empty($$
 $$, 'só as extensões permitidas: as do Supabase, pgtap e pg_trgm');
 
 -- 26. Busca sem acento (ADR-030): índice GIN de trigramas na coluna busca de
---     local e ativo, com a classe de operadores de pg_trgm no schema
+--     local, ativo e chamado (C2), com a classe de operadores de pg_trgm no schema
 --     extensions (nunca em public).
 --     Os nomes do catálogo têm collation "C", e os valores esperados, a
 --     padrão: sem o collate explícito, a comparação falha ("could not determine
@@ -408,8 +408,9 @@ select results_eq($$
   where o.opcname = 'gin_trgm_ops'
   order by 1
 $$, $$ values ('ativo_busca_trgm_idx', 'ativo', 'busca', 'extensions'),
+              ('chamado_busca_trgm_idx', 'chamado', 'busca', 'extensions'),
               ('local_busca_trgm_idx', 'local', 'busca', 'extensions') $$,
-  'índices de trigramas só em busca de local e ativo, com pg_trgm em extensions');
+  'índices de trigramas só em busca de local, ativo e chamado, com pg_trgm em extensions');
 
 select * from finish();
 rollback;

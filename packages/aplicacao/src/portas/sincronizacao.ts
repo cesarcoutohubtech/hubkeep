@@ -4,6 +4,7 @@
 // reenvio (resposta perdida) ou dois envios simultâneos.
 import type { Contexto } from '@hubkeep/dominio';
 import type { DadosDeAtivo, MudancaDeAtivo } from './ativos';
+import type { DadosDeChamado } from './chamados';
 import type { PreferenciasGravadas } from './preferencias';
 
 /** Resposta guardada com a chave e devolvida igual a cada reenvio. */
@@ -23,6 +24,8 @@ export interface SessaoDeOperacao {
     versaoEsperada: number,
     mudanca: MudancaDeAtivo,
   ): Promise<{ versao: number }>;
+  /** Abertura do chamado (C2), em nome do usuário do contexto. */
+  abrirChamado(hotelId: string, dados: DadosDeChamado): Promise<{ id: string; versao: number }>;
 }
 
 export interface PortaOperacoesOffline {

@@ -10,6 +10,7 @@ import type {
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaCategorias,
+  PortaChamados,
   PortaPrioridades,
   PortaSituacoes,
   PortaLocais,
@@ -56,6 +57,7 @@ import {
 import { registrarAnexo, removerAnexo } from './repositorios/anexos';
 import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
+import { criarChamado } from './repositorios/chamados';
 import {
   alterarPrioridade,
   alterarSituacao,
@@ -608,6 +610,112 @@ export function criarPortaCategorias(banco: AcessoBanco): PortaCategorias {
   };
 }
 
+/** Chamados (fase 1a, C2), pelo hk_app. */
+export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    local: (ctx, localId) =>
+      banco.withContext(ctx, async (tx) => {
+        const l = await tx
+          .selectFrom('app.local')
+          .select(['id', 'hotel_id', 'status'])
+          .where('id', '=', localId)
+          .executeTakeFirst();
+        return l
+          ? {
+              id: l.id,
+              hotelId: l.hotel_id,
+              status: l.status as 'ativo' | 'inativo' | 'pendente_licenca',
+            }
+          : null;
+      }),
+    ativo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await tx
+          .selectFrom('app.ativo')
+          .select(['id', 'hotel_id', 'local_id', 'categoria_id', 'desativado_em'])
+          .where('id', '=', ativoId)
+          .executeTakeFirst();
+        return a
+          ? {
+              id: a.id,
+              hotelId: a.hotel_id,
+              localId: a.local_id,
+              categoriaId: a.categoria_id,
+              desativadoEm: a.desativado_em,
+            }
+          : null;
+      }),
+    politica: (ctx, hotelId, chave) =>
+      banco.withContext(ctx, async (tx) => {
+        const linhas = await tx
+          .selectFrom('app.politica')
+          .select(['escopo_tipo', 'hotel_id', 'valor'])
+          .where('ativa', '=', true)
+          .where('chave', '=', chave)
+          .where((eb) =>
+            eb.or([
+              eb('escopo_tipo', '=', 'grupo'),
+              eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
+            ]),
+          )
+          .execute();
+        const niveis: { hotel?: unknown; grupo?: unknown } = {};
+        for (const l of linhas) {
+          if (l.escopo_tipo === 'hotel') niveis.hotel = l.valor;
+          else if (l.escopo_tipo === 'grupo') niveis.grupo = l.valor;
+        }
+        return niveis;
+      }),
+    criar: (ctx, hotelId, dados) => banco.executar(ctx, (uow) => criarChamado(uow, hotelId, dados)),
+    chamado: (ctx, chamadoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.chamado')
+          .select([
+            'id',
+            'hotel_id',
+            'local_id',
+            'ativo_id',
+            'descricao',
+            'estado',
+            'situacao_id',
+            'prioridade_id',
+            'politica_aplicada',
+            'aberto_por',
+            'versao',
+            'criado_em',
+          ])
+          .where('id', '=', chamadoId)
+          .executeTakeFirst();
+        return c
+          ? {
+              id: c.id,
+              hotelId: c.hotel_id,
+              localId: c.local_id,
+              ativoId: c.ativo_id,
+              descricao: c.descricao,
+              estado: c.estado,
+              situacaoId: c.situacao_id,
+              prioridadeId: c.prioridade_id,
+              politicaAplicada: c.politica_aplicada,
+              abertoPor: c.aberto_por,
+              versao: c.versao,
+              criadoEm: c.criado_em,
+            }
+          : null;
+      }),
+  };
+}
+
 /** Situações do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
 export function criarPortaSituacoes(banco: AcessoBanco): PortaSituacoes {
   return {
@@ -872,6 +980,7 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
             cadastrarAtivo: (hotelId, localId, dados) => criarAtivo(uow, hotelId, localId, dados),
             alterarAtivo: (ativoId, versaoEsperada, mudanca) =>
               alterarAtivo(uow, ativoId, versaoEsperada, mudanca),
+            abrirChamado: (hotelId, dados) => criarChamado(uow, hotelId, dados),
           });
           await registrarOperacao(uow, operacao, resposta);
           return { repetida: false, resposta };
@@ -943,6 +1052,7 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
         'a.entidade',
         'a.local_id',
         'a.ativo_id',
+        'a.chamado_id',
         'a.caminho',
         'a.miniatura_caminho',
         'a.tipo',
@@ -958,6 +1068,7 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
     entidade: string;
     local_id: string | null;
     ativo_id: string | null;
+    chamado_id: string | null;
     caminho: string;
     miniatura_caminho: string | null;
     tipo: string;
@@ -970,7 +1081,7 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
     id: a.id,
     hotelId: a.hotel_id,
     entidade: a.entidade as EntidadeComAnexo,
-    registroId: a.ativo_id ?? a.local_id ?? a.hotel_id,
+    registroId: a.chamado_id ?? a.ativo_id ?? a.local_id ?? a.hotel_id,
     caminho: a.caminho,
     miniaturaCaminho: a.miniatura_caminho,
     tipo: a.tipo,
@@ -998,7 +1109,9 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
             ? q.where('a.local_id', '=', registroId)
             : entidade === 'ativo'
               ? q.where('a.ativo_id', '=', registroId)
-              : q.where('a.hotel_id', '=', registroId);
+              : entidade === 'chamado'
+                ? q.where('a.chamado_id', '=', registroId)
+                : q.where('a.hotel_id', '=', registroId);
         return (await q.orderBy('a.criado_em', 'desc').orderBy('a.id', 'desc').execute()).map(
           paraAnexo,
         );

@@ -7,6 +7,7 @@ import {
   type CasosDeUsoDeAnexos,
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeCategorias,
+  type CasosDeUsoDeChamados,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
@@ -26,6 +27,7 @@ import {
   criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeAtivos,
   criarCasosDeUsoDeCategorias,
+  criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeSituacoes,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeEquipes,
@@ -48,6 +50,7 @@ import {
   criarAcessoBanco,
   criarPortaAtivos,
   criarPortaCategorias,
+  criarPortaChamados,
   criarPortaPrioridades,
   criarPortaSituacoes,
   criarPortaConfiguracao,
@@ -276,6 +279,18 @@ export const casosDeUsoDeSituacoes = memo<CasosDeUsoDeSituacoes>(async () => {
   });
 });
 
+/** Chamados (fase 1a, C2), pelo hk_app. */
+export const casosDeUsoDeChamados = memo<CasosDeUsoDeChamados>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeChamados({
+    chamados: criarPortaChamados(banco),
+    situacoes: criarPortaSituacoes(banco),
+    prioridades: criarPortaPrioridades(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
 /** Ativos do hotel (fase 1a, B3; ADR-029), pelo hk_app. */
 export const casosDeUsoDeAtivos = memo<CasosDeUsoDeAtivos>(async () => {
   const banco = await acessoBanco();
@@ -296,6 +311,7 @@ export const casosDeUsoDeSincronizacao = memo<CasosDeUsoDeSincronizacao>(async (
   criarCasosDeUsoDeSincronizacao({
     operacoes: criarPortaOperacoesOffline(await acessoBanco()),
     ativos: await casosDeUsoDeAtivos(),
+    chamados: await casosDeUsoDeChamados(),
   }),
 );
 

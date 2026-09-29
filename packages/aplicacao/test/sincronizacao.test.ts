@@ -37,6 +37,7 @@ function montar() {
           a.versao += 1;
           return { versao: a.versao };
         },
+        abrirChamado: async () => ({ id: 'chamado-1', versao: 1 }),
       });
       guardadas.set(op.chave, resposta);
       return { repetida: false, resposta };

@@ -24,6 +24,7 @@ const ROTULO_DA_OPERACAO: Record<OperacaoNaFila['tipo'], Chave> = {
   'preferencias.gravar': 'tecnico.operacao.preferencias_gravar',
   'ativo.cadastrar': 'tecnico.operacao.ativo_cadastrar',
   'ativo.alterar': 'tecnico.operacao.ativo_alterar',
+  'chamado.abrir': 'tecnico.operacao.chamado_abrir',
 };
 
 /** Motivo pelo catálogo (erro.<codigo>); código desconhecido aparece como está. */
@@ -44,6 +45,7 @@ export function FilaDoDia(props: {
   aoEnviarAgora: () => void;
   aoDispensar: (chave: string) => void;
   aoAbrirAtivos: () => void;
+  aoAbrirChamado: () => void;
   aoSair: () => void;
 }) {
   const t = useT();
@@ -102,6 +104,7 @@ export function FilaDoDia(props: {
       </label>
 
       <button onClick={props.aoAbrirAtivos}>{t('tecnico.ativos.abrir')}</button>
+      <button onClick={props.aoAbrirChamado}>{t('tecnico.chamado.abrir')}</button>
 
       <section>
         <h2>{t('tecnico.fila.titulo')}</h2>

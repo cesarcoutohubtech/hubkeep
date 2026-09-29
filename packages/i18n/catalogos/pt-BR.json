@@ -466,5 +466,22 @@
   "erro.sem_situacao_para_estado": "Não há situação ativa para este estado. Peça ao Admin do grupo para configurar.",
   "erro.sem_prioridade_ativa": "Não há prioridade ativa. Peça ao Admin do grupo para configurar.",
   "erro.situacao_nao_encontrada": "Situação não encontrada.",
-  "erro.prioridade_nao_encontrada": "Prioridade não encontrada."
+  "erro.prioridade_nao_encontrada": "Prioridade não encontrada.",
+  "tecnico.operacao.chamado_abrir": "Abertura de chamado",
+  "tecnico.chamado.abrir": "Abrir chamado",
+  "tecnico.chamado.titulo": "Novo chamado",
+  "tecnico.chamado.enfileirado": "Chamado guardado no aparelho. Vai ser enviado quando houver rede.",
+  "tecnico.chamado.hotel": "Hotel",
+  "tecnico.chamado.local": "Local",
+  "tecnico.chamado.escolha_o_local": "Escolha o local",
+  "tecnico.chamado.ativo": "Ativo (opcional)",
+  "tecnico.chamado.sem_ativo": "Sem ativo",
+  "tecnico.chamado.descricao": "O que está acontecendo?",
+  "tecnico.chamado.acao.abrir": "Abrir chamado",
+  "erro.chamado_uh_pendente_licenca": "A UH está pendente de licença e não recebe chamado.",
+  "erro.chamado_local_inativo": "O local está desativado e não recebe chamado.",
+  "erro.chamado_descricao_invalida": "Descreva o problema em até {maximo} caracteres.",
+  "erro.chamado_ativo_fora_do_local": "O ativo não está no local escolhido.",
+  "erro.chamado_ativo_desativado": "O ativo está desativado.",
+  "erro.chamado_nao_encontrado": "Chamado não encontrado."
 }

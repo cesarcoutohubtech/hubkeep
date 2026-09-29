@@ -466,5 +466,22 @@
   "erro.sem_situacao_para_estado": "There is no active status for this state. Ask the group admin to set one up.",
   "erro.sem_prioridade_ativa": "There is no active priority. Ask the group admin to set one up.",
   "erro.situacao_nao_encontrada": "Status not found.",
-  "erro.prioridade_nao_encontrada": "Priority not found."
+  "erro.prioridade_nao_encontrada": "Priority not found.",
+  "tecnico.operacao.chamado_abrir": "Request opening",
+  "tecnico.chamado.abrir": "Open request",
+  "tecnico.chamado.titulo": "New request",
+  "tecnico.chamado.enfileirado": "Request saved on the device. It will be sent when there is a connection.",
+  "tecnico.chamado.hotel": "Hotel",
+  "tecnico.chamado.local": "Location",
+  "tecnico.chamado.escolha_o_local": "Choose the location",
+  "tecnico.chamado.ativo": "Asset (optional)",
+  "tecnico.chamado.sem_ativo": "No asset",
+  "tecnico.chamado.descricao": "What is happening?",
+  "tecnico.chamado.acao.abrir": "Open request",
+  "erro.chamado_uh_pendente_licenca": "The room is pending a license and cannot receive requests.",
+  "erro.chamado_local_inativo": "The location is deactivated and cannot receive requests.",
+  "erro.chamado_descricao_invalida": "Describe the problem in up to {maximo} characters.",
+  "erro.chamado_ativo_fora_do_local": "The asset is not in the chosen location.",
+  "erro.chamado_ativo_desativado": "The asset is deactivated.",
+  "erro.chamado_nao_encontrado": "Request not found."
 }
