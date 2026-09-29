@@ -60,11 +60,11 @@ insert into app.hotel (id, tenant_id, bandeira_id, nome, fuso, status) values
   ('11100000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', null,                                   'Hotel A2', 'America/Sao_Paulo', 'em_implantacao'),
   ('21100000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '21000000-0000-0000-0000-000000000001', 'Hotel B1', 'America/Sao_Paulo', 'ativo');
 
-insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
-  ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH A1-101', 'ativo'),
-  ('11110000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH A1-102', 'ativo'),
-  ('11110000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'uh', 'UH A2-201', 'pendente_licenca'),
-  ('21110000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '21100000-0000-0000-0000-000000000001', 'uh', 'UH B1-101', 'ativo');
+insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
+  ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH A1-101', 'uh a1-101', 'ativo'),
+  ('11110000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH A1-102', 'uh a1-102', 'ativo'),
+  ('11110000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'uh', 'UH A2-201', 'uh a2-201', 'pendente_licenca'),
+  ('21110000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '21100000-0000-0000-0000-000000000001', 'uh', 'UH B1-101', 'uh b1-101', 'ativo');
 
 insert into app.proprietario (id, tenant_id, nome) values
   ('11200000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Proprietário P'),
@@ -243,9 +243,9 @@ select throws_ok(
       'invasor', 'America/Sao_Paulo', 'ativo') $$,
   '42501', null, 'admin B não cria hotel no tenant A');
 select throws_ok(
-  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
+  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
      ('11110000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-000000000000',
-      '11100000-0000-0000-0000-000000000001', 'uh', 'invasora', 'ativo') $$,
+      '11100000-0000-0000-0000-000000000001', 'uh', 'invasora', 'invasora', 'ativo') $$,
   '42501', null, 'admin B não cria local no tenant A');
 select throws_ok(
   $$ insert into app.proprietario (id, tenant_id, nome) values
@@ -365,9 +365,9 @@ select is_empty('select 1 from staging.credencial_agente', 'proprietário não v
 select is_empty('select 1 from staging.carga',             'proprietário não vê cargas do staging');
 select is_empty('select 1 from staging.registro_externo',  'proprietário não vê registros do staging');
 select throws_ok(
-  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
+  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
      ('11110000-0000-0000-0000-0000000000c6', '10000000-0000-0000-0000-000000000000',
-      '11100000-0000-0000-0000-000000000001', 'uh', 'x', 'ativo') $$,
+      '11100000-0000-0000-0000-000000000001', 'uh', 'x', 'x', 'ativo') $$,
   '42501', null, 'proprietário não cria local nem no hotel da própria UH');
 select throws_ok(
   $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
@@ -420,9 +420,9 @@ select results_eq('select id::text from app.atribuicao_escopo',
   $$ values ('a1000000-0000-0000-0000-000000000005') $$,
   'implantador vencido vê só a própria atribuição');
 select throws_ok(
-  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
+  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
      ('11110000-0000-0000-0000-0000000000c5', '10000000-0000-0000-0000-000000000000',
-      '11100000-0000-0000-0000-000000000001', 'uh', 'x', 'ativo') $$,
+      '11100000-0000-0000-0000-000000000001', 'uh', 'x', 'x', 'ativo') $$,
   '42501', null, 'implantador vencido não cria local no hotel que era dele');
 select throws_ok(
   $$ insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, hotel_id, concedido_por) values
@@ -539,9 +539,9 @@ select results_eq('select distinct tenant_id::text from staging.registro_externo
   $$ values ('10000000-0000-0000-0000-000000000000') $$, 'ingestão vê só registros do próprio tenant');
 select throws_ok('select 1 from app.hotel', '42501', null, 'ingestão não lê app');
 select throws_ok(
-  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
+  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
      ('11110000-0000-0000-0000-0000000000d1', '10000000-0000-0000-0000-000000000000',
-      '11100000-0000-0000-0000-000000000001', 'uh', 'x', 'ativo') $$,
+      '11100000-0000-0000-0000-000000000001', 'uh', 'x', 'x', 'ativo') $$,
   '42501', null, 'ingestão não grava em app (a promoção é do worker)');
 select throws_ok('select 1 from licenca.contrato', '42501', null, 'ingestão não lê licença');
 select throws_ok(

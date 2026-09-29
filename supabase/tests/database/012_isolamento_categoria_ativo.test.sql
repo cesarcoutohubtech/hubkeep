@@ -39,8 +39,8 @@ insert into app.membro (tenant_id, usuario_id, nome, email) values
 insert into app.hotel (id, tenant_id, nome, fuso, status) values
   ('11100000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Hotel 1', 'UTC', 'ativo'),
   ('11100000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', 'Hotel 3', 'UTC', 'em_implantacao');
-insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
-  ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH 101', 'ativo');
+insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
+  ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH 101', 'uh 101', 'ativo');
 insert into app.proprietario (id, tenant_id, nome) values
   ('11200000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Dono de UH'),
   ('11200000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', 'Dono do Hotel 3');

@@ -6,12 +6,12 @@ import {
   type LocalExistente,
   type SessaoDePromocao,
   type UhDoStaging,
-  buscaDeLocal,
 } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import type { Tx } from '../conexao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { colunasPesquisaveisDoLocal } from './busca';
 
 /**
  * Uso da licença de UHs no tenant do contexto: max_uhs do contrato e UHs que
@@ -80,8 +80,7 @@ export function sessaoDePromocao(uow: UnidadeDeTrabalho): SessaoDePromocao {
           tenant_id: uow.tenantId,
           hotel_id: uh.hotelId,
           tipo: 'uh',
-          nome: uh.nome,
-          busca: buscaDeLocal(uh.nome),
+          ...colunasPesquisaveisDoLocal(uh.nome),
           andar: uh.andar,
           status: uh.status,
           cod_externo: uh.chave,
@@ -114,8 +113,7 @@ export function sessaoDePromocao(uow: UnidadeDeTrabalho): SessaoDePromocao {
       await tx
         .updateTable('app.local')
         .set({
-          nome: dados.nome,
-          busca: buscaDeLocal(dados.nome),
+          ...colunasPesquisaveisDoLocal(dados.nome),
           andar: dados.andar,
           atualizado_em: sql`now()`,
         })

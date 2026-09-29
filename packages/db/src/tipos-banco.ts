@@ -52,7 +52,7 @@ export interface AppAnexo {
 
 export interface AppAtivo {
   atualizado_em: Generated<Timestamp>;
-  busca: Generated<string>;
+  busca: string;
   campos: Generated<Json>;
   categoria_id: string | null;
   codigo_qr: string;
@@ -193,7 +193,7 @@ export interface AppHotelProprietario {
 export interface AppLocal {
   andar: string | null;
   atualizado_em: Generated<Timestamp>;
-  busca: Generated<string>;
+  busca: string;
   cod_externo: string | null;
   criado_em: Generated<Timestamp>;
   hotel_id: string;

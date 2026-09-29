@@ -71,8 +71,8 @@ describe.skipIf(!temBanco)('B1 — locais do hotel', { timeout: 60_000 }, () => 
     }
     // UH que veio do CM (código externo), ainda pendente de licença.
     await dono.query(
-      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, andar, status, cod_externo)
-       values ($1, $2, $3, 'uh', 'UH 101', '1', 'pendente_licenca', '101')`,
+      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, andar, status, cod_externo)
+       values ($1, $2, $3, 'uh', 'UH 101', 'uh 101', '1', 'pendente_licenca', '101')`,
       [UH, TENANT, H1],
     );
     for (const [nome, id] of Object.entries(U)) {

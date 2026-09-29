@@ -10,9 +10,9 @@
 --   - extensão pg_trgm no schema extensions e índice GIN de trigramas na
 --     coluna. A consulta é `busca ILIKE '%termo%'`, operador padrão do
 --     Postgres, com o termo normalizado pela mesma função;
---   - o default '' só cobre as linhas gravadas fora da aplicação (fixtures dos
---     testes, que inserem como superusuário). A aplicação sempre grava; os
---     testes de integração conferem cada caminho de gravação;
+--   - obrigatória e sem default: um INSERT que esqueça a busca falha. O texto
+--     é calculado num único lugar, packages/db/src/repositorios/busca.ts, a
+--     partir dos campos, e todo caminho de gravação passa por ele;
 --   - os registros que já existem recebem o texto nesta migração, uma vez só,
 --     com translate() e lower(), que dão o mesmo resultado da função para as
 --     letras acentuadas do português, do espanhol e do francês (o par de
@@ -26,8 +26,8 @@
 
 create extension if not exists pg_trgm with schema extensions;
 
-alter table app.local add column busca text not null default '';
-alter table app.ativo add column busca text not null default '';
+alter table app.local add column busca text;
+alter table app.ativo add column busca text;
 
 update app.local
    set busca = lower(translate(nome,
@@ -39,6 +39,9 @@ update app.ativo
      concat_ws(' ', nome, fabricante, modelo, numero_serie),
      'ÁÀÂÃÄÅáàâãäåÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÕÖóòôõöÚÙÛÜúùûüÇçÑñÝýÿ',
      'AAAAAAaaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCcNnYyy'));
+
+alter table app.local alter column busca set not null;
+alter table app.ativo alter column busca set not null;
 
 create index local_busca_trgm_idx on app.local using gin (busca extensions.gin_trgm_ops);
 create index ativo_busca_trgm_idx on app.ativo using gin (busca extensions.gin_trgm_ops);

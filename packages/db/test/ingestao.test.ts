@@ -194,9 +194,9 @@ describe.skipIf(!temBanco)(
     it('paridade: a contagem da promoção é a mesma de licenca.uso() (item a da auditoria)', async () => {
       // Um de cada: área comum ativa e UH inativa não contam em nenhuma das duas.
       await dono.query(
-        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
-         ($1, $3, $4, 'area_comum', 'Lobby', 'ativo'),
-         ($2, $3, $4, 'uh', 'Inativa', 'inativo')`,
+        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
+         ($1, $3, $4, 'area_comum', 'Lobby', 'lobby', 'ativo'),
+         ($2, $3, $4, 'uh', 'Inativa', 'inativa', 'inativo')`,
         [randomUUID(), randomUUID(), T.tenant, T.ativo],
       );
       const daPromocao = await banco.withSistema({ tenantId: T.tenant }, (tx) => usoDeLicenca(tx));

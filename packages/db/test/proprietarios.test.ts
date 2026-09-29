@@ -74,7 +74,7 @@ describe.skipIf(!temBanco)(
         [L.uh202, H2, 'uh', 'UH 202'],
       ]) {
         await dono.query(
-          `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values ($1, $2, $3, $4, $5, 'ativo')`,
+          `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values ($1, $2, $3, $4, $5, lower($5), 'ativo')`,
           [id, TENANT, hotel, tipo, nome],
         );
       }
@@ -155,7 +155,7 @@ describe.skipIf(!temBanco)(
       expect(await locaisVistosPeloDono()).toEqual(['Piscina', 'UH 101', 'UH 202']);
       // UH nova do CM no hotel vinculado entra sem ação manual.
       await dono.query(
-        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values ($1, $2, $3, 'uh', 'UH 102', 'ativo')`,
+        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values ($1, $2, $3, 'uh', 'UH 102', 'uh 102', 'ativo')`,
         [randomUUID(), TENANT, H1],
       );
       expect(await locaisVistosPeloDono()).toEqual(['Piscina', 'UH 101', 'UH 102', 'UH 202']);

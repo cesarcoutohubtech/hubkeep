@@ -446,23 +446,21 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
 - **Fora da B5:** etiqueta de impressão e QR em lote (1b, como no plano).
 
 ### B6 — Busca sem acento (migração 0019, ADR-030)
-- **Banco** (`20260929005255_busca_sem_acento.sql`): extensão `pg_trgm` em `extensions`; coluna `busca` (`text not null default ''`) em `app.local` e `app.ativo`, com índice GIN de trigramas; os registros existentes preenchidos uma vez, com `translate()` e `lower()`; GRANT de UPDATE da coluna para hk_app (nos dois) e hk_worker (no local, pela promoção). Sem função nova.
-- **Normalização:** `textoDeBusca` em `packages/i18n`; `buscaDeLocal`, `buscaDeAtivo` e `termoDeBusca` em `packages/aplicacao`. Os repositórios de `packages/db` já importam `aplicacao`, então a fronteira não mudou.
+- **Banco** (`20260929005255_busca_sem_acento.sql`): extensão `pg_trgm` em `extensions`; coluna `busca` (`text not null`, sem default) em `app.local` e `app.ativo`, com índice GIN de trigramas; os registros existentes preenchidos uma vez, com `translate()` e `lower()`, antes do `set not null`; GRANT de UPDATE da coluna para hk_app (nos dois) e hk_worker (no local, pela promoção). Sem função nova.
+- **Normalização:** `textoDeBusca` em `packages/i18n`, reexportada por `packages/aplicacao` junto com `termoDeBusca` (a fronteira de `db` não mudou). O texto da coluna sai só de `packages/db/src/repositorios/busca.ts`, que devolve os campos pesquisáveis com a busca; `busca-unica.test.ts` varre os fontes do pacote para que nenhum outro trecho escreva a busca ou um campo pesquisável direto.
 - **Gravação:** cadastro e alteração de área comum e de ativo, criação e atualização de UH na promoção do CM.
 - **API:** `?busca=` nas listas de locais e de ativos do hotel; `busca_curta` (422) abaixo de 3 caracteres; `%`, `_` e barra são texto. OpenAPI com o parâmetro.
 - **Telas:** campo de busca em `/admin/locais` e `/admin/ativos` (vai à API); no PWA, filtro dos ativos guardados, sem rede, com a mesma função.
 - **Textos:** 4 da busca e o erro `busca_curta`, nos quatro idiomas.
 - **Aceite:**
-  - pgTAP 001 com os meta-testes 25 (extensões) e 26 (índices de trigramas); 013 com 3 casos (busca por trecho no escopo do gerente e do outro tenant; worker não grava a busca do ativo), 42 no total;
-  - integração (só na CI): `ativos.test.ts` ("acucar", "FRIG", fabricante, curingas como texto, dono da outra UH não acha, `busca_curta`, alterar regrava), `locais.test.ts` (trecho, sem acento, alterar regrava) e `ingestao.test.ts` (promoção grava a busca da UH);
+  - pgTAP 001 com os meta-testes 25 (extensões) e 26 (índices de trigramas); 013 com 4 casos (busca obrigatória; busca por trecho no escopo do gerente e do outro tenant; worker não grava a busca do ativo), 43 no total; as fixtures de todos os arquivos gravam a coluna;
+  - integração (só na CI): `ativos.test.ts` ("acucar", "FRIG", fabricante, curingas como texto, dono da outra UH não acha, `busca_curta`, alterar regrava, renomear atualiza a coluna), `locais.test.ts` (trecho, sem acento, alterar regrava) e `ingestao.test.ts` (promoção grava a busca da UH);
   - unitários: i18n (inclusive o mesmo resultado do `translate()` da migração), aplicacao, padrão do ILIKE, PWA e web.
-- **Para o Cesar olhar no PR:** o `default ''` da coluna, que evita mexer em todas as fixtures de teste, mas deixa passar uma gravação esquecida (coberta pelos testes de integração). A alternativa é `not null` sem default, com as fixtures atualizadas.
+- **Decisão do Cesar (29/09/2026):** coluna obrigatória e sem default, com o cálculo num único lugar do repositório (a primeira versão tinha `default ''`).
 - **Fora da B6:** a coluna do chamado entra na C2, com a tabela.
 
-### Ponto de retomada (29/09/2026, etapa B, PR da B5 aberto e B6 pronta no local)
-- **`main`:** `6e18c11` (#52, B4). **Dev:** 16 migrações, até a 0016; 405 ok em 14 arquivos. Faltam os `db push` da 0017 e, depois do merge do #53, da 0018 (Cesar); conferir o dev depois deles.
-- **PR aberto:** B5, [#53](https://github.com/cesarcoutohubtech/hubkeep/pull/53), branch `1a-b5` (worktree `wt/b5-qr`, branch local `1a-b5-qr`; push com `git push origin HEAD:1a-b5`), zona protegida. Conferir na CI o pgTAP 013 (39), o `packages/db/test/ativos.test.ts` e o `kysely-codegen --verify`.
-- **B6 pronta no local:** branch `1a-b6-busca` (worktree `wt/b6-busca`), feita sobre o `1a-b5`, enviada, sem PR. Depois do merge do #53: `git fetch && git rebase origin/main` na worktree, push com outro nome se precisar de force, PR de zona protegida e vínculo com `ccd_pr`. Conferir na CI o pgTAP 001 (27) e 013 (42), os testes de integração de ativos, locais e ingestão, e o `kysely-codegen --verify` (`busca` como `Generated<string>`).
-- **Decisões pendentes do Cesar:** `default ''` da coluna `busca` (ver a B6 acima).
-- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `b3c-mover-ativo`, `b4-anexos`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`. Branches remotos velhos: `1a-b3c-mover-ativo`, `1a-b4-anexos`, `1a-b4` e `1a-b5-qr`.
-- **Próxima tarefa:** resumo da etapa B (push e sugestão de `/compact`); depois, etapa C a partir da C1 (domínio da corretiva, `docs/05`), no local, sobre o `1a-b6-busca`, e o kit de teste no fim da C (parar quando pronto).
+### Ponto de retomada (29/09/2026, etapa B concluída, PR da B6 aberto)
+- **`main`:** `a5dd03d` (#53, B5). **Dev:** 18 migrações, até a 0018; 444 ok em 15 arquivos.
+- **PR aberto:** B6, branch `1a-b6` (worktree `wt/b6-busca`, branch local `1a-b6-busca`; push com `git push origin HEAD:1a-b6`), zona protegida, migração 0019. Conferir na CI o pgTAP 001 (27) e 013 (43), os testes de integração de ativos, locais e ingestão, e o `kysely-codegen --verify` (`busca` como `string`). Depois do merge: `db push` da 0019 (Cesar) e conferir o dev.
+- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `b3c-mover-ativo`, `b4-anexos`, `b5-qr`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`. Branches remotos velhos: `1a-b3c-mover-ativo`, `1a-b4-anexos`, `1a-b4`, `1a-b5`, `1a-b5-qr` e `1a-b6-busca`.
+- **Próxima tarefa:** etapa C a partir da C1 (domínio da corretiva, `docs/05`), no local, sobre o `1a-b6-busca`; o kit de teste no fim da C (parar quando pronto).
