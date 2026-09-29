@@ -2,7 +2,7 @@
 import type { Chave } from '@hubkeep/i18n';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useState } from 'react';
-import { supabaseNavegador } from '../../cliente/supabase';
+import { entrar as entrarNoAuth } from '../../cliente/sessao';
 import { SeletorDeIdioma, useT } from '../../i18n/cliente';
 
 function FormularioLogin() {
@@ -16,11 +16,8 @@ function FormularioLogin() {
   async function entrar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const dados = new FormData(e.currentTarget);
-    const { error } = await supabaseNavegador().auth.signInWithPassword({
-      email: String(dados.get('email')),
-      password: String(dados.get('senha')),
-    });
-    if (error) setErro('login.erro.credenciais');
+    const ok = await entrarNoAuth(String(dados.get('email')), String(dados.get('senha')));
+    if (!ok) setErro('login.erro.credenciais');
     else router.replace('/');
   }
 

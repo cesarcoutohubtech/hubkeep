@@ -154,7 +154,8 @@ function lerUrl(amb: Ambiente): URL {
 
 const ssl = (amb: Ambiente): ClientConfig['ssl'] =>
   // O Supabase exige TLS no pooler. A CA do Supabase não está na cadeia do
-  // Node; fixar essa CA é tarefa da F0-12 (ambientes).
+  // Node; fixar essa CA é tarefa da F0-12 (ambientes), pendência P6 do docs/09.
+  // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
   amb === 'ci' ? false : { rejectUnauthorized: false };
 
 /**

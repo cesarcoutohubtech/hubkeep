@@ -395,6 +395,8 @@
   "erro.sem_permissao": "No tienes permiso para esta acción.",
   "erro.recusado_pela_integridade": "Los datos no se pudieron guardar porque hacen referencia a algo que no existe o no está permitido.",
   "erro.erro_interno": "Algo salió mal de nuestro lado. Inténtalo de nuevo en unos instantes.",
+  "erro.origem_recusada": "La solicitud vino de fuera de HubKeep y fue rechazada. Abre HubKeep e inténtalo de nuevo.",
+  "erro.senha_recusada": "La contraseña no fue aceptada. Elige otra más larga o menos común.",
   "erro.cron_nao_configurado": "La tarea programada no está configurada.",
   "erro.credencial_nao_encontrada": "Credencial no encontrada.",
   "erro.anexo_nao_encontrado": "Archivo adjunto no encontrado.",

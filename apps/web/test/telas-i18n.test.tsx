@@ -11,7 +11,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
   useSearchParams: () => new URLSearchParams('erro=link_invalido'),
 }));
-vi.mock('../src/cliente/supabase', () => ({ supabaseNavegador: () => ({}) }));
+vi.mock('../src/cliente/sessao', () => ({ entrar: vi.fn(), sair: vi.fn(), definirSenha: vi.fn() }));
 
 const { ProvedorDeIdioma } = await import('../src/i18n/cliente');
 const { default: Login } = await import('../src/app/login/page');

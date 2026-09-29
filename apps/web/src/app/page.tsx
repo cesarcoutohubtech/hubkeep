@@ -8,7 +8,7 @@
 import { type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { supabaseNavegador } from '../cliente/supabase';
+import { sair as encerrarSessao } from '../cliente/sessao';
 import {
   SeletorDeIdioma,
   gravarCookieDeIdioma,
@@ -58,7 +58,7 @@ export default function Inicio() {
 
   const carregar = useCallback(
     async (tn: string) => {
-      document.cookie = `hk_tenant=${tn}; path=/; samesite=lax`;
+      document.cookie = `hk_tenant=${tn}; path=/; samesite=lax${location.protocol === 'https:' ? '; secure' : ''}`;
       const [rh, rp] = await Promise.all([fetch('/api/v1/hoteis'), fetch('/api/v1/preferencias')]);
       setHoteis(rh.ok ? ((await rh.json()) as { hoteis: Hotel[] }).hoteis : []);
       if (!rp.ok) return;
@@ -88,7 +88,7 @@ export default function Inicio() {
   }
 
   async function sair() {
-    await supabaseNavegador().auth.signOut();
+    await encerrarSessao();
     router.replace('/login');
   }
 

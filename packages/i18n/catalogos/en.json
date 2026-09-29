@@ -395,6 +395,8 @@
   "erro.sem_permissao": "You don't have permission for this action.",
   "erro.recusado_pela_integridade": "The data could not be saved because it refers to something that doesn't exist or isn't allowed.",
   "erro.erro_interno": "Something went wrong on our side. Try again in a moment.",
+  "erro.origem_recusada": "The request came from outside HubKeep and was refused. Open HubKeep and try again.",
+  "erro.senha_recusada": "The password was not accepted. Choose a longer or less common one.",
   "erro.cron_nao_configurado": "The scheduled task is not configured.",
   "erro.credencial_nao_encontrada": "Credential not found.",
   "erro.anexo_nao_encontrado": "Attachment not found.",

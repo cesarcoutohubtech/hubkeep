@@ -1,11 +1,10 @@
 'use client';
+import { LIMITE_MINIMO_DA_SENHA } from '@hubkeep/contratos';
 import type { Chave } from '@hubkeep/i18n';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
-import { supabaseNavegador } from '../../cliente/supabase';
+import { definirSenha } from '../../cliente/sessao';
 import { useT } from '../../i18n/cliente';
-
-const MINIMO_DE_CARACTERES = 8;
 
 export default function DefinirSenha() {
   const t = useT();
@@ -15,9 +14,8 @@ export default function DefinirSenha() {
   async function salvar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const senha = String(new FormData(e.currentTarget).get('senha'));
-    if (senha.length < MINIMO_DE_CARACTERES) return setErro('senha.erro.curta');
-    const { error } = await supabaseNavegador().auth.updateUser({ password: senha });
-    if (error) setErro('senha.erro.salvar');
+    if (senha.length < LIMITE_MINIMO_DA_SENHA) return setErro('senha.erro.curta');
+    if (!(await definirSenha(senha))) setErro('senha.erro.salvar');
     else router.replace('/');
   }
 
@@ -33,7 +31,7 @@ export default function DefinirSenha() {
         required
       />
       <button type="submit">{t('senha.acao.salvar')}</button>
-      {erro && <p role="alert">{t(erro, { minimo: MINIMO_DE_CARACTERES })}</p>}
+      {erro && <p role="alert">{t(erro, { minimo: LIMITE_MINIMO_DA_SENHA })}</p>}
     </form>
   );
 }

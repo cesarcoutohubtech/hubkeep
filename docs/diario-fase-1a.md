@@ -532,3 +532,39 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - Primeiro passo: ler a C3 no `docs/05`, `TRANSICOES_DA_OS` em `corretiva.ts`, a migração 0021 e a A6 (equipes).
   - O PR da C3 só abre depois do merge do #58.
   - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### S1 — Segurança (pedido do Cesar antes de seguir na C, ADR-032)
+- **Modelo de ameaças** em `docs/09-seguranca-ameacas.md`: ativos, atores (outro tenant, técnico mal-intencionado, proprietário, atacante externo, agente de código), superfícies (web, API, PWA, ingestão, storage, cron, repositório e CI), controle e status por ameaça, e checklist do ASVS 5.0 nível 2 por capítulo.
+- **Feito agora:**
+  - **Cabeçalhos no web:**
+    - CSP com nonce pelo `proxy.ts`; todas as páginas já eram dinâmicas;
+    - HSTS, `nosniff`, `Referrer-Policy`, `X-Frame-Options`, COOP e `Permissions-Policy` pelo `next.config.ts`;
+    - `Cache-Control: no-store` na API;
+    - cabeçalhos básicos no `vercel.json` do PWA.
+  - **Sessão em cookie HttpOnly, SameSite=Lax e Secure em produção.** O login continua direto no Auth, só em memória. Os tokens vão na hora para `POST /auth/sessao`; saída e senha nova também passam pelo servidor. O `cliente/supabase.ts` saiu.
+  - **CSRF:** origem conferida no proxy, com 403 `origem_recusada` e linha de log.
+  - **Lint:** `sql.raw` e identificador dinâmico só em `packages/db`; HTML cru proibido em todo lugar.
+  - **CI (`seguranca.yml`):** gitleaks no histórico e Semgrep. Actions por SHA, CLI do Supabase em versão fixa (2.118.0) e Dependabot das actions. `.gitleaks.toml` e o Dependabot entram na zona protegida.
+  - **Bucket:** conferido que não aceita SVG nem HTML. O pgTAP 001 passou no dev depois do `db push` da 0021, e o teste novo prende as listas.
+  - **Senha:** mínimo de 8 no `config.toml`. No dev, só depois do `config push` (Cesar).
+- **Semgrep no local** (venv na pasta temporária da sessão, 1.178.0): dois achados.
+  - TLS sem conferir o certificado, em `conexao.ts` e `ambiente.ts`. Ficam com `nosemgrep` e viraram a pendência P6.
+  - A regra `unsafe-add-mask-workflow-command`, excluída com o motivo no workflow.
+  - O gitleaks não rodou no local (sem o binário na máquina); a primeira rodada é a da CI.
+- **Listado sem implementar** (`docs/09`, seção 7): rate limiting com onde, ferramenta e custo (P1), endurecimento do banco de produção (P2), pentest antes do rollout (P3), e as pendências P4 a P13 do levantamento.
+- **Aceite:**
+  - `apps/web/test/seguranca.test.ts`: CSRF, CSP, cabeçalhos, proxy e cookie;
+  - `tests/fronteiras.test.ts`, com 17 casos novos;
+  - `tests/anexos-sem-html.test.ts`;
+  - integração (só na CI, `autenticacao.test.ts`): cookie HttpOnly no convite, senha nova pelo servidor, entrada por `/auth/sessao`, token forjado recusado sem cookie e saída apagando o cookie.
+
+### Ponto de retomada (29/09/2026, S1 aberta, C3 a seguir)
+- **`main`:** `c34a8bb` (#58). **Dev:** 21 migrações, até a 0021; 513 ok em 17 arquivos (conferido depois do `db push` da 0021).
+- **PR aberto:** S1, branch `1a-s1` (worktree `wt/b6-busca`), zona protegida.
+  - Tem CI nova (`segurança`: gitleaks e Semgrep). Se o gitleaks acusar algum fixture de teste, a exceção vai para o `.gitleaks.toml` com o motivo.
+  - Depois do merge, o Cesar decide sobre o ADR-032, que está como proposta, e faz o `config push`, que leva a senha mínima de 8 ao dev.
+- **Depois do merge, nada muda no banco:** não há migração.
+- **Próxima tarefa:** C3 (triagem e atribuição, `app.os`), a partir da `main` depois do merge da S1.
+  - Primeiro passo: ler a C3 no `docs/05`, `TRANSICOES_DA_OS` em `corretiva.ts`, a migração 0021 e a A6 (equipes).
+  - Decisões da C1 em vigor: o Admin do grupo é um grupo à parte; OS cancelada devolve o chamado à triagem, com mais de uma OS por chamado e só uma em andamento.
+  - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

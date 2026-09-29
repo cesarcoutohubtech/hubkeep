@@ -20,6 +20,8 @@ import { GET as hoteis } from '../src/app/api/v1/hoteis/route';
 import { GET as sessao } from '../src/app/api/v1/sessao/route';
 import { GET as openapi } from '../src/app/api/interno/openapi/route';
 import { GET as confirmar } from '../src/app/auth/confirmar/route';
+import { POST as definirSenha } from '../src/app/auth/senha/route';
+import { DELETE as encerrarSessao, POST as criarSessao } from '../src/app/auth/sessao/route';
 import { processarOutboxDoTenant } from '../src/servidor/composicao';
 
 const URL_SUPABASE = process.env['NEXT_PUBLIC_SUPABASE_URL'];
@@ -52,6 +54,7 @@ const email = {
   simultaneo: `simultaneo-${sufixo}@hubkeep.test`,
 };
 const SENHA = `Senha-de-teste-${sufixo}`;
+const SENHA_DO_CONVIDADO = `Senha-nova-${sufixo}`;
 
 // ---------------------------------------------------------------------------
 const req = (
@@ -133,14 +136,15 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     );
   };
 
-  const entrar = async (mail: string) => {
+  const sessaoDoAuth = async (mail: string, senha = SENHA) => {
     const cliente = createClient(exigir(URL_SUPABASE), exigir(CHAVE_PUBLICA), {
       auth: { persistSession: false },
     });
-    const { data, error } = await cliente.auth.signInWithPassword({ email: mail, password: SENHA });
+    const { data, error } = await cliente.auth.signInWithPassword({ email: mail, password: senha });
     if (error || !data.session) throw new Error(`login de ${mail} falhou: ${error?.message}`);
-    return data.session.access_token;
+    return data.session;
   };
+  const entrar = async (mail: string) => (await sessaoDoAuth(mail)).access_token;
 
   beforeAll(async () => {
     dono = new pg.Client({ connectionString: exigir(URL_DONO) });
@@ -340,12 +344,81 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     expect(r.headers.get('location')).toBe(`${SITE}/definir-senha`);
     cookiesConvidado = cookiesDe(r);
     expect(cookiesConvidado.some((c) => /^sb-.*-auth-token/.test(c))).toBe(true);
+    // S1: a página não lê a sessão (HttpOnly) e o cookie não vai em POST de outro site.
+    const daSessao = r.headers.getSetCookie().filter((c) => /^sb-.*-auth-token/.test(c));
+    for (const c of daSessao) {
+      expect(c).toMatch(/;\s*HttpOnly/i);
+      expect(c).toMatch(/;\s*SameSite=Lax/i);
+    }
 
     const s = await sessao(
       req('/api/v1/sessao', { cabecalhos: { cookie: cookiesConvidado.join('; ') } }),
     );
     expect(s.status).toBe(200);
     expect(await s.json()).toMatchObject({ usuarioId: idConvidado, tenants: [A.tenant] });
+  });
+
+  it('S1: o convidado define a senha pelo servidor, com a sessão do cookie HttpOnly', async () => {
+    const cookie = cookiesConvidado.join('; ');
+    const curta = await definirSenha(
+      req('/auth/senha', { metodo: 'POST', cabecalhos: { cookie }, corpo: { senha: '1234567' } }),
+    );
+    expect(curta.status).toBe(422);
+    const semSessao = await definirSenha(
+      req('/auth/senha', { metodo: 'POST', corpo: { senha: SENHA_DO_CONVIDADO } }),
+    );
+    expect(semSessao.status).toBe(401);
+
+    const r = await definirSenha(
+      req('/auth/senha', {
+        metodo: 'POST',
+        cabecalhos: { cookie },
+        corpo: { senha: SENHA_DO_CONVIDADO },
+      }),
+    );
+    expect(r.status).toBe(204);
+    const s = await sessaoDoAuth(email.convidado, SENHA_DO_CONVIDADO);
+    expect(s.user.id).toBe(idConvidado);
+  });
+
+  it('S1: entrada troca os tokens do login por cookie HttpOnly; saída apaga o cookie', async () => {
+    const s = await sessaoDoAuth(email.admin);
+    const r = await criarSessao(
+      req('/auth/sessao', {
+        metodo: 'POST',
+        corpo: { accessToken: s.access_token, refreshToken: s.refresh_token },
+      }),
+    );
+    expect(r.status).toBe(204);
+    const brutos = r.headers.getSetCookie().filter((c) => /^sb-.*-auth-token/.test(c));
+    expect(brutos.length).toBeGreaterThan(0);
+    for (const c of brutos) expect(c).toMatch(/;\s*HttpOnly/i);
+
+    const cookie = cookiesDe(r).join('; ');
+    const quem = await sessao(req('/api/v1/sessao', { cabecalhos: { cookie } }));
+    expect(await quem.json()).toMatchObject({ usuarioId: A.admin });
+
+    // Token com a assinatura de outro conteúdo: nada é gravado.
+    const [cabecalho, , assinatura] = s.access_token.split('.');
+    const forjado = await criarSessao(
+      req('/auth/sessao', {
+        metodo: 'POST',
+        corpo: {
+          accessToken: `${cabecalho}.${b64url({ sub: idConvidado, role: 'authenticated' })}.${assinatura}`,
+          refreshToken: s.refresh_token,
+        },
+      }),
+    );
+    expect(forjado.status).toBe(401);
+    expect(forjado.headers.getSetCookie()).toEqual([]);
+
+    const saida = await encerrarSessao(
+      req('/auth/sessao', { metodo: 'DELETE', cabecalhos: { cookie } }),
+    );
+    expect(saida.status).toBe(204);
+    const apagados = saida.headers.getSetCookie().filter((c) => /^sb-.*-auth-token/.test(c));
+    expect(apagados.length).toBeGreaterThan(0);
+    for (const c of apagados) expect(c).toMatch(/Max-Age=0/i);
   });
 
   it('por cookie: vê só o próprio tenant; trocar o cookie de tenant não mostra nada', async () => {

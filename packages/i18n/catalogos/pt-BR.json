@@ -395,6 +395,8 @@
   "erro.sem_permissao": "Você não tem permissão para esta ação.",
   "erro.recusado_pela_integridade": "Os dados não puderam ser gravados porque fazem referência a algo que não existe ou não é permitido.",
   "erro.erro_interno": "Algo deu errado do nosso lado. Tente de novo em instantes.",
+  "erro.origem_recusada": "O pedido veio de fora do HubKeep e foi recusado. Abra o HubKeep e tente de novo.",
+  "erro.senha_recusada": "A senha não foi aceita. Escolha outra, mais longa ou menos comum.",
   "erro.cron_nao_configurado": "A tarefa agendada não está configurada.",
   "erro.credencial_nao_encontrada": "Credencial não encontrada.",
   "erro.anexo_nao_encontrado": "Anexo não encontrado.",
