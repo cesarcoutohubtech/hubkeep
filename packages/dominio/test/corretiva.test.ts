@@ -215,6 +215,7 @@ describe('OS: toda ação × estado × papel, com o reflexo no chamado', () => {
                 ator: ATORES[nome],
                 chamado: chamado(CHAMADO_DA_OS[estado]),
                 os: estado === 'nova' ? null : { estado, responsavel },
+                osDoChamado: [],
                 motivo: 'Refazer a vedação',
                 agora,
               });
@@ -230,7 +231,13 @@ describe('regras além da tabela', () => {
   it('gerar a OS pede o chamado aberto ou em triagem', () => {
     for (const estado of ESTADOS_DO_CHAMADO) {
       const f = () =>
-        decidirNaOs('gerar', { ator: gerente, chamado: chamado(estado), os: null, agora });
+        decidirNaOs('gerar', {
+          ator: gerente,
+          chamado: chamado(estado),
+          os: null,
+          osDoChamado: [],
+          agora,
+        });
       if (estado === 'aberto' || estado === 'em_triagem') expect(f().chamado).toBe('em_execucao');
       else expect(codigo(f)).toBe('transicao_invalida');
     }
@@ -249,6 +256,7 @@ describe('regras além da tabela', () => {
       ator: gerente,
       chamado: chamado(cancelada.chamado ?? 'aberto'),
       os: null,
+      osDoChamado: ['cancelada'],
       agora,
     });
     expect(outra).toMatchObject({ estado: 'atribuida', chamado: 'em_execucao' });

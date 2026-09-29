@@ -11,6 +11,8 @@ import type {
   PortaAtribuicoes,
   PortaCategorias,
   PortaChamados,
+  OsGravada,
+  PortaTriagem,
   PortaPrioridades,
   PortaSituacoes,
   PortaLocais,
@@ -33,7 +35,13 @@ import type {
   PortaPreferencias,
   PortaPromocaoDeUhs,
 } from '@hubkeep/aplicacao';
-import { type Atribuicao, Conflito, type Escopo } from '@hubkeep/dominio';
+import {
+  type Atribuicao,
+  Conflito,
+  type EstadoDaOs,
+  type EstadoDoChamado,
+  type Escopo,
+} from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
@@ -58,6 +66,7 @@ import { registrarAnexo, removerAnexo } from './repositorios/anexos';
 import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { criarChamado } from './repositorios/chamados';
+import { alterarChamadoNaTriagem, cancelarOs, gerarOs, reatribuirOs } from './repositorios/triagem';
 import {
   alterarPrioridade,
   alterarSituacao,
@@ -691,6 +700,7 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
             'prioridade_id',
             'politica_aplicada',
             'aberto_por',
+            'motivo_cancelamento',
             'versao',
             'criado_em',
           ])
@@ -708,11 +718,131 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
               prioridadeId: c.prioridade_id,
               politicaAplicada: c.politica_aplicada,
               abertoPor: c.aberto_por,
+              motivoCancelamento: c.motivo_cancelamento,
               versao: c.versao,
               criadoEm: c.criado_em,
             }
           : null;
       }),
+  };
+}
+
+const COLUNAS_DA_OS = [
+  'id',
+  'hotel_id',
+  'chamado_id',
+  'estado',
+  'situacao_id',
+  'tecnico_id',
+  'equipe_id',
+  'motivo_cancelamento',
+  'criado_por',
+  'versao',
+  'criado_em',
+] as const;
+
+function paraOs(o: {
+  id: string;
+  hotel_id: string;
+  chamado_id: string;
+  estado: string;
+  situacao_id: string;
+  tecnico_id: string | null;
+  equipe_id: string | null;
+  motivo_cancelamento: string | null;
+  criado_por: string;
+  versao: number;
+  criado_em: Date;
+}): OsGravada {
+  return {
+    id: o.id,
+    hotelId: o.hotel_id,
+    chamadoId: o.chamado_id,
+    estado: o.estado as EstadoDaOs,
+    situacaoId: o.situacao_id,
+    // O check os_um_responsavel garante exatamente um dos dois.
+    responsavel:
+      o.tecnico_id !== null
+        ? { tipo: 'tecnico', usuarioId: o.tecnico_id }
+        : { tipo: 'equipe', equipeId: o.equipe_id ?? '' },
+    motivoCancelamento: o.motivo_cancelamento,
+    criadoPor: o.criado_por,
+    versao: o.versao,
+    criadoEm: o.criado_em,
+  };
+}
+
+/** Triagem e OS (fase 1a, C3), pelo hk_app. */
+export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
+  return {
+    chamado: (ctx, chamadoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.chamado as c')
+          .innerJoin('app.hotel as h', 'h.id', 'c.hotel_id')
+          .select([
+            'c.id',
+            'c.hotel_id',
+            'h.bandeira_id',
+            'c.estado',
+            'c.situacao_id',
+            'c.prioridade_id',
+            'c.aberto_por',
+            'c.versao',
+          ])
+          .where('c.id', '=', chamadoId)
+          .executeTakeFirst();
+        return c
+          ? {
+              id: c.id,
+              hotel: { id: c.hotel_id, bandeiraId: c.bandeira_id },
+              estado: c.estado as EstadoDoChamado,
+              situacaoId: c.situacao_id,
+              prioridadeId: c.prioridade_id,
+              abertoPor: c.aberto_por,
+              versao: c.versao,
+            }
+          : null;
+      }),
+    osDoChamado: (ctx, chamadoId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.os')
+            .select(COLUNAS_DA_OS)
+            .where('chamado_id', '=', chamadoId)
+            .orderBy('criado_em')
+            .orderBy('id')
+            .execute()
+        ).map(paraOs),
+      ),
+    os: (ctx, osId) =>
+      banco.withContext(ctx, async (tx) => {
+        const o = await tx
+          .selectFrom('app.os')
+          .select(COLUNAS_DA_OS)
+          .where('id', '=', osId)
+          .executeTakeFirst();
+        return o ? paraOs(o) : null;
+      }),
+    atribuicoesDe: (ctx, usuarioId) =>
+      banco.withContext(ctx, async (tx) =>
+        (await selecionar(tx).where('usuario_id', '=', usuarioId).execute()).map(paraAtribuicao),
+      ),
+    equipe: (ctx, equipeId) =>
+      banco.withContext(ctx, async (tx) => {
+        const e = await tx
+          .selectFrom('app.equipe')
+          .select(['hotel_id', 'ativa'])
+          .where('id', '=', equipeId)
+          .executeTakeFirst();
+        return e ? { hotelId: e.hotel_id, ativa: e.ativa } : null;
+      }),
+    alterarChamado: (ctx, chamadoId, versao, mudanca) =>
+      banco.executar(ctx, (uow) => alterarChamadoNaTriagem(uow, chamadoId, versao, mudanca)),
+    gerarOs: (ctx, g) => banco.executar(ctx, (uow) => gerarOs(uow, g)),
+    reatribuirOs: (ctx, g) => banco.executar(ctx, (uow) => reatribuirOs(uow, g)),
+    cancelarOs: (ctx, g) => banco.executar(ctx, (uow) => cancelarOs(uow, g)),
   };
 }
 

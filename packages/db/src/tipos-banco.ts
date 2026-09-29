@@ -140,6 +140,7 @@ export interface AppChamado {
   hotel_id: string;
   id: string;
   local_id: string;
+  motivo_cancelamento: string | null;
   politica_aplicada: Json;
   prioridade_id: string;
   situacao_id: string;
@@ -249,6 +250,22 @@ export interface AppOperacaoOffline {
   tenant_id: string;
   tipo: string;
   usuario_id: string;
+}
+
+export interface AppOs {
+  atualizado_em: Generated<Timestamp>;
+  chamado_id: string;
+  criado_em: Generated<Timestamp>;
+  criado_por: string;
+  equipe_id: string | null;
+  estado: string;
+  hotel_id: string;
+  id: string;
+  motivo_cancelamento: string | null;
+  situacao_id: string;
+  tecnico_id: string | null;
+  tenant_id: string;
+  versao: Generated<number>;
 }
 
 export interface AppPolitica {
@@ -376,6 +393,7 @@ export interface DB {
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
   "app.operacao_offline": AppOperacaoOffline;
+  "app.os": AppOs;
   "app.politica": AppPolitica;
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.prioridade": AppPrioridade;

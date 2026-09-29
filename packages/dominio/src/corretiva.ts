@@ -170,6 +170,22 @@ export const TRANSICOES_DA_OS: { [A in AcaoDaOs]: TransicaoDaOs } = {
   },
 };
 
+/**
+ * No máximo uma OS não cancelada por chamado (Cesar, 29/09/2026). A cancelada
+ * libera o chamado para outra; a concluída que volta no aceite recusado
+ * (reabrir) é a mesma OS, sem criar outra. A OS preventiva (1b) não tem
+ * chamado e fica fora. O índice único parcial os_uma_ativa_por_chamado
+ * (migração 0022) repete a regra, para as duas triagens simultâneas que esta
+ * checagem, sozinha, não vê; o teste de integração confere a paridade.
+ */
+export const osOcupaOChamado = (estado: EstadoDaOs): boolean => estado !== 'cancelada';
+
+export function exigirChamadoSemOsEmAndamento(estadosDasOs: readonly EstadoDaOs[]): void {
+  if (estadosDasOs.some(osOcupaOChamado)) {
+    throw new Conflito('os_em_andamento', 'O chamado já tem uma OS em andamento.');
+  }
+}
+
 /** A OS vai para um técnico ou para uma equipe do hotel (A6). */
 export type Responsavel =
   { tipo: 'tecnico'; usuarioId: string } | { tipo: 'equipe'; equipeId: string };
@@ -302,10 +318,12 @@ export function decidirNoChamado(
 }
 
 /**
- * Ação sobre a OS. `os` é nulo para gerar. Confere o papel (403), o estado da
- * OS e o do chamado (409, transicao_invalida), o responsável (409,
- * os_de_outro_responsavel) e o motivo (422). Devolve o estado novo da OS, o do
- * chamado (nulo se não muda) e o motivo normalizado.
+ * Ação sobre a OS. `os` é nulo para gerar, e `osDoChamado` (os estados das OS
+ * que o chamado já tem) é obrigatório para gerar. Confere o papel (403), o
+ * estado da OS (409, transicao_invalida), a OS em andamento no chamado (409,
+ * os_em_andamento), o estado do chamado (409, transicao_invalida), o
+ * responsável (409, os_de_outro_responsavel) e o motivo (422). Devolve o
+ * estado novo da OS, o do chamado (nulo se não muda) e o motivo normalizado.
  */
 export function decidirNaOs(
   acao: AcaoDaOs,
@@ -313,6 +331,7 @@ export function decidirNaOs(
     ator: AtorDaCorretiva;
     chamado: ChamadoParaRegra;
     os: { estado: EstadoDaOs; responsavel: Responsavel } | null;
+    osDoChamado?: readonly EstadoDaOs[];
     motivo?: string | null | undefined;
     agora: Date;
   },
@@ -326,6 +345,10 @@ export function decidirNaOs(
     });
   exigirPapel(t.quem, acao, p.ator, p.chamado, p.agora);
   if (!t.de.includes(estadoDaOs)) throw invalida();
+  if (acao === 'gerar') {
+    if (!p.osDoChamado) throw new Error('decidirNaOs(gerar) precisa das OS do chamado.');
+    exigirChamadoSemOsEmAndamento(p.osDoChamado);
+  }
   if (t.chamado && !t.chamado.de.includes(p.chamado.estado)) throw invalida();
   // Técnico do hotel, mas a OS é de outro (ou foi reatribuída com a operação
   // offline na fila): conflito com o estado atual, visível no PWA (ADR-025).

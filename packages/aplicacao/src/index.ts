@@ -164,6 +164,19 @@ export { criarCasosDeUsoDeSituacoes } from './casos-de-uso/situacoes';
 export type { ChamadoGravado, DadosDeChamado, PortaChamados } from './portas/chamados';
 export { criarCasosDeUsoDeChamados } from './casos-de-uso/chamados';
 export type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './casos-de-uso/chamados';
+export type {
+  ChamadoParaTriagem,
+  MudancaNoChamado,
+  OsGravada,
+  PortaTriagem,
+  ReflexoNoChamado,
+} from './portas/triagem';
+export { criarCasosDeUsoDeTriagem } from './casos-de-uso/triagem';
+export type {
+  CasosDeUsoDeTriagem,
+  RegrasDaTriagem,
+  ResponsavelPedido,
+} from './casos-de-uso/triagem';
 export type { CasosDeUsoDeSituacoes, Prioridade, Situacao } from './casos-de-uso/situacoes';
 export type { LocalDoHotel as LocalDoHotelCadastrado, PortaLocais } from './portas/locais';
 export { criarCasosDeUsoDeLocais } from './casos-de-uso/locais';

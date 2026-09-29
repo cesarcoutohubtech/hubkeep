@@ -1,9 +1,13 @@
-// Chamados (fase 1a, C2). A abertura leva o local, o ativo opcional e a
-// descrição; a prioridade padrão e a situação inicial são resolvidas no
-// servidor, e a foto vai depois, como anexo do chamado. Os limites finos
-// (descrição, ativo no local, UH pendente) são validados no domínio, com código.
+// Chamados (fase 1a, C2) e triagem (C3). A abertura leva o local, o ativo
+// opcional e a descrição; a prioridade padrão e a situação inicial são
+// resolvidas no servidor, e a foto vai depois, como anexo do chamado. A
+// triagem e as ações da OS levam a versão vista (ADR-029). Os limites finos
+// (descrição, motivo, ativo no local, UH pendente, quem recebe a OS) são
+// validados no domínio, com código.
 import { z } from 'zod';
-import { ESTADOS_DO_CHAMADO_API } from './situacoes';
+import { ESTADOS_DA_OS_API, ESTADOS_DO_CHAMADO_API } from './situacoes';
+
+const versao = z.number().int().min(1);
 
 export const PedidoDeAberturaDeChamado = z
   .object({
@@ -30,11 +34,64 @@ export const ChamadoApi = z
     /** Cópia da política aplicada na abertura (ADR-026), por chave. */
     politicaAplicada: z.record(z.string(), z.unknown()),
     abertoPor: z.guid(),
+    motivoCancelamento: z.string().nullable(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
   })
   .meta({ id: 'ChamadoApi' });
 
+/** A OS vai para um Técnico do hotel ou para uma equipe do hotel (A6). */
+export const ResponsavelApi = z
+  .discriminatedUnion('tipo', [
+    z.object({ tipo: z.literal('tecnico'), usuarioId: z.guid() }),
+    z.object({ tipo: z.literal('equipe'), equipeId: z.guid() }),
+  ])
+  .meta({ id: 'ResponsavelApi' });
+
+export const OsApi = z
+  .object({
+    id: z.guid(),
+    hotelId: z.guid(),
+    chamadoId: z.guid(),
+    estado: z.enum(ESTADOS_DA_OS_API),
+    situacaoId: z.guid(),
+    responsavel: ResponsavelApi,
+    motivoCancelamento: z.string().nullable(),
+    criadoPor: z.guid(),
+    versao: z.int(),
+    criadoEm: z.iso.datetime(),
+  })
+  .meta({ id: 'OsApi' });
+
 export const RespostaDeChamado = z
-  .object({ chamado: ChamadoApi })
+  .object({
+    chamado: ChamadoApi,
+    /** As OS do chamado, da mais antiga para a mais nova (no máximo uma não cancelada). */
+    os: z.array(OsApi),
+  })
   .meta({ id: 'RespostaDeChamado' });
+
+export const PedidoDeTriagem = z
+  .object({ versao, prioridadeId: z.guid().nullish() })
+  .meta({ id: 'PedidoDeTriagem' });
+
+export const PedidoDeAjusteDePrioridade = z
+  .object({ versao, prioridadeId: z.guid() })
+  .meta({ id: 'PedidoDeAjusteDePrioridade' });
+
+/** Cancelar o chamado ou a OS: o motivo é normalizado no domínio (até 500). */
+export const PedidoDeCancelamento = z
+  .object({ versao, motivo: z.string().max(2000) })
+  .meta({ id: 'PedidoDeCancelamento' });
+
+export const PedidoDeAtribuicaoDeOs = z
+  .object({ versao, responsavel: ResponsavelApi })
+  .meta({ id: 'PedidoDeAtribuicaoDeOs' });
+
+export const RespostaDeChamadoAlterado = z
+  .object({ id: z.guid(), versao: z.int() })
+  .meta({ id: 'RespostaDeChamadoAlterado' });
+
+export const RespostaDeOsGravada = z
+  .object({ id: z.guid(), versao: z.int(), versaoDoChamado: z.int().optional() })
+  .meta({ id: 'RespostaDeOsGravada' });
