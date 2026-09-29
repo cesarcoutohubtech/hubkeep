@@ -410,9 +410,30 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - `packages/db/test/mover-ativo.test.ts`: movimentação, auditoria e evento; recusas sem gravar nada; sem as regras da aplicação, o banco ainda barra.
 - **Entre hotéis:** continua desativar e cadastrar de novo.
 
-### Ponto de retomada (28/09/2026, etapa B, PR da B3c aberto)
-- **`main`:** `5d0d0cf` (#49, B3b e docs; #50, adendo do ADR-025). **Dev:** 15 migrações, até a 0015; `pnpm db:testar-dev` com 381 ok em 13 arquivos. Próxima conferência só depois do `db push` da 0016.
-- **PR aberto:** B3c, branch `1a-b3c-mover` (worktree `wt/b3c-mover-ativo`), zona protegida. Espera do Cesar: merge, `db push` da 0016 e as decisões abaixo. Conferir na CI o pgTAP 013 e 014, o meta-teste 18, o `mover-ativo.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão).
-- **Decisões pendentes do Cesar:** aprovar os adendos do ADR-025 e do ADR-011; confirmar que o proprietário não lê movimentações.
-- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`.
-- **Próxima tarefa:** **B4, anexos de local e ativo**, no local: `git worktree add C:/Cesar/HubKeep/Dev/wt/b4-anexos -b 1a-b4-anexos origin/main`; ler o ADR-024 no `docs/03`, `packages/auth-admin`, `apps/web/test/anexos.test.ts`, a migração `20260926135938_storage_anexos.sql` e a linha B4 do `docs/05`. O PR da B4 só abre depois do merge da B3c. Depois: B5, B6, resumo da etapa B, etapa C e o kit de teste (parar quando pronto).
+### Decisões do Cesar e dev conferido depois da 0016 (28/09/2026)
+- **Dev:** 16 migrações, até a 0016; `pnpm db:testar-dev` com 405 ok em 14 arquivos.
+- **Aprovados:** o adendo do ADR-025 (dados guardados no aparelho), o do ADR-011 (mover ativo dentro do hotel) e o do ADR-024 (registro do anexo e download do proprietário, B4).
+- **Confirmado:** o proprietário não lê o histórico de movimentações no MVP. Pergunta registrada para a reunião com o cliente (`docs/05`): em condo-hotel, os equipamentos da UH podem ser do proprietário, e a saída de um deles da UH pode precisar ficar visível para ele.
+- **Confirmado:** o proprietário não vê os anexos do hotel, só os dos locais e ativos dele.
+- **Miniatura também no web:** o mesmo código de compressão e miniatura do PWA, para as fotos enviadas pelo computador também terem miniatura.
+
+### B4 — Anexos de local e ativo (migração 0017, adendo ao ADR-024)
+- **Banco** (`20260928233727_anexo.sql`): `app.anexo`, uma linha por arquivo do hotel, de um local ou de um ativo, com FKs compostas pelo hotel. Um check exige que o caminho do arquivo e o da miniatura comecem por `{tenant}/{hotel}/{entidade}/{registro}` da própria linha. Exclusão lógica (`removido_em`, `removido_por`, só em nome do usuário do contexto).
+  - RLS: lê quem lê o hotel; o proprietário lê os anexos dos locais dele e dos ativos que estão hoje nesses locais (um ativo movido leva os anexos). Grava quem escreve no hotel.
+- **Regra de ação** (`packages/dominio`): nome do anexo, miniatura do mesmo registro e `podeRemoverAnexo` (quem enviou ou quem gere os locais do hotel).
+- **Caso de uso e repositório:** registrar confere o caminho como o download (formato, tenant, registro visível, escrita no hotel) e grava com auditoria (`anexo`, `criar`) e evento `anexo.registrado`; remover grava auditoria e `anexo.removido`; listas sem o caminho.
+- **API:** `POST /api/v1/anexos`, `GET /api/v1/{hoteis|locais|ativos}/{id}/anexos`, `POST /api/v1/anexos/{id}/url-de-download` (arquivo ou miniatura) e `POST /api/v1/anexos/{id}/remocao`.
+- **Telas:** anexos em `/admin/locais` e `/admin/ativos`; no PWA, "Fotos" no ativo, com rede (a fila offline de fotos entra com a C4).
+- **Miniatura:** `packages/imagem` (novo), o código de canvas que era do PWA, usado pelo PWA e pelo web; imagem sai em JPEG de 1600 px com miniatura de 320 px, PDF vai como está. Fronteiras: só as telas do web e o PWA importam; o pacote não importa pacote externo nem módulo do Node.
+- **Textos:** 11 do web, 9 do PWA e 7 códigos de erro nos quatro idiomas.
+- **Aceite:**
+  - pgTAP 015 (30 casos: isolamento, checks de caminho, remoção, proprietário por UH e por hotel inteiro, ativo movido);
+  - `packages/db/test/anexos.test.ts`, com banco real: anexo de outro hotel dá 404, o proprietário da UH baixa a miniatura, auditoria e evento, e o banco barra sem as regras da aplicação;
+  - testes da aplicação, do PWA, do envio pelo web e das fronteiras.
+
+### Ponto de retomada (28/09/2026, etapa B, PR da B4 aberto)
+- **`main`:** `44a43a8` (#51, B3c). **Dev:** 16 migrações, até a 0016; 405 ok em 14 arquivos. Próxima conferência só depois do `db push` da 0017.
+- **PR aberto:** B4, branch `1a-b4-anexos` (worktree `wt/b4-anexos`), zona protegida. Espera do Cesar: merge e `db push` da 0017. Conferir na CI o pgTAP 015, o `packages/db/test/anexos.test.ts` e o `kysely-codegen --verify` (o `tipos-banco.ts` foi editado à mão).
+- **Decisões pendentes do Cesar:** nenhuma.
+- **Worktrees removíveis em `C:\Cesar\HubKeep\Dev\wt\`:** `b1-locais`, `b2-categorias`, `b3-ativos`, `b3b-ativos-pwa`, `b3c-mover-ativo`, `adr-025-referencia`, `politica-sem-proprietario`, `decisoes-etapa-b`. Branches remotos velhos: `1a-b3c-mover-ativo`.
+- **Próxima tarefa:** **B5, QR individual**, no local: `git worktree add C:/Cesar/HubKeep/Dev/wt/b5-qr -b 1a-b5-qr origin/main`; ler a linha B5 do `docs/05`, a migração `20260928214709_ativo.sql`, `apps/tecnico/src/telas/Ativos.tsx` e o armazenamento offline do PWA (ADR-025). O PR da B5 só abre depois do merge da B4. Depois: B6, resumo da etapa B, etapa C e o kit de teste (parar quando pronto).

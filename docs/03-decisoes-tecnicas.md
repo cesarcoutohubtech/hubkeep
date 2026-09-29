@@ -105,11 +105,11 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Exceção:** `app.hotel.bandeira_id` recebe UPDATE do `hk_app`, embora defina o escopo dos gestores de bandeira. Trocar um hotel de bandeira é operação de cadastro do grupo, e a RLS só a permite ao Admin do grupo (policy `app_update` de `app.hotel`; "Regras de escalada" no doc 02). Como o escopo é calculado na fonte (ADR-004), a troca vale na hora para quem ganha e para quem perde o acesso. O meta-teste 18 (UPDATE em campo de escopo, `001_meta_seguranca.test.sql`) lista esta coluna como exceção nomeada.
 
-**Adendo de 28/09/2026 — mover ativo dentro do hotel (B3c da fase 1a, migração 0016):** proposta, aguarda aprovação do Cesar.
+**Adendo de 28/09/2026 — mover ativo dentro do hotel (B3c da fase 1a, migração 0016):** aprovado por Cesar em 28/09/2026, depois do merge do #51.
 - **Decisão do Cesar:** o ativo pode mudar de local só dentro do mesmo hotel, por uma ação própria de mover, restrita a quem gere o hotel (Admin do grupo, Gestor CSC, Implantador e Gerente, no escopo; o técnico cadastra e altera, mas não move), auditada e com registro de cada movimentação. Entre hotéis, continua desativar e cadastrar de novo.
 - **Segunda exceção nomeada no meta-teste 18:** `app.ativo.local_id` recebe UPDATE do `hk_app`. O `hotel_id` do ativo continua imutável, e a FK composta `(hotel_id, local_id) → app.local (hotel_id, id)` faz o PostgreSQL recusar um local de outro hotel, com ou sem a checagem da aplicação.
 - **Efeito no escopo:** o local decide o que o proprietário vê (ADR-031). Como o escopo é calculado na fonte (ADR-004), o dono da UH antiga deixa de ver o ativo na transação seguinte, e o da nova passa a ver.
-- **Registro:** `app.ativo_movimentacao` (origem, destino, quem, quando), só com INSERT, gravada na mesma unit of work da troca, com a auditoria (`mover`) e o evento `ativo.movido`. A RLS exige que quem grava seja o usuário do contexto. Lê quem lê o hotel; o proprietário não lê no MVP.
+- **Registro:** `app.ativo_movimentacao` (origem, destino, quem, quando), só com INSERT, gravada na mesma unit of work da troca, com a auditoria (`mover`) e o evento `ativo.movido`. A RLS exige que quem grava seja o usuário do contexto. Lê quem lê o hotel; o proprietário não lê no MVP (confirmado por Cesar em 28/09/2026). Pergunta para a reunião com o cliente: em condo-hotel, os equipamentos da UH podem ser do proprietário, e a saída de um deles da UH pode precisar ficar visível para ele (`docs/05`).
 - **Concorrência:** a ação leva a versão vista (ADR-029).
 
 **Nota — `app.hotel.easytools_hotel_id`:** coluna reservada para a integração futura com o EasyTools, por decisão de 24/09/2026, sem uso no MVP (nada além dos tipos gerados a lê ou grava). Veio no pacote de fundação (commit `ba6860a`, migração `20260924000001_fundacao.sql`) e foi mantida no rename do ADR-012, que deixa a integração futura com o EasyTools como está até decisão comercial própria. Não é campo de escopo: o UPDATE nela é o das demais colunas de cadastro do hotel.
@@ -393,23 +393,23 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - O download pelo proprietário (UH própria) fica para quando existirem anexos de OS: hoje a leitura usa `authz.hoteis_leitura`, que não inclui o proprietário por UH. Resolvido na B4 pelo download do anexo registrado (adendo abaixo).
 - A CI sobe o `storage-api` para o teste de upload real.
 
-**Adendo — registro do anexo e download do proprietário (B4, migração 0017).** Status: proposta, aguarda aprovação do Cesar.
+**Adendo — registro do anexo e download do proprietário (B4, migração 0017).** Status: aprovado por Cesar em 28/09/2026, com a miniatura também no web; confirmado que o proprietário não vê os anexos do hotel, só os dos locais e ativos dele.
 - **Registro na unit of work:** depois do envio, o aparelho registra o arquivo em `POST /api/v1/anexos`, com o caminho devolvido pela URL de upload e, se houver, o da miniatura. A API confere o caminho como no download: formato, tenant do contexto, registro visível no hotel do caminho e escrita nesse hotel. Depois grava `app.anexo` com auditoria (`anexo`, `criar`) e evento `anexo.registrado`. O Storage não é consultado, porque o `auth-admin` continua sem ler nem listar objetos: um registro sem arquivo só aparece como download que falha.
 - **`app.anexo`:** uma coluna por entidade (`local_id`, `ativo_id`; o hotel pelo `hotel_id`), com FK composta pelo hotel. Um check exige que o caminho do arquivo e o da miniatura comecem por `{tenant}/{hotel}/{entidade}/{registro}` da própria linha, então nenhuma linha aponta para arquivo de outro tenant, de outro hotel ou de outro registro, nem com erro na aplicação. Cada caminho é registrado uma vez só (`unique`). OS e chamado entram com as tabelas deles, cada um com a sua coluna.
 - **Ativo** passa a receber anexo (`ENTIDADES_COM_ANEXO`: hotel, local e ativo).
 - **Download pelo anexo registrado** (`POST /api/v1/anexos/{id}/url-de-download`, arquivo ou miniatura): a RLS de `app.anexo` decide quem vê. Isso resolve a pendência do proprietário:
   - o proprietário vê os anexos dos locais dele e dos ativos que estão hoje nesses locais (o local decide, ADR-031); um ativo movido (B3c) leva os anexos junto;
-  - os anexos do próprio hotel ficam fora para o proprietário, pelo mesmo critério das políticas: sem uso concreto no MVP.
+  - os anexos do próprio hotel ficam fora para o proprietário, pelo mesmo critério das políticas: sem uso concreto no MVP (confirmado por Cesar).
 
   O download pelo caminho (F0-10) continua como estava, só para quem lê o hotel.
 - **Listas:** `GET /api/v1/{hoteis|locais|ativos}/{id}/anexos`, sem o caminho, com quem enviou, se há miniatura e se o usuário pode remover.
 - **Remoção lógica:** `POST /api/v1/anexos/{id}/remocao` grava `removido_em` e `removido_por`, com auditoria e evento `anexo.removido`; o arquivo fica no Storage. Pode remover quem enviou ou quem gere os locais do hotel (regra de ação no domínio); a RLS exige escrita no hotel e o usuário do contexto em `removido_por`.
-- **Miniatura:** o PWA comprime a foto (JPEG, lado maior de 1600 px) e gera a miniatura (320 px) no aparelho. O web do CSC envia o arquivo como está, sem miniatura. A foto sem rede, na fila offline, entra com a C4.
-- **Verificação:** pgTAP 015 (30 casos de isolamento, checks de caminho e remoção); `packages/db/test/anexos.test.ts`, com banco real (anexo de outro hotel dá 404, o proprietário da UH baixa a miniatura, auditoria e evento, e o banco barra sem as regras da aplicação); testes da aplicação e do PWA.
+- **Miniatura:** a imagem é comprimida (JPEG, lado maior de 1600 px) e ganha a miniatura (320 px) no navegador, antes do envio, pelo mesmo código no PWA e no web (`packages/imagem`, canvas, sem pacote externo nem módulo do Node, liberado pelas fronteiras só para as telas do web e o PWA). Assim a foto enviada pelo computador também aparece em miniatura no celular. PDF vai como está. A foto sem rede, na fila offline, entra com a C4.
+- **Verificação:** pgTAP 015 (30 casos de isolamento, checks de caminho e remoção); `packages/db/test/anexos.test.ts`, com banco real (anexo de outro hotel dá 404, o proprietário da UH baixa a miniatura, auditoria e evento, e o banco barra sem as regras da aplicação); testes da aplicação, do PWA e do envio pelo web (`apps/web/test/enviar-anexo.test.ts`).
 
 ## ADR-025 — Sincronização offline do PWA: fila no aparelho e chave de idempotência gravada com o efeito
 
-**Status:** aprovada por Cesar em 26/09/2026, depois do merge do #31, com os ajustes (a) a (d), aplicados no PR de ajustes do ADR-025. **Adendo de 28/09/2026 (dados guardados no aparelho, B3b da fase 1a):** proposta, aguarda aprovação do Cesar.
+**Status:** aprovada por Cesar em 26/09/2026, depois do merge do #31, com os ajustes (a) a (d), aplicados no PR de ajustes do ADR-025. **Adendo de 28/09/2026 (dados guardados no aparelho, B3b da fase 1a):** aprovado por Cesar em 28/09/2026, depois do merge do #50.
 
 **Contexto:** o `docs/01` diz que cada operação offline leva uma chave de idempotência gerada no aparelho e que a API ignora repetições, mas não diz onde a chave fica nem como a repetição é detectada. O aceite da F0-11 pede sincronizar uma operação quando a rede volta, sem duplicar. A duplicação vem de dois casos:
 - a resposta se perde no caminho de volta, e o aparelho reenvia algo que o servidor já aplicou;
