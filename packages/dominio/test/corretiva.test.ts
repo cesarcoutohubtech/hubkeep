@@ -15,9 +15,13 @@ import {
   type EstadoDaOs,
   type EstadoDoChamado,
   type Papel,
+  PAPEIS_DA_ADMINISTRACAO,
+  PAPEIS_DA_TRIAGEM,
   PermissaoNegada,
   RegraViolada,
   type Responsavel,
+  TRANSICOES_DA_OS,
+  TRANSICOES_DO_CHAMADO,
   decidirNaOs,
   decidirNoChamado,
   normalizarMotivo,
@@ -129,10 +133,11 @@ const ESPERADO_NA_OS: Record<AcaoDaOs, Partial<Record<EstadoDaOs | 'nova', Passo
   concluir: { em_execucao: { os: 'concluida', chamado: 'aguardando_aceite' } },
   aceitar: { concluida: { os: 'aceita', chamado: 'concluido' } },
   reabrir: { concluida: { os: 'em_execucao', chamado: 'em_execucao' } },
+  // A OS cancelada devolve o chamado à triagem, para ganhar outra OS (Cesar, 29/09/2026).
   cancelar: {
-    atribuida: { os: 'cancelada', chamado: 'cancelado' },
-    em_execucao: { os: 'cancelada', chamado: 'cancelado' },
-    pausada: { os: 'cancelada', chamado: 'cancelado' },
+    atribuida: { os: 'cancelada', chamado: 'em_triagem' },
+    em_execucao: { os: 'cancelada', chamado: 'em_triagem' },
+    pausada: { os: 'cancelada', chamado: 'em_triagem' },
   },
 };
 /** Estado do chamado coerente com cada estado da OS. */
@@ -143,7 +148,7 @@ const CHAMADO_DA_OS: Record<EstadoDaOs | 'nova', EstadoDoChamado> = {
   pausada: 'em_execucao',
   concluida: 'aguardando_aceite',
   aceita: 'concluido',
-  cancelada: 'cancelado',
+  cancelada: 'em_triagem',
 };
 
 const codigo = (f: () => unknown): string | null => {
@@ -229,6 +234,37 @@ describe('regras além da tabela', () => {
       if (estado === 'aberto' || estado === 'em_triagem') expect(f().chamado).toBe('em_execucao');
       else expect(codigo(f)).toBe('transicao_invalida');
     }
+  });
+
+  it('OS cancelada: o chamado volta à triagem e ganha outra OS', () => {
+    const cancelada = decidirNaOs('cancelar', {
+      ator: gerente,
+      chamado: chamado('em_execucao'),
+      os: { estado: 'em_execucao', responsavel: DO_TECNICO },
+      motivo: 'Técnico errado',
+      agora,
+    });
+    expect(cancelada).toMatchObject({ estado: 'cancelada', chamado: 'em_triagem' });
+    const outra = decidirNaOs('gerar', {
+      ator: gerente,
+      chamado: chamado(cancelada.chamado ?? 'aberto'),
+      os: null,
+      agora,
+    });
+    expect(outra).toMatchObject({ estado: 'atribuida', chamado: 'em_execucao' });
+  });
+
+  it('o Admin do grupo é um grupo à parte da triagem, com as mesmas ações de gestão', () => {
+    expect([...PAPEIS_DA_TRIAGEM]).toEqual(['gestor_csc', 'gerente_hotel']);
+    expect([...PAPEIS_DA_ADMINISTRACAO]).toEqual(['admin_grupo']);
+    const gestao = [
+      TRANSICOES_DO_CHAMADO.triar.quem,
+      TRANSICOES_DO_CHAMADO.cancelar.quem,
+      ...(['gerar', 'reatribuir', 'cancelar'] as const).map((a) => TRANSICOES_DA_OS[a].quem),
+    ];
+    for (const quem of gestao) expect([...quem]).toEqual(['administracao', 'triagem']);
+    for (const a of ['iniciar', 'pausar', 'retomar', 'concluir', 'aceitar', 'reabrir'] as const)
+      expect(TRANSICOES_DA_OS[a].quem).not.toContain('administracao');
   });
 
   it('transição inválida é conflito (409) com a ação e o estado', () => {

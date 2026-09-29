@@ -7,7 +7,8 @@
 //
 // O chamado anda sozinho só na triagem e no cancelamento antes da OS. Depois,
 // quem anda é a OS, e cada ação dela diz o reflexo no chamado (gerar a OS põe o
-// chamado em execução; concluir, em aguardando aceite; aceitar, em concluído).
+// chamado em execução; concluir, em aguardando aceite; aceitar, em concluído;
+// cancelar a OS devolve o chamado à triagem, para ganhar outra OS).
 // A aplicação grava os dois na mesma unit of work.
 import { Conflito, PermissaoNegada, RegraViolada } from './erros';
 import { escopoCobreHotel } from './equipes';
@@ -60,30 +61,40 @@ export const PAPEIS_QUE_ABREM_CHAMADO: readonly Papel[] = [
   'solicitante',
 ];
 
-/** Triagem, geração, reatribuição e cancelamento (C3). */
-export const PAPEIS_DA_TRIAGEM: readonly Papel[] = ['admin_grupo', 'gestor_csc', 'gerente_hotel'];
+/** Triagem, geração, reatribuição e cancelamento no hotel (C3). */
+export const PAPEIS_DA_TRIAGEM: readonly Papel[] = ['gestor_csc', 'gerente_hotel'];
 
 /**
- * Quem faz a ação:
+ * O Admin do grupo é um grupo à parte (Cesar, 29/09/2026): hoje faz o mesmo
+ * que a triagem, mas terá alçadas e permissões a mais que o Gestor CSC e o
+ * Gerente. Uma alçada nova entra como transição com o grupo `administracao`.
+ */
+export const PAPEIS_DA_ADMINISTRACAO: readonly Papel[] = ['admin_grupo'];
+
+/**
+ * Grupos de quem faz a ação (vale se o ator estiver em algum dos grupos da transição):
+ * - administracao: o Admin do grupo;
  * - triagem: um dos PAPEIS_DA_TRIAGEM no hotel;
  * - responsavel: Técnico no hotel e responsável pela OS (ele, ou a equipe dele);
  * - aceite: quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel (C6).
  */
-type Quem = 'triagem' | 'responsavel' | 'aceite';
+export const GRUPOS_DA_CORRETIVA = ['administracao', 'triagem', 'responsavel', 'aceite'] as const;
+type Quem = (typeof GRUPOS_DA_CORRETIVA)[number];
+const GESTAO: readonly Quem[] = ['administracao', 'triagem'];
 
 interface Transicao<E extends string> {
   de: readonly E[];
   para: E;
-  quem: Quem;
+  quem: readonly Quem[];
   exigeMotivo: boolean;
 }
 
 export const TRANSICOES_DO_CHAMADO: { [A in AcaoDoChamado]: Transicao<EstadoDoChamado> } = {
-  triar: { de: ['aberto'], para: 'em_triagem', quem: 'triagem', exigeMotivo: false },
+  triar: { de: ['aberto'], para: 'em_triagem', quem: GESTAO, exigeMotivo: false },
   cancelar: {
     de: ['aberto', 'em_triagem'],
     para: 'cancelado',
-    quem: 'triagem',
+    quem: GESTAO,
     exigeMotivo: true,
   },
 };
@@ -97,65 +108,65 @@ export const TRANSICOES_DA_OS: { [A in AcaoDaOs]: TransicaoDaOs } = {
   gerar: {
     de: ['nova'],
     para: 'atribuida',
-    quem: 'triagem',
+    quem: GESTAO,
     exigeMotivo: false,
     chamado: { de: ['aberto', 'em_triagem'], para: 'em_execucao' },
   },
   reatribuir: {
     de: ['atribuida', 'em_execucao', 'pausada'],
     para: 'atribuida',
-    quem: 'triagem',
+    quem: GESTAO,
     exigeMotivo: false,
     chamado: null,
   },
   iniciar: {
     de: ['atribuida'],
     para: 'em_execucao',
-    quem: 'responsavel',
+    quem: ['responsavel'],
     exigeMotivo: false,
     chamado: null,
   },
   pausar: {
     de: ['em_execucao'],
     para: 'pausada',
-    quem: 'responsavel',
+    quem: ['responsavel'],
     exigeMotivo: false,
     chamado: null,
   },
   retomar: {
     de: ['pausada'],
     para: 'em_execucao',
-    quem: 'responsavel',
+    quem: ['responsavel'],
     exigeMotivo: false,
     chamado: null,
   },
   concluir: {
     de: ['em_execucao'],
     para: 'concluida',
-    quem: 'responsavel',
+    quem: ['responsavel'],
     exigeMotivo: false,
     chamado: { de: ['em_execucao'], para: 'aguardando_aceite' },
   },
   aceitar: {
     de: ['concluida'],
     para: 'aceita',
-    quem: 'aceite',
+    quem: ['aceite'],
     exigeMotivo: false,
     chamado: { de: ['aguardando_aceite'], para: 'concluido' },
   },
   reabrir: {
     de: ['concluida'],
     para: 'em_execucao',
-    quem: 'aceite',
+    quem: ['aceite'],
     exigeMotivo: true,
     chamado: { de: ['aguardando_aceite'], para: 'em_execucao' },
   },
   cancelar: {
     de: ['atribuida', 'em_execucao', 'pausada'],
     para: 'cancelada',
-    quem: 'triagem',
+    quem: GESTAO,
     exigeMotivo: true,
-    chamado: { de: ['em_execucao'], para: 'cancelado' },
+    chamado: { de: ['em_execucao'], para: 'em_triagem' },
   },
 };
 
@@ -203,13 +214,13 @@ export function podeAbrirChamado(
   }
 }
 
-/** Classificar e ajustar a prioridade do chamado: os papéis da triagem (C3). */
+/** Classificar e ajustar a prioridade do chamado: o Admin e os papéis da triagem (C3). */
 export function podeTriar(
   ator: AtorDaCorretiva,
   hotel: ChamadoParaRegra['hotel'],
   agora: Date,
 ): void {
-  if (!temPapelNoHotel(ator, PAPEIS_DA_TRIAGEM, hotel, agora)) {
+  if (!temPapelNoHotel(ator, [...PAPEIS_DA_ADMINISTRACAO, ...PAPEIS_DA_TRIAGEM], hotel, agora)) {
     throw new PermissaoNegada('triagem_fora_do_papel', 'Você não faz a triagem neste hotel.', {
       hotelId: hotel.id,
     });
@@ -220,22 +231,36 @@ const ehResponsavel = (ator: AtorDaCorretiva, r: Responsavel | null): boolean =>
   r !== null &&
   (r.tipo === 'tecnico' ? r.usuarioId === ator.usuarioId : ator.equipes.includes(r.equipeId));
 
+function estaNoGrupo(
+  grupo: Quem,
+  ator: AtorDaCorretiva,
+  chamado: ChamadoParaRegra,
+  agora: Date,
+): boolean {
+  switch (grupo) {
+    case 'administracao':
+      return temPapelNoHotel(ator, PAPEIS_DA_ADMINISTRACAO, chamado.hotel, agora);
+    case 'triagem':
+      return temPapelNoHotel(ator, PAPEIS_DA_TRIAGEM, chamado.hotel, agora);
+    case 'responsavel':
+      return temPapelNoHotel(ator, ['tecnico'], chamado.hotel, agora);
+    case 'aceite':
+      return (
+        (chamado.abertoPor === ator.usuarioId &&
+          temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, chamado.hotel, agora)) ||
+        temPapelNoHotel(ator, ['gerente_hotel'], chamado.hotel, agora)
+      );
+  }
+}
+
 function exigirPapel(
-  quem: Quem,
+  quem: readonly Quem[],
   acao: string,
   ator: AtorDaCorretiva,
   chamado: ChamadoParaRegra,
   agora: Date,
 ): void {
-  const pode =
-    quem === 'triagem'
-      ? temPapelNoHotel(ator, PAPEIS_DA_TRIAGEM, chamado.hotel, agora)
-      : quem === 'responsavel'
-        ? temPapelNoHotel(ator, ['tecnico'], chamado.hotel, agora)
-        : (chamado.abertoPor === ator.usuarioId &&
-            temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, chamado.hotel, agora)) ||
-          temPapelNoHotel(ator, ['gerente_hotel'], chamado.hotel, agora);
-  if (!pode) {
+  if (!quem.some((g) => estaNoGrupo(g, ator, chamado, agora))) {
     throw new PermissaoNegada('acao_fora_do_papel', 'Você não pode fazer esta ação neste hotel.', {
       acao,
     });
@@ -304,7 +329,7 @@ export function decidirNaOs(
   if (t.chamado && !t.chamado.de.includes(p.chamado.estado)) throw invalida();
   // Técnico do hotel, mas a OS é de outro (ou foi reatribuída com a operação
   // offline na fila): conflito com o estado atual, visível no PWA (ADR-025).
-  if (t.quem === 'responsavel' && !ehResponsavel(p.ator, p.os?.responsavel ?? null)) {
+  if (t.quem.includes('responsavel') && !ehResponsavel(p.ator, p.os?.responsavel ?? null)) {
     throw new Conflito('os_de_outro_responsavel', 'A OS está com outro responsável.', { acao });
   }
   return {

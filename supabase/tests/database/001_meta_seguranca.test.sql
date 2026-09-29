@@ -393,8 +393,12 @@ $$, 'só as extensões permitidas: as do Supabase, pgtap e pg_trgm');
 -- 26. Busca sem acento (ADR-030): índice GIN de trigramas na coluna busca de
 --     local e ativo, com a classe de operadores de pg_trgm no schema
 --     extensions (nunca em public).
+--     Os nomes do catálogo têm collation "C", e os valores esperados, a
+--     padrão: sem o collate explícito, a comparação falha ("could not determine
+--     which collation to use").
 select results_eq($$
-  select c.relname::text, t.relname::text, a.attname::text, n.nspname::text
+  select c.relname::text collate "default", t.relname::text collate "default",
+         a.attname::text collate "default", n.nspname::text collate "default"
   from pg_index i
   join pg_class c on c.oid = i.indexrelid
   join pg_class t on t.oid = i.indrelid
