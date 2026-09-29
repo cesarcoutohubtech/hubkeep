@@ -565,3 +565,50 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Políticas:** o proprietário não lê políticas no MVP, por falta de uso concreto (decisão do Cesar, 28/09/2026). A migração 0013 tira da leitura de `app.politica` todos os caminhos do proprietário: `hoteis_proprietario()`, que a 0012 tinha posto, e `locais_proprietario()`, pela qual o dono de UH e o dono de hotel com locais liam as do hotel e as do grupo desde a 0010.
 - **`authz.locais_proprietario()` continua devolvendo só locais de verdade.** O pgTAP 010 garante que ela nunca devolve `local_id` nulo. Uma primeira versão da B1 usava `left join` e devolvia `(nulo, hotel)` para o hotel sem locais; o Cesar recusou (28/09/2026), porque um nulo no escopo é armadilha para policy futura.
 - A lista do meta-teste 11 e a impressão do 11b ganham a função nova no mesmo PR (regra 4).
+
+## ADR-032 — Segurança da borda do web: sessão HttpOnly, CSP com nonce, origem conferida e varredura na CI
+
+**Status:** proposta em 29/09/2026 (S1). Aguarda aprovação do Cesar.
+
+**Contexto:** o modelo de ameaças da S1 (`docs/09`) apontou quatro lacunas baratas de fechar.
+- A sessão do web ficava em cookie legível pelo JavaScript: o `createBrowserClient` do `@supabase/ssr` grava sem HttpOnly.
+- O web não mandava cabeçalho de segurança.
+- A API aceitava mudança de estado por cookie vinda de qualquer site, protegida só pelo SameSite=Lax.
+- A CI não procurava segredo nem fazia análise estática.
+
+**Decisão:**
+- **Sessão em cookie HttpOnly, gravado só pelo servidor.**
+  - O login continua no navegador, direto no Auth, com a sessão só em memória.
+  - Os tokens seguem na hora para `POST /auth/sessao`, que confere o access token pelo JWKS (ADR-017) e grava o cookie. O cookie é HttpOnly e SameSite=Lax, e Secure fora do dev.
+  - Saída (`DELETE /auth/sessao`, escopo local: o PWA do mesmo usuário continua), senha nova (`POST /auth/senha`), aceite do convite e renovação no `proxy.ts` também gravam pelo servidor, com as mesmas opções (`servidor/sessao-supabase.ts`).
+  - O login não passa pelo servidor porque o limite de tentativas do Supabase Auth conta por IP. Vindo da Vercel, todos os usuários dividiriam o limite de poucos IPs.
+  - Custo aceito: os tokens passam uma vez pela memória da página no login, onde a senha já estava.
+- **CSP com nonce por requisição**, posta pelo `proxy.ts` na requisição (o Next aplica o nonce aos scripts dele) e na resposta.
+  - `script-src 'self' 'nonce-…' 'strict-dynamic'`, sem `unsafe-inline`; `unsafe-eval` só no dev.
+  - Estilo inline liberado, porque as telas usam o atributo `style`.
+  - `connect-src` e `img-src` com a origem do Supabase (login e URL assinada).
+  - `frame-ancestors 'none'`, `object-src 'none'`, `base-uri` e `form-action` da própria origem.
+  - Na API, `default-src 'none'` e `Cache-Control: no-store`.
+  - As páginas já são todas dinâmicas (o layout lê cookie e cabeçalho), condição para o nonce.
+- **Cabeçalhos fixos** pelo `next.config.ts`:
+  - HSTS de 2 anos com subdomínios, fora do dev e sem preload. Entrar na lista de preload é difícil de desfazer e fica para decisão à parte;
+  - `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`, COOP `same-origin` e `Permissions-Policy`.
+  - O PWA recebe os que não dependem de nonce, pelo `vercel.json`.
+- **Origem conferida (CSRF)** no `proxy.ts`. POST, PUT, PATCH e DELETE sem `Authorization` só passam com `Origin` igual à do próprio site, ou, sem `Origin`, com `Sec-Fetch-Site: same-origin`. Sem nenhum dos dois, passam só sem cookie e fora de `/auth/*`. A recusa é 403 `origem_recusada`, com linha de log.
+  - `Authorization` fica de fora da checagem porque o navegador não o manda sozinho para outro site sem CORS, que o web não libera.
+- **Lint** (zona protegida):
+  - `sql.raw`, `sql.id`, `sql.ref`, `sql.table`, `sql.lit` e `dynamic.ref`/`dynamic.table` proibidos fora de `packages/db`;
+  - `dangerouslySetInnerHTML`, atribuição a `innerHTML`/`outerHTML`, `insertAdjacentHTML` e `document.write` proibidos em todo o repositório, inclusive em teste.
+- **CI** (`.github/workflows/seguranca.yml`), a cada PR, no main e toda segunda:
+  - gitleaks no histórico inteiro, com o binário conferido por SHA-256 e as exceções em `.gitleaks.toml`;
+  - Semgrep com as regras da comunidade para JS/TS, React, Next.js e GitHub Actions, em imagem fixada por digest. Qualquer achado reprova, e a exceção é `nosemgrep` com o motivo no comentário.
+  - As actions de todos os workflows passam a ser fixadas por SHA, a CLI do Supabase por versão, e o Dependabot abre PR das actions.
+  - `.gitleaks.toml` e `.github/dependabot.yml` entram na zona protegida (ADR-023).
+- **Senha:** mínimo de 8 caracteres no `config.toml`, o mesmo da tela e do contrato de `/auth/senha`. No dev, vale no próximo `config push`.
+
+**Consequências:**
+- Nenhuma tela lê a sessão. O que precisar do usuário pergunta à API (`GET /api/v1/sessao`).
+- Script de terceiro (analytics, chat) exige mudar a CSP, o que passa por este ADR.
+- A regra excluída do Semgrep (`unsafe-add-mask-workflow-command`) fica justificada no workflow.
+- Os dois `nosemgrep` de TLS sem conferir o certificado apontam para a pendência P6 do `docs/09`.
+- Fora deste ADR, listadas no `docs/09`: rate limiting (P1), endurecimento do banco de produção (P2), pentest (P3), MFA e limites de sessão (P4), sessão do PWA (P5) e as demais.

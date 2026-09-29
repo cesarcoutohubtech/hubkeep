@@ -26,6 +26,8 @@ export const CODIGOS_HTTP = {
   semPermissao: 'sem_permissao',
   integridade: 'recusado_pela_integridade',
   erroInterno: 'erro_interno',
+  /** Mudança de estado com cookie vinda de outro site (CSRF; S1, ADR-032). */
+  origemRecusada: 'origem_recusada',
 } as const;
 
 /** Um problema de validação, pronto para a tela traduzir campo a campo. */

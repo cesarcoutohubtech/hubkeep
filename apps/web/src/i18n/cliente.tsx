@@ -92,7 +92,7 @@ export function nomeDoIdioma(idioma: IdiomaDeExibicao): string {
  * resolve pelo perfil e o cookie é ignorado (i18n/servidor.ts).
  */
 export function gravarCookieDeIdioma(idioma: IdiomaDeExibicao): void {
-  document.cookie = `hk_idioma=${idioma}; path=/; max-age=31536000; samesite=lax`;
+  document.cookie = `hk_idioma=${idioma}; path=/; max-age=31536000; samesite=lax${location.protocol === 'https:' ? '; secure' : ''}`;
 }
 
 /** Grava o idioma no cookie e pede ao servidor a página de novo. */

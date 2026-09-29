@@ -1,0 +1,67 @@
+# S1 (ADR-032): segredo no código e análise estática, a cada PR, no main e
+# toda segunda (regra nova de scanner aparece mesmo sem PR).
+#
+#   segredos: gitleaks no histórico inteiro do git, não só no diff. Um segredo
+#             que entrou e saiu num commit antigo continua exposto no clone.
+#   estática: Semgrep com as regras da comunidade para JS/TS, React, Next.js e
+#             GitHub Actions. Qualquer achado reprova; exceção só com
+#             `nosemgrep: <regra>` e o motivo no comentário, revisado no PR.
+#
+# Versões fixas (binário conferido por SHA-256, imagem por digest): atualizar
+# é decisão de PR, não surpresa da CI.
+name: segurança
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 12 * * 1'
+
+concurrency:
+  group: seguranca-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  segredos:
+    name: segredos (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - name: Instalar o gitleaks
+        run: |
+          versao=8.30.1
+          sha256=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+          arquivo="gitleaks_${versao}_linux_x64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$arquivo" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${versao}/${arquivo}"
+          echo "${sha256}  $RUNNER_TEMP/$arquivo" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$arquivo" -C "$RUNNER_TEMP" gitleaks
+      # --redact: o log da CI nunca mostra o valor achado, só onde está.
+      - name: Segredos no histórico do git
+        run: |
+          "$RUNNER_TEMP/gitleaks" git --config .gitleaks.toml --redact --verbose --no-banner .
+
+  estatica:
+    name: análise estática (Semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.178.0@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      # Regra excluída: unsafe-add-mask aponta o `echo "::add-mask::"` do
+      # banco.yml. Lá só se mascaram senhas geradas no próprio runner, que morrem
+      # com ele; a CI não usa segredo do GitHub (docs/09, superfície CI).
+      - name: Semgrep
+        run: >-
+          semgrep scan --error --metrics=off
+          --config p/javascript --config p/typescript --config p/react
+          --config p/nextjs --config p/github-actions
+          --exclude-rule yaml.github-actions.security.audit.unsafe-add-mask-workflow-command.unsafe-add-mask-workflow-command

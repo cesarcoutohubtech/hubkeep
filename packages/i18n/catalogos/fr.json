@@ -395,6 +395,8 @@
   "erro.sem_permissao": "Vous n’avez pas l’autorisation pour cette action.",
   "erro.recusado_pela_integridade": "Les données n’ont pas pu être enregistrées, car elles font référence à un élément inexistant ou non autorisé.",
   "erro.erro_interno": "Une erreur s’est produite de notre côté. Réessayez dans un instant.",
+  "erro.origem_recusada": "La demande venait de l’extérieur de HubKeep et a été refusée. Ouvrez HubKeep et réessayez.",
+  "erro.senha_recusada": "Le mot de passe n’a pas été accepté. Choisissez-en un plus long ou moins courant.",
   "erro.cron_nao_configurado": "La tâche planifiée n’est pas configurée.",
   "erro.credencial_nao_encontrada": "Identifiant introuvable.",
   "erro.anexo_nao_encontrado": "Pièce jointe introuvable.",

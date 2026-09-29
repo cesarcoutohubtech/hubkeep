@@ -41,8 +41,9 @@ const EXTENSOES_CODIGO = /\.(?:[cm]?[jt]s|tsx|json)$/;
 const EXTENSOES_WORKFLOW = /^\.github\/workflows\/.*\.ya?ml$/;
 
 // Variáveis do sistema ou da plataforma, que não se configuram por ambiente.
-// Hoje nenhuma aparece; entra aqui só o que for do sistema, nunca do HubKeep.
-const DO_SISTEMA: readonly string[] = [];
+// Entra aqui só o que for do sistema, nunca do HubKeep. NODE_ENV é definida
+// pelo Next (development no `next dev`, production no build) — S1.
+const DO_SISTEMA: readonly string[] = ['NODE_ENV'];
 
 function arquivosDoRepositorio(): string[] {
   const saida = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {

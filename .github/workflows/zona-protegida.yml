@@ -6,7 +6,8 @@
 # `gh pr merge --admin` está negado no .claude/settings.json.
 #
 # A lista é a das regras de processo do diário (docs/diario-fase-0.md), mais
-# este próprio arquivo (está em .github/workflows) e o .claude/.
+# este próprio arquivo (está em .github/workflows) e o .claude/. Desde a S1
+# (ADR-032), também as exceções do gitleaks e o Dependabot.
 name: zona protegida
 
 on:
@@ -20,14 +21,14 @@ jobs:
     name: zona protegida
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
 
       # O SHA da base vem do evento do GitHub, não de quem abre o PR.
       - name: PR toca zona protegida?
         run: |
-          padrao='^(supabase/migrations/|supabase/tests/|supabase/config\.toml$|\.github/workflows/|eslint\.config\.mjs$|CLAUDE\.md$|docs/03-decisoes-tecnicas\.md$|\.claude/)'
+          padrao='^(supabase/migrations/|supabase/tests/|supabase/config\.toml$|\.github/workflows/|eslint\.config\.mjs$|CLAUDE\.md$|docs/03-decisoes-tecnicas\.md$|\.claude/|\.gitleaks\.toml$|\.github/dependabot\.yml$)'
           tocados="$(git diff --name-only "${{ github.event.pull_request.base.sha }}"...HEAD | grep -E "$padrao" || true)"
           if [ -n "$tocados" ]; then
             echo "::error::Este PR toca zona protegida (ADR-023). Merge só pelo Cesar, com bypass:"

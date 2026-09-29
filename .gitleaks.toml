@@ -1,0 +1,18 @@
+# gitleaks (S1, ADR-032): as regras padrão, mais as exceções abaixo. Cada
+# exceção diz por que o valor não é segredo; é zona protegida (ADR-023), para
+# que abrir uma exceção passe pelo Cesar.
+title = "HubKeep"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Valores públicos ou de teste, nunca credencial de ambiente real"
+# A exceção olha a linha inteira, não só o trecho que a regra pegou.
+regexTarget = "line"
+regexes = [
+  # Supabase local da CLI (runner descartável da CI): usuário e senha padrão.
+  '''postgres:postgres@127\.0\.0\.1:54322''',
+  # Valor falso do teste que prende a secret key ao auth-admin (o nome diz).
+  '''chave-falsa-so-para-montar-o-cliente''',
+]

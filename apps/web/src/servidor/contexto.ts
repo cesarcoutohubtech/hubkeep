@@ -8,19 +8,13 @@
 //            ativo (authz.tenant_id()), e um tenant forjado não mostra nada.
 import { TokenInvalido } from '@hubkeep/aplicacao';
 import type { Contexto } from '@hubkeep/db';
-import { createServerClient, parseCookieHeader } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { chavePublicaSupabase, urlSupabase, verificadorDeToken } from './composicao';
 import { ErroHttp } from './erro-http';
+import { cookiesDaRequisicao as cookies } from './sessao-supabase';
 
 export const CABECALHO_TENANT = 'x-hubkeep-tenant';
 export const COOKIE_TENANT = 'hk_tenant';
-
-function cookies(req: Request) {
-  return parseCookieHeader(req.headers.get('cookie') ?? '').map((c) => ({
-    name: c.name,
-    value: c.value ?? '',
-  }));
-}
 
 /** Access token da requisição, sem validar (a validação é em resolverContexto). */
 async function tokenDaRequisicao(req: Request): Promise<string | null> {

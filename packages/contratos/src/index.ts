@@ -2,8 +2,11 @@
 // O contrato do adaptador de sistema hoteleiro entra na F0-08.
 export {
   HotelVisivel,
+  LIMITE_MINIMO_DA_SENHA,
   PAPEIS_API,
   PedidoDeConvite,
+  PedidoDeSenha,
+  PedidoDeSessao,
   RespostaDeConvite,
   RespostaDeHoteis,
   RespostaDeSessao,

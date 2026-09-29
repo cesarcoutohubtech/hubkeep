@@ -1,0 +1,9 @@
+# S1 (ADR-032): as actions estão fixadas por SHA; o Dependabot abre o PR quando
+# sai versão nova, com o SHA novo. Dependências do pnpm seguem pelo `pnpm audit`
+# da CI e por atualização deliberada.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

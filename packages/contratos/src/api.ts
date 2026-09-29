@@ -72,3 +72,18 @@ export const RespostaDeSessao = z
     tenants: z.array(z.guid()),
   })
   .meta({ id: 'RespostaDeSessao' });
+
+// ---------------------------------------------------------------------------
+// /auth/sessao e /auth/senha (S1, ADR-032): fora da /api/v1, sem OpenAPI.
+// ---------------------------------------------------------------------------
+/** Tokens que o login no navegador obteve do Auth; o servidor os guarda em cookie HttpOnly. */
+export const PedidoDeSessao = z.object({
+  accessToken: z.string().min(1).max(8192),
+  refreshToken: z.string().min(1).max(1024),
+});
+
+/** Senha nova. O Auth aplica a política dele; aqui, só os limites (bcrypt usa 72 bytes). */
+export const LIMITE_MINIMO_DA_SENHA = 8;
+export const PedidoDeSenha = z.object({
+  senha: z.string().min(LIMITE_MINIMO_DA_SENHA).max(72),
+});

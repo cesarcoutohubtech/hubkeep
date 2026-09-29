@@ -192,6 +192,69 @@ describe('Kysely e execução direta de consulta só em packages/db (ADR-016)', 
   });
 });
 
+// S1 (ADR-032): SQL cru e identificador dinâmico só em packages/db; HTML cru
+// em lugar nenhum, nem em teste.
+describe('SQL cru fora de packages/db e HTML cru em qualquer lugar (S1, ADR-032)', () => {
+  const sqlDe = (chamada: string) =>
+    `declare const sql: Record<string, (s: string) => unknown>;
+export const x = ${chamada};
+`;
+  const dinamico = `declare const db: { dynamic: { ref(s: string): unknown } };
+export const x = db.dynamic.ref('nome');
+`;
+  const perigoso = `export const x = <div dangerouslySetInnerHTML={{ __html: '<b>1</b>' }} />;
+`;
+  const perigosoSemJsx = `declare const h: (t: string, p: object) => unknown;
+export const x = h('div', { dangerouslySetInnerHTML: { __html: '' } });
+`;
+  const innerHtml = `export function f(el: HTMLElement) {
+  el.innerHTML = '<b>1</b>';
+}
+`;
+  const adjacente = `export function f(el: HTMLElement) {
+  el.insertAdjacentHTML('beforeend', '<b>1</b>');
+}
+`;
+
+  const proibidos: [string, string, string][] = [
+    ['sql.raw no servidor do web', COMPOSICAO, sqlDe("sql.raw('select 1')")],
+    ['sql.raw por propriedade computada', COMPOSICAO, sqlDe("sql['raw']('select 1')")],
+    ['sql.id em aplicacao', 'packages/aplicacao/src/x.ts', sqlDe("sql.id('tabela')")],
+    ['sql.ref em aplicacao', 'packages/aplicacao/src/x.ts', sqlDe("sql.ref('coluna')")],
+    ['sql.table no PWA', 'apps/tecnico/src/x.ts', sqlDe("sql.table('t')")],
+    ['sql.lit em teste da raiz', 'tests/x.test.ts', sqlDe("sql.lit('v')")],
+    ['dynamic.ref do Kysely no servidor do web', COMPOSICAO, dinamico],
+    ['dangerouslySetInnerHTML numa página', 'apps/web/src/app/x.tsx', perigoso],
+    ['dangerouslySetInnerHTML no PWA', 'apps/tecnico/src/x.tsx', perigoso],
+    ['dangerouslySetInnerHTML num teste', 'apps/web/test/x.test.tsx', perigoso],
+    ['dangerouslySetInnerHTML sem JSX', 'packages/imagem/src/x.ts', perigosoSemJsx],
+    ['dangerouslySetInnerHTML em packages/db', 'packages/db/src/repositorios/x.tsx', perigoso],
+    ['innerHTML no PWA', 'apps/tecnico/src/x.ts', innerHtml],
+    ['insertAdjacentHTML no web', 'apps/web/src/cliente/x.ts', adjacente],
+  ];
+
+  it.each(proibidos)('proíbe: %s', async (_n, arquivo, codigo) => {
+    expect(await violacoes(arquivo, codigo)).not.toEqual([]);
+  });
+
+  const permitidos: [string, string, string][] = [
+    ['sql.raw em packages/db', 'packages/db/src/consultas.ts', sqlDe("sql.raw('select 1')")],
+    ['sql.join fora de packages/db', 'packages/aplicacao/src/x.ts', sqlDe('sql.join([])')],
+    [
+      'textContent no PWA',
+      'apps/tecnico/src/x.ts',
+      `export function f(el: HTMLElement) {
+  el.textContent = 'x';
+}
+`,
+    ],
+  ];
+
+  it.each(permitidos)('permite: %s', async (_n, arquivo, codigo) => {
+    expect(await violacoes(arquivo, codigo)).toEqual([]);
+  });
+});
+
 // Aceite da F0-10b: "um texto fixo proposital num componente derruba o lint"
 // (regra 11 do CLAUDE.md, ADR-022). O texto de tela sai do catálogo.
 describe('nenhum texto de interface fixo nos apps (ADR-022)', () => {

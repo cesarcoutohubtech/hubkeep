@@ -45,6 +45,43 @@ const ESCRITA = {
     'CallExpression[callee.property.name=/^(insertInto|updateTable|deleteFrom|replaceInto|mergeInto)$/]',
   message: 'Escrita só em packages/db/src/repositorios, pela unidade de trabalho (ADR-006).',
 };
+// S1 (ADR-032): HTML cru na página abre caminho para XSS. Proibido em todo o
+// repositório, código de produção e teste.
+const HTML_CRU = [
+  {
+    selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+    message: 'dangerouslySetInnerHTML é proibido: o React já escapa o texto (S1, ADR-032).',
+  },
+  {
+    selector: "Property[key.name='dangerouslySetInnerHTML']",
+    message: 'dangerouslySetInnerHTML é proibido: o React já escapa o texto (S1, ADR-032).',
+  },
+  {
+    selector:
+      'AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]',
+    message: 'innerHTML/outerHTML é proibido: monte o elemento pelo React (S1, ADR-032).',
+  },
+  {
+    selector:
+      "CallExpression[callee.property.name='insertAdjacentHTML'], CallExpression[callee.object.name='document'][callee.property.name=/^(write|writeln)$/]",
+    message: 'HTML cru no DOM é proibido (S1, ADR-032).',
+  },
+];
+// S1 (ADR-032): SQL cru e identificador dinâmico montam SQL a partir de texto.
+// Fora de packages/db eles escapariam da revisão dos repositórios, mesmo que o
+// `sql` chegasse por outro caminho que não o import do Kysely (já barrado).
+const SQL_CRU = [
+  {
+    selector:
+      "MemberExpression[object.name='sql'][property.name=/^(raw|id|ref|table|lit)$/], MemberExpression[object.name='sql'][property.value=/^(raw|id|ref|table|lit)$/]",
+    message:
+      'sql.raw e identificador dinâmico (sql.id/ref/table/lit) só em packages/db (S1, ADR-032).',
+  },
+  {
+    selector: "MemberExpression[object.property.name='dynamic'][property.name=/^(ref|table)$/]",
+    message: 'Identificador dinâmico do Kysely só em packages/db (S1, ADR-032).',
+  },
+];
 const TRANSACAO_DE = {
   group: ['**/unidade-de-trabalho'],
   importNames: ['transacaoDe'],
@@ -159,6 +196,18 @@ export default tseslint.config(
     },
   },
   {
+    // S1 (ADR-032): HTML cru em qualquer lugar; SQL cru fora de packages/db.
+    // Os blocos abaixo que configuram no-restricted-syntax SUBSTITUEM este nos
+    // arquivos deles, e por isso repetem as mesmas listas.
+    files: ['**/*.{ts,tsx,js,jsx,mjs}'],
+    ignores: ['packages/db/**'],
+    rules: { 'no-restricted-syntax': ['error', ...HTML_CRU, ...SQL_CRU] },
+  },
+  {
+    files: ['packages/db/**/*.{ts,tsx,js,mjs}'],
+    rules: { 'no-restricted-syntax': ['error', ...HTML_CRU] },
+  },
+  {
     // ADR-006: escrita de negócio só em packages/db/src/repositorios, que recebe a
     // unidade de trabalho — é ela que grava auditoria e outbox na mesma transação.
     // Pega o construtor de query do Kysely; SQL cru de escrita fora dos
@@ -166,7 +215,9 @@ export default tseslint.config(
     files: ['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'],
     ignores: ['packages/db/src/repositorios/**', 'packages/**/test/**'],
     rules: {
-      'no-restricted-syntax': ['error', ESCRITA],
+      // Aqui só sobra packages/db fora dos repositórios: o bloco seguinte
+      // substitui este no resto. SQL cru é permitido em packages/db.
+      'no-restricted-syntax': ['error', ESCRITA, ...HTML_CRU],
       'no-restricted-imports': ['error', { patterns: [TRANSACAO_DE] }],
     },
   },
@@ -190,6 +241,8 @@ export default tseslint.config(
           selector: "Identifier[name='CompiledQuery']",
           message: 'CompiledQuery só em packages/db (ADR-016).',
         },
+        ...HTML_CRU,
+        ...SQL_CRU,
       ],
     },
   },
