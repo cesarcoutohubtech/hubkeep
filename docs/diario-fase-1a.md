@@ -724,3 +724,9 @@ Dividida em duas partes, cada uma no seu PR:
   - **gitleaks:** exceção estreita no `.gitleaks.toml`, só para a linha `'schema.funcao:<md5>'` do meta-teste 11.
 - **Local:** typecheck, lint e testes verdes, com 272 testes na raiz.
 - **Lição:** não conto com o aviso de CI. Antes de dar o PR como pronto, confiro `gh pr checks`, e digo ao Cesar quais checagens falharam e se a falha é esperada.
+
+### Ponto de retomada (29/09/2026, correção da C4a aberta)
+- **`main`:** `732c967` (#66). **Dev:** 23 migrações, até a 0023, com o UPDATE do chamado quebrado (42P17) até entrar a 0024.
+- **PR aberto:** #67, branch `1a-c4-correcao` (worktree `wt/c4-correcao`), zona protegida, com a migração 0024. Merge só com o pgTAP, o `segurança` (depois do OK do Cesar à exceção do gitleaks), a verificação dos tipos e a integração do `packages/db` verdes. A "zona protegida" falha por desenho.
+- **Depois do merge:** o Cesar faz o `db push` da 0024. Em seguida, conferir no dev só por leitura: `db:testar-dev` (19 arquivos, sem falha) e `db:types` idêntico.
+- **Próxima tarefa:** C4b (PWA), no local, num worktree novo a partir da `main` depois do merge do #67. O plano está no ponto de retomada "C4a aberta".
