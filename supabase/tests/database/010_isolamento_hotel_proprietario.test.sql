@@ -40,12 +40,12 @@ insert into app.hotel (id, tenant_id, nome, fuso, status) values
   ('11100000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Hotel 1', 'UTC', 'ativo'),
   ('11100000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', 'Hotel 2', 'UTC', 'ativo'),
   ('21100000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', 'Hotel B1', 'UTC', 'ativo');
-insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
-  ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH 101', 'ativo'),
-  ('11110000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'area_comum', 'Piscina', 'ativo'),
-  ('11110000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'uh', 'UH 201', 'ativo'),
-  ('11110000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'uh', 'UH 202', 'ativo'),
-  ('21110000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '21100000-0000-0000-0000-000000000001', 'uh', 'UH B101', 'ativo');
+insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
+  ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH 101', 'uh 101', 'ativo'),
+  ('11110000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'area_comum', 'Piscina', 'piscina', 'ativo'),
+  ('11110000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'uh', 'UH 201', 'uh 201', 'ativo'),
+  ('11110000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'uh', 'UH 202', 'uh 202', 'ativo'),
+  ('21110000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '21100000-0000-0000-0000-000000000001', 'uh', 'UH B101', 'uh b101', 'ativo');
 insert into app.proprietario (id, tenant_id, nome) values
   ('11200000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Dono do Hotel 1'),
   ('11200000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', 'Dono encerrado do Hotel 2'),
@@ -116,8 +116,8 @@ select results_eq($$ select nome from app.local order by nome $$, $$ values ('Pi
 select results_eq($$ select nome from app.hotel $$, $$ values ('Hotel 1') $$, 'dono do hotel vê só o hotel dele');
 select is_empty('select 1 from app.hotel_proprietario', 'dono não lê os vínculos (dado do proprietário, só o Admin)');
 select throws_ok(
-  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
-     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'area_comum', 'X', 'ativo') $$,
+  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'area_comum', 'X', 'x', 'ativo') $$,
   '42501', null, 'dono do hotel não cria local');
 select is_empty($$ update app.hotel set nome = 'x' returning 1 $$, 'dono do hotel não altera o hotel');
 select throws_ok(
@@ -128,8 +128,8 @@ select throws_ok(
 
 -- UH nova do CM no Hotel 1 entra no escopo sem ação manual
 reset role;
-insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
-  ('11110000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH 102', 'ativo');
+insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
+  ('11110000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH 102', 'uh 102', 'ativo');
 set local role hk_app;
 select results_eq($$ select nome from app.local order by nome $$, $$ values ('Piscina'), ('UH 101'), ('UH 102') $$,
   'UH nova no hotel vinculado entra no escopo do dono');

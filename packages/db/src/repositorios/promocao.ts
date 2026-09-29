@@ -1,16 +1,17 @@
 // Promoção de UHs do staging para app.local (F0-08), pelo worker (hk_worker),
 // numa unit of work por tenant: toda UH criada ou atualizada grava auditoria
 // (sem usuário) e evento. A regra de licença é da aplicação; aqui só IO.
-import type {
-  HotelParaPromocao,
-  LocalExistente,
-  SessaoDePromocao,
-  UhDoStaging,
+import {
+  type HotelParaPromocao,
+  type LocalExistente,
+  type SessaoDePromocao,
+  type UhDoStaging,
 } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import type { Tx } from '../conexao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { colunasPesquisaveisDoLocal } from './busca';
 
 /**
  * Uso da licença de UHs no tenant do contexto: max_uhs do contrato e UHs que
@@ -79,7 +80,7 @@ export function sessaoDePromocao(uow: UnidadeDeTrabalho): SessaoDePromocao {
           tenant_id: uow.tenantId,
           hotel_id: uh.hotelId,
           tipo: 'uh',
-          nome: uh.nome,
+          ...colunasPesquisaveisDoLocal(uh.nome),
           andar: uh.andar,
           status: uh.status,
           cod_externo: uh.chave,
@@ -111,7 +112,11 @@ export function sessaoDePromocao(uow: UnidadeDeTrabalho): SessaoDePromocao {
         .executeTakeFirstOrThrow();
       await tx
         .updateTable('app.local')
-        .set({ nome: dados.nome, andar: dados.andar, atualizado_em: sql`now()` })
+        .set({
+          ...colunasPesquisaveisDoLocal(dados.nome),
+          andar: dados.andar,
+          atualizado_em: sql`now()`,
+        })
         .where('id', '=', id)
         .execute();
       uow.auditar({

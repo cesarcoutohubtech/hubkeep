@@ -160,7 +160,7 @@ describe.skipIf(!temBanco)('A1 — hotéis a partir do staging', { timeout: 60_0
     const h1 = await hotelPorCodigo('H1');
     for (const nome of ['101', '102']) {
       await dono.query(
-        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values ($1, $2, $3, 'uh', $4, 'pendente_licenca')`,
+        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values ($1, $2, $3, 'uh', $4, lower($4), 'pendente_licenca')`,
         [randomUUID(), T.tenant, h1?.id, nome],
       );
     }

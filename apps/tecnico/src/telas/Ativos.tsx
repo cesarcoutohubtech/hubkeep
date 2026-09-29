@@ -26,6 +26,7 @@ import type {
   Referencia,
 } from '../referencia/banco';
 import type { PortaDeFotos } from '../anexos/fotos';
+import { filtrarPorBusca } from '../busca';
 import { useMotivo } from './FilaDoDia';
 import { FotosDoAtivo } from './FotosDoAtivo';
 
@@ -247,6 +248,7 @@ export function Ativos(props: {
   const [hotelId, setHotelId] = useState(props.aberto?.hotelId ?? referencia?.hoteis[0]?.id ?? '');
   const [editando, setEditando] = useState<AtivoGuardado | null>(props.aberto?.ativo ?? null);
   const [fotosDe, setFotosDe] = useState<AtivoGuardado | null>(null);
+  const [busca, setBusca] = useState('');
   const [aviso, setAviso] = useState<{ tipo: 'ok' } | { tipo: 'erro'; codigo: string } | null>(
     null,
   );
@@ -273,7 +275,8 @@ export function Ativos(props: {
   const rotulo = (r: Partial<Record<string, string>>, reserva: string) =>
     resolverNome(r, props.idioma, { idiomaPadrao }) ?? reserva;
   const locais = referencia.locais[hotelId] ?? [];
-  const ativos = referencia.ativos[hotelId] ?? [];
+  const doHotel = referencia.ativos[hotelId] ?? [];
+  const ativos = filtrarPorBusca(doHotel, busca);
   const nomeDoLocal = (id: string) => locais.find((l) => l.id === id)?.nome ?? id;
   const pendentes = props.pendentes.filter((p) => locais.some((l) => l.id === p.localId));
 
@@ -368,8 +371,19 @@ export function Ativos(props: {
           )}
           <section>
             <h2>{t('admin.ativos.cadastrados')}</h2>
+            <input
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              aria-label={t('comum.busca.rotulo')}
+              placeholder={t('comum.busca.rotulo')}
+            />
             {ativos.length === 0 ? (
-              <p>{t('admin.ativos.vazio')}</p>
+              <p>
+                {doHotel.length === 0
+                  ? t('admin.ativos.vazio')
+                  : t('comum.busca.sem_resultado', { termo: busca.trim() })}
+              </p>
             ) : (
               <ul>
                 {ativos.map((a) => (

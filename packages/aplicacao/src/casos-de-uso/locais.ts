@@ -19,6 +19,7 @@ import {
   origemDoLocal,
   podeGerirLocais,
 } from '@hubkeep/dominio';
+import { termoDeBusca } from '../busca';
 import type { LocalDoHotel, PortaLocais } from '../portas/locais';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 
@@ -28,7 +29,8 @@ export interface LocalListado extends LocalDoHotel {
 }
 
 export interface CasosDeUsoDeLocais {
-  listarLocais(ctx: Contexto, hotelId: string): Promise<LocalListado[]>;
+  /** Com `busca`, só os locais que têm o termo no nome, sem acento (B6). */
+  listarLocais(ctx: Contexto, hotelId: string, busca?: string | null): Promise<LocalListado[]>;
   criarAreaComum(
     ctx: Contexto,
     hotelId: string,
@@ -90,9 +92,13 @@ export function criarCasosDeUsoDeLocais(deps: {
   };
 
   return {
-    async listarLocais(ctx, hotelId) {
+    async listarLocais(ctx, hotelId, busca) {
+      const termo = termoDeBusca(busca);
       await hotelVisivel(ctx, hotelId);
-      return (await deps.locais.locais(ctx, hotelId)).map((l) => ({
+      const locais = await (termo === undefined
+        ? deps.locais.locais(ctx, hotelId)
+        : deps.locais.locais(ctx, hotelId, termo));
+      return locais.map((l) => ({
         ...l,
         origem: origemDoLocal(l),
         editavel: localEditavel(l),

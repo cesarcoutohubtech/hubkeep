@@ -12,6 +12,9 @@
 //   - cada gravação vai para a auditoria e o painel de implantação conta;
 //   - QR (B5): o cadastro gera o código; abrir pelo código respeita o escopo
 //     (outro hotel dá 404) e aceita o código digitado em minúsculas.
+//   - busca (B6): por trecho, sem acento e em nome, fabricante e série; % e _
+//     são texto; termo curto dá busca_curta; alterar regrava a busca, e
+//     renomear atualiza a coluna.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -89,11 +92,11 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
       [H1, H2, TENANT],
     );
     await dono.query(
-      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status, cod_externo) values
-       ($1, $5, $6, 'uh', 'UH 101', 'ativo', '101'),
-       ($2, $5, $6, 'uh', 'UH 102', 'ativo', '102'),
-       ($3, $5, $6, 'area_comum', 'Depósito antigo', 'inativo', null),
-       ($4, $5, $7, 'area_comum', 'Lobby H2', 'ativo', null)`,
+      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status, cod_externo) values
+       ($1, $5, $6, 'uh', 'UH 101', 'uh 101', 'ativo', '101'),
+       ($2, $5, $6, 'uh', 'UH 102', 'uh 102', 'ativo', '102'),
+       ($3, $5, $6, 'area_comum', 'Depósito antigo', 'deposito antigo', 'inativo', null),
+       ($4, $5, $7, 'area_comum', 'Lobby H2', 'lobby h2', 'ativo', null)`,
       [L.uh101, L.uh102, L.inativo, L.h2, TENANT, H1, H2],
     );
     await dono.query(
@@ -328,5 +331,54 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
     const ativos = await criarPortaImplantacao(banco).ativos(ctx(U.admin), H1);
     expect(ativos.filter((a) => a.ativo && a.categoriaId === null)).toHaveLength(1);
     expect(new Set(ativos.map((a) => a.localId))).toEqual(new Set([L.uh101, L.uh102]));
+  });
+
+  it('busca (B6): por trecho e sem acento, no escopo; a alteração regrava a busca', async () => {
+    const { id, versao } = await casos.cadastrar(
+      ctx(U.gerente),
+      pedido(L.uh102, {
+        nome: 'Refrigerador do Açúcar',
+        fabricante: 'Cônsul',
+        numeroSerie: 'SN_50%',
+        categoriaId: null,
+        campos: {},
+      }),
+    );
+    const achados = async (termo: string, quem = U.gerente) =>
+      (await casos.listarAtivos(ctx(quem), H1, termo)).map((a) => a.id);
+    expect(await achados('acucar')).toEqual([id]);
+    expect(await achados('FRIG')).toEqual([id]);
+    expect(await achados('consul')).toEqual([id]);
+    expect(await achados('_50%')).toEqual([id]);
+    // % e _ digitados são texto: "sn%50" não casa "sn_50%".
+    expect(await achados('sn%50')).toEqual([]);
+    // O dono da UH 101 não vê o ativo da UH 102, mesmo achando o termo.
+    expect(await achados('acucar', U.dono)).toEqual([]);
+    await expect(casos.listarAtivos(ctx(U.gerente), H1, 'aç')).rejects.toMatchObject({
+      codigo: 'busca_curta',
+      parametros: { minimo: 3 },
+    });
+    expect((await casos.listarAtivos(ctx(U.gerente), H1, '  ')).length).toBeGreaterThan(1);
+    await casos.alterar(ctx(U.gerente), id, {
+      ...pedido(L.uh102, { nome: 'Geladeira', categoriaId: null, campos: {} }),
+      versao,
+    });
+    expect(await achados('frig')).toEqual([]);
+    expect(await achados('gela')).toEqual([id]);
+  });
+
+  it('busca (B6): renomear um ativo atualiza a coluna, com os demais campos', async () => {
+    const { id, versao } = await casos.cadastrar(
+      ctx(U.gerente),
+      pedido(L.uh102, { nome: 'Bomba de Calor', categoriaId: null, campos: {} }),
+    );
+    const busca = async () =>
+      (await dono.query('select busca from app.ativo where id = $1', [id])).rows[0]?.busca;
+    expect(await busca()).toBe('bomba de calor fabricante x m-9 sn-001');
+    await casos.alterar(ctx(U.gerente), id, {
+      ...pedido(L.uh102, { nome: 'Aquecedor Elétrico', categoriaId: null, campos: {} }),
+      versao,
+    });
+    expect(await busca()).toBe('aquecedor eletrico fabricante x m-9 sn-001');
   });
 });

@@ -299,6 +299,13 @@ export function criarPortaProprietarios(banco: AcessoBanco): PortaProprietarios 
   };
 }
 
+/**
+ * Padrão do ILIKE para achar o termo em qualquer parte da coluna `busca`
+ * (B6, ADR-030), com o índice de trigramas. `%`, `_` e a barra digitados
+ * valem como texto, não como curinga.
+ */
+export const trecho = (termo: string) => `%${termo.replace(/[\\%_]/g, '\\$&')}%`;
+
 /** Painel de implantação do hotel (fase 1a, A5), pelo hk_app: hotel e locais pela RLS. */
 export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
   return {
@@ -532,13 +539,14 @@ export function criarPortaLocais(banco: AcessoBanco): PortaLocais {
           .executeTakeFirst();
         return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
       }),
-    locais: (ctx, hotelId) =>
+    locais: (ctx, hotelId, termo) =>
       banco.withContext(ctx, async (tx) =>
         (
           await tx
             .selectFrom('app.local')
             .select(colunas)
             .where('hotel_id', '=', hotelId)
+            .$if(termo !== undefined, (q) => q.where('busca', 'ilike', trecho(termo ?? '')))
             .orderBy('tipo') // enum app.local_tipo: 'uh' antes de 'area_comum' (ordem da declaração)
             .orderBy('nome')
             .execute()
@@ -658,13 +666,14 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
       banco.withContext(ctx, async (tx) =>
         tx.selectFrom('app.categoria_ativo').select(['id', 'ativa', 'campos']).execute(),
       ),
-    ativos: (ctx, hotelId) =>
+    ativos: (ctx, hotelId, termo) =>
       banco.withContext(ctx, async (tx) =>
         (
           await tx
             .selectFrom('app.ativo')
             .select(colunas)
             .where('hotel_id', '=', hotelId)
+            .$if(termo !== undefined, (q) => q.where('busca', 'ilike', trecho(termo ?? '')))
             .orderBy('nome')
             .orderBy('id')
             .execute()

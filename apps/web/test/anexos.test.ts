@@ -118,7 +118,7 @@ describe.skipIf(!temAmbiente)('F0-10 — anexos por URL assinada', { timeout: 60
       );
     }
     await dono.query(
-      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values ($1, $2, $3, 'uh', '101', 'ativo')`,
+      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values ($1, $2, $3, 'uh', '101', '101', 'ativo')`,
       [T.local, T.tenant, T.h1],
     );
     await semearUsuario(U.admin, email.admin);

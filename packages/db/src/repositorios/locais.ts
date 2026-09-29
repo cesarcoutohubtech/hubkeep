@@ -6,6 +6,7 @@ import { NaoEncontrado } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { colunasPesquisaveisDoLocal } from './busca';
 
 export async function criarAreaComum(
   uow: UnidadeDeTrabalho,
@@ -21,7 +22,8 @@ export async function criarAreaComum(
       hotel_id: hotelId,
       tipo: 'area_comum',
       status: 'ativo',
-      ...dados,
+      ...colunasPesquisaveisDoLocal(dados.nome),
+      andar: dados.andar,
     })
     .execute();
   uow.auditar({
@@ -53,7 +55,12 @@ export async function alterarLocal(
     .executeTakeFirst();
   const r = await tx
     .updateTable('app.local')
-    .set({ ...mudanca, atualizado_em: sql`now()` })
+    .set({
+      ...('nome' in mudanca
+        ? { ...colunasPesquisaveisDoLocal(mudanca.nome), andar: mudanca.andar }
+        : { status: mudanca.status }),
+      atualizado_em: sql`now()`,
+    })
     .where('id', '=', localId)
     .returning(['hotel_id'])
     .executeTakeFirst();

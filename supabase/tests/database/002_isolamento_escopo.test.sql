@@ -52,11 +52,11 @@ insert into app.hotel (id, tenant_id, bandeira_id, nome, fuso, status) values
   ('11100000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', null,                                   'Hotel A2', 'America/Sao_Paulo', 'em_implantacao'),
   ('21100000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', null,                                   'Hotel B1', 'America/Sao_Paulo', 'ativo');
 
-insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
-  ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH A1-101', 'ativo'),
-  ('11110000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH A1-102', 'ativo'),
-  ('11110000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'uh', 'UH A2-201', 'pendente_licenca'),
-  ('21110000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '21100000-0000-0000-0000-000000000001', 'uh', 'UH B1-101', 'ativo');
+insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
+  ('11110000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH A1-101', 'uh a1-101', 'ativo'),
+  ('11110000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'uh', 'UH A1-102', 'uh a1-102', 'ativo'),
+  ('11110000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002', 'uh', 'UH A2-201', 'uh a2-201', 'pendente_licenca'),
+  ('21110000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '21100000-0000-0000-0000-000000000001', 'uh', 'UH B1-101', 'uh b1-101', 'ativo');
 
 insert into app.proprietario (id, tenant_id, nome) values
   ('11200000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', 'Proprietário P');
@@ -91,9 +91,9 @@ insert into licenca.contrato (tenant_id, max_hoteis, max_uhs, atualizado_por) va
 -- Integridade: referência cruzada entre tenants é impossível por FK
 -- ---------------------------------------------------------------------------
 select throws_ok(
-  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values
+  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values
      ('11110000-0000-0000-0000-0000000000ff', '10000000-0000-0000-0000-000000000000',
-      '21100000-0000-0000-0000-000000000001', 'uh', 'invasora', 'ativo') $$,
+      '21100000-0000-0000-0000-000000000001', 'uh', 'invasora', 'invasora', 'ativo') $$,
   '23503', null,
   'local do tenant A não pode apontar para hotel do tenant B (FK composta)'
 );
@@ -215,9 +215,9 @@ select throws_ok(
 -- Gerente A1 tentando criar local no hotel A2
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000002', true)) ctx;
 select throws_ok(
-  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, status)
+  $$ insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status)
      values ('11110000-0000-0000-0000-0000000000aa', '10000000-0000-0000-0000-000000000000',
-             '11100000-0000-0000-0000-000000000002', 'uh', 'fora do escopo', 'ativo') $$,
+             '11100000-0000-0000-0000-000000000002', 'uh', 'fora do escopo', 'fora do escopo', 'ativo') $$,
   '42501', null, 'gerente A1 não cria local no hotel A2'
 );
 

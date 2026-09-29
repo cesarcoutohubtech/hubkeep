@@ -68,11 +68,11 @@ describe.skipIf(!temBanco)('B3c — mover ativo dentro do hotel', { timeout: 60_
       [H1, H2, TENANT],
     );
     await dono.query(
-      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status, cod_externo) values
-       ($1, $5, $6, 'uh', 'UH 101', 'ativo', '101'),
-       ($2, $5, $6, 'uh', 'UH 102', 'ativo', '102'),
-       ($3, $5, $6, 'area_comum', 'Depósito antigo', 'inativo', null),
-       ($4, $5, $7, 'area_comum', 'Lobby H2', 'ativo', null)`,
+      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status, cod_externo) values
+       ($1, $5, $6, 'uh', 'UH 101', 'uh 101', 'ativo', '101'),
+       ($2, $5, $6, 'uh', 'UH 102', 'uh 102', 'ativo', '102'),
+       ($3, $5, $6, 'area_comum', 'Depósito antigo', 'deposito antigo', 'inativo', null),
+       ($4, $5, $7, 'area_comum', 'Lobby H2', 'lobby h2', 'ativo', null)`,
       [L.uh101, L.uh102, L.inativo, L.h2, TENANT, H1, H2],
     );
     for (const [nome, id] of Object.entries(U)) {

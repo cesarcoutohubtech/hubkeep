@@ -94,15 +94,16 @@ describe.skipIf(!temBanco)('B4 — anexos de local e ativo', { timeout: 60_000 }
       [H1, H2, TENANT],
     );
     await dono.query(
-      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status, cod_externo) values
-       ($1, $4, $5, 'uh', 'UH 101', 'ativo', '101'),
-       ($2, $4, $5, 'uh', 'UH 102', 'ativo', '102'),
-       ($3, $4, $6, 'area_comum', 'Lobby H2', 'ativo', null)`,
+      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status, cod_externo) values
+       ($1, $4, $5, 'uh', 'UH 101', 'uh 101', 'ativo', '101'),
+       ($2, $4, $5, 'uh', 'UH 102', 'uh 102', 'ativo', '102'),
+       ($3, $4, $6, 'area_comum', 'Lobby H2', 'lobby h2', 'ativo', null)`,
       [L.uh101, L.uh102, L.h2, TENANT, H1, H2],
     );
     await dono.query(
-      `insert into app.ativo (id, tenant_id, hotel_id, local_id, nome, codigo_qr) values
-       ($1, $3, $4, $5, 'Frigobar 101', 'A000000001'), ($2, $3, $6, $7, 'Elevador H2', 'A000000002')`,
+      `insert into app.ativo (id, tenant_id, hotel_id, local_id, nome, busca, codigo_qr) values
+       ($1, $3, $4, $5, 'Frigobar 101', 'frigobar 101', 'A000000001'),
+       ($2, $3, $6, $7, 'Elevador H2', 'elevador h2', 'A000000002')`,
       [ATIVO, ATIVO_H2, TENANT, H1, L.uh101, H2, L.h2],
     );
     for (const [nome, id] of Object.entries(U)) {

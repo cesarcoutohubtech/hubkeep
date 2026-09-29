@@ -9,13 +9,11 @@ import { NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoCodigoQr, novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { colunasPesquisaveisDoAtivo } from './busca';
 
 const colunasDeDados = (d: DadosDeAtivo) => ({
   categoria_id: d.categoriaId,
-  nome: d.nome,
-  fabricante: d.fabricante,
-  modelo: d.modelo,
-  numero_serie: d.numeroSerie,
+  ...colunasPesquisaveisDoAtivo(d),
   campos: JSON.stringify(d.campos),
 });
 

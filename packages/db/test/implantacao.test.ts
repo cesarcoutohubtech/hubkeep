@@ -72,7 +72,7 @@ describe.skipIf(!temBanco)('A5 — Implantador e painel de implantação', { tim
       ['area_comum', 'ativo', 'Piscina'],
     ]) {
       await dono.query(
-        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, status) values ($1, $2, $3, $4, $5, $6)`,
+        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status) values ($1, $2, $3, $4, $5, lower($5), $6)`,
         [randomUUID(), TENANT, H1, tipo, nome, status],
       );
     }
