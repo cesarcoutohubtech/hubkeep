@@ -76,7 +76,7 @@ select has_schema_privilege('anon', 'app', 'usage')          as anon_app,
 
 ## `config push` e a Data API
 
-A CLI (2.118) lê `api.enabled = true` no HubKeep-dev mesmo com a Data API desligada no painel e `db_schema` vazio. Por isso, **todo `config push` vai listar `api.enabled` como mudança** (de `true` para `false`), e o `config diff` o mostra como diferença. A mudança pode ser confirmada: o push não liga nada, e o valor declarado é `false`.
+A CLI (2.118) lê `api.enabled = true` no HubKeep-dev mesmo com a Data API desligada no painel e `db_schema` vazio. Por isso, **o `config push` pode listar `api.enabled` como mudança** (de `true` para `false`), e o `config diff` o mostra como diferença. A mudança pode ser confirmada: o push não liga nada, e o valor declarado é `false`. No push de 29/09/2026 (senha mínima de 8, CLI 2.116), a API apareceu como "up to date" e só a senha mudou.
 
 A prova de que a Data API está desligada é o comportamento, não a leitura da CLI:
 
@@ -85,6 +85,14 @@ pnpm ops:config-remota --ambiente dev --sonda-data-api
 ```
 
 O esperado: raiz `/rest/v1/` com 401 ("Secret API key required", vale em qualquer caso) e as tabelas, no schema padrão e em `app`, com **503 `PGRST002`**. Uma tabela respondendo 200 ou 404 de PostgREST quer dizer que a Data API está ligada: pare e confira o painel.
+
+## TLS com o banco: certificado conferido
+
+Toda conexão do HubKeep com o banco confere o certificado do pooler contra a CA raiz do Supabase e pelo nome do host (ADR-032, condição 1): a aplicação, os scripts `scripts/ops`, o `db:fumaca`, o psql do `db:testar-dev` (`verify-full`) e o `db:types`. A CA fica no git, porque é pública e igual para todo projeto do Supabase: `packages/db/src/ca-supabase.ts`, com cópia em `packages/db/certificados/supabase-root-2021-ca.crt`.
+
+- **Não ponha `sslmode` nem `ssl` nas strings de conexão** (`DATABASE_URL_*`, `DEV_SESSION_POOLER`). A aplicação recusa, porque esses parâmetros valeriam por cima da conferência do certificado.
+- **Erro `SELF_SIGNED_CERT_IN_CHAIN` ou `ERR_TLS_CERT_ALTNAME_INVALID`:** o certificado apresentado não é o do Supabase, ou o host não é `*.pooler.supabase.com`. Não contorne: confira a rede e a string.
+- **Troca da CA:** se o Supabase trocar a raiz (a atual vence em 26/04/2031), baixe a nova pelo painel (**Project Settings → Database → SSL Configuration → Download certificate**), confira a impressão digital contra a cadeia do pooler e troque as duas cópias e a impressão no mesmo PR.
 
 ## Não faça no dev
 

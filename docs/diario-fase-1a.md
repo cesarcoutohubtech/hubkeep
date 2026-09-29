@@ -568,3 +568,44 @@ Uma entrada por tarefa do `docs/05-plano-fase-1a.md`: o que entregou, como o ace
   - Primeiro passo: ler a C3 no `docs/05`, `TRANSICOES_DA_OS` em `corretiva.ts`, a migração 0021 e a A6 (equipes).
   - Decisões da C1 em vigor: o Admin do grupo é um grupo à parte; OS cancelada devolve o chamado à triagem, com mais de uma OS por chamado e só uma em andamento.
   - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### S1 mergeada e ADR-032 aprovado (29/09/2026)
+- **#59 mergeado** (`main` em `c06bfd0`). O Cesar fez o `config push`. Só a senha mínima mudou, de 6 para 8, e a leitura pela Management API confirma `password_min_length: 8`. A API apareceu como "up to date", sem o falso `api.enabled` que o docs/06 previa.
+- **ADR-032 aprovado pelo Cesar, com condições:**
+  1. Certificado do banco conferido agora, no dev.
+  2. Limite de tamanho do pedido em todas as rotas.
+  3. Actions por SHA com a versão em comentário.
+  4. Tarefas antes do piloto: MFA obrigatório para Admin do grupo, Gestor CSC e Implantador; CSP de script no PWA; rate limiting junto com o Vercel Pro.
+  5. Pentest antes do rollout.
+- As condições 1 a 3 vão num PR próprio (S2), antes da C3. A 4 e a 5 entraram no `docs/05` (SP1 a SP4).
+
+### S2 — Condições 1 a 3 do ADR-032
+- **Certificado do banco:**
+  - Antes de mexer, conferi com o openssl: o pooler do dev (portas 5432 e 6543) apresenta a cadeia `*.pooler.supabase.com` → Supabase Intermediate 2021 CA → Supabase Root 2021 CA, e a verificação com CA e nome do host passa. Com outro nome, falha.
+  - O Cesar baixou a CA do painel para `C:\Cesar\HubKeep\Dev\certificados\prod-ca-2021.crt`, fora do git. A impressão digital bate com a raiz que o pooler apresenta (`80:70:25:AD:…:CA:FA`).
+  - O conteúdo da CA entrou no git, por ser público: `packages/db/src/ca-supabase.ts` e a cópia em `packages/db/certificados/`.
+  - `criarPool` usa `rejectUnauthorized: true` com a CA e recusa URL com `sslmode`/`ssl`. O pg aplicaria esses parâmetros por cima da opção, e `sslmode=no-verify` desligaria tudo sem erro.
+  - Aperto de mão TLS pelo Node, sem login: autoriza com a CA; sem ela dá `SELF_SIGNED_CERT_IN_CHAIN`; com nome errado, `ERR_TLS_CERT_ALTNAME_INVALID`.
+  - **Achado:** o `db:types` conectava ao dev **sem TLS**. O kysely-codegen tenta TLS sem conferir e, se falhar, cai para conexão aberta, e o dev aceita ("Enforce SSL" desligado, lido pela Management API). Agora ele passa por `scripts/ops/gerar-tipos.mjs`, com `verify-full` e a CA. Ligar o "Enforce SSL" no dev fica como sugestão ao Cesar.
+  - Também conferem o certificado: os scripts de operação (`ambiente.ts`), o `db:fumaca` e o psql do `db:testar-dev` (`verify-full`).
+  - Conferido no dev: o `db:types` conecta e gera o `tipos-banco.ts` idêntico; o `db:testar-dev` pelo psql com `verify-full` dá 513 ok em 17 arquivos.
+  - Os dois `nosemgrep` saíram.
+- **Limite do corpo:**
+  - A `rota()` aplica `LIMITE_BYTES_PADRAO` (256 KiB) a toda rota que não declara outro.
+  - A leitura é em fluxo e cancela o envio ao passar do limite, em vez de ler tudo para depois medir.
+  - O `proxy.ts` recusa com 413 o `content-length` acima de `LIMITE_BYTES_MAXIMO` (o do lote, 4 MiB), inclusive fora da `rota()`.
+  - `tests/corpo-limitado.test.ts` reprova rota que leia o `Request` direto.
+- **Actions:** os pins por SHA vieram da S1. Agora `tests/actions-fixadas.test.ts` reprova `uses:` sem SHA ou sem `# vX.Y.Z` e imagem sem digest.
+- **Docs:**
+  - ADR-032 aprovado com as condições (`docs/03`);
+  - SP1 a SP4 no `docs/05`;
+  - S2, P6 resolvida e P1/P3/P4/P5 decididas no `docs/09`;
+  - seção de TLS no `docs/06`.
+
+### Ponto de retomada (29/09/2026, S2 aberta, C3 a seguir)
+- **`main`:** `c06bfd0` (#59). **Dev:** 21 migrações, até a 0021; senha mínima de 8 aplicada. 513 ok em 17 arquivos, pelo psql com `verify-full`.
+- **PR aberto:** S2, branch `1a-s2` (worktree `wt/b6-busca`), zona protegida (`docs/03`), sem migração. Depois do merge, nada muda no banco nem na configuração do dev.
+- **Próxima tarefa:** C3 (triagem e atribuição, `app.os`), a partir da `main`. A C3 pode andar no local enquanto a S2 espera o merge; o PR dela só abre depois do merge da S2.
+  - Primeiro passo: ler a C3 no `docs/05`, `TRANSICOES_DA_OS` em `corretiva.ts`, a migração 0021 e a A6 (equipes).
+  - Decisões da C1 em vigor: o Admin do grupo é um grupo à parte; OS cancelada devolve o chamado à triagem, com mais de uma OS por chamado e só uma em andamento.
+  - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

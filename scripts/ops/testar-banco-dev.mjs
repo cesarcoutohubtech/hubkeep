@@ -18,6 +18,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { conferirAlvo, lerArgs, lerRefDoDev } from './ambiente.ts';
 
 // Só o dev, conferido pelo ref de [remotes.dev] antes de chamar o psql: os
@@ -68,7 +69,12 @@ function ambienteDeConexao() {
     PGUSER: decodeURIComponent(url.username),
     PGPASSWORD: decodeURIComponent(url.password),
     PGDATABASE: decodeURIComponent(url.pathname.replace(/^\//, '')) || 'postgres',
-    PGSSLMODE: 'require',
+    // Certificado conferido contra a CA do Supabase e pelo nome do host
+    // (ADR-032, condição 1); 'require' aceitaria qualquer certificado.
+    PGSSLMODE: 'verify-full',
+    PGSSLROOTCERT: fileURLToPath(
+      new URL('../../packages/db/certificados/supabase-root-2021-ca.crt', import.meta.url),
+    ),
     PGAPPNAME: 'hubkeep-testar-banco-dev',
     DEV_SESSION_POOLER: '',
   };

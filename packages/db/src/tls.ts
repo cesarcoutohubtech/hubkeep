@@ -6,6 +6,11 @@
 // Vercel ou copiado para uma máquina com a URL do dev mandaria senha e dados em
 // claro pela internet, e tudo "funcionaria" sem erro nenhum. Por isso a flag só
 // vale com host local; com host remoto, a inicialização falha.
+//
+// Com TLS, o certificado do servidor é conferido contra a CA do Supabase e pelo
+// nome do host (ADR-032, condição 1): sem isso, quem estivesse no meio da
+// conexão entregaria um certificado qualquer e leria a senha do papel.
+import { CA_DO_SUPABASE } from './ca-supabase';
 
 const HOSTS_LOCAIS = new Set(['localhost', '127.0.0.1', '::1']);
 
@@ -35,4 +40,47 @@ export function tlsDaConexao(url: string, semTls: boolean): boolean {
     );
   }
   return false;
+}
+
+/**
+ * Parâmetros da string de conexão com que o pg decide o TLS por cima da config
+ * (pg-connection-string): `?sslmode=no-verify` ou `?ssl=true` desligariam a
+ * conferência do certificado sem erro nenhum.
+ */
+const PARAMETROS_DE_TLS = [
+  'ssl',
+  'sslmode',
+  'sslrootcert',
+  'sslcert',
+  'sslkey',
+  'sslnegotiation',
+  'uselibpqcompat',
+];
+
+export interface TlsVerificado {
+  ca: string;
+  rejectUnauthorized: true;
+}
+
+/**
+ * Opção `ssl` do pg para conexão com TLS: certificado conferido contra a CA do
+ * Supabase e pelo nome do host (o pg passa o host como servername). Recusa a
+ * string de conexão que traz parâmetro de TLS, porque ele valeria no lugar
+ * desta opção. O erro não inclui a string, que tem a senha.
+ */
+export function tlsVerificado(url: string): TlsVerificado {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    throw new Error('A string de conexão com o banco não é uma URL postgresql:// válida.');
+  }
+  const achados = PARAMETROS_DE_TLS.filter((p) => u.searchParams.has(p));
+  if (achados.length > 0) {
+    throw new Error(
+      `A string de conexão com o banco traz ${achados.join(', ')}. Remova: o TLS é definido ` +
+        'pelo HubKeep (certificado conferido contra a CA do Supabase), não pela URL.',
+    );
+  }
+  return { ca: CA_DO_SUPABASE, rejectUnauthorized: true };
 }

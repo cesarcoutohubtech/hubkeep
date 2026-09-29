@@ -568,7 +568,20 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-032 — Segurança da borda do web: sessão HttpOnly, CSP com nonce, origem conferida e varredura na CI
 
-**Status:** proposta em 29/09/2026 (S1). Aguarda aprovação do Cesar.
+**Status:** aprovada por Cesar em 29/09/2026, depois do merge do #59, com as condições abaixo. As condições 1 a 3 entraram no PR seguinte (S2), antes da C3; a 4 e a 5 estão no plano (`docs/05`).
+1. **Certificado do banco conferido agora, no dev, sem esperar a F0-12.** A conexão confere o certificado do pooler contra a CA raiz do Supabase e pelo nome do host.
+   - Âncora: `packages/db/src/ca-supabase.ts`, com a impressão digital fixada, e cópia em `packages/db/certificados/` para o psql e o kysely-codegen.
+   - A string de conexão não pode trazer parâmetro de TLS (`sslmode`, `ssl` e afins), que valeria por cima da opção do HubKeep.
+   - Os dois `nosemgrep` saíram.
+2. **Limite de tamanho do pedido em todas as rotas**, não só na ingestão.
+   - A `rota()` aplica `LIMITE_BYTES_PADRAO` (256 KiB) a toda rota que não declara outro, e a leitura para ao passar do limite.
+   - O `proxy.ts` recusa com 413 o `content-length` acima de `LIMITE_BYTES_MAXIMO`, que é o do lote.
+3. **Actions da CI fixadas pelo SHA do commit, com a versão em comentário**, atualizadas pelo Dependabot. Um teste (`tests/actions-fixadas.test.ts`) reprova `uses:` sem SHA e imagem sem digest.
+4. **Tarefas antes do piloto:**
+   - MFA obrigatório para Admin do grupo, Gestor CSC e Implantador;
+   - CSP de script no PWA;
+   - decisão de rate limiting junto com a contratação do Vercel Pro.
+5. **Pentest antes do rollout**, como já decidido (P3 do `docs/09`).
 
 **Contexto:** o modelo de ameaças da S1 (`docs/09`) apontou quatro lacunas baratas de fechar.
 - A sessão do web ficava em cookie legível pelo JavaScript: o `createBrowserClient` do `@supabase/ssr` grava sem HttpOnly.
@@ -610,5 +623,5 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Nenhuma tela lê a sessão. O que precisar do usuário pergunta à API (`GET /api/v1/sessao`).
 - Script de terceiro (analytics, chat) exige mudar a CSP, o que passa por este ADR.
 - A regra excluída do Semgrep (`unsafe-add-mask-workflow-command`) fica justificada no workflow.
-- Os dois `nosemgrep` de TLS sem conferir o certificado apontam para a pendência P6 do `docs/09`.
+- Os dois `nosemgrep` de TLS sem conferir o certificado, que apontavam para a pendência P6 do `docs/09`, saíram com a condição 1.
 - Fora deste ADR, listadas no `docs/09`: rate limiting (P1), endurecimento do banco de produção (P2), pentest (P3), MFA e limites de sessão (P4), sessão do PWA (P5) e as demais.

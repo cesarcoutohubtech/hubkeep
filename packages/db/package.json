@@ -10,7 +10,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run --passWithNoTests",
-    "db:types": "kysely-codegen --dialect postgres --url \"env(DEV_SESSION_POOLER)\" --include-pattern \"{app,staging,licenca}.*\" --out-file src/tipos-banco.ts"
+    "db:types": "node ../../scripts/ops/gerar-tipos.mjs"
   },
   "dependencies": {
     "@hubkeep/aplicacao": "workspace:*",

@@ -1,4 +1,6 @@
-// Cabeçalhos de segurança, CSRF por origem e cookie de sessão (S1, ADR-032).
+// Cabeçalhos de segurança, CSRF por origem, teto do corpo e cookie de sessão
+// (S1, ADR-032).
+import { LIMITE_BYTES_MAXIMO } from '@hubkeep/contratos';
 import { NextRequest } from 'next/server';
 import { describe, expect, it } from 'vitest';
 import config from '../next.config';
@@ -6,6 +8,7 @@ import { proxy } from '../src/proxy';
 import {
   POLITICA_DA_API,
   cabecalhosFixos,
+  corpoAcimaDoTeto,
   novoNonce,
   origemAceita,
   politicaDeConteudo,
@@ -132,6 +135,24 @@ describe('proxy', () => {
     );
     expect(r.status).toBe(403);
     expect(((await r.json()) as { erro: { codigo: string } }).erro.codigo).toBe('origem_recusada');
+  });
+
+  it('recusa com 413 o corpo declarado acima do teto, antes de qualquer handler', async () => {
+    const r = await proxy(
+      new NextRequest(`${SITE}/api/v1/ingestao/lotes`, {
+        method: 'POST',
+        headers: { authorization: 'Bearer x', 'content-length': String(LIMITE_BYTES_MAXIMO + 1) },
+      }),
+    );
+    expect(r.status).toBe(413);
+    expect(((await r.json()) as { erro: { codigo: string } }).erro.codigo).toBe('corpo_grande');
+    expect(
+      corpoAcimaDoTeto(
+        new Headers({ 'content-length': String(LIMITE_BYTES_MAXIMO) }),
+        LIMITE_BYTES_MAXIMO,
+      ),
+    ).toBe(false);
+    expect(corpoAcimaDoTeto(new Headers(), LIMITE_BYTES_MAXIMO)).toBe(false);
   });
 
   it('página ganha CSP com nonce; API, a política fechada', async () => {

@@ -4,6 +4,7 @@
 import { Kysely, PostgresDialect, type Transaction, sql } from 'kysely';
 import pg from 'pg';
 import type { DB } from './tipos-banco';
+import { tlsVerificado } from './tls';
 
 export type Tx = Transaction<DB>;
 
@@ -19,8 +20,9 @@ export interface ConfigConexao {
   /** Tamanho máximo do pool deste processo. */
   max?: number;
   /**
-   * TLS: o pooler do Supabase exige; a CI conecta sem TLS ao Postgres do runner.
-   * Quem monta a config decide com tlsDaConexao (./tls), que só aceita sem TLS com host local.
+   * TLS, com o certificado conferido contra a CA do Supabase; a CI conecta sem
+   * TLS ao Postgres do runner. Quem monta a config decide com tlsDaConexao
+   * (./tls), que só aceita sem TLS com host local.
    */
   ssl?: boolean;
 }
@@ -43,10 +45,8 @@ export function criarPool(cfg: ConfigConexao): pg.Pool {
     // Na Vercel cada instância de função tem o próprio pool; conexão ociosa por
     // muito tempo só ocupa vaga do connection limit do papel (migração 0002).
     idleTimeoutMillis: 10_000,
-    // TLS sem conferir o certificado: a CA do Supabase não está na cadeia do
-    // Node. Pendência P6 do docs/09 (fixar a CA antes do rollout).
-    // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
-    ...(cfg.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
+    // Certificado conferido contra a CA do Supabase e pelo nome do host (./tls).
+    ...(cfg.ssl ? { ssl: tlsVerificado(cfg.url) } : {}),
   });
 }
 

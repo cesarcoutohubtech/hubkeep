@@ -12,7 +12,9 @@
 // A suíte grava uma fixture fictícia e a apaga no fim.
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
+  ARQUIVO_DA_CA,
   type Ambiente,
   conexaoDono,
   conexaoPapel,
@@ -34,8 +36,10 @@ function url(c: ReturnType<typeof conexaoDono>): string {
   u.username = encodeURIComponent(String(c.user));
   u.password = encodeURIComponent(String(c.password));
   u.pathname = `/${String(c.database)}`;
-  // TLS sem verificação de CA, como nos demais scripts (fixar a CA: F0-12).
-  u.searchParams.set('sslmode', 'no-verify');
+  // Certificado conferido contra a CA do Supabase e pelo nome do host (ADR-032).
+  // Os testes montam o pool sem a opção ssl, então vale o que a URL diz.
+  u.searchParams.set('sslmode', 'verify-full');
+  u.searchParams.set('sslrootcert', fileURLToPath(ARQUIVO_DA_CA));
   return u.toString();
 }
 

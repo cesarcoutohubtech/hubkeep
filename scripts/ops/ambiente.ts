@@ -152,11 +152,16 @@ function lerUrl(amb: Ambiente): URL {
   return new URL(bruta);
 }
 
+/** CA do Supabase, a mesma do packages/db (ca-supabase.ts, conferida por teste). */
+export const ARQUIVO_DA_CA = new URL(
+  '../../packages/db/certificados/supabase-root-2021-ca.crt',
+  import.meta.url,
+);
+
 const ssl = (amb: Ambiente): ClientConfig['ssl'] =>
-  // O Supabase exige TLS no pooler. A CA do Supabase não está na cadeia do
-  // Node; fixar essa CA é tarefa da F0-12 (ambientes), pendência P6 do docs/09.
-  // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
-  amb === 'ci' ? false : { rejectUnauthorized: false };
+  // TLS com o certificado conferido contra a CA do Supabase e pelo nome do host
+  // (o pg passa o host como servername), ADR-032, condição 1.
+  amb === 'ci' ? false : { ca: readFileSync(ARQUIVO_DA_CA, 'utf8'), rejectUnauthorized: true };
 
 /**
  * Conexão do dono, usada para ALTER ROLE e para as fixtures da verificação.

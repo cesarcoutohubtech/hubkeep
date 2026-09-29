@@ -116,7 +116,7 @@ describe('.env.example cobre as variáveis lidas no repositório', () => {
     ['auxiliar do web', 'DATABASE_URL_APP', 'apps/web/src/servidor/composicao.ts'],
     ['leitura com ponto', 'HK_BANCO_SEM_TLS', 'apps/web/src/servidor/composicao.ts'],
     ['leitura com colchetes', 'HK_MAILPIT_URL', 'apps/web/test/autenticacao.test.ts'],
-    ['env(...) do kysely-codegen', 'DEV_SESSION_POOLER', 'packages/db/package.json'],
+    ['env(...) do kysely-codegen', 'DEV_SESSION_POOLER', 'scripts/ops/gerar-tipos.mjs'],
     ['chave de env: no workflow', 'CI_DATABASE_URL_OWNER', '.github/workflows/banco.yml'],
     ['export no workflow', 'HK_APP_SENHA_CI', '.github/workflows/banco.yml'],
     ['echo para o GITHUB_ENV', 'HK_TESTE_URL_WORKER', '.github/workflows/banco.yml'],
