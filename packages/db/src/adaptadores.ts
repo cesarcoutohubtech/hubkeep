@@ -1183,6 +1183,7 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
   const guardada = (ctx: Parameters<AcessoBanco['withContext']>[0], chave: string) =>
     banco.withContext(ctx, (tx) => respostaDaOperacao(tx, chave));
   return {
+    respostaGuardada: guardada,
     async aplicarUmaVez(ctx, operacao, efeito) {
       const antes = await guardada(ctx, operacao.chave);
       if (antes) return { repetida: true, resposta: antes };

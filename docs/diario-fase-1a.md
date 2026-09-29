@@ -730,3 +730,13 @@ Dividida em duas partes, cada uma no seu PR:
 - **PR aberto:** #67, branch `1a-c4-correcao` (worktree `wt/c4-correcao`), zona protegida, com a migração 0024. Merge só com o pgTAP, o `segurança` (depois do OK do Cesar à exceção do gitleaks), a verificação dos tipos e a integração do `packages/db` verdes. A "zona protegida" falha por desenho.
 - **Depois do merge:** o Cesar faz o `db push` da 0024. Em seguida, conferir no dev só por leitura: `db:testar-dev` (19 arquivos, sem falha) e `db:types` idêntico.
 - **Próxima tarefa:** C4b (PWA), no local, num worktree novo a partir da `main` depois do merge do #67. O plano está no ponto de retomada "C4a aberta".
+
+### #67 mergeado; reenvio de operação já aplicada (29/09/2026)
+- **#67** (`b78a025`): pgTAP, verificação dos tipos e gitleaks verdes. A integração do `packages/db`, que rodou pela primeira vez com a C4a, falhou em um teste: "um dia offline".
+- **Dev**, conferido só por leitura depois do push da 0024: 596 ok em 19 arquivos, sem falha; `db:types` idêntico, com 30 tabelas.
+- **Defeito da C4a:** o reenvio de uma operação já aplicada passava pela validação antes de se conferir a chave. Com a OS já concluída, o reenvio das horas voltava como `transicao_invalida` em vez de "repetida". O `ativo.alterar` tinha o mesmo defeito latente (reenvio depois de outra alteração).
+- **Correção** (branch `1a-c4-reenvio`, sem zona protegida):
+  - a porta ganha `respostaGuardada`;
+  - o `receberOperacao` devolve a resposta guardada antes de validar, para todos os tipos;
+  - o `aplicarUmaVez` segue conferindo a chave na transação, para os envios simultâneos;
+  - teste de unidade novo para o reenvio depois de o estado mudar. A integração roda na CI.

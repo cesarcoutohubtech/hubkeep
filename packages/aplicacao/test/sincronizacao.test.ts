@@ -1,7 +1,7 @@
 // Operações offline (F0-11, ADR-025) com a porta em memória: validação antes
 // de aplicar e aplicação uma vez só por chave; ativos (B3) sem duplicar no
 // reenvio e com o conflito de versão recusado sem guardar a chave.
-import { type Contexto, RegraViolada, conflitoDeVersao } from '@hubkeep/dominio';
+import { Conflito, type Contexto, RegraViolada, conflitoDeVersao } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import {
   type DadosDeAtivo,
@@ -18,7 +18,9 @@ function montar() {
   const guardadas = new Map<string, RespostaDeOperacao>();
   const gravadas: PreferenciasGravadas[] = [];
   const ativos = new Map<string, { versao: number; dados: DadosDeAtivo }>();
+  const os = { concluida: false };
   const operacoes: PortaOperacoesOffline = {
+    respostaGuardada: async (_c, chave) => guardadas.get(chave) ?? null,
     async aplicarUmaVez(_c, op, efeito) {
       const antes = guardadas.get(op.chave);
       if (antes) return { repetida: true, resposta: antes };
@@ -68,8 +70,21 @@ function montar() {
         dados: semCampos(p),
       }),
     },
+    execucao: {
+      prepararAcao: async () => {
+        throw new Error('fora deste teste');
+      },
+      // Como o de verdade: com a OS concluída, o registro é recusado.
+      prepararApontamento: async (_c, p) => {
+        if (os.concluida) throw new Conflito('transicao_invalida', 'OS concluída.');
+        return { ...p, hotelId: 'h1' };
+      },
+      prepararMaterial: async () => {
+        throw new Error('fora deste teste');
+      },
+    },
   });
-  return { casos, gravadas, guardadas, ativos };
+  return { casos, gravadas, guardadas, ativos, os };
 }
 
 const pedidoDeAtivo = {
@@ -143,5 +158,25 @@ describe('receber operação offline', () => {
       parametros: { versaoAtual: 2 },
     });
     expect(guardadas.has(CHAVE3)).toBe(false);
+  });
+
+  it('reenvio depois de o estado mudar: a resposta guardada, sem validar de novo', async () => {
+    const { casos, os } = montar();
+    const horas = (chave: string) =>
+      casos.receberOperacao(ctx, {
+        chave,
+        tipo: 'os.apontar_horas',
+        dados: { osId: 'os-1', inicio: '2026-09-29T08:00:00Z', fim: '2026-09-29T09:00:00Z' },
+      });
+    expect(await horas(CHAVE)).toMatchObject({ repetida: false });
+    os.concluida = true;
+    expect(await horas(CHAVE)).toEqual({
+      chave: CHAVE,
+      repetida: true,
+      resposta: { id: 'apontamento-1' },
+    });
+    await expect(horas('0193a000-0000-4000-8000-000000000009')).rejects.toMatchObject({
+      codigo: 'transicao_invalida',
+    });
   });
 });
