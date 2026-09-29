@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(25);
+select plan(27);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -377,6 +377,35 @@ select is_empty($$
   where schemaname = 'storage' and tablename = 'objects'
     and roles && array['public', 'anon', 'authenticated']::name[]
 $$, 'storage.objects sem policy para anon, authenticated ou public');
+
+-- 25. Lista fechada de extensões (ADR-030): as do próprio Supabase, pgtap (que
+--     os testes criam dentro da transação) e pg_trgm (busca por trecho).
+--     Extensão nova traz funções que o teste 22 deixa passar; por isso entra
+--     só por ADR, com esta lista atualizada no mesmo PR.
+select is_empty($$
+  select extname from pg_extension
+  where extname not in (
+    'plpgsql', 'pgcrypto', 'uuid-ossp', 'pg_stat_statements', 'supabase_vault',
+    'pg_graphql', 'pgsodium', 'pgjwt',
+    'pgtap', 'pg_trgm')
+$$, 'só as extensões permitidas: as do Supabase, pgtap e pg_trgm');
+
+-- 26. Busca sem acento (ADR-030): índice GIN de trigramas na coluna busca de
+--     local e ativo, com a classe de operadores de pg_trgm no schema
+--     extensions (nunca em public).
+select results_eq($$
+  select c.relname::text, t.relname::text, a.attname::text, n.nspname::text
+  from pg_index i
+  join pg_class c on c.oid = i.indexrelid
+  join pg_class t on t.oid = i.indrelid
+  join pg_attribute a on a.attrelid = i.indrelid and a.attnum = i.indkey[0]
+  join pg_opclass o on o.oid = i.indclass[0]
+  join pg_namespace n on n.oid = o.opcnamespace
+  where o.opcname = 'gin_trgm_ops'
+  order by 1
+$$, $$ values ('ativo_busca_trgm_idx', 'ativo', 'busca', 'extensions'),
+              ('local_busca_trgm_idx', 'local', 'busca', 'extensions') $$,
+  'índices de trigramas só em busca de local e ativo, com pg_trgm em extensions');
 
 select * from finish();
 rollback;

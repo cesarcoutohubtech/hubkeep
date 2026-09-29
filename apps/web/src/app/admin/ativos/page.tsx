@@ -12,6 +12,7 @@ import { useIntl } from 'react-intl';
 import { AnexosDoRegistro } from '../../../cliente/AnexosDoRegistro';
 import { QrDoAtivo } from '../../../cliente/QrDoAtivo';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
+import { CampoDeBusca, comBusca } from '../../../cliente/CampoDeBusca';
 import { useIdioma, useMensagemDeErro, useT } from '../../../i18n/cliente';
 
 const PADRAO = [
@@ -337,6 +338,7 @@ export default function AtivosDoHotel() {
     categorias: Categoria[];
   } | null>(null);
   const [ativos, setAtivos] = useState<Ativo[] | null>(null);
+  const [busca, setBusca] = useState('');
   const [aviso, setAviso] = useState<Aviso | null>(null);
 
   useEffect(() => {
@@ -354,13 +356,13 @@ export default function AtivosDoHotel() {
     if (!hotelId) return;
     const [l, a] = await Promise.all([
       chamarApi<{ locais: Local[] }>(`/api/v1/hoteis/${hotelId}/locais`),
-      chamarApi<{ ativos: Ativo[] }>(`/api/v1/hoteis/${hotelId}/ativos`),
+      chamarApi<{ ativos: Ativo[] }>(comBusca(`/api/v1/hoteis/${hotelId}/ativos`, busca)),
     ]);
     if (l.ok) setLocais(l.dados.locais);
     if (a.ok) setAtivos(a.dados.ativos);
     if (!l.ok) setAviso({ tipo: 'erro', erro: l.erro });
     else if (!a.ok) setAviso({ tipo: 'erro', erro: a.erro });
-  }, [hotelId]);
+  }, [hotelId, busca]);
 
   useEffect(() => {
     void carregar();
@@ -420,8 +422,18 @@ export default function AtivosDoHotel() {
           </section>
           <section style={{ display: 'grid', gap: 8 }}>
             <h2>{t('admin.ativos.cadastrados')}</h2>
+            <CampoDeBusca
+              aoBuscar={(termo) => {
+                setAviso(null);
+                setBusca(termo);
+              }}
+            />
             {ativos.length === 0 ? (
-              <p>{t('admin.ativos.vazio')}</p>
+              <p>
+                {busca === ''
+                  ? t('admin.ativos.vazio')
+                  : t('comum.busca.sem_resultado', { termo: busca })}
+              </p>
             ) : (
               <ul style={{ display: 'grid', gap: 6, padding: 0, listStyle: 'none' }}>
                 {ativos.map((a) => (

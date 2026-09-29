@@ -1,6 +1,10 @@
 {
   "app.nome": "HubKeep",
   "comum.carregando": "Loading…",
+  "comum.busca.rotulo": "Search by name (accents optional)",
+  "comum.busca.buscar": "Search",
+  "comum.busca.limpar": "Clear",
+  "comum.busca.sem_resultado": "Nothing found for “{termo}”.",
   "comum.idioma": "Language",
 
   "inicio.configuracao": "Settings and policies",
@@ -119,6 +123,7 @@
   "erro.locais_fora_do_escopo": "You do not manage the locations of this hotel.",
   "erro.local_so_leitura": "Units and locations from the hotel system are read-only.",
   "erro.local_nome_invalido": "Enter the location name (up to {maximo} characters).",
+  "erro.busca_curta": "Type at least {minimo} characters to search.",
   "erro.local_andar_invalido": "Invalid floor (up to {maximo} characters).",
   "erro.local_nome_repetido": "There is already an active common area with this name at the hotel.",
   "senha.campo.nova": "New password",

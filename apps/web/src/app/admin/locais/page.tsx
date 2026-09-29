@@ -5,6 +5,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { AnexosDoRegistro } from '../../../cliente/AnexosDoRegistro';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
+import { CampoDeBusca, comBusca } from '../../../cliente/CampoDeBusca';
 import { useMensagemDeErro, useT } from '../../../i18n/cliente';
 
 interface Hotel {
@@ -34,6 +35,7 @@ export default function LocaisDoHotel() {
   const [hoteis, setHoteis] = useState<Hotel[]>([]);
   const [hotelId, setHotelId] = useState('');
   const [locais, setLocais] = useState<Local[] | null>(null);
+  const [busca, setBusca] = useState('');
   const [aviso, setAviso] = useState<Aviso | null>(null);
 
   useEffect(() => {
@@ -46,10 +48,12 @@ export default function LocaisDoHotel() {
 
   const carregar = useCallback(async () => {
     if (!hotelId) return;
-    const r = await chamarApi<{ locais: Local[] }>(`/api/v1/hoteis/${hotelId}/locais`);
+    const r = await chamarApi<{ locais: Local[] }>(
+      comBusca(`/api/v1/hoteis/${hotelId}/locais`, busca),
+    );
     if (r.ok) setLocais(r.dados.locais);
     else setAviso({ tipo: 'erro', erro: r.erro });
-  }, [hotelId]);
+  }, [hotelId, busca]);
 
   useEffect(() => {
     void carregar();
@@ -93,6 +97,12 @@ export default function LocaisDoHotel() {
           {aviso.tipo === 'ok' ? t('admin.membros.feito') : mensagemDeErro(aviso.erro)}
         </p>
       )}
+      <CampoDeBusca
+        aoBuscar={(termo) => {
+          setAviso(null);
+          setBusca(termo);
+        }}
+      />
       {!locais ? (
         <p>{t('comum.carregando')}</p>
       ) : (
@@ -114,7 +124,11 @@ export default function LocaisDoHotel() {
               <button type="submit">{t('admin.locais.acao.criar')}</button>
             </form>
             {areas.length === 0 ? (
-              <p>{t('admin.locais.sem_areas')}</p>
+              <p>
+                {busca === ''
+                  ? t('admin.locais.sem_areas')
+                  : t('comum.busca.sem_resultado', { termo: busca })}
+              </p>
             ) : (
               <ul style={{ display: 'grid', gap: 6, padding: 0, listStyle: 'none' }}>
                 {areas.map((l) => (
@@ -180,7 +194,11 @@ export default function LocaisDoHotel() {
             <h2>{t('admin.locais.uhs')}</h2>
             <small>{t('admin.locais.uhs_ajuda')}</small>
             {uhs.length === 0 ? (
-              <p>{t('admin.locais.sem_uhs')}</p>
+              <p>
+                {busca === ''
+                  ? t('admin.locais.sem_uhs')
+                  : t('comum.busca.sem_resultado', { termo: busca })}
+              </p>
             ) : (
               <table>
                 <thead>

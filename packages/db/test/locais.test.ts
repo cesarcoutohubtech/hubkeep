@@ -6,7 +6,8 @@
 //   - o técnico lê e não gere (403); gerente de outro hotel não vê (404); pela
 //     porta, sem a checagem da aplicação, a RLS ainda barra o outro hotel;
 //   - pendência da A4 (migração 0012, authz.hoteis_proprietario): o
-//     proprietário do hotel inteiro vê o hotel ainda sem locais, e nenhum local.
+//     proprietário do hotel inteiro vê o hotel ainda sem locais, e nenhum local;
+//   - busca (B6): por trecho, sem acento; alterar o nome regrava a busca.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -215,5 +216,19 @@ describe.skipIf(!temBanco)('B1 — locais do hotel', { timeout: 60_000 }, () => 
     }));
     expect(vistos).toEqual({ hoteis: ['Hotel 3'], locais: [] });
     await expect(casos.listarLocais(ctx(U.dono), H3)).resolves.toEqual([]);
+  });
+
+  it('busca (B6): por trecho e sem acento; alterar o nome regrava a busca', async () => {
+    const { id } = await casos.criarAreaComum(ctx(U.gerenteH1), H1, 'Salão de Café', null);
+    const achados = async (termo: string) =>
+      (await casos.listarLocais(ctx(U.tecnico), H1, termo)).map((l) => l.nome);
+    expect(await achados('CAFE')).toEqual(['Salão de Café']);
+    expect(await achados('lao d')).toEqual(['Salão de Café']);
+    await expect(casos.listarLocais(ctx(U.tecnico), H1, 'ca')).rejects.toMatchObject({
+      codigo: 'busca_curta',
+    });
+    await casos.alterarAreaComum(ctx(U.gerenteH1), id, 'Salão de Chá', null);
+    expect(await achados('cafe')).toEqual([]);
+    expect(await achados('de cha')).toEqual(['Salão de Chá']);
   });
 });

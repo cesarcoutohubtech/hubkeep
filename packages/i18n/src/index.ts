@@ -31,3 +31,4 @@ export { criarFormatador } from './formatacao';
 export type { Formatador } from './formatacao';
 export { emailDeConvite, escaparHtml } from './emails';
 export type { DadosDoConvite, Email } from './emails';
+export { TAMANHO_MINIMO_DA_BUSCA, textoDeBusca } from './busca';

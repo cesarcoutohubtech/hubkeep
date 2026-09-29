@@ -17,7 +17,8 @@ export interface LocalDoHotel {
 export interface PortaLocais {
   /** Hotel visível ao usuário, com a bandeira (para a regra de escopo); senão null. */
   hotel(ctx: Contexto, hotelId: string): Promise<{ id: string; bandeiraId: string | null } | null>;
-  locais(ctx: Contexto, hotelId: string): Promise<LocalDoHotel[]>;
+  /** Com `termo` (já normalizado, B6), só os que o têm na coluna `busca`. */
+  locais(ctx: Contexto, hotelId: string, termo?: string): Promise<LocalDoHotel[]>;
   local(ctx: Contexto, localId: string): Promise<LocalDoHotel | null>;
   /** Na unit of work, com auditoria e evento. Área comum, ativa. */
   criarAreaComum(

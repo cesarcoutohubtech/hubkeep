@@ -162,3 +162,4 @@ export { criarCasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export type { CasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
 export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';
+export { buscaDeAtivo, buscaDeLocal, termoDeBusca } from './busca';

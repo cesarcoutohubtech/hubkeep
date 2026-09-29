@@ -12,6 +12,8 @@
 //   - cada gravação vai para a auditoria e o painel de implantação conta;
 //   - QR (B5): o cadastro gera o código; abrir pelo código respeita o escopo
 //     (outro hotel dá 404) e aceita o código digitado em minúsculas.
+//   - busca (B6): por trecho, sem acento e em nome, fabricante e série; % e _
+//     são texto; termo curto dá busca_curta; alterar regrava a busca.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -328,5 +330,39 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
     const ativos = await criarPortaImplantacao(banco).ativos(ctx(U.admin), H1);
     expect(ativos.filter((a) => a.ativo && a.categoriaId === null)).toHaveLength(1);
     expect(new Set(ativos.map((a) => a.localId))).toEqual(new Set([L.uh101, L.uh102]));
+  });
+
+  it('busca (B6): por trecho e sem acento, no escopo; a alteração regrava a busca', async () => {
+    const { id, versao } = await casos.cadastrar(
+      ctx(U.gerente),
+      pedido(L.uh102, {
+        nome: 'Refrigerador do Açúcar',
+        fabricante: 'Cônsul',
+        numeroSerie: 'SN_50%',
+        categoriaId: null,
+        campos: {},
+      }),
+    );
+    const achados = async (termo: string, quem = U.gerente) =>
+      (await casos.listarAtivos(ctx(quem), H1, termo)).map((a) => a.id);
+    expect(await achados('acucar')).toEqual([id]);
+    expect(await achados('FRIG')).toEqual([id]);
+    expect(await achados('consul')).toEqual([id]);
+    expect(await achados('_50%')).toEqual([id]);
+    // % e _ digitados são texto: "sn%50" não casa "sn_50%".
+    expect(await achados('sn%50')).toEqual([]);
+    // O dono da UH 101 não vê o ativo da UH 102, mesmo achando o termo.
+    expect(await achados('acucar', U.dono)).toEqual([]);
+    await expect(casos.listarAtivos(ctx(U.gerente), H1, 'aç')).rejects.toMatchObject({
+      codigo: 'busca_curta',
+      parametros: { minimo: 3 },
+    });
+    expect((await casos.listarAtivos(ctx(U.gerente), H1, '  ')).length).toBeGreaterThan(1);
+    await casos.alterar(ctx(U.gerente), id, {
+      ...pedido(L.uh102, { nome: 'Geladeira', categoriaId: null, campos: {} }),
+      versao,
+    });
+    expect(await achados('frig')).toEqual([]);
+    expect(await achados('gela')).toEqual([id]);
   });
 });

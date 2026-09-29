@@ -1,5 +1,6 @@
 // GET /api/v1/hoteis/{id}/locais — UHs e áreas comuns do hotel, no escopo de
-// quem pede (RLS), com a origem e se é editável (B1).
+// quem pede (RLS), com a origem e se é editável (B1). ?busca= filtra por
+// trecho, sem acento (B6).
 // POST /api/v1/hoteis/{id}/locais — cadastra uma área comum (B1).
 import {
   PedidoDeAreaComum,
@@ -22,7 +23,8 @@ const hotelDa = (url: string) => {
 
 export const GET = rota('locais.listar', async (r) => {
   const ctx = await r.contexto();
-  const locais = await (await casosDeUsoDeLocais()).listarLocais(ctx, hotelDa(r.req.url));
+  const busca = new URL(r.req.url).searchParams.get('busca');
+  const locais = await (await casosDeUsoDeLocais()).listarLocais(ctx, hotelDa(r.req.url), busca);
   return r.responder(200, RespostaDeLocaisDoHotel, {
     locais: locais.map((l) => ({
       id: l.id,
