@@ -9,11 +9,23 @@
 // O service worker guarda só a casca do app, sem dado de ninguém. O idioma escolhido fica: é do aparelho, não da pessoa.
 // As operações de outra pessoa que usou o aparelho não são tocadas: só a
 // sessão dela as envia (ajuste (a)), e só a saída dela as apaga.
+// Com operação pendente (fotos inclusive), a saída só apaga se o técnico
+// confirmar (adendo ao ADR-025, item (c)); quem chama tenta enviar antes.
 import type { FilaDeOperacoes } from './fila/banco';
 import type { OsDoDiaDoAparelho } from './os/banco';
 import type { ReferenciaDoAparelho } from './referencia/banco';
 
 const CHAVES_DO_USUARIO_NO_ARMAZENAMENTO = ['hk_tenant'];
+
+/** Sem pendente, pode sair; com pendente, só se o técnico confirmar (recebe quantas são). */
+export async function podeApagar(
+  fila: Pick<FilaDeOperacoes, 'doUsuario'>,
+  usuarioId: string,
+  confirmar: (pendentes: number) => boolean,
+): Promise<boolean> {
+  const pendentes = (await fila.doUsuario(usuarioId)).filter((o) => o.estado === 'pendente').length;
+  return pendentes === 0 || confirmar(pendentes);
+}
 
 export async function apagarDadosLocais(
   fila: FilaDeOperacoes,

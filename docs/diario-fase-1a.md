@@ -765,3 +765,26 @@ Dividida em duas partes, cada uma no seu PR:
 - **Merge:** primeiro o #68, depois a C4b. Os dois só com a CI verde. A C4b não tem migração, então não precisa de `db push`.
 - **Próxima tarefa:** C5, lida no `docs/04`/plano da fase 1a antes de começar, num worktree novo a partir da `main`.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### C4b mergeada; aprovações e espaço do aparelho (29/09/2026)
+- **#68** (`b0437d9`) e **#69** (`675dd7c`) mergeados pelo Cesar. **CI da `main`** depois do #69: `banco` (pgTAP e integração do `packages/db`), `CI` e `segurança` verdes. Sem migração nova, sem `db push`.
+- **Aprovações do Cesar (29/09/2026):**
+  - correção da C4a no ADR-027 (migração 0024): aprovada;
+  - adendo ao ADR-025 (fila do dia e fotos no aparelho): aprovado com três condições. (a) `navigator.storage.persist()` e aviso de pendências antigas, por causa do descarte de armazenamento no iOS. (b) Teto de espaço e compressão das fotos antes de guardar. (c) Saída bloqueada, ou com aviso, enquanto houver fila pendente.
+- **Situação na C4b mergeada:** a compressão (b) e a saída com aviso (c) já existiam. Faltavam a persistência, o aviso de pendência antiga e o teto de espaço.
+- **Complemento** (branch `1a-c4b-armazenamento`, worktree `wt/c4b-armazenamento`, zona protegida por causa do `docs/03`):
+  - `apps/tecnico/src/armazenamento.ts`:
+    - `pedirPersistencia`, chamada ao entrar;
+    - `pendenteAntigaDesde`: pendente com mais de 24 h gera aviso na fila do dia, com a data da mais velha;
+    - `conferirEspacoParaFoto`: até 50 MB de fotos do usuário na fila (`fotos_na_fila_no_limite`) e 20 MB livres depois da foto pela estimativa do navegador (`espaco_insuficiente`);
+    - `faltouEspaco`: o `QuotaExceededError` do IndexedDB vira `espaco_insuficiente`;
+  - `saida.ts`: `podeApagar` (a confirmação ao sair com pendente) sai do `App.tsx` para ser testada;
+  - adendo do ADR-025 com as três condições descritas, e as marcações "a aprovar" trocadas por "aprovado";
+  - i18n: 3 chaves novas nos quatro idiomas (`tecnico.sincronizacao.antiga`, `erro.fotos_na_fila_no_limite`, `erro.espaco_insuficiente`).
+- **Local:** typecheck, lint e testes verdes: raiz 272; PWA 96 em 12 arquivos, com `armazenamento.test.ts` novo e o aviso em `telas-os.test.tsx`.
+
+### Ponto de retomada (29/09/2026, complemento da C4b aberto)
+- **`main`:** `675dd7c` (#69), CI verde. **Dev:** 24 migrações, até a 0024; sem mudança desde a última conferência.
+- **PR aberto:** complemento da C4b (`1a-c4b-armazenamento`, worktree `wt/c4b-armazenamento`, zona protegida). Sem migração: sem `db push`. Merge só com a CI verde.
+- **Próxima tarefa:** C5, equipamento parado (`docs/05-plano-fase-1a.md`, linha da C5). Tem migração (`app.parada_ativo`, com no máximo uma parada aberta por ativo, garantida por restrição de integridade). Pode andar no local, num worktree novo a partir da `main`. O PR dela só abre depois do merge do complemento, porque os dois são zona protegida.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

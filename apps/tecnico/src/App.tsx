@@ -11,7 +11,8 @@
 // A fila do dia (C4b) é relida da API junto com a referência e guardada no
 // aparelho; a tela mostra a guardada com a fila de operações por cima
 // (os/projecao.ts). As ações da OS, as horas, o material e as fotos vão pela
-// fila, na ordem em que foram feitos.
+// fila, na ordem em que foram feitos. O espaço do aparelho (persistência,
+// aviso de pendência antiga, teto das fotos) está em armazenamento.ts.
 import { RegraViolada } from '@hubkeep/dominio';
 import { type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import type { Session } from '@supabase/supabase-js';
@@ -29,7 +30,14 @@ import {
 } from './referencia/banco';
 import { sincronizar } from './fila/sincronizar';
 import { ProvedorDeIdioma, guardarIdioma, idiomaInicial } from './i18n';
-import { apagarDadosLocais } from './saida';
+import { apagarDadosLocais, podeApagar } from './saida';
+import {
+  conferirEspacoParaFoto,
+  faltouEspaco,
+  pedirPersistencia,
+  pendenteAntigaDesde,
+  tamanhoDaFoto,
+} from './armazenamento';
 import { supabase, tenantDaSessao } from './sessao';
 import { criarEnvioDeFoto, criarFotos, fotoParaFila } from './anexos/fotos';
 import { abrirQr, codigoDoCaminho } from './qr';
@@ -124,6 +132,7 @@ function Casca(props: {
     );
     setEstado({
       pendentes: minhas.filter((o) => o.estado === 'pendente').length,
+      antigaDesde: pendenteAntigaDesde(minhas, Date.now()),
       rejeitadas: minhas
         .filter((o) => o.estado === 'rejeitada')
         .map((o) => ({ chave: o.chave, tipo: o.tipo, codigo: o.ultimoErro ?? 'erro_interno' })),
@@ -194,6 +203,11 @@ function Casca(props: {
     });
     return () => data.subscription.unsubscribe();
   }, [atualizarEstado, lerGuardada]);
+
+  // Ao entrar: pede ao navegador para não descartar a fila (adendo ao ADR-025, (a)).
+  useEffect(() => {
+    if (sessao) void pedirPersistencia();
+  }, [sessao]);
 
   // Com sessão e rede: primeiro a fila (a troca feita offline chega ao perfil),
   // depois o idioma do perfil, guardado no aparelho para abrir sem rede.
@@ -329,14 +343,23 @@ function Casca(props: {
   const registrarMaterial = (osId: string, descricao: string) =>
     enfileirar({ tipo: 'os.registrar_material', dados: { osId, descricao } });
 
+  /** A foto entra comprimida e só abaixo do teto de espaço (adendo ao ADR-025, (b)). */
   async function fotografarOs(osId: string, arquivo: File) {
+    const usuarioId = sessaoAtual.current?.user.id;
+    if (!fila.current || !usuarioId) return;
     let dados;
     try {
       dados = await fotoParaFila(osId, arquivo, arquivo.name || null);
     } catch {
       throw new RegraViolada('foto_ilegivel', 'Foto ilegível.');
     }
-    await enfileirar({ tipo: 'anexo.foto', dados });
+    await conferirEspacoParaFoto(await fila.current.doUsuario(usuarioId), tamanhoDaFoto(dados));
+    try {
+      await enfileirar({ tipo: 'anexo.foto', dados });
+    } catch (erro) {
+      if (faltouEspaco(erro)) throw new RegraViolada('espaco_insuficiente', 'Sem espaço.');
+      throw erro;
+    }
   }
 
   async function dispensar(chave: string) {
@@ -349,15 +372,10 @@ function Casca(props: {
     if (fila.current && usuarioId) {
       // Tenta enviar antes; o que sobrar seria perdido, então pergunta.
       if (online) await enviarFila(true);
-      const pendentes = (await fila.current.doUsuario(usuarioId)).filter(
-        (o) => o.estado === 'pendente',
-      ).length;
-      if (
-        pendentes > 0 &&
-        !window.confirm(intl.formatMessage({ id: 'tecnico.sair.pendentes' }, { n: pendentes }))
-      ) {
-        return;
-      }
+      const confirmou = await podeApagar(fila.current, usuarioId, (n) =>
+        window.confirm(intl.formatMessage({ id: 'tecnico.sair.pendentes' }, { n })),
+      );
+      if (!confirmou) return;
       await apagarDadosLocais(
         fila.current,
         usuarioId,

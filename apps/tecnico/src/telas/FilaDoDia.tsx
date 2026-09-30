@@ -21,6 +21,8 @@ export interface OperacaoRecusada {
 export interface EstadoDaFila {
   pendentes: number;
   rejeitadas: OperacaoRecusada[];
+  /** Criação da pendente mais velha, se passou de um dia (armazenamento.ts); senão null. */
+  antigaDesde?: number | null;
 }
 
 const ROTULO_DA_OPERACAO: Record<OperacaoNaFila['tipo'], Chave> = {
@@ -86,6 +88,17 @@ export function FilaDoDia(props: {
           <button onClick={props.aoEnviarAgora}>{t('tecnico.sincronizacao.enviar_agora')}</button>
         )}
       </section>
+
+      {props.fila.antigaDesde != null && (
+        <p role="alert" data-aviso="pendencia_antiga">
+          {t('tecnico.sincronizacao.antiga', {
+            desde: intl.formatDate(props.fila.antigaDesde, {
+              dateStyle: 'short',
+              timeStyle: 'short',
+            }),
+          })}
+        </p>
+      )}
 
       {props.fila.rejeitadas.length > 0 && (
         <section role="alert">

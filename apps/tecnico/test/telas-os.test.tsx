@@ -34,11 +34,11 @@ const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsNoAparelho => ({
   pendentes,
 });
 
-const fila = (lista: OsNoAparelho[] | null) => (
+const fila = (lista: OsNoAparelho[] | null, antigaDesde: number | null = null) => (
   <FilaDoDia
     idioma="pt-BR"
     online
-    fila={{ pendentes: 0, rejeitadas: [] }}
+    fila={{ pendentes: antigaDesde ? 1 : 0, rejeitadas: [], antigaDesde }}
     os={lista}
     lidaEm={lista ? Date.UTC(2026, 8, 29, 11) : null}
     aoAbrirOs={() => undefined}
@@ -72,6 +72,14 @@ describe('fila do dia com OS', () => {
     expect(html).toContain(m['situacao.padrao.os_pausada']);
     expect(renderizar(idioma, fila(null))).toContain(m['tecnico.fila.sem_leitura']);
     expect(renderizar(idioma, fila([]))).toContain(m['tecnico.fila.vazia']);
+  });
+
+  it.each(IDIOMAS)('%s: aviso de pendência antiga (adendo ao ADR-025)', (idioma) => {
+    const m = mensagensDe(idioma);
+    const inicio = m['tecnico.sincronizacao.antiga'].split('{desde}')[0] ?? '';
+    expect(inicio.length).toBeGreaterThan(5);
+    expect(renderizar(idioma, fila([], Date.UTC(2026, 8, 27, 11)))).toContain(inicio);
+    expect(renderizar(idioma, fila([]))).not.toContain('pendencia_antiga');
   });
 
   it('os registros ainda na fila aparecem na OS, com plural', () => {
