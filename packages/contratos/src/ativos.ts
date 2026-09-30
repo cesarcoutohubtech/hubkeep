@@ -22,6 +22,8 @@ export const AtivoApi = z
     ativo: z.boolean(),
     /** Código do QR individual (B5): 10 caracteres, imutável. */
     codigoQr: z.string().regex(/^[0-9A-HJKMNP-TV-Z]{10}$/),
+    /** Início da parada aberta (C5); null se não está parado. */
+    paradoDesde: z.iso.datetime().nullable(),
   })
   .meta({ id: 'AtivoApi' });
 

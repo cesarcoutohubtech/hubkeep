@@ -15,6 +15,8 @@ export interface ChamadoParaTriagem {
   id: string;
   hotel: { id: string; bandeiraId: string | null };
   localId: string;
+  /** O ativo do chamado, se houver (a parada da C5 só existe com ele). */
+  ativoId: string | null;
   estado: EstadoDoChamado;
   situacaoId: string;
   prioridadeId: string;

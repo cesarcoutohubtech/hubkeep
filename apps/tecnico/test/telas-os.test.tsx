@@ -30,6 +30,9 @@ const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsNoAparelho => ({
     localNome: 'UH 101',
     prioridadeId: '9a000000-0000-4000-8000-000000000001',
     estado: 'em_execucao',
+    ativoId: null,
+    paradoDesde: null,
+    paradaDoChamado: false,
   },
   pendentes,
 });
@@ -51,13 +54,16 @@ const fila = (lista: OsNoAparelho[] | null, antigaDesde: number | null = null) =
   />
 );
 
-const tela = (o: OsNoAparelho) => (
+const tela = (o: OsNoAparelho, perguntando = false) => (
   <Os
     os={o}
+    perguntando={perguntando}
     aoAgir={async () => undefined}
     aoApontar={async () => undefined}
     aoRegistrarMaterial={async () => undefined}
     aoFotografar={async () => undefined}
+    aoRegistrarParada={async () => undefined}
+    aoEncerrarParada={async () => undefined}
     aoVoltar={() => undefined}
   />
 );
@@ -111,6 +117,71 @@ describe('tela da OS', () => {
     expect(botoes(os('pausada'))).toEqual(['Voltar', 'Retomar']);
     expect(botoes(os('concluida'))).toEqual(['Voltar']);
   });
+
+  it.each(IDIOMAS)('%s: parada do ativo (C5)', (idioma) => {
+    const m = mensagensDe(idioma);
+    const comAtivo = (o: OsNoAparelho, paradoDesde: string | null): OsNoAparelho => ({
+      ...o,
+      chamado: {
+        ...o.chamado,
+        ativoId: 'a1000000-0000-4000-8000-000000000001',
+        paradoDesde,
+        paradaDoChamado: paradoDesde !== null,
+      },
+    });
+    const parado = renderizar(
+      idioma,
+      tela(comAtivo(os('em_execucao'), '2026-09-29T09:00:00.000Z')),
+    );
+    expect(parado).toContain(m['tecnico.os.parada.encerrar']);
+    expect(parado).toContain('data-parado-desde');
+    const funcionando = renderizar(idioma, tela(comAtivo(os('pausada'), null)));
+    expect(funcionando).toContain(m['tecnico.os.parada.registrar']);
+    expect(funcionando).not.toContain('data-parado-desde');
+    // Sem ativo no chamado, ou fora de execução e pausa: nenhum botão de parada.
+    expect(renderizar(idioma, tela(os('em_execucao')))).not.toContain(
+      m['tecnico.os.parada.registrar'],
+    );
+    expect(renderizar(idioma, tela(comAtivo(os('atribuida'), null)))).not.toContain(
+      m['tecnico.os.parada.registrar'],
+    );
+    // Parada de outro chamado do mesmo ativo: aparece, sem botão.
+    const deOutro = comAtivo(os('em_execucao'), '2026-09-29T09:00:00.000Z');
+    const outroHtml = renderizar(
+      idioma,
+      tela({ ...deOutro, chamado: { ...deOutro.chamado, paradaDoChamado: false } }),
+    );
+    expect(outroHtml).toContain('data-parado-desde');
+    expect(outroHtml).not.toContain(m['tecnico.os.parada.encerrar']);
+  });
+
+  it.each(IDIOMAS)(
+    '%s: concluir com a parada do chamado pergunta se o equipamento voltou',
+    (idioma) => {
+      const m = mensagensDe(idioma);
+      const base = os('em_execucao');
+      const parado: OsNoAparelho = {
+        ...base,
+        chamado: {
+          ...base.chamado,
+          ativoId: 'a1000000-0000-4000-8000-000000000001',
+          paradoDesde: '2026-09-29T09:00:00.000Z',
+          paradaDoChamado: true,
+        },
+      };
+      const html = renderizar(idioma, tela(parado, true));
+      expect(html).toContain('data-pergunta="parada"');
+      for (const chave of [
+        'tecnico.os.concluir.pergunta_parada',
+        'tecnico.os.concluir.voltou',
+        'tecnico.os.concluir.nao_voltou',
+        'tecnico.os.concluir.desistir',
+      ] as const)
+        expect(html).toContain(m[chave]);
+      // Sem a parada do chamado, a pergunta não aparece.
+      expect(renderizar(idioma, tela(base, true))).not.toContain('data-pergunta');
+    },
+  );
 
   it('pseudo-idioma: todo texto visível vem do catálogo (entre colchetes)', () => {
     const html = renderizar(PSEUDO_IDIOMA, tela(os('em_execucao', 1)));

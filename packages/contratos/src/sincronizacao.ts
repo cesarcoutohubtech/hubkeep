@@ -1,7 +1,8 @@
 // Operações que o PWA do técnico fez sem rede (F0-11, ADR-025). Cada uma leva
 // a chave de idempotência gerada no aparelho; o reenvio da mesma chave devolve
 // a resposta guardada, sem aplicar de novo. As da OS (C4) são do Técnico
-// responsável; as transições levam a versão que o aparelho calculou.
+// responsável; as transições levam a versão que o aparelho calculou. A parada
+// do ativo do chamado (C5) também: registrar e encerrar, na OS.
 import { z } from 'zod';
 import { PedidoDeAlteracaoDeAtivo, PedidoDeCadastroDeAtivo } from './ativos';
 import { PedidoDeAberturaDeChamado } from './chamados';
@@ -18,6 +19,8 @@ export const TIPOS_DE_OPERACAO_OFFLINE = [
   'os.concluir',
   'os.apontar_horas',
   'os.registrar_material',
+  'os.registrar_parada',
+  'os.encerrar_parada',
 ] as const;
 
 /** Transição da OS pelo Técnico, com a versão esperada (ADR-029). */
@@ -48,9 +51,22 @@ export const PedidoDeOperacaoOffline = z
       /** O chamado é criado uma vez só, mesmo com reenvio (C2). */
       dados: PedidoDeAberturaDeChamado,
     }),
-    ...(['os.iniciar', 'os.pausar', 'os.retomar', 'os.concluir'] as const).map((tipo) =>
+    ...(['os.iniciar', 'os.pausar', 'os.retomar'] as const).map((tipo) =>
       z.object({ chave: z.guid(), tipo: z.literal(tipo), dados: TransicaoDaOs }),
     ),
+    z.object({
+      chave: z.guid(),
+      tipo: z.literal('os.concluir'),
+      /**
+       * Com a parada do chamado aberta, a resposta a "o equipamento voltou a
+       * funcionar?" e a hora do aparelho: sim, a parada encerra com essa hora,
+       * na mesma operação. Sem resposta, a parada fica aberta.
+       */
+      dados: TransicaoDaOs.extend({
+        equipamentoVoltou: z.boolean().optional(),
+        concluidaEm: z.iso.datetime().optional(),
+      }),
+    }),
     z.object({
       chave: z.guid(),
       tipo: z.literal('os.apontar_horas'),
@@ -62,6 +78,22 @@ export const PedidoDeOperacaoOffline = z
       tipo: z.literal('os.registrar_material'),
       /** Texto livre; normalizado no domínio (até 500). */
       dados: z.object({ osId: z.guid(), descricao: z.string().max(2000) }),
+    }),
+    z.object({
+      chave: z.guid(),
+      tipo: z.literal('os.registrar_parada'),
+      /** Sem fim, a parada fica aberta; os instantes são conferidos no domínio. */
+      dados: z.object({
+        osId: z.guid(),
+        inicio: z.iso.datetime(),
+        fim: z.iso.datetime().nullable(),
+      }),
+    }),
+    z.object({
+      chave: z.guid(),
+      tipo: z.literal('os.encerrar_parada'),
+      /** Encerra a parada aberta do ativo do chamado da OS. */
+      dados: z.object({ osId: z.guid(), fim: z.iso.datetime() }),
     }),
   ])
   .meta({ id: 'PedidoDeOperacaoOffline' });

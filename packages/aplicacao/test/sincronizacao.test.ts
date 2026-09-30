@@ -19,6 +19,8 @@ function montar() {
   const gravadas: PreferenciasGravadas[] = [];
   const ativos = new Map<string, { versao: number; dados: DadosDeAtivo }>();
   const os = { concluida: false };
+  // A parada aberta do ativo do chamado (C5), como o banco a guardaria.
+  const parada = { aberta: false, registradas: 0 };
   const operacoes: PortaOperacoesOffline = {
     respostaGuardada: async (_c, chave) => guardadas.get(chave) ?? null,
     async aplicarUmaVez(_c, op, efeito) {
@@ -43,6 +45,14 @@ function montar() {
         andarComOs: async (g) => ({ versao: g.versao + 1 }),
         apontarHoras: async () => ({ id: 'apontamento-1' }),
         registrarMaterial: async () => ({ id: 'material-1' }),
+        registrarParada: async (g) => {
+          parada.registradas += 1;
+          parada.aberta = g.fim === null;
+          return { id: `parada-${parada.registradas}` };
+        },
+        encerrarParada: async () => {
+          parada.aberta = false;
+        },
       });
       guardadas.set(op.chave, resposta);
       return { repetida: false, resposta };
@@ -82,9 +92,18 @@ function montar() {
       prepararMaterial: async () => {
         throw new Error('fora deste teste');
       },
+      // Como os de verdade: uma parada aberta por ativo; encerrar exige a aberta.
+      prepararParada: async (_c, p) => {
+        if (parada.aberta) throw new Conflito('parada_ja_aberta', 'Já parado.');
+        return { ...p, hotelId: 'h1', ativoId: 'a1', chamadoId: 'c1' };
+      },
+      prepararEncerramentoDeParada: async (_c, p) => {
+        if (!parada.aberta) throw new Conflito('parada_nao_aberta', 'Não parado.');
+        return { id: `parada-${parada.registradas}`, hotelId: 'h1', fim: p.fim };
+      },
     },
   });
-  return { casos, gravadas, guardadas, ativos, os };
+  return { casos, gravadas, guardadas, ativos, os, parada };
 }
 
 const pedidoDeAtivo = {
@@ -178,5 +197,29 @@ describe('receber operação offline', () => {
     await expect(horas('0193a000-0000-4000-8000-000000000009')).rejects.toMatchObject({
       codigo: 'transicao_invalida',
     });
+  });
+
+  it('parada (C5): registrar e encerrar uma vez só, mesmo com reenvio', async () => {
+    const { casos, parada } = montar();
+    const CHAVE2 = '0193a000-0000-4000-8000-000000000002';
+    const registrar = () =>
+      casos.receberOperacao(ctx, {
+        chave: CHAVE,
+        tipo: 'os.registrar_parada',
+        dados: { osId: 'os-1', inicio: '2026-09-29T08:00:00Z', fim: null },
+      });
+    const encerrar = () =>
+      casos.receberOperacao(ctx, {
+        chave: CHAVE2,
+        tipo: 'os.encerrar_parada',
+        dados: { osId: 'os-1', fim: '2026-09-29T10:00:00Z' },
+      });
+    expect((await registrar()).resposta).toEqual({ id: 'parada-1' });
+    expect(await registrar()).toMatchObject({ repetida: true, resposta: { id: 'parada-1' } });
+    expect(parada).toEqual({ aberta: true, registradas: 1 });
+    expect((await encerrar()).resposta).toEqual({ id: 'parada-1' });
+    // Reenvio com a parada já encerrada: a resposta guardada, não parada_nao_aberta.
+    expect(await encerrar()).toMatchObject({ repetida: true, resposta: { id: 'parada-1' } });
+    expect(parada).toEqual({ aberta: false, registradas: 1 });
   });
 });

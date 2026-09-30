@@ -6,6 +6,7 @@ import type { Contexto } from '@hubkeep/dominio';
 import type { DadosDeAtivo, MudancaDeAtivo } from './ativos';
 import type { DadosDeChamado } from './chamados';
 import type { AcaoNaOsDecidida } from './execucao';
+import type { EncerramentoDeParada, RegistroDeParada } from './paradas';
 import type { PreferenciasGravadas } from './preferencias';
 
 /** Resposta guardada com a chave e devolvida igual a cada reenvio. */
@@ -42,6 +43,10 @@ export interface SessaoDeOperacao {
     hotelId: string;
     descricao: string;
   }): Promise<{ id: string }>;
+  /** Parada do ativo registrada na OS (C5); outra aberta no ativo: Conflito parada_ja_aberta. */
+  registrarParada(g: RegistroDeParada): Promise<{ id: string }>;
+  /** Encerra a parada aberta (C5); já encerrada: Conflito parada_nao_aberta. */
+  encerrarParada(g: EncerramentoDeParada): Promise<void>;
 }
 
 export interface PortaOperacoesOffline {

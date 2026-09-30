@@ -6,6 +6,9 @@
 // projeção: se o servidor já tinha aplicado (a resposta se perdeu) e a API já
 // devolveu a OS adiante, a operação não conta duas vezes. As regras de quem
 // e de quando são as do domínio, as mesmas do servidor, que confere de novo.
+// A parada do ativo (C5) também: registrada aberta, o ativo aparece parado
+// desde o início dela; encerrada, deixa de aparecer. A conclusão com "o
+// equipamento voltou a funcionar" encerra a parada do chamado junto.
 import { ESTADOS_QUE_ACEITAM_REGISTRO, type EstadoDaOs, TRANSICOES_DA_OS } from '@hubkeep/dominio';
 import type { FotoNaFila, OperacaoNaFila } from '../fila/banco';
 import type { OsGuardada } from './banco';
@@ -41,13 +44,30 @@ export function projetarOs(
     const os = porId.get(osDaOperacao(op) ?? '');
     if (!os) continue;
     os.pendentes += 1;
+    if (op.tipo === 'os.registrar_parada') {
+      const d = op.dados as { inicio: string; fim: string | null };
+      if (d.fim === null) {
+        os.chamado = { ...os.chamado, paradoDesde: d.inicio, paradaDoChamado: true };
+      }
+      continue;
+    }
+    if (op.tipo === 'os.encerrar_parada') {
+      os.chamado = { ...os.chamado, paradoDesde: null, paradaDoChamado: false };
+      continue;
+    }
     const acao = acaoDoTipo(op.tipo);
     if (!acao) continue;
     const t = TRANSICOES_DA_OS[acao];
-    const { versao } = op.dados as { versao: number };
+    const { versao, equipamentoVoltou } = op.dados as {
+      versao: number;
+      equipamentoVoltou?: boolean;
+    };
     if (versao === os.versao && (t.de as readonly string[]).includes(os.estado)) {
       os.estado = t.para as EstadoDaOs;
       os.versao += 1;
+      if (acao === 'concluir' && equipamentoVoltou === true && os.chamado.paradaDoChamado) {
+        os.chamado = { ...os.chamado, paradoDesde: null, paradaDoChamado: false };
+      }
     }
   }
   return [...porId.values()];
@@ -57,6 +77,21 @@ export function projetarOs(
 export const acoesPossiveis = (estado: EstadoDaOs): AcaoDoTecnico[] =>
   ACOES_DO_TECNICO.filter((a) => (TRANSICOES_DA_OS[a].de as readonly string[]).includes(estado));
 
-/** Horas, material e fotos: só com a OS em execução ou pausada. */
+/** Horas, material, fotos e parada: só com a OS em execução ou pausada. */
 export const aceitaRegistro = (estado: EstadoDaOs): boolean =>
   ESTADOS_QUE_ACEITAM_REGISTRO.includes(estado);
+
+/**
+ * O que a tela oferece sobre a parada do ativo do chamado (C5). A parada
+ * aberta por outro chamado do mesmo ativo aparece, mas não é desta OS: sem
+ * botão (o servidor recusaria com parada_de_outro_chamado).
+ */
+export function paradaPossivel(os: OsNoAparelho): 'registrar' | 'encerrar' | null {
+  if (!aceitaRegistro(os.estado) || os.chamado.ativoId === null) return null;
+  if (os.chamado.paradoDesde == null) return 'registrar';
+  return os.chamado.paradaDoChamado ? 'encerrar' : null;
+}
+
+/** Concluir com a parada do chamado aberta pede a resposta: o equipamento voltou? */
+export const perguntaNaConclusao = (os: OsNoAparelho): boolean =>
+  os.chamado.paradoDesde != null && os.chamado.paradaDoChamado === true;

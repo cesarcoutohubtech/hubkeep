@@ -7,19 +7,34 @@
 // A transição leva a versão que o aparelho calculou (a vista mais uma por
 // transição já na fila); se a OS mudou no servidor (reatribuída, cancelada),
 // a recusa volta como conflito, visível ao Técnico (ADR-025, ADR-029).
+//
+// Parada do ativo na execução (C5): o responsável registra (aberta, ou já com
+// o fim) e encerra a parada do ativo do chamado, com a regra dos registros.
+// Só uma aberta por ativo; a que ele encerra é a do chamado desta OS. Na
+// conclusão, com a parada do chamado aberta, o técnico responde se o
+// equipamento voltou a funcionar; sim, a parada encerra com a hora da
+// conclusão, na mesma operação (paradaAEncerrarNaConclusao).
 import {
   type AtorDaCorretiva,
   type Contexto,
+  Conflito,
   NaoEncontrado,
   type RegistroNaOs,
   conflitoDeVersao,
   decidirNaOs,
   decidirRegistroNaOs,
+  exigirAtivoNoChamado,
+  exigirParadaAberta,
+  exigirSemParadaAberta,
   normalizarMaterial,
+  paradaAEncerrarNaConclusao,
   situacaoPara,
   validarApontamento,
+  validarFimDaParada,
+  validarParada,
 } from '@hubkeep/dominio';
 import type { AcaoNaOsDecidida, OsDoDia, PortaExecucao } from '../portas/execucao';
+import type { EncerramentoDeParada, PortaParadas, RegistroDeParada } from '../portas/paradas';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaSituacoes } from '../portas/situacoes';
 import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/triagem';
@@ -30,7 +45,14 @@ export interface CasosDeUsoDeExecucao {
   prepararAcao(
     ctx: Contexto,
     acao: AcaoDoTecnico,
-    p: { osId: string; versao: number },
+    p: {
+      osId: string;
+      versao: number;
+      /** Só na conclusão: a resposta à pergunta sobre a parada do chamado. */
+      equipamentoVoltou?: boolean | undefined;
+      /** Só na conclusão: a hora do aparelho, que vira o fim da parada. */
+      concluidaEm?: Date | undefined;
+    },
   ): Promise<AcaoNaOsDecidida>;
   prepararApontamento(
     ctx: Contexto,
@@ -42,6 +64,16 @@ export interface CasosDeUsoDeExecucao {
   ): Promise<{ osId: string; hotelId: string; descricao: string }>;
   /** A foto na OS (anexos, regraParaAnexar): responsável, com a OS em execução ou pausada. */
   exigirFoto(ctx: Contexto, osId: string): Promise<void>;
+  /** Parada do ativo do chamado, registrada na OS (C5): aberta, ou já com o fim. */
+  prepararParada(
+    ctx: Contexto,
+    p: { osId: string; inicio: Date; fim: Date | null },
+  ): Promise<RegistroDeParada>;
+  /** Encerra a parada aberta do ativo do chamado da OS (C5). */
+  prepararEncerramentoDeParada(
+    ctx: Contexto,
+    p: { osId: string; fim: Date },
+  ): Promise<EncerramentoDeParada>;
   /** A fila do dia do Técnico: as OS dele e das equipes dele ainda em curso. */
   osDoDia(ctx: Contexto): Promise<OsDoDia[]>;
 }
@@ -52,6 +84,8 @@ export function criarCasosDeUsoDeExecucao(deps: {
   situacoes: Pick<PortaSituacoes, 'listar'>;
   atribuicoes: Pick<PortaAtribuicoes, 'doUsuario'>;
   relogio: Relogio;
+  /** Opcional só para os testes que não registram parada; a composição sempre passa. */
+  paradas?: Pick<PortaParadas, 'abertaDoAtivo'>;
   /** Padrão: as do domínio. Só o teste de aceite troca, para provar a RLS sozinha. */
   regras?: {
     decidirNaOs?: typeof decidirNaOs;
@@ -89,7 +123,30 @@ export function criarCasosDeUsoDeExecucao(deps: {
       os: { estado: os.estado, responsavel: os.responsavel },
       agora: deps.relogio.agora(),
     });
-    return os;
+    return { os, chamado };
+  }
+
+  const paradas = () => {
+    if (!deps.paradas) throw new Error('Parada sem a porta de paradas.');
+    return deps.paradas;
+  };
+
+  async function paradaDaConclusao(
+    ctx: Contexto,
+    os: OsGravada,
+    chamado: ChamadoParaTriagem,
+    p: { equipamentoVoltou?: boolean | undefined; concluidaEm?: Date | undefined },
+  ): Promise<EncerramentoDeParada | null> {
+    if (chamado.ativoId === null || p.equipamentoVoltou !== true) return null;
+    const alvo = paradaAEncerrarNaConclusao(
+      await paradas().abertaDoAtivo(ctx, chamado.ativoId),
+      chamado.id,
+      p.equipamentoVoltou,
+    );
+    if (!alvo) return null;
+    const agora = deps.relogio.agora();
+    const fim = validarFimDaParada(alvo.inicio, p.concluidaEm ?? agora, agora);
+    return { id: alvo.id, hotelId: os.hotelId, fim };
   }
 
   return {
@@ -104,8 +161,11 @@ export function criarCasosDeUsoDeExecucao(deps: {
         agora: deps.relogio.agora(),
       });
       if (os.versao !== p.versao) throw conflitoDeVersao(os.versao);
+      const encerrarParada =
+        acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
       const situacoes = await deps.situacoes.listar(ctx);
       return {
+        encerrarParada,
         acao,
         osId: os.id,
         versao: p.versao,
@@ -124,18 +184,39 @@ export function criarCasosDeUsoDeExecucao(deps: {
     },
 
     async prepararApontamento(ctx, p) {
-      const os = await registro(ctx, 'apontar_horas', p.osId);
+      const { os } = await registro(ctx, 'apontar_horas', p.osId);
       const { inicio, fim } = validarApontamento(p, deps.relogio.agora());
       return { osId: os.id, hotelId: os.hotelId, inicio, fim };
     },
 
     async prepararMaterial(ctx, p) {
-      const os = await registro(ctx, 'registrar_material', p.osId);
+      const { os } = await registro(ctx, 'registrar_material', p.osId);
       return { osId: os.id, hotelId: os.hotelId, descricao: normalizarMaterial(p.descricao) };
     },
 
     async exigirFoto(ctx, osId) {
       await registro(ctx, 'anexar_foto', osId);
+    },
+
+    async prepararParada(ctx, p) {
+      const { os, chamado } = await registro(ctx, 'registrar_parada', p.osId);
+      const ativoId = exigirAtivoNoChamado(chamado.ativoId);
+      const { inicio, fim } = validarParada(p, deps.relogio.agora());
+      exigirSemParadaAberta(await paradas().abertaDoAtivo(ctx, ativoId));
+      return { hotelId: os.hotelId, ativoId, chamadoId: chamado.id, osId: os.id, inicio, fim };
+    },
+
+    async prepararEncerramentoDeParada(ctx, p) {
+      const { os, chamado } = await registro(ctx, 'encerrar_parada', p.osId);
+      const ativoId = exigirAtivoNoChamado(chamado.ativoId);
+      const aberta = exigirParadaAberta(await paradas().abertaDoAtivo(ctx, ativoId));
+      // A aberta de outro chamado do mesmo ativo não é desta OS: quem encerra é
+      // o responsável por aquele chamado, ou a gestão do hotel pelo web.
+      if (aberta.chamadoId !== chamado.id) {
+        throw new Conflito('parada_de_outro_chamado', 'A parada aberta é de outro chamado.');
+      }
+      const fim = validarFimDaParada(aberta.inicio, p.fim, deps.relogio.agora());
+      return { id: aberta.id, hotelId: os.hotelId, fim };
     },
 
     osDoDia: (ctx) => deps.execucao.osDoDia(ctx),

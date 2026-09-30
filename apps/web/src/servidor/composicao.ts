@@ -10,6 +10,7 @@ import {
   type CasosDeUsoDeChamados,
   type CasosDeUsoDeTriagem,
   type CasosDeUsoDeExecucao,
+  type CasosDeUsoDeParadas,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
@@ -28,6 +29,7 @@ import {
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeAtivos,
+  criarCasosDeUsoDeParadas,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeTriagem,
@@ -57,6 +59,7 @@ import {
   criarPortaChamados,
   criarPortaTriagem,
   criarPortaExecucao,
+  criarPortaParadas,
   criarPortaPrioridades,
   criarPortaSituacoes,
   criarPortaConfiguracao,
@@ -320,6 +323,19 @@ export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
     execucao: criarPortaExecucao(banco),
     triagem: criarPortaTriagem(banco),
     situacoes: criarPortaSituacoes(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+    paradas: criarPortaParadas(banco),
+  });
+});
+
+/** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */
+export const casosDeUsoDeParadas = memo<CasosDeUsoDeParadas>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeParadas({
+    paradas: criarPortaParadas(banco),
+    ativos: criarPortaAtivos(banco),
+    triagem: criarPortaTriagem(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });

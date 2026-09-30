@@ -4,23 +4,39 @@
 // leva a versão da OS como está no aparelho (os/projecao.ts). O aparelho
 // valida com as regras do domínio que o servidor usa (estado, horas,
 // material); o servidor confere de novo, e a recusa volta à fila do dia com o
-// motivo. A foto é preparada na hora e sobe quando houver rede.
+// motivo. A foto é preparada na hora e sobe quando houver rede. Com o ativo no
+// chamado (C5), o técnico registra que o equipamento está parado e encerra a
+// parada quando ele volta a funcionar, também pela fila. Concluir com a parada
+// do chamado aberta pede a resposta "o equipamento voltou a funcionar?", que
+// vai na operação de concluir (sim: a parada encerra junto).
 import { ErroDeDominio, normalizarMaterial, validarApontamento } from '@hubkeep/dominio';
 import { type FormEvent, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useT } from '../i18n';
 import {
   type AcaoDoTecnico,
   type OsNoAparelho,
   aceitaRegistro,
   acoesPossiveis,
+  paradaPossivel,
+  perguntaNaConclusao,
 } from '../os/projecao';
 import { rotuloDoEstado, useMotivo } from './FilaDoDia';
 
 export interface AcoesDaOs {
-  aoAgir: (os: OsNoAparelho, acao: AcaoDoTecnico) => Promise<void>;
+  /** Na conclusão com a parada do chamado aberta, com a resposta do técnico. */
+  aoAgir: (
+    os: OsNoAparelho,
+    acao: AcaoDoTecnico,
+    resposta?: { equipamentoVoltou: boolean },
+  ) => Promise<void>;
   aoApontar: (osId: string, inicio: Date, fim: Date) => Promise<void>;
   aoRegistrarMaterial: (osId: string, descricao: string) => Promise<void>;
   aoFotografar: (osId: string, arquivo: File) => Promise<void>;
+  /** Equipamento parado agora (C5). */
+  aoRegistrarParada: (osId: string) => Promise<void>;
+  /** Equipamento voltou a funcionar agora (C5). */
+  aoEncerrarParada: (osId: string) => Promise<void>;
 }
 
 const ROTULO_DA_ACAO = {
@@ -30,21 +46,46 @@ const ROTULO_DA_ACAO = {
   concluir: 'tecnico.os.acao.concluir',
 } as const;
 
+/** A pergunta obrigatória da conclusão com a parada do chamado aberta: sim, não ou desistir. */
+export function PerguntaDaParada(props: {
+  aoResponder: (equipamentoVoltou: boolean) => void;
+  aoDesistir: () => void;
+}) {
+  const t = useT();
+  return (
+    <section className="coluna" role="group" data-pergunta="parada">
+      <strong>{t('tecnico.os.concluir.pergunta_parada')}</strong>
+      <div className="linha">
+        <button onClick={() => props.aoResponder(true)}>{t('tecnico.os.concluir.voltou')}</button>
+        <button onClick={() => props.aoResponder(false)}>
+          {t('tecnico.os.concluir.nao_voltou')}
+        </button>
+        <button onClick={props.aoDesistir}>{t('tecnico.os.concluir.desistir')}</button>
+      </div>
+    </section>
+  );
+}
+
 export function Os(
   props: AcoesDaOs & {
     os: OsNoAparelho;
     aoVoltar: () => void;
     /** Para testes; no app, window.confirm. */
     confirmar?: (mensagem: string) => boolean;
+    /** Para testes: a tela já com a pergunta da parada aberta. */
+    perguntando?: boolean;
   },
 ) {
   const t = useT();
+  const intl = useIntl();
   const motivo = useMotivo();
   const { os } = props;
+  const parada = paradaPossivel(os);
   const confirmar = props.confirmar ?? ((m: string) => window.confirm(m));
   const [aviso, setAviso] = useState<{ tipo: 'ok' } | { tipo: 'erro'; codigo: string } | null>(
     null,
   );
+  const [perguntando, setPerguntando] = useState(props.perguntando ?? false);
 
   /** Roda o pedido; erro de regra vira aviso com o motivo pelo catálogo. */
   async function tentar(fazer: () => Promise<void>): Promise<boolean> {
@@ -60,8 +101,15 @@ export function Os(
   }
 
   async function agir(acao: AcaoDoTecnico) {
+    // Com a parada do chamado aberta, a resposta à pergunta é a confirmação.
+    if (acao === 'concluir' && perguntaNaConclusao(os)) return setPerguntando(true);
     if (acao === 'concluir' && !confirmar(t('tecnico.os.concluir.confirmar'))) return;
     await tentar(() => props.aoAgir(os, acao));
+  }
+
+  async function concluirRespondendo(equipamentoVoltou: boolean) {
+    setPerguntando(false);
+    await tentar(() => props.aoAgir(os, 'concluir', { equipamentoVoltou }));
   }
 
   async function apontar(e: FormEvent<HTMLFormElement>) {
@@ -117,6 +165,36 @@ export function Os(
           </button>
         ))}
       </section>
+      {perguntando && perguntaNaConclusao(os) && (
+        <PerguntaDaParada
+          aoResponder={(voltou) => void concluirRespondendo(voltou)}
+          aoDesistir={() => setPerguntando(false)}
+        />
+      )}
+
+      {os.chamado.paradoDesde && (
+        <p data-parado-desde={os.chamado.paradoDesde}>
+          {t('tecnico.os.parada.desde', {
+            quando: intl.formatDate(os.chamado.paradoDesde, {
+              dateStyle: 'short',
+              timeStyle: 'short',
+            }),
+          })}
+        </p>
+      )}
+      {parada && (
+        <section className="linha">
+          {parada === 'registrar' ? (
+            <button onClick={() => void tentar(() => props.aoRegistrarParada(os.id))}>
+              {t('tecnico.os.parada.registrar')}
+            </button>
+          ) : (
+            <button onClick={() => void tentar(() => props.aoEncerrarParada(os.id))}>
+              {t('tecnico.os.parada.encerrar')}
+            </button>
+          )}
+        </section>
+      )}
 
       {aceitaRegistro(os.estado) ? (
         <>

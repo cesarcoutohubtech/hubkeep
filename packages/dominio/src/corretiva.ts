@@ -230,6 +230,62 @@ export function podeAbrirChamado(
   }
 }
 
+/**
+ * Encerrar a parada do ativo fora da execução (C5, pelo web): o Admin e os
+ * papéis da triagem no hotel. O responsável encerra na OS, pelo
+ * decidirRegistroNaOs.
+ */
+export function podeEncerrarParada(
+  ator: AtorDaCorretiva,
+  hotel: ChamadoParaRegra['hotel'],
+  agora: Date,
+): void {
+  if (!encerraParadaNoHotel(ator, hotel, agora)) {
+    throw new PermissaoNegada('parada_fora_do_papel', 'Você não encerra paradas neste hotel.', {
+      hotelId: hotel.id,
+    });
+  }
+}
+
+const PAPEIS_QUE_ENCERRAM_PARADA: readonly Papel[] = [
+  ...PAPEIS_DA_ADMINISTRACAO,
+  ...PAPEIS_DA_TRIAGEM,
+];
+
+/** O mesmo que podeEncerrarParada, sem erro: filtra a lista das paradas pendentes. */
+export const encerraParadaNoHotel = (
+  ator: AtorDaCorretiva,
+  hotel: ChamadoParaRegra['hotel'],
+  agora: Date,
+): boolean => temPapelNoHotel(ator, PAPEIS_QUE_ENCERRAM_PARADA, hotel, agora);
+
+/**
+ * A lista das paradas abertas com OS concluída (C5, decisão do Cesar de
+ * 30/09/2026): o Admin do grupo, o Gestor CSC e o Gerente do hotel, cada um
+ * com as dos hotéis dele (encerraParadaNoHotel).
+ */
+export function podeListarParadasPendentes(ator: AtorDaCorretiva, agora: Date): void {
+  if (
+    !ator.atribuicoes.some((a) => vigente(a, agora) && PAPEIS_QUE_ENCERRAM_PARADA.includes(a.papel))
+  ) {
+    throw new PermissaoNegada('parada_fora_do_papel', 'Você não acompanha paradas.');
+  }
+}
+
+/**
+ * O proprietário vê da parada só o ativo, o estado e as datas, sem o chamado,
+ * a OS e quem abriu ou encerrou (decisão do Cesar de 30/09/2026). Vê tudo quem
+ * tem no hotel um papel que não é o de proprietário.
+ */
+export const veDetalhesDaParada = (
+  ator: AtorDaCorretiva,
+  hotel: ChamadoParaRegra['hotel'],
+  agora: Date,
+): boolean => temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, hotel, agora);
+
+/** OS que já saiu da execução por conclusão: concluída (chamado aguardando aceite) ou aceita. */
+export const ESTADOS_DA_OS_CONCLUIDA: readonly EstadoDaOs[] = ['concluida', 'aceita'];
+
 /** Classificar e ajustar a prioridade do chamado: o Admin e os papéis da triagem (C3). */
 export function podeTriar(
   ator: AtorDaCorretiva,
@@ -362,15 +418,22 @@ export function decidirNaOs(
   };
 }
 
-/** O que o responsável registra na OS, além das transições (C4). */
-export const REGISTROS_NA_OS = ['apontar_horas', 'registrar_material', 'anexar_foto'] as const;
+/** O que o responsável registra na OS, além das transições (C4), e a parada do ativo (C5). */
+export const REGISTROS_NA_OS = [
+  'apontar_horas',
+  'registrar_material',
+  'anexar_foto',
+  'registrar_parada',
+  'encerrar_parada',
+] as const;
 export type RegistroNaOs = (typeof REGISTROS_NA_OS)[number];
 
 /** Registrar na OS só com ela em execução ou pausada (entre iniciar e concluir). */
 export const ESTADOS_QUE_ACEITAM_REGISTRO: readonly EstadoDaOs[] = ['em_execucao', 'pausada'];
 
 /**
- * Apontar horas, registrar material ou anexar foto: o Técnico do hotel
+ * Apontar horas, registrar material, anexar foto ou registrar e encerrar a
+ * parada do ativo (C5): o Técnico do hotel
  * responsável pela OS (403 fora do papel; 409 os_de_outro_responsavel), com a
  * OS em execução ou pausada (409 transicao_invalida).
  */

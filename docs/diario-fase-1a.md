@@ -789,6 +789,63 @@ Dividida em duas partes, cada uma no seu PR:
 - **Próxima tarefa:** C5, equipamento parado (`docs/05-plano-fase-1a.md`, linha da C5). Tem migração (`app.parada_ativo`, com no máximo uma parada aberta por ativo, garantida por restrição de integridade). Pode andar no local, num worktree novo a partir da `main`. O PR dela só abre depois do merge do complemento, porque os dois são zona protegida.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
 
+### C5 — Equipamento parado (29/09/2026)
+- **Migração 0025** (`parada_ativo`):
+  - `app.parada_ativo` com ativo, chamado (obrigatório), OS opcional, início, fim, quem abriu e quem encerrou;
+  - FK `(hotel_id, chamado_id, ativo_id)` → chamado com o mesmo ativo (constraint nova `chamado_ativo_unico`) e `(hotel_id, os_id, chamado_id)` → OS do mesmo chamado (`os_chamado_unico`);
+  - uma parada aberta por ativo: índice único parcial `parada_ativo_uma_aberta`;
+  - checks: fim depois do início; fim e quem encerrou juntos;
+  - RLS: lê quem lê o hotel e o proprietário (hotel inteiro ou UH do ativo); insere quem tem escrita no hotel, em nome dele mesmo; UPDATE só de `fim`, `encerrada_por` e `atualizado_em`, pela gestão do hotel e pelo Técnico responsável por OS não cancelada do chamado. Nenhuma policy lê a tabela nova: sem ciclo.
+- **pgTAP:** `020_isolamento_parada.test.sql`, com 38 casos (os seis do doc 02, FKs, checks, parada aberta única, UPDATE por coluna, sem DELETE, worker).
+- **Domínio:** `paradas.ts` (`validarParada`, `validarFimDaParada`, `exigirAtivoNoChamado`, `exigirSemParadaAberta`, `exigirParadaAberta`, `tempoParado`, `tempoParadoTotal`, com sobreposição) e, em `corretiva.ts`, `registrar_parada` e `encerrar_parada` nos registros da OS e `podeEncerrarParada`.
+- **Aplicação:**
+  - abertura do chamado com `paradoDesde`: a parada aberta nasce na mesma unit of work; ativo já parado fica com a parada que existe;
+  - execução: `prepararParada` e `prepararEncerramentoDeParada`, e as operações offline `os.registrar_parada` e `os.encerrar_parada`; a OS só encerra a parada do próprio chamado (`parada_de_outro_chamado`);
+  - web: `criarCasosDeUsoDeParadas` (lista com tempo parado e encerramento pela gestão).
+- **API:** `GET /api/v1/ativos/{id}/paradas`, `POST /api/v1/paradas/{id}/encerramento`; `paradoDesde` no ativo e na fila do dia; `ativoId` na fila do dia; OpenAPI atualizado.
+- **Telas:**
+  - web, ativos: "parado desde" na lista, as paradas com o tempo parado e o encerramento;
+  - PWA: "o equipamento está parado" na abertura do chamado; "parado desde" na lista de ativos; na OS, "equipamento parado desde" e o botão de registrar ou encerrar, com a parada pendente projetada por cima.
+- **i18n:** 22 chaves novas nos quatro idiomas (7 códigos de erro `parada_*`).
+- **Docs:** bloco "Implementação (C5)" no ADR-027, com as decisões de desenho a confirmar pelo Cesar.
+- **Local:** typecheck, lint e testes verdes: raiz 274, domínio 1709 (`paradas.test.ts` novo), aplicação 91, PWA 86, web 63. A integração do `packages/db` (`paradas.test.ts` novo, 6 casos) e o pgTAP rodam só na CI.
+- **Não verificado no local:** a migração e o pgTAP (sem banco local; o dev só recebe a 0025 pelo `db push` do Cesar, depois da CI verde).
+
+### #70 mergeado; PR da C5 (29/09/2026)
+- **#70** (`86318a3`) mergeado pelo Cesar. CI da `main` depois dele: `CI` e `segurança` verdes; `banco` rodando na hora da conferência.
+- **`main` trazida para a `1a-c5-parada`:** conflitos no `App.tsx` do PWA (comentário do topo e a vizinhança de `fotografarOs`) e no fim do diário; mantidos os dois lados. O `docs/03` entrou sem conflito.
+- **Local depois do merge:** typecheck, lint e prettier verdes; testes verdes: raiz 274, domínio 1709, aplicação 91, PWA 103 (os da C5 e os do #70), web 63.
+- **PR da C5 aberto** (zona protegida, migração 0025). Merge só com a CI verde: pgTAP, integração do `packages/db`, tipos e segurança; a "zona protegida" falha por desenho.
+- **Primeira CI do #71:** pgTAP vermelho em 1 de 38 casos do `020`: "parada em chamado sem ativo" esperava 23503 (FK composta) e recebeu 23505, porque a parada do teste era aberta num ativo que já tinha parada aberta, e o índice único responde antes da FK (conferida no fim do comando). O caso passou a usar uma parada encerrada. A migração não mudou.
+
+### Ponto de retomada (29/09/2026, PR da C5 aberto)
+- **`main`:** `86318a3` (#70). **Dev:** 24 migrações, até a 0024.
+- **PR aberto:** C5 (`1a-c5-parada`, worktree `wt/c5-parada`, zona protegida, migração 0025). Conferir `gh pr checks`; se a CI falhar, corrigir na branch.
+- **Depois do merge da C5:** o Cesar faz o `db push` da 0025, e eu confiro o dev só por leitura (`db:testar-dev` sem falha, `db:types` idêntico).
+- **Perguntas ao Cesar:** as decisões de desenho da C5 (bloco "Implementação (C5)" no ADR-027, "a confirmar").
+- **Próxima tarefa:** C6 (aceite), no local, num worktree novo a partir da `main`.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### #71 mergeado; decisões do Cesar; complemento da C5 (30/09/2026)
+- **#71** (`c3e68c5`) mergeado pelo Cesar com a CI verde (a segunda rodada, depois da correção do `020`). CI da `main` depois dele: `banco`, `CI` e `segurança` verdes.
+- **Decisões do Cesar sobre a C5 e a C6** chegaram depois do merge (ele pedia o item 4 da C5 no #71, antes do merge). Como o #71 já tinha entrado, os itens 4 e 5 vão num PR complementar a partir da `main` (`1a-c5b-parada-conclusao`, worktree `wt/c5b-parada-conclusao`), sem migração. As decisões da C5 estão no ADR-027 (bloco "Decisões do Cesar sobre a C5"); as da C6 entram na branch da C6.
+- **Item 4, conclusão com a parada aberta:**
+  - domínio: `paradaAEncerrarNaConclusao` (só a parada aberta do próprio chamado, só com "sim") e `ESTADOS_DA_OS_CONCLUIDA`;
+  - `os.concluir` aceita `equipamentoVoltou` e `concluidaEm`; `prepararAcao` devolve a parada a encerrar, e a sincronização encerra na mesma unit of work da conclusão (a resposta traz `paradaEncerrada`);
+  - sem resposta: a parada fica aberta, em vez de recusar a conclusão;
+  - fila do dia com `paradaDoChamado`; no PWA, a pergunta obrigatória na conclusão (`PerguntaDaParada`), a projeção que encerra a parada com o "sim", e o botão de encerrar só na parada do próprio chamado;
+  - web: `GET /api/v1/paradas/abertas-com-os-concluida` e a tela `/admin/paradas` (Admin do grupo, Gestor CSC e Gerente, cada um com os hotéis dele).
+- **Item 5, proprietário:** `veDetalhesDaParada`; a API tira chamado, OS e autores da parada para o proprietário. pgTAP `020` com 4 casos novos (42): ele não lê o membro que abriu, a auditoria da parada, os eventos e as paradas de outro hotel. A RLS é por linha: esconder colunas no banco pediria uma view e ADR (registrado no ADR-027, sem implementar).
+- **Item 1:** a UH não é ativo; lacuna registrada no ADR-027.
+- **i18n:** 10 chaves novas nos quatro idiomas (a pergunta e as respostas no PWA; a tela das paradas pendentes e o link no início do web).
+- **Local:** typecheck, lint e testes verdes: raiz 275, domínio 1727, aplicação 91, PWA 109, web 63. A integração do `packages/db` (4 casos novos em `paradas.test.ts`) e o pgTAP rodam só na CI.
+- **Item 7 da C6 (gatilho), em aberto:** o preenchimento de `chamado_aberto_por` por gatilho esbarra na regra 3 do CLAUDE.md (sem trigger; exceção só por ADR aprovado, com o meta-teste atualizado) e pede uma função nova no banco (meta-teste 11). Perguntado ao Cesar antes de implementar a C6.
+
+### Ponto de retomada (30/09/2026, complemento da C5 aberto)
+- **`main`:** `c3e68c5` (#71). **Dev:** o `db push` da 0025 é do Cesar; conferir o dev só por leitura depois dele.
+- **PR aberto:** complemento da C5 (`1a-c5b-parada-conclusao`, worktree `wt/c5b-parada-conclusao`, zona protegida, sem migração). Conferir `gh pr checks`; se a CI falhar, corrigir na branch.
+- **Depois do merge:** trazer a `main` para a `1a-c6-aceite` e aplicar as decisões da C6 (itens 7 a 11), com a resposta do Cesar sobre o gatilho do item 7; então o PR da C6.
+
 ### C6 — Aceite (30/09/2026)
 - **#70** (`86318a3`) mergeado pelo Cesar; a `main` trazida para a C5, e o PR da C5 aberto (#71, zona protegida, migração 0025).
 - **C6 no local**, num worktree novo a partir da `main` (`1a-c6-aceite`, `wt/c6-aceite`), enquanto o #71 espera a CI e o merge.
@@ -805,12 +862,4 @@ Dividida em duas partes, cada uma no seu PR:
 - **Docs:** bloco "Implementação (C6)" no ADR-027, com as decisões a confirmar; coluna "Migração" da C6 no plano.
 - **Local:** typecheck, lint e testes verdes: raiz 274, domínio 1681, aplicação 90, PWA 96, web 63. A integração do `packages/db` (`aceite.test.ts` novo, 4 casos) e o pgTAP rodam só na CI.
 - **Conflitos esperados** ao trazer a `main` depois do merge da C5: fim do diário, ADR-027 (os blocos da C5 e da C6 no mesmo ponto: manter os dois, C5 antes) e `tipos-banco.ts`.
-
-### Ponto de retomada (30/09/2026, C6 no local)
-- **`main`:** `86318a3` (#70). **Dev:** 24 migrações, até a 0024.
-- **PR aberto:** #71, C5 (`1a-c5-parada`, worktree `wt/c5-parada`, zona protegida, migração 0025). Conferir `gh pr checks 71`; se a CI falhar, corrigir na branch.
-- **C6 no local:** branch `1a-c6-aceite`, worktree `wt/c6-aceite`, com commit e push, sem PR (migração 0026). O PR abre só depois do merge do #71: trazer a `main`, resolver os conflitos, rodar typecheck, lint e testes e abrir o PR.
-- **Depois de cada merge:** o Cesar faz o `db push` (0025, depois 0026), e eu confiro o dev só por leitura (`db:testar-dev` sem falha, `db:types` idêntico).
-- **Perguntas ao Cesar:** as decisões da C5 e da C6 (blocos no ADR-027, "a confirmar").
-- **Próxima tarefa:** C7 (telas do CSC e do hotel), no local, num worktree novo a partir da `main`.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
