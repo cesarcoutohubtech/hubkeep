@@ -156,6 +156,7 @@ export {
   normalizarMotivo,
   osOcupaOChamado,
   podeAbrirChamado,
+  podeEncerrarParada,
   podeTriar,
 } from './corretiva';
 export type {
@@ -175,6 +176,16 @@ export {
   normalizarMaterial,
   validarApontamento,
 } from './execucao';
+export {
+  exigirAtivoNoChamado,
+  exigirParadaAberta,
+  exigirSemParadaAberta,
+  tempoParado,
+  tempoParadoTotal,
+  validarFimDaParada,
+  validarParada,
+} from './paradas';
+export type { Parada } from './paradas';
 export {
   ENTIDADES_COM_SITUACAO,
   ESTADOS_POR_ENTIDADE,

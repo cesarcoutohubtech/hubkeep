@@ -230,6 +230,23 @@ export function podeAbrirChamado(
   }
 }
 
+/**
+ * Encerrar a parada do ativo fora da execução (C5, pelo web): o Admin e os
+ * papéis da triagem no hotel. O responsável encerra na OS, pelo
+ * decidirRegistroNaOs.
+ */
+export function podeEncerrarParada(
+  ator: AtorDaCorretiva,
+  hotel: ChamadoParaRegra['hotel'],
+  agora: Date,
+): void {
+  if (!temPapelNoHotel(ator, [...PAPEIS_DA_ADMINISTRACAO, ...PAPEIS_DA_TRIAGEM], hotel, agora)) {
+    throw new PermissaoNegada('parada_fora_do_papel', 'Você não encerra paradas neste hotel.', {
+      hotelId: hotel.id,
+    });
+  }
+}
+
 /** Classificar e ajustar a prioridade do chamado: o Admin e os papéis da triagem (C3). */
 export function podeTriar(
   ator: AtorDaCorretiva,
@@ -362,15 +379,22 @@ export function decidirNaOs(
   };
 }
 
-/** O que o responsável registra na OS, além das transições (C4). */
-export const REGISTROS_NA_OS = ['apontar_horas', 'registrar_material', 'anexar_foto'] as const;
+/** O que o responsável registra na OS, além das transições (C4), e a parada do ativo (C5). */
+export const REGISTROS_NA_OS = [
+  'apontar_horas',
+  'registrar_material',
+  'anexar_foto',
+  'registrar_parada',
+  'encerrar_parada',
+] as const;
 export type RegistroNaOs = (typeof REGISTROS_NA_OS)[number];
 
 /** Registrar na OS só com ela em execução ou pausada (entre iniciar e concluir). */
 export const ESTADOS_QUE_ACEITAM_REGISTRO: readonly EstadoDaOs[] = ['em_execucao', 'pausada'];
 
 /**
- * Apontar horas, registrar material ou anexar foto: o Técnico do hotel
+ * Apontar horas, registrar material, anexar foto ou registrar e encerrar a
+ * parada do ativo (C5): o Técnico do hotel
  * responsável pela OS (403 fora do papel; 409 os_de_outro_responsavel), com a
  * OS em execução ou pausada (409 transicao_invalida).
  */

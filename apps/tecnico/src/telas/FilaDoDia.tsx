@@ -34,6 +34,8 @@ const ROTULO_DA_OPERACAO: Record<OperacaoNaFila['tipo'], Chave> = {
   'os.concluir': 'tecnico.operacao.os_concluir',
   'os.apontar_horas': 'tecnico.operacao.os_apontar_horas',
   'os.registrar_material': 'tecnico.operacao.os_registrar_material',
+  'os.registrar_parada': 'tecnico.operacao.os_registrar_parada',
+  'os.encerrar_parada': 'tecnico.operacao.os_encerrar_parada',
   'anexo.foto': 'tecnico.operacao.anexo_foto',
 };
 

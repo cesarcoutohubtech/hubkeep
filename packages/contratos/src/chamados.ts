@@ -14,6 +14,8 @@ export const PedidoDeAberturaDeChamado = z
     localId: z.guid(),
     ativoId: z.guid().nullish(),
     descricao: z.string().max(4000),
+    /** Equipamento parado desde (C5): grava a parada aberta do ativo; exige o ativo. */
+    paradoDesde: z.iso.datetime().nullish(),
   })
   .meta({ id: 'PedidoDeAberturaDeChamado' });
 
@@ -113,6 +115,10 @@ export const OsDoDiaApi = z
       localNome: z.string(),
       prioridadeId: z.guid(),
       estado: z.enum(ESTADOS_DO_CHAMADO_API),
+      /** O ativo do chamado (C5); sem ele, não há parada. */
+      ativoId: z.guid().nullable(),
+      /** Início da parada aberta do ativo (C5); null se não está parado. */
+      paradoDesde: z.iso.datetime().nullable(),
     }),
   })
   .meta({ id: 'OsDoDiaApi' });

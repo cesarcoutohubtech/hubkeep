@@ -176,6 +176,14 @@ export type { AcaoNaOsDecidida, OsDoDia, PortaExecucao } from './portas/execucao
 export { criarCasosDeUsoDeExecucao } from './casos-de-uso/execucao';
 export type { AcaoDoTecnico, CasosDeUsoDeExecucao } from './casos-de-uso/execucao';
 export type {
+  EncerramentoDeParada,
+  ParadaGravada,
+  PortaParadas,
+  RegistroDeParada,
+} from './portas/paradas';
+export { criarCasosDeUsoDeParadas } from './casos-de-uso/paradas';
+export type { CasosDeUsoDeParadas, ParadaComTempo } from './casos-de-uso/paradas';
+export type {
   CasosDeUsoDeTriagem,
   RegrasDaTriagem,
   ResponsavelPedido,

@@ -39,6 +39,7 @@ describe('abertura de chamado no PWA', () => {
     expect(html).toContain(m['tecnico.chamado.escolha_o_local']);
     expect(html).toContain(m['tecnico.chamado.sem_ativo']);
     expect(html).toContain(m['tecnico.chamado.acao.abrir']);
+    expect(html).toContain(m['tecnico.chamado.parado']);
     expect(renderizar(idioma, null)).toContain(m['tecnico.ativos.sem_referencia']);
   });
 

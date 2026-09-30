@@ -765,3 +765,33 @@ Dividida em duas partes, cada uma no seu PR:
 - **Merge:** primeiro o #68, depois a C4b. Os dois só com a CI verde. A C4b não tem migração, então não precisa de `db push`.
 - **Próxima tarefa:** C5, lida no `docs/04`/plano da fase 1a antes de começar, num worktree novo a partir da `main`.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### C5 — Equipamento parado (29/09/2026)
+- **Migração 0025** (`parada_ativo`):
+  - `app.parada_ativo` com ativo, chamado (obrigatório), OS opcional, início, fim, quem abriu e quem encerrou;
+  - FK `(hotel_id, chamado_id, ativo_id)` → chamado com o mesmo ativo (constraint nova `chamado_ativo_unico`) e `(hotel_id, os_id, chamado_id)` → OS do mesmo chamado (`os_chamado_unico`);
+  - uma parada aberta por ativo: índice único parcial `parada_ativo_uma_aberta`;
+  - checks: fim depois do início; fim e quem encerrou juntos;
+  - RLS: lê quem lê o hotel e o proprietário (hotel inteiro ou UH do ativo); insere quem tem escrita no hotel, em nome dele mesmo; UPDATE só de `fim`, `encerrada_por` e `atualizado_em`, pela gestão do hotel e pelo Técnico responsável por OS não cancelada do chamado. Nenhuma policy lê a tabela nova: sem ciclo.
+- **pgTAP:** `020_isolamento_parada.test.sql`, com 38 casos (os seis do doc 02, FKs, checks, parada aberta única, UPDATE por coluna, sem DELETE, worker).
+- **Domínio:** `paradas.ts` (`validarParada`, `validarFimDaParada`, `exigirAtivoNoChamado`, `exigirSemParadaAberta`, `exigirParadaAberta`, `tempoParado`, `tempoParadoTotal`, com sobreposição) e, em `corretiva.ts`, `registrar_parada` e `encerrar_parada` nos registros da OS e `podeEncerrarParada`.
+- **Aplicação:**
+  - abertura do chamado com `paradoDesde`: a parada aberta nasce na mesma unit of work; ativo já parado fica com a parada que existe;
+  - execução: `prepararParada` e `prepararEncerramentoDeParada`, e as operações offline `os.registrar_parada` e `os.encerrar_parada`; a OS só encerra a parada do próprio chamado (`parada_de_outro_chamado`);
+  - web: `criarCasosDeUsoDeParadas` (lista com tempo parado e encerramento pela gestão).
+- **API:** `GET /api/v1/ativos/{id}/paradas`, `POST /api/v1/paradas/{id}/encerramento`; `paradoDesde` no ativo e na fila do dia; `ativoId` na fila do dia; OpenAPI atualizado.
+- **Telas:**
+  - web, ativos: "parado desde" na lista, as paradas com o tempo parado e o encerramento;
+  - PWA: "o equipamento está parado" na abertura do chamado; "parado desde" na lista de ativos; na OS, "equipamento parado desde" e o botão de registrar ou encerrar, com a parada pendente projetada por cima.
+- **i18n:** 22 chaves novas nos quatro idiomas (7 códigos de erro `parada_*`).
+- **Docs:** bloco "Implementação (C5)" no ADR-027, com as decisões de desenho a confirmar pelo Cesar.
+- **Local:** typecheck, lint e testes verdes: raiz 274, domínio 1709 (`paradas.test.ts` novo), aplicação 91, PWA 86, web 63. A integração do `packages/db` (`paradas.test.ts` novo, 6 casos) e o pgTAP rodam só na CI.
+- **Não verificado no local:** a migração e o pgTAP (sem banco local; o dev só recebe a 0025 pelo `db push` do Cesar, depois da CI verde).
+
+### Ponto de retomada (29/09/2026, C5 no local)
+- **`main`:** `675dd7c` (#69), CI verde. **Dev:** 24 migrações, até a 0024.
+- **PR aberto:** #70, complemento da C4b (`1a-c4b-armazenamento`, worktree `wt/c4b-armazenamento`, zona protegida), com a CI verde; a "zona protegida" falha por desenho. Sem migração.
+- **C5 no local:** branch `1a-c5-parada`, worktree `wt/c5-parada`, com commit e push, sem PR. O PR abre só depois do merge do #70 (um PR de zona protegida por vez): trazer a `main` para a branch (o diário e o `docs/03` podem conflitar no fim do arquivo e perto do ADR-027; manter os dois lados), rodar typecheck, lint e testes e abrir o PR.
+- **Depois do merge da C5:** o Cesar faz o `db push` da 0025, e eu confiro o dev só por leitura (`db:testar-dev` sem falha, `db:types` idêntico).
+- **Próxima tarefa:** C6 (aceite), no local, num worktree novo a partir da `main`.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

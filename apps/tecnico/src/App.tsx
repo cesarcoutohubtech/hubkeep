@@ -11,7 +11,7 @@
 // A fila do dia (C4b) é relida da API junto com a referência e guardada no
 // aparelho; a tela mostra a guardada com a fila de operações por cima
 // (os/projecao.ts). As ações da OS, as horas, o material e as fotos vão pela
-// fila, na ordem em que foram feitos.
+// fila, na ordem em que foram feitos, e a parada do ativo (C5) também.
 import { RegraViolada } from '@hubkeep/dominio';
 import { type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import type { Session } from '@supabase/supabase-js';
@@ -329,6 +329,16 @@ function Casca(props: {
   const registrarMaterial = (osId: string, descricao: string) =>
     enfileirar({ tipo: 'os.registrar_material', dados: { osId, descricao } });
 
+  /** Parada do ativo do chamado (C5), na hora do aparelho; o servidor confere de novo. */
+  const registrarParada = (osId: string) =>
+    enfileirar({
+      tipo: 'os.registrar_parada',
+      dados: { osId, inicio: new Date().toISOString(), fim: null },
+    });
+
+  const encerrarParada = (osId: string) =>
+    enfileirar({ tipo: 'os.encerrar_parada', dados: { osId, fim: new Date().toISOString() } });
+
   async function fotografarOs(osId: string, arquivo: File) {
     let dados;
     try {
@@ -406,6 +416,8 @@ function Casca(props: {
         aoApontar={apontarHoras}
         aoRegistrarMaterial={registrarMaterial}
         aoFotografar={fotografarOs}
+        aoRegistrarParada={registrarParada}
+        aoEncerrarParada={encerrarParada}
         aoVoltar={() => {
           setOsAberta(null);
           setTela('fila');

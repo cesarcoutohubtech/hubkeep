@@ -5,10 +5,13 @@
 // domínio que o servidor usa (UH pendente de licença, ativo no local,
 // descrição); o servidor confere de novo e resolve a prioridade e a situação.
 // A foto do chamado vai pelo web, com rede; a foto sem rede entra com a OS (C4).
+// Com o ativo escolhido, quem abre pode marcar o equipamento como parado (C5):
+// a parada aberta nasce com o chamado, desde a hora da abertura no aparelho.
 import {
   ErroDeDominio,
   NaoEncontrado,
   exigirAtivoDoChamado,
+  exigirAtivoNoChamado,
   exigirLocalParaChamado,
   normalizarDescricaoDoChamado,
 } from '@hubkeep/dominio';
@@ -21,6 +24,8 @@ export interface AberturaDeChamado {
   localId: string;
   ativoId: string | null;
   descricao: string;
+  /** Equipamento parado desde (ISO 8601; C5); null se não marcou. */
+  paradoDesde: string | null;
 }
 
 export function AbrirChamado(props: {
@@ -64,7 +69,14 @@ export function AbrirChamado(props: {
         throw new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
       if (ativo) exigirAtivoDoChamado({ localId: ativo.localId, desativadoEm: null }, local.id);
       const descricao = normalizarDescricaoDoChamado(String(f.get('descricao') ?? ''));
-      await props.aoAbrir({ localId: local.id, ativoId, descricao });
+      const parado = f.get('parado') === 'on';
+      if (parado) exigirAtivoNoChamado(ativoId);
+      await props.aoAbrir({
+        localId: local.id,
+        ativoId,
+        descricao,
+        paradoDesde: parado ? new Date().toISOString() : null,
+      });
       formulario.reset();
       setLocalId('');
       setAviso({ tipo: 'ok' });
@@ -129,6 +141,10 @@ export function AbrirChamado(props: {
             </option>
           ))}
         </select>
+        <label className="linha">
+          <input type="checkbox" name="parado" />
+          {t('tecnico.chamado.parado')}
+        </label>
         <textarea
           name="descricao"
           aria-label={t('tecnico.chamado.descricao')}

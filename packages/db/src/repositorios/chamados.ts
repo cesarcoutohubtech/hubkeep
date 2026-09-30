@@ -1,9 +1,11 @@
 // Chamados (fase 1a, C2), na unit of work, com auditoria e evento. A RLS
-// decide por último: abre quem tem escrita no hotel, em nome dele mesmo.
+// decide por último: abre quem tem escrita no hotel, em nome dele mesmo. Com o
+// equipamento parado (C5), a parada aberta do ativo vai na mesma unit of work.
 import type { DadosDeChamado } from '@hubkeep/aplicacao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 import { colunasPesquisaveisDoChamado } from './busca';
+import { pararNaAbertura } from './paradas';
 
 export async function criarChamado(
   uow: UnidadeDeTrabalho,
@@ -29,6 +31,14 @@ export async function criarChamado(
     })
     .execute();
   uow.auditar({ entidade: 'chamado', registroId: id, acao: 'abrir', hotelId, depois: d });
+  if (d.paradaDesde !== null && d.ativoId !== null) {
+    await pararNaAbertura(uow, {
+      hotelId,
+      ativoId: d.ativoId,
+      chamadoId: id,
+      inicio: d.paradaDesde,
+    });
+  }
   uow.publicar({
     tipo: 'chamado.aberto',
     entidade: 'chamado',

@@ -72,7 +72,11 @@ describe('abrirQr', () => {
   });
 
   it('fora do aparelho, com rede: pergunta à API pelo código normalizado', async () => {
-    const doServidor = { ...ativo('a1000000-0000-4000-8000-000000000009'), codigoQr: 'ZZZZZZZZZZ' };
+    const doServidor = {
+      ...ativo('a1000000-0000-4000-8000-000000000009'),
+      codigoQr: 'ZZZZZZZZZZ',
+      paradoDesde: '2026-09-29T09:00:00.000Z',
+    };
     const requisitar = vi.fn<typeof fetch>(async () =>
       json(200, { hotelId: H1, ativo: doServidor }),
     );

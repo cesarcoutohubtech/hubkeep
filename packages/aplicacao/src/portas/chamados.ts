@@ -30,6 +30,11 @@ export interface DadosDeChamado {
   situacaoId: string;
   prioridadeId: string;
   politicaAplicada: object;
+  /**
+   * O equipamento parado desde (C5): grava a parada aberta do ativo junto com
+   * o chamado. Se o ativo já tem parada aberta, fica a que existe.
+   */
+  paradaDesde: Date | null;
 }
 
 export interface PortaChamados {

@@ -30,6 +30,8 @@ const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsNoAparelho => ({
     localNome: 'UH 101',
     prioridadeId: '9a000000-0000-4000-8000-000000000001',
     estado: 'em_execucao',
+    ativoId: null,
+    paradoDesde: null,
   },
   pendentes,
 });
@@ -58,6 +60,8 @@ const tela = (o: OsNoAparelho) => (
     aoApontar={async () => undefined}
     aoRegistrarMaterial={async () => undefined}
     aoFotografar={async () => undefined}
+    aoRegistrarParada={async () => undefined}
+    aoEncerrarParada={async () => undefined}
     aoVoltar={() => undefined}
   />
 );
@@ -102,6 +106,30 @@ describe('tela da OS', () => {
     expect(botoes(os('em_execucao'))).toEqual(['Voltar', 'Pausar', 'Concluir']);
     expect(botoes(os('pausada'))).toEqual(['Voltar', 'Retomar']);
     expect(botoes(os('concluida'))).toEqual(['Voltar']);
+  });
+
+  it.each(IDIOMAS)('%s: parada do ativo (C5)', (idioma) => {
+    const m = mensagensDe(idioma);
+    const comAtivo = (o: OsNoAparelho, paradoDesde: string | null): OsNoAparelho => ({
+      ...o,
+      chamado: { ...o.chamado, ativoId: 'a1000000-0000-4000-8000-000000000001', paradoDesde },
+    });
+    const parado = renderizar(
+      idioma,
+      tela(comAtivo(os('em_execucao'), '2026-09-29T09:00:00.000Z')),
+    );
+    expect(parado).toContain(m['tecnico.os.parada.encerrar']);
+    expect(parado).toContain('data-parado-desde');
+    const funcionando = renderizar(idioma, tela(comAtivo(os('pausada'), null)));
+    expect(funcionando).toContain(m['tecnico.os.parada.registrar']);
+    expect(funcionando).not.toContain('data-parado-desde');
+    // Sem ativo no chamado, ou fora de execução e pausa: nenhum botão de parada.
+    expect(renderizar(idioma, tela(os('em_execucao')))).not.toContain(
+      m['tecnico.os.parada.registrar'],
+    );
+    expect(renderizar(idioma, tela(comAtivo(os('atribuida'), null)))).not.toContain(
+      m['tecnico.os.parada.registrar'],
+    );
   });
 
   it('pseudo-idioma: todo texto visível vem do catálogo (entre colchetes)', () => {
