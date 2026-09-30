@@ -116,6 +116,7 @@ Condições 4 e 5 da aprovação do ADR-032 (Cesar, 29/09/2026). As tarefas S1 (
 A lista completa, por tema, está em `docs/referencia/perguntas-cliente.md`; pergunta nova entra lá.
 
 - **Equipamento do proprietário na UH (condo-hotel):** os equipamentos da UH podem ser do proprietário. Quando um deles sai da UH (B3c, mover ativo), a movimentação precisa ficar visível para ele? No MVP, o proprietário não lê o histórico de movimentações (Cesar, 28/09/2026): o ativo só deixa de aparecer para ele.
+- **Aceite da OS aberta e executada pelo próprio técnico** (ex.: problema achado em ronda): precisa do aceite de outra pessoa, ou pode ter aceite automático com a foto de depois? No MVP, precisa de outra pessoa (C6, Gerente do hotel ou, sem Gerente, Gestor CSC ou Admin). **Se o cliente quiser o aceite automático, ele entra como política configurável** (`app.politica`, ADR-026), desligada por padrão, e não como regra fixa para um cliente.
 
 ## Decisões do Cesar sobre o plano (26/09/2026)
 
