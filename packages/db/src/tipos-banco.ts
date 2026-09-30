@@ -255,6 +255,7 @@ export interface AppOperacaoOffline {
 
 export interface AppOs {
   atualizado_em: Generated<Timestamp>;
+  chamado_aberto_por: string | null;
   chamado_id: string;
   criado_em: Generated<Timestamp>;
   criado_por: string;

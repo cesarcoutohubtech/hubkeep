@@ -96,6 +96,14 @@ export const RespostaDeOsGravada = z
   .object({ id: z.guid(), versao: z.int(), versaoDoChamado: z.int().optional() })
   .meta({ id: 'RespostaDeOsGravada' });
 
+/** Aceitar a OS concluída (C6): só a versão vista da OS. */
+export const PedidoDeAceiteDeOs = z.object({ versao }).meta({ id: 'PedidoDeAceiteDeOs' });
+
+/** Reabrir a OS concluída (C6): o motivo é normalizado no domínio (até 500). */
+export const PedidoDeReaberturaDeOs = z
+  .object({ versao, motivo: z.string().max(2000) })
+  .meta({ id: 'PedidoDeReaberturaDeOs' });
+
 /** Uma OS da fila do dia do Técnico (C4), com o que a tela precisa do chamado. */
 export const OsDoDiaApi = z
   .object({

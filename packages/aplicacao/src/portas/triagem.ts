@@ -1,6 +1,7 @@
-// Porta da triagem e da OS (fase 1a, C3). Implementada por packages/db, com o
-// contexto do usuário: a RLS mostra o chamado e as OS dos hotéis que ele lê e
-// só deixa gravar os papéis da triagem (migração 0022). Toda gravação é uma
+// Porta da triagem e da OS (fase 1a, C3; aceite na C6). Implementada por
+// packages/db, com o contexto do usuário: a RLS mostra o chamado e as OS dos
+// hotéis que ele lê e só deixa gravar os papéis da triagem (migração 0022) e,
+// no aceite, também quem abriu o chamado (0026). Toda gravação é uma
 // unit of work, com auditoria e evento, e confere a versão (ADR-029).
 import type {
   Atribuicao,
@@ -73,6 +74,8 @@ export interface PortaTriagem {
       hotelId: string;
       /** O local do chamado, que a OS guarda para a leitura do proprietário (0024). */
       localId: string;
+      /** Quem abriu o chamado, que a OS guarda para o UPDATE do aceite (0026). */
+      chamadoAbertoPor: string;
       situacaoId: string;
       responsavel: Responsavel;
     },
@@ -82,6 +85,22 @@ export interface PortaTriagem {
     g: { osId: string; versao: number; situacaoId: string; responsavel: Responsavel },
   ): Promise<{ versao: number }>;
   cancelarOs(
+    ctx: Contexto,
+    g: {
+      osId: string;
+      versao: number;
+      situacaoId: string;
+      motivo: string;
+      chamado: ReflexoNoChamado;
+    },
+  ): Promise<{ versao: number; versaoDoChamado: number }>;
+  /** Aceite (C6): a OS concluída fica aceita, e o chamado, concluído. */
+  aceitarOs(
+    ctx: Contexto,
+    g: { osId: string; versao: number; situacaoId: string; chamado: ReflexoNoChamado },
+  ): Promise<{ versao: number; versaoDoChamado: number }>;
+  /** Reabertura (C6): a mesma OS volta à execução, com o motivo na auditoria. */
+  reabrirOs(
     ctx: Contexto,
     g: {
       osId: string;

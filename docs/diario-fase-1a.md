@@ -788,3 +788,29 @@ Dividida em duas partes, cada uma no seu PR:
 - **PR aberto:** complemento da C4b (`1a-c4b-armazenamento`, worktree `wt/c4b-armazenamento`, zona protegida). Sem migração: sem `db push`. Merge só com a CI verde.
 - **Próxima tarefa:** C5, equipamento parado (`docs/05-plano-fase-1a.md`, linha da C5). Tem migração (`app.parada_ativo`, com no máximo uma parada aberta por ativo, garantida por restrição de integridade). Pode andar no local, num worktree novo a partir da `main`. O PR dela só abre depois do merge do complemento, porque os dois são zona protegida.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### C6 — Aceite (30/09/2026)
+- **#70** (`86318a3`) mergeado pelo Cesar; a `main` trazida para a C5, e o PR da C5 aberto (#71, zona protegida, migração 0025).
+- **C6 no local**, num worktree novo a partir da `main` (`1a-c6-aceite`, `wt/c6-aceite`), enquanto o #71 espera a CI e o merge.
+- **O domínio já tinha tudo** desde a C1: `aceitar` e `reabrir` em `TRANSICOES_DA_OS`, o grupo `aceite` (quem abriu, com escrita no hotel, ou o Gerente) e o motivo obrigatório na reabertura, com testes.
+- **Migração 0026 (`aceite_os`), não prevista no plano:**
+  - a RLS não deixava quem abriu gravar (só a gestão do hotel e o responsável); o Solicitante que abriu seria recusado;
+  - a OS guarda `chamado_aberto_por`, com FK composta para o `aberto_por` do chamado (constraint nova `chamado_aberto_por_unico`), porque a policy da OS não pode ler o chamado (ciclo, meta-teste 27); nulo aceito para a OS preventiva da 1b;
+  - o UPDATE de `app.os` e de `app.chamado` ganha o ramo de quem abriu, com escrita no hotel.
+- **pgTAP:** `021_aceite_os.test.sql`, com 20 casos (outro tenant, quem abriu e quem não abriu, atribuição vencida, sem atribuição no hotel, Gerente, sem contexto, FK, colunas sem UPDATE, quem abriu não gera OS, o ramo do responsável continua).
+- **Aplicação:** `aceitarOs` e `reabrirOs` em `casos-de-uso/triagem.ts`; a geração da OS grava quem abriu o chamado.
+- **Banco:** `repositorios/aceite.ts`, com auditoria (motivo em `depois`) e os eventos `os.aceita` e `os.reaberta`.
+- **API:** `POST /api/v1/os/{id}/aceite` e `POST /api/v1/os/{id}/reabertura`; OpenAPI atualizado. Sem tela: as telas entram na C7.
+- **i18n:** nenhuma chave nova; os códigos de erro já existiam.
+- **Docs:** bloco "Implementação (C6)" no ADR-027, com as decisões a confirmar; coluna "Migração" da C6 no plano.
+- **Local:** typecheck, lint e testes verdes: raiz 274, domínio 1681, aplicação 90, PWA 96, web 63. A integração do `packages/db` (`aceite.test.ts` novo, 4 casos) e o pgTAP rodam só na CI.
+- **Conflitos esperados** ao trazer a `main` depois do merge da C5: fim do diário, ADR-027 (os blocos da C5 e da C6 no mesmo ponto: manter os dois, C5 antes) e `tipos-banco.ts`.
+
+### Ponto de retomada (30/09/2026, C6 no local)
+- **`main`:** `86318a3` (#70). **Dev:** 24 migrações, até a 0024.
+- **PR aberto:** #71, C5 (`1a-c5-parada`, worktree `wt/c5-parada`, zona protegida, migração 0025). Conferir `gh pr checks 71`; se a CI falhar, corrigir na branch.
+- **C6 no local:** branch `1a-c6-aceite`, worktree `wt/c6-aceite`, com commit e push, sem PR (migração 0026). O PR abre só depois do merge do #71: trazer a `main`, resolver os conflitos, rodar typecheck, lint e testes e abrir o PR.
+- **Depois de cada merge:** o Cesar faz o `db push` (0025, depois 0026), e eu confiro o dev só por leitura (`db:testar-dev` sem falha, `db:types` idêntico).
+- **Perguntas ao Cesar:** as decisões da C5 e da C6 (blocos no ADR-027, "a confirmar").
+- **Próxima tarefa:** C7 (telas do CSC e do hotel), no local, num worktree novo a partir da `main`.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

@@ -68,6 +68,7 @@ import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { criarChamado } from './repositorios/chamados';
 import { alterarChamadoNaTriagem, cancelarOs, gerarOs, reatribuirOs } from './repositorios/triagem';
+import { aceitarOs, reabrirOs } from './repositorios/aceite';
 import { andarComOs, apontarHoras, registrarMaterial } from './repositorios/execucao';
 import {
   alterarPrioridade,
@@ -847,6 +848,8 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
     gerarOs: (ctx, g) => banco.executar(ctx, (uow) => gerarOs(uow, g)),
     reatribuirOs: (ctx, g) => banco.executar(ctx, (uow) => reatribuirOs(uow, g)),
     cancelarOs: (ctx, g) => banco.executar(ctx, (uow) => cancelarOs(uow, g)),
+    aceitarOs: (ctx, g) => banco.executar(ctx, (uow) => aceitarOs(uow, g)),
+    reabrirOs: (ctx, g) => banco.executar(ctx, (uow) => reabrirOs(uow, g)),
   };
 }
 
