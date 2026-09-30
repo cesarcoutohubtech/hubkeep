@@ -1,7 +1,7 @@
 // @hubkeep/auth-admin — o ÚNICO pacote que usa a secret key do Supabase
-// (CLAUDE.md, regra 5). Ela serve para administrar o Auth (convites) e para
-// emitir URL assinada do Storage (ADR-024), e nunca para ler ou gravar tabela
-// de negócio. A chave é lida aqui dentro, da
+// (CLAUDE.md, regra 5). Ela serve para administrar o Auth (convites e, só no
+// dev e na CI, as contas dos dados de demonstração) e para emitir URL assinada
+// do Storage (ADR-024), e nunca para ler ou gravar tabela de negócio. A chave é lida aqui dentro, da
 // variável SUPABASE_SECRET_KEY: quem compõe o app não a manipula, e a CI
 // (tests/secret-key-so-no-auth-admin.test.ts) falha se ela aparecer fora daqui.
 //
@@ -24,6 +24,27 @@ function clienteAdmin(url: string): SupabaseClient {
 
 const jaExiste = (e: { code?: string | undefined; status?: number | undefined } | null) =>
   e?.code === 'email_exists' || e?.status === 422;
+
+// app_metadata só é gravável com a secret key e viaja assinado no JWT.
+async function vincularTenant(
+  admin: SupabaseClient,
+  usuarioId: string,
+  tenantId: string,
+): Promise<void> {
+  const atual = await admin.auth.admin.getUserById(usuarioId);
+  if (atual.error || !atual.data.user) {
+    throw new Error(`Vínculo de tenant: usuário não encontrado (${atual.error?.message ?? '?'}).`);
+  }
+  const meta = atual.data.user.app_metadata ?? {};
+  const lista: unknown = meta['hk_tenants'];
+  const tenants = new Set(Array.isArray(lista) ? lista.filter((t) => typeof t === 'string') : []);
+  if (tenants.has(tenantId)) return;
+  tenants.add(tenantId);
+  const r = await admin.auth.admin.updateUserById(usuarioId, {
+    app_metadata: { ...meta, hk_tenants: [...tenants] },
+  });
+  if (r.error) throw new Error(`Vínculo de tenant recusado: ${r.error.message}.`);
+}
 
 /**
  * Administração do Supabase Auth para o convite (ADR-018).
@@ -87,26 +108,7 @@ export function criarAdministracaoDoAuth(opcoes: { url: string }): {
       if (r.error) throw new Error(`Compensação: não removeu o usuário (${r.error.message}).`);
     },
 
-    // app_metadata só é gravável com a secret key e viaja assinado no JWT.
-    async vincularTenant(usuarioId, tenantId) {
-      const atual = await admin.auth.admin.getUserById(usuarioId);
-      if (atual.error || !atual.data.user) {
-        throw new Error(
-          `Vínculo de tenant: usuário não encontrado (${atual.error?.message ?? '?'}).`,
-        );
-      }
-      const meta = atual.data.user.app_metadata ?? {};
-      const lista: unknown = meta['hk_tenants'];
-      const tenants = new Set(
-        Array.isArray(lista) ? lista.filter((t) => typeof t === 'string') : [],
-      );
-      if (tenants.has(tenantId)) return;
-      tenants.add(tenantId);
-      const r = await admin.auth.admin.updateUserById(usuarioId, {
-        app_metadata: { ...meta, hk_tenants: [...tenants] },
-      });
-      if (r.error) throw new Error(`Vínculo de tenant recusado: ${r.error.message}.`);
-    },
+    vincularTenant: (usuarioId, tenantId) => vincularTenant(admin, usuarioId, tenantId),
   };
 
   const envio: EnvioDeConvite = {
@@ -124,6 +126,66 @@ export function criarAdministracaoDoAuth(opcoes: { url: string }): {
   };
 
   return { identidade, envio };
+}
+
+/**
+ * Identidade para os dados de demonstração do kit de teste (docs/05, "Kit de
+ * teste"), só no dev e na CI: a conta nasce com o e-mail já confirmado e a
+ * senha de teste, sem convite nem e-mail, para cada papel entrar direto pela
+ * tela de login. Quem já existe fica com a senha de teste de novo, para o
+ * script poder rodar mais de uma vez. O resto do convite (membro, atribuição,
+ * auditoria e evento) é o caso de uso de sempre.
+ */
+export function criarIdentidadeDeDemonstracao(opcoes: {
+  url: string;
+  senha: string;
+}): ProvedorDeIdentidade {
+  const admin = clienteAdmin(opcoes.url);
+  return {
+    async garantirUsuario({ email, nome, tenantId, nomeTenant }) {
+      // O domínio .test (RFC 2606) nunca é de uma pessoa: a senha de teste não
+      // sobrescreve a de uma conta de verdade.
+      if (!/@[a-z0-9.-]+\.test$/.test(email)) {
+        throw new Error('Identidade de demonstração só com e-mail do domínio .test.');
+      }
+      const criado = await admin.auth.admin.createUser({
+        email,
+        password: opcoes.senha,
+        email_confirm: true,
+        user_metadata: { nome, tenant: nomeTenant },
+        app_metadata: { hk_tenants: [tenantId] },
+      });
+      if (!criado.error && criado.data.user) {
+        return { usuarioId: criado.data.user.id, criadoAgora: true };
+      }
+      if (!jaExiste(criado.error)) {
+        throw new Error(
+          `Identidade de demonstração recusada: ${criado.error?.message ?? 'sem usuário'}.`,
+        );
+      }
+      // generateLink não envia e-mail; aqui só serve para obter o id de quem existe.
+      const existente = await admin.auth.admin.generateLink({ type: 'magiclink', email });
+      const usuarioId = existente.data.user?.id;
+      if (!usuarioId) {
+        throw new Error(
+          `Identidade: usuário existente sem id (${existente.error?.message ?? '?'}).`,
+        );
+      }
+      const r = await admin.auth.admin.updateUserById(usuarioId, {
+        password: opcoes.senha,
+        email_confirm: true,
+      });
+      if (r.error) throw new Error(`Senha de teste recusada: ${r.error.message}.`);
+      return { usuarioId, criadoAgora: false };
+    },
+
+    async removerUsuario(usuarioId) {
+      const r = await admin.auth.admin.deleteUser(usuarioId);
+      if (r.error) throw new Error(`Compensação: não removeu o usuário (${r.error.message}).`);
+    },
+
+    vincularTenant: (usuarioId, tenantId) => vincularTenant(admin, usuarioId, tenantId),
+  };
 }
 
 /**
