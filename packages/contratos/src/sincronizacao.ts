@@ -51,9 +51,22 @@ export const PedidoDeOperacaoOffline = z
       /** O chamado é criado uma vez só, mesmo com reenvio (C2). */
       dados: PedidoDeAberturaDeChamado,
     }),
-    ...(['os.iniciar', 'os.pausar', 'os.retomar', 'os.concluir'] as const).map((tipo) =>
+    ...(['os.iniciar', 'os.pausar', 'os.retomar'] as const).map((tipo) =>
       z.object({ chave: z.guid(), tipo: z.literal(tipo), dados: TransicaoDaOs }),
     ),
+    z.object({
+      chave: z.guid(),
+      tipo: z.literal('os.concluir'),
+      /**
+       * Com a parada do chamado aberta, a resposta a "o equipamento voltou a
+       * funcionar?" e a hora do aparelho: sim, a parada encerra com essa hora,
+       * na mesma operação. Sem resposta, a parada fica aberta.
+       */
+      dados: TransicaoDaOs.extend({
+        equipamentoVoltou: z.boolean().optional(),
+        concluidaEm: z.iso.datetime().optional(),
+      }),
+    }),
     z.object({
       chave: z.guid(),
       tipo: z.literal('os.apontar_horas'),

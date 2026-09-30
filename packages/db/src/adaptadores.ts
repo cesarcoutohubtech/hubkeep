@@ -786,6 +786,13 @@ const paradoDesde = (hotel: string, ativo: string) =>
     where p.hotel_id = ${sql.ref(hotel)} and p.ativo_id = ${sql.ref(ativo)} and p.fim is null
     limit 1)`.as('parado_desde');
 
+/** A parada aberta do ativo é a deste chamado (a OS encerra; a conclusão pergunta). */
+const paradaDoChamado = (hotel: string, chamado: string) =>
+  sql<boolean>`exists (select 1 from app.parada_ativo p
+    where p.hotel_id = ${sql.ref(hotel)} and p.chamado_id = ${sql.ref(chamado)} and p.fim is null)`.as(
+    'parada_do_chamado',
+  );
+
 /** Triagem e OS (fase 1a, C3), pelo hk_app. */
 export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
   return {
@@ -911,6 +918,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             'c.ativo_id',
           ])
           .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
+          .select(paradaDoChamado('c.hotel_id', 'c.id'))
           .where('o.estado', 'in', ['atribuida', 'em_execucao', 'pausada'])
           .where((eb) =>
             eb.or([
@@ -941,6 +949,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             estado: o.chamado_estado as EstadoDoChamado,
             ativoId: o.ativo_id,
             paradoDesde: o.parado_desde,
+            paradaDoChamado: o.parada_do_chamado,
           },
         }));
       }),
@@ -1016,6 +1025,45 @@ export function criarPortaParadas(banco: AcessoBanco): PortaParadas {
             .orderBy('id', 'desc')
             .execute()
         ).map(paraParada),
+      ),
+    abertasComOs: (ctx, estadosDaOs) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.parada_ativo as p')
+            .innerJoin('app.os as o', (j) =>
+              j.onRef('o.hotel_id', '=', 'p.hotel_id').onRef('o.chamado_id', '=', 'p.chamado_id'),
+            )
+            .innerJoin('app.hotel as h', 'h.id', 'p.hotel_id')
+            .innerJoin('app.ativo as a', (j) =>
+              j.onRef('a.hotel_id', '=', 'p.hotel_id').onRef('a.id', '=', 'p.ativo_id'),
+            )
+            .select([
+              'p.id',
+              'p.hotel_id',
+              'p.ativo_id',
+              'p.chamado_id',
+              'p.os_id',
+              'p.inicio',
+              'p.fim',
+              'p.aberta_por',
+              'p.encerrada_por',
+              'h.bandeira_id',
+              'a.nome as ativo_nome',
+              'o.id as os_concluida_id',
+              'o.estado as os_estado',
+            ])
+            .where('p.fim', 'is', null)
+            .where('o.estado', 'in', [...estadosDaOs])
+            .orderBy('p.inicio')
+            .orderBy('p.id')
+            .execute()
+        ).map((p) => ({
+          ...paraParada(p),
+          hotel: { id: p.hotel_id, bandeiraId: p.bandeira_id },
+          ativoNome: p.ativo_nome,
+          os: { id: p.os_concluida_id, estado: p.os_estado },
+        })),
       ),
     encerrar: (ctx, e) => banco.executar(ctx, (uow) => encerrarParada(uow, e)),
   };

@@ -155,9 +155,13 @@ export {
   exigirChamadoSemOsEmAndamento,
   normalizarMotivo,
   osOcupaOChamado,
+  ESTADOS_DA_OS_CONCLUIDA,
+  encerraParadaNoHotel,
   podeAbrirChamado,
   podeEncerrarParada,
+  podeListarParadasPendentes,
   podeTriar,
+  veDetalhesDaParada,
 } from './corretiva';
 export type {
   AcaoDaOs,
@@ -180,6 +184,7 @@ export {
   exigirAtivoNoChamado,
   exigirParadaAberta,
   exigirSemParadaAberta,
+  paradaAEncerrarNaConclusao,
   tempoParado,
   tempoParadoTotal,
   validarFimDaParada,

@@ -3,16 +3,21 @@
 import { describe, expect, it } from 'vitest';
 import {
   type Atribuicao,
+  ESTADOS_DA_OS_CONCLUIDA,
   PAPEIS,
   type Papel,
+  encerraParadaNoHotel,
   exigirAtivoNoChamado,
   exigirParadaAberta,
   exigirSemParadaAberta,
+  paradaAEncerrarNaConclusao,
   podeEncerrarParada,
+  podeListarParadasPendentes,
   tempoParado,
   tempoParadoTotal,
   validarFimDaParada,
   validarParada,
+  veDetalhesDaParada,
 } from '../src';
 
 const agora = new Date('2026-09-29T12:00:00Z');
@@ -114,6 +119,66 @@ describe('quem encerra pelo hotel (web)', () => {
     expect(codigo(() => podeEncerrarParada(ator('gerente_hotel', 'hotel-2'), HOTEL, agora))).toBe(
       'parada_fora_do_papel',
     );
+  });
+
+  for (const papel of PAPEIS)
+    it(`lista das pendentes e filtro por hotel: ${papel}`, () => {
+      const r = codigo(() => podeListarParadasPendentes(ator(papel), agora));
+      expect(r).toBe(ENCERRA[papel] ? null : 'parada_fora_do_papel');
+      expect(encerraParadaNoHotel(ator(papel), HOTEL, agora)).toBe(ENCERRA[papel]);
+      expect(encerraParadaNoHotel(ator(papel, 'hotel-2'), HOTEL, agora)).toBe(
+        papel === 'admin_grupo',
+      );
+    });
+
+  const VE_DETALHES: Record<Papel, boolean> = {
+    admin_grupo: true,
+    gestor_csc: true,
+    gerente_hotel: true,
+    implantador: true,
+    tecnico: true,
+    solicitante: true,
+    proprietario: false,
+  };
+  for (const papel of PAPEIS)
+    it(`detalhes da parada (chamado, OS, autores): ${papel}`, () => {
+      const escopo: Atribuicao['escopo'] =
+        papel === 'admin_grupo'
+          ? { tipo: 'grupo' }
+          : papel === 'proprietario'
+            ? { tipo: 'proprietario', proprietarioId: 'p1' }
+            : { tipo: 'hotel', hotelId: HOTEL.id };
+      const a = {
+        usuarioId: 'u',
+        atribuicoes: [
+          { id: 'a', usuarioId: 'u', papel, escopo, validoAte: null, revogadoEm: null },
+        ] as Atribuicao[],
+        equipes: [],
+      };
+      expect(veDetalhesDaParada(a, HOTEL, agora)).toBe(VE_DETALHES[papel]);
+    });
+});
+
+describe('parada na conclusão da OS', () => {
+  const aberta = { id: 'p1', chamadoId: 'c1', inicio: h(-2), fim: null };
+
+  it('sim: encerra a parada aberta do próprio chamado', () => {
+    expect(paradaAEncerrarNaConclusao(aberta, 'c1', true)).toBe(aberta);
+  });
+
+  it('não, ou sem resposta: fica aberta', () => {
+    expect(paradaAEncerrarNaConclusao(aberta, 'c1', false)).toBeNull();
+    expect(paradaAEncerrarNaConclusao(aberta, 'c1', undefined)).toBeNull();
+  });
+
+  it('parada de outro chamado, encerrada ou nenhuma: nada a encerrar', () => {
+    expect(paradaAEncerrarNaConclusao(aberta, 'c2', true)).toBeNull();
+    expect(paradaAEncerrarNaConclusao({ ...aberta, fim: h(-1) }, 'c1', true)).toBeNull();
+    expect(paradaAEncerrarNaConclusao(null, 'c1', true)).toBeNull();
+  });
+
+  it('OS concluída: concluída ou aceita', () => {
+    expect(ESTADOS_DA_OS_CONCLUIDA).toEqual(['concluida', 'aceita']);
   });
 });
 

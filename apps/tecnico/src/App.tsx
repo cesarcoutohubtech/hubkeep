@@ -331,9 +331,26 @@ function Casca(props: {
     void enviarFila();
   }
 
-  /** A transição leva a versão da OS no aparelho (a guardada mais as transições na fila). */
-  const agirNaOs = (o: OsNoAparelho, acao: AcaoDoTecnico) =>
-    enfileirar({ tipo: `os.${acao}`, dados: { osId: o.id, versao: o.versao } });
+  /**
+   * A transição leva a versão da OS no aparelho (a guardada mais as transições
+   * na fila). A conclusão com a parada do chamado aberta leva a resposta e a
+   * hora do aparelho, que vira o fim da parada se o equipamento voltou.
+   */
+  const agirNaOs = (
+    o: OsNoAparelho,
+    acao: AcaoDoTecnico,
+    resposta?: { equipamentoVoltou: boolean },
+  ) =>
+    enfileirar({
+      tipo: `os.${acao}`,
+      dados: {
+        osId: o.id,
+        versao: o.versao,
+        ...(acao === 'concluir' && resposta
+          ? { equipamentoVoltou: resposta.equipamentoVoltou, concluidaEm: new Date().toISOString() }
+          : {}),
+      },
+    });
 
   const apontarHoras = (osId: string, inicio: Date, fim: Date) =>
     enfileirar({

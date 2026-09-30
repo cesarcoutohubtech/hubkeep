@@ -19,6 +19,14 @@ export interface ParadaGravada {
   encerradaPor: string | null;
 }
 
+/** Parada aberta com a OS do chamado já concluída (ou aceita), para a gestão acompanhar. */
+export interface ParadaPendente extends ParadaGravada {
+  hotel: { id: string; bandeiraId: string | null };
+  ativoNome: string;
+  /** A OS concluída (ou aceita) do chamado da parada. */
+  os: { id: string; estado: string };
+}
+
 /** A parada registrada na execução, já validada. */
 export interface RegistroDeParada {
   hotelId: string;
@@ -42,6 +50,11 @@ export interface PortaParadas {
   abertaDoAtivo(ctx: Contexto, ativoId: string): Promise<ParadaGravada | null>;
   /** As paradas do ativo, da mais nova para a mais antiga. */
   doAtivo(ctx: Contexto, ativoId: string): Promise<ParadaGravada[]>;
+  /**
+   * As paradas abertas visíveis (RLS) cujo chamado tem OS num dos estados
+   * pedidos (os de OS concluída, do domínio), da mais antiga para a mais nova.
+   */
+  abertasComOs(ctx: Contexto, estadosDaOs: readonly string[]): Promise<ParadaPendente[]>;
   /**
    * Na unit of work, só se ainda aberta: senão Conflito parada_nao_aberta; a
    * RLS recusa quem não encerra (NaoEncontrado parada_nao_encontrada).

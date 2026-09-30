@@ -825,3 +825,24 @@ Dividida em duas partes, cada uma no seu PR:
 - **Perguntas ao Cesar:** as decisões de desenho da C5 (bloco "Implementação (C5)" no ADR-027, "a confirmar").
 - **Próxima tarefa:** C6 (aceite), no local, num worktree novo a partir da `main`.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### #71 mergeado; decisões do Cesar; complemento da C5 (30/09/2026)
+- **#71** (`c3e68c5`) mergeado pelo Cesar com a CI verde (a segunda rodada, depois da correção do `020`). CI da `main` depois dele: `banco`, `CI` e `segurança` verdes.
+- **Decisões do Cesar sobre a C5 e a C6** chegaram depois do merge (ele pedia o item 4 da C5 no #71, antes do merge). Como o #71 já tinha entrado, os itens 4 e 5 vão num PR complementar a partir da `main` (`1a-c5b-parada-conclusao`, worktree `wt/c5b-parada-conclusao`), sem migração. As decisões da C5 estão no ADR-027 (bloco "Decisões do Cesar sobre a C5"); as da C6 entram na branch da C6.
+- **Item 4, conclusão com a parada aberta:**
+  - domínio: `paradaAEncerrarNaConclusao` (só a parada aberta do próprio chamado, só com "sim") e `ESTADOS_DA_OS_CONCLUIDA`;
+  - `os.concluir` aceita `equipamentoVoltou` e `concluidaEm`; `prepararAcao` devolve a parada a encerrar, e a sincronização encerra na mesma unit of work da conclusão (a resposta traz `paradaEncerrada`);
+  - sem resposta: a parada fica aberta, em vez de recusar a conclusão;
+  - fila do dia com `paradaDoChamado`; no PWA, a pergunta obrigatória na conclusão (`PerguntaDaParada`), a projeção que encerra a parada com o "sim", e o botão de encerrar só na parada do próprio chamado;
+  - web: `GET /api/v1/paradas/abertas-com-os-concluida` e a tela `/admin/paradas` (Admin do grupo, Gestor CSC e Gerente, cada um com os hotéis dele).
+- **Item 5, proprietário:** `veDetalhesDaParada`; a API tira chamado, OS e autores da parada para o proprietário. pgTAP `020` com 4 casos novos (42): ele não lê o membro que abriu, a auditoria da parada, os eventos e as paradas de outro hotel. A RLS é por linha: esconder colunas no banco pediria uma view e ADR (registrado no ADR-027, sem implementar).
+- **Item 1:** a UH não é ativo; lacuna registrada no ADR-027.
+- **i18n:** 10 chaves novas nos quatro idiomas (a pergunta e as respostas no PWA; a tela das paradas pendentes e o link no início do web).
+- **Local:** typecheck, lint e testes verdes: raiz 275, domínio 1727, aplicação 91, PWA 109, web 63. A integração do `packages/db` (4 casos novos em `paradas.test.ts`) e o pgTAP rodam só na CI.
+- **Item 7 da C6 (gatilho), em aberto:** o preenchimento de `chamado_aberto_por` por gatilho esbarra na regra 3 do CLAUDE.md (sem trigger; exceção só por ADR aprovado, com o meta-teste atualizado) e pede uma função nova no banco (meta-teste 11). Perguntado ao Cesar antes de implementar a C6.
+
+### Ponto de retomada (30/09/2026, complemento da C5 aberto)
+- **`main`:** `c3e68c5` (#71). **Dev:** o `db push` da 0025 é do Cesar; conferir o dev só por leitura depois dele.
+- **PR aberto:** complemento da C5 (`1a-c5b-parada-conclusao`, worktree `wt/c5b-parada-conclusao`, zona protegida, sem migração). Conferir `gh pr checks`; se a CI falhar, corrigir na branch.
+- **Depois do merge:** trazer a `main` para a `1a-c6-aceite` e aplicar as decisões da C6 (itens 7 a 11), com a resposta do Cesar sobre o gatilho do item 7; então o PR da C6.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

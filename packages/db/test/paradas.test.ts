@@ -9,6 +9,10 @@
 //   - pelo web, a gestão do hotel encerra e o técnico não; a lista traz o
 //     tempo parado;
 //   - sem a regra do domínio, a RLS recusa o técnico sem OS no chamado;
+//   - na conclusão, "o equipamento voltou a funcionar" encerra a parada do
+//     chamado na mesma operação, uma vez só; senão ela fica aberta e aparece
+//     na lista da gestão (paradas abertas com OS concluída);
+//   - o proprietário vê só o ativo, o estado e as datas;
 //   - auditoria e eventos na mesma transação.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
@@ -51,11 +55,16 @@ const UH = randomUUID();
 const A1 = randomUUID();
 const A2 = randomUUID();
 const A3 = randomUUID();
+const A4 = randomUUID();
+const A5 = randomUUID();
+const A6 = randomUUID();
+const PROPRIETARIO = randomUUID();
 const U = {
   admin: randomUUID(),
   gerente: randomUUID(),
   tecnico: randomUUID(),
   outro: randomUUID(),
+  dono: randomUUID(),
 };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 const haHoras = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
@@ -126,6 +135,9 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
       [A1, 'PARADA0001', 'Frigobar'],
       [A2, 'PARADA0002', 'Ar'],
       [A3, 'PARADA0003', 'TV'],
+      [A4, 'PARADA0004', 'Cofre'],
+      [A5, 'PARADA0005', 'Micro-ondas'],
+      [A6, 'PARADA0006', 'Secador'],
     ] as const) {
       await dono.query(
         `insert into app.ativo (codigo_qr, id, tenant_id, hotel_id, local_id, nome, busca)
@@ -152,6 +164,20 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
     await atribuir(U.admin, 'admin_grupo', 'grupo', null);
     await atribuir(U.gerente, 'gerente_hotel', 'hotel', H1);
     for (const t of [U.tecnico, U.outro]) await atribuir(t, 'tecnico', 'hotel', H1);
+    await dono.query(
+      `insert into app.proprietario (id, tenant_id, nome) values ($1, $2, 'Dono da UH')`,
+      [PROPRIETARIO, TENANT],
+    );
+    await dono.query(
+      `insert into app.local_proprietario (id, tenant_id, proprietario_id, local_id, vigencia_inicio)
+       values ($1, $2, $3, $4, current_date - 1)`,
+      [randomUUID(), TENANT, PROPRIETARIO, UH],
+    );
+    await dono.query(
+      `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, proprietario_id, concedido_por)
+       values ($1, $2, $3, 'proprietario', 'proprietario', $4, $5)`,
+      [randomUUID(), TENANT, U.dono, PROPRIETARIO, U.admin],
+    );
 
     banco = await criarAcessoBanco({ app: { url: URL_APP ?? '', max: 2 } });
     const atribuicoes = criarPortasDeAplicacao(banco).atribuicoes;
@@ -226,6 +252,8 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
       'app.situacao',
       'app.prioridade',
       'app.atribuicao_escopo',
+      'app.local_proprietario',
+      'app.proprietario',
       'app.local',
       'app.hotel',
       'app.membro',
@@ -361,10 +389,92 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
       paradoDesde: haHoras(1),
     });
     const [aberta] = (await paradas.doAtivo(ctx(U.gerente), A3)).paradas;
-    expect(aberta?.chamadoId).toBe(id);
+    expect(aberta && 'chamadoId' in aberta ? aberta.chamadoId : null).toBe(id);
     await expect(
       paradasSemRegra.encerrar(ctx(U.outro), aberta?.id ?? '', {}),
     ).rejects.toMatchObject({ codigo: 'parada_nao_encontrada' });
     expect(await abertasDo(A3)).toBe(1);
+  });
+
+  const concluir = (
+    osId: string,
+    equipamentoVoltou: boolean | undefined,
+    chave: string = randomUUID(),
+  ) =>
+    sincronizacao.receberOperacao(ctx(U.tecnico), {
+      chave,
+      tipo: 'os.concluir',
+      dados: {
+        osId,
+        versao: 2,
+        ...(equipamentoVoltou === undefined
+          ? {}
+          : { equipamentoVoltou, concluidaEm: new Date().toISOString() }),
+      },
+    });
+
+  it('conclusão com o equipamento de volta: a parada encerra na mesma operação, uma vez só', async () => {
+    const { osId } = await osEmExecucao(A4);
+    await registrar(osId);
+    const [daFila] = (await execucao.osDoDia(ctx(U.tecnico))).filter((o) => o.id === osId);
+    expect(daFila?.chamado.paradaDoChamado).toBe(true);
+    const chave = randomUUID();
+    const primeira = await concluir(osId, true, chave);
+    expect(primeira.resposta).toMatchObject({ estado: 'concluida', paradaEncerrada: true });
+    expect(await abertasDo(A4)).toBe(0);
+    const reenvio = await concluir(osId, true, chave);
+    expect(reenvio.repetida).toBe(true);
+    expect(
+      await contar(
+        `select count(*)::int as n from app.evento_dominio e
+         join app.parada_ativo p on p.id = e.registro_id
+         where e.tenant_id = $1 and e.tipo = 'parada.encerrada' and p.ativo_id = $2`,
+        [TENANT, A4],
+      ),
+    ).toBe(1);
+  });
+
+  it('conclusão sem o equipamento de volta: fica aberta e aparece para a gestão', async () => {
+    const { chamadoId, osId } = await osEmExecucao(A5);
+    await registrar(osId);
+    expect((await concluir(osId, false)).resposta).toMatchObject({ paradaEncerrada: false });
+    expect(await abertasDo(A5)).toBe(1);
+
+    const pendentes = await paradas.abertasComOsConcluida(ctx(U.gerente));
+    const daA5 = pendentes.find((p) => p.ativoId === A5);
+    expect(daA5).toMatchObject({
+      chamadoId,
+      ativoNome: 'Micro-ondas',
+      os: { id: osId, estado: 'concluida' },
+    });
+    expect(pendentes.some((p) => p.ativoId === A3)).toBe(false);
+    await expect(paradas.abertasComOsConcluida(ctx(U.tecnico))).rejects.toMatchObject({
+      codigo: 'parada_fora_do_papel',
+    });
+
+    await paradas.encerrar(ctx(U.gerente), daA5?.id ?? '', {});
+    expect((await paradas.abertasComOsConcluida(ctx(U.admin))).some((p) => p.ativoId === A5)).toBe(
+      false,
+    );
+  });
+
+  it('sem resposta (operação de antes da pergunta): a parada fica aberta', async () => {
+    const { osId } = await osEmExecucao(A6);
+    await registrar(osId);
+    expect((await concluir(osId, undefined)).resposta).toMatchObject({ paradaEncerrada: false });
+    expect(await abertasDo(A6)).toBe(1);
+  });
+
+  it('o proprietário vê só o ativo, o estado e as datas', async () => {
+    const doGerente = (await paradas.doAtivo(ctx(U.gerente), A5)).paradas[0];
+    expect(doGerente).toHaveProperty('abertaPor');
+    expect(doGerente).toHaveProperty('chamadoId');
+    const doDono = await paradas.doAtivo(ctx(U.dono), A5);
+    expect(doDono.paradas.length).toBeGreaterThan(0);
+    for (const p of doDono.paradas) {
+      expect(Object.keys(p).sort()).toEqual(
+        ['ativoId', 'fim', 'hotelId', 'id', 'inicio', 'tempoParadoMs'].sort(),
+      );
+    }
   });
 });

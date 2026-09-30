@@ -103,6 +103,7 @@ import {
   PedidoDeEncerramentoDeParada,
   RespostaDeParadaEncerrada,
   RespostaDeParadasDoAtivo,
+  RespostaDeParadasPendentes,
 } from './paradas';
 import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from './sincronizacao';
 import { ErroApi } from './erro';
@@ -317,7 +318,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/ativos/{id}/paradas',
     resumo:
-      'Paradas do ativo (C5), da mais nova para a mais antiga, com o tempo parado de cada uma e o total, sem contar duas vezes a sobreposição. Lê quem lê o ativo, inclusive o proprietário da UH.',
+      'Paradas do ativo (C5), da mais nova para a mais antiga, com o tempo parado de cada uma e o total, sem contar duas vezes a sobreposição. Lê quem lê o ativo, inclusive o proprietário da UH, que recebe só o ativo, o estado e as datas (sem chamadoId, osId, abertaPor e encerradaPor).',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Paradas do ativo', esquema: RespostaDeParadasDoAtivo },
@@ -339,6 +340,18 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('Parada fora do escopo (parada_nao_encontrada).'),
       409: ERRO('A parada já foi encerrada (parada_nao_aberta).'),
       422: ERRO('Fim antes do início ou no futuro (parada_invalida) ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/paradas/abertas-com-os-concluida',
+    resumo:
+      'Paradas abertas cujo chamado já tem a OS concluída ou aceita (o técnico respondeu que o equipamento não voltou a funcionar, ou não respondeu), da mais antiga para a mais nova. Admin do grupo, Gestor CSC e Gerente do hotel, cada um com as dos hotéis dele; o encerramento é pelo POST /api/v1/paradas/{id}/encerramento.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Paradas pendentes', esquema: RespostaDeParadasPendentes },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis que encerram parada (parada_fora_do_papel).'),
     },
   },
   {

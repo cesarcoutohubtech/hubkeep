@@ -127,6 +127,7 @@ export default function Inicio() {
       <a href="/admin/locais">{t('inicio.locais')}</a>
       <a href="/admin/categorias">{t('inicio.categorias')}</a>
       <a href="/admin/ativos">{t('inicio.ativos')}</a>
+      <a href="/admin/paradas">{t('inicio.paradas')}</a>
       <section>
         <h2>{t('inicio.hoteis.titulo')}</h2>
         {hoteis === null ? (
