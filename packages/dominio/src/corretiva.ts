@@ -79,7 +79,8 @@ export const PAPEIS_DA_ADMINISTRACAO: readonly Papel[] = ['admin_grupo'];
  * - aceite: quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel (C6).
  *   Quem abriu e também executa a OS (responsável, ou membro da equipe
  *   responsável) não decide o aceite: só o Gerente do hotel, outro que não ele
- *   (decisão do Cesar, 30/09/2026).
+ *   (decisão do Cesar, 30/09/2026). Se não há Gerente ativo no hotel além de
+ *   quem abriu, decidem o Gestor CSC ou o Admin do grupo (Cesar, 30/09/2026).
  */
 export const GRUPOS_DA_CORRETIVA = ['administracao', 'triagem', 'responsavel', 'aceite'] as const;
 type Quem = (typeof GRUPOS_DA_CORRETIVA)[number];
@@ -209,6 +210,21 @@ export interface ChamadoParaRegra {
 
 export const LIMITE_MOTIVO = 500;
 
+/**
+ * O que o aceite precisa ver além do ator, lido com o contexto de quem pede:
+ * as equipes de quem abriu o chamado (ele executa a OS?) e as atribuições de
+ * Gerente, de membro ativo, que podem cobrir o hotel. A RLS mostra as de
+ * Gerente ao Admin e ao Gestor CSC do hotel (0027), justamente os que decidem
+ * quando não há outro Gerente; para os demais a lista vem vazia, sem efeito.
+ */
+export interface DadosDoAceite {
+  equipesDeQuemAbriu: readonly string[];
+  gerentes: readonly Atribuicao[];
+}
+
+/** Decidem o aceite quando quem abriu executa a OS e não há outro Gerente ativo no hotel. */
+export const PAPEIS_DO_ACEITE_SEM_GERENTE: readonly Papel[] = ['gestor_csc', 'admin_grupo'];
+
 function temPapelNoHotel(
   ator: AtorDaCorretiva,
   papeis: readonly Papel[],
@@ -306,11 +322,39 @@ const ehResponsavel = (ator: AtorDaCorretiva, r: Responsavel | null): boolean =>
   r !== null &&
   (r.tipo === 'tecnico' ? r.usuarioId === ator.usuarioId : ator.equipes.includes(r.equipeId));
 
+/**
+ * Quem abriu executa a OS e nenhum outro Gerente, vigente, cobre o hotel: o
+ * aceite passa ao Gestor CSC e ao Admin do grupo. Sem os dados, falha fechada.
+ */
+function aceiteSemOutroGerente(
+  chamado: ChamadoParaRegra,
+  r: Responsavel | null,
+  dados: DadosDoAceite | undefined,
+  agora: Date,
+): boolean {
+  if (!dados || r === null) return false;
+  const quemAbriu = {
+    usuarioId: chamado.abertoPor,
+    atribuicoes: [],
+    equipes: dados.equipesDeQuemAbriu,
+  };
+  if (!ehResponsavel(quemAbriu, r)) return false;
+  return !dados.gerentes.some(
+    (a) =>
+      a.usuarioId !== chamado.abertoPor &&
+      a.papel === 'gerente_hotel' &&
+      vigente(a, agora) &&
+      escopoCobreHotel(a, chamado.hotel),
+  );
+}
+
+type OsParaPapel = { responsavel: Responsavel; aceite?: DadosDoAceite | undefined } | null;
+
 function estaNoGrupo(
   grupo: Quem,
   ator: AtorDaCorretiva,
   chamado: ChamadoParaRegra,
-  os: { responsavel: Responsavel } | null,
+  os: OsParaPapel,
   agora: Date,
 ): boolean {
   switch (grupo) {
@@ -322,10 +366,13 @@ function estaNoGrupo(
       return temPapelNoHotel(ator, ['tecnico'], chamado.hotel, agora);
     case 'aceite': {
       const abriu = chamado.abertoPor === ator.usuarioId;
-      if (abriu && ehResponsavel(ator, os?.responsavel ?? null)) return false;
+      const r = os?.responsavel ?? null;
+      if (abriu && ehResponsavel(ator, r)) return false;
+      if (temPapelNoHotel(ator, ['gerente_hotel'], chamado.hotel, agora)) return true;
+      if (abriu) return temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, chamado.hotel, agora);
       return (
-        (abriu && temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, chamado.hotel, agora)) ||
-        temPapelNoHotel(ator, ['gerente_hotel'], chamado.hotel, agora)
+        aceiteSemOutroGerente(chamado, r, os?.aceite, agora) &&
+        temPapelNoHotel(ator, PAPEIS_DO_ACEITE_SEM_GERENTE, chamado.hotel, agora)
       );
     }
   }
@@ -336,7 +383,7 @@ function exigirPapel(
   acao: string,
   ator: AtorDaCorretiva,
   chamado: ChamadoParaRegra,
-  os: { responsavel: Responsavel } | null,
+  os: OsParaPapel,
   agora: Date,
 ): void {
   if (!quem.some((g) => estaNoGrupo(g, ator, chamado, os, agora))) {
@@ -387,6 +434,7 @@ export function decidirNoChamado(
  * os_em_andamento), o estado do chamado (409, transicao_invalida), o
  * responsável (409, os_de_outro_responsavel) e o motivo (422). Devolve o
  * estado novo da OS, o do chamado (nulo se não muda) e o motivo normalizado.
+ * `aceite` só conta para aceitar e reabrir (DadosDoAceite).
  */
 export function decidirNaOs(
   acao: AcaoDaOs,
@@ -396,6 +444,7 @@ export function decidirNaOs(
     os: { estado: EstadoDaOs; responsavel: Responsavel } | null;
     osDoChamado?: readonly EstadoDaOs[];
     motivo?: string | null | undefined;
+    aceite?: DadosDoAceite;
     agora: Date;
   },
 ): { estado: EstadoDaOs; chamado: EstadoDoChamado | null; motivo: string | null } {
@@ -406,7 +455,8 @@ export function decidirNaOs(
       acao,
       estado: estadoDaOs,
     });
-  exigirPapel(t.quem, acao, p.ator, p.chamado, p.os, p.agora);
+  const os = p.os && { responsavel: p.os.responsavel, aceite: p.aceite };
+  exigirPapel(t.quem, acao, p.ator, p.chamado, os, p.agora);
   if (!t.de.includes(estadoDaOs)) throw invalida();
   if (acao === 'gerar') {
     if (!p.osDoChamado) throw new Error('decidirNaOs(gerar) precisa das OS do chamado.');

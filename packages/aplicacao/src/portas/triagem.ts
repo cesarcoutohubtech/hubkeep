@@ -6,6 +6,7 @@
 import type {
   Atribuicao,
   Contexto,
+  DadosDoAceite,
   EstadoDaOs,
   EstadoDoChamado,
   Responsavel,
@@ -66,6 +67,15 @@ export interface PortaTriagem {
   equipe(ctx: Contexto, equipeId: string): Promise<{ hotelId: string; ativa: boolean } | null>;
   /** Equipes ativas de que quem pede é membro ativo (o aceite confere se ele executa a OS). */
   equipesDoUsuario(ctx: Contexto): Promise<string[]>;
+  /**
+   * Para o aceite (DadosDoAceite): as equipes ativas de quem abriu o chamado e
+   * as atribuições de Gerente não revogadas, de membro ativo, que podem cobrir
+   * o hotel (grupo, bandeira do hotel ou o hotel), visíveis a quem pede (0027).
+   */
+  dadosDoAceite(
+    ctx: Contexto,
+    g: { hotel: { id: string; bandeiraId: string | null }; abertoPor: string },
+  ): Promise<DadosDoAceite>;
   alterarChamado(
     ctx: Contexto,
     chamadoId: string,

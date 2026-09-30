@@ -1376,14 +1376,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/os/{id}/aceite',
     resumo:
-      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só o Gerente. Leva a versão vista da OS.',
+      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Leva a versão vista da OS.',
     exigeTenant: true,
     corpo: PedidoDeAceiteDeOs,
     respostas: {
       200: { descricao: 'OS aceita, com a versão nova do chamado', esquema: RespostaDeOsGravada },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO(
-        'Nem quem abriu o chamado nem o Gerente do hotel, ou quem abriu também executa a OS (acao_fora_do_papel).',
+        'Nem quem abriu o chamado nem o Gerente do hotel (nem o Gestor CSC ou o Admin, quando não há outro Gerente), ou quem abriu também executa a OS (acao_fora_do_papel).',
       ),
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
@@ -1394,7 +1394,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/os/{id}/reabertura',
     resumo:
-      'Reabre a OS concluída, com motivo: a mesma OS volta para em execução, com o mesmo responsável, e o chamado também (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS não decide, só o Gerente. O motivo fica na OS (o último, motivoReabertura) e na auditoria. Com paradoDesde, o equipamento está parado: abre uma parada nova do ativo no mesmo chamado (a encerrada não reabre); se o ativo já está parado, fica a que existe (paradaId nulo). Leva a versão vista da OS.',
+      'Reabre a OS concluída, com motivo: a mesma OS volta para em execução, com o mesmo responsável, e o chamado também (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. O motivo fica na OS (o último, motivoReabertura) e na auditoria. Com paradoDesde, o equipamento está parado: abre uma parada nova do ativo no mesmo chamado (a encerrada não reabre); se o ativo já está parado, fica a que existe (paradaId nulo). Leva a versão vista da OS.',
     exigeTenant: true,
     corpo: PedidoDeReaberturaDeOs,
     respostas: {
@@ -1404,7 +1404,7 @@ export const ROTAS: readonly Rota[] = [
       },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO(
-        'Nem quem abriu o chamado nem o Gerente do hotel, ou quem abriu também executa a OS (acao_fora_do_papel).',
+        'Nem quem abriu o chamado nem o Gerente do hotel (nem o Gestor CSC ou o Admin, quando não há outro Gerente), ou quem abriu também executa a OS (acao_fora_do_papel).',
       ),
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
