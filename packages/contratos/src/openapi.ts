@@ -37,6 +37,10 @@ import {
   RespostaDeSituacoesEPrioridadesPadrao,
 } from './situacoes';
 import {
+  ConsultaDaLista,
+  RespostaDeLinhaDoTempo,
+  RespostaDeListaDeChamados,
+  RespostaDeListaDeOs,
   PedidoDeAberturaDeChamado,
   PedidoDeAjusteDePrioridade,
   PedidoDeAtribuicaoDeOs,
@@ -123,6 +127,8 @@ export interface Rota {
   autenticacao?: 'usuario' | 'agente';
   /** Lista que aceita ?busca= (trecho, sem acento, a partir de 3 caracteres; B6). */
   busca?: boolean;
+  /** Parâmetros da query string (C7): cada campo do objeto vira um parâmetro. */
+  consulta?: z.ZodObject;
   corpo?: Esquema;
   respostas: Record<number, { descricao: string; esquema?: Esquema }>;
 }
@@ -1252,12 +1258,50 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/chamados/{id}',
     resumo:
-      'O chamado e as OS dele, se visível a quem pede: quem lê o hotel, o proprietário da UH do chamado ou do hotel inteiro.',
+      'O chamado e as OS dele, se visível a quem pede: quem lê o hotel, o proprietário da UH do chamado ou do hotel inteiro. Com os nomes do hotel, do local, do ativo, de quem abriu e dos responsáveis (C7); o que quem pede não lê vem null ou fica de fora.',
     exigeTenant: true,
     respostas: {
-      200: { descricao: 'Chamado, com as OS', esquema: RespostaDeChamado },
+      200: { descricao: 'Chamado, com as OS e os nomes', esquema: RespostaDeChamado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/chamados',
+    resumo:
+      'Lista os chamados no escopo de quem pede (C7): cada papel vê os dos hotéis que lê, e o proprietário, os das UHs e do hotel inteiro dele (RLS). Filtros opcionais: hotel, situação, prioridade e período pela data de abertura (de inclusive, ate exclusive). Do mais novo para o mais antigo, 50 por página; a seguinte com depoisDe = proximo.',
+    exigeTenant: true,
+    consulta: ConsultaDaLista,
+    respostas: {
+      200: { descricao: 'Uma página de chamados', esquema: RespostaDeListaDeChamados },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO('periodo_invalido (de igual ou depois de ate) ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/chamados/{id}/linha-do-tempo',
+    resumo:
+      'A linha do tempo do chamado (C7): as ações da auditoria do chamado, das OS dele e das paradas do chamado, com quem fez, quando e o motivo do cancelamento ou da reabertura, da mais antiga para a mais nova. A auditoria é lida pela RLS: quem não a lê (o proprietário) recebe a lista vazia.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Eventos do chamado', esquema: RespostaDeLinhaDoTempo },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/os',
+    resumo:
+      'Lista as OS no escopo de quem pede (C7), com os mesmos filtros da lista de chamados; a prioridade é a do chamado, e o período, pela data de criação da OS. Da mais nova para a mais antiga, 50 por página; a seguinte com depoisDe = proximo.',
+    exigeTenant: true,
+    consulta: ConsultaDaLista,
+    respostas: {
+      200: { descricao: 'Uma página de OS', esquema: RespostaDeListaDeOs },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO('periodo_invalido (de igual ou depois de ate) ou entrada_invalida.'),
     },
   },
   {
@@ -1435,6 +1479,22 @@ function idDe(esquema: Esquema): string {
   return id;
 }
 
+/** Um parâmetro de query por campo do objeto, com o schema do campo. */
+function parametrosDaConsulta(consulta: z.ZodObject) {
+  return Object.entries(consulta.shape).map(([nome, campo]) => {
+    const esquema: Record<string, unknown> = {
+      ...z.toJSONSchema(campo as Esquema, { io: 'input' }),
+    };
+    delete esquema['$schema'];
+    return {
+      name: nome,
+      in: 'query',
+      required: !(campo as Esquema).safeParse(undefined).success,
+      schema: esquema,
+    };
+  });
+}
+
 export function gerarOpenApi(): Record<string, unknown> {
   // Os schemas vão para components; entrada e saída usam a forma de entrada
   // do Zod (o que o cliente manda), que aqui coincide com a de saída.
@@ -1465,10 +1525,11 @@ export function gerarOpenApi(): Record<string, unknown> {
     (paths[rota.caminho] ??= {})[rota.metodo] = {
       summary: rota.resumo,
       ...(rota.autenticacao === 'agente' && { security: [{ agente: [] }] }),
-      ...((rota.exigeTenant || rota.busca) && {
+      ...((rota.exigeTenant || rota.busca || rota.consulta) && {
         parameters: [
           ...(rota.exigeTenant ? [{ $ref: '#/components/parameters/Tenant' }] : []),
           ...(rota.busca ? [{ $ref: '#/components/parameters/Busca' }] : []),
+          ...(rota.consulta ? parametrosDaConsulta(rota.consulta) : []),
         ],
       }),
       ...(rota.corpo && {

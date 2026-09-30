@@ -190,6 +190,15 @@ export type {
   ParadaVista,
 } from './casos-de-uso/paradas';
 export type {
+  ChamadoResumido,
+  EventoDaLinhaDoTempo,
+  NomesDoChamado,
+  OsResumida,
+  PortaConsultasDaCorretiva,
+} from './portas/consultas';
+export { criarCasosDeUsoDeConsultas } from './casos-de-uso/consultas';
+export type { CasosDeUsoDeConsultas, Pagina, PedidoDeLista } from './casos-de-uso/consultas';
+export type {
   CasosDeUsoDeTriagem,
   RegrasDaTriagem,
   ResponsavelPedido,
