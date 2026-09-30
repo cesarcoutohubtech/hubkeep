@@ -152,7 +152,7 @@ X-HubKeep-Evento-Id: <uuid>
 
 | Etapa | Onde | Quando |
 |---|---|---|
-| Contrato aprovado | Os dois repositórios | Agora |
+| Aprovação do contrato por Cesar e Kaio | Os dois repositórios | Pendente |
 | Simulador do HubKeep | Reputation | Na P1 do Reputation |
 | Credencial de integração, rota de entrada e entrega de eventos | HubKeep | Depois do piloto do HubKeep |
 | Teste integrado entre os dois dev | Os dois | Quando os dois lados estiverem prontos |
