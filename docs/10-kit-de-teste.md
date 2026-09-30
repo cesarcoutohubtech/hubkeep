@@ -119,13 +119,13 @@ Os e-mails são do domínio `.test`, que não existe: nenhum e-mail sai, e as co
 
 | Chamado | Onde | Estado | Para testar |
 |---|---|---|---|
-| Chuveiro sem água quente | Centro, UH 104 | Aberto (pela Solicitante) | Triagem (ver seção 5) |
+| Chuveiro sem água quente | Centro, UH 104 | Aberto (pela Solicitante) | Triagem pelo web (passo a passo na seção 4) |
 | Frigobar não gela | Centro, UH 101, com ativo | OS atribuída ao Técnico, não iniciada | Fila do dia no PWA; o proprietário da UH vê |
 | Ar-condicionado desligando sozinho | Centro, UH 102, com ativo | OS em execução, equipamento parado desde 2 h antes | Conclusão com "o equipamento voltou?"; paradas |
 | Aquecedor da piscina com ruído | Centro, Piscina, com ativo | OS concluída, aguardando aceite (aberto pela Solicitante) | Aceite e reabertura com motivo |
 | TV sem sinal | Centro, UH 103 | Cancelado, com o motivo | Motivo no detalhe e na linha do tempo |
 | Forno não chega à temperatura | Centro, Cozinha | Concluído (OS da Equipe Centro, aceita pelo Gerente) | Linha do tempo completa |
-| Ar-condicionado pingando no carpete | Praia, UH 101, com ativo | Aberto (pelo Gerente do Praia) | Escopo do proprietário do hotel inteiro |
+| Ar-condicionado pingando no carpete | Praia, UH 101, com ativo | Aberto (pelo Gerente do Praia) | Escopo do proprietário do hotel inteiro; triagem pelo Gerente do Praia |
 
 ## 4. Roteiro por papel
 
@@ -143,7 +143,7 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
 
 ### Gestor CSC, Bandeira Azul (web)
 
-- **Deve conseguir:** ver o Centro e o Serra, e os 6 chamados do Centro com as OS e a linha do tempo.
+- **Deve conseguir:** ver o Centro e o Serra, e os 6 chamados do Centro com as OS e a linha do tempo; a triagem dos chamados do Centro (passo a passo abaixo).
 - **Deve ser barrado:**
   - o Praia e o chamado dele não aparecem, e abrir o link do detalhe dele dá "não encontrado";
   - aceitar a OS do aquecedor: o Centro tem Gerente, então quem decide é ele (regra do Gerente único);
@@ -158,6 +158,7 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
 
 - **Deve conseguir:**
   - os 6 chamados do Centro;
+  - a **triagem** do chuveiro, do começo ao fim (passo a passo abaixo);
   - **aceitar** a OS do aquecedor, ou **reabrir** com motivo (e, por ter ativo, marcar "o equipamento está parado" com data e hora);
   - equipes do Centro;
   - a tela de paradas abertas com OS concluída.
@@ -165,7 +166,7 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
 
 ### Gerente do Praia (web)
 
-- **Deve conseguir:** só o chamado do ar-condicionado do Praia.
+- **Deve conseguir:** só o chamado do ar-condicionado do Praia; triar e gerar a OS dele para o Técnico do Praia, que passa a vê-la na fila do dia do PWA.
 - **Deve ser barrado:** nada do Centro nem do Serra.
 
 ### Técnico do Centro (PWA e web)
@@ -191,7 +192,25 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - abrir chamado pelo PWA, com local, ativo opcional, descrição e foto;
   - ver os chamados do Centro no web;
   - **aceitar** a OS do aquecedor, porque foi ela quem abriu o chamado.
-- **Deve ser barrado:** triagem e geração de OS (pela API, seção 5).
+- **Deve ser barrado:** triagem e geração de OS: o painel "Triagem e atribuição" aparece no detalhe, mas qualquer ação dele volta com a recusa traduzida.
+
+### Triagem pelo web, passo a passo (Gerente do Centro ou Gestor CSC)
+
+O painel **Triagem e atribuição** fica no detalhe do chamado, abaixo das OS. Ele aparece para todos os papéis, e quem decide se a ação vale é a API: para quem não é Admin do grupo, Gestor CSC nem Gerente do hotel, a ação volta com a recusa traduzida. O painel mostra só as ações que o estado do chamado permite, e cada ação recarrega a tela.
+
+1. **Abrir o chamado.** Em "Chamados", abrir "Chuveiro sem água quente" (aberto). O painel vem aberto, com **Triar**, **Gerar OS** e **Cancelar chamado**.
+2. **Triar.** Escolher a prioridade **Urgente** (ou "Manter a atual") e clicar em **Triar**. A situação vira "em triagem" com a prioridade nova, e a linha do tempo ganha "Chamado em triagem". Agora aparece **Ajustar prioridade** no lugar de Triar.
+3. **Ajustar prioridade.** Trocar para **Alta** e conferir "Prioridade alterada" na linha do tempo.
+4. **Tentar uma OS para quem não é Técnico.** Em **Gerar OS**, a lista traz as equipes ativas do hotel e as pessoas ativas do grupo. Escolher a **Solicitante** e gerar: tem de voltar recusado, com a mensagem de que a pessoa não é Técnico ativo neste hotel.
+5. **Gerar a OS para a equipe.** Escolher **Equipe Centro** e gerar. O chamado vai para "em execução", a OS aparece como atribuída à Equipe Centro, e o painel passa a mostrar **Reatribuir** e **Cancelar OS** para ela.
+6. **Reatribuir.** Passar a OS para o **Técnico do Centro**. No PWA dele, a OS entra na fila do dia.
+7. **Cancelar a OS.** Com um motivo (por exemplo, "Aberto em duplicidade"). O chamado volta à triagem, a OS fica cancelada com o motivo, e **Gerar OS** volta a aparecer para uma OS nova.
+8. **Cancelar o chamado.** Primeiro sem motivo: tem de ser recusado, pedindo o motivo. Depois com um motivo: o chamado fica cancelado, com o motivo no detalhe e na linha do tempo, e o painel diz que não há ação de triagem neste estado.
+
+**Conferir também:**
+- Em outro navegador, com outro papel da triagem, abrir o mesmo chamado antes da ação e agir depois dela: a segunda ação volta com o aviso de que outra pessoa alterou o registro (conflito de versão).
+- No Ar-condicionado UH 102 (em execução), o painel oferece só **Ajustar prioridade**, **Reatribuir** e **Cancelar OS**. No aquecedor (aguardando aceite) e no forno (concluído), nada.
+- A triagem de cada chamado vale uma vez. Rodar o script de novo não desfaz o que você fez (seção 6). Para outra rodada, abra um chamado novo pelo PWA com a Solicitante: ele chega aberto.
 
 ### Proprietário de UH (web)
 
@@ -208,7 +227,7 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
 
 ## 5. O que ainda não dá para testar pela tela
 
-- **Triagem pelo web:** triar, mudar a prioridade, gerar a OS (para técnico ou equipe), reatribuir, cancelar a OS e cancelar o chamado existem na API (C3) e nas regras, mas **não têm tela**. A C7 fez as listas, o detalhe, o aceite e a reabertura. O script já deixa chamados triados e com OS, para o resto do fluxo ser testável. Pela API, as rotas estão na OpenAPI em `http://localhost:3000/api/interno/openapi`. Uma tela de triagem no detalhe do chamado é uma tarefa curta, **a decidir pelo Cesar** antes ou durante a etapa D.
+- **Lista de responsáveis só com Técnicos:** o seletor de "Gerar OS" e "Reatribuir" traz as pessoas ativas do grupo, porque é a lista que a rota das equipes do hotel já devolve. Quem não é Técnico do hotel é recusado pela API (passo 4 acima). Filtrar a lista pede uma rota nova de leitura, fora desta tarefa.
 - **Linha do tempo do proprietário** e o antes e depois de cada campo: etapa D (D1).
 - **SLA, escalonamento e notificações:** fase 1c. Os eventos ficam no outbox do dev, e nenhum e-mail sai, porque o cron só roda na Vercel.
 - **Outro tenant:** o kit cria um grupo só. O isolamento entre tenants está coberto pelos testes pgTAP e de integração na CI.

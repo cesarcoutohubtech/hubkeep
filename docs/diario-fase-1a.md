@@ -951,3 +951,30 @@ Dividida em duas partes, cada uma no seu PR:
 - **PR aberto:** o do kit (`1a-kit-teste`, worktree `wt/kit-teste`, sem zona protegida). Conferir `gh pr checks`; o teste `semear.test.ts` só roda na CI. Só avisar pronto com tudo verde.
 - **Parada:** o kit está pronto; a etapa D só começa com o aval do Cesar, depois do teste no notebook.
 - **Decisão pendente do Cesar:** tela de triagem no detalhe do chamado (lacuna da etapa C), antes ou durante a D.
+
+### #77 mergeado; tela de triagem no detalhe do chamado (30/09/2026)
+- **#77 (kit de teste) na `main`**, com a CI verde no PR e depois do merge. O `semear.test.ts` rodou no Supabase do runner (5 de 5): o script dos dados de demonstração está validado num banco real.
+- **Decisão do Cesar (30/09/2026):** a tela de triagem entra agora, antes do teste no notebook, usando as rotas que já existem. O passo a passo vai para o roteiro do docs/10.
+- **Branch `1a-triagem`**, worktree `wt/triagem`. Sem migração, sem ADR, sem rota nova: não é zona protegida.
+- **Painel "Triagem e atribuição"** (`apps/web/src/cliente/triagem.tsx`), no detalhe do chamado, abaixo das OS: triar (com a prioridade junto), ajustar a prioridade, gerar a OS para um Técnico ou uma equipe do hotel, reatribuir e cancelar a OS (com motivo) e cancelar o chamado (com motivo), pelas seis rotas da C3, sempre com a versão vista.
+  - **O que aparece em cada estado** sai das tabelas de transição do domínio (`TRANSICOES_DO_CHAMADO`, `TRANSICOES_DA_OS`, `ESTADOS_COM_PRIORIDADE_AJUSTAVEL`), sem regra repetida na tela. No chamado aberto, a prioridade vai com a triagem, num formulário só.
+  - **Quem pode** é decidido pela API, como no aceite da C7: o painel aparece para todos, e a recusa volta como código e aparece traduzida.
+  - **Lista de responsáveis:** as equipes ativas e as pessoas ativas que `GET /api/v1/hoteis/{id}/equipes` já devolve. Quem não é Técnico do hotel é recusado pela API (`responsavel_sem_papel_tecnico`). Filtrar só Técnicos pede uma rota nova de leitura; ficou registrado no docs/10 como limite, fora desta tarefa.
+- **Catálogos:** 20 chaves `corretiva.triagem.*` em pt-BR, en, es e fr, com os termos que os catálogos já usam (service request, orden de trabajo, ordre de travail, triaje).
+- **Testes:**
+  - `apps/web/test/telas-triagem.test.tsx`: as ações por estado; o valor do seletor de responsável; só equipes ativas; o aviso sem candidatos; o painel nos quatro idiomas; e, no pseudo-idioma, todo texto vindo do catálogo.
+  - No `semear.test.ts` (CI), o passo a passo do roteiro sobre os dados de demonstração:
+    - Gerente e Gestor recebem a Equipe Centro e o Técnico do Centro na lista;
+    - a Solicitante é recusada na triagem;
+    - o Gerente tria com a prioridade urgente;
+    - OS para quem não é Técnico: recusada; para a equipe: gerada;
+    - reatribuição ao Técnico e cancelamento da OS, com o chamado de volta à triagem;
+    - cancelamento do chamado sem motivo: recusado; com motivo: feito.
+    - Cada recusa tem mensagem no catálogo.
+- **docs/10:** passo a passo da triagem na seção 4; Gestor, Gerentes e Solicitante apontando para ele; a lacuna saiu da seção 5.
+
+### Ponto de retomada (30/09/2026, tela de triagem)
+- **`main`:** merge do #77 (kit de teste), CI verde. **Dev:** 27 migrações aplicadas.
+- **PR aberto:** o da triagem (`1a-triagem`, worktree `wt/triagem`, sem zona protegida). Conferir `gh pr checks`; o passo a passo no `semear.test.ts` só roda na CI. Só avisar pronto com tudo verde.
+- **Depois do merge:** `gh run list --branch main`; main vermelha se corrige antes de qualquer outro merge. Aí avisar o Cesar de que o kit e a triagem estão na `main`, para ele rodar o kit no notebook.
+- **Parada:** a etapa D só começa com o aval do Cesar, depois do teste no notebook.

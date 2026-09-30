@@ -1,14 +1,19 @@
 // Dados de demonstração do kit de teste contra o Supabase do runner (Auth e
 // banco reais): o script roda duas vezes e a segunda não duplica nada; cada
 // papel entra com a senha de teste e vê só o próprio escopo; cada chamado fica
-// no estado que o roteiro do kit descreve (docs/10-kit-de-teste.md).
+// no estado que o roteiro do kit descreve (docs/10-kit-de-teste.md). No fim, o
+// passo a passo da triagem do roteiro, pelos casos de uso que as rotas chamam.
 import { randomUUID } from 'node:crypto';
+import { ErroDeDominio } from '@hubkeep/dominio';
+import { mensagensDe } from '@hubkeep/i18n';
 import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   casosDeUsoDeConsultas,
   casosDeUsoDeChamados,
+  casosDeUsoDeEquipes,
+  casosDeUsoDeSituacoes,
   casosDeUsoDeTriagem,
 } from '../../src/servidor/composicao';
 import { type Pessoa, type ResultadoDaDemonstracao, semearDemonstracao } from './semear';
@@ -179,5 +184,86 @@ describe.skipIf(!temAmbiente)('dados de demonstração do kit de teste', { timeo
       [r.hoteis.serra],
     );
     expect(uhs.rows).toEqual([{ status: 'pendente_licenca', n: '3' }]);
+  });
+
+  it('o passo a passo da triagem do roteiro, com as recusas traduzidas', async () => {
+    const triagem = await casosDeUsoDeTriagem();
+    const chamados = await casosDeUsoDeChamados();
+    const c = r.chamados.aberto;
+    const recusa = async (p: Promise<unknown>) => {
+      const e = await p.then(
+        () => null,
+        (x: unknown) => x,
+      );
+      expect(e).toBeInstanceOf(ErroDeDominio);
+      const codigo = (e as ErroDeDominio).codigo;
+      expect(mensagensDe('pt-BR')[`erro.${codigo}` as never], codigo).toBeTruthy();
+      return codigo;
+    };
+    const versao = async () => (await chamados.chamado(ctx('admin'), c)).versao;
+
+    // O seletor do painel: Gerente e Gestor recebem a equipe e o Técnico do Centro.
+    for (const p of ['gerenteCentro', 'gestor'] as const) {
+      const lista = await (await casosDeUsoDeEquipes()).listarEquipes(ctx(p), r.hoteis.centro);
+      expect(lista.equipes.map((e) => e.nome)).toContain('Equipe Centro');
+      expect(lista.disponiveis.map((d) => d.usuarioId)).toContain(
+        r.usuarios.tecnicoCentro.usuarioId,
+      );
+    }
+    const equipe = (
+      await (await casosDeUsoDeEquipes()).listarEquipes(ctx('gerenteCentro'), r.hoteis.centro)
+    ).equipes.find((e) => e.nome === 'Equipe Centro');
+    const urgente = (
+      await (await casosDeUsoDeSituacoes()).listarSituacoesEPrioridades(ctx('gerenteCentro'))
+    ).prioridades.find((p) => p.chavePadrao === 'urgente');
+
+    // A Solicitante não tria; o Gerente tria com a prioridade urgente.
+    await recusa(triagem.triar(ctx('solicitante'), c, { versao: await versao() }));
+    await triagem.triar(ctx('gerenteCentro'), c, {
+      versao: await versao(),
+      prioridadeId: urgente?.id ?? null,
+    });
+    expect((await chamados.chamado(ctx('admin'), c)).estado).toBe('em_triagem');
+
+    // OS para quem não é Técnico: recusada. Para a Equipe Centro: gerada.
+    expect(
+      await recusa(
+        triagem.gerarOs(ctx('gerenteCentro'), c, {
+          versao: await versao(),
+          responsavel: { tipo: 'tecnico', usuarioId: r.usuarios.solicitante.usuarioId },
+        }),
+      ),
+    ).toBe('responsavel_sem_papel_tecnico');
+    const os = await triagem.gerarOs(ctx('gerenteCentro'), c, {
+      versao: await versao(),
+      responsavel: { tipo: 'equipe', equipeId: equipe?.id ?? '' },
+    });
+
+    // Reatribuir ao Técnico do Centro e cancelar a OS: o chamado volta à triagem.
+    const reatribuida = await triagem.reatribuirOs(ctx('gerenteCentro'), os.id, {
+      versao: os.versao,
+      responsavel: { tipo: 'tecnico', usuarioId: r.usuarios.tecnicoCentro.usuarioId },
+    });
+    await triagem.cancelarOs(ctx('gerenteCentro'), os.id, {
+      versao: reatribuida.versao,
+      motivo: 'Aberto em duplicidade',
+    });
+    expect((await chamados.chamado(ctx('admin'), c)).estado).toBe('em_triagem');
+
+    // Cancelar o chamado pede motivo; com motivo, cancela.
+    expect(
+      await recusa(
+        triagem.cancelarChamado(ctx('gerenteCentro'), c, { versao: await versao(), motivo: '' }),
+      ),
+    ).toBe('motivo_obrigatorio');
+    await triagem.cancelarChamado(ctx('gerenteCentro'), c, {
+      versao: await versao(),
+      motivo: 'Resolvido pela recepção',
+    });
+    const fim = await chamados.chamado(ctx('admin'), c);
+    expect(fim.estado).toBe('cancelado');
+    expect((await triagem.osDoChamado(ctx('admin'), c)).map((o) => o.estado)).toEqual([
+      'cancelada',
+    ]);
   });
 });
