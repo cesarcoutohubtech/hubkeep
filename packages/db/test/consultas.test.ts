@@ -176,7 +176,7 @@ describe.skipIf(!temBanco)('C7 — listas e linha do tempo', { timeout: 60_000 }
     );
     await dono.query(
       `insert into app.ativo (codigo_qr, id, tenant_id, hotel_id, local_id, nome, busca)
-       values ('CONSU00001', $1, $2, $3, $4, 'Frigobar 101', 'frigobar 101')`,
+       values ('0000C7A001', $1, $2, $3, $4, 'Frigobar 101', 'frigobar 101')`,
       [ATIVO, TENANT, H1, UH],
     );
 

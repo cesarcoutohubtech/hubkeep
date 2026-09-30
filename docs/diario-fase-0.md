@@ -9,6 +9,7 @@ Processo (Cesar, 24/09/2026):
 - ADR só vale com aprovação explícita.
 - (26/09/2026) Merge não conta como aprovação de ADR. Quando um PR com ADR em Proposta for mergeado, perguntar ao Cesar antes de marcar como aprovado.
 - **`supabase db push` e `supabase config push` no HubKeep-dev são executados só pelo Cesar.**
+- (30/09/2026) **PR que entra na `main` com a CI vermelha é corrigido antes de qualquer outro merge.** O relato de PR pronto só sai com `gh pr checks` todo verde (a "zona protegida" falha por desenho).
 - Parar no início da F0-12 e da F0-13.
 - As sessões de trabalho no HubKeep abrem a partir de `C:\Cesar\HubKeep\Dev\hubkeep`, para carregar o CLAUDE.md do HubKeep.
 
