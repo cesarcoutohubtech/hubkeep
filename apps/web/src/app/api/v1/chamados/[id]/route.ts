@@ -39,6 +39,7 @@ export const GET = rota('chamados.ler', async (r) => {
       situacaoId: o.situacaoId,
       responsavel: o.responsavel,
       motivoCancelamento: o.motivoCancelamento,
+      motivoReabertura: o.motivoReabertura,
       criadoPor: o.criadoPor,
       versao: o.versao,
       criadoEm: o.criadoEm.toISOString(),

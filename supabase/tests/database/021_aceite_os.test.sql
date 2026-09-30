@@ -10,13 +10,14 @@
 --   4. sem contexto, nada;
 --   5. FK composta: a OS só guarda quem abriu o próprio chamado;
 --   6. chamado_aberto_por e aberto_por sem UPDATE; quem abriu não gera OS;
---      o ramo do Técnico responsável (0023) continua.
+--      o ramo do Técnico responsável (0023) continua;
+--   7. motivo_reabertura (o último, na OS): de 1 a 500 caracteres, com UPDATE.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(20);
+select plan(23);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -101,6 +102,16 @@ select lives_ok(
 update app.os set chamado_aberto_por = 'aaaaaaaa-0000-0000-0000-000000000003'
  where id = '0a200000-0000-0000-0000-000000000001';
 
+-- Caso 7 — motivo da reabertura
+select throws_ok(
+  $$ update app.os set motivo_reabertura = '   ' where id = '0a100000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'motivo de reabertura em branco recusado');
+select throws_ok(
+  $$ update app.os set motivo_reabertura = repeat('x', 501) where id = '0a100000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'motivo de reabertura acima de 500 caracteres recusado');
+select ok(has_column_privilege('hk_app', 'app.os', 'motivo_reabertura', 'UPDATE'),
+  'motivo_reabertura com UPDATE');
+
 set local role hk_app;
 
 -- Caso 4 — sem contexto
@@ -154,7 +165,7 @@ select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000
 select is_empty($$ update app.os set versao = versao + 1 returning 1 $$,
   'o Solicitante que não abriu não altera OS');
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000002', true)) ctx;
-select isnt_empty($$ update app.os set estado = 'em_execucao', versao = versao + 1
+select isnt_empty($$ update app.os set estado = 'em_execucao', motivo_reabertura = 'Continua pingando', versao = versao + 1
   where id = '0a100000-0000-0000-0000-000000000002' returning 1 $$,
   'o Gerente do hotel reabre a OS do chamado de outro');
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000005', true)) ctx;

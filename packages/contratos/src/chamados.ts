@@ -59,6 +59,8 @@ export const OsApi = z
     situacaoId: z.guid(),
     responsavel: ResponsavelApi,
     motivoCancelamento: z.string().nullable(),
+    /** O último motivo de reabertura (C6); o histórico fica na auditoria. */
+    motivoReabertura: z.string().nullable(),
     criadoPor: z.guid(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
@@ -101,10 +103,19 @@ export const RespostaDeOsGravada = z
 /** Aceitar a OS concluída (C6): só a versão vista da OS. */
 export const PedidoDeAceiteDeOs = z.object({ versao }).meta({ id: 'PedidoDeAceiteDeOs' });
 
-/** Reabrir a OS concluída (C6): o motivo é normalizado no domínio (até 500). */
+/**
+ * Reabrir a OS concluída (C6): o motivo é normalizado no domínio (até 500).
+ * Com paradoDesde, o equipamento está parado: abre a parada do ativo no
+ * mesmo chamado (a encerrada não reabre).
+ */
 export const PedidoDeReaberturaDeOs = z
-  .object({ versao, motivo: z.string().max(2000) })
+  .object({ versao, motivo: z.string().max(2000), paradoDesde: z.iso.datetime().nullish() })
   .meta({ id: 'PedidoDeReaberturaDeOs' });
+
+/** A OS reaberta; paradaId nulo sem parada nova (não pedida, ou o ativo já estava parado). */
+export const RespostaDeReaberturaDeOs = RespostaDeOsGravada.extend({
+  paradaId: z.guid().nullable(),
+}).meta({ id: 'RespostaDeReaberturaDeOs' });
 
 /** Uma OS da fila do dia do Técnico (C4), com o que a tela precisa do chamado. */
 export const OsDoDiaApi = z
@@ -114,6 +125,8 @@ export const OsDoDiaApi = z
     estado: z.enum(ESTADOS_DA_OS_API),
     situacaoId: z.guid(),
     responsavel: ResponsavelApi,
+    /** O último motivo de reabertura (C6), para o técnico ver por que voltou. */
+    motivoReabertura: z.string().nullable(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
     chamado: z.object({

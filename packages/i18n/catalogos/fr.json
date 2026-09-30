@@ -523,6 +523,7 @@
   "tecnico.os.concluir.desistir": "Annuler",
   "tecnico.os.sem_registro": "Les heures, le matériel et les photos s’ajoutent quand l’ordre de travail est en cours ou en pause.",
   "tecnico.os.parada.desde": "Équipement à l'arrêt depuis le {quando}",
+  "tecnico.os.reaberta": "Rouvert à l’acceptation : {motivo}",
   "tecnico.os.parada.registrar": "Équipement à l'arrêt",
   "tecnico.os.parada.encerrar": "L'équipement fonctionne de nouveau",
   "tecnico.chamado.parado": "L'équipement est à l'arrêt",

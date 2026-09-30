@@ -2,11 +2,13 @@
 // evento. A RLS decide por último (app_update de app.os e app.chamado,
 // migração 0026): fora de quem abriu o chamado, com escrita no hotel, e da
 // gestão do hotel, o UPDATE não acha linha (404). Toda gravação confere a
-// versão (ADR-029). A reabertura não tem coluna própria: o motivo fica na
-// auditoria e no evento.
+// versão (ADR-029). A reabertura grava o motivo na OS (motivo_reabertura, o
+// último; o histórico fica na auditoria e no evento) e, com o equipamento
+// parado, abre a parada do ativo no mesmo chamado, na mesma unit of work.
 import type { ReflexoNoChamado } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { pararNaAbertura } from './paradas';
 import { refletirNoChamado, semLinha } from './triagem';
 
 async function decidirAceite(
@@ -23,7 +25,7 @@ async function decidirAceite(
   const tx = transacaoDe(uow);
   const antes = await tx
     .selectFrom('app.os')
-    .select(['estado', 'situacao_id', 'versao'])
+    .select(['estado', 'situacao_id', 'motivo_reabertura', 'versao'])
     .where('id', '=', g.osId)
     .executeTakeFirst();
   const r = await tx
@@ -31,6 +33,7 @@ async function decidirAceite(
     .set({
       estado: acao === 'aceitar' ? 'aceita' : 'em_execucao',
       situacao_id: g.situacaoId,
+      ...(g.motivo !== null ? { motivo_reabertura: g.motivo } : {}),
       versao: sql<number>`versao + 1`,
       atualizado_em: sql`now()`,
     })
@@ -71,7 +74,7 @@ export const aceitarOs = (
   g: { osId: string; versao: number; situacaoId: string; chamado: ReflexoNoChamado },
 ) => decidirAceite(uow, 'aceitar', { ...g, motivo: null });
 
-export const reabrirOs = (
+export async function reabrirOs(
   uow: UnidadeDeTrabalho,
   g: {
     osId: string;
@@ -79,5 +82,13 @@ export const reabrirOs = (
     situacaoId: string;
     motivo: string;
     chamado: ReflexoNoChamado;
+    parada: { hotelId: string; ativoId: string; inicio: Date } | null;
   },
-) => decidirAceite(uow, 'reabrir', g);
+): Promise<{ versao: number; versaoDoChamado: number; paradaId: string | null }> {
+  const r = await decidirAceite(uow, 'reabrir', g);
+  // A parada encerrada não reabre: nasce outra, no mesmo chamado e na OS reaberta.
+  const parada = g.parada
+    ? await pararNaAbertura(uow, { ...g.parada, chamadoId: g.chamado.id, osId: g.osId })
+    : null;
+  return { ...r, paradaId: parada?.id ?? null };
+}

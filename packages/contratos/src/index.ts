@@ -72,6 +72,7 @@ export {
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
   RespostaDeOsGravada,
+  RespostaDeReaberturaDeOs,
 } from './chamados';
 export {
   AtivoApi,

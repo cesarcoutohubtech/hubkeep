@@ -523,6 +523,7 @@
   "tecnico.os.concluir.desistir": "Cancelar",
   "tecnico.os.sem_registro": "Las horas, el material y las fotos se añaden con la orden de trabajo en ejecución o en pausa.",
   "tecnico.os.parada.desde": "Equipo parado desde {quando}",
+  "tecnico.os.reaberta": "Reabierta en la aceptación: {motivo}",
   "tecnico.os.parada.registrar": "Equipo parado",
   "tecnico.os.parada.encerrar": "El equipo volvió a funcionar",
   "tecnico.chamado.parado": "El equipo está parado",

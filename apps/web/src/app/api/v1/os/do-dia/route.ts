@@ -17,6 +17,7 @@ export const GET = rota('os.do_dia', async (r) => {
       estado: o.estado as (typeof ESTADOS_DA_OS_API)[number],
       situacaoId: o.situacaoId,
       responsavel: o.responsavel,
+      motivoReabertura: o.motivoReabertura,
       versao: o.versao,
       criadoEm: o.criadoEm.toISOString(),
       chamado: {

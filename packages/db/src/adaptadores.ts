@@ -742,6 +742,7 @@ const COLUNAS_DA_OS = [
   'tecnico_id',
   'equipe_id',
   'motivo_cancelamento',
+  'motivo_reabertura',
   'criado_por',
   'versao',
   'criado_em',
@@ -756,6 +757,7 @@ function paraOs(o: {
   tecnico_id: string | null;
   equipe_id: string | null;
   motivo_cancelamento: string | null;
+  motivo_reabertura: string | null;
   criado_por: string;
   versao: number;
   criado_em: Date;
@@ -772,6 +774,7 @@ function paraOs(o: {
         ? { tipo: 'tecnico', usuarioId: o.tecnico_id }
         : { tipo: 'equipe', equipeId: o.equipe_id ?? '' },
     motivoCancelamento: o.motivo_cancelamento,
+    motivoReabertura: o.motivo_reabertura,
     criadoPor: o.criado_por,
     versao: o.versao,
     criadoEm: o.criado_em,
@@ -864,6 +867,10 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           .executeTakeFirst();
         return e ? { hotelId: e.hotel_id, ativa: e.ativa } : null;
       }),
+    equipesDoUsuario: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),
+      ),
     alterarChamado: (ctx, chamadoId, versao, mudanca) =>
       banco.executar(ctx, (uow) => alterarChamadoNaTriagem(uow, chamadoId, versao, mudanca)),
     gerarOs: (ctx, g) => banco.executar(ctx, (uow) => gerarOs(uow, g)),
@@ -910,6 +917,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             'o.situacao_id',
             'o.tecnico_id',
             'o.equipe_id',
+            'o.motivo_reabertura',
             'o.versao',
             'o.criado_em',
             'c.id as chamado_id',
@@ -941,6 +949,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             o.tecnico_id !== null
               ? { tipo: 'tecnico' as const, usuarioId: o.tecnico_id }
               : { tipo: 'equipe' as const, equipeId: o.equipe_id ?? '' },
+          motivoReabertura: o.motivo_reabertura,
           versao: o.versao,
           criadoEm: o.criado_em,
           chamado: {

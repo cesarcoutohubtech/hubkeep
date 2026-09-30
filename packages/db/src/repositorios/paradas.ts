@@ -72,13 +72,14 @@ export async function registrarParada(
 }
 
 /**
- * Na abertura do chamado (C5): a parada aberta do ativo. Se o ativo já tem
- * uma aberta, fica a que existe (ON CONFLICT no índice parcial) e o chamado
- * abre do mesmo jeito; devolve null.
+ * Na abertura do chamado (C5) e na reabertura da OS com o equipamento parado
+ * (C6, com a OS): a parada aberta do ativo. Se o ativo já tem uma aberta,
+ * fica a que existe (ON CONFLICT no índice parcial) e a abertura ou a
+ * reabertura segue do mesmo jeito; devolve null.
  */
 export async function pararNaAbertura(
   uow: UnidadeDeTrabalho,
-  g: { hotelId: string; ativoId: string; chamadoId: string; inicio: Date },
+  g: { hotelId: string; ativoId: string; chamadoId: string; osId?: string; inicio: Date },
 ): Promise<{ id: string } | null> {
   if (!uow.usuarioId) throw new Error('Parada exige usuário no contexto.');
   const id = novoId();
@@ -90,7 +91,7 @@ export async function pararNaAbertura(
       hotel_id: g.hotelId,
       ativo_id: g.ativoId,
       chamado_id: g.chamadoId,
-      os_id: null,
+      os_id: g.osId ?? null,
       inicio: g.inicio,
       aberta_por: uow.usuarioId,
     })
@@ -98,7 +99,7 @@ export async function pararNaAbertura(
     .returning('id')
     .executeTakeFirst();
   if (!r) return null;
-  auditarRegistro(uow, id, { ...g, osId: null, fim: null });
+  auditarRegistro(uow, id, { ...g, osId: g.osId ?? null, fim: null });
   return { id };
 }
 

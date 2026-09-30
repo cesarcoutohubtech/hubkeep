@@ -265,6 +265,7 @@ export interface AppOs {
   id: string;
   local_id: string;
   motivo_cancelamento: string | null;
+  motivo_reabertura: string | null;
   situacao_id: string;
   tecnico_id: string | null;
   tenant_id: string;

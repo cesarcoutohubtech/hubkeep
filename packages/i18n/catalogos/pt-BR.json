@@ -523,6 +523,7 @@
   "tecnico.os.concluir.desistir": "Cancelar",
   "tecnico.os.sem_registro": "Horas, material e fotos entram com a ordem de serviço em execução ou pausada.",
   "tecnico.os.parada.desde": "Equipamento parado desde {quando}",
+  "tecnico.os.reaberta": "Reaberta no aceite: {motivo}",
   "tecnico.os.parada.registrar": "Equipamento parado",
   "tecnico.os.parada.encerrar": "Equipamento voltou a funcionar",
   "tecnico.chamado.parado": "O equipamento está parado",

@@ -150,6 +150,9 @@ export function Os(
       <p>{os.chamado.descricao}</p>
       <p>{t('tecnico.os.local', { local: os.chamado.localNome })}</p>
       <p data-estado={os.estado}>{t(rotuloDoEstado(os.estado))}</p>
+      {os.motivoReabertura && (
+        <p data-motivo-reabertura>{t('tecnico.os.reaberta', { motivo: os.motivoReabertura })}</p>
+      )}
       {os.pendentes > 0 && <p>{t('tecnico.os.pendentes', { n: os.pendentes })}</p>}
       {aviso?.tipo === 'ok' && <p role="status">{t('tecnico.ativos.enfileirado')}</p>}
       {aviso?.tipo === 'erro' && (

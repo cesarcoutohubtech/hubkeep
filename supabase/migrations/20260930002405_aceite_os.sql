@@ -22,6 +22,11 @@
 -- do hk_app, então quem abriu tem UPDATE, no banco, nas colunas da OS e do
 -- chamado liberadas pela 0022, em qualquer estado; a aplicação só grava por
 -- ele o aceite e a reabertura, e toda gravação fica na auditoria.
+--
+-- O último motivo de reabertura fica na OS (motivo_reabertura, decisão do
+-- Cesar de 30/09/2026), para a tela da OS e a fila do dia do PWA; o
+-- histórico segue na auditoria e no evento os.reaberta. Mesmo check do
+-- motivo de cancelamento (0022), e UPDATE só nessa coluna nova.
 -- Só estrutura e autorização: nenhuma função, trigger ou regra de negócio.
 -- ============================================================================
 
@@ -38,6 +43,13 @@ alter table app.os
     foreign key (hotel_id, chamado_id, chamado_aberto_por)
     references app.chamado (hotel_id, id, aberto_por);
 create index os_chamado_aberto_por_idx on app.os (hotel_id, chamado_aberto_por);
+
+alter table app.os add column motivo_reabertura text;
+alter table app.os
+  add constraint os_motivo_reabertura_tamanho check (
+    motivo_reabertura is null or length(btrim(motivo_reabertura)) between 1 and 500
+  );
+grant update (motivo_reabertura) on app.os to hk_app;
 
 -- A OS: a gestão do hotel, o Técnico responsável (0023) e quem abriu o chamado.
 drop policy app_update on app.os;

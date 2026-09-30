@@ -21,6 +21,7 @@ const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsNoAparelho => ({
   estado,
   situacaoId: '5a000000-0000-4000-8000-000000000001',
   responsavel: { tipo: 'equipe', equipeId: 'e1000000-0000-4000-8000-000000000001' },
+  motivoReabertura: null,
   versao: 1,
   criadoEm: '2026-09-29T08:00:00.000Z',
   chamado: {
@@ -182,6 +183,14 @@ describe('tela da OS', () => {
       expect(renderizar(idioma, tela(base, true))).not.toContain('data-pergunta');
     },
   );
+
+  it.each(IDIOMAS)('%s: OS reaberta mostra o último motivo (C6)', (idioma) => {
+    const reaberta = { ...os('em_execucao'), motivoReabertura: 'Continua pingando' };
+    const html = renderizar(idioma, tela(reaberta));
+    expect(html).toContain('data-motivo-reabertura');
+    expect(html).toContain('Continua pingando');
+    expect(renderizar(idioma, tela(os('em_execucao')))).not.toContain('data-motivo-reabertura');
+  });
 
   it('pseudo-idioma: todo texto visível vem do catálogo (entre colchetes)', () => {
     const html = renderizar(PSEUDO_IDIOMA, tela(os('em_execucao', 1)));
