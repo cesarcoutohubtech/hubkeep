@@ -20,7 +20,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(38);
+select plan(42);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -116,6 +116,11 @@ insert into app.parada_ativo (id, tenant_id, hotel_id, ativo_id, chamado_id, os_
    'c2000000-0000-0000-0000-000000000001', '0a200000-0000-0000-0000-000000000001', now() - interval '5 hours', 'aaaaaaaa-0000-0000-0000-000000000007'),
   ('fb000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '22200000-0000-0000-0000-000000000001', 'ab000000-0000-0000-0000-000000000001',
    'cb000000-0000-0000-0000-000000000001', null, now() - interval '5 hours', 'bbbbbbbb-0000-0000-0000-000000000001');
+-- A auditoria da p4, que o proprietário não pode ler (quem abriu e o que mudou).
+insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, depois, usuario_id) values
+  (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'parada_ativo',
+   'fa100000-0000-0000-0000-000000000004', 'registrar', '{"chamadoId": "c1000000-0000-0000-0000-000000000004"}',
+   'aaaaaaaa-0000-0000-0000-000000000002');
 
 -- Caso 6 — FK composta, checks e a parada aberta única (como postgres)
 select throws_ok(
@@ -276,6 +281,18 @@ select throws_ok(
   '42501', null, 'proprietário não registra parada');
 select is_empty($$ update app.parada_ativo set fim = now(), encerrada_por = 'aaaaaaaa-0000-0000-0000-000000000006'
   where id = 'fa100000-0000-0000-0000-000000000004' returning 1 $$, 'proprietário não encerra parada');
+-- O que o proprietário não vê da parada (decisão do Cesar de 30/09/2026): o
+-- autor não vira pessoa (membro), a auditoria e os eventos não são lidos, e
+-- as paradas de outro hotel não aparecem. A API ainda tira chamadoId, osId e
+-- autores da resposta para ele (veDetalhesDaParada).
+select is_empty($$ select 1 from app.membro where usuario_id = 'aaaaaaaa-0000-0000-0000-000000000002' $$,
+  'proprietário não lê o membro que abriu a parada');
+select is_empty($$ select 1 from app.auditoria where registro_id = 'fa100000-0000-0000-0000-000000000004' $$,
+  'proprietário não lê a auditoria da parada');
+select throws_ok($$ select 1 from app.evento_dominio $$, '42501', null,
+  'proprietário não lê os eventos (sem SELECT para o hk_app)');
+select results_eq($$ select count(*)::int from app.parada_ativo where hotel_id = '11100000-0000-0000-0000-000000000002' $$,
+  $$ values (0) $$, 'proprietário da UH não vê parada de outro hotel');
 
 -- Admin A: vê tudo do tenant, encerra, sem DELETE
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000001', true)) ctx;

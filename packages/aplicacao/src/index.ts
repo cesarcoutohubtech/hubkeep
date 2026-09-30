@@ -178,11 +178,17 @@ export type { AcaoDoTecnico, CasosDeUsoDeExecucao } from './casos-de-uso/execuca
 export type {
   EncerramentoDeParada,
   ParadaGravada,
+  ParadaPendente,
   PortaParadas,
   RegistroDeParada,
 } from './portas/paradas';
 export { criarCasosDeUsoDeParadas } from './casos-de-uso/paradas';
-export type { CasosDeUsoDeParadas, ParadaComTempo } from './casos-de-uso/paradas';
+export type {
+  CasosDeUsoDeParadas,
+  ParadaComTempo,
+  ParadaPendenteComTempo,
+  ParadaVista,
+} from './casos-de-uso/paradas';
 export type {
   CasosDeUsoDeTriagem,
   RegrasDaTriagem,

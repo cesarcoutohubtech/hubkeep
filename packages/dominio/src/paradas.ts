@@ -65,6 +65,24 @@ export function exigirParadaAberta<T extends Parada>(parada: T | null): T {
   return parada;
 }
 
+/**
+ * Na conclusão da OS com a parada do próprio chamado aberta, o técnico
+ * responde se o equipamento voltou a funcionar (decisão do Cesar de
+ * 30/09/2026). Sim: a parada encerra com a hora da conclusão, na mesma
+ * operação. Não, ou sem resposta (operação feita antes da pergunta existir, ou
+ * sem o aparelho saber da parada): fica aberta, e aparece na lista das
+ * paradas abertas com OS concluída. A parada de outro chamado do mesmo ativo
+ * não é desta OS e nunca encerra aqui. Devolve a parada a encerrar, ou null.
+ */
+export function paradaAEncerrarNaConclusao<T extends Parada & { chamadoId: string }>(
+  aberta: T | null,
+  chamadoId: string,
+  equipamentoVoltou: boolean | undefined,
+): T | null {
+  if (aberta === null || aberta.fim !== null || aberta.chamadoId !== chamadoId) return null;
+  return equipamentoVoltou === true ? aberta : null;
+}
+
 /** Tempo parado, em milissegundos: do início ao fim, ou até agora se ainda aberta. */
 export const tempoParado = (p: Parada, agora: Date): number =>
   Math.max(0, (p.fim ?? agora).getTime() - p.inicio.getTime());

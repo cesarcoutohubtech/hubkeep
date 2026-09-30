@@ -6,7 +6,9 @@
 // material); o servidor confere de novo, e a recusa volta à fila do dia com o
 // motivo. A foto é preparada na hora e sobe quando houver rede. Com o ativo no
 // chamado (C5), o técnico registra que o equipamento está parado e encerra a
-// parada quando ele volta a funcionar, também pela fila.
+// parada quando ele volta a funcionar, também pela fila. Concluir com a parada
+// do chamado aberta pede a resposta "o equipamento voltou a funcionar?", que
+// vai na operação de concluir (sim: a parada encerra junto).
 import { ErroDeDominio, normalizarMaterial, validarApontamento } from '@hubkeep/dominio';
 import { type FormEvent, useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -17,11 +19,17 @@ import {
   aceitaRegistro,
   acoesPossiveis,
   paradaPossivel,
+  perguntaNaConclusao,
 } from '../os/projecao';
 import { rotuloDoEstado, useMotivo } from './FilaDoDia';
 
 export interface AcoesDaOs {
-  aoAgir: (os: OsNoAparelho, acao: AcaoDoTecnico) => Promise<void>;
+  /** Na conclusão com a parada do chamado aberta, com a resposta do técnico. */
+  aoAgir: (
+    os: OsNoAparelho,
+    acao: AcaoDoTecnico,
+    resposta?: { equipamentoVoltou: boolean },
+  ) => Promise<void>;
   aoApontar: (osId: string, inicio: Date, fim: Date) => Promise<void>;
   aoRegistrarMaterial: (osId: string, descricao: string) => Promise<void>;
   aoFotografar: (osId: string, arquivo: File) => Promise<void>;
@@ -38,12 +46,34 @@ const ROTULO_DA_ACAO = {
   concluir: 'tecnico.os.acao.concluir',
 } as const;
 
+/** A pergunta obrigatória da conclusão com a parada do chamado aberta: sim, não ou desistir. */
+export function PerguntaDaParada(props: {
+  aoResponder: (equipamentoVoltou: boolean) => void;
+  aoDesistir: () => void;
+}) {
+  const t = useT();
+  return (
+    <section className="coluna" role="group" data-pergunta="parada">
+      <strong>{t('tecnico.os.concluir.pergunta_parada')}</strong>
+      <div className="linha">
+        <button onClick={() => props.aoResponder(true)}>{t('tecnico.os.concluir.voltou')}</button>
+        <button onClick={() => props.aoResponder(false)}>
+          {t('tecnico.os.concluir.nao_voltou')}
+        </button>
+        <button onClick={props.aoDesistir}>{t('tecnico.os.concluir.desistir')}</button>
+      </div>
+    </section>
+  );
+}
+
 export function Os(
   props: AcoesDaOs & {
     os: OsNoAparelho;
     aoVoltar: () => void;
     /** Para testes; no app, window.confirm. */
     confirmar?: (mensagem: string) => boolean;
+    /** Para testes: a tela já com a pergunta da parada aberta. */
+    perguntando?: boolean;
   },
 ) {
   const t = useT();
@@ -55,6 +85,7 @@ export function Os(
   const [aviso, setAviso] = useState<{ tipo: 'ok' } | { tipo: 'erro'; codigo: string } | null>(
     null,
   );
+  const [perguntando, setPerguntando] = useState(props.perguntando ?? false);
 
   /** Roda o pedido; erro de regra vira aviso com o motivo pelo catálogo. */
   async function tentar(fazer: () => Promise<void>): Promise<boolean> {
@@ -70,8 +101,15 @@ export function Os(
   }
 
   async function agir(acao: AcaoDoTecnico) {
+    // Com a parada do chamado aberta, a resposta à pergunta é a confirmação.
+    if (acao === 'concluir' && perguntaNaConclusao(os)) return setPerguntando(true);
     if (acao === 'concluir' && !confirmar(t('tecnico.os.concluir.confirmar'))) return;
     await tentar(() => props.aoAgir(os, acao));
+  }
+
+  async function concluirRespondendo(equipamentoVoltou: boolean) {
+    setPerguntando(false);
+    await tentar(() => props.aoAgir(os, 'concluir', { equipamentoVoltou }));
   }
 
   async function apontar(e: FormEvent<HTMLFormElement>) {
@@ -127,6 +165,12 @@ export function Os(
           </button>
         ))}
       </section>
+      {perguntando && perguntaNaConclusao(os) && (
+        <PerguntaDaParada
+          aoResponder={(voltou) => void concluirRespondendo(voltou)}
+          aoDesistir={() => setPerguntando(false)}
+        />
+      )}
 
       {os.chamado.paradoDesde && (
         <p data-parado-desde={os.chamado.paradoDesde}>

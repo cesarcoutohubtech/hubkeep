@@ -10,7 +10,10 @@
 //
 // Parada do ativo na execução (C5): o responsável registra (aberta, ou já com
 // o fim) e encerra a parada do ativo do chamado, com a regra dos registros.
-// Só uma aberta por ativo; a que ele encerra é a do chamado desta OS.
+// Só uma aberta por ativo; a que ele encerra é a do chamado desta OS. Na
+// conclusão, com a parada do chamado aberta, o técnico responde se o
+// equipamento voltou a funcionar; sim, a parada encerra com a hora da
+// conclusão, na mesma operação (paradaAEncerrarNaConclusao).
 import {
   type AtorDaCorretiva,
   type Contexto,
@@ -24,6 +27,7 @@ import {
   exigirParadaAberta,
   exigirSemParadaAberta,
   normalizarMaterial,
+  paradaAEncerrarNaConclusao,
   situacaoPara,
   validarApontamento,
   validarFimDaParada,
@@ -41,7 +45,14 @@ export interface CasosDeUsoDeExecucao {
   prepararAcao(
     ctx: Contexto,
     acao: AcaoDoTecnico,
-    p: { osId: string; versao: number },
+    p: {
+      osId: string;
+      versao: number;
+      /** Só na conclusão: a resposta à pergunta sobre a parada do chamado. */
+      equipamentoVoltou?: boolean | undefined;
+      /** Só na conclusão: a hora do aparelho, que vira o fim da parada. */
+      concluidaEm?: Date | undefined;
+    },
   ): Promise<AcaoNaOsDecidida>;
   prepararApontamento(
     ctx: Contexto,
@@ -120,6 +131,24 @@ export function criarCasosDeUsoDeExecucao(deps: {
     return deps.paradas;
   };
 
+  async function paradaDaConclusao(
+    ctx: Contexto,
+    os: OsGravada,
+    chamado: ChamadoParaTriagem,
+    p: { equipamentoVoltou?: boolean | undefined; concluidaEm?: Date | undefined },
+  ): Promise<EncerramentoDeParada | null> {
+    if (chamado.ativoId === null || p.equipamentoVoltou !== true) return null;
+    const alvo = paradaAEncerrarNaConclusao(
+      await paradas().abertaDoAtivo(ctx, chamado.ativoId),
+      chamado.id,
+      p.equipamentoVoltou,
+    );
+    if (!alvo) return null;
+    const agora = deps.relogio.agora();
+    const fim = validarFimDaParada(alvo.inicio, p.concluidaEm ?? agora, agora);
+    return { id: alvo.id, hotelId: os.hotelId, fim };
+  }
+
   return {
     async prepararAcao(ctx, acao, p) {
       const { os, chamado } = await osEChamado(ctx, p.osId);
@@ -132,8 +161,11 @@ export function criarCasosDeUsoDeExecucao(deps: {
         agora: deps.relogio.agora(),
       });
       if (os.versao !== p.versao) throw conflitoDeVersao(os.versao);
+      const encerrarParada =
+        acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
       const situacoes = await deps.situacoes.listar(ctx);
       return {
+        encerrarParada,
         acao,
         osId: os.id,
         versao: p.versao,

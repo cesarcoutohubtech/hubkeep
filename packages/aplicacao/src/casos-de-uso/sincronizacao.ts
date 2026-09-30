@@ -34,7 +34,20 @@ export type OperacaoOffline =
       dados: PedidoDeAlteracaoDeAtivo & { ativoId: string };
     }
   | { chave: string; tipo: 'chamado.abrir'; dados: PedidoDeAberturaDeChamado }
-  | { chave: string; tipo: `os.${AcaoDoTecnico}`; dados: { osId: string; versao: number } }
+  | {
+      chave: string;
+      tipo: `os.${AcaoDoTecnico}`;
+      /**
+       * Na conclusão, com a parada do chamado aberta: a resposta a "o
+       * equipamento voltou a funcionar?" e a hora do aparelho (ISO 8601).
+       */
+      dados: {
+        osId: string;
+        versao: number;
+        equipamentoVoltou?: boolean | undefined;
+        concluidaEm?: string | undefined;
+      };
+    }
   | {
       chave: string;
       tipo: 'os.apontar_horas';
@@ -125,10 +138,24 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
         case 'os.retomar':
         case 'os.concluir': {
           const acao = operacao.tipo.slice('os.'.length) as AcaoDoTecnico;
-          const g = await execucao().prepararAcao(ctx, acao, operacao.dados);
+          const { osId, versao, equipamentoVoltou, concluidaEm } = operacao.dados;
+          const g = await execucao().prepararAcao(ctx, acao, {
+            osId,
+            versao,
+            equipamentoVoltou,
+            concluidaEm: concluidaEm === undefined ? undefined : new Date(concluidaEm),
+          });
+          // A parada encerra na mesma unit of work da conclusão: o reenvio
+          // devolve a resposta guardada e não encerra de novo.
           const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
             const { versao } = await s.andarComOs(g);
-            return { id: g.osId, versao, estado: g.estado };
+            if (g.encerrarParada) await s.encerrarParada(g.encerrarParada);
+            return {
+              id: g.osId,
+              versao,
+              estado: g.estado,
+              ...(acao === 'concluir' ? { paradaEncerrada: Boolean(g.encerrarParada) } : {}),
+            };
           });
           return { chave: operacao.chave, ...r };
         }

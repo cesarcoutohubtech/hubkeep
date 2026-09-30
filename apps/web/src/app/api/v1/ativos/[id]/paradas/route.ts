@@ -1,6 +1,7 @@
 // GET /api/v1/ativos/{id}/paradas — paradas do ativo (C5), da mais nova para
 // a mais antiga, com o tempo parado calculado no domínio. Lê quem lê o ativo
-// (RLS), inclusive o proprietário da UH.
+// (RLS), inclusive o proprietário da UH, que recebe só o ativo, o estado e as
+// datas (sem o chamado, a OS e os autores).
 import { RespostaDeParadasDoAtivo } from '@hubkeep/contratos';
 import { casosDeUsoDeParadas } from '../../../../../../servidor/composicao';
 import { ErroHttp, rota } from '../../../../../../servidor/http';
@@ -19,13 +20,17 @@ export const GET = rota('paradas.listar', async (r) => {
     paradas: paradas.map((p) => ({
       id: p.id,
       ativoId: p.ativoId,
-      chamadoId: p.chamadoId,
-      osId: p.osId,
       inicio: p.inicio.toISOString(),
       fim: p.fim?.toISOString() ?? null,
-      abertaPor: p.abertaPor,
-      encerradaPor: p.encerradaPor,
       tempoParadoMs: p.tempoParadoMs,
+      ...('chamadoId' in p
+        ? {
+            chamadoId: p.chamadoId,
+            osId: p.osId,
+            abertaPor: p.abertaPor,
+            encerradaPor: p.encerradaPor,
+          }
+        : {}),
     })),
     tempoParadoMs,
   });

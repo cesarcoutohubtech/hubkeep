@@ -119,6 +119,8 @@ export const OsDoDiaApi = z
       ativoId: z.guid().nullable(),
       /** Início da parada aberta do ativo (C5); null se não está parado. */
       paradoDesde: z.iso.datetime().nullable(),
+      /** A parada aberta é deste chamado: a OS encerra, e a conclusão pergunta se voltou. */
+      paradaDoChamado: z.boolean(),
     }),
   })
   .meta({ id: 'OsDoDiaApi' });
