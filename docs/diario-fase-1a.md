@@ -766,6 +766,29 @@ Dividida em duas partes, cada uma no seu PR:
 - **Próxima tarefa:** C5, lida no `docs/04`/plano da fase 1a antes de começar, num worktree novo a partir da `main`.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
 
+### C4b mergeada; aprovações e espaço do aparelho (29/09/2026)
+- **#68** (`b0437d9`) e **#69** (`675dd7c`) mergeados pelo Cesar. **CI da `main`** depois do #69: `banco` (pgTAP e integração do `packages/db`), `CI` e `segurança` verdes. Sem migração nova, sem `db push`.
+- **Aprovações do Cesar (29/09/2026):**
+  - correção da C4a no ADR-027 (migração 0024): aprovada;
+  - adendo ao ADR-025 (fila do dia e fotos no aparelho): aprovado com três condições. (a) `navigator.storage.persist()` e aviso de pendências antigas, por causa do descarte de armazenamento no iOS. (b) Teto de espaço e compressão das fotos antes de guardar. (c) Saída bloqueada, ou com aviso, enquanto houver fila pendente.
+- **Situação na C4b mergeada:** a compressão (b) e a saída com aviso (c) já existiam. Faltavam a persistência, o aviso de pendência antiga e o teto de espaço.
+- **Complemento** (branch `1a-c4b-armazenamento`, worktree `wt/c4b-armazenamento`, zona protegida por causa do `docs/03`):
+  - `apps/tecnico/src/armazenamento.ts`:
+    - `pedirPersistencia`, chamada ao entrar;
+    - `pendenteAntigaDesde`: pendente com mais de 24 h gera aviso na fila do dia, com a data da mais velha;
+    - `conferirEspacoParaFoto`: até 50 MB de fotos do usuário na fila (`fotos_na_fila_no_limite`) e 20 MB livres depois da foto pela estimativa do navegador (`espaco_insuficiente`);
+    - `faltouEspaco`: o `QuotaExceededError` do IndexedDB vira `espaco_insuficiente`;
+  - `saida.ts`: `podeApagar` (a confirmação ao sair com pendente) sai do `App.tsx` para ser testada;
+  - adendo do ADR-025 com as três condições descritas, e as marcações "a aprovar" trocadas por "aprovado";
+  - i18n: 3 chaves novas nos quatro idiomas (`tecnico.sincronizacao.antiga`, `erro.fotos_na_fila_no_limite`, `erro.espaco_insuficiente`).
+- **Local:** typecheck, lint e testes verdes: raiz 272; PWA 96 em 12 arquivos, com `armazenamento.test.ts` novo e o aviso em `telas-os.test.tsx`.
+
+### Ponto de retomada (29/09/2026, complemento da C4b aberto)
+- **`main`:** `675dd7c` (#69), CI verde. **Dev:** 24 migrações, até a 0024; sem mudança desde a última conferência.
+- **PR aberto:** complemento da C4b (`1a-c4b-armazenamento`, worktree `wt/c4b-armazenamento`, zona protegida). Sem migração: sem `db push`. Merge só com a CI verde.
+- **Próxima tarefa:** C5, equipamento parado (`docs/05-plano-fase-1a.md`, linha da C5). Tem migração (`app.parada_ativo`, com no máximo uma parada aberta por ativo, garantida por restrição de integridade). Pode andar no local, num worktree novo a partir da `main`. O PR dela só abre depois do merge do complemento, porque os dois são zona protegida.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
 ### C5 — Equipamento parado (29/09/2026)
 - **Migração 0025** (`parada_ativo`):
   - `app.parada_ativo` com ativo, chamado (obrigatório), OS opcional, início, fim, quem abriu e quem encerrou;
@@ -788,10 +811,16 @@ Dividida em duas partes, cada uma no seu PR:
 - **Local:** typecheck, lint e testes verdes: raiz 274, domínio 1709 (`paradas.test.ts` novo), aplicação 91, PWA 86, web 63. A integração do `packages/db` (`paradas.test.ts` novo, 6 casos) e o pgTAP rodam só na CI.
 - **Não verificado no local:** a migração e o pgTAP (sem banco local; o dev só recebe a 0025 pelo `db push` do Cesar, depois da CI verde).
 
-### Ponto de retomada (29/09/2026, C5 no local)
-- **`main`:** `675dd7c` (#69), CI verde. **Dev:** 24 migrações, até a 0024.
-- **PR aberto:** #70, complemento da C4b (`1a-c4b-armazenamento`, worktree `wt/c4b-armazenamento`, zona protegida), com a CI verde; a "zona protegida" falha por desenho. Sem migração.
-- **C5 no local:** branch `1a-c5-parada`, worktree `wt/c5-parada`, com commit e push, sem PR. O PR abre só depois do merge do #70 (um PR de zona protegida por vez): trazer a `main` para a branch (o diário e o `docs/03` podem conflitar no fim do arquivo e perto do ADR-027; manter os dois lados), rodar typecheck, lint e testes e abrir o PR.
+### #70 mergeado; PR da C5 (29/09/2026)
+- **#70** (`86318a3`) mergeado pelo Cesar. CI da `main` depois dele: `CI` e `segurança` verdes; `banco` rodando na hora da conferência.
+- **`main` trazida para a `1a-c5-parada`:** conflitos no `App.tsx` do PWA (comentário do topo e a vizinhança de `fotografarOs`) e no fim do diário; mantidos os dois lados. O `docs/03` entrou sem conflito.
+- **Local depois do merge:** typecheck, lint e prettier verdes; testes verdes: raiz 274, domínio 1709, aplicação 91, PWA 103 (os da C5 e os do #70), web 63.
+- **PR da C5 aberto** (zona protegida, migração 0025). Merge só com a CI verde: pgTAP, integração do `packages/db`, tipos e segurança; a "zona protegida" falha por desenho.
+
+### Ponto de retomada (29/09/2026, PR da C5 aberto)
+- **`main`:** `86318a3` (#70). **Dev:** 24 migrações, até a 0024.
+- **PR aberto:** C5 (`1a-c5-parada`, worktree `wt/c5-parada`, zona protegida, migração 0025). Conferir `gh pr checks`; se a CI falhar, corrigir na branch.
 - **Depois do merge da C5:** o Cesar faz o `db push` da 0025, e eu confiro o dev só por leitura (`db:testar-dev` sem falha, `db:types` idêntico).
+- **Perguntas ao Cesar:** as decisões de desenho da C5 (bloco "Implementação (C5)" no ADR-027, "a confirmar").
 - **Próxima tarefa:** C6 (aceite), no local, num worktree novo a partir da `main`.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
