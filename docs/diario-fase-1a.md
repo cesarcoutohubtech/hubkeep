@@ -816,6 +816,7 @@ Dividida em duas partes, cada uma no seu PR:
 - **`main` trazida para a `1a-c5-parada`:** conflitos no `App.tsx` do PWA (comentário do topo e a vizinhança de `fotografarOs`) e no fim do diário; mantidos os dois lados. O `docs/03` entrou sem conflito.
 - **Local depois do merge:** typecheck, lint e prettier verdes; testes verdes: raiz 274, domínio 1709, aplicação 91, PWA 103 (os da C5 e os do #70), web 63.
 - **PR da C5 aberto** (zona protegida, migração 0025). Merge só com a CI verde: pgTAP, integração do `packages/db`, tipos e segurança; a "zona protegida" falha por desenho.
+- **Primeira CI do #71:** pgTAP vermelho em 1 de 38 casos do `020`: "parada em chamado sem ativo" esperava 23503 (FK composta) e recebeu 23505, porque a parada do teste era aberta num ativo que já tinha parada aberta, e o índice único responde antes da FK (conferida no fim do comando). O caso passou a usar uma parada encerrada. A migração não mudou.
 
 ### Ponto de retomada (29/09/2026, PR da C5 aberto)
 - **`main`:** `86318a3` (#70). **Dev:** 24 migrações, até a 0024.
