@@ -80,6 +80,8 @@ describe('auth-admin: uso do Storage restrito às duas URLs assinadas (ADR-024)'
     ].map((m) => m[1]);
     expect(exportados).toEqual([
       'criarAdministracaoDoAuth',
+      // Contas dos dados de demonstração (kit de teste), só com e-mail .test.
+      'criarIdentidadeDeDemonstracao',
       'BUCKET_DE_ANEXOS',
       'criarArmazenamentoDeAnexos',
     ]);

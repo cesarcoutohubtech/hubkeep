@@ -917,8 +917,37 @@ Dividida em duas partes, cada uma no seu PR:
 - **CI do PR (#76):** o `pgTAP (meta e isolamento)` caiu no `beforeAll` do `consultas.test.ts` pelo mesmo motivo do #73: o `codigo_qr` do ativo de teste (`CONSU00001`) tinha O e U, fora do alfabeto do check `ativo_codigo_qr_formato` (base 32 de Crockford, sem I, L, O e U). Trocado por `0000C7A001`. O #75 entrou antes; a `main` foi trazida para a branch e o conflito no fim deste diário ficou com as duas entradas, a do #75 antes.
 - **Lição:** código de QR em fixture de teste só com `0-9` e `A-Z` sem I, L, O e U; o erro só aparece na CI.
 
-### Ponto de retomada (30/09/2026, #75 mergeado, C7 aberto)
-- **`main`:** merge do #75 (registros). **Dev:** 0025 e 0026 aplicadas; a 0027 pendente, com o Cesar.
-- **PR aberto:** #76 (C7, `1a-c7-telas`, worktree `wt/c7-telas`, sem zona protegida). Conferir `gh pr checks 76`; se falhar, corrigir na branch. Só avisar PR pronto com tudo verde.
-- **Depois do merge:** conferir `gh run list --branch main`; se a `main` ficar vermelha, corrigir antes de qualquer outro merge.
-- **Próximo:** fim da etapa C: resumo da etapa e o kit de teste no notebook do Cesar (`docs/05`, "Kit de teste"). O trabalho para quando o kit estiver pronto.
+### #76 mergeado; fim da etapa C (30/09/2026)
+- **#76** (C7) mergeado pelo Cesar, com os checks verdes; a `main` ficou verde no merge (`CI`, `banco` e `segurança`). O Cesar fez o `db push` da 0027: `supabase migration list` (só leitura) mostra as 27 migrações iguais no local e no dev.
+- **Resumo da etapa C (corretiva):**
+  - **C1** (#55 e #56, 0020): estados canônicos fixos do chamado e da OS, situações configuráveis e prioridades do tenant (ADR-027), com transições e papéis no domínio.
+  - **C2** (#58, 0021): abertura do chamado pelo web e pelo PWA (operação offline `chamado.abrir`), com a cópia da política aplicada no chamado (ADR-026) e a recusa na UH pendente de licença.
+  - **C3** (#65, 0022): triagem, prioridade, geração e reatribuição da OS para técnico ou equipe, cancelamentos com motivo, evento `os.atribuida` no outbox.
+  - **C4** (#66 a #70, 0023 e 0024): execução no PWA (fila do dia, iniciar, pausar, retomar, concluir, horas, material e fotos offline), conflito visível ao técnico, reenvio sem duplicar e o espaço do aparelho.
+  - **C5** (#71 e #72, 0025): parada do ativo, com a pergunta na conclusão, as paradas pendentes e a leitura do proprietário.
+  - **C6** (#73 a #75, 0026 e 0027): aceite e reabertura com motivo; quem executou não aceita; Gerente único (sem outro Gerente, decidem o Gestor CSC ou o Admin).
+  - **C7** (#76): listas de chamados e OS por escopo, com filtros, detalhe, aceite e reabertura na tela e a linha do tempo pela auditoria.
+  - **Processo:** três PRs entraram com a CI vermelha (C4a, #72 e #73), sempre por teste de integração que só roda na CI; daí a regra de 30/09/2026 (CI vermelha na `main` se corrige antes de qualquer merge).
+- **Lacuna vista ao montar o kit:** a triagem (triar, prioridade, gerar, reatribuir e cancelar a OS, cancelar o chamado) tem API e regra, mas **não tem tela** no web. Nenhuma tarefa da C previa essa tela (a C7 fez listas, detalhe, aceite e reabertura). Registrada no kit (seção 5) como decisão do Cesar: tela de triagem no detalhe antes ou durante a D.
+
+### Kit de teste no notebook (30/09/2026)
+- **Branch `1a-kit-teste`**, worktree `wt/kit-teste`. Sem migração, sem ADR: não é zona protegida.
+- **`docs/10-kit-de-teste.md`:** as variáveis do `.env.local` do web e do PWA e as do script, com onde achar cada valor e o que não vai para o git; os comandos do PowerShell (instalar, dados de demonstração, web, PWA e o build do PWA para o teste sem rede, porque o service worker só existe no build); o que o script cria; o roteiro por papel (o que deve dar certo e o que deve ser barrado, com a recusa traduzida); o que ainda não dá para testar pela tela; e como rodar de novo.
+- **`pnpm demo:dados --ambiente dev`** (`scripts/ops/dados-demonstracao.ts`): só no dev. Lê o `apps/web/.env.local`, confere pelo ref de `[remotes.dev]` que a `DEV_SESSION_POOLER`, as três `DATABASE_URL_*` e a URL do Supabase são do HubKeep-dev, e chama o vitest com a config `apps/web/vitest.demonstracao.config.ts` (como o `db:fumaca`, sem dependência nova para rodar TypeScript).
+- **O script** (`apps/web/test/demonstracao/semear.ts`) grava pelos casos de uso, com a unit of work:
+  - hotéis e UHs pelo caminho do conector (lote no staging com credencial de agente revogada no fim, importação e ativação pelo Admin, promoção pelo worker);
+  - pessoas pelo caso de uso de convite de sempre, com a identidade de demonstração;
+  - ativos, chamados e ações do Técnico como operação offline de chave fixa (UUID tirado do tenant e do nome), então rodar de novo não duplica;
+  - a triagem, a geração da OS, o cancelamento e o aceite pelos casos de uso do web, cada passo conferindo o estado antes.
+  - **Exceção:** o tenant, o contrato de licença e o primeiro Admin, que são do backoffice e não têm caso de uso, entram pelo dono do banco, como nos testes de integração.
+- **Dados:** Grupo Demonstração; Centro e Praia ativos e Serra em implantação (UHs pendentes, para o Admin ativar no teste); Bandeiras Azul e Verde; áreas comuns, categorias, situações e prioridades padrão; 7 ativos; Equipe Centro; 10 contas (um por papel, Gerente e Técnico em dois hotéis, proprietário de UH e de hotel inteiro); 7 chamados, um em cada estado (aberto, OS atribuída, em execução com o equipamento parado, aguardando aceite, cancelado, concluído e um no Praia).
+- **Identidade de demonstração** (`criarIdentidadeDeDemonstracao` no `packages/auth-admin`, que continua o único dono da secret key): conta com o e-mail confirmado e a senha de teste, sem convite nem e-mail; quem já existe volta à senha de teste. Recusa e-mail fora do domínio `.test`, para nunca trocar a senha de uma conta de verdade. Composta em `apps/web/src/servidor/demonstracao.ts`, que recusa rodar na Vercel e não é usada por nenhuma rota. O teste que fixa os exports do `auth-admin` ganhou o nome novo.
+- **Por que em `apps/web/test/`:** o script precisa dos casos de uso compostos pelo servidor do web e da conexão do dono para a parte do backoffice; o lint deixa o `pg` direto só nos testes (fixtures), como já fazem os testes de integração.
+- **Teste na CI** (`apps/web/test/demonstracao/semear.test.ts`, no Supabase do runner): roda o script duas vezes e confere que a segunda devolve os mesmos registros sem mudar a contagem de nenhuma tabela do tenant; login com a senha de teste; a lista de chamados de cada papel (Admin 7, Gestor da Azul 6, Gerentes 6 e 1, Técnicos 6 e 1, Solicitante 6, Implantador 0, proprietários 1 e 1); o estado de cada chamado e da OS; o Serra em implantação com as UHs pendentes. **Não rodei o script no dev:** quem roda é o Cesar, pelo kit.
+- **Variáveis novas no `.env.example`:** `HK_DEMO_SENHA` e `HK_DEMO_URL_DONO` (montada pelo script).
+
+### Ponto de retomada (30/09/2026, kit de teste pronto)
+- **`main`:** merge do #76 (C7). **Dev:** 27 migrações aplicadas (0027 incluída).
+- **PR aberto:** o do kit (`1a-kit-teste`, worktree `wt/kit-teste`, sem zona protegida). Conferir `gh pr checks`; o teste `semear.test.ts` só roda na CI. Só avisar pronto com tudo verde.
+- **Parada:** o kit está pronto; a etapa D só começa com o aval do Cesar, depois do teste no notebook.
+- **Decisão pendente do Cesar:** tela de triagem no detalhe do chamado (lacuna da etapa C), antes ou durante a D.

@@ -16,7 +16,8 @@
     "db:verificar-papeis": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/verificar-papeis.ts",
     "db:types": "pnpm --filter @hubkeep/db db:types",
     "db:fumaca": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/fumaca-db.ts",
-    "ops:config-remota": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/ler-config-remota.ts"
+    "ops:config-remota": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/ler-config-remota.ts",
+    "demo:dados": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/dados-demonstracao.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

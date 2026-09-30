@@ -1,0 +1,220 @@
+# 10 — Kit de teste no notebook
+
+Kit para testar a fase 1a no notebook, com o web e o PWA rodando localmente e ligados ao projeto de dev (`HubKeep-dev`). Decisão do Cesar de 28/09/2026 (`docs/05`, "Kit de teste"). A etapa D só começa com o aval dele.
+
+O que precisa estar instalado: Git, Node 22.12 ou mais novo e pnpm 11 (`corepack enable` instala a versão do `package.json`). Não precisa de Docker nem de psql.
+
+## 1. Variáveis
+
+Os valores de verdade ficam **só no notebook**, em arquivos `.env.local` (o `.gitignore` já cobre `.env.*`) ou na sessão do PowerShell. Nada disso vai para o git, para a Vercel nem para chat ou e-mail. O modelo sem valores é o `.env.example`.
+
+### Web: `apps/web/.env.local`
+
+| Variável | Valor no dev | Onde achar |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` | Painel do Supabase → Project Settings → API (*Project URL*) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | chave pública | Painel → Project Settings → API Keys (*publishable*) |
+| `SUPABASE_SECRET_KEY` | chave secreta | Painel → Project Settings → API Keys (*secret*); gerenciador de senhas. **Nunca no git, nunca no PWA** |
+| `DATABASE_URL_APP` | `postgresql://hk_app.<ref>:<senha>@<host-pooler>:6543/postgres` | Host do botão *Connect* → Transaction pooler; senha de `hk_app` do cofre (`HK_APP_SENHA_DEV`) |
+| `DATABASE_URL_WORKER` | igual, com `hk_worker.<ref>` | Senha de `hk_worker` do cofre (`HK_WORKER_SENHA_DEV`) |
+| `DATABASE_URL_INGESTAO` | igual, com `hk_ingestao.<ref>` | Senha de `hk_ingestao` do cofre (`HK_INGESTAO_SENHA_DEV`); o script de demonstração usa, porque os hotéis chegam pelo caminho do conector |
+| `HK_URL_SITE` | `http://localhost:3000` | Fixo |
+| `NEXT_PUBLIC_URL_DO_TECNICO` | `http://localhost:5173` | Fixo; é o endereço impresso no QR do ativo |
+| `HK_PSEUDO_IDIOMA` | `1` (opcional) | Libera o pseudo-idioma no seletor, para ver texto fora do catálogo |
+
+As strings de conexão vão **sem** `sslmode` e sem `ssl`: o TLS com o certificado conferido é do HubKeep (`docs/06`, "TLS com o banco"). `CRON_SECRET`, `SENTRY_*` e as de e-mail e push ficam vazias no notebook.
+
+### PWA: `apps/tecnico/.env.local`
+
+| Variável | Valor no dev | Onde achar |
+|---|---|---|
+| `VITE_SUPABASE_URL` | o mesmo `NEXT_PUBLIC_SUPABASE_URL` | Painel → Project Settings → API |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | a mesma chave pública | Painel → API Keys (*publishable*) |
+| `VITE_PSEUDO_IDIOMA` | `1` (opcional) | Pseudo-idioma no seletor do PWA |
+
+`VITE_API_URL` e `HK_API_DEV` ficam vazias: no dev, o Vite manda `/api` para o web em `localhost:3000`.
+
+### Só para o script de demonstração (sessão do PowerShell)
+
+| Variável | Valor | Onde achar |
+|---|---|---|
+| `DEV_SESSION_POOLER` | string *Session pooler* do HubKeep-dev (contém a senha do `postgres`) | Botão *Connect* → Session pooler; a mesma do `pnpm db:testar-dev` |
+| `HK_DEMO_SENHA` | senha de teste, com 12 caracteres ou mais | Você escolhe e guarda no gerenciador de senhas. Vale para todas as contas de demonstração |
+
+A `DEV_SESSION_POOLER` não vai no `.env.local` do web: é a senha do dono do banco, e o web nunca a usa.
+
+## 2. Comandos (PowerShell, na raiz do repositório)
+
+```powershell
+cd C:\Cesar\HubKeep\Dev\hubkeep
+git switch main
+git pull
+pnpm install
+```
+
+Dados de demonstração (uma vez; pode rodar de novo sem duplicar):
+
+```powershell
+$env:DEV_SESSION_POOLER = '<string Session pooler do HubKeep-dev>'
+$env:HK_DEMO_SENHA = '<senha de teste>'
+pnpm demo:dados --ambiente dev
+```
+
+O script lê o `apps/web/.env.local`, confere que **todas** as conexões são do HubKeep-dev (o ref de `[remotes.dev]` no `supabase/config.toml`) e recusa qualquer outro ambiente. No fim, lista as contas criadas. A senha não aparece na tela.
+
+Web e PWA, cada um num terminal:
+
+```powershell
+pnpm --filter @hubkeep/web dev
+```
+
+```powershell
+pnpm --filter @hubkeep/tecnico dev
+```
+
+- Web: `http://localhost:3000` (login em `/login`).
+- PWA: `http://localhost:5173`.
+
+Para testar o PWA **sem rede**, use o build, porque o service worker só existe nele (o modo dev não guarda a aplicação para abrir offline):
+
+```powershell
+pnpm --filter @hubkeep/tecnico build
+pnpm --filter @hubkeep/tecnico preview
+```
+
+O PWA fica em `http://localhost:4173`, com o `/api` indo para o web em `localhost:3000`. Para cortar a rede: DevTools (F12) → Network → *Offline*, ou o modo avião do Windows.
+
+## 3. O que o script cria
+
+Um grupo fictício, **Grupo Demonstração**, no dev. Tudo passa pelos casos de uso da aplicação, com auditoria e outbox, como as telas fazem. A exceção é o que é trabalho do backoffice e não tem caso de uso: o tenant, o contrato de licença (3 hotéis e 40 UHs) e o primeiro Admin, gravados pelo dono do banco.
+
+- **Hotéis**, chegados pelo caminho do conector (lote no staging, com uma credencial de agente revogada no fim):
+  - **Hotel Demonstração Centro** (Bandeira Azul, ativo): UHs 101 a 104, 201 e 202; áreas comuns Piscina, Cozinha e Casa de máquinas.
+  - **Hotel Demonstração Praia** (Bandeira Verde, ativo): UHs 101 a 104; áreas Lobby e Restaurante.
+  - **Hotel Demonstração Serra** (Bandeira Azul, **em implantação**): UHs 101 a 103, pendentes de licença até o Admin ativar o hotel.
+- **Categorias, situações e prioridades** padrão.
+- **Ativos**:
+  - no Centro: Frigobar UH 101, Ar-condicionado UH 102, TV UH 103, Aquecedor da piscina e Forno combinado;
+  - no Praia: Ar-condicionado UH 101 e Máquina de gelo.
+- **Equipe Centro**, com o Técnico do Centro.
+
+### Contas (todas com a senha de `HK_DEMO_SENHA`)
+
+| Papel | E-mail | Escopo |
+|---|---|---|
+| Admin do grupo | `admin@demo.hubkeep.test` | Grupo inteiro |
+| Gestor CSC | `gestor.csc@demo.hubkeep.test` | Bandeira Azul (Centro e Serra) |
+| Implantador | `implantador@demo.hubkeep.test` | Hotel Serra, por 90 dias |
+| Gerente | `gerente.centro@demo.hubkeep.test` | Hotel Centro |
+| Gerente | `gerente.praia@demo.hubkeep.test` | Hotel Praia |
+| Técnico | `tecnico.centro@demo.hubkeep.test` | Hotel Centro (e Equipe Centro) |
+| Técnico | `tecnico.praia@demo.hubkeep.test` | Hotel Praia |
+| Solicitante | `solicitante@demo.hubkeep.test` | Hotel Centro |
+| Proprietário de UH | `proprietario.uh@demo.hubkeep.test` | UH 101 do Centro |
+| Proprietário de hotel inteiro | `proprietario.hotel@demo.hubkeep.test` | Hotel Praia |
+
+Os e-mails são do domínio `.test`, que não existe: nenhum e-mail sai, e as contas já nascem confirmadas. A identidade de demonstração recusa qualquer e-mail fora do `.test`, para a senha de teste nunca cair numa conta de verdade.
+
+### Chamados
+
+| Chamado | Onde | Estado | Para testar |
+|---|---|---|---|
+| Chuveiro sem água quente | Centro, UH 104 | Aberto (pela Solicitante) | Triagem (ver seção 5) |
+| Frigobar não gela | Centro, UH 101, com ativo | OS atribuída ao Técnico, não iniciada | Fila do dia no PWA; o proprietário da UH vê |
+| Ar-condicionado desligando sozinho | Centro, UH 102, com ativo | OS em execução, equipamento parado desde 2 h antes | Conclusão com "o equipamento voltou?"; paradas |
+| Aquecedor da piscina com ruído | Centro, Piscina, com ativo | OS concluída, aguardando aceite (aberto pela Solicitante) | Aceite e reabertura com motivo |
+| TV sem sinal | Centro, UH 103 | Cancelado, com o motivo | Motivo no detalhe e na linha do tempo |
+| Forno não chega à temperatura | Centro, Cozinha | Concluído (OS da Equipe Centro, aceita pelo Gerente) | Linha do tempo completa |
+| Ar-condicionado pingando no carpete | Praia, UH 101, com ativo | Aberto (pelo Gerente do Praia) | Escopo do proprietário do hotel inteiro |
+
+## 4. Roteiro por papel
+
+Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado. **A recusa tem de vir traduzida**, nunca como código cru ou frase em inglês. Troque o idioma no seletor (pt-BR, en, es, fr e, com a variável ligada, o pseudo-idioma) em pelo menos um papel.
+
+### Admin do grupo (web)
+
+- **Deve conseguir:**
+  - ver os três hotéis na tela inicial;
+  - em "Administração de hotéis", ver os três importados e **ativar o Serra**: as 3 UHs saem de pendentes;
+  - bandeiras, configuração e políticas, membros e papéis (convidar alguém de verdade só com um e-mail da equipe, porque o e-mail padrão do Supabase só entrega para ela), proprietários e vínculos, equipes, locais, categorias e ativos (incluindo o QR);
+  - "Chamados": os 7, com os filtros de hotel, situação, prioridade e período; "Ordens de serviço": as 4;
+  - no detalhe, a linha do tempo com quem fez, quando e o motivo.
+- **Deve ser barrado:** nada dentro do grupo. Para testar outro tenant, é preciso um segundo grupo (não faz parte do kit).
+
+### Gestor CSC, Bandeira Azul (web)
+
+- **Deve conseguir:** ver o Centro e o Serra, e os 6 chamados do Centro com as OS e a linha do tempo.
+- **Deve ser barrado:**
+  - o Praia e o chamado dele não aparecem, e abrir o link do detalhe dele dá "não encontrado";
+  - aceitar a OS do aquecedor: o Centro tem Gerente, então quem decide é ele (regra do Gerente único);
+  - ativar hotel e conceder papel.
+
+### Implantador, Serra (web)
+
+- **Deve conseguir:** o painel de implantação do Serra; locais e ativos do Serra.
+- **Deve ser barrado:** o Centro e o Praia não aparecem; nenhum chamado na lista; ativar o hotel (só o Admin).
+
+### Gerente do Centro (web)
+
+- **Deve conseguir:**
+  - os 6 chamados do Centro;
+  - **aceitar** a OS do aquecedor, ou **reabrir** com motivo (e, por ter ativo, marcar "o equipamento está parado" com data e hora);
+  - equipes do Centro;
+  - a tela de paradas abertas com OS concluída.
+- **Deve ser barrado:** o Praia não aparece.
+
+### Gerente do Praia (web)
+
+- **Deve conseguir:** só o chamado do ar-condicionado do Praia.
+- **Deve ser barrado:** nada do Centro nem do Serra.
+
+### Técnico do Centro (PWA e web)
+
+- **No PWA deve conseguir:**
+  - fila do dia com o Frigobar (atribuída) e o Ar-condicionado UH 102 (em execução);
+  - no Frigobar: iniciar, pausar, retomar, apontar horas, registrar material, tirar foto e concluir;
+  - no Ar-condicionado: concluir e responder "o equipamento voltou a funcionar?". Com "não", a parada continua aberta e aparece para o Gerente na tela de paradas;
+  - abrir chamado;
+  - ativos, pelo QR impresso no web ou pelo endereço `/q/<código>`.
+- **No PWA sem rede** (build, seção 2): fazer as ações acima offline, fechar e reabrir o PWA sem rede, voltar a rede e conferir no web que tudo entrou uma vez só, sem horas nem fotos duplicadas.
+- **Deve ser barrado:** aceitar a própria OS no web (detalhe do aquecedor), porque quem executou não aceita.
+- **Conferir também:** ao sair do PWA, a fila do dia é apagada do aparelho.
+
+### Técnico do Praia (PWA)
+
+- **Deve conseguir:** abrir chamado no Praia.
+- **Deve ser barrado:** a fila do dia vem vazia; nada do Centro.
+
+### Solicitante, Centro (PWA e web)
+
+- **Deve conseguir:**
+  - abrir chamado pelo PWA, com local, ativo opcional, descrição e foto;
+  - ver os chamados do Centro no web;
+  - **aceitar** a OS do aquecedor, porque foi ela quem abriu o chamado.
+- **Deve ser barrado:** triagem e geração de OS (pela API, seção 5).
+
+### Proprietário de UH (web)
+
+- **Deve conseguir:** ver só o chamado do Frigobar (UH 101 do Centro) e a OS dele.
+- **Deve ser barrado:**
+  - os outros chamados do Centro, o Praia e o Serra;
+  - qualquer gravação (o proprietário só lê);
+  - a linha do tempo vem vazia, porque a leitura da auditoria pelo proprietário é da etapa D (D1).
+
+### Proprietário do hotel inteiro (web)
+
+- **Deve conseguir:** ver o Praia e o chamado dele.
+- **Deve ser barrado:** o Centro e o Serra; qualquer gravação. A linha do tempo vem vazia, como no proprietário de UH.
+
+## 5. O que ainda não dá para testar pela tela
+
+- **Triagem pelo web:** triar, mudar a prioridade, gerar a OS (para técnico ou equipe), reatribuir, cancelar a OS e cancelar o chamado existem na API (C3) e nas regras, mas **não têm tela**. A C7 fez as listas, o detalhe, o aceite e a reabertura. O script já deixa chamados triados e com OS, para o resto do fluxo ser testável. Pela API, as rotas estão na OpenAPI em `http://localhost:3000/api/interno/openapi`. Uma tela de triagem no detalhe do chamado é uma tarefa curta, **a decidir pelo Cesar** antes ou durante a etapa D.
+- **Linha do tempo do proprietário** e o antes e depois de cada campo: etapa D (D1).
+- **SLA, escalonamento e notificações:** fase 1c. Os eventos ficam no outbox do dev, e nenhum e-mail sai, porque o cron só roda na Vercel.
+- **Outro tenant:** o kit cria um grupo só. O isolamento entre tenants está coberto pelos testes pgTAP e de integração na CI.
+
+## 6. Rodar de novo e recomeçar
+
+- **Rodar de novo** não duplica nada: hotéis, pessoas, ativos e chamados são conferidos antes de gravar, e as operações offline têm chave fixa. A senha de todas as contas volta a ser a de `HK_DEMO_SENHA`.
+- **O que você mudou** nas telas (aceites, OS novas, chamados novos) fica. O script não desfaz o teste; ele só completa o que falta.
+- **Recomeçar do zero** exige apagar o grupo pelo dono do banco. Não há script para isso, porque o banco de dev é compartilhado. Peça quando precisar.

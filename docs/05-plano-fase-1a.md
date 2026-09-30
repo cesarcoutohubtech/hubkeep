@@ -77,6 +77,8 @@ Fim da etapa C: resumo.
 
 Decisão do Cesar (28/09/2026). Ao fim da etapa C, antes de começar a D, preparar um kit para o Cesar testar a aplicação no notebook dele, ligada ao projeto de dev (`HubKeep-dev`). **O trabalho para quando o kit estiver pronto**, e a etapa D só começa com o aval dele.
 
+**Pronto em 30/09/2026:** `docs/10-kit-de-teste.md` (variáveis, comandos, o que o script cria e o roteiro por papel) e `pnpm demo:dados --ambiente dev`.
+
 - **Variáveis do `.env.local`** do web e do PWA: a lista completa, com onde achar cada valor (painel do Supabase, cofre de senhas dos papéis, Vercel) e o que não pode ir para o git.
 - **Script de dados de demonstração, só para o dev:**
   - recusa rodar fora do dev (ambiente declarado, ADR-020);
