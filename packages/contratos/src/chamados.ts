@@ -67,13 +67,121 @@ export const OsApi = z
   })
   .meta({ id: 'OsApi' });
 
+/** Os nomes que o detalhe mostra no lugar dos ids (C7); o que quem pede não lê vem null ou fica de fora. */
+export const NomesDoChamadoApi = z
+  .object({
+    hotel: z.string().nullable(),
+    local: z.string().nullable(),
+    ativo: z.string().nullable(),
+    /** Quem abriu e os Técnicos das OS, por usuário. */
+    pessoas: z.record(z.guid(), z.string()),
+    /** As equipes das OS, por id. */
+    equipes: z.record(z.guid(), z.string()),
+  })
+  .meta({ id: 'NomesDoChamadoApi' });
+
 export const RespostaDeChamado = z
   .object({
     chamado: ChamadoApi,
     /** As OS do chamado, da mais antiga para a mais nova (no máximo uma não cancelada). */
     os: z.array(OsApi),
+    nomes: NomesDoChamadoApi,
   })
   .meta({ id: 'RespostaDeChamado' });
+
+/**
+ * Filtros das listas de chamados e de OS (C7), na query string. O período é
+ * pela data de criação: de (inclusive) até ate (exclusive), em ISO 8601. A
+ * prioridade da OS é a do chamado. depoisDe é o `proximo` da página anterior.
+ */
+export const ConsultaDaLista = z
+  .object({
+    hotelId: z.guid().optional(),
+    situacaoId: z.guid().optional(),
+    prioridadeId: z.guid().optional(),
+    de: z.iso.datetime({ offset: true }).optional(),
+    ate: z.iso.datetime({ offset: true }).optional(),
+    depoisDe: z.guid().optional(),
+  })
+  .meta({ id: 'ConsultaDaLista' });
+
+export const ChamadoResumidoApi = z
+  .object({
+    id: z.guid(),
+    hotelId: z.guid(),
+    hotelNome: z.string().nullable(),
+    localId: z.guid(),
+    localNome: z.string().nullable(),
+    ativoId: z.guid().nullable(),
+    ativoNome: z.string().nullable(),
+    descricao: z.string(),
+    estado: z.enum(ESTADOS_DO_CHAMADO_API),
+    situacaoId: z.guid(),
+    prioridadeId: z.guid(),
+    criadoEm: z.iso.datetime(),
+  })
+  .meta({ id: 'ChamadoResumidoApi' });
+
+export const RespostaDeListaDeChamados = z
+  .object({
+    /** Do mais novo para o mais antigo, até 50 por página. */
+    chamados: z.array(ChamadoResumidoApi),
+    /** Para a página seguinte (depoisDe); null na última. */
+    proximo: z.guid().nullable(),
+  })
+  .meta({ id: 'RespostaDeListaDeChamados' });
+
+export const OsResumidaApi = z
+  .object({
+    id: z.guid(),
+    hotelId: z.guid(),
+    hotelNome: z.string().nullable(),
+    chamadoId: z.guid(),
+    localNome: z.string().nullable(),
+    /** Do chamado; null se quem pede lê a OS e não o chamado. */
+    descricao: z.string().nullable(),
+    prioridadeId: z.guid().nullable(),
+    estado: z.enum(ESTADOS_DA_OS_API),
+    situacaoId: z.guid(),
+    responsavel: ResponsavelApi,
+    responsavelNome: z.string().nullable(),
+    criadoEm: z.iso.datetime(),
+  })
+  .meta({ id: 'OsResumidaApi' });
+
+export const RespostaDeListaDeOs = z
+  .object({
+    /** Da mais nova para a mais antiga, até 50 por página. */
+    os: z.array(OsResumidaApi),
+    proximo: z.guid().nullable(),
+  })
+  .meta({ id: 'RespostaDeListaDeOs' });
+
+/** As entidades da auditoria que formam a linha do tempo do chamado (C7). */
+export const ENTIDADES_DA_LINHA_DO_TEMPO_API = ['chamado', 'os', 'parada_ativo'] as const;
+
+/** Uma ação da auditoria do chamado, das OS dele ou das paradas do chamado (C7). */
+export const EventoDaLinhaDoTempoApi = z
+  .object({
+    id: z.guid(),
+    em: z.iso.datetime(),
+    entidade: z.enum(ENTIDADES_DA_LINHA_DO_TEMPO_API),
+    registroId: z.guid(),
+    /** A ação gravada na auditoria (ex.: abrir, gerar, concluir, reabrir); o nome sai do catálogo. */
+    acao: z.string(),
+    usuarioId: z.guid().nullable(),
+    usuarioNome: z.string().nullable(),
+    /** O motivo do cancelamento ou da reabertura. */
+    motivo: z.string().nullable(),
+  })
+  .meta({ id: 'EventoDaLinhaDoTempoApi' });
+
+export const RespostaDeLinhaDoTempo = z
+  .object({
+    /** Da mais antiga para a mais nova. */
+    eventos: z.array(EventoDaLinhaDoTempoApi),
+  })
+  .meta({ id: 'RespostaDeLinhaDoTempo' });
 
 export const PedidoDeTriagem = z
   .object({ versao, prioridadeId: z.guid().nullish() })

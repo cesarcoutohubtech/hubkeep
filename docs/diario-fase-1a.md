@@ -892,9 +892,22 @@ Dividida em duas partes, cada uma no seu PR:
 - **Docs:** ADR-027 (itens 7 e 8), OpenAPI (textos do aceite e da reabertura), plano (coluna da C6 com a 0027).
 - **Local:** typecheck, lint e prettier verdes; testes verdes: raiz 277, domínio 1742, aplicação 91, PWA 113, web 63. A integração do `packages/db` e o pgTAP rodam só na CI.
 
-### Ponto de retomada (30/09/2026, PR do Gerente único aberto)
-- **`main`:** `45a4dff` (#73), com o `banco` vermelho pelo teste do aceite (corrigido neste PR). **Dev:** 0025 e 0026 aplicadas.
-- **PR aberto:** Gerente único (`1a-c6b-gerente-unico`, worktree `wt/c6b-gerente-unico`, zona protegida, migração 0027). Conferir `gh pr checks`; se falhar, corrigir na branch. Só avisar PR pronto com tudo verde (a "zona protegida" falha por desenho).
-- **Depois do merge:** conferir `gh run list --branch main`; o Cesar faz o `db push` da 0027, e eu confiro o dev só por leitura.
-- **Próxima tarefa:** C7 (telas do CSC e do hotel, incluindo o aceite, a reabertura com a opção "equipamento parado" e o motivo da reabertura na tela da OS do web), num worktree novo a partir da `main`.
-- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+### C7 — Telas do CSC e do hotel (30/09/2026)
+- **#74** (`1c377e2`) mergeado pelo Cesar; a `main` voltou a ficar verde (`CI`, `banco` e `segurança`). O dev, lido só por leitura, está sem a 0027 (a 0025 e a 0026 aplicadas). Os registros pedidos pelo Cesar (aprovações do Gerente único, pergunta do aceite do técnico e a regra de CI vermelha) foram num PR só de docs, o #75 (zona protegida, por causa do ADR-027).
+- **C7 num worktree novo** a partir da `main` (`1a-c7-telas`, `wt/c7-telas`). Sem migração, sem função e sem gatilho: não é zona protegida.
+- **Domínio** (`consultas.ts`): o período da lista (`periodo_invalido` se o início não é antes do fim), o tamanho da página (50), as entidades da linha do tempo e o motivo lido da auditoria.
+- **Aplicação** (`casos-de-uso/consultas.ts`, `PortaConsultasDaCorretiva`): listar chamados e OS com os filtros básicos (hotel, situação, prioridade, período), os nomes do detalhe e a linha do tempo. Ler é escopo: a RLS decide, sem regra de papel no caso de uso. A página continua pelo último id (UUID v7, do mais novo para o mais antigo).
+- **Banco** (`consultas-da-corretiva.ts`): leituras com withContext; os nomes (hotel, local, ativo, pessoa, equipe) por left join, e o que quem pede não lê volta null sem esconder o registro. A prioridade da OS é a do chamado.
+- **Linha do tempo pela auditoria** (as ações do chamado, das OS dele e das paradas do chamado, com quem fez, quando e o motivo do cancelamento ou da reabertura). A RLS da auditoria já mostra ao Admin e a quem escreve no hotel; o proprietário vê o chamado da UH e recebe a linha do tempo vazia. A leitura da auditoria pelo proprietário e o antes e depois de cada campo ficam para a D1, que generaliza a linha do tempo.
+- **API:** `GET /api/v1/chamados` e `GET /api/v1/os` (filtros na query, validados pelo contrato; `rota().consulta()` novo no web), `GET /api/v1/chamados/{id}/linha-do-tempo`, e os nomes no `GET /api/v1/chamados/{id}`. OpenAPI com os parâmetros da query.
+- **Telas** (`/chamados`, `/os`, `/chamados/{id}`, links na tela inicial): filtros, itens, detalhe com as OS, o aceite e a reabertura da OS concluída (motivo e, com ativo, "equipamento parado" com a data e a hora), o último motivo de reabertura e a linha do tempo. Os botões aparecem na OS concluída, e a API decide quem aceita ou reabre (a recusa aparece traduzida). Tela funcional, sem acabamento; o layout definitivo vem do protótipo.
+- **i18n:** 47 chaves novas nos quatro idiomas, com o `erro.periodo_invalido`.
+- **Testes:** domínio (período e motivo), aplicação (filtro, página, 404 sem ler a linha do tempo), telas nos quatro idiomas e no pseudo-idioma (todo texto do catálogo, fora os dados do banco) e integração por papel no `packages/db` (`consultas.test.ts`: Admin, Gestor CSC da bandeira, Gerente de cada hotel, Técnico, Solicitante, proprietário da UH e outro tenant; filtros, página, nomes e linha do tempo).
+- **Local:** typecheck, lint e prettier verdes; testes verdes: raiz 280, domínio 1747, aplicação 95, PWA 113, web 74. A integração do `packages/db` roda só na CI.
+- **Conflito esperado** com o #75 no fim deste diário: manter as duas entradas, a do #75 antes.
+
+### Ponto de retomada (30/09/2026, #75 e C7 abertos)
+- **`main`:** `1c377e2` (#74), com a CI verde. **Dev:** 0025 e 0026 aplicadas; a 0027 pendente, com o Cesar.
+- **PRs abertos:** #75 (registros, só docs, zona protegida) e o da C7 (`1a-c7-telas`, worktree `wt/c7-telas`, sem zona protegida). Conferir `gh pr checks` dos dois; se falhar, corrigir na branch. Só avisar PR pronto com tudo verde.
+- **Depois do merge:** conferir `gh run list --branch main`; se a `main` ficar vermelha, corrigir antes de qualquer outro merge.
+- **Próximo:** fim da etapa C: resumo da etapa e o kit de teste no notebook do Cesar (`docs/05`, "Kit de teste"). O trabalho para quando o kit estiver pronto.

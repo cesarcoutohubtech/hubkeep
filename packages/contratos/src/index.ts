@@ -57,6 +57,15 @@ export {
 } from './situacoes';
 export {
   ChamadoApi,
+  ChamadoResumidoApi,
+  ConsultaDaLista,
+  ENTIDADES_DA_LINHA_DO_TEMPO_API,
+  EventoDaLinhaDoTempoApi,
+  NomesDoChamadoApi,
+  OsResumidaApi,
+  RespostaDeLinhaDoTempo,
+  RespostaDeListaDeChamados,
+  RespostaDeListaDeOs,
   OsApi,
   OsDoDiaApi,
   RespostaDeOsDoDia,

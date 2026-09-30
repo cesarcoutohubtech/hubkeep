@@ -36,6 +36,7 @@ export {
   criarPortasDeAplicacao,
   criarPortasDeIngestao,
 } from './adaptadores';
+export { criarPortaConsultasDaCorretiva } from './consultas-da-corretiva';
 export { novoId } from './ids';
 export { criptografiaDoServidor } from './criptografia';
 export { atrasoDaTentativa, processarOutbox } from './repositorios/outbox';

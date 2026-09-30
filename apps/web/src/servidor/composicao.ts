@@ -11,6 +11,7 @@ import {
   type CasosDeUsoDeTriagem,
   type CasosDeUsoDeExecucao,
   type CasosDeUsoDeParadas,
+  type CasosDeUsoDeConsultas,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
@@ -30,6 +31,7 @@ import {
   criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeAtivos,
   criarCasosDeUsoDeParadas,
+  criarCasosDeUsoDeConsultas,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeTriagem,
@@ -60,6 +62,7 @@ import {
   criarPortaTriagem,
   criarPortaExecucao,
   criarPortaParadas,
+  criarPortaConsultasDaCorretiva,
   criarPortaPrioridades,
   criarPortaSituacoes,
   criarPortaConfiguracao,
@@ -328,6 +331,11 @@ export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
     paradas: criarPortaParadas(banco),
   });
 });
+
+/** Listas de chamados e OS, nomes do detalhe e linha do tempo (fase 1a, C7), pelo hk_app. */
+export const casosDeUsoDeConsultas = memo<CasosDeUsoDeConsultas>(async () =>
+  criarCasosDeUsoDeConsultas({ consultas: criarPortaConsultasDaCorretiva(await acessoBanco()) }),
+);
 
 /** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */
 export const casosDeUsoDeParadas = memo<CasosDeUsoDeParadas>(async () => {

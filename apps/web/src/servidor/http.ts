@@ -54,6 +54,11 @@ export interface Requisicao {
    * que o cliente pode omitir o cabeçalho; a leitura para ao passar do limite.
    */
   corpo<T extends z.ZodType>(contrato: T, opcoes?: { limiteBytes?: number }): Promise<z.output<T>>;
+  /**
+   * Query string validada pelo contrato (C7): cada parâmetro vira um campo;
+   * parâmetro vazio conta como ausente. Inválida vira 422 entrada_invalida.
+   */
+  consulta<T extends z.ZodType>(contrato: T): z.output<T>;
   /** Tenant de quem não é usuário (ex.: o agente, pelo prefixo da credencial), para o log. */
   marcarTenant(tenantId: string): void;
   /**
@@ -151,6 +156,14 @@ export function rota(
         if (!lido.success) {
           throw new ErroDeEntrada(problemasDe(lido.error));
         }
+        return lido.data;
+      },
+      consulta(contrato) {
+        const bruto = Object.fromEntries(
+          [...new URL(req.url).searchParams].filter(([, valor]) => valor !== ''),
+        );
+        const lido = contrato.safeParse(bruto);
+        if (!lido.success) throw new ErroDeEntrada(problemasDe(lido.error));
         return lido.data;
       },
       marcarTenant(tenantId) {

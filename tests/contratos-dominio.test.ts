@@ -15,6 +15,7 @@ import {
   ACOES_DA_OS_API,
   ACOES_DO_CHAMADO_API,
   ENTIDADES_COM_SITUACAO_API,
+  ENTIDADES_DA_LINHA_DO_TEMPO_API,
   ESTADOS_DA_OS_API,
   ESTADOS_DO_CHAMADO_API,
   PRIORIDADES_PADRAO_API,
@@ -31,6 +32,7 @@ import {
   ACOES_DA_OS,
   ACOES_DO_CHAMADO,
   ENTIDADES_COM_SITUACAO,
+  ENTIDADES_DA_LINHA_DO_TEMPO,
   ESTADOS_DA_OS,
   ESTADOS_DO_CHAMADO,
   PRIORIDADES_PADRAO,
@@ -108,5 +110,9 @@ describe('contratos × domínio', () => {
     expect([...ACOES_DA_OS_API]).toEqual([...ACOES_DA_OS]);
     expect([...ENTIDADES_COM_SITUACAO_API]).toEqual([...ENTIDADES_COM_SITUACAO]);
     expect([...PRIORIDADES_PADRAO_API]).toEqual(PRIORIDADES_PADRAO.map((p) => p.chave));
+  });
+
+  it('as entidades da linha do tempo da API são as do domínio (C7)', () => {
+    expect([...ENTIDADES_DA_LINHA_DO_TEMPO_API]).toEqual([...ENTIDADES_DA_LINHA_DO_TEMPO]);
   });
 });

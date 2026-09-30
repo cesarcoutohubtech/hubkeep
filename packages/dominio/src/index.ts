@@ -228,6 +228,13 @@ export {
 } from './chamados';
 export type { PoliticaAplicadaNaAbertura } from './chamados';
 export {
+  ENTIDADES_DA_LINHA_DO_TEMPO,
+  TAMANHO_DA_PAGINA,
+  motivoDaAuditoria,
+  validarPeriodoDaLista,
+} from './consultas';
+export type { EntidadeDaLinhaDoTempo, FiltroDaLista } from './consultas';
+export {
   ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
   exigirPrioridadeAtiva,
   exigirResponsavelDoHotel,
