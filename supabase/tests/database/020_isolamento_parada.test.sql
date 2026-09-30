@@ -119,10 +119,11 @@ insert into app.parada_ativo (id, tenant_id, hotel_id, ativo_id, chamado_id, os_
 
 -- Caso 6 — FK composta, checks e a parada aberta única (como postgres)
 select throws_ok(
-  $$ insert into app.parada_ativo (id, tenant_id, hotel_id, ativo_id, chamado_id, inicio, aberta_por)
+  $$ insert into app.parada_ativo (id, tenant_id, hotel_id, ativo_id, chamado_id, inicio, fim, aberta_por, encerrada_por)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001',
-             'c1000000-0000-0000-0000-000000000003', now() - interval '1 hour', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
-  '23503', null, 'parada em chamado sem ativo');
+             'c1000000-0000-0000-0000-000000000003', now() - interval '1 hour', now() - interval '30 minutes',
+             'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
+  '23503', null, 'parada em chamado sem ativo (encerrada, para o índice da aberta não responder antes da FK)');
 select throws_ok(
   $$ insert into app.parada_ativo (id, tenant_id, hotel_id, ativo_id, chamado_id, inicio, fim, aberta_por, encerrada_por)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000002',
