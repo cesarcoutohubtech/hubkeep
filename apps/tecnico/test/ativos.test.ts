@@ -113,6 +113,7 @@ describe('referência no aparelho', () => {
             versao: 3,
             ativo: true,
             codigoQr: '7K3M9QX2AB',
+            paradoDesde: null,
           },
         ],
       },

@@ -29,6 +29,7 @@ export const GET = rota('ativos.abrir_por_qr', async (r) => {
       versao: a.versao,
       ativo: a.desativadoEm === null,
       codigoQr: a.codigoQr,
+      paradoDesde: a.paradoDesde?.toISOString() ?? null,
     },
   });
 });

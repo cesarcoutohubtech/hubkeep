@@ -788,3 +788,40 @@ Dividida em duas partes, cada uma no seu PR:
 - **PR aberto:** complemento da C4b (`1a-c4b-armazenamento`, worktree `wt/c4b-armazenamento`, zona protegida). Sem migração: sem `db push`. Merge só com a CI verde.
 - **Próxima tarefa:** C5, equipamento parado (`docs/05-plano-fase-1a.md`, linha da C5). Tem migração (`app.parada_ativo`, com no máximo uma parada aberta por ativo, garantida por restrição de integridade). Pode andar no local, num worktree novo a partir da `main`. O PR dela só abre depois do merge do complemento, porque os dois são zona protegida.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+
+### C5 — Equipamento parado (29/09/2026)
+- **Migração 0025** (`parada_ativo`):
+  - `app.parada_ativo` com ativo, chamado (obrigatório), OS opcional, início, fim, quem abriu e quem encerrou;
+  - FK `(hotel_id, chamado_id, ativo_id)` → chamado com o mesmo ativo (constraint nova `chamado_ativo_unico`) e `(hotel_id, os_id, chamado_id)` → OS do mesmo chamado (`os_chamado_unico`);
+  - uma parada aberta por ativo: índice único parcial `parada_ativo_uma_aberta`;
+  - checks: fim depois do início; fim e quem encerrou juntos;
+  - RLS: lê quem lê o hotel e o proprietário (hotel inteiro ou UH do ativo); insere quem tem escrita no hotel, em nome dele mesmo; UPDATE só de `fim`, `encerrada_por` e `atualizado_em`, pela gestão do hotel e pelo Técnico responsável por OS não cancelada do chamado. Nenhuma policy lê a tabela nova: sem ciclo.
+- **pgTAP:** `020_isolamento_parada.test.sql`, com 38 casos (os seis do doc 02, FKs, checks, parada aberta única, UPDATE por coluna, sem DELETE, worker).
+- **Domínio:** `paradas.ts` (`validarParada`, `validarFimDaParada`, `exigirAtivoNoChamado`, `exigirSemParadaAberta`, `exigirParadaAberta`, `tempoParado`, `tempoParadoTotal`, com sobreposição) e, em `corretiva.ts`, `registrar_parada` e `encerrar_parada` nos registros da OS e `podeEncerrarParada`.
+- **Aplicação:**
+  - abertura do chamado com `paradoDesde`: a parada aberta nasce na mesma unit of work; ativo já parado fica com a parada que existe;
+  - execução: `prepararParada` e `prepararEncerramentoDeParada`, e as operações offline `os.registrar_parada` e `os.encerrar_parada`; a OS só encerra a parada do próprio chamado (`parada_de_outro_chamado`);
+  - web: `criarCasosDeUsoDeParadas` (lista com tempo parado e encerramento pela gestão).
+- **API:** `GET /api/v1/ativos/{id}/paradas`, `POST /api/v1/paradas/{id}/encerramento`; `paradoDesde` no ativo e na fila do dia; `ativoId` na fila do dia; OpenAPI atualizado.
+- **Telas:**
+  - web, ativos: "parado desde" na lista, as paradas com o tempo parado e o encerramento;
+  - PWA: "o equipamento está parado" na abertura do chamado; "parado desde" na lista de ativos; na OS, "equipamento parado desde" e o botão de registrar ou encerrar, com a parada pendente projetada por cima.
+- **i18n:** 22 chaves novas nos quatro idiomas (7 códigos de erro `parada_*`).
+- **Docs:** bloco "Implementação (C5)" no ADR-027, com as decisões de desenho a confirmar pelo Cesar.
+- **Local:** typecheck, lint e testes verdes: raiz 274, domínio 1709 (`paradas.test.ts` novo), aplicação 91, PWA 86, web 63. A integração do `packages/db` (`paradas.test.ts` novo, 6 casos) e o pgTAP rodam só na CI.
+- **Não verificado no local:** a migração e o pgTAP (sem banco local; o dev só recebe a 0025 pelo `db push` do Cesar, depois da CI verde).
+
+### #70 mergeado; PR da C5 (29/09/2026)
+- **#70** (`86318a3`) mergeado pelo Cesar. CI da `main` depois dele: `CI` e `segurança` verdes; `banco` rodando na hora da conferência.
+- **`main` trazida para a `1a-c5-parada`:** conflitos no `App.tsx` do PWA (comentário do topo e a vizinhança de `fotografarOs`) e no fim do diário; mantidos os dois lados. O `docs/03` entrou sem conflito.
+- **Local depois do merge:** typecheck, lint e prettier verdes; testes verdes: raiz 274, domínio 1709, aplicação 91, PWA 103 (os da C5 e os do #70), web 63.
+- **PR da C5 aberto** (zona protegida, migração 0025). Merge só com a CI verde: pgTAP, integração do `packages/db`, tipos e segurança; a "zona protegida" falha por desenho.
+- **Primeira CI do #71:** pgTAP vermelho em 1 de 38 casos do `020`: "parada em chamado sem ativo" esperava 23503 (FK composta) e recebeu 23505, porque a parada do teste era aberta num ativo que já tinha parada aberta, e o índice único responde antes da FK (conferida no fim do comando). O caso passou a usar uma parada encerrada. A migração não mudou.
+
+### Ponto de retomada (29/09/2026, PR da C5 aberto)
+- **`main`:** `86318a3` (#70). **Dev:** 24 migrações, até a 0024.
+- **PR aberto:** C5 (`1a-c5-parada`, worktree `wt/c5-parada`, zona protegida, migração 0025). Conferir `gh pr checks`; se a CI falhar, corrigir na branch.
+- **Depois do merge da C5:** o Cesar faz o `db push` da 0025, e eu confiro o dev só por leitura (`db:testar-dev` sem falha, `db:types` idêntico).
+- **Perguntas ao Cesar:** as decisões de desenho da C5 (bloco "Implementação (C5)" no ADR-027, "a confirmar").
+- **Próxima tarefa:** C6 (aceite), no local, num worktree novo a partir da `main`.
+- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

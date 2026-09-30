@@ -21,6 +21,7 @@ export {
   criarPortaChamados,
   criarPortaTriagem,
   criarPortaExecucao,
+  criarPortaParadas,
   criarPortaPrioridades,
   criarPortaSituacoes,
   criarPortaAnexos,

@@ -6,6 +6,8 @@
 // projeção: se o servidor já tinha aplicado (a resposta se perdeu) e a API já
 // devolveu a OS adiante, a operação não conta duas vezes. As regras de quem
 // e de quando são as do domínio, as mesmas do servidor, que confere de novo.
+// A parada do ativo (C5) também: registrada aberta, o ativo aparece parado
+// desde o início dela; encerrada, deixa de aparecer.
 import { ESTADOS_QUE_ACEITAM_REGISTRO, type EstadoDaOs, TRANSICOES_DA_OS } from '@hubkeep/dominio';
 import type { FotoNaFila, OperacaoNaFila } from '../fila/banco';
 import type { OsGuardada } from './banco';
@@ -41,6 +43,15 @@ export function projetarOs(
     const os = porId.get(osDaOperacao(op) ?? '');
     if (!os) continue;
     os.pendentes += 1;
+    if (op.tipo === 'os.registrar_parada') {
+      const d = op.dados as { inicio: string; fim: string | null };
+      if (d.fim === null) os.chamado = { ...os.chamado, paradoDesde: d.inicio };
+      continue;
+    }
+    if (op.tipo === 'os.encerrar_parada') {
+      os.chamado = { ...os.chamado, paradoDesde: null };
+      continue;
+    }
     const acao = acaoDoTipo(op.tipo);
     if (!acao) continue;
     const t = TRANSICOES_DA_OS[acao];
@@ -57,6 +68,12 @@ export function projetarOs(
 export const acoesPossiveis = (estado: EstadoDaOs): AcaoDoTecnico[] =>
   ACOES_DO_TECNICO.filter((a) => (TRANSICOES_DA_OS[a].de as readonly string[]).includes(estado));
 
-/** Horas, material e fotos: só com a OS em execução ou pausada. */
+/** Horas, material, fotos e parada: só com a OS em execução ou pausada. */
 export const aceitaRegistro = (estado: EstadoDaOs): boolean =>
   ESTADOS_QUE_ACEITAM_REGISTRO.includes(estado);
+
+/** O que a tela oferece sobre a parada do ativo do chamado (C5). */
+export function paradaPossivel(os: OsNoAparelho): 'registrar' | 'encerrar' | null {
+  if (!aceitaRegistro(os.estado) || os.chamado.ativoId === null) return null;
+  return os.chamado.paradoDesde == null ? 'registrar' : 'encerrar';
+}

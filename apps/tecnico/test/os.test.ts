@@ -14,7 +14,7 @@ import { criarEnvioDeFoto, fotoParaFila } from '../src/anexos/fotos';
 import { type FilaDeOperacoes, type OperacaoNaFila, abrirFila } from '../src/fila/banco';
 import { sincronizar } from '../src/fila/sincronizar';
 import { type OsGuardada, abrirOsDoDia } from '../src/os/banco';
-import { aceitaRegistro, acoesPossiveis, projetarOs } from '../src/os/projecao';
+import { aceitaRegistro, acoesPossiveis, paradaPossivel, projetarOs } from '../src/os/projecao';
 import { apagarDadosLocais } from '../src/saida';
 
 const A = 'aaaaaaaa-0000-4000-8000-000000000001';
@@ -42,6 +42,8 @@ const osGuardada = (id: string, estado: OsGuardada['estado'], versao: number): O
     localNome: 'UH 101',
     prioridadeId: '9a000000-0000-4000-8000-000000000001',
     estado: 'em_execucao',
+    ativoId: 'a1000000-0000-4000-8000-000000000001',
+    paradoDesde: null,
   },
 });
 
@@ -60,6 +62,51 @@ const naFila = (
   tentativas: 0,
   proximaTentativaEm: 0,
   ultimoErro: null,
+});
+
+describe('parada do ativo na projeção (C5)', () => {
+  it('registrada aberta, o ativo aparece parado; encerrada, deixa de aparecer', () => {
+    const guardada = osGuardada(OS1, 'em_execucao', 2);
+    const [parada] = projetarOs(
+      [guardada],
+      [naFila('os.registrar_parada', { osId: OS1, inicio: '2026-09-29T09:00:00.000Z', fim: null })],
+    );
+    expect(parada?.chamado.paradoDesde).toBe('2026-09-29T09:00:00.000Z');
+    expect(parada).toMatchObject({ versao: 2, pendentes: 1 });
+    expect(parada && paradaPossivel(parada)).toBe('encerrar');
+    const [voltou] = projetarOs(
+      [guardada],
+      [
+        naFila('os.registrar_parada', { osId: OS1, inicio: '2026-09-29T09:00:00.000Z', fim: null }),
+        naFila('os.encerrar_parada', { osId: OS1, fim: '2026-09-29T10:00:00.000Z' }),
+      ],
+    );
+    expect(voltou?.chamado.paradoDesde).toBeNull();
+    expect(voltou && paradaPossivel(voltou)).toBe('registrar');
+  });
+
+  it('registrada já com o fim não deixa o ativo parado', () => {
+    const [os] = projetarOs(
+      [osGuardada(OS1, 'em_execucao', 2)],
+      [
+        naFila('os.registrar_parada', {
+          osId: OS1,
+          inicio: '2026-09-29T08:00:00.000Z',
+          fim: '2026-09-29T08:30:00.000Z',
+        }),
+      ],
+    );
+    expect(os?.chamado.paradoDesde).toBeNull();
+  });
+
+  it('sem ativo no chamado, ou fora de execução e pausa, nada a oferecer', () => {
+    const semAtivo = osGuardada(OS1, 'em_execucao', 2);
+    semAtivo.chamado = { ...semAtivo.chamado, ativoId: null };
+    const [a] = projetarOs([semAtivo], []);
+    const [b] = projetarOs([osGuardada(OS1, 'atribuida', 1)], []);
+    expect(a && paradaPossivel(a)).toBeNull();
+    expect(b && paradaPossivel(b)).toBeNull();
+  });
 });
 
 describe('projeção da OS no aparelho', () => {

@@ -14,6 +14,8 @@ import type {
   OsGravada,
   PortaTriagem,
   PortaExecucao,
+  ParadaGravada,
+  PortaParadas,
   PortaPrioridades,
   PortaSituacoes,
   PortaLocais,
@@ -69,6 +71,7 @@ import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { criarChamado } from './repositorios/chamados';
 import { alterarChamadoNaTriagem, cancelarOs, gerarOs, reatribuirOs } from './repositorios/triagem';
 import { andarComOs, apontarHoras, registrarMaterial } from './repositorios/execucao';
+import { encerrarParada, registrarParada } from './repositorios/paradas';
 import {
   alterarPrioridade,
   alterarSituacao,
@@ -774,6 +777,15 @@ function paraOs(o: {
   };
 }
 
+/**
+ * Início da parada aberta do ativo (C5), como subconsulta da leitura; null se
+ * não está parado. A RLS da parada vale para quem lê.
+ */
+const paradoDesde = (hotel: string, ativo: string) =>
+  sql<Date | null>`(select p.inicio from app.parada_ativo p
+    where p.hotel_id = ${sql.ref(hotel)} and p.ativo_id = ${sql.ref(ativo)} and p.fim is null
+    limit 1)`.as('parado_desde');
+
 /** Triagem e OS (fase 1a, C3), pelo hk_app. */
 export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
   return {
@@ -787,6 +799,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
             'c.hotel_id',
             'h.bandeira_id',
             'c.local_id',
+            'c.ativo_id',
             'c.estado',
             'c.situacao_id',
             'c.prioridade_id',
@@ -800,6 +813,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
               id: c.id,
               hotel: { id: c.hotel_id, bandeiraId: c.bandeira_id },
               localId: c.local_id,
+              ativoId: c.ativo_id,
               estado: c.estado as EstadoDoChamado,
               situacaoId: c.situacao_id,
               prioridadeId: c.prioridade_id,
@@ -894,7 +908,9 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             'l.nome as local_nome',
             'c.prioridade_id',
             'c.estado as chamado_estado',
+            'c.ativo_id',
           ])
+          .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
           .where('o.estado', 'in', ['atribuida', 'em_execucao', 'pausada'])
           .where((eb) =>
             eb.or([
@@ -923,9 +939,85 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             localNome: o.local_nome,
             prioridadeId: o.prioridade_id,
             estado: o.chamado_estado as EstadoDoChamado,
+            ativoId: o.ativo_id,
+            paradoDesde: o.parado_desde,
           },
         }));
       }),
+  };
+}
+
+const COLUNAS_DA_PARADA = [
+  'id',
+  'hotel_id',
+  'ativo_id',
+  'chamado_id',
+  'os_id',
+  'inicio',
+  'fim',
+  'aberta_por',
+  'encerrada_por',
+] as const;
+
+function paraParada(p: {
+  id: string;
+  hotel_id: string;
+  ativo_id: string;
+  chamado_id: string;
+  os_id: string | null;
+  inicio: Date;
+  fim: Date | null;
+  aberta_por: string;
+  encerrada_por: string | null;
+}): ParadaGravada {
+  return {
+    id: p.id,
+    hotelId: p.hotel_id,
+    ativoId: p.ativo_id,
+    chamadoId: p.chamado_id,
+    osId: p.os_id,
+    inicio: p.inicio,
+    fim: p.fim,
+    abertaPor: p.aberta_por,
+    encerradaPor: p.encerrada_por,
+  };
+}
+
+/** Parada do equipamento (fase 1a, C5), pelo hk_app. */
+export function criarPortaParadas(banco: AcessoBanco): PortaParadas {
+  return {
+    parada: (ctx, paradaId) =>
+      banco.withContext(ctx, async (tx) => {
+        const p = await tx
+          .selectFrom('app.parada_ativo')
+          .select(COLUNAS_DA_PARADA)
+          .where('id', '=', paradaId)
+          .executeTakeFirst();
+        return p ? paraParada(p) : null;
+      }),
+    abertaDoAtivo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const p = await tx
+          .selectFrom('app.parada_ativo')
+          .select(COLUNAS_DA_PARADA)
+          .where('ativo_id', '=', ativoId)
+          .where('fim', 'is', null)
+          .executeTakeFirst();
+        return p ? paraParada(p) : null;
+      }),
+    doAtivo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.parada_ativo')
+            .select(COLUNAS_DA_PARADA)
+            .where('ativo_id', '=', ativoId)
+            .orderBy('inicio', 'desc')
+            .orderBy('id', 'desc')
+            .execute()
+        ).map(paraParada),
+      ),
+    encerrar: (ctx, e) => banco.executar(ctx, (uow) => encerrarParada(uow, e)),
   };
 }
 
@@ -1014,6 +1106,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     versao: number;
     desativado_em: Date | null;
     codigo_qr: string;
+    parado_desde: Date | null;
   }): AtivoGravado => ({
     id: a.id,
     hotelId: a.hotel_id,
@@ -1027,6 +1120,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     versao: a.versao,
     desativadoEm: a.desativado_em,
     codigoQr: a.codigo_qr,
+    paradoDesde: a.parado_desde,
   });
   return {
     hotel: (ctx, hotelId) =>
@@ -1055,8 +1149,9 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
       banco.withContext(ctx, async (tx) =>
         (
           await tx
-            .selectFrom('app.ativo')
+            .selectFrom('app.ativo as a')
             .select(colunas)
+            .select(paradoDesde('a.hotel_id', 'a.id'))
             .where('hotel_id', '=', hotelId)
             .$if(termo !== undefined, (q) => q.where('busca', 'ilike', trecho(termo ?? '')))
             .orderBy('nome')
@@ -1067,8 +1162,9 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     ativo: (ctx, ativoId) =>
       banco.withContext(ctx, async (tx) => {
         const a = await tx
-          .selectFrom('app.ativo')
+          .selectFrom('app.ativo as a')
           .select(colunas)
+          .select(paradoDesde('a.hotel_id', 'a.id'))
           .where('id', '=', ativoId)
           .executeTakeFirst();
         return a ? paraAtivo(a) : null;
@@ -1077,8 +1173,9 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
       banco.withContext(ctx, async (tx) => {
         // O tenant vem da RLS (tenant do contexto); o código é único no tenant.
         const a = await tx
-          .selectFrom('app.ativo')
+          .selectFrom('app.ativo as a')
           .select(colunas)
+          .select(paradoDesde('a.hotel_id', 'a.id'))
           .where('codigo_qr', '=', codigoQr)
           .executeTakeFirst();
         return a ? paraAtivo(a) : null;
@@ -1198,6 +1295,8 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
             andarComOs: (g) => andarComOs(uow, g),
             apontarHoras: (g) => apontarHoras(uow, g),
             registrarMaterial: (g) => registrarMaterial(uow, g),
+            registrarParada: (g) => registrarParada(uow, g),
+            encerrarParada: (g) => encerrarParada(uow, g),
           });
           await registrarOperacao(uow, operacao, resposta);
           return { repetida: false, resposta };

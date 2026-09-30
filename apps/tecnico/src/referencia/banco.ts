@@ -47,6 +47,8 @@ export interface AtivoGuardado {
   ativo: boolean;
   /** Código do QR (B5). Opcional: a referência guardada antes da B5 não tem. */
   codigoQr?: string;
+  /** Início da parada aberta (C5). Opcional: a referência guardada antes da C5 não tem. */
+  paradoDesde?: string | null;
 }
 
 export interface Referencia {

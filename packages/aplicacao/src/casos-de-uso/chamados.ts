@@ -7,11 +7,15 @@
 //
 // A validação que lê o banco (prepararAbertura) é a mesma no web e na
 // operação offline do PWA (chamado.abrir), que grava uma vez só (ADR-025).
+// Quem abre pode marcar o equipamento como parado (C5): a parada aberta do
+// ativo nasce na mesma unit of work; se o ativo já estava parado, fica a
+// parada que existe e o chamado abre do mesmo jeito.
 import {
   type AtorDaCorretiva,
   type Contexto,
   NaoEncontrado,
   exigirAtivoDoChamado,
+  exigirAtivoNoChamado,
   exigirLocalParaChamado,
   normalizarDescricaoDoChamado,
   podeAbrirChamado,
@@ -19,6 +23,7 @@ import {
   prioridadePadraoDoChamado,
   resolverPolitica,
   situacaoPara,
+  validarParada,
 } from '@hubkeep/dominio';
 import type { ChamadoGravado, DadosDeChamado, PortaChamados } from '../portas/chamados';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
@@ -28,6 +33,8 @@ export interface PedidoDeAberturaDeChamado {
   localId: string;
   ativoId?: string | null | undefined;
   descricao: string;
+  /** Equipamento parado desde (ISO 8601; C5): exige o ativo. */
+  paradoDesde?: string | null | undefined;
 }
 
 export interface CasosDeUsoDeChamados {
@@ -78,6 +85,16 @@ export function criarCasosDeUsoDeChamados(deps: {
       categoriaId = ativo.categoriaId;
     }
 
+    // Equipamento parado (C5): a parada aberta nasce com o chamado.
+    let paradaDesde: Date | null = null;
+    if (pedido.paradoDesde != null) {
+      exigirAtivoNoChamado(ativoId);
+      paradaDesde = validarParada(
+        { inicio: new Date(pedido.paradoDesde), fim: null },
+        deps.relogio.agora(),
+      ).inicio;
+    }
+
     const [niveis, situacoes, prioridades] = await Promise.all([
       deps.chamados.politica(ctx, local.hotelId, CHAVE),
       deps.situacoes.listar(ctx),
@@ -98,6 +115,7 @@ export function criarCasosDeUsoDeChamados(deps: {
         situacaoId: situacaoPara(situacoes, 'chamado', 'aberto'),
         prioridadeId: prioridade.prioridadeId,
         politicaAplicada: politicaAplicadaNaAbertura({ categoriaId, prioridade }),
+        paradaDesde,
       },
     };
   }

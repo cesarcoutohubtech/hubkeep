@@ -18,6 +18,8 @@ export interface AtivoGravado {
   desativadoEm: Date | null;
   /** Código do QR individual (B5), gerado no cadastro e imutável. */
   codigoQr: string;
+  /** Início da parada aberta (C5); null se não está parado. Só nas leituras. */
+  paradoDesde?: Date | null;
 }
 
 /** O que uma gravação (cadastro ou alteração) escreve, já validado pelo domínio. */

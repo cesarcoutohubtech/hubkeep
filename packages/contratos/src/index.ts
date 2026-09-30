@@ -166,5 +166,11 @@ export {
   RespostaDeBandeiras,
 } from './bandeiras';
 export { CODIGOS_HTTP, ErroApi, type ProblemaDeEntrada, problemasDe } from './erro';
+export {
+  ParadaApi,
+  PedidoDeEncerramentoDeParada,
+  RespostaDeParadaEncerrada,
+  RespostaDeParadasDoAtivo,
+} from './paradas';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';

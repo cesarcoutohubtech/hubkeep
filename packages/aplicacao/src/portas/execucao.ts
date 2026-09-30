@@ -19,6 +19,10 @@ export interface OsDoDia {
     localNome: string;
     prioridadeId: string;
     estado: EstadoDoChamado;
+    /** O ativo do chamado (C5): sem ele, não há parada. */
+    ativoId: string | null;
+    /** Início da parada aberta do ativo do chamado (C5); null se não está parado. */
+    paradoDesde: Date | null;
   };
 }
 

@@ -99,6 +99,11 @@ import {
   RespostaDeProprietarios,
   RespostaDeVinculoDeProprietario,
 } from './proprietarios';
+import {
+  PedidoDeEncerramentoDeParada,
+  RespostaDeParadaEncerrada,
+  RespostaDeParadasDoAtivo,
+} from './paradas';
 import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from './sincronizacao';
 import { ErroApi } from './erro';
 
@@ -306,6 +311,34 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Movimentações do ativo', esquema: RespostaDeMovimentacoesDoAtivo },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/ativos/{id}/paradas',
+    resumo:
+      'Paradas do ativo (C5), da mais nova para a mais antiga, com o tempo parado de cada uma e o total, sem contar duas vezes a sobreposição. Lê quem lê o ativo, inclusive o proprietário da UH.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Paradas do ativo', esquema: RespostaDeParadasDoAtivo },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/paradas/{id}/encerramento',
+    resumo:
+      'Encerra a parada aberta do ativo (C5), sem fim informado, agora. Admin do grupo, Gestor CSC ou Gerente do hotel; o Técnico responsável encerra na execução, pela operação offline os.encerrar_parada.',
+    exigeTenant: true,
+    corpo: PedidoDeEncerramentoDeParada,
+    respostas: {
+      200: { descricao: 'Parada encerrada', esquema: RespostaDeParadaEncerrada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis que encerram (parada_fora_do_papel).'),
+      404: ERRO('Parada fora do escopo (parada_nao_encontrada).'),
+      409: ERRO('A parada já foi encerrada (parada_nao_aberta).'),
+      422: ERRO('Fim antes do início ou no futuro (parada_invalida) ou entrada_invalida.'),
     },
   },
   {
@@ -907,7 +940,7 @@ export const ROTAS: readonly Rota[] = [
       ),
       404: ERRO('Registro fora do escopo (ex.: ativo_nao_encontrado); a chave não é guardada.'),
       409: ERRO(
-        'O ativo mudou desde que o aparelho o leu (conflito_de_versao); a chave não é guardada.',
+        'O registro mudou desde que o aparelho o leu (conflito_de_versao, transicao_invalida, os_de_outro_responsavel, parada_ja_aberta, parada_nao_aberta, parada_de_outro_chamado); a chave não é guardada.',
       ),
       422: ERRO(
         'Operação inválida (entrada_invalida ou o código da regra); a chave não é guardada.',
@@ -1186,7 +1219,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/chamados',
     resumo:
-      'Abre um chamado no local (UH ou área comum), com ativo opcional do mesmo local. Abre quem tem escrita no hotel, inclusive o Solicitante. A prioridade padrão vem da política por categoria (hotel → grupo → padrão), com a cópia no chamado (ADR-026). A foto vai depois, como anexo do chamado.',
+      'Abre um chamado no local (UH ou área comum), com ativo opcional do mesmo local. Abre quem tem escrita no hotel, inclusive o Solicitante. A prioridade padrão vem da política por categoria (hotel → grupo → padrão), com a cópia no chamado (ADR-026). A foto vai depois, como anexo do chamado. Com paradoDesde, grava a parada aberta do ativo (C5); se o ativo já está parado, fica a parada que existe.',
     exigeTenant: true,
     corpo: PedidoDeAberturaDeChamado,
     respostas: {
@@ -1195,7 +1228,7 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Sem escrita no hotel (chamado_fora_do_escopo).'),
       404: ERRO('local_nao_encontrado, hotel_nao_encontrado ou ativo_nao_encontrado.'),
       422: ERRO(
-        'chamado_uh_pendente_licenca, chamado_local_inativo, chamado_descricao_invalida, chamado_ativo_fora_do_local, chamado_ativo_desativado, sem_prioridade_ativa, sem_situacao_para_estado ou entrada_invalida.',
+        'chamado_uh_pendente_licenca, chamado_local_inativo, chamado_descricao_invalida, chamado_ativo_fora_do_local, chamado_ativo_desativado, parada_sem_ativo, parada_invalida, sem_prioridade_ativa, sem_situacao_para_estado ou entrada_invalida.',
       ),
     },
   },

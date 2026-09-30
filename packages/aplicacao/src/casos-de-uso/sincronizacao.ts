@@ -8,7 +8,8 @@
 // uma vez só, pela porta. Tipos: a troca das
 // próprias preferências (fase 0), o cadastro e a alteração de ativo (B3), a
 // abertura do chamado (C2), com a mesma preparação do web, e a execução da OS
-// pelo Técnico (C4: iniciar, pausar, retomar, concluir, horas e material). No
+// pelo Técnico (C4: iniciar, pausar, retomar, concluir, horas e material; C5:
+// registrar e encerrar a parada do ativo do chamado). No
 // ativo, a validação que lê o banco (local, categoria, permissão) é a mesma
 // do web (preparar*); a versão é conferida na gravação, e o conflito volta
 // como 409 conflito_de_versao, sem guardar a chave (ADR-029).
@@ -40,7 +41,14 @@ export type OperacaoOffline =
       /** Instantes em ISO 8601, como o aparelho registrou. */
       dados: { osId: string; inicio: string; fim: string };
     }
-  | { chave: string; tipo: 'os.registrar_material'; dados: { osId: string; descricao: string } };
+  | { chave: string; tipo: 'os.registrar_material'; dados: { osId: string; descricao: string } }
+  | {
+      chave: string;
+      tipo: 'os.registrar_parada';
+      /** Instantes em ISO 8601; sem fim, a parada fica aberta. */
+      dados: { osId: string; inicio: string; fim: string | null };
+    }
+  | { chave: string; tipo: 'os.encerrar_parada'; dados: { osId: string; fim: string } };
 
 export interface ResultadoDaOperacao {
   chave: string;
@@ -61,7 +69,11 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
   /** Opcional só para os testes que não executam OS; a composição sempre passa. */
   execucao?: Pick<
     CasosDeUsoDeExecucao,
-    'prepararAcao' | 'prepararApontamento' | 'prepararMaterial'
+    | 'prepararAcao'
+    | 'prepararApontamento'
+    | 'prepararMaterial'
+    | 'prepararParada'
+    | 'prepararEncerramentoDeParada'
   >;
 }): CasosDeUsoDeSincronizacao {
   const execucao = () => {
@@ -137,6 +149,29 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
           const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
             const { id } = await s.registrarMaterial(g);
             return { id };
+          });
+          return { chave: operacao.chave, ...r };
+        }
+        case 'os.registrar_parada': {
+          const g = await execucao().prepararParada(ctx, {
+            osId: operacao.dados.osId,
+            inicio: new Date(operacao.dados.inicio),
+            fim: operacao.dados.fim === null ? null : new Date(operacao.dados.fim),
+          });
+          const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
+            const { id } = await s.registrarParada(g);
+            return { id };
+          });
+          return { chave: operacao.chave, ...r };
+        }
+        case 'os.encerrar_parada': {
+          const g = await execucao().prepararEncerramentoDeParada(ctx, {
+            osId: operacao.dados.osId,
+            fim: new Date(operacao.dados.fim),
+          });
+          const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
+            await s.encerrarParada(g);
+            return { id: g.id };
           });
           return { chave: operacao.chave, ...r };
         }

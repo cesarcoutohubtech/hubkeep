@@ -5,7 +5,9 @@
 // recusa com conflito_de_versao e a tela recarrega). O local só muda pela
 // ação de mover, para outro local do mesmo hotel (B3c), com o histórico das
 // movimentações. Cada ativo mostra os anexos (B4) e o QR individual (B5). Tela funcional, sem
-// acabamento: o layout vem do protótipo.
+// acabamento: o layout vem do protótipo. O ativo parado (C5) aparece na lista,
+// com as paradas e o tempo parado (calculado no domínio) e o encerramento da
+// parada aberta, que a API só aceita da gestão do hotel.
 import { type Idioma, resolverNome } from '@hubkeep/i18n';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -65,6 +67,15 @@ interface Ativo {
   versao: number;
   ativo: boolean;
   codigoQr: string;
+  /** Início da parada aberta (C5); null se não está parado. */
+  paradoDesde: string | null;
+}
+
+interface Parada {
+  id: string;
+  inicio: string;
+  fim: string | null;
+  tempoParadoMs: number;
 }
 
 interface Movimentacao {
@@ -326,6 +337,93 @@ function MoverAtivo({
   );
 }
 
+/** O ativo parado (C5): a parada aberta, as paradas com o tempo parado e o encerramento. */
+function ParadasDoAtivo({
+  ativo,
+  executar,
+}: {
+  ativo: Ativo;
+  executar: (caminho: string, init: RequestInit) => Promise<void>;
+}) {
+  const t = useT();
+  const intl = useIntl();
+  const mensagemDeErro = useMensagemDeErro();
+  const [paradas, setParadas] = useState<{ paradas: Parada[]; tempoParadoMs: number } | null>(null);
+  const [erro, setErro] = useState<ErroDaApi | null>(null);
+  const quando = (iso: string) => intl.formatDate(iso, { dateStyle: 'short', timeStyle: 'short' });
+  const duracao = (ms: number) => {
+    const minutos = Math.floor(ms / 60_000);
+    return t('admin.ativos.parada.duracao', {
+      horas: Math.floor(minutos / 60),
+      minutos: minutos % 60,
+    });
+  };
+
+  async function verParadas() {
+    const r = await chamarApi<{ paradas: Parada[]; tempoParadoMs: number }>(
+      `/api/v1/ativos/${ativo.id}/paradas`,
+    );
+    if (r.ok) setParadas(r.dados);
+    else setErro(r.erro);
+  }
+
+  const aberta = paradas?.paradas.find((p) => p.fim === null);
+  return (
+    <div style={{ display: 'grid', gap: 4 }}>
+      {ativo.paradoDesde && (
+        <strong data-parado-desde={ativo.paradoDesde}>
+          {t('admin.ativos.parado_desde', { quando: quando(ativo.paradoDesde) })}
+        </strong>
+      )}
+      <button type="button" onClick={() => void verParadas()}>
+        {t('admin.ativos.acao.ver_paradas')}
+      </button>
+      {erro && <small role="alert">{mensagemDeErro(erro)}</small>}
+      {paradas &&
+        (paradas.paradas.length === 0 ? (
+          <small>{t('admin.ativos.parada.sem_paradas')}</small>
+        ) : (
+          <>
+            <ul>
+              {paradas.paradas.map((p) => (
+                <li key={p.id}>
+                  <small>
+                    {p.fim === null
+                      ? t('admin.ativos.parada.aberta', {
+                          inicio: quando(p.inicio),
+                          duracao: duracao(p.tempoParadoMs),
+                        })
+                      : t('admin.ativos.parada.encerrada', {
+                          inicio: quando(p.inicio),
+                          fim: quando(p.fim),
+                          duracao: duracao(p.tempoParadoMs),
+                        })}
+                  </small>
+                </li>
+              ))}
+            </ul>
+            <small>
+              {t('admin.ativos.parada.total', { duracao: duracao(paradas.tempoParadoMs) })}
+            </small>
+          </>
+        ))}
+      {aberta && (
+        <button
+          type="button"
+          onClick={() =>
+            void executar(`/api/v1/paradas/${aberta.id}/encerramento`, {
+              method: 'POST',
+              body: JSON.stringify({}),
+            })
+          }
+        >
+          {t('admin.ativos.acao.encerrar_parada')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function AtivosDoHotel() {
   const t = useT();
   const { idioma } = useIdioma();
@@ -437,7 +535,10 @@ export default function AtivosDoHotel() {
             ) : (
               <ul style={{ display: 'grid', gap: 6, padding: 0, listStyle: 'none' }}>
                 {ativos.map((a) => (
-                  <li key={`${a.id}|${a.versao}`} style={{ display: 'grid', gap: 4 }}>
+                  <li
+                    key={`${a.id}|${a.versao}|${a.paradoDesde ?? ''}`}
+                    style={{ display: 'grid', gap: 4 }}
+                  >
                     <FormularioDeAtivo
                       ativo={a}
                       locais={locais}
@@ -446,6 +547,7 @@ export default function AtivosDoHotel() {
                       rotulo={rotulo}
                       executar={executar}
                     />
+                    <ParadasDoAtivo ativo={a} executar={executar} />
                     <MoverAtivo ativo={a} locais={locais} executar={executar} />
                     <QrDoAtivo ativo={a} />
                     <AnexosDoRegistro entidade="ativo" registroId={a.id} />

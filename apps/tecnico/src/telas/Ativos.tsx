@@ -17,6 +17,7 @@ import {
 } from '@hubkeep/dominio';
 import { type IdiomaDeExibicao, ehIdioma, resolverNome } from '@hubkeep/i18n';
 import { type FormEvent, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useT } from '../i18n';
 import type {
   AtivoGuardado,
@@ -244,6 +245,7 @@ export function Ativos(props: {
   online?: boolean;
 }) {
   const t = useT();
+  const intl = useIntl();
   const { referencia } = props;
   const [hotelId, setHotelId] = useState(props.aberto?.hotelId ?? referencia?.hoteis[0]?.id ?? '');
   const [editando, setEditando] = useState<AtivoGuardado | null>(props.aberto?.ativo ?? null);
@@ -392,6 +394,16 @@ export function Ativos(props: {
                       {t('tecnico.ativos.item', { ativo: a.nome, local: nomeDoLocal(a.localId) })}
                     </span>
                     {!a.ativo && <small>{t('admin.ativos.desativado')}</small>}
+                    {a.paradoDesde && (
+                      <small data-parado-desde={a.paradoDesde}>
+                        {t('tecnico.ativos.parado_desde', {
+                          quando: intl.formatDate(a.paradoDesde, {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                          }),
+                        })}
+                      </small>
+                    )}
                     <button onClick={() => setEditando(a)}>
                       {t('tecnico.ativos.acao.alterar')}
                     </button>
