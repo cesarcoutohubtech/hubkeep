@@ -10,7 +10,10 @@
 //   - o último motivo de reabertura fica na OS (motivo_reabertura);
 //   - quem abriu e executa a OS (ele, ou a equipe dele) não decide; o Gerente sim;
 //   - reabrir com o equipamento parado abre uma parada nova no mesmo chamado,
-//     com a OS; ativo já parado fica com a que existe; sem ativo, 422.
+//     com a OS; ativo já parado fica com a que existe; sem ativo, 422;
+//   - Gerente único do hotel que abriu e executa: decidem o Gestor CSC ou o
+//     Admin (0027: o Gestor lê as atribuições de Gerente); com outro Gerente
+//     no hotel, o Gestor não decide.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -41,7 +44,9 @@ if (!temBanco && process.env.HK_EXIGIR_BANCO === '1') {
 
 const TENANT = randomUUID();
 const H1 = randomUUID();
+const H2 = randomUUID();
 const L = randomUUID();
+const L2 = randomUUID();
 const ATIVO = randomUUID();
 const EQUIPE = randomUUID();
 const U = {
@@ -51,6 +56,8 @@ const U = {
   solicitante: randomUUID(),
   outroSolicitante: randomUUID(),
   daEquipe: randomUUID(),
+  gestor: randomUUID(),
+  gerenteUnico: randomUUID(),
 };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 const doTecnico = { tipo: 'tecnico', usuarioId: U.tecnico } as const;
@@ -104,15 +111,20 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
     dono = new pg.Client({ connectionString: URL_DONO });
     await dono.connect();
     await dono.query(`insert into app.tenant (id, nome) values ($1, 'Grupo C6')`, [TENANT]);
-    await dono.query(
-      `insert into app.hotel (id, tenant_id, nome, fuso, status) values ($1, $2, 'Hotel 1', 'UTC', 'ativo')`,
-      [H1, TENANT],
-    );
-    await dono.query(
-      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status)
-       values ($1, $2, $3, 'uh', 'UH 101', 'uh 101', 'ativo')`,
-      [L, TENANT, H1],
-    );
+    for (const [hotel, local] of [
+      [H1, L],
+      [H2, L2],
+    ]) {
+      await dono.query(
+        `insert into app.hotel (id, tenant_id, nome, fuso, status) values ($1, $2, 'Hotel', 'UTC', 'ativo')`,
+        [hotel, TENANT],
+      );
+      await dono.query(
+        `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status)
+         values ($1, $2, $3, 'uh', 'UH 101', 'uh 101', 'ativo')`,
+        [local, TENANT, hotel],
+      );
+    }
     for (const [nome, id] of Object.entries(U)) {
       await dono.query(`insert into auth.users (id, email) values ($1, $2)`, [
         id,
@@ -135,6 +147,10 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
     await atribuir(U.solicitante, 'solicitante', 'hotel', H1);
     await atribuir(U.outroSolicitante, 'solicitante', 'hotel', H1);
     await atribuir(U.daEquipe, 'tecnico', 'hotel', H1);
+    await atribuir(U.gestor, 'gestor_csc', 'grupo', null);
+    // Hotel 2: um só Gerente, que também é Técnico.
+    await atribuir(U.gerenteUnico, 'gerente_hotel', 'hotel', H2);
+    await atribuir(U.gerenteUnico, 'tecnico', 'hotel', H2);
     await dono.query(
       `insert into app.equipe (id, tenant_id, hotel_id, nome) values ($1, $2, $3, 'Manutenção')`,
       [EQUIPE, TENANT, H1],
@@ -146,7 +162,7 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
     await dono.query(
       `insert into app.ativo (codigo_qr, id, tenant_id, hotel_id, local_id, nome, busca)
        values ($1, $2, $3, $4, $5, 'Frigobar 101', 'frigobar 101')`,
-      [randomUUID(), ATIVO, TENANT, H1, L],
+      ['ACETE00001', ATIVO, TENANT, H1, L],
     );
 
     banco = await criarAcessoBanco({ app: { url: URL_APP ?? '', max: 4 } });
@@ -380,5 +396,53 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
     expect(abertas.rowCount).toBe(1);
     const [os] = await triagem.osDoChamado(ctx(U.gerente), chamadoId);
     expect(os?.motivoReabertura).toBe('Ainda parado');
+  });
+
+  it('Gerente único que abriu e executa: decidem o Gestor CSC ou o Admin', async () => {
+    const eleMesmo = { tipo: 'tecnico', usuarioId: U.gerenteUnico } as const;
+    const concluidaNoHotel2 = async (descricao: string) => {
+      const chamadoId = (await chamados.abrir(ctx(U.gerenteUnico), { localId: L2, descricao })).id;
+      const versao = (await chamados.chamado(ctx(U.gerenteUnico), chamadoId)).versao;
+      const os = await triagem.gerarOs(ctx(U.gerenteUnico), chamadoId, {
+        versao,
+        responsavel: eleMesmo,
+      });
+      return { chamadoId, osId: os.id, versao: await concluir(os.id, chamadoId) };
+    };
+
+    const a = await concluidaNoHotel2('Tomada solta');
+    await expect(
+      triagem.aceitarOs(ctx(U.gerenteUnico), a.osId, { versao: a.versao }),
+    ).rejects.toMatchObject({ codigo: 'acao_fora_do_papel' });
+    const aceita = await triagem.aceitarOs(ctx(U.gestor), a.osId, { versao: a.versao });
+    expect(aceita.versao).toBe(a.versao + 1);
+    expect((await chamados.chamado(ctx(U.gestor), a.chamadoId)).estado).toBe('concluido');
+
+    const b = await concluidaNoHotel2('Porta rangendo');
+    const reaberta = await triagem.reabrirOs(ctx(U.admin), b.osId, {
+      versao: b.versao,
+      motivo: 'Continua rangendo',
+    });
+    expect(reaberta.versao).toBe(b.versao + 1);
+
+    // Hotel 1 tem outro Gerente: o Técnico que abriu e executa fica com ele, não com o Gestor.
+    const c = await osConcluida(U.tecnico, 'Luz piscando');
+    await expect(
+      triagem.aceitarOs(ctx(U.gestor), c.osId, { versao: c.versao }),
+    ).rejects.toMatchObject({ codigo: 'acao_fora_do_papel' });
+
+    // Um segundo Gerente no Hotel 2 tira a decisão do Gestor.
+    await dono.query(
+      `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, hotel_id, concedido_por)
+       values ($1, $2, $3, 'gerente_hotel', 'hotel', $4, $5)`,
+      [randomUUID(), TENANT, U.gerente, H2, U.admin],
+    );
+    const d = await concluidaNoHotel2('Cortina caída');
+    await expect(
+      triagem.aceitarOs(ctx(U.gestor), d.osId, { versao: d.versao }),
+    ).rejects.toMatchObject({ codigo: 'acao_fora_do_papel' });
+    expect((await triagem.aceitarOs(ctx(U.gerente), d.osId, { versao: d.versao })).versao).toBe(
+      d.versao + 1,
+    );
   });
 });

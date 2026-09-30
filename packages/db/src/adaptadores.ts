@@ -871,6 +871,41 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
       banco.withContext(ctx, async (tx) =>
         (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),
       ),
+    dadosDoAceite: (ctx, g) =>
+      banco.withContext(ctx, async (tx) => {
+        const equipes = await equipesDoUsuario(tx, g.abertoPor).execute();
+        const gerentes = await tx
+          .selectFrom('app.atribuicao_escopo as a')
+          .innerJoin('app.membro as m', (j) =>
+            j.onRef('m.tenant_id', '=', 'a.tenant_id').onRef('m.usuario_id', '=', 'a.usuario_id'),
+          )
+          .select([
+            'a.id',
+            'a.usuario_id',
+            'a.papel',
+            'a.escopo_tipo',
+            'a.bandeira_id',
+            'a.hotel_id',
+            'a.proprietario_id',
+            'a.valido_ate',
+            'a.revogado_em',
+          ])
+          .where('a.papel', '=', 'gerente_hotel')
+          .where('a.revogado_em', 'is', null)
+          .where('m.ativo', '=', true)
+          .where((eb) =>
+            eb.or([
+              eb('a.escopo_tipo', '=', 'grupo'),
+              eb('a.hotel_id', '=', g.hotel.id),
+              ...(g.hotel.bandeiraId ? [eb('a.bandeira_id', '=', g.hotel.bandeiraId)] : []),
+            ]),
+          )
+          .execute();
+        return {
+          equipesDeQuemAbriu: equipes.map((e) => e.equipe_id),
+          gerentes: gerentes.map(paraAtribuicao),
+        };
+      }),
     alterarChamado: (ctx, chamadoId, versao, mudanca) =>
       banco.executar(ctx, (uow) => alterarChamadoNaTriagem(uow, chamadoId, versao, mudanca)),
     gerarOs: (ctx, g) => banco.executar(ctx, (uow) => gerarOs(uow, g)),

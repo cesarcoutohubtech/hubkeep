@@ -879,9 +879,22 @@ Dividida em duas partes, cada uma no seu PR:
 - **i18n:** 1 chave nova nos quatro idiomas (`tecnico.os.reaberta`).
 - **Local:** typecheck, lint e prettier verdes; testes verdes: raiz 277, domínio 1733, aplicação 91, PWA 113, web 63. A integração do `packages/db` e o pgTAP rodam só na CI.
 
-### Ponto de retomada (30/09/2026, PR da C6 aberto)
-- **`main`:** `61e029f` (#72). **Dev:** o `db push` da 0025 é do Cesar (a `main` já tem o #71); conferir o dev só por leitura depois dele (`db:testar-dev` sem falha, `db:types` idêntico).
-- **PR aberto:** C6 (`1a-c6-aceite`, worktree `wt/c6-aceite`, zona protegida, migração 0026). Conferir `gh pr checks`; se a CI falhar, corrigir na branch. Merge só com a CI verde e com a resposta do Cesar sobre o item 7 (gatilho × FK e sem UPDATE).
-- **Depois do merge:** o Cesar faz o `db push` da 0026, e eu confiro o dev só por leitura.
-- **Próxima tarefa:** C7 (telas do CSC e do hotel, incluindo o aceite, a reabertura com a opção "equipamento parado" e o motivo da reabertura na tela da OS do web), no local, num worktree novo a partir da `main`.
+### #73 mergeado; Gerente único no aceite (30/09/2026)
+- **#73** (`45a4dff`) mergeado pelo Cesar com o job `pgTAP (meta e isolamento)` vermelho no PR, e o `banco` da `main` repetiu (`CI` e `segurança` verdes). O pgTAP passou; a suíte de integração `aceite.test.ts` caiu inteira no `beforeAll`: o ativo do teste tinha `codigo_qr` = UUID, fora do check `ativo_codigo_qr_formato` (10 caracteres Crockford). **Erro do teste, não do código.** O relato de abertura do #73 dizia "não mergear" e a CI não estava conferida. Corrigido neste PR (`ACETE00001`).
+- **Dev:** `supabase migration list` (só leitura) mostra o dev com a 0025 e a 0026 aplicadas.
+- **Decisões do Cesar (30/09/2026):** item 7 aprovado sem gatilho (FK composta e sem UPDATE); item 8 mantém a extensão à reabertura; **Gerente único:** para o Gerente que abriu e executou, decide outro Gerente do hotel; se não houver outro Gerente ativo no hotel, decidem o Gestor CSC ou o Admin do grupo. Pedido pgTAP do caso.
+- **Branch nova** `1a-c6b-gerente-unico` (worktree `wt/c6b-gerente-unico`), a partir da `main`, porque o #73 já tinha entrado.
+- **Domínio:** grupo `aceite` com `DadosDoAceite` (equipes de quem abriu e atribuições de Gerente) e `PAPEIS_DO_ACEITE_SEM_GERENTE` (Gestor CSC e Admin). "Outro Gerente ativo": atribuição de Gerente vigente, que cobre o hotel (hotel, bandeira ou grupo), de outra pessoa, membro ativo. Sem os dados, falha fechada. A condição vale também para o Técnico que abriu e executa num hotel sem Gerente (a mesma regra; a confirmar com o Cesar); quem abriu e não executa segue decidindo, sem o Gestor.
+- **Aplicação e db:** `PortaTriagem.dadosDoAceite` (equipes ativas de quem abriu; atribuições de Gerente não revogadas, de membro ativo, que podem cobrir o hotel), lida com o contexto de quem pede.
+- **Migração 0027** (`20260930014033_gerente_unico_aceite.sql`): a policy de leitura de `app.atribuicao_escopo` soma as atribuições de Gerente que cobrem os hotéis em que a pessoa é Gestor CSC (antes, o Gestor lia só as de Técnico; o Admin já lia todas). Sem função, sem gatilho; a escrita não muda (o Gestor e o Admin já gravam OS e chamado).
+- **pgTAP `022`** (17 casos): o Gestor CSC lê o Gerente do hotel dele (por hotel e pela bandeira) e não o de fora; segue lendo os Técnicos e não os outros papéis; lê o membro; grava o aceite da OS e do chamado do Gerente único; o Gestor de outra bandeira não; o Admin lê todos e reabre; o Gerente não lê outro Gerente; o Técnico e o Solicitante não leem Gerentes; outro tenant e sem contexto, nada.
+- **Integração** (`aceite.test.ts`, 7 casos): Gerente único recusado, o Gestor aceita e o Admin reabre; com outro Gerente no hotel, o Gestor é recusado e o Gerente aceita.
+- **Docs:** ADR-027 (itens 7 e 8), OpenAPI (textos do aceite e da reabertura), plano (coluna da C6 com a 0027).
+- **Local:** typecheck, lint e prettier verdes; testes verdes: raiz 277, domínio 1742, aplicação 91, PWA 113, web 63. A integração do `packages/db` e o pgTAP rodam só na CI.
+
+### Ponto de retomada (30/09/2026, PR do Gerente único aberto)
+- **`main`:** `45a4dff` (#73), com o `banco` vermelho pelo teste do aceite (corrigido neste PR). **Dev:** 0025 e 0026 aplicadas.
+- **PR aberto:** Gerente único (`1a-c6b-gerente-unico`, worktree `wt/c6b-gerente-unico`, zona protegida, migração 0027). Conferir `gh pr checks`; se falhar, corrigir na branch. Só avisar PR pronto com tudo verde (a "zona protegida" falha por desenho).
+- **Depois do merge:** conferir `gh run list --branch main`; o Cesar faz o `db push` da 0027, e eu confiro o dev só por leitura.
+- **Próxima tarefa:** C7 (telas do CSC e do hotel, incluindo o aceite, a reabertura com a opção "equipamento parado" e o motivo da reabertura na tela da OS do web), num worktree novo a partir da `main`.
 - O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.

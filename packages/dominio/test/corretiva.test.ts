@@ -9,6 +9,7 @@ import {
   type AtorDaCorretiva,
   type Atribuicao,
   type ChamadoParaRegra,
+  type DadosDoAceite,
   Conflito,
   ESTADOS_DA_OS,
   ESTADOS_DO_CHAMADO,
@@ -419,6 +420,116 @@ describe('regras além da tabela', () => {
       expect(codigo(() => decidir('aceitar', ATORES.tecnicoResponsavel, 'sol-1', DO_TECNICO))).toBe(
         'acao_fora_do_papel',
       );
+    });
+  });
+
+  describe('sem outro Gerente ativo no hotel, decidem o Gestor CSC ou o Admin (Cesar, 30/09/2026)', () => {
+    const gerenteTecnico = ator('ger-tec', [
+      atr('ger-tec', 'gerente_hotel', noHotel),
+      atr('ger-tec', 'tecnico', noHotel),
+    ]);
+    const DO_GERENTE: Responsavel = { tipo: 'tecnico', usuarioId: 'ger-tec' };
+    const DA_EQUIPE: Responsavel = { tipo: 'equipe', equipeId: EQUIPE };
+    const soEle: DadosDoAceite = { equipesDeQuemAbriu: [], gerentes: gerenteTecnico.atribuicoes };
+    const decidir = (
+      acao: 'aceitar' | 'reabrir',
+      a: AtorDaCorretiva,
+      o: { abertoPor?: string; responsavel?: Responsavel; aceite?: DadosDoAceite } = {},
+    ) =>
+      decidirNaOs(acao, {
+        ator: a,
+        chamado: { ...chamado('aguardando_aceite'), abertoPor: o.abertoPor ?? 'ger-tec' },
+        os: { estado: 'concluida', responsavel: o.responsavel ?? DO_GERENTE },
+        motivo: 'não resolveu',
+        ...(o.aceite ? { aceite: o.aceite } : {}),
+        agora,
+      });
+    const recusa = (f: () => unknown) => expect(codigo(f)).toBe('acao_fora_do_papel');
+
+    for (const acao of ['aceitar', 'reabrir'] as const) {
+      it(`${acao}: Gerente único que abriu e executa — o Gestor CSC e o Admin decidem`, () => {
+        expect(decidir(acao, ATORES.gestor, { aceite: soEle }).estado).toBe(
+          acao === 'aceitar' ? 'aceita' : 'em_execucao',
+        );
+        expect(decidir(acao, ATORES.admin, { aceite: soEle }).estado).toBe(
+          acao === 'aceitar' ? 'aceita' : 'em_execucao',
+        );
+        recusa(() => decidir(acao, gerenteTecnico, { aceite: soEle }));
+      });
+    }
+
+    it('com outro Gerente vigente no hotel, só ele decide', () => {
+      const comOutro: DadosDoAceite = {
+        equipesDeQuemAbriu: [],
+        gerentes: [...gerenteTecnico.atribuicoes, ...ATORES.gerente.atribuicoes],
+      };
+      recusa(() => decidir('aceitar', ATORES.gestor, { aceite: comOutro }));
+      recusa(() => decidir('aceitar', ATORES.admin, { aceite: comOutro }));
+      expect(decidir('aceitar', ATORES.gerente, { aceite: comOutro }).estado).toBe('aceita');
+    });
+
+    it('Gerente vencido, revogado ou de outro hotel não conta como outro Gerente', () => {
+      const semOutro: DadosDoAceite = {
+        equipesDeQuemAbriu: [],
+        gerentes: [
+          ...gerenteTecnico.atribuicoes,
+          ...ATORES.gerenteVencido.atribuicoes,
+          ...ATORES.gerenteRevogado.atribuicoes,
+          ...ATORES.gerenteDeOutroHotel.atribuicoes,
+        ],
+      };
+      expect(decidir('aceitar', ATORES.gestor, { aceite: semOutro }).estado).toBe('aceita');
+    });
+
+    it('Gerente pela bandeira ou pelo grupo cobre o hotel e conta', () => {
+      for (const escopo of [
+        { tipo: 'bandeira', bandeiraId: HOTEL.bandeiraId },
+        { tipo: 'grupo' },
+      ] as const) {
+        const comOutro: DadosDoAceite = {
+          equipesDeQuemAbriu: [],
+          gerentes: [atr('ger-2', 'gerente_hotel', escopo)],
+        };
+        recusa(() => decidir('aceitar', ATORES.gestor, { aceite: comOutro }));
+      }
+    });
+
+    it('quem abriu é da equipe responsável: o fallback vale pelas equipes dele', () => {
+      const equipe: DadosDoAceite = { equipesDeQuemAbriu: [EQUIPE], gerentes: [] };
+      expect(
+        decidir('aceitar', ATORES.gestor, { responsavel: DA_EQUIPE, aceite: equipe }).estado,
+      ).toBe('aceita');
+      // Quem abriu não é da equipe: não executa, então ele mesmo decide, não o Gestor.
+      recusa(() =>
+        decidir('aceitar', ATORES.gestor, {
+          responsavel: DA_EQUIPE,
+          aceite: { equipesDeQuemAbriu: [], gerentes: [] },
+        }),
+      );
+    });
+
+    it('quem abriu não executa: o Gestor não decide, mesmo sem Gerente no hotel', () => {
+      recusa(() =>
+        decidir('aceitar', ATORES.gestor, {
+          abertoPor: 'sol-1',
+          aceite: { equipesDeQuemAbriu: [], gerentes: [] },
+        }),
+      );
+    });
+
+    it('Técnico que abriu e executa, hotel sem Gerente: o Gestor decide', () => {
+      expect(
+        decidir('aceitar', ATORES.gestor, {
+          abertoPor: 'tec-1',
+          responsavel: DO_TECNICO,
+          aceite: { equipesDeQuemAbriu: [], gerentes: [] },
+        }).estado,
+      ).toBe('aceita');
+    });
+
+    it('sem os dados do aceite, falha fechada; Gestor de outra bandeira nunca decide', () => {
+      recusa(() => decidir('aceitar', ATORES.gestor));
+      recusa(() => decidir('aceitar', ATORES.gestorDeOutraBandeira, { aceite: soEle }));
     });
   });
 

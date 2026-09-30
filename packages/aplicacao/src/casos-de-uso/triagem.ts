@@ -129,6 +129,13 @@ export function criarCasosDeUsoDeTriagem(deps: {
     return { usuarioId: ctx.usuarioId, atribuicoes, equipes };
   }
 
+  /** O ator e o que a regra do aceite lê além dele (Gerente único; Cesar, 30/09/2026). */
+  const paraOAceite = (ctx: Contexto, chamado: ChamadoParaTriagem) =>
+    Promise.all([
+      atorComEquipes(ctx),
+      deps.triagem.dadosDoAceite(ctx, { hotel: chamado.hotel, abertoPor: chamado.abertoPor }),
+    ]);
+
   async function chamadoNaVersao(
     ctx: Contexto,
     chamadoId: string,
@@ -291,10 +298,12 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
     async aceitarOs(ctx, osId, p) {
       const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      const [ator, aceite] = await paraOAceite(ctx, chamado);
       const d = r.decidirNaOs('aceitar', {
-        ator: await atorComEquipes(ctx),
+        ator,
         chamado,
         os: { estado: os.estado, responsavel: os.responsavel },
+        aceite,
         agora: deps.relogio.agora(),
       });
       const lista = await situacoes(ctx);
@@ -315,10 +324,12 @@ export function criarCasosDeUsoDeTriagem(deps: {
     async reabrirOs(ctx, osId, p) {
       const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
       const agora = deps.relogio.agora();
+      const [ator, aceite] = await paraOAceite(ctx, chamado);
       const d = r.decidirNaOs('reabrir', {
-        ator: await atorComEquipes(ctx),
+        ator,
         chamado,
         os: { estado: os.estado, responsavel: os.responsavel },
+        aceite,
         motivo: p.motivo,
         agora,
       });
