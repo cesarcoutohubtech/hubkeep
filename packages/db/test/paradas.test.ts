@@ -426,9 +426,9 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
     expect(reenvio.repetida).toBe(true);
     expect(
       await contar(
-        `select count(*)::int as n from app.evento_dominio e
-         join app.parada_ativo p on p.id = e.registro_id
-         where e.tenant_id = $1 and e.tipo = 'parada.encerrada' and p.ativo_id = $2`,
+        // O evento da parada é do ativo (registro_id = ativo), com a parada no payload.
+        `select count(*)::int as n from app.evento_dominio
+         where tenant_id = $1 and tipo = 'parada.encerrada' and registro_id = $2`,
         [TENANT, A4],
       ),
     ).toBe(1);

@@ -77,6 +77,9 @@ export const PAPEIS_DA_ADMINISTRACAO: readonly Papel[] = ['admin_grupo'];
  * - triagem: um dos PAPEIS_DA_TRIAGEM no hotel;
  * - responsavel: Técnico no hotel e responsável pela OS (ele, ou a equipe dele);
  * - aceite: quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel (C6).
+ *   Quem abriu e também executa a OS (responsável, ou membro da equipe
+ *   responsável) não decide o aceite: só o Gerente do hotel, outro que não ele
+ *   (decisão do Cesar, 30/09/2026).
  */
 export const GRUPOS_DA_CORRETIVA = ['administracao', 'triagem', 'responsavel', 'aceite'] as const;
 type Quem = (typeof GRUPOS_DA_CORRETIVA)[number];
@@ -307,6 +310,7 @@ function estaNoGrupo(
   grupo: Quem,
   ator: AtorDaCorretiva,
   chamado: ChamadoParaRegra,
+  os: { responsavel: Responsavel } | null,
   agora: Date,
 ): boolean {
   switch (grupo) {
@@ -316,12 +320,14 @@ function estaNoGrupo(
       return temPapelNoHotel(ator, PAPEIS_DA_TRIAGEM, chamado.hotel, agora);
     case 'responsavel':
       return temPapelNoHotel(ator, ['tecnico'], chamado.hotel, agora);
-    case 'aceite':
+    case 'aceite': {
+      const abriu = chamado.abertoPor === ator.usuarioId;
+      if (abriu && ehResponsavel(ator, os?.responsavel ?? null)) return false;
       return (
-        (chamado.abertoPor === ator.usuarioId &&
-          temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, chamado.hotel, agora)) ||
+        (abriu && temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, chamado.hotel, agora)) ||
         temPapelNoHotel(ator, ['gerente_hotel'], chamado.hotel, agora)
       );
+    }
   }
 }
 
@@ -330,9 +336,10 @@ function exigirPapel(
   acao: string,
   ator: AtorDaCorretiva,
   chamado: ChamadoParaRegra,
+  os: { responsavel: Responsavel } | null,
   agora: Date,
 ): void {
-  if (!quem.some((g) => estaNoGrupo(g, ator, chamado, agora))) {
+  if (!quem.some((g) => estaNoGrupo(g, ator, chamado, os, agora))) {
     throw new PermissaoNegada('acao_fora_do_papel', 'Você não pode fazer esta ação neste hotel.', {
       acao,
     });
@@ -363,7 +370,7 @@ export function decidirNoChamado(
   },
 ): { estado: EstadoDoChamado; motivo: string | null } {
   const t = TRANSICOES_DO_CHAMADO[acao];
-  exigirPapel(t.quem, acao, p.ator, p.chamado, p.agora);
+  exigirPapel(t.quem, acao, p.ator, p.chamado, null, p.agora);
   if (!t.de.includes(p.chamado.estado)) {
     throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
       acao,
@@ -399,7 +406,7 @@ export function decidirNaOs(
       acao,
       estado: estadoDaOs,
     });
-  exigirPapel(t.quem, acao, p.ator, p.chamado, p.agora);
+  exigirPapel(t.quem, acao, p.ator, p.chamado, p.os, p.agora);
   if (!t.de.includes(estadoDaOs)) throw invalida();
   if (acao === 'gerar') {
     if (!p.osDoChamado) throw new Error('decidirNaOs(gerar) precisa das OS do chamado.');
@@ -446,7 +453,7 @@ export function decidirRegistroNaOs(
     agora: Date;
   },
 ): void {
-  exigirPapel(['responsavel'], registro, p.ator, p.chamado, p.agora);
+  exigirPapel(['responsavel'], registro, p.ator, p.chamado, p.os, p.agora);
   if (!ESTADOS_QUE_ACEITAM_REGISTRO.includes(p.os.estado)) {
     throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
       acao: registro,

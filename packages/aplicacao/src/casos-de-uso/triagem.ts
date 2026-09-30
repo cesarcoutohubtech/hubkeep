@@ -1,8 +1,13 @@
 // Triagem e atribuição (fase 1a, C3; ADR-027, ADR-029). O Admin do grupo, o
 // Gestor CSC e o Gerente do hotel classificam o chamado, ajustam a
 // prioridade, cancelam antes da OS e geram, reatribuem e cancelam a OS,
-// atribuída a um Técnico do hotel ou a uma equipe do hotel. Toda ação leva a
-// versão lida pela tela: se o registro mudou, 409 conflito_de_versao.
+// atribuída a um Técnico do hotel ou a uma equipe do hotel. No fim (C6), quem
+// abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel aceita a
+// OS concluída ou a reabre com motivo (a mesma OS volta à execução, com o
+// mesmo responsável); quem abriu e executa a OS não decide, só o Gerente. A
+// reabertura com o equipamento parado abre a parada do ativo no mesmo
+// chamado. Toda ação leva a versão lida pela tela: se o registro mudou, 409
+// conflito_de_versao.
 //
 // Quem pode e para onde vai são do domínio (corretiva.ts e triagem.ts); a
 // situação de cada estado é a ativa de menor ordem (situacaoPara). As
@@ -17,9 +22,11 @@ import {
   decidirNaOs,
   decidirNoChamado,
   exigirPrioridadeAtiva,
+  exigirAtivoNoChamado,
   exigirResponsavelDoHotel,
   podeAjustarPrioridade,
   situacaoPara,
+  validarParada,
 } from '@hubkeep/dominio';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaPrioridades, PortaSituacoes } from '../portas/situacoes';
@@ -60,6 +67,22 @@ export interface CasosDeUsoDeTriagem {
     osId: string,
     p: { versao: number; motivo: string },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
+  /** Aceite da OS concluída: o chamado fica concluído (C6). */
+  aceitarOs(
+    ctx: Contexto,
+    osId: string,
+    p: { versao: number },
+  ): Promise<{ versao: number; versaoDoChamado: number }>;
+  /**
+   * Reabertura da OS concluída, com motivo: a OS e o chamado voltam à execução
+   * (C6). Com `paradoDesde`, o equipamento está parado: abre a parada do
+   * ativo no mesmo chamado (a encerrada não reabre).
+   */
+  reabrirOs(
+    ctx: Contexto,
+    osId: string,
+    p: { versao: number; motivo: string; paradoDesde?: string | null | undefined },
+  ): Promise<{ versao: number; versaoDoChamado: number; paradaId: string | null }>;
   /** As OS do chamado visíveis a quem pede (RLS), da mais antiga para a mais nova. */
   osDoChamado(ctx: Contexto, chamadoId: string): Promise<OsGravada[]>;
 }
@@ -95,6 +118,15 @@ export function criarCasosDeUsoDeTriagem(deps: {
       atribuicoes: await deps.atribuicoes.doUsuario(ctx),
       equipes: [],
     };
+  }
+
+  /** No aceite, as equipes contam: quem abriu e é da equipe responsável executa a OS. */
+  async function atorComEquipes(ctx: Contexto): Promise<AtorDaCorretiva> {
+    const [atribuicoes, equipes] = await Promise.all([
+      deps.atribuicoes.doUsuario(ctx),
+      deps.triagem.equipesDoUsuario(ctx),
+    ]);
+    return { usuarioId: ctx.usuarioId, atribuicoes, equipes };
   }
 
   async function chamadoNaVersao(
@@ -198,6 +230,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
       return deps.triagem.gerarOs(ctx, {
         hotelId: chamado.hotel.id,
         localId: chamado.localId,
+        chamadoAbertoPor: chamado.abertoPor,
         situacaoId: situacaoPara(lista, 'os', d.estado),
         responsavel,
         chamado: {
@@ -253,6 +286,64 @@ export function criarCasosDeUsoDeTriagem(deps: {
           estado: estadoDoChamado,
           situacaoId: situacaoPara(lista, 'chamado', estadoDoChamado),
         },
+      });
+    },
+
+    async aceitarOs(ctx, osId, p) {
+      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      const d = r.decidirNaOs('aceitar', {
+        ator: await atorComEquipes(ctx),
+        chamado,
+        os: { estado: os.estado, responsavel: os.responsavel },
+        agora: deps.relogio.agora(),
+      });
+      const lista = await situacoes(ctx);
+      const estadoDoChamado = d.chamado ?? chamado.estado;
+      return deps.triagem.aceitarOs(ctx, {
+        osId,
+        versao: p.versao,
+        situacaoId: situacaoPara(lista, 'os', d.estado),
+        chamado: {
+          id: chamado.id,
+          versao: chamado.versao,
+          estado: estadoDoChamado,
+          situacaoId: situacaoPara(lista, 'chamado', estadoDoChamado),
+        },
+      });
+    },
+
+    async reabrirOs(ctx, osId, p) {
+      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      const agora = deps.relogio.agora();
+      const d = r.decidirNaOs('reabrir', {
+        ator: await atorComEquipes(ctx),
+        chamado,
+        os: { estado: os.estado, responsavel: os.responsavel },
+        motivo: p.motivo,
+        agora,
+      });
+      const parada =
+        p.paradoDesde == null
+          ? null
+          : {
+              hotelId: chamado.hotel.id,
+              ativoId: exigirAtivoNoChamado(chamado.ativoId),
+              inicio: validarParada({ inicio: new Date(p.paradoDesde), fim: null }, agora).inicio,
+            };
+      const lista = await situacoes(ctx);
+      const estadoDoChamado = d.chamado ?? chamado.estado;
+      return deps.triagem.reabrirOs(ctx, {
+        osId,
+        versao: p.versao,
+        situacaoId: situacaoPara(lista, 'os', d.estado),
+        motivo: d.motivo ?? '',
+        chamado: {
+          id: chamado.id,
+          versao: chamado.versao,
+          estado: estadoDoChamado,
+          situacaoId: situacaoPara(lista, 'chamado', estadoDoChamado),
+        },
+        parada,
       });
     },
 

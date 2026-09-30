@@ -11,6 +11,8 @@ export interface OsDoDia {
   estado: EstadoDaOs;
   situacaoId: string;
   responsavel: Responsavel;
+  /** O último motivo de reabertura (C6): o técnico vê por que a OS voltou. */
+  motivoReabertura: string | null;
   versao: number;
   criadoEm: Date;
   chamado: {

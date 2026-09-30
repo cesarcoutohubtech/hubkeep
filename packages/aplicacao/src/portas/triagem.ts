@@ -1,6 +1,7 @@
-// Porta da triagem e da OS (fase 1a, C3). Implementada por packages/db, com o
-// contexto do usuário: a RLS mostra o chamado e as OS dos hotéis que ele lê e
-// só deixa gravar os papéis da triagem (migração 0022). Toda gravação é uma
+// Porta da triagem e da OS (fase 1a, C3; aceite na C6). Implementada por
+// packages/db, com o contexto do usuário: a RLS mostra o chamado e as OS dos
+// hotéis que ele lê e só deixa gravar os papéis da triagem (migração 0022) e,
+// no aceite, também quem abriu o chamado (0026). Toda gravação é uma
 // unit of work, com auditoria e evento, e confere a versão (ADR-029).
 import type {
   Atribuicao,
@@ -31,6 +32,8 @@ export interface OsGravada {
   situacaoId: string;
   responsavel: Responsavel;
   motivoCancelamento: string | null;
+  /** O último motivo de reabertura (C6); o histórico fica na auditoria. */
+  motivoReabertura: string | null;
   criadoPor: string;
   versao: number;
   criadoEm: Date;
@@ -61,6 +64,8 @@ export interface PortaTriagem {
   /** Atribuições da pessoa visíveis a quem pergunta (a triagem lê as de Técnico nos hotéis dela). */
   atribuicoesDe(ctx: Contexto, usuarioId: string): Promise<Atribuicao[]>;
   equipe(ctx: Contexto, equipeId: string): Promise<{ hotelId: string; ativa: boolean } | null>;
+  /** Equipes ativas de que quem pede é membro ativo (o aceite confere se ele executa a OS). */
+  equipesDoUsuario(ctx: Contexto): Promise<string[]>;
   alterarChamado(
     ctx: Contexto,
     chamadoId: string,
@@ -75,6 +80,8 @@ export interface PortaTriagem {
       hotelId: string;
       /** O local do chamado, que a OS guarda para a leitura do proprietário (0024). */
       localId: string;
+      /** Quem abriu o chamado, que a OS guarda para o UPDATE do aceite (0026). */
+      chamadoAbertoPor: string;
       situacaoId: string;
       responsavel: Responsavel;
     },
@@ -93,4 +100,25 @@ export interface PortaTriagem {
       chamado: ReflexoNoChamado;
     },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
+  /** Aceite (C6): a OS concluída fica aceita, e o chamado, concluído. */
+  aceitarOs(
+    ctx: Contexto,
+    g: { osId: string; versao: number; situacaoId: string; chamado: ReflexoNoChamado },
+  ): Promise<{ versao: number; versaoDoChamado: number }>;
+  /**
+   * Reabertura (C6): a mesma OS volta à execução, com o motivo na OS (o
+   * último) e na auditoria. Com `parada`, abre a parada do ativo no mesmo
+   * chamado; se o ativo já tem uma aberta, fica a que existe (paradaId nulo).
+   */
+  reabrirOs(
+    ctx: Contexto,
+    g: {
+      osId: string;
+      versao: number;
+      situacaoId: string;
+      motivo: string;
+      chamado: ReflexoNoChamado;
+      parada: { hotelId: string; ativoId: string; inicio: Date } | null;
+    },
+  ): Promise<{ versao: number; versaoDoChamado: number; paradaId: string | null }>;
 }

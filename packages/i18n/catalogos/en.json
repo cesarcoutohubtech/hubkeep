@@ -523,6 +523,7 @@
   "tecnico.os.concluir.desistir": "Cancel",
   "tecnico.os.sem_registro": "Time, material and photos can be added while the work order is in progress or paused.",
   "tecnico.os.parada.desde": "Equipment down since {quando}",
+  "tecnico.os.reaberta": "Reopened at acceptance: {motivo}",
   "tecnico.os.parada.registrar": "Equipment is down",
   "tecnico.os.parada.encerrar": "Equipment is working again",
   "tecnico.chamado.parado": "The equipment is down",

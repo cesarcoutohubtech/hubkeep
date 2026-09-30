@@ -39,6 +39,7 @@ const osGuardada = (id: string, estado: OsGuardada['estado'], versao: number): O
   estado,
   situacaoId: '5a000000-0000-4000-8000-000000000001',
   responsavel: { tipo: 'tecnico', usuarioId: A },
+  motivoReabertura: null,
   versao,
   criadoEm: '2026-09-29T08:00:00.000Z',
   chamado: {

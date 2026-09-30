@@ -125,6 +125,7 @@ export async function gerarOs(
     chamado: ReflexoNoChamado;
     hotelId: string;
     localId: string;
+    chamadoAbertoPor: string;
     situacaoId: string;
     responsavel: Responsavel;
   },
@@ -141,6 +142,7 @@ export async function gerarOs(
       hotel_id: g.hotelId,
       chamado_id: g.chamado.id,
       local_id: g.localId,
+      chamado_aberto_por: g.chamadoAbertoPor,
       estado: 'atribuida',
       situacao_id: g.situacaoId,
       ...colunasDoResponsavel(g.responsavel),

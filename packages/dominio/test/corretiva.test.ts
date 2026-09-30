@@ -372,6 +372,56 @@ describe('regras além da tabela', () => {
     expect(r).toMatchObject({ estado: 'aceita', chamado: 'concluido' });
   });
 
+  describe('quem abriu e executa a OS não decide o aceite; só o Gerente (Cesar, 30/09/2026)', () => {
+    const decidir = (
+      acao: 'aceitar' | 'reabrir',
+      a: AtorDaCorretiva,
+      abertoPor: string,
+      responsavel: Responsavel,
+    ) =>
+      decidirNaOs(acao, {
+        ator: a,
+        chamado: { ...chamado('aguardando_aceite'), abertoPor },
+        os: { estado: 'concluida', responsavel },
+        motivo: 'não resolveu',
+        agora,
+      });
+    for (const acao of ['aceitar', 'reabrir'] as const) {
+      it(`${acao}: o técnico responsável que abriu é recusado, e o Gerente decide`, () => {
+        expect(codigo(() => decidir(acao, ATORES.tecnicoResponsavel, 'tec-1', DO_TECNICO))).toBe(
+          'acao_fora_do_papel',
+        );
+        expect(decidir(acao, ATORES.gerente, 'tec-1', DO_TECNICO).estado).toBe(
+          acao === 'aceitar' ? 'aceita' : 'em_execucao',
+        );
+      });
+      it(`${acao}: o membro da equipe responsável que abriu é recusado`, () => {
+        expect(
+          codigo(() =>
+            decidir(acao, ATORES.tecnicoDaEquipe, 'tec-2', { tipo: 'equipe', equipeId: EQUIPE }),
+          ),
+        ).toBe('acao_fora_do_papel');
+      });
+    }
+    it('o Gerente que abriu e executa também não decide', () => {
+      const gerenteTecnico = ator('ger-tec', [
+        atr('ger-tec', 'gerente_hotel', noHotel),
+        atr('ger-tec', 'tecnico', noHotel),
+      ]);
+      expect(
+        codigo(() =>
+          decidir('aceitar', gerenteTecnico, 'ger-tec', { tipo: 'tecnico', usuarioId: 'ger-tec' }),
+        ),
+      ).toBe('acao_fora_do_papel');
+    });
+    it('quem abriu e não executa segue aceitando; o executante que não abriu, não', () => {
+      expect(decidir('aceitar', ATORES.tecnicoOutro, 'tec-3', DO_TECNICO).estado).toBe('aceita');
+      expect(codigo(() => decidir('aceitar', ATORES.tecnicoResponsavel, 'sol-1', DO_TECNICO))).toBe(
+        'acao_fora_do_papel',
+      );
+    });
+  });
+
   it('normalizarMotivo lança RegraViolada com o máximo', () => {
     expect(() => normalizarMotivo('')).toThrow(RegraViolada);
     expect(() => normalizarMotivo('')).toThrow(

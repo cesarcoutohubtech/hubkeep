@@ -63,13 +63,16 @@ export {
   PedidoDeAberturaDeChamado,
   PedidoDeAjusteDePrioridade,
   PedidoDeAtribuicaoDeOs,
+  PedidoDeAceiteDeOs,
   PedidoDeCancelamento,
+  PedidoDeReaberturaDeOs,
   PedidoDeTriagem,
   ResponsavelApi,
   RespostaDeChamado,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
   RespostaDeOsGravada,
+  RespostaDeReaberturaDeOs,
 } from './chamados';
 export {
   AtivoApi,
