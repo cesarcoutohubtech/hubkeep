@@ -984,3 +984,4 @@ Dividida em duas partes, cada uma no seu PR:
 - **Contrato com o Reputation:** a cópia idêntica do contrato v0.1 (proposta) está em `docs/referencia/contrato-integracao-reputation-v0.1.md`.
 - **Tarefas IX1 a IX3 no `docs/05`:** credencial de integração por tenant, rota de entrada de chamados com origem externa e entrega de eventos por webhook assinado. É a mesma base que vai servir ao EasyTools. **Não implementar antes do piloto** (Cesar).
 - **Parada:** a etapa D só começa com o aval do Cesar, depois do teste no notebook.
+- **Correção no contrato (Cesar, 30/09/2026):** o cronograma dizia "Contrato aprovado — Agora", o que estava errado. O contrato é proposta até Cesar e Kaio aprovarem, e a linha agora é "Aprovação do contrato por Cesar e Kaio — Pendente". **Pendência:** a mesma correção precisa ir para a cópia do repositório do Reputation, para as duas cópias continuarem idênticas.
