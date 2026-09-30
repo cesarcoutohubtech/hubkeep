@@ -64,21 +64,25 @@ Pergunta nova para o cliente entra aqui, e não espalhada pelos docs.
    - Hoje: dois chamados, um por especialidade. A OS cancelada libera o chamado para outra, e o aceite recusado reabre a mesma OS (Cesar, 29/09/2026).
    - Fontes: `docs/03-decisoes-tecnicas.md` (adendo ao ADR-027), `docs/diario-fase-1a.md` (C3).
 
+16. **Aceite da OS aberta e executada pelo próprio técnico.** Um problema que o técnico acha e resolve sozinho (por exemplo, numa ronda) vira chamado aberto e OS executada por ele. Essa OS precisa do aceite de outra pessoa, ou pode ter aceite automático com a foto de depois?
+    - Hoje: quem abriu e executa não aceita nem reabre; decide o Gerente do hotel e, sem Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo (Cesar, 30/09/2026). Se o cliente quiser o aceite automático, ele entra como política configurável, desligada por padrão.
+    - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-027, bloco da C6, item 8), `docs/05-plano-fase-1a.md` (C6 e perguntas para a reunião), `docs/diario-fase-1a.md` (Gerente único no aceite).
+
 ## Piloto e implantação
 
-16. **Datas e hotéis do piloto.** Quais hotéis e quando? O plano prevê 2 a 3 hotéis e rollout em ondas de cerca de 10; a confirmação é depois de 01/10.
+17. **Datas e hotéis do piloto.** Quais hotéis e quando? O plano prevê 2 a 3 hotéis e rollout em ondas de cerca de 10; a confirmação é depois de 01/10.
     - Fontes: `docs/00-contexto-produto.md`, `docs/04-plano-fase-0.md`, `docs/diario-fase-0.md`.
-17. **Protótipo.** Validar o protótipo de telas, feito fora do repositório, de onde vem o layout definitivo.
+18. **Protótipo.** Validar o protótipo de telas, feito fora do repositório, de onde vem o layout definitivo.
     - Fontes: `docs/05-plano-fase-1a.md`, `docs/diario-fase-0.md`.
 
 ## Jurídico e dados
 
-18. **Contato de segurança.** Quem é o contato de segurança do cliente para incidentes? Quais prazos e texto de aviso entram no contrato (cliente controlador, EasyGov operadora)?
+19. **Contato de segurança.** Quem é o contato de segurança do cliente para incidentes? Quais prazos e texto de aviso entram no contrato (cliente controlador, EasyGov operadora)?
     - Fonte: `docs/07-resposta-a-incidente.md`.
-19. **Leitura de dados do proprietário.** A leitura de dados pessoais do proprietário (pessoa física) precisa ficar registrada?
+20. **Leitura de dados do proprietário.** A leitura de dados pessoais do proprietário (pessoa física) precisa ficar registrada?
     - Hoje: só a escrita é auditada; a leitura aparece nos logs, com a retenção do plano.
     - Fontes: `docs/04-plano-fase-0.md`, `docs/diario-fase-0.md`.
-20. **Termos e privacidade.** Termos de uso e política de privacidade só em pt-BR, ou também nos outros idiomas?
+21. **Termos e privacidade.** Termos de uso e política de privacidade só em pt-BR, ou também nos outros idiomas?
     - Fontes: `docs/referencia/i18n-levantamento.md`, `docs/04-plano-fase-0.md`.
 
 ## Fora da reunião

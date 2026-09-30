@@ -892,9 +892,13 @@ Dividida em duas partes, cada uma no seu PR:
 - **Docs:** ADR-027 (itens 7 e 8), OpenAPI (textos do aceite e da reabertura), plano (coluna da C6 com a 0027).
 - **Local:** typecheck, lint e prettier verdes; testes verdes: raiz 277, domínio 1742, aplicação 91, PWA 113, web 63. A integração do `packages/db` e o pgTAP rodam só na CI.
 
-### Ponto de retomada (30/09/2026, PR do Gerente único aberto)
-- **`main`:** `45a4dff` (#73), com o `banco` vermelho pelo teste do aceite (corrigido neste PR). **Dev:** 0025 e 0026 aplicadas.
-- **PR aberto:** Gerente único (`1a-c6b-gerente-unico`, worktree `wt/c6b-gerente-unico`, zona protegida, migração 0027). Conferir `gh pr checks`; se falhar, corrigir na branch. Só avisar PR pronto com tudo verde (a "zona protegida" falha por desenho).
-- **Depois do merge:** conferir `gh run list --branch main`; o Cesar faz o `db push` da 0027, e eu confiro o dev só por leitura.
-- **Próxima tarefa:** C7 (telas do CSC e do hotel, incluindo o aceite, a reabertura com a opção "equipamento parado" e o motivo da reabertura na tela da OS do web), num worktree novo a partir da `main`.
-- O kit de teste fica para o fim da etapa C, e o trabalho para quando o kit estiver pronto.
+### #74 mergeado; registros e regra de processo (30/09/2026)
+- **#74** (`1c377e2`) mergeado pelo Cesar, e a CI da `main` voltou a ficar verde (`CI`, `banco` e `segurança`, run do merge do #74).
+- **Dev:** `supabase migration list` (só leitura) mostra a 0027 ainda pendente no dev; a 0025 e a 0026 aplicadas.
+- **Decisões do Cesar (30/09/2026):** aprovada a regra do Gerente único também para o Técnico que abre e executa num hotel sem Gerente (decide o Gestor CSC ou o Admin do grupo), e aprovada a leitura da 0027 como está. Anotado no ADR-027 (bloco da C6, item 8).
+- **Pergunta ao cliente** (`docs/referencia/perguntas-cliente.md`, item 16): a OS aberta e executada pelo próprio técnico (ex.: problema achado em ronda) precisa do aceite de outra pessoa, ou pode ter aceite automático com a foto de depois? No plano (`docs/05`, perguntas para a reunião): se o cliente quiser o aceite automático, ele entra como política configurável (ADR-026), desligada por padrão.
+- **Como o #73 entrou com a CI vermelha, e por quê:**
+  - o relato de abertura do #73 dizia "não mergear ainda", com a CI recém-iniciada e não conferida; o merge veio antes do resultado, com o job `pgTAP (meta e isolamento)` vermelho no PR, e o `banco` da `main` repetiu;
+  - a causa era o teste, não o código: o ativo do `aceite.test.ts` tinha `codigo_qr` = UUID, fora do check `ativo_codigo_qr_formato`, e a suíte caiu inteira no `beforeAll`. A integração do `packages/db` roda só na CI (sem Docker local, ADR-015), então o erro não aparecia nos testes do local;
+  - foi o segundo caso seguido (o #72 entrou do mesmo jeito, por outro erro de teste); a `main` ficou vermelha até o merge do #74, que trouxe a correção.
+- **Regra de processo nova (Cesar, 30/09/2026):** PR que entra na `main` com a CI vermelha é corrigido antes de qualquer outro merge. Registrada também na lista de processo do `docs/diario-fase-0.md`.
