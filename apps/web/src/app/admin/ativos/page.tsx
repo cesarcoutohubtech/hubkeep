@@ -12,6 +12,7 @@ import { type Idioma, resolverNome } from '@hubkeep/i18n';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { AnexosDoRegistro } from '../../../cliente/AnexosDoRegistro';
+import { HistoricoDoRegistro } from '../../../cliente/HistoricoDoRegistro';
 import { QrDoAtivo } from '../../../cliente/QrDoAtivo';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
 import { CampoDeBusca, comBusca } from '../../../cliente/CampoDeBusca';
@@ -551,6 +552,7 @@ export default function AtivosDoHotel() {
                     <MoverAtivo ativo={a} locais={locais} executar={executar} />
                     <QrDoAtivo ativo={a} />
                     <AnexosDoRegistro entidade="ativo" registroId={a.id} />
+                    <HistoricoDoRegistro entidade="ativo" registroId={a.id} />
                   </li>
                 ))}
               </ul>

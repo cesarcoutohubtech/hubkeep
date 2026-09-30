@@ -55,6 +55,7 @@ import {
   RespostaDeOsGravada,
   RespostaDeReaberturaDeOs,
 } from './chamados';
+import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
   PedidoDeAlteracaoDeAtivo,
@@ -1283,12 +1284,26 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/chamados/{id}/linha-do-tempo',
     resumo:
-      'A linha do tempo do chamado (C7): as ações da auditoria do chamado, das OS dele e das paradas do chamado, com quem fez, quando e o motivo do cancelamento ou da reabertura, da mais antiga para a mais nova. A auditoria é lida pela RLS: quem não a lê (o proprietário) recebe a lista vazia.',
+      'A linha do tempo do chamado (C7): as ações da auditoria do chamado, das OS dele e das paradas do chamado, com quem fez, quando e o motivo do cancelamento ou da reabertura, da mais antiga para a mais nova. A auditoria é lida pela RLS: o proprietário lê a do chamado, das OS e das paradas que ele vê (D1).',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Eventos do chamado', esquema: RespostaDeLinhaDoTempo },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/auditoria',
+    resumo:
+      'O histórico de um registro (D1): hotel, local, ativo, chamado ou OS, com quem gravou, quando, a ação e o antes e o depois de cada campo, da mais antiga para a mais nova. Quem não vê o registro recebe 404. Das linhas do registro, a RLS mostra só as que quem pede lê: o proprietário lê as do local, dos ativos, dos chamados e das OS que ele vê, e não as do hotel. Os ids das mudanças vêm com o nome em referencias, quando quem pede os lê.',
+    exigeTenant: true,
+    consulta: ConsultaDoHistorico,
+    respostas: {
+      200: { descricao: 'Histórico do registro', esquema: RespostaDoHistorico },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Registro fora do escopo (registro_nao_encontrado, com a entidade).'),
+      422: ERRO('Entidade ou id fora do formato (entrada_invalida).'),
     },
   },
   {

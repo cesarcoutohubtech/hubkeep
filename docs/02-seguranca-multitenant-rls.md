@@ -79,6 +79,7 @@ Nas policies, chame sempre dentro de subconsulta, `(select authz.tenant_id())` e
 - Só o Admin do grupo altera `app.membro` (desativar, reativar), desde a migração 0007 (fase 1a, A3). O Implantador convida (INSERT de membro sem papel Admin ou Implantador) e tira o acesso ao hotel dele revogando o papel, mas não altera membro: a desativação vale para o tenant inteiro, e ele não enxerga os papéis do membro em outros hotéis.
 - Publicar evento no outbox exige ser Admin do grupo ou ter papel de escrita vigente em algum hotel. Gravar auditoria sem hotel, só o Admin do grupo ou o Implantador vigente. Proprietário e quem perdeu o papel não publicam nem auditam (ADR-021).
 - O contrato de licença (`licenca.contrato`) só o Admin do grupo lê pelo `hk_app` (ADR-021).
+- A auditoria (`app.auditoria`) é lida pelo Admin do grupo e por quem escreve no hotel. O proprietário lê só as linhas do local, do ativo, do chamado, da OS e da parada que ele vê, pela RLS da tabela de cada registro; a do hotel fica de fora, porque grava o uso da licença (migração 0028, fase 1a D1). Ninguém altera nem apaga auditoria.
 
 ## Modelo para tabela nova
 

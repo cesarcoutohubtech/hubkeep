@@ -30,6 +30,12 @@ export async function configurarHotel(
   hotelId: string,
   c: Omit<ConfiguracaoDoHotel, 'id' | 'nome'>,
 ): Promise<void> {
+  // O antes vai para a auditoria, para o histórico do hotel mostrar o que mudou (D1).
+  const antes = await transacaoDe(uow)
+    .selectFrom('app.hotel')
+    .select(['fuso', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+    .where('id', '=', hotelId)
+    .executeTakeFirst();
   const r = await transacaoDe(uow)
     .updateTable('app.hotel')
     .set({
@@ -44,7 +50,14 @@ export async function configurarHotel(
     .returning(['id'])
     .executeTakeFirst();
   if (!r) throw new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
-  uow.auditar({ entidade: 'hotel', registroId: hotelId, acao: 'configurar', hotelId, depois: c });
+  uow.auditar({
+    entidade: 'hotel',
+    registroId: hotelId,
+    acao: 'configurar',
+    hotelId,
+    antes: antes ?? null,
+    depois: c,
+  });
   uow.publicar({
     tipo: 'hotel.alterado',
     entidade: 'hotel',

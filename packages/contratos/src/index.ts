@@ -188,3 +188,11 @@ export {
 } from './paradas';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';
+export {
+  ConsultaDoHistorico,
+  ENTIDADES_COM_HISTORICO_API,
+  EventoDoHistoricoApi,
+  MudancaAuditadaApi,
+  ReferenciaDoHistoricoApi,
+  RespostaDoHistorico,
+} from './historico';

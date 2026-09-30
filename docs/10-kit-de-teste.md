@@ -138,7 +138,8 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - em "Administração de hotéis", ver os três importados e **ativar o Serra**: as 3 UHs saem de pendentes;
   - bandeiras, configuração e políticas, membros e papéis (convidar alguém de verdade só com um e-mail da equipe, porque o e-mail padrão do Supabase só entrega para ela), proprietários e vínculos, equipes, locais, categorias e ativos (incluindo o QR);
   - "Chamados": os 7, com os filtros de hotel, situação, prioridade e período; "Ordens de serviço": as 4;
-  - no detalhe, a linha do tempo com quem fez, quando e o motivo.
+  - no detalhe, a linha do tempo com quem fez, quando e o motivo;
+  - o **histórico** de cada registro (passo a passo abaixo).
 - **Deve ser barrado:** nada dentro do grupo. Para testar outro tenant, é preciso um segundo grupo (não faz parte do kit).
 
 ### Gestor CSC, Bandeira Azul (web)
@@ -212,23 +213,38 @@ O painel **Triagem e atribuição** fica no detalhe do chamado, abaixo das OS. E
 - No Ar-condicionado UH 102 (em execução), o painel oferece só **Ajustar prioridade**, **Reatribuir** e **Cancelar OS**. No aquecedor (aguardando aceite) e no forno (concluído), nada.
 - A triagem de cada chamado vale uma vez. Rodar o script de novo não desfaz o que você fez (seção 6). Para outra rodada, abra um chamado novo pelo PWA com a Solicitante: ele chega aberto.
 
+### Histórico de cada registro, passo a passo (D1)
+
+O botão **Ver histórico** fica no detalhe do chamado (abaixo da linha do tempo), em cada OS do chamado, em cada local e cada ativo das telas de administração, e na configuração do hotel e na lista de hotéis. Ele mostra, da mais antiga para a mais nova, cada gravação: quando, a ação, quem gravou e o antes e o depois de cada campo. A ação, o nome do campo e os valores conhecidos (estado, situação do cadastro, tipo de local, sim ou não) saem traduzidos; nome, descrição e motivo aparecem como foram escritos.
+
+1. **Chamado triado.** Depois do passo a passo da triagem, abrir **Ver histórico** no chamado do chuveiro. Tem de aparecer "Chamado em triagem" com "Estado: aberto → em triagem" e a prioridade antiga e a nova pelo nome ("Prioridade: … → Urgente"), e o cancelamento com o motivo.
+2. **OS reatribuída.** Na OS cancelada do mesmo chamado, **Ver histórico**: "OS gerada" com a Equipe Centro, "OS reatribuída" com "Equipe: Equipe Centro → vazio" e "Técnico: vazio → Técnico do Centro", e "OS cancelada" com o motivo.
+3. **Ativo alterado.** Em "Ativos", mudar o fabricante de um ativo (ou um campo da categoria) e salvar. Em **Ver histórico** desse ativo, a linha "Ativo alterado" mostra o campo com o valor antigo e o novo. Mover o ativo de local mostra "Ativo mudou de local", com o local de origem e o de destino pelo nome.
+4. **Local alterado.** Em "Locais", renomear uma área comum. O histórico dela mostra o nome antigo e o novo.
+5. **Hotel.** Com o Admin, na configuração do hotel, trocar o fuso e salvar: o histórico do hotel mostra "Configuração alterada" com o fuso antigo e o novo.
+6. **Idioma.** Trocar para en, es ou fr e abrir de novo um histórico: a ação, os campos e os estados mudam de idioma; os nomes e o motivo, não.
+
+**Conferir também:**
+- Um histórico já aberto se fecha sozinho depois de uma gravação no mesmo chamado ou OS: é só abrir de novo para ver a linha nova.
+- Para quem não vê o registro, o histórico é "não encontrado", como o próprio registro.
+
 ### Proprietário de UH (web)
 
-- **Deve conseguir:** ver só o chamado do Frigobar (UH 101 do Centro) e a OS dele.
+- **Deve conseguir:** ver só o chamado do Frigobar (UH 101 do Centro) e a OS dele, com a linha do tempo e o **histórico** do chamado e da OS. Quem gravou aparece como "por outra pessoa", porque o proprietário não lê os membros do grupo.
 - **Deve ser barrado:**
   - os outros chamados do Centro, o Praia e o Serra;
-  - qualquer gravação (o proprietário só lê);
-  - a linha do tempo vem vazia, porque a leitura da auditoria pelo proprietário é da etapa D (D1).
+  - qualquer gravação (o proprietário só lê).
 
 ### Proprietário do hotel inteiro (web)
 
-- **Deve conseguir:** ver o Praia e o chamado dele.
-- **Deve ser barrado:** o Centro e o Serra; qualquer gravação. A linha do tempo vem vazia, como no proprietário de UH.
+- **Deve conseguir:** ver o Praia e o chamado dele, com a linha do tempo e o histórico do chamado.
+- **Deve ser barrado:** o Centro e o Serra; qualquer gravação.
 
 ## 5. O que ainda não dá para testar pela tela
 
 - **Lista de responsáveis só com Técnicos:** o seletor de "Gerar OS" e "Reatribuir" traz as pessoas ativas do grupo, porque é a lista que a rota das equipes do hotel já devolve. Quem não é Técnico do hotel é recusado pela API (passo 4 acima). Filtrar a lista pede uma rota nova de leitura, fora desta tarefa.
-- **Linha do tempo do proprietário** e o antes e depois de cada campo: etapa D (D1).
+- **Linha do tempo e histórico do proprietário antes do `db push` da migração da D1:** até a migração 0028 chegar ao dev, o proprietário recebe a linha do tempo e o histórico vazios, sem erro. Os outros papéis já veem tudo.
+- **Histórico anterior à fase 1a:** o histórico mostra o que a auditoria gravou. Não há histórico do que foi feito antes de cada tela existir.
 - **SLA, escalonamento e notificações:** fase 1c. Os eventos ficam no outbox do dev, e nenhum e-mail sai, porque o cron só roda na Vercel.
 - **Outro tenant:** o kit cria um grupo só. O isolamento entre tenants está coberto pelos testes pgTAP e de integração na CI.
 

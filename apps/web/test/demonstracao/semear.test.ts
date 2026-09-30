@@ -13,6 +13,7 @@ import {
   casosDeUsoDeConsultas,
   casosDeUsoDeChamados,
   casosDeUsoDeEquipes,
+  casosDeUsoDeHistorico,
   casosDeUsoDeSituacoes,
   casosDeUsoDeTriagem,
 } from '../../src/servidor/composicao';
@@ -265,5 +266,50 @@ describe.skipIf(!temAmbiente)('dados de demonstração do kit de teste', { timeo
     expect((await triagem.osDoChamado(ctx('admin'), c)).map((o) => o.estado)).toEqual([
       'cancelada',
     ]);
+  });
+
+  it('o histórico de cada registro, no escopo de cada papel (D1)', async () => {
+    const historico = await casosDeUsoDeHistorico();
+    const acoes = async (
+      p: Pessoa,
+      entidade: 'hotel' | 'chamado' | 'os',
+      id: string,
+    ): Promise<string[]> =>
+      (await historico.historico(ctx(p), entidade, id)).eventos.map((e) => e.acao);
+    const fora = async (p: Pessoa, entidade: 'hotel' | 'chamado', id: string) => {
+      const e = await historico.historico(ctx(p), entidade, id).then(
+        () => null,
+        (x: unknown) => x,
+      );
+      expect(e).toBeInstanceOf(ErroDeDominio);
+      return (e as ErroDeDominio).codigo;
+    };
+
+    // O chamado do frigobar (UH 101 do Centro): a abertura com o que foi gravado.
+    const frigobar = r.chamados.atribuido;
+    const gerente = await historico.historico(ctx('gerenteCentro'), 'chamado', frigobar);
+    expect(gerente.eventos[0]?.acao).toBe('abrir');
+    expect(gerente.eventos[0]?.usuarioNome).toBeTruthy();
+    expect(gerente.eventos[0]?.mudancas).toContainEqual({
+      campo: 'descricao',
+      chave: null,
+      antes: null,
+      depois: 'Frigobar não gela',
+    });
+
+    // O dono da UH 101 lê o histórico do chamado e da OS dele (migração da D1).
+    expect(await acoes('donoUh', 'chamado', frigobar)).toContain('abrir');
+    const [os] = await (await casosDeUsoDeTriagem()).osDoChamado(ctx('donoUh'), frigobar);
+    expect(await acoes('donoUh', 'os', os?.id ?? '')).toContain('gerar');
+
+    // Fora do escopo, 404: outro chamado do Centro para o dono, o Centro para o Gerente do Praia.
+    expect(await fora('donoUh', 'chamado', r.chamados.aberto)).toBe('registro_nao_encontrado');
+    expect(await fora('gerentePraia', 'chamado', frigobar)).toBe('registro_nao_encontrado');
+
+    // O hotel: o Admin lê a importação; o dono do hotel inteiro vê o hotel, sem a auditoria dele.
+    expect(await acoes('admin', 'hotel', r.hoteis.praia)).toContain(
+      'importar_do_sistema_hoteleiro',
+    );
+    expect(await acoes('donoHotel', 'hotel', r.hoteis.praia)).toEqual([]);
   });
 });
