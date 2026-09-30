@@ -978,3 +978,9 @@ Dividida em duas partes, cada uma no seu PR:
 - **PR aberto:** o da triagem (`1a-triagem`, worktree `wt/triagem`, sem zona protegida). Conferir `gh pr checks`; o passo a passo no `semear.test.ts` só roda na CI. Só avisar pronto com tudo verde.
 - **Depois do merge:** `gh run list --branch main`; main vermelha se corrige antes de qualquer outro merge. Aí avisar o Cesar de que o kit e a triagem estão na `main`, para ele rodar o kit no notebook.
 - **Parada:** a etapa D só começa com o aval do Cesar, depois do teste no notebook.
+
+### #78 mergeado; contrato com o Reputation e tarefas pós-piloto (30/09/2026)
+- **`main`:** merge do #78 (tela de triagem), com CI, banco e segurança verdes no push. O kit (#77) e a triagem estão na `main`, então o Cesar pode rodar o kit no notebook.
+- **Contrato com o Reputation:** a cópia idêntica do contrato v0.1 (proposta) está em `docs/referencia/contrato-integracao-reputation-v0.1.md`.
+- **Tarefas IX1 a IX3 no `docs/05`:** credencial de integração por tenant, rota de entrada de chamados com origem externa e entrega de eventos por webhook assinado. É a mesma base que vai servir ao EasyTools. **Não implementar antes do piloto** (Cesar).
+- **Parada:** a etapa D só começa com o aval do Cesar, depois do teste no notebook.
