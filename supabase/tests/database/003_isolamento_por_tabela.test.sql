@@ -360,7 +360,7 @@ select results_eq('select id::text from app.atribuicao_escopo',
   $$ values ('a1000000-0000-0000-0000-000000000006') $$,
   'proprietário vê só a própria atribuição');
 select results_eq('select id::text from app.auditoria',
-  $ values ('c1000000-0000-0000-0000-000000000001') $,
+  $$ values ('c1000000-0000-0000-0000-000000000001') $$,
   'proprietário lê só a auditoria da própria UH (0028), não a de outro hotel nem a do grupo');
 select is_empty('select 1 from app.proprietario',          'proprietário não vê o cadastro de proprietários');
 select is_empty('select 1 from staging.credencial_agente', 'proprietário não vê credenciais de agente');

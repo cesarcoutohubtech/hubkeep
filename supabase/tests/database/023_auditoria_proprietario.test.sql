@@ -134,7 +134,7 @@ select is_empty($$ select 1 from app.auditoria where hotel_id is distinct from '
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000006', true)) ctx;
 select results_eq($$ select id::text from app.auditoria order by id $$,
   $$ values ('ad000000-0000-0000-0000-000000000002'), ('ad000000-0000-0000-0000-000000000004'),
-            ('ad000000-0000-0000-0000-000000000006'), ('ad000000-0000-0000-0000-000000000008') $,
+            ('ad000000-0000-0000-0000-000000000006'), ('ad000000-0000-0000-0000-000000000008') $$,
   'dono de UH lê só a auditoria do que está na UH dele (não a do hotel, a da parada nem a da UH 102)');
 select throws_ok(
   $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
