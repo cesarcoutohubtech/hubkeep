@@ -990,7 +990,7 @@ Dividida em duas partes, cada uma no seu PR:
 - **Decisão do Cesar:** a etapa D começa agora, em paralelo com o teste dele no notebook. As correções que o teste pedir vão em PRs próprios, separados dos da D. Se a D mudar algo que o script de dados ou o roteiro do docs/10 usam, os dois são atualizados no mesmo PR.
 - **`main`:** #79 (contrato com o Reputation) e #80 (aprovação do contrato pendente) mergeados, com a CI verde no push.
 - **Branch `1a-d1-historico`**, worktree `wt/d1-historico`. **É zona protegida:** tem migração.
-- **Migração 0028** (`auditoria_do_proprietario`): a policy de leitura de `app.auditoria` soma as linhas do local, do ativo, do chamado, da OS e da parada que o proprietário vê. "Vê" é a RLS da tabela de cada registro: o EXISTS roda com o contexto de quem pede. A auditoria do hotel fica de fora, porque grava o uso da licença. Não tem função nova nem gatilho. Quem escreve no hotel e o Admin leem como antes.
+- **Migração 0028** (`auditoria_do_proprietario`): a policy de leitura de `app.auditoria` soma as linhas do local, do ativo, do chamado e da OS que o proprietário vê. A da parada fica de fora, pela decisão de 30/09/2026 (C5, pgTAP 020). "Vê" é a RLS da tabela de cada registro: o EXISTS roda com o contexto de quem pede. A auditoria do hotel fica de fora, porque grava o uso da licença. Não tem função nova nem gatilho. Quem escreve no hotel e o Admin leem como antes.
 - **pgTAP 023:**
   - sem contexto;
   - admin de outro tenant;

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Leitura de app.auditoria pelo proprietário (migração 0028, fase 1a D1): o
--- proprietário lê as linhas do local, do ativo, do chamado, da OS e da parada
--- que ele vê, e nada mais. Os casos do doc 02 para a policy alterada:
+-- proprietário lê as linhas do local, do ativo, do chamado e da OS que ele
+-- vê, e nada mais (a da parada continua fora: decisão de 30/09/2026, C5). Os casos do doc 02 para a policy alterada:
 --   1. admin de outro tenant não lê;
 --   2. gerente lê a auditoria do hotel dele, como antes, e não a de outro;
 --   3. dono de UH lê só a do que está na UH dele (não a do hotel, nem a da
@@ -130,13 +130,12 @@ select results_eq($$ select count(*)::int from app.auditoria $$, $$ values (10) 
 select is_empty($$ select 1 from app.auditoria where hotel_id is distinct from '11100000-0000-0000-0000-000000000001' $$,
   'gerente não lê a do Hotel 3 nem a do grupo');
 
--- Caso 3 — dono de UH: o local, o ativo, o chamado, a OS e a parada da UH 101
+-- Caso 3 — dono de UH: o local, o ativo, o chamado e a OS da UH 101; a parada, não
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000006', true)) ctx;
 select results_eq($$ select id::text from app.auditoria order by id $$,
   $$ values ('ad000000-0000-0000-0000-000000000002'), ('ad000000-0000-0000-0000-000000000004'),
-            ('ad000000-0000-0000-0000-000000000006'), ('ad000000-0000-0000-0000-000000000008'),
-            ('ad000000-0000-0000-0000-000000000010') $$,
-  'dono de UH lê só a auditoria do que está na UH dele (não a do hotel, nem a da UH 102)');
+            ('ad000000-0000-0000-0000-000000000006'), ('ad000000-0000-0000-0000-000000000008') $,
+  'dono de UH lê só a auditoria do que está na UH dele (não a do hotel, a da parada nem a da UH 102)');
 select throws_ok(
   $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
      (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'local',

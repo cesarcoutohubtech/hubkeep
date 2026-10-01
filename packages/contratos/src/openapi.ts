@@ -1284,7 +1284,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/chamados/{id}/linha-do-tempo',
     resumo:
-      'A linha do tempo do chamado (C7): as ações da auditoria do chamado, das OS dele e das paradas do chamado, com quem fez, quando e o motivo do cancelamento ou da reabertura, da mais antiga para a mais nova. A auditoria é lida pela RLS: o proprietário lê a do chamado, das OS e das paradas que ele vê (D1).',
+      'A linha do tempo do chamado (C7): as ações da auditoria do chamado, das OS dele e das paradas do chamado, com quem fez, quando e o motivo do cancelamento ou da reabertura, da mais antiga para a mais nova. A auditoria é lida pela RLS: o proprietário lê a do chamado e das OS que ele vê, e não a das paradas (D1).',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Eventos do chamado', esquema: RespostaDeLinhaDoTempo },
@@ -1296,7 +1296,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/auditoria',
     resumo:
-      'O histórico de um registro (D1): hotel, local, ativo, chamado ou OS, com quem gravou, quando, a ação e o antes e o depois de cada campo, da mais antiga para a mais nova. Quem não vê o registro recebe 404. Das linhas do registro, a RLS mostra só as que quem pede lê: o proprietário lê as do local, dos ativos, dos chamados e das OS que ele vê, e não as do hotel. Os ids das mudanças vêm com o nome em referencias, quando quem pede os lê.',
+      'O histórico de um registro (D1): hotel, local, ativo, chamado ou OS, com quem gravou, quando, a ação e o antes e o depois de cada campo, da mais antiga para a mais nova. Quem não vê o registro recebe 404. Das linhas do registro, a RLS mostra só as que quem pede lê: o proprietário lê as do local, dos ativos, dos chamados e das OS que ele vê, e não as do hotel nem as das paradas. Os ids das mudanças vêm com o nome em referencias, quando quem pede os lê.',
     exigeTenant: true,
     consulta: ConsultaDoHistorico,
     respostas: {
