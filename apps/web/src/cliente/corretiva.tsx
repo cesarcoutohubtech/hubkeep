@@ -17,6 +17,7 @@ import { type Chave, resolverNome } from '@hubkeep/i18n';
 import { type FormEvent, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type ErroDaApi, chamarApi } from './api';
+import { HistoricoDoRegistro } from './HistoricoDoRegistro';
 import { useIdioma, useMensagemDeErro, useT } from '../i18n/cliente';
 
 export type ChamadoResumido = z.infer<typeof ChamadoResumidoApi>;
@@ -381,6 +382,7 @@ export function ChamadoEmDetalhe(props: {
                   />
                 </div>
               )}
+              <HistoricoDoRegistro key={`${o.id}-${o.versao}`} entidade="os" registroId={o.id} />
             </li>
           ))}
         </ul>

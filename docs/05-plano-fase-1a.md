@@ -95,6 +95,8 @@ Decisão do Cesar (28/09/2026). Ao fim da etapa C, antes de começar a D, prepar
 |---|---|---|---|---|
 | **D1** Auditoria por registro | `GET /api/v1/auditoria?entidade=&registroId=` e a linha do tempo no detalhe de hotel, local, ativo, chamado e OS: quem, quando, a ação (pelo catálogo) e o que mudou (antes e depois). | Quem não vê o registro não vê a auditoria dele: 404, pela RLS. O proprietário vê a da UH dele. As ações e os campos saem traduzidos. | Talvez: policy de leitura da auditoria para o proprietário | — |
 
+**D1, como foi feita (30/09/2026):** a leitura do proprietário entrou na migração 0028, com o pgTAP 023. A rota é `GET /api/v1/auditoria?entidade=&registroId=`, e o botão "Ver histórico" fica no detalhe do chamado e de cada OS, nos locais, nos ativos, na configuração do hotel e na lista de hotéis. O que cada linha mostra sai do domínio (`packages/dominio/src/auditoria.ts`): o antes gravado com o nome da coluna e o depois com o nome do domínio viram o mesmo campo, e o uso da licença na ativação bloqueada não aparece. A configuração do hotel passou a gravar o antes, para o histórico mostrar o que mudou.
+
 Fim da etapa D e da fase 1a: resumo, com a lista do que ficou para a 1b e a 1c.
 
 ## Segurança antes do piloto e do rollout (ADR-032)

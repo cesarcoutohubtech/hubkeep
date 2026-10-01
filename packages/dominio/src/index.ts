@@ -243,3 +243,18 @@ export {
 export type { CandidatoAResponsavel } from './triagem';
 export { PAPEIS } from './tipos';
 export type { Atribuicao, Contexto, Escopo, Papel, PedidoDeConcessao } from './tipos';
+export {
+  ACOES_SEM_DETALHE,
+  CAMPOS_FORA_DO_HISTORICO,
+  ENTIDADES_COM_HISTORICO,
+  REFERENCIA_DO_CAMPO,
+  mudancasDaAuditoria,
+  mudancasVisiveis,
+  referenciasDasMudancas,
+} from './auditoria';
+export type {
+  EntidadeComHistorico,
+  MudancaAuditada,
+  TipoDeReferencia,
+  ValorAuditado,
+} from './auditoria';

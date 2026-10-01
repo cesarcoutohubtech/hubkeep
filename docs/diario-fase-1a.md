@@ -985,3 +985,40 @@ Dividida em duas partes, cada uma no seu PR:
 - **Tarefas IX1 a IX3 no `docs/05`:** credencial de integração por tenant, rota de entrada de chamados com origem externa e entrega de eventos por webhook assinado. É a mesma base que vai servir ao EasyTools. **Não implementar antes do piloto** (Cesar).
 - **Parada:** a etapa D só começa com o aval do Cesar, depois do teste no notebook.
 - **Correção no contrato (Cesar, 30/09/2026):** o cronograma dizia "Contrato aprovado — Agora", o que estava errado. O contrato é proposta até Cesar e Kaio aprovarem, e a linha agora é "Aprovação do contrato por Cesar e Kaio — Pendente". **Pendência:** a mesma correção precisa ir para a cópia do repositório do Reputation, para as duas cópias continuarem idênticas.
+
+### Etapa D começa: D1, histórico de cada registro (30/09/2026)
+- **Decisão do Cesar:** a etapa D começa agora, em paralelo com o teste dele no notebook. As correções que o teste pedir vão em PRs próprios, separados dos da D. Se a D mudar algo que o script de dados ou o roteiro do docs/10 usam, os dois são atualizados no mesmo PR.
+- **`main`:** #79 (contrato com o Reputation) e #80 (aprovação do contrato pendente) mergeados, com a CI verde no push.
+- **Branch `1a-d1-historico`**, worktree `wt/d1-historico`. **É zona protegida:** tem migração.
+- **Migração 0028** (`auditoria_do_proprietario`): a policy de leitura de `app.auditoria` soma as linhas do local, do ativo, do chamado e da OS que o proprietário vê. A da parada fica de fora, pela decisão de 30/09/2026 (C5, pgTAP 020). "Vê" é a RLS da tabela de cada registro: o EXISTS roda com o contexto de quem pede. A auditoria do hotel fica de fora, porque grava o uso da licença. Não tem função nova nem gatilho. Quem escreve no hotel e o Admin leem como antes.
+- **pgTAP 023:**
+  - sem contexto;
+  - admin de outro tenant;
+  - gerente como antes;
+  - dono de UH lê só o que está na UH dele;
+  - o ativo que sai da UH sai do histórico;
+  - dono do hotel inteiro, sem a auditoria do hotel;
+  - vínculo vencido;
+  - implantador vencido;
+  - proprietário não grava;
+  - sem UPDATE nem DELETE.
+- **Domínio** (`auditoria.ts`): `mudancasDaAuditoria` junta o antes (nome da coluna) e o depois (nome do domínio) no mesmo campo.
+  - Mostra só o que o depois grava.
+  - Abre os campos estendidos do ativo, um por chave.
+  - Transforma o responsável da OS em técnico e equipe.
+  - Deixa de fora a versão, a busca, a cópia da política, o próprio registro, o hotel e o chamado pai.
+  - A ativação bloqueada não mostra o uso da licença.
+  - Os ids viram referências para buscar o nome.
+- **Aplicação:** `criarCasosDeUsoDeHistorico`. O registro fora do escopo dá 404 `registro_nao_encontrado`, com a entidade, e a auditoria nem é lida. Os nomes só são pedidos quando aparece algum id.
+- **Banco:** `criarPortaHistorico`. A leitura é toda pela RLS: o nome de quem gravou vem por left join, e os nomes das referências vêm das tabelas de cada uma. O que quem pede não lê fica de fora e aparece como "sem acesso".
+- **Rota** `GET /api/v1/auditoria`, com contrato Zod, OpenAPI e teste de paridade das entidades com o domínio.
+- **Tela** (`HistoricoDoRegistro`): o botão "Ver histórico" fica no detalhe do chamado e de cada OS, nos locais, nos ativos, na configuração do hotel e na lista de hotéis. O histórico só carrega quando pedido. A versão na chave fecha o histórico aberto depois de uma gravação.
+- **Catálogos:** 20 chaves `auditoria.*` nos quatro idiomas. As ações do chamado e da OS reaproveitam as da linha do tempo.
+- **Configuração do hotel:** passa a gravar o antes na auditoria.
+- **Testes:**
+  - domínio: 12 casos;
+  - aplicação: 3;
+  - tela: 6 (os quatro idiomas e o pseudo-idioma);
+  - no `semear.test.ts` (só na CI), o histórico no escopo de cada papel.
+- **docs/10:** passo a passo do histórico. O proprietário ganha linha do tempo e histórico, depois do `db push` da 0028. A lacuna saiu da seção 5.
+- **Local:** lint, typecheck 10/10 e testes 17/17 verdes.

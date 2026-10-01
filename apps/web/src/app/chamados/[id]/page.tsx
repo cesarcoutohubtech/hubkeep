@@ -4,10 +4,12 @@
 // equipamento parado), a triagem e a atribuição (C3: triar, prioridade, gerar,
 // reatribuir e cancelar a OS, cancelar o chamado) e a linha do tempo. Quem
 // pode cada ação é decidido pela API; a recusa volta como código e aparece
-// traduzida.
+// traduzida. O histórico do chamado e o de cada OS (D1) mostram o antes e o
+// depois de cada campo.
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
+import { HistoricoDoRegistro } from '../../../cliente/HistoricoDoRegistro';
 import {
   Aviso,
   ChamadoEmDetalhe,
@@ -111,6 +113,14 @@ export default function Chamado() {
         />
       )}
       {detalhe !== null && eventos !== null && <LinhaDoTempo eventos={eventos} />}
+      {detalhe !== null && (
+        // A versão na chave descarta o histórico já aberto depois de cada gravação.
+        <HistoricoDoRegistro
+          key={`${id}-${detalhe.chamado.versao}`}
+          entidade="chamado"
+          registroId={id}
+        />
+      )}
     </main>
   );
 }

@@ -15,6 +15,7 @@ import {
   ACOES_DA_OS_API,
   ACOES_DO_CHAMADO_API,
   ENTIDADES_COM_SITUACAO_API,
+  ENTIDADES_COM_HISTORICO_API,
   ENTIDADES_DA_LINHA_DO_TEMPO_API,
   ESTADOS_DA_OS_API,
   ESTADOS_DO_CHAMADO_API,
@@ -32,6 +33,7 @@ import {
   ACOES_DA_OS,
   ACOES_DO_CHAMADO,
   ENTIDADES_COM_SITUACAO,
+  ENTIDADES_COM_HISTORICO,
   ENTIDADES_DA_LINHA_DO_TEMPO,
   ESTADOS_DA_OS,
   ESTADOS_DO_CHAMADO,
@@ -114,5 +116,9 @@ describe('contratos × domínio', () => {
 
   it('as entidades da linha do tempo da API são as do domínio (C7)', () => {
     expect([...ENTIDADES_DA_LINHA_DO_TEMPO_API]).toEqual([...ENTIDADES_DA_LINHA_DO_TEMPO]);
+  });
+
+  it('as entidades com histórico da API são as do domínio (D1)', () => {
+    expect([...ENTIDADES_COM_HISTORICO_API]).toEqual([...ENTIDADES_COM_HISTORICO]);
   });
 });

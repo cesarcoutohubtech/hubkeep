@@ -12,6 +12,7 @@ import {
   type CasosDeUsoDeExecucao,
   type CasosDeUsoDeParadas,
   type CasosDeUsoDeConsultas,
+  type CasosDeUsoDeHistorico,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
@@ -32,6 +33,7 @@ import {
   criarCasosDeUsoDeAtivos,
   criarCasosDeUsoDeParadas,
   criarCasosDeUsoDeConsultas,
+  criarCasosDeUsoDeHistorico,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeTriagem,
@@ -63,6 +65,7 @@ import {
   criarPortaExecucao,
   criarPortaParadas,
   criarPortaConsultasDaCorretiva,
+  criarPortaHistorico,
   criarPortaPrioridades,
   criarPortaSituacoes,
   criarPortaConfiguracao,
@@ -335,6 +338,11 @@ export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
 /** Listas de chamados e OS, nomes do detalhe e linha do tempo (fase 1a, C7), pelo hk_app. */
 export const casosDeUsoDeConsultas = memo<CasosDeUsoDeConsultas>(async () =>
   criarCasosDeUsoDeConsultas({ consultas: criarPortaConsultasDaCorretiva(await acessoBanco()) }),
+);
+
+/** Histórico de hotel, local, ativo, chamado e OS (fase 1a, D1), pelo hk_app. */
+export const casosDeUsoDeHistorico = memo<CasosDeUsoDeHistorico>(async () =>
+  criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(await acessoBanco()) }),
 );
 
 /** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */

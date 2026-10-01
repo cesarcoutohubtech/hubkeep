@@ -4,6 +4,7 @@
 // acabamento: o layout vem do protótipo validado.
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { AnexosDoRegistro } from '../../../cliente/AnexosDoRegistro';
+import { HistoricoDoRegistro } from '../../../cliente/HistoricoDoRegistro';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
 import { CampoDeBusca, comBusca } from '../../../cliente/CampoDeBusca';
 import { useMensagemDeErro, useT } from '../../../i18n/cliente';
@@ -185,6 +186,7 @@ export default function LocaisDoHotel() {
                       )}
                     </form>
                     <AnexosDoRegistro entidade="local" registroId={l.id} />
+                    <HistoricoDoRegistro entidade="local" registroId={l.id} />
                   </li>
                 ))}
               </ul>

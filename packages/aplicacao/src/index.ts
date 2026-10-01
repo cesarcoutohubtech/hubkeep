@@ -213,3 +213,10 @@ export type { CasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
 export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';
 export { termoDeBusca, textoDeBusca } from './busca';
+export type { LinhaDeAuditoria, PortaHistorico, ReferenciaDoHistorico } from './portas/historico';
+export { criarCasosDeUsoDeHistorico } from './casos-de-uso/historico';
+export type {
+  CasosDeUsoDeHistorico,
+  EventoDoHistorico,
+  HistoricoDoRegistro,
+} from './casos-de-uso/historico';

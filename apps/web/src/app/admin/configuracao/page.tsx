@@ -5,6 +5,7 @@
 import { IDIOMAS } from '@hubkeep/i18n';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
+import { HistoricoDoRegistro } from '../../../cliente/HistoricoDoRegistro';
 import { nomeDoIdioma, useMensagemDeErro, useT } from '../../../i18n/cliente';
 
 interface Hotel {
@@ -213,6 +214,9 @@ export default function ConfiguracaoDoGrupo() {
             {camposDeRegiao(dados.hotel, true)}
             <button type="submit">{t('admin.configuracao.acao.salvar')}</button>
           </form>
+        )}
+        {dados.hotel && (
+          <HistoricoDoRegistro key={dados.hotel.id} entidade="hotel" registroId={dados.hotel.id} />
         )}
       </section>
 

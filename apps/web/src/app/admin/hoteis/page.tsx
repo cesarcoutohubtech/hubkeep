@@ -4,6 +4,7 @@
 // funcional, sem acabamento: o layout vem do protótipo validado com o cliente.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
+import { HistoricoDoRegistro } from '../../../cliente/HistoricoDoRegistro';
 import { useMensagemDeErro, useT } from '../../../i18n/cliente';
 
 interface HotelParaAtivacao {
@@ -131,6 +132,7 @@ export default function HoteisDoSistemaHoteleiro() {
                         })}
                       </small>
                     )}
+                    {h.hotel && <HistoricoDoRegistro entidade="hotel" registroId={h.hotel.id} />}
                   </td>
                   <td>
                     <code>{h.chave}</code>
