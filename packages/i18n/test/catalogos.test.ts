@@ -1,5 +1,7 @@
 // Pipeline dos catálogos (ADR-022, aceite da F0-10b): a CI reprova mensagem
-// ICU inválida, chave sem pt-BR ou en e variável que difere entre idiomas. O
+// ICU inválida, chave que falte em qualquer idioma e variável que difere entre
+// idiomas. Até a 1a só o en era obrigatório; o ADR-022 exige es e fr antes do
+// piloto, e a exigência vale desde o B4 do docs/11. O
 // parser é o mesmo que o runtime usa (@formatjs/icu-messageformat-parser).
 import { type MessageFormatElement, TYPE, parse } from '@formatjs/icu-messageformat-parser';
 import { describe, expect, it } from 'vitest';
@@ -38,9 +40,12 @@ describe('catálogos ICU', () => {
     expect(invalidas).toEqual([]);
   });
 
-  it('en tem todas as chaves de pt-BR (obrigatório)', () => {
-    expect(Object.keys(CATALOGOS.en).sort()).toEqual(chavesFonte);
-  });
+  it.each(IDIOMAS.filter((i) => i !== IDIOMA_FONTE))(
+    '%s tem todas as chaves de pt-BR (obrigatório)',
+    (idioma) => {
+      expect(Object.keys(CATALOGOS[idioma]).sort()).toEqual(chavesFonte);
+    },
+  );
 
   it.each(IDIOMAS)('%s: nenhuma chave fora do idioma-fonte', (idioma) => {
     const extras = Object.keys(CATALOGOS[idioma]).filter((c) => !(c in fonte));
