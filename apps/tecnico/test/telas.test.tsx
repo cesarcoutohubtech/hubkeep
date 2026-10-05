@@ -4,7 +4,7 @@ import { IDIOMAS, type IdiomaDeExibicao, PSEUDO_IDIOMA, mensagensDe } from '@hub
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { ProvedorDeIdioma } from '../src/i18n';
+import { ProvedorDeIdioma, aplicarIdiomaNaPagina } from '../src/i18n';
 import { FilaDoDia } from '../src/telas/FilaDoDia';
 import { Login } from '../src/telas/Login';
 
@@ -81,5 +81,21 @@ describe('telas do PWA em cada idioma', () => {
 
   it('o seletor não oferece o pseudo-idioma sem VITE_PSEUDO_IDIOMA', () => {
     expect(renderizar('pt-BR', fila(true, 0))).not.toContain(`value="${PSEUDO_IDIOMA}"`);
+  });
+});
+
+// B5 (docs/11): o index.html nasce em pt-BR; sem isto, o leitor de tela lia o
+// inglês, o espanhol e o francês com a pronúncia do português.
+describe('o idioma da página acompanha o idioma escolhido', () => {
+  it.each(IDIOMAS)('%s', (idioma) => {
+    const raiz = { lang: 'pt-BR' };
+    aplicarIdiomaNaPagina(idioma, raiz);
+    expect(raiz.lang).toBe(idioma);
+  });
+
+  it('o pseudo-idioma conta como inglês, como no web', () => {
+    const raiz = { lang: 'pt-BR' };
+    aplicarIdiomaNaPagina(PSEUDO_IDIOMA, raiz);
+    expect(raiz.lang).toBe('en');
   });
 });

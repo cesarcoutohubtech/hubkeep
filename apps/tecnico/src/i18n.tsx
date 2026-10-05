@@ -64,6 +64,18 @@ export function ProvedorDeIdioma(props: { idioma: IdiomaDeExibicao; children: Re
   );
 }
 
+/**
+ * O idioma da página no atributo lang do <html>, para o leitor de tela e o
+ * hifenizador do navegador (B5 do docs/11). O index.html nasce em pt-BR; o
+ * pseudo-idioma conta como inglês, como no layout do web.
+ */
+export function aplicarIdiomaNaPagina(
+  idioma: IdiomaDeExibicao,
+  raiz: { lang: string } = document.documentElement,
+): void {
+  raiz.lang = idioma === PSEUDO_IDIOMA ? 'en' : idioma;
+}
+
 /** Tradução por chave do catálogo pt-BR (chave inexistente não compila). */
 export function useT(): (chave: Chave, valores?: ValoresDeMensagem) => string {
   const intl = useIntl();
