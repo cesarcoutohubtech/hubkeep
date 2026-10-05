@@ -1067,3 +1067,18 @@ Dividida em duas partes, cada uma no seu PR:
 - **Pendente do núcleo, combinado em 01/10:** a regra de fronteira do `packages/inteligencia` no `eslint.config.mjs`. É zona protegida e pode ir junto com o B11 do `docs/11`.
 - **Agente do Kaio:** com as decisões do PR-I1, troca os campos "(fase A)" do `historico.ts` pelos nomes reais.
 - **Parada:** a fase 1b só começa com o aval do Cesar.
+
+### PR de ESLint: fronteira do Intelligence, B11 e B3 (05/10/2026)
+- **Zona protegida** (`eslint.config.mjs`), o primeiro da ordem aprovada para os achados do `docs/11`.
+- **Fronteira do `packages/inteligencia`** (pedido de 01/10/2026):
+  - o pacote vira elemento das fronteiras;
+  - ele importa só o `dominio` e o `i18n`, sem pacote externo nem módulo do Node;
+  - nenhum pacote nem app do núcleo o importa, nem pelo nome nem por caminho relativo. A rota do Intelligence, quando existir, ganha uma liberação explícita.
+- **B11:**
+  - `pg` e `postgres` passam a ser proibidos em todo elemento fora do `packages/db`; antes, só nos apps;
+  - o `packages/aplicacao` não importa módulo do Node.
+- **B3:**
+  - o lint de texto fixo passa a olhar as props `rotulo`, `titulo` e `mensagem`;
+  - também pega o literal passado a `alert`, `confirm` e `prompt` e atribuído ao `document.title`;
+  - arquivos `.ts` e literal guardado em variável ficam para a revisão, como aprovado.
+- **Testes:** `tests/fronteiras.test.ts` ganhou os casos proibidos e permitidos de cada regra. Local: lint, typecheck e os testes da raiz verdes; nenhum código existente violava as regras novas.

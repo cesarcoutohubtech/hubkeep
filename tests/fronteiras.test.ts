@@ -115,6 +115,29 @@ describe('fronteiras entre pacotes', () => {
     ['imagem importando dominio', 'packages/imagem/src/x.ts', '@hubkeep/dominio'],
     ['servidor do web importando imagem', COMPOSICAO, '@hubkeep/imagem'],
     ['aplicacao importando imagem', 'packages/aplicacao/src/x.ts', '@hubkeep/imagem'],
+    // O Intelligence depende do núcleo, nunca o contrário (decisão de 30/09/2026).
+    ['dominio importando inteligencia', 'packages/dominio/src/x.ts', '@hubkeep/inteligencia'],
+    ['aplicacao importando inteligencia', 'packages/aplicacao/src/x.ts', '@hubkeep/inteligencia'],
+    ['db importando inteligencia', 'packages/db/src/x.ts', '@hubkeep/inteligencia'],
+    ['servidor do web importando inteligencia', COMPOSICAO, '@hubkeep/inteligencia'],
+    ['rota da API importando inteligencia', ROTA, '@hubkeep/inteligencia'],
+    ['PWA importando inteligencia', 'apps/tecnico/src/x.ts', '@hubkeep/inteligencia'],
+    [
+      'dominio importando inteligencia por caminho relativo',
+      'packages/dominio/src/x.ts',
+      '../../inteligencia/src/index.ts',
+    ],
+    // ...e é puro como o dominio.
+    ['inteligencia importando db', 'packages/inteligencia/src/x.ts', '@hubkeep/db'],
+    ['inteligencia importando aplicacao', 'packages/inteligencia/src/x.ts', '@hubkeep/aplicacao'],
+    ['inteligencia importando pacote externo', 'packages/inteligencia/src/x.ts', 'zod'],
+    ['inteligencia importando módulo do Node', 'packages/inteligencia/src/x.ts', 'node:fs'],
+    // B11 (docs/11): pg só em packages/db, e aplicacao sem módulo do Node.
+    ['aplicacao importando pg', 'packages/aplicacao/src/x.ts', 'pg'],
+    ['auth-admin importando pg', 'packages/auth-admin/src/x.ts', 'pg'],
+    ['contratos importando postgres', 'packages/contratos/src/x.ts', 'postgres'],
+    ['aplicacao importando módulo do Node', 'packages/aplicacao/src/x.ts', 'node:fs'],
+    ['aplicacao importando módulo do Node sem prefixo', 'packages/aplicacao/src/x.ts', 'crypto'],
   ];
 
   it.each(proibidos)('proíbe: %s', async (_nome, arquivo, origem) => {
@@ -148,6 +171,14 @@ describe('fronteiras entre pacotes', () => {
     ['i18n importando formatjs', 'packages/i18n/src/x.ts', '@formatjs/intl'],
     ['página importando imagem', PAGINA, '@hubkeep/imagem'],
     ['PWA importando imagem', 'apps/tecnico/src/x.ts', '@hubkeep/imagem'],
+    ['inteligencia importando dominio', 'packages/inteligencia/src/x.ts', '@hubkeep/dominio'],
+    ['inteligencia importando i18n', 'packages/inteligencia/src/x.ts', '@hubkeep/i18n'],
+    [
+      'inteligencia importando arquivo do próprio pacote',
+      'packages/inteligencia/src/x.ts',
+      './score.ts',
+    ],
+    ['db importando pg', 'packages/db/src/x.ts', 'pg'],
   ];
 
   it.each(permitidos)('permite: %s', async (_nome, arquivo, origem) => {
@@ -273,16 +304,48 @@ export const C = () => ${jsx};
     ['aria-label fixo', COMPONENTE, '<button aria-label="Fechar" />'],
     ['alt fixo', COMPONENTE, '<img alt="Logo" src="/x.png" />'],
     ['label fixo em componente', COMPONENTE, '<Campo label="Nome" />'],
+    // B3 (docs/11): as props de texto dos nossos componentes.
+    ['rotulo fixo em componente', COMPONENTE, '<Campo rotulo="Nome" />'],
+    ['titulo fixo em componente', COMPONENTE, '<Campo titulo="Detalhe" />'],
+    ['mensagem fixa em componente', PWA, '<Campo mensagem="Sem rede" />'],
     ['texto solto no PWA', PWA, '<p>Fila do dia</p>'],
   ];
 
+  const campo = `declare const Campo: (p: Record<string, string>) => null;
+`;
   it.each(proibidos)('proíbe: %s', async (_n, arquivo, jsx) => {
-    const codigo =
-      _n === 'label fixo em componente'
-        ? `declare const Campo: (p: { label: string }) => null;
-${tela(jsx)}`
-        : tela(jsx);
+    const codigo = jsx.startsWith('<Campo') ? campo + tela(jsx) : tela(jsx);
     expect(await violacoes(arquivo, codigo)).not.toEqual([]);
+  });
+
+  // B3 (docs/11): o texto que o JSX não mostra, mas o usuário lê.
+  const foraDoJsx: [string, string, string][] = [
+    ['alert com texto fixo', PWA, "alert('Salvo');"],
+    ['confirm com texto fixo', COMPONENTE, 'confirm(`Concluir a OS?`);'],
+    ['window.prompt com texto fixo', COMPONENTE, "window.prompt('Motivo');"],
+    ['document.title fixo', COMPONENTE, "document.title = 'HubKeep — Chamados';"],
+  ];
+
+  it.each(foraDoJsx)('proíbe: %s', async (_n, arquivo, linha) => {
+    expect(
+      await violacoes(
+        arquivo,
+        `export function f() {
+  ${linha}
+}
+`,
+      ),
+    ).not.toEqual([]);
+  });
+
+  it('permite o diálogo e o título com texto do catálogo', async () => {
+    const codigo = `declare const t: (c: string) => string;
+export function f() {
+  if (confirm(t('tecnico.os.concluir.confirmar'))) alert(t('app.nome'));
+  document.title = t('app.nome');
+}
+`;
+    expect(await violacoes(PWA, codigo)).toEqual([]);
   });
 
   const permitidos: [string, string, string][] = [
