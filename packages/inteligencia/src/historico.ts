@@ -30,6 +30,8 @@ export interface Corretiva {
   terceiroNome?: string | null;
   /** Fase A, `app.os.custo_informado`, em reais, no aceite; null não informado. */
   custoInformado?: number | null;
+  /** Fase A, `app.chamado.impacto_hospede`: afeta hóspede? null é "não sei". */
+  impactoHospede?: boolean | null;
 }
 
 /** O ativo, com o que a análise por modelo e por idade usa. */
@@ -97,4 +99,27 @@ export function custoInformadoNaJanela(
       c.custoInformado !== null,
   );
   return comCusto.length ? comCusto.reduce((s, c) => s + (c.custoInformado as number), 0) : null;
+}
+
+/**
+ * Impacto no hóspede pelo indicador do chamado (decisão de 05/10/2026, até o
+ * Guest Impact Score da 1.5): a porcentagem, de 0 a 100, dos chamados abertos
+ * na janela que afetaram hóspede, entre os que têm a resposta. "Não sei" e o
+ * chamado anterior à migração ficam fora da conta; sem nenhuma resposta, null.
+ */
+export function impactoHospedeDosChamados(
+  corretivas: readonly Corretiva[],
+  agora: Date,
+  janelaDias: number,
+): number | null {
+  const inicio = agora.getTime() - janelaDias * DIA_MS;
+  const respondidas = corretivas.filter(
+    (c) =>
+      c.abertaEm.getTime() > inicio &&
+      c.abertaEm.getTime() <= agora.getTime() &&
+      typeof c.impactoHospede === 'boolean',
+  );
+  if (!respondidas.length) return null;
+  const afetaram = respondidas.filter((c) => c.impactoHospede).length;
+  return Math.round((afetaram / respondidas.length) * 1000) / 10;
 }

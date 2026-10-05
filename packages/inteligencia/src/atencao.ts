@@ -1,9 +1,10 @@
 // Asset Attention Score (PRD, seção 13): a fila gerencial de ativos que
 // merecem investigação. Versão 1, com os pesos do exemplo do PRD. Criticidade
 // e custo informado são opcionais: entram quando a instrumentação da 1b
-// existir e o hotel preencher. Impacto no hóspede (1.5) e preventiva (1b)
-// ficam ausentes até haver fonte. O peso do componente ausente vai para os
-// presentes, e a lista de ausentes mostra o que falta.
+// existir e o hotel preencher. O impacto no hóspede vem, no 1.0, do indicador
+// do chamado (decisão de 05/10/2026), e a preventiva fica ausente até a 1b. O
+// peso do componente ausente vai para os presentes, e a lista de ausentes
+// mostra o que falta.
 import type { Criticidade } from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
@@ -21,7 +22,11 @@ export interface EntradaAtencao {
    * null quando nenhuma OS tem custo informado.
    */
   custoInformado12m?: number | null;
-  /** Guest Impact Score, de 0 a 100 (1.5); null sem dado. */
+  /**
+   * Impacto no hóspede, de 0 a 100; null sem dado. No 1.0, a porcentagem dos
+   * chamados que afetaram hóspede (`impactoHospedeDosChamados`); na 1.5, o
+   * Guest Impact Score, com versão nova do score.
+   */
   impactoHospede?: number | null;
   /** Preventiva vencida ou sinal de compliance aberto (1b); null sem dado. */
   preventivaOuCompliance?: boolean | null;

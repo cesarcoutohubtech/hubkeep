@@ -1,6 +1,6 @@
 # Propostas de ADR do HubKeep Intelligence
 
-**Situação:** proposta, de 01/10/2026, revista em 05/10/2026 com o relatório de lacunas e as decisões do Cesar do mesmo dia. Nenhuma está aprovada. Pela decisão de 30/09/2026, os ADRs do Intelligence só valem com a aprovação escrita de Cesar e Kaio. Depois de aprovadas, elas vão para o `docs/03-decisoes-tecnicas.md` com o número seguinte, num único PR de zona protegida mergeado pelo Cesar. Até lá, os nomes ficam como ADR-INT-1 a ADR-INT-5.
+**Situação:** proposta, de 01/10/2026, revista em 05/10/2026 com o relatório de lacunas e as decisões do Cesar do mesmo dia. Aprovadas por escrito em 05/10/2026 (seção "Respostas de 05/10/2026"), falta só confirmar que a aprovação é de Cesar e Kaio. Pela decisão de 30/09/2026, os ADRs do Intelligence só valem com a aprovação escrita de Cesar e Kaio. Depois de aprovadas, elas vão para o `docs/03-decisoes-tecnicas.md` com o número seguinte, num único PR de zona protegida mergeado pelo Cesar. Até lá, os nomes ficam como ADR-INT-1 a ADR-INT-5.
 
 **Base:**
 
@@ -9,7 +9,7 @@
 - as regras do `CLAUDE.md`;
 - o motor em `packages/inteligencia`: #82 e a branch `int-fornecedor`, sem migração e sem tela.
 
-A seção "Decisões para Cesar e Kaio", no fim, junta o que precisa de resposta.
+A seção "Respostas de 05/10/2026", no fim, registra as respostas às sete perguntas.
 
 ## ADR-INT-1 — Sinal e insight, com o ciclo de vida do insight no domínio
 
@@ -83,6 +83,7 @@ A seção "Decisões para Cesar e Kaio", no fim, junta o que precisa de resposta
   - Cada uma com `tenant_id NOT NULL`, RLS forçada, policies por papel e os seis casos mínimos de isolamento no pgTAP.
 - **Recálculo pontual** (PRD, seção 30) por handler do outbox, nunca por trigger.
 - **Sem IA em request de painel.** O painel lê os resultados gravados.
+- **Retenção de 12 meses** para os resultados diários (05/10/2026). A exclusão do que passou do prazo é lógica ou por job do worker, nunca por trigger. Como fazer isso sem dar DELETE a nenhum papel da aplicação é decisão do PR da tabela.
 
 ## ADR-INT-5 — Fronteira do módulo: o Intelligence depende do núcleo, nunca o contrário
 
@@ -137,12 +138,17 @@ Além da seção 37, o motor cobre a mesma área comum e o mesmo fornecedor (`si
 
 Quem monta essas formas a partir das portas é a aplicação, no PR das tabelas do Intelligence.
 
-## Decisões para Cesar e Kaio
+## Respostas de 05/10/2026
 
-1. **Aprovar ou ajustar os ADR-INT-1 a 5.** Só depois disso eles vão para o `docs/03`, num único PR.
-2. **Evidência do insight (INT-1):** guardar os ids, como o motor faz hoje, ou uma cópia do que a tela mostra. A proposta é guardar os ids: assim a RLS da tabela de origem decide o que quem pede vê, como no histórico da D1.
-3. **Quem altera as políticas do Intelligence (INT-3):** a proposta é só o Admin do grupo, como nas outras políticas.
-4. **Padrões numéricos:** pesos e faixas do PRD, limites de cada score (por exemplo, 5 corretivas em 90 dias para o componente cheio) e os da tabela de regras acima. A proposta é começar com eles e ajustar com os dados do piloto.
-5. **Limite do custo (INT-3):** R$ 10.000 em 12 meses como padrão do componente de custo, até haver custo de reposição.
-6. **Impacto no hóspede antes da 1.5:** o chamado ganha `impacto_hospede` (sim, não ou não informado) na instrumentação. A pergunta é se a atenção por ativo usa esse indicador interno como componente já no 1.0, como a fração dos chamados do ativo com hóspede afetado, ou se espera o Guest Impact Score da 1.5. A proposta é usar o indicador interno no 1.0, com o mesmo peso, e trocar pelo score quando ele existir (versão nova).
-7. **Retenção dos resultados diários (INT-4):** quanto tempo eles ficam guardados, e se há agregação mensal para a visão de rede.
+Respostas dadas por escrito na sessão do agente do Kaio, em 05/10/2026. A aprovação dos ADRs só vale com a confirmação escrita de Cesar e Kaio, registrada aqui antes do PR do `docs/03`.
+
+1. **ADR-INT-1 a 5: aprovados.** Vão juntos para o `docs/03`, num único PR de zona protegida, quando a fila estiver livre.
+2. **Evidência do insight (INT-1): os ids.** A RLS da tabela de origem decide o que quem pede vê, como no histórico da D1.
+3. **Quem altera as políticas do Intelligence (INT-3): só o Admin do grupo.**
+4. **Padrões numéricos: como proposto.** Os pesos e faixas do PRD e os limites deste documento valem até o ajuste com os dados do piloto.
+5. **Limite do custo (INT-3): R$ 10.000 em 12 meses.**
+6. **Impacto no hóspede antes da 1.5: usar o indicador do chamado.**
+   - No 1.0, o componente de impacto no hóspede da atenção por ativo é a porcentagem dos chamados do ativo, na janela, que afetaram hóspede (`impactoHospedeDosChamados`).
+   - "Não sei" e os chamados anteriores à migração ficam fora da conta.
+   - O peso é o mesmo do PRD. Quando o Guest Impact Score da 1.5 existir, ele substitui o indicador, com versão nova do score.
+7. **Retenção dos resultados diários (INT-4): 12 meses.** A agregação mensal para a visão de rede ainda está a confirmar.

@@ -64,6 +64,18 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
 - **Nome do arquivo das propostas:** a mensagem de retomada pedia `adr-propostas-intelligence.md`, mas as propostas já estavam na `main` como `propostas-adr-inteligencia.md`, desde o #82. Ficou o nome que já existe, para não ter dois arquivos.
 - **Local:** lint, prettier, typecheck (11 de 11) e testes verdes.
 
+- **Respostas às sete decisões (05/10/2026),** registradas no fim das propostas:
+  - ADR-INT-1 a 5 aprovados;
+  - evidência do insight pelos ids;
+  - só o Admin altera as políticas;
+  - padrões como propostos;
+  - limite de custo de R$ 10.000;
+  - impacto no hóspede pelo indicador do chamado no 1.0 (`impactoHospedeDosChamados`, já no motor, com 3 testes; 57 no pacote);
+  - retenção de 12 meses.
+- **Pendências:**
+  - confirmar se a aprovação vale por Cesar e Kaio;
+  - confirmar a agregação mensal.
+
 ### Ponto de retomada (05/10/2026, motor completo para o 1.0)
 
 - **PR aberto:** `int-fornecedor`, que não é zona protegida. Conferir com `gh pr checks`, e não mergear sem o Kaio revisar.
