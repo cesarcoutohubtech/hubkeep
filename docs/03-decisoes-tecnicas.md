@@ -701,3 +701,83 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - A regra excluída do Semgrep (`unsafe-add-mask-workflow-command`) fica justificada no workflow.
 - Os dois `nosemgrep` de TLS sem conferir o certificado, que apontavam para a pendência P6 do `docs/09`, saíram com a condição 1.
 - Fora deste ADR, listadas no `docs/09`: rate limiting (P1), endurecimento do banco de produção (P2), pentest (P3), MFA e limites de sessão (P4), sessão do PWA (P5) e as demais.
+
+## ADR-033 — Intelligence: sinal e insight, com o ciclo de vida do insight no domínio
+
+**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-1 (`docs/referencia/propostas-adr-inteligencia.md`). Os ADRs do Intelligence valem com a aprovação escrita de Cesar ou de Kaio. Essa regra é a decisão de 05/10/2026, confirmada pelo usuário na sessão do agente do Kaio, e substitui a exigência de 30/09/2026 de os dois aprovarem juntos.
+
+**Contexto:** o PRD do Intelligence (`docs/referencia/prd-hubkeep-intelligence-v1.md`, seções 21 e 22) propõe `intelligence_signal` e `intelligence_insight`, com status em inglês e uma tabela de sinais que copia o núcleo.
+
+**Decisão:**
+- **Insight** (`app.insight`, depois das migrações da instrumentação). Guarda:
+  - tenant e hotel (opcional só para os insights de rede, que só quem tem escopo de grupo ou bandeira lê);
+  - escopo, tipo e severidade (a faixa do score);
+  - score, versão e detalhamento;
+  - evidência, primeira e última detecção, responsável, encerramento e nota.
+- **A evidência guarda ids, não cópia:** a RLS da tabela de origem decide o que quem pede vê, como no histórico da D1.
+- **Estados canônicos no domínio** (ADR-027): `novo`, `em_revisao`, `aceito`, `em_acao`, `monitorando`, `resolvido` e `descartado`.
+  - As transições, e quem faz cada uma, ficam em `packages/inteligencia` e `packages/aplicacao`.
+  - O banco guarda só o formato do estado, com teste de paridade com o domínio.
+- **O score sugere e a pessoa decide:**
+  - o job abre ou atualiza o insight do mesmo escopo e da mesma regra, sem abrir um segundo;
+  - só uma pessoa aceita, descarta ou resolve.
+- **Sem tabela de sinais no 1.0:** o motor lê o núcleo pelas portas. A tabela de sinais nasce na 1.5, só para o feedback externo, com os três estados de associação.
+- **Texto pelo catálogo:** o insight guarda tipo, chaves e números, e não título nem resumo (regra 11).
+- Tudo auditado pela unit of work.
+
+## ADR-034 — Intelligence: scores determinísticos, versionados e explicáveis, calculados na aplicação
+
+**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-2.
+
+**Contexto:** o PRD (seções 28 e 29) sugere `metric_definition` com fórmula e views materializadas. Fórmula de score é regra de negócio (regra 2).
+
+**Decisão:**
+- **A fórmula fica em `packages/inteligencia`,** em TypeScript puro, com versão por score. Mudou a fórmula, sobe a versão. A versão 1 fica congelada na primeira gravação de resultado.
+- **Forma comum** (`score.ts`):
+  - valor de 0 a 100, faixa e versão;
+  - os componentes, cada um com peso, peso efetivo, valor, pontos e evidência;
+  - os componentes ausentes;
+  - a cópia da configuração usada.
+- **Dado ausente não vira zero:** o peso do componente sem fonte vai para os presentes, na proporção, e a tela mostra o que falta.
+- **No 1.0, o impacto no hóspede** é a porcentagem dos chamados do ativo que afetaram hóspede (`impactoHospedeDosChamados`, pelo `impacto_hospede` da instrumentação). O Guest Impact Score da 1.5 o substitui, com versão nova.
+- **"Por que estou vendo isso?"** sai de `motivosDoScore`, com a frase no catálogo, nos quatro idiomas.
+- Sem view materializada e sem função SQL nova.
+
+## ADR-035 — Intelligence: pesos, limites e faixas como políticas
+
+**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-3.
+
+**Decisão:**
+- **Uma chave de política por score,** no modelo do ADR-026, com o formato validado no domínio: `inteligencia.reincidencia`, `inteligencia.atencao_ativo`, `inteligencia.efetividade`, `inteligencia.sistemico` e `inteligencia.substituicao`.
+- **Herança grupo → bandeira → hotel,** pela `app.politica` existente, sem migração nova para isso. A mudança é auditada.
+- **Só o Admin do grupo** altera as políticas do Intelligence.
+- **Padrões:**
+  - os pesos e faixas do PRD e os limites de `packages/inteligencia` (`PADRAO_*`), até o ajuste com os dados do piloto;
+  - o custo da atenção por ativo compara o custo informado em 12 meses com R$ 10.000, enquanto não houver custo de reposição (fase 2);
+  - a escala da criticidade é a política `ativo.criticidade` do núcleo.
+- **O resultado guarda a configuração usada:** mudar o peso não muda o score já gravado.
+
+## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
+
+**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia.
+
+**Decisão:**
+- **Job diário** por Vercel Cron: `hk_worker`, um tenant por transação, unit of work com auditoria e evento.
+- **Resultados diários** em `app.metrica_ativo_diaria` (e `app.metrica_hotel_diaria`, se a performance pedir), **guardados por 12 meses.**
+- **Agregação mensal** para a visão de rede, gravada pelo mesmo job no fechamento do mês.
+- **No PR das tabelas:** o prazo de guarda da agregação mensal e a forma de tirar o que passou de 12 meses, sem DELETE para nenhum papel da aplicação.
+- Toda tabela com `tenant_id NOT NULL`, RLS forçada, policies por papel e os seis casos de isolamento.
+- **Recálculo pontual** por handler do outbox, nunca por trigger. Nenhuma IA em request de painel.
+
+## ADR-037 — Intelligence: o módulo depende do núcleo, nunca o contrário
+
+**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-5. Já aplicada no lint desde o #87.
+
+**Decisão:**
+- **`packages/inteligencia` é puro** como o `packages/dominio`: só importa `@hubkeep/dominio` e `@hubkeep/i18n`. O núcleo nunca o importa.
+- **O Intelligence lê o núcleo pelas portas** e só escreve nas tabelas dele.
+- **Opcional por tenant:** a tela e o job só rodam para quem tem o Intelligence contratado. A métrica de cobrança continua pendente.
+- **Divisão do trabalho:**
+  - as migrações das tabelas do núcleo (chamado, OS, ativo) são do agente do núcleo;
+  - as do Intelligence são do agente do Kaio, em branches `int-*`;
+  - vale um PR de zona protegida aberto por vez no repositório inteiro.

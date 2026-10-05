@@ -1,6 +1,6 @@
 # Propostas de ADR do HubKeep Intelligence
 
-**Situação:** proposta, de 01/10/2026, revista em 05/10/2026 com o relatório de lacunas e as decisões do Cesar do mesmo dia. Aprovadas por escrito em 05/10/2026 (seção "Respostas de 05/10/2026"), falta só confirmar que a aprovação é de Cesar e Kaio. Pela decisão de 30/09/2026, os ADRs do Intelligence só valem com a aprovação escrita de Cesar e Kaio. Depois de aprovadas, elas vão para o `docs/03-decisoes-tecnicas.md` com o número seguinte, num único PR de zona protegida mergeado pelo Cesar. Até lá, os nomes ficam como ADR-INT-1 a ADR-INT-5.
+**Situação:** proposta, de 01/10/2026, revista em 05/10/2026 com o relatório de lacunas e as decisões do Cesar do mesmo dia. Aprovadas por escrito em 05/10/2026 (seção "Respostas de 05/10/2026") e levadas ao `docs/03-decisoes-tecnicas.md` como ADR-033 a ADR-037, num único PR de zona protegida mergeado pelo Cesar. Vale o texto do `docs/03`; este documento fica como histórico da proposta. Os ADRs do Intelligence valem com a aprovação escrita de Cesar ou de Kaio. Essa regra é de 05/10/2026 e substitui a de 30/09/2026, que exigia os dois juntos.
 
 **Base:**
 
@@ -140,7 +140,7 @@ Quem monta essas formas a partir das portas é a aplicação, no PR das tabelas 
 
 ## Respostas de 05/10/2026
 
-Respostas dadas por escrito na sessão do agente do Kaio, em 05/10/2026. A aprovação dos ADRs só vale com a confirmação escrita de Cesar e Kaio, registrada aqui antes do PR do `docs/03`.
+Respostas dadas por escrito na sessão do agente do Kaio, em 05/10/2026. No mesmo dia ficou confirmado que basta a aprovação de um dos dois, Cesar ou Kaio.
 
 1. **ADR-INT-1 a 5: aprovados.** Vão juntos para o `docs/03`, num único PR de zona protegida, quando a fila estiver livre.
 2. **Evidência do insight (INT-1): os ids.** A RLS da tabela de origem decide o que quem pede vê, como no histórico da D1.
@@ -151,4 +151,4 @@ Respostas dadas por escrito na sessão do agente do Kaio, em 05/10/2026. A aprov
    - No 1.0, o componente de impacto no hóspede da atenção por ativo é a porcentagem dos chamados do ativo, na janela, que afetaram hóspede (`impactoHospedeDosChamados`).
    - "Não sei" e os chamados anteriores à migração ficam fora da conta.
    - O peso é o mesmo do PRD. Quando o Guest Impact Score da 1.5 existir, ele substitui o indicador, com versão nova do score.
-7. **Retenção dos resultados diários (INT-4): 12 meses.** A agregação mensal para a visão de rede ainda está a confirmar.
+7. **Retenção dos resultados diários (INT-4): 12 meses, com agregação mensal para a visão de rede.** O prazo de guarda da agregação mensal fica para o PR das tabelas.
