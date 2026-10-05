@@ -3,12 +3,14 @@
 //
 //   apps → aplicacao → dominio          db → aplicacao, dominio (implementa as portas)
 //   dominio não importa nada de IO      conector só conhece contratos (nunca o banco)
-//   apps não importam Kysely nem pg     tecnico (PWA) fala só com a API
+//   só db importa pg/postgres           tecnico (PWA) fala só com a API
+//   aplicacao sem módulo do Node        inteligencia é puro e ninguém do núcleo o importa
 //   no web, só src/servidor importa db e auth-admin
 //   entre pacotes, só pelo nome (@hubkeep/...), nunca por caminho relativo
 //   Kysely e execução direta de consulta, só em packages/db
 //   i18n (catálogos) roda também no navegador: sem módulo do Node
-//   nenhum texto de interface fixo nos apps: sai do catálogo (ADR-022)
+//   nenhum texto de interface fixo nos apps: sai do catálogo (ADR-022), inclusive
+//   nas props rotulo/titulo/mensagem, em alert/confirm/prompt e no document.title
 //
 // A prova de que a regra morde está em tests/fronteiras.test.ts.
 import js from '@eslint/js';
@@ -26,6 +28,8 @@ const ELEMENTOS = [
   { type: 'auth-admin', pattern: 'packages/auth-admin' },
   { type: 'i18n', pattern: 'packages/i18n' },
   { type: 'imagem', pattern: 'packages/imagem' },
+  // HubKeep Intelligence (módulo opcional): depende do núcleo, nunca o contrário.
+  { type: 'inteligencia', pattern: 'packages/inteligencia' },
   // Filho de web: o código de servidor do Next (raiz de composição, contexto,
   // http). É o único trecho do web que enxerga db e auth-admin; rota, página e
   // componente chegam ao banco e ao Auth por ele.
@@ -80,6 +84,24 @@ const SQL_CRU = [
   {
     selector: "MemberExpression[object.property.name='dynamic'][property.name=/^(ref|table)$/]",
     message: 'Identificador dinâmico do Kysely só em packages/db (S1, ADR-032).',
+  },
+];
+// B3 (docs/11): texto fixo que o JSX não mostra, mas o usuário lê. A regra do
+// formatjs só olha JSX; isto pega o literal passado direto ao diálogo do
+// navegador e ao título da aba. Literal guardado em variável fica para a revisão.
+const LITERAL = '/^(Literal|TemplateLiteral)$/';
+const TEXTO_FIXO_FORA_DO_JSX = [
+  {
+    selector: `CallExpression[callee.name=/^(alert|confirm|prompt)$/][arguments.0.type=${LITERAL}]`,
+    message: 'Texto de alert/confirm/prompt sai do catálogo (regra 11, ADR-022).',
+  },
+  {
+    selector: `CallExpression[callee.object.name=/^(window|globalThis)$/][callee.property.name=/^(alert|confirm|prompt)$/][arguments.0.type=${LITERAL}]`,
+    message: 'Texto de alert/confirm/prompt sai do catálogo (regra 11, ADR-022).',
+  },
+  {
+    selector: `AssignmentExpression[left.object.name='document'][left.property.name='title'][right.type=${LITERAL}]`,
+    message: 'O título da página sai do catálogo (regra 11, ADR-022).',
   },
 ];
 const TRANSACAO_DE = {
@@ -143,11 +165,36 @@ export default tseslint.config(
               allow: para('dominio', 'contratos', 'i18n', 'imagem'),
             },
             { from: { element: { type: 'conector' } }, allow: para('contratos') },
+            // O Intelligence lê o domínio e formata pelo i18n; o resto do núcleo chega
+            // a ele pelas portas que a aplicação monta, nunca o contrário.
+            { from: { element: { type: 'inteligencia' } }, allow: para('dominio', 'i18n') },
 
             // dominio é puro: nenhum pacote externo e nenhum módulo do Node.
             {
               from: { element: { type: 'dominio' } },
               disallow: { to: { module: { origin: ['external', 'core'] } } },
+            },
+            // aplicacao orquestra pelas portas: o IO (arquivo, rede, processo) fica
+            // em quem as implementa (db, auth-admin) ou na raiz de composição (B11).
+            {
+              from: { element: { type: 'aplicacao' } },
+              disallow: { to: { module: { origin: 'core' } } },
+              message: 'packages/aplicacao não importa módulo do Node: o IO fica atrás das portas.',
+            },
+            // inteligencia é puro como o dominio: sem pacote externo nem módulo do Node.
+            {
+              from: { element: { type: 'inteligencia' } },
+              disallow: { to: { module: { origin: ['external', 'core'] } } },
+              message: 'packages/inteligencia é puro: sem pacote externo nem módulo do Node.',
+            },
+            // Nenhum pacote nem app do núcleo importa o Intelligence: desligar o módulo
+            // não pode quebrar o núcleo (decisão do Cesar de 30/09/2026). A rota do
+            // próprio Intelligence, quando existir, ganha uma liberação explícita.
+            {
+              from: { element: { types: { anyOf: TIPOS.filter((t) => t !== 'inteligencia') } } },
+              disallow: para('inteligencia'),
+              message:
+                'O núcleo não importa @hubkeep/inteligencia: o módulo depende do núcleo, nunca o contrário.',
             },
             // i18n vai no bundle do navegador (web e PWA): nenhum módulo do Node.
             {
@@ -161,12 +208,12 @@ export default tseslint.config(
               disallow: { to: { module: { origin: ['external', 'core'] } } },
               message: 'packages/imagem roda no navegador: sem pacote externo nem módulo do Node.',
             },
-            // Apps não tocam o banco diretamente; só pelos repositórios de packages/db.
+            // Ninguém fora de packages/db fala com o banco diretamente; só pelos
+            // repositórios (B11: antes valia só para os apps).
             {
-              from: {
-                element: { types: { anyOf: ['web', 'web-servidor', 'tecnico', 'conector'] } },
-              },
+              from: { element: { types: { anyOf: TIPOS.filter((t) => t !== 'db') } } },
               disallow: { to: { module: { origin: 'external', source: ['pg', 'postgres'] } } },
+              message: 'pg/postgres só em packages/db; fora dele, use os repositórios.',
             },
             // Kysely, inclusive o `sql` de SQL cru, só em packages/db (ADR-016): fora
             // dele uma consulta escaparia dos repositórios. As fronteiras olham
@@ -243,6 +290,7 @@ export default tseslint.config(
         },
         ...HTML_CRU,
         ...SQL_CRU,
+        ...TEXTO_FIXO_FORA_DO_JSX,
       ],
     },
   },
@@ -279,7 +327,11 @@ export default tseslint.config(
     rules: {
       'formatjs/no-literal-string-in-jsx': [
         'error',
-        { props: { include: [['*', '{label,placeholder,title,alt,aria-label}']] } },
+        {
+          props: {
+            include: [['*', '{label,placeholder,title,alt,aria-label,rotulo,titulo,mensagem}']],
+          },
+        },
       ],
     },
   },
