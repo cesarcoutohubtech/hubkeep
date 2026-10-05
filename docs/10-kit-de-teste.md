@@ -72,6 +72,12 @@ pnpm --filter @hubkeep/web dev
 pnpm --filter @hubkeep/tecnico dev
 ```
 
+Ou os dois num terminal só, com a saída de cada um prefixada pelo nome do app:
+
+```powershell
+pnpm dev
+```
+
 - Web: `http://localhost:3000` (login em `/login`).
 - PWA: `http://localhost:5173`.
 

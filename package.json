@@ -9,6 +9,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings 0 && prettier --check .",
     "format": "prettier --write .",
+    "dev": "turbo run dev --filter=@hubkeep/web --filter=@hubkeep/tecnico",
     "typecheck": "tsc --noEmit -p . && turbo run typecheck",
     "test": "turbo run test && vitest run",
     "db:testar-dev": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/testar-banco-dev.mjs",
