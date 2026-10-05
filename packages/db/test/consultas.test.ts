@@ -431,8 +431,15 @@ describe.skipIf(!temBanco)('C7 — listas e linha do tempo', { timeout: 60_000 }
     ]);
   });
 
-  it('o proprietário vê o chamado da UH, mas não lê a auditoria; fora do escopo, 404', async () => {
-    expect(await consultas.linhaDoTempo(ctx(U.dono), id.c1)).toEqual([]);
+  it('o proprietário lê a do chamado e da OS da UH, não a da parada nem os nomes; fora do escopo, 404', async () => {
+    // Migração 0028 (D1): a parada fica de fora (decisão de 30/09/2026, C5), e o
+    // proprietário não lê os membros, então quem gravou vem sem nome.
+    const eventos = await consultas.linhaDoTempo(ctx(U.dono), id.c1);
+    expect(eventos.map((e) => [e.entidade, e.acao, e.usuarioNome])).toEqual([
+      ['chamado', 'abrir', null],
+      ['os', 'gerar', null],
+      ['os', 'reabrir', null],
+    ]);
     await expect(consultas.linhaDoTempo(ctx(U.gerente2), id.c1)).rejects.toMatchObject({
       codigo: 'chamado_nao_encontrado',
     });
