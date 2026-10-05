@@ -26,8 +26,11 @@ const EM_CODIGO = [
   new RegExp(`env\\[\\s*['"\`]${NOME}['"\`]\\s*\\]`, 'g'),
   // Sintaxe env(...) do kysely-codegen e da CLI do Supabase.
   new RegExp(`env\\(${NOME}\\)`, 'g'),
-  // Auxiliares da raiz de composição do web, que recebem o nome da variável.
-  new RegExp(`(?:exigirEnv|conexao)\\(\\s*'${NOME}'`, 'g'),
+  // Auxiliares que recebem o nome da variável: os da raiz de composição do web e
+  // o exigir() do conector e dos scripts de operação.
+  new RegExp(`(?:exigirEnv|conexao|exigir)\\(\\s*'${NOME}'`, 'g'),
+  // Variáveis do build do Vite (PWA).
+  new RegExp(`import\\.meta\\.env\\.${NOME}`, 'g'),
 ];
 
 /** Nos workflows: chaves de `env:` e o que se exporta ou manda para o GITHUB_ENV. */
@@ -42,8 +45,9 @@ const EXTENSOES_WORKFLOW = /^\.github\/workflows\/.*\.ya?ml$/;
 
 // Variáveis do sistema ou da plataforma, que não se configuram por ambiente.
 // Entra aqui só o que for do sistema, nunca do HubKeep. NODE_ENV é definida
-// pelo Next (development no `next dev`, production no build) — S1.
-const DO_SISTEMA: readonly string[] = ['NODE_ENV'];
+// pelo Next (development no `next dev`, production no build) — S1. PROD, DEV e
+// MODE são do Vite (import.meta.env).
+const DO_SISTEMA: readonly string[] = ['NODE_ENV', 'PROD', 'DEV', 'MODE'];
 
 function arquivosDoRepositorio(): string[] {
   const saida = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
@@ -121,8 +125,26 @@ describe('.env.example cobre as variáveis lidas no repositório', () => {
     ['export no workflow', 'HK_APP_SENHA_CI', '.github/workflows/banco.yml'],
     ['echo para o GITHUB_ENV', 'HK_TESTE_URL_WORKER', '.github/workflows/banco.yml'],
     ['nome montado em scripts/ops', 'HK_APP_SENHA_DEV', CONSTANTES],
+    ['import.meta.env do Vite', 'VITE_API_URL', 'apps/tecnico/src/api.ts'],
+    ['exigir() de scripts/ops', 'HK_DEMO_SENHA', 'scripts/ops/dados-demonstracao.ts'],
   ])('a varredura enxerga %s (controle: %s em %s)', (_forma, nome, arquivo) => {
     expect([...(lidas().get(nome) ?? [])]).toContain(arquivo);
+  });
+
+  // B12 (docs/11): sem isto, a variável que perdeu o último leitor continua no
+  // modelo, e o próximo ambiente configura o que ninguém usa.
+  it('toda variável do .env.example é lida por alguém (as reservadas ficam comentadas)', () => {
+    const lidasAgora = lidas();
+    const sobrando = [...modelo().keys()].filter((nome) => !lidasAgora.has(nome)).sort();
+    expect(sobrando).toEqual([]);
+  });
+
+  it('o .env.example não repete variável', () => {
+    const nomes = readFileSync('.env.example', 'utf8')
+      .split('\n')
+      .map((l) => /^([A-Z_][A-Z0-9_]*)=/.exec(l.trim())?.[1])
+      .filter((n): n is string => Boolean(n));
+    expect(nomes.filter((n, i) => nomes.indexOf(n) !== i)).toEqual([]);
   });
 
   it('o .env.example não traz valor real: vazio ou modelo com <marcadores>', () => {
