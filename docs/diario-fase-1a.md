@@ -1022,3 +1022,23 @@ Dividida em duas partes, cada uma no seu PR:
   - no `semear.test.ts` (só na CI), o histórico no escopo de cada papel.
 - **docs/10:** passo a passo do histórico. O proprietário ganha linha do tempo e histórico, depois do `db push` da 0028. A lacuna saiu da seção 5.
 - **Local:** lint, typecheck 10/10 e testes 17/17 verdes.
+
+### Fechamento da fase 1a: conferência de conformidade (05/10/2026)
+- **#81 (D1)** foi mergeado com o job do banco vermelho no último commit. O pgTAP passou; falhou um teste de integração do `packages/db` que esperava a linha do tempo do proprietário vazia. A `main` repetiu a falha no `3570da8`. A correção está no **#83**.
+- **No mesmo #83, a exceção do `pnpm audit`.** Um alerta alto novo no `braces`, GHSA-vfj7-8cjw-p6xm, sem versão corrigida, passou a reprovar todos os PRs. O `braces` só entra pelo lint de fronteiras e pelo gerador de tipos. A exceção ficou registrada com o motivo em `pnpm-workspace.yaml`, como pede o `ci.yml`, para revisão do Cesar.
+- **Antes do merge do #81:** a 0028 incluía a auditoria da parada para o proprietário, o que contrariava a decisão de 30/09/2026 (C5, pgTAP 020). A parada saiu da policy, e os testes 003 e 023 foram ajustados.
+- **Conferência de conformidade** em `docs/11-conformidade-fase-1a.md`, só por leitura, em quatro frentes:
+  - **resultado:** nenhuma violação das regras inegociáveis;
+  - **quatro achados médios:** a identidade de demonstração com a chave secreta sem ADR, nenhuma trava contra preview no banco de produção, o `hotel_id` fora do log e o `pnpm dev` inexistente na raiz;
+  - **treze baixos:** guardas de lint, meta-teste e testes incompletas, e pendências de operação.
+  - Cada correção vai num PR próprio, só com o aval do Cesar.
+- **Pendente do Cesar:** o `db push` da 0028. Até lá, o proprietário vê o histórico e a linha do tempo vazios no dev.
+
+### Ponto de retomada (05/10/2026, fim da etapa D)
+- **Etapa D:** feita. A D1 está na `main` (#81). A conferência de conformidade está neste PR (`docs/11`).
+- **Para a `main` voltar a verde:** o #83, com o teste de integração e a exceção do `pnpm audit`. Ele entra antes de qualquer outro merge, inclusive o #82 (`int-motor`, que não é desta sessão). Depois do merge: `gh run list --branch main`.
+- **Do Cesar:**
+  - `db push` da 0028;
+  - teste do kit no notebook: as correções que ele pedir vão em PRs próprios;
+  - aval para corrigir os achados da conformidade.
+- **Parada:** a fase 1b só começa com o aval do Cesar.
