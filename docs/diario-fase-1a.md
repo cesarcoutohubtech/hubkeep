@@ -1073,91 +1073,21 @@ Dividida em duas partes, cada uma no seu PR:
 
 ### Achados do docs/11: PRs abertos (05/10/2026)
 - **#85** (PRD e PR-I1) mergeado. As decisões do Cesar chegaram depois do merge e estão no **#86**.
-- **Zona protegida, um de cada vez:** **#87**, ESLint (fronteira do , B11 e B3). Depois dele vêm os meta-testes (B1, B2, B6 e B8), o M1 e o B13.
+- **Zona protegida, um de cada vez:** **#87**, ESLint (fronteira do `packages/inteligencia`, B11 e B3). Depois dele vêm os meta-testes (B1, B2, B6 e B8), o M1 e o B13.
 - **Fora da zona protegida, em paralelo**, cada um no seu PR e sem mexer no diário, para não haver conflito entre eles:
-  - **#88:** M4, Scope: all 12 workspace projects
-✓ Lockfile passes supply-chain policies (verified 3d ago)
-Lockfile is up to date, resolution step is skipped
-Progress: resolved 1, reused 0, downloaded 0, added 0
-Packages: +591
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Progress: resolved 591, reused 61, downloaded 0, added 0
-Progress: resolved 591, reused 119, downloaded 0, added 0
-
-   ╭────────────────────────────────────────────────────────────────────────╮
-   │                                                                        │
-   │                  Update available! 11.25.0 → 12.9.1.                   │
-   │                  Changelog: https://pnpm.io/v/12.9.1                   │
-   │   To update, run: Invoke-WebRequest https://get.pnpm.io/install.ps1    │
-   │                 -UseBasicParsing | Invoke-Expression                   │
-   │                                                                        │
-   ╰────────────────────────────────────────────────────────────────────────╯
-
-Progress: resolved 591, reused 162, downloaded 0, added 0
-Progress: resolved 591, reused 209, downloaded 0, added 0
-Progress: resolved 591, reused 317, downloaded 0, added 0
-Progress: resolved 591, reused 545, downloaded 0, added 0
-Packages are hard linked from the content-addressable store to the virtual store.
-  Content-addressable store is at: C:UserscesarAppDataLocalpnpmstore11
-  Virtual store is at:             node_modules/.pnpm
-Progress: resolved 591, reused 586, downloaded 0, added 12
-Progress: resolved 591, reused 586, downloaded 0, added 27
-Progress: resolved 591, reused 586, downloaded 0, added 31
-Progress: resolved 591, reused 586, downloaded 0, added 34
-Progress: resolved 591, reused 586, downloaded 0, added 89
-Progress: resolved 591, reused 587, downloaded 0, added 123
-Progress: resolved 591, reused 587, downloaded 0, added 137
-Progress: resolved 591, reused 587, downloaded 0, added 156
-Progress: resolved 591, reused 587, downloaded 0, added 170
-Progress: resolved 591, reused 587, downloaded 0, added 176
-Progress: resolved 591, reused 587, downloaded 0, added 220
-Progress: resolved 591, reused 587, downloaded 0, added 258
-Progress: resolved 591, reused 587, downloaded 0, added 288
-Progress: resolved 591, reused 587, downloaded 0, added 300
-Progress: resolved 591, reused 587, downloaded 0, added 320
-Progress: resolved 591, reused 587, downloaded 0, added 329
-Progress: resolved 591, reused 587, downloaded 0, added 375
-Progress: resolved 591, reused 587, downloaded 0, added 437
-Progress: resolved 591, reused 587, downloaded 0, added 499
-Progress: resolved 591, reused 587, downloaded 0, added 530
-Progress: resolved 591, reused 587, downloaded 0, added 587
-Progress: resolved 591, reused 587, downloaded 0, added 588
-Progress: resolved 591, reused 587, downloaded 0, added 589
-Progress: resolved 591, reused 587, downloaded 0, added 590
-Progress: resolved 591, reused 587, downloaded 0, added 591
-Progress: resolved 591, reused 587, downloaded 0, added 591, done
-
-devDependencies:
-+ @eslint/js 10.0.1
-+ @types/node 26.6.2
-+ @types/pg 8.23.1
-+ eslint 10.11.0
-+ eslint-config-prettier 10.1.8
-+ eslint-import-resolver-typescript 4.4.5
-+ eslint-plugin-boundaries 7.2.0
-+ eslint-plugin-formatjs 8.1.0
-+ globals 17.12.0
-+ pg 8.23.0
-+ prettier 3.9.9
-+ turbo 2.11.3
-+ typescript 6.0.3
-+ typescript-eslint 8.70.1
-+ vitest 5.0.1
-
-Done in 51.4s using pnpm v11.25.0
-undefined
-[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command "dev" not found na raiz;
+  - **#88:** M4, `pnpm dev` na raiz;
   - **#89:** B9, crons de SLA e preventiva fora do agendamento;
-  - **#90:** B12,  só com variável lida, e o teste olhando o Vite e o ;
-  - **#91:** B5,  do PWA, e  aceitando só o convite até a 1c;
+  - **#90:** B12, `.env.example` só com variável lida, e o teste olhando o Vite e o `exigir()`;
+  - **#91:** B5, `lang` do PWA, e `/auth/confirmar` aceitando só o convite até a 1c;
   - **#92:** B4, es e fr obrigatórios e códigos de erro montados em template;
-  - **#93:** M2, o preview recusa o banco de produção ();
-  - **#94:** M3,  no log e no Sentry.
-- **Ordem dos merges:** o #90 e o #93 mexem no ; quem entrar depois pode precisar atualizar o branch.
+  - **#93:** M2, o preview recusa o banco de produção (`HK_REF_PRODUCAO`);
+  - **#94:** M3, `hotel_id` no log e no Sentry.
+- **Ordem dos merges:** o #90 e o #93 mexem no `.env.example`; quem entrar depois pode precisar atualizar o branch.
+- **Incidente sem dano:** um comando com crase dentro de aspas duplas no bash executou trechos do texto. Um `pnpm install` rodou dentro do worktree `wt/docs-pr-i1`, que é um checkout do HubKeep, e a saída foi parar neste diário num commit do #86, corrigido no commit seguinte. Regra: texto com crase vai por arquivo (Write), nunca dentro de `node -e "..."`.
 
 ### Ponto de retomada (05/10/2026, achados do docs/11)
-- **Ao retomar:**  de #86 a #94 e . A  vermelha se corrige antes de outro merge.
-- **Próximo PR de zona protegida**, só depois do merge do #87: meta-testes (B1, B2, B6 e B8, com a migração pequena da policy de INSERT de ). Depois, M1 e o resto do B13.
+- **Ao retomar:** `gh pr checks` de #86 a #94 e `gh run list --branch main`. A `main` vermelha se corrige antes de outro merge.
+- **Próximo PR de zona protegida**, só depois do merge do #87: meta-testes (B1, B2, B6 e B8, com a migração pequena da policy de INSERT de `atribuicao_escopo`). Depois, M1 e o resto do B13.
 - **Do Cesar:**
   - o merge do #87, com bypass;
   - o ajuste do B13 no GitHub;
