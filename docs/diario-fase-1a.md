@@ -1058,14 +1058,42 @@ Dividida em duas partes, cada uma no seu PR:
   - a proposta tem três migrações, a do ativo, a do chamado e a dos códigos de manutenção, cada uma num PR de zona protegida, com o impacto no PWA tudo opcional;
   - também lista os conflitos do PRD com as regras.
 
-### Ponto de retomada (05/10/2026, PR-I1)
-- **PR aberto:** `docs-pr-i1-lacunas`, só docs e fora da zona protegida. Conferir `gh pr checks` antes de dar como pronto.
+### Decisões do Cesar sobre o PR-I1 e o docs/11 (05/10/2026)
+- **Instrumentação** (relatório de lacunas atualizado neste PR):
+  - as três migrações entram no começo da 1b, antes de qualquer outra tarefa dela, na ordem proposta: ativo; chamado e OS; códigos de manutenção;
+  - versão mínima de custo e fornecedor, fora do PWA: "executado por" na triagem (equipe interna ou terceiro, com o nome do terceiro) e "custo informado" no aceite (valor opcional em reais, sem aprovação nem alçada). O módulo de custos e fornecedores segue na fase 2;
+  - os códigos são cadastrados pelo Admin do grupo, com padrões por categoria. A obrigatoriedade é política por hotel, desligada por padrão, e no PWA os códigos aparecem como sugestão.
+  - **A confirmar na 1b:** com a política ligada, a cobrança dos códigos fica no aceite, para não recusar uma conclusão feita offline.
+- **docs/11:** o agrupamento e as recomendações estão aprovados, com uma mudança no B5. A recuperação de senha entra no piloto, na fase 1c, junto com o e-mail próprio; até lá, a rota `auth/confirmar` recusa `recovery` e `magiclink`. O ajuste do B13 no GitHub (Gitleaks e Semgrep obrigatórios) fica com o Cesar.
+- **Ordem de trabalho:**
+  1. o #85 com a CI verde;
+  2. os PRs de zona protegida, um de cada vez: ESLint (fronteira do `packages/inteligencia`, B11 e B3), meta-testes (B1, B2, B6 e B8), M1 e B13;
+  3. em paralelo, fora da zona protegida, cada um no seu PR: M2, M3, M4, B4, B5, B9 e B12.
+- **Fase 1b:** só com o aval do Cesar, depois do teste do kit.
+
+### Achados do docs/11: PRs abertos (05/10/2026)
+- **#85** (PRD e PR-I1) mergeado. As decisões do Cesar chegaram depois do merge e estão no **#86**.
+- **Zona protegida, um de cada vez:** **#87**, ESLint (fronteira do `packages/inteligencia`, B11 e B3). Depois dele vêm os meta-testes (B1, B2, B6 e B8), o M1 e o B13.
+- **Fora da zona protegida, em paralelo**, cada um no seu PR e sem mexer no diário, para não haver conflito entre eles:
+  - **#88:** M4, `pnpm dev` na raiz;
+  - **#89:** B9, crons de SLA e preventiva fora do agendamento;
+  - **#90:** B12, `.env.example` só com variável lida, e o teste olhando o Vite e o `exigir()`;
+  - **#91:** B5, `lang` do PWA, e `/auth/confirmar` aceitando só o convite até a 1c;
+  - **#92:** B4, es e fr obrigatórios e códigos de erro montados em template;
+  - **#93:** M2, o preview recusa o banco de produção (`HK_REF_PRODUCAO`);
+  - **#94:** M3, `hotel_id` no log e no Sentry.
+- **Ordem dos merges:** o #90 e o #93 mexem no `.env.example`; quem entrar depois pode precisar atualizar o branch.
+- **Incidente sem dano:** um comando com crase dentro de aspas duplas no bash executou trechos do texto. Um `pnpm install` rodou dentro do worktree `wt/docs-pr-i1`, que é um checkout do HubKeep, e a saída foi parar neste diário num commit do #86, corrigido no commit seguinte. Regra: texto com crase vai por arquivo (Write), nunca dentro de `node -e "..."`.
+
+### Ponto de retomada (05/10/2026, achados do docs/11)
+- **Ao retomar:** `gh pr checks` de #86 a #94 e `gh run list --branch main`. A `main` vermelha se corrige antes de outro merge.
+- **Próximo PR de zona protegida**, só depois do merge do #87: meta-testes (B1, B2, B6 e B8, com a migração pequena da policy de INSERT de `atribuicao_escopo`). Depois, M1 e o resto do B13.
 - **Do Cesar:**
-  - decisões do PR-I1: custo e fornecedor, ordem das migrações, quem cadastra os códigos e a obrigatoriedade deles;
-  - aval para os achados do `docs/11`;
-  - teste do kit no notebook, que também deixa o dev com dados para conferir o proprietário.
-- **Pendente do núcleo, combinado em 01/10:** a regra de fronteira do `packages/inteligencia` no `eslint.config.mjs`. É zona protegida e pode ir junto com o B11 do `docs/11`.
-- **Agente do Kaio:** com as decisões do PR-I1, troca os campos "(fase A)" do `historico.ts` pelos nomes reais.
+  - o merge do #87, com bypass;
+  - o ajuste do B13 no GitHub;
+  - decidir se o PWA reporta erro ao Sentry (resto do M3);
+  - o teste do kit no notebook;
+  - o aval para a 1b.
 - **Parada:** a fase 1b só começa com o aval do Cesar.
 
 ### PR de ESLint: fronteira do Intelligence, B11 e B3 (05/10/2026)
