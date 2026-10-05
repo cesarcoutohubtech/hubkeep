@@ -140,6 +140,11 @@ export function criarIdentidadeDeDemonstracao(opcoes: {
   url: string;
   senha: string;
 }): ProvedorDeIdentidade {
+  // Adendo ao ADR-024 (M1 do docs/11): na Vercel, preview ou produção, nunca.
+  // Repete a trava de apps/web/src/servidor/demonstracao.ts no dono da chave.
+  if (process.env.VERCEL_ENV) {
+    throw new Error('A identidade de demonstração não roda na Vercel.');
+  }
   const admin = clienteAdmin(opcoes.url);
   return {
     async garantirUsuario({ email, nome, tenantId, nomeTenant }) {

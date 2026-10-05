@@ -407,6 +407,16 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Miniatura:** a imagem é comprimida (JPEG, lado maior de 1600 px) e ganha a miniatura (320 px) no navegador, antes do envio, pelo mesmo código no PWA e no web (`packages/imagem`, canvas, sem pacote externo nem módulo do Node, liberado pelas fronteiras só para as telas do web e o PWA). Assim a foto enviada pelo computador também aparece em miniatura no celular. PDF vai como está. A foto sem rede, na fila offline, entra com a C4.
 - **Verificação:** pgTAP 015 (30 casos de isolamento, checks de caminho e remoção); `packages/db/test/anexos.test.ts`, com banco real (anexo de outro hotel dá 404, o proprietário da UH baixa a miniatura, auditoria e evento, e o banco barra sem as regras da aplicação); testes da aplicação, do PWA e do envio pelo web (`apps/web/test/enviar-anexo.test.ts`).
 
+**Adendo — conta do kit de teste (M1 do `docs/11`).** Status: proposto em 05/10/2026, depois da conferência de conformidade da fase 1a; aguarda a aprovação do Cesar.
+- **Contexto:** o kit de teste (#77, `docs/10`) cria uma conta por papel, já confirmada e com a senha de teste, para cada papel entrar direto pela tela de login, sem e-mail. Isso usa a secret key (`auth.admin.createUser` e `updateUserById`) em `criarIdentidadeDeDemonstracao`, no `packages/auth-admin`. O uso estava só no diário; a regra 5 e este ADR autorizavam a chave só para o convite e a URL assinada.
+- **Decisão:** a secret key também cria e atualiza a conta de demonstração, com quatro travas:
+  - **fora da Vercel:** com `VERCEL_ENV` definida (preview ou produção), a função recusa antes de criar o cliente, no `auth-admin` e de novo em `apps/web/src/servidor/demonstracao.ts`;
+  - **só e-mail do domínio `.test`** (RFC 2606), que nunca é de uma pessoa: a senha de teste não sobrescreve a de uma conta de verdade;
+  - **nenhuma rota usa:** só o script `pnpm demo:dados`, que confere que todas as conexões são do HubKeep-dev, e o teste dele na CI;
+  - **o resto do convite segue o caso de uso de sempre:** membro, atribuição, auditoria e evento pela unit of work, no `hk_app`. A chave continua sem ler nem gravar tabela do HubKeep.
+- **Regra 5 do `CLAUDE.md`:** passa a citar a conta do kit de teste, fora da Vercel.
+- **Verificação:** `packages/auth-admin/test/demonstracao.test.ts` e `apps/web/test/demonstracao-fora-da-vercel.test.ts` (com `VERCEL_ENV` de preview ou produção, as duas entradas recusam antes de tocar o Supabase); `semear.test.ts` na CI; `tests/secret-key-so-no-auth-admin.test.ts`, que continua prendendo a chave ao `auth-admin`.
+
 ## ADR-025 — Sincronização offline do PWA: fila no aparelho e chave de idempotência gravada com o efeito
 
 **Status:** aprovada por Cesar em 26/09/2026, depois do merge do #31, com os ajustes (a) a (d), aplicados no PR de ajustes do ADR-025. **Adendo de 28/09/2026 (dados guardados no aparelho, B3b da fase 1a):** aprovado por Cesar em 28/09/2026, depois do merge do #50.
