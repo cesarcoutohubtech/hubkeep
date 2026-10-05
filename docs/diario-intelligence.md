@@ -106,7 +106,7 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
     - o corte dos 12 meses (`limiteDeRetencao`) e o mês que o job fecha.
   - **Catálogos:** `erro.insight_fora_do_escopo` nos quatro idiomas.
   - **Testes:** 89 no pacote e 319 na raiz.
-- **Propostas que esperam a aprovação de Cesar ou Kaio:**
+- **Aprovadas por escrito pelo usuário em 05/10/2026, como sugeridas:**
   - quem decide o insight: o Admin do grupo, o Gestor CSC e o Gerente do hotel, cada um no próprio escopo, e o insight de rede só com escopo de grupo ou da bandeira;
   - as transições;
   - o silêncio de 30 dias depois do descarte, salvo se a faixa subir;
@@ -118,9 +118,7 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
 ### Ponto de retomada (05/10/2026, insight e políticas)
 
 - **PR aberto:** `int-insight`, que não é zona protegida. Conferir com `gh pr checks`; o merge é do usuário.
-- **Esperando:**
-  - a decisão sobre as propostas acima;
-  - as três migrações da instrumentação no começo da 1b.
+- **Esperando:** as três migrações da instrumentação no começo da 1b.
 - **Próximo passo:** as tabelas `app.insight` e `app.metrica_ativo_diaria`, num PR de zona protegida, com a fila livre.
 - **Parada:** nada de migração nem tela antes disso.
 

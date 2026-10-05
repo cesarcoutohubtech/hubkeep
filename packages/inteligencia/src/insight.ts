@@ -3,10 +3,10 @@
 // paridade. O score sugere e a pessoa decide: o job só abre ou atualiza o
 // insight (decidirDeteccao), e toda transição é de uma pessoa (decidirNoInsight).
 //
-// Quem decide é proposta deste módulo, à espera da aprovação de Cesar ou Kaio:
-// o Admin do grupo, o Gestor CSC e o Gerente do hotel, cada um no próprio
-// escopo. O insight de rede (sem hotel) só por quem tem escopo de grupo, ou da
-// bandeira dele.
+// Quem decide, as transições, o silêncio depois do descarte e o resolvido que
+// volta foram aprovados por escrito em 05/10/2026 (PR #98): o Admin do grupo, o
+// Gestor CSC e o Gerente do hotel, cada um no próprio escopo. O insight de rede
+// (sem hotel) só por quem tem escopo de grupo, ou da bandeira dele.
 import {
   Conflito,
   PermissaoNegada,
@@ -74,7 +74,7 @@ export const TRANSICOES_DO_INSIGHT: { [A in AcaoDoInsight]: TransicaoDoInsight }
   descartar: { de: ['novo', 'em_revisao', 'aceito'], para: 'descartado', exigeNota: true },
 };
 
-/** Proposta: papéis que decidem o insight, no escopo de cada um. */
+/** Papéis que decidem o insight, no escopo de cada um (aprovado em 05/10/2026). */
 export const PAPEIS_DO_INSIGHT: readonly Papel[] = ['admin_grupo', 'gestor_csc', 'gerente_hotel'];
 
 /** Onde o insight vale: um hotel, ou a rede (do grupo, ou de uma bandeira). */
@@ -162,7 +162,7 @@ export interface Deteccao {
 
 export interface ConfigDeteccao {
   /**
-   * Proposta: depois do descarte, o job não reabre a mesma chave por estes
+   * Aprovado em 05/10/2026: depois do descarte, o job não reabre a mesma chave por estes
    * dias, a menos que a faixa suba. Resolvido não silencia: o problema que
    * volta depois de resolvido abre insight novo, ligado ao anterior.
    */
