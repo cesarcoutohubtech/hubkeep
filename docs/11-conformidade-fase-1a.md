@@ -127,3 +127,18 @@ Proposta de ordem, cada item num PR próprio e só com o aval do Cesar:
 3. **Na fase certa:**
    - B9: religar os crons na 1b e na 1c;
    - B10: Dockerfile do conector, com as views reais do TOTVS.
+
+## Decisão do Cesar (05/10/2026)
+
+- **Aprovados o agrupamento e as recomendações acima**, com uma mudança no B5:
+  - a recuperação de senha entra no piloto, na fase 1c, junto com o e-mail próprio;
+  - até lá, a rota `auth/confirmar` recusa `recovery` e `magiclink`.
+- **B13:** o Cesar torna o Gitleaks e o Semgrep obrigatórios no GitHub. O resto do B13 (padrão da zona protegida e `timeout-minutes`) vai em PR.
+- **Ordem:**
+  - **zona protegida, um PR de cada vez:**
+    1. ESLint: fronteira do `packages/inteligencia`, B11 e B3;
+    2. meta-testes: B1, B2, B6 e B8;
+    3. M1;
+    4. B13.
+  - **em paralelo, fora da zona protegida, cada um no seu PR:** M2, M3, M4, B4, B5, B9 e B12.
+- **Ficam como estão:** B7 (adiado até surgir FK para essas tabelas) e B10 (Dockerfile do conector com as views reais do TOTVS).
