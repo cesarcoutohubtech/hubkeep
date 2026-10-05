@@ -1058,12 +1058,25 @@ Dividida em duas partes, cada uma no seu PR:
   - a proposta tem três migrações, a do ativo, a do chamado e a dos códigos de manutenção, cada uma num PR de zona protegida, com o impacto no PWA tudo opcional;
   - também lista os conflitos do PRD com as regras.
 
+### Decisões do Cesar sobre o PR-I1 e o docs/11 (05/10/2026)
+- **Instrumentação** (relatório de lacunas atualizado neste PR):
+  - as três migrações entram no começo da 1b, antes de qualquer outra tarefa dela, na ordem proposta: ativo; chamado e OS; códigos de manutenção;
+  - versão mínima de custo e fornecedor, fora do PWA: "executado por" na triagem (equipe interna ou terceiro, com o nome do terceiro) e "custo informado" no aceite (valor opcional em reais, sem aprovação nem alçada). O módulo de custos e fornecedores segue na fase 2;
+  - os códigos são cadastrados pelo Admin do grupo, com padrões por categoria. A obrigatoriedade é política por hotel, desligada por padrão, e no PWA os códigos aparecem como sugestão.
+  - **A confirmar na 1b:** com a política ligada, a cobrança dos códigos fica no aceite, para não recusar uma conclusão feita offline.
+- **docs/11:** o agrupamento e as recomendações estão aprovados, com uma mudança no B5. A recuperação de senha entra no piloto, na fase 1c, junto com o e-mail próprio; até lá, a rota `auth/confirmar` recusa `recovery` e `magiclink`. O ajuste do B13 no GitHub (Gitleaks e Semgrep obrigatórios) fica com o Cesar.
+- **Ordem de trabalho:**
+  1. o #85 com a CI verde;
+  2. os PRs de zona protegida, um de cada vez: ESLint (fronteira do `packages/inteligencia`, B11 e B3), meta-testes (B1, B2, B6 e B8), M1 e B13;
+  3. em paralelo, fora da zona protegida, cada um no seu PR: M2, M3, M4, B4, B5, B9 e B12.
+- **Fase 1b:** só com o aval do Cesar, depois do teste do kit.
+
 ### Ponto de retomada (05/10/2026, PR-I1)
 - **PR aberto:** `docs-pr-i1-lacunas`, só docs e fora da zona protegida. Conferir `gh pr checks` antes de dar como pronto.
+- **Em seguida**, na ordem acima: o PR de ESLint é o primeiro de zona protegida, e os PRs fora da zona andam em paralelo.
 - **Do Cesar:**
-  - decisões do PR-I1: custo e fornecedor, ordem das migrações, quem cadastra os códigos e a obrigatoriedade deles;
-  - aval para os achados do `docs/11`;
-  - teste do kit no notebook, que também deixa o dev com dados para conferir o proprietário.
-- **Pendente do núcleo, combinado em 01/10:** a regra de fronteira do `packages/inteligencia` no `eslint.config.mjs`. É zona protegida e pode ir junto com o B11 do `docs/11`.
-- **Agente do Kaio:** com as decisões do PR-I1, troca os campos "(fase A)" do `historico.ts` pelos nomes reais.
+  - o ajuste do B13 no GitHub;
+  - o teste do kit no notebook, que também deixa o dev com dados para conferir a leitura do proprietário;
+  - o aval para a 1b.
+- **Agente do Kaio:** quando as migrações da 1b entrarem, troca os campos "(fase A)" do `historico.ts` pelos nomes reais.
 - **Parada:** a fase 1b só começa com o aval do Cesar.

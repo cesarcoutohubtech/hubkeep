@@ -1,20 +1,23 @@
 # PR-I1 — Lacunas de instrumentação do HubKeep Intelligence
 
-**Situação:** análise de 05/10/2026, sem código nem migração. Nada aqui está aprovado. Cada migração proposta só sai com o aval do Cesar, num PR de zona protegida do fluxo do agente do núcleo, um de cada vez (decisão de 30/09/2026: a instrumentação é do núcleo, não do agente do Intelligence).
+**Situação:** análise de 05/10/2026, com as decisões do Cesar do mesmo dia (seção "Decisões do Cesar"). Sem código nem migração por enquanto. As três migrações entram no começo da fase 1b, antes de qualquer outra tarefa dela, cada uma num PR de zona protegida do fluxo do agente do núcleo, um de cada vez. A instrumentação é do núcleo, não do agente do Intelligence (decisão de 30/09/2026). A 1b só começa com o aval do Cesar, depois do teste do kit.
 **Base:**
 - `docs/referencia/prd-hubkeep-intelligence-v1.md`, seção 32 (dados que precisam existir desde o MVP) e seções 21 a 31;
 - o schema da `main` no `be08194` (migrações até a 0028, tipos em `packages/db/src/tipos-banco.ts`);
 - o motor do Intelligence em `packages/inteligencia` (#82), que já espera alguns destes campos marcados como "(fase A)" em `historico.ts`.
 
-**Para quem:** o Cesar, que decide o que entra e quando, e o agente do Kaio, que ajusta o `historico.ts` aos nomes reais depois da decisão.
+**Para quem:** o Cesar, que decide o que entra e quando, e o agente do Kaio, que ajusta o `historico.ts` aos nomes reais quando as migrações entrarem.
 
 ## Resumo
 
 Dos 17 campos da seção 32:
 - **5 já existem:** fabricante, modelo e número de série do ativo, e o início e o fim do tempo parado (`app.parada_ativo`).
 - **1 se deriva sem migração:** a reabertura. No HubKeep, reabrir é a mesma OS voltar à execução (Cesar, 29/09/2026), e a auditoria conta as reaberturas.
-- **7 faltam e cabem no MVP com migração pequena:** os três códigos (falha, causa e solução), a data de compra, a garantia, a origem do trabalho e o impacto no hóspede.
-- **4 faltam e são de fase 2 pelo `docs/00`:** fornecedor, custo estimado, custo real e custo estimado de substituição. A regra 10 manda parar e registrar como pendência. Trazer qualquer um deles para antes do piloto é decisão de escopo do Cesar (seção "Decisões").
+- **7 faltam e entram no MVP com migração pequena:** os três códigos (falha, causa e solução), a data de compra, a garantia, a origem do trabalho e o impacto no hóspede.
+- **4 são de fase 2 pelo `docs/00`:** fornecedor, custo estimado, custo real e custo estimado de substituição. Por decisão do Cesar, dois ganham uma **versão mínima no MVP, fora do PWA**:
+  - na triagem, quem executa: equipe interna ou terceiro, com o nome do terceiro (cobre o fornecedor por nome);
+  - no aceite, o custo informado: valor opcional em reais, sem aprovação nem alçada (cobre o custo real).
+  - O módulo de custos e fornecedores segue na fase 2, com o custo estimado e o de substituição.
 
 Fora da seção 32, o motor pede ainda a **criticidade do ativo** (PRD, seção 13; `Criticidade` em `historico.ts`). Ela entra na proposta junto com os campos do ativo.
 
@@ -30,51 +33,63 @@ Tudo o que é novo é opcional no banco (coluna anulável). A obrigatoriedade, q
 | `downtime_start` | Existe | `app.parada_ativo.inicio`, por ativo e chamado, com a OS opcional (C5). | Nenhuma. |
 | `downtime_end` | Existe | `app.parada_ativo.fim`. O tempo parado total sai de `tempoParadoTotal` no domínio. | Nenhuma. |
 | `reopened_from_os_id` | Deriva | Reabrir é a mesma OS (`corretiva.ts`, ação `reabrir`, com `motivo_reabertura`); não nasce outra OS para apontar a anterior. A auditoria (`acao = 'reabrir'`) dá a contagem, como o motor já espera (`Corretiva.reaberturas`). | Nenhuma. O retorno do mesmo defeito num chamado novo é reincidência, que o motor calcula por ativo e janela. |
-| `supplier_id` | Falta, fase 2 | Não há fornecedor no MVP (`docs/00`: "fornecedores, custos e alçadas" na fase 2). | Fora do MVP. Se o Cesar trouxer para antes: tabela `app.fornecedor` e `fornecedor_id` na OS. |
-| `estimated_cost` | Falta, fase 2 | O material é texto livre, sem quantidade nem valor (`app.os_material.descricao`). | Fora do MVP. Se vier antes: `custo_estimado numeric(12,2)` na OS, na moeda do hotel. |
-| `actual_cost` | Falta, fase 2 | Idem. | Fora do MVP. Se vier antes: `custo_real numeric(12,2)` na OS. |
+| `supplier_id` | Versão mínima | Não há fornecedor no MVP (`docs/00`: "fornecedores, custos e alçadas" na fase 2). Versão mínima (05/10/2026): na triagem, quem executa, equipe interna ou terceiro, com o nome do terceiro em texto livre. | `executado_por` e `terceiro_nome` em `app.os` (migração 2). O cadastro de fornecedores, com `fornecedor_id`, segue na fase 2. |
+| `estimated_cost` | Falta, fase 2 | O material é texto livre, sem quantidade nem valor (`app.os_material.descricao`). | Fora do MVP (05/10/2026): fica com o módulo de custos, na fase 2. |
+| `actual_cost` | Versão mínima | Idem. Versão mínima (05/10/2026): no aceite, o custo informado, valor opcional em reais, sem aprovação nem alçada. | `custo_informado numeric(12,2)` em `app.os` (migração 2). |
 | `asset_manufacturer` | Existe | `app.ativo.fabricante`, texto livre. | Nenhuma. A comparação entre hotéis usa `chaveDeModelo` (sem caixa e sem espaço sobrando). Um catálogo de modelos é fase 2. |
 | `asset_model` | Existe | `app.ativo.modelo`, texto livre. | Nenhuma. |
 | `asset_serial_number` | Existe | `app.ativo.numero_serie`. | Nenhuma. |
 | `purchase_date` | Falta | Hoje só como campo estendido da categoria (tipo `data`), que fica em `campos` (jsonb) e muda de chave conforme a categoria, o que não serve para comparar. | `data_compra date` em `app.ativo`. |
 | `warranty_until` | Falta | Idem. | `garantia_ate date` em `app.ativo`. |
-| `replacement_estimated_cost` | Falta, fase 2 | Custo, idem. | Fora do MVP. Se vier antes: `custo_substituicao_estimado numeric(12,2)` em `app.ativo`. |
+| `replacement_estimated_cost` | Falta, fase 2 | Custo, idem. | Fora do MVP (05/10/2026): fica com o módulo de custos, na fase 2. |
 | `work_source` | Falta | O chamado não guarda a origem. A IX2 (pós-piloto) já prevê a migração "origem do chamado". A preventiva da 1b vai gerar OS sem chamado, e a origem dela é o plano. | `origem text` em `app.chamado`, com os valores canônicos no domínio (`interno` e, depois, `integracao`), já com o formato que a IX2 vai usar. A OS preventiva se reconhece pelo plano, na 1b. |
 | `guest_impact_flag` | Falta | Nada. | `impacto_hospede boolean` em `app.chamado`, anulável: `null` é "não informado", que o score trata como ausente. |
 
 ## Migrações propostas
 
-Três migrações, cada uma num PR de zona protegida, nesta ordem. Nenhuma cria função nem trigger.
+Três migrações, no começo da 1b, cada uma num PR de zona protegida, nesta ordem. Nenhuma cria função nem trigger.
 
 1. **Ativo** (a menor):
    - `app.ativo` ganha `data_compra date`, `garantia_ate date` e `criticidade smallint`, todas anuláveis;
    - `grant update (data_compra, garantia_ate, criticidade)` ao `hk_app`, junto das colunas que a edição já atualiza;
    - a escala da criticidade é política (`ativo.criticidade`, com o máximo e os nomes de cada nível no catálogo), validada no domínio; o banco não tem check de faixa;
    - pgTAP: as colunas novas não abrem escrita para quem não escreve no hotel (casos de UPDATE por papel no 003).
-2. **Chamado:**
+2. **Chamado e OS** (abertura, triagem e aceite):
    - `app.chamado` ganha `origem text not null default 'interno'` e `impacto_hospede boolean`;
    - a origem não recebe GRANT de UPDATE: é gravada na abertura e não muda;
    - `grant update (impacto_hospede)` ao `hk_app`, para a triagem corrigir;
-   - os valores de origem ficam no domínio, como os estados (ADR-027); um teste de paridade evita o caso do `cancelada` (achado B6 do `docs/11`).
+   - `app.os` ganha `executado_por text not null default 'equipe_interna'` e `terceiro_nome text`, gravados na triagem que gera a OS, com `grant update` das duas para corrigir enquanto a OS não for concluída (o quando é regra do domínio);
+   - `app.os` ganha `custo_informado numeric(12,2)`, anulável, gravado no aceite por quem aceita, com `grant update`;
+   - os valores de origem e de `executado_por` (`equipe_interna` e `terceiro`) ficam no domínio, como os estados (ADR-027), com teste de paridade para não repetir o caso do `cancelada` (achado B6 do `docs/11`);
+   - no domínio, e não no banco: o nome do terceiro é exigido quando `executado_por = 'terceiro'` e some quando volta a ser interno; o custo não aceita valor negativo;
+   - o custo é em reais nesta versão; o hotel com outra moeda (`app.hotel.moeda`) fica para o módulo de custos;
+   - o responsável da OS (técnico ou equipe) continua sendo quem acompanha no HubKeep; o terceiro não ganha acesso;
+   - pgTAP: UPDATE das colunas novas por papel (quem tria, quem aceita, quem só lê).
 3. **Códigos de manutenção** (a maior, com tabela nova):
    - `app.codigo_manutencao`: `id`, `tenant_id NOT NULL`, `tipo` (`falha`, `causa` ou `solucao`), `categoria_id` anulável (o código vale para uma categoria de ativo ou para todas), `nomes jsonb`, `chave_padrao` e `ativa`;
-   - o mesmo modelo da situação e da prioridade (ADR-027): os códigos padrão têm nome no catálogo (`resolverNome`), e o tenant cria os próprios com nome por idioma;
+   - o mesmo modelo da situação e da prioridade (ADR-027): os códigos padrão por categoria têm nome no catálogo (`resolverNome`), e o Admin do grupo cria os próprios, com nome por idioma, e desativa os padrões que não usa;
    - segue o "Modelo para tabela nova" do `docs/02`: RLS forçada, policies por papel (lê quem lê o tenant; escreve o Admin do grupo), `unique (tenant_id, id)`, os seis casos mínimos de isolamento e a entrada no meta-teste;
    - `app.os` ganha `codigo_falha_id`, `codigo_causa_id` e `codigo_solucao_id`, anuláveis, com FK composta `(tenant_id, …)`, e `grant update` dessas três colunas ao `hk_app`;
-   - a coerência entre o código e a categoria do ativo fica no domínio, não no banco.
+   - a coerência entre o código e a categoria do ativo fica no domínio, não no banco;
+   - a obrigatoriedade é a política `os.codigos_obrigatorios`, por hotel, com herança grupo → bandeira → hotel (ADR-026), desligada por padrão.
 
 Cada uma entra no kit de teste (`scripts/ops/dados-demonstracao.ts` e o roteiro do `docs/10`) no mesmo PR, como o Cesar pediu para a etapa D.
 
 ## Impacto na tela do técnico (PWA)
 
-Tudo opcional para o técnico; a obrigatoriedade, quando houver, é política do hotel e vem na projeção da OS que o PWA já baixa.
+Tudo opcional para o técnico. "Executado por" e o custo informado ficam fora do PWA: são da triagem e do aceite, nas telas do web.
 
 | Tela | O que muda | Offline |
 |---|---|---|
-| `Os.tsx`, conclusão | Três seletores opcionais: falha, causa e solução, filtrados pela categoria do ativo. Com a política `os.codigos_na_conclusao` exigindo, o botão de concluir pede os códigos antes, como já pede a resposta da parada. | O catálogo de códigos entra na referência local (`referencia/banco.ts`), como as situações. A conclusão leva os ids na operação da fila; o servidor confere de novo e recusa com código, que volta à fila do dia com o motivo. |
+| `Os.tsx`, conclusão | Falha, causa e solução apresentadas como sugestão: os códigos da categoria do ativo primeiro, sem nenhum marcado. O técnico escolhe ou deixa em branco, e a conclusão no PWA nunca é recusada por falta de código, mesmo com a política ligada. | O catálogo de códigos entra na referência local (`referencia/banco.ts`), como as situações. A conclusão leva os ids escolhidos na operação da fila; o servidor confere só se o código existe e serve para a categoria. |
 | `AbrirChamado.tsx` | Uma pergunta opcional "afeta hóspede?" (sim, não, não sei). A origem é gravada pelo servidor como `interno`, sem campo na tela. | Vai na operação de abertura que já existe. |
 | `Ativos.tsx`, cadastro e edição pelo celular | Data de compra, garantia e criticidade, opcionais, na parte recolhida do formulário, para não alongar o cadastro rápido da implantação (1b). | Vão na operação de cadastro e edição. |
 | Parada | Nada: o registro e o encerramento já existem (C5). | — |
+
+**Telas do web, fora do PWA:**
+- **Triagem:** "executado por", equipe interna ou terceiro, com o nome do terceiro, e o impacto no hóspede, para corrigir.
+- **Aceite:** o custo informado, opcional, em reais. Com a política `os.codigos_obrigatorios` ligada no hotel, é aqui que os códigos são cobrados: quem aceita completa o que o técnico deixou em branco antes de aceitar. Assim a regra não recusa uma conclusão feita offline.
+- **Admin do grupo:** o cadastro dos códigos, com os padrões por categoria.
 
 Os textos novos (rótulos, opções e códigos de erro) vão para os quatro catálogos (regra 11). O contrato da fila (`packages/contratos`) ganha os campos opcionais, e uma operação antiga, sem eles, continua válida.
 
@@ -90,19 +105,23 @@ Os textos novos (rótulos, opções e códigos de erro) vão para os quatro cat�
 | Seções 21 e 22 | `intelligence_signal` copia chamado, OS, parada e reabertura | Regra 6 e o desenho de portas | O motor lê o núcleo pelas portas, sem cópia (ADR-INT-1). A tabela de sinais só na 1.5, para o feedback externo. |
 | Seção 31 | Entidades analíticas com `hotel_id` "quando aplicável" | Regra 1 | `tenant_id NOT NULL` em toda tabela; o insight de rede sem hotel só é lido por quem tem escopo de grupo ou bandeira, com caso no pgTAP. |
 | Seções 10, 17 e 23 | Classificação de texto, resumo e agrupamento por IA | Regra 9 (sem IA no MVP) | Só na 1.5, depois do MVP, e com o provedor decidido. |
-| Seções 14, 18 e 32 | Custo, fornecedor, Repair vs Replace e Portfolio | Regra 10 (escopo fechado; fase 2 no `docs/00`) | Pendência, salvo decisão do Cesar (abaixo). O motor já trata custo como componente ausente. |
+| Seções 14, 18 e 32 | Custo, fornecedor, Repair vs Replace e Portfolio | Regra 10 (escopo fechado; fase 2 no `docs/00`) | Versão mínima no MVP, fora do PWA: "executado por" e o custo informado (05/10/2026). O custo estimado, o de substituição, o cadastro de fornecedores, o Repair vs Replace com custo e o Portfolio seguem na fase 2. |
 | Seção 25 | Alerta por WhatsApp | Regra 10 (WhatsApp é fase 2) | Fica para a fase 2; in-app, e-mail e push usam o que já existe. |
 | Seção 26 | `POST /api/v1/intelligence/feedback-signals`, com CSV, API e webhook genéricos | Convenção de nomes e base comum das integrações (IX1 a IX3) | Rota em português, na 1.5, sobre a mesma credencial por tenant e a mesma entrega assinada das IX1 a IX3, sem um segundo mecanismo. |
 | Seção 27 | Adaptadores de PMS (TOTVS, Oracle) para ocupação e UH | Regra 8 (TOTVS só leitura) | Compatível, desde que só leitura e sem PII além do necessário; ocupação é fase 2 (`docs/00`, contexto da UH). |
 | Seção 10 | Texto do hóspede, `room_hint` | LGPD e ADR-025 (dados no aparelho) | Na 1.5: minimizar, não levar ao PWA, prazo de retenção definido antes. |
 
-## Decisões do Cesar
+## Decisões do Cesar (05/10/2026)
 
-1. **Custo e fornecedor antes do piloto?** O PRD pede para modelar desde cedo; o `docs/00` deixa na fase 2.
-   - **Recomendação:** não trazer agora. Coluna de custo sem a tela de custo nem a moeda tratada vira campo vazio, e o motor já funciona com o componente ausente. Registrar como pendência da fase 2.
-2. **Ordem das migrações** e se entram antes da 1b ou dentro dela.
-   - **Recomendação:** as três dentro da 1b, na ordem acima. A 3 junto da conclusão da OS que a preventiva também usa, para o técnico ver uma tela só.
-3. **Quem cadastra os códigos:** a proposta é o Admin do grupo, com códigos padrão por categoria vindos do catálogo.
-4. **Obrigatoriedade dos códigos na conclusão:** política por hotel, desligada por padrão.
+1. **Quando:** as três migrações entram no começo da 1b, antes de qualquer outra tarefa dela, na ordem proposta.
+2. **Custo e fornecedor:** versão mínima, fora do PWA. "Executado por" na triagem (equipe interna ou terceiro, com o nome do terceiro) e "custo informado" no aceite (valor opcional em reais, sem aprovação nem alçada). O módulo de custos e fornecedores segue na fase 2.
+3. **Códigos:** cadastrados pelo Admin do grupo, com padrões por categoria.
+4. **Obrigatoriedade dos códigos:** política por hotel, desligada por padrão. No PWA, os códigos aparecem como sugestão.
 
-Com a decisão, o agente do Kaio troca os campos "(fase A)" de `packages/inteligencia/src/historico.ts` pelos nomes reais (`codigoFalha` → `codigo_falha_id`; `Criticidade` → `app.ativo.criticidade` com a escala da política).
+**A confirmar com o Cesar na 1b:** com a política ligada, a cobrança dos códigos fica no aceite, e não na conclusão do técnico (seção do PWA). É a leitura que concilia "sugestão no PWA" com a obrigatoriedade.
+
+**Para o agente do Kaio**, quando as migrações entrarem, os campos "(fase A)" de `packages/inteligencia/src/historico.ts` trocam pelos nomes reais:
+- `codigoFalha` → `app.os.codigo_falha_id`;
+- `Criticidade` → `app.ativo.criticidade`, com a escala da política;
+- o custo deixa de ser componente ausente quando houver `custo_informado`;
+- a regra do mesmo fornecedor pode usar `terceiro_nome`, normalizado como o `chaveDeModelo`.
