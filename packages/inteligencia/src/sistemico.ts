@@ -1,15 +1,16 @@
 // Detecção de possível problema sistêmico (PRD, seção 15), por regras
-// determinísticas: mesmo modelo, mesmo andar e crescimento de categoria. O
-// resultado é sempre "possível": só uma pessoa confirma. A regra do mesmo
-// fornecedor espera o fornecedor (fase 2), e a do feedback externo espera a
-// 1.5. Agrupar por falha precisa do código de falha da instrumentação (fase A);
-// sem ele, o agrupamento cai na categoria do ativo, e a corretiva sem nenhum
-// dos dois fica de fora.
+// determinísticas: mesmo modelo, mesma área (andar das UHs ou a mesma área
+// comum), mesmo fornecedor e crescimento da mesma falha. O resultado é sempre
+// "possível": só uma pessoa confirma. A regra do feedback externo espera a 1.5.
+// Agrupar por falha usa o código de falha da instrumentação (fase A); sem ele,
+// o agrupamento cai na categoria do ativo, e a corretiva sem nenhum dos dois
+// fica de fora.
 import {
   type AtivoAnalisado,
   type Corretiva,
   type LocalAnalisado,
   chaveDeModelo,
+  chaveDeTerceiro,
 } from './historico';
 import { DIA_MS } from './score';
 
@@ -18,23 +19,47 @@ export const VERSAO_SISTEMICO = 1;
 export interface ConfigSistemico {
   mesmoModelo: { minAtivos: number; janelaDias: number };
   mesmoAndar: { minLocais: number; janelaDias: number };
+  mesmaAreaComum: { minOcorrencias: number; janelaDias: number };
+  /**
+   * Taxa de volta das OS de um terceiro: corretiva nova no mesmo ativo até
+   * `diasAposCorretiva` depois da conclusão. Só conta a OS cuja observação já
+   * terminou, para a taxa não sair baixa só porque a conclusão é recente.
+   */
+  mesmoFornecedor: {
+    janelaDias: number;
+    diasAposCorretiva: number;
+    minConcluidas: number;
+    limiarPercentual: number;
+  };
   crescimento: { percentual: number; minAtual: number; janelaDias: number };
 }
 
 export const PADRAO_SISTEMICO: ConfigSistemico = {
   mesmoModelo: { minAtivos: 5, janelaDias: 90 },
   mesmoAndar: { minLocais: 5, janelaDias: 10 },
+  mesmaAreaComum: { minOcorrencias: 5, janelaDias: 30 },
+  mesmoFornecedor: {
+    janelaDias: 180,
+    diasAposCorretiva: 30,
+    minConcluidas: 5,
+    limiarPercentual: 30,
+  },
   crescimento: { percentual: 50, minAtual: 5, janelaDias: 30 },
 };
 
-export type RegraSistemica = 'mesmo_modelo' | 'mesmo_andar' | 'crescimento_categoria';
+export type RegraSistemica =
+  | 'mesmo_modelo'
+  | 'mesmo_andar'
+  | 'mesma_area_comum'
+  | 'mesmo_fornecedor'
+  | 'crescimento_categoria';
 
 export interface SinalSistemico {
   regra: RegraSistemica;
   /** Sempre 'possivel': confirmação é humana (PRD, seção 15). */
   situacao: 'possivel';
   versao: number;
-  /** O que agrupa: falha, modelo, hotel, andar. */
+  /** O que agrupa: falha, modelo, hotel, andar, local ou terceiro. */
   chave: Readonly<Record<string, string>>;
   evidencia: {
     quantidade: number;
@@ -44,6 +69,10 @@ export interface SinalSistemico {
     corretivaIds: readonly string[];
     anterior?: number;
     variacaoPercentual?: number;
+    /** Mesmo fornecedor: OS concluídas com volta, a taxa e a da equipe interna. */
+    voltas?: number;
+    taxaPercentual?: number;
+    taxaInternaPercentual?: number | null;
   };
 }
 
@@ -54,6 +83,7 @@ export interface EntradaSistemico {
 }
 
 const unicos = (xs: readonly string[]) => [...new Set(xs)].sort();
+const percentual = (parte: number, todo: number) => Math.round((parte / todo) * 1000) / 10;
 
 function agrupar<T>(xs: readonly T[], chave: (x: T) => string | null): Map<string, T[]> {
   const m = new Map<string, T[]>();
@@ -135,6 +165,76 @@ export function detectarSistemicos(
     });
   }
 
+  // A mesma área comum (cozinha, lavanderia, piscina): várias ocorrências da
+  // mesma falha no mesmo local, mesmo que em ativos diferentes ou sem ativo.
+  const ac = config.mesmaAreaComum;
+  const porArea = agrupar(e.corretivas.filter(naJanela(ac.janelaDias)), (c) => {
+    const falha = falhaDe(c);
+    return locais.get(c.localId)?.tipo === 'area_comum' && falha ? `${c.localId}#${falha}` : null;
+  });
+  for (const [k, cs] of porArea) {
+    if (cs.length < ac.minOcorrencias) continue;
+    const [localId, falha] = k.split('#') as [string, string];
+    const hotelId = (cs[0] as Corretiva).hotelId;
+    sinais.push({
+      regra: 'mesma_area_comum',
+      situacao: 'possivel',
+      versao: VERSAO_SISTEMICO,
+      chave: { hotelId, localId, falha },
+      evidencia: {
+        quantidade: cs.length,
+        distintos: unicos(cs.flatMap((c) => (c.ativoId ? [c.ativoId] : []))).length,
+        janelaDias: ac.janelaDias,
+        hotelIds: [hotelId],
+        corretivaIds: cs.map((c) => c.id),
+      },
+    });
+  }
+
+  // Mesmo fornecedor: a taxa de volta das OS do terceiro passa do limiar.
+  const mf = config.mesmoFornecedor;
+  const observadas = e.corretivas.filter(
+    (c) =>
+      c.ativoId !== null &&
+      c.concluidaEm !== null &&
+      c.concluidaEm.getTime() > agora.getTime() - mf.janelaDias * DIA_MS &&
+      c.concluidaEm.getTime() <= agora.getTime() - mf.diasAposCorretiva * DIA_MS,
+  );
+  const voltou = (c: Corretiva) =>
+    e.corretivas.some(
+      (d) =>
+        d.id !== c.id &&
+        d.ativoId === c.ativoId &&
+        d.abertaEm.getTime() >= (c.concluidaEm as Date).getTime() &&
+        d.abertaEm.getTime() <= (c.concluidaEm as Date).getTime() + mf.diasAposCorretiva * DIA_MS,
+    );
+  const internas = observadas.filter((c) => c.executadoPor === 'equipe_interna');
+  const taxaInterna = internas.length
+    ? percentual(internas.filter(voltou).length, internas.length)
+    : null;
+  for (const [terceiro, cs] of agrupar(observadas, chaveDeTerceiro)) {
+    if (cs.length < mf.minConcluidas) continue;
+    const comVolta = cs.filter(voltou);
+    const taxa = percentual(comVolta.length, cs.length);
+    if (taxa < mf.limiarPercentual) continue;
+    sinais.push({
+      regra: 'mesmo_fornecedor',
+      situacao: 'possivel',
+      versao: VERSAO_SISTEMICO,
+      chave: { terceiro },
+      evidencia: {
+        quantidade: cs.length,
+        distintos: unicos(cs.map((c) => c.ativoId as string)).length,
+        janelaDias: mf.janelaDias,
+        hotelIds: unicos(cs.map((c) => c.hotelId)),
+        corretivaIds: comVolta.map((c) => c.id),
+        voltas: comVolta.length,
+        taxaPercentual: taxa,
+        taxaInternaPercentual: taxaInterna,
+      },
+    });
+  }
+
   // Crescimento da mesma falha no hotel, contra a janela anterior de igual tamanho.
   const cr = config.crescimento;
   const chaveHotel = (c: Corretiva) => {
@@ -146,7 +246,7 @@ export function detectarSistemicos(
   for (const [k, cs] of atual) {
     const antes = anterior.get(k)?.length ?? 0;
     if (cs.length < cr.minAtual || antes === 0) continue;
-    const variacaoPercentual = Math.round(((cs.length - antes) / antes) * 1000) / 10;
+    const variacaoPercentual = percentual(cs.length - antes, antes);
     if (variacaoPercentual < cr.percentual) continue;
     const [hotelId, falha] = k.split('#') as [string, string];
     sinais.push({

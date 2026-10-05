@@ -1,7 +1,28 @@
 // Forma comum dos scores: peso dos ausentes dividido entre os presentes,
 // faixas pelo limite inferior e dados insuficientes sem nenhum componente.
 import { describe, expect, it } from 'vitest';
-import { FAIXAS_PADRAO, combinar, faixaDe, sugereInsight } from '../src';
+import { FAIXAS_PADRAO, combinar, faixaDe, motivosDoScore, sugereInsight } from '../src';
+
+describe('motivos do score ("por que estou vendo isso?")', () => {
+  const s = combinar(
+    'x',
+    1,
+    [
+      { chave: 'pouco', peso: 0.2, valor: 0.1, evidencia: {} },
+      { chave: 'zero', peso: 0.2, valor: 0, evidencia: {} },
+      { chave: 'ausente', peso: 0.2, valor: null, evidencia: {} },
+      { chave: 'muito', peso: 0.2, valor: 1, evidencia: { quantidade: 5 } },
+      { chave: 'medio', peso: 0.2, valor: 0.5, evidencia: {} },
+    ],
+    FAIXAS_PADRAO,
+    {},
+  );
+
+  it('do que mais pesou para o que menos pesou, sem ausentes nem zerados', () => {
+    expect(motivosDoScore(s).map((c) => c.chave)).toEqual(['muito', 'medio', 'pouco']);
+    expect(motivosDoScore(s, 1)[0]?.evidencia).toEqual({ quantidade: 5 });
+  });
+});
 
 describe('combinar', () => {
   it('divide o peso do componente ausente entre os presentes, na proporção', () => {

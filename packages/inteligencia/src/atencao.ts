@@ -1,8 +1,10 @@
 // Asset Attention Score (PRD, seção 13): a fila gerencial de ativos que
-// merecem investigação. Versão 1, com os pesos do exemplo do PRD. No
-// Intelligence 1.0 três componentes ficam ausentes por falta de fonte: custo
-// (fase 2 e instrumentação), impacto no hóspede (1.5) e preventiva (1b). O peso
-// deles vai para os presentes, e a lista de ausentes mostra o que falta.
+// merecem investigação. Versão 1, com os pesos do exemplo do PRD. Criticidade
+// e custo informado são opcionais: entram quando a instrumentação da 1b
+// existir e o hotel preencher. O impacto no hóspede vem, no 1.0, do indicador
+// do chamado (decisão de 05/10/2026), e a preventiva fica ausente até a 1b. O
+// peso do componente ausente vai para os presentes, e a lista de ausentes
+// mostra o que falta.
 import type { Criticidade } from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
@@ -15,9 +17,16 @@ export interface EntradaAtencao {
   reincidencia: Score;
   /** Horas paradas na janela (parada do ativo, C5). */
   horasParadas: number | null;
-  /** Custo real das OS em 12 meses e a referência (fase A); null sem dado. */
-  custo?: { valor12m: number; referencia: number } | null;
-  /** Guest Impact Score, de 0 a 100 (1.5); null sem dado. */
+  /**
+   * Soma do custo informado no aceite em 12 meses (fase A, `custoInformadoNaJanela`);
+   * null quando nenhuma OS tem custo informado.
+   */
+  custoInformado12m?: number | null;
+  /**
+   * Impacto no hóspede, de 0 a 100; null sem dado. No 1.0, a porcentagem dos
+   * chamados que afetaram hóspede (`impactoHospedeDosChamados`); na 1.5, o
+   * Guest Impact Score, com versão nova do score.
+   */
   impactoHospede?: number | null;
   /** Preventiva vencida ou sinal de compliance aberto (1b); null sem dado. */
   preventivaOuCompliance?: boolean | null;
@@ -26,6 +35,11 @@ export interface EntradaAtencao {
 export interface ConfigAtencao {
   /** Horas paradas na janela que dão o componente cheio. */
   limiteHorasParadas: number;
+  /**
+   * Custo informado em 12 meses, em reais, que dá o componente cheio. Sem o
+   * custo de reposição (fase 2), a referência é da política do hotel.
+   */
+  limiteCusto12m: number;
   pesos: {
     criticidade: number;
     reincidencia: number;
@@ -39,6 +53,7 @@ export interface ConfigAtencao {
 
 export const PADRAO_ATENCAO: ConfigAtencao = {
   limiteHorasParadas: 48,
+  limiteCusto12m: 10_000,
   pesos: {
     criticidade: 0.2,
     reincidencia: 0.2,
@@ -54,7 +69,7 @@ export function atencaoDoAtivo(
   e: EntradaAtencao,
   config: ConfigAtencao = PADRAO_ATENCAO,
 ): Score<ConfigAtencao> {
-  const custo = e.custo ?? null;
+  const custo = e.custoInformado12m ?? null;
   const impacto = e.impactoHospede ?? null;
   const preventiva = e.preventivaOuCompliance ?? null;
   return combinar(
@@ -89,8 +104,8 @@ export function atencaoDoAtivo(
       {
         chave: 'custo',
         peso: config.pesos.custo,
-        valor: custo ? razao(custo.valor12m, custo.referencia) : null,
-        evidencia: { valor12m: custo?.valor12m ?? null, referencia: custo?.referencia ?? null },
+        valor: custo === null ? null : razao(custo, config.limiteCusto12m),
+        evidencia: { valor12m: custo, limite: config.limiteCusto12m },
       },
       {
         chave: 'impacto_hospede',

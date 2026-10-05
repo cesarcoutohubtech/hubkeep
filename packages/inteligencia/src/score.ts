@@ -115,5 +115,18 @@ export const LIMITE_INSIGHT_PADRAO = 70;
 export const sugereInsight = (score: Score, limite = LIMITE_INSIGHT_PADRAO): boolean =>
   score.valor !== null && score.valor >= limite;
 
+/**
+ * "Por que estou vendo isso?" (PRD, seção 24): os componentes que mais pesaram
+ * no score, do maior para o menor, sem os ausentes e os que não somaram nada.
+ * A tela traduz cada um pela chave e pela evidência; o detalhamento completo
+ * continua em `componentes`.
+ */
+export function motivosDoScore(score: Score, quantos = 3): Componente[] {
+  return score.componentes
+    .filter((c) => c.valor !== null && c.pontos > 0)
+    .sort((a, b) => b.pontos - a.pontos || a.chave.localeCompare(b.chave))
+    .slice(0, quantos);
+}
+
 export const DIA_MS = 86_400_000;
 export const HORA_MS = 3_600_000;

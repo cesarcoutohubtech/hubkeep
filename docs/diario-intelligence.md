@@ -41,3 +41,46 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
   - publicar o relatório de lacunas (PR-I1).
 - **Próximo passo:** com o relatório de lacunas publicado, ajustar os campos `(fase A)` de `historico.ts` aos nomes reais e propor as tabelas `app.insight` e `app.metrica_ativo_diaria`, num PR de zona protegida, um de cada vez.
 - **Parada:** nenhuma tabela antes do relatório de lacunas, e nenhum ADR vale antes da aprovação de Cesar e Kaio.
+
+## Retomada: instrumentação mapeada, área comum e fornecedor (05/10/2026)
+
+- **Estado da `main`:**
+  - #82 (motor) mergeado;
+  - #85 (relatório de lacunas) e #86 (decisões do Cesar) publicados;
+  - #87 (lint) trouxe o elemento `inteligencia` nas fronteiras: ele importa só `dominio` e `i18n`, e o núcleo não o importa.
+- **Decisões do Cesar de 05/10** (no relatório de lacunas):
+  - a instrumentação entra no começo da 1b;
+  - "executado por" e o custo informado ficam fora do PWA, na triagem e no aceite;
+  - os códigos de falha, causa e solução têm obrigatoriedade por política, desligada por padrão.
+- **Branch `int-fornecedor`**, no mesmo worktree `wt/int-motor`. Não é zona protegida.
+  - **`historico.ts`:** os campos da fase A com os nomes do relatório: `executadoPor`, `terceiroNome` e `custoInformado`, além do `tipo` do local. Ganhou `chaveDeTerceiro` (o nome normalizado como o modelo) e `custoInformadoNaJanela`, que devolve null, e não zero, quando ninguém informou custo.
+  - **Atenção por ativo:** o custo passa a ser a soma do custo informado em 12 meses, contra um limite em reais da política (`limiteCusto12m`), porque o custo de reposição é da fase 2. A criticidade e o custo continuam opcionais.
+  - **Problema sistêmico, duas regras novas:**
+    - mesma área comum: a mesma falha no mesmo local de área comum;
+    - mesmo fornecedor: a taxa de volta das OS de um terceiro, com a taxa da equipe interna como referência. Só conta a OS cuja observação de 30 dias já terminou.
+  - **`motivosDoScore`:** os componentes que mais pesaram, para o "por que estou vendo isso?".
+  - **Testes:** 54 no pacote; 319 na raiz.
+  - **Propostas de ADR revistas:** com o relatório de lacunas, a tabela das regras sistêmicas, o mapa da instrumentação e sete decisões para Cesar e Kaio.
+- **Nome do arquivo das propostas:** a mensagem de retomada pedia `adr-propostas-intelligence.md`, mas as propostas já estavam na `main` como `propostas-adr-inteligencia.md`, desde o #82. Ficou o nome que já existe, para não ter dois arquivos.
+- **Local:** lint, prettier, typecheck (11 de 11) e testes verdes.
+
+- **Respostas às sete decisões (05/10/2026),** registradas no fim das propostas:
+  - ADR-INT-1 a 5 aprovados;
+  - evidência do insight pelos ids;
+  - só o Admin altera as políticas;
+  - padrões como propostos;
+  - limite de custo de R$ 10.000;
+  - impacto no hóspede pelo indicador do chamado no 1.0 (`impactoHospedeDosChamados`, já no motor, com 3 testes; 57 no pacote);
+  - retenção de 12 meses.
+- **Pendências:**
+  - confirmar se a aprovação vale por Cesar e Kaio;
+  - confirmar a agregação mensal.
+
+### Ponto de retomada (05/10/2026, motor completo para o 1.0)
+
+- **PR aberto:** `int-fornecedor`, que não é zona protegida. Conferir com `gh pr checks`, e não mergear sem o Kaio revisar.
+- **Esperando:**
+  - a aprovação escrita de Cesar e Kaio às propostas de ADR, com as sete decisões do fim do documento;
+  - as três migrações da instrumentação no começo da 1b, que são do agente do núcleo.
+- **Próximo passo,** depois das aprovações e das migrações: um único PR de zona protegida com os ADRs no `docs/03`, e depois as tabelas `app.insight` e `app.metrica_ativo_diaria`, uma de cada vez, quando a fila de zona protegida estiver livre.
+- **Parada:** nada de migração, tela ou PR de zona protegida até lá.
