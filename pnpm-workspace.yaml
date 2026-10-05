@@ -7,3 +7,14 @@ packages:
 # não precisa do postinstall.
 allowBuilds:
   unrs-resolver: false
+
+# Exceções do pnpm audit (F0-13; regra no ci.yml): só sem versão corrigida e
+# fora do que roda em produção, com o motivo, revisadas no PR.
+#   GHSA-vfj7-8cjw-p6xm (braces <= 3.0.3, negação de serviço com padrão muito
+#   aninhado; sem versão corrigida em 05/10/2026): só entra pelo lint de
+#   fronteiras (eslint-plugin-boundaries > micromatch) e pelo gerador de tipos
+#   (kysely-codegen > micromatch), ferramentas de desenvolvimento que só leem
+#   padrões do próprio repositório. Revisar quando sair a correção.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
