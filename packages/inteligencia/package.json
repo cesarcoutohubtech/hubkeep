@@ -1,0 +1,17 @@
+{
+  "name": "@hubkeep/inteligencia",
+  "version": "0.0.0",
+  "private": true,
+  "description": "HubKeep Intelligence: motor de métricas e scores, em funções puras, sem IO.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@hubkeep/dominio": "workspace:*"
+  }
+}
