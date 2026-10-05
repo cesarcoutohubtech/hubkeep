@@ -1042,3 +1042,28 @@ Dividida em duas partes, cada uma no seu PR:
   - teste do kit no notebook: as correções que ele pedir vão em PRs próprios;
   - aval para corrigir os achados da conformidade.
 - **Parada:** a fase 1b só começa com o aval do Cesar.
+
+### Main verde, Reputation descontinuado e PR-I1 (05/10/2026)
+- **`main`:** #83, #82 e #84 mergeados nessa ordem. CI, banco e segurança verdes no push do merge do #84 (`be08194`).
+- **Dev, só por leitura:** as 28 migrações estão aplicadas, a 0028 inclusive. A policy `app_select` de `app.auditoria` tem a cláusula do proprietário, sem a parada. O dev está sem dados (zero tenants, chamados e auditoria), então a leitura do proprietário fica para depois do script de dados do kit. A CI já cobre a leitura no pgTAP 023.
+- **Reputation descontinuado** (Cesar, 30/09/2026, registrado agora):
+  - o contrato leva a marca de descontinuado no cabeçalho, sem apagar o texto;
+  - o `docs/05` diz que as IX1 a IX3 servem ao EasyTools e à entrada de feedback;
+  - a pendência de 30/09, levar a correção do cronograma à cópia do repositório do Reputation, está encerrada.
+- **HubKeep Intelligence:**
+  - o PRD está em `docs/referencia/prd-hubkeep-intelligence-v1.md`, como proposta e com o texto original;
+  - o pedido de 01/10 tinha parado porque o PRD não veio anexado; o Cesar pôs o arquivo no repositório em 05/10.
+- **PR-I1** (`docs/referencia/lacunas-instrumentacao-intelligence.md`), só análise:
+  - dos 17 campos da seção 32: 5 existem, 1 se deriva da auditoria, 7 faltam e cabem no MVP, e 4 são de fase 2 (fornecedor e custos);
+  - a proposta tem três migrações, a do ativo, a do chamado e a dos códigos de manutenção, cada uma num PR de zona protegida, com o impacto no PWA tudo opcional;
+  - também lista os conflitos do PRD com as regras.
+
+### Ponto de retomada (05/10/2026, PR-I1)
+- **PR aberto:** `docs-pr-i1-lacunas`, só docs e fora da zona protegida. Conferir `gh pr checks` antes de dar como pronto.
+- **Do Cesar:**
+  - decisões do PR-I1: custo e fornecedor, ordem das migrações, quem cadastra os códigos e a obrigatoriedade deles;
+  - aval para os achados do `docs/11`;
+  - teste do kit no notebook, que também deixa o dev com dados para conferir o proprietário.
+- **Pendente do núcleo, combinado em 01/10:** a regra de fronteira do `packages/inteligencia` no `eslint.config.mjs`. É zona protegida e pode ir junto com o B11 do `docs/11`.
+- **Agente do Kaio:** com as decisões do PR-I1, troca os campos "(fase A)" do `historico.ts` pelos nomes reais.
+- **Parada:** a fase 1b só começa com o aval do Cesar.

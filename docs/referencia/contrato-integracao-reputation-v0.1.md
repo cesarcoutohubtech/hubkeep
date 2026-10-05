@@ -1,5 +1,7 @@
 # Contrato de integração HubKeep ↔ Reputation
 
+> **Descontinuado** (Cesar, 30/09/2026; marcado em 05/10/2026). O Reputation deixou de ser um produto separado, e este contrato fica arquivado como estava, sem valor de acordo. O feedback do hóspede entra pelo HubKeep Intelligence (`docs/referencia/prd-hubkeep-intelligence-v1.md`, versão 1.5). As tarefas IX1 a IX3 do `docs/05` continuam valendo para o EasyTools e para a entrada futura de feedback externo.
+
 **Versão:** 0.1 (proposta)
 **Data:** 30/09/2026
 **Produtos:** HubKeep (manutenção) e Reputation, da Suíte SCS
