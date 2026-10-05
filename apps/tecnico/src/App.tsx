@@ -30,7 +30,7 @@ import {
   abrirReferencia,
 } from './referencia/banco';
 import { sincronizar } from './fila/sincronizar';
-import { ProvedorDeIdioma, guardarIdioma, idiomaInicial } from './i18n';
+import { ProvedorDeIdioma, aplicarIdiomaNaPagina, guardarIdioma, idiomaInicial } from './i18n';
 import { apagarDadosLocais, podeApagar } from './saida';
 import {
   conferirEspacoParaFoto,
@@ -64,6 +64,7 @@ export function App() {
     setIdiomaDoEstado(novo);
     guardarIdioma(novo);
   }, []);
+  useEffect(() => aplicarIdiomaNaPagina(idioma), [idioma]);
   return (
     <ProvedorDeIdioma idioma={idioma}>
       <Casca idioma={idioma} setIdioma={setIdioma} idiomaAtual={idiomaAtual} />
