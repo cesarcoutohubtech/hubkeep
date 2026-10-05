@@ -90,6 +90,40 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
 - **Próximo passo:** as tabelas `app.insight` e `app.metrica_ativo_diaria`, depois das três migrações da instrumentação no começo da 1b, que são do agente do núcleo. Uma de cada vez, com a fila de zona protegida livre.
 - **Parada:** nada de migração nem tela antes disso.
 
+## Insight, políticas e agregação mensal (05/10/2026)
+
+- **#97 mergeado:** os ADR-033 a 037 estão na `main`.
+- **Branch `int-insight`**, no worktree `wt/int-motor`. Não é zona protegida: só `packages/inteligencia`, uma chave nova nos catálogos e este diário.
+  - **`insight.ts` (ADR-033):**
+    - os sete estados canônicos e seis ações: revisar, aceitar, agir, monitorar, resolver e descartar;
+    - resolver e descartar pedem nota;
+    - `decidirDeteccao` é o job, que abre, atualiza ou ignora sem duplicar pela chave de escopo e regra e nunca muda o estado.
+  - **`politicas.ts` (ADR-035):**
+    - o formato das cinco chaves `inteligencia.*`, com os `PADRAO_*` como padrão;
+    - a resolução vai do hotel para a bandeira, depois o grupo e o padrão.
+  - **`agregacao.ts` (ADR-036):**
+    - o resumo do mês por ativo e por hotel;
+    - o corte dos 12 meses (`limiteDeRetencao`) e o mês que o job fecha.
+  - **Catálogos:** `erro.insight_fora_do_escopo` nos quatro idiomas.
+  - **Testes:** 89 no pacote e 319 na raiz.
+- **Propostas que esperam a aprovação de Cesar ou Kaio:**
+  - quem decide o insight: o Admin do grupo, o Gestor CSC e o Gerente do hotel, cada um no próprio escopo, e o insight de rede só com escopo de grupo ou da bandeira;
+  - as transições;
+  - o silêncio de 30 dias depois do descarte, salvo se a faixa subir;
+  - o resolvido não silencia: o problema que volta abre insight novo, ligado ao anterior.
+- **Para o agente do núcleo:**
+  - registrar as chaves `inteligencia.*` no `POLITICAS` do domínio, ou criar um ponto de extensão, porque o núcleo não importa este módulo (ADR-037);
+  - a resolução do núcleo ainda não lê a bandeira.
+
+### Ponto de retomada (05/10/2026, insight e políticas)
+
+- **PR aberto:** `int-insight`, que não é zona protegida. Conferir com `gh pr checks`; o merge é do usuário.
+- **Esperando:**
+  - a decisão sobre as propostas acima;
+  - as três migrações da instrumentação no começo da 1b.
+- **Próximo passo:** as tabelas `app.insight` e `app.metrica_ativo_diaria`, num PR de zona protegida, com a fila livre.
+- **Parada:** nada de migração nem tela antes disso.
+
 ### Ponto de retomada (05/10/2026, motor completo para o 1.0)
 
 - **PR aberto:** `int-fornecedor`, que não é zona protegida. Conferir com `gh pr checks`, e não mergear sem o Kaio revisar.

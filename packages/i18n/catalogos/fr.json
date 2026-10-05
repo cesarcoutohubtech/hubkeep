@@ -32,6 +32,7 @@
   "admin.configuracao.prioridade.titulo": "Priorité par défaut par catégorie d’équipement",
   "admin.configuracao.prioridade.resumo": "{n, plural, =0 {Aucune catégorie associée.} one {# catégorie associée.} other {# catégories associées.}} La modification arrive avec les catégories d’équipement.",
   "erro.configuracao_so_admin": "Seul l’Admin du groupe modifie les paramètres.",
+  "erro.insight_fora_do_escopo": "Vous ne décidez pas des insights dans ce périmètre.",
   "erro.politica_desconhecida": "Politique inconnue.",
   "erro.politica_valor_invalido": "La valeur ne respecte pas le format de la politique.",
   "erro.politica_nao_encontrada": "Politique introuvable.",

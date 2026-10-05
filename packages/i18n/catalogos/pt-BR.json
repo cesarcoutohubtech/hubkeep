@@ -32,6 +32,7 @@
   "admin.configuracao.prioridade.titulo": "Prioridade padrão por categoria de ativo",
   "admin.configuracao.prioridade.resumo": "{n, plural, =0 {Nenhuma categoria mapeada.} one {# categoria mapeada.} other {# categorias mapeadas.}} A edição chega com as categorias de ativo.",
   "erro.configuracao_so_admin": "Só o Admin do grupo altera a configuração.",
+  "erro.insight_fora_do_escopo": "Você não decide insights neste escopo.",
   "erro.politica_desconhecida": "Política desconhecida.",
   "erro.politica_valor_invalido": "O valor está fora do formato da política.",
   "erro.politica_nao_encontrada": "Política não encontrada.",
