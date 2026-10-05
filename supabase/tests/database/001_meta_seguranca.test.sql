@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(29);
+select plan(33);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -447,6 +447,68 @@ select is_empty($$
   )
   select distinct origem::regclass::text from caminho where origem = atual
 $$, 'nenhuma policy chega de volta à própria tabela');
+
+-- 28. Lista fechada de tabelas (B1 do docs/11). Os testes 1 e 2 pegam a
+--     tabela sem RLS ou sem tenant_id, mas não a tabela nova sem os casos de
+--     isolamento. Tabela nova entra aqui no mesmo PR que traz o pgTAP de
+--     isolamento dela ("Modelo para tabela nova", docs/02); o revisor confere
+--     os dois juntos.
+select is(
+  (select array_agg(n.nspname || '.' || c.relname order by n.nspname || '.' || c.relname)
+   from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname in ('app', 'staging', 'licenca') and c.relkind in ('r', 'p')),
+  array[
+    'app.anexo', 'app.ativo', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
+    'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.equipe',
+    'app.equipe_membro', 'app.evento_dominio', 'app.hotel', 'app.hotel_proprietario',
+    'app.local', 'app.local_proprietario', 'app.membro', 'app.operacao_offline', 'app.os',
+    'app.os_apontamento', 'app.os_material', 'app.parada_ativo', 'app.politica',
+    'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.situacao',
+    'app.tenant', 'licenca.contrato', 'staging.carga', 'staging.credencial_agente',
+    'staging.registro_externo'
+  ]::text[],
+  'lista fechada de tabelas: tabela nova entra aqui com os casos de isolamento dela');
+
+-- 29. Toda policy do hk_app amarra o tenant do contexto (B1 do docs/11). O
+--     teste 19 pega o true literal, mas não a condição sempre verdadeira nem a
+--     policy que esquece o tenant e confia só no hotel ou no usuário.
+select is_empty($$
+  select schemaname || '.' || tablename || '.' || policyname
+  from pg_policies
+  where schemaname in ('app', 'staging', 'licenca')
+    and 'hk_app' = any (roles)
+    and position('authz.tenant_id()' in coalesce(qual, '') || ' ' || coalesce(with_check, '')) = 0
+$$, 'toda policy do hk_app usa authz.tenant_id()');
+
+-- 30. O destino da FK também leva tenant_id ou hotel_id (B8 do docs/11). O
+--     teste 21 confere as colunas de quem referencia; uma FK (tenant_id, x)
+--     apontando para (id, y) passaria por ele sem amarrar o tenant do outro lado.
+select is_empty($$
+  select n.nspname || '.' || c.relname || '.' || k.conname
+  from pg_constraint k
+  join pg_class c on c.oid = k.conrelid
+  join pg_namespace n on n.oid = c.relnamespace
+  join pg_class alvo on alvo.oid = k.confrelid
+  join pg_namespace na on na.oid = alvo.relnamespace
+  where k.contype = 'f'
+    and n.nspname in ('app', 'staging', 'licenca')
+    and na.nspname in ('app', 'staging', 'licenca')
+    and k.confrelid <> 'app.tenant'::regclass
+    and not exists (
+      select 1 from pg_attribute a
+      where a.attrelid = k.confrelid and a.attnum = any (k.confkey)
+        and a.attname in ('tenant_id', 'hotel_id')
+    )
+$$, 'toda FK entre tabelas do HubKeep aponta para chave que leva tenant_id ou hotel_id');
+
+-- 31. A service_role (secret key) não alcança os schemas do HubKeep (B8 do
+--     docs/11; regra 5 e ADR-024): ela só serve ao Auth e ao Storage, pelo
+--     auth-admin. Um GRANT USAGE a ela abriria as tabelas a quem tiver a chave.
+select is_empty($$
+  select nspname from pg_namespace
+  where nspname in ('app', 'staging', 'licenca', 'authz')
+    and has_schema_privilege('service_role', oid, 'USAGE')
+$$, 'service_role sem USAGE em app, staging, licenca e authz');
 
 select * from finish();
 rollback;

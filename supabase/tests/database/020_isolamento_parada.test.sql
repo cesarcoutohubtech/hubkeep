@@ -12,6 +12,7 @@
 --   5. sem contexto, nada;
 --   6. FK composta: a parada só existe no chamado do mesmo ativo, na OS do
 --      mesmo chamado e com usuário do tenant.
+-- E o implantador vencido do Hotel 1, que não vê nem registra (B2 do docs/11).
 -- Mais: fim depois do início; fim e quem encerrou juntos; uma parada aberta
 -- por ativo (índice único parcial); UPDATE só de fim, encerrada_por e
 -- atualizado_em; sem DELETE; worker vê só o tenant do job.
@@ -20,7 +21,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(42);
+select plan(44);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -31,6 +32,7 @@ insert into auth.users (id, email) values
   ('aaaaaaaa-0000-0000-0000-000000000005', 'tecnico-outro@a.test'),
   ('aaaaaaaa-0000-0000-0000-000000000006', 'proprietario@a.test'),
   ('aaaaaaaa-0000-0000-0000-000000000007', 'tecnico-h2@a.test'),
+  ('aaaaaaaa-0000-0000-0000-000000000008', 'implantador-vencido@a.test'),
   ('aaaaaaaa-0000-0000-0000-000000000009', 'solicitante@a.test'),
   ('bbbbbbbb-0000-0000-0000-000000000001', 'admin@b.test');
 
@@ -62,6 +64,7 @@ insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000005', 'tecnico', 'hotel', '11100000-0000-0000-0000-000000000001', null, null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000006', 'proprietario', 'proprietario', null, '11200000-0000-0000-0000-000000000001', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000007', 'tecnico', 'hotel', '11100000-0000-0000-0000-000000000002', null, null, 'aaaaaaaa-0000-0000-0000-000000000001'),
+  (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000008', 'implantador', 'hotel', '11100000-0000-0000-0000-000000000001', null, now() - interval '1 day', 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000009', 'solicitante', 'hotel', '11100000-0000-0000-0000-000000000001', null, null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '20000000-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000001', 'admin_grupo', 'grupo', null, null, null, 'bbbbbbbb-0000-0000-0000-000000000001');
 -- a1 e a4: UH 101 (do proprietário); a2: UH 102; a3: Hotel 2; ab: tenant B.
@@ -243,6 +246,16 @@ select throws_ok(
   '42501', null, 'técnico do Hotel 2 não registra no Hotel 1');
 select isnt_empty($$ update app.parada_ativo set fim = now(), encerrada_por = 'aaaaaaaa-0000-0000-0000-000000000007'
   where id = 'fa200000-0000-0000-0000-000000000001' returning 1 $$, 'técnico do Hotel 2 encerra a parada da OS dele');
+
+-- Implantador vencido do Hotel 1 (B2 do docs/11)
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000008', true)) ctx;
+select is_empty($$ select 1 from app.parada_ativo $$, 'implantador vencido não vê parada');
+select throws_ok(
+  $$ insert into app.parada_ativo (id, tenant_id, hotel_id, ativo_id, chamado_id, inicio, fim, aberta_por, encerrada_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001',
+             'c1000000-0000-0000-0000-000000000001', now() - interval '12 hours', now() - interval '11 hours',
+             'aaaaaaaa-0000-0000-0000-000000000008', 'aaaaaaaa-0000-0000-0000-000000000008') $$,
+  '42501', null, 'implantador vencido não registra parada');
 
 -- Caso 2 — gerente do Hotel 1: vê e encerra
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000002', true)) ctx;

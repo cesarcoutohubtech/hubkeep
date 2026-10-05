@@ -11,6 +11,10 @@
 --
 -- Cenário: tenant A com admin, gerente do hotel A1 e proprietário; tenant B
 -- com admin. Preferência gravada para o admin A e para o admin B.
+--
+-- Sem o caso do implantador vencido (B2 do docs/11): a preferência é do
+-- usuário, não do papel. As policies olham só o tenant e o próprio usuário, e
+-- o papel vencido não muda o idioma de ninguém nem abre a linha de outro.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;

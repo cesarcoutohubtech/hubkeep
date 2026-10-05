@@ -11,6 +11,7 @@
 --   4. técnico com a OS cancelada não anda com o chamado;
 --   5. sem contexto, nada;
 --   6. FK composta rejeita OS e usuário de outro hotel ou tenant.
+-- E o implantador vencido do Hotel 1, que não vê nem aponta (B2 do docs/11).
 -- Mais: fim depois do início; material de 1 a 500; anexo da OS; o responsável
 -- não entrega a OS a outra pessoa; sem UPDATE nem DELETE nas tabelas novas;
 -- worker vê só o tenant do job.
@@ -19,7 +20,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(37);
+select plan(39);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -30,6 +31,7 @@ insert into auth.users (id, email) values
   ('aaaaaaaa-0000-0000-0000-000000000005', 'tecnico-equipe@a.test'),
   ('aaaaaaaa-0000-0000-0000-000000000006', 'tecnico-inativo@a.test'),
   ('aaaaaaaa-0000-0000-0000-000000000007', 'tecnico-h2@a.test'),
+  ('aaaaaaaa-0000-0000-0000-000000000008', 'implantador-vencido@a.test'),
   ('aaaaaaaa-0000-0000-0000-000000000009', 'solicitante@a.test'),
   ('bbbbbbbb-0000-0000-0000-000000000001', 'admin@b.test');
 
@@ -55,6 +57,7 @@ insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000005', 'tecnico', 'hotel', '11100000-0000-0000-0000-000000000001', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000006', 'tecnico', 'hotel', '11100000-0000-0000-0000-000000000001', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000007', 'tecnico', 'hotel', '11100000-0000-0000-0000-000000000002', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
+  (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000008', 'implantador', 'hotel', '11100000-0000-0000-0000-000000000001', now() - interval '1 day', 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000009', 'solicitante', 'hotel', '11100000-0000-0000-0000-000000000001', null, 'aaaaaaaa-0000-0000-0000-000000000001'),
   (gen_random_uuid(), '20000000-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000001', 'admin_grupo', 'grupo', null, null, 'bbbbbbbb-0000-0000-0000-000000000001');
 insert into app.equipe (id, tenant_id, hotel_id, nome) values
@@ -233,6 +236,16 @@ select throws_ok(
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', '0a100000-0000-0000-0000-000000000001',
              'aaaaaaaa-0000-0000-0000-000000000007', now() - interval '1 hour', now()) $$,
   '42501', null, 'técnico do Hotel 2 não aponta no Hotel 1');
+
+-- Implantador vencido do Hotel 1 (B2 do docs/11)
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000008', true)) ctx;
+select is_empty($$ select 1 from app.os_apontamento union all select 1 from app.os_material $$,
+  'implantador vencido não vê apontamento nem material');
+select throws_ok(
+  $$ insert into app.os_apontamento (id, tenant_id, hotel_id, os_id, usuario_id, inicio, fim)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001', '0a100000-0000-0000-0000-000000000001',
+             'aaaaaaaa-0000-0000-0000-000000000008', now() - interval '1 hour', now()) $$,
+  '42501', null, 'implantador vencido não aponta');
 
 -- Gerente e solicitante do Hotel 1: leem, não apontam
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000002', true)) ctx;

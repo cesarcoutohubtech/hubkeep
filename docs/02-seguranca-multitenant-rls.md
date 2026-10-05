@@ -134,6 +134,12 @@ Casos mínimos no teste de isolamento para cada tabela nova:
 
 Cada tabela nova tem arquivo próprio, `supabase/tests/database/0NN_isolamento_<tabela>.test.sql` (decisão do Cesar, 28/09/2026), com os seis casos. Um arquivo por tabela evita que PRs paralelos conflitem no mesmo teste. Quando um caso não se aplica à tabela (sem `hotel_id`, ou sem FK para outra tabela do tenant), o motivo fica escrito no cabeçalho do arquivo. As tabelas da fase 0 continuam no `003_isolamento_por_tabela.test.sql`, junto com os casos do `hk_ingestao`.
 
+O meta-teste também precisa saber da tabela (B1 e B8 do `docs/11`):
+- **lista fechada:** o nome entra na lista de tabelas do meta-teste 28, no mesmo PR do arquivo de isolamento;
+- **toda policy do `hk_app` usa `authz.tenant_id()`** (meta-teste 29);
+- **a FK aponta para chave que leva `tenant_id` ou `hotel_id`**, dos dois lados (meta-testes 21 e 30);
+- **estado comparado em policy ou índice** (`estado <> 'cancelada'`) **precisa existir no domínio**: o teste `packages/db/test/paridade-estados.test.ts` lê o catálogo e confere cada literal contra os estados do chamado e da OS (B6).
+
 ## Checklist de PR que mexe no banco
 
 - [ ] Tabela nova segue o modelo acima e tem o arquivo `0NN_isolamento_<tabela>.test.sql` com os seis casos mínimos:

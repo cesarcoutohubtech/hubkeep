@@ -22,6 +22,9 @@ const PERMITIDOS = [
   // Config gerada pelo supabase init: cita o PAPEL service_role da Data API num
   // comentário, não a chave. Chave de verdade não vai em config.toml.
   /^supabase\/config\.toml$/,
+  // Meta-teste 31: cita o PAPEL service_role para provar que ele não tem USAGE
+  // nos schemas do HubKeep (B8 do docs/11). Não traz chave.
+  /^supabase\/tests\/database\/001_meta_seguranca\.test\.sql$/,
   /^tests\/secret-key-so-no-auth-admin\.test\.ts$/,
 ];
 
