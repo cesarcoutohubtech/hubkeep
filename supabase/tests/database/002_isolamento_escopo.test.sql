@@ -12,7 +12,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(30);
+select plan(31);
 
 -- pgTAP precisa ser executável pelos papéis testados (só nesta transação)
 grant usage on schema extensions to hk_app, hk_worker, hk_backoffice;
@@ -210,6 +210,18 @@ select throws_ok(
              'aaaaaaaa-0000-0000-0000-000000000007', 'tecnico', 'hotel',
              '11100000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001') $$,
   '42501', null, 'ninguém registra concessão em nome de outro usuário'
+);
+
+-- B8 (migração 0029): a concessão nasce sem revogação; senão o concedente
+-- gravaria uma revogação atribuída a outra pessoa.
+select throws_ok(
+  $$ insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, hotel_id, concedido_por,
+                                        revogado_em, revogado_por)
+     values ('a1000000-0000-0000-0000-000000000014', '10000000-0000-0000-0000-000000000000',
+             'aaaaaaaa-0000-0000-0000-000000000007', 'tecnico', 'hotel',
+             '11100000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004',
+             now(), 'aaaaaaaa-0000-0000-0000-000000000001') $$,
+  '42501', null, 'ninguém grava concessão já revogada, em nome de quem quer que seja'
 );
 
 -- Gerente A1 tentando criar local no hotel A2

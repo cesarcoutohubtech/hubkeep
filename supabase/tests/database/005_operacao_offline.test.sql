@@ -2,6 +2,11 @@
 -- Operações offline recebidas (F0-11, migração 0006): os casos mínimos do
 -- doc 02 para app.operacao_offline. A chave é do usuário: cada um só lê e grava
 -- as próprias linhas, e a linha não muda depois de gravada.
+--
+-- Sem o caso do implantador vencido (B2 do docs/11): a chave da operação é do
+-- usuário, não do papel. As policies olham só o tenant e o próprio usuário; o
+-- que a operação faz no negócio passa de novo pela RLS da tabela de destino,
+-- onde o papel vencido já não vale (casos nos testes de cada tabela).
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
