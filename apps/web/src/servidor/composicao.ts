@@ -85,6 +85,7 @@ import {
   criptografiaDoServidor,
   novoId,
   processarOutbox,
+  conferirAlvoDoBanco,
   tlsDaConexao,
 } from '@hubkeep/db';
 import { criarVerificadorJwks } from './identidade';
@@ -99,9 +100,16 @@ export const urlSupabase = () => exigirEnv('NEXT_PUBLIC_SUPABASE_URL');
 export const chavePublicaSupabase = () => exigirEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
 
 // TLS para o pooler do Supabase. HK_BANCO_SEM_TLS=1 (a CI, no Postgres do
-// runner) só vale com host local; com host remoto a inicialização falha.
+// runner) só vale com host local; com host remoto a inicialização falha. No
+// preview da Vercel, a conexão não pode ser a do banco de produção (M2).
 const conexao = (nome: string) => {
   const url = exigirEnv(nome);
+  conferirAlvoDoBanco({
+    vercelEnv: process.env.VERCEL_ENV,
+    refProducao: process.env.HK_REF_PRODUCAO,
+    nome,
+    url,
+  });
   return { url, ssl: tlsDaConexao(url, process.env.HK_BANCO_SEM_TLS === '1') };
 };
 
