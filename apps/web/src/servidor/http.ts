@@ -62,6 +62,12 @@ export interface Requisicao {
   /** Tenant de quem não é usuário (ex.: o agente, pelo prefixo da credencial), para o log. */
   marcarTenant(tenantId: string): void;
   /**
+   * Hotel do pedido, para o log e o Sentry (M3 do docs/11). Quase nunca é
+   * preciso chamar: o invólucro já marca o hotel do caminho (/hoteis/{id}/...)
+   * e o `hotelId` do corpo, da query ou da resposta.
+   */
+  marcarHotel(hotelId: string): void;
+  /**
    * Erro que a rota tratou sem falhar (ex.: um tenant do cron): vai para o log
    * e para o Sentry com o request_id, e a rota segue.
    */
@@ -106,6 +112,15 @@ function falhaDe(e: unknown): Falha {
   return { status: 500, codigo: CODIGOS_HTTP.erroInterno, parametros: {}, inesperada: true };
 }
 
+const HOTEL_NO_CAMINHO = /^\/api\/v1\/hoteis\/([0-9a-f-]{36})(?:\/|$)/i;
+
+/** O `hotelId` do primeiro nível de um objeto (corpo, query ou resposta), se houver. */
+const hotelDe = (dados: unknown): string | null => {
+  if (typeof dados !== 'object' || dados === null || Array.isArray(dados)) return null;
+  const id = (dados as { hotelId?: unknown }).hotelId;
+  return typeof id === 'string' && UUID.test(id) ? id : null;
+};
+
 const comRequestId = (resposta: Response, requestId: string) => {
   resposta.headers.set(CABECALHO_REQUEST_ID, requestId);
   return resposta;
@@ -125,9 +140,18 @@ export function rota(
     const inicio = performance.now();
     const recebido = req.headers.get(CABECALHO_REQUEST_ID);
     const requestId = recebido && UUID.test(recebido) ? recebido : crypto.randomUUID();
-    const escopo: { tenant_id: string | null; usuario_id: string | null } = {
+    const escopo: {
+      tenant_id: string | null;
+      usuario_id: string | null;
+      hotel_id: string | null;
+    } = {
       tenant_id: null,
       usuario_id: null,
+      hotel_id: HOTEL_NO_CAMINHO.exec(new URL(req.url).pathname)?.[1]?.toLowerCase() ?? null,
+    };
+    // O primeiro hotel visto vale: o do caminho, depois o da entrada, depois o da resposta.
+    const verHotel = (dados: unknown) => {
+      escopo.hotel_id ??= hotelDe(dados);
     };
 
     const r: Requisicao = {
@@ -156,6 +180,7 @@ export function rota(
         if (!lido.success) {
           throw new ErroDeEntrada(problemasDe(lido.error));
         }
+        verHotel(lido.data);
         return lido.data;
       },
       consulta(contrato) {
@@ -164,10 +189,14 @@ export function rota(
         );
         const lido = contrato.safeParse(bruto);
         if (!lido.success) throw new ErroDeEntrada(problemasDe(lido.error));
+        verHotel(lido.data);
         return lido.data;
       },
       marcarTenant(tenantId) {
         escopo.tenant_id = tenantId;
+      },
+      marcarHotel(hotelId) {
+        escopo.hotel_id = hotelId;
       },
       registrarErro(erro, campos) {
         const marcas = { rota: nome, request_id: requestId, ...escopo, ...campos };
@@ -178,7 +207,9 @@ export function rota(
         });
       },
       responder(status, contrato, dados) {
-        return Response.json(contrato.parse(dados), { status });
+        const saida = contrato.parse(dados);
+        verHotel(saida);
+        return Response.json(saida, { status });
       },
       json(status, dados) {
         return Response.json(dados, { status });

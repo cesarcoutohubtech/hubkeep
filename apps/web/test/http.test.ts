@@ -81,6 +81,89 @@ describe('rota(): sucesso, request_id e log', () => {
   });
 });
 
+// M3 (docs/11): o hotel do pedido no log e no Sentry, sem cada handler lembrar.
+describe('rota(): hotel_id no log e no Sentry', () => {
+  const HOTEL = 'b0000000-0000-4000-8000-000000000001';
+  const OUTRO = 'b0000000-0000-4000-8000-000000000002';
+  const ComHotel = z.object({ hotelId: z.string() });
+  const pedirEm = (caminho: string, corpo?: unknown) =>
+    new Request(`http://127.0.0.1${caminho}`, {
+      method: corpo === undefined ? 'GET' : 'POST',
+      headers: { 'content-type': 'application/json' },
+      ...(corpo === undefined ? {} : { body: JSON.stringify(corpo) }),
+    });
+
+  it('o hotel do caminho /hoteis/{id}/...', async () => {
+    const { deps, logs } = montar();
+    const get = rota('teste.hotel', async (r) => r.json(200, {}), deps);
+    await get(pedirEm(`/api/v1/hoteis/${HOTEL}/locais`));
+    expect(logs[0]?.campos.hotel_id).toBe(HOTEL);
+  });
+
+  it('o hotelId do corpo, e o da resposta não troca o primeiro', async () => {
+    const { deps, logs } = montar();
+    const post = rota(
+      'teste.hotel',
+      async (r) => {
+        const { hotelId } = await r.corpo(ComHotel);
+        return r.responder(201, ComHotel, { hotelId: hotelId === HOTEL ? OUTRO : HOTEL });
+      },
+      deps,
+    );
+    await post(pedirEm('/api/v1/chamados', { hotelId: HOTEL }));
+    expect(logs[0]?.campos.hotel_id).toBe(HOTEL);
+  });
+
+  it('o hotelId da query e o da resposta', async () => {
+    const { deps, logs } = montar();
+    const daQuery = rota(
+      'teste.hotel',
+      async (r) => {
+        r.consulta(ComHotel);
+        return r.json(200, {});
+      },
+      deps,
+    );
+    await daQuery(pedirEm(`/api/v1/os?hotelId=${HOTEL}`));
+    const daResposta = rota(
+      'teste.hotel',
+      async (r) => r.responder(200, ComHotel, { hotelId: OUTRO }),
+      deps,
+    );
+    await daResposta(pedirEm('/api/v1/chamados/x'));
+    expect(logs.map((l) => l.campos.hotel_id)).toEqual([HOTEL, OUTRO]);
+  });
+
+  it('sem hotel no pedido, hotel_id fica nulo; marcarHotel define', async () => {
+    const { deps, logs } = montar();
+    const semHotel = rota('teste.hotel', async (r) => r.json(200, { itens: [] }), deps);
+    await semHotel(pedirEm('/api/v1/chamados'));
+    const marcado = rota(
+      'teste.hotel',
+      async (r) => {
+        r.marcarHotel(HOTEL);
+        return r.json(200, {});
+      },
+      deps,
+    );
+    await marcado(pedirEm('/api/v1/chamados'));
+    expect(logs.map((l) => l.campos.hotel_id)).toEqual([null, HOTEL]);
+  });
+
+  it('o erro inesperado vai ao Sentry com o hotel', async () => {
+    const { deps, relatados } = montar();
+    const falha = rota(
+      'teste.hotel',
+      async () => {
+        throw new Error('quebrou');
+      },
+      deps,
+    );
+    await falha(pedirEm(`/api/v1/hoteis/${HOTEL}/ativos`));
+    expect(relatados[0]?.marcas).toMatchObject({ hotel_id: HOTEL });
+  });
+});
+
 describe('rota(): formato único de erro', () => {
   it('erro de domínio: código e parâmetros, sem frase, com o mesmo request_id do cabeçalho', async () => {
     const { deps, relatados } = montar();
@@ -199,6 +282,7 @@ describe('rota(): erro inesperado', () => {
       request_id: requestId,
       tenant_id: TENANT,
       usuario_id: USUARIO,
+      hotel_id: null,
     });
     expect(logs.map((l) => [l.nivel, l.evento])).toEqual([
       ['error', 'erro_inesperado'],
