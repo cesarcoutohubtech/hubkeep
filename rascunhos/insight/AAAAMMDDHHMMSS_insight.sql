@@ -12,9 +12,18 @@
 -- guarda:
 --   - o formato do estado (os sete canônicos), com teste de paridade com o
 --     domínio (ESTADOS_DO_INSIGHT), como o chamado e a OS (ADR-027);
---   - no máximo um insight aberto por chave (escopo e regra): índice único
---     parcial em (tenant_id, chave) where encerrado_em is null. Aberto é
---     "sem encerramento", para o índice não depender de literal de estado;
+--   - no máximo um insight aberto por chave: índice único parcial em
+--     (tenant_id, chave) where encerrado_em is null. Aberto é "sem
+--     encerramento", para o índice não depender de literal de estado;
+--   - a chave e a família (aprovado por Kaio, aguardando Cesar): familia é o
+--     tipo, a regra e o escopo sem os hotéis; chave é a familia mais o
+--     SHA-256 (hex) do conjunto de hotéis em ordem canônica. O hash, e não a
+--     lista, porque o btree não aceita entrada acima de cerca de 2,7 KB e a
+--     lista estoura com uns 70 hotéis; hotel_ids guarda a lista completa. O
+--     domínio calcula as duas; o banco limita o tamanho (check), para nenhuma
+--     entrada de índice estourar;
+--   - o motivo do descarte (nao_relevante ou substituido), que o domínio usa
+--     no silêncio de 30 dias: só o descarte "não relevante" silencia a família;
 --   - o alcance: hotel_id (null no insight de rede), bandeira_id (a bandeira
 --     do alcance, quando há) e hotel_ids, a lista de todos os hotéis
 --     envolvidos. No insight de hotel, hotel_ids = {hotel_id} (check).
@@ -36,12 +45,10 @@
 -- Sem INSERT pelo hk_app (o insight nasce do job) e sem DELETE para ninguém.
 -- Nenhum campo de escopo (hotel_id, bandeira_id, hotel_ids) recebe UPDATE.
 --   Hotel novo num insight de rede (opção c, aprovada por Kaio, aguardando
---   Cesar): o job abre o insight novo, ligado pelo anterior_id, e o anterior
---   continua aberto até uma pessoa resolver ou descartar (o job não muda
---   estado; hotel_ids sem UPDATE). PENDENTE: com o índice abaixo, o novo e o
---   anterior colidem, porque a chave não leva os hotéis. Proposta no LEIAME.md:
---   a chave leva o conjunto de hotéis, e uma coluna familia (a chave sem os
---   hotéis) serve ao vínculo.
+--   Cesar): o conjunto novo tem outra chave (outro hash) e a mesma família, então
+--   o job abre o insight novo, ligado pelo anterior_id, e o anterior continua
+--   aberto até uma pessoa resolver ou descartar. O job não muda estado, e
+--   hotel_ids não recebe UPDATE. A regra pela família está no LEIAME.md.
 -- O insight guarda a própria evidência (detalhe e evidencia, com a
 --   configuração usada) e não depende de linha da métrica diária: nenhuma FK
 --   nem leitura de app.metrica_ativo_diaria, cuja leitura é limitada a 180 dias.
@@ -56,6 +63,7 @@ create table app.insight (
   bandeira_id          uuid,
   hotel_ids            uuid[] not null,
   tipo                 text not null,
+  familia              text not null,
   chave                text not null,
   escopo               jsonb not null,
   estado               text not null default 'novo',
@@ -69,6 +77,7 @@ create table app.insight (
   ultima_deteccao_em   timestamptz not null,
   responsavel_id       uuid,
   nota                 text,
+  motivo_descarte      text,
   encerrado_em         timestamptz,
   encerrado_por        uuid,
   versao               integer not null default 1,
@@ -87,18 +96,27 @@ create table app.insight (
   constraint insight_hotel_no_alcance check (hotel_id is null or hotel_ids = array[hotel_id]),
   constraint insight_valor_0_a_100 check (valor is null or valor between 0 and 100),
   constraint insight_deteccao_em_ordem check (ultima_deteccao_em >= primeira_deteccao_em),
-  constraint insight_encerrado_com_quem check ((encerrado_em is null) = (encerrado_por is null))
+  constraint insight_encerrado_com_quem check ((encerrado_em is null) = (encerrado_por is null)),
+  -- Chave e família curtas: 600 caracteres cabem na entrada do btree mesmo em UTF-8
+  -- (até 4 bytes por caractere); a família deixa espaço para '|hoteis=' e o hash.
+  constraint insight_chave_curta check (char_length(chave) <= 600 and char_length(familia) <= 520),
+  constraint insight_chave_da_familia check (left(chave, char_length(familia)) = familia),
+  -- Formato do motivo do descarte (domínio, com paridade); só no descartado.
+  constraint insight_motivo_descarte_valido check (
+    motivo_descarte is null or motivo_descarte in ('nao_relevante', 'substituido')),
+  constraint insight_motivo_so_no_descarte check (motivo_descarte is null or estado = 'descartado')
 );
 create unique index insight_um_aberto_por_chave on app.insight (tenant_id, chave)
   where encerrado_em is null;
 create index insight_hotel_idx on app.insight (tenant_id, hotel_id);
-create index insight_chave_idx on app.insight (tenant_id, chave, encerrado_em desc);
+create index insight_familia_idx on app.insight (tenant_id, familia, encerrado_em desc);
 
 alter table app.insight enable row level security;
 alter table app.insight force row level security;
 
 grant select on app.insight to hk_app;
-grant update (estado, responsavel_id, nota, encerrado_em, encerrado_por, versao, atualizado_em)
+grant update (estado, responsavel_id, nota, motivo_descarte, encerrado_em, encerrado_por, versao,
+              atualizado_em)
   on app.insight to hk_app;
 grant select, insert on app.insight to hk_worker;
 grant update (ultima_deteccao_em, faixa, valor, versao_score, detalhe, evidencia, versao,

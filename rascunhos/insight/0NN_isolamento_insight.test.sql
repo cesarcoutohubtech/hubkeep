@@ -18,12 +18,16 @@
 -- um aberto por chave, encerramento em nome próprio, nenhum UPDATE em campo de
 -- escopo, sem INSERT pelo hk_app, sem DELETE; o worker vê e grava só o tenant
 -- do job e não muda o estado.
+-- Família e chave (aprovado por Kaio, aguardando Cesar): o insight novo de um
+-- conjunto com hotel a mais fica aberto junto com o anterior da mesma família;
+-- a chave começa pela família e é curta (hash do conjunto), inclusive com 80
+-- hotéis; o motivo do descarte é canônico e só existe no descartado.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(40);
+select plan(50);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -74,80 +78,141 @@ insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo
 
 -- i1: hotel H1. i2: rede da Bandeira 1 (H1 e H2). i3: rede do grupo (H1 e H3).
 -- i9: encerrado, mesma chave do i1. ib: tenant B.
-insert into app.insight (id, tenant_id, hotel_id, bandeira_id, hotel_ids, tipo, chave, escopo, estado, faixa, valor,
+insert into app.insight (id, tenant_id, hotel_id, bandeira_id, hotel_ids, tipo, chave, familia, escopo, estado, faixa, valor,
                          versao_score, primeira_deteccao_em, ultima_deteccao_em, encerrado_em, encerrado_por) values
   ('e1000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
    '11000000-0000-0000-0000-00000000000a', array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo',
-   'atencao_ativo|ativoId=x1|hotelId=h1', '{"ativoId": "x1"}', 'novo', 'alta_atencao', 80, 1, now() - interval '2 days', now(), null, null),
+   'atencao_ativo|ativoId=x1|hotelId=h1', 'atencao_ativo|ativoId=x1|hotelId=h1', '{"ativoId": "x1"}', 'novo', 'alta_atencao', 80, 1, now() - interval '2 days', now(), null, null),
   ('e1000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', null,
    '11000000-0000-0000-0000-00000000000a', array['11100000-0000-0000-0000-000000000001', '11100000-0000-0000-0000-000000000002']::uuid[], 'sistemico',
-   'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'novo', 'atencao', null, 1, now() - interval '2 days', now(), null, null),
+   'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo', 'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'novo', 'atencao', null, 1, now() - interval '2 days', now(), null, null),
   ('e1000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', null,
    null, array['11100000-0000-0000-0000-000000000001', '11100000-0000-0000-0000-000000000003']::uuid[], 'sistemico',
-   'sistemico|falha=vazamento|modelo=acme y2|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'novo', 'atencao', null, 1, now() - interval '2 days', now(), null, null),
+   'sistemico|falha=vazamento|modelo=acme y2|regra=mesmo_modelo', 'sistemico|falha=vazamento|modelo=acme y2|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'novo', 'atencao', null, 1, now() - interval '2 days', now(), null, null),
   ('e1000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
    '11000000-0000-0000-0000-00000000000a', array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo',
-   'atencao_ativo|ativoId=x1|hotelId=h1', '{"ativoId": "x1"}', 'resolvido', 'atencao', 60, 1, now() - interval '90 days',
+   'atencao_ativo|ativoId=x1|hotelId=h1', 'atencao_ativo|ativoId=x1|hotelId=h1', '{"ativoId": "x1"}', 'resolvido', 'atencao', 60, 1, now() - interval '90 days',
    now() - interval '60 days', now() - interval '50 days', 'aaaaaaaa-0000-0000-0000-000000000002'),
   ('eb000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000000', '22200000-0000-0000-0000-000000000001',
    '22000000-0000-0000-0000-00000000000a', array['22200000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo',
-   'atencao_ativo|ativoId=xb|hotelId=hb', '{"ativoId": "xb"}', 'novo', 'critico', 90, 1, now() - interval '1 day', now(), null, null);
+   'atencao_ativo|ativoId=xb|hotelId=hb', 'atencao_ativo|ativoId=xb|hotelId=hb', '{"ativoId": "xb"}', 'novo', 'critico', 90, 1, now() - interval '1 day', now(), null, null);
 
 -- Caso 6 — FK composta e checks (como postgres)
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '22200000-0000-0000-0000-000000000001',
-             array['22200000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6a', '{}', 'atencao', 1, now(), now()) $$,
+             array['22200000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6a', 'k6a', '{}', 'atencao', 1, now(), now()) $$,
   '23503', null, 'insight com hotel de outro tenant');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, bandeira_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, bandeira_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '22000000-0000-0000-0000-00000000000a',
-             array['11100000-0000-0000-0000-000000000001']::uuid[], 'sistemico', 'k6b', '{}', 'atencao', 1, now(), now()) $$,
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'sistemico', 'k6b', 'k6b', '{}', 'atencao', 1, now(), now()) $$,
   '23503', null, 'insight com bandeira de outro tenant');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, anterior_id)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, anterior_id)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
-             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6c', '{}', 'atencao', 1, now(), now(),
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6c', 'k6c', '{}', 'atencao', 1, now(), now(),
              'eb000000-0000-0000-0000-000000000001') $$,
   '23503', null, 'insight anterior de outro tenant');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, responsavel_id)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, responsavel_id)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
-             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6d', '{}', 'atencao', 1, now(), now(),
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6d', 'k6d', '{}', 'atencao', 1, now(), now(),
              'bbbbbbbb-0000-0000-0000-000000000001') $$,
   '23503', null, 'responsável de outro tenant');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
-             array['11100000-0000-0000-0000-000000000001', '11100000-0000-0000-0000-000000000002']::uuid[], 'atencao_ativo', 'k6e', '{}',
+             array['11100000-0000-0000-0000-000000000001', '11100000-0000-0000-0000-000000000002']::uuid[], 'atencao_ativo', 'k6e', 'k6e', '{}',
              'atencao', 1, now(), now()) $$,
   '23514', null, 'insight de hotel com outro hotel na lista');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
-     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '{}', 'sistemico', 'k6f', '{}', 'atencao', 1, now(), now()) $$,
+  $$ insert into app.insight (id, tenant_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '{}', 'sistemico', 'k6f', 'k6f', '{}', 'atencao', 1, now(), now()) $$,
   '23514', null, 'insight sem hotel nenhum na lista');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, estado, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, estado, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
-             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6g', '{}', 'aberto', 'atencao', 1, now(), now()) $$,
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6g', 'k6g', '{}', 'aberto', 'atencao', 1, now(), now()) $$,
   '23514', null, 'estado fora dos sete canônicos');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
-             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6h', '{}', 'atencao', 101, 1, now(), now()) $$,
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6h', 'k6h', '{}', 'atencao', 101, 1, now(), now()) $$,
   '23514', null, 'score acima de 100');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
-             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'atencao_ativo|ativoId=x1|hotelId=h1', '{}',
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'atencao_ativo|ativoId=x1|hotelId=h1', 'atencao_ativo|ativoId=x1|hotelId=h1', '{}',
              'atencao', 1, now(), now()) $$,
   '23505', null, 'um insight aberto por chave');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, encerrado_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, encerrado_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
-             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6j', '{}', 'atencao', 1, now(), now(), now()) $$,
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6j', 'k6j', '{}', 'atencao', 1, now(), now(), now()) $$,
   '23514', null, 'encerrado sem quem encerrou');
 
+-- Família e chave (aprovado por Kaio, aguardando Cesar): o insight de rede com
+-- um hotel a mais tem outra chave (outro hash do conjunto) e a mesma família.
+-- O novo e o anterior ficam abertos juntos; o vínculo é o anterior_id.
+select lives_ok(
+  $$ insert into app.insight (id, tenant_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, anterior_id)
+     values ('e1000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000000',
+             array['11100000-0000-0000-0000-000000000001', '11100000-0000-0000-0000-000000000002', '11100000-0000-0000-0000-000000000003']::uuid[],
+             'sistemico',
+             'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo|hoteis=' || encode(sha256(convert_to(
+               '11100000-0000-0000-0000-000000000001,11100000-0000-0000-0000-000000000002,11100000-0000-0000-0000-000000000003', 'UTF8')), 'hex'),
+             'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo',
+             '{"regra": "mesmo_modelo"}', 'atencao', 1, now(), now(), 'e1000000-0000-0000-0000-000000000002') $$,
+  'hotel novo no insight de rede: o novo e o anterior da mesma família ficam abertos juntos');
+select throws_ok(
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'outra|hoteis=abc', 'atencao_ativo|ativoId=x9', '{}',
+             'atencao', 1, now(), now()) $$,
+  '23514', null, 'a chave começa pela família');
+select throws_ok(
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', repeat('x', 521), repeat('x', 521), '{}',
+             'atencao', 1, now(), now()) $$,
+  '23514', null, 'família acima de 520 caracteres é recusada (a entrada do índice não estoura)');
+select throws_ok(
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, estado, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, motivo_descarte, encerrado_em, encerrado_por)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6m', 'k6m', '{}', 'descartado',
+             'atencao', 1, now(), now(), 'outro', now(), 'aaaaaaaa-0000-0000-0000-000000000002') $$,
+  '23514', null, 'motivo do descarte fora dos canônicos');
+select throws_ok(
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, estado, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em, motivo_descarte)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6n', 'k6n', '{}', 'novo',
+             'atencao', 1, now(), now(), 'substituido') $$,
+  '23514', null, 'motivo do descarte só no descartado');
+
+-- 80 hotéis (Bandeira 2): a lista passa do limite de uns 2,7 KB da entrada do
+-- btree, a chave com o hash não. hotel_ids guarda a lista completa.
+insert into app.hotel (id, tenant_id, bandeira_id, nome, fuso, status)
+select ('11190000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid, '10000000-0000-0000-0000-000000000000',
+       '11000000-0000-0000-0000-00000000000b', 'Hotel R' || n, 'UTC', 'ativo'
+from generate_series(1, 80) n;
+select lives_ok(
+  $$ insert into app.insight (id, tenant_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+     select 'e1000000-0000-0000-0000-000000000080', '10000000-0000-0000-0000-000000000000',
+            array_agg(h order by h), 'sistemico',
+            'sistemico|falha=ruido|modelo=acme z9|regra=mesmo_modelo|hoteis='
+              || encode(sha256(convert_to(string_agg(h::text, ',' order by h::text), 'UTF8')), 'hex'),
+            'sistemico|falha=ruido|modelo=acme z9|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'atencao', 1, now(), now()
+     from (select ('11190000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid as h from generate_series(1, 80) n) hs $$,
+  'insight de rede com 80 hotéis entra, com a chave curta');
+select ok(
+  (select char_length(string_agg(('11190000-0000-0000-0000-' || lpad(n::text, 12, '0')), ',')) > 2700
+   from generate_series(1, 80) n),
+  'controle: a lista dos 80 hotéis passa de 2,7 KB e não caberia como chave');
+select ok(
+  (select char_length(chave) <= 600 and cardinality(hotel_ids) = 80
+   from app.insight where id = 'e1000000-0000-0000-0000-000000000080'),
+  'a chave de 80 hotéis é curta e hotel_ids guarda os 80');
 set local role hk_app;
 
 -- Caso 5 — sem contexto
@@ -162,15 +227,17 @@ select results_eq($$ select count(*)::int from app.insight where tenant_id = '10
 select is_empty($$ update app.insight set estado = 'em_revisao'
   where id = 'e1000000-0000-0000-0000-000000000001' returning 1 $$, 'admin B não decide insight do A');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
-             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k1', '{}', 'atencao', 1, now(), now()) $$,
+             array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k1', 'k1', '{}', 'atencao', 1, now(), now()) $$,
   '42501', null, 'hk_app não cria insight (nasce do job)');
 
 -- Admin do grupo A: vê tudo do tenant e decide o insight de grupo
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000001', true),
        set_config('app.tenant_id',  '10000000-0000-0000-0000-000000000000', true)) ctx;
-select results_eq('select count(*)::int from app.insight', $$ values (4) $$, 'admin do grupo vê os quatro insights do A');
+select results_eq('select count(*)::int from app.insight', $$ values (6) $$, 'admin do grupo vê os seis insights do A');
+select isnt_empty($$ select 1 from app.insight where id = 'e1000000-0000-0000-0000-000000000080' $$,
+  'admin do grupo vê o insight de 80 hotéis');
 select isnt_empty($$ update app.insight set estado = 'em_revisao'
   where id = 'e1000000-0000-0000-0000-000000000003' returning 1 $$, 'admin do grupo decide o insight de grupo');
 
@@ -212,6 +279,9 @@ select throws_ok(
 select throws_ok(
   $$ delete from app.insight where id = 'e1000000-0000-0000-0000-000000000001' $$,
   '42501', null, 'sem DELETE');
+select isnt_empty($$ update app.insight set estado = 'descartado', motivo_descarte = 'nao_relevante', nota = 'falso alarme',
+       encerrado_em = now(), encerrado_por = 'aaaaaaaa-0000-0000-0000-000000000002'
+  where id = 'e1000000-0000-0000-0000-000000000001' returning 1 $$, 'gerente descarta o do hotel dele, com o motivo, em nome próprio');
 
 -- Caso 2 — gerente do Hotel 1 e do Hotel 2: vê o insight da Bandeira 1, mas não decide
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000005', true)) ctx;
@@ -246,15 +316,15 @@ select from (select set_config('app.tenant_id', '10000000-0000-0000-0000-0000000
 select results_eq('select count(distinct tenant_id)::int from app.insight', $$ values (1) $$,
   'worker vê só o tenant do job');
 select lives_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002',
-             array['11100000-0000-0000-0000-000000000002']::uuid[], 'atencao_ativo', 'atencao_ativo|ativoId=x2|hotelId=h2', '{}',
+             array['11100000-0000-0000-0000-000000000002']::uuid[], 'atencao_ativo', 'atencao_ativo|ativoId=x2|hotelId=h2', 'atencao_ativo|ativoId=x2|hotelId=h2', '{}',
              'alta_atencao', 75, 1, now(), now()) $$,
   'worker abre insight no tenant do job');
 select throws_ok(
-  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+  $$ insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      values (gen_random_uuid(), '20000000-0000-0000-0000-000000000000', '22200000-0000-0000-0000-000000000001',
-             array['22200000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'kw', '{}', 'atencao', 1, now(), now()) $$,
+             array['22200000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'kw', 'kw', '{}', 'atencao', 1, now(), now()) $$,
   '42501', null, 'worker não grava em outro tenant');
 select isnt_empty($$ update app.insight set ultima_deteccao_em = now(), valor = 85, faixa = 'critico'
   where id = 'e1000000-0000-0000-0000-000000000001' returning 1 $$, 'worker atualiza a detecção');

@@ -48,6 +48,7 @@ export function inicioDaJanelaDeLeitura(
 - **Validação entre chaves** (ADR-035, #113; aprovado por Kaio, aguardando Cesar): a janela de leitura precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo.
   - O formato de uma chave não enxerga a outra no registro do núcleo, então a validação é do módulo.
   - Ao gravar qualquer uma das duas, o valor é conferido contra o valor resolvido da outra. A gravação que quebrar a relação é recusada com código, com mensagem nos quatro catálogos.
+  - **O job também confere na leitura,** porque a relação pode quebrar sem gravação, quando o hotel herda um valor novo do grupo. Se a janela resolvida for menor que o dobro da efetividade, o job usa o dobro e registra um aviso de configuração, com o tenant, o hotel, as duas chaves e os dois valores.
 - É a sexta chave do ADR-035 (#113). Ela entra no registro do núcleo pela `EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE`, com o filtro por módulo contratado (I5). Até lá, vale o padrão.
 - O formato e a validação ficam em `packages/inteligencia/src/politicas.ts`, como as outras cinco.
 
