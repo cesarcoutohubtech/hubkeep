@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHAVES_DE_POLITICA,
+  type ExtensaoDePolitica,
+  PREFIXOS_DO_NUCLEO,
+  ehChaveDePolitica,
   podeGerirPoliticas,
+  registroDePoliticas,
   resolverPolitica,
   validarPolitica,
   validarRegiao,
@@ -65,6 +70,76 @@ describe('políticas (ADR-026)', () => {
     expect(podeGerirPoliticas([atr('admin_grupo')], AGORA).permitido).toBe(true);
     const r = podeGerirPoliticas([atr('gerente_hotel')], AGORA);
     expect(r.permitido ? 'ok' : r.erro.codigo).toBe('configuracao_so_admin');
+  });
+});
+
+describe('registro de políticas (extensão de módulo, adendo ao ADR-026)', () => {
+  const formato = (_c: string, v: unknown) =>
+    typeof v === 'object' && v !== null && Number.isInteger((v as { n?: unknown }).n);
+  const modulo = (e: Partial<ExtensaoDePolitica> = {}): ExtensaoDePolitica => ({
+    prefixo: 'modulo.',
+    chaves: ['modulo.a', 'modulo.b'],
+    padrao: (c) => ({ n: c === 'modulo.a' ? 1 : 2 }),
+    valido: formato,
+    ...e,
+  });
+
+  it('sem extensão, só as chaves do núcleo, com o mesmo comportamento', () => {
+    const r = registroDePoliticas([]);
+    expect(r.chaves()).toEqual(CHAVES_DE_POLITICA);
+    expect(r.resolver('os.aceite_automatico', {})).toEqual({ ligado: false, dias: 7 });
+    expect(() => r.validar('modulo.a', { n: 1 })).toThrow(
+      expect.objectContaining({ codigo: 'politica_desconhecida' }),
+    );
+  });
+
+  it('as chaves do núcleo usam os prefixos reservados', () => {
+    for (const c of CHAVES_DE_POLITICA)
+      expect(PREFIXOS_DO_NUCLEO.some((p) => c.startsWith(p))).toBe(true);
+  });
+
+  it('com a extensão: chave, padrão, formato e resolução hotel → bandeira → grupo → padrão', () => {
+    const r = registroDePoliticas([modulo()]);
+    expect(r.chaves()).toEqual([...CHAVES_DE_POLITICA, 'modulo.a', 'modulo.b']);
+    expect(r.ehChave('modulo.a')).toBe(true);
+    expect(r.ehDoNucleo('modulo.a')).toBe(false);
+    expect(r.ehDoNucleo('os.aceite_automatico')).toBe(true);
+    expect(r.padrao('modulo.b')).toEqual({ n: 2 });
+    expect(r.validar('modulo.a', { n: 5 })).toEqual({ n: 5 });
+    expect(() => r.validar('modulo.a', { n: 'x' })).toThrow(
+      expect.objectContaining({ codigo: 'politica_valor_invalido' }),
+    );
+    expect(() => r.padrao('modulo.c')).toThrow(
+      expect.objectContaining({ codigo: 'politica_desconhecida' }),
+    );
+    const [hotel, bandeira, grupo] = [{ n: 3 }, { n: 4 }, { n: 5 }];
+    expect(r.resolver('modulo.a', { hotel, bandeira, grupo })).toEqual(hotel);
+    expect(r.resolver('modulo.a', { hotel: { n: 'x' }, bandeira, grupo })).toEqual(bandeira);
+    expect(r.resolver('modulo.a', { grupo })).toEqual(grupo);
+    expect(r.resolver('modulo.a', {})).toEqual({ n: 1 });
+    // A chave do núcleo também lê a bandeira no registro.
+    const aceite = { ligado: true, dias: 9 };
+    expect(r.resolver('os.aceite_automatico', { bandeira: aceite })).toEqual(aceite);
+  });
+
+  it.each([
+    ['prefixo sem ponto', [modulo({ prefixo: 'modulo' })]],
+    ['prefixo do núcleo', [modulo({ prefixo: 'os.', chaves: ['os.x'] })]],
+    ['prefixo repetido', [modulo(), modulo({ chaves: ['modulo.c'] })]],
+    ['chave fora do prefixo', [modulo({ chaves: ['outro.a'] })]],
+    ['chave só com o prefixo', [modulo({ chaves: ['modulo.'] })]],
+    ['chave repetida', [modulo({ chaves: ['modulo.a', 'modulo.a'] })]],
+    ['padrão fora do formato', [modulo({ padrao: () => ({ n: 'x' }) })]],
+  ] as const)('extensão inválida lança na montagem: %s', (_caso, extensoes) => {
+    expect(() => registroDePoliticas(extensoes)).toThrow(Error);
+  });
+
+  it('chave herdada do protótipo não é política', () => {
+    expect(ehChaveDePolitica('toString')).toBe(false);
+    expect(() => validarPolitica('toString', {})).toThrow(
+      expect.objectContaining({ codigo: 'politica_desconhecida' }),
+    );
+    expect(registroDePoliticas([]).ehChave('constructor')).toBe(false);
   });
 });
 

@@ -110,6 +110,7 @@ export {
   PedidoDeConfiguracaoDoHotel,
   PedidoDeConfiguracaoDoTenant,
   PedidoDePolitica,
+  PREFIXOS_DO_NUCLEO_API,
   RespostaDeConfiguracao,
 } from './configuracao';
 export {

@@ -20,6 +20,8 @@ import {
   ESTADOS_DA_OS_API,
   ESTADOS_DO_CHAMADO_API,
   PRIORIDADES_PADRAO_API,
+  PREFIXOS_DO_NUCLEO_API,
+  PedidoDePolitica,
 } from '../packages/contratos/src/index';
 import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
@@ -38,6 +40,7 @@ import {
   ESTADOS_DA_OS,
   ESTADOS_DO_CHAMADO,
   PRIORIDADES_PADRAO,
+  PREFIXOS_DO_NUCLEO,
 } from '../packages/dominio/src/index';
 import { IDIOMAS } from '../packages/i18n/src/index';
 
@@ -48,6 +51,21 @@ describe('contratos × domínio', () => {
 
   it('os idiomas aceitos pela API são exatamente os do @hubkeep/i18n', () => {
     expect([...IDIOMAS_API]).toEqual([...IDIOMAS]);
+  });
+
+  it('chave de módulo: a API aceita texto fora dos prefixos do núcleo, que são os do domínio', () => {
+    expect([...PREFIXOS_DO_NUCLEO_API]).toEqual([...PREFIXOS_DO_NUCLEO]);
+    const pedido = (chave: string, valor: unknown) =>
+      PedidoDePolitica.safeParse({ chave, escopo: { tipo: 'grupo' }, valor }).success;
+    expect(pedido('inteligencia.atencao_ativo', { limite: 70 })).toBe(true);
+    expect(pedido('inteligencia.atencao_ativo', null)).toBe(true);
+    // Chave do núcleo com valor fora do formato não escapa pelo ramo da extensão.
+    expect(pedido('os.aceite_automatico', { ligado: true, dias: 0 })).toBe(false);
+    expect(pedido('os.nao_existe', {})).toBe(false);
+    expect(pedido('ativo.criticidade', {})).toBe(false);
+    expect(pedido('sem_ponto', {})).toBe(false);
+    expect(pedido('inteligencia.atencao_ativo', undefined)).toBe(false);
+    expect(pedido('Maiuscula.x', {})).toBe(false);
   });
 
   it('as políticas da API são as do domínio, com o mesmo formato (ADR-026)', () => {

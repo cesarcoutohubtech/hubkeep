@@ -9,6 +9,7 @@
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
 import { criarCasosDeUsoDeConfiguracao, relogioDoSistema } from '@hubkeep/aplicacao';
+import { registroDePoliticas } from '@hubkeep/dominio';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -30,12 +31,14 @@ const H1 = randomUUID();
 const U = { admin: randomUUID(), gerente: randomUUID(), tecnico: randomUUID() };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 const ACEITE = 'os.aceite_automatico';
+const EXTENSAO = 'modulo_teste.limite';
 
 describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_000 }, () => {
   let dono: pg.Client;
   let banco: AcessoBanco;
   let casos: ReturnType<typeof criarCasosDeUsoDeConfiguracao>;
   let semChecagem: ReturnType<typeof criarCasosDeUsoDeConfiguracao>;
+  let comExtensao: ReturnType<typeof criarCasosDeUsoDeConfiguracao>;
 
   beforeAll(async () => {
     dono = new pg.Client({ connectionString: URL_DONO });
@@ -74,6 +77,22 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
     semChecagem = criarCasosDeUsoDeConfiguracao({
       ...deps,
       podeGerir: () => ({ permitido: true }),
+    });
+    // Um módulo de mentira: o domínio e o caso de uso não conhecem chave de módulo.
+    comExtensao = criarCasosDeUsoDeConfiguracao({
+      ...deps,
+      politicas: registroDePoliticas([
+        {
+          prefixo: 'modulo_teste.',
+          chaves: [EXTENSAO],
+          padrao: () => ({ limite: 70 }),
+          valido: (_c, v) =>
+            typeof v === 'object' &&
+            v !== null &&
+            Object.keys(v).length === 1 &&
+            Number.isInteger((v as { limite?: unknown }).limite),
+        },
+      ]),
     });
   });
 
@@ -152,6 +171,34 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
     await expect(
       casos.gravarPolitica(ctx(U.admin), 'os.nao_existe', { tipo: 'grupo' }, {}),
     ).rejects.toMatchObject({ codigo: 'politica_desconhecida' });
+  });
+
+  it('chave de módulo: só com a extensão registrada, no formato dela; a leitura segue com as do núcleo', async () => {
+    await expect(
+      casos.gravarPolitica(ctx(U.admin), EXTENSAO, { tipo: 'grupo' }, { limite: 80 }),
+    ).rejects.toMatchObject({ codigo: 'politica_desconhecida' });
+    await expect(
+      comExtensao.gravarPolitica(ctx(U.admin), EXTENSAO, { tipo: 'grupo' }, { limite: 'x' }),
+    ).rejects.toMatchObject({ codigo: 'politica_valor_invalido' });
+    await expect(
+      comExtensao.gravarPolitica(ctx(U.admin), 'modulo_teste.outra', { tipo: 'grupo' }, {}),
+    ).rejects.toMatchObject({ codigo: 'politica_desconhecida' });
+    await expect(
+      comExtensao.gravarPolitica(ctx(U.gerente), EXTENSAO, { tipo: 'grupo' }, { limite: 80 }),
+    ).rejects.toMatchObject({ codigo: 'configuracao_so_admin' });
+
+    await comExtensao.gravarPolitica(ctx(U.admin), EXTENSAO, { tipo: 'grupo' }, { limite: 80 });
+    const { rows } = await dono.query(
+      `select valor from app.politica where tenant_id = $1 and chave = $2 and ativa`,
+      [TENANT, EXTENSAO],
+    );
+    expect(rows.map((r) => r.valor)).toEqual([{ limite: 80 }]);
+    await comExtensao.gravarPolitica(ctx(U.admin), EXTENSAO, { tipo: 'grupo' }, null);
+
+    const lidas = (await comExtensao.lerConfiguracao(ctx(U.admin), H1)).politicas;
+    expect(lidas.map((p) => p.chave).sort()).toEqual(
+      ['chamado.prioridade_padrao_por_categoria', ACEITE].sort(),
+    );
   });
 
   it('o Admin configura o tenant e o hotel', async () => {
