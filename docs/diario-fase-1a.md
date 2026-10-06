@@ -1136,3 +1136,26 @@ Dividida em duas partes, cada uma no seu PR:
 - **Prontos no local:** o B13 (`wt/b13-zona`), que precisa ser atualizado com a `main` antes de abrir. Este PR está em `wt/adr-aprovacao`.
 - **Do Cesar:** o merge de cada PR protegido; ler e responder sobre os ADR-033 a 037 e as regras do #101; o ajuste do B13 no GitHub; decidir se o PWA reporta erro ao Sentry; o teste do kit; o aval para a 1b.
 - **Parada:** a fase 1b só começa com o aval do Cesar.
+
+### Registro de políticas e liberação estreita no lint (06/10/2026)
+- **Mergeados:** #105 (ADRs do Intelligence aguardam o Cesar, regra dos dois agentes), #106 (registro de políticas com extensão de módulo) e #107 (B13).
+- **#106, fora da zona protegida:**
+  - `registroDePoliticas` no domínio, com uma resolução só (hotel → bandeira → grupo → padrão);
+  - o caso de uso de configuração recebe o registro e o contrato aceita chave de módulo;
+  - de passagem, `ehChaveDePolitica` deixou de aceitar chave do protótipo (`toString`).
+- **Este PR, zona protegida:**
+  - a liberação estreita no lint: só a pasta `apps/web/src/servidor/modulos/inteligencia/` e as rotas e telas em pastas `inteligencia` importam `@hubkeep/inteligencia`;
+  - `montarInteligencia()` nessa pasta, que por enquanto não registra extensão;
+  - a composição monta o registro de políticas com o que ela devolve;
+  - `tests/composicao-inteligencia.test.ts`: só a composição chega à pasta, e só por essa função;
+  - o adendo ao ADR-026, cujo texto aguarda a aprovação do Cesar.
+- **Para o agente do Kaio**, além do que está na entrada anterior:
+  - o conteúdo de `montarInteligencia` passa a ser dele. A extensão das políticas (`ExtensaoDePolitica` do domínio, prefixo `inteligencia.`) só é registrada junto com o filtro por módulo contratado (`licenca.modulo`, 1b);
+  - `ehChaveDePoliticaDoIntelligence` usa `c in PADROES_DO_INTELLIGENCE`, que aceita `toString` e quebra o `valorValidoDoIntelligence`; trocar por `Object.hasOwn`, como no núcleo;
+  - a leitura das chaves dele para a tela é do módulo: a configuração do núcleo devolve só as chaves do núcleo.
+
+### Ponto de retomada (06/10/2026, depois do registro de políticas)
+- **Ao retomar:** `gh pr list`, `gh pr checks` do PR aberto e `gh run list --branch main`.
+- **Fila de zona protegida:** este PR é o último antes da 1b; depois dele, o começo da 1b, com o aval do Cesar.
+- **Do Cesar:** o merge de cada PR; ler e responder sobre os ADR-033 a 037, as regras do #101 e o adendo ao ADR-026; o ajuste do B13 no GitHub; decidir se o PWA reporta erro ao Sentry; o teste do kit; o aval para a 1b.
+- **Parada:** a fase 1b só começa com o aval do Cesar.
