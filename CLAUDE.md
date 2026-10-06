@@ -100,6 +100,17 @@ Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `
 - Worktrees em `C:\Cesar\HubKeep\Dev\wt\`, nunca na pasta temporária do Windows, que é limpa automaticamente e já apagou links de `node_modules` no meio de uma tarefa (etapa A da fase 1a).
 - PR de zona protegida um de cada vez: a tarefa seguinte pode andar no local, mas o próximo PR de zona protegida só abre depois do merge do anterior, para não criar ciclos de conflito.
 
+## Dois agentes no repositório
+
+Dois agentes do Claude Code trabalham neste repositório (decisão do Cesar de 30/09/2026):
+
+- **Agente do núcleo** (Cesar): tudo o que não é do Intelligence, inclusive as migrações das tabelas do núcleo (chamado, OS, ativo, licença) e a instrumentação que o Intelligence lê. Diário: `docs/diario-fase-*.md`.
+- **Agente do Intelligence** (Kaio): `packages/inteligencia`, as rotas e telas do Intelligence no `apps/web` e as tabelas do próprio módulo, em branches `int-*`. Diário: `docs/diario-intelligence.md`.
+- **Fronteira:** o Intelligence depende do núcleo, nunca o contrário (lint de fronteiras). Pedido de um agente ao outro fica registrado no diário de quem pede; o outro responde no próprio diário.
+- **Um PR de zona protegida aberto por vez no repositório inteiro.** Antes de abrir um, conferir no GitHub se já existe outro aberto, de qualquer dos dois agentes.
+- **ADR:** os do núcleo, com a aprovação do Cesar; os do Intelligence, com a aprovação escrita de Cesar **e** de Kaio. Merge não aprova ADR: até a aprovação, o status fica "aguarda aprovação".
+- `db push`, `config push` e o merge de zona protegida são só do Cesar.
+
 ## Nunca faça
 
 - Usar `service_role`/secret key para acessar dados de negócio.

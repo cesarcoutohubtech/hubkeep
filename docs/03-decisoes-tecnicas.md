@@ -714,7 +714,9 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-033 — Intelligence: sinal e insight, com o ciclo de vida do insight no domínio
 
-**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-1 (`docs/referencia/propostas-adr-inteligencia.md`). Os ADRs do Intelligence valem com a aprovação escrita de Cesar ou de Kaio. Essa regra é a decisão de 05/10/2026, confirmada pelo usuário na sessão do agente do Kaio, e substitui a exigência de 30/09/2026 de os dois aprovarem juntos.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-1 (`docs/referencia/propostas-adr-inteligencia.md`); aguarda aprovação do Cesar.
+
+**Quem aprova ADR do Intelligence:** Cesar e Kaio, os dois, por escrito (decisão de 30/09/2026, reafirmada pelo Cesar em 06/10/2026). O registro de 05/10/2026, feito na sessão do agente do Kaio, que aceitava a aprovação de um só, fica revogado. O merge do PR que trouxe estes ADRs ao `docs/03` (#97) não conta como aprovação. Vale para o ADR-033 ao ADR-037 e para as três regras do cálculo do dia (#101), que também aguardam o Cesar.
 
 **Contexto:** o PRD do Intelligence (`docs/referencia/prd-hubkeep-intelligence-v1.md`, seções 21 e 22) propõe `intelligence_signal` e `intelligence_insight`, com status em inglês e uma tabela de sinais que copia o núcleo.
 
@@ -737,7 +739,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-034 — Intelligence: scores determinísticos, versionados e explicáveis, calculados na aplicação
 
-**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-2.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-2; aguarda aprovação do Cesar.
 
 **Contexto:** o PRD (seções 28 e 29) sugere `metric_definition` com fórmula e views materializadas. Fórmula de score é regra de negócio (regra 2).
 
@@ -755,7 +757,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-035 — Intelligence: pesos, limites e faixas como políticas
 
-**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-3.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-3; aguarda aprovação do Cesar.
 
 **Decisão:**
 - **Uma chave de política por score,** no modelo do ADR-026, com o formato validado no domínio: `inteligencia.reincidencia`, `inteligencia.atencao_ativo`, `inteligencia.efetividade`, `inteligencia.sistemico` e `inteligencia.substituicao`.
@@ -769,7 +771,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
-**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aguarda aprovação do Cesar.
 
 **Decisão:**
 - **Job diário** por Vercel Cron: `hk_worker`, um tenant por transação, unit of work com auditoria e evento.
@@ -781,7 +783,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-037 — Intelligence: o módulo depende do núcleo, nunca o contrário
 
-**Status:** aprovada por escrito em 05/10/2026, como ADR-INT-5. Já aplicada no lint desde o #87.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-5; aguarda aprovação do Cesar. A fronteira (o núcleo não importa o módulo) é pedido do Cesar de 01/10/2026 e está no lint desde o #87.
 
 **Decisão:**
 - **`packages/inteligencia` é puro** como o `packages/dominio`: só importa `@hubkeep/dominio` e `@hubkeep/i18n`. O núcleo nunca o importa.

@@ -1110,3 +1110,29 @@ Dividida em duas partes, cada uma no seu PR:
   - também pega o literal passado a `alert`, `confirm` e `prompt` e atribuído ao `document.title`;
   - arquivos `.ts` e literal guardado em variável ficam para a revisão, como aprovado.
 - **Testes:** `tests/fronteiras.test.ts` ganhou os casos proibidos e permitidos de cada regra. Local: lint, typecheck e os testes da raiz verdes; nenhum código existente violava as regras novas.
+
+### Pendências do Intelligence avaliadas e decididas (06/10/2026)
+- **Main:** #96 a #102 (Intelligence e dependência) mergeados; verde no `4994d1a`. A 0029 está no dev (`db push` do Cesar, conferido por leitura).
+- **Avaliação** do mapa das entradas do `calcularDia` e da proposta de extensão das políticas, do agente do Kaio, sem aplicar nada. **Decisões do Cesar**, registradas no fim do relatório de lacunas:
+  - aprovados com os ajustes do agente do núcleo: a liberação estreita no lint, a tabela de transições da OS, o ponto de extensão das políticas e os módulos contratados em `licenca.modulo`;
+  - criticidade fixa de 1 a 5, com nomes configuráveis nos quatro idiomas;
+  - o limite que sugere insight vira campo da `inteligencia.atencao_ativo`, com padrão 70.
+- **Aprovação de ADR do Intelligence:** é dos dois, Cesar e Kaio (30/09/2026, reafirmado pelo Cesar em 06/10/2026). O registro de 05/10, na sessão do agente do Kaio, que aceitava um só, foi revogado. Os ADR-033 a 037 e as três regras do cálculo do dia (#101) ficam como "aprovados por Kaio; aguardam aprovação do Cesar". A regra dos dois agentes entrou no `CLAUDE.md`.
+- **Para o agente do Kaio**, no diário dele:
+  - anotar a revogação da regra de 05/10;
+  - a política `inteligencia.atencao_ativo` ganha o limite do insight, com padrão 70;
+  - a criticidade é 1 a 5 fixa, sem o máximo da política;
+  - o job usa a resolução do registro do núcleo, e a resolução própria do `politicas.ts` sai ou passa a delegar;
+  - as rotas e telas do Intelligence ficam em pastas `inteligencia` do `apps/web`, e o servidor do módulo em `apps/web/src/servidor/modulos/inteligencia/`.
+- **Fila de zona protegida, um PR por vez:**
+  1. M1 (#103, mergeado em 06/10/2026);
+  2. a correção do ADR-033 com a regra dos dois agentes no `CLAUDE.md` (este PR);
+  3. B13;
+  4. a liberação no lint com o adendo ao ADR-026 (extensão das políticas);
+  5. no começo da 1b, com o aval do Cesar: migração 1 (ativo), 2 (chamado e OS), transições da OS, 3 (códigos) e `licenca.modulo`.
+
+### Ponto de retomada (06/10/2026, fila de zona protegida)
+- **Ao retomar:** `gh pr list`, `gh pr checks` do PR aberto e `gh run list --branch main`.
+- **Prontos no local:** o B13 (`wt/b13-zona`), que precisa ser atualizado com a `main` antes de abrir. Este PR está em `wt/adr-aprovacao`.
+- **Do Cesar:** o merge de cada PR protegido; ler e responder sobre os ADR-033 a 037 e as regras do #101; o ajuste do B13 no GitHub; decidir se o PWA reporta erro ao Sentry; o teste do kit; o aval para a 1b.
+- **Parada:** a fase 1b só começa com o aval do Cesar.
