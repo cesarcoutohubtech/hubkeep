@@ -52,7 +52,7 @@ Três migrações, no começo da 1b, cada uma num PR de zona protegida, nesta or
 1. **Ativo** (a menor):
    - `app.ativo` ganha `data_compra date`, `garantia_ate date` e `criticidade smallint`, todas anuláveis;
    - `grant update (data_compra, garantia_ate, criticidade)` ao `hk_app`, junto das colunas que a edição já atualiza;
-   - a escala da criticidade é política (`ativo.criticidade`, com o máximo e os nomes de cada nível no catálogo), validada no domínio; o banco não tem check de faixa;
+   - a escala da criticidade é fixa, de 1 a 5 (decisão do Cesar de 06/10/2026), com `check (criticidade between 1 and 5)`, que é formato e não regra configurável. Os nomes de cada nível vêm do catálogo nos quatro idiomas, e o tenant troca os nomes pela política `ativo.criticidade`, como nas situações (ADR-027). Não há máximo configurável;
    - pgTAP: as colunas novas não abrem escrita para quem não escreve no hotel (casos de UPDATE por papel no 003).
 2. **Chamado e OS** (abertura, triagem e aceite):
    - `app.chamado` ganha `origem text not null default 'interno'` e `impacto_hospede boolean`;
@@ -122,6 +122,17 @@ Os textos novos (rótulos, opções e códigos de erro) vão para os quatro cat�
 
 **Para o agente do Kaio**, quando as migrações entrarem, os campos "(fase A)" de `packages/inteligencia/src/historico.ts` trocam pelos nomes reais:
 - `codigoFalha` → `app.os.codigo_falha_id`;
-- `Criticidade` → `app.ativo.criticidade`, com a escala da política;
+- `Criticidade` → `app.ativo.criticidade`, na escala fixa de 1 a 5 (decisão de 06/10/2026);
 - o custo deixa de ser componente ausente quando houver `custo_informado`;
 - a regra do mesmo fornecedor pode usar `terceiro_nome`, normalizado como o `chaveDeModelo`.
+
+## Decisões do Cesar (06/10/2026)
+
+Sobre o mapa das entradas do `calcularDia` (`docs/referencia/mapa-entradas-calcular-dia.md`) e a proposta de extensão das políticas (`docs/referencia/proposta-extensao-politicas.md`), do agente do Kaio:
+
+1. **Transições da OS:** tabela `app.os_transicao` (de, para, quando, quem e a ação), gravada pelo caso de uso na mesma unit of work que muda o estado, só com INSERT, legível pelo `hk_app` no recorte da OS e pelo `hk_worker` no tenant do job. Serve ao MTTR da 1c e dá ao job a conclusão e as reaberturas, sem abrir a auditoria ao worker. Sem colunas de conveniência na OS por enquanto. Entra como migração própria logo depois da 2 (chamado e OS).
+2. **Ponto de extensão das políticas** por registro de formatos, montado no ponto de composição. Uma resolução só, a do registro. O nível bandeira entra na 1c; até lá, valor com escopo de bandeira é recusado na gravação.
+3. **Módulos contratados** em `licenca.modulo` (tenant, módulo, vigência), gravados pelo backoffice e lidos pelo `hk_app` e pelo `hk_worker` no próprio tenant. Até o backoffice existir, a gravação é por script de operação.
+4. **Criticidade fixa de 1 a 5,** com os nomes configuráveis nos quatro idiomas (migração 1, acima).
+5. **O limite que faz o score sugerir insight** vira campo da política `inteligencia.atencao_ativo`, com padrão 70.
+6. **Liberação estreita no lint:** só a pasta do módulo no servidor do web (`apps/web/src/servidor/modulos/inteligencia/`) e as rotas e telas `inteligencia` do `apps/web` importam `@hubkeep/inteligencia`. A composição chega ao módulo por uma única função de montagem, e os pacotes do núcleo continuam proibidos.
