@@ -45,7 +45,9 @@ export function inicioDaJanelaDeLeitura(
   - inteiro de 180 a 730;
   - o mínimo de 180 cobre a efetividade de 90 dias antes e 90 depois;
   - o padrão é `{ dias: 180 }`.
-- **Ponto a conferir:** se a política da efetividade subir a janela dela acima de 90 dias, 180 deixa de bastar. Opções: a tela usa o maior entre a janela e o dobro da janela da efetividade, ou o mínimo passa a acompanhar a efetividade. A validação de uma chave não enxerga a outra no registro do núcleo.
+- **Validação entre chaves** (ADR-035, #113; aprovado por Kaio, aguardando Cesar): a janela de leitura precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo.
+  - O formato de uma chave não enxerga a outra no registro do núcleo, então a validação é do módulo.
+  - Ao gravar qualquer uma das duas, o valor é conferido contra o valor resolvido da outra. A gravação que quebrar a relação é recusada com código, com mensagem nos quatro catálogos.
 - É a sexta chave do ADR-035 (#113). Ela entra no registro do núcleo pela `EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE`, com o filtro por módulo contratado (I5). Até lá, vale o padrão.
 - O formato e a validação ficam em `packages/inteligencia/src/politicas.ts`, como as outras cinco.
 

@@ -16,18 +16,29 @@
 
 ## Decisões de 06/10/2026
 
-1. **Hotel novo num insight de rede:** o job encerra o insight e abre outro, ligado pelo `anterior_id`. `hotel_ids` continua sem UPDATE (meta-teste 18 e ADR-011). No job:
-   - quando a lista de hotéis da detecção difere da do insight aberto da mesma chave, o insight aberto é encerrado e outro é aberto com `anterior_id`;
-   - o `decidirDeteccao` ganha esse caso no PR do caso de uso do job.
-2. **Retenção da métrica diária:** opção B, janela de leitura de 180 dias (revista no mesmo dia, de 60 para 180, para caber a efetividade de 90 dias antes e depois), configurável por política, nada apagado (`rascunhos/metrica/LEIAME.md` e #113).
+1. **Hotel novo num insight de rede: opção (c).** Aprovado por Kaio, aguardando Cesar. Substitui a primeira versão, em que o job encerrava o insight, porque ela conflitava com o ADR-033.
+   - O job abre o insight novo, ligado ao anterior pelo `anterior_id`.
+   - O anterior continua aberto até uma pessoa resolver ou descartar.
+   - O job não muda estado (ADR-033), e `hotel_ids` continua sem UPDATE (ADR-011, meta-teste 18).
+   - Na tela e na API, o anterior aparece como "substituído pelo insight X", calculado pelo vínculo. O descarte aceita o motivo "substituído".
+   - Não há estado novo.
+   - **Implementação parada: a unicidade colide.**
+     - O índice `insight_um_aberto_por_chave` é `(tenant_id, chave) where encerrado_em is null`.
+     - A chave do sinal sistêmico não leva os hotéis (`sistemico|falha=…|modelo=…|regra=mesmo_modelo`). O novo e o anterior teriam a mesma chave abertos ao mesmo tempo, e o índice recusa.
+     - O `decidirDeteccao` também acharia o anterior aberto pela chave e o atualizaria, em vez de abrir outro.
+   - **Proposta, para o Cesar:**
+     - **A `chave` passa a levar o conjunto de hotéis em ordem.** Por exemplo, `sistemico|falha=ruido|hoteis=h1+h2+h3|modelo=acme x1|regra=mesmo_modelo`. O índice de unicidade continua o mesmo, e o novo e o anterior ficam abertos juntos.
+     - **Uma coluna `familia`,** a chave sem os hotéis, só para o vínculo. Quando não há insight aberto com a chave nova, mas há um aberto da mesma família com outro conjunto de hotéis, o job abre com `anterior_id` apontando para ele. Índice comum em `(tenant_id, familia)`.
+     - **O silêncio de 30 dias depois do descarte** passa a valer pela chave com os hotéis. Um conjunto novo de hotéis é informação nova e não fica silenciado pelo descarte do conjunto antigo.
+     - No insight de hotel, o conjunto é o próprio hotel e nada muda na prática.
+     - No `decidirDeteccao`: um caso "abrir substituindo" (`anteriorId` do aberto da mesma família) e o `familia` na detecção e no insight existente.
+2. **Retenção da métrica diária:** opção B, janela de leitura de 180 dias, configurável por política, nada apagado (`rascunhos/metrica/LEIAME.md` e #113).
+   - Foi revista no mesmo dia, de 60 para 180 dias, para caber a efetividade de 90 dias antes e depois.
+   - A janela precisa ser pelo menos o dobro da janela da efetividade (#113).
 3. **O resultado gravado de cada dia é a fonte de verdade do histórico.** Ele guarda a configuração usada.
-   - **Limitação:** recalcular um dia passado usa os valores atuais da origem e não reproduz exatamente o que foi gravado.
-   - **O que só tem valor atual na origem:**
-     - as reaberturas (uma contagem sem data);
-     - a conclusão da OS reaberta depois;
-     - os campos editáveis da OS, do chamado, do ativo e do local;
-     - a política vigente.
-   - **Pedido ao núcleo:** a conclusão e as reaberturas com data. O `hk_worker` não ganha leitura da auditoria.
+   - **Reproduzidas no recálculo:** a conclusão e as reaberturas, pelas transições da OS (`app.os_transicao`, I3) até aquele dia (`conclusaoEReaberturas`).
+   - **Com o valor atual:** os campos editáveis da OS, do chamado, do ativo e do local, e a política vigente. Por isso o recálculo não reproduz exatamente o que foi gravado.
+   - O `hk_worker` não lê a auditoria.
 
 ## Confirmado contra o rascunho
 

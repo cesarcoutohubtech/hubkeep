@@ -35,9 +35,13 @@
 --   faixa, o detalhamento e a evidência, só no tenant do job. Não muda estado.
 -- Sem INSERT pelo hk_app (o insight nasce do job) e sem DELETE para ninguém.
 -- Nenhum campo de escopo (hotel_id, bandeira_id, hotel_ids) recebe UPDATE.
---   Decisão de 06/10/2026: quando um hotel novo entra num insight de rede, o
---   job encerra o insight e abre outro, ligado pelo anterior_id; hotel_ids
---   continua sem UPDATE.
+--   Hotel novo num insight de rede (opção c, aprovada por Kaio, aguardando
+--   Cesar): o job abre o insight novo, ligado pelo anterior_id, e o anterior
+--   continua aberto até uma pessoa resolver ou descartar (o job não muda
+--   estado; hotel_ids sem UPDATE). PENDENTE: com o índice abaixo, o novo e o
+--   anterior colidem, porque a chave não leva os hotéis. Proposta no LEIAME.md:
+--   a chave leva o conjunto de hotéis, e uma coluna familia (a chave sem os
+--   hotéis) serve ao vínculo.
 -- O insight guarda a própria evidência (detalhe e evidencia, com a
 --   configuração usada) e não depende de linha da métrica diária: nenhuma FK
 --   nem leitura de app.metrica_ativo_diaria, cuja leitura é limitada a 180 dias.
