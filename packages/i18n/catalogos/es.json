@@ -32,6 +32,7 @@
   "admin.configuracao.prioridade.titulo": "Prioridad predeterminada por categoría de activo",
   "admin.configuracao.prioridade.resumo": "{n, plural, =0 {Ninguna categoría asignada.} one {# categoría asignada.} other {# categorías asignadas.}} La edición llega con las categorías de activo.",
   "erro.configuracao_so_admin": "Solo el Admin del grupo modifica la configuración.",
+  "erro.insight_fora_do_escopo": "No decides sobre insights en este ámbito.",
   "erro.politica_desconhecida": "Política desconocida.",
   "erro.politica_valor_invalido": "El valor no respeta el formato de la política.",
   "erro.politica_nao_encontrada": "Política no encontrada.",

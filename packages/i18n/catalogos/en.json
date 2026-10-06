@@ -32,6 +32,7 @@
   "admin.configuracao.prioridade.titulo": "Default priority by asset category",
   "admin.configuracao.prioridade.resumo": "{n, plural, =0 {No category mapped.} one {# category mapped.} other {# categories mapped.}} Editing arrives with asset categories.",
   "erro.configuracao_so_admin": "Only the group Admin changes the settings.",
+  "erro.insight_fora_do_escopo": "You don't decide on insights in this scope.",
   "erro.politica_desconhecida": "Unknown policy.",
   "erro.politica_valor_invalido": "The value does not match the policy format.",
   "erro.politica_nao_encontrada": "Policy not found.",
