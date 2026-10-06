@@ -40,7 +40,7 @@
 --   continua sem UPDATE.
 -- O insight guarda a própria evidência (detalhe e evidencia, com a
 --   configuração usada) e não depende de linha da métrica diária: nenhuma FK
---   nem leitura de app.metrica_ativo_diaria, cuja leitura é limitada a 60 dias.
+--   nem leitura de app.metrica_ativo_diaria, cuja leitura é limitada a 180 dias.
 -- As policies leem só funções authz; nenhuma lê app.insight (meta-teste 27).
 -- Só estrutura e autorização: nenhuma função, trigger ou regra de negócio.
 -- ============================================================================

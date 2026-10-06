@@ -19,7 +19,7 @@
 1. **Hotel novo num insight de rede:** o job encerra o insight e abre outro, ligado pelo `anterior_id`. `hotel_ids` continua sem UPDATE (meta-teste 18 e ADR-011). No job:
    - quando a lista de hotéis da detecção difere da do insight aberto da mesma chave, o insight aberto é encerrado e outro é aberto com `anterior_id`;
    - o `decidirDeteccao` ganha esse caso no PR do caso de uso do job.
-2. **Retenção da métrica diária:** opção B, janela de leitura de 60 dias, configurável por política, nada apagado (`rascunhos/metrica/LEIAME.md`).
+2. **Retenção da métrica diária:** opção B, janela de leitura de 180 dias (revista no mesmo dia, de 60 para 180, para caber a efetividade de 90 dias antes e depois), configurável por política, nada apagado (`rascunhos/metrica/LEIAME.md` e #113).
 3. **O resultado gravado de cada dia é a fonte de verdade do histórico.** Ele guarda a configuração usada.
    - **Limitação:** recalcular um dia passado usa os valores atuais da origem e não reproduz exatamente o que foi gravado.
    - **O que só tem valor atual na origem:**
@@ -32,7 +32,7 @@
 ## Confirmado contra o rascunho
 
 - **O insight guarda a própria evidência:** `detalhe` e `evidencia`, com a configuração usada e os ids de origem. Ele não depende de linha da métrica diária: não há FK nem leitura da `app.metrica_ativo_diaria`.
-- **Nenhuma regra aprovada lê a métrica diária além de 60 dias:**
+- **Nenhuma regra aprovada lê a métrica diária além de 180 dias:**
   - os scores, o sistêmico e a efetividade leem a origem;
   - a agregação mensal lê só o mês que fecha;
   - o custo informado de 12 meses vem da OS.
