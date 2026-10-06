@@ -1159,3 +1159,18 @@ Dividida em duas partes, cada uma no seu PR:
 - **Fila de zona protegida:** este PR é o último antes da 1b; depois dele, o começo da 1b, com o aval do Cesar.
 - **Do Cesar:** o merge de cada PR; ler e responder sobre os ADR-033 a 037, as regras do #101 e o adendo ao ADR-026; o ajuste do B13 no GitHub; decidir se o PWA reporta erro ao Sentry; o teste do kit; o aval para a 1b.
 - **Parada:** a fase 1b só começa com o aval do Cesar.
+
+### Fim da fila de zona protegida (06/10/2026)
+- **Mergeados:** #107 (B13) e #108 (liberação estreita no lint e adendo ao ADR-026). CI da `main` verde depois do #108 (CI, banco e segurança).
+- **Decisão do Cesar:** se o PWA reporta erro ao Sentry fica para junto da decisão do Sentry, antes do piloto. Registrado como pendência no `docs/04` (item do Sentry) e no M3 do `docs/11`.
+- **Com o Cesar:** os ADR-033 a 037, as três regras do #101, o texto do adendo ao ADR-026, o ruleset do B13 no GitHub e o teste do kit.
+
+### Ponto de retomada (06/10/2026, fila de zona protegida concluída)
+- **Ao retomar:** `gh pr list`, `gh pr checks` do PR aberto e `gh run list --branch main`.
+- **Próximo passo:** o começo da 1b, só com o aval do Cesar depois do teste do kit, com os PRs de zona protegida um por vez:
+  1. migração do ativo, com a criticidade de 1 a 5;
+  2. migração do chamado e da OS, com executado por, nome do terceiro e custo informado;
+  3. transições da OS;
+  4. códigos de manutenção;
+  5. `licenca.modulo`.
+- **Parada:** a fase 1b só começa com o aval do Cesar.

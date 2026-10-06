@@ -59,6 +59,7 @@ Três pedem decisão do Cesar antes do piloto: o uso da chave secreta pela ident
 - **Proposta:**
   - marcar o hotel na `rota()` (por exemplo, `r.marcarHotel(hotelId)`) nos handlers que recebem hotel, com o campo indo também às marcas do Sentry;
   - decidir antes do piloto se o PWA reporta erro.
+- **Situação:** a marca do hotel entrou no #94. Se o PWA reporta erro fica como pendência, decidida junto com o Sentry, antes do piloto (Cesar, 06/10/2026; `docs/04`, item do Sentry).
 
 **M4. `pnpm dev` não existe na raiz.**
 - **Onde:** o `CLAUDE.md` documenta o comando, mas o `package.json` da raiz não tem o script e o `turbo.json` não tem a tarefa. O roteiro do `docs/10` usa os comandos por app, que funcionam.

@@ -142,6 +142,7 @@ Criar os projetos Vercel (`web`, `tecnico`) com funções em `gru1`, variáveis 
 - **Vercel:** plano Pro com um membro (o Cesar).
 - **Preview fora da produção** (M2 do `docs/11`): `HK_REF_PRODUCAO` com o project ref de produção em todos os ambientes da Vercel. No preview, a inicialização recusa a conexão com esse projeto e falha se a variável faltar (`packages/db/src/alvo-do-banco.ts`). Conferir no primeiro preview que ele sobe no staging e que, com a string de produção, não sobe.
 - **Sentry:** adiado até o piloto. Sem `SENTRY_DSN`, a aplicação funciona normalmente, só com os logs estruturados (teste `apps/web/test/sentry.test.ts`).
+  - **Pendência:** se o PWA (e o cliente do web) reporta erro ao Sentry. Hoje só o servidor do web reporta. A decisão sai junto com a do Sentry, antes do piloto (Cesar, 06/10/2026; resto do M3 do `docs/11`).
 
 Antes de criar o projeto de staging, o access token pessoal do Supabase (`sbp_…`) passa a ter prazo de validade, sai do ambiente da máquina quando não estiver em uso e nunca é usado contra staging nem produção (regra do incidente 2, `docs/diario-fase-0.md`). O `scripts/ops/ler-config-remota.ts` já recusa qualquer ambiente que não seja o dev.
 
