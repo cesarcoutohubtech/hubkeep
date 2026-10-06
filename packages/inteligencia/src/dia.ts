@@ -4,7 +4,7 @@
 // a linha da métrica diária) e as detecções que o job passa a decidirDeteccao.
 // A aplicação lê, chama isto e grava pela unit of work; nada aqui lê banco.
 //
-// Propostas para aprovação (diário, 06/10/2026), aplicadas aqui até a resposta:
+// Aprovado por escrito pelo usuário em 06/10/2026 (PR #100), como proposto:
 // - no 1.0, insight nasce de dois tipos: a atenção do ativo, quando passa do
 //   limite, e o sinal sistêmico. A reincidência já é componente da atenção e
 //   não abre insight próprio, para o mesmo ativo não ter dois; a substituição
@@ -38,7 +38,7 @@ import {
 } from './sistemico';
 
 export const JANELA_CUSTO_DIAS = 365;
-/** Faixa do insight sistêmico, que não tem score (proposta de 06/10/2026). */
+/** Faixa do insight sistêmico, que não tem score (aprovado em 06/10/2026). */
 export const FAIXA_DO_SISTEMICO = 'atencao';
 
 export interface HotelDoDia {
