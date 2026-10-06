@@ -208,5 +208,51 @@ describe('calcularDia: detecções sistêmicas', () => {
     const r = calcularDia({ agora, hoteis, ativos: as, corretivas: falhas(as), locais: [] });
     const modelo = r.deteccoes.find((d) => d.regra === 'mesmo_modelo');
     expect(modelo?.alcance).toEqual({ tipo: 'rede', bandeiraId: null });
+    expect(modelo?.hotelIds).toEqual(['h1', 'h2', 'h3']);
+  });
+
+  it('o escopo e a evidência só citam hotéis da lista hotelIds (a RLS lê por ela)', () => {
+    const as = doModelo([
+      ['m1', 'h1'],
+      ['m2', 'h2'],
+      ['m3', 'h2'],
+      ['m4', 'h2'],
+      ['m5', 'h2'],
+    ]);
+    const locais = uhs(8, 'h3');
+    const doA1 = problematico('a1');
+    const doModelo5 = falhas(as);
+    const r = calcularDia({
+      agora,
+      hoteis,
+      ativos: [ativo({ id: 'a1', criticidade: { nivel: 5, maximo: 5 } }), ...as],
+      corretivas: [
+        ...doA1,
+        ...doModelo5,
+        ...locais.map((l, i) =>
+          corretiva({
+            hotelId: 'h3',
+            localId: l.id,
+            ativoId: null,
+            codigoFalha: 'agua_fria',
+            abertaEm: dia(-i),
+          }),
+        ),
+      ],
+      locais,
+    });
+    const hotelDa = new Map([...doA1, ...doModelo5].map((c) => [c.id, c.hotelId] as const));
+    expect(new Set(r.deteccoes.map((d) => d.tipo))).toEqual(
+      new Set(['atencao_ativo', 'sistemico']),
+    );
+    for (const d of r.deteccoes) {
+      expect(d.hotelIds.length).toBeGreaterThan(0);
+      if (d.alcance.tipo === 'hotel') expect(d.hotelIds).toEqual([d.alcance.hotelId]);
+      if (d.escopo.hotelId) expect(d.hotelIds).toContain(d.escopo.hotelId);
+      for (const id of d.corretivaIds) {
+        const h = hotelDa.get(id);
+        if (h) expect(d.hotelIds).toContain(h);
+      }
+    }
   });
 });

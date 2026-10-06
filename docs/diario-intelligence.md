@@ -142,7 +142,7 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
     - as detecções, cada uma com a chave, a faixa, o alcance, o escopo e os ids de origem, prontas para `decidirDeteccao`.
   - **`horasParadasNoTrecho`** saiu da efetividade para o `historico.ts`, para a atenção usar a mesma conta.
   - **Testes:** 97 no pacote e 319 na raiz.
-- **Aprovadas por escrito pelo usuário em 06/10/2026, como sugeridas (o #100 foi mergeado no mesmo dia):**
+- **Aprovado por Kaio, aguardando Cesar** (06/10/2026, como sugeridas; o #100 foi mergeado no mesmo dia):
   1. **Tipos de insight no 1.0:**
      - a atenção do ativo, quando passa do limite;
      - o sinal sistêmico.
@@ -155,7 +155,50 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
 
 ### Ponto de retomada (06/10/2026, cálculo do dia)
 
-- **#100 mergeado,** com as três propostas aprovadas.
-- **Esperando:** as três migrações da instrumentação no começo da 1b, que são do agente do núcleo.
-- **Próximo passo:** as tabelas `app.insight` e `app.metrica_ativo_diaria`, num PR de zona protegida, com a fila livre. Depois, o caso de uso do job no `packages/aplicacao`: ler pelas portas, chamar `calcularDia` e `decidirDeteccao`, e gravar pela unit of work.
-- **Parada:** nada de migração nem tela antes disso.
+- **#100 mergeado,** com as três propostas aprovadas por Kaio, aguardando Cesar.
+- **Superado** pelo ponto de retomada seguinte.
+
+## Sem migração, enquanto o núcleo não entra (06/10/2026)
+
+O usuário pediu, em ordem: (a) o caso de uso do job dentro do `packages/inteligencia`, com portas próprias; (b) o mapa das entradas do `calcularDia`; (c) o rascunho local da `app.insight`; (d) a proposta de ponto de extensão nas políticas. Pediu também as opções de retenção da métrica diária. Branch `int-job`, no worktree `wt/int-motor`. Não é zona protegida.
+
+- **(a) Parado, como pedido.** O caso de uso dentro do pacote passaria no lint. A ligação no servidor do web não passa: o lint recusa `@hubkeep/inteligencia` em qualquer elemento do núcleo, inclusive no `apps/web/src/servidor`. Conferido com um arquivo de sonda, já apagado:
+
+  ```
+  O núcleo não importa @hubkeep/inteligencia: o módulo depende do núcleo, nunca o contrário  boundaries/dependencies
+  ```
+
+  Pela mesma regra, o `packages/db` não pode implementar portas definidas no módulo. A saída que o próprio `eslint.config.mjs` anuncia é uma liberação explícita, descrita na proposta (d). Ela é zona protegida e decisão do Cesar.
+
+- **(b) `docs/referencia/mapa-entradas-calcular-dia.md`.** Achado novo: o `hk_worker` só tem INSERT em `app.auditoria`. A conclusão e as reaberturas da OS, que vêm da auditoria, ficam sem origem para o job. Também ficam sem origem:
+  - as chaves `inteligencia.*` no núcleo;
+  - o máximo da escala da criticidade;
+  - o limite do insight como política;
+  - a preventiva, que é da 1b;
+  - o módulo contratado por tenant.
+- **(c) Rascunho em `rascunhos/insight/`,** fora do git (`.git/info/exclude`) e fora de `supabase/migrations`, sem timestamp. Tem a migração, o pgTAP com os seis casos mínimos e 40 testes, e o `LEIAME.md` com as decisões abertas.
+  - **Quem lê:** só quem tem acesso a todos os hotéis do insight (`hotel_ids <@ hoteis_leitura`).
+  - **Quem decide:** no insight de hotel, o Admin do grupo, o Gestor CSC e o Gerente; no de rede, o Admin do grupo e o Gestor CSC que cobrem todos os hotéis.
+  - **Não rodou:** sem Docker local, só roda na CI do PR.
+  - **Ajuste no código:** o `calcularDia` passou a devolver `hotelIds` em cada detecção, com teste de que o escopo e a evidência só citam esses hotéis.
+- **(d) `docs/referencia/proposta-extensao-politicas.md`.** Propõe:
+  - um registro de extensões por prefixo no domínio do núcleo, montado na composição do web;
+  - a resolução pela bandeira;
+  - a liberação estreita do lint.
+
+  É ADR do núcleo, então ficou só como proposta, sem nada aplicado.
+
+- **Retenção:** `docs/referencia/retencao-metrica-diaria.md` traz as duas opções sem escolher: (A) partição mensal removida por operação do responsável; (B) só limitar a leitura a 12 meses.
+- **As três regras do cálculo do dia:** aprovadas por Kaio, aguardando Cesar. Entram no `docs/03` com o PR da `app.insight`.
+
+### Ponto de retomada (06/10/2026, sem migração)
+
+- **PR aberto:** `int-job`, que não é zona protegida. Conferir com `gh pr checks`; o merge é do usuário.
+- **Esperando o Cesar:**
+  - a liberação do lint e o ponto de extensão;
+  - a origem da conclusão e das reaberturas para o worker;
+  - a retenção;
+  - as três regras do cálculo do dia.
+- **Esperando o núcleo:** as três migrações da instrumentação.
+- **Próximo passo:** o caso de uso do job no `packages/inteligencia` só depois da decisão sobre o lint. Depois das migrações do núcleo e com a fila livre, o PR da `app.insight` a partir do rascunho.
+- **Parada:** nada de migração, tela ou PR de zona protegida até lá.
