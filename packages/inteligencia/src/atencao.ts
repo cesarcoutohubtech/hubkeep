@@ -5,13 +5,13 @@
 // do chamado (decisão de 05/10/2026), e a preventiva fica ausente até a 1b. O
 // peso do componente ausente vai para os presentes, e a lista de ausentes
 // mostra o que falta.
-import type { Criticidade } from './historico';
+import { CRITICIDADE_MAXIMA, type Criticidade } from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
 export const VERSAO_ATENCAO = 1;
 
 export interface EntradaAtencao {
-  /** Escala configurada pelo tenant (fase A); null sem dado. */
+  /** De 1 a 5 (etapa I1 da 1b); null sem dado. */
   criticidade: Criticidade | null;
   /** O score de reincidência do mesmo ativo, na mesma data. */
   reincidencia: Score;
@@ -49,6 +49,11 @@ export interface ConfigAtencao {
     preventivaOuCompliance: number;
   };
   faixas: readonly Faixa[];
+  /**
+   * A partir deste valor, o score sugere insight (sugereInsight). Campo da
+   * política inteligencia.atencao_ativo, com padrão 70 (Cesar, 06/10/2026).
+   */
+  limiteInsight: number;
 }
 
 export const PADRAO_ATENCAO: ConfigAtencao = {
@@ -63,6 +68,7 @@ export const PADRAO_ATENCAO: ConfigAtencao = {
     preventivaOuCompliance: 0.1,
   },
   faixas: FAIXAS_PADRAO,
+  limiteInsight: 70,
 };
 
 export function atencaoDoAtivo(
@@ -79,8 +85,8 @@ export function atencaoDoAtivo(
       {
         chave: 'criticidade',
         peso: config.pesos.criticidade,
-        valor: e.criticidade ? razao(e.criticidade.nivel, e.criticidade.maximo) : null,
-        evidencia: { nivel: e.criticidade?.nivel ?? null, maximo: e.criticidade?.maximo ?? null },
+        valor: e.criticidade === null ? null : razao(e.criticidade, CRITICIDADE_MAXIMA),
+        evidencia: { nivel: e.criticidade, maximo: CRITICIDADE_MAXIMA },
       },
       {
         chave: 'reincidencia',

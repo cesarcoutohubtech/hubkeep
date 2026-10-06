@@ -1,10 +1,12 @@
+import { registroDePoliticas } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import {
   CHAVES_DE_POLITICA_DO_INTELLIGENCE,
   PADRAO_ATENCAO,
   PADRAO_REINCIDENCIA,
+  EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE,
   PADROES_DO_INTELLIGENCE,
-  resolverPoliticaDoIntelligence,
+  ehChaveDePoliticaDoIntelligence,
   validarPoliticaDoIntelligence,
   valorValidoDoIntelligence,
 } from '../src';
@@ -87,16 +89,54 @@ describe('políticas do Intelligence (ADR-035)', () => {
     );
   });
 
-  it('resolução: hotel, bandeira, grupo e padrão; o inválido cai para o seguinte', () => {
+  it('o limite do insight é campo da atenção, padrão 70, de 0 a 100', () => {
+    expect(PADRAO_ATENCAO.limiteInsight).toBe(70);
+    for (const [limite, vale] of [
+      [0, true],
+      [100, true],
+      [101, false],
+      [-1, false],
+      [Number.NaN, false],
+    ] as const)
+      expect(
+        valorValidoDoIntelligence('inteligencia.atencao_ativo', {
+          ...copia(PADRAO_ATENCAO),
+          limiteInsight: limite,
+        }),
+      ).toBe(vale);
+  });
+
+  it('chave do protótipo não é chave do Intelligence', () => {
+    expect(ehChaveDePoliticaDoIntelligence('toString')).toBe(false);
+    expect(ehChaveDePoliticaDoIntelligence('inteligencia.reincidencia')).toBe(true);
+  });
+});
+
+describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', () => {
+  const registro = registroDePoliticas([EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE]);
+  const c = 'inteligencia.efetividade';
+
+  it('o registro aceita as cinco chaves, com o padrão do módulo', () => {
+    for (const k of CHAVES_DE_POLITICA_DO_INTELLIGENCE) {
+      expect(registro.ehChave(k)).toBe(true);
+      expect(registro.padrao(k)).toEqual(PADROES_DO_INTELLIGENCE[k]);
+    }
+    expect(registro.ehChave('inteligencia.outra')).toBe(false);
+  });
+
+  it('a resolução é a do registro: hotel, bandeira, grupo e padrão; o inválido cai', () => {
     const hotel = { janelaDias: 30, limiarPercentual: 10 };
     const bandeira = { janelaDias: 60, limiarPercentual: 15 };
     const grupo = { janelaDias: 120, limiarPercentual: 25 };
-    const c = 'inteligencia.efetividade' as const;
-    expect(resolverPoliticaDoIntelligence(c, { hotel, bandeira, grupo })).toEqual(hotel);
-    expect(resolverPoliticaDoIntelligence(c, { hotel: { x: 1 }, bandeira, grupo })).toEqual(
-      bandeira,
+    expect(registro.resolver(c, { hotel, bandeira, grupo })).toEqual(hotel);
+    expect(registro.resolver(c, { hotel: { x: 1 }, bandeira, grupo })).toEqual(bandeira);
+    expect(registro.resolver(c, { grupo })).toEqual(grupo);
+    expect(registro.resolver(c, {})).toEqual(PADROES_DO_INTELLIGENCE[c]);
+  });
+
+  it('a validação do registro usa o formato do módulo, com o código do núcleo', () => {
+    expect(() => registro.validar(c, {})).toThrow(
+      expect.objectContaining({ codigo: 'politica_valor_invalido' }),
     );
-    expect(resolverPoliticaDoIntelligence(c, { grupo })).toEqual(grupo);
-    expect(resolverPoliticaDoIntelligence(c, {})).toBe(PADROES_DO_INTELLIGENCE[c]);
   });
 });

@@ -224,12 +224,55 @@ Decisões de Kaio, registradas a pedido dele. As que mudam ADR do Intelligence f
 
 ### Ponto de retomada (06/10/2026, decisões registradas)
 
-- **Rascunhos locais,** fora do git, em `wt/int-motor/rascunhos/`:
-  - `insight/`: migração, pgTAP e `LEIAME.md`;
-  - `metrica/`: `LEIAME.md` com a troca do `limiteDeRetencao` e o texto novo do ADR-036.
+- **Superado** pela entrada seguinte. Os rascunhos foram para o branch `int-rascunhos`, que nunca vira PR. O worktree dele é `wt/int-rascunhos`.
+
+## Pauta atualizada com o diário do núcleo (06/10/2026)
+
+O Kaio pediu para ler o fim do `docs/diario-fase-1a.md` (decisões de 05 e 06/10) antes de seguir. A pauta deste diário estava desatualizada.
+
+- **Revogação:** o registro de 05/10, na sessão deste agente, que aceitava a aprovação de um só para os ADRs do Intelligence, foi revogado pelo Cesar em 06/10/2026. A regra é a de 30/09: Cesar **e** Kaio, agora no `CLAUDE.md` (#105). Os ADR-033 a 037 e as três regras do #101 aguardam o Cesar.
+- **Já na `main`:**
+  - #105: regra dos dois agentes;
+  - #106: `registroDePoliticas`, com extensão de módulo;
+  - #108: liberação estreita no lint e `montarInteligencia`.
+- **Aprovados pelo Cesar, entram no começo da 1b** (etapa I do `docs/12`), depois do teste do kit:
+  - I1: criticidade de 1 a 5;
+  - I2: chamado e OS;
+  - I3: `app.os_transicao`;
+  - I4: códigos de manutenção;
+  - I5: `licenca.modulo`.
+- **Os pedidos ao núcleo de 06/10 estão respondidos:**
+  - a conclusão e as reaberturas vêm de `app.os_transicao` (I3);
+  - a liberação do lint é o #108;
+  - o ponto de extensão é o #106, com a bandeira na 1c.
+
+### Recados do agente do núcleo, feitos neste PR
+
+- **Resolução de políticas:** o módulo não tem mais resolução própria. Sai o `resolverPoliticaDoIntelligence`, e entra a `EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE` para o `registroDePoliticas`. O registro em `montarInteligencia` só entra com o filtro por módulo contratado (I5).
+- **`ehChaveDePoliticaDoIntelligence`** usa `Object.hasOwn`, assim como o formato das chaves, para recusar `toString`.
+- **Limite do insight:** virou o campo `limiteInsight` da `inteligencia.atencao_ativo`, com padrão 70 e de 0 a 100. O `calcularDia` lê o limite da política do hotel, e a entrada `limiteInsight` saiu.
+- **Criticidade:** fixa de 1 a 5 (`Criticidade`, `CRITICIDADE_MAXIMA` e `ehCriticidade`), sem o máximo da política.
+- **Transições da OS:** `conclusaoEReaberturas` deriva a conclusão e as reaberturas das transições até a data do cálculo. Assim o recálculo de um dia passado vê a OS como ela estava. Os nomes das colunas vêm no aviso do fim da etapa I.
+- **Mapa das entradas** revisto com as tarefas I1 a I5.
+- **Testes:** 107 no pacote.
+
+### Janela de leitura revista: 180 dias
+
+- **O que mudou:** o Kaio reviu a decisão de 60 dias. A janela precisa comportar a efetividade do PRD, que compara 90 dias antes com 90 dias depois, então o mínimo é 180.
+  - Padrão e mínimo: 180 dias.
+  - Política proposta: `inteligencia.metrica_janela_leitura`.
+- **ADR-035 e ADR-036 revistos** num PR do `docs/03`, que é zona protegida. Ambos ficam como "aprovado por Kaio, aguardando Cesar".
+  - **ADR-035:** a sexta chave, o limite do insight, a criticidade de 1 a 5 e a resolução pelo registro.
+  - **ADR-036:** nada apagado, a janela de 180 dias, o limite do recálculo e a pendência de particionamento da métrica diária.
+- **O rascunho do PR da tabela** (`int-rascunhos`) passa a usar 180 dias.
+
+### Ponto de retomada (06/10/2026, pauta atualizada)
+
+- **PRs abertos:**
+  - o deste código, que não é zona protegida;
+  - o do `docs/03` (ADR-035 e 036), que é zona protegida e só o Cesar mergeia.
 - **Esperando o Cesar:**
-  - os três pedidos acima;
-  - o conflito de aprovação entre o ADR-033 e o registro de 30/09/2026.
-- **Esperando o núcleo:** as três migrações da instrumentação.
-- **Próximo passo:** depende do núcleo.
-- **Parada:** nada de migração, tela, caso de uso do job ou PR de zona protegida até lá.
+  - as aprovações dos ADR-033 a 037, das três regras do #101 e da revisão do ADR-035 e do ADR-036;
+  - o teste do kit e o aval para a 1b.
+- **Próximo passo:** seguir no motor em funções puras, contra as interfaces aprovadas, enquanto a etapa I não chega. Quando ela terminar, trocar os campos "(fase A)" pelos nomes reais.
+- **Parada:** nada de migração nem tela do Intelligence antes da etapa I.

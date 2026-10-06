@@ -2,13 +2,18 @@
 
 **Situação:** levantamento de 06/10/2026, feito pelo agente do Kaio. A escolha é do Cesar e entra no PR da tabela (ADR-036: "o prazo de guarda da agregação mensal e a forma de tirar o que passou de 12 meses, sem DELETE para nenhum papel da aplicação").
 
-## Decisão (06/10/2026): opção B, com janela de 60 dias
+## Decisão (06/10/2026): opção B, com janela de leitura de 180 dias
 
-- **Aprovado por Kaio, aguardando Cesar.** Muda o "12 meses" do ADR-036 e por isso segue a regra de aprovação dos ADRs do Intelligence.
-- **Telas e consultas leem só os últimos 60 dias.** O valor é configurável por política.
-- **Nada é apagado:** o resultado gravado de cada dia é a fonte de verdade do histórico. Recalcular um dia passado usa os valores atuais da origem e não reproduz exatamente o que foi gravado (comentário do `calcularDia`).
-- **Nenhuma regra aprovada lê a métrica diária além de 60 dias.** A agregação mensal lê só o mês que fecha. O custo informado de 12 meses vem da OS, não da métrica.
-- **No PR da tabela:** o `limiteDeRetencao` (padrão de 12 meses) dá lugar à janela de leitura de 60 dias, e o texto do ADR-036 muda junto. A redação está no rascunho local.
+- **Aprovado por Kaio, aguardando Cesar.** Muda o "12 meses" do ADR-036 e por isso segue a regra de aprovação dos ADRs do Intelligence: Cesar **e** Kaio.
+- **Telas e consultas leem só os últimos 180 dias.** O valor é configurável por política, com mínimo de 180.
+  - A primeira decisão foi de 60 dias. Ela foi revista no mesmo dia: a janela precisa comportar a efetividade do PRD, que compara 90 dias antes com 90 dias depois da intervenção.
+- **Nada é apagado:** o resultado gravado de cada dia é a fonte de verdade do histórico. Recalcular um dia passado usa os valores atuais dos campos editáveis e da política, e não reproduz exatamente o que foi gravado (comentário do `calcularDia`).
+- **Nenhuma regra aprovada lê a métrica diária além da janela:**
+  - a agregação mensal lê só o mês que fecha;
+  - a efetividade cabe nos 180 dias;
+  - o custo informado de 12 meses vem da OS, não da métrica.
+- **Pendência de particionamento:** a opção A (abaixo) fica registrada no ADR-036 como pendência, para quando o volume pedir.
+- **No PR da tabela:** o `limiteDeRetencao` (padrão de 12 meses) dá lugar à janela de leitura. A redação do código está no rascunho do `int-rascunhos`. O texto do ADR-036 vai num PR próprio do `docs/03`.
 
 A análise das opções segue abaixo, como registro.
 

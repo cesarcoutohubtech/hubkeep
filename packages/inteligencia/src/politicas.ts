@@ -1,14 +1,17 @@
 // Políticas do Intelligence (ADR-035): uma chave por score, com o formato
-// validado aqui e o padrão do código (os PADRAO_* de cada módulo). Seguem o
-// modelo do ADR-026 (politicas.ts do domínio): o valor gravado fora do formato
-// não vale e cai para o nível seguinte, na ordem hotel → bandeira → grupo →
-// padrão. Só o Admin do grupo altera (podeGerirPoliticas, do domínio).
+// validado aqui e o padrão do código (os PADRAO_* de cada módulo). Só o Admin
+// do grupo altera (podeGerirPoliticas, do domínio).
+//
+// O módulo não tem resolução própria (adendo ao ADR-026, 06/10/2026): as
+// chaves entram no registroDePoliticas do núcleo pela EXTENSAO_DE_POLITICAS_
+// DO_INTELLIGENCE, montada na composição do web (montarInteligencia), e a
+// resolução é a do registro, hotel → bandeira → grupo → padrão. A extensão só
+// é registrada junto com o filtro por módulo contratado (licenca.modulo, 1b).
 //
 // O formato é o do padrão: as mesmas chaves, números finitos e não negativos,
-// ao menos um peso positivo e faixas válidas. Os intervalos de cada campo
-// esperam os dados do piloto. Como o núcleo não importa este módulo (ADR-037),
-// o registro destas chaves no POLITICAS do domínio é do agente do núcleo.
-import { RegraViolada } from '@hubkeep/dominio';
+// ao menos um peso positivo, o limite do insight até 100 e faixas válidas. Os
+// intervalos de cada campo esperam os dados do piloto.
+import { type ExtensaoDePolitica, RegraViolada } from '@hubkeep/dominio';
 import { PADRAO_ATENCAO, type ConfigAtencao } from './atencao';
 import { PADRAO_EFETIVIDADE, type ConfigEfetividade } from './efetividade';
 import { PADRAO_REINCIDENCIA, type ConfigReincidencia } from './reincidencia';
@@ -40,7 +43,7 @@ export const CHAVES_DE_POLITICA_DO_INTELLIGENCE = Object.keys(
 ) as ChaveDePoliticaDoIntelligence[];
 
 export const ehChaveDePoliticaDoIntelligence = (c: unknown): c is ChaveDePoliticaDoIntelligence =>
-  typeof c === 'string' && c in PADROES_DO_INTELLIGENCE;
+  typeof c === 'string' && Object.hasOwn(PADROES_DO_INTELLIGENCE, c);
 
 const objeto = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -71,11 +74,12 @@ function faixasValidas(v: unknown): boolean {
 /** Mesmas chaves do padrão, recursivamente; número finito e não negativo onde o padrão tem número. */
 function mesmoFormato(v: unknown, padrao: unknown, campo: string): boolean {
   if (campo === 'faixas') return faixasValidas(v);
+  if (campo === 'limiteInsight') return typeof v === 'number' && v >= 0 && v <= 100;
   if (typeof padrao === 'number') return typeof v === 'number' && Number.isFinite(v) && v >= 0;
   if (!objeto(padrao) || !objeto(v)) return false;
   const chaves = Object.keys(padrao);
   if (Object.keys(v).length !== chaves.length) return false;
-  if (!chaves.every((k) => k in v && mesmoFormato(v[k], padrao[k], k))) return false;
+  if (!chaves.every((k) => Object.hasOwn(v, k) && mesmoFormato(v[k], padrao[k], k))) return false;
   if (campo === 'pesos') return Object.values(v).some((p) => (p as number) > 0);
   return true;
 }
@@ -105,12 +109,12 @@ export function validarPoliticaDoIntelligence(chave: string, valor: unknown): un
   return valor;
 }
 
-/** Valor efetivo: hotel, senão bandeira, senão grupo, senão o padrão do código. */
-export function resolverPoliticaDoIntelligence<C extends ChaveDePoliticaDoIntelligence>(
-  chave: C,
-  niveis: { hotel?: unknown; bandeira?: unknown; grupo?: unknown },
-): ValoresDePoliticaDoIntelligence[C] {
-  for (const v of [niveis.hotel, niveis.bandeira, niveis.grupo])
-    if (v !== undefined && valorValidoDoIntelligence(chave, v)) return v;
-  return PADROES_DO_INTELLIGENCE[chave];
-}
+/** As chaves do Intelligence para o registroDePoliticas do núcleo (prefixo inteligencia.). */
+export const EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE: ExtensaoDePolitica = {
+  prefixo: 'inteligencia.',
+  chaves: CHAVES_DE_POLITICA_DO_INTELLIGENCE,
+  padrao: (chave) =>
+    ehChaveDePoliticaDoIntelligence(chave) ? PADROES_DO_INTELLIGENCE[chave] : undefined,
+  valido: (chave, valor) =>
+    ehChaveDePoliticaDoIntelligence(chave) && valorValidoDoIntelligence(chave, valor),
+};

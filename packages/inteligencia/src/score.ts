@@ -108,7 +108,7 @@ export function combinar<C>(
   };
 }
 
-/** Limite padrão para o score sugerir um insight (proposta ADR-INT-1). */
+/** Limite padrão para o score sugerir um insight; o da atenção vem da política (limiteInsight). */
 export const LIMITE_INSIGHT_PADRAO = 70;
 
 /** O score sugere insight; quem abre, revisa e descarta é a aplicação, com uma pessoa. */

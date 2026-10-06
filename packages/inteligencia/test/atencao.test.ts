@@ -16,7 +16,7 @@ const reinc = (valor: number | null): Score => ({
 describe('atenção por ativo', () => {
   it('Intelligence 1.0: só os dados internos, com os ausentes listados', () => {
     const s = atencaoDoAtivo({
-      criticidade: { nivel: 4, maximo: 5 },
+      criticidade: 4,
       reincidencia: reinc(77),
       horasParadas: 24,
     });
@@ -32,7 +32,7 @@ describe('atenção por ativo', () => {
 
   it('com todas as fontes, os pesos do PRD valem como estão', () => {
     const s = atencaoDoAtivo({
-      criticidade: { nivel: 4, maximo: 5 },
+      criticidade: 4,
       reincidencia: reinc(77),
       horasParadas: 24,
       custoInformado12m: 6000,
@@ -54,7 +54,7 @@ describe('atenção por ativo', () => {
     const sem = atencaoDoAtivo({ ...base, criticidade: null });
     const com = atencaoDoAtivo({
       ...base,
-      criticidade: { nivel: 5, maximo: 5 },
+      criticidade: 5,
       custoInformado12m: 15_000,
     });
     // Sem os dois: (0,154 + 0,075) / 0,35 = 65.
