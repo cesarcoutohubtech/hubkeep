@@ -276,12 +276,18 @@ O Kaio pediu para ler o fim do `docs/diario-fase-1a.md` (decisões de 05 e 06/10
    - **Implementação parada: a unicidade colide.**
      - O índice do rascunho é `(tenant_id, chave) where encerrado_em is null`, e a chave do sinal sistêmico não leva os hotéis.
      - O novo e o anterior teriam a mesma chave abertos ao mesmo tempo. Além disso, o `decidirDeteccao` atualizaria o anterior em vez de abrir outro.
-   - **Proposta, para o Cesar:**
-     - a `chave` passa a levar o conjunto de hotéis em ordem;
-     - uma coluna `familia`, a chave sem os hotéis, serve ao vínculo;
-     - o silêncio depois do descarte passa a valer pela chave com os hotéis;
-     - o detalhe está no `LEIAME.md` do rascunho (`int-rascunhos`, `7abb380`).
-2. **Validação entre chaves no ADR-035** (#113, mesmo status): a `inteligencia.metrica_janela_leitura` precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo. A validação é do módulo, ao gravar qualquer uma das duas.
+   - **Proposta para o Cesar, com os ajustes do Kaio:** aprovado por Kaio, aguardando Cesar. O detalhe está no `LEIAME.md` do rascunho (`int-rascunhos`, `00797ab`).
+     - **Chave com hash:** a `chave` é a família mais o SHA-256 do conjunto de hotéis em ordem canônica, e não a lista. O btree não aceita entrada acima de cerca de 2,7 KB, e a lista estoura com uns 70 hotéis. `hotel_ids` guarda a lista completa.
+     - **Família:** a coluna `familia` é a chave sem os hotéis, com índice próprio e checks de prefixo e tamanho.
+     - **Regra pela família no `decidirDeteccao`:**
+       - se o conjunto novo está contido no de um insight aberto da mesma família (saiu hotel, ou nada mudou), não há nada a fazer;
+       - se tem hotel a mais, o job abre um insight novo, ligado ao anterior, e o anterior fica aberto até uma pessoa decidir.
+     - **Silêncio de 30 dias pela família,** só quando o descarte for "não relevante". O descarte "substituído" não silencia. O motivo é canônico (`nao_relevante` ou `substituido`).
+     - **pgTAP:** 50 testes no rascunho, com o novo e o anterior abertos juntos e um insight de 80 hotéis.
+     - **O hash no domínio puro:** proposta de um SHA-256 em TypeScript, sem dependência, testado contra os vetores do NIST e o `sha256()` do Postgres. Fica para o PR do código.
+2. **Validação entre chaves no ADR-035** (#113, mesmo status): a `inteligencia.metrica_janela_leitura` precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo.
+   - A validação é do módulo, ao gravar qualquer uma das duas.
+   - O job também confere na leitura: se a janela resolvida for menor que o dobro, usa o dobro e registra um aviso de configuração.
 3. **Limitação do recálculo, texto atualizado** no comentário do `calcularDia`, no ADR-036 (#113), no documento de retenção e no rascunho.
    - A conclusão e as reaberturas são reproduzidas pelas transições da OS.
    - Só os campos editáveis e a política vigente ficam com o valor atual.
