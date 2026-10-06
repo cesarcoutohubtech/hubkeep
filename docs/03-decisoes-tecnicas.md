@@ -775,27 +775,49 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-035 — Intelligence: pesos, limites e faixas como políticas
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-3; aguarda aprovação do Cesar.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-3; aguarda aprovação do Cesar. Revisão de 06/10/2026, que aplica as decisões do Cesar do mesmo dia e a janela de leitura do ADR-036: aprovada por Kaio, aguarda aprovação do Cesar.
 
 **Decisão:**
-- **Uma chave de política por score,** no modelo do ADR-026, com o formato validado no domínio: `inteligencia.reincidencia`, `inteligencia.atencao_ativo`, `inteligencia.efetividade`, `inteligencia.sistemico` e `inteligencia.substituicao`.
-- **Herança grupo → bandeira → hotel,** pela `app.politica` existente, sem migração nova para isso. A mudança é auditada.
+- **Uma chave de política por score,** no modelo do ADR-026, com o formato validado em `packages/inteligencia`:
+  - `inteligencia.reincidencia`;
+  - `inteligencia.atencao_ativo`;
+  - `inteligencia.efetividade`;
+  - `inteligencia.sistemico`;
+  - `inteligencia.substituicao`.
+- **Uma sexta chave,** `inteligencia.metrica_janela_leitura` (revisão de 06/10/2026), para a janela de leitura da métrica diária do ADR-036. O padrão é 180 dias, que também é o mínimo.
+- **Resolução pelo registro do núcleo** (adendo ao ADR-026):
+  - as chaves entram no `registroDePoliticas` pela extensão do módulo (prefixo `inteligencia.`), na montagem do Intelligence, junto com o filtro por módulo contratado (`licenca.modulo`);
+  - o módulo não tem resolução própria: vale hotel → bandeira → grupo → padrão, e o valor com escopo de bandeira só entra na 1c;
+  - a mudança é auditada.
 - **Só o Admin do grupo** altera as políticas do Intelligence.
 - **Padrões:**
   - os pesos e faixas do PRD e os limites de `packages/inteligencia` (`PADRAO_*`), até o ajuste com os dados do piloto;
   - o custo da atenção por ativo compara o custo informado em 12 meses com R$ 10.000, enquanto não houver custo de reposição (fase 2);
-  - a escala da criticidade é a política `ativo.criticidade` do núcleo.
+  - **o limite que faz a atenção sugerir insight** é o campo `limiteInsight` da `inteligencia.atencao_ativo`, com padrão 70 e de 0 a 100 (Cesar, 06/10/2026).
+- **Criticidade fixa de 1 a 5** (Cesar, 06/10/2026). O motor divide o nível por 5. A política `ativo.criticidade` do núcleo só troca o nome de cada nível.
 - **O resultado guarda a configuração usada:** mudar o peso não muda o score já gravado.
 
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aguarda aprovação do Cesar.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aguarda aprovação do Cesar. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio, aguarda aprovação do Cesar.
 
 **Decisão:**
 - **Job diário** por Vercel Cron: `hk_worker`, um tenant por transação, unit of work com auditoria e evento.
-- **Resultados diários** em `app.metrica_ativo_diaria` (e `app.metrica_hotel_diaria`, se a performance pedir), **guardados por 12 meses.**
-- **Agregação mensal** para a visão de rede, gravada pelo mesmo job no fechamento do mês.
-- **No PR das tabelas:** o prazo de guarda da agregação mensal e a forma de tirar o que passou de 12 meses, sem DELETE para nenhum papel da aplicação.
+- **Resultados diários** em `app.metrica_ativo_diaria` (e `app.metrica_hotel_diaria`, se a performance pedir).
+- **Nada é apagado** (revisão de 06/10/2026). O resultado gravado de cada dia, com a configuração usada, é a fonte de verdade do histórico.
+  - Recalcular um dia passado usa as transições da OS até aquele dia.
+  - Os campos editáveis e a política entram com o valor atual. Por isso o recálculo não reproduz exatamente o que foi gravado.
+- **Janela de leitura de 180 dias** (revisão de 06/10/2026):
+  - telas e consultas leem só os últimos 180 dias da métrica diária. O valor é a política `inteligencia.metrica_janela_leitura` (ADR-035), com mínimo de 180;
+  - 180 dias comportam a efetividade do PRD, que compara 90 dias antes com 90 dias depois da intervenção;
+  - nenhuma regra lê a métrica diária além da janela: a agregação mensal lê o mês que fecha, e o custo informado de 12 meses vem da OS;
+  - nenhum papel da aplicação recebe DELETE.
+- **Agregação mensal** para a visão de rede, gravada pelo mesmo job no fechamento do mês. O prazo de guarda dela é decidido no PR das tabelas.
+- **Pendência: particionamento da métrica diária** (revisão de 06/10/2026).
+  - Como nada é apagado, a tabela cresce sem limite: na ordem de 7 milhões de linhas por ano para 40 hotéis com 500 ativos.
+  - Quando o volume pedir, a tabela passa a ser particionada por mês. A partição que sair da janela poderá ser removida por operação do responsável (o Cesar), nunca por papel da aplicação.
+  - Isso pede ajuste nos meta-testes 1, 2 e 28, porque cada partição é vista como tabela. Também pede RLS forçada em cada partição e PK com o dia.
+  - A análise está em `docs/referencia/retencao-metrica-diaria.md` (opção A). A decisão é do Cesar, antes do piloto ou quando o volume pedir.
 - Toda tabela com `tenant_id NOT NULL`, RLS forçada, policies por papel e os seis casos de isolamento.
 - **Recálculo pontual** por handler do outbox, nunca por trigger. Nenhuma IA em request de painel.
 
