@@ -2,6 +2,7 @@
 // Depende só do domínio do núcleo; o núcleo nunca importa este pacote.
 export * from './agregacao';
 export * from './atencao';
+export * from './dia';
 export * from './efetividade';
 export * from './historico';
 export * from './insight';

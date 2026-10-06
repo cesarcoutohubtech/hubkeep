@@ -2,9 +2,9 @@
 // corrigimos? Compara a mesma janela antes e depois da data da intervenção.
 // O resultado fala só em variação observada, nunca em causa (PRD, princípio 7):
 // a tela traduz 'reducao_observada', e não "a troca resolveu".
-import { type Parada, tempoParadoTotal } from '@hubkeep/dominio';
-import type { Corretiva } from './historico';
-import { DIA_MS, HORA_MS } from './score';
+import type { Parada } from '@hubkeep/dominio';
+import { type Corretiva, horasParadasNoTrecho } from './historico';
+import { DIA_MS } from './score';
 
 export const VERSAO_EFETIVIDADE = 1;
 
@@ -59,17 +59,6 @@ export interface Efetividade {
 const variacao = (antes: number, depois: number): number | null =>
   antes === 0 ? null : Math.round(((depois - antes) / antes) * 1000) / 10;
 
-/** Horas paradas dentro do trecho [de, ate), com as paradas sobrepostas contadas uma vez. */
-function horasNoTrecho(paradas: readonly Parada[], de: number, ate: number, agora: Date): number {
-  const cortadas = paradas
-    .map((p) => ({
-      inicio: new Date(Math.max(p.inicio.getTime(), de)),
-      fim: new Date(Math.min((p.fim ?? agora).getTime(), ate)),
-    }))
-    .filter((p) => p.fim.getTime() > p.inicio.getTime());
-  return Math.round((tempoParadoTotal(cortadas, agora) / HORA_MS) * 10) / 10;
-}
-
 export function efetividadeAntesDepois(
   e: EntradaEfetividade,
   agora: Date,
@@ -120,8 +109,8 @@ export function efetividadeAntesDepois(
     ),
     par(
       'horas_paradas',
-      horasNoTrecho(e.paradas, t - janela, t, agora),
-      horasNoTrecho(e.paradas, t, fimDepois, agora),
+      horasParadasNoTrecho(e.paradas, t - janela, t, agora),
+      horasParadasNoTrecho(e.paradas, t, fimDepois, agora),
     ),
   ];
   if (e.custos) {

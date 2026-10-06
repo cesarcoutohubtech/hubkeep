@@ -130,3 +130,34 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
   - as três migrações da instrumentação no começo da 1b, que são do agente do núcleo.
 - **Próximo passo,** depois das aprovações e das migrações: um único PR de zona protegida com os ADRs no `docs/03`, e depois as tabelas `app.insight` e `app.metrica_ativo_diaria`, uma de cada vez, quando a fila de zona protegida estiver livre.
 - **Parada:** nada de migração, tela ou PR de zona protegida até lá.
+
+## Cálculo do dia (06/10/2026)
+
+- **#98 mergeado:** o insight, as políticas e a agregação estão na `main`. O #99 corrigiu a auditoria da CI (override do `source-map-js`).
+- **Branch `int-dia`**, no worktree `wt/int-motor`. Não é zona protegida: só `packages/inteligencia` e este diário.
+  - **`dia.ts` (ADR-036):** `calcularDia` recebe o histórico de um tenant, já lido pelas portas, com as políticas resolvidas por hotel. Devolve:
+    - os scores de reincidência e atenção por ativo, com o detalhamento;
+    - a linha da métrica diária (`MetricaDiaria`);
+    - os sinais sistêmicos;
+    - as detecções, cada uma com a chave, a faixa, o alcance, o escopo e os ids de origem, prontas para `decidirDeteccao`.
+  - **`horasParadasNoTrecho`** saiu da efetividade para o `historico.ts`, para a atenção usar a mesma conta.
+  - **Testes:** 97 no pacote e 319 na raiz.
+- **Propostas para aprovação, já aplicadas no código até a resposta:**
+  1. **Tipos de insight no 1.0:**
+     - a atenção do ativo, quando passa do limite;
+     - o sinal sistêmico.
+     A reincidência já é componente da atenção e não abre insight próprio, para o mesmo ativo não ter dois. A substituição fica na tela do ativo.
+  2. **Janelas da atenção:** as horas paradas e o impacto no hóspede usam a janela da reincidência do hotel (90 dias no padrão), e o custo informado usa 12 meses.
+  3. **Insight sistêmico:**
+     - não tem score e entra com a faixa fixa `atencao`, então só reabre depois do descarte quando passarem os 30 dias;
+     - vale no hotel quando todas as corretivas são de um hotel;
+     - senão, vale na rede: da bandeira, quando os hotéis são todos dela, ou do grupo.
+
+### Ponto de retomada (06/10/2026, cálculo do dia)
+
+- **PR aberto:** `int-dia`, que não é zona protegida. Conferir com `gh pr checks`; o merge é do usuário.
+- **Esperando:**
+  - a resposta às três propostas acima;
+  - as três migrações da instrumentação no começo da 1b, que são do agente do núcleo.
+- **Próximo passo:** as tabelas `app.insight` e `app.metrica_ativo_diaria`, num PR de zona protegida, com a fila livre. Depois, o caso de uso do job no `packages/aplicacao`: ler pelas portas, chamar `calcularDia` e `decidirDeteccao`, e gravar pela unit of work.
+- **Parada:** nada de migração nem tela antes disso.
