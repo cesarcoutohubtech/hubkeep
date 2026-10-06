@@ -142,7 +142,7 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
     - as detecções, cada uma com a chave, a faixa, o alcance, o escopo e os ids de origem, prontas para `decidirDeteccao`.
   - **`horasParadasNoTrecho`** saiu da efetividade para o `historico.ts`, para a atenção usar a mesma conta.
   - **Testes:** 97 no pacote e 319 na raiz.
-- **Propostas para aprovação, já aplicadas no código até a resposta:**
+- **Aprovadas por escrito pelo usuário em 06/10/2026, como sugeridas (o #100 foi mergeado no mesmo dia):**
   1. **Tipos de insight no 1.0:**
      - a atenção do ativo, quando passa do limite;
      - o sinal sistêmico.
@@ -155,9 +155,7 @@ Diário do agente do Kaio, que trabalha no módulo Intelligence. O núcleo do Hu
 
 ### Ponto de retomada (06/10/2026, cálculo do dia)
 
-- **PR aberto:** `int-dia`, que não é zona protegida. Conferir com `gh pr checks`; o merge é do usuário.
-- **Esperando:**
-  - a resposta às três propostas acima;
-  - as três migrações da instrumentação no começo da 1b, que são do agente do núcleo.
+- **#100 mergeado,** com as três propostas aprovadas.
+- **Esperando:** as três migrações da instrumentação no começo da 1b, que são do agente do núcleo.
 - **Próximo passo:** as tabelas `app.insight` e `app.metrica_ativo_diaria`, num PR de zona protegida, com a fila livre. Depois, o caso de uso do job no `packages/aplicacao`: ler pelas portas, chamar `calcularDia` e `decidirDeteccao`, e gravar pela unit of work.
 - **Parada:** nada de migração nem tela antes disso.
