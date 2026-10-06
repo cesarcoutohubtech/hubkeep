@@ -59,8 +59,11 @@ export interface AppAtivo {
   categoria_id: string | null;
   codigo_qr: string;
   criado_em: Generated<Timestamp>;
+  criticidade: number | null;
+  data_compra: Timestamp | null;
   desativado_em: Timestamp | null;
   fabricante: string | null;
+  garantia_ate: Timestamp | null;
   hotel_id: string;
   id: string;
   local_id: string;
