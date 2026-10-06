@@ -4,7 +4,7 @@
 // a linha da métrica diária) e as detecções que o job passa a decidirDeteccao.
 // A aplicação lê, chama isto e grava pela unit of work; nada aqui lê banco.
 //
-// Aprovado por escrito pelo usuário em 06/10/2026 (PR #100), como proposto:
+// Aprovado por Kaio em 06/10/2026 (PR #100), como proposto, aguardando Cesar:
 // - no 1.0, insight nasce de dois tipos: a atenção do ativo, quando passa do
 //   limite, e o sinal sistêmico. A reincidência já é componente da atenção e
 //   não abre insight próprio, para o mesmo ativo não ter dois; a substituição
@@ -87,6 +87,11 @@ export interface DeteccaoDoDia extends Deteccao {
   /** O que o insight guarda como escopo: ids e chaves, nunca texto. */
   escopo: Readonly<Record<string, string>>;
   regra?: RegraSistemica;
+  /**
+   * Todos os hotéis envolvidos, em ordem. Quem lê o insight precisa ter acesso a
+   * todos (a RLS da app.insight); por isso o escopo e a evidência só citam estes.
+   */
+  hotelIds: readonly string[];
   /** Ids de origem (corretivas), que a RLS da tabela de origem filtra. */
   corretivaIds: readonly string[];
 }
@@ -176,6 +181,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
       valor: r.atencao.valor,
       versao: r.atencao.versao,
       escopo,
+      hotelIds: [r.hotelId],
       corretivaIds: (doAtivo.get(r.ativoId) ?? [])
         .filter(
           (c) =>
@@ -203,6 +209,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
       versao: s.versao,
       escopo,
       regra: s.regra,
+      hotelIds: s.evidencia.hotelIds,
       corretivaIds: s.evidencia.corretivaIds,
     });
   }
