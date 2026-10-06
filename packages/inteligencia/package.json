@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@hubkeep/dominio": "workspace:*"
+  },
+  "devDependencies": {
+    "@hubkeep/i18n": "workspace:*"
   }
 }

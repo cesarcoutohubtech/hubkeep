@@ -266,13 +266,53 @@ O Kaio pediu para ler o fim do `docs/diario-fase-1a.md` (decisões de 05 e 06/10
   - **ADR-036:** nada apagado, a janela de 180 dias, o limite do recálculo e a pendência de particionamento da métrica diária.
 - **O rascunho do PR da tabela** (`int-rascunhos`) passa a usar 180 dias.
 
+### Decisões de Kaio sobre o insight de rede, a janela e o recálculo (06/10/2026)
+
+1. **Hotel novo num insight de rede: opção (c).** Aprovado por Kaio, aguardando Cesar. Substitui a decisão 3 anterior, em que o job encerrava o insight, porque ela conflitava com o ADR-033.
+   - O job abre o insight novo, ligado ao anterior pelo `anterior_id`.
+   - O anterior continua aberto até uma pessoa resolver ou descartar.
+   - O job não muda estado (ADR-033), e `hotel_ids` continua sem UPDATE (ADR-011).
+   - Na tela e na API, o anterior aparece como "substituído pelo insight X", calculado pelo vínculo. O descarte aceita o motivo "substituído". Não há estado novo.
+   - **Implementação parada: a unicidade colide.**
+     - O índice do rascunho é `(tenant_id, chave) where encerrado_em is null`, e a chave do sinal sistêmico não leva os hotéis.
+     - O novo e o anterior teriam a mesma chave abertos ao mesmo tempo. Além disso, o `decidirDeteccao` atualizaria o anterior em vez de abrir outro.
+   - **Proposta, para o Cesar:**
+     - a `chave` passa a levar o conjunto de hotéis em ordem;
+     - uma coluna `familia`, a chave sem os hotéis, serve ao vínculo;
+     - o silêncio depois do descarte passa a valer pela chave com os hotéis;
+     - o detalhe está no `LEIAME.md` do rascunho (`int-rascunhos`, `7abb380`).
+2. **Validação entre chaves no ADR-035** (#113, mesmo status): a `inteligencia.metrica_janela_leitura` precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo. A validação é do módulo, ao gravar qualquer uma das duas.
+3. **Limitação do recálculo, texto atualizado** no comentário do `calcularDia`, no ADR-036 (#113), no documento de retenção e no rascunho.
+   - A conclusão e as reaberturas são reproduzidas pelas transições da OS.
+   - Só os campos editáveis e a política vigente ficam com o valor atual.
+4. **Regra de comandos:** comandos que dependem um do outro nunca são ligados por `;`. Ou usam `&&`, ou o passo para na primeira falha.
+   - Vale para qualquer comando, não só os que alteram arquivos.
+   - **Motivo:** em 06/10 um `git worktree add` falhou e o `git switch` seguinte rodou mesmo assim. Não houve dano, porque os rascunhos já estavam enviados.
+
+### "Por que estou vendo isso?" no catálogo (ADR-034)
+
+- **`explicacao.ts`:**
+  - `explicacaoDoScore` transforma os motivos do score (`motivosDoScore`) em chave de catálogo `inteligencia.motivo.<score>.<componente>`, com os números e textos da evidência. Ids e listas ficam de fora;
+  - `chaveDoNomeDoScore` e `chaveDaFaixa` dão as chaves do nome do score e da faixa.
+- **Catálogos:** 26 chaves `inteligencia.*` nos quatro idiomas:
+  - o título e o vazio da explicação;
+  - os nomes dos dois scores e as seis faixas;
+  - os 12 motivos;
+  - os tipos, estados e ações do insight;
+  - as regras do sistêmico.
+
+  O custo sai em reais (`::currency/BRL`), como a versão mínima de custo decidida pelo Cesar.
+- **`@hubkeep/i18n`** entrou como dependência de desenvolvimento do pacote, só para o teste formatar cada motivo com o tradutor real nos quatro idiomas. O código do motor continua sem importar o i18n.
+- **Testes:** 115 no pacote.
+
 ### Ponto de retomada (06/10/2026, pauta atualizada)
 
 - **PRs abertos:**
-  - o deste código, que não é zona protegida;
-  - o do `docs/03` (ADR-035 e 036), que é zona protegida e só o Cesar mergeia.
+  - #112, o deste código, que não é zona protegida;
+  - #113, o do `docs/03` (ADR-035 e 036), que é zona protegida e só o Cesar mergeia.
 - **Esperando o Cesar:**
   - as aprovações dos ADR-033 a 037, das três regras do #101 e da revisão do ADR-035 e do ADR-036;
+  - a proposta da chave com os hotéis, que destrava a opção (c);
   - o teste do kit e o aval para a 1b.
 - **Próximo passo:** seguir no motor em funções puras, contra as interfaces aprovadas, enquanto a etapa I não chega. Quando ela terminar, trocar os campos "(fase A)" pelos nomes reais.
 - **Parada:** nada de migração nem tela do Intelligence antes da etapa I.
