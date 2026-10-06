@@ -85,6 +85,16 @@ Pergunta nova para o cliente entra aqui, e não espalhada pelos docs.
 21. **Termos e privacidade.** Termos de uso e política de privacidade só em pt-BR, ou também nos outros idiomas?
     - Fontes: `docs/referencia/i18n-levantamento.md`, `docs/04-plano-fase-0.md`.
 
+## Preventiva e implantação (fase 1b)
+
+22. **Periodicidade da preventiva.** Quais periodicidades o cliente usa hoje (dias, semanas, meses)? Existe preventiva por uso, como horas de funcionamento?
+    - Hoje: o plano da 1b prevê só a preventiva por tempo, como no `docs/00`. A preventiva por uso ficaria para depois do MVP.
+    - Fonte: `docs/12-plano-fase-1b.md` (P2).
+23. **Preventiva atrasada.** Quando uma OS preventiva atrasa, o sistema gera de novo a que passou ou só a próxima?
+    - Fonte: `docs/12-plano-fase-1b.md` (P3).
+24. **Etiqueta de QR.** Qual o tamanho da etiqueta, o que vai impresso nela e que impressora a equipe usa na implantação?
+    - Fonte: `docs/12-plano-fase-1b.md` (M3).
+
 ## Fora da reunião
 
 - Vender fora do Brasil (GDPR, parecer jurídico local, `docs/referencia/i18n-levantamento.md`) é decisão comercial da EasyGov e não depende do piloto da Slaviero.
