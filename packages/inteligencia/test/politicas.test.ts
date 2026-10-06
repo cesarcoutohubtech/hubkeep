@@ -34,8 +34,9 @@ describe('políticas do Intelligence (ADR-035)', () => {
     expect(valorValidoDoIntelligence('inteligencia.reincidencia', v)).toBe(true);
 
     const aMais = { ...copia(PADRAO_REINCIDENCIA), extra: 1 };
-    const aMenos: Record<string, unknown> = copia(PADRAO_REINCIDENCIA);
-    delete aMenos['janelaDias'];
+    const aMenos = Object.fromEntries(
+      Object.entries(copia(PADRAO_REINCIDENCIA)).filter(([k]) => k !== 'janelaDias'),
+    );
     const negativo = copia(PADRAO_REINCIDENCIA);
     negativo.janelaDias = -1;
     const texto = { ...copia(PADRAO_REINCIDENCIA), janelaDias: '90' };
