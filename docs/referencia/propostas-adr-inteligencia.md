@@ -1,6 +1,6 @@
 # Propostas de ADR do HubKeep Intelligence
 
-**Situação:** proposta, de 01/10/2026, revista em 05/10/2026 com o relatório de lacunas e as decisões do Cesar do mesmo dia. Aprovadas por escrito em 05/10/2026 (seção "Respostas de 05/10/2026") e levadas ao `docs/03-decisoes-tecnicas.md` como ADR-033 a ADR-037, num único PR de zona protegida mergeado pelo Cesar. Vale o texto do `docs/03`; este documento fica como histórico da proposta. Os ADRs do Intelligence valem com a aprovação escrita de Cesar ou de Kaio. Essa regra é de 05/10/2026 e substitui a de 30/09/2026, que exigia os dois juntos.
+**Situação:** proposta, de 01/10/2026, revista em 05/10/2026 com o relatório de lacunas e as decisões do Cesar do mesmo dia. Aprovadas por escrito em 05/10/2026 (seção "Respostas de 05/10/2026") e levadas ao `docs/03-decisoes-tecnicas.md` como ADR-033 a ADR-037, num único PR de zona protegida mergeado pelo Cesar. Vale o texto do `docs/03`; este documento fica como histórico da proposta. Aprovadas por Kaio em 05/10/2026; aguardam aprovação do Cesar. Os ADRs do Intelligence valem com a aprovação escrita de Cesar e de Kaio (decisão de 30/09/2026, reafirmada pelo Cesar em 06/10/2026); o registro de 05/10/2026, que aceitava um dos dois, foi revogado (ADR-033).
 
 **Base:**
 
