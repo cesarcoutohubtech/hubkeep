@@ -293,6 +293,10 @@ importers:
       '@hubkeep/dominio':
         specifier: workspace:*
         version: link:../dominio
+    devDependencies:
+      '@hubkeep/i18n':
+        specifier: workspace:*
+        version: link:../i18n
 
   packages/ui:
     dependencies:
