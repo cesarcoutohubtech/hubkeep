@@ -24,5 +24,9 @@ auditConfig:
 #   GHSA-68fv-2mgg-jv7q (source-map-js < 1.2.2, negação de serviço por offsets
 #   de seção do source map; publicado em 06/10/2026): entra por vite > postcss,
 #   no vitest e no build do web e do PWA. Tirar quando o postcss exigir >= 1.2.2.
+#   GHSA-wq5f-xc86-pv6w (sharp < 0.35.5, falha na dependência librsvg;
+#   publicado em 06/10/2026): entra por next (e @sentry/nextjs > next), na
+#   otimização de imagem do web. Tirar quando o next exigir >= 0.35.5.
 overrides:
   source-map-js: '>=1.2.2'
+  sharp: '>=0.35.5'
