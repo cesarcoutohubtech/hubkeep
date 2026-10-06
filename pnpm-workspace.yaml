@@ -18,3 +18,11 @@ allowBuilds:
 auditConfig:
   ignoreGhsas:
     - GHSA-vfj7-8cjw-p6xm
+
+# Versões mínimas de dependências indiretas com correção de segurança, quando a
+# dependência direta ainda não puxa a versão corrigida.
+#   GHSA-68fv-2mgg-jv7q (source-map-js < 1.2.2, negação de serviço por offsets
+#   de seção do source map; publicado em 06/10/2026): entra por vite > postcss,
+#   no vitest e no build do web e do PWA. Tirar quando o postcss exigir >= 1.2.2.
+overrides:
+  source-map-js: '>=1.2.2'
