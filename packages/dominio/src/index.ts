@@ -83,8 +83,10 @@ export {
 export type { Vigencia } from './proprietarios';
 export {
   CHAVES_DE_POLITICA,
+  PREFIXOS_DO_NUCLEO,
   POLITICAS,
   ehChaveDePolitica,
+  registroDePoliticas,
   podeGerirPoliticas,
   resolverPolitica,
   validarPolitica,
@@ -93,7 +95,10 @@ export {
 export type {
   AceiteAutomatico,
   ChaveDePolitica,
+  ExtensaoDePolitica,
+  NiveisDePolitica,
   PrioridadePadraoPorCategoria,
+  RegistroDePoliticas,
   ValoresDePolitica,
 } from './politicas';
 export {

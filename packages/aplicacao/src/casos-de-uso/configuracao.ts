@@ -2,8 +2,12 @@
 //
 //   ler       qualquer membro: a configuração e as políticas, com o valor de
 //             cada nível e o efetivo (hotel → grupo → padrão);
-//   gravar    só o Admin do grupo; formato validado no domínio; a mudança vai
-//             para a auditoria pela unit of work.
+//   gravar    só o Admin do grupo; chave e formato conferidos pelo registro de
+//             políticas do domínio (o do núcleo e as extensões de módulo que o
+//             ponto de composição registrar); a mudança vai para a auditoria
+//             pela unit of work.
+// A leitura devolve só as chaves do núcleo: a tela das políticas de um módulo
+// é do módulo.
 // A regra de quem grava é injetável para o teste provar que a RLS ainda barra.
 import {
   type Atribuicao,
@@ -15,9 +19,10 @@ import {
   RegraViolada,
   type Resultado,
   exigir,
+  type RegistroDePoliticas,
   podeGerirPoliticas,
+  registroDePoliticas,
   resolverPolitica,
-  validarPolitica,
   validarRegiao,
   type ValoresDePolitica,
 } from '@hubkeep/dominio';
@@ -77,8 +82,11 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
   relogio: Relogio;
   /** Padrão: podeGerirPoliticas do domínio. Só o teste de aceite troca. */
   podeGerir?: (minhas: readonly Atribuicao[], agora: Date) => Resultado;
+  /** Padrão: só as chaves do núcleo. O ponto de composição soma as extensões. */
+  politicas?: RegistroDePoliticas;
 }): CasosDeUsoDeConfiguracao {
   const podeGerir = deps.podeGerir ?? podeGerirPoliticas;
+  const politicas = deps.politicas ?? registroDePoliticas([]);
   const exigirAdmin = async (ctx: Contexto) =>
     exigir(podeGerir(await deps.atribuicoes.doUsuario(ctx), deps.relogio.agora()));
 
@@ -111,8 +119,7 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
           origem: doHotel !== null ? 'hotel' : grupo !== null ? 'grupo' : 'padrao',
         } as PoliticaResolvida;
       };
-      const politicas = CHAVES_DE_POLITICA.map(resolver);
-      return { tenant, hotel, politicas };
+      return { tenant, hotel, politicas: CHAVES_DE_POLITICA.map(resolver) };
     },
 
     async configurarTenant(ctx, c) {
@@ -133,11 +140,8 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
 
     async gravarPolitica(ctx, chave, escopo, valor) {
       await exigirAdmin(ctx);
-      if (valor === null) {
-        validarPolitica(chave, POLITICAS[chave as ChaveDePolitica]?.padrao);
-      } else {
-        validarPolitica(chave, valor);
-      }
+      // Valor null volta a herdar; a chave ainda precisa existir no registro.
+      politicas.validar(chave, valor === null ? politicas.padrao(chave) : valor);
       await deps.configuracao.gravarPolitica(ctx, chave, escopo, valor);
     },
   };

@@ -4,6 +4,11 @@
 // contratos não depende de outros pacotes; tests/contratos-dominio falha se as
 // chaves divergirem ou se um valor aceito por um for recusado pelo outro. País,
 // subdivisão e moeda são conferidos no caso de uso, com código por campo.
+//
+// Chave de módulo (extensão do registro de políticas, adendo ao ADR-026) entra
+// como texto com prefixo fora dos do núcleo; a chave e o formato do valor são
+// conferidos pelo registro, no caso de uso (politica_desconhecida,
+// politica_valor_invalido).
 import { z } from 'zod';
 import { IDIOMAS_API } from './preferencias';
 
@@ -19,23 +24,41 @@ export const CHAVES_DE_POLITICA_API = Object.keys(
   FORMATOS_DE_POLITICA_API,
 ) as (keyof typeof FORMATOS_DE_POLITICA_API)[];
 
+/** Os prefixos das chaves do núcleo, iguais aos do domínio (tests/contratos-dominio). */
+export const PREFIXOS_DO_NUCLEO_API = ['os.', 'chamado.', 'ativo.'] as const;
+
+const ChaveDeExtensao = z
+  .string()
+  .max(64)
+  .regex(/^[a-z][a-z_]*\.[a-z][a-z_]*$/)
+  .refine((c) => !PREFIXOS_DO_NUCLEO_API.some((p) => c.startsWith(p)));
+
 const EscopoDePolitica = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('grupo') }),
   z.object({ tipo: z.literal('hotel'), hotelId: z.guid() }),
 ]);
 
 /** Valor null: o escopo volta a herdar (grupo → padrão; hotel → grupo). */
+const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
+  z.object({
+    chave: z.literal('os.aceite_automatico'),
+    escopo: EscopoDePolitica,
+    valor: AceiteAutomatico.nullable(),
+  }),
+  z.object({
+    chave: z.literal('chamado.prioridade_padrao_por_categoria'),
+    escopo: EscopoDePolitica,
+    valor: PrioridadePadraoPorCategoria.nullable(),
+  }),
+]);
+
 export const PedidoDePolitica = z
-  .discriminatedUnion('chave', [
+  .union([
+    PedidoDePoliticaDoNucleo,
     z.object({
-      chave: z.literal('os.aceite_automatico'),
+      chave: ChaveDeExtensao,
       escopo: EscopoDePolitica,
-      valor: AceiteAutomatico.nullable(),
-    }),
-    z.object({
-      chave: z.literal('chamado.prioridade_padrao_por_categoria'),
-      escopo: EscopoDePolitica,
-      valor: PrioridadePadraoPorCategoria.nullable(),
+      valor: z.unknown().refine((v) => v !== undefined),
     }),
   ])
   .meta({ id: 'PedidoDePolitica' });
