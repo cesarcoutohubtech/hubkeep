@@ -78,7 +78,7 @@
    - o job roda como `hk_worker`, que só tem INSERT em `app.auditoria` (`20260924000001_fundacao.sql`, linha 462), sem SELECT nem policy de leitura;
    - sem isso, o motor perde a conclusão (base do componente `apos_corretiva` e do custo na janela) e as reaberturas;
    - aproximação sem migração: o maior `app.os_apontamento.fim` da OS concluída (o worker lê a tabela). Ela erra quando a conclusão não tem apontamento;
-   - o caminho certo é uma decisão do núcleo, em migração dele: ou `grant select` com `worker_select` em `app.auditoria`, ou as colunas `concluida_em` e `reaberturas` em `app.os`, gravadas pela unit of work.
+   - **decisão de 06/10/2026:** o `hk_worker` não ganha leitura da auditoria. A conclusão e as reaberturas, cada uma com data, vão ao Cesar como pedido ao núcleo, para virem da própria OS, gravadas pela unit of work (registrado no `docs/diario-intelligence.md`). A forma é decisão do núcleo.
 6. **O Intelligence contratado por tenant (ADR-037):** não há coluna nem política que diga se o tenant tem o módulo. O job precisa disso para saber em quais tenants rodar. A métrica de cobrança continua pendente.
 
 ## A conferir quando a porta de leitura for escrita
