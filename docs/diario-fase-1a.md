@@ -1125,7 +1125,7 @@ Dividida em duas partes, cada uma no seu PR:
   - o job usa a resolução do registro do núcleo, e a resolução própria do `politicas.ts` sai ou passa a delegar;
   - as rotas e telas do Intelligence ficam em pastas `inteligencia` do `apps/web`, e o servidor do módulo em `apps/web/src/servidor/modulos/inteligencia/`.
 - **Fila de zona protegida, um PR por vez:**
-  1. M1 (#103);
+  1. M1 (#103, mergeado em 06/10/2026);
   2. a correção do ADR-033 com a regra dos dois agentes no `CLAUDE.md` (este PR);
   3. B13;
   4. a liberação no lint com o adendo ao ADR-026 (extensão das políticas);
