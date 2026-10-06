@@ -7,7 +7,10 @@
 #
 # A lista é a das regras de processo do diário (docs/diario-fase-0.md), mais
 # este próprio arquivo (está em .github/workflows) e o .claude/. Desde a S1
-# (ADR-032), também as exceções do gitleaks e o Dependabot.
+# (ADR-032), também as exceções do gitleaks e o Dependabot. Desde o B13 do
+# docs/11, o dono da secret key (packages/auth-admin) e os testes que guardam a
+# chave, o .env.example e as actions fixadas: afrouxar um deles desliga a guarda
+# sem tocar em nada que já estivesse na lista.
 name: zona protegida
 
 on:
@@ -20,6 +23,7 @@ jobs:
   zona-protegida:
     name: zona protegida
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -28,7 +32,7 @@ jobs:
       # O SHA da base vem do evento do GitHub, não de quem abre o PR.
       - name: PR toca zona protegida?
         run: |
-          padrao='^(supabase/migrations/|supabase/tests/|supabase/config\.toml$|\.github/workflows/|eslint\.config\.mjs$|CLAUDE\.md$|docs/03-decisoes-tecnicas\.md$|\.claude/|\.gitleaks\.toml$|\.github/dependabot\.yml$)'
+          padrao='^(supabase/migrations/|supabase/tests/|supabase/config\.toml$|\.github/workflows/|eslint\.config\.mjs$|CLAUDE\.md$|docs/03-decisoes-tecnicas\.md$|\.claude/|\.gitleaks\.toml$|\.github/dependabot\.yml$|packages/auth-admin/|tests/secret-key-so-no-auth-admin\.test\.ts$|tests/env-example\.test\.ts$|tests/actions-fixadas\.test\.ts$)'
           tocados="$(git diff --name-only "${{ github.event.pull_request.base.sha }}"...HEAD | grep -E "$padrao" || true)"
           if [ -n "$tocados" ]; then
             echo "::error::Este PR toca zona protegida (ADR-023). Merge só pelo Cesar, com bypass:"

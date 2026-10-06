@@ -343,7 +343,9 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Check `zona protegida`** (`.github/workflows/zona-protegida.yml`): falha em todo PR que altere
   - `supabase/migrations/`, `supabase/tests/` ou `supabase/config.toml`;
   - `.github/workflows/`, `eslint.config.mjs` ou `CLAUDE.md`;
-  - `docs/03-decisoes-tecnicas.md` ou `.claude/`.
+  - `docs/03-decisoes-tecnicas.md` ou `.claude/`;
+  - `.gitleaks.toml` ou `.github/dependabot.yml` (ADR-032);
+  - `packages/auth-admin/`, o dono da secret key, e os testes que guardam a chave, o `.env.example` e as actions fixadas (`tests/secret-key-so-no-auth-admin.test.ts`, `tests/env-example.test.ts`, `tests/actions-fixadas.test.ts`), desde o B13 do `docs/11` (05/10/2026).
 
   PR fora dessa lista passa.
 - **Ruleset do `main`**, que o Cesar configura no GitHub:

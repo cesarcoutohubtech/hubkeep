@@ -19,6 +19,8 @@ jobs:
   qualidade:
     name: lint, typecheck e testes
     runs-on: ubuntu-latest
+    # Hoje leva uns 2 minutos; o teto evita um job preso por 6 horas (B13).
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Versão do pnpm vem do campo packageManager do package.json.
