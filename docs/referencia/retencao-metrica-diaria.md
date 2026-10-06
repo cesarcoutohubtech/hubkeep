@@ -2,6 +2,16 @@
 
 **Situação:** levantamento de 06/10/2026, feito pelo agente do Kaio. A escolha é do Cesar e entra no PR da tabela (ADR-036: "o prazo de guarda da agregação mensal e a forma de tirar o que passou de 12 meses, sem DELETE para nenhum papel da aplicação").
 
+## Decisão (06/10/2026): opção B, com janela de 60 dias
+
+- **Aprovado por Kaio, aguardando Cesar.** Muda o "12 meses" do ADR-036 e por isso segue a regra de aprovação dos ADRs do Intelligence.
+- **Telas e consultas leem só os últimos 60 dias.** O valor é configurável por política.
+- **Nada é apagado:** o resultado gravado de cada dia é a fonte de verdade do histórico. Recalcular um dia passado usa os valores atuais da origem e não reproduz exatamente o que foi gravado (comentário do `calcularDia`).
+- **Nenhuma regra aprovada lê a métrica diária além de 60 dias.** A agregação mensal lê só o mês que fecha. O custo informado de 12 meses vem da OS, não da métrica.
+- **No PR da tabela:** o `limiteDeRetencao` (padrão de 12 meses) dá lugar à janela de leitura de 60 dias, e o texto do ADR-036 muda junto. A redação está no rascunho local.
+
+A análise das opções segue abaixo, como registro.
+
 **Ordem de grandeza:** 40 hotéis com 500 ativos cada dão 20 mil linhas por dia e cerca de 7,3 milhões por ano. Com o detalhamento do score em jsonb, são alguns GB por ano. A linha não tem dado pessoal. Os ids de quem decide ficam no insight, não na métrica.
 
 ## Opção A: partição por mês, removida por operação do responsável

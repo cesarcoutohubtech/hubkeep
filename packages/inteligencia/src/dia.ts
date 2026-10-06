@@ -4,6 +4,15 @@
 // a linha da métrica diária) e as detecções que o job passa a decidirDeteccao.
 // A aplicação lê, chama isto e grava pela unit of work; nada aqui lê banco.
 //
+// O resultado gravado de cada dia é a fonte de verdade do histórico (decisão
+// de 06/10/2026): ele guarda a configuração usada, e nada gravado é apagado.
+// Recalcular um dia passado não reproduz exatamente o que foi gravado. As
+// datas são cortadas em `agora`, mas a origem só tem o valor atual de:
+// - as reaberturas (uma contagem sem data);
+// - a conclusão da OS reaberta depois;
+// - os campos editáveis da OS, do chamado, do ativo e do local;
+// - a política vigente.
+//
 // Aprovado por Kaio em 06/10/2026 (PR #100), como proposto, aguardando Cesar:
 // - no 1.0, insight nasce de dois tipos: a atenção do ativo, quando passa do
 //   limite, e o sinal sistêmico. A reincidência já é componente da atenção e

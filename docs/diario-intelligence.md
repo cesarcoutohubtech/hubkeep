@@ -193,12 +193,43 @@ O usuário pediu, em ordem: (a) o caso de uso do job dentro do `packages/intelig
 
 ### Ponto de retomada (06/10/2026, sem migração)
 
-- **PR aberto:** `int-job`, que não é zona protegida. Conferir com `gh pr checks`; o merge é do usuário.
+- **#102 mergeado.** Superado pelo ponto de retomada seguinte.
+
+## Decisões de retenção, recálculo e insight de rede (06/10/2026)
+
+Decisões de Kaio, registradas a pedido dele. As que mudam ADR do Intelligence ficam como "aprovado por Kaio, aguardando Cesar".
+
+1. **Retenção da `app.metrica_ativo_diaria`:** opção B, com janela de 60 dias.
+   - Telas e consultas leem só os últimos 60 dias.
+   - O valor é uma política configurável. A chave proposta é `inteligencia.metrica_janela_leitura`, no rascunho.
+   - Nada é apagado.
+   - Muda o "12 meses" do ADR-036: aprovado por Kaio, aguardando Cesar, até o conflito com o ADR-033 ser resolvido.
+   - No PR da tabela, o padrão de 12 meses do `limiteDeRetencao` e o texto do ADR-036 dão lugar à janela de 60 dias. A redação está em `rascunhos/metrica/LEIAME.md`, local.
+2. **Recálculo:** o resultado gravado de cada dia é a fonte de verdade do histórico e guarda a configuração usada.
+   - Recalcular um dia passado usa os valores atuais da origem e não reproduz exatamente o que foi gravado.
+   - A limitação está registrada no comentário do `calcularDia` e no `LEIAME.md` do rascunho do insight.
+   - Confirmado: o insight guarda a própria evidência e não depende da métrica diária.
+   - Confirmado: nenhuma regra aprovada lê a métrica diária além de 60 dias. O custo informado de 12 meses vem da OS.
+3. **Hotel novo num insight de rede:** o job encerra o insight e abre outro, ligado pelo `anterior_id`. `hotel_ids` continua sem UPDATE. Registrado no rascunho da migração e no `LEIAME.md`.
+4. **As três regras do cálculo do dia** ficam como estão (aprovado por Kaio, aguardando Cesar) até o Cesar resolver o conflito entre o ADR-033 e o registro de 30/09/2026. O `CLAUDE.md` hoje pede a aprovação escrita de Cesar **e** de Kaio.
+
+### Pedidos ao núcleo (para o Cesar)
+
+1. **Conclusão e reaberturas da OS com data, lidas pelo `hk_worker`.**
+   - Hoje elas só existem na `app.auditoria`, que o worker não lê. Decisão de Kaio: o worker não ganha leitura da auditoria.
+   - O pedido é que a própria OS (ou uma tabela do núcleo) guarde a conclusão e cada reabertura com data, gravadas pela unit of work.
+   - A forma é decisão do núcleo.
+2. **A liberação estreita do lint** para a composição do web chegar ao `@hubkeep/inteligencia` (`docs/referencia/proposta-extensao-politicas.md`).
+3. **O ponto de extensão das políticas,** com a resolução pela bandeira (mesma proposta).
+
+### Ponto de retomada (06/10/2026, decisões registradas)
+
+- **Rascunhos locais,** fora do git, em `wt/int-motor/rascunhos/`:
+  - `insight/`: migração, pgTAP e `LEIAME.md`;
+  - `metrica/`: `LEIAME.md` com a troca do `limiteDeRetencao` e o texto novo do ADR-036.
 - **Esperando o Cesar:**
-  - a liberação do lint e o ponto de extensão;
-  - a origem da conclusão e das reaberturas para o worker;
-  - a retenção;
-  - as três regras do cálculo do dia.
+  - os três pedidos acima;
+  - o conflito de aprovação entre o ADR-033 e o registro de 30/09/2026.
 - **Esperando o núcleo:** as três migrações da instrumentação.
-- **Próximo passo:** o caso de uso do job no `packages/inteligencia` só depois da decisão sobre o lint. Depois das migrações do núcleo e com a fila livre, o PR da `app.insight` a partir do rascunho.
-- **Parada:** nada de migração, tela ou PR de zona protegida até lá.
+- **Próximo passo:** depende do núcleo.
+- **Parada:** nada de migração, tela, caso de uso do job ou PR de zona protegida até lá.
