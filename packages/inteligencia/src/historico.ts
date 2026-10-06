@@ -4,7 +4,8 @@
 // dependem da instrumentação do núcleo, que entra no começo da 1b
 // (docs/referencia/lacunas-instrumentacao-intelligence.md), e ficam null ou
 // ausentes enquanto ela não existir; o score marca o componente como ausente.
-import { DIA_MS } from './score';
+import { type Parada, tempoParadoTotal } from '@hubkeep/dominio';
+import { DIA_MS, HORA_MS } from './score';
 
 /** Quem executou a OS, gravado na triagem (fase A, `app.os.executado_por`). */
 export type ExecutadoPor = 'equipe_interna' | 'terceiro';
@@ -122,4 +123,20 @@ export function impactoHospedeDosChamados(
   if (!respondidas.length) return null;
   const afetaram = respondidas.filter((c) => c.impactoHospede).length;
   return Math.round((afetaram / respondidas.length) * 1000) / 10;
+}
+
+/** Horas paradas dentro do trecho [de, ate), com as paradas sobrepostas contadas uma vez. */
+export function horasParadasNoTrecho(
+  paradas: readonly Parada[],
+  de: number,
+  ate: number,
+  agora: Date,
+): number {
+  const cortadas = paradas
+    .map((p) => ({
+      inicio: new Date(Math.max(p.inicio.getTime(), de)),
+      fim: new Date(Math.min((p.fim ?? agora).getTime(), ate)),
+    }))
+    .filter((p) => p.fim.getTime() > p.inicio.getTime());
+  return Math.round((tempoParadoTotal(cortadas, agora) / HORA_MS) * 10) / 10;
 }
