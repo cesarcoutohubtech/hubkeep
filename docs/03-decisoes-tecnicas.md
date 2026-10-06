@@ -788,6 +788,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Validação entre chaves** (revisão de 06/10/2026): a `inteligencia.metrica_janela_leitura` precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo, para caber a comparação antes e depois.
   - O formato de cada chave, no registro do núcleo, não enxerga a outra. Por isso a validação é do módulo.
   - Ao gravar qualquer uma das duas, o valor é conferido contra o valor resolvido da outra no mesmo escopo. A gravação que quebrar a relação é recusada com código.
+  - **O job também confere na leitura**, porque a relação pode quebrar sem gravação: por exemplo, quando muda o valor do grupo e o hotel herda. Se a janela de leitura resolvida for menor que o dobro da janela da efetividade, o job usa o dobro e registra um aviso de configuração, com o tenant, o hotel, as duas chaves e os dois valores.
 - **Resolução pelo registro do núcleo** (adendo ao ADR-026):
   - as chaves entram no `registroDePoliticas` pela extensão do módulo (prefixo `inteligencia.`), na montagem do Intelligence, junto com o filtro por módulo contratado (`licenca.modulo`);
   - o módulo não tem resolução própria: vale hotel → bandeira → grupo → padrão, e o valor com escopo de bandeira só entra na 1c;
