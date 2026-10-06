@@ -785,6 +785,9 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - `inteligencia.sistemico`;
   - `inteligencia.substituicao`.
 - **Uma sexta chave,** `inteligencia.metrica_janela_leitura` (revisão de 06/10/2026), para a janela de leitura da métrica diária do ADR-036. O padrão é 180 dias, que também é o mínimo.
+- **Validação entre chaves** (revisão de 06/10/2026): a `inteligencia.metrica_janela_leitura` precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo, para caber a comparação antes e depois.
+  - O formato de cada chave, no registro do núcleo, não enxerga a outra. Por isso a validação é do módulo.
+  - Ao gravar qualquer uma das duas, o valor é conferido contra o valor resolvido da outra no mesmo escopo. A gravação que quebrar a relação é recusada com código.
 - **Resolução pelo registro do núcleo** (adendo ao ADR-026):
   - as chaves entram no `registroDePoliticas` pela extensão do módulo (prefixo `inteligencia.`), na montagem do Intelligence, junto com o filtro por módulo contratado (`licenca.modulo`);
   - o módulo não tem resolução própria: vale hotel → bandeira → grupo → padrão, e o valor com escopo de bandeira só entra na 1c;
