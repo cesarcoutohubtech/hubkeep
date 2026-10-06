@@ -6,6 +6,7 @@ import {
   type Corretiva,
   type HotelDoDia,
   type LocalAnalisado,
+  PADRAO_ATENCAO,
   PADRAO_REINCIDENCIA,
   calcularDia,
 } from '../src';
@@ -48,7 +49,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       ativos: [
         ativo({
           id: 'a1',
-          criticidade: { nivel: 5, maximo: 5 },
+          criticidade: 5,
           paradas: [{ inicio: dia(-3), fim: null }],
         }),
         ativo({ id: 'a2' }),
@@ -225,7 +226,7 @@ describe('calcularDia: detecções sistêmicas', () => {
     const r = calcularDia({
       agora,
       hoteis,
-      ativos: [ativo({ id: 'a1', criticidade: { nivel: 5, maximo: 5 } }), ...as],
+      ativos: [ativo({ id: 'a1', criticidade: 5 }), ...as],
       corretivas: [
         ...doA1,
         ...doModelo5,
@@ -254,5 +255,25 @@ describe('calcularDia: detecções sistêmicas', () => {
         if (h) expect(d.hotelIds).toContain(h);
       }
     }
+  });
+});
+
+describe('calcularDia: o limite do insight vem da política de atenção do hotel', () => {
+  it('com o limite em 100, o mesmo ativo não gera detecção', () => {
+    const entrada = (limiteInsight: number) =>
+      calcularDia({
+        agora,
+        hoteis: [
+          { hotelId: 'h1', bandeiraId: 'b1', atencao: { ...PADRAO_ATENCAO, limiteInsight } },
+        ],
+        ativos: [ativo({ id: 'a1', criticidade: 5, paradas: [{ inicio: dia(-3), fim: null }] })],
+        corretivas: problematico('a1'),
+        locais: [],
+      });
+    const tipos = (limite: number) =>
+      entrada(limite).deteccoes.filter((d) => d.tipo === 'atencao_ativo');
+    expect(tipos(70)).toHaveLength(1);
+    expect(tipos(100)).toEqual([]);
+    expect(entrada(100).ativos[0]?.atencao.configuracao.limiteInsight).toBe(100);
   });
 });

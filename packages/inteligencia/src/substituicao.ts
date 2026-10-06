@@ -3,7 +3,7 @@
 // o limite, e a lista é a justificativa. Critério sem dado fica como não
 // avaliado (atingido null), e não conta. Custo, garantia e valor de reposição
 // dependem da instrumentação (fase A); a tela de decisão é da 2.0.
-import type { Criticidade } from './historico';
+import { CRITICIDADE_MAXIMA, type Criticidade } from './historico';
 import { razao } from './score';
 
 export const VERSAO_SUBSTITUICAO = 1;
@@ -97,7 +97,7 @@ export function sinalDeSubstituicao(
     crit('idadeAnos', e.idadeAnos),
     crit('custoSobreReposicao', custoRelativo),
     crit('impactoHospede', e.impactoHospede),
-    crit('criticidade', e.criticidade ? razao(e.criticidade.nivel, e.criticidade.maximo) : null),
+    crit('criticidade', e.criticidade === null ? null : razao(e.criticidade, CRITICIDADE_MAXIMA)),
     crit('reincidencia', e.reincidencia),
   ];
   const atingidos = criterios.filter((c) => c.atingido === true).length;

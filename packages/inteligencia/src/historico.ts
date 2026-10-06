@@ -4,7 +4,7 @@
 // dependem da instrumentação do núcleo, que entra no começo da 1b
 // (docs/referencia/lacunas-instrumentacao-intelligence.md), e ficam null ou
 // ausentes enquanto ela não existir; o score marca o componente como ausente.
-import { type Parada, tempoParadoTotal } from '@hubkeep/dominio';
+import { type AcaoDaOs, type EstadoDaOs, type Parada, tempoParadoTotal } from '@hubkeep/dominio';
 import { DIA_MS, HORA_MS } from './score';
 
 /** Quem executou a OS, gravado na triagem (fase A, `app.os.executado_por`). */
@@ -17,9 +17,9 @@ export interface Corretiva {
   localId: string;
   ativoId: string | null;
   abertaEm: Date;
-  /** Conclusão da OS; null enquanto não concluída. */
+  /** Conclusão da OS; null enquanto não concluída (`conclusaoEReaberturas`). */
   concluidaEm: Date | null;
-  /** Vezes que a OS foi reaberta (auditoria, ação 'reabrir'). */
+  /** Vezes que a OS foi reaberta até a data do cálculo (`conclusaoEReaberturas`). */
   reaberturas: number;
   /** Código de falha (fase A, `app.os.codigo_falha_id`); null sem dado. */
   codigoFalha: string | null;
@@ -54,12 +54,50 @@ export interface LocalAnalisado {
 }
 
 /**
- * Criticidade do ativo (fase A, `app.ativo.criticidade`), com o máximo da
- * escala da política `ativo.criticidade` do tenant.
+ * Criticidade do ativo (etapa I1 da 1b, `app.ativo.criticidade`): escala fixa
+ * de 1 a 5 (decisão do Cesar de 06/10/2026). O tenant só troca o nome de cada
+ * nível, pela política `ativo.criticidade`; o motor usa o número.
  */
-export interface Criticidade {
-  nivel: number;
-  maximo: number;
+export type Criticidade = 1 | 2 | 3 | 4 | 5;
+export const CRITICIDADE_MAXIMA = 5;
+
+export const ehCriticidade = (n: unknown): n is Criticidade =>
+  Number.isInteger(n) && (n as number) >= 1 && (n as number) <= CRITICIDADE_MAXIMA;
+
+/**
+ * Uma transição da OS (etapa I3 da 1b, `app.os_transicao`: de, para, quando,
+ * quem e a ação), gravada pelo caso de uso na mesma unit of work que muda o
+ * estado. Os nomes das colunas vêm no aviso do agente do núcleo.
+ */
+export interface TransicaoDaOs {
+  acao: AcaoDaOs;
+  para: EstadoDaOs;
+  quando: Date;
+}
+
+/**
+ * A conclusão e as reaberturas da OS como estavam em `agora`, a partir das
+ * transições (decisão do Cesar de 06/10/2026: o job lê as transições, sem
+ * abrir a auditoria ao worker). Só contam as transições até `agora`, então o
+ * recálculo de um dia passado vê a OS como ela estava naquele dia.
+ * - `concluidaEm`: a última conclusão, se depois dela a OS não foi reaberta
+ *   nem cancelada; null senão. O aceite não muda a conclusão.
+ * - `reaberturas`: as reaberturas até `agora`.
+ */
+export function conclusaoEReaberturas(
+  transicoes: readonly TransicaoDaOs[],
+  agora: Date,
+): Pick<Corretiva, 'concluidaEm' | 'reaberturas'> {
+  let concluidaEm: Date | null = null;
+  let reaberturas = 0;
+  for (const t of [...transicoes]
+    .filter((t) => t.quando.getTime() <= agora.getTime())
+    .sort((a, b) => a.quando.getTime() - b.quando.getTime())) {
+    if (t.acao === 'concluir') concluidaEm = t.quando;
+    else if (t.acao === 'reabrir' || t.acao === 'cancelar') concluidaEm = null;
+    if (t.acao === 'reabrir') reaberturas += 1;
+  }
+  return { concluidaEm, reaberturas };
 }
 
 export const ordenarPorAbertura = <T extends { abertaEm: Date }>(xs: readonly T[]): T[] =>

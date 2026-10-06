@@ -7,9 +7,9 @@
 // O resultado gravado de cada dia é a fonte de verdade do histórico (decisão
 // de 06/10/2026): ele guarda a configuração usada, e nada gravado é apagado.
 // Recalcular um dia passado não reproduz exatamente o que foi gravado. As
-// datas são cortadas em `agora`, mas a origem só tem o valor atual de:
-// - as reaberturas (uma contagem sem data);
-// - a conclusão da OS reaberta depois;
+// datas são cortadas em `agora`, e a conclusão e as reaberturas saem das
+// transições da OS até `agora` (conclusaoEReaberturas), mas a origem só tem o
+// valor atual de:
 // - os campos editáveis da OS, do chamado, do ativo e do local;
 // - a política vigente.
 //
@@ -37,7 +37,7 @@ import {
 } from './historico';
 import { type AlcanceDoInsight, type Deteccao, chaveDoInsight } from './insight';
 import { type ConfigReincidencia, PADRAO_REINCIDENCIA, reincidencia } from './reincidencia';
-import { DIA_MS, LIMITE_INSIGHT_PADRAO, type Score, sugereInsight } from './score';
+import { DIA_MS, type Score, sugereInsight } from './score';
 import {
   type ConfigSistemico,
   PADRAO_SISTEMICO,
@@ -75,7 +75,6 @@ export interface EntradaDoDia {
   locais: readonly LocalAnalisado[];
   /** Política do grupo: o sinal sistêmico cruza hotéis. */
   sistemico?: ConfigSistemico;
-  limiteInsight?: number;
 }
 
 export interface ResultadoDoAtivo {
@@ -144,7 +143,6 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
     corretivas.filter((c) => c.ativoId !== null && idsDeAtivo.has(c.ativoId)),
     (c) => c.ativoId as string,
   );
-  const limite = e.limiteInsight ?? LIMITE_INSIGHT_PADRAO;
   const dia = e.agora.toISOString().slice(0, 10);
 
   const resultados = [...ativos]
@@ -175,7 +173,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
 
   const deteccoes: DeteccaoDoDia[] = [];
   for (const r of resultados) {
-    if (!sugereInsight(r.atencao, limite)) continue;
+    if (!sugereInsight(r.atencao, r.atencao.configuracao.limiteInsight)) continue;
     const escopo = { ativoId: r.ativoId, hotelId: r.hotelId };
     const cfgR = r.reincidencia.configuracao;
     deteccoes.push({

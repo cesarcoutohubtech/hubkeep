@@ -1,25 +1,30 @@
 # Mapa das entradas do `calcularDia`
 
-**Situação:** levantamento de 06/10/2026, feito pelo agente do Kaio, sobre a `main` no `a27e961`. Os tipos do banco vêm de `packages/db/src/tipos-banco.ts`, e as ações da auditoria, dos repositórios de `packages/db`.
+**Situação:**
+- **Levantamento de 06/10/2026,** feito pelo agente do Kaio sobre a `main` no `a27e961`. Os tipos do banco vêm de `packages/db/src/tipos-banco.ts`, e as ações da auditoria, dos repositórios de `packages/db`.
+- **Revisto no mesmo dia** com as decisões do Cesar: o fim de `docs/referencia/lacunas-instrumentacao-intelligence.md` e a etapa I de `docs/12-plano-fase-1b.md`.
 
 **Para quê:** saber, para cada dado que o `calcularDia` (`packages/inteligencia/src/dia.ts`) usa:
 - de que coluna da `main` ele vem;
-- ou qual das três migrações da instrumentação vai criá-lo (`docs/referencia/lacunas-instrumentacao-intelligence.md`);
+- ou qual tarefa da etapa I da 1b vai criá-lo;
 - ou se fica sem origem.
 
 **Legenda:**
 - **Existe:** a coluna está na `main`.
-- **Deriva:** sai da `main` sem coluna nova.
-- **M1, M2, M3:** as migrações da instrumentação (ativo; chamado e OS; códigos de manutenção).
-- **Sem origem:** nem a `main` nem as três migrações trazem o dado.
+- **I1 a I5:** as tarefas da etapa I da 1b:
+  - I1: ativo (compra, garantia e criticidade);
+  - I2: chamado e OS;
+  - I3: transições da OS;
+  - I4: códigos de manutenção;
+  - I5: módulos contratados.
+- **Sem origem:** nem a `main` nem a etapa I trazem o dado.
 
 ## Entrada geral
 
 | Campo | Origem | Situação |
 |---|---|---|
 | `agora` | Relógio do job (porta `Relogio`). | Existe |
-| `limiteInsight` | Nenhuma chave de política. Hoje vale a constante `LIMITE_INSIGHT_PADRAO` (70). | Sem origem configurável (abaixo) |
-| `sistemico` (configuração) | `app.politica` com `chave = 'inteligencia.sistemico'` e escopo de grupo. | Sem origem: o núcleo ainda não aceita a chave (abaixo) |
+| `sistemico` (configuração) | A chave `inteligencia.sistemico` de `app.politica`, no escopo de grupo, resolvida pelo `registroDePoliticas` do núcleo (#106). | A extensão é registrada com I5 |
 
 ## Hotel (`HotelDoDia`)
 
@@ -27,7 +32,7 @@
 |---|---|---|
 | `hotelId` | `app.hotel.id` | Existe |
 | `bandeiraId` | `app.hotel.bandeira_id` | Existe |
-| `reincidencia`, `atencao` (configurações) | `app.politica` com as chaves `inteligencia.reincidencia` e `inteligencia.atencao_ativo`. A tabela já tem `escopo_tipo`, `bandeira_id` e `hotel_id`. | Sem origem: o núcleo ainda não aceita as chaves, e a resolução do domínio não lê a bandeira |
+| `reincidencia`, `atencao` (configurações) | As chaves `inteligencia.reincidencia` e `inteligencia.atencao_ativo`, resolvidas pelo registro do núcleo (hotel → bandeira → grupo → padrão). O valor com escopo de bandeira só entra na 1c. O limite do insight é campo da `inteligencia.atencao_ativo` (`limiteInsight`, padrão 70). | A extensão é registrada com I5. Até lá, valem os `PADRAO_*` |
 
 ## Ativo (`AtivoDoDia`)
 
@@ -36,10 +41,9 @@
 | `id`, `hotelId` | `app.ativo.id`, `app.ativo.hotel_id` | Existe |
 | `categoriaId` | `app.ativo.categoria_id` | Existe |
 | `fabricante`, `modelo` | `app.ativo.fabricante`, `app.ativo.modelo` | Existe |
-| `criticidade.nivel` | `app.ativo.criticidade` | M1 |
-| `criticidade.maximo` | A política `ativo.criticidade` do núcleo. Ela ainda não está no `POLITICAS` do domínio, e a M1 cria só a coluna. | Sem origem até o núcleo criar a política |
+| `criticidade` | `app.ativo.criticidade`, de 1 a 5, fixa (`check` no banco). A política `ativo.criticidade` só troca os nomes dos níveis. | I1 |
 | `paradas` | `app.parada_ativo.inicio` e `fim`, por `ativo_id` | Existe |
-| `preventivaOuCompliance` | O plano de preventiva da 1b. | Sem origem: fica ausente até a 1b |
+| `preventivaOuCompliance` | O plano de preventiva da 1b. | Sem origem até a etapa P |
 
 ## Corretiva (`Corretiva`)
 
@@ -49,13 +53,12 @@
 | `hotelId`, `localId` | `app.chamado.hotel_id`, `app.chamado.local_id` | Existe |
 | `ativoId` | `app.chamado.ativo_id`. A OS não tem ativo próprio. | Existe |
 | `abertaEm` | `app.chamado.criado_em` | Existe |
-| `concluidaEm` | A última linha de `app.auditoria` com `entidade = 'os'` e `acao = 'concluir'`, campo `em`. A OS não tem coluna de conclusão. | Deriva para o `hk_app`; sem origem para o job (abaixo) |
-| `reaberturas` | As linhas de `app.auditoria` com `entidade = 'os'` e `acao = 'reabrir'`, contadas. | Deriva para o `hk_app`; sem origem para o job (abaixo) |
-| `codigoFalha` | `app.os.codigo_falha_id` | M3 |
-| `executadoPor`, `terceiroNome` | `app.os.executado_por`, `app.os.terceiro_nome` | M2 |
-| `custoInformado` | `app.os.custo_informado` | M2 |
-| `impactoHospede` | `app.chamado.impacto_hospede` | M2 |
-| `aposPreventiva` | A OS preventiva da 1b, reconhecida pelo plano. | Sem origem: fica ausente até a 1b |
+| `concluidaEm`, `reaberturas` | `app.os_transicao` (de, para, quando, quem e a ação), lida pelo `hk_worker` no tenant do job. As transições até a data do cálculo passam por `conclusaoEReaberturas`. O worker não lê a auditoria (decisão de 06/10/2026). | I3 |
+| `codigoFalha` | `app.os.codigo_falha_id` | I4 |
+| `executadoPor`, `terceiroNome` | `app.os.executado_por`, `app.os.terceiro_nome` | I2 |
+| `custoInformado` | `app.os.custo_informado` | I2 |
+| `impactoHospede` | `app.chamado.impacto_hospede` | I2 |
+| `aposPreventiva` | A OS preventiva da 1b, reconhecida pelo plano. | Sem origem até a etapa P |
 
 ## Local (`LocalAnalisado`)
 
@@ -65,21 +68,18 @@
 | `andar` | `app.local.andar` | Existe |
 | `tipo` | `app.local.tipo` (`uh` ou `area_comum`) | Existe |
 
-## Sem origem
+## O que mudou com as decisões do Cesar (06/10/2026)
 
-1. **As cinco chaves `inteligencia.*` em `app.politica`:**
-   - a tabela comporta as chaves, mas o `validarPolitica` do núcleo recusa o que não está no `POLITICAS`;
-   - a resolução do domínio vai do hotel para o grupo, sem passar pela bandeira;
-   - depende do ponto de extensão das políticas (proposta em `docs/referencia/proposta-extensao-politicas.md`). Até lá, o job usa os `PADRAO_*`.
-2. **O máximo da escala da criticidade:** a política `ativo.criticidade` ainda não existe no domínio. Sem ela, o nível da M1 não vira componente, e a criticidade fica ausente no score.
-3. **O limite que faz o score sugerir insight:** não há chave de política. Ou ele entra como campo da `inteligencia.atencao_ativo` (versão nova do formato), ou fica fixo em 70 no 1.0. Decisão do Cesar ou do Kaio.
-4. **Preventiva:** `preventivaOuCompliance` e `aposPreventiva` dependem do plano de preventiva da 1b. Até lá, ficam ausentes, e o peso deles vai para os outros componentes, como o ADR-034 prevê.
-5. **A conclusão e as reaberturas da OS no job:**
-   - o job roda como `hk_worker`, que só tem INSERT em `app.auditoria` (`20260924000001_fundacao.sql`, linha 462), sem SELECT nem policy de leitura;
-   - sem isso, o motor perde a conclusão (base do componente `apos_corretiva` e do custo na janela) e as reaberturas;
-   - aproximação sem migração: o maior `app.os_apontamento.fim` da OS concluída (o worker lê a tabela). Ela erra quando a conclusão não tem apontamento;
-   - **decisão de 06/10/2026:** o `hk_worker` não ganha leitura da auditoria. A conclusão e as reaberturas, cada uma com data, vão ao Cesar como pedido ao núcleo, para virem da própria OS, gravadas pela unit of work (registrado no `docs/diario-intelligence.md`). A forma é decisão do núcleo.
-6. **O Intelligence contratado por tenant (ADR-037):** não há coluna nem política que diga se o tenant tem o módulo. O job precisa disso para saber em quais tenants rodar. A métrica de cobrança continua pendente.
+1. **Políticas:** o `registroDePoliticas` do núcleo (#106) tem uma resolução só, e o módulo não tem resolução própria. A extensão do Intelligence (`EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE`) é registrada em `montarInteligencia` junto com o filtro por módulo contratado (I5). Até lá, o job usa os `PADRAO_*`.
+2. **Criticidade:** escala fixa de 1 a 5, sem máximo por política.
+3. **Limite do insight:** campo `limiteInsight` da `inteligencia.atencao_ativo`, padrão 70.
+4. **Conclusão e reaberturas:** vêm das transições da OS (I3), e não da auditoria. Com elas, o recálculo de um dia passado vê a conclusão e as reaberturas como estavam naquele dia.
+5. **Módulo contratado por tenant:** `licenca.modulo` (I5), lida pelo `hk_worker` no próprio tenant. É assim que o job sabe em quais tenants rodar.
+
+## Ainda sem origem
+
+- **Preventiva:** `preventivaOuCompliance` e `aposPreventiva` esperam a etapa P da 1b. Até lá, ficam ausentes, e o peso deles vai para os outros componentes, como o ADR-034 prevê.
+- **Valor antigo dos campos editáveis e da política:** o recálculo de um dia passado usa o valor atual. O resultado gravado de cada dia é a fonte de verdade do histórico (decisão de 06/10/2026).
 
 ## A conferir quando a porta de leitura for escrita
 
