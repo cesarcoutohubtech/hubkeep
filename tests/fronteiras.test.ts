@@ -39,6 +39,10 @@ const imp = (origem: string) => `import * as m from '${origem}';\nexport const x
 const ROTA = 'apps/web/src/app/api/v1/x/route.ts';
 const PAGINA = 'apps/web/src/app/page.tsx';
 const COMPOSICAO = 'apps/web/src/servidor/composicao.ts';
+// O Intelligence no web (liberação estreita, 06/10/2026).
+const MODULO_INT = 'apps/web/src/servidor/modulos/inteligencia/montagem.ts';
+const TELA_INT = 'apps/web/src/app/admin/inteligencia/page.tsx';
+const ROTA_INT = 'apps/web/src/app/api/v1/inteligencia/x/route.ts';
 
 describe('fronteiras entre pacotes', () => {
   const proibidos: [string, string, string][] = [
@@ -123,6 +127,28 @@ describe('fronteiras entre pacotes', () => {
     ['rota da API importando inteligencia', ROTA, '@hubkeep/inteligencia'],
     ['PWA importando inteligencia', 'apps/tecnico/src/x.ts', '@hubkeep/inteligencia'],
     [
+      'servidor do web fora da pasta do módulo importando inteligencia',
+      'apps/web/src/servidor/modulos/outro/x.ts',
+      '@hubkeep/inteligencia',
+    ],
+    [
+      'pasta com nome parecido importando inteligencia',
+      'apps/web/src/app/inteligencia-x/page.tsx',
+      '@hubkeep/inteligencia',
+    ],
+    ['componente do web importando inteligencia', 'apps/web/src/x.ts', '@hubkeep/inteligencia'],
+    ['módulo do Intelligence no web importando auth-admin', MODULO_INT, '@hubkeep/auth-admin'],
+    ['módulo do Intelligence no web importando pg', MODULO_INT, 'pg'],
+    ['módulo do Intelligence no web importando kysely', MODULO_INT, 'kysely'],
+    ['tela do Intelligence importando db', TELA_INT, '@hubkeep/db'],
+    ['rota do Intelligence importando db', ROTA_INT, '@hubkeep/db'],
+    ['rota do Intelligence importando auth-admin', ROTA_INT, '@hubkeep/auth-admin'],
+    [
+      'rota do núcleo importando a pasta do módulo',
+      ROTA,
+      '../../../../servidor/modulos/inteligencia',
+    ],
+    [
       'dominio importando inteligencia por caminho relativo',
       'packages/dominio/src/x.ts',
       '../../inteligencia/src/index.ts',
@@ -179,6 +205,18 @@ describe('fronteiras entre pacotes', () => {
       './score.ts',
     ],
     ['db importando pg', 'packages/db/src/x.ts', 'pg'],
+    ['módulo do Intelligence no web importando inteligencia', MODULO_INT, '@hubkeep/inteligencia'],
+    ['módulo do Intelligence no web importando db', MODULO_INT, '@hubkeep/db'],
+    ['módulo do Intelligence no web importando aplicacao', MODULO_INT, '@hubkeep/aplicacao'],
+    ['tela do Intelligence importando inteligencia', TELA_INT, '@hubkeep/inteligencia'],
+    ['rota do Intelligence importando inteligencia', ROTA_INT, '@hubkeep/inteligencia'],
+    ['rota do Intelligence importando contratos', ROTA_INT, '@hubkeep/contratos'],
+    [
+      'rota do Intelligence importando o servidor do web',
+      ROTA_INT,
+      '../../../../../servidor/composicao',
+    ],
+    ['servidor do web importando a pasta do módulo', COMPOSICAO, './modulos/inteligencia'],
   ];
 
   it.each(permitidos)('permite: %s', async (_nome, arquivo, origem) => {

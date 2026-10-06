@@ -490,6 +490,22 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Implementação (C2, migração 0021, 29/09/2026):** sem mudar a decisão. O chamado guarda em `politica_aplicada` o que a abertura usou, por chave: para `chamado.prioridade_padrao_por_categoria`, a categoria do ativo, a prioridade escolhida e a origem (`categoria`, pela política resolvida hotel → grupo → padrão, ou `menor_peso`, quando não há regra para a categoria ou a prioridade dela está desativada). O teste de integração muda a política do hotel depois da abertura e confere que o chamado não mudou.
 
+**Adendo — extensão por módulo e liberação no lint (06/10/2026).** Status: decidido pelo Cesar em 06/10/2026 (pontos 1 e 3 da avaliação de `docs/referencia/proposta-extensao-politicas.md`, com os ajustes do agente do núcleo); o texto deste adendo aguarda a aprovação do Cesar.
+- **Registro de políticas no domínio** (`registroDePoliticas`, #106): as chaves do núcleo e as extensões de módulo.
+  - Cada extensão tem um prefixo próprio (`inteligencia.`), fora dos prefixos do núcleo (`os.`, `chamado.`, `ativo.`), e registra só chaves com esse prefixo, cada uma com padrão e formato.
+  - Extensão inválida lança na partida do servidor, nunca num request.
+  - O domínio não conhece chave de módulo nenhuma.
+- **Uma resolução só, a do registro:** hotel → bandeira → grupo → padrão, para as chaves do núcleo e as dos módulos. O módulo não tem resolução própria.
+- **O valor com escopo de bandeira** continua sem entrada (o contrato aceita grupo e hotel) até a 1c, com o SLA.
+- **Quem grava:** continua só o Admin do grupo, para todas as chaves.
+- **Contrato:** aceita a chave de módulo como texto com prefixo; o formato do valor é conferido pelo registro, no caso de uso. A leitura da configuração devolve só as chaves do núcleo: a tela das políticas de um módulo é do módulo.
+- **Módulo contratado:** o tenant sem o módulo não vê nem grava as chaves dele. O filtro entra com `licenca.modulo` (1b), e até lá a montagem do módulo não registra extensão.
+- **Liberação estreita no lint** (exceção ao ADR-037, que proíbe o núcleo de importar `@hubkeep/inteligencia`): só dois trechos do `apps/web` importam o pacote.
+  - A pasta do módulo no servidor, `apps/web/src/servidor/modulos/inteligencia/`, vê o que o servidor vê, menos o `auth-admin`.
+  - As rotas e telas em pastas `inteligencia` do `apps/web/src/app` veem o que a rota e a página veem.
+  - A composição chega à pasta do módulo só pela função `montarInteligencia` (`tests/composicao-inteligencia.test.ts`). Desligar o módulo é tirar essa chamada.
+  - Os pacotes do núcleo e o resto do web continuam proibidos (`tests/fronteiras.test.ts`).
+
 ## ADR-027 — Estados canônicos no domínio; situações e prioridades configuráveis por tenant
 
 **Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição dos nomes em quatro idiomas.
