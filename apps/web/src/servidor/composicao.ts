@@ -88,7 +88,9 @@ import {
   conferirAlvoDoBanco,
   tlsDaConexao,
 } from '@hubkeep/db';
+import { registroDePoliticas } from '@hubkeep/dominio';
 import { criarVerificadorJwks } from './identidade';
+import { montarInteligencia } from './modulos/inteligencia';
 
 function exigirEnv(nome: string): string {
   const v = process.env[nome];
@@ -112,6 +114,11 @@ const conexao = (nome: string) => {
   });
   return { url, ssl: tlsDaConexao(url, process.env.HK_BANCO_SEM_TLS === '1') };
 };
+
+// O Intelligence (módulo opcional) entra só por aqui. Extensão inválida lança
+// na carga do módulo, nunca num request.
+const inteligencia = montarInteligencia();
+const politicas = registroDePoliticas(inteligencia.extensoesDePolitica);
 
 /** Memoiza uma Promise, sem ficar preso a ela se rejeitar (o próximo pedido tenta de novo). */
 function memo<T>(criar: () => Promise<T>): () => Promise<T> {
@@ -261,6 +268,7 @@ export const casosDeUsoDeConfiguracao = memo<CasosDeUsoDeConfiguracao>(async () 
     configuracao: criarPortaConfiguracao(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
+    politicas,
   });
 });
 

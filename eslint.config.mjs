@@ -6,6 +6,8 @@
 //   só db importa pg/postgres           tecnico (PWA) fala só com a API
 //   aplicacao sem módulo do Node        inteligencia é puro e ninguém do núcleo o importa
 //   no web, só src/servidor importa db e auth-admin
+//   do Intelligence, só a pasta do módulo no servidor do web e as rotas e telas
+//   em pastas inteligencia importam o pacote (liberação estreita, 06/10/2026)
 //   entre pacotes, só pelo nome (@hubkeep/...), nunca por caminho relativo
 //   Kysely e execução direta de consulta, só em packages/db
 //   i18n (catálogos) roda também no navegador: sem módulo do Node
@@ -30,6 +32,12 @@ const ELEMENTOS = [
   { type: 'imagem', pattern: 'packages/imagem' },
   // HubKeep Intelligence (módulo opcional): depende do núcleo, nunca o contrário.
   { type: 'inteligencia', pattern: 'packages/inteligencia' },
+  // O Intelligence no web (decisão do Cesar de 06/10/2026): a pasta do módulo no
+  // servidor, que a composição alcança por uma única função de montagem
+  // (tests/composicao-inteligencia.test.ts), e as rotas e telas em pastas
+  // inteligencia. Vêm antes de web-servidor e de web: vale o primeiro padrão que casa.
+  { type: 'web-modulo-inteligencia', pattern: 'apps/web/src/servidor/modulos/inteligencia' },
+  { type: 'web-telas-inteligencia', pattern: 'apps/web/src/app/**/inteligencia' },
   // Filho de web: o código de servidor do Next (raiz de composição, contexto,
   // http). É o único trecho do web que enxerga db e auth-admin; rota, página e
   // componente chegam ao banco e ao Auth por ele.
@@ -39,6 +47,8 @@ const ELEMENTOS = [
   { type: 'conector', pattern: 'apps/conector' },
 ];
 const TIPOS = ELEMENTOS.map((e) => e.type);
+// Quem pode importar @hubkeep/inteligencia: o próprio pacote e os dois trechos do web.
+const DO_INTELLIGENCE = ['inteligencia', 'web-modulo-inteligencia', 'web-telas-inteligencia'];
 
 const para = (...types) => ({ to: { element: { types: { anyOf: types } } } });
 
@@ -158,7 +168,34 @@ export default tseslint.config(
             },
             {
               from: { element: { type: 'web-servidor' } },
-              allow: para('aplicacao', 'dominio', 'contratos', 'i18n', 'db', 'auth-admin'),
+              allow: para(
+                'aplicacao',
+                'dominio',
+                'contratos',
+                'i18n',
+                'db',
+                'auth-admin',
+                'web-modulo-inteligencia',
+              ),
+            },
+            // O módulo no servidor monta as portas e os casos de uso do Intelligence:
+            // vê o que o servidor vê, menos auth-admin (a secret key fica fora).
+            {
+              from: { element: { type: 'web-modulo-inteligencia' } },
+              allow: para('aplicacao', 'dominio', 'contratos', 'i18n', 'db', 'inteligencia'),
+            },
+            // Rota e tela do Intelligence: o que a rota e a página veem, mais o pacote.
+            {
+              from: { element: { type: 'web-telas-inteligencia' } },
+              allow: para(
+                'aplicacao',
+                'dominio',
+                'contratos',
+                'i18n',
+                'imagem',
+                'web-servidor',
+                'inteligencia',
+              ),
             },
             {
               from: { element: { type: 'tecnico' } },
@@ -188,10 +225,12 @@ export default tseslint.config(
               message: 'packages/inteligencia é puro: sem pacote externo nem módulo do Node.',
             },
             // Nenhum pacote nem app do núcleo importa o Intelligence: desligar o módulo
-            // não pode quebrar o núcleo (decisão do Cesar de 30/09/2026). A rota do
-            // próprio Intelligence, quando existir, ganha uma liberação explícita.
+            // não pode quebrar o núcleo (decisão do Cesar de 30/09/2026). As exceções
+            // são os dois trechos do web acima (06/10/2026).
             {
-              from: { element: { types: { anyOf: TIPOS.filter((t) => t !== 'inteligencia') } } },
+              from: {
+                element: { types: { anyOf: TIPOS.filter((t) => !DO_INTELLIGENCE.includes(t)) } },
+              },
               disallow: para('inteligencia'),
               message:
                 'O núcleo não importa @hubkeep/inteligencia: o módulo depende do núcleo, nunca o contrário.',
@@ -237,6 +276,12 @@ export default tseslint.config(
             // isso o par é liberado pelo tipo, não pela relação.
             { allow: { dependency: { relationship: { to: 'internal' } } } },
             { from: { element: { type: 'web' } }, allow: para('web-servidor') },
+            { from: { element: { type: 'web-telas-inteligencia' } }, allow: para('web-servidor') },
+            // A composição chega à pasta do módulo por caminho relativo.
+            {
+              from: { element: { type: 'web-servidor' } },
+              allow: para('web-modulo-inteligencia'),
+            },
           ],
         },
       ],
