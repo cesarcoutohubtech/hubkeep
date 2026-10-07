@@ -7,7 +7,7 @@
   "comum.busca.sem_resultado": "Nothing found for “{termo}”.",
   "comum.idioma": "Language",
 
-  "inicio.configuracao": "Settings and policies",
+  "menu.configuracao": "Settings and policies",
   "admin.configuracao.titulo": "Group settings and policies",
   "admin.configuracao.grupo": "Group",
   "admin.configuracao.hotel": "Hotel",
@@ -48,7 +48,7 @@
   "login.erro.link_invalido": "The invitation link is invalid or has expired.",
   "login.aviso_convite": "Access is by invitation only. No account? Ask your group administrator.",
 
-  "inicio.proprietarios": "Owners",
+  "menu.proprietarios": "Owners",
   "admin.proprietarios.titulo": "Owners and links",
   "admin.proprietarios.novo": "New owner",
   "admin.proprietarios.campo.nome": "Name",
@@ -82,7 +82,7 @@
   "erro.vinculo_nao_encontrado": "Link not found.",
   "erro.local_nao_encontrado": "Location not found.",
   "senha.titulo": "Set your password",
-  "inicio.implantacao": "Onboarding dashboard",
+  "menu.implantacao": "Onboarding dashboard",
   "admin.implantacao.titulo": "Hotel onboarding",
   "admin.implantacao.escolher_hotel": "Choose the hotel",
   "admin.implantacao.pendencias": "What is missing",
@@ -104,7 +104,7 @@
   "admin.implantacao.ir_para_membros": "Invite and assign roles",
   "erro.implantacao_fora_do_escopo": "Only the group Admin and the hotel's Implementer see onboarding.",
   "senha.explicacao": "Your invitation was accepted. Choose the password for your next sign-ins.",
-  "inicio.locais": "Locations",
+  "menu.locais": "Locations",
   "admin.locais.titulo": "Hotel locations",
   "admin.locais.escolher_hotel": "Choose the hotel",
   "admin.locais.areas_comuns": "Common areas",
@@ -128,9 +128,9 @@
   "erro.local_andar_invalido": "Invalid floor (up to {maximo} characters).",
   "erro.local_nome_repetido": "There is already an active common area with this name at the hotel.",
   "senha.campo.nova": "New password",
-  "inicio.categorias": "Asset categories",
-  "inicio.ativos": "Assets",
-  "inicio.paradas": "Open downtime with completed work orders",
+  "menu.categorias": "Asset categories",
+  "menu.ativos": "Assets",
+  "menu.paradas": "Downtime to close",
   "admin.ativos.titulo": "Hotel assets",
   "admin.ativos.escolher_hotel": "Choose the hotel",
   "admin.ativos.novo": "Register an asset",
@@ -287,7 +287,7 @@
   "tecnico.fotos.miniatura": "Photo from {quando}",
   "tecnico.sair.pendentes": "{n, plural, one {# operation has not been sent yet and will be deleted from this device.} other {# operations have not been sent yet and will be deleted from this device.}} Sign out anyway?",
 
-  "inicio.administracao": "Hotel administration",
+  "menu.hoteis": "Hotels",
   "comum.voltar": "Back",
   "admin.hoteis.titulo": "Hotels from the property system",
   "admin.hoteis.licenca": "License: {hoteisEmUso} of {hoteisContratados} hotels active and {uhsEmUso} of {uhsContratadas} rooms active.",
@@ -314,7 +314,7 @@
   "erro.hotel_ja_ativo": "This hotel is already active.",
   "erro.licenca_hoteis_sem_saldo": "No hotel license is available ({emUso} of {contratados} in use). EasyGov has been notified.",
 
-  "inicio.membros": "Members and roles",
+  "menu.membros": "Members and roles",
   "papel.admin_grupo": "Group admin",
   "papel.gestor_csc": "Service center manager",
   "papel.implantador": "Implementer",
@@ -356,7 +356,7 @@
 
   "hotel.status": "{status, select, em_implantacao {onboarding} ativo {active} desativado {deactivated} other {{status}}}",
 
-  "inicio.bandeiras": "Brands",
+  "menu.bandeiras": "Brands",
   "comum.feito": "Done.",
   "admin.bandeiras.titulo": "Brands",
   "admin.bandeiras.nova": "New brand",
@@ -383,7 +383,7 @@
   "email.convite.depois": "After accepting, you will set your password.",
   "email.convite.ignorar": "If you were not expecting this invitation, ignore this email.",
 
-  "inicio.equipes": "Teams",
+  "menu.equipes": "Teams",
   "admin.equipes.titulo": "Hotel teams",
   "admin.equipes.escolher_hotel": "Choose the hotel",
   "admin.equipes.nova": "New team",
@@ -559,8 +559,8 @@
   "erro.chamado_ativo_desativado": "The asset is deactivated.",
   "erro.chamado_nao_encontrado": "Request not found.",
 
-  "inicio.chamados": "Service requests",
-  "inicio.os": "Work orders",
+  "menu.chamados": "Service requests",
+  "menu.os": "Work orders",
   "corretiva.chamados.titulo": "Service requests",
   "corretiva.chamados.vazio": "No service requests match this filter.",
   "corretiva.os.titulo": "Work orders",
@@ -645,5 +645,13 @@
   "corretiva.linha_do_tempo.chamado": "{acao, select, abrir {Request opened} triar {Request in triage} priorizar {Priority changed} cancelar {Request cancelled} other {Other action on the request}}",
   "corretiva.linha_do_tempo.os": "{acao, select, gerar {Work order created} reatribuir {Work order reassigned} iniciar {Work started} pausar {Work paused} retomar {Work resumed} concluir {Work order completed} aceitar {Work order accepted} reabrir {Work order reopened} cancelar {Work order cancelled} other {Other action on the work order}}",
   "corretiva.linha_do_tempo.parada_ativo": "{acao, select, registrar {Equipment down} encerrar {Equipment back up} other {Other action on the downtime}}",
-  "erro.periodo_invalido": "The start of the period must be before the end."
+  "erro.periodo_invalido": "The start of the period must be before the end.",
+
+  "menu.rotulo": "Main menu",
+  "menu.pular": "Skip to content",
+  "menu.inicio": "Home",
+  "menu.grupo.operacao": "Operations",
+  "menu.grupo.cadastros": "Records",
+  "menu.grupo.configuracao": "Settings",
+  "tema.claro": "Light theme"
 }

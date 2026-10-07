@@ -19,8 +19,11 @@ export interface PropsDaEstrutura {
   menu: ReactNode;
   /** Nome acessível do menu e do botão que o abre no celular (do catálogo). */
   rotuloDoMenu: string;
-  /** Título da tela, na barra superior. */
-  titulo: ReactNode;
+  /**
+   * Título da tela (h1), na barra superior. Sem ele, a tela traz o próprio
+   * h1 no conteúdo.
+   */
+  titulo?: ReactNode;
   /** Ações da barra superior: troca de tema, idioma, usuário. */
   acoes?: ReactNode;
   /** Faixa de escopo abaixo da barra (grupo, bandeira ou hotel em vista). */
@@ -90,7 +93,7 @@ export function Estrutura({
               <path d="M4 7h16M4 12h16M4 17h16" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
-          <h1>{titulo}</h1>
+          {titulo !== undefined ? <h1>{titulo}</h1> : <span className="hk-barra-vao" />}
           {acoes ? <div className="hk-barra-acoes">{acoes}</div> : null}
         </header>
         {escopo ? <div className="hk-escopo">{escopo}</div> : null}

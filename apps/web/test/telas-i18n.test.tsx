@@ -16,7 +16,7 @@ vi.mock('../src/cliente/sessao', () => ({ entrar: vi.fn(), sair: vi.fn(), defini
 const { ProvedorDeIdioma } = await import('../src/i18n/cliente');
 const { default: Login } = await import('../src/app/login/page');
 const { default: DefinirSenha } = await import('../src/app/definir-senha/page');
-const { default: Inicio } = await import('../src/app/page');
+const { default: Inicio } = await import('../src/app/(painel)/page');
 
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
   renderToString(

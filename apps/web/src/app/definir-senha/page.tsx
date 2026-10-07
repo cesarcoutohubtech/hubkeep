@@ -1,6 +1,7 @@
 'use client';
 import { LIMITE_MINIMO_DA_SENHA } from '@hubkeep/contratos';
 import type { Chave } from '@hubkeep/i18n';
+import { Botao, Campo, Entrada, Marca, MensagemDeErro, TelaDeEntrada } from '@hubkeep/ui';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { definirSenha } from '../../cliente/sessao';
@@ -20,18 +21,22 @@ export default function DefinirSenha() {
   }
 
   return (
-    <form onSubmit={salvar} style={{ display: 'grid', gap: 12 }}>
-      <h1>{t('senha.titulo')}</h1>
-      <p>{t('senha.explicacao')}</p>
-      <input
-        name="senha"
-        type="password"
-        placeholder={t('senha.campo.nova')}
-        autoComplete="new-password"
-        required
-      />
-      <button type="submit">{t('senha.acao.salvar')}</button>
-      {erro && <p role="alert">{t(erro, { minimo: LIMITE_MINIMO_DA_SENHA })}</p>}
-    </form>
+    <TelaDeEntrada
+      marca={<Marca nome={t('app.nome')} />}
+      titulo={t('senha.titulo')}
+      rodape={t('senha.explicacao')}
+    >
+      <form onSubmit={salvar}>
+        <Campo rotulo={t('senha.campo.nova')}>
+          {(p) => (
+            <Entrada {...p} name="senha" type="password" autoComplete="new-password" required />
+          )}
+        </Campo>
+        {erro && <MensagemDeErro>{t(erro, { minimo: LIMITE_MINIMO_DA_SENHA })}</MensagemDeErro>}
+        <Botao type="submit" variante="primario">
+          {t('senha.acao.salvar')}
+        </Botao>
+      </form>
+    </TelaDeEntrada>
   );
 }
