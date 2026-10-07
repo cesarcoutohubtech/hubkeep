@@ -1,8 +1,19 @@
 'use client';
 // Bandeiras (fase 1a, A2): criar, renomear, desativar e a bandeira de cada
-// hotel. Tela funcional, sem acabamento: o layout vem do protótipo validado.
+// hotel. Visual do pacote de interface (ADR-038, U4b).
+import {
+  Botao,
+  Campo,
+  Entrada,
+  MensagemDeErro,
+  MensagemVazia,
+  Painel,
+  Selecao,
+  Selo,
+} from '@hubkeep/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
 import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
 interface Bandeira {
@@ -16,14 +27,13 @@ interface Hotel {
   bandeiraId: string | null;
 }
 
-type Aviso = { tipo: 'ok' } | { tipo: 'erro'; erro: ErroDaApi };
-
 export default function Bandeiras() {
   const t = useT();
   const mensagemDeErro = useMensagemDeErro();
   const [bandeiras, setBandeiras] = useState<Bandeira[] | null>(null);
   const [hoteis, setHoteis] = useState<Hotel[]>([]);
-  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [erroDaLista, setErroDaLista] = useState<ErroDaApi | null>(null);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
   const carregar = useCallback(async () => {
     const [b, h] = await Promise.all([
@@ -31,7 +41,7 @@ export default function Bandeiras() {
       chamarApi<{ hoteis: Hotel[] }>('/api/v1/hoteis'),
     ]);
     if (b.ok) setBandeiras(b.dados.bandeiras);
-    else setAviso({ tipo: 'erro', erro: b.erro });
+    else setErroDaLista(b.erro);
     if (h.ok) setHoteis(h.dados.hoteis);
   }, []);
 
@@ -52,104 +62,107 @@ export default function Bandeiras() {
   }
 
   if (!bandeiras) {
-    return aviso?.tipo === 'erro' ? (
-      <p role="alert">{mensagemDeErro(aviso.erro)}</p>
+    return erroDaLista ? (
+      <MensagemDeErro>{mensagemDeErro(erroDaLista)}</MensagemDeErro>
     ) : (
-      <p>{t('comum.carregando')}</p>
+      <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
     );
   }
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('admin.bandeiras.titulo')}</h1>
-      {aviso && (
-        <p role={aviso.tipo === 'erro' ? 'alert' : 'status'}>
-          {aviso.tipo === 'ok' ? t('comum.feito') : mensagemDeErro(aviso.erro)}
-        </p>
-      )}
+    <div className="hk-pilha">
+      <Aviso aviso={aviso} />
+      <div className="hk-grade" data-colunas="2">
+        <Painel>
+          <form onSubmit={criar} className="hk-em-linha">
+            <Campo rotulo={t('admin.bandeiras.campo.nome')}>
+              {(p) => <Entrada {...p} name="nome" required />}
+            </Campo>
+            <Botao type="submit" variante="primario">
+              {t('admin.bandeiras.acao.criar')}
+            </Botao>
+          </form>
+          {bandeiras.length === 0 ? (
+            <MensagemVazia>{t('admin.bandeiras.vazio')}</MensagemVazia>
+          ) : (
+            <ul className="hk-lista">
+              {bandeiras.map((b) => (
+                <li key={b.id}>
+                  <form
+                    className="hk-em-linha"
+                    onSubmit={(ev) => {
+                      ev.preventDefault();
+                      const nome = String(new FormData(ev.currentTarget).get('nome') ?? '');
+                      void executar(`/api/v1/bandeiras/${b.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ nome }),
+                      });
+                    }}
+                  >
+                    <Entrada
+                      name="nome"
+                      defaultValue={b.nome}
+                      aria-label={t('admin.bandeiras.campo.nome')}
+                    />
+                    <Botao type="submit" tamanho="pequeno">
+                      {t('admin.bandeiras.acao.renomear')}
+                    </Botao>
+                  </form>
+                  <div className="hk-linha-de-botoes">
+                    <Selo tom={b.ativa ? 'verde' : 'cinza'}>
+                      {b.ativa ? t('admin.bandeiras.ativa') : t('admin.bandeiras.desativada')}
+                    </Selo>
+                    <Botao
+                      tamanho="pequeno"
+                      onClick={() =>
+                        void executar(
+                          `/api/v1/bandeiras/${b.id}/${b.ativa ? 'desativacao' : 'reativacao'}`,
+                          { method: 'POST' },
+                        )
+                      }
+                    >
+                      {b.ativa
+                        ? t('admin.bandeiras.acao.desativar')
+                        : t('admin.bandeiras.acao.reativar')}
+                    </Botao>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Painel>
 
-      <form onSubmit={criar} style={{ display: 'flex', gap: 8 }}>
-        <input name="nome" placeholder={t('admin.bandeiras.campo.nome')} required />
-        <button type="submit">{t('admin.bandeiras.acao.criar')}</button>
-      </form>
-
-      {bandeiras.length === 0 ? (
-        <p>{t('admin.bandeiras.vazio')}</p>
-      ) : (
-        <ul style={{ display: 'grid', gap: 8 }}>
-          {bandeiras.map((b) => (
-            <li
-              key={b.id}
-              style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}
-            >
-              <form
-                style={{ display: 'flex', gap: 4 }}
-                onSubmit={(ev) => {
-                  ev.preventDefault();
-                  const nome = String(new FormData(ev.currentTarget).get('nome') ?? '');
-                  void executar(`/api/v1/bandeiras/${b.id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ nome }),
-                  });
-                }}
-              >
-                <input
-                  name="nome"
-                  defaultValue={b.nome}
-                  aria-label={t('admin.bandeiras.campo.nome')}
-                />
-                <button type="submit">{t('admin.bandeiras.acao.renomear')}</button>
-              </form>
-              <small>
-                {b.ativa ? t('admin.bandeiras.ativa') : t('admin.bandeiras.desativada')}
-              </small>
-              <button
-                onClick={() =>
-                  void executar(
-                    `/api/v1/bandeiras/${b.id}/${b.ativa ? 'desativacao' : 'reativacao'}`,
-                    {
-                      method: 'POST',
-                    },
-                  )
-                }
-              >
-                {b.ativa ? t('admin.bandeiras.acao.desativar') : t('admin.bandeiras.acao.reativar')}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <section>
-        <h2>{t('admin.bandeiras.hoteis')}</h2>
-        <ul style={{ display: 'grid', gap: 6 }}>
-          {hoteis.map((h) => (
-            <li key={h.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span>{h.nome}</span>
-              <select
-                aria-label={t('admin.bandeiras.titulo')}
-                value={h.bandeiraId ?? ''}
-                onChange={(e) =>
-                  void executar(`/api/v1/hoteis/${h.id}/bandeira`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ bandeiraId: e.target.value || null }),
-                  })
-                }
-              >
-                <option value="">{t('admin.bandeiras.sem_bandeira')}</option>
-                {bandeiras
-                  .filter((b) => b.ativa || b.id === h.bandeiraId)
-                  .map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.nome}
-                    </option>
-                  ))}
-              </select>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+        <Painel titulo={t('admin.bandeiras.hoteis')}>
+          <ul className="hk-lista">
+            {hoteis.map((h) => (
+              <li key={h.id}>
+                <span>{h.nome}</span>
+                <div className="hk-em-linha">
+                  <Selecao
+                    aria-label={t('admin.bandeiras.titulo')}
+                    value={h.bandeiraId ?? ''}
+                    onChange={(e) =>
+                      void executar(`/api/v1/hoteis/${h.id}/bandeira`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ bandeiraId: e.target.value || null }),
+                      })
+                    }
+                  >
+                    <option value="">{t('admin.bandeiras.sem_bandeira')}</option>
+                    {bandeiras
+                      .filter((b) => b.ativa || b.id === h.bandeiraId)
+                      .map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.nome}
+                        </option>
+                      ))}
+                  </Selecao>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Painel>
+      </div>
+    </div>
   );
 }

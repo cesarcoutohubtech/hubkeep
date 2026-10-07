@@ -1,9 +1,20 @@
 'use client';
 // Administração de hotéis (fase 1a, A1): o que chegou do sistema hoteleiro, a
-// importação para implantação e a ativação, que consome licença. Tela
-// funcional, sem acabamento: o layout vem do protótipo validado com o cliente.
+// importação para implantação e a ativação, que consome licença. Visual do
+// pacote de interface (ADR-038, U4b).
+import {
+  Botao,
+  MensagemDeErro,
+  MensagemVazia,
+  Painel,
+  Selecao,
+  Selo,
+  Tabela,
+  type TomDeSelo,
+} from '@hubkeep/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
 import { HistoricoDoRegistro } from '../../../../cliente/HistoricoDoRegistro';
 import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
@@ -23,14 +34,15 @@ interface Lista {
   };
 }
 
-type Aviso = { tipo: 'ok'; texto: string } | { tipo: 'erro'; erro: ErroDaApi };
+/** Cor da situação do hotel: ativo verde, em implantação âmbar, o resto cinza. */
+const TOM_DA_SITUACAO: Record<string, TomDeSelo> = { ativo: 'verde', em_implantacao: 'ambar' };
 
 export default function HoteisDoSistemaHoteleiro() {
   const t = useT();
   const mensagemDeErro = useMensagemDeErro();
   const [lista, setLista] = useState<Lista | null>(null);
   const [erroDaLista, setErroDaLista] = useState<ErroDaApi | null>(null);
-  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
   const [fusos, setFusos] = useState<Record<string, string>>({});
   const opcoesDeFuso = useMemo(() => Intl.supportedValuesOf('timeZone'), []);
 
@@ -77,37 +89,30 @@ export default function HoteisDoSistemaHoteleiro() {
     await carregar();
   }
 
-  if (erroDaLista) return <p role="alert">{mensagemDeErro(erroDaLista)}</p>;
-  if (!lista) return <p>{t('comum.carregando')}</p>;
+  if (erroDaLista) return <MensagemDeErro>{mensagemDeErro(erroDaLista)}</MensagemDeErro>;
+  if (!lista) return <MensagemVazia>{t('comum.carregando')}</MensagemVazia>;
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('admin.hoteis.titulo')}</h1>
-      <p>
-        {t('admin.hoteis.licenca', {
-          hoteisEmUso: lista.uso.hoteis.emUso,
-          hoteisContratados: lista.uso.hoteis.contratados,
-          uhsEmUso: lista.uso.uhs.emUso,
-          uhsContratadas: lista.uso.uhs.contratadas,
-        })}
-      </p>
-      {aviso && (
-        <p role={aviso.tipo === 'erro' ? 'alert' : 'status'}>
-          {aviso.tipo === 'ok' ? aviso.texto : mensagemDeErro(aviso.erro)}
-        </p>
-      )}
+    <Painel
+      dica={t('admin.hoteis.licenca', {
+        hoteisEmUso: lista.uso.hoteis.emUso,
+        hoteisContratados: lista.uso.hoteis.contratados,
+        uhsEmUso: lista.uso.uhs.emUso,
+        uhsContratadas: lista.uso.uhs.contratadas,
+      })}
+    >
+      <Aviso aviso={aviso} />
       {lista.hoteis.length === 0 ? (
-        <p>{t('admin.hoteis.vazio')}</p>
+        <MensagemVazia>{t('admin.hoteis.vazio')}</MensagemVazia>
       ) : (
-        <table>
+        <Tabela legenda={t('admin.hoteis.titulo')}>
           <thead>
             <tr>
-              <th>{t('admin.hoteis.coluna.hotel')}</th>
-              <th>{t('admin.hoteis.coluna.codigo')}</th>
-              <th>{t('admin.hoteis.coluna.situacao')}</th>
-              <th>{t('admin.hoteis.coluna.fuso')}</th>
-              <th>{t('admin.hoteis.coluna.acao')}</th>
+              <th scope="col">{t('admin.hoteis.coluna.hotel')}</th>
+              <th scope="col">{t('admin.hoteis.coluna.codigo')}</th>
+              <th scope="col">{t('admin.hoteis.coluna.situacao')}</th>
+              <th scope="col">{t('admin.hoteis.coluna.fuso')}</th>
+              <th scope="col">{t('admin.hoteis.coluna.acao')}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,9 +121,9 @@ export default function HoteisDoSistemaHoteleiro() {
               return (
                 <tr key={chave}>
                   <td>
-                    <span>{h.hotel?.nome ?? h.nome}</span>
+                    <strong>{h.hotel?.nome ?? h.nome}</strong>
                     {h.diferencas.length > 0 && (
-                      <small style={{ display: 'block' }}>
+                      <p className="hk-suave">
                         {t('admin.hoteis.diferencas', {
                           campos: h.diferencas
                             .map((d) =>
@@ -130,23 +135,27 @@ export default function HoteisDoSistemaHoteleiro() {
                             )
                             .join(', '),
                         })}
-                      </small>
+                      </p>
                     )}
                     {h.hotel && <HistoricoDoRegistro entidade="hotel" registroId={h.hotel.id} />}
                   </td>
                   <td>
-                    <code>{h.chave}</code>
+                    <span className="hk-id">{h.chave}</span>
                   </td>
                   <td>
-                    {h.hotel
-                      ? t('hotel.status', { status: h.hotel.status })
-                      : t('admin.hoteis.nao_importado')}
+                    {h.hotel ? (
+                      <Selo tom={TOM_DA_SITUACAO[h.hotel.status] ?? 'cinza'}>
+                        {t('hotel.status', { status: h.hotel.status })}
+                      </Selo>
+                    ) : (
+                      <Selo tom="azul">{t('admin.hoteis.nao_importado')}</Selo>
+                    )}
                   </td>
                   <td>
                     {h.hotel ? (
                       h.hotel.fuso
                     ) : (
-                      <select
+                      <Selecao
                         aria-label={t('admin.hoteis.escolher_fuso')}
                         value={fusos[chave] ?? h.fuso ?? ''}
                         onChange={(e) => setFusos({ ...fusos, [chave]: e.target.value })}
@@ -157,27 +166,31 @@ export default function HoteisDoSistemaHoteleiro() {
                             {f}
                           </option>
                         ))}
-                      </select>
+                      </Selecao>
                     )}
                   </td>
                   <td>
                     {!h.hotel && (
-                      <button onClick={() => void importar(h)}>
+                      <Botao tamanho="pequeno" variante="primario" onClick={() => void importar(h)}>
                         {t('admin.hoteis.acao.importar')}
-                      </button>
+                      </Botao>
                     )}
                     {h.hotel && h.hotel.status !== 'ativo' && (
-                      <button onClick={() => void ativar(h.hotel?.id ?? '')}>
+                      <Botao
+                        tamanho="pequeno"
+                        variante="primario"
+                        onClick={() => void ativar(h.hotel?.id ?? '')}
+                      >
                         {t('admin.hoteis.acao.ativar')}
-                      </button>
+                      </Botao>
                     )}
                   </td>
                 </tr>
               );
             })}
           </tbody>
-        </table>
+        </Tabela>
       )}
-    </main>
+    </Painel>
   );
 }

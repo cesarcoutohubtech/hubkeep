@@ -1,18 +1,26 @@
 'use client';
 // Locais do hotel (fase 1a, B1): UHs do sistema hoteleiro, só leitura, com o
-// status da licença, e áreas comuns cadastradas aqui. Tela funcional, sem
-// acabamento: o layout vem do protótipo validado.
+// status da licença, e áreas comuns cadastradas aqui. Visual do pacote de
+// interface (ADR-038, U4b).
+import {
+  Botao,
+  Campo,
+  Entrada,
+  MensagemVazia,
+  Painel,
+  Selo,
+  Tabela,
+  type TomDeSelo,
+} from '@hubkeep/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { AnexosDoRegistro } from '../../../../cliente/AnexosDoRegistro';
 import { HistoricoDoRegistro } from '../../../../cliente/HistoricoDoRegistro';
-import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { chamarApi } from '../../../../cliente/api';
+import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
+import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
 import { CampoDeBusca, comBusca } from '../../../../cliente/CampoDeBusca';
-import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
+import { useT } from '../../../../i18n/cliente';
 
-interface Hotel {
-  id: string;
-  nome: string;
-}
 interface Local {
   id: string;
   nome: string;
@@ -23,7 +31,11 @@ interface Local {
   editavel: boolean;
 }
 
-type Aviso = { tipo: 'ok' } | { tipo: 'erro'; erro: ErroDaApi };
+const TOM_DO_STATUS: Record<Local['status'], TomDeSelo> = {
+  ativo: 'verde',
+  pendente_licenca: 'ambar',
+  inativo: 'cinza',
+};
 
 const texto = (f: FormData, campo: string) => {
   const v = String(f.get(campo) ?? '').trim();
@@ -32,20 +44,10 @@ const texto = (f: FormData, campo: string) => {
 
 export default function LocaisDoHotel() {
   const t = useT();
-  const mensagemDeErro = useMensagemDeErro();
-  const [hoteis, setHoteis] = useState<Hotel[]>([]);
-  const [hotelId, setHotelId] = useState('');
+  const { hoteis, hotelId, setHotelId, erro: erroDosHoteis } = useHoteis();
   const [locais, setLocais] = useState<Local[] | null>(null);
   const [busca, setBusca] = useState('');
-  const [aviso, setAviso] = useState<Aviso | null>(null);
-
-  useEffect(() => {
-    void chamarApi<{ hoteis: Hotel[] }>('/api/v1/hoteis').then((r) => {
-      if (!r.ok) return setAviso({ tipo: 'erro', erro: r.erro });
-      setHoteis(r.dados.hoteis);
-      setHotelId((atual) => atual || r.dados.hoteis[0]?.id || '');
-    });
-  }, []);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
   const carregar = useCallback(async () => {
     if (!hotelId) return;
@@ -77,66 +79,58 @@ export default function LocaisDoHotel() {
 
   const uhs = locais?.filter((l) => l.tipo === 'uh') ?? [];
   const areas = locais?.filter((l) => l.tipo === 'area_comum') ?? [];
+  const status = (l: Local) => (
+    <Selo tom={TOM_DO_STATUS[l.status]}>{t('admin.locais.status', { status: l.status })}</Selo>
+  );
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('admin.locais.titulo')}</h1>
-      <select
-        aria-label={t('admin.locais.escolher_hotel')}
-        value={hotelId}
-        onChange={(e) => setHotelId(e.target.value)}
-      >
-        {hoteis.map((h) => (
-          <option key={h.id} value={h.id}>
-            {h.nome}
-          </option>
-        ))}
-      </select>
-      {aviso && (
-        <p role={aviso.tipo === 'erro' ? 'alert' : 'status'}>
-          {aviso.tipo === 'ok' ? t('admin.membros.feito') : mensagemDeErro(aviso.erro)}
-        </p>
-      )}
-      <CampoDeBusca
-        aoBuscar={(termo) => {
-          setAviso(null);
-          setBusca(termo);
-        }}
-      />
+    <div className="hk-pilha">
+      <Painel>
+        <div className="hk-filtros">
+          <SeletorDeHotel
+            rotulo={t('admin.locais.escolher_hotel')}
+            hoteis={hoteis}
+            valor={hotelId}
+            aoEscolher={setHotelId}
+          />
+        </div>
+        <CampoDeBusca
+          aoBuscar={(termo) => {
+            setAviso(null);
+            setBusca(termo);
+          }}
+        />
+        <Aviso aviso={erroDosHoteis ? { tipo: 'erro', erro: erroDosHoteis } : aviso} />
+      </Painel>
       {!locais ? (
-        <p>{t('comum.carregando')}</p>
+        <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
       ) : (
-        <>
-          <section style={{ display: 'grid', gap: 8 }}>
-            <h2>{t('admin.locais.areas_comuns')}</h2>
-            <form onSubmit={criar} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input
-                name="nome"
-                placeholder={t('admin.locais.campo.nome')}
-                aria-label={t('admin.locais.campo.nome')}
-                required
-              />
-              <input
-                name="andar"
-                placeholder={t('admin.locais.campo.andar')}
-                aria-label={t('admin.locais.campo.andar')}
-              />
-              <button type="submit">{t('admin.locais.acao.criar')}</button>
+        <div className="hk-grade" data-colunas="2">
+          <Painel titulo={t('admin.locais.areas_comuns')}>
+            <form onSubmit={criar} className="hk-em-linha">
+              <Campo rotulo={t('admin.locais.campo.nome')}>
+                {(p) => <Entrada {...p} name="nome" required />}
+              </Campo>
+              <Campo rotulo={t('admin.locais.campo.andar')}>
+                {(p) => <Entrada {...p} name="andar" />}
+              </Campo>
+              <Botao type="submit" variante="primario">
+                {t('admin.locais.acao.criar')}
+              </Botao>
             </form>
             {areas.length === 0 ? (
-              <p>
+              <MensagemVazia>
                 {busca === ''
                   ? t('admin.locais.sem_areas')
                   : t('comum.busca.sem_resultado', { termo: busca })}
-              </p>
+              </MensagemVazia>
             ) : (
-              <ul style={{ display: 'grid', gap: 6, padding: 0, listStyle: 'none' }}>
+              <ul className="hk-lista hk-itens">
                 {areas.map((l) => (
                   <li key={l.id}>
                     <form
                       key={`${l.nome}|${l.andar ?? ''}`}
-                      style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}
+                      className="hk-em-linha"
                       onSubmit={(ev) => {
                         ev.preventDefault();
                         const f = new FormData(ev.currentTarget);
@@ -149,40 +143,40 @@ export default function LocaisDoHotel() {
                         });
                       }}
                     >
-                      <input
+                      <Entrada
                         name="nome"
                         defaultValue={l.nome}
                         aria-label={t('admin.locais.campo.nome')}
                         disabled={!l.editavel}
                       />
-                      <input
+                      <Entrada
                         name="andar"
                         defaultValue={l.andar ?? ''}
                         aria-label={t('admin.locais.campo.andar')}
                         disabled={!l.editavel}
                       />
-                      <small>{t('admin.locais.status', { status: l.status })}</small>
+                      {status(l)}
                       {l.editavel ? (
-                        <>
-                          <button type="submit">{t('admin.locais.acao.salvar')}</button>
-                          <button
-                            type="button"
+                        <div className="hk-linha-de-botoes">
+                          <Botao type="submit" tamanho="pequeno">
+                            {t('admin.locais.acao.salvar')}
+                          </Botao>
+                          <Botao
+                            tamanho="pequeno"
                             onClick={() =>
                               void executar(
                                 `/api/v1/locais/${l.id}/${l.status === 'inativo' ? 'reativacao' : 'desativacao'}`,
-                                {
-                                  method: 'POST',
-                                },
+                                { method: 'POST' },
                               )
                             }
                           >
                             {l.status === 'inativo'
                               ? t('admin.locais.acao.reativar')
                               : t('admin.locais.acao.desativar')}
-                          </button>
-                        </>
+                          </Botao>
+                        </div>
                       ) : (
-                        <small>{t('admin.locais.do_sistema_hoteleiro')}</small>
+                        <span className="hk-suave">{t('admin.locais.do_sistema_hoteleiro')}</span>
                       )}
                     </form>
                     <AnexosDoRegistro entidade="local" registroId={l.id} />
@@ -191,23 +185,21 @@ export default function LocaisDoHotel() {
                 ))}
               </ul>
             )}
-          </section>
-          <section style={{ display: 'grid', gap: 8 }}>
-            <h2>{t('admin.locais.uhs')}</h2>
-            <small>{t('admin.locais.uhs_ajuda')}</small>
+          </Painel>
+          <Painel titulo={t('admin.locais.uhs')} dica={t('admin.locais.uhs_ajuda')}>
             {uhs.length === 0 ? (
-              <p>
+              <MensagemVazia>
                 {busca === ''
                   ? t('admin.locais.sem_uhs')
                   : t('comum.busca.sem_resultado', { termo: busca })}
-              </p>
+              </MensagemVazia>
             ) : (
-              <table>
+              <Tabela legenda={t('admin.locais.uhs')}>
                 <thead>
                   <tr>
-                    <th>{t('admin.locais.campo.nome')}</th>
-                    <th>{t('admin.locais.campo.andar')}</th>
-                    <th>{t('admin.locais.campo.status')}</th>
+                    <th scope="col">{t('admin.locais.campo.nome')}</th>
+                    <th scope="col">{t('admin.locais.campo.andar')}</th>
+                    <th scope="col">{t('admin.locais.campo.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -215,15 +207,15 @@ export default function LocaisDoHotel() {
                     <tr key={l.id}>
                       <td>{l.nome}</td>
                       <td>{l.andar ?? ''}</td>
-                      <td>{t('admin.locais.status', { status: l.status })}</td>
+                      <td>{status(l)}</td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Tabela>
             )}
-          </section>
-        </>
+          </Painel>
+        </div>
       )}
-    </main>
+    </div>
   );
 }

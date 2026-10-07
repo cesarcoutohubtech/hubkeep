@@ -1,10 +1,21 @@
 'use client';
 // Categorias de ativo (fase 1a, B2; ADR-028): categorias padrão do catálogo e
-// do tenant, nomes em quatro idiomas e os campos estendidos de cada uma. Tela
-// funcional, sem acabamento: o layout vem do protótipo validado.
+// do tenant, nomes em quatro idiomas e os campos estendidos de cada uma.
+// Visual do pacote de interface (ADR-038, U4b): um painel por categoria.
 import { IDIOMAS, type Idioma, resolverNome } from '@hubkeep/i18n';
+import {
+  Botao,
+  Campo as CampoDoFormulario,
+  Entrada,
+  MensagemDeErro,
+  MensagemVazia,
+  Painel,
+  Selecao,
+  Selo,
+} from '@hubkeep/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { chamarApi } from '../../../../cliente/api';
+import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
 import { nomeDoIdioma, useIdioma, useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
 const TIPOS = ['texto', 'numero', 'data', 'lista', 'sim_nao'] as const;
@@ -38,8 +49,6 @@ interface Categoria {
   ativa: boolean;
 }
 
-type Aviso = { tipo: 'ok' } | { tipo: 'erro'; erro: ErroDaApi };
-
 const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 
 export default function CategoriasDeAtivo() {
@@ -49,7 +58,7 @@ export default function CategoriasDeAtivo() {
   const [dados, setDados] = useState<{ idiomaPadrao: Idioma; categorias: Categoria[] } | null>(
     null,
   );
-  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
   const carregar = useCallback(async () => {
     const r = await chamarApi<{ idiomaPadrao: Idioma; categorias: Categoria[] }>(
@@ -124,77 +133,77 @@ export default function CategoriasDeAtivo() {
 
   if (!dados) {
     return aviso?.tipo === 'erro' ? (
-      <p role="alert">{mensagemDeErro(aviso.erro)}</p>
+      <MensagemDeErro>{mensagemDeErro(aviso.erro)}</MensagemDeErro>
     ) : (
-      <p>{t('comum.carregando')}</p>
+      <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
     );
   }
   const faltamPadrao = PADRAO.some((p) => !dados.categorias.some((c) => c.chavePadrao === p));
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('admin.categorias.titulo')}</h1>
-      {aviso && (
-        <p role={aviso.tipo === 'erro' ? 'alert' : 'status'}>
-          {aviso.tipo === 'ok' ? t('admin.membros.feito') : mensagemDeErro(aviso.erro)}
-        </p>
-      )}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {faltamPadrao && (
-          <button
-            onClick={() => void executar('/api/v1/categorias-de-ativo/padrao', { method: 'POST' })}
-          >
-            {t('admin.categorias.acao.instalar_padrao')}
-          </button>
-        )}
-        <form onSubmit={criar} style={{ display: 'flex', gap: 8 }}>
-          <input
-            name="nome"
-            placeholder={t('admin.categorias.campo.nome')}
-            aria-label={t('admin.categorias.campo.nome')}
-            required
-          />
-          <button type="submit">{t('admin.categorias.acao.criar')}</button>
+    <div className="hk-pilha">
+      <Painel
+        {...(faltamPadrao
+          ? {
+              acoes: (
+                <Botao
+                  tamanho="pequeno"
+                  onClick={() =>
+                    void executar('/api/v1/categorias-de-ativo/padrao', { method: 'POST' })
+                  }
+                >
+                  {t('admin.categorias.acao.instalar_padrao')}
+                </Botao>
+              ),
+            }
+          : {})}
+      >
+        <form onSubmit={criar} className="hk-em-linha">
+          <CampoDoFormulario rotulo={t('admin.categorias.campo.nome')}>
+            {(p) => <Entrada {...p} name="nome" required />}
+          </CampoDoFormulario>
+          <Botao type="submit" variante="primario">
+            {t('admin.categorias.acao.criar')}
+          </Botao>
         </form>
-      </div>
+        <Aviso aviso={aviso} />
+      </Painel>
 
       {dados.categorias.length === 0 ? (
-        <p>{t('admin.categorias.vazio')}</p>
+        <MensagemVazia>{t('admin.categorias.vazio')}</MensagemVazia>
       ) : (
-        <ul style={{ display: 'grid', gap: 12, padding: 0, listStyle: 'none' }}>
-          {dados.categorias.map((c) => (
-            <li
-              key={c.id}
-              style={{ display: 'grid', gap: 6, borderTop: '1px solid #ddd', paddingTop: 8 }}
-            >
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <strong>{nome(c)}</strong>
-                <small>
+        dados.categorias.map((c) => (
+          <Painel
+            key={c.id}
+            titulo={nome(c)}
+            acoes={
+              <>
+                <Selo tom={c.chavePadrao ? 'azul' : 'cinza'}>
                   {c.chavePadrao ? t('admin.categorias.padrao') : t('admin.categorias.do_tenant')}
-                </small>
-                <small>
+                </Selo>
+                <Selo tom={c.ativa ? 'verde' : 'cinza'}>
                   {c.ativa ? t('admin.categorias.ativa') : t('admin.categorias.desativada')}
-                </small>
-                <button
+                </Selo>
+                <Botao
+                  tamanho="pequeno"
                   onClick={() =>
                     void executar(
                       `/api/v1/categorias-de-ativo/${c.id}/${c.ativa ? 'desativacao' : 'reativacao'}`,
-                      {
-                        method: 'POST',
-                      },
+                      { method: 'POST' },
                     )
                   }
                 >
                   {c.ativa
                     ? t('admin.categorias.acao.desativar')
                     : t('admin.categorias.acao.reativar')}
-                </button>
-              </div>
-
+                </Botao>
+              </>
+            }
+          >
+            <div className="hk-pilha">
               <form
                 key={JSON.stringify(c.nomes)}
-                style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}
+                className="hk-em-linha"
                 onSubmit={(ev) => {
                   ev.preventDefault();
                   const f = new FormData(ev.currentTarget);
@@ -204,36 +213,40 @@ export default function CategoriasDeAtivo() {
                 }}
               >
                 {IDIOMAS.map((i) => (
-                  <input
+                  <CampoDoFormulario
                     key={i}
-                    name={i}
-                    defaultValue={c.nomes[i] ?? ''}
-                    placeholder={nomeDoIdioma(i)}
-                    aria-label={t('admin.categorias.nome_em', { idioma: nomeDoIdioma(i) })}
-                  />
+                    rotulo={t('admin.categorias.nome_em', { idioma: nomeDoIdioma(i) })}
+                  >
+                    {(p) => <Entrada {...p} name={i} defaultValue={c.nomes[i] ?? ''} />}
+                  </CampoDoFormulario>
                 ))}
-                <button type="submit">{t('admin.categorias.acao.salvar_nomes')}</button>
+                <Botao type="submit" tamanho="pequeno">
+                  {t('admin.categorias.acao.salvar_nomes')}
+                </Botao>
               </form>
 
               {c.campos.length === 0 ? (
-                <small>{t('admin.categorias.sem_campos')}</small>
+                <p className="hk-suave">{t('admin.categorias.sem_campos')}</p>
               ) : (
-                <ul>
+                <ul className="hk-sublista">
                   {c.campos.map((campo) => (
-                    <li key={campo.chave} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <span>{rotulo(campo.rotulos)}</span>
-                      <small>
+                    <li key={campo.chave}>
+                      <strong>{rotulo(campo.rotulos)}</strong>
+                      <span className="hk-suave">
                         {t('admin.categorias.resumo_campo', {
                           chave: campo.chave,
                           tipo: campo.tipo,
                           obrigatorio: String(campo.obrigatorio),
                         })}
-                      </small>
-                      {campo.unidade && <small>{campo.unidade}</small>}
+                      </span>
+                      {campo.unidade && <span className="hk-suave">{campo.unidade}</span>}
                       {campo.opcoes.length > 0 && (
-                        <small>{campo.opcoes.map((o) => rotulo(o.rotulos)).join(', ')}</small>
+                        <span className="hk-suave">
+                          {campo.opcoes.map((o) => rotulo(o.rotulos)).join(', ')}
+                        </span>
                       )}
-                      <button
+                      <Botao
+                        tamanho="pequeno"
                         onClick={() =>
                           void salvar(
                             c,
@@ -243,55 +256,48 @@ export default function CategoriasDeAtivo() {
                         }
                       >
                         {t('admin.categorias.acao.tirar_campo')}
-                      </button>
+                      </Botao>
                     </li>
                   ))}
                 </ul>
               )}
 
-              <form
-                onSubmit={(ev) => novoCampo(c, ev)}
-                style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}
-              >
-                <input
-                  name="chave"
-                  placeholder={t('admin.categorias.campo.chave')}
-                  aria-label={t('admin.categorias.campo.chave')}
-                  required
-                />
-                <input
-                  name="rotulo"
-                  placeholder={t('admin.categorias.campo.rotulo')}
-                  aria-label={t('admin.categorias.campo.rotulo')}
-                  required
-                />
-                <select name="tipo" aria-label={t('admin.categorias.campo.tipo')}>
-                  {TIPOS.map((tp) => (
-                    <option key={tp} value={tp}>
-                      {t('admin.categorias.tipo', { tipo: tp })}
-                    </option>
-                  ))}
-                </select>
-                <label style={{ display: 'flex', gap: 4 }}>
+              <form onSubmit={(ev) => novoCampo(c, ev)} className="hk-em-linha">
+                <CampoDoFormulario rotulo={t('admin.categorias.campo.chave')}>
+                  {(p) => <Entrada {...p} name="chave" required />}
+                </CampoDoFormulario>
+                <CampoDoFormulario rotulo={t('admin.categorias.campo.rotulo')}>
+                  {(p) => <Entrada {...p} name="rotulo" required />}
+                </CampoDoFormulario>
+                <CampoDoFormulario rotulo={t('admin.categorias.campo.tipo')}>
+                  {(p) => (
+                    <Selecao {...p} name="tipo">
+                      {TIPOS.map((tp) => (
+                        <option key={tp} value={tp}>
+                          {t('admin.categorias.tipo', { tipo: tp })}
+                        </option>
+                      ))}
+                    </Selecao>
+                  )}
+                </CampoDoFormulario>
+                <CampoDoFormulario rotulo={t('admin.categorias.campo.unidade')}>
+                  {(p) => <Entrada {...p} name="unidade" />}
+                </CampoDoFormulario>
+                <CampoDoFormulario rotulo={t('admin.categorias.campo.opcoes')}>
+                  {(p) => <Entrada {...p} name="opcoes" />}
+                </CampoDoFormulario>
+                <label className="hk-marcar">
                   <input type="checkbox" name="obrigatorio" />
                   {t('admin.categorias.campo.obrigatorio')}
                 </label>
-                <input
-                  name="unidade"
-                  placeholder={t('admin.categorias.campo.unidade')}
-                  aria-label={t('admin.categorias.campo.unidade')}
-                />
-                <input
-                  name="opcoes"
-                  placeholder={t('admin.categorias.campo.opcoes')}
-                  aria-label={t('admin.categorias.campo.opcoes')}
-                />
-                <button type="submit">{t('admin.categorias.acao.por_campo')}</button>
+                <Botao type="submit" tamanho="pequeno">
+                  {t('admin.categorias.acao.por_campo')}
+                </Botao>
               </form>
-            </li>
-          ))}
-        </ul>
+            </div>
+          </Painel>
+        ))
       )}
-    </main>
+    </div>
   );
 }
