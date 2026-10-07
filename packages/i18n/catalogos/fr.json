@@ -688,5 +688,10 @@
   "inteligencia.insight.tipo": "{tipo, select, atencao_ativo {Équipement à surveiller} sistemico {Problème systémique possible} other {{tipo}}}",
   "inteligencia.insight.estado": "{estado, select, novo {Nouveau} em_revisao {En revue} aceito {Accepté} em_acao {En action} monitorando {En suivi} resolvido {Résolu} descartado {Écarté} other {{estado}}}",
   "inteligencia.insight.acao": "{acao, select, revisar {Examiner} aceitar {Accepter} agir {Agir} monitorar {Suivre} resolver {Résoudre} descartar {Écarter} other {{acao}}}",
-  "inteligencia.sistemico.regra": "{regra, select, mesmo_modelo {Même modèle avec la même panne} mesmo_andar {Même étage avec la même panne} mesma_area_comum {Même espace commun avec la même panne} mesmo_fornecedor {Même prestataire avec beaucoup de pannes qui reviennent} crescimento_categoria {La même panne en hausse} other {{regra}}}"
+  "inteligencia.sistemico.regra": "{regra, select, mesmo_modelo {Même modèle avec la même panne} mesmo_andar {Même étage avec la même panne} mesma_area_comum {Même espace commun avec la même panne} mesmo_fornecedor {Même prestataire avec beaucoup de pannes qui reviennent} crescimento_categoria {La même panne en hausse} other {{regra}}}",
+  "erro.motivo_de_descarte_invalido": "Choisissez un motif valable pour écarter l’insight.",
+  "erro.janela_de_leitura_curta": "La fenêtre de lecture doit valoir au moins le double de la fenêtre d’efficacité : au minimum {minimo, plural, one {# jour} other {# jours}}.",
+  "inteligencia.insight.motivo_descarte": "{motivo, select, nao_relevante {Non pertinent} substituido {Remplacé par un autre insight} other {{motivo}}}",
+  "inteligencia.insight.substituido_por": "Remplacé par l’insight {insight}",
+  "inteligencia.aviso.janela_de_leitura_menor_que_o_dobro": "La fenêtre de lecture ({janelaDias, plural, one {# jour} other {# jours}}) est plus courte que le double de la fenêtre d’efficacité ({efetividadeDias, plural, one {# jour} other {# jours}}). Le calcul a utilisé {usadoDias, plural, one {# jour} other {# jours}}."
 }

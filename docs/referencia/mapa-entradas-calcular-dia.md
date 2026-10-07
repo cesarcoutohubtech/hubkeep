@@ -3,6 +3,7 @@
 **Situação:**
 - **Levantamento de 06/10/2026,** feito pelo agente do Kaio sobre a `main` no `a27e961`. Os tipos do banco vêm de `packages/db/src/tipos-banco.ts`, e as ações da auditoria, dos repositórios de `packages/db`.
 - **Revisto no mesmo dia** com as decisões do Cesar: o fim de `docs/referencia/lacunas-instrumentacao-intelligence.md` e a etapa I de `docs/12-plano-fase-1b.md`.
+- **Revisto em 07/10/2026** com a revisão do escopo do Cesar (`docs/referencia/HubKeep — Documento do projeto.md`): fornecedor como tabela, UH indisponível no chamado e modelo contratual do hotel, e com as versões gravadas em cada resultado diário. Os nomes exatos das colunas novas vêm das propostas de desenho do agente do núcleo, que ainda não saíram no diário dele: onde a coluna aparece abaixo, o nome é provisório.
 
 **Para quê:** saber, para cada dado que o `calcularDia` (`packages/inteligencia/src/dia.ts`) usa:
 - de que coluna da `main` ele vem;
@@ -17,13 +18,17 @@
   - I3: transições da OS;
   - I4: códigos de manutenção;
   - I5: módulos contratados.
+- **Itens novos da 1b** do documento consolidado de 07/10 (a ordem de lá: ativo; hotel e local; chamado e OS; fornecedor; transições; códigos; módulos):
+  - hotel e local: modelo contratual do hotel e edificação do local;
+  - chamado e OS: período de UH indisponível, e o `executado por` passa a ser equipe interna ou fornecedor;
+  - fornecedor: cadastro mínimo (nome, CNPJ, contato), no lugar do nome em texto livre.
 - **Sem origem:** nem a `main` nem a etapa I trazem o dado.
 
 ## Entrada geral
 
 | Campo | Origem | Situação |
 |---|---|---|
-| `agora` | Relógio do job (porta `Relogio`). | Existe |
+| `agora` | Relógio do job (porta `Relogio`). Para recalcular um dia passado, o fim dele (`fimDoDia`). | Existe |
 | `sistemico` (configuração) | A chave `inteligencia.sistemico` de `app.politica`, no escopo de grupo, resolvida pelo `registroDePoliticas` do núcleo (#106). | A extensão é registrada com I5 |
 
 ## Hotel (`HotelDoDia`)
@@ -32,6 +37,8 @@
 |---|---|---|
 | `hotelId` | `app.hotel.id` | Existe |
 | `bandeiraId` | `app.hotel.bandeira_id` | Existe |
+| `versaoPolitica` | O que identifica as linhas de `app.politica` que resolveram as duas políticas do hotel (id e `atualizado_em` de cada uma), montado pela ligação do servidor. `padrao` sem política gravada. É o que o ADR-036 grava em cada resultado diário (condição do Cesar de 07/10/2026). | Existe (`app.politica.id`, `atualizado_em`) |
+| Modelo contratual (próprio, administrado, arrendado, afiliado) | O atributo novo do hotel, na 1b. **Registrado como dimensão** das comparações de rede da versão 2.0, sem uso no 1.0: o `HotelDoDia` não o carrega. Ver a seção abaixo. | 1b (`app.hotel`) |
 | `reincidencia`, `atencao` (configurações) | As chaves `inteligencia.reincidencia` e `inteligencia.atencao_ativo`, resolvidas pelo registro do núcleo (hotel → bandeira → grupo → padrão). O valor com escopo de bandeira só entra na 1c. O limite do insight é campo da `inteligencia.atencao_ativo` (`limiteInsight`, padrão 70). | A extensão é registrada com I5. Até lá, valem os `PADRAO_*` |
 
 ## Ativo (`AtivoDoDia`)
@@ -55,10 +62,12 @@
 | `abertaEm` | `app.chamado.criado_em` | Existe |
 | `concluidaEm`, `reaberturas` | `app.os_transicao` (de, para, quando, quem e a ação), lida pelo `hk_worker` no tenant do job. As transições até a data do cálculo passam por `conclusaoEReaberturas`. O worker não lê a auditoria (decisão de 06/10/2026). | I3 |
 | `codigoFalha` | `app.os.codigo_falha_id` | I4 |
-| `executadoPor`, `terceiroNome` | `app.os.executado_por`, `app.os.terceiro_nome` | I2 |
+| `executadoPor` | `app.os.executado_por`: `equipe_interna` ou `fornecedor` (o documento de 07/10 trocou `terceiro` por `fornecedor`) | I2 |
+| `fornecedorId` | A chave do cadastro de fornecedor (`app.fornecedor`), que substitui o nome digitado (`terceiro_nome`). A regra do mesmo fornecedor compara este id. | 1b, item Fornecedor (nome da coluna a confirmar) |
 | `custoInformado` | `app.os.custo_informado` | I2 |
 | `impactoHospede` | `app.chamado.impacto_hospede` | I2 |
 | `aposPreventiva` | A OS preventiva da 1b, reconhecida pelo plano. | Sem origem até a etapa P |
+| Período de UH indisponível (`PeriodoDeUhIndisponivel`: UH, chamado, início e fim) | O período novo do chamado (1b, item Chamado e OS). **Só para a medida proposta** `uhDiasPerdidos`, que nenhum score usa e o `calcularDia` não chama: `docs/referencia/proposta-uh-indisponivel-intelligence.md`. | 1b (nome das colunas a confirmar) |
 
 ## Local (`LocalAnalisado`)
 
@@ -75,6 +84,22 @@
 3. **Limite do insight:** campo `limiteInsight` da `inteligencia.atencao_ativo`, padrão 70.
 4. **Conclusão e reaberturas:** vêm das transições da OS (I3), e não da auditoria. Com elas, o recálculo de um dia passado vê a conclusão e as reaberturas como estavam naquele dia.
 5. **Módulo contratado por tenant:** `licenca.modulo` (I5), lida pelo `hk_worker` no próprio tenant. É assim que o job sabe em quais tenants rodar.
+
+## O que o job grava de volta (ADR-036, condição do Cesar de 07/10/2026)
+
+Cada resultado diário (`LinhaDaMetricaDiaria`) leva, além dos scores:
+- `versaoFormulaReincidencia` e `versaoFormulaAtencao`: vêm do próprio score (`Score.versao`);
+- `versaoPolitica`: a do hotel (`HotelDoDia.versaoPolitica`);
+- `recalculo` e `calculo`: o recálculo é outra linha, com o número de cálculo seguinte, marcada;
+- a configuração usada vai no detalhamento de cada score (`Score.configuracao`).
+
+O rascunho da tabela está no branch `int-rascunhos` (`rascunhos/metrica/`).
+
+## Mudanças de 07/10/2026 (revisão do escopo do Cesar)
+
+1. **Fornecedor como tabela:** a regra do mesmo fornecedor passa a usar o id do cadastro (`fornecedorId`), e não o nome digitado. A comparação de nomes normalizados (`chaveDeTerceiro`) saiu do motor. A OS executada por fornecedor sem o id não entra na regra.
+2. **UH indisponível:** o período vem do chamado. Proposta de como entra, em `docs/referencia/proposta-uh-indisponivel-intelligence.md`: **sinal próprio, e não componente da atenção**, a aprovar.
+3. **Modelo contratual do hotel:** dimensão das comparações de rede da versão 2.0 (próprio, administrado, arrendado, afiliado). **Não implementado agora:** o 1.0 compara hotéis e bandeiras como estão. Quando a 2.0 vier, entram o campo em `HotelDoDia`, o recorte nas agregações (`agregarMesDosHoteis` por modelo) e a regra de que insight de rede não mistura modelos sem dizer. Registrado aqui para o desenho não precisar de migração de volta.
 
 ## Ainda sem origem
 

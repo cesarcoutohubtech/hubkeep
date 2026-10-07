@@ -5,8 +5,13 @@ import {
   PADRAO_ATENCAO,
   PADRAO_REINCIDENCIA,
   EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE,
+  MINIMO_DA_JANELA_DE_LEITURA_DIAS,
+  PADRAO_JANELA_DE_LEITURA,
   PADROES_DO_INTELLIGENCE,
   ehChaveDePoliticaDoIntelligence,
+  janelaDeLeituraEfetiva,
+  minimoDaJanelaDeLeitura,
+  validarJanelaDeLeitura,
   validarPoliticaDoIntelligence,
   valorValidoDoIntelligence,
 } from '../src';
@@ -14,13 +19,14 @@ import {
 const copia = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 describe('políticas do Intelligence (ADR-035)', () => {
-  it('as cinco chaves do ADR, e todo padrão vale no próprio formato', () => {
+  it('as seis chaves do ADR, e todo padrão vale no próprio formato', () => {
     expect(CHAVES_DE_POLITICA_DO_INTELLIGENCE).toEqual([
       'inteligencia.reincidencia',
       'inteligencia.atencao_ativo',
       'inteligencia.efetividade',
       'inteligencia.sistemico',
       'inteligencia.substituicao',
+      'inteligencia.metrica_janela_leitura',
     ]);
     for (const c of CHAVES_DE_POLITICA_DO_INTELLIGENCE)
       expect(valorValidoDoIntelligence(c, copia(PADROES_DO_INTELLIGENCE[c]))).toBe(true);
@@ -138,5 +144,56 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
     expect(() => registro.validar(c, {})).toThrow(
       expect.objectContaining({ codigo: 'politica_valor_invalido' }),
     );
+  });
+});
+
+describe('janela de leitura da métrica diária (ADR-035, ADR-036)', () => {
+  const c = 'inteligencia.metrica_janela_leitura';
+
+  it('padrão e mínimo de 180 dias; inteiro, até 730, sem outra chave', () => {
+    expect(PADRAO_JANELA_DE_LEITURA).toEqual({ dias: 180 });
+    expect(MINIMO_DA_JANELA_DE_LEITURA_DIAS).toBe(180);
+    for (const dias of [180, 181, 365, 730])
+      expect(valorValidoDoIntelligence(c, { dias })).toBe(true);
+    for (const ruim of [
+      { dias: 179 },
+      { dias: 731 },
+      { dias: 200.5 },
+      { dias: '200' },
+      { dias: 200, extra: 1 },
+      {},
+      null,
+    ])
+      expect(valorValidoDoIntelligence(c, ruim)).toBe(false);
+  });
+
+  it('o mínimo acompanha a efetividade: o dobro dela, e nunca menos que 180', () => {
+    expect(minimoDaJanelaDeLeitura(90)).toBe(180);
+    expect(minimoDaJanelaDeLeitura(60)).toBe(180);
+    expect(minimoDaJanelaDeLeitura(120)).toBe(240);
+  });
+
+  it('gravar: a janela abaixo do dobro da efetividade é recusada, com o mínimo nos parâmetros', () => {
+    expect(() => validarJanelaDeLeitura(180, 90)).not.toThrow();
+    expect(() => validarJanelaDeLeitura(200, 120)).toThrow(
+      expect.objectContaining({
+        codigo: 'janela_de_leitura_curta',
+        parametros: { janelaDias: 200, efetividadeDias: 120, minimo: 240 },
+      }),
+    );
+  });
+
+  it('ler: o job usa o dobro e devolve o aviso quando a janela resolvida ficou curta', () => {
+    expect(janelaDeLeituraEfetiva(180, 90)).toEqual({ dias: 180, aviso: null });
+    expect(janelaDeLeituraEfetiva(240, 120)).toEqual({ dias: 240, aviso: null });
+    expect(janelaDeLeituraEfetiva(200, 120)).toEqual({
+      dias: 240,
+      aviso: {
+        codigo: 'janela_de_leitura_menor_que_o_dobro',
+        janelaDias: 200,
+        efetividadeDias: 120,
+        usadoDias: 240,
+      },
+    });
   });
 });

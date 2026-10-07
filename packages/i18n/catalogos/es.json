@@ -688,5 +688,10 @@
   "inteligencia.insight.tipo": "{tipo, select, atencao_ativo {Activo que requiere atención} sistemico {Posible problema sistémico} other {{tipo}}}",
   "inteligencia.insight.estado": "{estado, select, novo {Nuevo} em_revisao {En revisión} aceito {Aceptado} em_acao {En acción} monitorando {En seguimiento} resolvido {Resuelto} descartado {Descartado} other {{estado}}}",
   "inteligencia.insight.acao": "{acao, select, revisar {Revisar} aceitar {Aceptar} agir {Actuar} monitorar {Dar seguimiento} resolver {Resolver} descartar {Descartar} other {{acao}}}",
-  "inteligencia.sistemico.regra": "{regra, select, mesmo_modelo {Mismo modelo con la misma falla} mesmo_andar {Mismo piso con la misma falla} mesma_area_comum {Misma área común con la misma falla} mesmo_fornecedor {Mismo tercero con muchas fallas que vuelven} crescimento_categoria {La misma falla en aumento} other {{regra}}}"
+  "inteligencia.sistemico.regra": "{regra, select, mesmo_modelo {Mismo modelo con la misma falla} mesmo_andar {Mismo piso con la misma falla} mesma_area_comum {Misma área común con la misma falla} mesmo_fornecedor {Mismo tercero con muchas fallas que vuelven} crescimento_categoria {La misma falla en aumento} other {{regra}}}",
+  "erro.motivo_de_descarte_invalido": "Elige un motivo válido para descartar el insight.",
+  "erro.janela_de_leitura_curta": "La ventana de lectura debe ser de al menos el doble de la ventana de la efectividad: como mínimo {minimo, plural, one {# día} other {# días}}.",
+  "inteligencia.insight.motivo_descarte": "{motivo, select, nao_relevante {No relevante} substituido {Sustituido por otro insight} other {{motivo}}}",
+  "inteligencia.insight.substituido_por": "Sustituido por el insight {insight}",
+  "inteligencia.aviso.janela_de_leitura_menor_que_o_dobro": "La ventana de lectura ({janelaDias, plural, one {# día} other {# días}}) es menor que el doble de la ventana de la efectividad ({efetividadeDias, plural, one {# día} other {# días}}). El cálculo usó {usadoDias, plural, one {# día} other {# días}}."
 }

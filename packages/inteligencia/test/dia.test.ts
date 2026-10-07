@@ -8,7 +8,10 @@ import {
   type LocalAnalisado,
   PADRAO_ATENCAO,
   PADRAO_REINCIDENCIA,
+  VERSAO_ATENCAO,
+  VERSAO_REINCIDENCIA,
   calcularDia,
+  fimDoDia,
 } from '../src';
 import { agora, corretiva, dia, hora } from './apoio';
 
@@ -69,12 +72,16 @@ describe('calcularDia: scores e métrica do dia', () => {
       reincidencia: a1?.reincidencia.valor,
       atencao: a1?.atencao.valor,
       faixaAtencao: a1?.atencao.faixa,
+      recalculo: false,
+      versaoFormulaReincidencia: 1,
+      versaoFormulaAtencao: 1,
+      versaoPolitica: 'padrao',
     });
 
     const atencao = r.deteccoes.filter((d) => d.tipo === 'atencao_ativo');
     expect(atencao).toHaveLength(1);
     expect(atencao[0]).toMatchObject({
-      chave: 'atencao_ativo|ativoId=a1|hotelId=h1',
+      familia: 'atencao_ativo|ativoId=a1|hotelId=h1',
       faixa: a1?.atencao.faixa,
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: a1?.atencao.valor,
@@ -177,7 +184,7 @@ describe('calcularDia: detecções sistêmicas', () => {
     expect(andar).toHaveLength(1);
     expect(andar[0]).toMatchObject({
       tipo: 'sistemico',
-      chave: 'sistemico|andar=3|falha=agua_fria|hotelId=h1|regra=mesmo_andar',
+      familia: 'sistemico|andar=3|falha=agua_fria|hotelId=h1|regra=mesmo_andar',
       faixa: 'atencao',
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: null,
@@ -275,5 +282,49 @@ describe('calcularDia: o limite do insight vem da política de atenção do hote
     expect(tipos(70)).toHaveLength(1);
     expect(tipos(100)).toEqual([]);
     expect(entrada(100).ativos[0]?.atencao.configuracao.limiteInsight).toBe(100);
+  });
+});
+
+describe('calcularDia: versões e recálculo no resultado do dia (ADR-036, condição do Cesar)', () => {
+  const entrada = (extra: Partial<Parameters<typeof calcularDia>[0]> = {}) => ({
+    agora,
+    hoteis: [
+      {
+        hotelId: 'h1',
+        bandeiraId: 'b1',
+        versaoPolitica: 'hotel:p1@2026-09-01;grupo:p2@2026-08-01',
+      },
+      { hotelId: 'h2', bandeiraId: 'b1' },
+    ],
+    ativos: [ativo({ id: 'a1' }), ativo({ id: 'a2', hotelId: 'h2' })],
+    corretivas: [corretiva({ ativoId: 'a1', abertaEm: dia(-5) })],
+    locais: [],
+    ...extra,
+  });
+
+  it('cada linha leva a versão da fórmula de cada score e a da política do hotel', () => {
+    const r = calcularDia(entrada());
+    expect(r.recalculo).toBe(false);
+    expect(r.metricas.map((m) => [m.ativoId, m.versaoPolitica])).toEqual([
+      ['a1', 'hotel:p1@2026-09-01;grupo:p2@2026-08-01'],
+      ['a2', 'padrao'],
+    ]);
+    for (const m of r.metricas) {
+      expect(m.recalculo).toBe(false);
+      expect(m.versaoFormulaReincidencia).toBe(VERSAO_REINCIDENCIA);
+      expect(m.versaoFormulaAtencao).toBe(VERSAO_ATENCAO);
+    }
+  });
+
+  it('o recálculo marca todas as linhas, e o resultado também', () => {
+    const r = calcularDia(entrada({ recalculo: true, agora: fimDoDia('2026-09-20') }));
+    expect(r.dia).toBe('2026-09-20');
+    expect(r.recalculo).toBe(true);
+    expect(r.metricas.every((m) => m.recalculo && m.dia === '2026-09-20')).toBe(true);
+  });
+
+  it('fimDoDia: o último instante do dia em UTC, e dia inválido é recusado', () => {
+    expect(fimDoDia('2026-09-30').toISOString()).toBe('2026-09-30T23:59:59.999Z');
+    for (const ruim of ['2026-9-30', '2026-02-30', 'ontem']) expect(() => fimDoDia(ruim)).toThrow();
   });
 });

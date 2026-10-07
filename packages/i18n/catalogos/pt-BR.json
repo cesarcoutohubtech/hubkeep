@@ -688,5 +688,10 @@
   "inteligencia.insight.tipo": "{tipo, select, atencao_ativo {Ativo pede atenção} sistemico {Possível problema sistêmico} other {{tipo}}}",
   "inteligencia.insight.estado": "{estado, select, novo {Novo} em_revisao {Em revisão} aceito {Aceito} em_acao {Em ação} monitorando {Monitorando} resolvido {Resolvido} descartado {Descartado} other {{estado}}}",
   "inteligencia.insight.acao": "{acao, select, revisar {Revisar} aceitar {Aceitar} agir {Agir} monitorar {Monitorar} resolver {Resolver} descartar {Descartar} other {{acao}}}",
-  "inteligencia.sistemico.regra": "{regra, select, mesmo_modelo {Mesmo modelo com a mesma falha} mesmo_andar {Mesmo andar com a mesma falha} mesma_area_comum {Mesma área comum com a mesma falha} mesmo_fornecedor {Mesmo terceiro com muitas falhas que voltam} crescimento_categoria {A mesma falha crescendo} other {{regra}}}"
+  "inteligencia.sistemico.regra": "{regra, select, mesmo_modelo {Mesmo modelo com a mesma falha} mesmo_andar {Mesmo andar com a mesma falha} mesma_area_comum {Mesma área comum com a mesma falha} mesmo_fornecedor {Mesmo terceiro com muitas falhas que voltam} crescimento_categoria {A mesma falha crescendo} other {{regra}}}",
+  "erro.motivo_de_descarte_invalido": "Escolha um motivo válido para descartar o insight.",
+  "erro.janela_de_leitura_curta": "A janela de leitura precisa ser de pelo menos o dobro da janela da efetividade: no mínimo {minimo, plural, one {# dia} other {# dias}}.",
+  "inteligencia.insight.motivo_descarte": "{motivo, select, nao_relevante {Não relevante} substituido {Substituído por outro insight} other {{motivo}}}",
+  "inteligencia.insight.substituido_por": "Substituído pelo insight {insight}",
+  "inteligencia.aviso.janela_de_leitura_menor_que_o_dobro": "A janela de leitura ({janelaDias, plural, one {# dia} other {# dias}}) é menor que o dobro da janela da efetividade ({efetividadeDias, plural, one {# dia} other {# dias}}). O cálculo usou {usadoDias, plural, one {# dia} other {# dias}}."
 }

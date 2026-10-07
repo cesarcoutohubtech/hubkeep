@@ -1,11 +1,11 @@
-// Campos da instrumentação (fase A): o nome do terceiro comparável, o custo
+// Campos da instrumentação (fase A): o fornecedor pelo id, o custo
 // informado somado na janela e o impacto no hóspede pelo indicador do chamado,
 // com null quando ninguém respondeu.
 import { describe, expect, it } from 'vitest';
 import {
   type Score,
   atencaoDoAtivo,
-  chaveDeTerceiro,
+  fornecedorDaOs,
   custoInformadoNaJanela,
   impactoHospedeDosChamados,
 } from '../src';
@@ -53,20 +53,18 @@ describe('impacto no hóspede pelo indicador do chamado', () => {
   });
 });
 
-describe('nome do terceiro', () => {
-  it('compara sem caixa e sem espaço sobrando ou repetido', () => {
-    expect(
-      chaveDeTerceiro({ executadoPor: 'terceiro', terceiroNome: '  Refrigeração   SILVA ' }),
-    ).toBe('refrigeração silva');
+describe('fornecedor da OS', () => {
+  it('é o id do cadastro, só quando a OS foi executada por fornecedor', () => {
+    expect(fornecedorDaOs({ executadoPor: 'fornecedor', fornecedorId: 'f1' })).toBe('f1');
   });
 
-  it('equipe interna, terceiro sem nome e OS anterior à migração não têm chave', () => {
-    expect(chaveDeTerceiro({ executadoPor: 'equipe_interna', terceiroNome: 'Silva' })).toBeNull();
-    expect(chaveDeTerceiro({ executadoPor: 'terceiro', terceiroNome: '  ' })).toBeNull();
-    expect(chaveDeTerceiro({})).toBeNull();
+  it('equipe interna, fornecedor sem id e OS anterior ao cadastro não têm chave', () => {
+    expect(fornecedorDaOs({ executadoPor: 'equipe_interna', fornecedorId: 'f1' })).toBeNull();
+    expect(fornecedorDaOs({ executadoPor: 'fornecedor', fornecedorId: null })).toBeNull();
+    expect(fornecedorDaOs({ executadoPor: 'fornecedor' })).toBeNull();
+    expect(fornecedorDaOs({})).toBeNull();
   });
 });
-
 describe('custo informado na janela', () => {
   it('soma o custo das OS concluídas na janela', () => {
     const cs = [

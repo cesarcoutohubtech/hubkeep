@@ -10,7 +10,7 @@ import {
   type Corretiva,
   type LocalAnalisado,
   chaveDeModelo,
-  chaveDeTerceiro,
+  fornecedorDaOs,
 } from './historico';
 import { DIA_MS } from './score';
 
@@ -21,7 +21,7 @@ export interface ConfigSistemico {
   mesmoAndar: { minLocais: number; janelaDias: number };
   mesmaAreaComum: { minOcorrencias: number; janelaDias: number };
   /**
-   * Taxa de volta das OS de um terceiro: corretiva nova no mesmo ativo até
+   * Taxa de volta das OS de um fornecedor (pelo id do cadastro): corretiva nova no mesmo ativo até
    * `diasAposCorretiva` depois da conclusão. Só conta a OS cuja observação já
    * terminou, para a taxa não sair baixa só porque a conclusão é recente.
    */
@@ -59,7 +59,7 @@ export interface SinalSistemico {
   /** Sempre 'possivel': confirmação é humana (PRD, seção 15). */
   situacao: 'possivel';
   versao: number;
-  /** O que agrupa: falha, modelo, hotel, andar, local ou terceiro. */
+  /** O que agrupa: falha, modelo, hotel, andar, local ou fornecedor. */
   chave: Readonly<Record<string, string>>;
   evidencia: {
     quantidade: number;
@@ -191,7 +191,7 @@ export function detectarSistemicos(
     });
   }
 
-  // Mesmo fornecedor: a taxa de volta das OS do terceiro passa do limiar.
+  // Mesmo fornecedor: a taxa de volta das OS do fornecedor passa do limiar.
   const mf = config.mesmoFornecedor;
   const observadas = e.corretivas.filter(
     (c) =>
@@ -212,7 +212,7 @@ export function detectarSistemicos(
   const taxaInterna = internas.length
     ? percentual(internas.filter(voltou).length, internas.length)
     : null;
-  for (const [terceiro, cs] of agrupar(observadas, chaveDeTerceiro)) {
+  for (const [fornecedorId, cs] of agrupar(observadas, fornecedorDaOs)) {
     if (cs.length < mf.minConcluidas) continue;
     const comVolta = cs.filter(voltou);
     const taxa = percentual(comVolta.length, cs.length);
@@ -221,7 +221,7 @@ export function detectarSistemicos(
       regra: 'mesmo_fornecedor',
       situacao: 'possivel',
       versao: VERSAO_SISTEMICO,
-      chave: { terceiro },
+      chave: { fornecedorId },
       evidencia: {
         quantidade: cs.length,
         distintos: unicos(cs.map((c) => c.ativoId as string)).length,
