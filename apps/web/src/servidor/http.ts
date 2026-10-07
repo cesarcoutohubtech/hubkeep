@@ -5,7 +5,9 @@
 //   - entrada e saída validadas pelos contratos (packages/contratos);
 //   - formato único de erro: { erro: { codigo, parametros, requestId } }, sem
 //     frase (ADR-022); a frase do domínio fica só no log;
-//   - uma linha de log por requisição e, em erro inesperado, o Sentry.
+//   - uma linha de log por requisição e, em erro inesperado, o Sentry;
+//   - Server-Timing (P1a): o tempo do proxy, o da verificação do usuário e o
+//     total da rota.
 import { CODIGOS_HTTP, LIMITE_BYTES_PADRAO, problemasDe, z } from '@hubkeep/contratos';
 import type { UsuarioVerificado } from '@hubkeep/aplicacao';
 import type { Contexto } from '@hubkeep/db';
@@ -20,6 +22,7 @@ import { resolverContexto, usuarioDaRequisicao } from './contexto';
 import { ErroHttp } from './erro-http';
 import { type Registrador, registrarNoConsole } from './log';
 import { type Relator, relatarAoSentry } from './sentry';
+import { CABECALHO_SERVER_TIMING, metrica, tempoDoProxy } from './tempo';
 
 export { ErroHttp } from './erro-http';
 
@@ -153,18 +156,28 @@ export function rota(
     const verHotel = (dados: unknown) => {
       escopo.hotel_id ??= hotelDe(dados);
     };
+    // Tempo de ler e verificar o token (JWKS em memória), somado se a rota pedir mais de uma vez.
+    let authMs = 0;
+    const medindoAuth = async <T>(passo: Promise<T>): Promise<T> => {
+      const comeco = performance.now();
+      try {
+        return await passo;
+      } finally {
+        authMs += performance.now() - comeco;
+      }
+    };
 
     const r: Requisicao = {
       req,
       requestId,
       async contexto() {
-        const ctx = await d.resolverContexto(req);
+        const ctx = await medindoAuth(d.resolverContexto(req));
         escopo.tenant_id = ctx.tenantId;
         escopo.usuario_id = ctx.usuarioId;
         return ctx;
       },
       async usuario() {
-        const u = await d.usuarioDaRequisicao(req);
+        const u = await medindoAuth(d.usuarioDaRequisicao(req));
         escopo.usuario_id = u.usuarioId;
         return u;
       },
@@ -245,15 +258,20 @@ export function rota(
       );
     }
 
+    const duracao = performance.now() - inicio;
     d.registrar(falha?.inesperada ? 'error' : 'info', 'http', {
       rota: nome,
       metodo: req.method,
       status: resposta.status,
-      duracao_ms: Math.round(performance.now() - inicio),
+      duracao_ms: Math.round(duracao),
+      auth_ms: Math.round(authMs),
       request_id: requestId,
       ...escopo,
       ...(falha && { codigo: falha.codigo }),
     });
+    const doProxy = tempoDoProxy(req.headers);
+    const tempo = `${metrica('auth', authMs)}, ${metrica('app', duracao)}`;
+    resposta.headers.set(CABECALHO_SERVER_TIMING, doProxy ? `${doProxy}, ${tempo}` : tempo);
     return comRequestId(resposta, requestId);
   };
 }
