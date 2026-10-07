@@ -1,5 +1,6 @@
 'use client';
 import type { Chave } from '@hubkeep/i18n';
+import { Botao, Campo, Entrada, Marca, MensagemDeErro, TelaDeEntrada } from '@hubkeep/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useState } from 'react';
 import { entrar as entrarNoAuth } from '../../cliente/sessao';
@@ -22,27 +23,27 @@ function FormularioLogin() {
   }
 
   return (
-    <form onSubmit={entrar} style={{ display: 'grid', gap: 12 }}>
-      <SeletorDeIdioma />
-      <h1>{t('login.titulo')}</h1>
-      <input
-        name="email"
-        type="email"
-        placeholder={t('login.campo.email')}
-        autoComplete="email"
-        required
-      />
-      <input
-        name="senha"
-        type="password"
-        placeholder={t('login.campo.senha')}
-        autoComplete="current-password"
-        required
-      />
-      <button type="submit">{t('login.acao.entrar')}</button>
-      {erro && <p role="alert">{t(erro)}</p>}
-      <p>{t('login.aviso_convite')}</p>
-    </form>
+    <TelaDeEntrada
+      marca={<Marca nome={t('app.nome')} />}
+      titulo={t('login.titulo')}
+      acoes={<SeletorDeIdioma />}
+      rodape={t('login.aviso_convite')}
+    >
+      <form onSubmit={entrar}>
+        <Campo rotulo={t('login.campo.email')}>
+          {(p) => <Entrada {...p} name="email" type="email" autoComplete="email" required />}
+        </Campo>
+        <Campo rotulo={t('login.campo.senha')}>
+          {(p) => (
+            <Entrada {...p} name="senha" type="password" autoComplete="current-password" required />
+          )}
+        </Campo>
+        {erro && <MensagemDeErro>{t(erro)}</MensagemDeErro>}
+        <Botao type="submit" variante="primario">
+          {t('login.acao.entrar')}
+        </Botao>
+      </form>
+    </TelaDeEntrada>
   );
 }
 

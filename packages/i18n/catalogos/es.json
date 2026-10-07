@@ -7,7 +7,7 @@
   "comum.busca.sem_resultado": "No se encontró nada para «{termo}».",
   "comum.idioma": "Idioma",
 
-  "inicio.configuracao": "Configuración y políticas",
+  "menu.configuracao": "Configuración y políticas",
   "admin.configuracao.titulo": "Configuración del grupo y políticas",
   "admin.configuracao.grupo": "Grupo",
   "admin.configuracao.hotel": "Hotel",
@@ -48,7 +48,7 @@
   "login.erro.link_invalido": "El enlace de invitación no es válido o expiró.",
   "login.aviso_convite": "El acceso es solo por invitación. ¿No tienes cuenta? Pídesela al administrador de tu grupo.",
 
-  "inicio.proprietarios": "Propietarios",
+  "menu.proprietarios": "Propietarios",
   "admin.proprietarios.titulo": "Propietarios y vínculos",
   "admin.proprietarios.novo": "Nuevo propietario",
   "admin.proprietarios.campo.nome": "Nombre",
@@ -82,7 +82,7 @@
   "erro.vinculo_nao_encontrado": "Vínculo no encontrado.",
   "erro.local_nao_encontrado": "Local no encontrado.",
   "senha.titulo": "Define tu contraseña",
-  "inicio.implantacao": "Panel de implantación",
+  "menu.implantacao": "Panel de implantación",
   "admin.implantacao.titulo": "Implantación del hotel",
   "admin.implantacao.escolher_hotel": "Elija el hotel",
   "admin.implantacao.pendencias": "Lo que falta",
@@ -104,7 +104,7 @@
   "admin.implantacao.ir_para_membros": "Invitar y asignar roles",
   "erro.implantacao_fora_do_escopo": "Solo el Admin del grupo y el Implantador del hotel ven la implantación.",
   "senha.explicacao": "Tu invitación fue aceptada. Elige la contraseña para tus próximos accesos.",
-  "inicio.locais": "Locales",
+  "menu.locais": "Locales",
   "admin.locais.titulo": "Locales del hotel",
   "admin.locais.escolher_hotel": "Elija el hotel",
   "admin.locais.areas_comuns": "Áreas comunes",
@@ -128,9 +128,9 @@
   "erro.local_andar_invalido": "Piso no válido (hasta {maximo} caracteres).",
   "erro.local_nome_repetido": "Ya existe un área común activa con este nombre en el hotel.",
   "senha.campo.nova": "Nueva contraseña",
-  "inicio.categorias": "Categorías de activo",
-  "inicio.ativos": "Activos",
-  "inicio.paradas": "Paradas abiertas con orden de trabajo concluida",
+  "menu.categorias": "Categorías de activo",
+  "menu.ativos": "Activos",
+  "menu.paradas": "Paradas por cerrar",
   "admin.ativos.titulo": "Activos del hotel",
   "admin.ativos.escolher_hotel": "Elija el hotel",
   "admin.ativos.novo": "Registrar activo",
@@ -287,7 +287,7 @@
   "tecnico.fotos.miniatura": "Foto del {quando}",
   "tecnico.sair.pendentes": "{n, plural, one {# operación todavía no se envió y se borrará de este dispositivo.} other {# operaciones todavía no se enviaron y se borrarán de este dispositivo.}} ¿Salir de todos modos?",
 
-  "inicio.administracao": "Administración de hoteles",
+  "menu.hoteis": "Hoteles",
   "comum.voltar": "Volver",
   "admin.hoteis.titulo": "Hoteles del sistema hotelero",
   "admin.hoteis.licenca": "Licencia: {hoteisEmUso} de {hoteisContratados} hoteles activos y {uhsEmUso} de {uhsContratadas} habitaciones activas.",
@@ -314,7 +314,7 @@
   "erro.hotel_ja_ativo": "Este hotel ya está activo.",
   "erro.licenca_hoteis_sem_saldo": "No hay licencia de hotel disponible ({emUso} de {contratados} en uso). Se avisó a EasyGov.",
 
-  "inicio.membros": "Miembros y roles",
+  "menu.membros": "Miembros y roles",
   "papel.admin_grupo": "Administrador del grupo",
   "papel.gestor_csc": "Gestor del centro de servicios",
   "papel.implantador": "Implementador",
@@ -356,7 +356,7 @@
 
   "hotel.status": "{status, select, em_implantacao {en implementación} ativo {activo} desativado {desactivado} other {{status}}}",
 
-  "inicio.bandeiras": "Marcas",
+  "menu.bandeiras": "Marcas",
   "comum.feito": "Listo.",
   "admin.bandeiras.titulo": "Marcas",
   "admin.bandeiras.nova": "Nueva marca",
@@ -383,7 +383,7 @@
   "email.convite.depois": "Después de aceptar, vas a definir tu contraseña.",
   "email.convite.ignorar": "Si no esperabas esta invitación, ignora este correo.",
 
-  "inicio.equipes": "Equipos",
+  "menu.equipes": "Equipos",
   "admin.equipes.titulo": "Equipos del hotel",
   "admin.equipes.escolher_hotel": "Elige el hotel",
   "admin.equipes.nova": "Nuevo equipo",
@@ -559,8 +559,8 @@
   "erro.chamado_ativo_desativado": "El activo está desactivado.",
   "erro.chamado_nao_encontrado": "Solicitud no encontrada.",
 
-  "inicio.chamados": "Solicitudes",
-  "inicio.os": "Órdenes de trabajo",
+  "menu.chamados": "Solicitudes",
+  "menu.os": "Órdenes de trabajo",
   "corretiva.chamados.titulo": "Solicitudes",
   "corretiva.chamados.vazio": "Ninguna solicitud con este filtro.",
   "corretiva.os.titulo": "Órdenes de trabajo",
@@ -645,5 +645,13 @@
   "corretiva.linha_do_tempo.chamado": "{acao, select, abrir {Solicitud abierta} triar {Solicitud en clasificación} priorizar {Prioridad cambiada} cancelar {Solicitud cancelada} other {Otra acción en la solicitud}}",
   "corretiva.linha_do_tempo.os": "{acao, select, gerar {Orden de trabajo generada} reatribuir {Orden de trabajo reasignada} iniciar {Ejecución iniciada} pausar {Ejecución pausada} retomar {Ejecución reanudada} concluir {Orden de trabajo concluida} aceitar {Orden de trabajo aceptada} reabrir {Orden de trabajo reabierta} cancelar {Orden de trabajo cancelada} other {Otra acción en la orden de trabajo}}",
   "corretiva.linha_do_tempo.parada_ativo": "{acao, select, registrar {Equipo parado} encerrar {Equipo de vuelta} other {Otra acción en la parada}}",
-  "erro.periodo_invalido": "El inicio del período debe ser anterior al fin."
+  "erro.periodo_invalido": "El inicio del período debe ser anterior al fin.",
+
+  "menu.rotulo": "Menú principal",
+  "menu.pular": "Saltar al contenido",
+  "menu.inicio": "Inicio",
+  "menu.grupo.operacao": "Operación",
+  "menu.grupo.cadastros": "Registros",
+  "menu.grupo.configuracao": "Configuración",
+  "tema.claro": "Tema claro"
 }

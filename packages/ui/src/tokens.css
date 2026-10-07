@@ -78,6 +78,11 @@
   --hk-barra-fundo: rgba(8, 26, 32, 0.82);
   --hk-escopo-fundo: #0a2027;
 
+  /* Símbolo da marca: arco e ponteiro de manômetro sobre o petróleo. */
+  --hk-marca-fundo: #0f3d45;
+  --hk-marca-arco: #2fd6c3;
+  --hk-marca-ponteiro: #f0a500;
+
   --hk-foco: #f0a500;
   --hk-sombra: 0 30px 80px rgba(0, 0, 0, 0.5);
   --hk-sombra-painel: none;
@@ -151,6 +156,8 @@
   --hk-menu-linha: #0b343b;
   --hk-barra-fundo: rgba(255, 255, 255, 0.88);
   --hk-escopo-fundo: #e6eff0;
+
+  --hk-marca-fundo: #0b2f36;
 
   /* AA: o contorno de foco âmbar dava 2,4:1 sobre o branco (mínimo 3:1). */
   --hk-foco: #ba8000;

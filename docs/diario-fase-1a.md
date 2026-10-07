@@ -1204,3 +1204,26 @@ Dividida em duas partes, cada uma no seu PR:
 - **Ao retomar:** `gh pr list`, `gh pr checks` do PR aberto e `gh run list --branch main`.
 - **Fila:** U1 (zona protegida, merge do Cesar) → U2 → U3 e U5 em paralelo → U4. Fora da fila: P1 (diagnóstico), depois da U1, e os dados de demonstração.
 - **Parada:** a fase 1b só começa com o aval do Cesar.
+
+### U2, U3 e o diagnóstico da P1 (07/10/2026)
+- **Merges do Cesar:** #114 (U0), #115 (U1), #116 (prioridades da demonstração) e #117 (U2, componentes base do `packages/ui`). A CI da main ficou verde depois de cada um.
+- **U3 (este PR), web parte 1:**
+  - o layout raiz importa `@hubkeep/ui/estilo.css` e lê o cookie `hk_tema` no servidor (escuro por padrão); sai o estilo solto do `body`;
+  - as telas autenticadas passaram para o grupo de rotas `app/(painel)/`, que não entra na URL; o `layout.tsx` dele põe a moldura (`cliente/moldura.tsx`): menu lateral com `Link` do Next, barra superior com idioma, tema e sair, e a faixa de escopo com o grupo;
+  - a sessão, o grupo (`hk_tenant`) e a sincronização do idioma saíram da tela inicial para a moldura; a tela inicial ficou só com os hotéis;
+  - login e definição de senha na tela de entrada do `ui`, com rótulo visível em cada campo;
+  - catálogos: as chaves dos links da tela inicial viraram `menu.*` (com "Hotéis" e "Paradas a encerrar" mais curtos), mais o rótulo do menu, os grupos, o atalho para o conteúdo e o botão de tema, nos quatro idiomas;
+  - as outras telas do painel entram na moldura com o próprio h1 e o estilo antigo até a U4.
+  - **Aviso ao agente do Intelligence:** tela nova autenticada vai em `apps/web/src/app/(painel)/`; o padrão do lint (`app/**/inteligencia`) continua valendo.
+- **Diagnóstico da P1, levado ao Cesar (sem correção ainda):**
+  - medições da máquina local: ida e volta ao pooler cerca de 22 ms; transação (BEGIN, contexto, consulta, COMMIT) cerca de 90 ms; conexão nova de 130 a 270 ms; Auth de 46 a 90 ms; build de produção sem sessão de 10 a 15 ms por pedido;
+  - a) o `proxy.ts` chama `getUser()`, que vai ao Auth em todo pedido com sessão, e o resultado não autoriza nada; os handlers já validam pelo JWKS em memória;
+  - b) o pool é único por processo, mas cada método de repositório abre a própria transação (de 4 idas e voltas), e o pool fecha conexão ociosa em 10 s;
+  - c) no detalhe do chamado, o dobro é do StrictMode de dev; a navegação por `<a href>` recarrega o documento inteiro; a proposta é carregar o detalhe no servidor;
+  - d) metas propostas: leitura da API até 150 ms, proxy até 15 ms, listas até 400 ms, detalhe até 500 ms, fila do dia do PWA até 300 ms;
+  - correções propostas, um PR cada: P1a (proxy sem ida ao Auth e `Server-Timing`), P1b (transação por caso de uso, BEGIN e contexto juntos, pool ocioso maior) e P1c (detalhe no servidor e `Link`). Aguardam o aval do Cesar.
+
+### Ponto de retomada (07/10/2026, U3 aberto)
+- **Ao retomar:** `gh pr list`, `gh pr checks` do PR aberto e `gh run list --branch main`.
+- **Fila:** U3 (este PR) e U5 (PWA) → U4 (resto das telas do web na moldura). P1a, P1b e P1c esperam o aval do Cesar.
+- **Parada:** a fase 1b só começa com o aval do Cesar.

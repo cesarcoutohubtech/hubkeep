@@ -15,6 +15,7 @@ import {
   GrupoDeMenu,
   Indicador,
   ItemDeMenu,
+  Marca,
   MensagemDeErro,
   MensagemVazia,
   NIVEIS_DE_PRIORIDADE,
@@ -23,6 +24,7 @@ import {
   Selo,
   SeloDePrioridade,
   Tabela,
+  TelaDeEntrada,
   TONS_DE_INDICADOR,
   TONS_DE_SELO,
   VARIANTES_DE_BOTAO,
@@ -213,5 +215,38 @@ describe('Mensagens', () => {
       'role="alert"',
     );
     expect(html(<MensagemVazia titulo="Nada aqui" />)).not.toContain('role=');
+  });
+});
+
+describe('Estrutura sem título', () => {
+  it('a barra fica sem h1, e a tela traz o próprio', () => {
+    const h = html(
+      <Estrutura marca="M" rotuloDoMenu="Menu" menu={null}>
+        <h1>Da tela</h1>
+      </Estrutura>,
+    );
+    expect(h.match(/<h1>/g)).toHaveLength(1);
+    expect(h).toContain('<span class="hk-barra-vao"></span>');
+  });
+});
+
+describe('Marca e tela de entrada', () => {
+  it('o símbolo é decorativo e o nome aparece em texto', () => {
+    const h = html(<Marca nome="HubKeep" />);
+    expect(h).toMatch(/<svg class="hk-marca-simbolo"[^>]*aria-hidden="true"/);
+    expect(h).toContain('<span>HubKeep</span>');
+  });
+
+  it('cartão com marca, título como h1, formulário e rodapé', () => {
+    const h = html(
+      <TelaDeEntrada marca="M" titulo="Entrar" acoes={<select />} rodape="Por convite">
+        <form />
+      </TelaDeEntrada>,
+    );
+    expect(h).toMatch(/^<main class="hk-entrada"><div class="hk-entrada-cartao">/);
+    expect(h).toContain(
+      '<div class="hk-entrada-acoes"><select></select></div><h1>Entrar</h1><form></form>',
+    );
+    expect(h).toContain('<div class="hk-entrada-rodape">Por convite</div>');
   });
 });

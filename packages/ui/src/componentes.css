@@ -166,11 +166,29 @@
   color: var(--hk-titulo);
 }
 
+.hk-barra-vao {
+  flex: 1;
+}
+
 .hk-barra-acoes {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.hk-barra-acoes .hk-controle,
+.hk-escopo .hk-controle {
+  width: auto;
+  padding-block: 5px;
+}
+
+.hk-barra-acoes .hk-campo,
+.hk-escopo .hk-campo {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
 }
 
 .hk-abrir-menu {
@@ -256,6 +274,83 @@
   .hk-conteudo {
     padding: 16px 14px 70px;
   }
+}
+
+/* ---------- Marca ---------- */
+.hk-marca-simbolo {
+  flex: none;
+  width: 34px;
+  height: 34px;
+}
+
+.hk-marca-simbolo rect {
+  fill: var(--hk-marca-fundo);
+}
+
+.hk-marca-arco {
+  fill: none;
+  stroke: var(--hk-marca-arco);
+}
+
+.hk-marca-ponteiro {
+  stroke: var(--hk-marca-ponteiro);
+}
+
+.hk-marca-simbolo circle {
+  fill: var(--hk-marca-ponteiro);
+}
+
+/* ---------- Tela de entrada: login e definição de senha ---------- */
+.hk-entrada {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px 16px;
+}
+
+.hk-entrada-cartao {
+  width: min(420px, 100%);
+  padding: 26px 26px 22px;
+  background: var(--hk-superficie);
+  border: 1px solid var(--hk-linha-2);
+  border-radius: 12px;
+  box-shadow: var(--hk-sombra);
+}
+
+.hk-entrada-marca {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 18px;
+  font-family: var(--hk-fonte-condensada);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--hk-titulo);
+}
+
+.hk-entrada-acoes {
+  margin-bottom: 12px;
+}
+
+.hk-entrada h1 {
+  margin: 0 0 14px;
+  font-family: var(--hk-fonte-condensada);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--hk-titulo);
+}
+
+.hk-entrada-rodape {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--hk-texto-suave);
+}
+
+.hk-entrada-cartao .hk-botao {
+  width: 100%;
+  padding-block: 10px;
 }
 
 /* ---------- Painel ---------- */
@@ -517,6 +612,11 @@
 
 .hk-botao[data-variante='perigo'] {
   color: var(--hk-perigo);
+}
+
+.hk-botao[aria-pressed='true'] {
+  border-color: var(--hk-ok);
+  background: var(--hk-ok-suave);
 }
 
 .hk-botao[data-tamanho='pequeno'] {

@@ -7,7 +7,7 @@
   "comum.busca.sem_resultado": "Aucun résultat pour « {termo} ».",
   "comum.idioma": "Langue",
 
-  "inicio.configuracao": "Paramètres et politiques",
+  "menu.configuracao": "Paramètres et politiques",
   "admin.configuracao.titulo": "Paramètres du groupe et politiques",
   "admin.configuracao.grupo": "Groupe",
   "admin.configuracao.hotel": "Hôtel",
@@ -48,7 +48,7 @@
   "login.erro.link_invalido": "Le lien d’invitation est invalide ou a expiré.",
   "login.aviso_convite": "L’accès se fait uniquement sur invitation. Pas de compte ? Demandez à l’administrateur de votre groupe.",
 
-  "inicio.proprietarios": "Propriétaires",
+  "menu.proprietarios": "Propriétaires",
   "admin.proprietarios.titulo": "Propriétaires et rattachements",
   "admin.proprietarios.novo": "Nouveau propriétaire",
   "admin.proprietarios.campo.nome": "Nom",
@@ -82,7 +82,7 @@
   "erro.vinculo_nao_encontrado": "Rattachement introuvable.",
   "erro.local_nao_encontrado": "Emplacement introuvable.",
   "senha.titulo": "Définissez votre mot de passe",
-  "inicio.implantacao": "Tableau de déploiement",
+  "menu.implantacao": "Tableau de déploiement",
   "admin.implantacao.titulo": "Déploiement de l’hôtel",
   "admin.implantacao.escolher_hotel": "Choisissez l’hôtel",
   "admin.implantacao.pendencias": "Ce qui manque",
@@ -104,7 +104,7 @@
   "admin.implantacao.ir_para_membros": "Inviter et attribuer des rôles",
   "erro.implantacao_fora_do_escopo": "Seuls l’Admin du groupe et le responsable du déploiement de l’hôtel voient le déploiement.",
   "senha.explicacao": "Votre invitation a été acceptée. Choisissez le mot de passe pour vos prochaines connexions.",
-  "inicio.locais": "Emplacements",
+  "menu.locais": "Emplacements",
   "admin.locais.titulo": "Emplacements de l’hôtel",
   "admin.locais.escolher_hotel": "Choisissez l’hôtel",
   "admin.locais.areas_comuns": "Espaces communs",
@@ -128,9 +128,9 @@
   "erro.local_andar_invalido": "Étage invalide ({maximo} caractères au plus).",
   "erro.local_nome_repetido": "Il existe déjà un espace commun actif portant ce nom dans l’hôtel.",
   "senha.campo.nova": "Nouveau mot de passe",
-  "inicio.categorias": "Catégories d’équipement",
-  "inicio.ativos": "Équipements",
-  "inicio.paradas": "Arrêts ouverts avec ordre de travail clôturé",
+  "menu.categorias": "Catégories d’équipement",
+  "menu.ativos": "Équipements",
+  "menu.paradas": "Arrêts à clôturer",
   "admin.ativos.titulo": "Équipements de l’hôtel",
   "admin.ativos.escolher_hotel": "Choisissez l’hôtel",
   "admin.ativos.novo": "Enregistrer un équipement",
@@ -287,7 +287,7 @@
   "tecnico.fotos.miniatura": "Photo du {quando}",
   "tecnico.sair.pendentes": "{n, plural, one {# opération n’a pas encore été envoyée et sera supprimée de cet appareil.} other {# opérations n’ont pas encore été envoyées et seront supprimées de cet appareil.}} Se déconnecter quand même ?",
 
-  "inicio.administracao": "Administration des hôtels",
+  "menu.hoteis": "Hôtels",
   "comum.voltar": "Retour",
   "admin.hoteis.titulo": "Hôtels du système hôtelier",
   "admin.hoteis.licenca": "Licence : {hoteisEmUso} sur {hoteisContratados} hôtels actifs et {uhsEmUso} sur {uhsContratadas} chambres actives.",
@@ -314,7 +314,7 @@
   "erro.hotel_ja_ativo": "Cet hôtel est déjà actif.",
   "erro.licenca_hoteis_sem_saldo": "Aucune licence d’hôtel n’est disponible ({emUso} sur {contratados} utilisées). EasyGov a été prévenue.",
 
-  "inicio.membros": "Membres et rôles",
+  "menu.membros": "Membres et rôles",
   "papel.admin_grupo": "Administrateur du groupe",
   "papel.gestor_csc": "Responsable du centre de services",
   "papel.implantador": "Responsable du déploiement",
@@ -356,7 +356,7 @@
 
   "hotel.status": "{status, select, em_implantacao {en déploiement} ativo {actif} desativado {désactivé} other {{status}}}",
 
-  "inicio.bandeiras": "Enseignes",
+  "menu.bandeiras": "Enseignes",
   "comum.feito": "C’est fait.",
   "admin.bandeiras.titulo": "Enseignes",
   "admin.bandeiras.nova": "Nouvelle enseigne",
@@ -383,7 +383,7 @@
   "email.convite.depois": "Après avoir accepté, vous définirez votre mot de passe.",
   "email.convite.ignorar": "Si vous n’attendiez pas cette invitation, ignorez cet e-mail.",
 
-  "inicio.equipes": "Équipes",
+  "menu.equipes": "Équipes",
   "admin.equipes.titulo": "Équipes de l’hôtel",
   "admin.equipes.escolher_hotel": "Choisissez l’hôtel",
   "admin.equipes.nova": "Nouvelle équipe",
@@ -559,8 +559,8 @@
   "erro.chamado_ativo_desativado": "L'équipement est désactivé.",
   "erro.chamado_nao_encontrado": "Demande introuvable.",
 
-  "inicio.chamados": "Demandes",
-  "inicio.os": "Ordres de travail",
+  "menu.chamados": "Demandes",
+  "menu.os": "Ordres de travail",
   "corretiva.chamados.titulo": "Demandes",
   "corretiva.chamados.vazio": "Aucune demande pour ce filtre.",
   "corretiva.os.titulo": "Ordres de travail",
@@ -645,5 +645,13 @@
   "corretiva.linha_do_tempo.chamado": "{acao, select, abrir {Demande ouverte} triar {Demande en tri} priorizar {Priorité modifiée} cancelar {Demande annulée} other {Autre action sur la demande}}",
   "corretiva.linha_do_tempo.os": "{acao, select, gerar {Ordre de travail créé} reatribuir {Ordre de travail réattribué} iniciar {Intervention commencée} pausar {Intervention en pause} retomar {Intervention reprise} concluir {Ordre de travail clôturé} aceitar {Ordre de travail validé} reabrir {Ordre de travail rouvert} cancelar {Ordre de travail annulé} other {Autre action sur l’ordre de travail}}",
   "corretiva.linha_do_tempo.parada_ativo": "{acao, select, registrar {Équipement à l’arrêt} encerrar {Équipement remis en service} other {Autre action sur l’arrêt}}",
-  "erro.periodo_invalido": "Le début de la période doit précéder la fin."
+  "erro.periodo_invalido": "Le début de la période doit précéder la fin.",
+
+  "menu.rotulo": "Menu principal",
+  "menu.pular": "Aller au contenu",
+  "menu.inicio": "Accueil",
+  "menu.grupo.operacao": "Exploitation",
+  "menu.grupo.cadastros": "Référentiels",
+  "menu.grupo.configuracao": "Paramètres",
+  "tema.claro": "Thème clair"
 }

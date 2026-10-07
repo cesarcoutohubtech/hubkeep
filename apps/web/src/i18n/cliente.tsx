@@ -11,6 +11,7 @@ import {
   type ValoresDeMensagem,
   localeDoMotor,
 } from '@hubkeep/i18n';
+import { Campo, Selecao } from '@hubkeep/ui';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, createContext, useCallback, useContext, useMemo } from 'react';
 import { IntlProvider, useIntl } from 'react-intl';
@@ -114,15 +115,20 @@ export function SeletorDeIdioma(props: { aoEscolher?: (idioma: IdiomaDeExibicao)
   const trocar = useTrocarIdioma();
   const escolher = props.aoEscolher ?? trocar;
   return (
-    <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      {t('comum.idioma')}
-      <select value={idioma} onChange={(e) => escolher(e.target.value as IdiomaDeExibicao)}>
-        {opcoes.map((i) => (
-          <option key={i} value={i}>
-            {nomeDoIdioma(i)}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Campo rotulo={t('comum.idioma')}>
+      {(p) => (
+        <Selecao
+          {...p}
+          value={idioma}
+          onChange={(e) => escolher(e.target.value as IdiomaDeExibicao)}
+        >
+          {opcoes.map((i) => (
+            <option key={i} value={i}>
+              {nomeDoIdioma(i)}
+            </option>
+          ))}
+        </Selecao>
+      )}
+    </Campo>
   );
 }
