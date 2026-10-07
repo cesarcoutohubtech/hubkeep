@@ -3,17 +3,27 @@
 // token: o login vai direto ao Auth com a sessão só em memória, e os tokens
 // seguem na hora para /auth/sessao, que os grava em cookie HttpOnly. Nenhuma
 // tabela do HubKeep é lida daqui — a Data API está fechada (ADR-002).
-import { createClient } from '@supabase/supabase-js';
+//
+// O cliente do Supabase é criado uma vez só por página: criar um a cada
+// entrada deixava várias instâncias do GoTrueClient vivas ("Multiple
+// GoTrueClient instances"), disputando o mesmo armazenamento.
+import { type SupabaseClient, createClient } from '@supabase/supabase-js';
 
 const JSON_CT = { 'content-type': 'application/json' };
 
-export async function entrar(email: string, senha: string): Promise<boolean> {
-  const auth = createClient(
+let cliente: SupabaseClient | undefined;
+const clienteDoAuth = () =>
+  (cliente ??= createClient(
     process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? '',
     process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] ?? '',
     { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
-  ).auth;
-  const { data, error } = await auth.signInWithPassword({ email, password: senha });
+  ));
+
+export async function entrar(email: string, senha: string): Promise<boolean> {
+  const { data, error } = await clienteDoAuth().auth.signInWithPassword({
+    email,
+    password: senha,
+  });
   if (error || !data.session) return false;
   const r = await fetch('/auth/sessao', {
     method: 'POST',
