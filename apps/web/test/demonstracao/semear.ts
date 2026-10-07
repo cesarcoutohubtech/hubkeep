@@ -26,12 +26,20 @@ import type {
   OperacaoOffline,
   PedidoDeConviteDeMembro,
 } from '@hubkeep/aplicacao';
-import { Conflito, type Contexto, type Escopo, type Papel } from '@hubkeep/dominio';
+import {
+  type CategoriaPadrao,
+  Conflito,
+  type Contexto,
+  ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
+  type Escopo,
+  type Papel,
+} from '@hubkeep/dominio';
 import pg from 'pg';
 import {
   casosDeUsoDeBandeiras,
   casosDeUsoDeCategorias,
   casosDeUsoDeChamados,
+  casosDeUsoDeConfiguracao,
   casosDeUsoDeEquipes,
   casosDeUsoDeHoteis,
   casosDeUsoDeLocais,
@@ -108,6 +116,24 @@ const ATIVOS = {
   gelo: ['praia', 'Restaurante', 'cozinha', 'Máquina de gelo', 'Polar', 'MG-50'],
 } as const satisfies Record<string, readonly [Hotel, string, string, string, string, string]>;
 type Ativo = keyof typeof ATIVOS;
+
+/**
+ * Prioridade padrão por categoria, gravada como política do grupo (ADR-026),
+ * no que se espera de um hotel: parar um elevador ou a segurança é urgente;
+ * frio, energia, água e cozinha param a operação ou o quarto; o resto espera.
+ */
+const PRIORIDADE_POR_CATEGORIA = {
+  elevadores: 'urgente',
+  seguranca: 'urgente',
+  refrigeracao: 'alta',
+  eletrica: 'alta',
+  hidraulica: 'alta',
+  cozinha: 'alta',
+  lavanderia: 'media',
+  eletronicos: 'media',
+  piscina: 'media',
+  mobiliario: 'baixa',
+} as const satisfies Record<CategoriaPadrao, string>;
 
 /** O que cada chamado mostra no teste (roteiro no docs/10-kit-de-teste.md). */
 export const CENARIOS = [
@@ -277,7 +303,29 @@ export async function semearDemonstracao(
   const categoriasUc = await casosDeUsoDeCategorias();
   await categoriasUc.instalarCategoriasPadrao(ctxAdmin);
   const { categorias } = await categoriasUc.listarCategorias(ctxAdmin);
-  await (await casosDeUsoDeSituacoes()).instalarPadrao(ctxAdmin);
+  const situacoesUc = await casosDeUsoDeSituacoes();
+  await situacoesUc.instalarPadrao(ctxAdmin);
+  const { prioridades } = await situacoesUc.listarSituacoesEPrioridades(ctxAdmin);
+  const prioridade = (chave: string) => {
+    const id = prioridades.find((p) => p.chavePadrao === chave)?.id;
+    if (!id) throw new Error(`Prioridade padrão ${chave} não encontrada.`);
+    return id;
+  };
+  // Prioridade por categoria: sem esta política, todo chamado abria na de
+  // menor peso (Baixa). Gravar de novo reaproveita a linha do grupo.
+  await (
+    await casosDeUsoDeConfiguracao()
+  ).gravarPolitica(
+    ctxAdmin,
+    'chamado.prioridade_padrao_por_categoria',
+    { tipo: 'grupo' },
+    Object.fromEntries(
+      categorias.flatMap((c) => {
+        const chave = PRIORIDADE_POR_CATEGORIA[c.chavePadrao as CategoriaPadrao];
+        return chave ? [[c.id, prioridade(chave)]] : [];
+      }),
+    ),
+  );
 
   // 4. Pessoas, pelo convite. Os proprietários antes, porque o papel é no escopo deles.
   const proprietariosUc = await casosDeUsoDeProprietarios();
@@ -556,6 +604,31 @@ export async function semearDemonstracao(
     'Ar-condicionado pingando no carpete',
     'arPraia',
   );
+  // Prioridade de cada chamado: a da categoria do ativo, que a política já
+  // aplica na abertura, e a do chuveiro sem ativo, que o Gerente ajusta para
+  // Alta (o roteiro do kit tria com Urgente e confere a troca no histórico).
+  // Num grupo criado antes da política, os chamados ainda em curso
+  // são ajustados aqui; os já concluídos ou cancelados guardam a prioridade
+  // da abertura (cópia da política, ADR-026).
+  const esperada: Record<Cenario, [Pessoa, string]> = {
+    aberto: ['gerenteCentro', 'alta'],
+    atribuido: ['gerenteCentro', PRIORIDADE_POR_CATEGORIA.refrigeracao],
+    emExecucaoParado: ['gerenteCentro', PRIORIDADE_POR_CATEGORIA.refrigeracao],
+    aguardandoAceite: ['gerenteCentro', PRIORIDADE_POR_CATEGORIA.piscina],
+    cancelado: ['gerenteCentro', PRIORIDADE_POR_CATEGORIA.eletronicos],
+    concluido: ['gerenteCentro', PRIORIDADE_POR_CATEGORIA.cozinha],
+    praiaAberto: ['gerentePraia', PRIORIDADE_POR_CATEGORIA.refrigeracao],
+  };
+  for (const cenario of CENARIOS) {
+    const [quem, chave] = esperada[cenario];
+    const c = await chamadosUc.chamado(ctx(quem), chamados[cenario]);
+    if (c.prioridadeId === prioridade(chave)) continue;
+    if (!(ESTADOS_COM_PRIORIDADE_AJUSTAVEL as readonly string[]).includes(c.estado)) continue;
+    await triagem.priorizar(ctx(quem), chamados[cenario], {
+      versao: c.versao,
+      prioridadeId: prioridade(chave),
+    });
+  }
   log('Chamados e OS prontos.');
 
   return { tenantId, usuarios, hoteis, chamados };

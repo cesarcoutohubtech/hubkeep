@@ -99,6 +99,7 @@ Um grupo fictício, **Grupo Demonstração**, no dev. Tudo passa pelos casos de 
   - **Hotel Demonstração Praia** (Bandeira Verde, ativo): UHs 101 a 104; áreas Lobby e Restaurante.
   - **Hotel Demonstração Serra** (Bandeira Azul, **em implantação**): UHs 101 a 103, pendentes de licença até o Admin ativar o hotel.
 - **Categorias, situações e prioridades** padrão.
+- **Prioridade padrão por categoria**, como política do grupo: elevadores e segurança, Urgente; refrigeração, elétrica, hidráulica e cozinha, Alta; lavanderia, eletrônicos e piscina, Média; mobiliário, Baixa. Os chamados abrem com a prioridade da categoria do ativo; o do chuveiro, sem ativo, fica em Alta, ajustada pelo Gerente. Num grupo criado antes disto, rodar o script de novo ajusta os chamados ainda em curso; os concluídos e o cancelado guardam a prioridade da abertura.
 - **Ativos**:
   - no Centro: Frigobar UH 101, Ar-condicionado UH 102, TV UH 103, Aquecedor da piscina e Forno combinado;
   - no Praia: Ar-condicionado UH 101 e Máquina de gelo.
