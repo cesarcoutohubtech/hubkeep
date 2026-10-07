@@ -42,6 +42,8 @@ const COMPOSICAO = 'apps/web/src/servidor/composicao.ts';
 // O Intelligence no web (liberação estreita, 06/10/2026).
 const MODULO_INT = 'apps/web/src/servidor/modulos/inteligencia/montagem.ts';
 const TELA_INT = 'apps/web/src/app/admin/inteligencia/page.tsx';
+// Interface compartilhada (ADR-038).
+const UI = 'packages/ui/src/x.tsx';
 const ROTA_INT = 'apps/web/src/app/api/v1/inteligencia/x/route.ts';
 
 describe('fronteiras entre pacotes', () => {
@@ -164,6 +166,20 @@ describe('fronteiras entre pacotes', () => {
     ['contratos importando postgres', 'packages/contratos/src/x.ts', 'postgres'],
     ['aplicacao importando módulo do Node', 'packages/aplicacao/src/x.ts', 'node:fs'],
     ['aplicacao importando módulo do Node sem prefixo', 'packages/aplicacao/src/x.ts', 'crypto'],
+
+    // ADR-038: ui só para web, PWA e telas do Intelligence; ele mesmo só importa React.
+    ['ui importando i18n (o texto chega por prop)', UI, '@hubkeep/i18n'],
+    ['ui importando dominio', UI, '@hubkeep/dominio'],
+    ['ui importando contratos', UI, '@hubkeep/contratos'],
+    ['ui importando pacote externo que não é React', UI, 'zod'],
+    ['ui importando módulo do Node', UI, 'node:fs'],
+    ['dominio importando ui', 'packages/dominio/src/x.ts', '@hubkeep/ui'],
+    ['aplicacao importando ui', 'packages/aplicacao/src/x.ts', '@hubkeep/ui'],
+    ['inteligencia importando ui', 'packages/inteligencia/src/x.ts', '@hubkeep/ui'],
+    ['servidor do web importando ui', COMPOSICAO, '@hubkeep/ui'],
+    ['módulo do Intelligence no servidor importando ui', MODULO_INT, '@hubkeep/ui'],
+    ['conector importando ui', 'apps/conector/src/x.ts', '@hubkeep/ui'],
+    ['web importando ui por caminho relativo', PAGINA, '../../../../packages/ui/src/index.ts'],
   ];
 
   it.each(proibidos)('proíbe: %s', async (_nome, arquivo, origem) => {
@@ -217,6 +233,12 @@ describe('fronteiras entre pacotes', () => {
       '../../../../../servidor/composicao',
     ],
     ['servidor do web importando a pasta do módulo', COMPOSICAO, './modulos/inteligencia'],
+    ['página do web importando ui', PAGINA, '@hubkeep/ui'],
+    ['rota do web importando ui', ROTA, '@hubkeep/ui'],
+    ['PWA importando ui', 'apps/tecnico/src/x.ts', '@hubkeep/ui'],
+    ['tela do Intelligence importando ui', TELA_INT, '@hubkeep/ui'],
+    ['ui importando React', UI, 'react'],
+    ['ui importando arquivo do próprio pacote', UI, './index.ts'],
   ];
 
   it.each(permitidos)('permite: %s', async (_nome, arquivo, origem) => {
@@ -329,6 +351,7 @@ export const x = h('div', { dangerouslySetInnerHTML: { __html: '' } });
 describe('nenhum texto de interface fixo nos apps (ADR-022)', () => {
   const COMPONENTE = 'apps/web/src/app/componente-de-teste.tsx';
   const PWA = 'apps/tecnico/src/componente-de-teste.tsx';
+  const UI_COMPONENTE = 'packages/ui/src/componente-de-teste.tsx';
   const tela = (jsx: string) =>
     `declare const t: (c: string) => string;
 export const C = () => ${jsx};
@@ -347,6 +370,9 @@ export const C = () => ${jsx};
     ['titulo fixo em componente', COMPONENTE, '<Campo titulo="Detalhe" />'],
     ['mensagem fixa em componente', PWA, '<Campo mensagem="Sem rede" />'],
     ['texto solto no PWA', PWA, '<p>Fila do dia</p>'],
+    // ADR-038: os componentes de packages/ui recebem o texto por prop.
+    ['texto solto num componente de packages/ui', UI_COMPONENTE, '<p>Nenhum chamado</p>'],
+    ['aria-label fixo em packages/ui', UI_COMPONENTE, '<button aria-label="Abrir menu" />'],
   ];
 
   const campo = `declare const Campo: (p: Record<string, string>) => null;
@@ -388,6 +414,7 @@ export function f() {
 
   const permitidos: [string, string, string][] = [
     ['texto do catálogo', COMPONENTE, "<p>{t('app.nome')}</p>"],
+    ['componente de packages/ui com o texto por prop', UI_COMPONENTE, '<p>{t("x")}</p>'],
     ['placeholder do catálogo', COMPONENTE, "<input placeholder={t('login.campo.email')} />"],
     [
       'atributo técnico (type, name, autoComplete)',

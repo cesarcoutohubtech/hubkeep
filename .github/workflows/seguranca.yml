@@ -59,9 +59,12 @@ jobs:
       # Regra excluída: unsafe-add-mask aponta o `echo "::add-mask::"` do
       # banco.yml. Lá só se mascaram senhas geradas no próprio runner, que morrem
       # com ele; a CI não usa segredo do GitHub (docs/09, superfície CI).
+      # Pasta excluída: docs/referencia/design, o mock de referência visual
+      # (ADR-038), HTML e JS de demonstração que não vão para o produto.
       - name: Semgrep
         run: >-
           semgrep scan --error --metrics=off
           --config p/javascript --config p/typescript --config p/react
           --config p/nextjs --config p/github-actions
           --exclude-rule yaml.github-actions.security.audit.unsafe-add-mask-workflow-command.unsafe-add-mask-workflow-command
+          --exclude docs/referencia/design

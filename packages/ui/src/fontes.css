@@ -1,0 +1,21 @@
+/*
+ * Barlow e Barlow Condensed servidas pelo próprio sistema (ADR-038): o build
+ * do web e do PWA copia os .woff2 dos pacotes @fontsource, e nada é pedido ao
+ * Google Fonts. Assim a CSP (font-src 'self') não muda, e o PWA mostra a
+ * fonte sem rede, porque os arquivos entram no precache do service worker.
+ * Só os pesos que o mock usa, nos subconjuntos latino e latino estendido
+ * (pt-BR, en, es e fr). O unicode-range faz o navegador baixar só o que a
+ * página usa. Licença: SIL Open Font License 1.1.
+ */
+@import '@fontsource/barlow/latin-400.css';
+@import '@fontsource/barlow/latin-ext-400.css';
+@import '@fontsource/barlow/latin-500.css';
+@import '@fontsource/barlow/latin-ext-500.css';
+@import '@fontsource/barlow/latin-600.css';
+@import '@fontsource/barlow/latin-ext-600.css';
+@import '@fontsource/barlow-condensed/latin-500.css';
+@import '@fontsource/barlow-condensed/latin-ext-500.css';
+@import '@fontsource/barlow-condensed/latin-600.css';
+@import '@fontsource/barlow-condensed/latin-ext-600.css';
+@import '@fontsource/barlow-condensed/latin-700.css';
+@import '@fontsource/barlow-condensed/latin-ext-700.css';

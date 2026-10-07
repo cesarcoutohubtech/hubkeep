@@ -1174,3 +1174,33 @@ Dividida em duas partes, cada uma no seu PR:
   4. códigos de manutenção;
   5. `licenca.modulo`.
 - **Parada:** a fase 1b só começa com o aval do Cesar.
+
+### Identidade visual, U0 e U1 (06/10/2026)
+- **Plano da 1b:** #111 mergeado; a 1b continua parada até o aval do Cesar. A I1 (migração do ativo) está commitada só no local, em `wt/instrumentacao` (`1b-i1-ativo`), e fica lá até a 1b.
+- **Tarefa U1, identidade visual a partir do mock** (`docs/referencia/design/csc-mock/`, referência oficial). Divisão aprovada pelo Cesar:
+  - U0: cliente do Supabase criado uma vez só no login do web (#114, fora da zona protegida);
+  - U1: fundação do `packages/ui` (este PR, zona protegida);
+  - U2: componentes base;
+  - U3 e U4: web;
+  - U5: PWA.
+- **Decisões do Cesar:**
+  - fontes pelos pacotes `@fontsource`;
+  - web escuro como padrão, com troca e cookie lido pelo servidor;
+  - PWA claro como padrão; as telas do PWA fora da lista (ativos, fotos do ativo) herdam tokens e fontes sem reestruturar;
+  - o painel de implantação da 1a recebe só o estilo;
+  - o ADR-038 ele aprova quando vier no PR.
+- **U1:**
+  - `packages/ui` com os tokens nos dois temas, as fontes e a base dos elementos;
+  - o lint: o `ui` só para o web, o PWA e as telas do Intelligence; ele mesmo só importa React, sem texto fixo;
+  - o teste de contraste (`tests/ui-contraste.test.ts`), que pegou dois pares a mais do que a conta inicial (a prioridade baixa no escuro e o âmbar de texto no claro sobre o fundo);
+  - o mock commitado, fora do ESLint e do Semgrep;
+  - o ADR-038, aguardando a aprovação do Cesar.
+- **Próximas tarefas do Cesar, na ordem:**
+  - P1, desempenho, depois da U1: diagnóstico antes de corrigir (proxy, pool de conexões, chamadas duplicadas no detalhe, medição no build de produção e metas por tela);
+  - prioridades realistas por categoria nos dados de demonstração (hoje todos os chamados aparecem como Baixa);
+  - o Cesar passa pelas telas com o pseudo-idioma e manda os textos fixos que aparecerem.
+
+### Ponto de retomada (06/10/2026, U1 aberto)
+- **Ao retomar:** `gh pr list`, `gh pr checks` do PR aberto e `gh run list --branch main`.
+- **Fila:** U1 (zona protegida, merge do Cesar) → U2 → U3 e U5 em paralelo → U4. Fora da fila: P1 (diagnóstico), depois da U1, e os dados de demonstração.
+- **Parada:** a fase 1b só começa com o aval do Cesar.
