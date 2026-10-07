@@ -736,12 +736,14 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Quem aprova ADR do Intelligence:** Cesar e Kaio, os dois, por escrito (decisão de 30/09/2026, reafirmada pelo Cesar em 06/10/2026). O registro de 05/10/2026, feito na sessão do agente do Kaio, que aceitava a aprovação de um só, fica revogado. O merge do PR que trouxe estes ADRs ao `docs/03` (#97) não conta como aprovação. Vale para o ADR-033 ao ADR-037 e para as três regras do cálculo do dia (#101).
 
-**Aprovações do Cesar de 07/10/2026:** ADR-033, ADR-034, ADR-035 (com a revisão de 06/10/2026) e ADR-037, sem condição; as três regras do cálculo do dia (#101), que entram neste documento com o PR da `app.insight`; ADR-036 com uma condição (no próprio ADR), que aguarda o aceite do Kaio.
+**Aprovações do Cesar de 07/10/2026:** ADR-033, ADR-034, ADR-035 (com a revisão de 06/10/2026) e ADR-037, sem condição; as três regras do cálculo do dia (#101), que entram neste documento com o PR da `app.insight`; ADR-036 com uma condição (no próprio ADR), aceita pelo Kaio em 07/10/2026.
 
-**Hotel novo num insight de rede** (decisão de Kaio de 06/10/2026: o job encerra o insight e abre outro, ligado pelo `anterior_id`, e `hotel_ids` continua sem UPDATE): aprovada por Cesar em 07/10/2026, com uma condição que aguarda o aceite do Kaio.
-- O hash da lista de hotéis é calculado fora do `packages/inteligencia`: no job, com `node:crypto`, ou no banco, com `sha256()`.
-- A função pura do módulo devolve só a lista canônica dos hotéis.
-- Nada de SHA-256 escrito à mão.
+**Hotel novo num insight de rede** (decisão de Kaio de 06/10/2026, na variante (c)): o job abre um insight novo, ligado ao anterior pelo `anterior_id`, e o anterior continua aberto até uma pessoa resolver ou descartar. O job nunca muda estado, e `hotel_ids` continua sem UPDATE. Na tela e na API, o anterior aparece como "substituído pelo insight X", calculado pelo vínculo, e o descarte aceita o motivo "substituído". Não há estado novo.
+- **Aprovada por Cesar em 07/10/2026, com uma condição, aceita por Kaio em 07/10/2026:**
+  - o hash da lista de hotéis é calculado fora do `packages/inteligencia`: no job, com `node:crypto`, ou no banco, com `sha256()`;
+  - a função pura do módulo devolve só a lista canônica dos hotéis;
+  - nada de SHA-256 escrito à mão.
+- **Para confirmar com o Cesar:** a aprovação de 07/10 foi dada sobre o texto anterior deste parágrafo, em que o job encerrava o insight e abria outro. Isso conflita com "o job nunca muda estado" e foi substituído pela variante (c) no mesmo dia. A aprovação vale para a (c)? Até lá, a variante (c) fica aprovada por Kaio, aguardando Cesar.
 
 **Contexto:** o PRD do Intelligence (`docs/referencia/prd-hubkeep-intelligence-v1.md`, seções 21 e 22) propõe `intelligence_signal` e `intelligence_insight`, com status em inglês e uma tabela de sinais que copia o núcleo.
 
@@ -758,6 +760,16 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **O score sugere e a pessoa decide:**
   - o job abre ou atualiza o insight do mesmo escopo e da mesma regra, sem abrir um segundo;
   - só uma pessoa aceita, descarta ou resolve.
+- **Família e chave** (aprovado por Kaio em 06/10/2026, aguardando Cesar, na parte além da condição do hash):
+  - a **família** é o tipo, a regra e o escopo, sem a lista de hotéis;
+  - a **chave** de unicidade é a família, `|hoteis=` e o SHA-256, em hexadecimal, da lista canônica de hotéis (UUIDs em texto minúsculo, em ordem, separados por vírgula, em UTF-8). O hash existe porque o índice btree não aceita entrada acima de cerca de 2,7 KB, e a lista estoura com uns 70 hotéis. `hotel_ids` guarda a lista completa;
+  - vale um insight aberto por chave. O conjunto novo de hotéis tem outro hash, e por isso o insight novo e o anterior da mesma família ficam abertos juntos.
+- **Regra do job pela família:**
+  - o mesmo conjunto de hotéis atualiza o insight aberto;
+  - um conjunto contido no de um insight aberto (saiu hotel, ou nada mudou) não faz nada;
+  - um conjunto com hotel a mais abre um insight novo, ligado ao aberto mais recente da família;
+  - sem insight aberto na família, abre um novo, ligado ao último encerrado, salvo o silêncio de 30 dias depois do descarte "não relevante", a menos que a faixa suba. O descarte "substituído" e o resolvido não silenciam.
+- **Motivo do descarte:** `nao_relevante` ou `substituido`, canônico no domínio, com teste de paridade com o banco, e só no insight descartado. Quem descarta escolhe o motivo e escreve a nota, que continua obrigatória.
 - **Sem tabela de sinais no 1.0:** o motor lê o núcleo pelas portas. A tabela de sinais nasce na 1.5, só para o feedback externo, com os três estados de associação.
 - **Texto pelo catálogo:** o insight guarda tipo, chaves e números, e não título nem resumo (regra 11).
 - Tudo auditado pela unit of work.
@@ -792,6 +804,10 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - `inteligencia.sistemico`;
   - `inteligencia.substituicao`.
 - **Uma sexta chave,** `inteligencia.metrica_janela_leitura` (revisão de 06/10/2026), para a janela de leitura da métrica diária do ADR-036. O padrão é 180 dias, que também é o mínimo.
+- **Validação entre chaves** (revisão de 06/10/2026, aprovada pelos dois em 07/10/2026): a `inteligencia.metrica_janela_leitura` precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo, para caber a comparação antes e depois.
+  - O formato de cada chave, no registro do núcleo, não enxerga a outra. Por isso a validação é do módulo.
+  - Ao gravar qualquer uma das duas, o valor é conferido contra o valor resolvido da outra no mesmo escopo. A gravação que quebrar a relação é recusada com código (`janela_de_leitura_curta`).
+  - **Conferência na leitura** (aprovado por Kaio, aguardando Cesar): a relação pode quebrar sem gravação, quando o hotel herda um valor novo do grupo. Se a janela resolvida for menor que o dobro da janela da efetividade, quem lê (o job e as consultas) usa o dobro e registra um aviso de configuração, com as duas chaves e os dois valores.
 - **Resolução pelo registro do núcleo** (adendo ao ADR-026):
   - as chaves entram no `registroDePoliticas` pela extensão do módulo (prefixo `inteligencia.`), na montagem do Intelligence, junto com o filtro por módulo contratado (`licenca.modulo`);
   - o módulo não tem resolução própria: vale hotel → bandeira → grupo → padrão, e o valor com escopo de bandeira só entra na 1c;
@@ -806,11 +822,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar aguarda o aceite do Kaio.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar foi aceita por Kaio em 07/10/2026 e está aplicada no motor.
 
-**Condição do Cesar (07/10/2026):**
+**Condição do Cesar (07/10/2026), aceita por Kaio em 07/10/2026:**
 - Cada resultado diário grava a versão da política e a versão da fórmula usadas.
 - Um recálculo fica marcado como recálculo, com a versão nova.
+
+**Como a condição foi aplicada** (aprovado por Kaio, aguardando Cesar):
+- Cada linha de `app.metrica_ativo_diaria` guarda a versão da fórmula da reincidência e a da atenção (a versão do próprio score), a versão da política (texto que identifica as linhas de `app.politica` que resolveram as políticas do hotel, ou `padrao`) e a configuração usada, no detalhamento de cada score.
+- Um recálculo é outra linha, do mesmo ativo e dia, com o número de cálculo seguinte e a marca de recálculo, com as versões de hoje. O recálculo de um dia que nunca foi gravado entra com o cálculo 1 e a marca. A tabela só recebe INSERT: nenhum papel atualiza ou apaga.
+- A leitura mostra o cálculo de maior número de cada dia, e os anteriores seguem guardados. É a escolha do rascunho; se o Cesar preferir mostrar o original, muda só a agregação e a consulta.
+- O recálculo grava só métrica: não abre nem atualiza insight.
 
 **Decisão:**
 - **Job diário** por Vercel Cron: `hk_worker`, um tenant por transação, unit of work com auditoria e evento.
