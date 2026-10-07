@@ -1,10 +1,9 @@
 'use client';
-// Telas do CSC e do hotel para a corretiva (fase 1a, C7): filtros das listas,
-// itens de chamado e de OS, as OS do chamado com o aceite e a reabertura (C6)
-// e a linha do tempo. Só apresentação: as páginas carregam os dados pela API,
-// que devolve o escopo de cada papel (RLS) e decide quem aceita ou reabre (o
-// erro volta como código e é traduzido aqui). Tela funcional, sem acabamento;
-// o layout definitivo vem do protótipo.
+// Telas do CSC e do hotel para a corretiva (fase 1a, C7; visual na U4): filtros
+// das listas, linhas de chamado e de OS, as OS do chamado com o aceite e a
+// reabertura (C6) e a linha do tempo. Só apresentação: as páginas carregam os
+// dados pela API, que devolve o escopo de cada papel (RLS) e decide quem aceita
+// ou reabre (o erro volta como código e é traduzido aqui).
 import type {
   ChamadoResumidoApi,
   EventoDaLinhaDoTempoApi,
@@ -14,6 +13,22 @@ import type {
   z,
 } from '@hubkeep/contratos';
 import { type Chave, resolverNome } from '@hubkeep/i18n';
+import {
+  AreaDeTexto,
+  Botao,
+  Campo,
+  Entrada,
+  MensagemDeErro,
+  MensagemVazia,
+  type NivelDePrioridade,
+  Nota,
+  Painel,
+  Selecao,
+  Selo,
+  SeloDePrioridade,
+  type TomDeSelo,
+} from '@hubkeep/ui';
+import Link from 'next/link';
 import { type FormEvent, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type ErroDaApi, chamarApi } from './api';
@@ -105,6 +120,46 @@ const CHAVES_PADRAO_DE_SITUACAO = new Set([
 ]);
 const CHAVES_PADRAO_DE_PRIORIDADE = new Set(['urgente', 'alta', 'media', 'baixa']);
 
+const NIVEL_DA_PRIORIDADE_PADRAO: Readonly<Record<string, NivelDePrioridade>> = {
+  urgente: 'critica',
+  alta: 'alta',
+  media: 'media',
+  baixa: 'baixa',
+};
+
+/**
+ * Nível visual da prioridade (cor do selo). A padrão vai pela chave; a criada
+ * pelo tenant, pela posição do peso entre as ativas (a de maior peso é crítica).
+ */
+export function nivelDaPrioridade(
+  prioridades: SituacoesEPrioridades['prioridades'],
+  id: string | null,
+): NivelDePrioridade {
+  const p = prioridades.find((x) => x.id === id);
+  if (!p) return 'baixa';
+  const padrao = p.chavePadrao ? NIVEL_DA_PRIORIDADE_PADRAO[p.chavePadrao] : undefined;
+  if (padrao) return padrao;
+  const pesos = prioridades.filter((x) => x.ativa || x.id === id).sort((a, b) => b.peso - a.peso);
+  const posicao = pesos.findIndex((x) => x.id === id) / Math.max(pesos.length - 1, 1);
+  return posicao < 0.25 ? 'critica' : posicao < 0.5 ? 'alta' : posicao < 0.75 ? 'media' : 'baixa';
+}
+
+/** Cor do selo pelo estado canônico: âmbar espera alguém, azul anda, verde fechou. */
+const TOM_DO_ESTADO: Readonly<Record<string, TomDeSelo>> = {
+  aberto: 'ambar',
+  em_triagem: 'ambar',
+  em_execucao: 'azul',
+  aguardando_aceite: 'azul',
+  concluido: 'verde',
+  cancelado: 'cinza',
+  atribuida: 'cinza',
+  pausada: 'ambar',
+  concluida: 'azul',
+  aceita: 'verde',
+  cancelada: 'cinza',
+};
+export const tomDoEstado = (estado: string): TomDeSelo => TOM_DO_ESTADO[estado] ?? 'cinza';
+
 /** Nomes de exibição: situação e prioridade pela volta do ADR-027; o que falta, pelo catálogo. */
 export function useNomes(refs: Referencias | null) {
   const t = useT();
@@ -131,7 +186,8 @@ export function useNomes(refs: Referencias | null) {
       return resolverNome(p.nomes, idioma, { doCatalogo, idiomaPadrao }) ?? semNome;
     };
     const nome = (n: string | null | undefined) => n ?? semNome;
-    return { situacao, prioridade, nome };
+    const nivel = (id: string | null) => nivelDaPrioridade(refs?.corretiva.prioridades ?? [], id);
+    return { situacao, prioridade, nome, nivel };
   }, [refs, idioma, t]);
 }
 
@@ -155,108 +211,172 @@ export function FiltrosDaLista(props: {
     (s) => s.entidade === props.entidade,
   );
   return (
-    <form onSubmit={enviar} style={{ display: 'grid', gap: 8 }}>
-      <label style={{ display: 'grid' }}>
-        {t('corretiva.filtros.hotel')}
-        <select value={f.hotelId} onChange={(e) => mudar('hotelId')(e.target.value)}>
-          <option value="">{t('corretiva.filtros.todos')}</option>
-          {(props.refs?.hoteis ?? []).map((h) => (
-            <option key={h.id} value={h.id}>
-              {h.nome}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label style={{ display: 'grid' }}>
-        {t('corretiva.filtros.situacao')}
-        <select value={f.situacaoId} onChange={(e) => mudar('situacaoId')(e.target.value)}>
-          <option value="">{t('corretiva.filtros.todas')}</option>
-          {situacoes.map((s) => (
-            <option key={s.id} value={s.id}>
-              {nomes.situacao(s.id)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label style={{ display: 'grid' }}>
-        {t('corretiva.filtros.prioridade')}
-        <select value={f.prioridadeId} onChange={(e) => mudar('prioridadeId')(e.target.value)}>
-          <option value="">{t('corretiva.filtros.todas')}</option>
-          {(props.refs?.corretiva.prioridades ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {nomes.prioridade(p.id)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <label style={{ display: 'grid' }}>
-          {t('corretiva.filtros.de')}
-          <input type="date" value={f.de} onChange={(e) => mudar('de')(e.target.value)} />
-        </label>
-        <label style={{ display: 'grid' }}>
-          {t('corretiva.filtros.ate')}
-          <input type="date" value={f.ate} onChange={(e) => mudar('ate')(e.target.value)} />
-        </label>
-      </span>
-      <span style={{ display: 'flex', gap: 8 }}>
-        <button type="submit">{t('corretiva.filtros.aplicar')}</button>
-        <button
-          type="button"
+    <form onSubmit={enviar} className="hk-filtros">
+      <Campo rotulo={t('corretiva.filtros.hotel')}>
+        {(p) => (
+          <Selecao {...p} value={f.hotelId} onChange={(e) => mudar('hotelId')(e.target.value)}>
+            <option value="">{t('corretiva.filtros.todos')}</option>
+            {(props.refs?.hoteis ?? []).map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.nome}
+              </option>
+            ))}
+          </Selecao>
+        )}
+      </Campo>
+      <Campo rotulo={t('corretiva.filtros.situacao')}>
+        {(p) => (
+          <Selecao
+            {...p}
+            value={f.situacaoId}
+            onChange={(e) => mudar('situacaoId')(e.target.value)}
+          >
+            <option value="">{t('corretiva.filtros.todas')}</option>
+            {situacoes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {nomes.situacao(s.id)}
+              </option>
+            ))}
+          </Selecao>
+        )}
+      </Campo>
+      <Campo rotulo={t('corretiva.filtros.prioridade')}>
+        {(p) => (
+          <Selecao
+            {...p}
+            value={f.prioridadeId}
+            onChange={(e) => mudar('prioridadeId')(e.target.value)}
+          >
+            <option value="">{t('corretiva.filtros.todas')}</option>
+            {(props.refs?.corretiva.prioridades ?? []).map((pr) => (
+              <option key={pr.id} value={pr.id}>
+                {nomes.prioridade(pr.id)}
+              </option>
+            ))}
+          </Selecao>
+        )}
+      </Campo>
+      <Campo rotulo={t('corretiva.filtros.de')}>
+        {(p) => (
+          <Entrada {...p} type="date" value={f.de} onChange={(e) => mudar('de')(e.target.value)} />
+        )}
+      </Campo>
+      <Campo rotulo={t('corretiva.filtros.ate')}>
+        {(p) => (
+          <Entrada
+            {...p}
+            type="date"
+            value={f.ate}
+            onChange={(e) => mudar('ate')(e.target.value)}
+          />
+        )}
+      </Campo>
+      <div className="hk-linha-de-botoes">
+        <Botao type="submit" variante="primario">
+          {t('corretiva.filtros.aplicar')}
+        </Botao>
+        <Botao
           onClick={() => {
             setF(FILTRO_VAZIO);
             props.aoFiltrar(FILTRO_VAZIO);
           }}
         >
           {t('corretiva.filtros.limpar')}
-        </button>
-      </span>
+        </Botao>
+      </div>
     </form>
   );
 }
 
 const dataCurta = { dateStyle: 'short', timeStyle: 'short' } as const;
 
-export function ItemDeChamado({ c, refs }: { c: ChamadoResumido; refs: Referencias | null }) {
+/** Cabeçalho da tabela de chamados (LinhaDeChamado). */
+export function ColunasDeChamado() {
   const t = useT();
-  const intl = useIntl();
-  const nomes = useNomes(refs);
   return (
-    <li style={{ display: 'grid', gap: 2 }}>
-      <a href={`/chamados/${c.id}`}>{c.descricao}</a>
-      <small>
-        {t('corretiva.onde', { hotel: nomes.nome(c.hotelNome), local: nomes.nome(c.localNome) })}
-      </small>
-      <small>
-        {t('corretiva.resumo', {
-          situacao: nomes.situacao(c.situacaoId),
-          prioridade: nomes.prioridade(c.prioridadeId),
-          data: intl.formatDate(c.criadoEm, dataCurta),
-        })}
-      </small>
-    </li>
+    <thead>
+      <tr>
+        <th scope="col">{t('corretiva.coluna.chamado')}</th>
+        <th scope="col">{t('corretiva.coluna.onde')}</th>
+        <th scope="col">{t('corretiva.coluna.situacao')}</th>
+        <th scope="col">{t('corretiva.coluna.prioridade')}</th>
+        <th scope="col">{t('corretiva.coluna.aberto_em')}</th>
+      </tr>
+    </thead>
   );
 }
 
-export function ItemDeOs({ o, refs }: { o: OsResumida; refs: Referencias | null }) {
+export function LinhaDeChamado({ c, refs }: { c: ChamadoResumido; refs: Referencias | null }) {
   const t = useT();
   const intl = useIntl();
   const nomes = useNomes(refs);
   return (
-    <li style={{ display: 'grid', gap: 2 }}>
-      <a href={`/chamados/${o.chamadoId}`}>{o.descricao ?? t('corretiva.os.sem_descricao')}</a>
-      <small>
+    <tr>
+      <td>
+        <Link href={`/chamados/${c.id}`}>{c.descricao}</Link>
+      </td>
+      <td>
+        {t('corretiva.onde', { hotel: nomes.nome(c.hotelNome), local: nomes.nome(c.localNome) })}
+      </td>
+      <td>
+        <Selo tom={tomDoEstado(c.estado)}>{nomes.situacao(c.situacaoId)}</Selo>
+      </td>
+      <td>
+        <SeloDePrioridade nivel={nomes.nivel(c.prioridadeId)}>
+          {nomes.prioridade(c.prioridadeId)}
+        </SeloDePrioridade>
+      </td>
+      <td className="hk-tnum">
+        {t('comum.data_hora', { data: intl.formatDate(c.criadoEm, dataCurta) })}
+      </td>
+    </tr>
+  );
+}
+
+/** Cabeçalho da tabela de OS (LinhaDeOs). */
+export function ColunasDeOs() {
+  const t = useT();
+  return (
+    <thead>
+      <tr>
+        <th scope="col">{t('corretiva.coluna.chamado')}</th>
+        <th scope="col">{t('corretiva.coluna.onde')}</th>
+        <th scope="col">{t('corretiva.coluna.situacao')}</th>
+        <th scope="col">{t('corretiva.coluna.prioridade')}</th>
+        <th scope="col">{t('corretiva.coluna.responsavel')}</th>
+        <th scope="col">{t('corretiva.coluna.criada_em')}</th>
+      </tr>
+    </thead>
+  );
+}
+
+export function LinhaDeOs({ o, refs }: { o: OsResumida; refs: Referencias | null }) {
+  const t = useT();
+  const intl = useIntl();
+  const nomes = useNomes(refs);
+  return (
+    <tr>
+      <td>
+        <Link href={`/chamados/${o.chamadoId}`}>
+          {o.descricao ?? t('corretiva.os.sem_descricao')}
+        </Link>
+      </td>
+      <td>
         {t('corretiva.onde', { hotel: nomes.nome(o.hotelNome), local: nomes.nome(o.localNome) })}
-      </small>
-      <small>
-        {t('corretiva.resumo', {
-          situacao: nomes.situacao(o.situacaoId),
-          prioridade: nomes.prioridade(o.prioridadeId),
-          data: intl.formatDate(o.criadoEm, dataCurta),
-        })}
-      </small>
-      <small>{t('corretiva.os.responsavel', { nome: nomes.nome(o.responsavelNome) })}</small>
-    </li>
+      </td>
+      <td>
+        <Selo tom={tomDoEstado(o.estado)}>{nomes.situacao(o.situacaoId)}</Selo>
+      </td>
+      <td>
+        <SeloDePrioridade nivel={nomes.nivel(o.prioridadeId)}>
+          {nomes.prioridade(o.prioridadeId)}
+        </SeloDePrioridade>
+      </td>
+      <td>{nomes.nome(o.responsavelNome)}</td>
+      <td className="hk-tnum">
+        {t('comum.data_hora', { data: intl.formatDate(o.criadoEm, dataCurta) })}
+      </td>
+    </tr>
   );
 }
 
@@ -287,24 +407,31 @@ function Reabertura(props: { temAtivo: boolean; aoReabrir: (p: PedidoDeReabertur
   }
 
   return (
-    <form onSubmit={enviar} style={{ display: 'grid', gap: 6 }}>
-      <label style={{ display: 'grid' }}>
-        {t('corretiva.reabertura.motivo')}
-        <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={3} />
-      </label>
+    <form onSubmit={enviar}>
+      <Campo rotulo={t('corretiva.reabertura.motivo')}>
+        {(p) => (
+          <AreaDeTexto {...p} value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={3} />
+        )}
+      </Campo>
       {props.temAtivo && (
-        <label style={{ display: 'flex', gap: 6 }}>
+        <label className="hk-marcar">
           <input type="checkbox" checked={parado} onChange={(e) => setParado(e.target.checked)} />
           {t('corretiva.reabertura.parado')}
         </label>
       )}
       {props.temAtivo && parado && (
-        <label style={{ display: 'grid' }}>
-          {t('corretiva.reabertura.parado_desde')}
-          <input type="datetime-local" value={desde} onChange={(e) => setDesde(e.target.value)} />
-        </label>
+        <Campo rotulo={t('corretiva.reabertura.parado_desde')}>
+          {(p) => (
+            <Entrada
+              {...p}
+              type="datetime-local"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+            />
+          )}
+        </Campo>
       )}
-      <button type="submit">{t('corretiva.reabertura.reabrir')}</button>
+      <Botao type="submit">{t('corretiva.reabertura.reabrir')}</Botao>
     </form>
   );
 }
@@ -326,68 +453,98 @@ export function ChamadoEmDetalhe(props: {
         : n.equipes[o.responsavel.equipeId],
     );
   return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <p style={{ whiteSpace: 'pre-wrap' }}>{chamado.descricao}</p>
-      <small>
-        {t('corretiva.onde', { hotel: nomes.nome(n.hotel), local: nomes.nome(n.local) })}
-      </small>
-      {chamado.ativoId && (
-        <small>{t('corretiva.chamado.ativo', { ativo: nomes.nome(n.ativo) })}</small>
-      )}
-      <small>
-        {t('corretiva.resumo', {
-          situacao: nomes.situacao(chamado.situacaoId),
-          prioridade: nomes.prioridade(chamado.prioridadeId),
-          data: intl.formatDate(chamado.criadoEm, dataCurta),
-        })}
-      </small>
-      <small>
-        {t('corretiva.chamado.aberto_por', { nome: nomes.nome(n.pessoas[chamado.abertoPor]) })}
-      </small>
-      {chamado.motivoCancelamento && (
-        <small>{t('corretiva.motivo_cancelamento', { motivo: chamado.motivoCancelamento })}</small>
-      )}
-      <h2>{t('corretiva.chamado.os')}</h2>
-      {os.length === 0 ? (
-        <p>{t('corretiva.chamado.sem_os')}</p>
-      ) : (
-        <ul style={{ display: 'grid', gap: 12 }}>
-          {os.map((o) => (
-            <li key={o.id} id={`os-${o.id}`} style={{ display: 'grid', gap: 4 }}>
-              <span>
-                {t('corretiva.os.situacao', {
-                  situacao: nomes.situacao(o.situacaoId),
-                  data: intl.formatDate(o.criadoEm, dataCurta),
-                })}
-              </span>
-              <small>{t('corretiva.os.responsavel', { nome: responsavel(o) })}</small>
-              {o.motivoReabertura && (
-                <small>{t('corretiva.os.motivo_reabertura', { motivo: o.motivoReabertura })}</small>
-              )}
-              {o.motivoCancelamento && (
-                <small>
-                  {t('corretiva.motivo_cancelamento', { motivo: o.motivoCancelamento })}
-                </small>
-              )}
-              {o.estado === 'concluida' && (
-                <div style={{ display: 'grid', gap: 6, borderLeft: '3px solid', paddingLeft: 8 }}>
-                  <strong>{t('corretiva.aceite.titulo')}</strong>
-                  <small>{t('corretiva.aceite.descricao')}</small>
-                  <button type="button" onClick={() => props.aoAceitar(o)}>
-                    {t('corretiva.aceite.aceitar')}
-                  </button>
-                  <Reabertura
-                    temAtivo={chamado.ativoId !== null}
-                    aoReabrir={(p) => props.aoReabrir(o, p)}
+    <>
+      <Painel
+        titulo={t('corretiva.onde', { hotel: nomes.nome(n.hotel), local: nomes.nome(n.local) })}
+      >
+        <div className="hk-pilha">
+          <p className="hk-texto-longo">{chamado.descricao}</p>
+          <div className="hk-linha-de-botoes">
+            <Selo tom={tomDoEstado(chamado.estado)}>{nomes.situacao(chamado.situacaoId)}</Selo>
+            <SeloDePrioridade nivel={nomes.nivel(chamado.prioridadeId)}>
+              {nomes.prioridade(chamado.prioridadeId)}
+            </SeloDePrioridade>
+          </div>
+          <div>
+            {chamado.ativoId && (
+              <p className="hk-suave">
+                {t('corretiva.chamado.ativo', { ativo: nomes.nome(n.ativo) })}
+              </p>
+            )}
+            <p className="hk-suave">
+              {t('corretiva.chamado.aberto_por', {
+                nome: nomes.nome(n.pessoas[chamado.abertoPor]),
+              })}
+            </p>
+            <p className="hk-suave">
+              {t('corretiva.chamado.aberto_em', {
+                data: intl.formatDate(chamado.criadoEm, dataCurta),
+              })}
+            </p>
+            {chamado.motivoCancelamento && (
+              <p className="hk-suave">
+                {t('corretiva.motivo_cancelamento', { motivo: chamado.motivoCancelamento })}
+              </p>
+            )}
+          </div>
+        </div>
+      </Painel>
+      <Painel titulo={t('corretiva.chamado.os')}>
+        {os.length === 0 ? (
+          <MensagemVazia>{t('corretiva.chamado.sem_os')}</MensagemVazia>
+        ) : (
+          <ul className="hk-lista">
+            {os.map((o) => (
+              <li key={o.id} id={`os-${o.id}`}>
+                <div className="hk-pilha">
+                  <div className="hk-linha-de-botoes">
+                    <Selo tom={tomDoEstado(o.estado)}>
+                      {t('corretiva.os.situacao', {
+                        situacao: nomes.situacao(o.situacaoId),
+                        data: intl.formatDate(o.criadoEm, dataCurta),
+                      })}
+                    </Selo>
+                    <span className="hk-suave">
+                      {t('corretiva.os.responsavel', { nome: responsavel(o) })}
+                    </span>
+                  </div>
+                  {o.motivoReabertura && (
+                    <p className="hk-suave">
+                      {t('corretiva.os.motivo_reabertura', { motivo: o.motivoReabertura })}
+                    </p>
+                  )}
+                  {o.motivoCancelamento && (
+                    <p className="hk-suave">
+                      {t('corretiva.motivo_cancelamento', { motivo: o.motivoCancelamento })}
+                    </p>
+                  )}
+                  {o.estado === 'concluida' && (
+                    <div className="hk-bloco" data-tom="atencao">
+                      <p className="hk-bloco-titulo">{t('corretiva.aceite.titulo')}</p>
+                      <p className="hk-suave">{t('corretiva.aceite.descricao')}</p>
+                      <div>
+                        <Botao variante="primario" onClick={() => props.aoAceitar(o)}>
+                          {t('corretiva.aceite.aceitar')}
+                        </Botao>
+                      </div>
+                      <Reabertura
+                        temAtivo={chamado.ativoId !== null}
+                        aoReabrir={(p) => props.aoReabrir(o, p)}
+                      />
+                    </div>
+                  )}
+                  <HistoricoDoRegistro
+                    key={`${o.id}-${o.versao}`}
+                    entidade="os"
+                    registroId={o.id}
                   />
                 </div>
-              )}
-              <HistoricoDoRegistro key={`${o.id}-${o.versao}`} entidade="os" registroId={o.id} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Painel>
+    </>
   );
 }
 
@@ -401,14 +558,13 @@ export function LinhaDoTempo({ eventos }: { eventos: EventoDaLinhaDoTempo[] }) {
   const t = useT();
   const intl = useIntl();
   return (
-    <section style={{ display: 'grid', gap: 8 }}>
-      <h2>{t('corretiva.linha_do_tempo.titulo')}</h2>
+    <Painel titulo={t('corretiva.linha_do_tempo.titulo')}>
       {eventos.length === 0 ? (
-        <p>{t('corretiva.linha_do_tempo.vazia')}</p>
+        <MensagemVazia>{t('corretiva.linha_do_tempo.vazia')}</MensagemVazia>
       ) : (
-        <ol style={{ display: 'grid', gap: 6 }}>
+        <ol className="hk-tempo">
           {eventos.map((e) => (
-            <li key={e.id} style={{ display: 'grid' }}>
+            <li key={e.id}>
               <span>
                 {t('corretiva.linha_do_tempo.evento', {
                   data: intl.formatDate(e.em, dataCurta),
@@ -416,16 +572,20 @@ export function LinhaDoTempo({ eventos }: { eventos: EventoDaLinhaDoTempo[] }) {
                 })}
               </span>
               {e.usuarioNome && (
-                <small>{t('corretiva.linha_do_tempo.por', { nome: e.usuarioNome })}</small>
+                <span className="hk-suave">
+                  {t('corretiva.linha_do_tempo.por', { nome: e.usuarioNome })}
+                </span>
               )}
               {e.motivo && (
-                <small>{t('corretiva.linha_do_tempo.motivo', { motivo: e.motivo })}</small>
+                <span className="hk-suave">
+                  {t('corretiva.linha_do_tempo.motivo', { motivo: e.motivo })}
+                </span>
               )}
             </li>
           ))}
         </ol>
       )}
-    </section>
+    </Painel>
   );
 }
 
@@ -439,8 +599,8 @@ export function Aviso({
   const mensagemDeErro = useMensagemDeErro();
   if (!aviso) return null;
   return aviso.tipo === 'ok' ? (
-    <p role="status">{t('comum.feito')}</p>
+    <Nota tom="ok">{t('comum.feito')}</Nota>
   ) : (
-    <p role="alert">{mensagemDeErro(aviso.erro)}</p>
+    <MensagemDeErro>{mensagemDeErro(aviso.erro)}</MensagemDeErro>
   );
 }

@@ -145,6 +145,7 @@ describe('estilo dos componentes', () => {
     ['selos.tsx', 'NIVEIS_DE_PRIORIDADE', ".hk-prioridade[data-nivel='%']"],
     ['botao.tsx', 'VARIANTES_DE_BOTAO', ".hk-botao[data-variante='%']", 'padrao'],
     ['painel.tsx', 'TONS_DE_INDICADOR', ".hk-indicador[data-tom='%']", 'neutro'],
+    ['mensagens.tsx', 'TONS_DE_NOTA', ".hk-nota[data-tom='%']", 'info'],
   ];
 
   it.each(LISTAS)('%s: %s', (arquivo, constante, seletor, padrao) => {

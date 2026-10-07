@@ -722,3 +722,186 @@ textarea.hk-controle {
 .hk-erro .hk-mensagem-acao {
   margin-top: 8px;
 }
+
+/* ---------- Arranjo das telas ---------- */
+.hk-pilha {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.hk-grade {
+  display: grid;
+  gap: 16px;
+}
+
+.hk-grade[data-colunas='2-1'] {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.hk-grade[data-colunas='2'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 1180px) {
+  .hk-grade[data-colunas] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Filtros de lista: campos lado a lado, botões alinhados embaixo. */
+.hk-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.hk-filtros .hk-campo {
+  margin-bottom: 0;
+}
+
+.hk-filtros .hk-controle {
+  min-width: 150px;
+  max-width: 260px;
+}
+
+.hk-filtros input[type='search'].hk-controle {
+  min-width: 240px;
+  max-width: 360px;
+}
+
+.hk-linha-de-botoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Bloco de ação dentro de um painel (triagem, aceite). */
+.hk-bloco {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0 10px 14px;
+  border-left: 3px solid var(--hk-linha);
+}
+
+.hk-bloco[data-tom='atencao'] {
+  border-left-color: var(--hk-ambar);
+}
+
+.hk-bloco-titulo {
+  margin: 0;
+  font-weight: 600;
+  color: var(--hk-titulo);
+}
+
+/* Texto de apoio, menor e mais suave. */
+.hk-suave {
+  margin: 0;
+  font-size: 13px;
+  color: var(--hk-texto-suave);
+}
+
+.hk-texto-longo {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.hk-voltar {
+  display: inline-block;
+  margin-bottom: 12px;
+  font-size: 13.5px;
+}
+
+/* Linha do tempo e histórico: marcos ligados por uma linha vertical. */
+.hk-tempo {
+  margin: 0 0 0 6px;
+  padding: 0;
+  list-style: none;
+  border-left: 2px solid var(--hk-linha);
+}
+
+.hk-tempo > li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 0 0 14px 18px;
+  font-size: 14px;
+}
+
+.hk-tempo > li::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--hk-ok);
+  border-radius: 50%;
+  background: var(--hk-superficie);
+}
+
+.hk-tempo ul {
+  margin: 2px 0 0;
+  padding-left: 16px;
+}
+
+/* Lista simples de itens com ações à direita. */
+.hk-lista {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hk-lista > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--hk-linha-2);
+}
+
+.hk-lista > li:last-child {
+  border-bottom: none;
+}
+
+/* ---------- Nota: aviso que não é erro ---------- */
+.hk-nota {
+  margin: 10px 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--hk-azul-suave);
+  font-size: 13.5px;
+  color: var(--hk-selo-azul);
+}
+
+.hk-nota[data-tom='ok'] {
+  background: var(--hk-verde-suave);
+  color: var(--hk-selo-verde);
+}
+
+.hk-nota[data-tom='atencao'] {
+  background: var(--hk-ambar-suave);
+  color: var(--hk-selo-ambar);
+}
+
+/* Caixa de marcar com o texto ao lado. */
+.hk-marcar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.hk-marcar input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--hk-botao-primario-fundo);
+}

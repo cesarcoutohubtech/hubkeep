@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({}));
 vi.mock('../src/cliente/sessao', () => ({ sair: vi.fn() }));
 
-const { MENU, itemAtivo } = await import('../src/cliente/moldura');
+const { MENU, itemAtivo, tituloDaRota } = await import('../src/cliente/moldura');
 
 describe('menu da moldura', () => {
   const itens = MENU.flatMap((g) => g.itens);
@@ -26,5 +26,15 @@ describe('menu da moldura', () => {
     expect(itemAtivo('/chamados/0190', '/chamados')).toBe(true);
     expect(itemAtivo('/os', '/chamados')).toBe(false);
     expect(itemAtivo('/admin/hoteis-x', '/admin/hoteis')).toBe(false);
+  });
+});
+
+describe('título da barra pela rota', () => {
+  it('as telas da operação têm título; o detalhe usa o do chamado', () => {
+    expect(tituloDaRota('/')).toBe('menu.inicio');
+    expect(tituloDaRota('/chamados')).toBe('corretiva.chamados.titulo');
+    expect(tituloDaRota('/chamados/0190a')).toBe('corretiva.chamado.titulo');
+    expect(tituloDaRota('/chamados/0190a/x')).toBeUndefined();
+    expect(tituloDaRota('/os')).toBe('corretiva.os.titulo');
   });
 });

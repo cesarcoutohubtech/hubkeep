@@ -3,6 +3,7 @@
 // remoção. O envio (enviar-anexo) comprime a imagem e gera a miniatura pelo
 // mesmo código do PWA; PDF vai como está. Abrir pede uma URL de 5 minutos.
 // Tela funcional, sem acabamento: o layout vem do protótipo.
+import { Botao, Campo, Entrada, MensagemDeErro } from '@hubkeep/ui';
 import { useCallback, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useMensagemDeErro, useT } from '../i18n/cliente';
@@ -76,24 +77,24 @@ export function AnexosDoRegistro({
   if (anexos === null) {
     return (
       <div>
-        <button type="button" onClick={() => void carregar()}>
+        <Botao tamanho="pequeno" onClick={() => void carregar()}>
           {t('admin.anexos.acao.ver')}
-        </button>
-        {erro && <small role="alert">{mensagemDeErro(erro)}</small>}
+        </Botao>
+        {erro && <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>}
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'grid', gap: 4 }}>
-      <strong>{t('admin.anexos.titulo')}</strong>
+    <div className="hk-pilha">
+      <p className="hk-bloco-titulo">{t('admin.anexos.titulo')}</p>
       {anexos.length === 0 ? (
-        <small>{t('admin.anexos.vazio')}</small>
+        <p className="hk-suave">{t('admin.anexos.vazio')}</p>
       ) : (
-        <ul style={{ margin: 0 }}>
+        <ul className="hk-lista">
           {anexos.map((a) => (
-            <li key={a.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <small>
+            <li key={a.id}>
+              <span className="hk-suave">
                 {t('admin.anexos.linha', {
                   quando: intl.formatDate(a.criadoEm, { dateStyle: 'short', timeStyle: 'short' }),
                   arquivo:
@@ -103,33 +104,37 @@ export function AnexosDoRegistro({
                       : t('admin.anexos.tipo.imagem')),
                   quem: a.nomeUsuario ?? t('admin.anexos.alguem'),
                 })}
-              </small>
-              <button type="button" onClick={() => void abrir(a.id)}>
-                {t('admin.anexos.acao.abrir')}
-              </button>
-              {a.podeRemover && (
-                <button type="button" onClick={() => void remover(a.id)}>
-                  {t('admin.anexos.acao.remover')}
-                </button>
-              )}
+              </span>
+              <span className="hk-linha-de-botoes">
+                <Botao tamanho="pequeno" onClick={() => void abrir(a.id)}>
+                  {t('admin.anexos.acao.abrir')}
+                </Botao>
+                {a.podeRemover && (
+                  <Botao tamanho="pequeno" variante="perigo" onClick={() => void remover(a.id)}>
+                    {t('admin.anexos.acao.remover')}
+                  </Botao>
+                )}
+              </span>
             </li>
           ))}
         </ul>
       )}
-      <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <small>{enviando ? t('admin.anexos.enviando') : t('admin.anexos.acao.enviar')}</small>
-        <input
-          type="file"
-          accept={TIPOS.join(',')}
-          disabled={enviando}
-          onChange={(e) => {
-            const arquivo = e.currentTarget.files?.[0];
-            e.currentTarget.value = '';
-            if (arquivo) void enviar(arquivo);
-          }}
-        />
-      </label>
-      {erro && <small role="alert">{mensagemDeErro(erro)}</small>}
+      <Campo rotulo={enviando ? t('admin.anexos.enviando') : t('admin.anexos.acao.enviar')}>
+        {(c) => (
+          <Entrada
+            {...c}
+            type="file"
+            accept={TIPOS.join(',')}
+            disabled={enviando}
+            onChange={(e) => {
+              const arquivo = e.currentTarget.files?.[0];
+              e.currentTarget.value = '';
+              if (arquivo) void enviar(arquivo);
+            }}
+          />
+        )}
+      </Campo>
+      {erro && <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>}
     </div>
   );
 }

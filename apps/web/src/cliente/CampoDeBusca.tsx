@@ -2,6 +2,7 @@
 // Campo de busca das listas (fase 1a, B6; ADR-030): o termo vai para a API em
 // ?busca=, que acha por trecho e sem acento. Termo curto volta com o código
 // busca_curta, mostrado pela tela como qualquer erro da API.
+import { Botao, Entrada } from '@hubkeep/ui';
 import { type FormEvent, useState } from 'react';
 import { useT } from '../i18n/cliente';
 
@@ -19,26 +20,27 @@ export function CampoDeBusca({ aoBuscar }: { aoBuscar: (termo: string) => void }
   }
 
   return (
-    <form role="search" onSubmit={enviar} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <input
+    <form role="search" onSubmit={enviar} className="hk-filtros">
+      <Entrada
         type="search"
         value={digitado}
         onChange={(e) => setDigitado(e.target.value)}
         aria-label={t('comum.busca.rotulo')}
         placeholder={t('comum.busca.rotulo')}
       />
-      <button type="submit">{t('comum.busca.buscar')}</button>
-      {digitado !== '' && (
-        <button
-          type="button"
-          onClick={() => {
-            setDigitado('');
-            aoBuscar('');
-          }}
-        >
-          {t('comum.busca.limpar')}
-        </button>
-      )}
+      <div className="hk-linha-de-botoes">
+        <Botao type="submit">{t('comum.busca.buscar')}</Botao>
+        {digitado !== '' && (
+          <Botao
+            onClick={() => {
+              setDigitado('');
+              aoBuscar('');
+            }}
+          >
+            {t('comum.busca.limpar')}
+          </Botao>
+        )}
+      </div>
     </form>
   );
 }

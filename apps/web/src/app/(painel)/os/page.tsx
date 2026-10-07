@@ -2,15 +2,17 @@
 // Lista de OS (fase 1a, C7): as do escopo de quem vê (a API recorta pela
 // RLS), com os filtros da lista de chamados (a prioridade é a do chamado) e 50
 // por página. Cada OS abre o detalhe do chamado dela.
+import { Botao, MensagemVazia, Painel, Tabela } from '@hubkeep/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
 import {
   Aviso,
-  type OsResumida,
+  ColunasDeOs,
   FILTRO_VAZIO,
   type FiltroDaTela,
   FiltrosDaLista,
-  ItemDeOs,
+  LinhaDeOs,
+  type OsResumida,
   type Referencias,
   caminhoDaLista,
   carregarReferencias,
@@ -49,27 +51,30 @@ export default function OrdensDeServico() {
   }, [carregar, filtro]);
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('corretiva.os.titulo')}</h1>
+    <Painel>
       <FiltrosDaLista entidade="os" refs={refs} aoFiltrar={setFiltro} />
       <Aviso aviso={erro && { tipo: 'erro', erro }} />
       {lista === null ? (
-        !erro && <p>{t('comum.carregando')}</p>
+        !erro && <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
       ) : lista.length === 0 ? (
-        <p>{t('corretiva.os.vazio')}</p>
+        <MensagemVazia>{t('corretiva.os.vazio')}</MensagemVazia>
       ) : (
-        <ul style={{ display: 'grid', gap: 12 }}>
-          {lista.map((o) => (
-            <ItemDeOs key={o.id} o={o} refs={refs} />
-          ))}
-        </ul>
+        <Tabela legenda={t('corretiva.os.titulo')}>
+          <ColunasDeOs />
+          <tbody>
+            {lista.map((o) => (
+              <LinhaDeOs key={o.id} o={o} refs={refs} />
+            ))}
+          </tbody>
+        </Tabela>
       )}
       {proximo && (
-        <button type="button" onClick={() => void carregar(filtro, proximo)}>
-          {t('corretiva.carregar_mais')}
-        </button>
+        <div className="hk-mensagem-acao">
+          <Botao onClick={() => void carregar(filtro, proximo)}>
+            {t('corretiva.carregar_mais')}
+          </Botao>
+        </div>
       )}
-    </main>
+    </Painel>
   );
 }

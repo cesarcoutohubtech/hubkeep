@@ -82,10 +82,19 @@ export const itemAtivo = (caminho: string, href: string) =>
   href === '/' ? caminho === '/' : caminho === href || caminho.startsWith(`${href}/`);
 
 /**
- * Título da barra superior. Só as telas já na moldura nova (U3) usam o da
- * barra; as outras trazem o próprio h1 até a U4.
+ * Título da barra superior (o h1 da tela), pela rota. A tela que ainda não
+ * está aqui traz o próprio h1 até passar para os componentes (U4).
  */
-const TITULOS: Readonly<Record<string, Chave>> = { '/': 'menu.inicio' };
+const TITULOS: readonly (readonly [RegExp, Chave])[] = [
+  [/^\/$/, 'menu.inicio'],
+  [/^\/chamados$/, 'corretiva.chamados.titulo'],
+  [/^\/chamados\/[^/]+$/, 'corretiva.chamado.titulo'],
+  [/^\/os$/, 'corretiva.os.titulo'],
+  [/^\/admin\/paradas$/, 'admin.paradas.titulo'],
+];
+
+export const tituloDaRota = (caminho: string): Chave | undefined =>
+  TITULOS.find(([rota]) => rota.test(caminho))?.[1];
 
 const COOKIE_TENANT = 'hk_tenant';
 const seguro = () => (location.protocol === 'https:' ? '; secure' : '');
@@ -172,7 +181,7 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
     router.replace('/login');
   }
 
-  const titulo = TITULOS[caminho];
+  const titulo = tituloDaRota(caminho);
   return (
     <Estrutura
       marca={<Marca nome={t('app.nome')} />}

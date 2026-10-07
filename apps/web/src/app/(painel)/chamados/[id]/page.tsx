@@ -6,6 +6,8 @@
 // pode cada ação é decidido pela API; a recusa volta como código e aparece
 // traduzida. O histórico do chamado e o de cada OS (D1) mostram o antes e o
 // depois de cada campo.
+import { MensagemVazia, Nota, Painel } from '@hubkeep/ui';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
@@ -89,39 +91,44 @@ export default function Chamado() {
   }
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/chamados">{t('corretiva.voltar_para_chamados')}</a>
-      <h1>{t('corretiva.chamado.titulo')}</h1>
+    <>
+      <Link href="/chamados" className="hk-voltar">
+        {t('corretiva.voltar_para_chamados')}
+      </Link>
       <Aviso aviso={aviso} />
-      {paradaExistente && <p role="status">{t('corretiva.reabertura.parada_existente')}</p>}
+      {paradaExistente && <Nota tom="atencao">{t('corretiva.reabertura.parada_existente')}</Nota>}
       {detalhe === null ? (
-        !aviso && <p>{t('comum.carregando')}</p>
+        !aviso && <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
       ) : (
-        <ChamadoEmDetalhe
-          detalhe={detalhe}
-          refs={refs}
-          aoAceitar={(os) => void aceitar(os)}
-          aoReabrir={(os, p) => void reabrir(os, p)}
-        />
+        <div className="hk-grade" data-colunas="2-1">
+          <div className="hk-pilha">
+            <ChamadoEmDetalhe
+              detalhe={detalhe}
+              refs={refs}
+              aoAceitar={(os) => void aceitar(os)}
+              aoReabrir={(os, p) => void reabrir(os, p)}
+            />
+            <TriagemDoChamado
+              detalhe={detalhe}
+              refs={refs}
+              candidatos={candidatos}
+              acoes={acoesDaTriagem(detalhe, enviar)}
+            />
+          </div>
+          <div className="hk-pilha">
+            {eventos !== null && <LinhaDoTempo eventos={eventos} />}
+            <Painel>
+              {/* A versão na chave descarta o histórico já aberto depois de cada gravação. */}
+              <HistoricoDoRegistro
+                key={`${id}-${detalhe.chamado.versao}`}
+                entidade="chamado"
+                registroId={id}
+              />
+            </Painel>
+          </div>
+        </div>
       )}
-      {detalhe !== null && (
-        <TriagemDoChamado
-          detalhe={detalhe}
-          refs={refs}
-          candidatos={candidatos}
-          acoes={acoesDaTriagem(detalhe, enviar)}
-        />
-      )}
-      {detalhe !== null && eventos !== null && <LinhaDoTempo eventos={eventos} />}
-      {detalhe !== null && (
-        // A versão na chave descarta o histórico já aberto depois de cada gravação.
-        <HistoricoDoRegistro
-          key={`${id}-${detalhe.chamado.versao}`}
-          entidade="chamado"
-          registroId={id}
-        />
-      )}
-    </main>
+    </>
   );
 }
 

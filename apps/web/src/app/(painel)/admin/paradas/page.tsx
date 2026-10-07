@@ -3,7 +3,8 @@
 // 30/09/2026): o técnico concluiu e respondeu que o equipamento não voltou a
 // funcionar, ou a resposta não chegou. O Admin do grupo, o Gestor CSC e o
 // Gerente do hotel acompanham e encerram quando ele voltar; a API filtra os
-// hotéis de cada um. Tela funcional, sem acabamento.
+// hotéis de cada um.
+import { Botao, MensagemDeErro, MensagemVazia, Nota, Painel } from '@hubkeep/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
@@ -60,35 +61,34 @@ export default function ParadasPendentes() {
   };
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('admin.paradas.titulo')}</h1>
-      <p>{t('admin.paradas.descricao')}</p>
-      {feito && <p role="status">{t('comum.feito')}</p>}
-      {erro && <p role="alert">{mensagemDeErro(erro)}</p>}
+    <Painel dica={t('admin.paradas.descricao')}>
+      {feito && <Nota tom="ok">{t('comum.feito')}</Nota>}
+      {erro && <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>}
       {paradas === null ? (
-        !erro && <p>{t('comum.carregando')}</p>
+        !erro && <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
       ) : paradas.length === 0 ? (
-        <p>{t('admin.paradas.vazio')}</p>
+        <MensagemVazia>{t('admin.paradas.vazio')}</MensagemVazia>
       ) : (
-        <ul>
+        <ul className="hk-lista">
           {paradas.map((p) => (
-            <li key={p.id} style={{ display: 'grid', gap: 4 }}>
-              <span>
-                {t('admin.paradas.linha', {
-                  ativo: p.ativoNome,
-                  inicio: intl.formatDate(p.inicio, { dateStyle: 'short', timeStyle: 'short' }),
-                  duracao: duracao(p.tempoParadoMs),
-                })}
-              </span>
-              <small>{t('admin.paradas.os_estado', { estado: p.osEstado })}</small>
-              <button type="button" onClick={() => void encerrar(p.id)}>
+            <li key={p.id}>
+              <div>
+                <p className="hk-texto-longo">
+                  {t('admin.paradas.linha', {
+                    ativo: p.ativoNome,
+                    inicio: intl.formatDate(p.inicio, { dateStyle: 'short', timeStyle: 'short' }),
+                    duracao: duracao(p.tempoParadoMs),
+                  })}
+                </p>
+                <p className="hk-suave">{t('admin.paradas.os_estado', { estado: p.osEstado })}</p>
+              </div>
+              <Botao tamanho="pequeno" onClick={() => void encerrar(p.id)}>
                 {t('admin.ativos.acao.encerrar_parada')}
-              </button>
+              </Botao>
             </li>
           ))}
         </ul>
       )}
-    </main>
+    </Painel>
   );
 }
