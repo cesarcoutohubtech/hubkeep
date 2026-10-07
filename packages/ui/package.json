@@ -1,0 +1,25 @@
+{
+  "name": "@hubkeep/ui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Interface compartilhada do web, do PWA e das telas do Intelligence: tokens nos dois temas, fontes servidas pelo próprio sistema e componentes base (ADR-038).",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./estilo.css": "./src/estilo.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0"
+  }
+}

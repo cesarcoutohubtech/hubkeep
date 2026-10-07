@@ -833,3 +833,32 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - as migrações das tabelas do núcleo (chamado, OS, ativo) são do agente do núcleo;
   - as do Intelligence são do agente do Kaio, em branches `int-*`;
   - vale um PR de zona protegida aberto por vez no repositório inteiro.
+
+## ADR-038 — Identidade visual: pacote de interface compartilhado, a partir do mock oficial
+
+**Status:** proposto em 06/10/2026 (tarefa U1, divisão em PRs aprovada pelo Cesar no mesmo dia); aguarda a aprovação do Cesar.
+
+**Contexto:** as telas da fase 1a são funcionais e sem acabamento visual (`docs/05`, regras da fase), com estilo solto em cada tela (cerca de 130 `style={{…}}` nos apps). O mock da Central de Manutenção, em `docs/referencia/design/csc-mock/`, é a referência visual oficial do HubKeep (Cesar, 06/10/2026). O web, o PWA e as telas do Intelligence precisam da mesma identidade, sem copiar estilo de um app para o outro.
+
+**Decisão:**
+- **Pacote `packages/ui`**, usado pelo web, pelo PWA e pelas rotas e telas do Intelligence no web (`web-telas-inteligencia`).
+  - Contém os tokens, as fontes e os componentes base: estrutura com menu lateral e barra superior, painel, indicador, tabela, selos de estado e de prioridade, botões, campos de formulário, mensagens vazias e de erro.
+  - Só importa React. Não importa outro pacote do HubKeep nem módulo do Node (lint de fronteiras, `tests/fronteiras.test.ts`).
+  - O `packages/inteligencia` continua puro, sem React (ADR-037).
+- **Nenhum texto no pacote** (regra 11): cada componente recebe o texto pronto, por prop, do catálogo do app que o usa. A regra `formatjs/no-literal-string-in-jsx` vale também em `packages/ui`.
+- **Tokens do mock, nos dois temas,** com nomes em português e o prefixo `--hk-` (`packages/ui/src/tokens.css`).
+  - O escuro é o padrão; o claro vale com `data-tema="claro"` no `<html>`.
+  - **Contraste AA nos dois temas:** 4,5:1 para texto e 3:1 para o contorno de foco. Os tokens do mock que não chegavam foram ajustados no mesmo matiz, o mínimo necessário: o texto apagado nos dois temas, a prioridade baixa no escuro e, no claro, o texto suave, as prioridades crítica, alta e baixa, o botão principal, o botão de perigo, o âmbar usado como texto e o foco. O teste `tests/ui-contraste.test.ts` confere cada par de texto e fundo e reprova o token que derrube um par.
+- **Tema de cada app:**
+  - **Web:** escuro como padrão, como no mock, com botão de troca. A escolha fica num cookie que o servidor lê, para a página já abrir no tema certo, sem piscar e sem script novo na CSP.
+  - **PWA:** claro como padrão, pela leitura em ambiente claro ou externo, com a mesma troca.
+- **Fontes Barlow e Barlow Condensed servidas pelo próprio sistema,** pelos pacotes `@fontsource/barlow` e `@fontsource/barlow-condensed` (licença SIL Open Font License 1.1), com a versão presa no lockfile e conferida pelo `pnpm audit`.
+  - Só os pesos que o mock usa, nos subconjuntos latino e latino estendido (pt-BR, en, es e fr).
+  - Nada é pedido ao Google Fonts: a CSP do web segue com `font-src 'self'`.
+  - O PWA põe os `.woff2` no precache do service worker, para mostrar a fonte sem rede.
+- **Só estilo e estrutura das telas que já existem.** Telas e funções que só existem no mock (indicadores da 1c, políticas de SLA, implantação por planilha e etiquetas) não entram por este ADR; cada uma entra com a tarefa da fase dela. O painel de implantação da 1a (A5) recebe só o estilo.
+- **O mock fica no repositório como referência,** fora do produto: o ESLint e o Semgrep não varrem `docs/referencia/design/`, que tem HTML e JS de demonstração.
+
+**Consequências:**
+- Os PRs U2 a U5 trocam o estilo solto das telas pelos componentes e pelos tokens. Quando os `style={{…}}` saírem dos apps, o `'unsafe-inline'` do `style-src` da CSP do web pode sair (pendência, fora deste ADR).
+- Uma cor nova entra como token nos dois temas, com o par dela no teste de contraste.

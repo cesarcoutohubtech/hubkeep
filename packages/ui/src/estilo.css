@@ -1,0 +1,60 @@
+/*
+ * Entrada única do estilo do HubKeep (ADR-038): fontes, tokens e a base dos
+ * elementos. O web importa no layout raiz e o PWA no main.tsx. Os
+ * componentes de packages/ui usam só os tokens daqui.
+ */
+@import './fontes.css';
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--hk-fundo);
+}
+
+body {
+  margin: 0;
+  font-family: var(--hk-fonte);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--hk-texto);
+  background: var(--hk-fundo);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--hk-azul);
+}
+
+:focus-visible {
+  outline: 2px solid var(--hk-foco);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(240, 165, 0, 0.35);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--hk-texto-apagado);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

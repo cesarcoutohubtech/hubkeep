@@ -1,0 +1,150 @@
+/*
+ * Tokens do HubKeep (ADR-038), tirados do mock oficial
+ * (docs/referencia/design/csc-mock/styles.css), tema "sala de controle".
+ * Cada cor tem um significado: verde-água é normal, âmbar é atenção e
+ * vermelho é vencido ou crítico.
+ *
+ * O tema escuro é o padrão. O claro vale com data-tema="claro" no <html>.
+ * Os valores marcados com "AA" mudaram em relação ao mock para o texto
+ * chegar a 4,5:1 (e o contorno de foco a 3:1). O teste
+ * tests/ui-contraste.test.ts confere cada par de texto e fundo.
+ */
+:root {
+  color-scheme: dark;
+
+  --hk-fundo: #081a20;
+  --hk-superficie: #0e252d;
+  --hk-superficie-2: #13303a;
+  --hk-superficie-3: #183a45;
+  --hk-linha: #1f434e;
+  --hk-linha-2: #183740;
+
+  --hk-texto: #e4eef0;
+  --hk-titulo: #ffffff;
+  --hk-texto-suave: #8aa5ab;
+  /* AA: era #5E7B82 (3,5:1 sobre a superfície). */
+  --hk-texto-apagado: #82999e;
+
+  --hk-ok: #2fd6c3;
+  --hk-ok-suave: rgba(47, 214, 195, 0.13);
+  --hk-ambar: #f0a500;
+  --hk-ambar-suave: rgba(240, 165, 0, 0.15);
+  --hk-ambar-texto: #ffc857;
+  --hk-vermelho: #ff5a5f;
+  --hk-vermelho-suave: rgba(255, 90, 95, 0.15);
+  --hk-verde: #3dd68c;
+  --hk-verde-suave: rgba(61, 214, 140, 0.14);
+  --hk-azul: #5cc8e0;
+  --hk-azul-suave: rgba(92, 200, 224, 0.13);
+
+  --hk-petroleo: #0f3d45;
+  --hk-petroleo-2: #1c6470;
+  --hk-petroleo-3: #2a7c88;
+
+  --hk-tinta-0: rgba(255, 255, 255, 0.015);
+  --hk-tinta-1: rgba(255, 255, 255, 0.035);
+  --hk-tinta-2: rgba(255, 255, 255, 0.07);
+  --hk-tinta-4: rgba(255, 255, 255, 0.35);
+
+  /* Selos: texto sobre o fundo suave da mesma cor. */
+  --hk-selo-cinza: #b9cace;
+  --hk-selo-azul: #8fddee;
+  --hk-selo-ambar: #ffc857;
+  --hk-selo-vermelho: #ff9396;
+  --hk-selo-verde: #76e6ae;
+
+  /* Prioridades (padrões do catálogo; o tenant tem as dele, ADR-027). */
+  --hk-prio-critica: #ff5a5f;
+  --hk-prio-alta: #ff9f43;
+  --hk-prio-media: #5cc8e0;
+  /* AA: era #7F959A (4,4:1 sobre a superfície 2). */
+  --hk-prio-baixa: #83999e;
+
+  /* Botões. */
+  --hk-botao-primario-fundo: #2fd6c3;
+  --hk-botao-primario-texto: #03201d;
+  --hk-botao-ambar-texto: #231800;
+  --hk-perigo: #ff5a5f;
+
+  /* Estrutura: menu lateral, barra superior e faixa de escopo. */
+  --hk-menu-fundo: #061419;
+  --hk-menu-texto: #c6d8db;
+  --hk-menu-grupo: #82999e;
+  --hk-menu-ativo: #2fd6c3;
+  --hk-barra-fundo: rgba(8, 26, 32, 0.82);
+  --hk-escopo-fundo: #0a2027;
+
+  --hk-foco: #f0a500;
+  --hk-sombra: 0 30px 80px rgba(0, 0, 0, 0.5);
+
+  --hk-fonte: 'Barlow', 'Segoe UI', Roboto, Arial, sans-serif;
+  --hk-fonte-condensada: 'Barlow Condensed', 'Arial Narrow', 'Segoe UI', sans-serif;
+}
+
+:root[data-tema='claro'] {
+  color-scheme: light;
+
+  --hk-fundo: #eef2f2;
+  --hk-superficie: #ffffff;
+  --hk-superficie-2: #f5f8f8;
+  --hk-superficie-3: #e8eeee;
+  --hk-linha: #d2dbdb;
+  --hk-linha-2: #e2e8e8;
+
+  --hk-texto: #17262c;
+  --hk-titulo: #0d2b32;
+  /* AA: era #587077 (4,66:1 sobre o fundo, sem folga). */
+  --hk-texto-suave: #52686f;
+  /* AA: era #7F9398 (2,85:1 sobre o fundo). */
+  --hk-texto-apagado: #606f73;
+
+  --hk-ok: #0e9e8e;
+  --hk-ok-suave: rgba(14, 158, 142, 0.12);
+  --hk-ambar: #e09a00;
+  --hk-ambar-suave: rgba(240, 165, 0, 0.16);
+  /* AA: o âmbar do mock, como texto, dava 2,4:1. */
+  --hk-ambar-texto: #926400;
+  --hk-vermelho: #d93a3f;
+  --hk-vermelho-suave: rgba(217, 58, 63, 0.12);
+  --hk-verde: #1f9e5e;
+  --hk-verde-suave: rgba(31, 158, 94, 0.12);
+  --hk-azul: #17758c;
+  --hk-azul-suave: rgba(23, 117, 140, 0.1);
+
+  --hk-tinta-0: rgba(15, 61, 69, 0.025);
+  --hk-tinta-1: rgba(15, 61, 69, 0.045);
+  --hk-tinta-2: rgba(15, 61, 69, 0.08);
+  --hk-tinta-4: rgba(15, 61, 69, 0.35);
+
+  --hk-selo-cinza: #44545a;
+  --hk-selo-azul: #135f72;
+  --hk-selo-ambar: #825400;
+  --hk-selo-vermelho: #a5262b;
+  --hk-selo-verde: #1b6a45;
+
+  /* AA: crítica era #D93A3F (4,25:1 sobre a superfície 2). */
+  --hk-prio-critica: #c8353a;
+  /* AA: alta era #C46A00 (3,9:1). */
+  --hk-prio-alta: #ab5c00;
+  --hk-prio-media: #17758c;
+  /* AA: baixa era #7F959A (3,2:1). */
+  --hk-prio-baixa: #627377;
+
+  /* AA: o texto branco sobre #0E9E8E dava 3,3:1. */
+  --hk-botao-primario-fundo: #0c8376;
+  --hk-botao-primario-texto: #ffffff;
+  --hk-botao-ambar-texto: #231800;
+  /* AA: o botão de perigo era #D93A3F (4,25:1). */
+  --hk-perigo: #c8353a;
+
+  --hk-menu-fundo: #0f3d45;
+  --hk-menu-texto: #c6d8db;
+  --hk-menu-grupo: #86a9ae;
+  --hk-menu-ativo: #f0a500;
+  --hk-barra-fundo: rgba(255, 255, 255, 0.88);
+  --hk-escopo-fundo: #e6eff0;
+
+  /* AA: o contorno de foco âmbar dava 2,4:1 sobre o branco (mínimo 3:1). */
+  --hk-foco: #ba8000;
+  --hk-sombra: 0 30px 80px rgba(15, 40, 46, 0.18);
+}

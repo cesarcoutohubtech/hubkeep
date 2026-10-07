@@ -8,6 +8,8 @@
 //   no web, só src/servidor importa db e auth-admin
 //   do Intelligence, só a pasta do módulo no servidor do web e as rotas e telas
 //   em pastas inteligencia importam o pacote (liberação estreita, 06/10/2026)
+//   ui (interface compartilhada) só para o web, o PWA e as telas do
+//   Intelligence; ele mesmo só importa React, sem texto fixo (ADR-038)
 //   entre pacotes, só pelo nome (@hubkeep/...), nunca por caminho relativo
 //   Kysely e execução direta de consulta, só em packages/db
 //   i18n (catálogos) roda também no navegador: sem módulo do Node
@@ -30,6 +32,8 @@ const ELEMENTOS = [
   { type: 'auth-admin', pattern: 'packages/auth-admin' },
   { type: 'i18n', pattern: 'packages/i18n' },
   { type: 'imagem', pattern: 'packages/imagem' },
+  // Interface compartilhada (ADR-038): tokens, fontes e componentes base.
+  { type: 'ui', pattern: 'packages/ui' },
   // HubKeep Intelligence (módulo opcional): depende do núcleo, nunca o contrário.
   { type: 'inteligencia', pattern: 'packages/inteligencia' },
   // O Intelligence no web (decisão do Cesar de 06/10/2026): a pasta do módulo no
@@ -121,7 +125,17 @@ const TRANSACAO_DE = {
 };
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/.turbo/**', 'supabase/**'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.next/**',
+      '**/.turbo/**',
+      'supabase/**',
+      // Mock de referência visual (ADR-038): HTML e JS de demonstração, fora do produto.
+      'docs/referencia/design/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
@@ -164,7 +178,15 @@ export default tseslint.config(
             // Rota, página, componente e proxy não importam db nem auth-admin.
             {
               from: { element: { type: 'web' } },
-              allow: para('aplicacao', 'dominio', 'contratos', 'i18n', 'imagem', 'web-servidor'),
+              allow: para(
+                'aplicacao',
+                'dominio',
+                'contratos',
+                'i18n',
+                'imagem',
+                'ui',
+                'web-servidor',
+              ),
             },
             {
               from: { element: { type: 'web-servidor' } },
@@ -193,13 +215,14 @@ export default tseslint.config(
                 'contratos',
                 'i18n',
                 'imagem',
+                'ui',
                 'web-servidor',
                 'inteligencia',
               ),
             },
             {
               from: { element: { type: 'tecnico' } },
-              allow: para('dominio', 'contratos', 'i18n', 'imagem'),
+              allow: para('dominio', 'contratos', 'i18n', 'imagem', 'ui'),
             },
             { from: { element: { type: 'conector' } }, allow: para('contratos') },
             // O Intelligence lê o domínio e formata pelo i18n; o resto do núcleo chega
@@ -240,6 +263,19 @@ export default tseslint.config(
               from: { element: { type: 'i18n' } },
               disallow: { to: { module: { origin: 'core' } } },
               message: 'packages/i18n roda no navegador: sem módulo do Node.',
+            },
+            // ui roda no navegador (web, PWA e telas do Intelligence): só React, nenhum
+            // outro pacote externo nem módulo do Node. Não importa outro pacote do
+            // HubKeep: o texto chega pronto, por prop, do catálogo de quem usa (ADR-038).
+            {
+              from: { element: { type: 'ui' } },
+              disallow: { to: { module: { origin: 'core' } } },
+              message: 'packages/ui roda no navegador: sem módulo do Node.',
+            },
+            {
+              from: { element: { type: 'ui' } },
+              disallow: { to: { module: { origin: 'external', source: '!react' } } },
+              message: 'packages/ui só importa React (ADR-038).',
             },
             // imagem é canvas no navegador (web e PWA): nenhum pacote externo nem módulo do Node.
             {
@@ -362,12 +398,13 @@ export default tseslint.config(
     },
   },
   {
-    // Regra 11 do CLAUDE.md (ADR-022): nenhum texto de interface fixo nos apps.
+    // Regra 11 do CLAUDE.md (ADR-022): nenhum texto de interface fixo nos apps
+    // nem nos componentes de packages/ui (ADR-038), que recebem o texto por prop.
     // Texto em JSX e em atributos exibidos (aria-*, placeholder, title, alt,
     // label) sai do catálogo de @hubkeep/i18n. A prova está em
     // tests/fronteiras.test.ts.
-    files: ['apps/**/*.tsx'],
-    ignores: ['apps/*/test/**'],
+    files: ['apps/**/*.tsx', 'packages/ui/**/*.tsx'],
+    ignores: ['apps/*/test/**', 'packages/ui/test/**'],
     plugins: { formatjs },
     rules: {
       'formatjs/no-literal-string-in-jsx': [
