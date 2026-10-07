@@ -1257,3 +1257,30 @@ As dez telas de cadastro e configuração (hotéis, locais, categorias, ativos, 
 - **Estilo inline:** não sobra nenhum `style=` nem `<a href>` no web. Tirar o `'unsafe-inline'` do `style-src` continua como pendência, porque é preciso conferir antes o que o próprio Next injeta.
 - **Verificação:** lint, typecheck e testes verdes. As telas foram vistas numa vitrine descartável (Vite, com a API simulada e dados fictícios), nos dois temas e em largura estreita, e a vitrine foi apagada. As telas logadas de verdade não foram vistas.
 
+
+### Respostas do Cesar (07/10/2026)
+
+- **P1:** P1a, P1b e P1c aprovadas, nessa ordem e com um PR cada, com o `Server-Timing` e as metas propostas. A P1 fica fora da zona protegida e corre em paralelo com a 1b.
+- **ADR-038 (identidade visual):** aprovado.
+- **Adendo ao ADR-026** (extensão por módulo e liberação no lint): texto aprovado.
+- **Fase 1b:** liberada. Começa pelas migrações da instrumentação, uma por vez, com a I1 primeiro. Nenhum PR de zona protegida abre junto com outro.
+- **Teste do kit:** continua, já no visual novo, depois da P1. As correções que saírem dele vão em PRs separados.
+- **Pseudo-idioma no web:** nenhum texto fixo nas telas de chamados, de OS, no detalhe com histórico nem em categorias. O que ficou sem mudar eram dados digitados. O Cesar vai repetir a conferência no PWA.
+- **Limpeza:** os worktrees dos branches já mergeados podem sair. O `wt/p1-medicao` só sai quando a P1 terminar.
+
+### Aviso ao agente do Intelligence (07/10/2026)
+
+O Cesar deu a parte dele nas aprovações do Intelligence. Os status estão no `docs/03`.
+- **Aprovados pelos dois (Kaio em 05 e 06/10, Cesar em 07/10):**
+  - ADR-033, ADR-034 e ADR-037;
+  - ADR-035, com a revisão de 06/10 (janela de leitura de 180 dias e validação entre chaves);
+  - as três regras do cálculo do dia (#101), que entram no `docs/03` com o PR da `app.insight`.
+- **ADR-036, aprovado pelo Cesar com uma condição.** A condição precisa do aceite do Kaio:
+  - cada resultado diário grava a versão da política e a versão da fórmula usadas;
+  - um recálculo fica marcado como recálculo, com a versão nova.
+- **Hotel novo num insight de rede, aprovado pelo Cesar com uma condição.** A condição também precisa do aceite do Kaio:
+  - o hash da lista de hotéis é calculado fora do `packages/inteligencia`, no job (com `node:crypto`) ou no banco (com `sha256()`);
+  - a função pura devolve só a lista canônica dos hotéis;
+  - nada de SHA-256 escrito à mão.
+- **Pedido:** registrar o aceite (ou não) das duas condições no `docs/diario-intelligence.md`. Até lá, o ADR-036 e a decisão do insight de rede continuam aguardando o Kaio.
+- **Etapa I:** a 1b foi liberada, e a I1 (criticidade de 1 a 5) é a primeira migração. As outras vêm uma por vez, cada uma depois do merge da anterior.
