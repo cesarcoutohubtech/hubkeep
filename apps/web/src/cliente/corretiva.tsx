@@ -18,10 +18,8 @@ import {
   Botao,
   Campo,
   Entrada,
-  MensagemDeErro,
   MensagemVazia,
   type NivelDePrioridade,
-  Nota,
   Painel,
   Selecao,
   Selo,
@@ -31,9 +29,12 @@ import {
 import Link from 'next/link';
 import { type FormEvent, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { type ErroDaApi, chamarApi } from './api';
+import { chamarApi } from './api';
 import { HistoricoDoRegistro } from './HistoricoDoRegistro';
-import { useIdioma, useMensagemDeErro, useT } from '../i18n/cliente';
+import { useIdioma, useT } from '../i18n/cliente';
+
+/** O aviso de resultado das ações mora em ./aviso; as telas da operação o pegam daqui. */
+export { Aviso } from './aviso';
 
 export type ChamadoResumido = z.infer<typeof ChamadoResumidoApi>;
 export type OsResumida = z.infer<typeof OsResumidaApi>;
@@ -586,21 +587,5 @@ export function LinhaDoTempo({ eventos }: { eventos: EventoDaLinhaDoTempo[] }) {
         </ol>
       )}
     </Painel>
-  );
-}
-
-/** Aviso de resultado das ações: feito, ou o erro da API traduzido. */
-export function Aviso({
-  aviso,
-}: {
-  aviso: { tipo: 'ok' } | { tipo: 'erro'; erro: ErroDaApi } | null;
-}) {
-  const t = useT();
-  const mensagemDeErro = useMensagemDeErro();
-  if (!aviso) return null;
-  return aviso.tipo === 'ok' ? (
-    <Nota tom="ok">{t('comum.feito')}</Nota>
-  ) : (
-    <MensagemDeErro>{mensagemDeErro(aviso.erro)}</MensagemDeErro>
   );
 }

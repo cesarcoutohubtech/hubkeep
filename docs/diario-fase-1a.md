@@ -1245,3 +1245,15 @@ Dividida em duas partes, cada uma no seu PR:
 Pedido do Cesar, registrado sem implementar:
 - **M4, na fase 1b, junto com a M2:** aprovação dos ativos cadastrados pelo celular, com a exigência por política de hotel. Os ativos existentes passam a aprovados. Conferido: o ativo não tem situação de cadastro que dê para reaproveitar (só `desativado_em` e `versao`); o modelo a seguir é o `status` do local. As propostas (padrão da política, quem aprova e se o pendente recebe chamado) vão ao Cesar antes de codificar.
 - **Auditoria geral, na fase 1c:** tela só de leitura com filtros, paginação e CSV, com o escopo pela RLS e a auditoria sem hotel só para o Admin do grupo e o Implantador (ADR-021). Reaproveita a tradução do D1.
+
+### U4b, cadastros e configuração (07/10/2026)
+
+As dez telas de cadastro e configuração (hotéis, locais, categorias, ativos, equipes, proprietários, bandeiras, membros, configuração e implantação) e o QR do ativo passaram para os componentes do `packages/ui`. Com isso, termina a U4.
+- **Título:** todas as telas do menu têm o título na barra superior. O h1 próprio e o "voltar" para o início saíram, porque o menu cumpre esse papel. Um teste confere que cada item do menu tem título.
+- **Peças comuns:** o aviso de resultado (`cliente/aviso.tsx`) agora aceita o texto de sucesso da ação e serve à operação e aos cadastros. A escolha do hotel e a lista de hotéis de quem vê ficaram em `cliente/cadastro.tsx`.
+- **Arranjo novo no `ui`:** formulário em linha (`hk-em-linha`), item de cadastro com cabeçalho (`hk-itens`, `hk-item-cabecalho`), lista dentro do item (`hk-sublista`) e o quadro do QR. A entrada e a lista têm a mesma altura mínima, para os campos lado a lado alinharem.
+- **Situação em selo:** ativo ou desativado, status do local e do hotel, vigência, papel vencido ou revogado, ativo parado e origem da política.
+- **Implantação:** só o visual. O conteúdo é o mesmo.
+- **Estilo inline:** não sobra nenhum `style=` nem `<a href>` no web. Tirar o `'unsafe-inline'` do `style-src` continua como pendência, porque é preciso conferir antes o que o próprio Next injeta.
+- **Verificação:** lint, typecheck e testes verdes. As telas foram vistas numa vitrine descartável (Vite, com a API simulada e dados fictícios), nos dois temas e em largura estreita, e a vitrine foi apagada. As telas logadas de verdade não foram vistas.
+

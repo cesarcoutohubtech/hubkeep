@@ -1,14 +1,13 @@
 'use client';
 // Equipes do hotel (fase 1a, A6): criar, renomear, desativar e pôr ou tirar
-// membro. Tela funcional, sem acabamento: o layout vem do protótipo validado.
+// membro. Visual do pacote de interface (ADR-038, U4b).
+import { Botao, Campo, Entrada, MensagemVazia, Painel, Selecao, Selo } from '@hubkeep/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
-import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
+import { chamarApi } from '../../../../cliente/api';
+import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
+import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
+import { useT } from '../../../../i18n/cliente';
 
-interface Hotel {
-  id: string;
-  nome: string;
-}
 interface Equipe {
   id: string;
   nome: string;
@@ -20,23 +19,11 @@ interface Lista {
   disponiveis: { usuarioId: string; nome: string }[];
 }
 
-type Aviso = { tipo: 'ok' } | { tipo: 'erro'; erro: ErroDaApi };
-
 export default function EquipesDoHotel() {
   const t = useT();
-  const mensagemDeErro = useMensagemDeErro();
-  const [hoteis, setHoteis] = useState<Hotel[]>([]);
-  const [hotelId, setHotelId] = useState('');
+  const { hoteis, hotelId, setHotelId, erro: erroDosHoteis } = useHoteis();
   const [lista, setLista] = useState<Lista | null>(null);
-  const [aviso, setAviso] = useState<Aviso | null>(null);
-
-  useEffect(() => {
-    void chamarApi<{ hoteis: Hotel[] }>('/api/v1/hoteis').then((r) => {
-      if (!r.ok) return setAviso({ tipo: 'erro', erro: r.erro });
-      setHoteis(r.dados.hoteis);
-      setHotelId((atual) => atual || r.dados.hoteis[0]?.id || '');
-    });
-  }, []);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
   const carregar = useCallback(async () => {
     if (!hotelId) return;
@@ -65,47 +52,38 @@ export default function EquipesDoHotel() {
   }
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('admin.equipes.titulo')}</h1>
-      <select
-        aria-label={t('admin.equipes.escolher_hotel')}
-        value={hotelId}
-        onChange={(e) => setHotelId(e.target.value)}
-      >
-        {hoteis.map((h) => (
-          <option key={h.id} value={h.id}>
-            {h.nome}
-          </option>
-        ))}
-      </select>
-      {aviso && (
-        <p role={aviso.tipo === 'erro' ? 'alert' : 'status'}>
-          {aviso.tipo === 'ok' ? t('admin.membros.feito') : mensagemDeErro(aviso.erro)}
-        </p>
-      )}
-
-      <form onSubmit={criar} style={{ display: 'flex', gap: 8 }}>
-        <input name="nome" placeholder={t('admin.equipes.campo.nome')} required />
-        <button type="submit">{t('admin.equipes.acao.criar')}</button>
+    <Painel>
+      <div className="hk-filtros">
+        <SeletorDeHotel
+          rotulo={t('admin.equipes.escolher_hotel')}
+          hoteis={hoteis}
+          valor={hotelId}
+          aoEscolher={setHotelId}
+        />
+      </div>
+      <Aviso aviso={erroDosHoteis ? { tipo: 'erro', erro: erroDosHoteis } : aviso} />
+      <form onSubmit={criar} className="hk-em-linha">
+        <Campo rotulo={t('admin.equipes.campo.nome')}>
+          {(p) => <Entrada {...p} name="nome" required />}
+        </Campo>
+        <Botao type="submit" variante="primario">
+          {t('admin.equipes.acao.criar')}
+        </Botao>
       </form>
 
       {!lista ? (
-        <p>{t('comum.carregando')}</p>
+        <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
       ) : lista.equipes.length === 0 ? (
-        <p>{t('admin.equipes.vazio')}</p>
+        <MensagemVazia>{t('admin.equipes.vazio')}</MensagemVazia>
       ) : (
-        <ul style={{ display: 'grid', gap: 12, padding: 0, listStyle: 'none' }}>
+        <ul className="hk-lista hk-itens">
           {lista.equipes.map((e) => {
             const ativos = e.membros.filter((m) => m.ativo);
             return (
-              <li
-                key={e.id}
-                style={{ display: 'grid', gap: 6, borderTop: '1px solid #ddd', paddingTop: 8 }}
-              >
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <li key={e.id}>
+                <div className="hk-item-cabecalho">
                   <form
-                    style={{ display: 'flex', gap: 4 }}
+                    className="hk-em-linha"
                     onSubmit={(ev) => {
                       ev.preventDefault();
                       const nome = String(new FormData(ev.currentTarget).get('nome') ?? '');
@@ -115,54 +93,58 @@ export default function EquipesDoHotel() {
                       });
                     }}
                   >
-                    <input
+                    <Entrada
                       name="nome"
                       defaultValue={e.nome}
                       aria-label={t('admin.equipes.campo.nome')}
                     />
-                    <button type="submit">{t('admin.equipes.acao.renomear')}</button>
+                    <Botao type="submit" tamanho="pequeno">
+                      {t('admin.equipes.acao.renomear')}
+                    </Botao>
                   </form>
-                  <small>
+                  <Selo tom={e.ativa ? 'verde' : 'cinza'}>
                     {e.ativa ? t('admin.equipes.ativa') : t('admin.equipes.desativada')}
-                  </small>
-                  <button
-                    onClick={() =>
-                      void executar(
-                        `/api/v1/equipes/${e.id}/${e.ativa ? 'desativacao' : 'reativacao'}`,
-                        {
-                          method: 'POST',
-                        },
-                      )
-                    }
-                  >
-                    {e.ativa ? t('admin.equipes.acao.desativar') : t('admin.equipes.acao.reativar')}
-                  </button>
+                  </Selo>
+                  <div className="hk-linha-de-botoes">
+                    <Botao
+                      tamanho="pequeno"
+                      onClick={() =>
+                        void executar(
+                          `/api/v1/equipes/${e.id}/${e.ativa ? 'desativacao' : 'reativacao'}`,
+                          { method: 'POST' },
+                        )
+                      }
+                    >
+                      {e.ativa
+                        ? t('admin.equipes.acao.desativar')
+                        : t('admin.equipes.acao.reativar')}
+                    </Botao>
+                  </div>
                 </div>
                 {ativos.length === 0 ? (
-                  <small>{t('admin.equipes.sem_membros')}</small>
+                  <p className="hk-suave">{t('admin.equipes.sem_membros')}</p>
                 ) : (
-                  <ul>
+                  <ul className="hk-sublista">
                     {ativos.map((m) => (
-                      <li key={m.usuarioId} style={{ display: 'flex', gap: 8 }}>
+                      <li key={m.usuarioId}>
                         <span>{m.nome}</span>
-                        <button
+                        <Botao
+                          tamanho="pequeno"
                           onClick={() =>
                             void executar(
                               `/api/v1/equipes/${e.id}/membros/${m.usuarioId}/remocao`,
-                              {
-                                method: 'POST',
-                              },
+                              { method: 'POST' },
                             )
                           }
                         >
                           {t('admin.equipes.acao.tirar')}
-                        </button>
+                        </Botao>
                       </li>
                     ))}
                   </ul>
                 )}
                 <form
-                  style={{ display: 'flex', gap: 4 }}
+                  className="hk-em-linha"
                   onSubmit={(ev) => {
                     ev.preventDefault();
                     const usuarioId = String(new FormData(ev.currentTarget).get('usuarioId') ?? '');
@@ -174,7 +156,7 @@ export default function EquipesDoHotel() {
                     }
                   }}
                 >
-                  <select name="usuarioId" aria-label={t('admin.equipes.escolher_membro')}>
+                  <Selecao name="usuarioId" aria-label={t('admin.equipes.escolher_membro')}>
                     <option value="">{t('admin.equipes.escolher_membro')}</option>
                     {lista.disponiveis
                       .filter((d) => !ativos.some((m) => m.usuarioId === d.usuarioId))
@@ -183,14 +165,16 @@ export default function EquipesDoHotel() {
                           {d.nome}
                         </option>
                       ))}
-                  </select>
-                  <button type="submit">{t('admin.equipes.acao.por')}</button>
+                  </Selecao>
+                  <Botao type="submit" tamanho="pequeno">
+                    {t('admin.equipes.acao.por')}
+                  </Botao>
                 </form>
               </li>
             );
           })}
         </ul>
       )}
-    </main>
+    </Painel>
   );
 }

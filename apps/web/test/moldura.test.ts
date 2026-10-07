@@ -37,4 +37,13 @@ describe('título da barra pela rota', () => {
     expect(tituloDaRota('/chamados/0190a/x')).toBeUndefined();
     expect(tituloDaRota('/os')).toBe('corretiva.os.titulo');
   });
+
+  it.each(MENU.flatMap((g) => g.itens))('$href tem título na barra', ({ href }) => {
+    expect(tituloDaRota(href)).toBeDefined();
+  });
+
+  it('o título do cadastro vem da própria tela', () => {
+    expect(tituloDaRota('/admin/ativos')).toBe('admin.ativos.titulo');
+    expect(tituloDaRota('/admin/ativos/x')).toBeUndefined();
+  });
 });

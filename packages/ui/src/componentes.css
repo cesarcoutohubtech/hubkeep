@@ -385,6 +385,8 @@
 
 .hk-painel-acoes {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-left: auto;
 }
@@ -646,6 +648,8 @@
 
 .hk-controle {
   width: 100%;
+  /* Mesma altura para entrada e lista, para os campos lado a lado alinharem. */
+  min-height: 38px;
   padding: 7px 10px;
   border: 1px solid var(--hk-linha);
   border-radius: 7px;
@@ -777,6 +781,80 @@ textarea.hk-controle {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+/* Formulário em linha dos cadastros (criar, renomear, conceder): campos lado
+   a lado e o botão alinhado embaixo. */
+.hk-em-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+}
+
+.hk-em-linha .hk-campo {
+  margin-bottom: 0;
+}
+
+.hk-em-linha .hk-controle {
+  width: auto;
+  min-width: 120px;
+  max-width: 260px;
+}
+
+.hk-em-linha .hk-marcar {
+  margin: 0 0 8px;
+}
+
+/* Item de cadastro: cabeçalho com o nome, a situação e as ações, e o resto
+   empilhado embaixo. */
+.hk-lista.hk-itens > li {
+  display: grid;
+  justify-content: normal;
+  gap: 10px;
+  padding: 14px 2px;
+}
+
+.hk-item-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.hk-item-cabecalho > strong {
+  font-weight: 600;
+  color: var(--hk-titulo);
+}
+
+.hk-item-cabecalho > .hk-linha-de-botoes {
+  margin-left: auto;
+}
+
+/* Lista dentro do item (membros da equipe, papéis, vínculos, campos). */
+.hk-sublista {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 0 2px 14px;
+  list-style: none;
+  border-left: 3px solid var(--hk-linha);
+}
+
+.hk-sublista > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 14px;
+}
+
+/* QR do ativo: o quadro branco fica igual nos dois temas, para a leitura. */
+.hk-qr {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin: 0;
 }
 
 /* Bloco de ação dentro de um painel (triagem, aceite). */

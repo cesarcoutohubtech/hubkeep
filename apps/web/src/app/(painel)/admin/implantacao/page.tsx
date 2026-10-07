@@ -1,15 +1,15 @@
 'use client';
 // Painel de implantação do hotel (fase 1a, A5): o que falta para o hotel
 // operar. O Implantador cadastra as pessoas pela tela de membros, abaixo do
-// próprio papel. Tela funcional, sem acabamento: o layout vem do protótipo.
+// próprio papel. Só o visual do pacote de interface (ADR-038, U4b); o
+// conteúdo é o mesmo.
+import { MensagemDeErro, MensagemVazia, Nota, Painel, comoBotao } from '@hubkeep/ui';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
 import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
-interface Hotel {
-  id: string;
-  nome: string;
-}
 type Papel =
   | 'admin_grupo'
   | 'gestor_csc'
@@ -24,7 +24,7 @@ type Pendencia =
   | 'sem_gerente'
   | 'sem_tecnico'
   | 'pessoas_sem_papel_vigente';
-interface Painel {
+interface PainelDoHotel {
   hotel: { id: string; nome: string; status: string };
   locais: { uhsAtivas: number; uhsPendentes: number; areasComuns: number; inativos: number };
   ativos: { ativos: number; semCategoria: number; locaisSemAtivo: number };
@@ -36,23 +36,14 @@ interface Painel {
 export default function PainelDeImplantacao() {
   const t = useT();
   const mensagemDeErro = useMensagemDeErro();
-  const [hoteis, setHoteis] = useState<Hotel[]>([]);
-  const [hotelId, setHotelId] = useState('');
-  const [painel, setPainel] = useState<Painel | null>(null);
+  const { hoteis, hotelId, setHotelId, erro: erroDosHoteis } = useHoteis();
+  const [painel, setPainel] = useState<PainelDoHotel | null>(null);
   const [erro, setErro] = useState<ErroDaApi | null>(null);
-
-  useEffect(() => {
-    void chamarApi<{ hoteis: Hotel[] }>('/api/v1/hoteis').then((r) => {
-      if (!r.ok) return setErro(r.erro);
-      setHoteis(r.dados.hoteis);
-      setHotelId((atual) => atual || r.dados.hoteis[0]?.id || '');
-    });
-  }, []);
 
   useEffect(() => {
     if (!hotelId) return;
     setPainel(null);
-    void chamarApi<Painel>(`/api/v1/hoteis/${hotelId}/implantacao`).then((r) => {
+    void chamarApi<PainelDoHotel>(`/api/v1/hoteis/${hotelId}/implantacao`).then((r) => {
       if (r.ok) {
         setPainel(r.dados);
         setErro(null);
@@ -60,48 +51,51 @@ export default function PainelDeImplantacao() {
     });
   }, [hotelId]);
 
+  const falha = erro ?? erroDosHoteis;
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('admin.implantacao.titulo')}</h1>
-      <select
-        aria-label={t('admin.implantacao.escolher_hotel')}
-        value={hotelId}
-        onChange={(e) => setHotelId(e.target.value)}
-      >
-        {hoteis.map((h) => (
-          <option key={h.id} value={h.id}>
-            {h.nome}
-          </option>
-        ))}
-      </select>
-      {erro ? (
-        <p role="alert">{mensagemDeErro(erro)}</p>
+    <div className="hk-pilha">
+      <div className="hk-filtros">
+        <SeletorDeHotel
+          rotulo={t('admin.implantacao.escolher_hotel')}
+          hoteis={hoteis}
+          valor={hotelId}
+          aoEscolher={setHotelId}
+        />
+      </div>
+      {falha ? (
+        <MensagemDeErro>{mensagemDeErro(falha)}</MensagemDeErro>
       ) : !painel ? (
-        <p>{t('comum.carregando')}</p>
+        <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
       ) : (
         <>
-          <section>
-            <h2>{t('admin.implantacao.pendencias')}</h2>
+          <Painel titulo={t('admin.implantacao.pendencias')}>
             {painel.pendencias.length === 0 ? (
-              <p>{t('admin.implantacao.sem_pendencias')}</p>
+              <Nota tom="ok">{t('admin.implantacao.sem_pendencias')}</Nota>
             ) : (
-              <ul>
+              <ul className="hk-lista">
                 {painel.pendencias.map((p) => (
                   <li key={p}>{t(`admin.implantacao.pendencia.${p}` as const)}</li>
                 ))}
               </ul>
             )}
-          </section>
-          <section>
-            <h2>{t('admin.implantacao.locais')}</h2>
-            <p>{t('admin.implantacao.resumo_locais', painel.locais)}</p>
-            <h2>{t('admin.implantacao.ativos')}</h2>
-            <p>{t('admin.implantacao.resumo_ativos', painel.ativos)}</p>
-          </section>
-          <section>
-            <h2>{t('admin.implantacao.pessoas')}</h2>
-            <ul>
+          </Painel>
+          <div className="hk-grade" data-colunas="2">
+            <Painel titulo={t('admin.implantacao.locais')}>
+              <p>{t('admin.implantacao.resumo_locais', painel.locais)}</p>
+            </Painel>
+            <Painel titulo={t('admin.implantacao.ativos')}>
+              <p>{t('admin.implantacao.resumo_ativos', painel.ativos)}</p>
+            </Painel>
+          </div>
+          <Painel
+            titulo={t('admin.implantacao.pessoas')}
+            acoes={
+              <Link href="/admin/membros" {...comoBotao('padrao', 'pequeno')}>
+                {t('admin.implantacao.ir_para_membros')}
+              </Link>
+            }
+          >
+            <ul className="hk-lista">
               {painel.papeis.map((p) => (
                 <li key={p.papel}>
                   {t('admin.implantacao.papel_com_pessoas', {
@@ -112,19 +106,18 @@ export default function PainelDeImplantacao() {
               ))}
             </ul>
             {painel.pessoasSemPapelVigente.length > 0 && (
-              <>
-                <h3>{t('admin.implantacao.sem_papel_vigente')}</h3>
-                <ul>
+              <div className="hk-bloco" data-tom="atencao">
+                <h3 className="hk-bloco-titulo">{t('admin.implantacao.sem_papel_vigente')}</h3>
+                <ul className="hk-sublista">
                   {painel.pessoasSemPapelVigente.map((p) => (
                     <li key={p.usuarioId}>{p.nome}</li>
                   ))}
                 </ul>
-              </>
+              </div>
             )}
-            <a href="/admin/membros">{t('admin.implantacao.ir_para_membros')}</a>
-          </section>
+          </Painel>
         </>
       )}
-    </main>
+    </div>
   );
 }

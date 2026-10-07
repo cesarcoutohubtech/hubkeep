@@ -1,9 +1,21 @@
 'use client';
 // Proprietários e vínculos (fase 1a, A4; ADR-031): cadastro, vínculo com UH ou
-// hotel inteiro, vigência e acesso (papel proprietario, somente leitura). Tela
-// funcional, sem acabamento: o layout vem do protótipo validado.
+// hotel inteiro, vigência e acesso (papel proprietario, somente leitura).
+// Visual do pacote de interface (ADR-038, U4b).
+import {
+  Botao,
+  Campo,
+  Entrada,
+  MensagemDeErro,
+  MensagemVazia,
+  Painel,
+  type PropsDoControle,
+  Selecao,
+  Selo,
+} from '@hubkeep/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
 import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
 interface Hotel {
@@ -36,8 +48,6 @@ interface Membro {
   ativo: boolean;
 }
 
-type Aviso = { tipo: 'ok' } | { tipo: 'erro'; erro: ErroDaApi };
-
 const hoje = () => new Date().toISOString().slice(0, 10);
 const texto = (f: FormData, campo: string) => {
   const v = String(f.get(campo) ?? '').trim();
@@ -52,7 +62,8 @@ export default function ProprietariosEVinculos() {
   const [membros, setMembros] = useState<Membro[]>([]);
   const [hotelDoVinculo, setHotelDoVinculo] = useState('');
   const [locais, setLocais] = useState<Local[]>([]);
-  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [erroDaLista, setErroDaLista] = useState<ErroDaApi | null>(null);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
   const carregar = useCallback(async () => {
     const [p, h, m] = await Promise.all([
@@ -61,7 +72,7 @@ export default function ProprietariosEVinculos() {
       chamarApi<{ membros: Membro[] }>('/api/v1/membros'),
     ]);
     if (p.ok) setProprietarios(p.dados.proprietarios);
-    else setAviso({ tipo: 'erro', erro: p.erro });
+    else setErroDaLista(p.erro);
     if (h.ok) setHoteis(h.dados.hoteis);
     if (m.ok) setMembros(m.dados.membros.filter((x) => x.ativo));
   }, []);
@@ -136,220 +147,219 @@ export default function ProprietariosEVinculos() {
   }
 
   if (!proprietarios) {
-    return aviso?.tipo === 'erro' ? (
-      <p role="alert">{mensagemDeErro(aviso.erro)}</p>
+    return erroDaLista ? (
+      <MensagemDeErro>{mensagemDeErro(erroDaLista)}</MensagemDeErro>
     ) : (
-      <p>{t('comum.carregando')}</p>
+      <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
     );
   }
 
   const campoProprietario = (
-    <select
-      name="proprietarioId"
-      aria-label={t('admin.proprietarios.escolher_proprietario')}
-      required
-    >
-      <option value="">{t('admin.proprietarios.escolher_proprietario')}</option>
-      {proprietarios.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.nome}
-        </option>
-      ))}
-    </select>
+    <Campo rotulo={t('admin.proprietarios.escolher_proprietario')}>
+      {(p: PropsDoControle) => (
+        <Selecao {...p} name="proprietarioId" required>
+          <option value="">{t('admin.proprietarios.escolher_proprietario')}</option>
+          {proprietarios.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.nome}
+            </option>
+          ))}
+        </Selecao>
+      )}
+    </Campo>
   );
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('admin.proprietarios.titulo')}</h1>
-      {aviso && (
-        <p role={aviso.tipo === 'erro' ? 'alert' : 'status'}>
-          {aviso.tipo === 'ok' ? t('admin.membros.feito') : mensagemDeErro(aviso.erro)}
-        </p>
-      )}
+    <div className="hk-pilha">
+      <Aviso aviso={aviso} />
+      <div className="hk-grade" data-colunas="2">
+        <Painel titulo={t('admin.proprietarios.novo')}>
+          <form onSubmit={criar} className="hk-em-linha">
+            <Campo rotulo={t('admin.proprietarios.campo.nome')}>
+              {(p) => <Entrada {...p} name="nome" required />}
+            </Campo>
+            <Campo rotulo={t('admin.proprietarios.campo.documento')}>
+              {(p) => <Entrada {...p} name="documento" />}
+            </Campo>
+            <Botao type="submit" variante="primario">
+              {t('admin.proprietarios.acao.criar')}
+            </Botao>
+          </form>
+        </Painel>
 
-      <section style={{ display: 'grid', gap: 8 }}>
-        <h2>{t('admin.proprietarios.novo')}</h2>
-        <form onSubmit={criar} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input
-            name="nome"
-            placeholder={t('admin.proprietarios.campo.nome')}
-            aria-label={t('admin.proprietarios.campo.nome')}
-            required
-          />
-          <input
-            name="documento"
-            placeholder={t('admin.proprietarios.campo.documento')}
-            aria-label={t('admin.proprietarios.campo.documento')}
-          />
-          <button type="submit">{t('admin.proprietarios.acao.criar')}</button>
-        </form>
-      </section>
+        <Painel
+          titulo={t('admin.proprietarios.acesso')}
+          dica={t('admin.proprietarios.acesso_ajuda')}
+        >
+          <div className="hk-pilha">
+            <form onSubmit={darAcesso} className="hk-em-linha">
+              {campoProprietario}
+              <Campo rotulo={t('admin.proprietarios.escolher_membro')}>
+                {(p) => (
+                  <Selecao {...p} name="usuarioId" required>
+                    <option value="">{t('admin.proprietarios.escolher_membro')}</option>
+                    {membros.map((m) => (
+                      <option key={m.usuarioId} value={m.usuarioId}>
+                        {m.nome}
+                      </option>
+                    ))}
+                  </Selecao>
+                )}
+              </Campo>
+              <Botao type="submit">{t('admin.proprietarios.acao.dar_acesso')}</Botao>
+            </form>
+            <form onSubmit={convidar} className="hk-em-linha">
+              {campoProprietario}
+              <Campo rotulo={t('admin.membros.campo.nome')}>
+                {(p) => <Entrada {...p} name="nome" required />}
+              </Campo>
+              <Campo rotulo={t('login.campo.email')}>
+                {(p) => <Entrada {...p} name="email" type="email" required />}
+              </Campo>
+              <Botao type="submit">{t('admin.proprietarios.acao.convidar')}</Botao>
+            </form>
+          </div>
+        </Painel>
+      </div>
 
-      <section style={{ display: 'grid', gap: 8 }}>
-        <h2>{t('admin.proprietarios.vincular')}</h2>
-        <form onSubmit={vincular} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Painel titulo={t('admin.proprietarios.vincular')}>
+        <form onSubmit={vincular} className="hk-em-linha">
           {campoProprietario}
-          <select
-            aria-label={t('admin.proprietarios.escolher_hotel')}
-            value={hotelDoVinculo}
-            onChange={(e) => setHotelDoVinculo(e.target.value)}
-            required
-          >
-            <option value="">{t('admin.proprietarios.escolher_hotel')}</option>
-            {hoteis.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.nome}
-              </option>
-            ))}
-          </select>
-          <select name="localId" aria-label={t('admin.proprietarios.alvo.hotel_inteiro')}>
-            <option value="">{t('admin.proprietarios.alvo.hotel_inteiro')}</option>
-            {locais.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nome}
-              </option>
-            ))}
-          </select>
-          <label style={{ display: 'flex', gap: 4 }}>
-            {t('admin.proprietarios.campo.inicio')}
-            <input type="date" name="inicio" defaultValue={hoje()} required />
-          </label>
-          <label style={{ display: 'flex', gap: 4 }}>
-            {t('admin.proprietarios.campo.fim')}
-            <input type="date" name="fim" />
-          </label>
-          <button type="submit">{t('admin.proprietarios.acao.vincular')}</button>
-        </form>
-      </section>
-
-      <section style={{ display: 'grid', gap: 8 }}>
-        <h2>{t('admin.proprietarios.acesso')}</h2>
-        <small>{t('admin.proprietarios.acesso_ajuda')}</small>
-        <form onSubmit={darAcesso} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {campoProprietario}
-          <select name="usuarioId" aria-label={t('admin.proprietarios.escolher_membro')} required>
-            <option value="">{t('admin.proprietarios.escolher_membro')}</option>
-            {membros.map((m) => (
-              <option key={m.usuarioId} value={m.usuarioId}>
-                {m.nome}
-              </option>
-            ))}
-          </select>
-          <button type="submit">{t('admin.proprietarios.acao.dar_acesso')}</button>
-        </form>
-        <form onSubmit={convidar} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {campoProprietario}
-          <input
-            name="nome"
-            placeholder={t('admin.membros.campo.nome')}
-            aria-label={t('admin.membros.campo.nome')}
-            required
-          />
-          <input
-            name="email"
-            type="email"
-            placeholder={t('login.campo.email')}
-            aria-label={t('login.campo.email')}
-            required
-          />
-          <button type="submit">{t('admin.proprietarios.acao.convidar')}</button>
-        </form>
-      </section>
-
-      {proprietarios.length === 0 ? (
-        <p>{t('admin.proprietarios.vazio')}</p>
-      ) : (
-        <ul style={{ display: 'grid', gap: 12, padding: 0, listStyle: 'none' }}>
-          {proprietarios.map((p) => (
-            <li
-              key={p.id}
-              style={{ display: 'grid', gap: 6, borderTop: '1px solid #ddd', paddingTop: 8 }}
-            >
-              <form
-                key={`${p.nome}|${p.documento ?? ''}`}
-                style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}
-                onSubmit={(ev) => {
-                  ev.preventDefault();
-                  const f = new FormData(ev.currentTarget);
-                  void executar(`/api/v1/proprietarios/${p.id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                      nome: texto(f, 'nome') ?? '',
-                      documento: texto(f, 'documento'),
-                    }),
-                  });
-                }}
+          <Campo rotulo={t('admin.proprietarios.escolher_hotel')}>
+            {(p) => (
+              <Selecao
+                {...p}
+                value={hotelDoVinculo}
+                onChange={(e) => setHotelDoVinculo(e.target.value)}
+                required
               >
-                <input
-                  name="nome"
-                  defaultValue={p.nome}
-                  aria-label={t('admin.proprietarios.campo.nome')}
-                />
-                <input
-                  name="documento"
-                  defaultValue={p.documento ?? ''}
-                  aria-label={t('admin.proprietarios.campo.documento')}
-                />
-                <button type="submit">{t('admin.proprietarios.acao.salvar')}</button>
-              </form>
-              {p.vinculos.length === 0 ? (
-                <small>{t('admin.proprietarios.sem_vinculos')}</small>
-              ) : (
-                <ul>
-                  {p.vinculos.map((v) => (
-                    <li key={v.id}>
-                      <form
-                        key={`${v.vigenciaInicio}|${v.vigenciaFim ?? ''}`}
-                        style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}
-                        onSubmit={(ev) => {
-                          ev.preventDefault();
-                          const f = new FormData(ev.currentTarget);
-                          void executar(`/api/v1/vinculos-de-proprietario/${v.id}/vigencia`, {
-                            method: 'PUT',
-                            body: JSON.stringify({
+                <option value="">{t('admin.proprietarios.escolher_hotel')}</option>
+                {hoteis.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.nome}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+          </Campo>
+          <Campo rotulo={t('admin.proprietarios.alvo.hotel_inteiro')}>
+            {(p) => (
+              <Selecao {...p} name="localId">
+                <option value="">{t('admin.proprietarios.alvo.hotel_inteiro')}</option>
+                {locais.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+          </Campo>
+          <Campo rotulo={t('admin.proprietarios.campo.inicio')}>
+            {(p) => <Entrada {...p} type="date" name="inicio" defaultValue={hoje()} required />}
+          </Campo>
+          <Campo rotulo={t('admin.proprietarios.campo.fim')}>
+            {(p) => <Entrada {...p} type="date" name="fim" />}
+          </Campo>
+          <Botao type="submit" variante="primario">
+            {t('admin.proprietarios.acao.vincular')}
+          </Botao>
+        </form>
+      </Painel>
+
+      <Painel>
+        {proprietarios.length === 0 ? (
+          <MensagemVazia>{t('admin.proprietarios.vazio')}</MensagemVazia>
+        ) : (
+          <ul className="hk-lista hk-itens">
+            {proprietarios.map((p) => (
+              <li key={p.id}>
+                <form
+                  key={`${p.nome}|${p.documento ?? ''}`}
+                  className="hk-em-linha"
+                  onSubmit={(ev) => {
+                    ev.preventDefault();
+                    const f = new FormData(ev.currentTarget);
+                    void executar(`/api/v1/proprietarios/${p.id}`, {
+                      method: 'PUT',
+                      body: JSON.stringify({
+                        nome: texto(f, 'nome') ?? '',
+                        documento: texto(f, 'documento'),
+                      }),
+                    });
+                  }}
+                >
+                  <Entrada
+                    name="nome"
+                    defaultValue={p.nome}
+                    aria-label={t('admin.proprietarios.campo.nome')}
+                  />
+                  <Entrada
+                    name="documento"
+                    defaultValue={p.documento ?? ''}
+                    aria-label={t('admin.proprietarios.campo.documento')}
+                  />
+                  <Botao type="submit" tamanho="pequeno">
+                    {t('admin.proprietarios.acao.salvar')}
+                  </Botao>
+                </form>
+                {p.vinculos.length === 0 ? (
+                  <p className="hk-suave">{t('admin.proprietarios.sem_vinculos')}</p>
+                ) : (
+                  <ul className="hk-sublista">
+                    {p.vinculos.map((v) => (
+                      <li key={v.id}>
+                        <form
+                          key={`${v.vigenciaInicio}|${v.vigenciaFim ?? ''}`}
+                          className="hk-em-linha"
+                          onSubmit={(ev) => {
+                            ev.preventDefault();
+                            const f = new FormData(ev.currentTarget);
+                            void executar(`/api/v1/vinculos-de-proprietario/${v.id}/vigencia`, {
+                              method: 'PUT',
+                              body: JSON.stringify({
+                                tipo: v.tipo,
+                                vigenciaInicio: texto(f, 'inicio') ?? '',
+                                vigenciaFim: texto(f, 'fim'),
+                              }),
+                            });
+                          }}
+                        >
+                          <span>
+                            {t('admin.proprietarios.vinculo', {
                               tipo: v.tipo,
-                              vigenciaInicio: texto(f, 'inicio') ?? '',
-                              vigenciaFim: texto(f, 'fim'),
-                            }),
-                          });
-                        }}
-                      >
-                        <span>
-                          {t('admin.proprietarios.vinculo', {
-                            tipo: v.tipo,
-                            hotel: v.hotelNome,
-                            local: v.localNome ?? '',
-                          })}
-                        </span>
-                        <small>
-                          {t('admin.proprietarios.vigente', { vigente: String(v.vigente) })}
-                        </small>
-                        <input
-                          type="date"
-                          name="inicio"
-                          defaultValue={v.vigenciaInicio}
-                          aria-label={t('admin.proprietarios.campo.inicio')}
-                          required
-                        />
-                        <input
-                          type="date"
-                          name="fim"
-                          defaultValue={v.vigenciaFim ?? ''}
-                          aria-label={t('admin.proprietarios.campo.fim')}
-                        />
-                        <button type="submit">
-                          {t('admin.proprietarios.acao.alterar_vigencia')}
-                        </button>
-                      </form>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+                              hotel: v.hotelNome,
+                              local: v.localNome ?? '',
+                            })}
+                          </span>
+                          <Selo tom={v.vigente ? 'verde' : 'cinza'}>
+                            {t('admin.proprietarios.vigente', { vigente: String(v.vigente) })}
+                          </Selo>
+                          <Entrada
+                            type="date"
+                            name="inicio"
+                            defaultValue={v.vigenciaInicio}
+                            aria-label={t('admin.proprietarios.campo.inicio')}
+                            required
+                          />
+                          <Entrada
+                            type="date"
+                            name="fim"
+                            defaultValue={v.vigenciaFim ?? ''}
+                            aria-label={t('admin.proprietarios.campo.fim')}
+                          />
+                          <Botao type="submit" tamanho="pequeno">
+                            {t('admin.proprietarios.acao.alterar_vigencia')}
+                          </Botao>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Painel>
+    </div>
   );
 }

@@ -81,16 +81,23 @@ export const MENU: readonly { grupo: Chave; itens: readonly { href: string; chav
 export const itemAtivo = (caminho: string, href: string) =>
   href === '/' ? caminho === '/' : caminho === href || caminho.startsWith(`${href}/`);
 
-/**
- * Título da barra superior (o h1 da tela), pela rota. A tela que ainda não
- * está aqui traz o próprio h1 até passar para os componentes (U4).
- */
+/** Título da barra superior (o h1 da tela), pela rota. */
 const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/$/, 'menu.inicio'],
   [/^\/chamados$/, 'corretiva.chamados.titulo'],
   [/^\/chamados\/[^/]+$/, 'corretiva.chamado.titulo'],
   [/^\/os$/, 'corretiva.os.titulo'],
   [/^\/admin\/paradas$/, 'admin.paradas.titulo'],
+  [/^\/admin\/hoteis$/, 'admin.hoteis.titulo'],
+  [/^\/admin\/locais$/, 'admin.locais.titulo'],
+  [/^\/admin\/categorias$/, 'admin.categorias.titulo'],
+  [/^\/admin\/ativos$/, 'admin.ativos.titulo'],
+  [/^\/admin\/equipes$/, 'admin.equipes.titulo'],
+  [/^\/admin\/proprietarios$/, 'admin.proprietarios.titulo'],
+  [/^\/admin\/bandeiras$/, 'admin.bandeiras.titulo'],
+  [/^\/admin\/membros$/, 'admin.membros.titulo'],
+  [/^\/admin\/configuracao$/, 'admin.configuracao.titulo'],
+  [/^\/admin\/implantacao$/, 'admin.implantacao.titulo'],
 ];
 
 export const tituloDaRota = (caminho: string): Chave | undefined =>

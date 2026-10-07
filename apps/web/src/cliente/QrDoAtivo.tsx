@@ -1,9 +1,11 @@
 'use client';
 // QR individual do ativo (fase 1a, B5): a imagem é gerada no navegador (uqr
 // calcula a matriz; o SVG sai daqui), com o endereço do PWA do técnico e o
-// caminho /q/<codigo>. O código não revela o id do ativo. Tela funcional, sem
-// acabamento: a etiqueta de impressão e o QR em lote ficam para a 1b.
+// caminho /q/<codigo>. O código não revela o id do ativo. A etiqueta de
+// impressão e o QR em lote ficam para a 1b. O quadro fica branco com módulos
+// pretos nos dois temas, para a leitura pela câmera.
 import { caminhoDoQr } from '@hubkeep/dominio';
+import { Botao, MensagemDeErro } from '@hubkeep/ui';
 import { useState } from 'react';
 import { encode } from 'uqr';
 import { useT } from '../i18n/cliente';
@@ -32,15 +34,17 @@ export function QrDoAtivo({ ativo }: { ativo: { nome: string; codigoQr: string }
   const [aberto, setAberto] = useState(false);
   if (!aberto) {
     return (
-      <button type="button" onClick={() => setAberto(true)}>
-        {t('admin.ativos.qr.ver')}
-      </button>
+      <div>
+        <Botao tamanho="pequeno" onClick={() => setAberto(true)}>
+          {t('admin.ativos.qr.ver')}
+        </Botao>
+      </div>
     );
   }
   const endereco = URL_DO_TECNICO ? enderecoDoQr(URL_DO_TECNICO, ativo.codigoQr) : null;
   const svg = endereco ? caminhoSvgDoQr(endereco) : null;
   return (
-    <figure style={{ display: 'grid', gap: 4, margin: 0, justifyItems: 'start' }}>
+    <figure className="hk-qr">
       {svg ? (
         <svg
           role="img"
@@ -54,14 +58,14 @@ export function QrDoAtivo({ ativo }: { ativo: { nome: string; codigoQr: string }
           <path d={svg.d} fill="#000000" />
         </svg>
       ) : (
-        <small role="alert">{t('admin.ativos.qr.sem_endereco')}</small>
+        <MensagemDeErro>{t('admin.ativos.qr.sem_endereco')}</MensagemDeErro>
       )}
-      <figcaption>
-        <small>{t('admin.ativos.qr.codigo', { codigo: ativo.codigoQr })}</small>
+      <figcaption className="hk-suave">
+        {t('admin.ativos.qr.codigo', { codigo: ativo.codigoQr })}
       </figcaption>
-      <button type="button" onClick={() => setAberto(false)}>
+      <Botao tamanho="pequeno" onClick={() => setAberto(false)}>
         {t('admin.ativos.qr.ocultar')}
-      </button>
+      </Botao>
     </figure>
   );
 }
