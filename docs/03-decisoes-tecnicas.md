@@ -490,7 +490,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Implementação (C2, migração 0021, 29/09/2026):** sem mudar a decisão. O chamado guarda em `politica_aplicada` o que a abertura usou, por chave: para `chamado.prioridade_padrao_por_categoria`, a categoria do ativo, a prioridade escolhida e a origem (`categoria`, pela política resolvida hotel → grupo → padrão, ou `menor_peso`, quando não há regra para a categoria ou a prioridade dela está desativada). O teste de integração muda a política do hotel depois da abertura e confere que o chamado não mudou.
 
-**Adendo — extensão por módulo e liberação no lint (06/10/2026).** Status: decidido pelo Cesar em 06/10/2026 (pontos 1 e 3 da avaliação de `docs/referencia/proposta-extensao-politicas.md`, com os ajustes do agente do núcleo); o texto deste adendo aguarda a aprovação do Cesar.
+**Adendo — extensão por módulo e liberação no lint (06/10/2026).** Status: decidido pelo Cesar em 06/10/2026 (pontos 1 e 3 da avaliação de `docs/referencia/proposta-extensao-politicas.md`, com os ajustes do agente do núcleo); texto aprovado pelo Cesar em 07/10/2026.
 - **Registro de políticas no domínio** (`registroDePoliticas`, #106): as chaves do núcleo e as extensões de módulo.
   - Cada extensão tem um prefixo próprio (`inteligencia.`), fora dos prefixos do núcleo (`os.`, `chamado.`, `ativo.`), e registra só chaves com esse prefixo, cada uma com padrão e formato.
   - Extensão inválida lança na partida do servidor, nunca num request.
@@ -732,9 +732,16 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-033 — Intelligence: sinal e insight, com o ciclo de vida do insight no domínio
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-1 (`docs/referencia/propostas-adr-inteligencia.md`); aguarda aprovação do Cesar.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-1 (`docs/referencia/propostas-adr-inteligencia.md`), e por Cesar em 07/10/2026. Aprovada pelos dois.
 
-**Quem aprova ADR do Intelligence:** Cesar e Kaio, os dois, por escrito (decisão de 30/09/2026, reafirmada pelo Cesar em 06/10/2026). O registro de 05/10/2026, feito na sessão do agente do Kaio, que aceitava a aprovação de um só, fica revogado. O merge do PR que trouxe estes ADRs ao `docs/03` (#97) não conta como aprovação. Vale para o ADR-033 ao ADR-037 e para as três regras do cálculo do dia (#101), que também aguardam o Cesar.
+**Quem aprova ADR do Intelligence:** Cesar e Kaio, os dois, por escrito (decisão de 30/09/2026, reafirmada pelo Cesar em 06/10/2026). O registro de 05/10/2026, feito na sessão do agente do Kaio, que aceitava a aprovação de um só, fica revogado. O merge do PR que trouxe estes ADRs ao `docs/03` (#97) não conta como aprovação. Vale para o ADR-033 ao ADR-037 e para as três regras do cálculo do dia (#101).
+
+**Aprovações do Cesar de 07/10/2026:** ADR-033, ADR-034, ADR-035 (com a revisão de 06/10/2026) e ADR-037, sem condição; as três regras do cálculo do dia (#101), que entram neste documento com o PR da `app.insight`; ADR-036 com uma condição (no próprio ADR), que aguarda o aceite do Kaio.
+
+**Hotel novo num insight de rede** (decisão de Kaio de 06/10/2026: o job encerra o insight e abre outro, ligado pelo `anterior_id`, e `hotel_ids` continua sem UPDATE): aprovada por Cesar em 07/10/2026, com uma condição que aguarda o aceite do Kaio.
+- O hash da lista de hotéis é calculado fora do `packages/inteligencia`: no job, com `node:crypto`, ou no banco, com `sha256()`.
+- A função pura do módulo devolve só a lista canônica dos hotéis.
+- Nada de SHA-256 escrito à mão.
 
 **Contexto:** o PRD do Intelligence (`docs/referencia/prd-hubkeep-intelligence-v1.md`, seções 21 e 22) propõe `intelligence_signal` e `intelligence_insight`, com status em inglês e uma tabela de sinais que copia o núcleo.
 
@@ -757,7 +764,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-034 — Intelligence: scores determinísticos, versionados e explicáveis, calculados na aplicação
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-2; aguarda aprovação do Cesar.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-2, e por Cesar em 07/10/2026. Aprovada pelos dois.
 
 **Contexto:** o PRD (seções 28 e 29) sugere `metric_definition` com fórmula e views materializadas. Fórmula de score é regra de negócio (regra 2).
 
@@ -775,7 +782,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-035 — Intelligence: pesos, limites e faixas como políticas
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-3; aguarda aprovação do Cesar. Revisão de 06/10/2026, que aplica as decisões do Cesar do mesmo dia e a janela de leitura do ADR-036: aprovada por Kaio, aguarda aprovação do Cesar.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-3, e por Cesar em 07/10/2026. Revisão de 06/10/2026, que aplica as decisões do Cesar do mesmo dia, a janela de leitura de 180 dias e a validação entre chaves: aprovada por Kaio e por Cesar (07/10/2026). Aprovada pelos dois.
 
 **Decisão:**
 - **Uma chave de política por score,** no modelo do ADR-026, com o formato validado em `packages/inteligencia`:
@@ -799,7 +806,11 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aguarda aprovação do Cesar. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio, aguarda aprovação do Cesar.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar aguarda o aceite do Kaio.
+
+**Condição do Cesar (07/10/2026):**
+- Cada resultado diário grava a versão da política e a versão da fórmula usadas.
+- Um recálculo fica marcado como recálculo, com a versão nova.
 
 **Decisão:**
 - **Job diário** por Vercel Cron: `hk_worker`, um tenant por transação, unit of work com auditoria e evento.
@@ -823,7 +834,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-037 — Intelligence: o módulo depende do núcleo, nunca o contrário
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-5; aguarda aprovação do Cesar. A fronteira (o núcleo não importa o módulo) é pedido do Cesar de 01/10/2026 e está no lint desde o #87.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-5, e por Cesar em 07/10/2026. Aprovada pelos dois. A fronteira (o núcleo não importa o módulo) é pedido do Cesar de 01/10/2026 e está no lint desde o #87.
 
 **Decisão:**
 - **`packages/inteligencia` é puro** como o `packages/dominio`: só importa `@hubkeep/dominio` e `@hubkeep/i18n`. O núcleo nunca o importa.
@@ -836,7 +847,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-038 — Identidade visual: pacote de interface compartilhado, a partir do mock oficial
 
-**Status:** proposto em 06/10/2026 (tarefa U1, divisão em PRs aprovada pelo Cesar no mesmo dia); aguarda a aprovação do Cesar.
+**Status:** proposto em 06/10/2026 (tarefa U1, divisão em PRs aprovada pelo Cesar no mesmo dia); aprovado pelo Cesar em 07/10/2026.
 
 **Contexto:** as telas da fase 1a são funcionais e sem acabamento visual (`docs/05`, regras da fase), com estilo solto em cada tela (cerca de 130 `style={{…}}` nos apps). O mock da Central de Manutenção, em `docs/referencia/design/csc-mock/`, é a referência visual oficial do HubKeep (Cesar, 06/10/2026). O web, o PWA e as telas do Intelligence precisam da mesma identidade, sem copiar estilo de um app para o outro.
 
