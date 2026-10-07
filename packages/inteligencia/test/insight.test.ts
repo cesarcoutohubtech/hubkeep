@@ -4,10 +4,13 @@ import {
   ACOES_DO_INSIGHT,
   ESTADOS_DO_INSIGHT,
   TRANSICOES_DO_INSIGHT,
-  chaveDoInsight,
+  MOTIVOS_DE_DESCARTE,
   decidirDeteccao,
   decidirNoInsight,
+  familiaDoInsight,
+  listaCanonicaDeHoteis,
   podeDecidirInsight,
+  substituidoPor,
   type AlcanceDoInsight,
   type InsightExistente,
 } from '../src';
@@ -69,7 +72,11 @@ describe('ciclo de vida do insight', () => {
       nota: '  troca do compressor   resolveu ',
       agora,
     });
-    expect(fim).toEqual({ estado: 'resolvido', nota: 'troca do compressor resolveu' });
+    expect(fim).toEqual({
+      estado: 'resolvido',
+      nota: 'troca do compressor resolveu',
+      motivoDeDescarte: null,
+    });
   });
 
   it('descartar sem nota é recusado (422)', () => {
@@ -78,9 +85,49 @@ describe('ciclo de vida do insight', () => {
         atribuicoes: gerente,
         insight: { estado: 'novo', alcance: noHotel },
         nota: '   ',
+        motivoDeDescarte: 'nao_relevante',
         agora,
       }),
     ).toThrow(expect.objectContaining({ codigo: 'motivo_obrigatorio' }));
+  });
+
+  it('descartar pede um dos motivos canônicos (422), e o motivo sai no resultado', () => {
+    expect(MOTIVOS_DE_DESCARTE).toEqual(['nao_relevante', 'substituido']);
+    for (const motivoDeDescarte of [undefined, null, '', 'outro']) {
+      expect(() =>
+        decidirNoInsight('descartar', {
+          atribuicoes: gerente,
+          insight: { estado: 'novo', alcance: noHotel },
+          nota: 'falso alarme',
+          motivoDeDescarte,
+          agora,
+        }),
+      ).toThrow(expect.objectContaining({ codigo: 'motivo_de_descarte_invalido' }));
+    }
+    expect(
+      decidirNoInsight('descartar', {
+        atribuicoes: gerente,
+        insight: { estado: 'novo', alcance: noHotel },
+        nota: 'já tem o insight novo',
+        motivoDeDescarte: 'substituido',
+        agora,
+      }),
+    ).toEqual({
+      estado: 'descartado',
+      nota: 'já tem o insight novo',
+      motivoDeDescarte: 'substituido',
+    });
+  });
+
+  it('o motivo só vale no descartar: nas outras ações sai null', () => {
+    expect(
+      decidirNoInsight('aceitar', {
+        atribuicoes: gerente,
+        insight: { estado: 'novo', alcance: noHotel },
+        motivoDeDescarte: 'nao_relevante',
+        agora,
+      }).motivoDeDescarte,
+    ).toBeNull();
   });
 
   it('ação fora do estado é conflito (409)', () => {
@@ -124,82 +171,192 @@ describe('ciclo de vida do insight', () => {
   });
 });
 
-describe('o job abre ou atualiza, sem duplicar', () => {
-  const chave = chaveDoInsight('reincidencia', { ativoId: 'a1', hotelId: 'h1' });
+describe('o job decide pela família, sem duplicar nem mudar estado', () => {
+  const familia = familiaDoInsight('sistemico', {
+    regra: 'mesmo_modelo',
+    modelo: 'acme x1',
+    falha: 'ruido',
+  });
+  const h12 = listaCanonicaDeHoteis(['h2', 'h1']);
+  const h123 = listaCanonicaDeHoteis(['h3', 'h1', 'h2']);
   const existente = (p: Partial<InsightExistente>): InsightExistente => ({
     id: 'i1',
-    chave,
+    familia,
+    hotelIds: h12,
     estado: 'novo',
-    faixa: 'alta_atencao',
+    faixa: 'atencao',
+    abertoEm: dia(-20),
+    anteriorId: null,
     encerradoEm: null,
+    motivoDeDescarte: null,
     ...p,
   });
-
-  it('a chave não depende da ordem do escopo', () => {
-    expect(chaveDoInsight('reincidencia', { hotelId: 'h1', ativoId: 'a1' })).toBe(chave);
-    expect(chave).toBe('reincidencia|ativoId=a1|hotelId=h1');
+  const deteccao = (hotelIds: readonly string[], faixa = 'atencao') => ({
+    familia,
+    hotelIds,
+    faixa,
   });
 
-  it('sem insight da chave, abre', () => {
-    expect(decidirDeteccao([], { chave, faixa: 'alta_atencao' }, agora)).toEqual({
-      acao: 'abrir',
-      anteriorId: null,
-    });
+  it('a família não depende da ordem do escopo, e a lista de hotéis é canônica', () => {
+    expect(familiaDoInsight('atencao_ativo', { hotelId: 'h1', ativoId: 'a1' })).toBe(
+      'atencao_ativo|ativoId=a1|hotelId=h1',
+    );
+    expect(listaCanonicaDeHoteis(['H2', 'h1', 'h2', 'h1'])).toEqual(['h1', 'h2']);
   });
 
-  it('com insight aberto, em qualquer estado aberto, atualiza e diz se subiu de faixa', () => {
+  it('sem insight da família, abre', () => {
+    expect(decidirDeteccao([], deteccao(h12), agora)).toEqual({ acao: 'abrir', anteriorId: null });
+  });
+
+  it('o mesmo conjunto, em qualquer estado aberto, atualiza e diz se subiu de faixa', () => {
     for (const estado of ['novo', 'em_revisao', 'aceito', 'em_acao', 'monitorando'] as const) {
-      expect(decidirDeteccao([existente({ estado })], { chave, faixa: 'critico' }, agora)).toEqual({
+      expect(decidirDeteccao([existente({ estado })], deteccao(h12, 'critico'), agora)).toEqual({
         acao: 'atualizar',
         insightId: 'i1',
         subiuDeFaixa: true,
       });
     }
-    expect(decidirDeteccao([existente({})], { chave, faixa: 'alta_atencao' }, agora)).toEqual({
+    expect(decidirDeteccao([existente({})], deteccao(h12), agora)).toEqual({
       acao: 'atualizar',
       insightId: 'i1',
       subiuDeFaixa: false,
     });
   });
 
-  it('descartado há menos de 30 dias, na mesma faixa, é ignorado', () => {
-    const descartado = existente({ estado: 'descartado', encerradoEm: dia(-10) });
-    expect(decidirDeteccao([descartado], { chave, faixa: 'alta_atencao' }, agora)).toEqual({
+  it('conjunto contido no do aberto (saiu hotel): nada a fazer', () => {
+    expect(decidirDeteccao([existente({ hotelIds: h123 })], deteccao(h12), agora)).toEqual({
       acao: 'ignorar',
-      motivo: 'descartado_recente',
+      motivo: 'conjunto_contido',
       insightId: 'i1',
     });
   });
 
-  it('descartado recente, mas a faixa subiu: abre novo, ligado ao anterior', () => {
-    const descartado = existente({ estado: 'descartado', encerradoEm: dia(-10) });
-    expect(decidirDeteccao([descartado], { chave, faixa: 'critico' }, agora)).toEqual({
+  it('hotel a mais: abre o novo, ligado ao anterior, que continua aberto', () => {
+    expect(decidirDeteccao([existente({})], deteccao(h123), agora)).toEqual({
+      acao: 'abrir',
+      anteriorId: 'i1',
+    });
+  });
+
+  it('com vários abertos, liga ao mais recente; o conjunto igual tem precedência', () => {
+    const velho = existente({
+      id: 'i0',
+      abertoEm: dia(-30),
+      hotelIds: listaCanonicaDeHoteis(['h1']),
+    });
+    const novo = existente({ id: 'i2', abertoEm: dia(-5) });
+    const outro = listaCanonicaDeHoteis(['h1', 'h9']);
+    expect(decidirDeteccao([velho, novo], deteccao(outro), agora)).toEqual({
+      acao: 'abrir',
+      anteriorId: 'i2',
+    });
+    expect(decidirDeteccao([velho, novo], deteccao(h12), agora)).toMatchObject({
+      acao: 'atualizar',
+      insightId: 'i2',
+    });
+  });
+
+  it('outra família não conta', () => {
+    const outra = existente({ id: 'i9', familia: 'outra' });
+    expect(decidirDeteccao([outra], deteccao(h12), agora)).toEqual({
+      acao: 'abrir',
+      anteriorId: null,
+    });
+  });
+
+  it('descartado "não relevante" há menos de 30 dias, na mesma faixa: ignorado, pela família', () => {
+    const descartado = existente({
+      estado: 'descartado',
+      encerradoEm: dia(-10),
+      motivoDeDescarte: 'nao_relevante',
+    });
+    for (const hotelIds of [h12, h123]) {
+      expect(decidirDeteccao([descartado], deteccao(hotelIds), agora)).toEqual({
+        acao: 'ignorar',
+        motivo: 'descartado_recente',
+        insightId: 'i1',
+      });
+    }
+  });
+
+  it('descartado "não relevante" recente, mas a faixa subiu: abre novo, ligado ao anterior', () => {
+    const descartado = existente({
+      estado: 'descartado',
+      encerradoEm: dia(-10),
+      motivoDeDescarte: 'nao_relevante',
+    });
+    expect(decidirDeteccao([descartado], deteccao(h12, 'critico'), agora)).toEqual({
+      acao: 'abrir',
+      anteriorId: 'i1',
+    });
+  });
+
+  it('descartado "substituído" não gera silêncio', () => {
+    const descartado = existente({
+      estado: 'descartado',
+      encerradoEm: dia(-1),
+      motivoDeDescarte: 'substituido',
+    });
+    expect(decidirDeteccao([descartado], deteccao(h12), agora)).toEqual({
       acao: 'abrir',
       anteriorId: 'i1',
     });
   });
 
   it('descartado há 30 dias ou mais: abre novo', () => {
-    const descartado = existente({ estado: 'descartado', encerradoEm: dia(-30) });
-    expect(decidirDeteccao([descartado], { chave, faixa: 'alta_atencao' }, agora).acao).toBe(
-      'abrir',
-    );
+    const descartado = existente({
+      estado: 'descartado',
+      encerradoEm: dia(-30),
+      motivoDeDescarte: 'nao_relevante',
+    });
+    expect(decidirDeteccao([descartado], deteccao(h12), agora).acao).toBe('abrir');
   });
 
   it('resolvido não silencia: o problema que volta abre insight novo', () => {
     const resolvido = existente({ estado: 'resolvido', encerradoEm: dia(-2) });
-    expect(decidirDeteccao([resolvido], { chave, faixa: 'alta_atencao' }, agora)).toEqual({
+    expect(decidirDeteccao([resolvido], deteccao(h12), agora)).toEqual({
       acao: 'abrir',
       anteriorId: 'i1',
     });
   });
 
-  it('vale o encerramento mais recente, e outra chave não conta', () => {
-    const antigo = existente({ id: 'i0', estado: 'descartado', encerradoEm: dia(-5) });
+  it('vale o encerramento mais recente da família', () => {
+    const antigo = existente({
+      id: 'i0',
+      estado: 'descartado',
+      encerradoEm: dia(-5),
+      motivoDeDescarte: 'nao_relevante',
+    });
     const recente = existente({ id: 'i2', estado: 'resolvido', encerradoEm: dia(-1) });
-    const outra = existente({ id: 'i9', chave: 'outra', estado: 'novo' });
+    expect(decidirDeteccao([antigo, recente], deteccao(h12), agora)).toEqual({
+      acao: 'abrir',
+      anteriorId: 'i2',
+    });
+  });
+});
+
+describe('"substituído pelo insight X", calculado pelo vínculo', () => {
+  const nasceu = (id: string, anteriorId: string | null, d: number) => ({
+    id,
+    anteriorId,
+    abertoEm: dia(d),
+  });
+
+  it('o anterior aberto aponta para o novo mais recente ligado a ele', () => {
+    const anterior = { id: 'i1', encerradoEm: null };
     expect(
-      decidirDeteccao([antigo, recente, outra], { chave, faixa: 'alta_atencao' }, agora),
-    ).toEqual({ acao: 'abrir', anteriorId: 'i2' });
+      substituidoPor(anterior, [
+        nasceu('i2', 'i1', -3),
+        nasceu('i3', 'i1', -1),
+        nasceu('i4', 'i9', 0),
+      ]),
+    ).toBe('i3');
+    expect(substituidoPor(anterior, [])).toBeNull();
+  });
+
+  it('o que abriu depois do encerramento é recorrência, não substituição', () => {
+    const resolvido = { id: 'i1', encerradoEm: dia(-5) };
+    expect(substituidoPor(resolvido, [nasceu('i2', 'i1', -2)])).toBeNull();
+    expect(substituidoPor(resolvido, [nasceu('i2', 'i1', -8)])).toBe('i2');
   });
 });

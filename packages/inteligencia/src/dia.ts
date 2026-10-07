@@ -5,15 +5,17 @@
 // A aplicação lê, chama isto e grava pela unit of work; nada aqui lê banco.
 //
 // O resultado gravado de cada dia é a fonte de verdade do histórico (decisão
-// de 06/10/2026): ele guarda a configuração usada, e nada gravado é apagado.
-// Recalcular um dia passado não reproduz exatamente o que foi gravado. As
-// datas são cortadas em `agora`, e a conclusão e as reaberturas saem das
-// transições da OS até `agora` (conclusaoEReaberturas), mas a origem só tem o
-// valor atual de:
+// de 06/10/2026): ele guarda a configuração usada, a versão da fórmula de cada
+// score e a da política (condição do Cesar de 07/10/2026, ADR-036), e nada
+// gravado é apagado. Recalcular um dia passado não reproduz exatamente o que foi
+// gravado, e por isso fica marcado como recálculo, com as versões de hoje. As
+// datas são cortadas em `agora` (para o recálculo, o fim do dia: `fimDoDia`), e
+// a conclusão e as reaberturas saem das transições da OS até `agora`
+// (conclusaoEReaberturas), mas a origem só tem o valor atual de:
 // - os campos editáveis da OS, do chamado, do ativo e do local;
 // - a política vigente.
 //
-// Aprovado por Kaio em 06/10/2026 (PR #100), como proposto, aguardando Cesar:
+// Aprovado por Kaio em 06/10/2026 (PR #100) e pelo Cesar em 07/10/2026:
 // - no 1.0, insight nasce de dois tipos: a atenção do ativo, quando passa do
 //   limite, e o sinal sistêmico. A reincidência já é componente da atenção e
 //   não abre insight próprio, para o mesmo ativo não ter dois; a substituição
@@ -25,7 +27,7 @@
 //   bandeira quando os hotéis são todos dela, ou do grupo.
 import type { Parada } from '@hubkeep/dominio';
 import { type ConfigAtencao, PADRAO_ATENCAO, atencaoDoAtivo } from './atencao';
-import type { MetricaDiaria } from './agregacao';
+import type { LinhaDaMetricaDiaria } from './agregacao';
 import {
   type AtivoAnalisado,
   type Corretiva,
@@ -35,7 +37,12 @@ import {
   horasParadasNoTrecho,
   impactoHospedeDosChamados,
 } from './historico';
-import { type AlcanceDoInsight, type Deteccao, chaveDoInsight } from './insight';
+import {
+  type AlcanceDoInsight,
+  type Deteccao,
+  familiaDoInsight,
+  listaCanonicaDeHoteis,
+} from './insight';
 import { type ConfigReincidencia, PADRAO_REINCIDENCIA, reincidencia } from './reincidencia';
 import { DIA_MS, type Score, sugereInsight } from './score';
 import {
@@ -47,6 +54,8 @@ import {
 } from './sistemico';
 
 export const JANELA_CUSTO_DIAS = 365;
+/** A versão da política de um hotel que só usa os padrões do código. */
+export const VERSAO_DE_POLITICA_PADRAO = 'padrao';
 /** Faixa do insight sistêmico, que não tem score (aprovado em 06/10/2026). */
 export const FAIXA_DO_SISTEMICO = 'atencao';
 
@@ -56,6 +65,13 @@ export interface HotelDoDia {
   /** Políticas do hotel, já resolvidas (hotel → bandeira → grupo → padrão). */
   reincidencia?: ConfigReincidencia;
   atencao?: ConfigAtencao;
+  /**
+   * Identifica as linhas de app.politica que resolveram as duas políticas (por
+   * exemplo, o id e o tualizado_em de cada uma), montado por quem lê o banco;
+   * padrao quando valem só os padrões do código. O motor só a carrega para a
+   * linha do dia.
+   */
+  versaoPolitica?: string;
 }
 
 export interface AtivoDoDia extends AtivoAnalisado {
@@ -68,6 +84,8 @@ export interface AtivoDoDia extends AtivoAnalisado {
 
 export interface EntradaDoDia {
   agora: Date;
+  /** O dia está sendo calculado de novo (ou depois da hora); a linha sai marcada. */
+  recalculo?: boolean;
   hoteis: readonly HotelDoDia[];
   ativos: readonly AtivoDoDia[];
   /** Corretivas do tenant; as de ativo ou hotel fora da lista são ignoradas. */
@@ -107,8 +125,10 @@ export interface DeteccaoDoDia extends Deteccao {
 export interface ResultadoDoDia {
   /** O dia em UTC, `AAAA-MM-DD`. */
   dia: string;
+  recalculo: boolean;
   ativos: ResultadoDoAtivo[];
-  metricas: MetricaDiaria[];
+  /** Sem o calculo, que quem grava numera (1, ou o maior do dia mais 1). */
+  metricas: Omit<LinhaDaMetricaDiaria, 'calculo'>[];
   sistemicos: SinalSistemico[];
   deteccoes: DeteccaoDoDia[];
 }
@@ -178,7 +198,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
     const cfgR = r.reincidencia.configuracao;
     deteccoes.push({
       tipo: 'atencao_ativo',
-      chave: chaveDoInsight('atencao_ativo', escopo),
+      familia: familiaDoInsight('atencao_ativo', escopo),
       faixa: r.atencao.faixa,
       alcance: {
         tipo: 'hotel',
@@ -209,20 +229,21 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
     const escopo = { regra: s.regra, ...s.chave };
     deteccoes.push({
       tipo: 'sistemico',
-      chave: chaveDoInsight('sistemico', escopo),
+      familia: familiaDoInsight('sistemico', escopo),
       faixa: FAIXA_DO_SISTEMICO,
       alcance: alcanceDoSinal(s, hoteis),
       valor: null,
       versao: s.versao,
       escopo,
       regra: s.regra,
-      hotelIds: s.evidencia.hotelIds,
+      hotelIds: listaCanonicaDeHoteis(s.evidencia.hotelIds),
       corretivaIds: s.evidencia.corretivaIds,
     });
   }
 
   return {
     dia,
+    recalculo: e.recalculo ?? false,
     ativos: resultados,
     metricas: resultados.map((r) => ({
       dia,
@@ -231,8 +252,21 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
       reincidencia: r.reincidencia.valor,
       atencao: r.atencao.valor,
       faixaAtencao: r.atencao.faixa,
+      recalculo: e.recalculo ?? false,
+      versaoFormulaReincidencia: r.reincidencia.versao,
+      versaoFormulaAtencao: r.atencao.versao,
+      versaoPolitica: hoteis.get(r.hotelId)?.versaoPolitica ?? VERSAO_DE_POLITICA_PADRAO,
     })),
     sistemicos,
     deteccoes,
   };
+}
+
+/** O último instante (UTC) de um dia `AAAA-MM-DD`: o `agora` para recalcular esse dia. */
+export function fimDoDia(dia: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) throw new Error(`Dia fora do formato AAAA-MM-DD: ${dia}`);
+  const fim = new Date(`${dia}T23:59:59.999Z`);
+  if (Number.isNaN(fim.getTime()) || fim.toISOString().slice(0, 10) !== dia)
+    throw new Error(`Dia inexistente: ${dia}`);
+  return fim;
 }

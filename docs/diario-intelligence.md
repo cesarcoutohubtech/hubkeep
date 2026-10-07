@@ -266,13 +266,140 @@ O Kaio pediu para ler o fim do `docs/diario-fase-1a.md` (decisões de 05 e 06/10
   - **ADR-036:** nada apagado, a janela de 180 dias, o limite do recálculo e a pendência de particionamento da métrica diária.
 - **O rascunho do PR da tabela** (`int-rascunhos`) passa a usar 180 dias.
 
+### Decisões de Kaio sobre o insight de rede, a janela e o recálculo (06/10/2026)
+
+1. **Hotel novo num insight de rede: opção (c).** Aprovado por Kaio, aguardando Cesar. Substitui a decisão 3 anterior, em que o job encerrava o insight, porque ela conflitava com o ADR-033.
+   - O job abre o insight novo, ligado ao anterior pelo `anterior_id`.
+   - O anterior continua aberto até uma pessoa resolver ou descartar.
+   - O job não muda estado (ADR-033), e `hotel_ids` continua sem UPDATE (ADR-011).
+   - Na tela e na API, o anterior aparece como "substituído pelo insight X", calculado pelo vínculo. O descarte aceita o motivo "substituído". Não há estado novo.
+   - **Implementação parada: a unicidade colide.**
+     - O índice do rascunho é `(tenant_id, chave) where encerrado_em is null`, e a chave do sinal sistêmico não leva os hotéis.
+     - O novo e o anterior teriam a mesma chave abertos ao mesmo tempo. Além disso, o `decidirDeteccao` atualizaria o anterior em vez de abrir outro.
+   - **Proposta para o Cesar, com os ajustes do Kaio:** aprovado por Kaio, aguardando Cesar. O detalhe está no `LEIAME.md` do rascunho (`int-rascunhos`, `00797ab`).
+     - **Chave com hash:** a `chave` é a família mais o SHA-256 do conjunto de hotéis em ordem canônica, e não a lista. O btree não aceita entrada acima de cerca de 2,7 KB, e a lista estoura com uns 70 hotéis. `hotel_ids` guarda a lista completa.
+     - **Família:** a coluna `familia` é a chave sem os hotéis, com índice próprio e checks de prefixo e tamanho.
+     - **Regra pela família no `decidirDeteccao`:**
+       - se o conjunto novo está contido no de um insight aberto da mesma família (saiu hotel, ou nada mudou), não há nada a fazer;
+       - se tem hotel a mais, o job abre um insight novo, ligado ao anterior, e o anterior fica aberto até uma pessoa decidir.
+     - **Silêncio de 30 dias pela família,** só quando o descarte for "não relevante". O descarte "substituído" não silencia. O motivo é canônico (`nao_relevante` ou `substituido`).
+     - **pgTAP:** 50 testes no rascunho, com o novo e o anterior abertos juntos e um insight de 80 hotéis.
+     - **O hash no domínio puro:** proposta de um SHA-256 em TypeScript, sem dependência, testado contra os vetores do NIST e o `sha256()` do Postgres. Fica para o PR do código.
+2. **Validação entre chaves no ADR-035** (#113, mesmo status): a `inteligencia.metrica_janela_leitura` precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo.
+   - A validação é do módulo, ao gravar qualquer uma das duas.
+   - O job também confere na leitura: se a janela resolvida for menor que o dobro, usa o dobro e registra um aviso de configuração.
+3. **Limitação do recálculo, texto atualizado** no comentário do `calcularDia`, no ADR-036 (#113), no documento de retenção e no rascunho.
+   - A conclusão e as reaberturas são reproduzidas pelas transições da OS.
+   - Só os campos editáveis e a política vigente ficam com o valor atual.
+4. **Regra de comandos:** comandos que dependem um do outro nunca são ligados por `;`. Ou usam `&&`, ou o passo para na primeira falha.
+   - Vale para qualquer comando, não só os que alteram arquivos.
+   - **Motivo:** em 06/10 um `git worktree add` falhou e o `git switch` seguinte rodou mesmo assim. Não houve dano, porque os rascunhos já estavam enviados.
+
+### "Por que estou vendo isso?" no catálogo (ADR-034)
+
+- **`explicacao.ts`:**
+  - `explicacaoDoScore` transforma os motivos do score (`motivosDoScore`) em chave de catálogo `inteligencia.motivo.<score>.<componente>`, com os números e textos da evidência. Ids e listas ficam de fora;
+  - `chaveDoNomeDoScore` e `chaveDaFaixa` dão as chaves do nome do score e da faixa.
+- **Catálogos:** 26 chaves `inteligencia.*` nos quatro idiomas:
+  - o título e o vazio da explicação;
+  - os nomes dos dois scores e as seis faixas;
+  - os 12 motivos;
+  - os tipos, estados e ações do insight;
+  - as regras do sistêmico.
+
+  O custo sai em reais (`::currency/BRL`), como a versão mínima de custo decidida pelo Cesar.
+- **`@hubkeep/i18n`** entrou como dependência de desenvolvimento do pacote, só para o teste formatar cada motivo com o tradutor real nos quatro idiomas. O código do motor continua sem importar o i18n.
+- **Testes:** 115 no pacote.
+
 ### Ponto de retomada (06/10/2026, pauta atualizada)
 
-- **PRs abertos:**
-  - o deste código, que não é zona protegida;
-  - o do `docs/03` (ADR-035 e 036), que é zona protegida e só o Cesar mergeia.
+- **Superado** pela entrada de 07/10/2026, abaixo.
+
+## Atividades de 07/10/2026
+
+O Kaio pediu para seguir a pauta do agente do núcleo (`docs/diario-fase-1a.md`, 07/10/2026). Branch `int-job-diario`, no worktree `wt/int-motor`. Não é zona protegida.
+
+### Aprovações do Cesar, registradas (07/10/2026)
+
+- **Aprovados pelos dois** (Kaio em 05 e 06/10, Cesar em 07/10), sem condição:
+  - ADR-033, ADR-034 e ADR-037;
+  - ADR-035, com a revisão de 06/10 (janela de leitura de 180 dias e validação entre chaves);
+  - o adendo ao ADR-026 (extensão por módulo e liberação no lint);
+  - as três regras do cálculo do dia (#101), que entram no `docs/03` com o PR da `app.insight`.
+- **ADR-036, aprovado pelo Cesar com uma condição.** Cada resultado diário grava a versão da política e a da fórmula usadas, e um recálculo fica marcado como recálculo, com a versão nova.
+- **Hotel novo num insight de rede, aprovado pelo Cesar com uma condição.** O hash da lista de hotéis é calculado fora do `packages/inteligencia` (no job, com `node:crypto`, ou no banco, com `sha256()`), a função pura devolve só a lista canônica, e nada de SHA-256 escrito à mão.
+- **Aceite do Kaio às duas condições:** em 07/10/2026, ao pedir que o agente as aplicasse. Elas estão aplicadas (abaixo). O Kaio pode corrigir este registro.
+- **Superado:** a proposta de um SHA-256 próprio no TypeScript, que estava no rascunho. Saiu.
+
+### O que ficou fora do merge, e foi recolocado
+
+Os #112 e #113 foram mergeados antes dos meus últimos envios a esses branches. Não chegaram à `main`:
+- **Neste PR, trazidos por cherry-pick:** o `explicacaoDoScore` e as 26 chaves de catálogo (`0a130ca`) e o diário de 06/10 (`54c7614`). Por isso o `docs/referencia/HubKeep — Documento do projeto.md` diz que o detalhamento nos quatro idiomas está na `main`, e ainda não estava.
+- **Só no `docs/03`, zona protegida, sem PR:** o texto do ADR-035 sobre a validação entre chaves e a conferência na leitura (`a3dfab8` e `519095e`). Ver "Pendente para o Cesar".
+
+### Condições do Cesar aplicadas
+
+1. **ADR-036: versões e recálculo.**
+   - `LinhaDaMetricaDiaria` (`agregacao.ts`): além dos scores, `versaoFormulaReincidencia`, `versaoFormulaAtencao`, `versaoPolitica`, `recalculo` e `calculo`. As versões da fórmula vêm do próprio `Score.versao`. A da política é o texto que a ligação do servidor monta com as linhas de `app.politica` que resolveram (`HotelDoDia.versaoPolitica`), ou `padrao`.
+   - Um recálculo é outra linha, com o número de cálculo seguinte e a marca. O recálculo de um dia nunca gravado entra com o cálculo 1 e a marca. A agregação mensal usa o cálculo de maior número de cada dia.
+   - `fimDoDia(dia)` dá o `agora` para recalcular um dia passado.
+   - Rascunho da `app.metrica_ativo_diaria` e do pgTAP (28 testes) no branch `int-rascunhos`.
+2. **Hash fora da função pura.**
+   - `listaCanonicaDeHoteis` devolve a lista (sem repetição, em ordem); `familiaDoInsight` monta a família. O `decidirDeteccao` compara conjuntos de hotéis, e não hashes.
+   - A chave de unicidade (`familia|hoteis=<sha256>`) é montada por quem grava. A escolha é o `node:crypto` na ligação do servidor, e o banco confere o formato. O pgTAP confere o `sha256()` do banco com o mesmo vetor do `node:crypto`.
+   - Rascunho da `app.insight` (52 testes, um deles com 80 hotéis) atualizado no `int-rascunhos`.
+
+### A regra pela família e o motivo do descarte, no motor
+
+- `decidirDeteccao` agora decide pela família: mesmo conjunto atualiza; conjunto contido num aberto, nada a fazer; hotel a mais abre um insight novo, ligado ao anterior, que fica aberto. Silêncio de 30 dias pela família só depois do descarte "não relevante".
+- `decidirNoInsight` exige o motivo do descarte (`nao_relevante` ou `substituido`), com o erro `motivo_de_descarte_invalido`. `substituidoPor` calcula o "substituído pelo insight X" pelo vínculo.
+- **Pendente:** o texto do ADR-033 no `docs/03` ainda descreve a primeira versão ("o job encerra o insight e abre outro"), que conflita com "o job nunca muda estado". O Cesar aprovou o hotel novo com a condição do hash, mas sobre esse texto. É preciso confirmar com ele que a aprovação vale para a variante (c).
+
+### Os dados novos da revisão de 07/10
+
+- **Fornecedor como tabela:** `ExecutadoPor` passou a `equipe_interna | fornecedor`; `Corretiva.fornecedorId` no lugar de `terceiroNome`; a regra do mesmo fornecedor agrupa pelo id (`fornecedorDaOs`). Sai a comparação de nomes normalizados. **Os nomes das colunas do núcleo ainda não saíram no diário dele:** `fornecedorId` e `fornecedor` são os nomes do motor, e a ligação do servidor adapta.
+- **UH indisponível:** proposta em `docs/referencia/proposta-uh-indisponivel-intelligence.md`, para aprovação. Recomendação: sinal próprio, e não componente da atenção. Só a medida está escrita (`uhDiasPerdidos`, em `uh.ts`); nenhum score a usa.
+- **Modelo contratual do hotel:** registrado como dimensão das comparações de rede da 2.0, no mapa das entradas. Nada implementado.
+
+### Janela de leitura e a sexta chave
+
+- `inteligencia.metrica_janela_leitura` (`{ dias }`, de 180 a 730) em `politicas.ts`.
+- `validarJanelaDeLeitura` recusa, ao gravar qualquer das duas janelas, a de leitura menor que o dobro da efetividade (`janela_de_leitura_curta`). `janelaDeLeituraEfetiva` devolve o dobro e o aviso de configuração quando a janela resolvida ficou curta.
+- `inicioDaJanelaDeLeitura` e `JANELA_DE_LEITURA_PADRAO_DIAS` (180) substituem o `limiteDeRetencao` de 12 meses, que saiu.
+- **O job ainda não confere a janela:** quem lê a métrica (telas e consultas) usa `janelaDeLeituraEfetiva` e registra o aviso. O job diário não lê a janela.
+
+### O job diário em código puro
+
+`executarDiaDoTenant` (`job.ts`), com a leitura e a gravação por portas (`FonteDoJob` e `GravacaoDoJob`), e as implementações em memória nos testes (`test/apoio-job.ts`):
+- lê, calcula o dia (`calcularDia`), grava as métricas e decide cada detecção (`decidirDeteccao`);
+- a conclusão e as reaberturas saem das transições da OS até o dia calculado (`conclusaoEReaberturas`);
+- rodar duas vezes no mesmo dia não duplica a métrica, e o insight já aberto só é atualizado; o job nunca muda o estado de um insight;
+- o recálculo só grava métrica, com o cálculo seguinte e a marca, e não abre nem atualiza insight;
+- o banco em memória faz a unicidade de um aberto por chave, e o hotel novo abre o insight novo, ligado ao anterior, com os dois abertos.
+
+A ligação com o `packages/db` fica no servidor do web (`apps/web/src/servidor/modulos/inteligencia/`), depois das tabelas.
+
+### Proposta das telas do 1.0
+
+`docs/referencia/proposta-telas-intelligence-1-0.md`, com as imagens em `docs/referencia/design/intelligence-1-0/` (lista de insights, painel de investigação e detalhe do ativo, nos dois temas e em largura de celular), geradas por uma vitrine descartável com o `packages/ui` e dados fictícios. O código da vitrine está no `int-rascunhos` (`rascunhos/telas-vitrine/`). Aguarda a aprovação do Cesar e do Kaio.
+
+### Pendente para o Cesar (zona protegida, sem PR)
+
+O branch `int-adr-aceite` (sem PR) corrige o `docs/03` para o estado real:
+- **ADR-033:** o hotel novo como variante (c), a família e a chave, o motivo do descarte e a condição do hash aceita;
+- **ADR-035:** a validação entre chaves e a conferência na leitura (o que ficou fora do #113);
+- **ADR-036:** o aceite do Kaio à condição e o que foi gravado em cada linha.
+
+Só abre depois da fila de zona protegida (a etapa I da 1b). O status de cada trecho novo fica "aprovado por Kaio, aguardando Cesar".
+
+### Ponto de retomada (07/10/2026)
+
+- **PR aberto:** `int-job-diario`, que não é zona protegida. Conferir com `gh pr checks`; o merge é do usuário.
 - **Esperando o Cesar:**
-  - as aprovações dos ADR-033 a 037, das três regras do #101 e da revisão do ADR-035 e do ADR-036;
-  - o teste do kit e o aval para a 1b.
-- **Próximo passo:** seguir no motor em funções puras, contra as interfaces aprovadas, enquanto a etapa I não chega. Quando ela terminar, trocar os campos "(fase A)" pelos nomes reais.
-- **Parada:** nada de migração nem tela do Intelligence antes da etapa I.
+  - a confirmação de que a aprovação do hotel novo vale para a variante (c);
+  - a decisão sobre os UH-dias (sinal próprio ou componente);
+  - a aprovação das três telas;
+  - o aviso, no diário dele, dos nomes das colunas novas (fornecedor, UH indisponível, transições e demais).
+- **Esperando o núcleo:** as migrações da etapa I da 1b.
+- **Próximo passo:** quando a etapa I terminar, trocar os campos "(fase A)" do `historico.ts` pelos nomes reais, e abrir a `app.insight` (depois a `app.metrica_ativo_diaria`) a partir do `int-rascunhos`, uma de cada vez, com a ligação do job no web.
+- **Parada:** nada de migração, tela ou PR de zona protegida até lá.

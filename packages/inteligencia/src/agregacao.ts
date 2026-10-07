@@ -1,13 +1,17 @@
 // Agregação mensal dos resultados diários (ADR-036), para a visão de rede. O
 // job grava o resultado diário por ativo e, no fechamento do mês, o resumo do
-// mês por ativo e por hotel. Os dias guardam 12 meses; o corte é calculado aqui
-// (limiteDeRetencao), e a forma de tirar o que passou fica para o PR das
-// tabelas, sem DELETE para nenhum papel da aplicação.
+// mês por ativo e por hotel. Nada é apagado; telas e consultas leem a janela de
+// leitura da política (ADR-036, revisão de 06/10/2026).
 //
 // Score sem dado (null) não entra na média nem no máximo: conta só em
 // `diasSemDado`, como no score, onde dado ausente não vira zero.
 
-/** Resultado diário de um ativo, como o job grava (os nomes da tabela vêm no PR dela). */
+/**
+ * Resultado diário de um ativo, como a agregação o lê. Um recálculo de um dia
+ * grava outra linha (`calculo` maior), e a agregação fica com a de maior
+ * `calculo` de cada dia: o resultado gravado antes continua guardado, só deixa
+ * de ser o que a leitura mostra.
+ */
 export interface MetricaDiaria {
   /** Dia em UTC, `AAAA-MM-DD`. */
   dia: string;
@@ -17,6 +21,24 @@ export interface MetricaDiaria {
   atencao: number | null;
   /** Faixa da atenção no dia, ou 'dados_insuficientes'. */
   faixaAtencao: string;
+  /** 1 é o cálculo do dia; maior que 1, um recálculo. Sem o campo, vale 1. */
+  calculo?: number;
+}
+
+/**
+ * A linha que o job grava por ativo e por dia (ADR-036, condição do Cesar de
+ * 07/10/2026): além dos scores, a versão da fórmula de cada score e a da
+ * política usadas, e a marca de recálculo. A configuração usada vai no
+ * detalhamento do score (`Score.configuracao`).
+ */
+export interface LinhaDaMetricaDiaria extends MetricaDiaria {
+  calculo: number;
+  /** O dia foi calculado de novo (ou depois da hora), com a versão de hoje da fórmula e da política. */
+  recalculo: boolean;
+  versaoFormulaReincidencia: number;
+  versaoFormulaAtencao: number;
+  /** Identifica as linhas de app.politica usadas (`HotelDoDia.versaoPolitica`); `padrao` sem política gravada. */
+  versaoPolitica: string;
 }
 
 export interface ResumoDeScore {
@@ -73,7 +95,7 @@ const contar = (chaves: readonly string[]): Record<string, number> => {
   return r;
 };
 
-/** Resumo do mês por ativo. Só entram os dias do `mes` pedido; dia repetido vale o último da lista. */
+/** Resumo do mês por ativo. Só entram os dias do `mes` pedido; dia repetido vale o de maior `calculo` (empate, o último da lista). */
 export function agregarMesDosAtivos(
   dias: readonly MetricaDiaria[],
   mes: string,
@@ -82,7 +104,8 @@ export function agregarMesDosAtivos(
   for (const d of dias) {
     if (mesDoDia(d.dia) !== mes) continue;
     const doAtivo = porAtivo.get(d.ativoId) ?? new Map<string, MetricaDiaria>();
-    doAtivo.set(d.dia, d);
+    const atual = doAtivo.get(d.dia);
+    if (!atual || (d.calculo ?? 1) >= (atual.calculo ?? 1)) doAtivo.set(d.dia, d);
     porAtivo.set(d.ativoId, doAtivo);
   }
   return [...porAtivo.entries()]
@@ -124,18 +147,21 @@ export function agregarMesDosHoteis(ativos: readonly ResumoMensalDoAtivo[]): Res
     });
 }
 
-/**
- * Primeiro dia que ainda se guarda: o mesmo dia, `meses` meses antes de
- * `agora` (UTC). No dia 31 de um mês, o mês curto cai no último dia dele.
- */
-export function limiteDeRetencao(agora: Date, meses = 12): string {
-  const ano = agora.getUTCFullYear();
-  const mes = agora.getUTCMonth() - meses;
-  const ultimoDoMes = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
-  const d = new Date(Date.UTC(ano, mes, Math.min(agora.getUTCDate(), ultimoDoMes)));
-  return d.toISOString().slice(0, 10);
-}
+/** Janela de leitura da métrica diária (ADR-036, revisão de 06/10/2026): 180 dias, por política. */
+export const JANELA_DE_LEITURA_PADRAO_DIAS = 180;
 
+/**
+ * Primeiro dia (UTC, `AAAA-MM-DD`) que telas e consultas leem da métrica diária:
+ * `dias` dias terminando hoje, contando hoje como o último. Nada é apagado: o
+ * resultado gravado de cada dia é a fonte de verdade do histórico.
+ */
+export function inicioDaJanelaDeLeitura(
+  agora: Date,
+  dias: number = JANELA_DE_LEITURA_PADRAO_DIAS,
+): string {
+  const hoje = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
+  return new Date(hoje - (dias - 1) * 86_400_000).toISOString().slice(0, 10);
+}
 /** O mês que o job fecha em `agora`: o anterior ao mês corrente (UTC). */
 export function mesAFechar(agora: Date): string {
   return new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - 1, 1))

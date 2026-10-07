@@ -7,8 +7,12 @@
 import { type AcaoDaOs, type EstadoDaOs, type Parada, tempoParadoTotal } from '@hubkeep/dominio';
 import { DIA_MS, HORA_MS } from './score';
 
-/** Quem executou a OS, gravado na triagem (fase A, `app.os.executado_por`). */
-export type ExecutadoPor = 'equipe_interna' | 'terceiro';
+/**
+ * Quem executou a OS, gravado na triagem (etapa I2 da 1b, `app.os.executado_por`):
+ * a equipe interna ou um fornecedor. Os nomes das colunas seguem as propostas do
+ * agente do núcleo; a camada que lê o banco adapta.
+ */
+export type ExecutadoPor = 'equipe_interna' | 'fornecedor';
 
 /** Uma corretiva: o chamado e a OS dele, vistos pelo que importa à análise. */
 export interface Corretiva {
@@ -27,8 +31,12 @@ export interface Corretiva {
   aposPreventiva?: boolean;
   /** Fase A, `app.os.executado_por`; undefined antes da migração. */
   executadoPor?: ExecutadoPor;
-  /** Fase A, `app.os.terceiro_nome`, só quando executada por terceiro. */
-  terceiroNome?: string | null;
+  /**
+   * O fornecedor cadastrado (`app.fornecedor`, 1b), só quando executada por
+   * fornecedor. O id, e não o nome digitado, é o que a regra do mesmo fornecedor
+   * compara.
+   */
+  fornecedorId?: string | null;
   /** Fase A, `app.os.custo_informado`, em reais, no aceite; null não informado. */
   custoInformado?: number | null;
   /** Fase A, `app.chamado.impacto_hospede`: afeta hóspede? null é "não sei". */
@@ -114,10 +122,14 @@ export const chaveDeModelo = (a: Pick<AtivoAnalisado, 'fabricante' | 'modelo'>):
   return f && m ? `${f}|${m}` : null;
 };
 
-/** O nome do terceiro comparável entre OS e hotéis, como o modelo. */
-export const chaveDeTerceiro = (
-  c: Pick<Corretiva, 'executadoPor' | 'terceiroNome'>,
-): string | null => (c.executadoPor === 'terceiro' ? normalizar(c.terceiroNome) || null : null);
+/**
+ * O fornecedor da OS, para a regra do mesmo fornecedor: o id do cadastro, só
+ * quando a OS foi executada por fornecedor. A OS anterior ao cadastro, ou sem o
+ * fornecedor informado, não tem chave.
+ */
+export const fornecedorDaOs = (
+  c: Pick<Corretiva, 'executadoPor' | 'fornecedorId'>,
+): string | null => (c.executadoPor === 'fornecedor' ? (c.fornecedorId ?? null) : null);
 
 /**
  * Soma do custo informado das corretivas concluídas na janela. null quando

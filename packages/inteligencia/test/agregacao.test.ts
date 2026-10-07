@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   agregarMesDosAtivos,
   agregarMesDosHoteis,
-  limiteDeRetencao,
+  JANELA_DE_LEITURA_PADRAO_DIAS,
+  inicioDaJanelaDeLeitura,
   mesAFechar,
   type MetricaDiaria,
 } from '../src';
@@ -88,19 +89,47 @@ describe('agregação mensal por hotel', () => {
   });
 });
 
-describe('retenção e fechamento', () => {
-  it('guarda 12 meses: o mesmo dia do ano anterior', () => {
-    expect(limiteDeRetencao(new Date('2026-09-30T12:00:00Z'))).toBe('2025-09-30');
+describe('janela de leitura e fechamento', () => {
+  it('180 dias terminando hoje, contando hoje', () => {
+    expect(JANELA_DE_LEITURA_PADRAO_DIAS).toBe(180);
+    expect(inicioDaJanelaDeLeitura(new Date('2026-09-30T12:00:00Z'))).toBe('2026-04-04');
+    expect(inicioDaJanelaDeLeitura(new Date('2026-09-30T23:59:59Z'), 1)).toBe('2026-09-30');
   });
 
-  it('dia 31 num mês curto cai no último dia dele, e o ano bissexto conta', () => {
-    expect(limiteDeRetencao(new Date('2026-03-31T00:00:00Z'), 1)).toBe('2026-02-28');
-    expect(limiteDeRetencao(new Date('2025-02-28T00:00:00Z'), 12)).toBe('2024-02-28');
-    expect(limiteDeRetencao(new Date('2028-03-31T00:00:00Z'), 1)).toBe('2028-02-29');
+  it('atravessa o fim do mês e do ano, e usa o valor da política no lugar do padrão', () => {
+    expect(inicioDaJanelaDeLeitura(new Date('2027-01-10T00:00:00Z'), 11)).toBe('2026-12-31');
+    expect(inicioDaJanelaDeLeitura(new Date('2027-01-10T00:00:00Z'))).toBe('2026-07-15');
+    expect(inicioDaJanelaDeLeitura(new Date('2027-01-10T00:00:00Z'), 365)).toBe('2026-01-11');
   });
-
   it('o job fecha o mês anterior, inclusive na virada do ano', () => {
     expect(mesAFechar(new Date('2026-10-01T03:00:00Z'))).toBe('2026-09');
     expect(mesAFechar(new Date('2027-01-01T03:00:00Z'))).toBe('2026-12');
+  });
+});
+
+describe('agregação mensal com recálculo (ADR-036)', () => {
+  it('o dia recalculado vale pelo cálculo de maior número, em qualquer ordem', () => {
+    const original = m({ dia: '2026-09-10', atencao: 40, faixaAtencao: 'observar', calculo: 1 });
+    const recalculado = m({
+      dia: '2026-09-10',
+      atencao: 80,
+      faixaAtencao: 'alta_atencao',
+      calculo: 2,
+    });
+    for (const dias of [
+      [original, recalculado],
+      [recalculado, original],
+    ]) {
+      const [a1] = agregarMesDosAtivos(dias, '2026-09');
+      expect(a1?.atencao).toEqual({ media: 80, maximo: 80, diasComDado: 1, diasSemDado: 0 });
+      expect(a1?.faixaFinal).toBe('alta_atencao');
+    }
+  });
+
+  it('sem o campo, vale 1; empate fica com o último da lista', () => {
+    const a = m({ dia: '2026-09-10', atencao: 40, faixaAtencao: 'observar' });
+    const b = m({ dia: '2026-09-10', atencao: 50, faixaAtencao: 'atencao', calculo: 1 });
+    expect(agregarMesDosAtivos([a, b], '2026-09')[0]?.atencao.media).toBe(50);
+    expect(agregarMesDosAtivos([b, a], '2026-09')[0]?.atencao.media).toBe(40);
   });
 });

@@ -1,5 +1,5 @@
 // Possível problema sistêmico pela mesma área comum e pelo mesmo fornecedor
-// (terceiro da triagem, fase A). Sempre "possível", com a evidência.
+// (fornecedor da OS, pelo id do cadastro). Sempre "possível", com a evidência.
 import { describe, expect, it } from 'vitest';
 import { type Corretiva, type ExecutadoPor, type LocalAnalisado, detectarSistemicos } from '../src';
 import { agora, corretiva, dia } from './apoio';
@@ -52,25 +52,25 @@ describe('mesmo fornecedor', () => {
   function os(
     i: number,
     executadoPor: ExecutadoPor,
-    terceiroNome: string | null,
+    fornecedorId: string | null,
     volta: boolean,
   ): Corretiva[] {
-    const ativoId = `${executadoPor}-${terceiroNome}-${i}`;
+    const ativoId = `${executadoPor}-${fornecedorId}-${i}`;
     const primeira = corretiva({
       ativoId,
       abertaEm: dia(-62),
       concluidaEm: dia(-60),
       executadoPor,
-      terceiroNome,
+      fornecedorId,
     });
     return volta ? [primeira, corretiva({ ativoId, abertaEm: dia(-50) })] : [primeira];
   }
-  const varias = (n: number, voltas: number, por: ExecutadoPor, nome: string | null) =>
-    Array.from({ length: n }, (_, i) => os(i, por, nome, i < voltas)).flat();
+  const varias = (n: number, voltas: number, por: ExecutadoPor, fornecedorId: string | null) =>
+    Array.from({ length: n }, (_, i) => os(i, por, fornecedorId, i < voltas)).flat();
 
-  it('terceiro com 3 voltas em 6 OS (50%) passa do limiar de 30%, com a taxa interna de referência', () => {
+  it('fornecedor com 3 voltas em 6 OS (50%) passa do limiar de 30%, com a taxa interna de referência', () => {
     const corretivas = [
-      ...varias(6, 3, 'terceiro', 'Refrigeração Silva'),
+      ...varias(6, 3, 'fornecedor', 'f-silva'),
       ...varias(10, 1, 'equipe_interna', null),
     ];
     const sinais = detectarSistemicos({ corretivas, ativos: [], locais: [] }, agora).filter(
@@ -79,7 +79,7 @@ describe('mesmo fornecedor', () => {
     expect(sinais).toHaveLength(1);
     expect(sinais[0]).toMatchObject({
       situacao: 'possivel',
-      chave: { terceiro: 'refrigeração silva' },
+      chave: { fornecedorId: 'f-silva' },
       evidencia: {
         quantidade: 6,
         voltas: 3,
@@ -93,8 +93,8 @@ describe('mesmo fornecedor', () => {
 
   it('abaixo do limiar ou com poucas OS, nada; a equipe interna nunca vira sinal', () => {
     for (const corretivas of [
-      varias(10, 2, 'terceiro', 'Silva'), // 20%
-      varias(4, 4, 'terceiro', 'Silva'), // só 4 OS
+      varias(10, 2, 'fornecedor', 'f-silva'), // 20%
+      varias(4, 4, 'fornecedor', 'f-silva'), // só 4 OS
       varias(10, 9, 'equipe_interna', null),
     ])
       expect(
@@ -104,14 +104,26 @@ describe('mesmo fornecedor', () => {
       ).toEqual([]);
   });
 
+  it('o nome digitado não entra: fornecedores de nome parecido seguem separados, e OS sem fornecedor não conta', () => {
+    const corretivas = [
+      ...varias(3, 3, 'fornecedor', 'f-silva'),
+      ...varias(3, 3, 'fornecedor', 'f-silva-2'),
+      ...varias(6, 6, 'fornecedor', null),
+    ];
+    expect(
+      detectarSistemicos({ corretivas, ativos: [], locais: [] }, agora).filter(
+        (s) => s.regra === 'mesmo_fornecedor',
+      ),
+    ).toEqual([]);
+  });
   it('a OS concluída há menos de 30 dias ainda não conta', () => {
     const recentes = Array.from({ length: 6 }, (_, i) =>
       corretiva({
         ativoId: `r${i}`,
         abertaEm: dia(-12),
         concluidaEm: dia(-10),
-        executadoPor: 'terceiro',
-        terceiroNome: 'Silva',
+        executadoPor: 'fornecedor',
+        fornecedorId: 'f-silva',
       }),
     );
     const voltas = recentes.map((c) => corretiva({ ativoId: c.ativoId, abertaEm: dia(-5) }));
