@@ -9,7 +9,9 @@
 //      handlers (token verificado + contexto) e da RLS;
 //   3. põe a CSP com nonce na requisição (o Next aplica o nonce aos scripts
 //      dele) e na resposta; na API, a política fechada e Cache-Control
-//      no-store. Os demais cabeçalhos fixos vêm do next.config.ts.
+//      no-store. Os demais cabeçalhos fixos vêm do next.config.ts;
+//   4. mede o próprio tempo (Server-Timing, P1a): na página, vai na resposta;
+//      na API, segue para a rota, que junta ao dela (servidor/tempo.ts).
 import { CODIGOS_HTTP, LIMITE_BYTES_MAXIMO } from '@hubkeep/contratos';
 import { type NextRequest, NextResponse } from 'next/server';
 import {
@@ -21,10 +23,12 @@ import {
 } from './seguranca';
 import { registrarNoConsole } from './servidor/log';
 import { type CookieParaGravar, clienteDeSessao } from './servidor/sessao-supabase';
+import { CABECALHO_SERVER_TIMING, CABECALHO_TEMPO_DO_PROXY, metrica } from './servidor/tempo';
 
 const CSP = 'content-security-policy';
 
 export async function proxy(request: NextRequest) {
+  const inicio = performance.now();
   const caminho = request.nextUrl.pathname;
   if (
     !origemAceita({
@@ -59,11 +63,17 @@ export async function proxy(request: NextRequest) {
   const gravados: CookieParaGravar[] = [];
   const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
   const chave = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
+  let sessaoMs = 0;
   if (url && chave) {
+    const inicioDaSessao = performance.now();
     const supabase = clienteDeSessao(url, chave, request, gravados);
-    // getUser() consulta o Auth e dispara a renovação se preciso. O resultado
-    // não é usado para autorizar: os handlers verificam o token pelo JWKS.
-    await supabase.auth.getUser();
+    // getSession() lê a sessão do cookie e só vai ao Auth quando o access
+    // token está para vencer, para renová-lo. O getUser() de antes ia ao Auth
+    // em todo pedido com sessão (de 46 a 90 ms), e o resultado não servia para
+    // nada: quem autoriza são os handlers, que verificam o token pelo JWKS
+    // (servidor/identidade.ts), e a RLS. O usuário da sessão não é lido aqui.
+    await supabase.auth.getSession();
+    sessaoMs = performance.now() - inicioDaSessao;
     // Os handlers desta mesma requisição leem o cookie já renovado.
     for (const { name, value } of gravados) request.cookies.set(name, value);
   }
@@ -78,11 +88,17 @@ export async function proxy(request: NextRequest) {
       });
   const cabecalhos = new Headers(request.headers);
   cabecalhos.set(CSP, politica);
+  const tempo = `${metrica('proxy', performance.now() - inicio)}, ${metrica('sessao', sessaoMs)}`;
+  // Na API, a rota junta o tempo do proxy ao dela. Regravado sempre, para o
+  // valor mandado pelo navegador não chegar à rota.
+  if (ehApi) cabecalhos.set(CABECALHO_TEMPO_DO_PROXY, tempo);
+  else cabecalhos.delete(CABECALHO_TEMPO_DO_PROXY);
   const resposta = NextResponse.next({ request: { headers: cabecalhos } });
   for (const { name, value, options } of gravados) resposta.cookies.set(name, value, options);
   resposta.headers.set(CSP, politica);
   // Resposta da API é dado de um usuário e tenant: nenhum cache a guarda.
   if (ehApi) resposta.headers.set('cache-control', 'no-store');
+  else resposta.headers.set(CABECALHO_SERVER_TIMING, tempo);
   return resposta;
 }
 
