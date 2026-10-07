@@ -177,6 +177,24 @@ describe.skipIf(!temAmbiente)('dados de demonstração do kit de teste', { timeo
     expect(Number(parada.rows[0].n)).toBe(1);
   });
 
+  it('cada chamado com a prioridade do roteiro, pela política da categoria', async () => {
+    const chamados = await casosDeUsoDeChamados();
+    const { prioridades } = await (
+      await casosDeUsoDeSituacoes()
+    ).listarSituacoesEPrioridades(ctx('admin'));
+    const chave = async (c: keyof ResultadoDaDemonstracao['chamados']) => {
+      const { prioridadeId } = await chamados.chamado(ctx('admin'), r.chamados[c]);
+      return prioridades.find((p) => p.id === prioridadeId)?.chavePadrao;
+    };
+    expect(await chave('aberto')).toBe('alta');
+    expect(await chave('atribuido')).toBe('alta');
+    expect(await chave('emExecucaoParado')).toBe('alta');
+    expect(await chave('aguardandoAceite')).toBe('media');
+    expect(await chave('cancelado')).toBe('media');
+    expect(await chave('concluido')).toBe('alta');
+    expect(await chave('praiaAberto')).toBe('alta');
+  });
+
   it('o terceiro hotel fica em implantação, com as UHs pendentes de licença', async () => {
     const hotel = await dono.query(`select status from app.hotel where id = $1`, [r.hoteis.serra]);
     expect(hotel.rows[0].status).toBe('em_implantacao');
