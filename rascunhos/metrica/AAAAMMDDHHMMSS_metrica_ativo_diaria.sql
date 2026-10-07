@@ -20,9 +20,11 @@
 --     score (detalhe_*, o Score.configuracao);
 --   - recálculo: outra linha do mesmo ativo e dia, com o número de cálculo
 --     seguinte e recalculo = true. O recálculo de um dia que nunca foi gravado
---     entra com calculo = 1 e recalculo = true. A leitura mostra o cálculo de
---     maior número de cada dia (decisão do rascunho, a confirmar); os anteriores
---     seguem guardados;
+--     entra com calculo = 1 e recalculo = true. O painel mostra o
+--     resultado original gravado de cada dia (o de menor número, que não é
+--     recálculo); o recálculo só aparece no painel de investigação, sob demanda
+--     e identificado (decisão de 07/10/2026, aprovada por Kaio, aguardando
+--     Cesar). Nada é apagado;
 --   - uma linha por (ativo, dia, cálculo): índice único, que também faz o job
 --     rodar duas vezes no mesmo dia sem duplicar.
 -- Lê (hk_app): quem tem leitura do hotel (authz.hoteis_leitura). O proprietário
