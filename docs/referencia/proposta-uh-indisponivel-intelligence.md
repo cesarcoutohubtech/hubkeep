@@ -2,6 +2,8 @@
 
 **Situação:** proposta de 07/10/2026, do agente do Kaio, **para aprovação**. Nenhum score a usa. Só a medida (`uhDiasPerdidos`, em `packages/inteligencia/src/uh.ts`) está escrita, pura e testada, e o `calcularDia` não a chama.
 
+**Decisão de 07/10/2026 (aprovada por Kaio, aguardando Cesar):** os UH-dias perdidos são **componente da atenção do ativo**, e não sinal próprio. O **peso fica 0** até existir a origem do dado de UH indisponível (o período no chamado, 1b); com peso 0 a fórmula e a versão dela não mudam. Quando o dado existir e o peso passar de 0, a atenção ganha a versão seguinte da fórmula, com os pesos redistribuídos (ADR-034 e ADR-036). A recomendação de sinal próprio, abaixo, **não foi adotada**; o texto fica como registro das objeções (a UH sem ativo, e a conta em dobro com a parada e o impacto no hóspede), que a versão nova da fórmula precisa tratar.
+
 **De onde vem o pedido:** a revisão do escopo de 07/10/2026 (`docs/referencia/HubKeep — Documento do projeto.md`) põe no MVP o período de UH indisponível no chamado e os UH-dias perdidos por manutenção. A pergunta ao Intelligence: esses UH-dias entram na atenção por ativo, ou num sinal próprio?
 
 ## Recomendação: sinal próprio, e não componente da atenção
