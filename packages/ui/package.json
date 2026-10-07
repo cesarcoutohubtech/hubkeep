@@ -15,11 +15,18 @@
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run --passWithNoTests"
   },
-  "devDependencies": {
-    "vitest": "^5.0.1"
-  },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/barlow-condensed": "^5.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "vitest": "^5.0.1"
   }
 }

@@ -71,11 +71,17 @@
   --hk-menu-texto: #c6d8db;
   --hk-menu-grupo: #82999e;
   --hk-menu-ativo: #2fd6c3;
+  --hk-menu-texto-ativo: #ffffff;
+  --hk-menu-ativo-fundo: rgba(47, 214, 195, 0.16);
+  --hk-menu-contagem-fundo: rgba(255, 255, 255, 0.08);
+  --hk-menu-linha: #183740;
   --hk-barra-fundo: rgba(8, 26, 32, 0.82);
   --hk-escopo-fundo: #0a2027;
 
   --hk-foco: #f0a500;
   --hk-sombra: 0 30px 80px rgba(0, 0, 0, 0.5);
+  --hk-sombra-painel: none;
+  --hk-sobreposicao: rgba(2, 10, 13, 0.6);
 
   --hk-fonte: 'Barlow', 'Segoe UI', Roboto, Arial, sans-serif;
   --hk-fonte-condensada: 'Barlow Condensed', 'Arial Narrow', 'Segoe UI', sans-serif;
@@ -141,10 +147,14 @@
   --hk-menu-texto: #c6d8db;
   --hk-menu-grupo: #86a9ae;
   --hk-menu-ativo: #f0a500;
+  --hk-menu-ativo-fundo: rgba(240, 165, 0, 0.22);
+  --hk-menu-linha: #0b343b;
   --hk-barra-fundo: rgba(255, 255, 255, 0.88);
   --hk-escopo-fundo: #e6eff0;
 
   /* AA: o contorno de foco âmbar dava 2,4:1 sobre o branco (mínimo 3:1). */
   --hk-foco: #ba8000;
   --hk-sombra: 0 30px 80px rgba(15, 40, 46, 0.18);
+  --hk-sombra-painel: 0 1px 2px rgba(15, 40, 46, 0.05);
+  --hk-sobreposicao: rgba(15, 40, 46, 0.35);
 }

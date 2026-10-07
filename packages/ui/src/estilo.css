@@ -1,10 +1,11 @@
 /*
- * Entrada única do estilo do HubKeep (ADR-038): fontes, tokens e a base dos
- * elementos. O web importa no layout raiz e o PWA no main.tsx. Os
- * componentes de packages/ui usam só os tokens daqui.
+ * Entrada única do estilo do HubKeep (ADR-038): fontes, tokens, a base dos
+ * elementos e as classes dos componentes. O web importa no layout raiz e o
+ * PWA no main.tsx. Os componentes de packages/ui usam só os tokens daqui.
  */
 @import './fontes.css';
 @import './tokens.css';
+@import './componentes.css';
 
 *,
 *::before,
