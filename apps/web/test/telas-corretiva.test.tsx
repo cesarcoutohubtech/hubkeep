@@ -13,12 +13,15 @@ import {
   type EventoDaLinhaDoTempo,
   FILTRO_VAZIO,
   FiltrosDaLista,
-  ItemDeChamado,
-  ItemDeOs,
+  ColunasDeChamado,
+  ColunasDeOs,
+  LinhaDeChamado,
+  LinhaDeOs,
   LinhaDoTempo,
   type OsResumida,
   type Referencias,
   agoraNoCampo,
+  nivelDaPrioridade,
   caminhoDaLista,
 } from '../src/cliente/corretiva';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
@@ -162,10 +165,18 @@ const DADOS = [
 const telas = () => (
   <>
     <FiltrosDaLista entidade="chamado" refs={refs} aoFiltrar={() => undefined} />
-    <ul>
-      <ItemDeChamado c={chamado} refs={refs} />
-      <ItemDeOs o={os} refs={refs} />
-    </ul>
+    <table>
+      <ColunasDeChamado />
+      <tbody>
+        <LinhaDeChamado c={chamado} refs={refs} />
+      </tbody>
+    </table>
+    <table>
+      <ColunasDeOs />
+      <tbody>
+        <LinhaDeOs o={os} refs={refs} />
+      </tbody>
+    </table>
     <ChamadoEmDetalhe
       detalhe={detalhe}
       refs={refs}
@@ -286,5 +297,33 @@ describe('telas da corretiva (C7) em cada idioma', () => {
       .filter((t) => t !== '' && !DADOS.includes(t));
     expect(textos.length).toBeGreaterThan(20);
     for (const texto of textos) expect(texto, texto).toMatch(/^\[.*\]$/s);
+  });
+});
+
+describe('nível visual da prioridade', () => {
+  const p = (id: string, peso: number, chavePadrao: string | null = null, ativa = true) => ({
+    id,
+    chavePadrao,
+    peso,
+    ativa,
+    ordem: 0,
+    nomes: {},
+  });
+
+  it('a padrão vai pela chave', () => {
+    const lista = [p('u', 100, 'urgente'), p('b', 10, 'baixa')];
+    expect(nivelDaPrioridade(lista, 'u')).toBe('critica');
+    expect(nivelDaPrioridade(lista, 'b')).toBe('baixa');
+  });
+
+  it('a criada pelo tenant vai pela posição do peso entre as ativas', () => {
+    const lista = [p('a', 90), p('b', 60), p('c', 30), p('d', 5), p('x', 99, null, false)];
+    expect(['a', 'b', 'c', 'd'].map((id) => nivelDaPrioridade(lista, id))).toEqual([
+      'critica',
+      'alta',
+      'media',
+      'baixa',
+    ]);
+    expect(nivelDaPrioridade(lista, 'desconhecida')).toBe('baixa');
   });
 });

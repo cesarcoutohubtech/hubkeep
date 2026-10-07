@@ -28,3 +28,18 @@ export function MensagemDeErro({ titulo, acao, children }: PropsDaMensagem) {
     </div>
   );
 }
+
+export const TONS_DE_NOTA = ['info', 'ok', 'atencao'] as const;
+export type TomDeNota = (typeof TONS_DE_NOTA)[number];
+
+/**
+ * Aviso que não é erro: informação, confirmação ("feito") ou atenção. A
+ * confirmação e a atenção são anunciadas (role="status"); a informação, não.
+ */
+export function Nota({ tom = 'info', children }: { tom?: TomDeNota; children: ReactNode }) {
+  return (
+    <p className="hk-nota" data-tom={tom} {...(tom === 'info' ? {} : { role: 'status' })}>
+      {children}
+    </p>
+  );
+}

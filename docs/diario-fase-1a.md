@@ -1227,3 +1227,15 @@ Dividida em duas partes, cada uma no seu PR:
 - **Ao retomar:** `gh pr list`, `gh pr checks` do PR aberto e `gh run list --branch main`.
 - **Fila:** U3 (este PR) e U5 (PWA) → U4 (resto das telas do web na moldura). P1a, P1b e P1c esperam o aval do Cesar.
 - **Parada:** a fase 1b só começa com o aval do Cesar.
+
+### U4a, telas da operação (07/10/2026)
+- **Merges do Cesar:** #118 (U3). A U5 (PWA) foi aberta como #119, rebaseada na main depois da U3.
+- **U4 dividida em duas,** para o PR não ficar grande demais: U4a (operação, este PR) e U4b (cadastros e configuração).
+- **U4a:**
+  - listas de chamados e de OS em tabela, com filtros em linha, selo de situação pela cor do estado canônico e selo de prioridade pelo nível;
+  - o nível da prioridade padrão vem da chave; o da prioridade criada pelo tenant, da posição do peso entre as ativas (`nivelDaPrioridade`);
+  - detalhe do chamado em duas colunas (chamado, OS, aceite e triagem; linha do tempo e histórico), com `Link` de volta;
+  - paradas a encerrar em lista com ação;
+  - histórico, anexos e campo de busca, usados também pelos cadastros, já nos componentes;
+  - o título dessas telas sai da barra superior (`tituloDaRota`), e o h1 próprio saiu;
+  - o `ui` ganhou as classes de arranjo (grade, pilha, filtros, bloco, linha do tempo, lista, caixa de marcar) e a `Nota` (informação, confirmação e atenção).

@@ -1,15 +1,17 @@
 'use client';
 // Lista de chamados (fase 1a, C7): os do escopo de quem vê (a API recorta pela
 // RLS), com os filtros básicos e 50 por página. Cada chamado abre o detalhe.
+import { Botao, MensagemVazia, Painel, Tabela } from '@hubkeep/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
 import {
   Aviso,
   type ChamadoResumido,
+  ColunasDeChamado,
   FILTRO_VAZIO,
   type FiltroDaTela,
   FiltrosDaLista,
-  ItemDeChamado,
+  LinhaDeChamado,
   type Referencias,
   caminhoDaLista,
   carregarReferencias,
@@ -50,27 +52,30 @@ export default function Chamados() {
   }, [carregar, filtro]);
 
   return (
-    <main style={{ display: 'grid', gap: 16 }}>
-      <a href="/">{t('comum.voltar')}</a>
-      <h1>{t('corretiva.chamados.titulo')}</h1>
+    <Painel>
       <FiltrosDaLista entidade="chamado" refs={refs} aoFiltrar={setFiltro} />
       <Aviso aviso={erro && { tipo: 'erro', erro }} />
       {chamados === null ? (
-        !erro && <p>{t('comum.carregando')}</p>
+        !erro && <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
       ) : chamados.length === 0 ? (
-        <p>{t('corretiva.chamados.vazio')}</p>
+        <MensagemVazia>{t('corretiva.chamados.vazio')}</MensagemVazia>
       ) : (
-        <ul style={{ display: 'grid', gap: 12 }}>
-          {chamados.map((c) => (
-            <ItemDeChamado key={c.id} c={c} refs={refs} />
-          ))}
-        </ul>
+        <Tabela legenda={t('corretiva.chamados.titulo')}>
+          <ColunasDeChamado />
+          <tbody>
+            {chamados.map((c) => (
+              <LinhaDeChamado key={c.id} c={c} refs={refs} />
+            ))}
+          </tbody>
+        </Tabela>
       )}
       {proximo && (
-        <button type="button" onClick={() => void carregar(filtro, proximo)}>
-          {t('corretiva.carregar_mais')}
-        </button>
+        <div className="hk-mensagem-acao">
+          <Botao onClick={() => void carregar(filtro, proximo)}>
+            {t('corretiva.carregar_mais')}
+          </Botao>
+        </div>
       )}
-    </main>
+    </Painel>
   );
 }

@@ -19,6 +19,7 @@ import {
   MensagemDeErro,
   MensagemVazia,
   NIVEIS_DE_PRIORIDADE,
+  Nota,
   Painel,
   Selecao,
   Selo,
@@ -248,5 +249,13 @@ describe('Marca e tela de entrada', () => {
       '<div class="hk-entrada-acoes"><select></select></div><h1>Entrar</h1><form></form>',
     );
     expect(h).toContain('<div class="hk-entrada-rodape">Por convite</div>');
+  });
+});
+
+describe('Nota', () => {
+  it('a informação não é anunciada; a confirmação e a atenção são', () => {
+    expect(html(<Nota>Dica</Nota>)).toBe('<p class="hk-nota" data-tom="info">Dica</p>');
+    expect(html(<Nota tom="ok">Feito</Nota>)).toContain('role="status"');
+    expect(html(<Nota tom="atencao">Cuidado</Nota>)).toContain('role="status"');
   });
 });

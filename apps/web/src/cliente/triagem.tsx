@@ -12,6 +12,7 @@ import {
   TRANSICOES_DA_OS,
   TRANSICOES_DO_CHAMADO,
 } from '@hubkeep/dominio';
+import { AreaDeTexto, Botao, Campo, Painel, Selecao } from '@hubkeep/ui';
 import { type FormEvent, useState } from 'react';
 import { type DetalheDoChamado, type OsDoChamado, type Referencias, useNomes } from './corretiva';
 import { useT } from '../i18n/cliente';
@@ -60,9 +61,6 @@ export function acoesPossiveis(detalhe: DetalheDoChamado) {
   };
 }
 
-const bloco = { display: 'grid', gap: 6, borderLeft: '3px solid', paddingLeft: 8 } as const;
-const campo = { display: 'grid' } as const;
-
 function SeletorDePrioridade(props: {
   refs: Referencias | null;
   valor: string;
@@ -73,21 +71,22 @@ function SeletorDePrioridade(props: {
   const nomes = useNomes(props.refs);
   const ativas = (props.refs?.corretiva.prioridades ?? []).filter((p) => p.ativa);
   return (
-    <label style={campo}>
-      {t('corretiva.triagem.prioridade')}
-      <select value={props.valor} onChange={(e) => props.aoMudar(e.target.value)}>
-        <option value="">
-          {props.opcional
-            ? t('corretiva.triagem.manter_prioridade')
-            : t('corretiva.triagem.escolha')}
-        </option>
-        {ativas.map((p) => (
-          <option key={p.id} value={p.id}>
-            {nomes.prioridade(p.id)}
+    <Campo rotulo={t('corretiva.triagem.prioridade')}>
+      {(c) => (
+        <Selecao {...c} value={props.valor} onChange={(e) => props.aoMudar(e.target.value)}>
+          <option value="">
+            {props.opcional
+              ? t('corretiva.triagem.manter_prioridade')
+              : t('corretiva.triagem.escolha')}
           </option>
-        ))}
-      </select>
-    </label>
+          {ativas.map((p) => (
+            <option key={p.id} value={p.id}>
+              {nomes.prioridade(p.id)}
+            </option>
+          ))}
+        </Selecao>
+      )}
+    </Campo>
   );
 }
 
@@ -100,34 +99,37 @@ function SeletorDeResponsavel(props: {
   const pessoas = props.candidatos?.disponiveis ?? [];
   const equipes = (props.candidatos?.equipes ?? []).filter((e) => e.ativa);
   if (pessoas.length === 0 && equipes.length === 0) {
-    return <small>{t('corretiva.triagem.sem_candidatos')}</small>;
+    return <p className="hk-suave">{t('corretiva.triagem.sem_candidatos')}</p>;
   }
   return (
-    <label style={campo}>
-      {t('corretiva.triagem.responsavel')}
-      <select value={props.valor} onChange={(e) => props.aoMudar(e.target.value)}>
-        <option value="">{t('corretiva.triagem.escolha')}</option>
-        {equipes.length > 0 && (
-          <optgroup label={t('corretiva.triagem.equipes')}>
-            {equipes.map((e) => (
-              <option key={e.id} value={`equipe:${e.id}`}>
-                {e.nome}
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {pessoas.length > 0 && (
-          <optgroup label={t('corretiva.triagem.pessoas')}>
-            {pessoas.map((p) => (
-              <option key={p.usuarioId} value={`tecnico:${p.usuarioId}`}>
-                {p.nome}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
-      <small>{t('corretiva.triagem.dica_responsavel')}</small>
-    </label>
+    <Campo
+      rotulo={t('corretiva.triagem.responsavel')}
+      ajuda={t('corretiva.triagem.dica_responsavel')}
+    >
+      {(c) => (
+        <Selecao {...c} value={props.valor} onChange={(e) => props.aoMudar(e.target.value)}>
+          <option value="">{t('corretiva.triagem.escolha')}</option>
+          {equipes.length > 0 && (
+            <optgroup label={t('corretiva.triagem.equipes')}>
+              {equipes.map((e) => (
+                <option key={e.id} value={`equipe:${e.id}`}>
+                  {e.nome}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {pessoas.length > 0 && (
+            <optgroup label={t('corretiva.triagem.pessoas')}>
+              {pessoas.map((p) => (
+                <option key={p.usuarioId} value={`tecnico:${p.usuarioId}`}>
+                  {p.nome}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </Selecao>
+      )}
+    </Campo>
   );
 }
 
@@ -143,11 +145,11 @@ function Atribuicao(props: {
     if (escolhido) props.aoEnviar(escolhido);
   }
   return (
-    <form onSubmit={enviar} style={{ display: 'grid', gap: 6 }}>
+    <form onSubmit={enviar}>
       <SeletorDeResponsavel candidatos={props.candidatos} valor={valor} aoMudar={setValor} />
-      <button type="submit" disabled={!escolhido}>
+      <Botao type="submit" variante="primario" disabled={!escolhido}>
         {props.rotulo}
-      </button>
+      </Botao>
     </form>
   );
 }
@@ -160,12 +162,15 @@ function Cancelamento(props: { rotulo: string; aoEnviar: (motivo: string) => voi
     props.aoEnviar(motivo);
   }
   return (
-    <form onSubmit={enviar} style={{ display: 'grid', gap: 6 }}>
-      <label style={campo}>
-        {t('corretiva.triagem.motivo')}
-        <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={2} />
-      </label>
-      <button type="submit">{props.rotulo}</button>
+    <form onSubmit={enviar}>
+      <Campo rotulo={t('corretiva.triagem.motivo')}>
+        {(c) => (
+          <AreaDeTexto {...c} value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={2} />
+        )}
+      </Campo>
+      <Botao type="submit" variante="perigo">
+        {props.rotulo}
+      </Botao>
     </form>
   );
 }
@@ -178,9 +183,11 @@ function Triar(props: { refs: Referencias | null; aoEnviar: (p: string | null) =
     props.aoEnviar(prioridade || null);
   }
   return (
-    <form onSubmit={enviar} style={{ display: 'grid', gap: 6 }}>
+    <form onSubmit={enviar}>
       <SeletorDePrioridade refs={props.refs} valor={prioridade} aoMudar={setPrioridade} opcional />
-      <button type="submit">{t('corretiva.triagem.triar')}</button>
+      <Botao type="submit" variante="primario">
+        {t('corretiva.triagem.triar')}
+      </Botao>
     </form>
   );
 }
@@ -193,16 +200,16 @@ function Priorizar(props: { refs: Referencias | null; aoEnviar: (p: string) => v
     if (prioridade) props.aoEnviar(prioridade);
   }
   return (
-    <form onSubmit={enviar} style={{ display: 'grid', gap: 6 }}>
+    <form onSubmit={enviar}>
       <SeletorDePrioridade
         refs={props.refs}
         valor={prioridade}
         aoMudar={setPrioridade}
         opcional={false}
       />
-      <button type="submit" disabled={!prioridade}>
+      <Botao type="submit" disabled={!prioridade}>
         {t('corretiva.triagem.ajustar_prioridade')}
-      </button>
+      </Botao>
     </form>
   );
 }
@@ -232,71 +239,70 @@ export function TriagemDoChamado(props: {
   // As chaves com a versão remontam os formulários depois de cada gravação.
   const v = detalhe.chamado.versao;
   return (
-    <details open={a.triar || a.gerarOs} style={{ display: 'grid', gap: 12 }}>
-      <summary>
-        <strong>{t('corretiva.triagem.titulo')}</strong>
-      </summary>
-      <small>{t('corretiva.triagem.descricao')}</small>
-      {!algumaAcao && <p>{t('corretiva.triagem.nada_a_fazer')}</p>}
-      {a.triar && (
-        <div style={bloco}>
-          <strong>{t('corretiva.triagem.triar')}</strong>
-          <Triar key={`triar-${v}`} refs={props.refs} aoEnviar={acoes.triar} />
-        </div>
-      )}
-      {a.priorizar && (
-        <div style={bloco}>
-          <strong>{t('corretiva.triagem.ajustar_prioridade')}</strong>
-          <Priorizar key={`priorizar-${v}`} refs={props.refs} aoEnviar={acoes.priorizar} />
-        </div>
-      )}
-      {a.gerarOs && (
-        <div style={bloco}>
-          <strong>{t('corretiva.triagem.gerar_os')}</strong>
-          <Atribuicao
-            key={`gerar-${v}`}
-            candidatos={props.candidatos}
-            rotulo={t('corretiva.triagem.gerar_os')}
-            aoEnviar={acoes.gerarOs}
-          />
-        </div>
-      )}
-      {osComAcao.map((o) => (
-        <div key={`${o.id}-${o.versao}`} style={bloco}>
-          <strong>
-            {t('corretiva.triagem.os', {
-              situacao: nomes.situacao(o.situacaoId),
-              nome: responsavel(o),
-            })}
-          </strong>
-          {a.osReatribuiveis.includes(o) && (
+    <Painel titulo={t('corretiva.triagem.titulo')}>
+      <div className="hk-pilha">
+        <p className="hk-suave">{t('corretiva.triagem.descricao')}</p>
+        {!algumaAcao && <p className="hk-suave">{t('corretiva.triagem.nada_a_fazer')}</p>}
+        {a.triar && (
+          <div className="hk-bloco" data-tom="atencao">
+            <p className="hk-bloco-titulo">{t('corretiva.triagem.triar')}</p>
+            <Triar key={`triar-${v}`} refs={props.refs} aoEnviar={acoes.triar} />
+          </div>
+        )}
+        {a.priorizar && (
+          <div className="hk-bloco">
+            <p className="hk-bloco-titulo">{t('corretiva.triagem.ajustar_prioridade')}</p>
+            <Priorizar key={`priorizar-${v}`} refs={props.refs} aoEnviar={acoes.priorizar} />
+          </div>
+        )}
+        {a.gerarOs && (
+          <div className="hk-bloco" data-tom="atencao">
+            <p className="hk-bloco-titulo">{t('corretiva.triagem.gerar_os')}</p>
             <Atribuicao
+              key={`gerar-${v}`}
               candidatos={props.candidatos}
-              rotulo={t('corretiva.triagem.reatribuir')}
-              aoEnviar={(r) => acoes.reatribuirOs(o, r)}
+              rotulo={t('corretiva.triagem.gerar_os')}
+              aoEnviar={acoes.gerarOs}
             />
-          )}
-          {a.osCancelaveis.includes(o) && (
-            <>
-              <small>{t('corretiva.triagem.cancelar_os_descricao')}</small>
-              <Cancelamento
-                rotulo={t('corretiva.triagem.cancelar_os')}
-                aoEnviar={(motivo) => acoes.cancelarOs(o, motivo)}
+          </div>
+        )}
+        {osComAcao.map((o) => (
+          <div key={`${o.id}-${o.versao}`} className="hk-bloco">
+            <p className="hk-bloco-titulo">
+              {t('corretiva.triagem.os', {
+                situacao: nomes.situacao(o.situacaoId),
+                nome: responsavel(o),
+              })}
+            </p>
+            {a.osReatribuiveis.includes(o) && (
+              <Atribuicao
+                candidatos={props.candidatos}
+                rotulo={t('corretiva.triagem.reatribuir')}
+                aoEnviar={(r) => acoes.reatribuirOs(o, r)}
               />
-            </>
-          )}
-        </div>
-      ))}
-      {a.cancelarChamado && (
-        <div style={bloco}>
-          <strong>{t('corretiva.triagem.cancelar_chamado')}</strong>
-          <Cancelamento
-            key={`cancelar-${v}`}
-            rotulo={t('corretiva.triagem.cancelar_chamado')}
-            aoEnviar={acoes.cancelarChamado}
-          />
-        </div>
-      )}
-    </details>
+            )}
+            {a.osCancelaveis.includes(o) && (
+              <>
+                <p className="hk-suave">{t('corretiva.triagem.cancelar_os_descricao')}</p>
+                <Cancelamento
+                  rotulo={t('corretiva.triagem.cancelar_os')}
+                  aoEnviar={(motivo) => acoes.cancelarOs(o, motivo)}
+                />
+              </>
+            )}
+          </div>
+        ))}
+        {a.cancelarChamado && (
+          <div className="hk-bloco">
+            <p className="hk-bloco-titulo">{t('corretiva.triagem.cancelar_chamado')}</p>
+            <Cancelamento
+              key={`cancelar-${v}`}
+              rotulo={t('corretiva.triagem.cancelar_chamado')}
+              aoEnviar={acoes.cancelarChamado}
+            />
+          </div>
+        )}
+      </div>
+    </Painel>
   );
 }

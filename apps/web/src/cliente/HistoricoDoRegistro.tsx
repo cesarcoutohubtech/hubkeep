@@ -9,6 +9,7 @@
 import type { RespostaDoHistorico, z } from '@hubkeep/contratos';
 import { REFERENCIA_DO_CAMPO } from '@hubkeep/dominio';
 import { type Chave, type Idioma, resolverNome } from '@hubkeep/i18n';
+import { Botao, MensagemDeErro } from '@hubkeep/ui';
 import { useCallback, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type ErroDaApi, chamarApi } from './api';
@@ -91,32 +92,30 @@ export function ListaDoHistorico({ historico }: { historico: Historico }) {
         : t('auditoria.por', { nome: e.usuarioNome });
 
   return (
-    <div style={{ display: 'grid', gap: 4 }}>
-      <strong>{t('auditoria.titulo')}</strong>
+    <div className="hk-pilha">
+      <p className="hk-bloco-titulo">{t('auditoria.titulo')}</p>
       {historico.eventos.length === 0 ? (
-        <small>{t('auditoria.vazio')}</small>
+        <p className="hk-suave">{t('auditoria.vazio')}</p>
       ) : (
-        <ol style={{ margin: 0, display: 'grid', gap: 6 }}>
+        <ol className="hk-tempo">
           {historico.eventos.map((e) => (
-            <li key={e.id} style={{ display: 'grid' }}>
+            <li key={e.id}>
               <span>
                 {t('auditoria.evento', {
                   quando: intl.formatDate(e.em, DATA_E_HORA),
                   acao: t(ROTULO_DA_ACAO[historico.entidade], { acao: e.acao }),
                 })}
               </span>
-              <small>{quem(e)}</small>
+              <span className="hk-suave">{quem(e)}</span>
               {e.mudancas.length > 0 && (
-                <ul style={{ margin: 0 }}>
+                <ul>
                   {e.mudancas.map((m) => (
-                    <li key={`${m.campo}.${m.chave ?? ''}`}>
-                      <small>
-                        {t('auditoria.mudanca', {
-                          campo: rotuloDoCampo(m),
-                          antes: formatar(m, m.antes),
-                          depois: formatar(m, m.depois),
-                        })}
-                      </small>
+                    <li key={`${m.campo}.${m.chave ?? ''}`} className="hk-suave">
+                      {t('auditoria.mudanca', {
+                        campo: rotuloDoCampo(m),
+                        antes: formatar(m, m.antes),
+                        depois: formatar(m, m.depois),
+                      })}
                     </li>
                   ))}
                 </ul>
@@ -151,10 +150,10 @@ export function HistoricoDoRegistro({
   if (historico === null) {
     return (
       <div>
-        <button type="button" onClick={() => void carregar()}>
+        <Botao tamanho="pequeno" onClick={() => void carregar()}>
           {t('auditoria.ver')}
-        </button>
-        {erro && <small role="alert">{mensagemDeErro(erro)}</small>}
+        </Botao>
+        {erro && <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>}
       </div>
     );
   }
