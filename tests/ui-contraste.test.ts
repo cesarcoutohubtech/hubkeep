@@ -83,7 +83,9 @@ const PARES: [string, string[], number][] = [
   ['--hk-selo-ambar', ['--hk-ambar-suave'], TEXTO],
   ['--hk-selo-vermelho', ['--hk-vermelho-suave'], TEXTO],
   ['--hk-selo-verde', ['--hk-verde-suave'], TEXTO],
+  ['--hk-titulo', ['--hk-barra-fundo'], TEXTO],
   ['--hk-menu-texto', ['--hk-menu-fundo'], TEXTO],
+  ['--hk-menu-texto-ativo', ['--hk-menu-fundo'], TEXTO],
   ['--hk-menu-grupo', ['--hk-menu-fundo'], TEXTO],
   ['--hk-foco', FUNDOS_GERAIS, CONTORNO],
 ];
@@ -108,9 +110,51 @@ describe('tokens nos dois temas', () => {
   });
 
   it('nenhuma fonte é pedida a um servidor de fora (ADR-038)', () => {
-    const estilo = ['fontes.css', 'estilo.css', 'tokens.css']
+    const estilo = ['fontes.css', 'estilo.css', 'tokens.css', 'componentes.css']
       .map((f) => readFileSync(`packages/ui/src/${f}`, 'utf8'))
       .join('\n');
     expect(estilo).not.toMatch(/fonts\.googleapis|fonts\.gstatic|https?:\/\//);
+  });
+});
+
+// Os componentes (U2) usam só os tokens: o tema claro muda os tokens, não as
+// regras. Cada tom, nível e variante que o código oferece tem regra no CSS.
+describe('estilo dos componentes', () => {
+  const COMPONENTES = readFileSync('packages/ui/src/componentes.css', 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
+
+  it('toda cor vem de um token', () => {
+    expect(COMPONENTES).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
+  });
+
+  it('todo token usado existe', () => {
+    const usados = new Set([...COMPONENTES.matchAll(/var\((--hk-[a-z0-9-]+)\)/g)].map((m) => m[1]));
+    expect([...usados].filter((t) => t && !ESCURO.has(t))).toEqual([]);
+  });
+
+  it('toda classe tem o prefixo hk-', () => {
+    const classes = [...COMPONENTES.matchAll(/\.([a-z][a-z0-9-]*)/gi)].map((m) => m[1]);
+    expect(classes.filter((c) => !c?.startsWith('hk-'))).toEqual([]);
+  });
+
+  // [arquivo, constante, seletor, valor que vive sem regra própria]
+  const LISTAS: [string, string, string, string?][] = [
+    ['selos.tsx', 'TONS_DE_SELO', ".hk-selo[data-tom='%']"],
+    ['selos.tsx', 'NIVEIS_DE_PRIORIDADE', ".hk-prioridade[data-nivel='%']"],
+    ['botao.tsx', 'VARIANTES_DE_BOTAO', ".hk-botao[data-variante='%']", 'padrao'],
+    ['painel.tsx', 'TONS_DE_INDICADOR', ".hk-indicador[data-tom='%']", 'neutro'],
+  ];
+
+  it.each(LISTAS)('%s: %s', (arquivo, constante, seletor, padrao) => {
+    const fonte = readFileSync(`packages/ui/src/${arquivo}`, 'utf8');
+    const lista = new RegExp(String.raw`${constante} = \[([^\]]+)\]`).exec(fonte)?.[1] ?? '';
+    const valores = [...lista.matchAll(/'([a-z]+)'/g)].map((m) => m[1] ?? '');
+    expect(valores.length).toBeGreaterThan(1);
+    const semRegra = valores
+      .filter((v) => v !== padrao)
+      .filter((v) => !COMPONENTES.includes(seletor.replace('%', v)));
+    expect(semRegra).toEqual([]);
   });
 });
