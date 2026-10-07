@@ -1,6 +1,6 @@
 // PWA do técnico (F0-11): Vite + vite-plugin-pwa. O service worker guarda a
-// casca do app (HTML, JS, CSS, ícones e os quatro catálogos, que vão dentro do
-// JS) para abrir sem rede. As chamadas à API nunca vêm do cache: sem rede, a
+// casca do app (HTML, JS, CSS, ícones, as fontes do @hubkeep/ui e os quatro
+// catálogos, que vão dentro do JS) para abrir sem rede. As chamadas à API nunca vêm do cache: sem rede, a
 // operação vai para a fila do IndexedDB (src/fila).
 //
 // Nome do app no manifesto e no <title>: do catálogo pt-BR, nunca texto fixo.
@@ -11,7 +11,8 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const COR = '#0f766e';
+// O petróleo do cabeçalho do PWA (--hk-menu-fundo do tema claro, ADR-038).
+const COR = '#0f3d45';
 
 export default defineConfig({
   plugins: [
@@ -47,7 +48,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,webmanifest}'],
+        // woff2: as fontes Barlow do @hubkeep/ui, para a tela sem rede sair com
+        // a fonte certa. O .woff (navegador antigo) fica fora do precache.
+        globPatterns: ['**/*.{js,css,html,png,webmanifest,woff2}'],
         navigateFallback: 'index.html',
         // A API nunca é servida pelo service worker.
         navigateFallbackDenylist: [/^\/api\//],

@@ -85,6 +85,9 @@ importers:
       '@hubkeep/imagem':
         specifier: workspace:*
         version: link:../../packages/imagem
+      '@hubkeep/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@supabase/supabase-js':
         specifier: ^2.117.1
         version: 2.117.1(@opentelemetry/api@1.9.1)

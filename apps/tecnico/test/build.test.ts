@@ -5,7 +5,9 @@
 //     512 (e maskable) — o que Android e iOS pedem para instalar;
 //   - service worker com a casca no precache (HTML, JS, CSS e ícones), para
 //     abrir sem rede, e sem nada da API;
-//   - JS com o texto dos quatro idiomas.
+//   - JS com o texto dos quatro idiomas;
+//   - as fontes do @hubkeep/ui no build e no precache, sem pedido a servidor
+//     de fora, e o tema claro já no HTML (ADR-038, U5).
 import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -76,5 +78,21 @@ describe('build do PWA', () => {
       expect(js).toContain(JSON.stringify(catalogo['tecnico.fila.titulo']).slice(1, -1));
       expect(js).toContain(JSON.stringify(catalogo['tecnico.fila.vazia']).slice(1, -1));
     }
+  });
+
+  it('fontes do próprio sistema no precache e tema claro no HTML (ADR-038)', () => {
+    const assets = readdirSync(join(saida, 'assets'));
+    const fontes = assets.filter((f) => f.endsWith('.woff2'));
+    expect(fontes.some((f) => f.startsWith('barlow-latin-400'))).toBe(true);
+    expect(fontes.some((f) => f.startsWith('barlow-condensed-latin-600'))).toBe(true);
+    const sw = ler('sw.js');
+    for (const f of fontes) expect(sw, f).toContain(`assets/${f}`);
+    const css = assets
+      .filter((f) => f.endsWith('.css'))
+      .map((f) => ler(`assets/${f}`))
+      .join('\n');
+    expect(css).toContain('--hk-fundo');
+    expect(css).not.toMatch(/fonts\.googleapis|fonts\.gstatic|url\(https?:/);
+    expect(ler('index.html')).toContain('<html lang="pt-BR" data-tema="claro">');
   });
 });

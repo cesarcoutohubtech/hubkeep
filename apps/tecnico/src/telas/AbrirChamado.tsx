@@ -15,10 +15,20 @@ import {
   exigirLocalParaChamado,
   normalizarDescricaoDoChamado,
 } from '@hubkeep/dominio';
+import {
+  AreaDeTexto,
+  Botao,
+  Campo,
+  MensagemDeErro,
+  MensagemVazia,
+  Painel,
+  Selecao,
+} from '@hubkeep/ui';
 import { type FormEvent, useState } from 'react';
 import { useT } from '../i18n';
 import type { Referencia } from '../referencia/banco';
 import { useMotivo } from './FilaDoDia';
+import { TelaDoTecnico } from './TelaDoTecnico';
 
 export interface AberturaDeChamado {
   localId: string;
@@ -42,12 +52,17 @@ export function AbrirChamado(props: {
     null,
   );
 
+  const voltar = (
+    <Botao tamanho="pequeno" onClick={props.aoVoltar}>
+      {t('comum.voltar')}
+    </Botao>
+  );
+
   if (!referencia) {
     return (
-      <main className="cartao">
-        <button onClick={props.aoVoltar}>{t('comum.voltar')}</button>
-        <p>{t('tecnico.ativos.sem_referencia')}</p>
-      </main>
+      <TelaDoTecnico titulo={t('tecnico.chamado.titulo')} acao={voltar}>
+        <MensagemVazia>{t('tecnico.ativos.sem_referencia')}</MensagemVazia>
+      </TelaDoTecnico>
     );
   }
 
@@ -87,73 +102,77 @@ export function AbrirChamado(props: {
   }
 
   return (
-    <main className="cartao">
-      <header className="linha">
-        <strong>{t('tecnico.chamado.titulo')}</strong>
-        <button onClick={props.aoVoltar}>{t('comum.voltar')}</button>
-      </header>
-      {aviso?.tipo === 'ok' && <p role="status">{t('tecnico.chamado.enfileirado')}</p>}
-      {aviso?.tipo === 'erro' && (
-        <p role="alert" data-codigo={aviso.codigo}>
-          {motivo(aviso.codigo)}
+    <TelaDoTecnico titulo={t('tecnico.chamado.titulo')} acao={voltar}>
+      {aviso?.tipo === 'ok' && (
+        <p role="status" className="tc-nota">
+          {t('tecnico.chamado.enfileirado')}
         </p>
       )}
-      <form className="coluna" onSubmit={(e) => void enviar(e)}>
-        {referencia.hoteis.length > 1 && (
-          <select
-            aria-label={t('tecnico.chamado.hotel')}
-            value={hotelId}
-            onChange={(e) => {
-              setHotelId(e.target.value);
-              setLocalId('');
-            }}
-          >
-            {referencia.hoteis.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.nome}
-              </option>
-            ))}
-          </select>
-        )}
-        <select
-          aria-label={t('tecnico.chamado.local')}
-          value={localId}
-          onChange={(e) => setLocalId(e.target.value)}
-          required
-        >
-          <option value="">{t('tecnico.chamado.escolha_o_local')}</option>
-          {locais.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.nome}
-            </option>
-          ))}
-        </select>
-        <select
-          key={localId}
-          name="ativoId"
-          aria-label={t('tecnico.chamado.ativo')}
-          defaultValue=""
-        >
-          <option value="">{t('tecnico.chamado.sem_ativo')}</option>
-          {ativos.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nome}
-            </option>
-          ))}
-        </select>
-        <label className="linha">
-          <input type="checkbox" name="parado" />
-          {t('tecnico.chamado.parado')}
-        </label>
-        <textarea
-          name="descricao"
-          aria-label={t('tecnico.chamado.descricao')}
-          placeholder={t('tecnico.chamado.descricao')}
-          rows={4}
-          required
-        />
-        <button type="submit">{t('tecnico.chamado.acao.abrir')}</button>
-      </form>
-    </main>
+      {aviso?.tipo === 'erro' && (
+        <MensagemDeErro>
+          <span data-codigo={aviso.codigo}>{motivo(aviso.codigo)}</span>
+        </MensagemDeErro>
+      )}
+      <Painel>
+        <form onSubmit={(e) => void enviar(e)}>
+          {referencia.hoteis.length > 1 && (
+            <Campo rotulo={t('tecnico.chamado.hotel')}>
+              {(p) => (
+                <Selecao
+                  {...p}
+                  value={hotelId}
+                  onChange={(e) => {
+                    setHotelId(e.target.value);
+                    setLocalId('');
+                  }}
+                >
+                  {referencia.hoteis.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.nome}
+                    </option>
+                  ))}
+                </Selecao>
+              )}
+            </Campo>
+          )}
+          <Campo rotulo={t('tecnico.chamado.local')}>
+            {(p) => (
+              <Selecao {...p} value={localId} onChange={(e) => setLocalId(e.target.value)} required>
+                <option value="">{t('tecnico.chamado.escolha_o_local')}</option>
+                {locais.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+          </Campo>
+          <Campo rotulo={t('tecnico.chamado.ativo')}>
+            {(p) => (
+              <Selecao {...p} key={localId} name="ativoId" defaultValue="">
+                <option value="">{t('tecnico.chamado.sem_ativo')}</option>
+                {ativos.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nome}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+          </Campo>
+          <label className="tc-marcar">
+            <input type="checkbox" name="parado" />
+            {t('tecnico.chamado.parado')}
+          </label>
+          <Campo rotulo={t('tecnico.chamado.descricao')}>
+            {(p) => <AreaDeTexto {...p} name="descricao" rows={4} required />}
+          </Campo>
+          <div className="tc-acoes">
+            <Botao type="submit" variante="primario">
+              {t('tecnico.chamado.acao.abrir')}
+            </Botao>
+          </div>
+        </form>
+      </Painel>
+    </TelaDoTecnico>
   );
 }

@@ -6,10 +6,20 @@
 // erro da API, até o técnico dispensar (ADR-025, ajuste (c)).
 import type { EstadoDaOs } from '@hubkeep/dominio';
 import type { Chave, IdiomaDeExibicao } from '@hubkeep/i18n';
+import {
+  Botao,
+  Campo,
+  MensagemDeErro,
+  MensagemVazia,
+  Selecao,
+  Selo,
+  type TomDeSelo,
+} from '@hubkeep/ui';
 import { useIntl } from 'react-intl';
 import type { OperacaoNaFila } from '../fila/banco';
 import { nomeDoIdioma, opcoesDeIdioma, useT } from '../i18n';
 import type { OsNoAparelho } from '../os/projecao';
+import { FaixaDaRede, TelaDoTecnico } from './TelaDoTecnico';
 
 export interface OperacaoRecusada {
   chave: string;
@@ -39,6 +49,16 @@ const ROTULO_DA_OPERACAO: Record<OperacaoNaFila['tipo'], Chave> = {
   'os.registrar_parada': 'tecnico.operacao.os_registrar_parada',
   'os.encerrar_parada': 'tecnico.operacao.os_encerrar_parada',
   'anexo.foto': 'tecnico.operacao.anexo_foto',
+};
+
+/** Cor do selo pelo estado canônico da OS: azul andando, âmbar pausada, verde fechada. */
+export const TOM_DO_ESTADO: Record<EstadoDaOs, TomDeSelo> = {
+  atribuida: 'cinza',
+  em_execucao: 'azul',
+  pausada: 'ambar',
+  concluida: 'verde',
+  aceita: 'verde',
+  cancelada: 'cinza',
 };
 
 /** Rótulo do estado canônico da OS, o mesmo das situações padrão. */
@@ -74,38 +94,44 @@ export function FilaDoDia(props: {
   const intl = useIntl();
   const motivo = useMotivo();
   return (
-    <main className="cartao">
-      <header className="linha">
-        <strong>{t('tecnico.nome')}</strong>
-        <button onClick={props.aoSair}>{t('inicio.sair')}</button>
-      </header>
-
-      <p role="status" className={props.online ? 'online' : 'offline'}>
-        {props.online ? t('tecnico.rede.online') : t('tecnico.rede.offline')}
-      </p>
-
-      <section className="linha">
-        <span>{t('tecnico.sincronizacao.pendentes', { n: props.fila.pendentes })}</span>
-        {props.fila.pendentes > 0 && props.online && (
-          <button onClick={props.aoEnviarAgora}>{t('tecnico.sincronizacao.enviar_agora')}</button>
-        )}
-      </section>
-
+    <TelaDoTecnico
+      titulo={t('tecnico.fila.titulo')}
+      subtitulo={t('tecnico.nome')}
+      acao={
+        <Botao tamanho="pequeno" onClick={props.aoSair}>
+          {t('inicio.sair')}
+        </Botao>
+      }
+      faixa={
+        <FaixaDaRede online={props.online}>
+          <p role="status">{props.online ? t('tecnico.rede.online') : t('tecnico.rede.offline')}</p>
+          <span>{t('tecnico.sincronizacao.pendentes', { n: props.fila.pendentes })}</span>
+          {props.fila.pendentes > 0 && props.online && (
+            <Botao tamanho="pequeno" onClick={props.aoEnviarAgora}>
+              {t('tecnico.sincronizacao.enviar_agora')}
+            </Botao>
+          )}
+        </FaixaDaRede>
+      }
+    >
       {props.fila.antigaDesde != null && (
-        <p role="alert" data-aviso="pendencia_antiga">
-          {t('tecnico.sincronizacao.antiga', {
-            desde: intl.formatDate(props.fila.antigaDesde, {
-              dateStyle: 'short',
-              timeStyle: 'short',
-            }),
-          })}
-        </p>
+        <MensagemDeErro>
+          <span data-aviso="pendencia_antiga">
+            {t('tecnico.sincronizacao.antiga', {
+              desde: intl.formatDate(props.fila.antigaDesde, {
+                dateStyle: 'short',
+                timeStyle: 'short',
+              }),
+            })}
+          </span>
+        </MensagemDeErro>
       )}
 
       {props.fila.rejeitadas.length > 0 && (
-        <section role="alert">
-          <h2>{t('tecnico.sincronizacao.rejeitadas', { n: props.fila.rejeitadas.length })}</h2>
-          <ul>
+        <MensagemDeErro
+          titulo={t('tecnico.sincronizacao.rejeitadas', { n: props.fila.rejeitadas.length })}
+        >
+          <ul className="tc-lista">
             {props.fila.rejeitadas.map((r) => (
               <li key={r.chave} className="linha" data-codigo={r.codigo}>
                 <span>
@@ -114,66 +140,83 @@ export function FilaDoDia(props: {
                     motivo: motivo(r.codigo),
                   })}
                 </span>
-                <button onClick={() => props.aoDispensar(r.chave)}>
+                <Botao tamanho="pequeno" onClick={() => props.aoDispensar(r.chave)}>
                   {t('tecnico.rejeitada.dispensar')}
+                </Botao>
+              </li>
+            ))}
+          </ul>
+        </MensagemDeErro>
+      )}
+
+      <div className="tc-lado-a-lado">
+        <Botao variante="primario" onClick={props.aoAbrirChamado}>
+          {t('tecnico.chamado.abrir')}
+        </Botao>
+        <Botao onClick={props.aoAbrirAtivos}>{t('tecnico.ativos.abrir')}</Botao>
+      </div>
+
+      <section>
+        {props.os === null && <MensagemVazia>{t('tecnico.fila.sem_leitura')}</MensagemVazia>}
+        {props.os?.length === 0 && <MensagemVazia>{t('tecnico.fila.vazia')}</MensagemVazia>}
+        {props.os && props.os.length > 0 && (
+          <ul className="tc-lista">
+            {props.os.map((o) => (
+              <li key={o.id} data-estado={o.estado}>
+                <button className="tc-cartao" onClick={() => props.aoAbrirOs(o.id)}>
+                  <span className="tc-cartao-titulo">
+                    {t('tecnico.fila.item', {
+                      local: o.chamado.localNome,
+                      descricao: o.chamado.descricao,
+                    })}
+                  </span>
+                  <span className="tc-cartao-rodape">
+                    <Selo tom={TOM_DO_ESTADO[o.estado]}>{t(rotuloDoEstado(o.estado))}</Selo>
+                    {o.pendentes > 0 && (
+                      <span>{t('tecnico.os.pendentes', { n: o.pendentes })}</span>
+                    )}
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
-        </section>
+        )}
+      </section>
+
+      {props.lidaEm !== null && (
+        <p className="tc-nota">
+          {t('tecnico.fila.lida_em', {
+            quando: intl.formatDate(props.lidaEm, { dateStyle: 'short', timeStyle: 'short' }),
+          })}
+        </p>
       )}
 
-      <label className="linha">
-        {t('comum.idioma')}
-        <select
+      <SeletorDeIdioma idioma={props.idioma} aoTrocar={props.aoTrocarIdioma} />
+    </TelaDoTecnico>
+  );
+}
+
+/** Seletor de idioma do PWA: funciona sem rede e sincroniza quando ela volta. */
+function SeletorDeIdioma(props: {
+  idioma: IdiomaDeExibicao;
+  aoTrocar: (idioma: IdiomaDeExibicao) => void;
+}) {
+  const t = useT();
+  return (
+    <Campo rotulo={t('comum.idioma')}>
+      {(p) => (
+        <Selecao
+          {...p}
           value={props.idioma}
-          onChange={(e) => props.aoTrocarIdioma(e.target.value as IdiomaDeExibicao)}
+          onChange={(e) => props.aoTrocar(e.target.value as IdiomaDeExibicao)}
         >
           {opcoesDeIdioma().map((i) => (
             <option key={i} value={i}>
               {nomeDoIdioma(i)}
             </option>
           ))}
-        </select>
-      </label>
-
-      <button onClick={props.aoAbrirAtivos}>{t('tecnico.ativos.abrir')}</button>
-      <button onClick={props.aoAbrirChamado}>{t('tecnico.chamado.abrir')}</button>
-
-      <section>
-        <h2>{t('tecnico.fila.titulo')}</h2>
-        {props.os === null && <p>{t('tecnico.fila.sem_leitura')}</p>}
-        {props.os?.length === 0 && <p>{t('tecnico.fila.vazia')}</p>}
-        {props.os && props.os.length > 0 && (
-          <ul>
-            {props.os.map((o) => (
-              <li key={o.id} data-estado={o.estado}>
-                <button className="coluna" onClick={() => props.aoAbrirOs(o.id)}>
-                  <span>
-                    {t('tecnico.fila.item', {
-                      local: o.chamado.localNome,
-                      descricao: o.chamado.descricao,
-                    })}
-                  </span>
-                  <small>{t(rotuloDoEstado(o.estado))}</small>
-                  {o.pendentes > 0 && (
-                    <small>{t('tecnico.os.pendentes', { n: o.pendentes })}</small>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {props.lidaEm !== null && (
-          <p>
-            <small>
-              {t('tecnico.fila.lida_em', {
-                quando: intl.formatDate(props.lidaEm, { dateStyle: 'short', timeStyle: 'short' }),
-              })}
-            </small>
-          </p>
-        )}
-      </section>
-    </main>
+        </Selecao>
+      )}
+    </Campo>
   );
 }

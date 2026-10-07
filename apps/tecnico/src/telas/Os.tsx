@@ -10,6 +10,7 @@
 // do chamado aberta pede a resposta "o equipamento voltou a funcionar?", que
 // vai na operação de concluir (sim: a parada encerra junto).
 import { ErroDeDominio, normalizarMaterial, validarApontamento } from '@hubkeep/dominio';
+import { AreaDeTexto, Botao, Campo, Entrada, MensagemDeErro, Painel, Selo } from '@hubkeep/ui';
 import { type FormEvent, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n';
@@ -21,7 +22,8 @@ import {
   paradaPossivel,
   perguntaNaConclusao,
 } from '../os/projecao';
-import { rotuloDoEstado, useMotivo } from './FilaDoDia';
+import { TOM_DO_ESTADO, rotuloDoEstado, useMotivo } from './FilaDoDia';
+import { TelaDoTecnico } from './TelaDoTecnico';
 
 export interface AcoesDaOs {
   /** Na conclusão com a parada do chamado aberta, com a resposta do técnico. */
@@ -53,16 +55,17 @@ export function PerguntaDaParada(props: {
 }) {
   const t = useT();
   return (
-    <section className="coluna" role="group" data-pergunta="parada">
-      <strong>{t('tecnico.os.concluir.pergunta_parada')}</strong>
-      <div className="linha">
-        <button onClick={() => props.aoResponder(true)}>{t('tecnico.os.concluir.voltou')}</button>
-        <button onClick={() => props.aoResponder(false)}>
+    <Painel titulo={t('tecnico.os.concluir.pergunta_parada')} nivel={3}>
+      <div role="group" data-pergunta="parada" className="tc-acoes">
+        <Botao variante="primario" onClick={() => props.aoResponder(true)}>
+          {t('tecnico.os.concluir.voltou')}
+        </Botao>
+        <Botao onClick={() => props.aoResponder(false)}>
           {t('tecnico.os.concluir.nao_voltou')}
-        </button>
-        <button onClick={props.aoDesistir}>{t('tecnico.os.concluir.desistir')}</button>
+        </Botao>
+        <Botao onClick={props.aoDesistir}>{t('tecnico.os.concluir.desistir')}</Botao>
       </div>
-    </section>
+    </Painel>
   );
 }
 
@@ -142,32 +145,75 @@ export function Os(
   }
 
   return (
-    <main className="cartao">
-      <header className="linha">
-        <strong>{t('tecnico.os.titulo')}</strong>
-        <button onClick={props.aoVoltar}>{t('comum.voltar')}</button>
-      </header>
-      <p>{os.chamado.descricao}</p>
-      <p>{t('tecnico.os.local', { local: os.chamado.localNome })}</p>
-      <p data-estado={os.estado}>{t(rotuloDoEstado(os.estado))}</p>
-      {os.motivoReabertura && (
-        <p data-motivo-reabertura>{t('tecnico.os.reaberta', { motivo: os.motivoReabertura })}</p>
-      )}
-      {os.pendentes > 0 && <p>{t('tecnico.os.pendentes', { n: os.pendentes })}</p>}
-      {aviso?.tipo === 'ok' && <p role="status">{t('tecnico.ativos.enfileirado')}</p>}
-      {aviso?.tipo === 'erro' && (
-        <p role="alert" data-codigo={aviso.codigo}>
-          {motivo(aviso.codigo)}
+    <TelaDoTecnico
+      titulo={t('tecnico.os.titulo')}
+      subtitulo={t('tecnico.os.local', { local: os.chamado.localNome })}
+      acao={
+        <Botao tamanho="pequeno" onClick={props.aoVoltar}>
+          {t('comum.voltar')}
+        </Botao>
+      }
+    >
+      <Painel>
+        <p className="tc-cartao-titulo">{os.chamado.descricao}</p>
+        <div className="tc-cartao-rodape">
+          <span data-estado={os.estado}>
+            <Selo tom={TOM_DO_ESTADO[os.estado]}>{t(rotuloDoEstado(os.estado))}</Selo>
+          </span>
+          {os.pendentes > 0 && <span>{t('tecnico.os.pendentes', { n: os.pendentes })}</span>}
+        </div>
+        {os.motivoReabertura && (
+          <p className="tc-nota" data-motivo-reabertura>
+            {t('tecnico.os.reaberta', { motivo: os.motivoReabertura })}
+          </p>
+        )}
+        {os.chamado.paradoDesde && (
+          <p className="tc-nota" data-parado-desde={os.chamado.paradoDesde}>
+            {t('tecnico.os.parada.desde', {
+              quando: intl.formatDate(os.chamado.paradoDesde, {
+                dateStyle: 'short',
+                timeStyle: 'short',
+              }),
+            })}
+          </p>
+        )}
+      </Painel>
+
+      {aviso?.tipo === 'ok' && (
+        <p role="status" className="tc-nota">
+          {t('tecnico.ativos.enfileirado')}
         </p>
       )}
+      {aviso?.tipo === 'erro' && (
+        <MensagemDeErro>
+          <span data-codigo={aviso.codigo}>{motivo(aviso.codigo)}</span>
+        </MensagemDeErro>
+      )}
 
-      <section className="linha">
-        {acoesPossiveis(os.estado).map((acao) => (
-          <button key={acao} onClick={() => void agir(acao)}>
+      <div className="tc-acoes">
+        {acoesPossiveis(os.estado).map((acao, i) => (
+          <Botao
+            key={acao}
+            variante={i === 0 ? 'primario' : 'padrao'}
+            onClick={() => void agir(acao)}
+          >
             {t(ROTULO_DA_ACAO[acao])}
-          </button>
+          </Botao>
         ))}
-      </section>
+        {parada === 'registrar' && (
+          <Botao
+            variante="perigo"
+            onClick={() => void tentar(() => props.aoRegistrarParada(os.id))}
+          >
+            {t('tecnico.os.parada.registrar')}
+          </Botao>
+        )}
+        {parada === 'encerrar' && (
+          <Botao onClick={() => void tentar(() => props.aoEncerrarParada(os.id))}>
+            {t('tecnico.os.parada.encerrar')}
+          </Botao>
+        )}
+      </div>
       {perguntando && perguntaNaConclusao(os) && (
         <PerguntaDaParada
           aoResponder={(voltou) => void concluirRespondendo(voltou)}
@@ -175,77 +221,50 @@ export function Os(
         />
       )}
 
-      {os.chamado.paradoDesde && (
-        <p data-parado-desde={os.chamado.paradoDesde}>
-          {t('tecnico.os.parada.desde', {
-            quando: intl.formatDate(os.chamado.paradoDesde, {
-              dateStyle: 'short',
-              timeStyle: 'short',
-            }),
-          })}
-        </p>
-      )}
-      {parada && (
-        <section className="linha">
-          {parada === 'registrar' ? (
-            <button onClick={() => void tentar(() => props.aoRegistrarParada(os.id))}>
-              {t('tecnico.os.parada.registrar')}
-            </button>
-          ) : (
-            <button onClick={() => void tentar(() => props.aoEncerrarParada(os.id))}>
-              {t('tecnico.os.parada.encerrar')}
-            </button>
-          )}
-        </section>
-      )}
-
       {aceitaRegistro(os.estado) ? (
         <>
-          <form className="coluna" onSubmit={(e) => void apontar(e)}>
-            <h2>{t('tecnico.os.horas.titulo')}</h2>
-            <label className="coluna">
-              {t('tecnico.os.horas.inicio')}
-              <input type="datetime-local" name="inicio" required />
-            </label>
-            <label className="coluna">
-              {t('tecnico.os.horas.fim')}
-              <input type="datetime-local" name="fim" required />
-            </label>
-            <button type="submit">{t('tecnico.os.horas.apontar')}</button>
-          </form>
+          <Painel titulo={t('tecnico.os.horas.titulo')}>
+            <form onSubmit={(e) => void apontar(e)}>
+              <Campo rotulo={t('tecnico.os.horas.inicio')}>
+                {(p) => <Entrada {...p} type="datetime-local" name="inicio" required />}
+              </Campo>
+              <Campo rotulo={t('tecnico.os.horas.fim')}>
+                {(p) => <Entrada {...p} type="datetime-local" name="fim" required />}
+              </Campo>
+              <Botao type="submit">{t('tecnico.os.horas.apontar')}</Botao>
+            </form>
+          </Painel>
 
-          <form className="coluna" onSubmit={(e) => void registrarMaterial(e)}>
-            <h2>{t('tecnico.os.material.titulo')}</h2>
-            <textarea
-              name="descricao"
-              aria-label={t('tecnico.os.material.descricao')}
-              placeholder={t('tecnico.os.material.descricao')}
-              rows={2}
-              required
-            />
-            <button type="submit">{t('tecnico.os.material.registrar')}</button>
-          </form>
+          <Painel titulo={t('tecnico.os.material.titulo')}>
+            <form onSubmit={(e) => void registrarMaterial(e)}>
+              <Campo rotulo={t('tecnico.os.material.descricao')}>
+                {(p) => <AreaDeTexto {...p} name="descricao" rows={2} required />}
+              </Campo>
+              <Botao type="submit">{t('tecnico.os.material.registrar')}</Botao>
+            </form>
+          </Painel>
 
-          <section className="coluna">
-            <h2>{t('tecnico.os.fotos.titulo')}</h2>
-            <label className="coluna">
-              {t('tecnico.fotos.tirar')}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => {
-                  const arquivo = e.currentTarget.files?.[0];
-                  e.currentTarget.value = '';
-                  void fotografar(arquivo);
-                }}
-              />
-            </label>
-          </section>
+          <Painel titulo={t('tecnico.os.fotos.titulo')}>
+            <Campo rotulo={t('tecnico.fotos.tirar')}>
+              {(p) => (
+                <Entrada
+                  {...p}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    const arquivo = e.currentTarget.files?.[0];
+                    e.currentTarget.value = '';
+                    void fotografar(arquivo);
+                  }}
+                />
+              )}
+            </Campo>
+          </Painel>
         </>
       ) : (
-        <p>{t('tecnico.os.sem_registro')}</p>
+        <p className="tc-nota">{t('tecnico.os.sem_registro')}</p>
       )}
-    </main>
+    </TelaDoTecnico>
   );
 }
