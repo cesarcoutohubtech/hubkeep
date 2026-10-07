@@ -1239,3 +1239,9 @@ Dividida em duas partes, cada uma no seu PR:
   - histórico, anexos e campo de busca, usados também pelos cadastros, já nos componentes;
   - o título dessas telas sai da barra superior (`tituloDaRota`), e o h1 próprio saiu;
   - o `ui` ganhou as classes de arranjo (grade, pilha, filtros, bloco, linha do tempo, lista, caixa de marcar) e a `Nota` (informação, confirmação e atenção).
+
+### Duas tarefas novas no plano (07/10/2026)
+
+Pedido do Cesar, registrado sem implementar:
+- **M4, na fase 1b, junto com a M2:** aprovação dos ativos cadastrados pelo celular, com a exigência por política de hotel. Os ativos existentes passam a aprovados. Conferido: o ativo não tem situação de cadastro que dê para reaproveitar (só `desativado_em` e `versao`); o modelo a seguir é o `status` do local. As propostas (padrão da política, quem aprova e se o pendente recebe chamado) vão ao Cesar antes de codificar.
+- **Auditoria geral, na fase 1c:** tela só de leitura com filtros, paginação e CSV, com o escopo pela RLS e a auditoria sem hotel só para o Admin do grupo e o Implantador (ADR-021). Reaproveita a tradução do D1.

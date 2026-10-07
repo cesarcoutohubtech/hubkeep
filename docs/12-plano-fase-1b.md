@@ -65,8 +65,11 @@ Fim da etapa P: resumo.
 | **M1** Modelos por categoria | Modelo de ativo por categoria: fabricante, modelo, campos estendidos preenchidos, checklist e plano preventivo sugeridos. No cadastro (web e PWA), escolher o modelo preenche o formulário, e o plano sugerido nasce pausado, para quem gere o hotel ativar. | O modelo nunca sobrescreve o que já foi digitado. O plano sugerido só passa a gerar OS depois de ativado. Rótulos nos quatro idiomas. Isolamento. | Sim: `app.modelo_ativo` | — |
 | **M2** Importação de ativos por planilha | O Implantador ou quem gere o hotel envia uma planilha (CSV com o cabeçalho do modelo baixado na tela) com local, categoria, modelo, campos estendidos e QR opcional. Primeiro uma prévia linha a linha, com os erros por código, depois a gravação por unit of work, com auditoria. | Linha inválida não grava nada daquela linha, e a prévia diz o porquê com código. Enviar a mesma planilha de novo não duplica ativo (chave de importação por linha). Local de outro hotel é recusado. Limite de linhas por envio, com código. | Talvez: chave de importação | Talvez: formato e limites da importação |
 | **M3** QR em lote | Gerar e imprimir os QR de vários ativos de uma vez (por hotel, local ou importação), com o código e o nome do ativo na etiqueta. A imagem e a folha de impressão são geradas no cliente, como o QR individual (B5). Também é possível gerar códigos antes de cadastrar e ligar a etiqueta ao ativo pelo PWA. | O lote só traz ativos do escopo do usuário. A etiqueta não revela o id do ativo. O código pré-gerado e ainda não ligado abre a tela de ligação no PWA, e não um ativo. | Talvez: código reservado sem ativo | — |
+| **M4** Aprovação de ativos cadastrados pelo celular | Junto com a M2. O ativo cadastrado pelo PWA entra como pendente de aprovação, e a central aprova ou recusa, a recusa com motivo, tudo com auditoria. A exigência de aprovação é política por hotel (regra 7). Os ativos que já existem passam a aprovados. **Antes de codificar, mostrar ao Cesar as propostas:** o padrão da política, quem aprova (entre Admin do grupo, Gestor CSC, Gerente do hotel e Implantador) e se o ativo pendente já pode receber chamado. | Ativo do PWA com a política ligada nasce pendente; com ela desligada, aprovado. Recusa sem motivo dá 422 com código. Quem não aprova no hotel não aprova (pgTAP, por papel). Os ativos anteriores à migração ficam aprovados. Operação offline antiga continua válida. | Sim: situação do cadastro no ativo | Talvez: aprovação do cadastro |
 
 Fim da etapa M e da fase 1b: resumo, com a lista do que ficou para a 1c.
+
+**M4, o que já existe no ativo (conferido em 07/10/2026):** `app.ativo` não tem situação de cadastro. Tem só `desativado_em` (exclusão lógica) e `versao` (concorrência), e nenhum dos dois serve para pendente ou recusado sem confundir com desativado. O modelo mais próximo é o `status` de `app.local` (`ativo`, `pendente_licenca`, `inativo`), com `check` e valores canônicos no domínio, que a M4 pode seguir numa coluna nova.
 
 ## Dependente do cliente: conector real do TOTVS
 
@@ -80,13 +83,21 @@ Fim da etapa M e da fase 1b: resumo, com a lista do que ficou para a 1c.
   - I1 a I5, uma por PR, na ordem da etapa I;
   - P1, P2 e P3;
   - M1;
+  - M4 (situação do cadastro no ativo);
   - talvez M2 e M3.
 - **ADRs:**
   - novo: checklist tipado, com modelo versionado e cópia na OS (P1);
   - novo: preventiva por tempo e geração idempotente pelo worker (P2 e P3);
   - talvez: formato e limites da importação (M2);
+  - talvez: aprovação do cadastro de ativo (M4);
   - talvez: o filtro por módulo contratado no adendo ao ADR-026 (I5).
 - **Os ADR-033 a 037** (Intelligence) e o texto do adendo ao ADR-026 aguardam a aprovação do Cesar. A etapa I não depende deles para a migração, só para o uso pelo Intelligence.
+
+## Registrado para a fase 1c
+
+| Tarefa | O quê | Aceite |
+|---|---|---|
+| **Auditoria geral** (decisão do Cesar de 07/10/2026) | Tela só de leitura com toda a auditoria que o usuário enxerga. Filtros por período, hotel, tipo de registro, ação e pessoa, com paginação e exportação CSV. Reaproveita a tradução de ações e campos do histórico por registro (D1, `packages/dominio/src/auditoria.ts`). | O escopo de cada papel continua vindo da RLS: auditoria com hotel, só dos hotéis do usuário; auditoria sem hotel, só para o Admin do grupo e o Implantador, como no ADR-021. O CSV traz o mesmo que a tela, nos mesmos filtros. Paginação estável por cursor. Ações e campos traduzidos nos quatro idiomas. |
 
 ## A confirmar com o Cesar
 
