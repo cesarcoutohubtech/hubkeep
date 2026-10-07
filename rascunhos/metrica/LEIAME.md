@@ -1,71 +1,42 @@
 # Rascunho do PR da app.metrica_ativo_diaria (local, sem PR)
 
-Vale a decisão de 06/10/2026: **opção B, janela de leitura de 180 dias, configurável por política, nada apagado.** Está aprovada por Kaio e aguarda o Cesar, porque muda o ADR-036.
-- A primeira decisão foi de 60 dias. Ela foi revista no mesmo dia: a janela precisa comportar a efetividade do PRD, de 90 dias antes e 90 depois.
-- O texto revisto do ADR-035 e do ADR-036 está no #113, um PR de zona protegida.
+- `AAAAMMDDHHMMSS_metrica_ativo_diaria.sql`: a migração. Vai para `supabase/migrations` num branch `int-*` novo, depois da `app.insight`, com a fila de zona protegida livre e as migrações da etapa I de que depende.
+- `0NN_isolamento_metrica_ativo_diaria.test.sql`: o pgTAP, com os seis casos mínimos e 28 testes. **Ainda não rodou:** sem Docker local, só roda na CI do PR.
 
-O PR da tabela só abre:
-- depois das migrações da etapa I da 1b;
-- depois do PR da `app.insight`;
-- com a fila de zona protegida livre.
+Valem o ADR-035 e o ADR-036 do `docs/03`, aprovados por Kaio (05 e 06/10/2026) e por Cesar (07/10/2026): opção B de retenção, janela de leitura de 180 dias por política, nada apagado. O ADR-036 tem a condição do Cesar, aceita por Kaio em 07/10/2026 (abaixo).
 
-## 1. Troca no `packages/inteligencia/src/agregacao.ts`
+## 1. A condição do Cesar no ADR-036: versões e recálculo
 
-Sai o `limiteDeRetencao(agora, meses = 12)`, que cortava a guarda em 12 meses. Entra a janela de leitura:
+Cada linha grava:
+- `versao_formula_reincidencia` e `versao_formula_atencao`: a versão da fórmula de cada score (`VERSAO_REINCIDENCIA` e `VERSAO_ATENCAO`, que vêm no próprio `Score.versao`). Mudou a fórmula, sobe a versão, e a linha antiga continua com a dela;
+- `versao_politica`: texto que identifica as linhas de `app.politica` que resolveram as duas políticas do hotel (por exemplo, o id e o `atualizado_em` de cada uma). A ligação do servidor o monta e o entrega em `HotelDoDia.versaoPolitica`, e o motor só o carrega. `padrao` quando valem só os padrões do código;
+- `detalhe_reincidencia` e `detalhe_atencao`: os scores com os componentes e a **configuração usada** (`Score.configuracao`), que é a cópia do que valeu naquele dia;
+- `recalculo` e `calculo`: um recálculo é outra linha do mesmo ativo e dia, com `calculo` maior (o job soma 1 ao maior já gravado) e `recalculo = true`, com as versões de hoje. Recálculo de um dia que nunca foi gravado entra com `calculo = 1` e `recalculo = true`.
 
-```ts
-/** Janela de leitura da métrica diária (ADR-036, revisão de 06/10/2026): 180 dias, por política. */
-export const JANELA_DE_LEITURA_PADRAO_DIAS = 180;
+No motor (`packages/inteligencia`):
+- `LinhaDaMetricaDiaria` tem todos esses campos, e `calcularDia` os preenche;
+- `executarDiaDoTenant` numera o cálculo, não grava de novo um dia já gravado e, no recálculo, só grava métrica: não abre nem atualiza insight;
+- `fimDoDia('AAAA-MM-DD')` dá o `agora` para recalcular um dia passado.
 
-/**
- * Primeiro dia (UTC, `AAAA-MM-DD`) que telas e consultas leem da métrica
- * diária: `dias` dias antes de `agora`, contando o dia de hoje como o último.
- * Nada é apagado: o resultado gravado de cada dia é a fonte de verdade do
- * histórico.
- */
-export function inicioDaJanelaDeLeitura(
-  agora: Date,
-  dias: number = JANELA_DE_LEITURA_PADRAO_DIAS,
-): string {
-  const hoje = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
-  return new Date(hoje - (dias - 1) * DIA_MS).toISOString().slice(0, 10);
-}
-```
+**A leitura mostra o cálculo de maior número de cada dia** (`agregarMesDosAtivos` já faz assim). Os anteriores seguem guardados. É a escolha do rascunho; se o Cesar preferir que a leitura mostre o original, muda só a agregação e a consulta.
 
-- O comentário do topo do arquivo troca "Os dias guardam 12 meses" por "telas e consultas leem os últimos 180 dias; nada é apagado".
-- Os testes do `limiteDeRetencao` (fim de mês curto) dão lugar aos da janela:
-  - 180 dias contando hoje;
-  - a virada de mês e de ano;
-  - o valor da política no lugar do padrão.
-- `mesAFechar` não muda. A agregação mensal lê só o mês que fecha, que fica dentro da janela.
+## 2. A tabela
 
-## 2. A política da janela
+- Só INSERT, e só para o `hk_worker`: nenhum papel atualiza ou apaga. O `hk_app` só lê, no escopo de `authz.hoteis_leitura()`. O proprietário não lê.
+- Uma linha por `(hotel_id, ativo_id, dia, calculo)`, com FK composta ao hotel e ao ativo.
+- Checks de formato: `calculo >= 1`, scores de 0 a 100, versões de fórmula a partir de 1, versão da política de 1 a 2000 caracteres.
+- A janela de leitura **não é policy**: as consultas a aplicam, pela política. O banco não esconde por data.
 
-- A chave nova `inteligencia.metrica_janela_leitura`, com o formato `{ dias: number }`:
-  - inteiro de 180 a 730;
-  - o mínimo de 180 cobre a efetividade de 90 dias antes e 90 depois;
-  - o padrão é `{ dias: 180 }`.
-- **Validação entre chaves** (ADR-035, #113; aprovado por Kaio, aguardando Cesar): a janela de leitura precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo.
-  - O formato de uma chave não enxerga a outra no registro do núcleo, então a validação é do módulo.
-  - Ao gravar qualquer uma das duas, o valor é conferido contra o valor resolvido da outra. A gravação que quebrar a relação é recusada com código, com mensagem nos quatro catálogos.
-  - **O job também confere na leitura,** porque a relação pode quebrar sem gravação, quando o hotel herda um valor novo do grupo. Se a janela resolvida for menor que o dobro da efetividade, o job usa o dobro e registra um aviso de configuração, com o tenant, o hotel, as duas chaves e os dois valores.
-- É a sexta chave do ADR-035 (#113). Ela entra no registro do núcleo pela `EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE`, com o filtro por módulo contratado (I5). Até lá, vale o padrão.
-- O formato e a validação ficam em `packages/inteligencia/src/politicas.ts`, como as outras cinco.
+## 3. A janela de leitura (implementada)
 
-## 3. O ADR-036 no `docs/03`
+`inicioDaJanelaDeLeitura(agora, dias = 180)` e `JANELA_DE_LEITURA_PADRAO_DIAS` substituem o `limiteDeRetencao` de 12 meses, que saiu do motor.
 
-O texto revisto está no #113:
-- nada é apagado;
-- a janela de leitura é de 180 dias;
-- o limite do recálculo;
-- a pendência de particionamento.
+A sexta chave `inteligencia.metrica_janela_leitura` (`{ dias }`, inteiro de 180 a 730) está em `politicas.ts`:
+- **validação entre chaves:** `validarJanelaDeLeitura` recusa, ao gravar qualquer das duas, a janela menor que o dobro da janela da efetividade (erro `janela_de_leitura_curta`, nos quatro catálogos);
+- **conferência na leitura:** `janelaDeLeituraEfetiva` devolve o dobro e um aviso de configuração quando a janela resolvida ficou curta, para o job registrar. O job diário ainda não lê a janela: quem lê a métrica (telas e consultas) usa a função.
 
-Se o #113 entrar antes, o PR da tabela não muda o ADR. Senão, leva o texto junto.
+## 4. Pendências
 
-O prazo de guarda da agregação mensal continua a decidir no PR da tabela.
-
-## 4. A tabela
-
-Ainda sem rascunho de SQL. Ela segue o modelo do `docs/02`, com os seis casos mínimos. Não tem policy de data: o corte de 180 dias é feito nas consultas, pela política.
-
-**Pendência de particionamento** (ADR-036, #113): se o volume pedir antes do piloto, a tabela já nasce particionada por mês, com o ajuste dos meta-testes 1, 2 e 28. A decisão é do Cesar.
+- **Particionamento por mês** (ADR-036): se o volume pedir antes do piloto, a tabela nasce particionada, com o ajuste dos meta-testes 1, 2 e 28. A decisão é do Cesar.
+- **O prazo de guarda da agregação mensal** continua a decidir no PR das tabelas.
+- **As tabelas do resumo mensal** (por ativo e por hotel) não têm rascunho: o `agregarMesDosAtivos` e o `agregarMesDosHoteis` já existem, e o formato da tabela sai depois da tela de rede.

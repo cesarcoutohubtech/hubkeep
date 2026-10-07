@@ -15,13 +15,17 @@
 --   - no máximo um insight aberto por chave: índice único parcial em
 --     (tenant_id, chave) where encerrado_em is null. Aberto é "sem
 --     encerramento", para o índice não depender de literal de estado;
---   - a chave e a família (aprovado por Kaio, aguardando Cesar): familia é o
---     tipo, a regra e o escopo sem os hotéis; chave é a familia mais o
---     SHA-256 (hex) do conjunto de hotéis em ordem canônica. O hash, e não a
---     lista, porque o btree não aceita entrada acima de cerca de 2,7 KB e a
---     lista estoura com uns 70 hotéis; hotel_ids guarda a lista completa. O
---     domínio calcula as duas; o banco limita o tamanho (check), para nenhuma
---     entrada de índice estourar;
+--   - a chave e a família (aprovado por Kaio e, na condição do hash, pelo Cesar
+--     em 07/10/2026): familia é o tipo, a regra e o escopo sem os hotéis (o
+--     domínio puro a monta); chave é a familia, '|hoteis=' e o SHA-256 (hex) da
+--     lista canônica de hotéis (listaCanonicaDeHoteis, separada por vírgula, em
+--     UTF-8). O hash é calculado fora do packages/inteligencia: no job, com
+--     node:crypto (a ligação em apps/web/src/servidor/modulos/inteligencia), ou
+--     no banco, com o sha256() embutido; nada de SHA-256 escrito à mão, e nenhuma
+--     função nova no banco. Hash, e não a lista, porque o btree não aceita
+--     entrada acima de cerca de 2,7 KB e a lista estoura com uns 70 hotéis;
+--     hotel_ids guarda a lista completa. O banco confere o formato e limita o
+--     tamanho (checks), para nenhuma entrada de índice estourar;
 --   - o motivo do descarte (nao_relevante ou substituido), que o domínio usa
 --     no silêncio de 30 dias: só o descarte "não relevante" silencia a família;
 --   - o alcance: hotel_id (null no insight de rede), bandeira_id (a bandeira
@@ -101,6 +105,7 @@ create table app.insight (
   -- (até 4 bytes por caractere); a família deixa espaço para '|hoteis=' e o hash.
   constraint insight_chave_curta check (char_length(chave) <= 600 and char_length(familia) <= 520),
   constraint insight_chave_da_familia check (left(chave, char_length(familia)) = familia),
+  constraint insight_chave_com_hash check (chave ~ '\|hoteis=[0-9a-f]{64}$'),
   -- Formato do motivo do descarte (domínio, com paridade); só no descartado.
   constraint insight_motivo_descarte_valido check (
     motivo_descarte is null or motivo_descarte in ('nao_relevante', 'substituido')),
