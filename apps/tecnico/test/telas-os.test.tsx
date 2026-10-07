@@ -111,8 +111,11 @@ describe('tela da OS', () => {
   });
 
   it('as ações pelo estado, com as regras do domínio', () => {
+    // Os botões de ação (type="button"); os de envio dos formulários ficam fora.
     const botoes = (o: OsNoAparelho) =>
-      [...renderizar('pt-BR', tela(o)).matchAll(/<button>([^<]+)<\/button>/g)].map((b) => b[1]);
+      [
+        ...renderizar('pt-BR', tela(o)).matchAll(/<button type="button"[^>]*>([^<]+)<\/button>/g),
+      ].map((b) => b[1]);
     expect(botoes(os('atribuida'))).toEqual(['Voltar', 'Iniciar']);
     expect(botoes(os('em_execucao'))).toEqual(['Voltar', 'Pausar', 'Concluir']);
     expect(botoes(os('pausada'))).toEqual(['Voltar', 'Retomar']);
