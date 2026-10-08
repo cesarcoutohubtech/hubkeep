@@ -1350,7 +1350,7 @@ Primeira migração da instrumentação (etapa I do `docs/12`). PR de zona prote
   - O primeiro `withContext` abre uma transação `read only` com o contexto dele. Os seguintes, com o mesmo contexto e o mesmo acesso, usam essa transação. O COMMIT sai no fim do pedido.
   - Contexto diferente nunca reusa a transação. Leitura que falha descarta o escopo, e as seguintes abrem a própria.
   - `executar` (unit of work) nunca entra no escopo: abre a própria transação, com auditoria e outbox juntas. Escrita fora dela, no escopo, o banco recusa (25006).
-  - Conta: N leituras num GET custavam 4N idas e voltas; agora custam N + 2.
+  - Conta: N leituras num GET custavam 4N idas e voltas; agora custam N + 2. No `/hoteis/{id}/ativos` (5 leituras), o caminho crítico cai de cerca de 12 para 7.
 - **Pool:** `idleTimeoutMillis` de 10 s para 120 s, com `allowExitOnIdle`, `keepAlive` e um ouvinte de `error` no pool (antes, um cliente ocioso que caísse derrubava o processo). Justificativa no comentário de `OCIOSO_MS`.
 - **Testes:** testes de unidade novos com pool falso (`packages/db/test/transacao.test.ts`), um caso novo no `integracao.test.ts` (roda na CI) e casos do escopo no `apps/web/test/http.test.ts`.
 - **Pendência para o Cesar (ADR):** a proposta de ADR "transação por pedido de leitura e contexto no BEGIN" está no corpo do PR. O `docs/03` não foi tocado, porque é zona protegida.
