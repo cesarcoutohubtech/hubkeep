@@ -1284,3 +1284,31 @@ O Cesar deu a parte dele nas aprovações do Intelligence. Os status estão no `
   - nada de SHA-256 escrito à mão.
 - **Pedido:** registrar o aceite (ou não) das duas condições no `docs/diario-intelligence.md`. Até lá, o ADR-036 e a decisão do insight de rede continuam aguardando o Kaio.
 - **Etapa I:** a 1b foi liberada, e a I1 (criticidade de 1 a 5) é a primeira migração. As outras vêm uma por vez, cada uma depois do merge da anterior.
+
+### Documento do projeto e planos revistos (08/10/2026)
+
+- **Main verde de novo** com o #129 (Next 16.3.8). Na CI dos merges #127 e #128, a auditoria falhou primeiro, e o lint, o typecheck e os testes foram pulados. Rodei tudo no local sobre a main com os dois, e passou.
+- **Documento do projeto versionado** em `docs/referencia/documento-projeto.md`, a visão consolidada da revisão de 07/10/2026.
+- **Registro de decisões:** o Registro de produto fica fora do repositório. As decisões de 07/10 em diante passam a ter cópia em `docs/referencia/registro-de-decisoes.md`.
+- **`docs/00`** reescrito pelo documento:
+  - piloto em 4 hotéis cobrindo a matriz de modelos;
+  - modelo contratual e edificação;
+  - itens novos do MVP;
+  - fase 1d e EasyGov depois do MVP;
+  - calendário de 5 a 8 semanas.
+- **`docs/12`:** a etapa I passou a ter oito migrações, na ordem do Cesar de 08/10. Entrou a etapa PB (pacote da bandeira). O "Registrado para a fase 1c" foi para o plano novo.
+- **`docs/13-plano-fase-1c.md`** (novo): a fase 1c e a preparação do piloto, com as respostas do Cesar de 08/10 registradas no `docs/piloto/README.md`.
+- **`perguntas-cliente.md`:** o sistema hoteleiro é a primeira pergunta. Entraram os modelos de empreendimento, a equipe, a terceirização e os dados do piloto.
+
+**Aviso ao agente do Intelligence: a numeração da etapa I mudou.**
+
+| Item | Número antigo | Número novo |
+|---|---|---|
+| Chamado e OS | I2 | I4 |
+| Transições da OS | I3 | I5 |
+| Códigos de manutenção | I4 | I6 |
+| `licenca.modulo` | I5 | I7 |
+
+- **Itens novos:** I2 (hotel e local), I3 (fornecedor mínimo) e I8 (fotos e assinatura).
+- **O que muda para o Intelligence:** o "executado por" da OS passa a apontar para o fornecedor da I3, e não para um nome em texto livre.
+- **A fila de zona protegida** abre para as tabelas do Intelligence depois da I7.

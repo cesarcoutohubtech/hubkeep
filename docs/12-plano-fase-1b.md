@@ -1,11 +1,12 @@
 # 12 — Plano da fase 1b (preventiva e implantação)
 
-Proposta de 06/10/2026, para a aprovação do Cesar. A fase 1b só começa com o aval dele, depois do teste do kit. Depois do aval, a execução segue com autonomia, uma etapa por vez, com parada e resumo ao fim de cada etapa. Migração e ADR param no PR para aprovação. Os PRs de zona protegida vão um por vez no repositório inteiro, e `db push` e `config push` são do Cesar.
+Proposta de 06/10/2026, aprovada e liberada pelo Cesar em 07/10/2026. Revista em 08/10/2026 com a revisão de escopo de 07/10 (`docs/referencia/documento-projeto.md`): a etapa I passou de cinco para oito migrações, e entrou o pacote da bandeira. Depois do aval, a execução segue com autonomia, uma etapa por vez, com parada e resumo ao fim de cada etapa. Migração e ADR param no PR para aprovação. Os PRs de zona protegida vão um por vez no repositório inteiro, e `db push` e `config push` são do Cesar.
 
 Fonte do escopo:
 - `docs/00`: fase 1b, com planos, checklist tipado, geração de OS, importação e QR em lote, e a implantação de ativos por planilha, celular, modelos por categoria e QR em lote;
 - o relatório de lacunas do Intelligence (`docs/referencia/lacunas-instrumentacao-intelligence.md`), com as decisões do Cesar de 05 e 06/10/2026;
-- as pendências da 1a que apontam para a 1b, no `docs/05` e no `docs/03`.
+- as pendências da 1a que apontam para a 1b, no `docs/05` e no `docs/03`;
+- a revisão de 07/10/2026 e a ordem da instrumentação de 08/10/2026 (`docs/referencia/registro-de-decisoes.md`).
 
 ## Regras da fase
 
@@ -16,13 +17,13 @@ Fonte do escopo:
   - todo texto pelo catálogo nos quatro idiomas;
   - toda operação do técnico pela fila offline (ADR-025).
 - **Kit de teste:** cada tarefa que muda o que o usuário vê entra no script de demonstração (`scripts/ops/dados-demonstracao.ts`) e no roteiro do `docs/10`, no mesmo PR.
-- **Instrumentação antes de tudo** (Cesar, 05/10/2026): as cinco migrações da etapa I entram antes de qualquer outra tarefa da 1b, na ordem abaixo.
+- **Instrumentação antes de tudo** (Cesar, 05/10/2026; ordem revista em 08/10/2026): as oito migrações da etapa I entram antes de qualquer outra tarefa da 1b, na ordem abaixo.
 - **Fora da 1b:**
   - SLA com herança de políticas, notificações, indicadores, impressão da OS e CSV (fase 1c);
   - o nível bandeira das políticas (1c, com o SLA);
   - preventiva por uso ou por medidor: o `docs/00` fala em preventiva por tempo;
-  - nada de fase 2: custos, fornecedores, estoque, inspeções com OS automática.
-- **Ambiente:** só o dev.
+  - nada de fase 2: custos e alçadas, portal do fornecedor, estoque, inspeções com OS automática. O fornecedor mínimo (nome, CNPJ, contato) entrou no MVP em 07/10/2026 (I3).
+- **Ambiente:** só o dev. O staging chega com a F0-12, na preparação do piloto (`docs/13`).
 
 ## Decisões transversais (antes das etapas)
 
@@ -32,19 +33,26 @@ Fonte do escopo:
 | **Cópia no registro** (ADR-026, aprovado) | A OS preventiva guarda a cópia do checklist e do plano que a geraram. Mudar o modelo ou o plano não altera OS já gerada. | P1, P3 |
 | **Preventiva gerada pelo worker** (ADR-005, aprovado) | A geração roda uma vez por dia, no `hk_worker`, um tenant por transação, com `for update skip locked`. A rota de cron volta ao `vercel.json` só quando a tarefa P3 existir (B9 do `docs/11`). | P3 |
 | **Origem da OS** (relatório de lacunas) | A OS preventiva não tem chamado; ela se reconhece pelo plano (`plano_id`). Hoje `app.os.chamado_id` é `not null`, e a P3 muda isso com a exigência de um dos dois. | P3 |
-| **Política por hotel, herança hotel → grupo** (ADR-026 e o adendo de 06/10/2026) | As obrigatoriedades novas (códigos na OS, checklist completo) são políticas desligadas por padrão, resolvidas pelo registro de políticas. | I4, P1 |
+| **Política por hotel, herança hotel → grupo** (ADR-026 e o adendo de 06/10/2026) | As obrigatoriedades novas (códigos na OS, checklist completo) são políticas desligadas por padrão, resolvidas pelo registro de políticas. | I6, P1 |
 
-## Etapa I — Instrumentação do Intelligence
+## Etapa I — Instrumentação
 
-As cinco migrações da fila de zona protegida, nesta ordem (Cesar, 05 e 06/10/2026). Cada uma vai num PR de zona protegida, um por vez, com a migração, o pgTAP e os tipos do banco. O uso de cada coluna vai no mesmo PR: domínio, caso de uso, contrato, tela e kit. O detalhe de cada uma está no relatório de lacunas.
+As oito migrações da fila de zona protegida, nesta ordem (Cesar, 05 e 06/10/2026; ordem revista em 08/10/2026). Cada uma vai num PR de zona protegida, um por vez, com a migração, o pgTAP e os tipos do banco. O uso de cada coluna vai no mesmo PR: domínio, caso de uso, contrato, tela e kit. O detalhe das originais está no relatório de lacunas.
+
+- **Desenho antes do código:** I2, I3, I4 (na parte nova: UH indisponível e fornecedor) e I8 só começam depois da aprovação do desenho pelo Cesar. As propostas vão curtas, uma por item.
+- **Depois da I7,** a fila de zona protegida abre para as tabelas do Intelligence (agente do Kaio: `app.insight`, `app.metrica_ativo_diaria` e a ligação do job), combinado pelo diário.
+- **Numeração nova (08/10/2026).** A antiga I2 (chamado e OS) é a I4; a antiga I3 (transições) é a I5; a antiga I4 (códigos) é a I6; a antiga I5 (`licenca.modulo`) é a I7. Os diários anteriores a 08/10 usam a numeração antiga.
 
 | Tarefa | O quê | Aceite | Migração | ADR |
 |---|---|---|---|---|
 | **I1** Ativo: compra, garantia e criticidade | `app.ativo` ganha `data_compra`, `garantia_ate` e `criticidade` (1 a 5, `check`), todas anuláveis, com UPDATE para quem já edita o ativo. Os nomes dos níveis vêm do catálogo, e o tenant troca os nomes pela política `ativo.criticidade`. No PWA, os três campos ficam na parte recolhida do cadastro. | Criticidade fora de 1 a 5 é recusada pelo banco e, antes, pelo domínio, com código. Quem não escreve no hotel não altera as colunas novas (pgTAP, por papel). O nome do nível cai para o catálogo quando a política não tem o idioma. | Sim | — |
-| **I2** Chamado e OS: origem, impacto no hóspede, quem executa e custo | `app.chamado` ganha `origem` (`interno` por padrão, sem UPDATE) e `impacto_hospede` (anulável). `app.os` ganha `executado_por` (`equipe_interna` ou `terceiro`), `terceiro_nome` e `custo_informado` (`numeric(12,2)`, em reais). Triagem e aceite no web; a pergunta "afeta hóspede?" na abertura, também no PWA. | Os valores canônicos ficam no domínio, com teste de paridade com o banco. O nome do terceiro é exigido quando quem executa é terceiro. Custo negativo é recusado com código. O UPDATE das colunas novas segue quem tria e quem aceita (pgTAP, por papel). Operação offline antiga, sem os campos, continua válida. | Sim | — |
-| **I3** Transições da OS | `app.os_transicao` (de, para, quando, quem e a ação), só com INSERT, gravada pelo caso de uso na mesma unit of work que muda o estado da OS. Lida pelo `hk_app` no recorte da OS e pelo `hk_worker` no tenant do job. | Toda transição da corretiva grava uma linha, com teste de integração. Ninguém altera nem apaga uma transição (sem UPDATE nem DELETE, meta-testes). Os seis casos de isolamento. O worker lê só o tenant do contexto. | Sim: tabela nova | — |
-| **I4** Códigos de falha, causa e solução | `app.codigo_manutencao` (tipo, categoria opcional, nomes por idioma, chave padrão e ativa), cadastrada pelo Admin do grupo, com os padrões por categoria no catálogo. `app.os` ganha os três códigos, com FK composta. A política `os.codigos_obrigatorios`, por hotel, fica desligada por padrão. No PWA, os códigos são sugestão. | A conclusão no PWA nunca é recusada por falta de código. Com a política ligada, o aceite cobra os códigos (a confirmar com o Cesar, abaixo). Código de outra categoria é recusado pelo domínio. Os seis casos de isolamento; só o Admin do grupo grava. | Sim: tabela nova | — |
-| **I5** Módulos contratados | `licenca.modulo` (tenant, módulo e vigência), gravada pelo `hk_backoffice` e lida pelo `hk_app` e pelo `hk_worker` no próprio tenant. Até o backoffice existir, a gravação é por script de operação. A montagem do Intelligence passa a registrar a extensão das políticas só para quem tem o módulo contratado. | O tenant sem o módulo não vê nem grava as chaves `inteligencia.*` (teste de integração). O `hk_app` não grava a tabela. Os seis casos de isolamento. A tabela entra nas exceções e na lista fechada do meta-teste. | Sim: tabela nova | Talvez: o filtro por módulo no adendo ao ADR-026 |
+| **I2** Hotel e local: modelo contratual e edificação (novo, 07/10) | `app.hotel` ganha o modelo contratual (próprio, administrado, arrendado, afiliado); `app.local` ganha a edificação (torre, bloco). **Desenho a aprovar.** | A definir no desenho. | Sim | A definir no desenho |
+| **I3** Fornecedor mínimo (novo, 07/10) | Cadastro mínimo do fornecedor (nome, CNPJ, contato), no lugar do nome em texto livre na OS. **Desenho a aprovar.** | A definir no desenho. | Sim: tabela nova | A definir no desenho |
+| **I4** Chamado e OS: origem, impacto no hóspede, UH indisponível, quem executa e custo | `app.chamado` ganha `origem` (`interno` por padrão, sem UPDATE) e `impacto_hospede` (anulável). `app.os` ganha `executado_por` (`equipe_interna` ou fornecedor, ligado à I3) e `custo_informado` (`numeric(12,2)`, em reais). Novo: o período de UH indisponível, base dos UH-dias perdidos. Triagem e aceite no web; a pergunta "afeta hóspede?" na abertura, também no PWA. **Desenho a aprovar na parte nova** (UH indisponível e fornecedor). | Os valores canônicos ficam no domínio, com teste de paridade com o banco. O fornecedor é exigido quando quem executa não é a equipe interna. Custo negativo é recusado com código. O UPDATE das colunas novas segue quem tria e quem aceita (pgTAP, por papel). Operação offline antiga, sem os campos, continua válida. | Sim | — |
+| **I5** Transições da OS | `app.os_transicao` (de, para, quando, quem e a ação), só com INSERT, gravada pelo caso de uso na mesma unit of work que muda o estado da OS. Lida pelo `hk_app` no recorte da OS e pelo `hk_worker` no tenant do job. Fonte do MTTR e do Intelligence. | Toda transição da corretiva grava uma linha, com teste de integração. Ninguém altera nem apaga uma transição (sem UPDATE nem DELETE, meta-testes). Os seis casos de isolamento. O worker lê só o tenant do contexto. | Sim: tabela nova | — |
+| **I6** Códigos de falha, causa e solução | `app.codigo_manutencao` (tipo, categoria opcional, nomes por idioma, chave padrão e ativa), cadastrada pelo Admin do grupo, com os padrões por categoria no catálogo. `app.os` ganha os três códigos, com FK composta. A política `os.codigos_obrigatorios`, por hotel, fica desligada por padrão. No PWA, os códigos são sugestão. | A conclusão no PWA nunca é recusada por falta de código. Com a política ligada, o aceite cobra os códigos (a confirmar com o Cesar, abaixo). Código de outra categoria é recusado pelo domínio. Os seis casos de isolamento; só o Admin do grupo grava. | Sim: tabela nova | — |
+| **I7** Módulos contratados | `licenca.modulo` (tenant, módulo e vigência), gravada pelo `hk_backoffice` e lida pelo `hk_app` e pelo `hk_worker` no próprio tenant. Até o backoffice existir, a gravação é por script de operação. A montagem do Intelligence passa a registrar a extensão das políticas só para quem tem o módulo contratado. | O tenant sem o módulo não vê nem grava as chaves `inteligencia.*` (teste de integração). O `hk_app` não grava a tabela. Os seis casos de isolamento. A tabela entra nas exceções e na lista fechada do meta-teste. | Sim: tabela nova | Talvez: o filtro por módulo no adendo ao ADR-026 |
+| **I8** Foto antes ou depois e assinatura (novo, 07/10) | A foto da OS marcada como antes ou depois; a assinatura capturada no aceite. **Desenho a aprovar.** | A definir no desenho. | Sim | A definir no desenho |
 
 Fim da etapa I: resumo e aviso ao agente do Kaio, no diário, com os nomes reais dos campos para o `historico.ts`.
 
@@ -57,6 +65,14 @@ Fim da etapa I: resumo e aviso ao agente do Kaio, no diário, com os nomes reais
 | **P3** Geração automática de OS | O job diário do worker gera a OS preventiva de cada plano vencido, com a cópia do plano e do checklist, atribuída ao responsável padrão e com o evento `os.atribuida` no outbox. A geração é idempotente por plano e por data prevista. A OS preventiva não tem chamado. | Rodar o job duas vezes no mesmo dia não duplica a OS. Plano pausado não gera. Hotel desativado ou em implantação não gera. A OS preventiva segue a mesma máquina de estados da corretiva, sem o aceite do solicitante. O worker só grava no tenant do contexto. A rota volta ao `vercel.json` com teste. | Sim: `plano_id` e `data_prevista` em `app.os`, `chamado_id` anulável com a exigência de um dos dois, e GRANT do worker | O mesmo de P2 |
 
 Fim da etapa P: resumo.
+
+## Etapa PB — Pacote da bandeira (novo, 07/10/2026)
+
+| Tarefa | O quê | Aceite | Migração | ADR |
+|---|---|---|---|---|
+| **PB1** Pacote da bandeira | Modelos por categoria, checklists e planos preventivos definidos por bandeira e copiados para o hotel novo da bandeira, para a implantação de um hotel em até 1 dia, sem contar o levantamento de ativos (critério de aceite do piloto). **Desenho a aprovar**, junto com as propostas dos itens novos. | A definir no desenho. A cópia segue o ADR-026: mudar o pacote não altera o hotel já implantado. | Provável | A definir no desenho |
+
+Fim da etapa PB: resumo.
 
 ## Etapa M — Implantação
 
@@ -80,8 +96,9 @@ Fim da etapa M e da fase 1b: resumo, com a lista do que ficou para a 1c.
 ## Resumo de migrações e ADRs
 
 - **Migrações previstas** (cada uma para no PR):
-  - I1 a I5, uma por PR, na ordem da etapa I;
+  - I1 a I8, uma por PR, na ordem da etapa I;
   - P1, P2 e P3;
+  - PB1, provável;
   - M1;
   - M4 (situação do cadastro no ativo);
   - talvez M2 e M3.
@@ -90,18 +107,17 @@ Fim da etapa M e da fase 1b: resumo, com a lista do que ficou para a 1c.
   - novo: preventiva por tempo e geração idempotente pelo worker (P2 e P3);
   - talvez: formato e limites da importação (M2);
   - talvez: aprovação do cadastro de ativo (M4);
-  - talvez: o filtro por módulo contratado no adendo ao ADR-026 (I5).
-- **Os ADR-033 a 037** (Intelligence) e o texto do adendo ao ADR-026 aguardam a aprovação do Cesar. A etapa I não depende deles para a migração, só para o uso pelo Intelligence.
+  - talvez: o filtro por módulo contratado no adendo ao ADR-026 (I7);
+  - a definir nos desenhos: I2, I3, I4 (parte nova), I8 e PB1.
+- **Os ADR-033 a 037** (Intelligence) e o texto do adendo ao ADR-026 foram aprovados pelo Cesar em 07/10/2026, com duas condições no ADR-036 e no insight de rede que aguardam o aceite do Kaio (`docs/03`).
 
 ## Registrado para a fase 1c
 
-| Tarefa | O quê | Aceite |
-|---|---|---|
-| **Auditoria geral** (decisão do Cesar de 07/10/2026) | Tela só de leitura com toda a auditoria que o usuário enxerga. Filtros por período, hotel, tipo de registro, ação e pessoa, com paginação e exportação CSV. Reaproveita a tradução de ações e campos do histórico por registro (D1, `packages/dominio/src/auditoria.ts`). | O escopo de cada papel continua vindo da RLS: auditoria com hotel, só dos hotéis do usuário; auditoria sem hotel, só para o Admin do grupo e o Implantador, como no ADR-021. O CSV traz o mesmo que a tela, nos mesmos filtros. Paginação estável por cursor. Ações e campos traduzidos nos quatro idiomas. |
+O plano da 1c está no `docs/13-plano-fase-1c.md`, com a auditoria geral registrada aqui em 07/10/2026.
 
 ## A confirmar com o Cesar
 
-1. **Cobrança dos códigos:** com a política `os.codigos_obrigatorios` ligada, os códigos são cobrados no aceite, e não na conclusão do técnico (relatório de lacunas, decisões de 05/10/2026).
+1. **Cobrança dos códigos (I6):** com a política `os.codigos_obrigatorios` ligada, os códigos são cobrados no aceite, e não na conclusão do técnico (relatório de lacunas, decisões de 05/10/2026).
 2. **Aceite da OS preventiva:** quem aceita, já que ela não tem quem abriu. A proposta é o Gerente do hotel, ou, sem Gerente, o Gestor CSC, como na C6.
 3. **Modelos por categoria (M1):** a leitura deste plano é modelo de ativo para acelerar a implantação, com checklist e plano sugeridos. Se o cliente pensava em modelo de checklist por categoria apenas, a M1 encolhe.
 4. **Planilha (M2):** só CSV no MVP, com o modelo baixado na tela, ou também XLSX.
