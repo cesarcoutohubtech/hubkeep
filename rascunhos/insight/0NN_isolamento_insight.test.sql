@@ -85,10 +85,10 @@ insert into app.insight (id, tenant_id, hotel_id, bandeira_id, hotel_ids, tipo, 
    'atencao_ativo|ativoId=x1|hotelId=h1|hoteis=' || repeat('0', 64), 'atencao_ativo|ativoId=x1|hotelId=h1', '{"ativoId": "x1"}', 'novo', 'alta_atencao', 80, 1, now() - interval '2 days', now(), null, null),
   ('e1000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000000', null,
    '11000000-0000-0000-0000-00000000000a', array['11100000-0000-0000-0000-000000000001', '11100000-0000-0000-0000-000000000002']::uuid[], 'sistemico',
-   'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo|hoteis=' || repeat('0', 64), 'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'novo', 'atencao', null, 1, now() - interval '2 days', now(), null, null),
+   'sistemico|categoriaId=hvac|modelo=acme x1|regra=mesmo_modelo|hoteis=' || repeat('0', 64), 'sistemico|categoriaId=hvac|modelo=acme x1|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'novo', 'atencao', null, 1, now() - interval '2 days', now(), null, null),
   ('e1000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000000', null,
    null, array['11100000-0000-0000-0000-000000000001', '11100000-0000-0000-0000-000000000003']::uuid[], 'sistemico',
-   'sistemico|falha=vazamento|modelo=acme y2|regra=mesmo_modelo|hoteis=' || repeat('0', 64), 'sistemico|falha=vazamento|modelo=acme y2|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'novo', 'atencao', null, 1, now() - interval '2 days', now(), null, null),
+   'sistemico|categoriaId=hvac|modelo=acme y2|regra=mesmo_modelo|hoteis=' || repeat('0', 64), 'sistemico|categoriaId=hvac|modelo=acme y2|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'novo', 'atencao', null, 1, now() - interval '2 days', now(), null, null),
   ('e1000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
    '11000000-0000-0000-0000-00000000000a', array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo',
    'atencao_ativo|ativoId=x1|hotelId=h1|hoteis=' || repeat('0', 64), 'atencao_ativo|ativoId=x1|hotelId=h1', '{"ativoId": "x1"}', 'resolvido', 'atencao', 60, 1, now() - interval '90 days',
@@ -160,9 +160,9 @@ select lives_ok(
      values ('e1000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000000',
              array['11100000-0000-0000-0000-000000000001', '11100000-0000-0000-0000-000000000002', '11100000-0000-0000-0000-000000000003']::uuid[],
              'sistemico',
-             'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo|hoteis=' || encode(sha256(convert_to(
+             'sistemico|categoriaId=hvac|modelo=acme x1|regra=mesmo_modelo|hoteis=' || encode(sha256(convert_to(
                '11100000-0000-0000-0000-000000000001,11100000-0000-0000-0000-000000000002,11100000-0000-0000-0000-000000000003', 'UTF8')), 'hex'),
-             'sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo',
+             'sistemico|categoriaId=hvac|modelo=acme x1|regra=mesmo_modelo',
              '{"regra": "mesmo_modelo"}', 'atencao', 1, now(), now(), 'e1000000-0000-0000-0000-000000000002') $$,
   'hotel novo no insight de rede: o novo e o anterior da mesma família ficam abertos juntos');
 select throws_ok(
@@ -215,9 +215,9 @@ select lives_ok(
   $$ insert into app.insight (id, tenant_id, hotel_ids, tipo, chave, familia, escopo, faixa, versao_score, primeira_deteccao_em, ultima_deteccao_em)
      select 'e1000000-0000-0000-0000-000000000080', '10000000-0000-0000-0000-000000000000',
             array_agg(h order by h), 'sistemico',
-            'sistemico|falha=ruido|modelo=acme z9|regra=mesmo_modelo|hoteis='
+            'sistemico|categoriaId=hvac|modelo=acme z9|regra=mesmo_modelo|hoteis='
               || encode(sha256(convert_to(string_agg(h::text, ',' order by h::text), 'UTF8')), 'hex'),
-            'sistemico|falha=ruido|modelo=acme z9|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'atencao', 1, now(), now()
+            'sistemico|categoriaId=hvac|modelo=acme z9|regra=mesmo_modelo', '{"regra": "mesmo_modelo"}', 'atencao', 1, now(), now()
      from (select ('11190000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid as h from generate_series(1, 80) n) hs $$,
   'insight de rede com 80 hotéis entra, com a chave curta');
 select ok(

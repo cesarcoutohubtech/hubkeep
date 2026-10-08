@@ -28,7 +28,7 @@
 
 ### 2. Família e chave, com a condição do Cesar sobre o hash
 
-- **`familia`:** o tipo, a regra e o escopo sem os hotéis. Por exemplo, `sistemico|falha=ruido|modelo=acme x1|regra=mesmo_modelo`. É montada no domínio puro (`familiaDoInsight`).
+- **`familia`:** o tipo, a regra e o escopo sem os hotéis. Por exemplo, `sistemico|categoriaId=hvac|modelo=acme x1|regra=mesmo_modelo`. É montada no domínio puro (`familiaDoInsight`).
 - **A função pura devolve só a lista canônica dos hotéis** (`listaCanonicaDeHoteis`): sem repetição, em ordem crescente do UUID em texto minúsculo. **Nada de SHA-256 escrito à mão.**
 - **`chave`:** a `familia`, `|hoteis=` e o SHA-256 em hexadecimal minúsculo do texto `lista.join(',')` (`SEPARADOR_DE_HOTEIS`), em UTF-8. Quem grava calcula o hash:
   - **no job, com `node:crypto`,** na ligação do servidor do web. É o caminho escolhido;
