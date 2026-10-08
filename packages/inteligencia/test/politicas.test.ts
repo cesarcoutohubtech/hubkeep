@@ -165,6 +165,48 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
       expect(valorValidoDoIntelligence(c, com(ruim))).toBe(false);
   });
 
+  it('o sistêmico v2: booleano `ativa` em cada regra, mínimos inteiros de pelo menos 1', () => {
+    const k = 'inteligencia.sistemico';
+    const base = copia(PADROES_DO_INTELLIGENCE[k]);
+    expect(valorValidoDoIntelligence(k, base)).toBe(true);
+    const com = (mudar: (c: typeof base) => void) => {
+      const c = copia(base);
+      mudar(c);
+      return c;
+    };
+    const ruins = [
+      com((c) => {
+        c.mesmoModelo.minHoteis = 0;
+      }),
+      com((c) => {
+        c.mesmoModelo.minChamados = 2.5;
+      }),
+      com((c) => {
+        c.mesmoModelo.taxaMinimaVezesBase = 0;
+      }),
+      com((c) => {
+        (c.mesmoAndar as { ativa: unknown }).ativa = 'sim';
+      }),
+      com((c) => {
+        delete (c.crescimento as { ativa?: boolean }).ativa;
+      }),
+      com((c) => {
+        c.mesmoFornecedor.minConcluidas = 0;
+      }),
+    ];
+    for (const ruim of ruins) expect(valorValidoDoIntelligence(k, ruim)).toBe(false);
+    // Ligar uma regra e afinar a taxa são valores válidos.
+    expect(
+      valorValidoDoIntelligence(
+        k,
+        com((c) => {
+          c.mesmoAndar.ativa = true;
+          c.mesmoModelo.taxaMinima = 0;
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it('a validação do registro usa o formato do módulo, com o código do núcleo', () => {
     expect(() => registro.validar(c, {})).toThrow(
       expect.objectContaining({ codigo: 'politica_valor_invalido' }),

@@ -189,7 +189,7 @@ describe('executarDiaDoTenant: o recálculo', () => {
 
 describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
   const modelo = (id: string, hotelId: string) =>
-    ativo({ id, hotelId, fabricante: 'Acme', modelo: 'X1' });
+    ativo({ id, hotelId, categoriaId: 'hvac', fabricante: 'Acme', modelo: 'X1' });
   const falha = (a: AtivoDoDia, i: number) =>
     corretiva({
       hotelId: a.hotelId,
@@ -197,43 +197,51 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
       codigoFalha: 'ruido',
       abertaEm: dia(-i * 7),
     });
+  // Seis ativos em três hotéis (os mínimos do mesmo modelo); um quarto hotel entra depois.
+  const hoteisDoModelo: HotelDoDia[] = [...hoteis, { hotelId: 'h4', bandeiraId: 'b2' }];
   const cinco = [
     modelo('m1', 'h1'),
     modelo('m2', 'h1'),
     modelo('m3', 'h2'),
     modelo('m4', 'h2'),
-    modelo('m5', 'h2'),
+    modelo('m5', 'h3'),
+    modelo('m6', 'h3'),
   ];
 
   it('o novo conjunto abre outro insight, ligado ao anterior, e os dois ficam abertos', async () => {
     const { banco, dados, portas } = cenario({
+      hoteis: hoteisDoModelo,
       ativos: cinco,
       corretivas: cinco.map(falha),
     });
     await executarDiaDoTenant(portas, { agora });
     const sistemicos = () => banco.insights.filter((i) => i.tipo === 'sistemico');
     expect(sistemicos()).toHaveLength(1);
-    expect(sistemicos()[0]).toMatchObject({ hotelIds: ['h1', 'h2'], anteriorId: null });
+    expect(sistemicos()[0]).toMatchObject({ hotelIds: ['h1', 'h2', 'h3'], anteriorId: null });
 
-    const m6 = modelo('m6', 'h3');
-    dados.ativos = [...cinco, m6];
-    dados.corretivas = [...cinco, m6].map(falha);
+    const m7 = modelo('m7', 'h4');
+    dados.ativos = [...cinco, m7];
+    dados.corretivas = [...cinco, m7].map(falha);
     await executarDiaDoTenant(portas, { agora: dia(1) });
 
     const [anterior, novo] = sistemicos();
     expect(sistemicos()).toHaveLength(2);
-    expect(novo).toMatchObject({ hotelIds: ['h1', 'h2', 'h3'], anteriorId: anterior?.id });
+    expect(novo).toMatchObject({ hotelIds: ['h1', 'h2', 'h3', 'h4'], anteriorId: anterior?.id });
     expect(anterior?.estado).toBe('novo');
-    expect(anterior?.hotelIds).toEqual(['h1', 'h2']);
+    expect(anterior?.hotelIds).toEqual(['h1', 'h2', 'h3']);
     expect(anterior?.familia).toBe(novo?.familia);
     expect(anterior?.chave).not.toBe(novo?.chave);
-    expect(anterior?.chave).toBe(chaveDeTeste(anterior?.familia ?? '', ['h1', 'h2']));
+    expect(anterior?.chave).toBe(chaveDeTeste(anterior?.familia ?? '', ['h1', 'h2', 'h3']));
   });
 
   it('saiu hotel: nada a fazer, e o insight maior segue como está', async () => {
-    const m6 = modelo('m6', 'h3');
-    const todos = [...cinco, m6];
-    const { banco, dados, portas } = cenario({ ativos: todos, corretivas: todos.map(falha) });
+    const m7 = modelo('m7', 'h4');
+    const todos = [...cinco, m7];
+    const { banco, dados, portas } = cenario({
+      hoteis: hoteisDoModelo,
+      ativos: todos,
+      corretivas: todos.map(falha),
+    });
     await executarDiaDoTenant(portas, { agora });
     const antes = banco.insights.map((i) => ({ ...i }));
 
@@ -245,7 +253,11 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
   });
 
   it('descartado "não relevante" silencia a família por 30 dias; "substituído" não', async () => {
-    const { banco, portas } = cenario({ ativos: cinco, corretivas: cinco.map(falha) });
+    const { banco, portas } = cenario({
+      hoteis: hoteisDoModelo,
+      ativos: cinco,
+      corretivas: cinco.map(falha),
+    });
     await executarDiaDoTenant(portas, { agora });
     const insight = banco.insights.find((i) => i.tipo === 'sistemico');
     if (!insight) throw new Error('sem insight sistêmico');

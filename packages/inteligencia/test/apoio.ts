@@ -1,5 +1,14 @@
 // Históricos sintéticos para os testes do motor.
-import type { Corretiva } from '../src';
+import { type ConfigSistemico, type Corretiva, PADRAO_SISTEMICO } from '../src';
+
+/** O padrão do sistêmico com as cinco regras ligadas (por padrão só o mesmo modelo vem ligado). */
+export const todasAsRegras: ConfigSistemico = {
+  ...PADRAO_SISTEMICO,
+  mesmoAndar: { ...PADRAO_SISTEMICO.mesmoAndar, ativa: true },
+  mesmaAreaComum: { ...PADRAO_SISTEMICO.mesmaAreaComum, ativa: true },
+  mesmoFornecedor: { ...PADRAO_SISTEMICO.mesmoFornecedor, ativa: true },
+  crescimento: { ...PADRAO_SISTEMICO.crescimento, ativa: true },
+};
 
 export const agora = new Date('2026-09-30T12:00:00Z');
 export const dia = (d: number, base = agora) => new Date(base.getTime() + d * 86_400_000);

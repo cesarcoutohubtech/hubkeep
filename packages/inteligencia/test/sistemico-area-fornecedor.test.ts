@@ -1,8 +1,23 @@
 // Possível problema sistêmico pela mesma área comum e pelo mesmo fornecedor
 // (fornecedor da OS, pelo id do cadastro). Sempre "possível", com a evidência.
 import { describe, expect, it } from 'vitest';
-import { type Corretiva, type ExecutadoPor, type LocalAnalisado, detectarSistemicos } from '../src';
-import { agora, corretiva, dia } from './apoio';
+import {
+  type ConfigSistemico,
+  type Corretiva,
+  type EntradaSistemico,
+  type ExecutadoPor,
+  type LocalAnalisado,
+  PADRAO_SISTEMICO,
+  detectarSistemicos as detectar,
+} from '../src';
+import { agora, corretiva, dia, todasAsRegras } from './apoio';
+
+// Por padrão só o mesmo modelo vem ligado; estes testes ligam as regras da área e do fornecedor.
+const detectarSistemicos = (
+  e: EntradaSistemico,
+  quando: Date,
+  config: ConfigSistemico = todasAsRegras,
+) => detectar(e, quando, config);
 
 const areaComum: LocalAnalisado = { id: 'cozinha', hotelId: 'h1', andar: null, tipo: 'area_comum' };
 
@@ -133,5 +148,41 @@ describe('mesmo fornecedor', () => {
         agora,
       ).filter((s) => s.regra === 'mesmo_fornecedor'),
     ).toEqual([]);
+  });
+});
+
+describe('regras desligadas por padrão (v2): a área comum e o fornecedor', () => {
+  it('com o padrão, a mesma área comum e o mesmo fornecedor não geram sinal', () => {
+    expect(PADRAO_SISTEMICO.mesmaAreaComum.ativa).toBe(false);
+    expect(PADRAO_SISTEMICO.mesmoFornecedor.ativa).toBe(false);
+    const cozinha: LocalAnalisado = {
+      id: 'cozinha',
+      hotelId: 'h1',
+      andar: null,
+      tipo: 'area_comum',
+    };
+    const vazamentos = Array.from({ length: 6 }, (_, i) =>
+      corretiva({
+        localId: 'cozinha',
+        ativoId: null,
+        codigoFalha: 'vazamento',
+        abertaEm: dia(-i * 4),
+      }),
+    );
+    const porFornecedor = Array.from({ length: 6 }, (_, i) => [
+      corretiva({
+        ativoId: `f${i}`,
+        abertaEm: dia(-62),
+        concluidaEm: dia(-60),
+        executadoPor: 'fornecedor',
+        fornecedorId: 'f-silva',
+      }),
+      corretiva({ ativoId: `f${i}`, abertaEm: dia(-50) }),
+    ]).flat();
+    for (const corretivas of [vazamentos, porFornecedor]) {
+      const entrada = { corretivas, ativos: [], locais: [cozinha] };
+      expect(detectar(entrada, agora, PADRAO_SISTEMICO)).toEqual([]);
+      expect(detectar(entrada, agora, todasAsRegras).length).toBeGreaterThan(0);
+    }
   });
 });
