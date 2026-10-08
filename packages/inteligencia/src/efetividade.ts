@@ -2,11 +2,19 @@
 // corrigimos? Compara a mesma janela antes e depois da data da intervenção.
 // O resultado fala só em variação observada, nunca em causa (PRD, princípio 7):
 // a tela traduz 'reducao_observada', e não "a troca resolveu".
+//
+// Versão 2 (aprovada pelo Cesar em 08/10/2026, alinhada ao mock): os limiares
+// vêm da política `inteligencia.efetividade`. Pela variação dos chamados:
+// redução de 60% ou mais = redução observada; de 25% a menos de 60% = redução
+// parcial; de mais de −25% a menos de +20% = sem mudança relevante; aumento de
+// 20% ou mais = aumento observado; menos de 3 chamados antes = sem base de
+// comparação; menos de 90 dias depois = janela incompleta (que vale primeiro).
+// A versão 1 (limiar único de 20% nos dois sentidos) fica no que já foi gravado.
 import type { Parada } from '@hubkeep/dominio';
 import { type Corretiva, horasParadasNoTrecho } from './historico';
 import { DIA_MS } from './score';
 
-export const VERSAO_EFETIVIDADE = 1;
+export const VERSAO_EFETIVIDADE = 2;
 
 export interface Custo {
   em: Date;
@@ -23,12 +31,43 @@ export interface EntradaEfetividade {
 }
 
 export interface ConfigEfetividade {
+  /** Tamanho do antes e do depois, em dias. */
   janelaDias: number;
-  /** Variação dos chamados, em %, a partir da qual há redução ou aumento. */
-  limiarPercentual: number;
+  /** Redução dos chamados, em %, a partir da qual a redução é observada. */
+  reducaoObservadaPercentual: number;
+  /** Redução, em %, a partir da qual é parcial (até a observada, exclusive). */
+  reducaoParcialPercentual: number;
+  /** Aumento dos chamados, em %, a partir do qual o aumento é observado. */
+  aumentoObservadoPercentual: number;
+  /** Menos chamados que isto antes da intervenção: não há base de comparação. */
+  minChamadosAntes: number;
 }
 
-export const PADRAO_EFETIVIDADE: ConfigEfetividade = { janelaDias: 90, limiarPercentual: 20 };
+export const PADRAO_EFETIVIDADE: ConfigEfetividade = {
+  janelaDias: 90,
+  reducaoObservadaPercentual: 60,
+  reducaoParcialPercentual: 25,
+  aumentoObservadoPercentual: 20,
+  minChamadosAntes: 3,
+};
+
+/**
+ * Os limiares só fazem sentido nesta ordem: a redução parcial começa antes da
+ * observada (e acima de 0), e a observada não passa de 100%. Conferido ao
+ * gravar a política, para o resultado nunca ser contraditório.
+ */
+export function limiaresDeEfetividadeValidos(c: ConfigEfetividade): boolean {
+  return (
+    Number.isInteger(c.janelaDias) &&
+    c.janelaDias >= 1 &&
+    Number.isInteger(c.minChamadosAntes) &&
+    c.minChamadosAntes >= 1 &&
+    c.reducaoParcialPercentual > 0 &&
+    c.reducaoParcialPercentual < c.reducaoObservadaPercentual &&
+    c.reducaoObservadaPercentual <= 100 &&
+    c.aumentoObservadoPercentual > 0
+  );
+}
 
 export type ChaveMetrica = 'chamados' | 'reaberturas' | 'horas_paradas' | 'custo';
 
@@ -42,6 +81,7 @@ export interface MetricaAntesDepois {
 
 export type ResultadoEfetividade =
   | 'reducao_observada'
+  | 'reducao_parcial'
   | 'sem_mudanca_relevante'
   | 'aumento_observado'
   | 'sem_base_de_comparacao'
@@ -136,9 +176,14 @@ export function efetividadeAntesDepois(
   const chamados = metricas[0] as MetricaAntesDepois;
   let resultado: ResultadoEfetividade;
   if (agora.getTime() < t + janela) resultado = 'janela_incompleta';
-  else if (chamados.variacaoPercentual === null) resultado = 'sem_base_de_comparacao';
-  else if (chamados.variacaoPercentual <= -config.limiarPercentual) resultado = 'reducao_observada';
-  else if (chamados.variacaoPercentual >= config.limiarPercentual) resultado = 'aumento_observado';
+  else if (chamados.variacaoPercentual === null || chamados.antes < config.minChamadosAntes)
+    resultado = 'sem_base_de_comparacao';
+  else if (-chamados.variacaoPercentual >= config.reducaoObservadaPercentual)
+    resultado = 'reducao_observada';
+  else if (-chamados.variacaoPercentual >= config.reducaoParcialPercentual)
+    resultado = 'reducao_parcial';
+  else if (chamados.variacaoPercentual >= config.aumentoObservadoPercentual)
+    resultado = 'aumento_observado';
   else resultado = 'sem_mudanca_relevante';
 
   return { versao: VERSAO_EFETIVIDADE, resultado, diasDecorridos, metricas, configuracao: config };
