@@ -10,6 +10,7 @@ export {
   RespostaDeConvite,
   RespostaDeHoteis,
   RespostaDeSessao,
+  MODELOS_CONTRATUAIS_API,
   STATUS_HOTEL_API,
 } from './api';
 export {
@@ -99,6 +100,7 @@ export {
 export {
   LocalApi,
   PedidoDeAreaComum,
+  PedidoDeEdificacao,
   RespostaDeLocaisDoHotel,
   RespostaDeLocalAlterado,
   STATUS_DE_LOCAL_API,

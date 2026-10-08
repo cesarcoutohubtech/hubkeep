@@ -10,6 +10,7 @@
 // conferidos pelo registro, no caso de uso (politica_desconhecida,
 // politica_valor_invalido).
 import { z } from 'zod';
+import { MODELOS_CONTRATUAIS_API } from './api';
 import { IDIOMAS_API } from './preferencias';
 
 const AceiteAutomatico = z.strictObject({ ligado: z.boolean(), dias: z.int().min(1).max(60) });
@@ -102,23 +103,37 @@ export const PedidoDeConfiguracaoDoTenant = z
   .object(Regiao)
   .meta({ id: 'PedidoDeConfiguracaoDoTenant' });
 
-/** Nulo em país, subdivisão, moeda e idioma: herda do tenant. */
+const CamposDoHotel = {
+  /** Fuso IANA (ex.: America/Sao_Paulo). */
+  fuso: z.string().max(64),
+  pais: Regiao.pais.nullable(),
+  subdivisao: Regiao.subdivisao,
+  moeda: Regiao.moeda.nullable(),
+  idiomaPadrao: Regiao.idiomaPadrao.nullable(),
+};
+
+/** Modelo contratual do hotel (I2): nulo é "não informado". */
+const ModeloContratualApi = z.enum(MODELOS_CONTRATUAIS_API).nullable();
+
+/**
+ * Nulo em país, subdivisão, moeda e idioma: herda do tenant. O modelo
+ * contratual (I2) é opcional no pedido: ausente, mantém o gravado; null, volta
+ * a "não informado".
+ */
 export const PedidoDeConfiguracaoDoHotel = z
-  .object({
-    /** Fuso IANA (ex.: America/Sao_Paulo). */
-    fuso: z.string().max(64),
-    pais: Regiao.pais.nullable(),
-    subdivisao: Regiao.subdivisao,
-    moeda: Regiao.moeda.nullable(),
-    idiomaPadrao: Regiao.idiomaPadrao.nullable(),
-  })
+  .object({ ...CamposDoHotel, modeloContratual: ModeloContratualApi.optional() })
   .meta({ id: 'PedidoDeConfiguracaoDoHotel' });
 
 export const RespostaDeConfiguracao = z
   .object({
     tenant: z.object({ nome: z.string(), ...Regiao }),
     hotel: z
-      .object({ id: z.guid(), nome: z.string(), ...PedidoDeConfiguracaoDoHotel.shape })
+      .object({
+        id: z.guid(),
+        nome: z.string(),
+        ...CamposDoHotel,
+        modeloContratual: ModeloContratualApi,
+      })
       .nullable(),
     politicas: z.array(
       z.discriminatedUnion('chave', [

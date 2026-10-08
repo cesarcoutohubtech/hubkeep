@@ -45,6 +45,7 @@ import {
   type EstadoDaOs,
   type EstadoDoChamado,
   type Escopo,
+  ehModeloContratual,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
@@ -359,15 +360,23 @@ export const trecho = (termo: string) => `%${termo.replace(/[\\%_]/g, '\\$&')}%`
 export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
   return {
     hotel: (ctx, hotelId) =>
-      banco.withContext(
-        ctx,
-        async (tx) =>
-          (await tx
-            .selectFrom('app.hotel')
-            .select(['id', 'nome', 'status'])
-            .where('id', '=', hotelId)
-            .executeTakeFirst()) ?? null,
-      ),
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'nome', 'status', 'modelo_contratual'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h
+          ? {
+              id: h.id,
+              nome: h.nome,
+              status: h.status,
+              modeloContratual: ehModeloContratual(h.modelo_contratual)
+                ? h.modelo_contratual
+                : null,
+            }
+          : null;
+      }),
     locais: (ctx, hotelId) =>
       banco.withContext(ctx, async (tx) =>
         (
@@ -512,7 +521,16 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
       banco.withContext(ctx, async (tx) => {
         const h = await tx
           .selectFrom('app.hotel')
-          .select(['id', 'nome', 'fuso', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+          .select([
+            'id',
+            'nome',
+            'fuso',
+            'pais',
+            'subdivisao',
+            'moeda',
+            'idioma_padrao',
+            'modelo_contratual',
+          ])
           .where('id', '=', hotelId)
           .executeTakeFirst();
         return h
@@ -524,6 +542,9 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
               subdivisao: h.subdivisao,
               moeda: h.moeda,
               idiomaPadrao: h.idioma_padrao as ConfiguracaoDoHotel['idiomaPadrao'],
+              modeloContratual: ehModeloContratual(h.modelo_contratual)
+                ? h.modelo_contratual
+                : null,
             }
           : null;
       }),
@@ -560,13 +581,23 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
 
 /** Locais do hotel (fase 1a, B1), pelo hk_app: o que cada um vê e grava é da RLS. */
 export function criarPortaLocais(banco: AcessoBanco): PortaLocais {
-  const colunas = ['id', 'hotel_id', 'nome', 'tipo', 'andar', 'status', 'cod_externo'] as const;
+  const colunas = [
+    'id',
+    'hotel_id',
+    'nome',
+    'tipo',
+    'andar',
+    'edificacao',
+    'status',
+    'cod_externo',
+  ] as const;
   const paraLocal = (l: {
     id: string;
     hotel_id: string;
     nome: string;
     tipo: LocalDoHotelCadastrado['tipo'];
     andar: string | null;
+    edificacao: string | null;
     status: LocalDoHotelCadastrado['status'];
     cod_externo: string | null;
   }): LocalDoHotelCadastrado => ({
@@ -575,6 +606,7 @@ export function criarPortaLocais(banco: AcessoBanco): PortaLocais {
     nome: l.nome,
     tipo: l.tipo,
     andar: l.andar,
+    edificacao: l.edificacao,
     status: l.status,
     codExterno: l.cod_externo,
   });

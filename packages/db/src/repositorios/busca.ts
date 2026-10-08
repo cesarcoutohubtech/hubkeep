@@ -5,10 +5,27 @@
 // que nenhum outro trecho de packages/db escreve a busca por conta própria.
 import { textoDeBusca } from '@hubkeep/aplicacao';
 
-/** Local: acha-se pelo nome. */
-export const colunasPesquisaveisDoLocal = (nome: string) => ({
+const buscaDoLocal = (nome: string, edificacao: string | null) =>
+  textoDeBusca([nome, edificacao].filter(Boolean).join(' '));
+
+/** Local: acha-se pelo nome e pela edificação (I2). */
+export const colunasPesquisaveisDoLocal = (d: { nome: string; edificacao: string | null }) => ({
+  nome: d.nome,
+  edificacao: d.edificacao,
+  busca: buscaDoLocal(d.nome, d.edificacao),
+});
+
+/**
+ * UH gravada pelo worker a partir do sistema hoteleiro (promoção): o nome vem
+ * do CM, e a edificação é a que já está gravada (o HubKeep a edita, o conector
+ * não; o worker nem tem UPDATE na coluna). Só o nome e a busca são gravados.
+ */
+export const colunasPesquisaveisDaUhDoSistema = (
+  nome: string,
+  edificacaoGravada: string | null,
+) => ({
   nome,
-  busca: textoDeBusca(nome),
+  busca: buscaDoLocal(nome, edificacaoGravada),
 });
 
 /** Ativo: acha-se pelo nome, fabricante, modelo e número de série. */

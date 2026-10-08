@@ -195,6 +195,7 @@ export interface AppHotel {
   fuso: string;
   id: string;
   idioma_padrao: string | null;
+  modelo_contratual: string | null;
   moeda: string | null;
   nome: string;
   pais: string | null;
@@ -220,6 +221,7 @@ export interface AppLocal {
   busca: string;
   cod_externo: string | null;
   criado_em: Generated<Timestamp>;
+  edificacao: string | null;
   hotel_id: string;
   id: string;
   nome: string;

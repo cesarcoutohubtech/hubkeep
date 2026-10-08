@@ -32,6 +32,7 @@ import {
   type Contexto,
   ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
   type Escopo,
+  type ModeloContratual,
   type Papel,
 } from '@hubkeep/dominio';
 import pg from 'pg';
@@ -103,6 +104,33 @@ const UHS: Record<Hotel, string[]> = {
 const AREAS: Partial<Record<Hotel, string[]>> = {
   centro: ['Piscina', 'Cozinha', 'Casa de máquinas'],
   praia: ['Lobby', 'Restaurante'],
+};
+
+/**
+ * Modelo contratual (I2): o Centro é próprio e o Praia, arrendado. O Serra,
+ * em implantação, fica sem modelo, e o painel de implantação mostra a
+ * pendência. Só grava no hotel ainda sem modelo: o que o Cesar mudou pela
+ * tela fica.
+ */
+const MODELO_CONTRATUAL: Partial<Record<Hotel, ModeloContratual>> = {
+  centro: 'proprio',
+  praia: 'arrendado',
+};
+
+/**
+ * Edificação (I2) de alguns locais do Centro, nas UHs do sistema hoteleiro e
+ * numa área comum. Só grava no local ainda sem edificação.
+ */
+const EDIFICACOES: Partial<Record<Hotel, Record<string, string>>> = {
+  centro: {
+    'UH 101': 'Torre A',
+    'UH 102': 'Torre A',
+    'UH 103': 'Torre A',
+    'UH 104': 'Torre A',
+    'UH 201': 'Torre B',
+    'UH 202': 'Torre B',
+    Piscina: 'Área externa',
+  },
 };
 
 /** Ativos: hotel, local, categoria padrão, nome, fabricante, modelo. */
@@ -295,6 +323,24 @@ export async function semearDemonstracao(
     }
   }
 
+  const configuracaoUc = await casosDeUsoDeConfiguracao();
+  for (const [h, modeloContratual] of Object.entries(MODELO_CONTRATUAL) as [
+    Hotel,
+    ModeloContratual,
+  ][]) {
+    const { hotel } = await configuracaoUc.lerConfiguracao(ctxAdmin, hoteis[h]);
+    if (hotel && hotel.modeloContratual === null) {
+      await configuracaoUc.configurarHotel(ctxAdmin, hoteis[h], {
+        fuso: hotel.fuso,
+        pais: hotel.pais,
+        subdivisao: hotel.subdivisao,
+        moeda: hotel.moeda,
+        idiomaPadrao: hotel.idiomaPadrao,
+        modeloContratual,
+      });
+    }
+  }
+
   const locaisUc = await casosDeUsoDeLocais();
   const locais = {} as Record<Hotel, Map<string, string>>;
   for (const h of Object.keys(HOTEIS) as Hotel[]) {
@@ -304,6 +350,11 @@ export async function semearDemonstracao(
       if (!porNome.has(area)) {
         porNome.set(area, (await locaisUc.criarAreaComum(ctxAdmin, hoteis[h], area, null)).id);
       }
+    }
+    for (const [nome, edificacao] of Object.entries(EDIFICACOES[h] ?? {})) {
+      const id = porNome.get(nome);
+      const gravada = lista.find((l) => l.id === id)?.edificacao ?? null;
+      if (id && gravada === null) await locaisUc.alterarEdificacao(ctxAdmin, id, edificacao);
     }
     locais[h] = porNome;
   }

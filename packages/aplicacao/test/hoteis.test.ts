@@ -64,6 +64,7 @@ function montar(opcoes: {
         fuso: h.fuso,
         sistemaOrigem: h.fonte,
         codExterno: h.chave,
+        modeloContratual: null,
       });
       registro.push(`criar:${h.nome}:${h.fuso}`);
       return id;
@@ -106,6 +107,7 @@ const cadastrado = (
   fuso: 'America/Sao_Paulo',
   sistemaOrigem: 'totvs_cm',
   codExterno: id,
+  modeloContratual: null,
   ...extra,
 });
 

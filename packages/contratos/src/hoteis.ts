@@ -1,7 +1,7 @@
 // Hotéis a partir do staging (fase 1a, A1): a lista do que chegou do sistema
 // hoteleiro, a importação para implantação e a ativação, que consome licença.
 import { z } from 'zod';
-import { STATUS_HOTEL_API } from './api';
+import { MODELOS_CONTRATUAIS_API, STATUS_HOTEL_API } from './api';
 
 const UsoDaLicenca = z
   .object({
@@ -25,6 +25,8 @@ export const HotelParaAtivacao = z
         status: z.enum(STATUS_HOTEL_API),
         nome: z.string(),
         fuso: z.string(),
+        /** I2: nulo é "não informado". */
+        modeloContratual: z.enum(MODELOS_CONTRATUAIS_API).nullable(),
       })
       .nullable(),
     /** Campos em que o cadastro difere do sistema hoteleiro. */

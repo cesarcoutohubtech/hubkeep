@@ -3,14 +3,17 @@
 // Implantador cadastra pessoas abaixo do próprio papel (regras de concessão,
 // permissoes.ts) e não ativa hotel nem libera licença (podeAtivarHotel).
 //
-// O painel olha locais, ativos (B3) e pessoas. Locais sem ativo contam só
+// O painel olha o hotel (o modelo contratual, I2), locais, ativos (B3) e
+// pessoas. Locais sem ativo contam só
 // ativos ativos em locais não inativos; o ativo sempre tem local (NOT NULL),
 // então a pendência de ativo é só a falta de categoria.
 import { PermissaoNegada } from './erros';
+import type { ModeloContratual } from './hoteis';
 import { type Resultado, ehAdminGrupo, hoteisComoImplantador, vigente } from './permissoes';
 import type { Atribuicao, Papel } from './tipos';
 
 export const PENDENCIAS_DE_IMPLANTACAO = [
+  'modelo_contratual_nao_informado',
   'sem_locais',
   'uhs_pendentes_de_licenca',
   'locais_sem_ativo',
@@ -20,6 +23,11 @@ export const PENDENCIAS_DE_IMPLANTACAO = [
   'pessoas_sem_papel_vigente',
 ] as const;
 export type PendenciaDeImplantacao = (typeof PENDENCIAS_DE_IMPLANTACAO)[number];
+
+export interface HotelParaImplantacao {
+  /** Nulo: não informado (I2), e o painel aponta a pendência. */
+  modeloContratual: ModeloContratual | null;
+}
 
 export interface LocalParaImplantacao {
   id: string;
@@ -74,6 +82,7 @@ export function resumirImplantacao(
   pessoas: readonly PessoaParaImplantacao[],
   agora: Date,
   ativos: readonly AtivoParaImplantacao[] = [],
+  hotel: HotelParaImplantacao = { modeloContratual: null },
 ): ResumoDeImplantacao {
   const contar = (f: (l: LocalParaImplantacao) => boolean) => locais.filter(f).length;
   const resumoLocais = {
@@ -111,6 +120,8 @@ export function resumirImplantacao(
   const tem = (papel: Papel) => (porPapel.get(papel)?.size ?? 0) > 0;
   const pendencias = PENDENCIAS_DE_IMPLANTACAO.filter((p) => {
     switch (p) {
+      case 'modelo_contratual_nao_informado':
+        return hotel.modeloContratual === null;
       case 'sem_locais':
         return resumoLocais.uhsAtivas + resumoLocais.uhsPendentes + resumoLocais.areasComuns === 0;
       case 'uhs_pendentes_de_licenca':

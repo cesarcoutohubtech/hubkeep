@@ -4,6 +4,8 @@
 //   - formato fora da política e chave desconhecida são 422, antes do banco;
 //   - o Admin configura país, moeda e idioma do tenant e o fuso do hotel;
 //   - o gerente não configura (403) e, com a checagem removida, a RLS ainda barra;
+//   - modelo contratual do hotel (I2): nulo no começo, só o Admin grava,
+//     ausente fica o gravado, null volta a "não informado";
 //   - cada gravação vai para a auditoria.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
@@ -280,5 +282,48 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
       }),
     ).rejects.toMatchObject({ codigo: 'hotel_nao_encontrado' });
     expect(await aceiteDe(U.admin)).toMatchObject({ efetiva: { ligado: false, dias: 5 } });
+  });
+
+  it('modelo contratual do hotel (I2): só o Admin grava; ausente fica; null volta a não informado', async () => {
+    const base = {
+      fuso: 'America/Santiago',
+      pais: null,
+      subdivisao: 'CL-RM',
+      moeda: null,
+      idiomaPadrao: null,
+    };
+    const modelo = async () =>
+      (await casos.lerConfiguracao(ctx(U.tecnico), H1)).hotel?.modeloContratual;
+    expect(await modelo()).toBeNull();
+    await casos.configurarHotel(ctx(U.admin), H1, { ...base, modeloContratual: 'arrendado' });
+    expect(await modelo()).toBe('arrendado');
+    await casos.configurarHotel(ctx(U.admin), H1, base);
+    expect(await modelo()).toBe('arrendado');
+    await expect(
+      casos.configurarHotel(ctx(U.admin), H1, {
+        ...base,
+        modeloContratual: 'franquia' as unknown as 'proprio',
+      }),
+    ).rejects.toMatchObject({ codigo: 'hotel_modelo_contratual_invalido' });
+    await expect(
+      casos.configurarHotel(ctx(U.gerente), H1, { ...base, modeloContratual: 'proprio' }),
+    ).rejects.toMatchObject({ codigo: 'configuracao_so_admin' });
+    await expect(
+      semChecagem.configurarHotel(ctx(U.gerente), H1, { ...base, modeloContratual: 'proprio' }),
+    ).rejects.toMatchObject({ codigo: 'hotel_nao_encontrado' });
+    expect(await modelo()).toBe('arrendado');
+    await casos.configurarHotel(ctx(U.admin), H1, { ...base, modeloContratual: null });
+    expect(await modelo()).toBeNull();
+    const { rows } = await dono.query(
+      `select antes->>'modelo_contratual' as antes, depois->>'modeloContratual' as depois
+         from app.auditoria
+        where tenant_id = $1 and entidade = 'hotel' and depois ? 'modeloContratual'
+        order by em`,
+      [TENANT],
+    );
+    expect(rows).toEqual([
+      { antes: null, depois: 'arrendado' },
+      { antes: 'arrendado', depois: null },
+    ]);
   });
 });

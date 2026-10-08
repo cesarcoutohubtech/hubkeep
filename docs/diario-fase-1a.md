@@ -1405,3 +1405,30 @@ Primeira migração da instrumentação (etapa I do `docs/12`). PR de zona prote
 - **Server-Timing:** o da API não mudou. A página continua com o do proxy (`proxy` e `sessao`); um Server Component não grava cabeçalho da resposta, então o tempo da leitura da página vai na linha de log `pagina`.
 - **Não verificado no navegador.** Medir com o build de produção: o documento de `/chamados/{id}` (tempo até o chamado aparecer) contra a meta de 500 ms, e a linha `pagina` no log.
 - **Pendência para o Cesar:** a moldura só mostra a página depois do efeito que lê o cookie do grupo, então o primeiro HTML ainda sai com "carregando" e o chamado aparece na hidratação, sem pedido à API. Ler o `hk_tenant` no layout do servidor tiraria esse passo; fica para um PR próprio, se as medições pedirem.
+
+### I2, modelo contratual do hotel e edificação do local (08/10/2026)
+
+Desenho aprovado pelo Cesar em 08/10/2026 (`docs/referencia/propostas-desenho-1b.md`, item 1). PR de zona protegida.
+- **Banco (migração 0032):**
+  - `app.hotel.modelo_contratual`, anulável, com o check `hotel_modelo_contratual_lista` em `proprio`, `administrado`, `arrendado` e `afiliado`. Nulo é "não informado": os hotéis existentes ficam nulos, sem padrão. O UPDATE vai para o `hk_app`, sob a policy de UPDATE do hotel, que já só deixava o Admin do grupo. O worker não tem UPDATE em `app.hotel`.
+  - `app.local.edificacao`, texto opcional, com o check de 1 a 60 caracteres (o vazio é nulo, pelo domínio). O UPDATE vai só para o `hk_app`, sob a policy de escrita no hotel. O worker, que atualiza nome e andar da UH, não recebe UPDATE na coluna.
+  - O pgTAP 026 testa o formato, os privilégios e a escrita por papel: só o Admin grava o modelo (gerente e implantador vigente, não); a edificação, quem escreve no hotel, na UH e na área comum; o worker não grava nenhuma das duas, e a atualização dele não mexe na edificação.
+- **Domínio:**
+  - `MODELOS_CONTRATUAIS`, `ModeloContratual`, `ehModeloContratual` e `validarModeloContratual` (`hotel_modelo_contratual_invalido`), em `hoteis.ts`. O teste `tests/modelo-contratual-banco.test.ts` lê o check das migrações e compara com a lista do domínio; `tests/contratos-dominio` compara com a da API.
+  - `normalizarEdificacao` (`local_edificacao_invalida`, `{maximo: 60}`; espaços nas pontas saem, os repetidos viram um, vazio vira nulo) e `edificacoesDoHotel` (sugestões, uma por grafia sem diferença de caixa).
+  - Painel de implantação: pendência nova `modelo_contratual_nao_informado`, a primeira da lista.
+- **Quem grava:** o modelo, só o Admin do grupo, pela configuração do hotel (`PUT /hoteis/{id}/configuracao`, a mesma regra da configuração). A edificação, os papéis que gerem locais (`podeGerirLocais`), em qualquer local: na área comum, junto com nome e andar; na UH do sistema hoteleiro, pela rota nova `PUT /locais/{id}/edificacao`. O nome e o andar da UH continuam só leitura.
+- **Conector:** a ingestão e a promoção não mexem em nenhuma das duas. A promoção que atualiza o nome da UH lê a edificação gravada, com a linha travada (`for update`), para manter a busca. A alteração pelo HubKeep também trava a linha.
+- **Busca (ADR-030):** a coluna `busca` do local passa a ser o nome mais a edificação, calculada em `repositorios/busca.ts` (`colunasPesquisaveisDoLocal` e, para a promoção, `colunasPesquisaveisDaUhDoSistema`, que grava só nome e busca). O `busca-unica.test.ts` passou a barrar a escrita direta da edificação. Os locais existentes não têm edificação, então a busca gravada continua certa.
+- **Compatibilidade:** na API, o modelo contratual e a edificação são opcionais na gravação: ausente, fica o gravado; `null` apaga. O PWA não mostra nem edita a edificação, e nenhuma operação offline mudou.
+- **Telas (web):**
+  - configuração do hotel: a seleção do modelo, com "Não informado";
+  - administração de hotéis: a coluna do modelo e o filtro (os quatro e "não informado");
+  - locais: a edificação na criação e na edição da área comum e na tabela das UHs, com a sugestão das edificações do hotel (`datalist`); a resposta da lista de locais traz `edificacoes`, sem o filtro da busca;
+  - painel de implantação: a pendência; histórico: os campos novos e os nomes dos modelos.
+- **Kit:** o Centro é próprio e o Praia, arrendado; o Serra fica sem modelo, para o painel mostrar a pendência. No Centro, as UHs 101 a 104 na Torre A, as 201 e 202 na Torre B, e a Piscina na "Área externa". O script só grava no hotel sem modelo e no local sem edificação.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes mexidos, verdes;
+  - na CI: o pgTAP 026 e os testes de integração do `packages/db` (configuração, locais, ingestão e implantação, com a lista de pendências atualizada) e do kit;
+  - as telas não foram vistas no navegador.
+- **Aviso ao agente do Intelligence:** as colunas são `app.hotel.modelo_contratual` (nulo é "não informado") e `app.local.edificacao`. Os valores canônicos do modelo são `MODELOS_CONTRATUAIS` (tipo `ModeloContratual`, guarda `ehModeloContratual`), exportados do `@hubkeep/dominio`. No MVP, o modelo é só rótulo e filtro; o comportamento por modelo vem na 1c. O worker lê as duas colunas pelo SELECT que já tem em `app.hotel` e `app.local`.

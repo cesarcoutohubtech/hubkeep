@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  edificacoesDoHotel,
   exigirLocalEditavel,
   localEditavel,
   mesmoNomeDeLocal,
   normalizarAndar,
+  normalizarEdificacao,
   normalizarNomeDeLocal,
   origemDoLocal,
   podeGerirLocais,
@@ -78,5 +80,28 @@ describe('locais (B1)', () => {
     );
     expect(mesmoNomeDeLocal('Piscina', 'piscina')).toBe(true);
     expect(mesmoNomeDeLocal('Área', 'Area')).toBe(false);
+  });
+
+  it('edificação (I2): opcional, sem espaços nas pontas, até 60 caracteres', () => {
+    expect(normalizarEdificacao(null)).toBeNull();
+    expect(normalizarEdificacao('   ')).toBeNull();
+    expect(normalizarEdificacao('  Torre   A ')).toBe('Torre A');
+    expect(normalizarEdificacao('x'.repeat(60))).toBe('x'.repeat(60));
+    expect(() => normalizarEdificacao('x'.repeat(61))).toThrow(
+      expect.objectContaining({ codigo: 'local_edificacao_invalida', parametros: { maximo: 60 } }),
+    );
+  });
+
+  it('edificações do hotel (I2): uma por grafia sem diferença de caixa, em ordem', () => {
+    const sugeridas = edificacoesDoHotel([
+      { edificacao: 'torre a' },
+      { edificacao: null },
+      { edificacao: 'Bloco 2' },
+      { edificacao: 'Torre A' },
+      { edificacao: 'Anexo' },
+      { edificacao: 'Bloco 2' },
+    ]);
+    expect(sugeridas.map((e) => e.toLowerCase())).toEqual(['anexo', 'bloco 2', 'torre a']);
+    expect(edificacoesDoHotel([])).toEqual([]);
   });
 });

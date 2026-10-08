@@ -9,6 +9,7 @@ import {
   PAPEIS_API,
   CATEGORIAS_PADRAO_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
+  MODELOS_CONTRATUAIS_API,
   TIPOS_DE_CAMPO_API,
   STATUS_DE_LOCAL_API,
   TIPOS_DE_LOCAL_API,
@@ -31,6 +32,7 @@ import {
   CHAVES_DE_POLITICA,
   PAPEIS,
   PENDENCIAS_DE_IMPLANTACAO,
+  MODELOS_CONTRATUAIS,
   POLITICAS,
   ACOES_DA_OS,
   ACOES_DO_CHAMADO,
@@ -124,6 +126,10 @@ describe('contratos × domínio', () => {
 
   it('as pendências do painel de implantação são as do domínio', () => {
     expect([...PENDENCIAS_DE_IMPLANTACAO_API]).toEqual([...PENDENCIAS_DE_IMPLANTACAO]);
+  });
+
+  it('os modelos contratuais do hotel da API são os do domínio (I2)', () => {
+    expect([...MODELOS_CONTRATUAIS_API]).toEqual([...MODELOS_CONTRATUAIS]);
   });
 
   it('tipos e status de local da API são os do domínio e do banco (B1)', () => {

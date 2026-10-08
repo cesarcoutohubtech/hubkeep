@@ -67,7 +67,12 @@ import {
   RespostaDeAtivosDoHotel,
   RespostaDeMovimentacoesDoAtivo,
 } from './ativos';
-import { PedidoDeAreaComum, RespostaDeLocaisDoHotel, RespostaDeLocalAlterado } from './locais';
+import {
+  PedidoDeAreaComum,
+  PedidoDeEdificacao,
+  RespostaDeLocaisDoHotel,
+  RespostaDeLocalAlterado,
+} from './locais';
 import {
   PedidoDeEquipe,
   PedidoDeMembroDaEquipe,
@@ -380,7 +385,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/locais',
     resumo:
-      'Locais do hotel no escopo de quem pede: UHs do sistema hoteleiro (só leitura, com o status da licença) e áreas comuns. A busca acha o trecho no nome.',
+      'Locais do hotel no escopo de quem pede: UHs do sistema hoteleiro (só leitura, menos a edificação, com o status da licença) e áreas comuns, e as edificações que já existem no hotel, para sugerir. A busca acha o trecho no nome ou na edificação.',
     exigeTenant: true,
     busca: true,
     respostas: {
@@ -403,13 +408,16 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Fora do escopo (locais_fora_do_escopo).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
       409: ERRO('Nome repetido entre as áreas comuns ativas (local_nome_repetido).'),
-      422: ERRO('local_nome_invalido, local_andar_invalido ou entrada_invalida.'),
+      422: ERRO(
+        'local_nome_invalido, local_andar_invalido, local_edificacao_invalida ou entrada_invalida.',
+      ),
     },
   },
   {
     metodo: 'put',
     caminho: '/api/v1/locais/{id}',
-    resumo: 'Altera nome e andar da área comum. UH e local do sistema hoteleiro são só leitura.',
+    resumo:
+      'Altera nome, andar e edificação da área comum (a edificação ausente fica como está). UH e local do sistema hoteleiro são só leitura.',
     exigeTenant: true,
     corpo: PedidoDeAreaComum,
     respostas: {
@@ -418,7 +426,24 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Fora do escopo (locais_fora_do_escopo).'),
       404: ERRO('Local não encontrado (local_nao_encontrado).'),
       409: ERRO('Nome repetido entre as áreas comuns ativas (local_nome_repetido).'),
-      422: ERRO('local_so_leitura, local_nome_invalido, local_andar_invalido ou entrada_invalida.'),
+      422: ERRO(
+        'local_so_leitura, local_nome_invalido, local_andar_invalido, local_edificacao_invalida ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/locais/{id}/edificacao',
+    resumo:
+      'Altera só a edificação (torre, bloco) do local, inclusive da UH do sistema hoteleiro, que o conector não sobrescreve. null apaga.',
+    exigeTenant: true,
+    corpo: PedidoDeEdificacao,
+    respostas: {
+      200: { descricao: 'Edificação alterada', esquema: RespostaDeLocalAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (locais_fora_do_escopo).'),
+      404: ERRO('Local não encontrado (local_nao_encontrado).'),
+      422: ERRO('local_edificacao_invalida ou entrada_invalida.'),
     },
   },
   {
@@ -999,7 +1024,8 @@ export const ROTAS: readonly Rota[] = [
   {
     metodo: 'put',
     caminho: '/api/v1/hoteis/{id}/configuracao',
-    resumo: 'Fuso, país, subdivisão, moeda e idioma do hotel (nulo herda). Só o Admin do grupo.',
+    resumo:
+      'Fuso, país, subdivisão, moeda e idioma do hotel (nulo herda) e o modelo contratual (ausente fica como está; nulo é não informado). Só o Admin do grupo.',
     exigeTenant: true,
     corpo: PedidoDeConfiguracaoDoHotel,
     respostas: {
@@ -1008,7 +1034,7 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Só o Admin do grupo (configuracao_so_admin).'),
       404: ERRO('Hotel não encontrado (hotel_nao_encontrado).'),
       422: ERRO(
-        'fuso_invalido, pais_invalido, subdivisao_invalida, moeda_invalida ou entrada_invalida.',
+        'fuso_invalido, pais_invalido, subdivisao_invalida, moeda_invalida, hotel_modelo_contratual_invalido ou entrada_invalida.',
       ),
     },
   },

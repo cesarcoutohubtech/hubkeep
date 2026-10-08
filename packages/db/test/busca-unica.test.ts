@@ -5,6 +5,7 @@ import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   colunasPesquisaveisDoAtivo,
+  colunasPesquisaveisDaUhDoSistema,
   colunasPesquisaveisDoChamado,
   colunasPesquisaveisDoLocal,
 } from '../src/repositorios/busca';
@@ -19,10 +20,27 @@ const trechos = fontes(SRC)
   .filter((f) => f.arquivo !== 'repositorios/busca.ts' && f.arquivo !== 'tipos-banco.ts');
 
 describe('busca calculada num único lugar', () => {
-  it('local: o nome, sem acento e em minúsculas', () => {
-    expect(colunasPesquisaveisDoLocal('Salão de Café')).toEqual({
+  it('local: o nome e a edificação (I2), sem acento e em minúsculas', () => {
+    expect(colunasPesquisaveisDoLocal({ nome: 'Salão de Café', edificacao: null })).toEqual({
       nome: 'Salão de Café',
+      edificacao: null,
       busca: 'salao de cafe',
+    });
+    expect(colunasPesquisaveisDoLocal({ nome: 'UH 101', edificacao: 'Torre Á' })).toEqual({
+      nome: 'UH 101',
+      edificacao: 'Torre Á',
+      busca: 'uh 101 torre a',
+    });
+  });
+
+  it('UH do sistema hoteleiro: o nome do CM e a edificação gravada na busca, sem gravar a edificação', () => {
+    expect(colunasPesquisaveisDaUhDoSistema('UH 101', 'Bloco B')).toEqual({
+      nome: 'UH 101',
+      busca: 'uh 101 bloco b',
+    });
+    expect(colunasPesquisaveisDaUhDoSistema('UH 102', null)).toEqual({
+      nome: 'UH 102',
+      busca: 'uh 102',
     });
   });
 
@@ -56,8 +74,9 @@ describe('busca calculada num único lugar', () => {
   });
 
   it('nenhuma gravação em app.local, app.ativo ou app.chamado escreve um campo pesquisável direto', () => {
-    // Do INSERT ou UPDATE até o execute: nome, fabricante, modelo e número de
-    // série só entram pelas colunas de repositorios/busca.ts, que trazem a busca.
+    // Do INSERT ou UPDATE até o execute: nome, edificação (I2), fabricante,
+    // modelo e número de série só entram pelas colunas de
+    // repositorios/busca.ts, que trazem a busca.
     const gravacoes = trechos.flatMap((f) =>
       [
         ...f.texto.matchAll(
@@ -67,7 +86,7 @@ describe('busca calculada num único lugar', () => {
     );
     expect(gravacoes.length).toBeGreaterThanOrEqual(7);
     const diretas = gravacoes.filter((g) =>
-      /\b(nome|fabricante|modelo|numero_serie|descricao)\s*:/.test(g.trecho),
+      /\b(nome|edificacao|fabricante|modelo|numero_serie|descricao)\s*:/.test(g.trecho),
     );
     expect(diretas.map((g) => g.arquivo)).toEqual([]);
   });

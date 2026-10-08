@@ -93,11 +93,13 @@ describe('referência no aparelho', () => {
             nome: 'UH 101',
             tipo: 'uh',
             andar: '1',
+            edificacao: 'Torre A',
             status: 'ativo',
             origem: 'sistema_hoteleiro',
             editavel: false,
           },
         ],
+        edificacoes: ['Torre A'],
       },
       [`/api/v1/hoteis/${H1}/ativos`]: {
         ativos: [

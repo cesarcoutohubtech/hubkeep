@@ -2,7 +2,10 @@
 // Configuração do grupo e do hotel e políticas (fase 1a, A7; ADR-026). Todos
 // leem; a API recusa a gravação de quem não é Admin do grupo. Visual do pacote
 // de interface (ADR-038, U4b). Os nomes dos níveis de criticidade do ativo
-// (I1) são editados por idioma; o campo vazio usa o nome do catálogo.
+// (I1) são editados por idioma; o campo vazio usa o nome do catálogo. O
+// modelo contratual do hotel (I2) fica na configuração do hotel; vazio é "não
+// informado".
+import { MODELOS_CONTRATUAIS_API } from '@hubkeep/contratos';
 import { IDIOMAS } from '@hubkeep/i18n';
 import {
   Botao,
@@ -63,7 +66,8 @@ type Origem = 'hotel' | 'grupo' | 'padrao';
 const NIVEIS = [1, 2, 3, 4, 5] as const;
 interface Configuracao {
   tenant: Regiao & { nome: string };
-  hotel: (Regiao & { id: string; nome: string; fuso: string }) | null;
+  hotel:
+    (Regiao & { id: string; nome: string; fuso: string; modeloContratual: string | null }) | null;
   politicas: Politica[];
 }
 
@@ -122,6 +126,7 @@ export default function ConfiguracaoDoGrupo() {
       subdivisao: texto(f, 'subdivisao'),
       moeda: texto(f, 'moeda'),
       idiomaPadrao: texto(f, 'idiomaPadrao'),
+      modeloContratual: texto(f, 'modeloContratual'),
     });
   }
 
@@ -206,6 +211,27 @@ export default function ConfiguracaoDoGrupo() {
               >
                 <Campo rotulo={t('admin.configuracao.campo.fuso')}>
                   {(p) => <Entrada {...p} name="fuso" defaultValue={dados.hotel?.fuso} required />}
+                </Campo>
+                <Campo
+                  rotulo={t('admin.configuracao.campo.modelo_contratual')}
+                  ajuda={t('admin.configuracao.modelo_contratual_dica')}
+                >
+                  {(p) => (
+                    <Selecao
+                      {...p}
+                      name="modeloContratual"
+                      defaultValue={dados.hotel?.modeloContratual ?? ''}
+                    >
+                      <option value="">
+                        {t('hotel.modelo_contratual', { modelo: 'nao_informado' })}
+                      </option>
+                      {MODELOS_CONTRATUAIS_API.map((m) => (
+                        <option key={m} value={m}>
+                          {t('hotel.modelo_contratual', { modelo: m })}
+                        </option>
+                      ))}
+                    </Selecao>
+                  )}
                 </Campo>
                 {camposDeRegiao(dados.hotel, true)}
                 <Botao type="submit" variante="primario">

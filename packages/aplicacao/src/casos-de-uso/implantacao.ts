@@ -42,7 +42,7 @@ export function criarCasosDeUsoDeImplantacao(deps: {
         deps.membros.listar(ctx),
         deps.implantacao.ativos(ctx, hotelId),
       ]);
-      return { hotel, ...resumirImplantacao(hotelId, locais, pessoas, agora, ativos) };
+      return { hotel, ...resumirImplantacao(hotelId, locais, pessoas, agora, ativos, hotel) };
     },
   };
 }

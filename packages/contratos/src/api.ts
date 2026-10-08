@@ -22,6 +22,14 @@ export const PAPEIS_API = [
 
 export const STATUS_HOTEL_API = ['em_implantacao', 'ativo', 'desativado'] as const;
 
+/** Modelo contratual do hotel (I2); os mesmos de MODELOS_CONTRATUAIS do domínio. */
+export const MODELOS_CONTRATUAIS_API = [
+  'proprio',
+  'administrado',
+  'arrendado',
+  'afiliado',
+] as const;
+
 // ---------------------------------------------------------------------------
 // POST /api/v1/convites
 // ---------------------------------------------------------------------------

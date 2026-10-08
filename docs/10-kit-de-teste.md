@@ -98,6 +98,8 @@ Um grupo fictício, **Grupo Demonstração**, no dev. Tudo passa pelos casos de 
   - **Hotel Demonstração Centro** (Bandeira Azul, ativo): UHs 101 a 104, 201 e 202; áreas comuns Piscina, Cozinha e Casa de máquinas.
   - **Hotel Demonstração Praia** (Bandeira Verde, ativo): UHs 101 a 104; áreas Lobby e Restaurante.
   - **Hotel Demonstração Serra** (Bandeira Azul, **em implantação**): UHs 101 a 103, pendentes de licença até o Admin ativar o hotel.
+  - modelo contratual (I2): o Centro é próprio e o Praia, arrendado. O Serra fica sem modelo, e o painel de implantação mostra a pendência "modelo contratual não informado"; o Admin informa na configuração do hotel.
+  - edificação (I2): no Centro, as UHs 101 a 104 ficam na Torre A, as 201 e 202 na Torre B, e a Piscina na "Área externa". A busca de locais acha por "torre b". O script só grava no hotel sem modelo e no local sem edificação: o que foi mudado pela tela fica.
 - **Categorias, situações e prioridades** padrão.
 - **Prioridade padrão por categoria**, como política do grupo: elevadores e segurança, Urgente; refrigeração, elétrica, hidráulica e cozinha, Alta; lavanderia, eletrônicos e piscina, Média; mobiliário, Baixa. Os chamados abrem com a prioridade da categoria do ativo; o do chuveiro, sem ativo, fica em Alta, ajustada pelo Gerente. Num grupo criado antes disto, rodar o script de novo ajusta os chamados ainda em curso; os concluídos e o cancelado guardam a prioridade da abertura.
 - **Ativos**:

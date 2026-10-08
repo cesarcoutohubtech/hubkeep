@@ -8,13 +8,21 @@ import type {
   SessaoDeHoteis,
   UsoDaLicenca,
 } from '@hubkeep/aplicacao';
-import { PermissaoNegada } from '@hubkeep/dominio';
+import { PermissaoNegada, ehModeloContratual } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { Tx } from '../conexao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 
-const COLUNAS_DO_HOTEL = ['id', 'status', 'nome', 'fuso', 'sistema_origem', 'cod_externo'] as const;
+const COLUNAS_DO_HOTEL = [
+  'id',
+  'status',
+  'nome',
+  'fuso',
+  'sistema_origem',
+  'cod_externo',
+  'modelo_contratual',
+] as const;
 
 const paraHotel = (h: {
   id: string;
@@ -23,6 +31,7 @@ const paraHotel = (h: {
   fuso: string;
   sistema_origem: string | null;
   cod_externo: string | null;
+  modelo_contratual: string | null;
 }): HotelCadastrado => ({
   id: h.id,
   status: h.status,
@@ -30,6 +39,7 @@ const paraHotel = (h: {
   fuso: h.fuso,
   sistemaOrigem: h.sistema_origem,
   codExterno: h.cod_externo,
+  modeloContratual: ehModeloContratual(h.modelo_contratual) ? h.modelo_contratual : null,
 });
 
 /**
