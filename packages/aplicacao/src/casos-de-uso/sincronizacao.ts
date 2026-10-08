@@ -44,6 +44,8 @@ export type OperacaoOffline =
       dados: {
         osId: string;
         versao: number;
+        /** A hora do aparelho em que o técnico agiu (I9, ISO 8601). */
+        feitaEm?: string | undefined;
         equipamentoVoltou?: boolean | undefined;
         concluidaEm?: string | undefined;
       };
@@ -138,10 +140,11 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
         case 'os.retomar':
         case 'os.concluir': {
           const acao = operacao.tipo.slice('os.'.length) as AcaoDoTecnico;
-          const { osId, versao, equipamentoVoltou, concluidaEm } = operacao.dados;
+          const { osId, versao, feitaEm, equipamentoVoltou, concluidaEm } = operacao.dados;
           const g = await execucao().prepararAcao(ctx, acao, {
             osId,
             versao,
+            feitaEm: feitaEm === undefined ? undefined : new Date(feitaEm),
             equipamentoVoltou,
             concluidaEm: concluidaEm === undefined ? undefined : new Date(concluidaEm),
           });

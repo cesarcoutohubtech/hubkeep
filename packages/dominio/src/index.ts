@@ -197,6 +197,7 @@ export {
   LIMITE_HORAS_POR_APONTAMENTO,
   LIMITE_MATERIAL,
   normalizarMaterial,
+  horaDaTransicao,
   validarApontamento,
 } from './execucao';
 export {

@@ -26,6 +26,7 @@ import {
   exigirAtivoNoChamado,
   exigirParadaAberta,
   exigirSemParadaAberta,
+  horaDaTransicao,
   normalizarMaterial,
   paradaAEncerrarNaConclusao,
   situacaoPara,
@@ -48,6 +49,8 @@ export interface CasosDeUsoDeExecucao {
     p: {
       osId: string;
       versao: number;
+      /** A hora do aparelho em que o técnico agiu (I9); sem ela, a do servidor. */
+      feitaEm?: Date | undefined;
       /** Só na conclusão: a resposta à pergunta sobre a parada do chamado. */
       equipamentoVoltou?: boolean | undefined;
       /** Só na conclusão: a hora do aparelho, que vira o fim da parada. */
@@ -161,6 +164,12 @@ export function criarCasosDeUsoDeExecucao(deps: {
         agora: deps.relogio.agora(),
       });
       if (os.versao !== p.versao) throw conflitoDeVersao(os.versao);
+      // A conclusão antiga só mandava a hora para a parada (concluidaEm).
+      const quando = horaDaTransicao(
+        p.feitaEm ?? p.concluidaEm,
+        await deps.execucao.ultimaTransicaoEm(ctx, os.id),
+        deps.relogio.agora(),
+      );
       const encerrarParada =
         acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
       const situacoes = await deps.situacoes.listar(ctx);
@@ -171,6 +180,7 @@ export function criarCasosDeUsoDeExecucao(deps: {
         versao: p.versao,
         de: os.estado,
         estado: d.estado,
+        quando,
         situacaoId: situacaoPara(situacoes, 'os', d.estado),
         chamado:
           d.chamado === null

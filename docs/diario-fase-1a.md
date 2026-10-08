@@ -1380,3 +1380,15 @@ Primeira migração da instrumentação (etapa I do `docs/12`). PR de zona prote
 - **Bloco do piloto:** confirmado pelo Cesar, nas palavras dele. Entram o script de provisionamento, o kit por turma, o staging antes do treinamento, e o kit e o provisionamento aceitando o staging (pergunta 10). O `docs/13` foi atualizado.
 - **Data de revisão da exceção GHSA-vfj7-8cjw-p6xm:** será definida pelo Cesar.
 - **Fila (zona protegida, um PR por vez):** I2 → I3 → I4 → I6 → I7 → I8. A I9 fica fora da zona protegida e corre em paralelo, junto com a P1c.
+
+### I9, hora do aparelho nas transições feitas sem rede (08/10/2026)
+- **Decisão do Cesar (08/10/2026):** a transição feita sem rede leva a hora do aparelho. Não há migração.
+- **Contrato:** `os.iniciar`, `os.pausar`, `os.retomar` e `os.concluir` ganharam `feitaEm`, opcional. A operação guardada antes não tem, e continua valendo. O PWA manda a hora em que o técnico tocou no botão.
+- **Domínio (`horaDaTransicao`):**
+  - a hora no futuro vira a do servidor;
+  - a anterior à última transição da OS vira a dela;
+  - sem a hora, vale a do servidor; na conclusão antiga, vale o `concluidaEm`;
+  - nunca recusa, porque uma recusa travaria a fila do aparelho.
+- **Leitura nova:** `ultimaTransicaoEm`, o maior `quando` de `app.os_transicao` da OS.
+- **Teste de integração** (roda na CI): relógio atrasado, operação sem hora e relógio adiantado, com as transições em ordem e nenhuma no futuro.
+- **Não verificado:** o PWA não tem teste da tela que monta a operação, e a tela não foi vista no navegador.

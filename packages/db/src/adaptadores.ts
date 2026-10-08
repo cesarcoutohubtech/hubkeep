@@ -935,6 +935,15 @@ const equipesDoUsuario = (tx: Tx, usuarioId: string) =>
 /** Execução da OS pelo Técnico (fase 1a, C4), pelo hk_app. */
 export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
   return {
+    ultimaTransicaoEm: (ctx, osId) =>
+      banco.withContext(ctx, async (tx) => {
+        const r = await tx
+          .selectFrom('app.os_transicao')
+          .select((eb) => eb.fn.max('quando').as('quando'))
+          .where('os_id', '=', osId)
+          .executeTakeFirst();
+        return r?.quando ? new Date(r.quando) : null;
+      }),
     equipesDoUsuario: (ctx) =>
       banco.withContext(ctx, async (tx) =>
         (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),

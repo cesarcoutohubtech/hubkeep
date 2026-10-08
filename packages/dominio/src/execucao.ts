@@ -29,6 +29,27 @@ export function validarApontamento(
   return a;
 }
 
+/**
+ * Hora da transição da OS feita no aparelho (I9, decisão do Cesar de
+ * 08/10/2026): a operação offline leva a hora em que o técnico agiu, e a
+ * transição grava essa hora, e não a da sincronização (MTTR).
+ * - Sem a hora (operação guardada antes da I9) ou com data inválida: a do servidor.
+ * - No futuro (relógio do aparelho adiantado): a do servidor.
+ * - Antes da transição anterior da OS (relógio atrasado): a da anterior, para
+ *   as transições ficarem em ordem.
+ * Nunca recusa: uma operação recusada pela hora travaria a fila do aparelho.
+ */
+export function horaDaTransicao(
+  feitaEm: Date | null | undefined,
+  anterior: Date | null,
+  agora: Date,
+): Date {
+  let quando = feitaEm && !Number.isNaN(feitaEm.getTime()) ? feitaEm : agora;
+  if (quando.getTime() > agora.getTime()) quando = agora;
+  if (anterior && quando.getTime() < anterior.getTime()) quando = anterior;
+  return quando;
+}
+
 /** Material: sem espaços nas pontas, de 1 a 500 caracteres. */
 export function normalizarMaterial(descricao: string): string {
   const limpa = descricao.trim().replace(/\s+/g, ' ');
