@@ -11,7 +11,14 @@
 //   - o responsável da OS vira técnico e equipe, como as colunas;
 //   - valores iguais dos dois lados não aparecem.
 
-export const ENTIDADES_COM_HISTORICO = ['hotel', 'local', 'ativo', 'chamado', 'os'] as const;
+export const ENTIDADES_COM_HISTORICO = [
+  'hotel',
+  'local',
+  'ativo',
+  'chamado',
+  'os',
+  'fornecedor',
+] as const;
 export type EntidadeComHistorico = (typeof ENTIDADES_COM_HISTORICO)[number];
 
 export type ValorAuditado = string | number | boolean | null;
@@ -50,6 +57,7 @@ export const ACOES_SEM_DETALHE: Readonly<Record<EntidadeComHistorico, readonly s
   ativo: [],
   chamado: [],
   os: [],
+  fornecedor: [],
 };
 
 /** O tipo de registro que um campo de id aponta, para a tela mostrar o nome. */

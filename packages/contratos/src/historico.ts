@@ -1,10 +1,18 @@
 // Histórico de um registro (fase 1a, D1): quem mudou, o quê, quando, e o antes
-// e o depois de cada campo, de hotel, local, ativo, chamado e OS. A ação e o
-// campo são códigos, com o nome no catálogo; os valores são dados. Os ids que
-// aparecem nos valores vêm com o nome em `referencias`, quando quem pede os lê.
+// e o depois de cada campo, de hotel, local, ativo, chamado, OS e fornecedor
+// (I3 da 1b). A ação e o campo são códigos, com o nome no catálogo; os valores
+// são dados. Os ids que aparecem nos valores vêm com o nome em `referencias`,
+// quando quem pede os lê.
 import { z } from 'zod';
 
-export const ENTIDADES_COM_HISTORICO_API = ['hotel', 'local', 'ativo', 'chamado', 'os'] as const;
+export const ENTIDADES_COM_HISTORICO_API = [
+  'hotel',
+  'local',
+  'ativo',
+  'chamado',
+  'os',
+  'fornecedor',
+] as const;
 
 export const ConsultaDoHistorico = z
   .object({

@@ -65,6 +65,7 @@ const TABELAS = [
   'app.preferencia_membro',
   'app.local',
   'app.categoria_ativo',
+  'app.fornecedor',
   'app.situacao',
   'app.prioridade',
   'app.politica',

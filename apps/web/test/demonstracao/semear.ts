@@ -42,6 +42,7 @@ import {
   casosDeUsoDeChamados,
   casosDeUsoDeConfiguracao,
   casosDeUsoDeEquipes,
+  casosDeUsoDeFornecedores,
   casosDeUsoDeHoteis,
   casosDeUsoDeLocais,
   casosDeUsoDePapeis,
@@ -132,6 +133,47 @@ const EDIFICACOES: Partial<Record<Hotel, Record<string, string>>> = {
     Piscina: 'Área externa',
   },
 };
+
+/**
+ * Fornecedores do grupo (I3), com CNPJ fictício: os dígitos verificadores
+ * foram calculados para bases inventadas, sem consulta à Receita. O contato é
+ * fictício (domínio .test). A Gabriela, Gerente do Centro, cadastra a
+ * serralheria local, que fica visível para o grupo. Só cadastra o nome que
+ * ainda não existe: o que o Cesar mudou pela tela fica.
+ */
+const FORNECEDORES: readonly {
+  quem: 'admin' | 'gestor' | 'gerenteCentro';
+  nome: string;
+  cnpj: string | null;
+  contatoNome: string | null;
+  contatoTelefone: string | null;
+  contatoEmail: string | null;
+}[] = [
+  {
+    quem: 'admin',
+    nome: 'Frio Total Refrigeração (fictício)',
+    cnpj: '98765432000198',
+    contatoNome: 'Rita Refrigeração',
+    contatoTelefone: '+55 41 3000-0001',
+    contatoEmail: 'rita@frio-total.test',
+  },
+  {
+    quem: 'gestor',
+    nome: 'Sobe e Desce Elevadores (fictício)',
+    cnpj: '13579246000101',
+    contatoNome: 'Eduardo Elevadores',
+    contatoTelefone: '+55 41 3000-0002',
+    contatoEmail: null,
+  },
+  {
+    quem: 'gerenteCentro',
+    nome: 'Serralheria do Bairro (fictício)',
+    cnpj: null,
+    contatoNome: null,
+    contatoTelefone: '+55 41 99000-0003',
+    contatoEmail: null,
+  },
+];
 
 /** Ativos: hotel, local, categoria padrão, nome, fabricante, modelo. */
 const ATIVOS = {
@@ -475,6 +517,15 @@ export async function semearDemonstracao(
   if (!membrosDaEquipe.some((m) => m.usuarioId === usuarios.tecnicoCentro.usuarioId)) {
     await equipesUc.porMembro(ctxAdmin, equipe.id, usuarios.tecnicoCentro.usuarioId);
   }
+
+  const fornecedoresUc = await casosDeUsoDeFornecedores();
+  const fornecedoresExistentes = await fornecedoresUc.listar(ctxAdmin);
+  for (const { quem, ...dados } of FORNECEDORES) {
+    if (!fornecedoresExistentes.some((f) => f.nome === dados.nome)) {
+      await fornecedoresUc.cadastrar(ctx(quem), dados);
+    }
+  }
+  log(`Fornecedores prontos: ${FORNECEDORES.length}.`);
 
   // 5. Ativos e chamados, como operações offline de chave fixa.
   const sincronizacao = await casosDeUsoDeSincronizacao();

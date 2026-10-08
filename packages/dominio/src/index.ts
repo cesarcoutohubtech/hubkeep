@@ -123,6 +123,19 @@ export {
   podeGerirEquipes,
 } from './equipes';
 export { normalizarNomeDeBandeira, podeGerirBandeiras, podeLigarHotelABandeira } from './bandeiras';
+export {
+  LIMITES_DE_FORNECEDOR,
+  PAPEIS_QUE_GERENCIAM_FORNECEDORES,
+  cnpjDeFornecedorRepetido,
+  cnpjValido,
+  formatarCnpj,
+  normalizarContatoDeFornecedor,
+  normalizarNomeDeFornecedor,
+  podeGerirFornecedores,
+  validarCnpj,
+  validarDadosDeFornecedor,
+} from './fornecedores';
+export type { ContatoDeFornecedor, DadosDeFornecedor } from './fornecedores';
 export { MODELOS_CONTRATUAIS, ehModeloContratual, validarModeloContratual } from './hoteis';
 export type { ModeloContratual } from './hoteis';
 export { PENDENCIAS_DE_IMPLANTACAO, podeVerImplantacao, resumirImplantacao } from './implantacao';

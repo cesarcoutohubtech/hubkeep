@@ -107,6 +107,7 @@ Um grupo fictício, **Grupo Demonstração**, no dev. Tudo passa pelos casos de 
   - no Praia: Ar-condicionado UH 101 e Máquina de gelo.
   - com criticidade (I1): Forno combinado 5, Ar-condicionado UH 102 4, Aquecedor da piscina e Máquina de gelo 3, Frigobar 2; o Forno, o Ar-condicionado UH 102 e o Aquecedor também têm data da compra e fim da garantia (a do Aquecedor já venceu). Num grupo criado antes da I1, os ativos ficam sem esses campos, que se preenchem pela tela.
 - **Equipe Centro**, com o Técnico do Centro.
+- **Fornecedores do grupo** (I3), todos fictícios, com CNPJ de dígitos verificadores calculados para bases inventadas: Frio Total Refrigeração (cadastrado pelo Admin, CNPJ 98.765.432/0001-98, com contato), Sobe e Desce Elevadores (pelo Gestor CSC, CNPJ 13.579.246/0001-01) e Serralheria do Bairro (pela Gerente do Centro, sem CNPJ, só com telefone). O script só cadastra o nome que ainda não existe.
 
 ### Contas (todas com a senha de `HK_DEMO_SENHA`)
 
@@ -172,8 +173,11 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - a **triagem** do chuveiro, do começo ao fim (passo a passo abaixo);
   - **aceitar** a OS do aquecedor, ou **reabrir** com motivo (e, por ter ativo, marcar "o equipamento está parado" com data e hora);
   - equipes do Centro;
-  - a tela de paradas abertas com OS concluída.
-- **Deve ser barrado:** o Praia não aparece.
+  - a tela de paradas abertas com OS concluída;
+  - em "Fornecedores", ver os três do grupo, cadastrar um novo e alterar o contato de um deles; o histórico do fornecedor mostra quem cadastrou e o que mudou, inclusive o contato.
+- **Deve ser barrado:**
+  - o Praia não aparece;
+  - em "Fornecedores", o CNPJ com dígito errado (ex.: 98.765.432/0001-99) volta "CNPJ inválido", e o CNPJ de outro fornecedor do grupo (ex.: 13.579.246/0001-01) volta "Já existe um fornecedor com este CNPJ no grupo".
 
 ### Gerente do Praia (web)
 
@@ -189,7 +193,9 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - abrir chamado;
   - ativos, pelo QR impresso no web ou pelo endereço `/q/<código>`.
 - **No PWA sem rede** (build, seção 2): fazer as ações acima offline, fechar e reabrir o PWA sem rede, voltar a rede e conferir no web que tudo entrou uma vez só, sem horas nem fotos duplicadas.
-- **Deve ser barrado:** aceitar a própria OS no web (detalhe do aquecedor), porque quem executou não aceita.
+- **Deve ser barrado:**
+  - aceitar a própria OS no web (detalhe do aquecedor), porque quem executou não aceita;
+  - em "Fornecedores" (web), a lista aparece, mas cadastrar, alterar e desativar voltam "Só o Admin do grupo, o Gestor CSC e o Gerente do hotel cadastram fornecedores".
 - **Conferir também:** ao sair do PWA, a fila do dia é apagada do aparelho.
 
 ### Técnico do Praia (PWA)
@@ -243,7 +249,8 @@ O botão **Ver histórico** fica no detalhe do chamado (abaixo da linha do tempo
 - **Deve conseguir:** ver só o chamado do Frigobar (UH 101 do Centro) e a OS dele, com a linha do tempo e o **histórico** do chamado e da OS. Quem gravou aparece como "por outra pessoa", porque o proprietário não lê os membros do grupo.
 - **Deve ser barrado:**
   - os outros chamados do Centro, o Praia e o Serra;
-  - qualquer gravação (o proprietário só lê).
+  - qualquer gravação (o proprietário só lê);
+  - "Fornecedores" vem vazia: o proprietário não lê fornecedor (I3).
 
 ### Proprietário do hotel inteiro (web)
 

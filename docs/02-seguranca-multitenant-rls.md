@@ -80,6 +80,7 @@ Nas policies, chame sempre dentro de subconsulta, `(select authz.tenant_id())` e
 - Publicar evento no outbox exige ser Admin do grupo ou ter papel de escrita vigente em algum hotel. Gravar auditoria sem hotel, só o Admin do grupo ou o Implantador vigente. Proprietário e quem perdeu o papel não publicam nem auditam (ADR-021).
 - O contrato de licença (`licenca.contrato`) só o Admin do grupo lê pelo `hk_app` (ADR-021).
 - A auditoria (`app.auditoria`) é lida pelo Admin do grupo e por quem escreve no hotel. O proprietário lê só as linhas do local, do ativo, do chamado e da OS que ele vê, pela RLS da tabela de cada registro. A do hotel fica de fora, porque grava o uso da licença, e a da parada também, por decisão de 30/09/2026 (C5) (migração 0028, fase 1a D1). Ninguém altera nem apaga auditoria.
+- O fornecedor (`app.fornecedor`, migração 0033, fase 1b I3) é do grupo, sem hotel: lê quem tem papel de escrita em algum hotel (`authz.hoteis_escrita`) e o Admin do grupo; o proprietário não lê. Gravam o Admin do grupo, o Gestor CSC e o Gerente do hotel. A auditoria do fornecedor vai sem hotel. Por isso, além de quem já grava auditoria sem hotel (Admin e Implantador), o Gestor CSC e o Gerente gravam a da entidade `fornecedor`, só de fornecedor que existe no tenant, e leem a auditoria sem hotel dessa entidade (pgTAP 027).
 
 ## Modelo para tabela nova
 
