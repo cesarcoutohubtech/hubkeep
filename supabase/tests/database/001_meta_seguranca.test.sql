@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(33);
+select plan(34);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -462,7 +462,7 @@ select is(
     'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.equipe',
     'app.equipe_membro', 'app.evento_dominio', 'app.hotel', 'app.hotel_proprietario',
     'app.local', 'app.local_proprietario', 'app.membro', 'app.operacao_offline', 'app.os',
-    'app.os_apontamento', 'app.os_material', 'app.parada_ativo', 'app.politica',
+    'app.os_apontamento', 'app.os_material', 'app.os_transicao', 'app.parada_ativo', 'app.politica',
     'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.situacao',
     'app.tenant', 'licenca.contrato', 'staging.carga', 'staging.credencial_agente',
     'staging.registro_externo'
@@ -509,6 +509,18 @@ select is_empty($$
   where nspname in ('app', 'staging', 'licenca', 'authz')
     and has_schema_privilege('service_role', oid, 'USAGE')
 $$, 'service_role sem USAGE em app, staging, licenca e authz');
+
+-- 32. Tabelas só de inserção (I5 da 1b): o registro do que aconteceu não muda
+--     depois de gravado. Nenhum papel da aplicação recebe UPDATE, de tabela
+--     ou de coluna, nelas (o DELETE já é barrado pelo teste 9). Tabela nova
+--     que seja histórico entra aqui.
+select is_empty($$
+  select r.papel || ' ' || t.tabela
+  from (values ('hk_app'), ('hk_worker'), ('hk_ingestao'), ('hk_backoffice')) r(papel)
+  cross join (values ('app.auditoria'), ('app.ativo_movimentacao'), ('app.os_apontamento'),
+                     ('app.os_material'), ('app.os_transicao')) t(tabela)
+  where has_any_column_privilege(r.papel, t.tabela, 'UPDATE')
+$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, apontamento, material, transição)');
 
 select * from finish();
 rollback;

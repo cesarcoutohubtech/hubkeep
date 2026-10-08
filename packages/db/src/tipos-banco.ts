@@ -296,6 +296,18 @@ export interface AppOsMaterial {
   usuario_id: string;
 }
 
+export interface AppOsTransicao {
+  acao: string;
+  de: string | null;
+  hotel_id: string;
+  id: string;
+  os_id: string;
+  para: string;
+  quando: Generated<Timestamp>;
+  tenant_id: string;
+  usuario_id: string;
+}
+
 export interface AppParadaAtivo {
   aberta_por: string;
   ativo_id: string;
@@ -439,6 +451,7 @@ export interface DB {
   "app.os": AppOs;
   "app.os_apontamento": AppOsApontamento;
   "app.os_material": AppOsMaterial;
+  "app.os_transicao": AppOsTransicao;
   "app.parada_ativo": AppParadaAtivo;
   "app.politica": AppPolitica;
   "app.preferencia_membro": AppPreferenciaMembro;
