@@ -19,7 +19,11 @@
 // duas (validarJanelaDeLeitura) e pelo job na leitura (janelaDeLeituraEfetiva).
 import { type ExtensaoDePolitica, RegraViolada } from '@hubkeep/dominio';
 import { PADRAO_ATENCAO, type ConfigAtencao } from './atencao';
-import { PADRAO_EFETIVIDADE, type ConfigEfetividade } from './efetividade';
+import {
+  PADRAO_EFETIVIDADE,
+  type ConfigEfetividade,
+  limiaresDeEfetividadeValidos,
+} from './efetividade';
 import { PADRAO_REINCIDENCIA, type ConfigReincidencia } from './reincidencia';
 import { FAIXAS_PADRAO } from './score';
 import { PADRAO_SISTEMICO, type ConfigSistemico } from './sistemico';
@@ -115,7 +119,11 @@ export function valorValidoDoIntelligence<C extends ChaveDePoliticaDoIntelligenc
       (valor['dias'] as number) <= MAXIMO_DA_JANELA_DE_LEITURA_DIAS
     );
   }
-  return mesmoFormato(valor, PADROES_DO_INTELLIGENCE[chave], '');
+  if (!mesmoFormato(valor, PADROES_DO_INTELLIGENCE[chave], '')) return false;
+  // Efetividade: os limiares precisam estar na ordem (parcial < observada ≤ 100).
+  if (chave === 'inteligencia.efetividade')
+    return limiaresDeEfetividadeValidos(valor as ConfigEfetividade);
+  return true;
 }
 
 /** Confere a chave e o formato do valor; lança com código se não valer. */
