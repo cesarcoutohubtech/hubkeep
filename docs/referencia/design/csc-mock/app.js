@@ -21,7 +21,7 @@ const UI = {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 6) { DB = d; } }
+    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 7) { DB = d; } }
     const p = localStorage.getItem(PERSONA_KEY); if (p) UI.persona = p;
     const th = localStorage.getItem(THEME_KEY); if (th) UI.theme = th;
   } catch (e) { /* armazenamento indisponível: segue com seed em memória */ }
@@ -1279,38 +1279,126 @@ function pageIndicadores() {
 }
 
 /* ---------- HubKeep Intelligence (módulo opcional) ---------- */
-function intelAtivo(a) {
-  const pol = polGrupo().inteligencia, now = Date.now(), d90 = now - 90 * D;
-  const chs = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado" && t(c.aberto_em) > d90);
-  const par = DB.ativo_parada.filter(p => p.ativo_id === a.id).reduce((s, p) => s + sobreposicaoH(t(p.inicio), p.fim ? t(p.fim) : now, d90, now), 0);
-  const fora = DB.os.filter(o => o.ativo_id === a.id && o.status === "Concluída" && o.fim && t(o.fim) > d90).reduce((s, o) => s + o.checklist.filter(c => c.fora).length, 0);
-  const garVenc = a.garantia_ate && t(a.garantia_ate) < now;
-  const comp = [
-    { k: "reincidencia", nome: "Reincidência", medido: `${chs.length} chamados corretivos em 90 dias`, nota: Math.min(100, chs.length * 20) },
-    { k: "indisponibilidade", nome: "Indisponibilidade", medido: `${fmt1(par)} h parado em 90 dias`, nota: Math.min(100, Math.round(par / 48 * 100)) },
-    { k: "criticidade", nome: "Criticidade", medido: `${a.criticidade} de 5, ${critNome(a.criticidade).toLowerCase()}`, nota: a.criticidade * 20 },
-    { k: "medicoes", nome: "Medições fora da faixa", medido: `${fora} em 90 dias`, nota: Math.min(100, fora * 50) },
-    { k: "garantia", nome: "Garantia", medido: garVenc ? `vencida em ${fmtD(a.garantia_ate)}` : "vigente", nota: garVenc ? 100 : 0 }
-  ].map(c => ({ ...c, peso: pol.pesos[c.k], contrib: c.nota * pol.pesos[c.k] / 100 }));
-  return { a, comp, score: Math.round(comp.reduce((s, c) => s + c.contrib, 0)), n90: chs.length };
+/* Fórmulas do 1.0 aprovadas em 08/10/2026 (packages/inteligencia): atenção v2, reincidência v1, efetividade v2 e
+   padrão sistêmico v1. O cálculo é repetido aqui em JavaScript só para a demonstração; os dados são fictícios. */
+const IA_FAIXAS = [[0, "Normal"], [30, "Observar"], [50, "Atenção"], [70, "Alta atenção"], [85, "Crítico"]];
+const iaFaixa = v => v === null ? "Dados insuficientes" : IA_FAIXAS.filter(f => v >= f[0]).pop()[1];
+const iaRazao = (x, ref) => ref > 0 ? Math.min(1, Math.max(0, x / ref)) : x > 0 ? 1 : 0;
+/* O componente sem dado não soma e o peso dele é dividido entre os presentes, na proporção dos pesos. */
+function iaCombinar(partes) {
+  const pres = partes.filter(p => p.valor !== null && p.peso > 0), soma = pres.reduce((s, p) => s + p.peso, 0);
+  const comp = partes.map(p => { const ef = p.valor !== null && soma > 0 ? p.peso / soma : 0, v = p.valor === null ? null : Math.min(1, Math.max(0, p.valor)); return { ...p, valor: v, pesoEf: ef, pontos: (v || 0) * ef * 100 }; });
+  const valor = soma > 0 ? Math.round(comp.reduce((s, c) => s + c.pontos, 0)) : null;
+  return { valor, faixa: iaFaixa(valor), comp };
 }
+function iaReincidencia(a, now) {
+  const ini = now - 90 * D;
+  const todas = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado" && t(c.aberto_em) <= now).sort((x, y) => t(x.aberto_em) - t(y.aberto_em));
+  const jan = todas.filter(c => t(c.aberto_em) > ini), n = jan.length;
+  const ints = jan.slice(1).map((c, i) => (t(c.aberto_em) - t(jan[i].aberto_em)) / D), med = ints.length ? ints.reduce((s, x) => s + x, 0) / ints.length : null;
+  const reab = jan.reduce((s, c) => s + (c.reaberturas || 0), 0);
+  const cods = jan.filter(c => c.codigos && c.codigos.falha), cont = {};
+  cods.forEach(c => { cont[c.codigos.falha] = (cont[c.codigos.falha] || 0) + 1; });
+  const [cod, vezes] = Object.entries(cont).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))[0] || [null, 0];
+  const voltas = jan.filter(c => { const ant = todas.filter(x => t(x.aberto_em) < t(c.aberto_em)).pop(); if (!ant || !ant.encerrado_em) return false; const d = (t(c.aberto_em) - t(ant.encerrado_em)) / D; return d >= 0 && d <= 30; }).length;
+  return iaCombinar([
+    { k: "corretivas", peso: 0.30, valor: iaRazao(n, 5), medido: `${n} ${n === 1 ? "corretiva" : "corretivas"} nos últimos 90 dias` },
+    { k: "intervalo", peso: 0.15, valor: med === null ? 0 : 1 - iaRazao(med, 30), medido: med === null ? "Sem intervalo a medir" : `Intervalo médio de ${fmt1(med)} dias entre as falhas` },
+    { k: "reaberturas", peso: 0.15, valor: iaRazao(reab, 3), medido: `${reab} ${reab === 1 ? "reabertura" : "reaberturas"} na janela` },
+    { k: "mesma_falha", peso: 0.15, valor: cods.length === 0 ? null : vezes >= 2 ? vezes / cods.length : 0, medido: cods.length ? `A mesma falha em ${vezes} de ${cods.length} corretivas com código` : "Sem corretiva com código de falha" },
+    { k: "apos_corretiva", peso: 0.15, valor: iaRazao(voltas, Math.max(n - 1, 1)), medido: `${voltas} ${voltas === 1 ? "falha voltou" : "falhas voltaram"} em até 30 dias depois da corretiva anterior` },
+    { k: "apos_preventiva", peso: 0.10, valor: null, medido: "Sem dado" }
+  ]);
+}
+function intelAtivo(a) {
+  const pol = polGrupo().inteligencia, P = pol.pesos, now = Date.now(), d90 = now - 90 * D, d12m = now - 365 * D;
+  const rei = iaReincidencia(a, now);
+  const chs = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado"), ch90 = chs.filter(c => t(c.aberto_em) > d90);
+  const horas = DB.ativo_parada.filter(p => p.ativo_id === a.id).reduce((s, p) => s + sobreposicaoH(t(p.inicio), p.fim ? t(p.fim) : now, d90, now), 0);
+  const imp = ch90.length ? Math.round(ch90.filter(c => c.impacto_hospede).length / ch90.length * 100) : null;
+  const inf = chs.filter(c => c.status === "Encerrado" && c.custo != null && t(c.encerrado_em) > d12m), custo = inf.length ? inf.reduce((s, c) => s + c.custo, 0) : null;
+  const prevs = DB.os.filter(o => o.origem === "preventiva" && o.ativo_id === a.id), atras = prevs.length ? prevs.some(o => o.status === "Atrasada") : null;
+  let med = 0, fora = 0;
+  prevs.filter(o => o.status === "Concluída" && o.fim && t(o.fim) > d90).forEach(o => o.checklist.filter(c => c.tipo === "medicao").forEach(c => { med++; if (c.fora) fora++; }));
+  const garV = a.garantia_ate ? t(a.garantia_ate) < now : null, garDias = garV ? Math.floor((now - t(a.garantia_ate)) / D) : 0;
+  const sc = iaCombinar([
+    { k: "reincidencia", nome: "Reincidência de falhas", peso: P.reincidencia / 100, valor: rei.valor === null ? null : rei.valor / 100, medido: rei.valor === null ? "Sem dado" : `Reincidência de falhas em ${rei.valor}` },
+    { k: "parada", nome: "Tempo parado", peso: P.parada / 100, valor: iaRazao(horas, pol.limite_horas_paradas), medido: `${fmt1(horas)} horas parado na janela` },
+    { k: "impacto_hospede", nome: "Impacto em hóspedes", peso: P.impacto_hospede / 100, valor: imp === null ? null : iaRazao(imp, 100), medido: imp === null ? "Sem dado" : `${imp}% dos chamados afetaram hóspedes` },
+    { k: "criticidade", nome: "Criticidade", peso: P.criticidade / 100, valor: a.criticidade ? iaRazao(a.criticidade, 5) : null, medido: a.criticidade ? `Criticidade ${a.criticidade} de 5` : "Sem dado" },
+    { k: "custo", nome: "Custo informado", peso: P.custo / 100, valor: custo === null ? null : iaRazao(custo, pol.limite_custo_12m), medido: custo === null ? "Sem dado" : `Custo informado de ${brl(custo)} em 12 meses` },
+    { k: "preventiva_atrasada", nome: "Preventiva atrasada", peso: P.preventiva_atrasada / 100, valor: atras === null ? null : atras ? 1 : 0, medido: atras === null ? "Sem dado" : atras ? "Preventiva atrasada" : "Preventivas em dia" },
+    { k: "medicoes", nome: "Medições fora da faixa", peso: P.medicoes / 100, valor: med ? iaRazao(fora, med) : null, medido: med ? `${fora} ${fora === 1 ? "medição" : "medições"} fora da faixa, entre ${med} feitas` : "Sem dado" },
+    { k: "garantia", nome: "Garantia vencida", peso: P.garantia / 100, valor: garV === null ? null : garV ? 1 : 0, medido: garV === null ? "Sem dado" : garV ? `Garantia vencida há ${garDias} ${garDias === 1 ? "dia" : "dias"}` : "Garantia vigente" },
+    { k: "uh_dias", nome: "UH-dias indisponíveis", peso: P.uh_dias / 100, valor: null, medido: "Sem origem do dado ainda" }
+  ]);
+  return { a, comp: sc.comp, score: sc.valor, faixa: sc.faixa, n90: ch90.length };
+}
+/* Efetividade v2: a mesma janela antes e depois da intervenção. Fala em variação observada, nunca em causa. */
+const IA_EF = { reducao_observada: ["Redução observada", "b-green"], reducao_parcial: ["Redução parcial", "b-amber"], sem_mudanca_relevante: ["Sem mudança relevante", "b-grey"], aumento_observado: ["Aumento observado", "b-red"], sem_base_de_comparacao: ["Sem base de comparação", "b-grey"], janela_incompleta: ["Janela incompleta", "b-blue"] };
 function efetividade(scopeChs) {
-  const now = Date.now();
+  const pol = polGrupo().inteligencia.efetividade, now = Date.now(), J = pol.janela_dias * D;
   return scopeChs.filter(c => c.intervencao).map(c => {
-    const t0 = t(c.encerrado_em || c.aberto_em), same = DB.chamados.filter(x => x.ativo_id === c.ativo_id && x.id !== c.id && x.status !== "Cancelado");
-    const antes = same.filter(x => t(x.aberto_em) >= t0 - 90 * D && t(x.aberto_em) < t(c.aberto_em)).length;
-    const fimJan = Math.min(now, t0 + 90 * D), depois = same.filter(x => t(x.aberto_em) > t0 && t(x.aberto_em) <= fimJan).length;
-    const res = depois <= antes * 0.4 ? ["Resolveu", "b-green"] : depois >= antes * 0.75 ? ["Não resolveu", "b-red"] : ["Resolveu em parte", "b-amber"];
-    return { c, antes, depois, completa: t0 + 90 * D <= now, res };
+    const t0 = t(c.encerrado_em || c.aberto_em), fimD = Math.min(t0 + J, now);
+    const cor = DB.chamados.filter(x => x.ativo_id === c.ativo_id && x.status !== "Cancelado"), par = (antes, depois) => ({ antes, depois, v: antes === 0 ? null : Math.round((depois - antes) / antes * 1000) / 10 });
+    const paradas = DB.ativo_parada.filter(p => p.ativo_id === c.ativo_id), hp = (i, f) => paradas.reduce((s, p) => s + sobreposicaoH(t(p.inicio), p.fim ? t(p.fim) : now, i, f), 0);
+    const ch = par(cor.filter(x => t(x.aberto_em) >= t0 - J && t(x.aberto_em) < t0).length, cor.filter(x => t(x.aberto_em) >= t0 && t(x.aberto_em) < fimD).length), hr = par(hp(t0 - J, t0), hp(t0, fimD));
+    const dias = Math.max(0, Math.floor((now - t0) / D));
+    let r, expl;
+    if (now < t0 + J) { r = "janela_incompleta"; expl = `Passaram ${dias} de ${pol.janela_dias} dias depois da intervenção.`; }
+    else if (ch.v === null || ch.antes < pol.min_chamados_antes) { r = "sem_base_de_comparacao"; expl = `Houve menos de ${pol.min_chamados_antes} chamados nos ${pol.janela_dias} dias antes da intervenção.`; }
+    else if (-ch.v >= pol.reducao_observada) { r = "reducao_observada"; expl = `Os chamados caíram ${pol.reducao_observada}% ou mais em relação aos ${pol.janela_dias} dias antes.`; }
+    else if (-ch.v >= pol.reducao_parcial) { r = "reducao_parcial"; expl = `Os chamados caíram de ${pol.reducao_parcial}% a menos de ${pol.reducao_observada}% em relação aos ${pol.janela_dias} dias antes.`; }
+    else if (ch.v >= pol.aumento_observado) { r = "aumento_observado"; expl = `Os chamados subiram ${pol.aumento_observado}% ou mais em relação aos ${pol.janela_dias} dias antes.`; }
+    else { r = "sem_mudanca_relevante"; expl = `Os chamados variaram menos que os limites de redução (${pol.reducao_parcial}%) e de aumento (${pol.aumento_observado}%).`; }
+    return { c, ch, hr, res: IA_EF[r], expl, completa: now >= t0 + J };
   });
 }
+/* Padrão sistêmico v1: regras determinísticas com mínimos na política. O resultado é sempre "possível": só uma pessoa confirma. */
 function padraoSistemico(ativos, chs) {
-  const now = Date.now(), d90 = now - 90 * D, grupos = {};
-  ativos.forEach(a => { if (!a.modelo) return; const k = a.categoria_id + "|" + a.fabricante + "|" + a.modelo; (grupos[k] = grupos[k] || { k, cat: a.categoria_id, fab: a.fabricante, mod: a.modelo, ativos: [], n: 0, hoteis: new Set() }).ativos.push(a.id); });
-  const porCat = {};
-  Object.values(grupos).forEach(g => { const cs = chs.filter(c => c.ativo_id && g.ativos.includes(c.ativo_id) && t(c.aberto_em) > d90 && c.status !== "Cancelado"); g.n = cs.length; cs.forEach(c => g.hoteis.add(c.hotel_id)); const pc = porCat[g.cat] = porCat[g.cat] || { n: 0, a: 0 }; pc.n += g.n; pc.a += g.ativos.length; });
-  return Object.values(grupos).map(g => { const pc = porCat[g.cat], outrosA = pc.a - g.ativos.length, base = outrosA ? (pc.n - g.n) / outrosA : 0; return { ...g, taxa: g.n / g.ativos.length, base }; })
-    .filter(g => g.hoteis.size >= 3 && g.n >= 6 && g.taxa >= Math.max(0.3, g.base * 2)).sort((a, b) => b.taxa / Math.max(0.05, b.base) - a.taxa / Math.max(0.05, a.base));
+  const pol = polGrupo().inteligencia.sistemico, now = Date.now(), uni = xs => [...new Set(xs)];
+  const validos = chs.filter(c => c.status !== "Cancelado"), at = id => IDX.ativo[id];
+  const falhaDe = c => (c.codigos && c.codigos.falha) || (c.ativo_id && at(c.ativo_id) ? at(c.ativo_id).categoria_id : null);
+  const nome = f => (IDX.cat[f] || {}).nome || f;
+  const jan = (dias, desl = 0) => c => { const fim = now - desl * D; return t(c.aberto_em) > fim - dias * D && t(c.aberto_em) <= fim; };
+  const agrupar = (lista, chave) => { const m = {}; lista.forEach(c => { const k = chave(c); if (k !== null) (m[k] = m[k] || []).push(c); }); return Object.entries(m); };
+  const hoteisDe = cs => uni(cs.map(c => c.hotel_id)), sinais = [];
+  const mm = pol.mesmo_modelo;
+  agrupar(validos.filter(jan(mm.janela_dias)), c => { const a = c.ativo_id && at(c.ativo_id), f = falhaDe(c); return a && a.modelo && f ? a.fabricante + "|" + a.modelo + "#" + f : null; }).forEach(([k, cs]) => {
+    const dist = uni(cs.map(c => c.ativo_id)).length; if (dist < mm.min_ativos) return;
+    const [mod, f] = k.split("#"), [fab, mdl] = mod.split("|");
+    sinais.push({ regra: "Mesmo modelo com a mesma falha", n: cs.length, hoteis: hoteisDe(cs), titulo: `${fab} ${mdl}`, quem: `Falha: ${nome(f)}`, evid: `${cs.length} chamados em ${dist} ativos, em ${hoteisDe(cs).length} hotéis, nos últimos ${mm.janela_dias} dias.` });
+  });
+  const ma = pol.mesmo_andar;
+  agrupar(validos.filter(jan(ma.janela_dias)), c => { const l = IDX.local[c.local_id], f = falhaDe(c); return l && l.andar && f ? c.hotel_id + "#" + l.andar + "#" + f : null; }).forEach(([k, cs]) => {
+    const dist = uni(cs.map(c => c.local_id)).length; if (dist < ma.min_locais) return;
+    const [h, andar, f] = k.split("#");
+    sinais.push({ regra: "Mesmo andar com a mesma falha", n: cs.length, hoteis: [h], titulo: `${IDX.hotel[h].nome}, ${andar}º andar`, quem: `Falha: ${nome(f)}`, evid: `${cs.length} chamados em ${dist} UHs, em ${ma.janela_dias} dias.` });
+  });
+  const ac = pol.mesma_area_comum;
+  agrupar(validos.filter(jan(ac.janela_dias)), c => { const l = IDX.local[c.local_id], f = falhaDe(c); return l && l.tipo === "area" && f ? c.local_id + "#" + f : null; }).forEach(([k, cs]) => {
+    if (cs.length < ac.min_ocorrencias) return;
+    const [lid, f] = k.split("#");
+    sinais.push({ regra: "Mesma área comum com a mesma falha", n: cs.length, hoteis: [cs[0].hotel_id], titulo: `${IDX.hotel[cs[0].hotel_id].nome}, ${IDX.local[lid].nome}`, quem: `Falha: ${nome(f)}`, evid: `${cs.length} ocorrências em ${ac.janela_dias} dias.` });
+  });
+  const pc = x => Number.isInteger(x) ? String(x) : fmt1(x), mf = pol.mesmo_fornecedor, pct = (p, todo) => Math.round(p / todo * 1000) / 10;
+  const obs = validos.filter(c => c.ativo_id && c.status === "Encerrado" && t(c.encerrado_em) > now - mf.janela_dias * D && t(c.encerrado_em) <= now - mf.dias_apos * D);
+  const voltou = c => validos.some(d => d.id !== c.id && d.ativo_id === c.ativo_id && t(d.aberto_em) >= t(c.encerrado_em) && t(d.aberto_em) <= t(c.encerrado_em) + mf.dias_apos * D);
+  const internas = obs.filter(c => !c.executado_por || c.executado_por.tipo === "interna"), taxaInt = internas.length ? pct(internas.filter(voltou).length, internas.length) : null;
+  agrupar(obs, c => c.executado_por && c.executado_por.tipo === "fornecedor" ? c.executado_por.fornecedor_id : null).forEach(([fid, cs]) => {
+    if (cs.length < mf.min_concluidas) return;
+    const v = cs.filter(voltou).length, taxa = pct(v, cs.length); if (taxa < mf.limiar_percentual) return;
+    sinais.push({ regra: "Mesmo terceiro com muitas falhas que voltam", n: v, hoteis: hoteisDe(cs), titulo: (IDX.forn[fid] || {}).nome || "Fornecedor", quem: "Taxa de volta das OS do terceiro", evid: `${v} de ${cs.length} OS tiveram nova corretiva no mesmo ativo em até ${mf.dias_apos} dias (${pc(taxa)}%)${taxaInt === null ? "" : `, contra ${pc(taxaInt)}% da equipe interna`}.` });
+  });
+  const cr = pol.crescimento, chave = c => { const f = falhaDe(c); return f ? c.hotel_id + "#" + f : null; };
+  const ant = Object.fromEntries(agrupar(validos.filter(jan(cr.janela_dias, cr.janela_dias)), chave));
+  agrupar(validos.filter(jan(cr.janela_dias)), chave).forEach(([k, cs]) => {
+    const antes = (ant[k] || []).length; if (cs.length < cr.min_atual || antes === 0) return;
+    const v = pct(cs.length - antes, antes); if (v < cr.percentual) return;
+    const [h, f] = k.split("#");
+    sinais.push({ regra: "A mesma falha crescendo", n: cs.length, hoteis: [h], titulo: `${IDX.hotel[h].nome}`, quem: `Falha: ${nome(f)}`, evid: `${cs.length} chamados em ${cr.janela_dias} dias, contra ${antes} nos ${cr.janela_dias} dias anteriores (+${pc(v)}%).` });
+  });
+  return sinais.sort((a, b) => b.n - a.n);
 }
 function pageInteligencia() {
   const pol = polGrupo().inteligencia, ats = scoped(DB.ativos), chs = scoped(DB.chamados);
@@ -1319,15 +1407,20 @@ function pageInteligencia() {
   const ef = efetividade(chs), sis = padraoSistemico(ats, chs);
   const hoje3 = new Date(); hoje3.setHours(3, 0, 0, 0);
   const gauge = v => `<div class="score ${v >= 85 ? "hi" : v >= pol.limite_atencao ? "mid" : ""}"><b>${v}</b><span>de 100</span></div>`;
-  const card = x => { const open = UI.f.intel.open === x.a.id, top = x.comp.slice().sort((a, b) => b.contrib - a.contrib).slice(0, 2);
-    return `<div class="panel insight" data-at="${x.a.id}"><div class="ins-h">${gauge(x.score)}<div style="flex:1;min-width:0"><div class="small muted">Atenção por ativo, acima do limite de ${pol.limite_atencao}</div><a href="#" data-act="open-at" data-id="${x.a.id}" style="font-weight:600;font-size:16px;color:var(--head)">${esc(x.a.nome)}</a><div class="small muted">${esc(IDX.hotel[x.a.hotel_id].nome)}, ${esc(IDX.local[x.a.local_id].nome)}. ${esc(x.a.fabricante)}${x.a.modelo ? ", " + esc(x.a.modelo) : ""}.</div>
-      <div class="small" style="margin-top:6px">Pesou mais: ${top.map(c => `${esc(c.nome.toLowerCase())} (${esc(c.medido)})`).join("; ")}.</div></div></div>
+  const semDado = x => x.comp.filter(c => c.valor === null && c.peso > 0), totalPeso = x => x.comp.reduce((s, c) => s + c.peso, 0);
+  const card = x => { const open = UI.f.intel.open === x.a.id, top = x.comp.filter(c => c.valor !== null && c.pontos > 0).sort((a, b) => b.pontos - a.pontos).slice(0, 3), sd = semDado(x);
+    return `<div class="panel insight" data-at="${x.a.id}"><div class="ins-h">${gauge(x.score)}<div style="flex:1;min-width:0"><div class="small muted">${esc(x.faixa)}: atenção por ativo, acima do limite de ${pol.limite_atencao}</div><a href="#" data-act="open-at" data-id="${x.a.id}" style="font-weight:600;font-size:16px;color:var(--head)">${esc(x.a.nome)}</a><div class="small muted">${esc(IDX.hotel[x.a.hotel_id].nome)}, ${esc(IDX.local[x.a.local_id].nome)}. ${esc(x.a.fabricante)}${x.a.modelo ? ", " + esc(x.a.modelo) : ""}.</div>
+      <div class="small" style="margin-top:6px">Pesou mais: ${top.map(c => esc(c.medido.charAt(0).toLowerCase() + c.medido.slice(1))).join("; ")}.</div></div></div>
       <button class="btn sm why" data-act="intel-why" data-id="${x.a.id}" aria-expanded="${open}">Por que estou vendo isso?</button>
-      ${open ? `<div class="why-b"><table><thead><tr><th>Componente</th><th>Medido</th><th class="num">Nota</th><th class="num">Peso</th><th class="num">Contribuição</th></tr></thead><tbody>${x.comp.map(c => `<tr><td>${esc(c.nome)}</td><td class="small">${esc(c.medido)}</td><td class="num">${c.nota}</td><td class="num">${c.peso}%</td><td class="num"><strong>${fmt1(c.contrib)}</strong></td></tr>`).join("")}<tr><td colspan="4"><strong>Atenção</strong></td><td class="num"><strong>${x.score}</strong></td></tr></tbody></table>
+      ${open ? `<div class="why-b"><table><thead><tr><th>Componente</th><th>Medido</th><th class="num">Valor</th><th class="num">Peso</th><th class="num">Peso usado</th><th class="num">Pontos</th></tr></thead><tbody>${x.comp.map(c => c.valor === null
+        ? `<tr><td>${esc(c.nome)}</td><td class="small muted">${esc(c.medido)}</td><td class="num">—</td><td class="num">${Math.round(c.peso * 100)}%</td><td class="num">—</td><td class="num">0,0</td></tr>`
+        : `<tr><td>${esc(c.nome)}</td><td class="small">${esc(c.medido)}</td><td class="num">${Math.round(c.valor * 100)}</td><td class="num">${Math.round(c.peso * 100)}%</td><td class="num">${fmt1(c.pesoEf * 100)}%</td><td class="num"><strong>${fmt1(c.pontos)}</strong></td></tr>`).join("")}<tr><td colspan="5"><strong>Atenção</strong></td><td class="num"><strong>${x.score}</strong></td></tr></tbody></table>
+        ${sd.length ? `<p class="small" style="margin:8px 0 0">Sem dado: ${sd.map(c => esc(c.nome.toLowerCase())).join(", ")}. ${sd.length === 1 ? "O peso dele" : "O peso deles"} (${Math.round(sd.reduce((s, c) => s + c.peso, 0) / totalPeso(x) * 100)}%) foi dividido entre os componentes que têm dado, na proporção dos pesos.</p>` : ""}
         <p class="small muted" style="margin:8px 0 0">Política <span class="id" style="font-size:12px">inteligencia.atencao_ativo</span> ${esc(pol.versao)}, limite ${pol.limite_atencao}, fórmula atencao-${esc(pol.versao)}. Cálculo determinístico, gravado com a versão da política e da fórmula. Aponta onde olhar; a decisão de reparar ou substituir é da equipe.</p></div>` : ""}</div>`; };
-  return `<div class="readonly-note" style="margin-top:0">${icon("intel")}<span><strong>Módulo opcional, contratado por este grupo.</strong> Transforma os dados de manutenção em decisão: quais ativos mais falham e custam, se a intervenção resolveu e onde agir primeiro. Todo resultado mostra de onde veio. Correlação nunca é apresentada como causa.</span></div>
+  return `<div class="ia-aviso" role="note"><strong>Prévia com dados fictícios.</strong> Os ativos, os chamados, os custos e as intervenções desta tela são inventados para a demonstração. As regras seguem o Intelligence 1.0; o módulo ainda está em desenvolvimento.</div>
+  <div class="readonly-note" style="margin-top:12px">${icon("intel")}<span><strong>Módulo opcional, contratado por este grupo.</strong> Transforma os dados de manutenção em decisão: quais ativos mais falham e custam, o que mudou depois da intervenção e onde agir primeiro. Todo resultado mostra de onde veio. Correlação nunca é apresentada como causa.</span></div>
   <div class="grid g-4" style="margin:14px 0 16px">
-    <div class="panel inst"><div class="lab">Insights abertos</div><div class="val">${ins.length + sis.length}</div><div class="foot">Ativos acima do limite de atenção, mais padrões sistêmicos.</div></div>
+    <div class="panel inst"><div class="lab">Insights abertos</div><div class="val">${ins.length + sis.length}</div><div class="foot">Ativos acima do limite de atenção, mais possíveis padrões sistêmicos.</div></div>
     <div class="panel inst"><div class="lab">Ativos avaliados</div><div class="val">${avaliados.length}</div><div class="foot">Todos os ativos do seu escopo.</div></div>
     <div class="panel inst"><div class="lab">Janela de leitura</div><div class="val">${pol.janela_dias}<small>dias</small></div><div class="foot">Cabe a efetividade de 90 dias antes e 90 depois.</div></div>
     <div class="panel inst"><div class="lab">Último cálculo</div><div class="val">${pad(hoje3.getHours())}:00</div><div class="foot">Job diário de ${fmtD(hoje3.toISOString())}. O resultado não é apagado.</div></div>
@@ -1335,16 +1428,16 @@ function pageInteligencia() {
   <div class="grid g-3-1" style="align-items:start">
     <div><h3 style="margin:0 0 10px">Atenção por ativo</h3><div class="insights">${ins.slice(0, 6).map(card).join("") || '<div class="panel empty">Nenhum ativo acima do limite no seu escopo.</div>'}</div></div>
     <div>
-      <div class="panel" id="intel-sis"><div class="panel-h"><h2>Padrão sistêmico</h2></div><div class="panel-b" style="padding-top:0">${sis.length ? sis.slice(0, 2).map(g => `<div class="cap" style="display:block"><strong>${esc(g.fab)} ${esc(g.mod)}</strong><div class="small muted">${esc(IDX.cat[g.cat].nome)}. ${g.n} chamados em 90 dias em ${g.hoteis.size} hotéis, ${g.ativos.length} unidades.</div><div class="small" style="margin-top:6px">${fmt1(g.taxa)} chamados por unidade, contra ${fmt1(g.base)} nos outros modelos da categoria.</div></div>`).join("") : '<div class="empty">Nenhum padrão entre hotéis no seu escopo.</div>'}<p class="small muted">O mesmo problema em vários hotéis aponta para o modelo ou o fornecedor, não para a equipe de um hotel.</p></div></div>
+      <div class="panel" id="intel-sis"><div class="panel-h"><h2>Padrão sistêmico</h2></div><div class="panel-b" style="padding-top:0">${sis.length ? sis.slice(0, 3).map(g => `<div class="cap" style="display:block"><div class="small muted">${esc(g.regra)}</div><strong>${esc(g.titulo)}</strong> <span class="badge b-amber">Possível</span><div class="small muted">${esc(g.quem)}.</div><div class="small" style="margin-top:6px">${esc(g.evid)}</div></div>`).join("") : '<div class="empty">Nenhum padrão entre hotéis no seu escopo.</div>'}<p class="small muted">O mesmo problema em vários lugares pode apontar para o modelo, a área ou o fornecedor, e não para a equipe de um hotel. É sempre um possível problema: só uma pessoa confirma.</p></div></div>
       <div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Próximas versões</h2></div><div class="panel-b" style="padding-top:0"><ul class="small" style="padding-left:18px;margin:0">
         <li><strong>1.5</strong>: impacto no hóspede, com feedback por CSV, API e webhook e classificação por IA. A IA só lê texto; nunca decide causa.</li>
         <li><strong>2.0</strong>: custo, reparar ou substituir, fabricantes e fornecedores, visão de rede.</li>
         <li><strong>3.0</strong>: agrupamento semântico, anomalias e previsão, com histórico suficiente.</li></ul></div></div>
     </div>
   </div>
-  <div class="panel" style="margin-top:16px" id="intel-ef"><div class="panel-h"><h2>Efetividade das intervenções</h2><span class="hint">Chamados no mesmo ativo, 90 dias antes e 90 dias depois</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Intervenção</th><th>Ativo</th><th>Quando</th><th class="num">Antes</th><th class="num">Depois</th><th>Resultado</th></tr></thead><tbody>
-    ${ef.map(e => `<tr class="click" data-act="open-ch" data-id="${e.c.id}"><td>${esc(e.c.titulo)}<div class="small muted">${esc(nomeExec(e.c.executado_por))}${e.c.custo ? ", " + brl(e.c.custo) : ""}</div></td><td class="small">${esc(IDX.ativo[e.c.ativo_id].nome)}<div class="muted">${esc(IDX.hotel[e.c.hotel_id].nome)}</div></td><td class="small">${fmtD(e.c.encerrado_em)}</td><td class="num">${e.antes}</td><td class="num">${e.depois}${e.completa ? "" : '<div class="small muted">janela em curso</div>'}</td><td><span class="badge ${e.res[1]}">${e.res[0]}</span></td></tr>`).join("") || `<tr><td colspan="6" class="empty">Nenhuma intervenção marcada no seu escopo.</td></tr>`}
-  </tbody></table></div></div>`;
+  <div class="panel" style="margin-top:16px" id="intel-ef"><div class="panel-h"><h2>Efetividade das intervenções</h2><span class="hint">Chamados no mesmo ativo, ${polGrupo().inteligencia.efetividade.janela_dias} dias antes e ${polGrupo().inteligencia.efetividade.janela_dias} dias depois</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Intervenção</th><th>Ativo</th><th>Quando</th><th class="num">Chamados antes</th><th class="num">Chamados depois</th><th class="num">Horas paradas</th><th>Variação observada</th></tr></thead><tbody>
+    ${ef.map(e => `<tr class="click" data-act="open-ch" data-id="${e.c.id}"><td>${esc(e.c.titulo)}<div class="small muted">${esc(nomeExec(e.c.executado_por))}${e.c.custo ? ", " + brl(e.c.custo) : ""}</div></td><td class="small">${esc(IDX.ativo[e.c.ativo_id].nome)}<div class="muted">${esc(IDX.hotel[e.c.hotel_id].nome)}</div></td><td class="small">${fmtD(e.c.encerrado_em)}</td><td class="num">${e.ch.antes}</td><td class="num">${e.ch.depois}${e.completa ? "" : '<div class="small muted">janela em curso</div>'}</td><td class="num small">${fmt1(e.hr.antes)} → ${fmt1(e.hr.depois)}</td><td><span class="badge ${e.res[1]}">${e.res[0]}</span><div class="small muted" style="max-width:34ch">${esc(e.expl)}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Nenhuma intervenção marcada no seu escopo.</td></tr>`}
+  </tbody></table><p class="small muted" style="margin:10px 0 0">É a variação observada nos chamados depois da intervenção. Ela não prova que a intervenção foi a causa.</p></div></div>`;
 }
 
 /* ---------- Roadmap ---------- */
