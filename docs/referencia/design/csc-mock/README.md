@@ -57,7 +57,12 @@ O vídeo `demonstracao-central-manutencao.mp4` (entregue à parte, fora do site)
 6. **App do técnico.** Fila do dia do Paulo. Clique em "Simular sem sinal", conclua uma preventiva marcando o checklist e reconecte: as ações são enviadas. Em "Abrir chamado", leia a etiqueta QR de um ativo.
 7. **Isolamento por escopo.** Troque para Juliana (gerente de hotel): só o Hotel Curitiba Batel. Troque para Helena (proprietária): só as 3 UHs dela, sem edição.
 8. **Integração TOTVS CM.** Somente leitura: views, idade dos dados e a tabela do que a Central faz e não faz.
-9. **Próximas fases.** O que é MVP, o que vem depois do piloto e o que ainda está em estudo.
+9. **Intelligence (prévia, dados fictícios).** Em "Intelligence", o painel de investigação com os ativos em atenção, os possíveis problemas sistêmicos e as intervenções avaliadas. Abra o Elevador social 2 do Hotel São Paulo Paulista (por que está em alta atenção, componentes e pesos, reincidência, custo informado) e o Chiller principal do Hotel Florianópolis Centro (antes e depois de uma intervenção). Troque para Juliana (gerente) e veja que o insight de rede some: só aparece a quem lê todos os hotéis dele.
+10. **Próximas fases.** O que é MVP, o que vem depois do piloto e o que ainda está em estudo.
+
+## Intelligence no mock
+
+A tela fica em `intelligence.js` e entra no menu como "Intelligence" para a gestora do CSC, os coordenadores de bandeira e os gerentes. É uma **prévia comercial**: os ativos, os chamados, os custos e as intervenções são inventados, e a tela diz isso no topo. O que segue o produto é a regra do Intelligence 1.0 (`packages/inteligencia`): os pesos e as faixas dos scores, o limite de 70 para sugerir insight, as frases de "Por que estou vendo isso?" e o antes e depois em janelas iguais, que mostra variação observada e nunca causa. O cálculo está repetido em JavaScript só para os números baterem. O módulo ainda está em desenvolvimento; nada disso existe no produto real.
 
 ## Limites do mock
 

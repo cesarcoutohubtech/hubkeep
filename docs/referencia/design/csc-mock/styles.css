@@ -570,3 +570,14 @@ details.more[open] summary { color: var(--ink); }
 @media (max-width: 820px) { .theme-btn span { display: none; } }
 .tour-marker { display: none; }
 .tour-video .tour-marker { display: block; position: fixed; left: 0; top: 0; width: 16px; height: 16px; z-index: 9999; background: rgb(0,0,0); }
+
+/* ---------- Intelligence (prévia com dados fictícios) ---------- */
+.ia-aviso { border: 1px solid rgba(240,165,0,.45); background: var(--amber-soft); color: var(--ink); border-radius: 10px; padding: 9px 14px; font-size: 13.5px; }
+.ia-aviso strong { color: var(--amber); }
+.ia-score { font-family: var(--font-cond); font-size: 24px; font-weight: 600; color: var(--head); }
+.ia-porque { margin: 4px 0 10px; padding-left: 22px; display: grid; gap: 6px; font-size: 15px; }
+.ia-sis { padding: 10px 0; border-bottom: 1px solid var(--line-2); }
+.ia-sis:last-child { border-bottom: 0; }
+.ia-evid { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--steel); margin-top: 6px; }
+.ia-evid b { color: var(--ink); font-weight: 600; }
+.chart svg text { fill: var(--steel); font-size: 11px; }
