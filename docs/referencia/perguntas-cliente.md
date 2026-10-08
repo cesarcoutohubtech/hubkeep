@@ -4,6 +4,8 @@ Perguntas ao grupo Slaviero reunidas dos docs e dos diários (29/09/2026), agrup
 
 Pergunta nova para o cliente entra aqui, e não espalhada pelos docs.
 
+Atualizado em 08/10/2026 com a revisão de escopo de 07/10 (`docs/referencia/documento-projeto.md`, seção "Pendências"). **A primeira pergunta da reunião é o acesso ao sistema hoteleiro (12),** porque é a pendência que mais pesa no calendário.
+
 ## Proprietários e condo-hotel
 
 1. **Equipamento do proprietário na UH.** Em condo-hotel, os equipamentos da UH podem ser do proprietário. Quando um deles sai da UH, o proprietário precisa ver a movimentação?
@@ -44,13 +46,25 @@ Pergunta nova para o cliente entra aqui, e não espalhada pelos docs.
 10. **Domínio do e-mail.** O cliente aceita e-mails saindo do domínio da EasyGov, ou espera outro domínio? Precisa liberar algo no servidor de e-mail dele (lista de remetentes, filtro)?
     - Antes do piloto são necessários o provedor de e-mail de produção e o domínio de envio com SPF, DKIM e DMARC.
     - Fontes: `docs/04-plano-fase-0.md`, `docs/diario-fase-0.md`.
-11. **Aparelhos dos técnicos.** Qual a proporção de Android e iOS? Pesa no push do iOS.
+11. **Aparelhos dos técnicos.** Qual a proporção de Android e iOS? Os aparelhos são pessoais ou da empresa? Pesa no push do iOS.
     - Fonte: `docs/04-plano-fase-0.md`.
 
-## Integração com o TOTVS CM
+## Integração com o sistema hoteleiro (TOTVS)
 
-12. **Views e agente.** Quais views e campos do CM serão liberados (hotéis, UHs e status)? Quem cria o usuário somente leitura, e onde roda o agente Docker na rede do cliente?
-    - Fontes: `docs/00-contexto-produto.md`, `docs/01-arquitetura.md`, `docs/04-plano-fase-0.md`, `docs/05-plano-fase-1a.md`.
+12. **Sistema, views e agente (primeira pergunta da reunião).** Qual linha da TOTVS roda: instalada no hotel ou o PMS SaaS? Banco central ou uma instância por hotel? Qual SGBD e versão, e quem hospeda? Todo hotel usa o mesmo sistema? Quais views e campos serão liberados (hotéis, UHs e status)? Quem cria as views e o usuário somente leitura, e onde roda o agente Docker na rede do cliente?
+    - Hoje: o agente lê views dedicadas e envia por HTTPS de saída. Se for o PMS SaaS, a busca passa a ser pela API da TOTVS, com um ADR sobre a guarda das credenciais.
+    - Do lado da EasyGov (não é pergunta ao cliente): a resposta da TOTVS ao pedido de integração homologada (API, ambiente de homologação, custos).
+    - Fontes: `docs/00-contexto-produto.md`, `docs/01-arquitetura.md`, `docs/04-plano-fase-0.md`, `docs/05-plano-fase-1a.md`, `docs/referencia/documento-projeto.md`.
+
+## Modelos de empreendimento (novo, 07/10/2026)
+
+25. **Modelo de cada hotel do piloto.** Qual o modelo contratual de cada um dos 4 hotéis (próprio, administrado, arrendado)?
+    - Hoje: o modelo contratual do hotel entra na 1b (I2 do `docs/12`); o arrendado mínimo, na 1c (`docs/13`).
+26. **Arrendamento.** Como os contratos de arrendamento dividem a responsabilidade por categoria entre arrendatária e locador?
+    - Hoje: a 1c prevê a matriz de responsabilidade por hotel e categoria.
+27. **Administrados.** Quais as regras de aprovação e rateio com os proprietários?
+    - Hoje: a aprovação do proprietário acima de limite fica para a fase 2.
+    - Fonte das três: `docs/referencia/documento-projeto.md` (matriz de modelos e pendências).
 
 ## Operação
 
@@ -68,10 +82,17 @@ Pergunta nova para o cliente entra aqui, e não espalhada pelos docs.
     - Hoje: quem abriu e executa não aceita nem reabre; decide o Gerente do hotel e, sem Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo (Cesar, 30/09/2026). Se o cliente quiser o aceite automático, ele entra como política configurável, desligada por padrão.
     - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-027, bloco da C6, item 8), `docs/05-plano-fase-1a.md` (C6 e perguntas para a reunião), `docs/diario-fase-1a.md` (Gerente único no aceite).
 
+28. **Equipe e terceirização.** Quantos técnicos por hotel? Há equipes regionais? Quanto é terceirizado? Os fornecedores são nacionais ou locais? O que a equipe usa hoje para a manutenção?
+    - Hoje: o fornecedor mínimo (nome, CNPJ, contato) entra na 1b (I3 do `docs/12`).
+29. **O que a central vai centralizar:** despacho, compras, contratos ou só monitoramento?
+    - Fonte das duas: `docs/referencia/documento-projeto.md` (pendências).
+
 ## Piloto e implantação
 
-17. **Datas e hotéis do piloto.** Quais hotéis e quando? O plano prevê 2 a 3 hotéis e rollout em ondas de cerca de 10; a confirmação é depois de 01/10.
-    - Fontes: `docs/00-contexto-produto.md`, `docs/04-plano-fase-0.md`, `docs/diario-fase-0.md`.
+17. **Datas e hotéis do piloto.** Quais são os 4 hotéis e quando começa? Quantas UHs tem cada hotel? Quais os volumes de chamados? Como está hoje o inventário de ativos, e em que formato?
+    - Decidido em 07/10/2026: 4 hotéis cobrindo a matriz de modelos (um urbano próprio, um Slim, um administrado e um arrendado). Os nomes dependem da Slaviero.
+    - Hoje: a carga inicial começa pelos ativos críticos (climatização, caldeiras, elevadores, geradores, bombas, SPDA); o inventário completo pode ser um serviço cobrado à parte.
+    - Fontes: `docs/00-contexto-produto.md`, `docs/referencia/documento-projeto.md`, `docs/piloto/README.md`.
 18. **Protótipo.** Validar o protótipo de telas, feito fora do repositório, de onde vem o layout definitivo.
     - Fontes: `docs/05-plano-fase-1a.md`, `docs/diario-fase-0.md`.
 
