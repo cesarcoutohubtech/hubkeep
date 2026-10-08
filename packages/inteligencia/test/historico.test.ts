@@ -47,8 +47,8 @@ describe('impacto no hóspede pelo indicador do chamado', () => {
       horasParadas: 24,
       impactoHospede: impactoHospedeDosChamados(cs, agora, 90),
     });
-    // (0,154 + 0,075 + 0,5 × 0,20) / 0,55 = 60.
-    expect(s.valor).toBe(60);
+    // (0,154 + 0,075 + 0,5 × 0,15) / 0,50 = 61.
+    expect(s.valor).toBe(61);
     expect(s.ausentes).not.toContain('impacto_hospede');
   });
 });

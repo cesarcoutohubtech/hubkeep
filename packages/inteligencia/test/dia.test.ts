@@ -74,7 +74,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixaAtencao: a1?.atencao.faixa,
       recalculo: false,
       versaoFormulaReincidencia: 1,
-      versaoFormulaAtencao: 1,
+      versaoFormulaAtencao: 2,
       versaoPolitica: 'padrao',
     });
 
@@ -85,7 +85,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixa: a1?.atencao.faixa,
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: a1?.atencao.valor,
-      versao: 1,
+      versao: 2,
       escopo: { ativoId: 'a1', hotelId: 'h1' },
     });
     expect(atencao[0]?.corretivaIds).toHaveLength(6);
@@ -141,6 +141,30 @@ describe('calcularDia: scores e métrica do dia', () => {
     });
     const parada = r.ativos[0]?.atencao.componentes.find((c) => c.chave === 'parada');
     expect(parada?.evidencia).toMatchObject({ horas: 26 });
+  });
+
+  it('a garantia do ativo e as medições entram na atenção; sem a data, o componente fica sem dado', () => {
+    const r = calcularDia({
+      agora,
+      hoteis: [{ hotelId: 'h1', bandeiraId: 'b1' }],
+      ativos: [
+        ativo({ id: 'a1', garantiaAte: dia(-10), medicoes: { foraDaFaixa: 1, total: 4 } }),
+        ativo({ id: 'a2', garantiaAte: dia(30) }),
+        ativo({ id: 'a3' }),
+      ],
+      corretivas: [],
+      locais: [],
+    });
+    const comp = (id: string, chave: string) =>
+      r.ativos.find((a) => a.ativoId === id)?.atencao.componentes.find((c) => c.chave === chave);
+    expect(comp('a1', 'garantia_vencida')).toMatchObject({
+      valor: 1,
+      evidencia: { vencida: true, diasVencida: 10 },
+    });
+    expect(comp('a1', 'medicoes_fora_da_faixa')).toMatchObject({ valor: 0.25 });
+    expect(comp('a2', 'garantia_vencida')).toMatchObject({ valor: 0 });
+    expect(comp('a3', 'garantia_vencida')?.valor).toBeNull();
+    expect(comp('a3', 'medicoes_fora_da_faixa')?.valor).toBeNull();
   });
 
   it('ativo, corretiva e local de hotel fora da lista não entram', () => {

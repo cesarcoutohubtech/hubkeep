@@ -50,6 +50,33 @@ export interface AtivoAnalisado {
   categoriaId: string | null;
   fabricante: string | null;
   modelo: string | null;
+  /**
+   * Fim da garantia, de `app.ativo.garantia_ate` (etapa I1): o último dia em
+   * que ela vale. Ausente ou null: sem a data, e a atenção marca o componente
+   * como sem dado.
+   */
+  garantiaAte?: Date | null;
+}
+
+/** Se a garantia do ativo já venceu na data do cálculo. */
+export interface SituacaoDaGarantia {
+  vencida: boolean;
+  /** Dias inteiros desde o fim da garantia; 0 enquanto vale. */
+  diasVencida: number;
+}
+
+/**
+ * A garantia na data do cálculo, em dias de calendário UTC: vale até o fim do
+ * dia de `garantiaAte` e vence no dia seguinte. null sem a data.
+ */
+export function situacaoDaGarantia(
+  ativo: Pick<AtivoAnalisado, 'garantiaAte'>,
+  agora: Date,
+): SituacaoDaGarantia | null {
+  if (!ativo.garantiaAte) return null;
+  const dia = (d: Date) => Math.floor(d.getTime() / DIA_MS);
+  const diasVencida = Math.max(0, dia(agora) - dia(ativo.garantiaAte));
+  return { vencida: diasVencida > 0, diasVencida };
 }
 
 /** O local da corretiva, para a análise por andar e por área comum. */

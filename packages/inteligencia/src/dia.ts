@@ -26,7 +26,12 @@
 //   no hotel quando todas as corretivas são de um hotel; senão, na rede, da
 //   bandeira quando os hotéis são todos dela, ou do grupo.
 import type { Parada } from '@hubkeep/dominio';
-import { type ConfigAtencao, PADRAO_ATENCAO, atencaoDoAtivo } from './atencao';
+import {
+  type ConfigAtencao,
+  type MedicoesDoAtivo,
+  PADRAO_ATENCAO,
+  atencaoDoAtivo,
+} from './atencao';
 import type { LinhaDaMetricaDiaria } from './agregacao';
 import {
   type AtivoAnalisado,
@@ -36,6 +41,7 @@ import {
   custoInformadoNaJanela,
   horasParadasNoTrecho,
   impactoHospedeDosChamados,
+  situacaoDaGarantia,
 } from './historico';
 import {
   type AlcanceDoInsight,
@@ -78,8 +84,10 @@ export interface AtivoDoDia extends AtivoAnalisado {
   criticidade: Criticidade | null;
   /** Paradas do ativo (C5), as abertas com fim null. */
   paradas: readonly Parada[];
-  /** Preventiva vencida ou compliance aberto (1b); ausente sem dado. */
-  preventivaOuCompliance?: boolean | null;
+  /** Preventiva vencida do ativo (etapa P); ausente sem dado. */
+  preventivaAtrasada?: boolean | null;
+  /** Medições do checklist tipado na janela (P1); ausente sem dado. */
+  medicoes?: MedicoesDoAtivo | null;
 }
 
 export interface EntradaDoDia {
@@ -184,7 +192,9 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
           ),
           custoInformado12m: custoInformadoNaJanela(cs, e.agora, JANELA_CUSTO_DIAS),
           impactoHospede: impactoHospedeDosChamados(cs, e.agora, cfgR.janelaDias),
-          preventivaOuCompliance: a.preventivaOuCompliance ?? null,
+          preventivaAtrasada: a.preventivaAtrasada ?? null,
+          medicoes: a.medicoes ?? null,
+          garantia: situacaoDaGarantia(a, e.agora),
         },
         h.atencao ?? PADRAO_ATENCAO,
       );

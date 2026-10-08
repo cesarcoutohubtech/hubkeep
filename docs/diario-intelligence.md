@@ -425,3 +425,26 @@ Instruções do Cesar (pauta de 07/10/2026, depois do merge do #125).
 ### Ponto de retomada
 - Esperando o Cesar: a confirmação de que o hotel novo vale na variante (c), as três telas e as seis decisões da proposta, e a confirmação das duas decisões acima.
 - Esperando o núcleo: as migrações da etapa I; depois, o ajuste dos nomes e as tabelas do Intelligence, uma de cada vez.
+
+## Alinhamento do motor com o mock (08/10/2026)
+
+### A aprovação do Cesar
+- **Quando e por onde:** o Cesar aprovou **por escrito, em 08/10/2026**, as três propostas do alinhamento do motor com o mock oficial (identidade oficial, ADR-038): atenção v2, efetividade sem linguagem de causa e padrão sistêmico com os mínimos do mock. O Kaio passou a aprovação ao agente na pauta de 08/10. Canal: **[a preencher com o canal do Cesar]**.
+- **Texto do Cesar:** **[a colar: o Kaio vai passar o texto literal, e ele entra aqui antes do merge]**.
+- **A análise que originou o alinhamento** (08/10/2026): a tabela componente a componente entre o mock e o motor da `main`. Os números do mock eram: atenção com cinco componentes (reincidência 35, indisponibilidade 25, criticidade 20, medições fora da faixa 10, garantia vencida 10); efetividade por razão depois ÷ antes (40% e 75%); padrão sistêmico com 3 hotéis, 6 chamados em 90 dias e taxa de pelo menos o dobro da base (mínimo 0,3).
+
+### O que foi aprovado, por área, e onde entra
+1. **Atenção v2** (`VERSAO_ATENCAO` 2): pesos padrão reincidência 20, tempo parado 15, impacto no hóspede 15, criticidade 15, custo informado 10, preventiva atrasada 10, medições fora da faixa 10, garantia vencida 5 e UH-dias 0. PR `int-atencao-v2` (este).
+2. **Efetividade, versão nova**, com os limiares na política: redução de 60% ou mais = redução observada; de 25% a 60% = redução parcial; de −25% a +20% = sem mudança relevante; aumento de 20% ou mais = aumento observado; menos de 3 chamados antes = sem base de comparação; menos de 90 dias depois = janela incompleta. PR `int-efetividade-v2` (a abrir).
+3. **Padrão sistêmico, versão nova**: mínimos na política de 3 hotéis, 6 chamados em 90 dias e 5 ativos; taxa de pelo menos o dobro da base, com mínimo de 0,3; base = chamados por ativo da mesma categoria, nos outros modelos do tenant, em 90 dias; só a regra do mesmo modelo ligada por padrão, e as outras quatro desligadas por política. PR `int-sistemico-v2` (a abrir).
+4. **Adendos ao ADR-034 e ao ADR-036:** texto no `int-rascunhos`; entra no PR `int-adr-aceite`, depois das migrações da instrumentação. Os ADR continuam como estão no `docs/03` até lá.
+5. **Não mexer no `csc-mock`.** O Cesar traz a versão de apresentação para a `main`; depois, a tela do Intelligence no mock é atualizada para as fórmulas novas, num PR separado.
+
+### Atenção v2: o que o PR faz e as escolhas que a pauta deixou abertas
+- **Garantia** entra no `AtivoAnalisado` (`garantiaAte`, de `app.ativo.garantia_ate`, I1). O componente vale 1 quando a garantia venceu, 0 dentro dela, e fica **sem dado** sem a data. A data de fim vale até o fim do dia (UTC) e vence no seguinte.
+- **Medições fora da faixa** ficam como componente **sem dado** até o checklist tipado (P1). A entrada é `{ foraDaFaixa, total }` e o valor é a fração fora da faixa (sem limite novo para configurar). **Escolha minha, a confirmar:** a pauta não define como a medição vira número; a fração é a que não inventa parâmetro. Se o Cesar preferir uma contagem com limite, é versão nova da fórmula.
+- **Preventiva atrasada** substitui "preventiva ou compliance": a chave do componente passa a `preventiva_atrasada` e a entrada a `preventivaAtrasada`. Continua sem dado até a etapa P.
+- **UH-dias** é componente com peso 0 e sem dado, sem limite configurado (decisão de 07/10): nada muda no score. Quando a origem existir e o peso passar de 0, é a versão seguinte, com o limite e os pesos definidos.
+- **O peso sem dado, "para o tenant inteiro":** entendi como regra única, a mesma em todo o tenant e sem chave por hotel: o peso do componente sem dado é dividido entre os que têm dado, na proporção dos pesos, ativo a ativo, como já era. **A confirmar com o Cesar:** se ele quis dizer outra coisa (por exemplo, o componente sem dado em todo o tenant ser tratado igual para todos os ativos), é outro desenho e muda este PR.
+- **O detalhamento** (`detalhamentoDoScore`) devolve uma linha por componente, com o "sem dado", o peso configurado, o peso usado e a chave do aviso de redistribuição. O texto sai do catálogo (`inteligencia.componente.atencao_ativo.*`, `inteligencia.detalhamento.sem_dado` e os três motivos novos), nos quatro idiomas.
+- **A política `inteligencia.atencao_ativo`** muda de formato (os nomes dos pesos), e não ganha chave nova: o formato é o de uma chave por score (ADR-035). Nada está gravado ainda (as tabelas e o registro no web entram na 1b), então não há valor antigo a migrar. O resultado gravado de cada dia continua com a versão da fórmula que o calculou.
