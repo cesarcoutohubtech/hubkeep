@@ -135,6 +135,7 @@ function statusBadge(s) {
 
 /* ---------- Ícones ---------- */
 const I = {
+  intel: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
   painel: '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
   chamados: '<path d="M4 4h16v12H7l-3 3z"/><path d="M8 9h8M8 12h5"/>',
   os: '<path d="M9 3h6v3H9z"/><path d="M6 5H5v16h14V5h-1"/><path d="M9 12l2 2 4-4"/>',
@@ -162,6 +163,8 @@ function navItems() {
     ["painel", "Painel", "painel"], ["chamados", "Chamados", "chamados"], ["os", "Ordens de serviço", "os"], ["preventiva", "Preventiva", "prev"],
     ["Cadastros", null],
     ["ativos", "Ativos", "ativos"], ["implantacao", "Implantação de ativos", "imp"], ["hoteis", "Hotéis e unidades", "hoteis"],
+    ["Intelligence", null],
+    ["intelligence", "Intelligence", "intel"],
     ["Configuração", null],
     ["politicas", "Políticas de SLA", "pol"], ["integracao", "Integração TOTVS CM", "integ"], ["usuarios", "Usuários e escopos", "users"], ["auditoria", "Auditoria", "audit"],
     ["Apresentação", null],
@@ -169,8 +172,8 @@ function navItems() {
   ];
   const allow = {
     csc: null,
-    band: ["painel", "chamados", "os", "preventiva", "ativos", "implantacao", "hoteis", "politicas", "auditoria", "tecnico"],
-    hotel: ["painel", "chamados", "os", "preventiva", "ativos", "implantacao", "hoteis", "auditoria", "tecnico"],
+    band: ["painel", "chamados", "os", "preventiva", "ativos", "implantacao", "hoteis", "intelligence", "politicas", "auditoria", "tecnico"],
+    hotel: ["painel", "chamados", "os", "preventiva", "ativos", "implantacao", "hoteis", "intelligence", "auditoria", "tecnico"],
     tec: ["tecnico"],
     prop: ["painel", "chamados"]
   }[r];
@@ -195,7 +198,7 @@ function route() {
 function go(page, params) { const qs = params ? "?" + new URLSearchParams(params).toString() : ""; location.hash = "#/" + page + qs; }
 
 /* ---------- Renderização principal ---------- */
-const TITLES = { painel: "Painel", chamados: "Chamados", os: "Ordens de serviço", preventiva: "Preventiva", ativos: "Ativos", implantacao: "Implantação de ativos", hoteis: "Hotéis e unidades", politicas: "Políticas de SLA", integracao: "Integração TOTVS CM", usuarios: "Usuários e escopos", auditoria: "Auditoria", tecnico: "App do técnico", roadmap: "Próximas fases" };
+const TITLES = { painel: "Painel", chamados: "Chamados", os: "Ordens de serviço", preventiva: "Preventiva", ativos: "Ativos", implantacao: "Implantação de ativos", hoteis: "Hotéis e unidades", politicas: "Políticas de SLA", integracao: "Integração TOTVS CM", usuarios: "Usuários e escopos", auditoria: "Auditoria", intelligence: "Intelligence (prévia)", tecnico: "App do técnico", roadmap: "Próximas fases" };
 function render() {
   document.querySelectorAll(".drawer, .drawer-bg").forEach(e => e.remove());
   const { page, params } = route();
@@ -1010,7 +1013,7 @@ function pageRoadmap() {
   </div>`;
 }
 
-const PAGES = { painel: pageDashboard, chamados: pageChamados, os: pageOS, preventiva: pagePreventiva, ativos: pageAtivos, implantacao: pageImplantacao, hoteis: pageHoteis, politicas: pagePoliticas, integracao: pageIntegracao, usuarios: pageUsuarios, auditoria: pageAuditoria, tecnico: pageTecnico, roadmap: pageRoadmap };
+const PAGES = { painel: pageDashboard, chamados: pageChamados, os: pageOS, preventiva: pagePreventiva, ativos: pageAtivos, implantacao: pageImplantacao, hoteis: pageHoteis, politicas: pagePoliticas, integracao: pageIntegracao, usuarios: pageUsuarios, auditoria: pageAuditoria, intelligence: pageIntelligence, tecnico: pageTecnico, roadmap: pageRoadmap };
 
 /* ---------- Gaveta ---------- */
 function openDrawer(id, page) {
