@@ -11,6 +11,8 @@
 // monta o registroDePoliticas com as chaves do núcleo e as do módulo, e os
 // casos de uso de configuração recebem o registro. O domínio não conhece
 // chave de módulo nenhuma (decisão do Cesar de 06/10/2026, adendo ao ADR-026).
+import { type Criticidade, NIVEIS_DE_CRITICIDADE } from './ativos';
+import { IDIOMAS_DE_ROTULO, LIMITES_DE_CAMPO, type Rotulos } from './campos-tipados';
 import { PermissaoNegada, RegraViolada } from './erros';
 import { type Resultado, ehAdminGrupo } from './permissoes';
 import type { Atribuicao } from './tipos';
@@ -29,9 +31,17 @@ export interface AceiteAutomatico {
 /** Categoria de ativo (id) → prioridade padrão do chamado (id). As duas entram em B2 e C1. */
 export type PrioridadePadraoPorCategoria = Record<string, string>;
 
+/**
+ * Nome de cada nível da criticidade do ativo (I1), por idioma, parcial. O que
+ * faltar cai para o catálogo (ativo.criticidade.nivel), como as situações do
+ * ADR-027. Padrão vazio: os nomes do catálogo.
+ */
+export type NomesDeCriticidade = Partial<Record<`${Criticidade}`, Rotulos>>;
+
 export interface ValoresDePolitica {
   'os.aceite_automatico': AceiteAutomatico;
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria;
+  'ativo.criticidade': NomesDeCriticidade;
 }
 export type ChaveDePolitica = keyof ValoresDePolitica;
 
@@ -58,6 +68,23 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
       Object.entries(v).every(
         ([categoria, prioridade]) =>
           UUID.test(categoria) && typeof prioridade === 'string' && UUID.test(prioridade),
+      ),
+  },
+  'ativo.criticidade': {
+    padrao: {},
+    valido: (v): v is NomesDeCriticidade =>
+      objeto(v) &&
+      Object.entries(v).every(
+        ([nivel, rotulos]) =>
+          NIVEIS_DE_CRITICIDADE.map(String).includes(nivel) &&
+          objeto(rotulos) &&
+          Object.entries(rotulos).every(
+            ([idioma, texto]) =>
+              (IDIOMAS_DE_ROTULO as readonly string[]).includes(idioma) &&
+              typeof texto === 'string' &&
+              texto.trim().length >= 1 &&
+              texto.trim().length <= LIMITES_DE_CAMPO.rotulo,
+          ),
       ),
   },
 };

@@ -103,6 +103,7 @@ Um grupo fictício, **Grupo Demonstração**, no dev. Tudo passa pelos casos de 
 - **Ativos**:
   - no Centro: Frigobar UH 101, Ar-condicionado UH 102, TV UH 103, Aquecedor da piscina e Forno combinado;
   - no Praia: Ar-condicionado UH 101 e Máquina de gelo.
+  - com criticidade (I1): Forno combinado 5, Ar-condicionado UH 102 4, Aquecedor da piscina e Máquina de gelo 3, Frigobar 2; o Forno, o Ar-condicionado UH 102 e o Aquecedor também têm data da compra e fim da garantia (a do Aquecedor já venceu). Num grupo criado antes da I1, os ativos ficam sem esses campos, que se preenchem pela tela.
 - **Equipe Centro**, com o Técnico do Centro.
 
 ### Contas (todas com a senha de `HK_DEMO_SENHA`)

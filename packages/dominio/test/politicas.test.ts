@@ -44,6 +44,11 @@ describe('políticas (ADR-026)', () => {
     ['os.aceite_automatico', [true, 7], 'politica_valor_invalido'],
     ['chamado.prioridade_padrao_por_categoria', { nao_uuid: U1 }, 'politica_valor_invalido'],
     ['chamado.nao_existe', {}, 'politica_desconhecida'],
+    ['ativo.criticidade', { 6: { 'pt-BR': 'Seis' } }, 'politica_valor_invalido'],
+    ['ativo.criticidade', { 1: { de: 'Niedrig' } }, 'politica_valor_invalido'],
+    ['ativo.criticidade', { 1: { 'pt-BR': '   ' } }, 'politica_valor_invalido'],
+    ['ativo.criticidade', { 1: 'Baixa' }, 'politica_valor_invalido'],
+    ['ativo.criticidade', { 1: { 'pt-BR': 'x'.repeat(121) } }, 'politica_valor_invalido'],
   ] as const)('%s %o: %s', (chave, valor, codigo) => {
     expect(() => validarPolitica(chave, valor)).toThrow(expect.objectContaining({ codigo }));
   });
@@ -56,6 +61,9 @@ describe('políticas (ADR-026)', () => {
     expect(validarPolitica('chamado.prioridade_padrao_por_categoria', { [U1]: U2 })).toEqual({
       [U1]: U2,
     });
+    const nomes = { 1: { 'pt-BR': 'Baixa', en: 'Low' }, 5: { fr: 'Critique' } };
+    expect(validarPolitica('ativo.criticidade', nomes)).toEqual(nomes);
+    expect(resolverPolitica('ativo.criticidade', {})).toEqual({});
   });
 
   it('só o Admin do grupo configura', () => {

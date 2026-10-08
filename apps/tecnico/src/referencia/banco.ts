@@ -49,7 +49,14 @@ export interface AtivoGuardado {
   codigoQr?: string;
   /** Início da parada aberta (C5). Opcional: a referência guardada antes da C5 não tem. */
   paradoDesde?: string | null;
+  /** Compra, garantia (aaaa-mm-dd) e criticidade (1 a 5), da I1. Opcionais: a referência guardada antes da I1 não tem. */
+  dataCompra?: string | null;
+  garantiaAte?: string | null;
+  criticidade?: number | null;
 }
+
+/** Nome de cada nível da criticidade por idioma (política ativo.criticidade do hotel, I1). */
+export type NomesDeCriticidadeGuardados = Partial<Record<string, Partial<Record<string, string>>>>;
 
 export interface Referencia {
   usuarioId: string;
@@ -59,6 +66,8 @@ export interface Referencia {
   locais: Record<string, LocalGuardado[]>;
   /** Por hotel. */
   ativos: Record<string, AtivoGuardado[]>;
+  /** Por hotel (I1). Opcional: a referência guardada antes da I1 não tem, e vale o catálogo. */
+  nomesDeCriticidade?: Record<string, NomesDeCriticidadeGuardados>;
   idiomaPadrao: string;
   categorias: CategoriaGuardada[];
   /** Milissegundos desde 1970. */

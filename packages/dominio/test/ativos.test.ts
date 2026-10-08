@@ -7,6 +7,8 @@ import {
   podeGerirAtivos,
   podeMoverAtivo,
   validarCamposDoAtivo,
+  validarCriticidade,
+  validarDatasDoAtivo,
   validarMovimentacao,
 } from '../src/ativos';
 import type { Atribuicao, DefinicaoDeCampo } from '../src/index';
@@ -154,5 +156,47 @@ describe('ativos (B3)', () => {
     recusa(ativo, { ...destino, id: 'l1' }, 'mover_ativo_mesmo_local');
     recusa(ativo, { ...destino, status: 'inativo' }, 'mover_ativo_local_inativo');
     recusa({ ...ativo, desativado: true }, destino, 'ativo_desativado');
+  });
+});
+
+describe('compra, garantia e criticidade (I1)', () => {
+  it('criticidade: nula ou de 1 a 5', () => {
+    expect(validarCriticidade(null)).toBeNull();
+    for (const n of [1, 2, 3, 4, 5]) expect(validarCriticidade(n)).toBe(n);
+    for (const n of [0, 6, 2.5, -1, Number.NaN])
+      expect(() => validarCriticidade(n)).toThrow(
+        expect.objectContaining({
+          codigo: 'ativo_criticidade_invalida',
+          parametros: { minimo: 1, maximo: 5 },
+        }),
+      );
+  });
+
+  it('datas: opcionais, aaaa-mm-dd de calendário', () => {
+    expect(validarDatasDoAtivo({ dataCompra: null, garantiaAte: null })).toEqual({
+      dataCompra: null,
+      garantiaAte: null,
+    });
+    expect(validarDatasDoAtivo({ dataCompra: '2024-02-29', garantiaAte: null }).dataCompra).toBe(
+      '2024-02-29',
+    );
+    for (const [dataCompra, garantiaAte, campo] of [
+      ['2026-02-30', null, 'data_compra'],
+      ['2026-1-05', null, 'data_compra'],
+      [null, '2026-13-01', 'garantia_ate'],
+      [null, '05/10/2026', 'garantia_ate'],
+    ] as const)
+      expect(() => validarDatasDoAtivo({ dataCompra, garantiaAte })).toThrow(
+        expect.objectContaining({ codigo: 'ativo_data_invalida', parametros: { campo } }),
+      );
+  });
+
+  it('a garantia não termina antes da compra; no mesmo dia, vale', () => {
+    expect(() =>
+      validarDatasDoAtivo({ dataCompra: '2026-10-07', garantiaAte: '2026-10-06' }),
+    ).toThrow(expect.objectContaining({ codigo: 'ativo_garantia_antes_da_compra' }));
+    expect(
+      validarDatasDoAtivo({ dataCompra: '2026-10-07', garantiaAte: '2026-10-07' }).garantiaAte,
+    ).toBe('2026-10-07');
   });
 });

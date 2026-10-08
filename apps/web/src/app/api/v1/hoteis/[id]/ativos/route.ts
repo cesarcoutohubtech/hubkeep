@@ -1,7 +1,7 @@
 // GET /api/v1/hoteis/{id}/ativos — ativos do hotel, no escopo de quem pede
 // (RLS; o proprietário vê só os dos locais dele), com os campos estendidos
 // lidos pela definição atual da categoria (B3). ?busca= filtra por trecho, sem
-// acento (B6).
+// acento (B6). Leva os nomes da criticidade do hotel (política, I1).
 import { RespostaDeAtivosDoHotel } from '@hubkeep/contratos';
 import { casosDeUsoDeAtivos } from '../../../../../../servidor/composicao';
 import { ErroHttp, rota } from '../../../../../../servidor/http';
@@ -17,8 +17,13 @@ export const GET = rota('ativos.listar', async (r) => {
   const hotelId = CAMINHO.exec(url.pathname)?.[1];
   if (!hotelId) throw new ErroHttp(404, 'hotel_nao_encontrado');
   const busca = url.searchParams.get('busca');
-  const ativos = await (await casosDeUsoDeAtivos()).listarAtivos(ctx, hotelId, busca);
+  const casos = await casosDeUsoDeAtivos();
+  const [ativos, nomesDeCriticidade] = await Promise.all([
+    casos.listarAtivos(ctx, hotelId, busca),
+    casos.nomesDeCriticidade(ctx, hotelId),
+  ]);
   return r.responder(200, RespostaDeAtivosDoHotel, {
+    nomesDeCriticidade,
     ativos: ativos.map((a) => ({
       id: a.id,
       localId: a.localId,
@@ -27,6 +32,9 @@ export const GET = rota('ativos.listar', async (r) => {
       fabricante: a.fabricante,
       modelo: a.modelo,
       numeroSerie: a.numeroSerie,
+      dataCompra: a.dataCompra,
+      garantiaAte: a.garantiaAte,
+      criticidade: a.criticidade,
       campos: a.campos,
       versao: a.versao,
       ativo: a.desativadoEm === null,

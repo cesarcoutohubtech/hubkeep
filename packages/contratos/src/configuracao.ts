@@ -15,9 +15,18 @@ import { IDIOMAS_API } from './preferencias';
 const AceiteAutomatico = z.strictObject({ ligado: z.boolean(), dias: z.int().min(1).max(60) });
 const PrioridadePadraoPorCategoria = z.record(z.guid(), z.guid());
 
+/** Nome de cada nível da criticidade (1 a 5) por idioma, parcial (I1). */
+export const NomesDeCriticidadeApi = z
+  .partialRecord(
+    z.enum(['1', '2', '3', '4', '5']),
+    z.partialRecord(z.enum(IDIOMAS_API), z.string().trim().min(1).max(120)),
+  )
+  .meta({ id: 'NomesDeCriticidadeApi' });
+
 export const FORMATOS_DE_POLITICA_API = {
   'os.aceite_automatico': AceiteAutomatico,
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria,
+  'ativo.criticidade': NomesDeCriticidadeApi,
 } as const;
 
 export const CHAVES_DE_POLITICA_API = Object.keys(
@@ -49,6 +58,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('chamado.prioridade_padrao_por_categoria'),
     escopo: EscopoDePolitica,
     valor: PrioridadePadraoPorCategoria.nullable(),
+  }),
+  z.object({
+    chave: z.literal('ativo.criticidade'),
+    escopo: EscopoDePolitica,
+    valor: NomesDeCriticidadeApi.nullable(),
   }),
 ]);
 
@@ -110,6 +124,7 @@ export const RespostaDeConfiguracao = z
       z.discriminatedUnion('chave', [
         resolvida('os.aceite_automatico', AceiteAutomatico),
         resolvida('chamado.prioridade_padrao_por_categoria', PrioridadePadraoPorCategoria),
+        resolvida('ativo.criticidade', NomesDeCriticidadeApi),
       ]),
     ),
   })

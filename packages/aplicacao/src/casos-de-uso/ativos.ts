@@ -8,12 +8,16 @@
 // hotel, dentro do mesmo hotel, e não vai pela fila offline (o técnico não
 // move). Abrir pelo código do QR (B5) passa pela mesma leitura: código de
 // outro tenant, fora do escopo ou mal formado dá 404, sem distinguir os casos.
+// Compra, garantia e criticidade (fase 1b, I1): opcionais; na alteração, o
+// campo ausente do pedido mantém o valor gravado (a operação guardada no
+// aparelho antes da I1 não os traz), e null apaga.
 // As regras são injetáveis para o teste provar que o banco ainda barra.
 import {
   type Atribuicao,
   type CategoriaParaAtivo,
   type Contexto,
   NaoEncontrado,
+  type NomesDeCriticidade,
   type Resultado,
   type ValorDeCampo,
   exigir,
@@ -25,7 +29,10 @@ import {
   normalizarTextoDoAtivo,
   podeGerirAtivos,
   podeMoverAtivo,
+  resolverPolitica,
   validarCamposDoAtivo,
+  validarCriticidade,
+  validarDatasDoAtivo,
   validarMovimentacao,
 } from '@hubkeep/dominio';
 import { termoDeBusca } from '../busca';
@@ -44,6 +51,11 @@ export interface PedidoDeGravacaoDeAtivo {
   modelo: string | null;
   numeroSerie: string | null;
   campos?: unknown;
+  /** aaaa-mm-dd; ausente mantém o gravado (alteração) ou fica nulo (cadastro). */
+  dataCompra?: string | null | undefined;
+  garantiaAte?: string | null | undefined;
+  /** De 1 a 5; ausente como nas datas. */
+  criticidade?: number | null | undefined;
 }
 
 export interface PedidoDeCadastroDeAtivo extends PedidoDeGravacaoDeAtivo {
@@ -81,6 +93,8 @@ export interface AlteracaoPreparada {
 export interface CasosDeUsoDeAtivos {
   /** Com `busca`, só os ativos que têm o termo no nome, fabricante, modelo ou série (B6). */
   listarAtivos(ctx: Contexto, hotelId: string, busca?: string | null): Promise<AtivoListado[]>;
+  /** A política ativo.criticidade resolvida para o hotel (I1): hotel → grupo → padrão. */
+  nomesDeCriticidade(ctx: Contexto, hotelId: string): Promise<NomesDeCriticidade>;
   /** O ativo do QR (B5), aceitando o código como uma pessoa digitaria. */
   abrirPorCodigoQr(ctx: Contexto, codigo: string): Promise<AtivoListado>;
   prepararCadastro(ctx: Contexto, p: PedidoDeCadastroDeAtivo): Promise<CadastroPreparado>;
@@ -154,9 +168,17 @@ export function criarCasosDeUsoDeAtivos(deps: {
   const dadosDe = async (
     ctx: Contexto,
     p: PedidoDeGravacaoDeAtivo,
-    categoriaAnterior: string | null,
+    anterior: AtivoGravado | null,
   ): Promise<DadosDeAtivo> => {
+    const categoriaAnterior = anterior?.categoriaId ?? null;
     const nome = normalizarNomeDeAtivo(p.nome);
+    const datas = validarDatasDoAtivo({
+      dataCompra: p.dataCompra === undefined ? (anterior?.dataCompra ?? null) : p.dataCompra,
+      garantiaAte: p.garantiaAte === undefined ? (anterior?.garantiaAte ?? null) : p.garantiaAte,
+    });
+    const criticidade = validarCriticidade(
+      p.criticidade === undefined ? (anterior?.criticidade ?? null) : p.criticidade,
+    );
     const fabricante = normalizarTextoDoAtivo('fabricante', p.fabricante);
     const modelo = normalizarTextoDoAtivo('modelo', p.modelo);
     const numeroSerie = normalizarTextoDoAtivo('numero_serie', p.numeroSerie);
@@ -167,7 +189,16 @@ export function criarCasosDeUsoDeAtivos(deps: {
         throw new NaoEncontrado('categoria_nao_encontrada', 'Categoria não encontrada.');
     }
     const campos = validarCamposDoAtivo(categoria, categoriaAnterior, p.campos);
-    return { categoriaId: p.categoriaId, nome, fabricante, modelo, numeroSerie, campos };
+    return {
+      categoriaId: p.categoriaId,
+      nome,
+      fabricante,
+      modelo,
+      numeroSerie,
+      ...datas,
+      criticidade,
+      campos,
+    };
   };
 
   const casos: CasosDeUsoDeAtivos = {
@@ -179,6 +210,11 @@ export function criarCasosDeUsoDeAtivos(deps: {
         ? deps.ativos.ativos(ctx, hotelId)
         : deps.ativos.ativos(ctx, hotelId, termo));
       return ativos.map((a) => comCampos(a, categorias));
+    },
+    async nomesDeCriticidade(ctx, hotelId) {
+      await hotelVisivel(ctx, hotelId);
+      const chave = 'ativo.criticidade';
+      return resolverPolitica(chave, await deps.ativos.politica(ctx, hotelId, chave));
     },
     async abrirPorCodigoQr(ctx, codigo) {
       const lido = lerCodigoQr(codigo);
@@ -200,7 +236,7 @@ export function criarCasosDeUsoDeAtivos(deps: {
     async prepararAlteracao(ctx, ativoId, p) {
       const a = await ativoVisivel(ctx, ativoId);
       await exigirNoHotel(ctx, a.hotelId);
-      return { ativoId, versaoEsperada: p.versao, dados: await dadosDe(ctx, p, a.categoriaId) };
+      return { ativoId, versaoEsperada: p.versao, dados: await dadosDe(ctx, p, a) };
     },
     async alterar(ctx, ativoId, p) {
       const c = await casos.prepararAlteracao(ctx, ativoId, p);

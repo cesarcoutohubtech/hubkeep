@@ -62,7 +62,8 @@ describe('contratos × domínio', () => {
     // Chave do núcleo com valor fora do formato não escapa pelo ramo da extensão.
     expect(pedido('os.aceite_automatico', { ligado: true, dias: 0 })).toBe(false);
     expect(pedido('os.nao_existe', {})).toBe(false);
-    expect(pedido('ativo.criticidade', {})).toBe(false);
+    expect(pedido('ativo.criticidade', {})).toBe(true);
+    expect(pedido('ativo.nao_existe', {})).toBe(false);
     expect(pedido('sem_ponto', {})).toBe(false);
     expect(pedido('inteligencia.atencao_ativo', undefined)).toBe(false);
     expect(pedido('Maiuscula.x', {})).toBe(false);
@@ -90,6 +91,21 @@ describe('contratos × domínio', () => {
         { x: U },
         { [U]: 'x' },
         { [U]: 1 },
+        [],
+        null,
+      ],
+      'ativo.criticidade': [
+        {},
+        { 1: { 'pt-BR': 'Baixa', en: 'Low' }, 5: { fr: 'Critique' } },
+        { 3: {} },
+        { 6: { 'pt-BR': 'Seis' } },
+        { 0: { 'pt-BR': 'Zero' } },
+        { 1: { de: 'Niedrig' } },
+        { 1: { 'pt-BR': '   ' } },
+        { 1: { 'pt-BR': ' Baixa ' } },
+        { 1: { 'pt-BR': 'x'.repeat(121) } },
+        { 1: 'Baixa' },
+        { 1: { 'pt-BR': 1 } },
         [],
         null,
       ],

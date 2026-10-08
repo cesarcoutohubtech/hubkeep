@@ -14,6 +14,9 @@ import { colunasPesquisaveisDoAtivo } from './busca';
 const colunasDeDados = (d: DadosDeAtivo) => ({
   categoria_id: d.categoriaId,
   ...colunasPesquisaveisDoAtivo(d),
+  data_compra: d.dataCompra,
+  garantia_ate: d.garantiaAte,
+  criticidade: d.criticidade,
   campos: JSON.stringify(d.campos),
 });
 
@@ -67,6 +70,9 @@ export async function alterarAtivo(
       'fabricante',
       'modelo',
       'numero_serie',
+      sql<string | null>`data_compra::text`.as('data_compra'),
+      sql<string | null>`garantia_ate::text`.as('garantia_ate'),
+      'criticidade',
       'campos',
       'versao',
       'desativado_em',

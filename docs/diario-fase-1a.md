@@ -1312,3 +1312,34 @@ O Cesar deu a parte dele nas aprovações do Intelligence. Os status estão no `
 - **Itens novos:** I2 (hotel e local), I3 (fornecedor mínimo) e I8 (fotos e assinatura).
 - **O que muda para o Intelligence:** o "executado por" da OS passa a apontar para o fornecedor da I3, e não para um nome em texto livre.
 - **A fila de zona protegida** abre para as tabelas do Intelligence depois da I7.
+
+### I1, ativo: compra, garantia e criticidade (08/10/2026)
+
+Primeira migração da instrumentação (etapa I do `docs/12`). PR de zona protegida.
+- **Banco (migração 0030):** três colunas anuláveis em `app.ativo`:
+  - `data_compra` e `garantia_ate` (`date`);
+  - `criticidade` (`smallint`, `check` de 1 a 5).
+  - O UPDATE vai para o `hk_app`, sob a policy de escrita no hotel que já existe.
+  - O pgTAP 024 testa a escala, os privilégios e a escrita por papel.
+- **Domínio:**
+  - `validarCriticidade` (`ativo_criticidade_invalida`);
+  - `validarDatasDoAtivo` (`ativo_data_invalida`, `ativo_garantia_antes_da_compra`, garantia no mesmo dia vale);
+  - `ehDataDeCalendario`;
+  - a política `ativo.criticidade`, com os nomes de cada nível por idioma. O padrão é vazio, e então valem os nomes do catálogo.
+- **Compatibilidade com o aparelho:** na gravação, os três campos são opcionais.
+  - Na alteração, o campo ausente mantém o valor gravado, e `null` apaga. A operação offline guardada antes da I1 continua valendo.
+  - No PWA com a referência guardada antes da I1, o campo deixado vazio não vai na operação.
+- **API:**
+  - a lista de ativos do hotel devolve os nomes da criticidade resolvidos para o hotel (`nomesDeCriticidade`: hotel → grupo → padrão);
+  - as datas saem como `aaaa-mm-dd` (`::text`), sem passar por `Date` e fuso.
+- **Telas:**
+  - no web, os campos na tela de ativos e um selo para a criticidade 4 e 5;
+  - na configuração, a edição dos nomes dos níveis por idioma, no grupo ou no hotel;
+  - no PWA, a parte recolhida "Compra, garantia e criticidade".
+- **Kit:** cinco ativos com criticidade, e três com compra e garantia (a do aquecedor já venceu). Num grupo criado antes da I1, os ativos ficam sem esses campos.
+- **Auditoria:** os campos novos aparecem traduzidos no histórico.
+- **Verificação:**
+  - no local: lint, typecheck e testes verdes;
+  - na CI: os testes de integração do `packages/db` e o pgTAP rodam no banco da CI;
+  - as telas não foram vistas no navegador.
+- **Aviso ao agente do Intelligence:** o `@hubkeep/dominio` exporta `Criticidade`, `CRITICIDADE_MAXIMA` e `ehCriticidade`, com os mesmos nomes dos que o `packages/inteligencia` tem hoje. O módulo pode passar a importar do domínio.

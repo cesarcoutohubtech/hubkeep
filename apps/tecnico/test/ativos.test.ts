@@ -109,6 +109,9 @@ describe('referência no aparelho', () => {
             fabricante: null,
             modelo: null,
             numeroSerie: null,
+            dataCompra: '2024-02-29',
+            garantiaAte: null,
+            criticidade: 4,
             campos: {},
             versao: 3,
             ativo: true,
@@ -116,6 +119,7 @@ describe('referência no aparelho', () => {
             paradoDesde: null,
           },
         ],
+        nomesDeCriticidade: { 5: { es: 'Vital' } },
       },
     };
     const fetchFalso: typeof fetch = async (url) => {
@@ -128,7 +132,8 @@ describe('referência no aparelho', () => {
       tenantId: TENANT,
       idiomaPadrao: 'es',
       locais: { [H1]: [{ id: L1, nome: 'UH 101', status: 'ativo' }] },
-      ativos: { [H1]: [{ id: ATIVO, versao: 3, codigoQr: '7K3M9QX2AB' }] },
+      ativos: { [H1]: [{ id: ATIVO, versao: 3, codigoQr: '7K3M9QX2AB', criticidade: 4 }] },
+      nomesDeCriticidade: { [H1]: { 5: { es: 'Vital' } } },
     });
     const semAtivos: typeof fetch = async (url, init) =>
       String(url).endsWith('/ativos') ? json({}, 500) : fetchFalso(url, init);

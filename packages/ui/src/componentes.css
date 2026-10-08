@@ -806,6 +806,22 @@ textarea.hk-controle {
   margin: 0 0 8px;
 }
 
+/* Grupo de campos com título (fieldset), sem a moldura do navegador: ex.: um
+   nível da criticidade com o nome em cada idioma. */
+fieldset.hk-em-linha {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+fieldset.hk-em-linha > legend {
+  flex-basis: 100%;
+  padding: 0;
+  font-weight: 600;
+  color: var(--hk-titulo);
+}
+
 /* Item de cadastro: cabeçalho com o nome, a situação e as ações, e o resto
    empilhado embaixo. */
 .hk-lista.hk-itens > li {

@@ -1,7 +1,8 @@
 'use client';
 // Configuração do grupo e do hotel e políticas (fase 1a, A7; ADR-026). Todos
 // leem; a API recusa a gravação de quem não é Admin do grupo. Visual do pacote
-// de interface (ADR-038, U4b).
+// de interface (ADR-038, U4b). Os nomes dos níveis de criticidade do ativo
+// (I1) são editados por idioma; o campo vazio usa o nome do catálogo.
 import { IDIOMAS } from '@hubkeep/i18n';
 import {
   Botao,
@@ -30,7 +31,7 @@ interface Aceite {
   ligado: boolean;
   dias: number;
 }
-type Politica =
+type PoliticaSemCriticidade =
   | {
       chave: 'os.aceite_automatico';
       padrao: Aceite;
@@ -47,7 +48,19 @@ type Politica =
       efetiva: Record<string, string>;
       origem: Origem;
     };
+type NomesDeCriticidade = Partial<Record<string, Partial<Record<string, string>>>>;
+type Politica =
+  | PoliticaSemCriticidade
+  | {
+      chave: 'ativo.criticidade';
+      padrao: NomesDeCriticidade;
+      grupo: NomesDeCriticidade | null;
+      hotel: NomesDeCriticidade | null;
+      efetiva: NomesDeCriticidade;
+      origem: Origem;
+    };
 type Origem = 'hotel' | 'grupo' | 'padrao';
+const NIVEIS = [1, 2, 3, 4, 5] as const;
 interface Configuracao {
   tenant: Regiao & { nome: string };
   hotel: (Regiao & { id: string; nome: string; fuso: string }) | null;
@@ -157,6 +170,7 @@ export default function ConfiguracaoDoGrupo() {
   const prioridade = dados.politicas.find(
     (p) => p.chave === 'chamado.prioridade_padrao_por_categoria',
   );
+  const criticidade = dados.politicas.find((p) => p.chave === 'ativo.criticidade');
   const origem = (o: Origem) => (
     <Selo tom={TOM_DA_ORIGEM[o]}>{t('admin.configuracao.origem', { origem: o })}</Selo>
   );
@@ -297,6 +311,83 @@ export default function ConfiguracaoDoGrupo() {
                 </span>
                 {origem(prioridade.origem)}
               </div>
+            </section>
+          )}
+          {criticidade?.chave === 'ativo.criticidade' && (
+            <section key={JSON.stringify(criticidade)} className="hk-bloco">
+              <h3 className="hk-bloco-titulo">{t('admin.configuracao.criticidade.titulo')}</h3>
+              <div className="hk-linha-de-botoes">
+                <span className="hk-suave">{t('admin.configuracao.criticidade.dica')}</span>
+                {origem(criticidade.origem)}
+              </div>
+              <form
+                className="hk-pilha"
+                onSubmit={(ev) => {
+                  ev.preventDefault();
+                  const f = new FormData(ev.currentTarget);
+                  const escopo =
+                    (ev.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'hotel'
+                      ? 'hotel'
+                      : 'grupo';
+                  const valor: NomesDeCriticidade = {};
+                  for (const n of NIVEIS) {
+                    const nomes: Partial<Record<string, string>> = {};
+                    for (const i of IDIOMAS) {
+                      const v = texto(f, `${n}.${i}`);
+                      if (v) nomes[i] = v;
+                    }
+                    if (Object.keys(nomes).length > 0) valor[String(n)] = nomes;
+                  }
+                  void gravarPolitica('ativo.criticidade', escopo, valor);
+                }}
+              >
+                {NIVEIS.map((n) => (
+                  <fieldset key={n} className="hk-em-linha">
+                    <legend>{t('admin.configuracao.criticidade.nivel', { nivel: n })}</legend>
+                    {IDIOMAS.map((i) => (
+                      <Campo
+                        key={i}
+                        rotulo={t('admin.categorias.nome_em', { idioma: nomeDoIdioma(i) })}
+                      >
+                        {(p) => (
+                          <Entrada
+                            {...p}
+                            name={`${n}.${i}`}
+                            placeholder={t('ativo.criticidade.nivel', { nivel: n })}
+                            defaultValue={criticidade.efetiva[String(n)]?.[i] ?? ''}
+                          />
+                        )}
+                      </Campo>
+                    ))}
+                  </fieldset>
+                ))}
+                <div className="hk-linha-de-botoes">
+                  <Botao type="submit" value="grupo">
+                    {t('admin.configuracao.acao.gravar_grupo')}
+                  </Botao>
+                  {dados.hotel && (
+                    <Botao type="submit" value="hotel">
+                      {t('admin.configuracao.acao.gravar_hotel')}
+                    </Botao>
+                  )}
+                  {criticidade.grupo && (
+                    <Botao
+                      tamanho="pequeno"
+                      onClick={() => void gravarPolitica('ativo.criticidade', 'grupo', null)}
+                    >
+                      {t('admin.configuracao.acao.herdar_grupo')}
+                    </Botao>
+                  )}
+                  {criticidade.hotel && (
+                    <Botao
+                      tamanho="pequeno"
+                      onClick={() => void gravarPolitica('ativo.criticidade', 'hotel', null)}
+                    >
+                      {t('admin.configuracao.acao.herdar_hotel')}
+                    </Botao>
+                  )}
+                </div>
+              </form>
             </section>
           )}
         </div>

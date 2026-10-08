@@ -8,6 +8,8 @@
 // ativo parado (C5) aparece na lista, com as paradas e o tempo parado
 // (calculado no domínio) e o encerramento da parada aberta, que a API só
 // aceita da gestão do hotel. Visual do pacote de interface (ADR-038, U4b).
+// Compra, garantia e criticidade (fase 1b, I1): o nome de cada nível vem da
+// política do hotel (na resposta da lista) ou do catálogo.
 import { type Idioma, resolverNome } from '@hubkeep/i18n';
 import {
   Botao,
@@ -18,6 +20,7 @@ import {
   Painel,
   Selecao,
   Selo,
+  type TomDeSelo,
 } from '@hubkeep/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -43,6 +46,9 @@ const PADRAO = [
   'seguranca',
 ] as const;
 type Rotulos = Partial<Record<Idioma, string>>;
+const NIVEIS = [1, 2, 3, 4, 5] as const;
+type NomesDeCriticidade = Partial<Record<string, Rotulos>>;
+const TOM_DA_CRITICIDADE: Record<number, TomDeSelo> = { 4: 'ambar', 5: 'vermelho' };
 interface Campo {
   chave: string;
   tipo: 'texto' | 'numero' | 'data' | 'lista' | 'sim_nao';
@@ -72,6 +78,9 @@ interface Ativo {
   fabricante: string | null;
   modelo: string | null;
   numeroSerie: string | null;
+  dataCompra: string | null;
+  garantiaAte: string | null;
+  criticidade: number | null;
   campos: Record<string, Valor>;
   versao: number;
   ativo: boolean;
@@ -124,6 +133,7 @@ function FormularioDeAtivo({
   locais,
   categorias,
   nomeDaCategoria,
+  nomeDaCriticidade,
   rotulo,
   executar,
 }: {
@@ -131,6 +141,7 @@ function FormularioDeAtivo({
   locais: readonly Local[];
   categorias: readonly Categoria[];
   nomeDaCategoria: (c: Categoria) => string;
+  nomeDaCriticidade: (nivel: number) => string;
   rotulo: (r: Rotulos, reserva: string) => string;
   executar: (caminho: string, init: RequestInit) => Promise<void>;
 }) {
@@ -150,6 +161,9 @@ function FormularioDeAtivo({
       fabricante: texto(f, 'fabricante'),
       modelo: texto(f, 'modelo'),
       numeroSerie: texto(f, 'numeroSerie'),
+      dataCompra: texto(f, 'dataCompra'),
+      garantiaAte: texto(f, 'garantiaAte'),
+      criticidade: texto(f, 'criticidade') === null ? null : Number(texto(f, 'criticidade')),
       campos: camposDoFormulario(f, definicoes),
     };
     void (ativo
@@ -206,6 +220,23 @@ function FormularioDeAtivo({
           {(p) => <Entrada {...p} name={campo} defaultValue={ativo?.[campo] ?? ''} />}
         </CampoDoFormulario>
       ))}
+      {(['dataCompra', 'garantiaAte'] as const).map((campo) => (
+        <CampoDoFormulario key={campo} rotulo={t(`admin.ativos.campo.${campo}`)}>
+          {(p) => <Entrada {...p} type="date" name={campo} defaultValue={ativo?.[campo] ?? ''} />}
+        </CampoDoFormulario>
+      ))}
+      <CampoDoFormulario rotulo={t('admin.ativos.campo.criticidade')}>
+        {(p) => (
+          <Selecao {...p} name="criticidade" defaultValue={String(ativo?.criticidade ?? '')}>
+            <option value="">{t('admin.ativos.sem_criticidade')}</option>
+            {NIVEIS.map((n) => (
+              <option key={n} value={n}>
+                {t('ativo.criticidade.opcao', { nivel: n, nome: nomeDaCriticidade(n) })}
+              </option>
+            ))}
+          </Selecao>
+        )}
+      </CampoDoFormulario>
       {definicoes.map((d) => {
         const nome = `campo.${d.chave}`;
         const etiqueta = rotulo(d.rotulos, d.chave) + (d.unidade ? ` (${d.unidade})` : '');
@@ -441,6 +472,7 @@ export default function AtivosDoHotel() {
     categorias: Categoria[];
   } | null>(null);
   const [ativos, setAtivos] = useState<Ativo[] | null>(null);
+  const [nomesDeCriticidade, setNomesDeCriticidade] = useState<NomesDeCriticidade>({});
   const [busca, setBusca] = useState('');
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
@@ -454,10 +486,15 @@ export default function AtivosDoHotel() {
     if (!hotelId) return;
     const [l, a] = await Promise.all([
       chamarApi<{ locais: Local[] }>(`/api/v1/hoteis/${hotelId}/locais`),
-      chamarApi<{ ativos: Ativo[] }>(comBusca(`/api/v1/hoteis/${hotelId}/ativos`, busca)),
+      chamarApi<{ ativos: Ativo[]; nomesDeCriticidade: NomesDeCriticidade }>(
+        comBusca(`/api/v1/hoteis/${hotelId}/ativos`, busca),
+      ),
     ]);
     if (l.ok) setLocais(l.dados.locais);
-    if (a.ok) setAtivos(a.dados.ativos);
+    if (a.ok) {
+      setAtivos(a.dados.ativos);
+      setNomesDeCriticidade(a.dados.nomesDeCriticidade);
+    }
     if (!l.ok) setAviso({ tipo: 'erro', erro: l.erro });
     else if (!a.ok) setAviso({ tipo: 'erro', erro: a.erro });
   }, [hotelId, busca]);
@@ -481,6 +518,11 @@ export default function AtivosDoHotel() {
     resolverNome(c.nomes, idioma, { doCatalogo: doCatalogo(c.chavePadrao), idiomaPadrao }) ?? c.id;
   const rotulo = (r: Rotulos, reserva: string) =>
     resolverNome(r, idioma, { idiomaPadrao }) ?? reserva;
+  const nomeDaCriticidade = (nivel: number) =>
+    resolverNome(nomesDeCriticidade[String(nivel)] ?? {}, idioma, {
+      doCatalogo: t('ativo.criticidade.nivel', { nivel }),
+      idiomaPadrao,
+    }) ?? String(nivel);
   const nomeDoLocal = (id: string) => locais.find((l) => l.id === id)?.nome ?? id;
 
   return (
@@ -505,6 +547,7 @@ export default function AtivosDoHotel() {
               locais={locais}
               categorias={categorias.categorias}
               nomeDaCategoria={nomeDaCategoria}
+              nomeDaCriticidade={nomeDaCriticidade}
               rotulo={rotulo}
               executar={executar}
             />
@@ -543,6 +586,14 @@ export default function AtivosDoHotel() {
                           </Selo>
                         </span>
                       )}
+                      {a.criticidade !== null && (
+                        <Selo tom={TOM_DA_CRITICIDADE[a.criticidade] ?? 'cinza'}>
+                          {t('ativo.criticidade.opcao', {
+                            nivel: a.criticidade,
+                            nome: nomeDaCriticidade(a.criticidade),
+                          })}
+                        </Selo>
+                      )}
                       {!a.ativo && <Selo tom="cinza">{t('admin.ativos.desativado')}</Selo>}
                     </div>
                     <FormularioDeAtivo
@@ -550,6 +601,7 @@ export default function AtivosDoHotel() {
                       locais={locais}
                       categorias={categorias.categorias}
                       nomeDaCategoria={nomeDaCategoria}
+                      nomeDaCriticidade={nomeDaCriticidade}
                       rotulo={rotulo}
                       executar={executar}
                     />

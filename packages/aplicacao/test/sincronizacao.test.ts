@@ -64,6 +64,9 @@ function montar() {
     fabricante: null,
     modelo: null,
     numeroSerie: null,
+    dataCompra: null,
+    garantiaAte: null,
+    criticidade: null,
     campos: {},
   });
   const casos = criarCasosDeUsoDeSincronizacao({

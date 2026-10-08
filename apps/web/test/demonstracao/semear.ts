@@ -118,6 +118,21 @@ const ATIVOS = {
 type Ativo = keyof typeof ATIVOS;
 
 /**
+ * Compra, garantia e criticidade (I1) de alguns ativos. Só no cadastro: num
+ * grupo criado antes da I1, os ativos ficam como estavam (a operação de chave
+ * fixa não grava de novo), e os campos se preenchem pela tela.
+ */
+const DADOS_DA_I1: Partial<
+  Record<Ativo, { dataCompra: string | null; garantiaAte: string | null; criticidade: number }>
+> = {
+  frigobar: { dataCompra: null, garantiaAte: null, criticidade: 2 },
+  arCentro: { dataCompra: '2024-03-15', garantiaAte: '2027-03-15', criticidade: 4 },
+  aquecedor: { dataCompra: '2022-11-01', garantiaAte: '2024-11-01', criticidade: 3 },
+  forno: { dataCompra: '2025-06-10', garantiaAte: '2028-06-10', criticidade: 5 },
+  gelo: { dataCompra: null, garantiaAte: null, criticidade: 3 },
+};
+
+/**
  * Prioridade padrão por categoria, gravada como política do grupo (ADR-026),
  * no que se espera de um hotel: parar um elevador ou a segurança é urgente;
  * frio, energia, água e cozinha param a operação ou o quarto; o resto espera.
@@ -434,6 +449,7 @@ export async function semearDemonstracao(
         fabricante,
         modelo,
         numeroSerie: null,
+        ...DADOS_DA_I1[a],
       },
     });
     ativos[a] = String(r['id']);

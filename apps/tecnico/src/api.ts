@@ -147,6 +147,7 @@ export async function lerReferencia(
     ]);
     const locais: Referencia['locais'] = {};
     const ativos: Referencia['ativos'] = {};
+    const nomesDeCriticidade: NonNullable<Referencia['nomesDeCriticidade']> = {};
     for (const hotel of hoteis) {
       const [l, a] = await Promise.all([
         ler(`/api/v1/hoteis/${hotel.id}/locais`).then((d) => RespostaDeLocaisDoHotel.parse(d)),
@@ -154,6 +155,7 @@ export async function lerReferencia(
       ]);
       locais[hotel.id] = l.locais.map(({ id, nome, status }) => ({ id, nome, status }));
       ativos[hotel.id] = a.ativos;
+      nomesDeCriticidade[hotel.id] = a.nomesDeCriticidade;
     }
     return {
       usuarioId,
@@ -161,6 +163,7 @@ export async function lerReferencia(
       hoteis: hoteis.map(({ id, nome }) => ({ id, nome })),
       locais,
       ativos,
+      nomesDeCriticidade,
       idiomaPadrao: categorias.idiomaPadrao,
       categorias: categorias.categorias,
       lidaEm: Date.now(),

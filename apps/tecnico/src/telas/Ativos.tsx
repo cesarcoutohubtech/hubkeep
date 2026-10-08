@@ -5,7 +5,10 @@
 // usa; o servidor confere de novo. A alteração leva a versão guardada: se
 // outra pessoa gravou antes, a operação volta como recusada, com
 // conflito_de_versao, na fila do dia (ADR-029). Aberta pelo QR (B5), a tela
-// já vem no hotel do ativo, com o ativo aberto.
+// já vem no hotel do ativo, com o ativo aberto. Compra, garantia e
+// criticidade (fase 1b, I1) ficam na parte recolhida do formulário; com a
+// referência guardada antes da I1, o campo deixado vazio não vai na operação,
+// para não apagar o que o servidor tem.
 import {
   ErroDeDominio,
   NaoEncontrado,
@@ -14,6 +17,8 @@ import {
   normalizarNomeDeAtivo,
   normalizarTextoDoAtivo,
   validarCamposDoAtivo,
+  validarCriticidade,
+  validarDatasDoAtivo,
 } from '@hubkeep/dominio';
 import { type IdiomaDeExibicao, ehIdioma, resolverNome } from '@hubkeep/i18n';
 import { type FormEvent, useState } from 'react';
@@ -40,6 +45,30 @@ export interface GravacaoDeAtivo {
   modelo: string | null;
   numeroSerie: string | null;
   campos: Record<string, Valor>;
+  /** Ausente: não muda o que o servidor tem (referência anterior à I1). */
+  dataCompra?: string | null;
+  garantiaAte?: string | null;
+  criticidade?: number | null;
+}
+
+const NIVEIS = [1, 2, 3, 4, 5] as const;
+
+/**
+ * Compra, garantia e criticidade que vão na operação (I1). Na alteração de um
+ * ativo da referência guardada antes da I1 (sem o campo), o campo deixado
+ * vazio não vai, para não apagar o que o servidor tem.
+ */
+export function camposDaI1(
+  ativo: AtivoGuardado | null,
+  novos: { dataCompra: string | null; garantiaAte: string | null; criticidade: number | null },
+): Pick<GravacaoDeAtivo, 'dataCompra' | 'garantiaAte' | 'criticidade'> {
+  const saida: Pick<GravacaoDeAtivo, 'dataCompra' | 'garantiaAte' | 'criticidade'> = {};
+  for (const campo of ['dataCompra', 'garantiaAte', 'criticidade'] as const) {
+    if (!ativo || ativo[campo] !== undefined || novos[campo] !== null) {
+      Object.assign(saida, { [campo]: novos[campo] });
+    }
+  }
+  return saida;
 }
 
 /** O ativo aberto pelo QR (B5): pode vir da referência ou da API. */
@@ -93,6 +122,7 @@ interface PropsDoFormulario {
   locais: readonly LocalGuardado[];
   nomeDoLocal: (id: string) => string;
   nomeDaCategoria: (c: CategoriaGuardada) => string;
+  nomeDaCriticidade: (nivel: number) => string;
   rotulo: (r: Partial<Record<string, string>>, reserva: string) => string;
   gravar: (acao: () => Promise<void>) => Promise<void>;
   aoCadastrar: (localId: string, g: GravacaoDeAtivo) => Promise<void>;
@@ -102,7 +132,8 @@ interface PropsDoFormulario {
 
 /** Formulário de um ativo, novo ou guardado: a categoria escolhida decide os campos. */
 function Formulario(p: PropsDoFormulario) {
-  const { ativo, referencia, locais, nomeDoLocal, nomeDaCategoria, rotulo, gravar } = p;
+  const { ativo, referencia, locais, nomeDoLocal, nomeDaCategoria, nomeDaCriticidade, rotulo } = p;
+  const { gravar } = p;
   const t = useT();
   const [categoriaId, setCategoriaId] = useState<string | null>(ativo?.categoriaId ?? null);
   const categoria = referencia.categorias.find((c) => c.id === categoriaId) ?? null;
@@ -128,6 +159,18 @@ function Formulario(p: PropsDoFormulario) {
           camposDoFormulario(f, definicoes),
         ),
       };
+      const criticidade = texto(f, 'criticidade');
+      const datas = validarDatasDoAtivo({
+        dataCompra: texto(f, 'dataCompra'),
+        garantiaAte: texto(f, 'garantiaAte'),
+      });
+      Object.assign(
+        g,
+        camposDaI1(ativo, {
+          ...datas,
+          criticidade: validarCriticidade(criticidade === null ? null : Number(criticidade)),
+        }),
+      );
       if (ativo) return p.aoAlterar(ativo, g);
       const local = locais.find((l) => l.id === texto(f, 'localId'));
       if (!local) throw new NaoEncontrado('local_nao_encontrado', 'Local não encontrado.');
@@ -181,6 +224,28 @@ function Formulario(p: PropsDoFormulario) {
           aria-label={t(`admin.ativos.campo.${campo}`)}
         />
       ))}
+      <details>
+        <summary>{t('tecnico.ativos.mais_dados')}</summary>
+        <div className="coluna">
+          {(['dataCompra', 'garantiaAte'] as const).map((campo) => (
+            <label key={campo} className="coluna">
+              {t(`admin.ativos.campo.${campo}`)}
+              <input type="date" name={campo} defaultValue={ativo?.[campo] ?? ''} />
+            </label>
+          ))}
+          <label className="coluna">
+            {t('admin.ativos.campo.criticidade')}
+            <select name="criticidade" defaultValue={String(ativo?.criticidade ?? '')}>
+              <option value="">{t('admin.ativos.sem_criticidade')}</option>
+              {NIVEIS.map((n) => (
+                <option key={n} value={n}>
+                  {t('ativo.criticidade.opcao', { nivel: n, nome: nomeDaCriticidade(n) })}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </details>
       {definicoes.map((d) => {
         const nome = `campo.${d.chave}`;
         const etiqueta = rotulo(d.rotulos, d.chave) + (d.unidade ? ` (${d.unidade})` : '');
@@ -276,6 +341,11 @@ export function Ativos(props: {
     }) ?? c.id;
   const rotulo = (r: Partial<Record<string, string>>, reserva: string) =>
     resolverNome(r, props.idioma, { idiomaPadrao }) ?? reserva;
+  const nomeDaCriticidade = (nivel: number) =>
+    resolverNome(referencia.nomesDeCriticidade?.[hotelId]?.[String(nivel)] ?? {}, props.idioma, {
+      doCatalogo: t('ativo.criticidade.nivel', { nivel }),
+      idiomaPadrao,
+    }) ?? String(nivel);
   const locais = referencia.locais[hotelId] ?? [];
   const doHotel = referencia.ativos[hotelId] ?? [];
   const ativos = filtrarPorBusca(doHotel, busca);
@@ -335,6 +405,7 @@ export function Ativos(props: {
           locais={locais}
           nomeDoLocal={nomeDoLocal}
           nomeDaCategoria={nomeDaCategoria}
+          nomeDaCriticidade={nomeDaCriticidade}
           rotulo={rotulo}
           gravar={gravar}
           aoCadastrar={props.aoCadastrar}
@@ -352,6 +423,7 @@ export function Ativos(props: {
               locais={locais}
               nomeDoLocal={nomeDoLocal}
               nomeDaCategoria={nomeDaCategoria}
+              nomeDaCriticidade={nomeDaCriticidade}
               rotulo={rotulo}
               gravar={gravar}
               aoCadastrar={props.aoCadastrar}
