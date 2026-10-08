@@ -229,8 +229,9 @@ function buildSeed() {
       inteligencia: { versao: "v2", limite_atencao: 70, janela_dias: 180, limite_horas_paradas: 48, limite_custo_12m: 10000,
         pesos: { reincidencia: 20, parada: 15, impacto_hospede: 15, criticidade: 15, custo: 10, preventiva_atrasada: 10, medicoes: 10, garantia: 5, uh_dias: 0 },
         efetividade: { janela_dias: 90, reducao_observada: 60, reducao_parcial: 25, aumento_observado: 20, min_chamados_antes: 3 },
-        sistemico: { mesmo_modelo: { min_ativos: 5, janela_dias: 90 }, mesmo_andar: { min_locais: 5, janela_dias: 10 }, mesma_area_comum: { min_ocorrencias: 5, janela_dias: 30 },
-          mesmo_fornecedor: { janela_dias: 180, dias_apos: 30, min_concluidas: 5, limiar_percentual: 30 }, crescimento: { percentual: 50, min_atual: 5, janela_dias: 30 } } } },
+        sistemico: { mesmo_modelo: { ativa: true, min_hoteis: 3, min_chamados: 6, min_ativos: 5, janela_dias: 90, taxa_vezes_base: 2, taxa_minima: 0.3 },
+          mesmo_andar: { ativa: false, min_locais: 5, janela_dias: 10 }, mesma_area_comum: { ativa: false, min_ocorrencias: 5, janela_dias: 30 },
+          mesmo_fornecedor: { ativa: false, janela_dias: 180, dias_apos: 30, min_concluidas: 5, limiar_percentual: 30 }, crescimento: { ativa: false, percentual: 50, min_atual: 5, janela_dias: 30 } } } },
     { id: "po2", escopo_tipo: "bandeira", escopo_id: "b3", sla: { "Alta": 4 }, horario: null, escalonar_em: null },
     { id: "po3", escopo_tipo: "hotel", escopo_id: "h3", sla: { "Crítica": 1 }, horario: null, escalonar_em: 70 }
   ];
@@ -647,6 +648,6 @@ function buildSeed() {
   auditoria.sort((a, b) => b.t.localeCompare(a.t));
 
   integracao.fichas = fichas;
-  return { versao: 7, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
+  return { versao: 8, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
     fornecedores, codigos, responsabilidade, pacotes, aberturas };
 }

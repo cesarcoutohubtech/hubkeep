@@ -479,3 +479,8 @@ Instruções do Cesar (pauta de 07/10/2026, depois do merge do #125).
 - **Pronto, no `int-rascunhos` (`1deab5f`):** o texto dos adendos ao ADR-034 e ao ADR-036 (`rascunhos/adr/adendos-adr-034-e-036.md`). Entra no `int-adr-aceite`, depois das migrações da etapa I.
 - **Fora do escopo, por instrução:** o `csc-mock` não foi tocado. Quando o Cesar trouxer a versão de apresentação, a tela do Intelligence no mock é atualizada para as fórmulas novas, num PR separado.
 - **Esperando o núcleo:** as migrações da etapa I; depois, o ajuste dos nomes provisórios e as tabelas do Intelligence, um PR de zona protegida de cada vez.
+
+### A tela do Intelligence no mock, com o padrão sistêmico v2 (08/10/2026)
+- O mock oficial já trazia a atenção v2 e a efetividade v2 (PR #147 do agente do núcleo), mas o padrão sistêmico estava na v1: o mesmo modelo agrupava por modelo e falha, e as cinco regras apareciam ligadas. Este PR leva a tela para a v2: só o mesmo modelo ligado por padrão (3 hotéis, 6 chamados em 90 dias, 5 ativos, taxa contra a base, dobro e mínimo de 0,3), as outras quatro com `ativa: false` na política do seed, e o texto do sinal igual ao do catálogo.
+- A versão do cache local do mock sobe para 8, porque a política do seed mudou de formato. Conferido no navegador: com os dados do seed, a tela mostra um sinal (Midea Split Inverter, 29 chamados em 17 ativos de 6 hotéis, 1,26 por ativo contra 0,1) e nenhum erro de script.
+- Diferença conhecida, só de demonstração: a garantia no mock vence no instante da data; no motor, no dia seguinte (UTC). Não muda nenhum número da tela.
