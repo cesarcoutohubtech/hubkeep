@@ -10,6 +10,9 @@
 // regra de ação, daqui (regra 2).
 // Concorrência (ADR-029): a alteração leva a versão que o usuário viu; se a
 // linha mudou nesse meio-tempo, o repositório recusa com conflito_de_versao.
+// Compra, garantia e criticidade (fase 1b, I1): opcionais. A criticidade é
+// uma escala fixa de 1 a 5 (Cesar, 06/10/2026), e o nome de cada nível vem do
+// catálogo ou da política ativo.criticidade (politicas.ts).
 import { type DefinicaoDeCampo, type ValorDeCampo, validarValores } from './campos-tipados';
 import { escopoCobreHotel } from './equipes';
 import { Conflito, PermissaoNegada, RegraViolada } from './erros';
@@ -72,6 +75,61 @@ export function normalizarTextoDoAtivo(
     });
   }
   return limpo === '' ? null : limpo;
+}
+
+/** Escala fixa da criticidade do ativo (I1): 1 é a menor, 5 a maior. */
+export const NIVEIS_DE_CRITICIDADE = [1, 2, 3, 4, 5] as const;
+export type Criticidade = (typeof NIVEIS_DE_CRITICIDADE)[number];
+export const CRITICIDADE_MAXIMA: Criticidade = 5;
+
+export const ehCriticidade = (v: unknown): v is Criticidade =>
+  (NIVEIS_DE_CRITICIDADE as readonly unknown[]).includes(v);
+
+/** Criticidade opcional: nula ou um nível da escala. O banco confere de novo (check). */
+export function validarCriticidade(v: number | null): Criticidade | null {
+  if (v === null) return null;
+  if (!ehCriticidade(v)) {
+    throw new RegraViolada('ativo_criticidade_invalida', 'Criticidade fora da escala.', {
+      minimo: NIVEIS_DE_CRITICIDADE[0],
+      maximo: CRITICIDADE_MAXIMA,
+    });
+  }
+  return v;
+}
+
+const DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Data de calendário (aaaa-mm-dd) que existe; 2026-02-30 não vale. */
+export function ehDataDeCalendario(v: string): boolean {
+  const m = DATA.exec(v);
+  if (!m) return false;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.toISOString().slice(0, 10) === v;
+}
+
+export type CampoDeDataDoAtivo = 'data_compra' | 'garantia_ate';
+
+/**
+ * Data da compra e fim da garantia: opcionais, em aaaa-mm-dd. Com as duas, a
+ * garantia não termina antes da compra.
+ */
+export function validarDatasDoAtivo(d: { dataCompra: string | null; garantiaAte: string | null }): {
+  dataCompra: string | null;
+  garantiaAte: string | null;
+} {
+  const campos: [CampoDeDataDoAtivo, string | null][] = [
+    ['data_compra', d.dataCompra],
+    ['garantia_ate', d.garantiaAte],
+  ];
+  for (const [campo, valor] of campos) {
+    if (valor !== null && !ehDataDeCalendario(valor)) {
+      throw new RegraViolada('ativo_data_invalida', 'Data do ativo inválida.', { campo });
+    }
+  }
+  if (d.dataCompra !== null && d.garantiaAte !== null && d.garantiaAte < d.dataCompra) {
+    throw new RegraViolada('ativo_garantia_antes_da_compra', 'A garantia termina antes da compra.');
+  }
+  return { dataCompra: d.dataCompra, garantiaAte: d.garantiaAte };
 }
 
 /** O ativo novo não entra em local inativo. */

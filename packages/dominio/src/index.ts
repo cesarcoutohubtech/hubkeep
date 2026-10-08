@@ -33,18 +33,29 @@ export type {
   ValorDeCampo,
 } from './campos-tipados';
 export {
+  CRITICIDADE_MAXIMA,
   LIMITES_DE_ATIVO,
+  NIVEIS_DE_CRITICIDADE,
   PAPEIS_QUE_GERENCIAM_ATIVOS,
   conflitoDeVersao,
+  ehCriticidade,
+  ehDataDeCalendario,
   exigirLocalParaAtivo,
   normalizarNomeDeAtivo,
   normalizarTextoDoAtivo,
   podeGerirAtivos,
   podeMoverAtivo,
   validarCamposDoAtivo,
+  validarCriticidade,
+  validarDatasDoAtivo,
   validarMovimentacao,
 } from './ativos';
-export type { CampoDeTextoDoAtivo, CategoriaParaAtivo } from './ativos';
+export type {
+  CampoDeDataDoAtivo,
+  CampoDeTextoDoAtivo,
+  CategoriaParaAtivo,
+  Criticidade,
+} from './ativos';
 export {
   LIMITE_NOME_DE_ANEXO,
   TIPOS_DE_MINIATURA,
@@ -97,6 +108,7 @@ export type {
   ChaveDePolitica,
   ExtensaoDePolitica,
   NiveisDePolitica,
+  NomesDeCriticidade,
   PrioridadePadraoPorCategoria,
   RegistroDePoliticas,
   ValoresDePolitica,

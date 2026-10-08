@@ -1,7 +1,15 @@
 // Ativos do hotel (fase 1a, B3; ADR-028 e ADR-029): local, categoria, campos
 // estendidos, fabricante, modelo, número de série e a versão que o cliente
 // devolve na alteração. A validação dos campos contra a categoria é do domínio.
+// Compra, garantia e criticidade (fase 1b, I1): opcionais na gravação, para a
+// operação guardada no aparelho antes da I1 continuar valendo; na alteração,
+// ausente mantém o valor gravado e null apaga.
 import { z } from 'zod';
+import { NomesDeCriticidadeApi } from './configuracao';
+
+/** Data de calendário aaaa-mm-dd; a existência da data é conferida no domínio. */
+const DataDoAtivo = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const CriticidadeApi = z.int().min(1).max(5);
 
 export const ValoresDeCampoApi = z
   .record(z.string().max(40), z.union([z.string().max(500), z.number(), z.boolean(), z.null()]))
@@ -16,6 +24,10 @@ export const AtivoApi = z
     fabricante: z.string().nullable(),
     modelo: z.string().nullable(),
     numeroSerie: z.string().nullable(),
+    dataCompra: DataDoAtivo.nullable(),
+    garantiaAte: DataDoAtivo.nullable(),
+    /** De 1 (menor) a 5 (maior); o nome do nível vem de nomesDeCriticidade ou do catálogo. */
+    criticidade: CriticidadeApi.nullable(),
     /** Lidos com a definição atual da categoria. */
     campos: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
     versao: z.number().int().min(1),
@@ -33,7 +45,11 @@ export const RespostaDeAtivoDoQr = z
   .meta({ id: 'RespostaDeAtivoDoQr' });
 
 export const RespostaDeAtivosDoHotel = z
-  .object({ ativos: z.array(AtivoApi) })
+  .object({
+    ativos: z.array(AtivoApi),
+    /** A política ativo.criticidade resolvida para o hotel; o nível sem nome usa o catálogo. */
+    nomesDeCriticidade: NomesDeCriticidadeApi,
+  })
   .meta({ id: 'RespostaDeAtivosDoHotel' });
 
 const gravacao = {
@@ -43,6 +59,9 @@ const gravacao = {
   modelo: z.string().max(200).nullable(),
   numeroSerie: z.string().max(200).nullable(),
   campos: ValoresDeCampoApi.optional(),
+  dataCompra: DataDoAtivo.nullable().optional(),
+  garantiaAte: DataDoAtivo.nullable().optional(),
+  criticidade: z.number().nullable().optional(),
 };
 
 export const PedidoDeCadastroDeAtivo = z

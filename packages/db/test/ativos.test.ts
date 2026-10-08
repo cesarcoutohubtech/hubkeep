@@ -161,6 +161,7 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
       'app.evento_dominio',
       'app.auditoria',
       'app.operacao_offline',
+      'app.politica',
       'app.ativo',
       'app.categoria_ativo',
       'app.local_proprietario',
@@ -246,6 +247,9 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
       fabricante: null,
       modelo: null,
       numeroSerie: null,
+      dataCompra: null,
+      garantiaAte: null,
+      criticidade: null,
       campos: {},
     };
     await expect(porta.criar(ctx(U.gerenteH2), H1, L.uh102, dados)).rejects.toMatchObject({
@@ -381,5 +385,83 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
       versao,
     });
     expect(await busca()).toBe('aquecedor eletrico fabricante x m-9 sn-001');
+  });
+
+  it('compra, garantia e criticidade (I1): gravam, voltam como aaaa-mm-dd e o ausente mantém', async () => {
+    const semCategoria = { categoriaId: null, campos: {} };
+    const { id } = await casos.cadastrar(
+      ctx(U.tecnico),
+      pedido(L.uh102, {
+        ...semCategoria,
+        nome: 'Frigobar I1',
+        dataCompra: '2024-02-29',
+        garantiaAte: '2027-02-28',
+        criticidade: 4,
+      }),
+    );
+    const lido = async () =>
+      (await casos.listarAtivos(ctx(U.gerente), H1)).find((a) => a.id === id);
+    expect(await lido()).toMatchObject({
+      dataCompra: '2024-02-29',
+      garantiaAte: '2027-02-28',
+      criticidade: 4,
+    });
+    // Pedido sem os campos novos (operação guardada no aparelho antes da I1): mantém.
+    const v2 = await casos.alterar(ctx(U.tecnico), id, {
+      ...pedido(L.uh102, { ...semCategoria, nome: 'Frigobar I1', modelo: 'M-11' }),
+      versao: 1,
+    });
+    expect(await lido()).toMatchObject({
+      modelo: 'M-11',
+      criticidade: 4,
+      dataCompra: '2024-02-29',
+    });
+    // null apaga.
+    await casos.alterar(ctx(U.gerente), id, {
+      ...pedido(L.uh102, { ...semCategoria, nome: 'Frigobar I1', criticidade: null }),
+      versao: v2.versao,
+    });
+    expect((await lido())?.criticidade).toBeNull();
+    // O domínio recusa com código antes do banco.
+    await expect(
+      casos.cadastrar(ctx(U.tecnico), pedido(L.uh102, { ...semCategoria, criticidade: 6 })),
+    ).rejects.toMatchObject({ codigo: 'ativo_criticidade_invalida' });
+    await expect(
+      casos.cadastrar(
+        ctx(U.tecnico),
+        pedido(L.uh102, { ...semCategoria, dataCompra: '2026-10-07', garantiaAte: '2026-10-01' }),
+      ),
+    ).rejects.toMatchObject({ codigo: 'ativo_garantia_antes_da_compra' });
+    // A auditoria do cadastro leva os campos novos.
+    const { rows } = await dono.query(
+      `select depois from app.auditoria where registro_id = $1 and acao = 'criar'`,
+      [id],
+    );
+    expect(rows[0]?.depois).toMatchObject({ criticidade: 4, garantiaAte: '2027-02-28' });
+  });
+
+  it('nomes da criticidade (I1): política do hotel, senão do grupo, senão vazio', async () => {
+    expect(await casos.nomesDeCriticidade(ctx(U.tecnico), H1)).toEqual({});
+    const grupo = { 5: { 'pt-BR': 'Vital' } };
+    const hotel = { 1: { en: 'Minor' } };
+    await dono.query(
+      `insert into app.politica (id, tenant_id, escopo_tipo, hotel_id, chave, valor, atualizado_por) values
+       ($1, $3, 'grupo', null, 'ativo.criticidade', $4, $7),
+       ($2, $3, 'hotel', $5, 'ativo.criticidade', $6, $7)`,
+      [
+        randomUUID(),
+        randomUUID(),
+        TENANT,
+        JSON.stringify(grupo),
+        H1,
+        JSON.stringify(hotel),
+        U.admin,
+      ],
+    );
+    expect(await casos.nomesDeCriticidade(ctx(U.tecnico), H1)).toEqual(hotel);
+    expect(await casos.nomesDeCriticidade(ctx(U.gerenteH2), H2)).toEqual(grupo);
+    await expect(casos.nomesDeCriticidade(ctx(U.gerenteH2), H1)).rejects.toMatchObject({
+      codigo: 'hotel_nao_encontrado',
+    });
   });
 });

@@ -41,6 +41,7 @@ import type {
 import {
   type Atribuicao,
   Conflito,
+  type Contexto,
   type EstadoDaOs,
   type EstadoDoChamado,
   type Escopo,
@@ -106,6 +107,29 @@ import { OperacaoJaRecebida, registrarOperacao } from './repositorios/operacoes-
 import { gravarPreferencias } from './repositorios/preferencias';
 import { sessaoDePromocao } from './repositorios/promocao';
 import { credenciaisAtivas, registrarLote } from './repositorios/staging';
+
+/** Valor gravado de uma política no hotel e no grupo, como está no banco (a resolução é do domínio). */
+const niveisDaPolitica = (banco: AcessoBanco, ctx: Contexto, hotelId: string, chave: string) =>
+  banco.withContext(ctx, async (tx) => {
+    const linhas = await tx
+      .selectFrom('app.politica')
+      .select(['escopo_tipo', 'hotel_id', 'valor'])
+      .where('ativa', '=', true)
+      .where('chave', '=', chave)
+      .where((eb) =>
+        eb.or([
+          eb('escopo_tipo', '=', 'grupo'),
+          eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
+        ]),
+      )
+      .execute();
+    const niveis: { hotel?: unknown; grupo?: unknown } = {};
+    for (const l of linhas) {
+      if (l.escopo_tipo === 'hotel') niveis.hotel = l.valor;
+      else if (l.escopo_tipo === 'grupo') niveis.grupo = l.valor;
+    }
+    return niveis;
+  });
 
 interface LinhaAtribuicao {
   id: string;
@@ -669,27 +693,7 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
             }
           : null;
       }),
-    politica: (ctx, hotelId, chave) =>
-      banco.withContext(ctx, async (tx) => {
-        const linhas = await tx
-          .selectFrom('app.politica')
-          .select(['escopo_tipo', 'hotel_id', 'valor'])
-          .where('ativa', '=', true)
-          .where('chave', '=', chave)
-          .where((eb) =>
-            eb.or([
-              eb('escopo_tipo', '=', 'grupo'),
-              eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
-            ]),
-          )
-          .execute();
-        const niveis: { hotel?: unknown; grupo?: unknown } = {};
-        for (const l of linhas) {
-          if (l.escopo_tipo === 'hotel') niveis.hotel = l.valor;
-          else if (l.escopo_tipo === 'grupo') niveis.grupo = l.valor;
-        }
-        return niveis;
-      }),
+    politica: (ctx, hotelId, chave) => niveisDaPolitica(banco, ctx, hotelId, chave),
     criar: (ctx, hotelId, dados) => banco.executar(ctx, (uow) => criarChamado(uow, hotelId, dados)),
     chamado: (ctx, chamadoId) =>
       banco.withContext(ctx, async (tx) => {
@@ -1183,11 +1187,17 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     'fabricante',
     'modelo',
     'numero_serie',
+    'criticidade',
     'campos',
     'versao',
     'desativado_em',
     'codigo_qr',
   ] as const;
+  // As datas saem como aaaa-mm-dd, sem passar por Date e fuso.
+  const datas = [
+    sql<string | null>`a.data_compra::text`.as('data_compra'),
+    sql<string | null>`a.garantia_ate::text`.as('garantia_ate'),
+  ];
   const paraAtivo = (a: {
     id: string;
     hotel_id: string;
@@ -1197,6 +1207,9 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     fabricante: string | null;
     modelo: string | null;
     numero_serie: string | null;
+    data_compra: string | null;
+    garantia_ate: string | null;
+    criticidade: number | null;
     campos: unknown;
     versao: number;
     desativado_em: Date | null;
@@ -1211,6 +1224,9 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     fabricante: a.fabricante,
     modelo: a.modelo,
     numeroSerie: a.numero_serie,
+    dataCompra: a.data_compra,
+    garantiaAte: a.garantia_ate,
+    criticidade: a.criticidade,
     campos: a.campos,
     versao: a.versao,
     desativadoEm: a.desativado_em,
@@ -1236,6 +1252,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
           .executeTakeFirst();
         return l ? { id: l.id, hotelId: l.hotel_id, status: l.status } : null;
       }),
+    politica: (ctx, hotelId, chave) => niveisDaPolitica(banco, ctx, hotelId, chave),
     categorias: (ctx) =>
       banco.withContext(ctx, async (tx) =>
         tx.selectFrom('app.categoria_ativo').select(['id', 'ativa', 'campos']).execute(),
@@ -1246,6 +1263,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
           await tx
             .selectFrom('app.ativo as a')
             .select(colunas)
+            .select(datas)
             .select(paradoDesde('a.hotel_id', 'a.id'))
             .where('hotel_id', '=', hotelId)
             .$if(termo !== undefined, (q) => q.where('busca', 'ilike', trecho(termo ?? '')))
@@ -1259,6 +1277,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
         const a = await tx
           .selectFrom('app.ativo as a')
           .select(colunas)
+          .select(datas)
           .select(paradoDesde('a.hotel_id', 'a.id'))
           .where('id', '=', ativoId)
           .executeTakeFirst();
@@ -1270,6 +1289,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
         const a = await tx
           .selectFrom('app.ativo as a')
           .select(colunas)
+          .select(datas)
           .select(paradoDesde('a.hotel_id', 'a.id'))
           .where('codigo_qr', '=', codigoQr)
           .executeTakeFirst();

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { ProvedorDeIdioma } from '../src/i18n';
 import type { Referencia } from '../src/referencia/banco';
 import type { PortaDeFotos } from '../src/anexos/fotos';
-import { Ativos } from '../src/telas/Ativos';
+import { Ativos, camposDaI1 } from '../src/telas/Ativos';
 import { FotosDoAtivo } from '../src/telas/FotosDoAtivo';
 
 const referencia: Referencia = {
@@ -125,5 +125,36 @@ describe('tela de ativos do PWA', () => {
         if (texto) expect(texto, texto).toMatch(/^\[.*\]$/s);
       }
     }
+  });
+});
+
+describe('compra, garantia e criticidade no PWA (I1)', () => {
+  const guardado = referencia.ativos['h1']?.[0];
+  if (!guardado) throw new Error('fixture sem ativo');
+  const vazios = { dataCompra: null, garantiaAte: null, criticidade: null };
+
+  it('ficam na parte recolhida do formulário, com os nomes dos níveis', () => {
+    const m = mensagensDe('pt-BR');
+    const html = renderizar('pt-BR', {
+      ...referencia,
+      nomesDeCriticidade: { h1: { 5: { 'pt-BR': 'Vital' } } },
+    });
+    expect(html).toContain(`<details><summary>${m['tecnico.ativos.mais_dados']}</summary>`);
+    expect(html).toContain('name="garantiaAte"');
+    expect(html).toContain('5 · Vital');
+    expect(html).toContain('4 · Alta');
+  });
+
+  it('cadastro leva os três, mesmo vazios', () => {
+    expect(camposDaI1(null, vazios)).toEqual(vazios);
+  });
+
+  it('referência anterior à I1: o vazio não vai, para não apagar o do servidor', () => {
+    expect(camposDaI1(guardado, vazios)).toEqual({});
+    expect(camposDaI1(guardado, { ...vazios, criticidade: 3 })).toEqual({ criticidade: 3 });
+  });
+
+  it('referência com a I1: o vazio vai como null, e apaga', () => {
+    expect(camposDaI1({ ...guardado, ...vazios, criticidade: 2 }, vazios)).toEqual(vazios);
   });
 });
