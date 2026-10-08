@@ -26,7 +26,7 @@ import {
 } from './efetividade';
 import { PADRAO_REINCIDENCIA, type ConfigReincidencia } from './reincidencia';
 import { FAIXAS_PADRAO } from './score';
-import { PADRAO_SISTEMICO, type ConfigSistemico } from './sistemico';
+import { PADRAO_SISTEMICO, type ConfigSistemico, configSistemicoValida } from './sistemico';
 import { PADRAO_SUBSTITUICAO, type ConfigSubstituicao } from './substituicao';
 
 /** Janela de leitura da métrica diária, em dias (ADR-036). */
@@ -97,6 +97,7 @@ function faixasValidas(v: unknown): boolean {
 function mesmoFormato(v: unknown, padrao: unknown, campo: string): boolean {
   if (campo === 'faixas') return faixasValidas(v);
   if (campo === 'limiteInsight') return typeof v === 'number' && v >= 0 && v <= 100;
+  if (typeof padrao === 'boolean') return typeof v === 'boolean';
   if (typeof padrao === 'number') return typeof v === 'number' && Number.isFinite(v) && v >= 0;
   if (!objeto(padrao) || !objeto(v)) return false;
   const chaves = Object.keys(padrao);
@@ -123,6 +124,8 @@ export function valorValidoDoIntelligence<C extends ChaveDePoliticaDoIntelligenc
   // Efetividade: os limiares precisam estar na ordem (parcial < observada ≤ 100).
   if (chave === 'inteligencia.efetividade')
     return limiaresDeEfetividadeValidos(valor as ConfigEfetividade);
+  // Sistêmico: mínimos inteiros de pelo menos 1, taxa e razão contra a base positivas.
+  if (chave === 'inteligencia.sistemico') return configSistemicoValida(valor as ConfigSistemico);
   return true;
 }
 

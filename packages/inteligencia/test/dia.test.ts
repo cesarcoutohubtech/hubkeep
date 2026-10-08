@@ -7,6 +7,7 @@ import {
   type HotelDoDia,
   type LocalAnalisado,
   PADRAO_ATENCAO,
+  PADRAO_SISTEMICO,
   PADRAO_REINCIDENCIA,
   VERSAO_ATENCAO,
   VERSAO_REINCIDENCIA,
@@ -187,11 +188,18 @@ describe('calcularDia: detecções sistêmicas', () => {
   const uhs = (n: number, hotelId: string): LocalAnalisado[] =>
     Array.from({ length: n }, (_, i) => ({ id: `${hotelId}-uh${i}`, hotelId, andar: '3' }));
   const doModelo = (ids: readonly [string, string][]): AtivoDoDia[] =>
-    ids.map(([id, hotelId]) => ativo({ id, hotelId, fabricante: 'Acme', modelo: 'X1' }));
+    ids.map(([id, hotelId]) =>
+      ativo({ id, hotelId, categoriaId: 'hvac', fabricante: 'Acme', modelo: 'X1' }),
+    );
   const falhas = (as: readonly AtivoDoDia[]): Corretiva[] =>
     as.map((a, i) =>
       corretiva({ hotelId: a.hotelId, ativoId: a.id, codigoFalha: 'ruido', abertaEm: dia(-i * 7) }),
     );
+  // Só o mesmo modelo vem ligado: o mesmo andar precisa ser ligado pela política.
+  const comAndar = {
+    ...PADRAO_SISTEMICO,
+    mesmoAndar: { ...PADRAO_SISTEMICO.mesmoAndar, ativa: true },
+  };
 
   it('mesmo andar de um hotel: insight do hotel, com faixa fixa e sem score', () => {
     const locais = uhs(8, 'h1');
@@ -203,6 +211,7 @@ describe('calcularDia: detecções sistêmicas', () => {
         corretiva({ localId: l.id, ativoId: null, codigoFalha: 'agua_fria', abertaEm: dia(-i) }),
       ),
       locais,
+      sistemico: comAndar,
     });
     const andar = r.deteccoes.filter((d) => d.regra === 'mesmo_andar');
     expect(andar).toHaveLength(1);
@@ -217,16 +226,31 @@ describe('calcularDia: detecções sistêmicas', () => {
   });
 
   it('mesmo modelo em hotéis da mesma bandeira: insight de rede da bandeira', () => {
+    // Três hotéis da bandeira b1 (os mínimos do mesmo modelo: 3 hotéis, 6 chamados, 5 ativos).
+    const daBandeira = [...hoteis, { hotelId: 'h4', bandeiraId: 'b1' }];
     const as = doModelo([
       ['m1', 'h1'],
       ['m2', 'h1'],
       ['m3', 'h2'],
       ['m4', 'h2'],
-      ['m5', 'h2'],
+      ['m5', 'h4'],
+      ['m6', 'h4'],
     ]);
-    const r = calcularDia({ agora, hoteis, ativos: as, corretivas: falhas(as), locais: [] });
+    const r = calcularDia({
+      agora,
+      hoteis: daBandeira,
+      ativos: as,
+      corretivas: falhas(as),
+      locais: [],
+    });
     const modelo = r.deteccoes.find((d) => d.regra === 'mesmo_modelo');
     expect(modelo?.alcance).toEqual({ tipo: 'rede', bandeiraId: 'b1' });
+    expect(modelo?.hotelIds).toEqual(['h1', 'h2', 'h4']);
+    expect(modelo?.escopo).toEqual({
+      regra: 'mesmo_modelo',
+      categoriaId: 'hvac',
+      modelo: 'acme|x1',
+    });
   });
 
   it('mesmo modelo em bandeiras diferentes: insight de rede do grupo', () => {
@@ -236,6 +260,7 @@ describe('calcularDia: detecções sistêmicas', () => {
       ['m3', 'h2'],
       ['m4', 'h3'],
       ['m5', 'h3'],
+      ['m6', 'h3'],
     ]);
     const r = calcularDia({ agora, hoteis, ativos: as, corretivas: falhas(as), locais: [] });
     const modelo = r.deteccoes.find((d) => d.regra === 'mesmo_modelo');
@@ -249,7 +274,8 @@ describe('calcularDia: detecções sistêmicas', () => {
       ['m2', 'h2'],
       ['m3', 'h2'],
       ['m4', 'h2'],
-      ['m5', 'h2'],
+      ['m5', 'h3'],
+      ['m6', 'h3'],
     ]);
     const locais = uhs(8, 'h3');
     const doA1 = problematico('a1');
@@ -272,6 +298,7 @@ describe('calcularDia: detecções sistêmicas', () => {
         ),
       ],
       locais,
+      sistemico: comAndar,
     });
     const hotelDa = new Map([...doA1, ...doModelo5].map((c) => [c.id, c.hotelId] as const));
     expect(new Set(r.deteccoes.map((d) => d.tipo))).toEqual(

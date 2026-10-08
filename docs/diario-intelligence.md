@@ -457,3 +457,17 @@ Instruções do Cesar (pauta de 07/10/2026, depois do merge do #125).
 - **A política é validada ao gravar:** a redução parcial precisa ficar acima de 0 e abaixo da observada, a observada não passa de 100%, o aumento é positivo, a base mínima e a janela são inteiras e de pelo menos 1. Sem isso o resultado poderia ser contraditório. A conferência com a janela de leitura (o dobro da janela da efetividade) segue como estava.
 - **Sem linguagem de causa:** os rótulos novos (`inteligencia.efetividade.*`, nos quatro idiomas) dizem "redução observada", "redução parcial" e "sem mudança relevante", com a ressalva "não prova que a intervenção foi a causa". Um teste reprova, em qualquer idioma, texto da efetividade com "resolveu", "causou" e equivalentes (a ressalva fica de fora, porque nega a causa).
 
+
+### Padrão sistêmico v2: o que o PR faz e as leituras que fiz da pauta
+- **Versão 2** (`VERSAO_SISTEMICO` 2), gravada em cada sinal. A política `inteligencia.sistemico` ganha o booleano `ativa` em cada regra, e o mesmo modelo ganha `minHoteis` 3, `minChamados` 6, `minAtivos` 5, `janelaDias` 90, `taxaMinimaVezesBase` 2 e `taxaMinima` 0,3.
+- **Só o mesmo modelo vem ligado** por padrão. Mesmo andar, área comum, mesmo fornecedor e crescimento ficam desligados (`ativa: false`), com os parâmetros que já tinham, e o grupo liga as que quiser pela política.
+- **O mesmo modelo agrupa por categoria, fabricante e modelo, sem a falha** (como no mock). O escopo do insight muda de `{ modelo, falha }` para `{ categoriaId, modelo }`, e a família do insight muda junto; não há insight gravado ainda. Isso troca o que o motor fazia antes (modelo e falha). As outras quatro regras continuam agrupando pela falha.
+- **Os mínimos:** hotéis distintos com chamado do modelo, chamados do modelo na janela e ativos distintos com chamado. Os três valem juntos.
+- **A taxa contra a base:** a taxa do modelo é chamados por ativo instalado do modelo, em 90 dias; a base é a mesma conta nos outros modelos da mesma categoria, no tenant. O sinal só sai se a taxa for de pelo menos o dobro da base, e nunca menos que 0,3.
+- **Leituras minhas, a confirmar:**
+  - "ativo instalado" são todos os ativos do modelo que o motor recebe (com ou sem chamado), no escopo dos hotéis do cálculo;
+  - o ativo sem categoria, fabricante ou modelo fica fora da conta, inclusive da base, porque não se sabe se é o mesmo modelo;
+  - sem outros modelos na categoria (ou sem chamado neles), a base é 0 e vale só o mínimo de 0,3;
+  - "3 hotéis" são os hotéis em que houve chamado do modelo na janela, e não os hotéis onde ele está instalado.
+- **A evidência do sinal** ganha `ativosDoModelo`, `taxaPorAtivo` e `basePorAtivo`; o rótulo `inteligencia.sistemico.regra` do mesmo modelo deixa de falar em "mesma falha", e a mensagem `inteligencia.sistemico.evidencia.mesmo_modelo` mostra a taxa contra a base, nos quatro idiomas.
+- **A política é validada ao gravar:** mínimos e janelas inteiros de pelo menos 1; razão contra a base positiva; `ativa` obrigatório e booleano.

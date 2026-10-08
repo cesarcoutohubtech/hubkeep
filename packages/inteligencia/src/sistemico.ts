@@ -5,6 +5,15 @@
 // Agrupar por falha usa o código de falha da instrumentação (fase A); sem ele,
 // o agrupamento cai na categoria do ativo, e a corretiva sem nenhum dos dois
 // fica de fora.
+//
+// Versão 2 (aprovada pelo Cesar em 08/10/2026, alinhada ao mock):
+// - só a regra do mesmo modelo vem ligada por padrão; as outras quatro ficam
+//   desligadas pela política (`ativa`), e o grupo liga as que quiser;
+// - o mesmo modelo agrupa por categoria, fabricante e modelo (sem a falha) e
+//   exige, na política, 3 hotéis, 6 chamados em 90 dias e 5 ativos com chamado;
+// - além dos mínimos, a taxa do modelo (chamados por ativo instalado, em 90
+//   dias) precisa ser de pelo menos o dobro da base, e nunca menos de 0,3. A
+//   base é a taxa dos outros modelos da mesma categoria no tenant.
 import {
   type AtivoAnalisado,
   type Corretiva,
@@ -14,38 +23,86 @@ import {
 } from './historico';
 import { DIA_MS } from './score';
 
-export const VERSAO_SISTEMICO = 1;
+export const VERSAO_SISTEMICO = 2;
 
 export interface ConfigSistemico {
-  mesmoModelo: { minAtivos: number; janelaDias: number };
-  mesmoAndar: { minLocais: number; janelaDias: number };
-  mesmaAreaComum: { minOcorrencias: number; janelaDias: number };
+  mesmoModelo: {
+    ativa: boolean;
+    /** Hotéis distintos com chamado do modelo na janela. */
+    minHoteis: number;
+    /** Chamados do modelo na janela. */
+    minChamados: number;
+    /** Ativos distintos do modelo com chamado na janela. */
+    minAtivos: number;
+    janelaDias: number;
+    /** A taxa do modelo precisa ser de pelo menos esta vez a da base. */
+    taxaMinimaVezesBase: number;
+    /** Chamados por ativo na janela; a taxa nunca vale menos que isto. */
+    taxaMinima: number;
+  };
+  mesmoAndar: { ativa: boolean; minLocais: number; janelaDias: number };
+  mesmaAreaComum: { ativa: boolean; minOcorrencias: number; janelaDias: number };
   /**
    * Taxa de volta das OS de um fornecedor (pelo id do cadastro): corretiva nova no mesmo ativo até
    * `diasAposCorretiva` depois da conclusão. Só conta a OS cuja observação já
    * terminou, para a taxa não sair baixa só porque a conclusão é recente.
    */
   mesmoFornecedor: {
+    ativa: boolean;
     janelaDias: number;
     diasAposCorretiva: number;
     minConcluidas: number;
     limiarPercentual: number;
   };
-  crescimento: { percentual: number; minAtual: number; janelaDias: number };
+  crescimento: { ativa: boolean; percentual: number; minAtual: number; janelaDias: number };
 }
 
 export const PADRAO_SISTEMICO: ConfigSistemico = {
-  mesmoModelo: { minAtivos: 5, janelaDias: 90 },
-  mesmoAndar: { minLocais: 5, janelaDias: 10 },
-  mesmaAreaComum: { minOcorrencias: 5, janelaDias: 30 },
+  mesmoModelo: {
+    ativa: true,
+    minHoteis: 3,
+    minChamados: 6,
+    minAtivos: 5,
+    janelaDias: 90,
+    taxaMinimaVezesBase: 2,
+    taxaMinima: 0.3,
+  },
+  mesmoAndar: { ativa: false, minLocais: 5, janelaDias: 10 },
+  mesmaAreaComum: { ativa: false, minOcorrencias: 5, janelaDias: 30 },
   mesmoFornecedor: {
+    ativa: false,
     janelaDias: 180,
     diasAposCorretiva: 30,
     minConcluidas: 5,
     limiarPercentual: 30,
   },
-  crescimento: { percentual: 50, minAtual: 5, janelaDias: 30 },
+  crescimento: { ativa: false, percentual: 50, minAtual: 5, janelaDias: 30 },
 };
+
+/**
+ * Os mínimos só fazem sentido como inteiros de pelo menos 1, e a taxa e a
+ * razão contra a base não podem ser negativas. Conferido ao gravar a política.
+ */
+export function configSistemicoValida(c: ConfigSistemico): boolean {
+  const inteiro = (n: number) => Number.isInteger(n) && n >= 1;
+  const m = c.mesmoModelo;
+  return (
+    inteiro(m.minHoteis) &&
+    inteiro(m.minChamados) &&
+    inteiro(m.minAtivos) &&
+    inteiro(m.janelaDias) &&
+    m.taxaMinimaVezesBase > 0 &&
+    m.taxaMinima >= 0 &&
+    inteiro(c.mesmoAndar.minLocais) &&
+    inteiro(c.mesmoAndar.janelaDias) &&
+    inteiro(c.mesmaAreaComum.minOcorrencias) &&
+    inteiro(c.mesmaAreaComum.janelaDias) &&
+    inteiro(c.mesmoFornecedor.janelaDias) &&
+    inteiro(c.mesmoFornecedor.minConcluidas) &&
+    inteiro(c.crescimento.minAtual) &&
+    inteiro(c.crescimento.janelaDias)
+  );
+}
 
 export type RegraSistemica =
   | 'mesmo_modelo'
@@ -69,6 +126,10 @@ export interface SinalSistemico {
     corretivaIds: readonly string[];
     anterior?: number;
     variacaoPercentual?: number;
+    /** Mesmo modelo: os ativos instalados do modelo, a taxa dele e a da base (chamados por ativo na janela). */
+    ativosDoModelo?: number;
+    taxaPorAtivo?: number;
+    basePorAtivo?: number;
     /** Mesmo fornecedor: OS concluídas com volta, a taxa e a da equipe interna. */
     voltas?: number;
     taxaPercentual?: number;
@@ -112,36 +173,69 @@ export function detectarSistemicos(
     };
   const sinais: SinalSistemico[] = [];
 
-  // Mesmo modelo, mesma falha, ativos distintos em qualquer hotel do tenant.
+  // Mesmo modelo (categoria, fabricante e modelo) em hotéis diferentes: os
+  // mínimos da política e a taxa de chamados por ativo contra a da base. Só
+  // entra o ativo com categoria, fabricante e modelo; sem os três, não se sabe
+  // se é o mesmo modelo, e ele fica de fora da conta toda, inclusive da base.
   const mm = config.mesmoModelo;
-  const porModelo = agrupar(e.corretivas.filter(naJanela(mm.janelaDias)), (c) => {
-    const a = c.ativoId ? ativos.get(c.ativoId) : undefined;
+  const grupoDoAtivo = (a: AtivoAnalisado | undefined): string | null => {
     const modelo = a ? chaveDeModelo(a) : null;
-    const falha = falhaDe(c);
-    return modelo && falha ? `${modelo}#${falha}` : null;
-  });
-  for (const [k, cs] of porModelo) {
-    const distintos = unicos(cs.map((c) => c.ativoId as string)).length;
-    if (distintos < mm.minAtivos) continue;
-    const [modelo, falha] = k.split('#') as [string, string];
-    sinais.push({
-      regra: 'mesmo_modelo',
-      situacao: 'possivel',
-      versao: VERSAO_SISTEMICO,
-      chave: { modelo, falha },
-      evidencia: {
-        quantidade: cs.length,
-        distintos,
-        janelaDias: mm.janelaDias,
-        hotelIds: unicos(cs.map((c) => c.hotelId)),
-        corretivaIds: cs.map((c) => c.id),
-      },
-    });
+    return a?.categoriaId && modelo ? JSON.stringify([a.categoriaId, modelo]) : null;
+  };
+  if (mm.ativa) {
+    const instalados = agrupar(e.ativos, grupoDoAtivo);
+    const naBaseDaCategoria = new Map<string, { ativos: number; chamados: number }>();
+    const naJanelaDoModelo = e.corretivas.filter(naJanela(mm.janelaDias));
+    for (const [k, doGrupo] of instalados) {
+      const [categoriaId] = JSON.parse(k) as [string, string];
+      const acc = naBaseDaCategoria.get(categoriaId) ?? { ativos: 0, chamados: 0 };
+      naBaseDaCategoria.set(categoriaId, {
+        ativos: acc.ativos + doGrupo.length,
+        chamados: acc.chamados,
+      });
+    }
+    const porModelo = agrupar(naJanelaDoModelo, (c) =>
+      grupoDoAtivo(c.ativoId ? ativos.get(c.ativoId) : undefined),
+    );
+    for (const [k, cs] of porModelo) {
+      const [categoriaId] = JSON.parse(k) as [string, string];
+      const acc = naBaseDaCategoria.get(categoriaId) as { ativos: number; chamados: number };
+      naBaseDaCategoria.set(categoriaId, { ...acc, chamados: acc.chamados + cs.length });
+    }
+    for (const [k, cs] of porModelo) {
+      const [categoriaId, modelo] = JSON.parse(k) as [string, string];
+      const distintos = unicos(cs.map((c) => c.ativoId as string)).length;
+      const hotelIds = unicos(cs.map((c) => c.hotelId));
+      if (hotelIds.length < mm.minHoteis || cs.length < mm.minChamados || distintos < mm.minAtivos)
+        continue;
+      const doModelo = (instalados.get(k) ?? []).length;
+      const categoria = naBaseDaCategoria.get(categoriaId) as { ativos: number; chamados: number };
+      const taxa = cs.length / Math.max(doModelo, distintos);
+      const ativosDaBase = categoria.ativos - doModelo;
+      const base = ativosDaBase > 0 ? (categoria.chamados - cs.length) / ativosDaBase : 0;
+      if (taxa < Math.max(mm.taxaMinima, mm.taxaMinimaVezesBase * base)) continue;
+      sinais.push({
+        regra: 'mesmo_modelo',
+        situacao: 'possivel',
+        versao: VERSAO_SISTEMICO,
+        chave: { categoriaId, modelo },
+        evidencia: {
+          quantidade: cs.length,
+          distintos,
+          janelaDias: mm.janelaDias,
+          hotelIds,
+          corretivaIds: cs.map((c) => c.id),
+          ativosDoModelo: Math.max(doModelo, distintos),
+          taxaPorAtivo: Math.round(taxa * 100) / 100,
+          basePorAtivo: Math.round(base * 100) / 100,
+        },
+      });
+    }
   }
 
   // Mesmo andar do mesmo hotel, mesma falha, locais distintos.
   const ma = config.mesmoAndar;
-  const porAndar = agrupar(e.corretivas.filter(naJanela(ma.janelaDias)), (c) => {
+  const porAndar = agrupar(ma.ativa ? e.corretivas.filter(naJanela(ma.janelaDias)) : [], (c) => {
     const andar = locais.get(c.localId)?.andar?.trim();
     const falha = falhaDe(c);
     return andar && falha ? `${c.hotelId}#${andar}#${falha}` : null;
@@ -168,7 +262,7 @@ export function detectarSistemicos(
   // A mesma área comum (cozinha, lavanderia, piscina): várias ocorrências da
   // mesma falha no mesmo local, mesmo que em ativos diferentes ou sem ativo.
   const ac = config.mesmaAreaComum;
-  const porArea = agrupar(e.corretivas.filter(naJanela(ac.janelaDias)), (c) => {
+  const porArea = agrupar(ac.ativa ? e.corretivas.filter(naJanela(ac.janelaDias)) : [], (c) => {
     const falha = falhaDe(c);
     return locais.get(c.localId)?.tipo === 'area_comum' && falha ? `${c.localId}#${falha}` : null;
   });
@@ -193,7 +287,7 @@ export function detectarSistemicos(
 
   // Mesmo fornecedor: a taxa de volta das OS do fornecedor passa do limiar.
   const mf = config.mesmoFornecedor;
-  const observadas = e.corretivas.filter(
+  const observadas = (mf.ativa ? e.corretivas : []).filter(
     (c) =>
       c.ativoId !== null &&
       c.concluidaEm !== null &&
@@ -241,8 +335,12 @@ export function detectarSistemicos(
     const falha = falhaDe(c);
     return falha ? `${c.hotelId}#${falha}` : null;
   };
-  const atual = agrupar(e.corretivas.filter(naJanela(cr.janelaDias)), chaveHotel);
-  const anterior = agrupar(e.corretivas.filter(naJanela(cr.janelaDias, cr.janelaDias)), chaveHotel);
+  const doCrescimento = cr.ativa ? e.corretivas : [];
+  const atual = agrupar(doCrescimento.filter(naJanela(cr.janelaDias)), chaveHotel);
+  const anterior = agrupar(
+    doCrescimento.filter(naJanela(cr.janelaDias, cr.janelaDias)),
+    chaveHotel,
+  );
   for (const [k, cs] of atual) {
     const antes = anterior.get(k)?.length ?? 0;
     if (cs.length < cr.minAtual || antes === 0) continue;
