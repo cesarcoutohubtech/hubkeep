@@ -1,0 +1,13 @@
+﻿local;categoria;nome;fabricante;modelo;numero_serie;data_compra;garantia_ate;criticidade;codigo_qr
+Casa de máquinas;Refrigeração e ar-condicionado;Chiller central 1;Climatec Exemplo;CL-300;EX-CH-0001;2021-03-15;2024-03-15;5;
+Casa de máquinas;Refrigeração e ar-condicionado;Chiller central 2;Climatec Exemplo;CL-300;EX-CH-0002;2021-03-15;2024-03-15;5;
+Lobby;Refrigeração e ar-condicionado;Fan coil do lobby;Climatec Exemplo;FC-80;EX-FC-0010;2020-08-10;2023-08-10;3;
+Casa de máquinas;Hidráulica;Caldeira a gás 1;Termosul Exemplo;TS-500G;EX-CA-0001;2019-06-01;2022-06-01;5;
+Casa de máquinas;Hidráulica;Caldeira a gás 2;Termosul Exemplo;TS-500G;EX-CA-0002;2019-06-01;2022-06-01;4;
+Hall dos elevadores;Elevadores;Elevador social 1;ElevaTech Exemplo;ET-1000;EX-EL-0001;2018-11-20;2021-11-20;5;
+Hall dos elevadores;Elevadores;Elevador de serviço;ElevaTech Exemplo;ET-800S;EX-EL-0002;2018-11-20;2021-11-20;4;
+Casa de máquinas;Elétrica;Gerador diesel 500 kVA;Geradora Exemplo;GE-500D;EX-GE-0001;2019-02-12;2022-02-12;5;
+Casa de máquinas;Elétrica;Quadro de transferência automática do gerador;Geradora Exemplo;QTA-500;EX-QT-0001;2019-02-12;2022-02-12;4;
+Subsolo;Hidráulica;Bomba de recalque da cisterna 1;Hidrobomba Exemplo;HB-7;EX-BR-0001;2020-01-30;2022-01-30;4;
+Subsolo;Segurança e incêndio;Bomba de incêndio principal;Hidrobomba Exemplo;HB-I20;EX-BI-0001;2020-01-30;2022-01-30;5;
+Cobertura;Segurança e incêndio;SPDA (proteção contra descargas atmosféricas);ProtegSul Exemplo;PS-SPDA;EX-SP-0001;2017-09-05;;4;
