@@ -14,13 +14,22 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function montar() {
   const logs: { nivel: Nivel; evento: string; campos: CamposDeLog }[] = [];
   const relatados: { erro: unknown; marcas: Record<string, unknown> }[] = [];
+  const escopos: string[] = [];
   const deps: Dependencias = {
     resolverContexto: async () => ({ usuarioId: USUARIO, tenantId: TENANT }),
     usuarioDaRequisicao: async () => ({ usuarioId: USUARIO, email: null, tenantsSugeridos: [] }),
     registrar: (nivel, evento, campos) => void logs.push({ nivel, evento, campos }),
     relatar: (erro, marcas) => void relatados.push({ erro, marcas }),
+    escopoDeLeitura: async (fn) => {
+      escopos.push('aberto');
+      try {
+        return await fn();
+      } finally {
+        escopos.push('fechado');
+      }
+    },
   };
-  return { deps, logs, relatados };
+  return { deps, logs, relatados, escopos };
 }
 
 const pedir = (corpo?: unknown, cabecalhos: Record<string, string> = {}) =>
@@ -389,5 +398,51 @@ describe('rota(): limite do corpo em toda rota (ADR-032, condição 2)', () => {
       deps,
     )(req);
     expect(await resposta.json()).toMatchObject({ nome: 'Ção' });
+  });
+});
+
+describe('rota(): escopo de leitura (P1b)', () => {
+  const comMetodo = (metodo: string) =>
+    new Request('http://127.0.0.1/api/v1/teste', { method: metodo });
+
+  it('GET roda o handler dentro do escopo de leitura', async () => {
+    const { deps, escopos } = montar();
+    const dentro: string[] = [];
+    const get = rota(
+      'teste.ler',
+      async (r) => {
+        dentro.push([...escopos].join(','));
+        await r.contexto();
+        return r.json(200, {});
+      },
+      deps,
+    );
+    const resposta = await get(comMetodo('GET'));
+    expect(resposta.status).toBe(200);
+    expect(dentro).toEqual(['aberto']);
+    expect(escopos).toEqual(['aberto', 'fechado']);
+  });
+
+  it('escrita (POST, PUT, PATCH, DELETE) não entra no escopo', async () => {
+    for (const metodo of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      const { deps, escopos } = montar();
+      const handler = rota('teste.escrever', async (r) => r.json(200, {}), deps);
+      expect((await handler(comMetodo(metodo))).status).toBe(200);
+      expect(escopos).toEqual([]);
+    }
+  });
+
+  it('erro no GET ainda fecha o escopo e vira o formato único de erro', async () => {
+    const { deps, escopos } = montar();
+    const get = rota(
+      'teste.ler',
+      async () => {
+        throw new PermissaoNegada('sem_permissao', 'sem acesso');
+      },
+      deps,
+    );
+    const resposta = await get(comMetodo('GET'));
+    expect(resposta.status).toBe(403);
+    expect(escopos).toEqual(['aberto', 'fechado']);
   });
 });

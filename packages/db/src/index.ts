@@ -4,6 +4,7 @@
 // crua da unidade de trabalho (transacaoDe) nem o insert de auditoria/outbox.
 export { criarAcessoBanco } from './acesso';
 export type { AcessoBanco, ConfigAcessoBanco } from './acesso';
+export { emEscopoDeLeitura } from './escopo-de-leitura';
 export type { ConfigConexao, Contexto, Tx } from './conexao';
 export { tlsDaConexao } from './tls';
 export { conferirAlvoDoBanco, refDaConexao } from './alvo-do-banco';

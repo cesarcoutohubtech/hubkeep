@@ -7,10 +7,12 @@
 //     frase (ADR-022); a frase do domínio fica só no log;
 //   - uma linha de log por requisição e, em erro inesperado, o Sentry;
 //   - Server-Timing (P1a): o tempo do proxy, o da verificação do usuário e o
-//     total da rota.
+//     total da rota;
+//   - GET num escopo de leitura (P1b): as leituras da rota com o mesmo contexto
+//     dividem uma transação só, em vez de uma por chamada de porta.
 import { CODIGOS_HTTP, LIMITE_BYTES_PADRAO, problemasDe, z } from '@hubkeep/contratos';
 import type { UsuarioVerificado } from '@hubkeep/aplicacao';
-import type { Contexto } from '@hubkeep/db';
+import { type Contexto, emEscopoDeLeitura } from '@hubkeep/db';
 import {
   Conflito,
   ErroDeDominio,
@@ -34,6 +36,8 @@ export interface Dependencias {
   usuarioDaRequisicao: (req: Request) => Promise<UsuarioVerificado>;
   registrar: Registrador;
   relatar: Relator;
+  /** Roda o handler de um GET numa transação de leitura compartilhada (P1b). */
+  escopoDeLeitura: <T>(fn: () => Promise<T>) => Promise<T>;
 }
 
 const PADRAO: Dependencias = {
@@ -41,6 +45,7 @@ const PADRAO: Dependencias = {
   usuarioDaRequisicao,
   registrar: registrarNoConsole,
   relatar: relatarAoSentry,
+  escopoDeLeitura: emEscopoDeLeitura,
 };
 
 export interface Requisicao {
@@ -232,7 +237,9 @@ export function rota(
     let resposta: Response;
     let falha: Falha | null = null;
     try {
-      resposta = await fn(r);
+      // GET só lê (a escrita vai por POST, PUT e PATCH, na unit of work): o
+      // escopo junta as leituras numa transação. Sem leitura, não abre nada.
+      resposta = req.method === 'GET' ? await d.escopoDeLeitura(() => fn(r)) : await fn(r);
     } catch (e) {
       falha =
         e instanceof ErroDeEntrada
