@@ -360,9 +360,12 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
 
   it('I9: as transições sem rede gravam a hora do aparelho, em ordem e nunca no futuro', async () => {
     const { osId } = await osPara({ tipo: 'tecnico', usuarioId: U.tecnico });
+    // A geração recuada duas horas (pelo dono), para as horas do aparelho
+    // ficarem no passado e o ajuste ao futuro não interferir.
     const geracao = (
       await dono.query<{ quando: Date }>(
-        `select quando from app.os_transicao where os_id = $1 and acao = 'gerar'`,
+        `update app.os_transicao set quando = quando - interval '2 hours'
+         where os_id = $1 and acao = 'gerar' returning quando`,
         [osId],
       )
     ).rows[0]?.quando;
@@ -378,10 +381,10 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
         tipo,
         dados: { osId, versao, ...(feitaEm ? { feitaEm } : {}) },
       });
-    // Iniciar 1 s depois da geração; pausar com o relógio atrasado (antes da
+    // Iniciar 1 min depois da geração; pausar com o relógio atrasado (antes da
     // geração); retomar sem a hora (operação antiga); concluir com o relógio
     // adiantado uma hora.
-    await agir('os.iniciar', 1, depois(1 / 60));
+    await agir('os.iniciar', 1, depois(1));
     await agir('os.pausar', 2, depois(-30));
     await agir('os.retomar', 3);
     const antesDaConclusao = new Date();
@@ -401,7 +404,7 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
       'concluir',
     ]);
     const [, iniciar, pausar, retomar, concluir] = linhas.map((l) => l.quando.getTime());
-    expect(iniciar).toBe(geracao.getTime() + 1000);
+    expect(iniciar).toBe(geracao.getTime() + 60_000);
     expect(pausar).toBe(iniciar);
     expect(retomar).toBeGreaterThan(iniciar ?? 0);
     expect(concluir).toBeGreaterThanOrEqual(retomar ?? 0);
