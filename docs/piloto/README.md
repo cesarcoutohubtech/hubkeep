@@ -21,21 +21,27 @@ Material de apoio ao piloto da Slaviero, escrito sobre o que existe na `main` em
 - Checklist tipado, planos preventivos e geração automática de OS (P1 a P3).
 - SLA, notificações, indicadores, impressão da OS e CSV, aceite automático (job), nível bandeira das políticas (fase 1c).
 - Recuperação de senha (1c, `docs/11`), segundo fator para Admin, Gestor CSC e Implantador (SP1, `docs/05`), e-mail de produção, staging e produção (F0-12).
+- Script de provisionamento de cliente, rodado pelo backoffice: cria o grupo, o contrato de licença, o primeiro Admin e os padrões (situações, prioridades, categorias e políticas). Decidido em 08/10/2026; entra na preparação do piloto.
+- Opção de turma no script do kit de teste (um grupo de demonstração novo por turma). Decidido em 08/10/2026; o agente do núcleo acrescenta.
 - Foto no chamado (a API existe; nenhuma tela usa), leitura do QR que preenche o chamado, edição da prioridade padrão por categoria pela tela, telas para instalar situações e prioridades padrão e para criar a credencial do agente.
 - Conector real do TOTVS (T1, depende das views do cliente); o fallback de hotéis e UHs é CSV.
 - Colunas de campos estendidos e chave de importação da planilha: **[a definir na M2]**.
 
-## Perguntas em aberto para o Cesar
+## Respostas do Cesar (08/10/2026)
 
-1. **Quantos hotéis?** O pedido fala em 4; `docs/00` e `docs/04` falam em 2 a 3, com confirmação depois de 01/10. Nenhum hotel está nomeado; o roteiro deixa "[hotel 1..4 a definir]".
-2. **Onde acontece o treinamento?** O kit roda só no dev e no notebook; staging e produção não existem.
-3. **Recomeço do kit entre turmas:** não há script de reset; só apagar o grupo pelo dono do banco.
-4. **Quem instala as situações e prioridades padrão** no grupo do cliente (só pela API, Admin do grupo)?
+1. **Quantos hotéis?** 4, decidido em 07/10: um urbano próprio, um Slim, um administrado e um arrendado. Os nomes dependem da Slaviero. O `docs/00` será atualizado pelo PR de documentação do agente do núcleo (ele ainda diz 2 a 3).
+2. **Onde acontece o treinamento?** No staging, não no dev (o dev é compartilhado e só roda no notebook). A parte de staging da F0-12 precisa vir antes do treinamento, e não só antes do piloto.
+3. **Recomeço do kit entre turmas:** um grupo novo por turma, sem apagar nada (as regras proíbem apagar dados, e um grupo por turma isola as turmas). O script do kit ganha uma opção de turma que cria "Grupo Demonstração — Turma 2", com e-mails próprios. Quem acrescenta é o agente do núcleo.
+4. **Quem instala as situações e prioridades padrão** no grupo do cliente: um script de provisionamento de cliente, rodado pelo backoffice, que cria o grupo, o contrato de licença, o primeiro Admin e os padrões (situações, prioridades, categorias e políticas). É o mesmo primeiro passo do kit e entra na preparação do piloto.
+8. **Senha esquecida até a 1c:** não precisa de solução provisória. O piloto só começa depois da 1c, que traz o e-mail próprio e a recuperação de senha. No treinamento, as contas de demonstração usam uma senha conhecida.
+
+## Perguntas ainda em aberto para o Cesar
+
 5. **Importação (M2):** cria o local que falta ou recusa a linha? As colunas de campos estendidos? Só CSV ou XLSX (pergunta 4 do `docs/12`)?
 6. **Hotel pronto no piloto:** "locais sem ativo" pode ficar como pendência, já que só os ativos críticos entram?
 7. **Foto do chamado:** o `docs/10` diz que a Solicitante abre chamado com foto; nenhuma tela de chamado tem esse campo.
-8. **Senha esquecida até a 1c:** qual é o procedimento do suporte, já que não existe recuperação?
 9. **Categorias:** caldeira e SPDA não têm categoria padrão (no modelo foram para Hidráulica e Segurança e incêndio). O grupo cria categoria própria?
+10. **Script do kit no staging (nova, da resposta 2):** hoje `pnpm demo:dados` recusa qualquer ambiente que não seja o dev, e o ADR-024 limita o uso da secret key fora da Vercel. O ajuste para rodar no staging, junto com a opção de turma, está previsto?
 
 ## Como conferi
 

@@ -7,13 +7,13 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` hoje. Os 
 **Dois aplicativos.**
 - **Web** (telas do CSC, dos gerentes e da implantação): entrada em `/login`.
 - **PWA "HubKeep Técnico"** (celular): fila do dia, abrir chamado, ativos. Funciona sem rede.
-- O endereço de produção de cada um **[ainda não existe]**: staging e produção estão suspensos até perto do piloto (`docs/04`, F0-12). O domínio previsto do PWA é `tecnico.hubkeep.com.br` (`docs/01`).
+- O endereço de cada um **[ainda não existe]**: staging e produção estão suspensos (`docs/04`, F0-12). O treinamento acontece no staging, que precisa vir antes dele. O domínio previsto do PWA é `tecnico.hubkeep.com.br` (`docs/01`).
 
 **Entrar.**
 1. O acesso é por convite. A pessoa recebe o e-mail "Convite para o HubKeep" e toca em **Aceitar o convite**.
 2. Na tela "Defina sua senha", digita a **Nova senha** (mínimo de 8 caracteres) e toca em **Salvar e entrar**.
 3. Nos acessos seguintes: "Entrar no HubKeep", campos **E-mail** e **Senha**, botão **Entrar**. Erro: "E-mail ou senha incorretos."
-4. Esqueci a senha: **[ainda não existe]**. A recuperação de senha entra na fase 1c, junto com o e-mail próprio (`docs/11`, decisão de 05/10/2026). Até lá, o link de recuperação é recusado.
+4. Esqueci a senha: **[ainda não existe]**. A recuperação de senha entra na fase 1c, junto com o e-mail próprio (`docs/11`, decisão de 05/10/2026). O piloto só começa depois da 1c. Até lá, o link de recuperação é recusado, e no treinamento as contas de demonstração usam uma senha conhecida.
 5. Segundo fator (TOTP) para Admin do grupo, Gestor CSC e Implantador: **[ainda não existe]**; é condição antes do piloto (SP1, `docs/05`). Quando entrar, esses três papéis passam a precisar do segundo fator para entrar.
 
 **Barra do web.** Seletor **Idioma** (pt-BR, en, es, fr), botão **Tema claro** e botão **Sair**. Quem pertence a mais de um grupo vê também o seletor **Grupo**.

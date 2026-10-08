@@ -4,14 +4,16 @@ Proposta de treinamento para os hotéis do piloto, escrita sobre o que existe na
 
 ## 1. Os hotéis do piloto
 
-Os hotéis **não estão nomeados** nos documentos. O `docs/00` prevê piloto de 4 semanas em 2 a 3 hotéis, a confirmação com o cliente é depois de 01/10/2026 (`docs/04`) e a pergunta 17 do `docs/referencia/perguntas-cliente.md` (quais hotéis e quando) segue aberta. O pedido deste roteiro fala em 4 hotéis; a diferença para o plano (2 a 3) precisa de confirmação.
+O piloto é em **4 hotéis**, decidido pelo Cesar em 07/10/2026: um urbano próprio, um Slim, um administrado e um arrendado. Os nomes dependem da Slaviero e ainda não existem nos documentos. O `docs/00` ainda diz 2 a 3 hotéis e será atualizado pelo PR de documentação do agente do núcleo.
 
-| # | Hotel | Gerente | Data do treinamento | Idiomas em uso |
-|---|---|---|---|---|
-| 1 | [hotel 1 a definir] | [a definir] | [a definir] | [a definir] |
-| 2 | [hotel 2 a definir] | [a definir] | [a definir] | [a definir] |
-| 3 | [hotel 3 a definir] | [a definir] | [a definir] | [a definir] |
-| 4 | [hotel 4 a definir] | [a definir] | [a definir] | [a definir] |
+| # | Hotel | Perfil | Gerente | Data do treinamento | Idiomas em uso |
+|---|---|---|---|---|---|
+| 1 | [nome a definir pela Slaviero] | Urbano próprio | [a definir] | [a definir] | [a definir] |
+| 2 | [nome a definir pela Slaviero] | Slim | [a definir] | [a definir] | [a definir] |
+| 3 | [nome a definir pela Slaviero] | Administrado | [a definir] | [a definir] | [a definir] |
+| 4 | [nome a definir pela Slaviero] | Arrendado | [a definir] | [a definir] | [a definir] |
+
+Os quatro perfis diferem em quem opera e em quem é dono do ativo. Isso pode mudar o que o treinamento destaca (por exemplo, o papel de Proprietário nos hotéis administrado e arrendado). Confirmar com a Slaviero se o perfil altera quem participa da sessão.
 
 Idiomas: a interface sai em pt-BR, en, es e fr, com traduções de en, es e fr provisórias até a revisão (`docs/04`). Se houver usuário de espanhol ou francês no piloto, treinar no idioma dele e registrar o feedback da tradução.
 
@@ -29,9 +31,9 @@ Por hotel, o dia presencial soma cerca de 4 h (B, C e o fechamento). A sessão A
 ## 3. Pré-requisitos
 
 **Ambiente**
-- [ ] Ambiente acessível pelos celulares do treinamento. Hoje só existe o ambiente de dev, e o kit de teste roda no notebook (`docs/10`); staging e produção **[ainda não existem]** (F0-12 suspensa, `docs/04`). Definir onde o treinamento acontece antes de marcar as datas.
-- [ ] Os dados de exercício usam o **Grupo Demonstração** do kit (`pnpm demo:dados --ambiente dev`), nunca o grupo real do cliente. O script recusa qualquer ambiente que não seja o dev.
-- [ ] Contas do kit em `docs/10` (domínio `.test`, sem e-mail real), com a senha de teste combinada pelo instrutor. Nunca reutilizar uma senha real.
+- [ ] Ambiente acessível pelos celulares do treinamento. **O treinamento acontece no staging, não no dev** (decisão do Cesar, 08/10/2026): o dev é compartilhado e só roda no notebook. O staging **[ainda não existe]** (F0-12 suspensa, `docs/04`) e a parte de staging da F0-12 precisa vir **antes do treinamento**, e não só antes do piloto. Sem staging, não marcar as datas.
+- [ ] Os dados de exercício usam um **grupo de demonstração por turma**: "Grupo Demonstração" para a primeira e "Grupo Demonstração — Turma 2", "Turma 3" e assim por diante, cada um com e-mails próprios; nunca o grupo real do cliente. Nada é apagado entre turmas. A opção de turma do script do kit **[ainda não existe]** (o agente do núcleo acrescenta), e hoje `pnpm demo:dados --ambiente dev` recusa qualquer ambiente que não seja o dev (ver pergunta em aberto no README).
+- [ ] Contas do kit em `docs/10` (domínio `.test`, sem e-mail real). As contas de demonstração usam uma **senha conhecida**, combinada pelo instrutor. Nunca reutilizar uma senha real.
 - [ ] Segundo fator para Admin, Gestor CSC e Implantador **[ainda não existe]** (SP1): quando entrar, incluir o cadastro do app autenticador na sessão A.
 
 **Hotel (dados reais, antes do dia do treinamento)**
@@ -93,7 +95,7 @@ Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**,
 
 ## 5. Exercícios práticos com o kit de teste
 
-Dados e contas do `docs/10`: Grupo Demonstração, Hotel Demonstração Centro (Bandeira Azul), Hotel Demonstração Praia, Hotel Demonstração Serra (em implantação). Cada exercício indica papel, conta do kit e resultado esperado. Os chamados do kit servem uma vez: rodar o script de novo completa o que falta, mas não desfaz o que a turma fez (`docs/10`, seção 6). Para a turma seguinte, abrir chamados novos pelo PWA com a Solicitante; o recomeço do zero exige apagar o grupo pelo dono do banco, sem script (pergunta em aberto no README).
+Dados e contas do `docs/10`: Grupo Demonstração, Hotel Demonstração Centro (Bandeira Azul), Hotel Demonstração Praia, Hotel Demonstração Serra (em implantação). Cada exercício indica papel, conta do kit e resultado esperado. Os chamados do kit servem uma vez: rodar o script de novo completa o que falta, mas não desfaz o que a turma fez (`docs/10`, seção 6). Para a turma seguinte, criar um **grupo de demonstração novo** ("Grupo Demonstração — Turma 2"), em vez de apagar o anterior: as regras proíbem apagar dados, e um grupo por turma também isola as turmas. A opção de turma do script **[ainda não existe]**; até lá, a segunda turma abre chamados novos pelo PWA com a Solicitante.
 
 | # | Papel (conta) | Exercício | Resultado esperado |
 |---|---|---|---|
@@ -127,7 +129,7 @@ Não incluir no treinamento, porque **[ainda não existe]**: checklist e plano p
 | "Você não tem permissão para esta ação." ou "Seu papel não permite esta ação neste hotel." | Conferir o papel em **Membros e papéis**; ver a tabela de quem faz o quê no manual |
 | "A UH está pendente de licença e não recebe chamado." | Admin: **Hotéis** e saldo de licença; abrir o chamado em outro local enquanto isso |
 | "Não há espaço livre neste aparelho para guardar a foto." ou "Há fotos demais aguardando envio neste aparelho." | Liberar espaço ou conectar para enviar as fotos pendentes |
-| Não consegue entrar, esqueceu a senha | Recuperação de senha **[ainda não existe]** (fase 1c). Anotar e escalar ao suporte |
+| Não consegue entrar, esqueceu a senha | No treinamento, as contas de demonstração têm senha conhecida: o instrutor informa. No piloto isso não deve acontecer, porque ele só começa depois da 1c, que traz o e-mail próprio e a recuperação de senha (**[ainda não existe]** hoje). Se acontecer antes, anotar e escalar ao suporte |
 | QR não abre o ativo | Sem rede e sem o ativo guardado: conectar e ler de novo. "Ativo não encontrado": conferir se o ativo é do hotel do técnico e se a etiqueta é a do ativo |
 
 **Escalar ao suporte.** O app não mostra o identificador da requisição na tela e o Sentry está adiado até o piloto (`docs/04`), então anotar: hotel, nome e e-mail da pessoa, data e hora, tela e botão, texto exato da mensagem, idioma, se havia rede, aparelho e navegador. Com isso a equipe localiza o registro nos logs (que guardam `tenant_id`, `hotel_id`, `usuario_id` e `request_id`) e em **Ver histórico**. No navegador do web, o `x-request-id` aparece nos cabeçalhos da resposta (DevTools). Canal e responsável do suporte do piloto: [a definir].
