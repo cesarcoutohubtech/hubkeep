@@ -8,7 +8,9 @@
 import type { ReflexoNoChamado } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import type { EstadoDaOs } from '@hubkeep/dominio';
 import { pararNaAbertura } from './paradas';
+import { registrarTransicao } from './transicoes';
 import { refletirNoChamado, semLinha } from './triagem';
 
 async function decidirAceite(
@@ -17,12 +19,14 @@ async function decidirAceite(
   g: {
     osId: string;
     versao: number;
+    de: EstadoDaOs;
     situacaoId: string;
     motivo: string | null;
     chamado: ReflexoNoChamado;
   },
 ): Promise<{ versao: number; versaoDoChamado: number }> {
   const tx = transacaoDe(uow);
+  const para = acao === 'aceitar' ? 'aceita' : 'em_execucao';
   const antes = await tx
     .selectFrom('app.os')
     .select(['estado', 'situacao_id', 'motivo_reabertura', 'versao'])
@@ -31,7 +35,7 @@ async function decidirAceite(
   const r = await tx
     .updateTable('app.os')
     .set({
-      estado: acao === 'aceitar' ? 'aceita' : 'em_execucao',
+      estado: para,
       situacao_id: g.situacaoId,
       ...(g.motivo !== null ? { motivo_reabertura: g.motivo } : {}),
       versao: sql<number>`versao + 1`,
@@ -42,6 +46,7 @@ async function decidirAceite(
     .returning(['hotel_id', 'chamado_id', 'versao'])
     .executeTakeFirst();
   if (!r) return semLinha(tx, 'app.os', g.osId, g.versao);
+  await registrarTransicao(uow, { osId: g.osId, hotelId: r.hotel_id, acao, de: g.de, para });
   const chamado = await refletirNoChamado(uow, g.chamado);
   uow.auditar({
     entidade: 'os',
@@ -71,7 +76,13 @@ async function decidirAceite(
 
 export const aceitarOs = (
   uow: UnidadeDeTrabalho,
-  g: { osId: string; versao: number; situacaoId: string; chamado: ReflexoNoChamado },
+  g: {
+    osId: string;
+    versao: number;
+    de: EstadoDaOs;
+    situacaoId: string;
+    chamado: ReflexoNoChamado;
+  },
 ) => decidirAceite(uow, 'aceitar', { ...g, motivo: null });
 
 export async function reabrirOs(
@@ -79,6 +90,7 @@ export async function reabrirOs(
   g: {
     osId: string;
     versao: number;
+    de: EstadoDaOs;
     situacaoId: string;
     motivo: string;
     chamado: ReflexoNoChamado;

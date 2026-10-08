@@ -6,6 +6,7 @@ import type { AcaoNaOsDecidida } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { registrarTransicao } from './transicoes';
 import { refletirNoChamado, semLinha } from './triagem';
 
 const EVENTO_DA_ACAO = {
@@ -33,6 +34,13 @@ export async function andarComOs(
     .returning(['hotel_id', 'chamado_id', 'versao'])
     .executeTakeFirst();
   if (!r) return semLinha(tx, 'app.os', g.osId, g.versao);
+  await registrarTransicao(uow, {
+    osId: g.osId,
+    hotelId: r.hotel_id,
+    acao: g.acao,
+    de: g.de,
+    para: g.estado,
+  });
   if (g.chamado) await refletirNoChamado(uow, g.chamado);
   uow.auditar({
     entidade: 'os',

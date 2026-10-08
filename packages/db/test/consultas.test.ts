@@ -279,6 +279,7 @@ describe.skipIf(!temBanco)('C7 — listas e linha do tempo', { timeout: 60_000 }
         'app.evento_dominio',
         'app.auditoria',
         'app.parada_ativo',
+        'app.os_transicao',
         'app.os',
         'app.chamado',
         'app.ativo',

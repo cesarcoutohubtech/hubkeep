@@ -3,11 +3,18 @@
 // 0022): fora dos papéis da triagem, o INSERT é recusado (42501) e o UPDATE
 // não acha linha. Toda gravação confere a versão (ADR-029).
 import type { MudancaNoChamado, ReflexoNoChamado } from '@hubkeep/aplicacao';
-import { Conflito, NaoEncontrado, type Responsavel, conflitoDeVersao } from '@hubkeep/dominio';
+import {
+  Conflito,
+  type EstadoDaOs,
+  NaoEncontrado,
+  type Responsavel,
+  conflitoDeVersao,
+} from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
 import type { Tx } from '../conexao';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { registrarTransicao } from './transicoes';
 
 /** O índice os_uma_ativa_por_chamado recusou: outra triagem gerou a OS antes. */
 function osEmAndamento(e: unknown): never {
@@ -150,6 +157,13 @@ export async function gerarOs(
     })
     .execute()
     .catch(osEmAndamento);
+  await registrarTransicao(uow, {
+    osId: id,
+    hotelId: g.hotelId,
+    acao: 'gerar',
+    de: null,
+    para: 'atribuida',
+  });
   const chamado = await refletirNoChamado(uow, g.chamado);
   uow.auditar({
     entidade: 'os',
@@ -174,7 +188,13 @@ export async function gerarOs(
 
 export async function reatribuirOs(
   uow: UnidadeDeTrabalho,
-  g: { osId: string; versao: number; situacaoId: string; responsavel: Responsavel },
+  g: {
+    osId: string;
+    versao: number;
+    de: EstadoDaOs;
+    situacaoId: string;
+    responsavel: Responsavel;
+  },
 ): Promise<{ versao: number }> {
   const tx = transacaoDe(uow);
   const antes = await tx
@@ -196,6 +216,13 @@ export async function reatribuirOs(
     .returning(['hotel_id', 'chamado_id', 'versao'])
     .executeTakeFirst();
   if (!r) return semLinha(tx, 'app.os', g.osId, g.versao);
+  await registrarTransicao(uow, {
+    osId: g.osId,
+    hotelId: r.hotel_id,
+    acao: 'reatribuir',
+    de: g.de,
+    para: 'atribuida',
+  });
   uow.auditar({
     entidade: 'os',
     registroId: g.osId,
@@ -223,6 +250,7 @@ export async function cancelarOs(
   g: {
     osId: string;
     versao: number;
+    de: EstadoDaOs;
     situacaoId: string;
     motivo: string;
     chamado: ReflexoNoChamado;
@@ -243,6 +271,13 @@ export async function cancelarOs(
     .returning(['hotel_id', 'chamado_id', 'versao'])
     .executeTakeFirst();
   if (!r) return semLinha(tx, 'app.os', g.osId, g.versao);
+  await registrarTransicao(uow, {
+    osId: g.osId,
+    hotelId: r.hotel_id,
+    acao: 'cancelar',
+    de: g.de,
+    para: 'cancelada',
+  });
   const chamado = await refletirNoChamado(uow, g.chamado);
   uow.auditar({
     entidade: 'os',

@@ -208,6 +208,7 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
       'app.evento_dominio',
       'app.auditoria',
       'app.parada_ativo',
+      'app.os_transicao',
       'app.os',
       'app.chamado',
       'app.ativo',
@@ -260,6 +261,21 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
       [TENANT, osId],
     );
     expect(eventos.rows.map((e) => e.tipo)).toEqual(['os.atribuida', 'os.aceita']);
+    // I5: a conclusão foi feita pelo dono no preparo, então só a geração e o aceite.
+    const transicoes = await dono.query<{
+      acao: string;
+      de: string | null;
+      para: string;
+      usuario_id: string;
+    }>(
+      `select acao, de, para, usuario_id from app.os_transicao
+       where tenant_id = $1 and os_id = $2 order by quando, id`,
+      [TENANT, osId],
+    );
+    expect(transicoes.rows).toEqual([
+      { acao: 'gerar', de: null, para: 'atribuida', usuario_id: U.gerente },
+      { acao: 'aceitar', de: 'concluida', para: 'aceita', usuario_id: U.solicitante },
+    ]);
   });
 
   it('quem abriu reabre com motivo: a mesma OS e o chamado voltam à execução', async () => {
@@ -291,6 +307,22 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
       [TENANT, osId],
     );
     expect(eventos.rows[0]?.payload.motivo).toBe('Continua pingando');
+    const transicoes = await dono.query<{
+      acao: string;
+      de: string | null;
+      para: string;
+      usuario_id: string;
+    }>(
+      `select acao, de, para, usuario_id from app.os_transicao
+       where tenant_id = $1 and os_id = $2 order by quando, id`,
+      [TENANT, osId],
+    );
+    expect(transicoes.rows.at(-1)).toEqual({
+      acao: 'reabrir',
+      de: 'concluida',
+      para: 'em_execucao',
+      usuario_id: U.solicitante,
+    });
   });
 
   it('o Gerente aceita o chamado de outro; o Solicitante que não abriu e o Técnico, não', async () => {

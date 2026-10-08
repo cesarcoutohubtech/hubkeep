@@ -169,6 +169,7 @@ export function criarCasosDeUsoDeExecucao(deps: {
         acao,
         osId: os.id,
         versao: p.versao,
+        de: os.estado,
         estado: d.estado,
         situacaoId: situacaoPara(situacoes, 'os', d.estado),
         chamado:

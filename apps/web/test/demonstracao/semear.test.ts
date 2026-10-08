@@ -51,6 +51,7 @@ const TABELAS = [
   'app.os_material',
   'app.os_apontamento',
   'app.parada_ativo',
+  'app.os_transicao',
   'app.os',
   'app.chamado',
   'app.ativo_movimentacao',
