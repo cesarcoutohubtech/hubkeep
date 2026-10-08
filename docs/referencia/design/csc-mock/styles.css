@@ -618,3 +618,7 @@ td.best { color: var(--ok); font-weight: 600; }
 @media (max-width: 620px) { .three { grid-template-columns: 1fr; } }
 
 #ind-comp td.num { white-space: nowrap; }
+
+/* ---------- Intelligence: aviso de dados fictícios ---------- */
+.ia-aviso { border: 1px solid rgba(240,165,0,.45); background: var(--amber-soft); color: var(--ink); border-radius: 10px; padding: 9px 14px; font-size: 13.5px; }
+.ia-aviso strong { color: var(--amber); }

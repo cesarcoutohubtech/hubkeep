@@ -88,7 +88,7 @@ Para trocar por uma locução gravada, substitua os MP3 e ajuste `ms` em `narrac
 8. **Indicadores.** UH-dias perdidos, razão preventiva/corretiva, comparação na mesma bandeira e exportação CSV.
 9. **Modelos e escopo.** Em Hotéis, a matriz de modelos e a matriz de responsabilidade do arrendado. Troque para Juliana, Helena e o locador.
 10. **Integração PMS.** Somente leitura, ficha de conexão por hotel com limite de 5 minutos e o que a Central faz e não faz.
-11. **HubKeep Intelligence.** Atenção por ativo com "Por que estou vendo isso?", efetividade antes e depois e padrão sistêmico.
+11. **HubKeep Intelligence (prévia, dados fictícios).** A tela avisa no topo que os dados são inventados. Abra o Elevador social 2 do Hotel São Paulo Paulista em "Por que estou vendo isso?": nove componentes, o peso de cada um e a redistribuição do peso do que está sem dado. Em "Efetividade", o antes e o depois de 90 dias, que fala em variação observada e nunca em causa. Em "Padrão sistêmico", os possíveis problemas entre hotéis, com os mínimos da política.
 12. **Próximas fases.** MVP, 1d de conformidade, EasyGov e status da UH, fases 2 e 3, e os critérios de aceite do piloto.
 
 ## Limites do mock
@@ -96,5 +96,5 @@ Para trocar por uma locução gravada, substitua os MP3 e ajuste `ms` em `narrac
 - Não há login real nem banco de dados. O filtro de escopo é simulado no navegador; no produto, ele fica no banco (RLS).
 - Fotos, QR codes e leitura de câmera são ilustrativos. A assinatura é real, mas fica só no navegador.
 - A integração com o PMS é simulada; nenhuma conexão real é feita.
-- Os scores da Intelligence seguem a regra do 1.0 (pesos e limite como política), sobre dados fictícios plantados para a demonstração.
+- As fórmulas da Intelligence seguem o 1.0 aprovado em 08/10/2026 (atenção v2, reincidência v1, efetividade v2 e padrão sistêmico v1), com pesos, limiares e mínimos como política, sobre dados fictícios plantados para a demonstração. O cálculo é repetido em JavaScript só para os números baterem; o módulo ainda está em desenvolvimento e nada disso existe no produto real.
 - A interface do mock está só em português; o produto sai em pt-BR, inglês, espanhol e francês.

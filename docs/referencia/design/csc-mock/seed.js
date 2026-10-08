@@ -226,7 +226,11 @@ function buildSeed() {
       calendario_comercial: CAL_COMERCIAL.slice(), expediente: "Segunda a sexta, 8h às 18h; sábado, 8h às 12h", feriados: "Nacionais, estaduais e municipais do hotel, e os cadastrados pelo próprio hotel",
       criticidade_nomes: { 5: "Crítico para a operação", 4: "Alto", 3: "Médio", 2: "Baixo", 1: "Mínimo" },
       codigos_obrigatorios: false,
-      inteligencia: { versao: "v1", limite_atencao: 70, janela_dias: 180, pesos: { reincidencia: 35, indisponibilidade: 25, criticidade: 20, medicoes: 10, garantia: 10 } } },
+      inteligencia: { versao: "v2", limite_atencao: 70, janela_dias: 180, limite_horas_paradas: 48, limite_custo_12m: 10000,
+        pesos: { reincidencia: 20, parada: 15, impacto_hospede: 15, criticidade: 15, custo: 10, preventiva_atrasada: 10, medicoes: 10, garantia: 5, uh_dias: 0 },
+        efetividade: { janela_dias: 90, reducao_observada: 60, reducao_parcial: 25, aumento_observado: 20, min_chamados_antes: 3 },
+        sistemico: { mesmo_modelo: { min_ativos: 5, janela_dias: 90 }, mesmo_andar: { min_locais: 5, janela_dias: 10 }, mesma_area_comum: { min_ocorrencias: 5, janela_dias: 30 },
+          mesmo_fornecedor: { janela_dias: 180, dias_apos: 30, min_concluidas: 5, limiar_percentual: 30 }, crescimento: { percentual: 50, min_atual: 5, janela_dias: 30 } } } },
     { id: "po2", escopo_tipo: "bandeira", escopo_id: "b3", sla: { "Alta": 4 }, horario: null, escalonar_em: null },
     { id: "po3", escopo_tipo: "hotel", escopo_id: "h3", sla: { "Crítica": 1 }, horario: null, escalonar_em: 70 }
   ];
@@ -536,6 +540,8 @@ function buildSeed() {
   ["h1", "h3", "h5", "h10", "h14"].forEach(hid => ativos.filter(a => a.hotel_id === hid && a.categoria_id === "c7" && a.local_id.includes("-u")).slice(0, 3).forEach(a => { a.fabricante = "Midea"; a.modelo = "Split Inverter 12.000 BTU"; splitsMidea.push(a); }));
   splitsMidea.forEach((a, i) => [int2(5, 40), int2(45, 85)].slice(0, i % 3 === 2 ? 1 : 2).forEach(d => antigos.push({ hid: a.hotel_id, cat: "c7", titulo: "Ar-condicionado não gela", local: IDXloc(a.local_id), ativo: a, prio: "Média", age: d, codigo: ["Não gela", "Placa eletrônica", "Troca de placa"] })));
   function IDXloc(id) { return locais.find(l => l.id === id); }
+  // Elevador social 2 do São Paulo Paulista voltou a falhar várias vezes (caso de demonstração do Intelligence)
+  { const es2 = atv("h3", "Elevador social 2"); [71, 54, 38, 22, 9].forEach(d => antigos.push({ hid: "h3", cat: "c1", titulo: "Porta do elevador não fecha", local: IDXloc(es2.local_id), ativo: es2, prio: "Alta", age: d, parada: 7, codigo: ["Porta não fecha", "Desgaste de componente", "Troca da sapata da porta"] })); }
 
   antigos.sort((a, b) => b.age - a.age);
   let chOld = 4800 - antigos.length, osOld = 9000;
@@ -597,6 +603,17 @@ function buildSeed() {
     delete c._forn; delete c._custo; delete c._codigo;
   });
   os.forEach(o => { if (o.chamado_id) { const c = chamados.find(x => x.id === o.chamado_id); if (c) { o.executado_por = c.executado_por || { tipo: "interna" }; if (c.responsavel_custo) o.responsavel_custo = c.responsavel_custo; } } else if (respDe(o.hotel_id, (ativos.find(a => a.id === o.ativo_id) || {}).categoria_id)) o.responsavel_custo = respDe(o.hotel_id, ativos.find(a => a.id === o.ativo_id).categoria_id); });
+  // Casos de demonstração do Intelligence (dados fictícios): dois ativos com histórico pesado, para a tela mostrar alta atenção
+  [bombaSP, atv("h3", "Elevador social 2")].forEach(a => {
+    const cs = chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado");
+    cs.filter(c => +new Date(c.aberto_em) > now.getTime() - 90 * D).forEach(c => { c.impacto_hospede = true; });
+    const enc = cs.filter(c => c.status === "Encerrado").sort((x, y) => y.encerrado_em.localeCompare(x.encerrado_em));
+    const soma = enc.reduce((s, c) => s + (c.custo || 0), 0);
+    if (enc.length && soma < 9000) enc[0].custo = (enc[0].custo || 0) + 9000 - soma;
+    const prev = os.filter(o => o.ativo_id === a.id && o.origem === "preventiva" && o.status === "Concluída").sort((x, y) => y.fim.localeCompare(x.fim))[0];
+    if (prev && a !== bombaSP) { prev.status = "Atrasada"; prev.inicio = null; prev.fim = null; prev.horas = null; prev.checklist.forEach(it => { if (it.tipo === "medicao") { it.valor = null; it.fora = false; } else if ("ok" in it) it.ok = false; }); }
+  });
+  { const es2 = atv("h3", "Elevador social 2"); ativo_parada.push({ id: "PA-" + (ativo_parada.length + 1), ativo_id: es2.id, chamado_id: null, inicio: iso(now.getTime() - 24 * D), fim: iso(now.getTime() - 24 * D + 30 * H), motivo: "Parada para ajuste de portas" }); }
 
   // ---------- Pacote da bandeira e hotéis em abertura ----------
   const pacotes = [
@@ -630,6 +647,6 @@ function buildSeed() {
   auditoria.sort((a, b) => b.t.localeCompare(a.t));
 
   integracao.fichas = fichas;
-  return { versao: 6, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
+  return { versao: 7, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
     fornecedores, codigos, responsabilidade, pacotes, aberturas };
 }
