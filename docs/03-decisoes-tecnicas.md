@@ -873,3 +873,28 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 **Consequências:**
 - Os PRs U2 a U5 trocam o estilo solto das telas pelos componentes e pelos tokens. Quando os `style={{…}}` saírem dos apps, o `'unsafe-inline'` do `style-src` da CSP do web pode sair (pendência, fora deste ADR).
 - Uma cor nova entra como token nos dois temas, com o par dela no teste de contraste.
+
+## ADR-039 — Uma transação por pedido de leitura, contexto no BEGIN e pool ocioso maior
+
+**Status:** proposto em 08/10/2026 (tarefa P1b, PR #134); aprovado pelo Cesar em 08/10/2026.
+
+**Contexto:** o diagnóstico da P1 (`docs/diario-fase-1a.md`, 07/10/2026) mediu cerca de 22 ms por ida e volta ao pooler e de 130 a 270 ms por conexão nova. Cada leitura abria a própria transação, com 4 idas e voltas (BEGIN, contexto, consulta, COMMIT), e o pool fechava a conexão ociosa em 10 s. A meta aprovada é a leitura da API em até 150 ms.
+
+**Decisão:**
+- **BEGIN e contexto num envio só.** O driver do Kysely do HubKeep (`DriverDoHubKeep`, `packages/db/src/conexao.ts`) manda `begin; select set_config(...), set_config(...)` numa ida só, pelo protocolo simples.
+  - Os valores entram como literais. Só passa UUID ou vazio (`inicioComContexto`), então não há como injetar SQL.
+  - O `set_config` continua local à transação (ADR-003), e a falha fechada não muda.
+  - Se o início falhar, o driver manda `rollback` antes de a conexão voltar ao pool.
+- **Uma transação por pedido de leitura.** O `rota()` do web roda todo GET dentro de `emEscopoDeLeitura` (`packages/db/src/escopo-de-leitura.ts`).
+  - O primeiro `withContext` abre uma transação `read only` com o contexto dele. Os seguintes, com o mesmo contexto e o mesmo acesso, usam essa transação. O COMMIT sai no fim do pedido, e o ROLLBACK, se o handler falhar.
+  - Contexto diferente nunca reusa a transação. Leitura que falha descarta o escopo.
+  - A escrita não muda: a unit of work abre a própria transação, com auditoria e outbox (ADR-006). Escrita fora dela, dentro do escopo, o banco recusa (25006).
+  - Os apps continuam sem importar Kysely nem pool.
+- **Pool:** a conexão ociosa fica aberta 120 s, com `allowExitOnIdle`, `keepAlive` e um ouvinte de `error` no pool.
+
+**Consequências:**
+- Uma leitura passa de 4 para 3 idas e voltas; um GET com N leituras, de 4N para N + 2.
+- Durante o GET, a conexão fica presa ao pedido do primeiro `withContext` até o fim do handler, inclusive na espera que não é do banco. Com `max: 5` por instância, isso pesa sob concorrência alta.
+- Um GET que precise escrever terá de usar a unit of work, numa segunda conexão. Hoje nenhum GET da `/api/v1` escreve.
+- As páginas do servidor que chamam casos de uso fora do `rota()` ainda não usam o escopo. Podem passar a usar na P1c.
+- A confirmação pelo Supavisor (`pnpm db:fumaca-dev` com `HK_TESTE_VIA_POOLER=1`) e a medida do `Server-Timing` antes e depois ficam registradas no diário.

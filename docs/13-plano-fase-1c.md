@@ -32,6 +32,6 @@ O piloto só começa depois da 1c, que traz o e-mail próprio e a recuperação 
   - A parte de **staging** vem antes do treinamento dos hotéis, e não só antes do piloto: o treinamento acontece no staging, e não no dev (resposta 2 do Cesar, 08/10/2026).
 - **Provisionamento de cliente:** script do backoffice que cria o grupo, o contrato de licença, o primeiro Admin e os padrões (situações, prioridades, categorias e políticas). Reaproveita o primeiro passo do kit de teste (resposta 4 do Cesar, 08/10/2026).
 - **Kit de teste por turma:** opção que cria um grupo de demonstração novo por turma, com e-mails próprios, sem apagar nada (resposta 3 do Cesar, 08/10/2026).
-  - Em aberto (pergunta 10 do `docs/piloto/README.md`): hoje o script do kit só aceita o dev, e o treinamento será no staging.
+  - O kit e o script de provisionamento aceitam o staging (pergunta 10 do `docs/piloto/README.md`, confirmada pelo Cesar em 08/10/2026). Hoje o script do kit recusa o que não é o dev, e o ADR-024 limita a secret key fora da Vercel: o ajuste entra com um adendo ao ADR-024.
 - **Implantação:** agente instalado na rede do cliente, carga dos ativos críticos, etiquetas, treinamento por papel (`docs/piloto/`).
 - **Ajustes do teste manual do Cesar:** lista de responsáveis só com técnicos do hotel; prioridades realistas nos dados de demonstração.
