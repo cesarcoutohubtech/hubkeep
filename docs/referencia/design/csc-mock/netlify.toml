@@ -1,8 +1,70 @@
+# HubKeep: mock de apresentação. Site estático, sem build.
 [build]
   publish = "."
+
+# Atalhos de link para a apresentação
+[[redirects]]
+  from = "/tour"
+  to = "/?tour"
+  status = 302
+[[redirects]]
+  from = "/telao"
+  to = "/?tour=auto"
+  status = 302
+# Arquivos de trabalho que vão junto na pasta, mas não precisam ficar públicos
+[[redirects]]
+  from = "/ferramentas/*"
+  to = "/"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/narracao-teste/*"
+  to = "/"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/README.md"
+  to = "/"
+  status = 404
+  force = true
 
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Robots-Tag = "noindex"
+    X-Robots-Tag = "noindex, nofollow"
     X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'none'"
+
+# HTML, JS e CSS sempre revalidados: uma nova publicação aparece na hora
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/narracao/manifest.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Narração e fontes têm o conteúdo no nome do arquivo: podem ficar em cache por um ano
+[[headers]]
+  for = "/narracao/*.mp3"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type = "audio/mpeg"
+[[headers]]
+  for = "/fontes/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Access-Control-Allow-Origin = "*"

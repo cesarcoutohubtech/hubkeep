@@ -1,4 +1,11 @@
-/* Central de Manutenção — tema "sala de controle".
+/* Fontes hospedadas no próprio site (Barlow e Barlow Condensed, licença SIL OFL 1.1, em fontes/OFL.txt). */
+@font-face { font-family: "Barlow"; font-style: normal; font-weight: 400; font-display: swap; src: url("fontes/barlow-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Barlow"; font-style: normal; font-weight: 500; font-display: swap; src: url("fontes/barlow-latin-500-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Barlow"; font-style: normal; font-weight: 600; font-display: swap; src: url("fontes/barlow-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 500; font-display: swap; src: url("fontes/barlow-condensed-latin-500-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url("fontes/barlow-condensed-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url("fontes/barlow-condensed-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+/* HubKeep — tema "sala de controle".
    Cada cor tem um significado: verde-água = normal/ao vivo, âmbar = atenção, vermelho = vencido/crítico. */
 :root {
   --bg: #081A20;
@@ -571,13 +578,43 @@ details.more[open] summary { color: var(--ink); }
 .tour-marker { display: none; }
 .tour-video .tour-marker { display: block; position: fixed; left: 0; top: 0; width: 16px; height: 16px; z-index: 9999; background: rgb(0,0,0); }
 
-/* ---------- Intelligence (prévia com dados fictícios) ---------- */
-.ia-aviso { border: 1px solid rgba(240,165,0,.45); background: var(--amber-soft); color: var(--ink); border-radius: 10px; padding: 9px 14px; font-size: 13.5px; }
-.ia-aviso strong { color: var(--amber); }
-.ia-score { font-family: var(--font-cond); font-size: 24px; font-weight: 600; color: var(--head); }
-.ia-porque { margin: 4px 0 10px; padding-left: 22px; display: grid; gap: 6px; font-size: 15px; }
-.ia-sis { padding: 10px 0; border-bottom: 1px solid var(--line-2); }
-.ia-sis:last-child { border-bottom: 0; }
-.ia-evid { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--steel); margin-top: 6px; }
-.ia-evid b { color: var(--ink); font-weight: 600; }
-.chart svg text { fill: var(--steel); font-size: 11px; }
+/* ---------- Itens da revisão de 07/10 ---------- */
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sig-pad { display: block; width: 100%; height: 120px; border: 1px dashed var(--line); border-radius: 10px; background: var(--tint-1); touch-action: none; cursor: crosshair; margin-bottom: 6px; }
+.sig-view { display: flex; align-items: center; gap: 14px; border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 12px; background: var(--tint-1); color: var(--head); }
+.sig-view img, .sig-view svg { height: 54px; width: auto; max-width: 220px; }
+:root[data-theme="light"] .sig-view img { filter: invert(1); }
+.steps { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 6px; counter-reset: st; }
+.steps li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; counter-increment: st; }
+.steps li::before { content: counter(st); flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--tint-2); color: var(--steel); }
+.steps li.done::before { content: "✓"; background: var(--ok-soft); color: var(--ok); }
+.steps li span small { display: block; color: var(--dim); font-size: 12px; }
+td.best { color: var(--ok); font-weight: 600; }
+.insights { display: grid; gap: 12px; }
+.insight { padding: 14px 16px; }
+.ins-h { display: flex; gap: 14px; align-items: flex-start; }
+.score { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-content: center; text-align: center; border: 3px solid var(--line); }
+.score b { font-family: var(--font-cond); font-size: 24px; line-height: 1; color: var(--head); }
+.score span { font-size: 10px; color: var(--steel); }
+.score.mid { border-color: var(--amber); }
+.score.hi { border-color: var(--red); }
+.insight .why { margin-top: 10px; }
+.why-b { margin-top: 10px; border-top: 1px solid var(--line-2); padding-top: 10px; }
+.why-b table td, .why-b table th { padding: 5px 8px; font-size: 13px; }
+.nav-group { white-space: nowrap; }
+#print-area { display: none; }
+@media print {
+  body > *:not(#print-area) { display: none !important; }
+  #print-area { display: block !important; color: #000; background: #fff; font: 12pt/1.4 "Barlow", Arial, sans-serif; padding: 0 8mm; }
+  #print-area h1 { font-size: 18pt; margin: 0 0 2mm; } #print-area h2 { font-size: 13pt; margin: 6mm 0 2mm; }
+  #print-area table { width: 100%; border-collapse: collapse; } #print-area th, #print-area td { text-align: left; border-bottom: 1px solid #ccc; padding: 2mm; vertical-align: top; }
+  #print-area th { width: 32%; color: #333; } #print-area img { filter: invert(1); }
+  #print-area .foot { margin-top: 8mm; color: #555; font-size: 9pt; }
+}
+.tour-sound { position: fixed; left: 50%; top: 76px; transform: translateX(-50%); z-index: 9003; background: var(--amber); color: #1a1200; border: none; border-radius: 999px; padding: 10px 18px; font-weight: 600; box-shadow: var(--shadow); cursor: pointer; }
+.tour-load { margin-top: 12px; font-size: 12.5px; color: var(--steel); }
+.tour-load i { display: block; height: 4px; border-radius: 3px; background: var(--tint-2); margin-top: 6px; overflow: hidden; }
+.tour-load i b { display: block; height: 100%; width: 0; background: var(--ok); transition: width .2s; }
+@media (max-width: 620px) { .three { grid-template-columns: 1fr; } }
+
+#ind-comp td.num { white-space: nowrap; }

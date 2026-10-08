@@ -1,9 +1,9 @@
-/* Central de Manutenção (CSC) — mock navegável para apresentação.
+/* HubKeep (EasyGov) — mock navegável para apresentação. "CSC" é a equipe central de manutenção do cliente.
    Sem backend: os dados vêm de seed.js e as alterações ficam no navegador (localStorage).
    O isolamento por escopo é simulado em uma única função (scope), como faria a RLS no banco. */
 
 const H = 3600e3, D = 24 * H;
-const STORE_KEY = "csc-demo-v4";
+const STORE_KEY = "csc-demo-v6";
 const THEME_KEY = "csc-demo-theme";
 const PERSONA_KEY = "csc-demo-persona";
 const PRIOS = ["Crítica", "Alta", "Média", "Baixa"];
@@ -12,7 +12,7 @@ const OPEN = ["Aberto", "Em atendimento", "Aguardando peça", "Aguardando aceite
 let DB, IDX;
 const UI = {
   persona: "u1",
-  f: { ch: { q: "", hotel: "", status: "abertos", prio: "", cat: "", page: 0 }, os: { origem: "", status: "", hotel: "", page: 0 }, at: { q: "", hotel: "", cat: "", crit: "", page: 0 }, au: { page: 0 } },
+  f: { ch: { q: "", hotel: "", status: "abertos", prio: "", cat: "", page: 0 }, os: { origem: "", status: "", hotel: "", page: 0 }, at: { q: "", hotel: "", cat: "", crit: "", page: 0 }, au: { q: "", ent: "", hotel: "", page: 0 }, ind: { band: "" }, intel: { open: null } },
   cal: null, calHotel: null, theme: "dark", ncFotos: 0, imp: null,
   phone: { tab: "hoje", view: null, offline: false, pend: 0, scan: null }
 };
@@ -21,7 +21,7 @@ const UI = {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 4) { DB = d; } }
+    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 6) { DB = d; } }
     const p = localStorage.getItem(PERSONA_KEY); if (p) UI.persona = p;
     const th = localStorage.getItem(THEME_KEY); if (th) UI.theme = th;
   } catch (e) { /* armazenamento indisponível: segue com seed em memória */ }
@@ -41,6 +41,7 @@ function reindex() {
   IDX = { hotel: m(DB.hoteis), band: m(DB.bandeiras), local: m(DB.locais), ativo: m(DB.ativos), user: m(DB.usuarios), cat: m(DB.categorias), plano: m(DB.planos), ch: m(DB.chamados), os: m(DB.os), prop: m(DB.proprietarios) };
   IDX.donoDe = {}; DB.localProprietario.forEach(x => IDX.donoDe[x.local_id] = x.proprietario_id);
   IDX.modelo = m(DB.modelos_ativo);
+  IDX.forn = m(DB.fornecedores);
 }
 
 /* ---------- Utilidades ---------- */
@@ -73,26 +74,47 @@ function scope() {
   if (e.tipo === "grupo") return { hoteis: DB.hoteis.map(h => h.id), locais: null, label: `grupo inteiro (${DB.hoteis.length} hotéis)` };
   if (e.tipo === "bandeira") { const hs = DB.hoteis.filter(h => h.bandeira_id === e.id).map(h => h.id); return { hoteis: hs, locais: null, label: `${IDX.band[e.id].nome} (${hs.length} hotéis)` }; }
   if (e.tipo === "hotel") return { hoteis: [e.id], locais: null, label: IDX.hotel[e.id].nome };
+  if (e.tipo === "locador") {
+    const cats = DB.responsabilidade.filter(r => r.hotel_id === e.id && r.responsavel === "Locador").map(r => r.categoria_id);
+    return { hoteis: [e.id], locais: null, cats, label: `${IDX.hotel[e.id].nome}, só as categorias que o contrato põe sob o locador (${cats.length})` };
+  }
   if (e.tipo === "proprietario") {
     const ls = DB.localProprietario.filter(x => x.proprietario_id === e.id).map(x => x.local_id);
     const hs = [...new Set(ls.map(l => IDX.local[l].hotel_id))];
     return { hoteis: hs, locais: ls, label: `${ls.length} UHs próprias em ${hs.map(h => IDX.hotel[h].nome).join(", ")}` };
   }
 }
+const catOf = x => x.categoria_id !== undefined ? x.categoria_id : (x.ativo_id && IDX.ativo[x.ativo_id] ? IDX.ativo[x.ativo_id].categoria_id : null);
 function scoped(list, localKey = "local_id") {
   const s = scope();
-  return list.filter(x => s.hoteis.includes(x.hotel_id) && (!s.locais || s.locais.includes(x[localKey])));
+  return list.filter(x => s.hoteis.includes(x.hotel_id) && (!s.locais || s.locais.includes(x[localKey])) && (!s.cats || s.cats.includes(catOf(x))));
 }
 const role = () => {
   const p = persona().papel;
   if (p === "Gestora do CSC") return "csc";
-  if (p.startsWith("Coordenador")) return "band";
+  if (p.includes("bandeira")) return "band";
   if (p === "Gerente de hotel") return "hotel";
   if (p === "Técnico") return "tec";
+  if (p === "Locador") return "loc";
   return "prop";
 };
+const isOwner = () => ["prop", "loc"].includes(role());
 const canEdit = () => ["csc", "band", "hotel"].includes(role());
 const catNome = id => id ? IDX.cat[id].nome : "Aguardando triagem";
+const polGrupo = () => DB.politicas.find(p => p.escopo_tipo === "grupo");
+const critNome = n => (polGrupo().criticidade_nomes || {})[n] || String(n);
+const critBadge = n => `<span class="badge ${n >= 5 ? "b-red" : n >= 4 ? "b-amber" : n >= 3 ? "b-blue" : "b-grey"}" title="Criticidade ${n} de 5">${n} · ${esc(critNome(n))}</span>`;
+const calComercial = cat => (polGrupo().calendario_comercial || []).includes(cat);
+const prazoDe = (cat, inicioMs, h) => calComercial(cat) ? somarHorasUteis(inicioMs, h) : inicioMs + h * H;
+const brl = v => v == null ? "—" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const nomeExec = e => !e ? "—" : e.tipo === "fornecedor" ? (IDX.forn[e.fornecedor_id] || {}).nome || "Fornecedor" : "Equipe interna";
+function downloadCSV(nome, cab, linhas) {
+  const q = v => { const x = v == null ? "" : String(v); return /[";\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+  const txt = "\ufeff" + [cab, ...linhas].map(l => l.map(q).join(";")).join("\r\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([txt], { type: "text/csv;charset=utf-8" })); a.download = nome; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+  toast(`${linhas.length} linhas exportadas em ${nome}, só com o que o seu perfil enxerga`);
+}
 function prioPadrao(cat, hid) {
   const h = IDX.hotel[hid];
   const ps = [DB.politicas.find(p => p.escopo_tipo === "hotel" && p.escopo_id === hid), DB.politicas.find(p => p.escopo_tipo === "bandeira" && p.escopo_id === h.bandeira_id), DB.politicas.find(p => p.escopo_tipo === "grupo")];
@@ -122,7 +144,7 @@ function slaInfo(c) {
   if (c.status === "Aguardando aceite") { const last = c.eventos[c.eventos.length - 1]; const ok = t(last.t) <= prazo; return { cls: "done", txt: ok ? "Serviço no prazo" : "Serviço fora do prazo", state: ok ? "ok" : "late" }; }
   const rem = (prazo - Date.now()) / H;
   if (rem < 0) return { cls: "late", txt: "Vencido há " + dur(rem), state: "late" };
-  const pct = 1 - rem / c.sla_h;
+  const pct = (Date.now() - t(c.aberto_em)) / Math.max(1, prazo - t(c.aberto_em));
   if (pct >= escalonar(c.hotel_id) / 100) return { cls: "warn", txt: "Vence em " + dur(rem), state: "warn" };
   return { cls: "", txt: "Vence em " + dur(rem), state: "ok" };
 }
@@ -135,7 +157,6 @@ function statusBadge(s) {
 
 /* ---------- Ícones ---------- */
 const I = {
-  intel: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
   painel: '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
   chamados: '<path d="M4 4h16v12H7l-3 3z"/><path d="M8 9h8M8 12h5"/>',
   os: '<path d="M9 3h6v3H9z"/><path d="M6 5H5v16h14V5h-1"/><path d="M9 12l2 2 4-4"/>',
@@ -151,6 +172,10 @@ const I = {
   imp: '<path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M12 8v7M9 12l3 3 3-3"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+  ind: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  forn: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/><circle cx="18" cy="17" r="0"/>',
+  intel: '<path d="M12 3a6 6 0 0 0-4 10.5V17h8v-3.5A6 6 0 0 0 12 3z"/><path d="M9 21h6M10 17v-3l2-2 2 2v3"/>',
+  sig: '<path d="M3 17c3-6 5-9 7-9s-1 9 1 9 3-5 4-5 1 3 3 3 2-1 3-1"/><path d="M3 21h18"/>',
   cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'
 };
 const icon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`;
@@ -160,22 +185,23 @@ function navItems() {
   const r = role();
   const all = [
     ["Operação", null],
-    ["painel", "Painel", "painel"], ["chamados", "Chamados", "chamados"], ["os", "Ordens de serviço", "os"], ["preventiva", "Preventiva", "prev"],
+    ["painel", "Painel", "painel"], ["indicadores", "Indicadores", "ind"], ["chamados", "Chamados", "chamados"], ["os", "Ordens de serviço", "os"], ["preventiva", "Preventiva", "prev"],
     ["Cadastros", null],
-    ["ativos", "Ativos", "ativos"], ["implantacao", "Implantação de ativos", "imp"], ["hoteis", "Hotéis e unidades", "hoteis"],
-    ["Intelligence", null],
-    ["intelligence", "Intelligence", "intel"],
+    ["ativos", "Ativos", "ativos"], ["implantacao", "Implantação de ativos", "imp"], ["hoteis", "Hotéis e unidades", "hoteis"], ["fornecedores", "Fornecedores", "forn"],
     ["Configuração", null],
-    ["politicas", "Políticas de SLA", "pol"], ["integracao", "Integração TOTVS CM", "integ"], ["usuarios", "Usuários e escopos", "users"], ["auditoria", "Auditoria", "audit"],
+    ["politicas", "Políticas de SLA", "pol"], ["integracao", "Integração PMS", "integ"], ["usuarios", "Usuários e escopos", "users"], ["auditoria", "Auditoria", "audit"],
+    ["Módulo opcional", null],
+    ["inteligencia", "HubKeep Intelligence", "intel"],
     ["Apresentação", null],
     ["tecnico", r === "tec" ? "Meu dia" : "App do técnico", "tec"], ["roadmap", "Próximas fases", "road"]
   ];
   const allow = {
     csc: null,
-    band: ["painel", "chamados", "os", "preventiva", "ativos", "implantacao", "hoteis", "intelligence", "politicas", "auditoria", "tecnico"],
-    hotel: ["painel", "chamados", "os", "preventiva", "ativos", "implantacao", "hoteis", "intelligence", "auditoria", "tecnico"],
+    band: ["painel", "indicadores", "chamados", "os", "preventiva", "ativos", "implantacao", "hoteis", "fornecedores", "politicas", "auditoria", "inteligencia", "tecnico"],
+    hotel: ["painel", "indicadores", "chamados", "os", "preventiva", "ativos", "implantacao", "hoteis", "fornecedores", "auditoria", "inteligencia", "tecnico"],
     tec: ["tecnico"],
-    prop: ["painel", "chamados"]
+    prop: ["painel", "chamados"],
+    loc: ["painel", "chamados", "os", "ativos"]
   }[r];
   const out = []; let pendingGroup = null;
   all.forEach(it => {
@@ -198,7 +224,7 @@ function route() {
 function go(page, params) { const qs = params ? "?" + new URLSearchParams(params).toString() : ""; location.hash = "#/" + page + qs; }
 
 /* ---------- Renderização principal ---------- */
-const TITLES = { painel: "Painel", chamados: "Chamados", os: "Ordens de serviço", preventiva: "Preventiva", ativos: "Ativos", implantacao: "Implantação de ativos", hoteis: "Hotéis e unidades", politicas: "Políticas de SLA", integracao: "Integração TOTVS CM", usuarios: "Usuários e escopos", auditoria: "Auditoria", intelligence: "Intelligence (prévia)", tecnico: "App do técnico", roadmap: "Próximas fases" };
+const TITLES = { indicadores: "Indicadores", fornecedores: "Fornecedores", inteligencia: "HubKeep Intelligence", painel: "Painel", chamados: "Chamados", os: "Ordens de serviço", preventiva: "Preventiva", ativos: "Ativos", implantacao: "Implantação de ativos", hoteis: "Hotéis e unidades", politicas: "Políticas de SLA", integracao: "Integração PMS", usuarios: "Usuários e escopos", auditoria: "Auditoria", tecnico: "App do técnico", roadmap: "Próximas fases" };
 function render() {
   document.querySelectorAll(".drawer, .drawer-bg").forEach(e => e.remove());
   const { page, params } = route();
@@ -206,11 +232,11 @@ function render() {
   const openCount = scoped(DB.chamados).filter(c => OPEN.includes(c.status)).length;
   const nav = navItems().map(it => it.group ? `<div class="nav-group">${it.group}</div>` :
     `<a href="#/${it.id}" class="${it.id === page ? "active" : ""}" ${it.id === page ? 'aria-current="page"' : ""}>${icon(it.icon)}<span>${it.label}</span>${it.id === "chamados" ? `<span class="count">${openCount}</span>` : ""}</a>`).join("");
-  const personas = ["u1", "u2", "u3", "u4", "u5"].map(id => { const u = IDX.user[id]; return `<option value="${id}" ${id === UI.persona ? "selected" : ""}>${esc(u.nome)} (${esc(u.papel)})</option>`; }).join("");
+  const personas = ["u1", "u2", "u3", "u4", "u5", "u90"].map(id => { const u = IDX.user[id]; return `<option value="${id}" ${id === UI.persona ? "selected" : ""}>${esc(u.nome)} (${esc(u.papel)})</option>`; }).join("");
   $("#app").innerHTML = `
   <div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#0F3D45"/><path d="M8 22a9 9 0 0 1 18 0" fill="none" stroke="#2FD6C3" stroke-width="3" stroke-linecap="round"/><path d="M17 22l5-7" stroke="#F0A500" stroke-width="3" stroke-linecap="round"/><circle cx="17" cy="22" r="2.4" fill="#F0A500"/></svg><div><div class="brand-name">${esc(DEMO_CONFIG.produto)}</div><div class="brand-sub">${esc(DEMO_CONFIG.plataforma)} para ${esc(DEMO_CONFIG.cliente)}</div></div></div>
+      <div class="brand"><svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#0F3D45"/><path d="M8 22a9 9 0 0 1 18 0" fill="none" stroke="#2FD6C3" stroke-width="3" stroke-linecap="round"/><path d="M17 22l5-7" stroke="#F0A500" stroke-width="3" stroke-linecap="round"/><circle cx="17" cy="22" r="2.4" fill="#F0A500"/></svg><div><div class="brand-name">${esc(DEMO_CONFIG.produto)}</div><div class="brand-sub">por ${esc(DEMO_CONFIG.plataforma)} · ${esc(DEMO_CONFIG.cliente)}</div></div></div>
       <nav class="nav" aria-label="Menu principal">${nav}</nav>
       <div class="sidebar-foot"><button data-act="tour" class="tour-launch">Assistir demonstração guiada</button><br>${esc(DEMO_CONFIG.aviso)}<br><button data-act="reset">Restaurar dados da demo</button></div>
     </aside>
@@ -299,12 +325,12 @@ function pageDashboard() {
   const warnTot = hs.reduce((a, h) => a + h.warn, 0), hotLate = hs.filter(h => h.late).length;
   const plural = (n, a, b) => n === 1 ? a : b;
   const headline = k.late ? `${k.late} ${plural(k.late, "chamado fora do prazo", "chamados fora do prazo")}${hs.length > 1 ? ` em ${hotLate} ${plural(hotLate, "hotel", "hotéis")}` : ""}` : "Tudo dentro do prazo agora";
-  const sub = [warnTot ? `${warnTot} ${plural(warnTot, "vence", "vencem")} em breve` : null, k.crit ? `${k.crit} ${plural(k.crit, "crítico", "críticos")} em atendimento` : null, r !== "prop" && k.prevLate ? `${k.prevLate} preventivas atrasadas em 30 dias` : null].filter(Boolean).join(". ") || "Nenhum chamado perto de vencer.";
+  const sub = [warnTot ? `${warnTot} ${plural(warnTot, "vence", "vencem")} em breve` : null, k.crit ? `${k.crit} ${plural(k.crit, "crítico", "críticos")} em atendimento` : null, !isOwner() && k.prevLate ? `${k.prevLate} preventivas atrasadas em 30 dias` : null].filter(Boolean).join(". ") || "Nenhum chamado perto de vencer.";
   const stLabel = { crit: "Estado da rede: crítico", att: "Estado da rede: atenção", ok: "Estado da rede: normal" }[band].replace("rede", hs.length > 1 ? "rede" : "operação");
   const statusBand = `<section class="status-band ${band}" aria-label="Estado da operação">
     <div><div class="meta"><span class="live"><i></i>Ao vivo</span><span>${stLabel}</span></div>
       <div class="headline">${headline}</div><div class="sub">${sub}.</div></div>
-    <div class="clock-wrap"><div class="clock" id="live-clock">--:--:--</div><div class="meta clock-meta"><span>${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</span><span>TOTVS CM lido <span data-rel="${DB.integracao.views[2].ultima}">${rel(DB.integracao.views[2].ultima)}</span></span></div></div>
+    <div class="clock-wrap"><div class="clock" id="live-clock">--:--:--</div><div class="meta clock-meta"><span>${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</span><span>PMS lido <span data-rel="${DB.integracao.views[2].ultima}">${rel(DB.integracao.views[2].ultima)}</span></span></div></div>
     ${hs.length > 1 ? `<div class="health-bar" aria-hidden="true">${hs.slice().sort((a, b) => ({ crit: 0, att: 1, ok: 2 }[a.st] - { crit: 0, att: 1, ok: 2 }[b.st])).map(h => `<i class="${h.st === "ok" ? "" : h.st}" title="${esc(IDX.hotel[h.hid].nome)}"></i>`).join("")}</div>
     <div class="health-legend"><span><b>${nCrit}</b>${plural(nCrit, "hotel crítico", "hotéis críticos")}</span><span><b>${nAtt}</b>em atenção</span><span><b>${nOk}</b>${plural(nOk, "normal", "normais")}</span></div>` : ""}
   </section>`;
@@ -325,7 +351,7 @@ function pageDashboard() {
       <div class="spark">${spark(slaS, col(k.sla, 90, 80), 220, 38, false)}</div><div class="foot">Meta de 90%. ${k.enc} encerrados em 30 dias.</div></div>
     <div class="panel inst"><div class="lab">Tempo médio de reparo</div><div class="val">${mttrTxt}</div>${deltaHtml(k.mttr != null && mttrPrev ? (k.mttr - mttrPrev) / mttrPrev * 100 : null, "%", false, "vs. 30 dias antes")}
       <div class="spark">${spark(mttrS, "#5CC8E0", 220, 38, false)}</div><div class="foot">Da abertura ao encerramento, por semana.</div></div>
-    ${r === "prop" ? `<div class="panel inst"><div class="lab">UHs acompanhadas</div><div class="val">${s.locais.length}</div><span class="delta flat">${esc(s.hoteis.map(h => IDX.hotel[h].nome).join(", "))}</span><div class="foot" style="margin-top:22px">Você vê só os chamados das suas unidades.</div></div>` :
+    ${r === "loc" ? `<div class="panel inst"><div class="lab">Categorias sob o locador</div><div class="val">${s.cats.length}</div><span class="delta flat">${esc(s.cats.map(c => IDX.cat[c].nome).join(", "))}</span><div class="foot" style="margin-top:22px">Definidas na matriz de responsabilidade do contrato de arrendamento.</div></div>` : r === "prop" ? `<div class="panel inst"><div class="lab">UHs acompanhadas</div><div class="val">${s.locais.length}</div><span class="delta flat">${esc(s.hoteis.map(h => IDX.hotel[h].nome).join(", "))}</span><div class="foot" style="margin-top:22px">Você vê só os chamados das suas unidades.</div></div>` :
       `<div class="panel inst has-ring"><div class="lab">Preventivas em dia</div>${ring(k.pv, 95, col(k.pv, 95, 85))}<div class="val">${k.pv == null ? "—" : fmt1(k.pv)}<small>%</small></div>${deltaHtml(k.pv != null && pvPrev != null ? k.pv - pvPrev : null, " p.p.", true, "vs. 30 dias antes")}
       <div class="spark">${spark(prevS, col(k.pv, 95, 85), 220, 38, false)}</div><div class="foot">Meta de 95%. ${k.prevLate} atrasadas em 30 dias.</div></div>`}
   </div>`;
@@ -341,23 +367,23 @@ function pageDashboard() {
     const hn = IDX.hotel[h.hid];
     const c = col(sl, 90, 80);
     return `<tr class="click" data-act="goto-hotel" data-id="${h.hid}" title="Ver chamados de ${esc(hn.nome)}">
-      <td><div class="hname"><span class="led ${h.st === "ok" ? "" : h.st}" aria-label="${h.st === "crit" ? "crítico" : h.st === "att" ? "atenção" : "normal"}"></span><span>${esc(hn.nome.replace(/^Hotel /, ""))}<small>${esc(IDX.band[hn.bandeira_id].nome)}, ${hn.uhs} UHs</small></span></div></td>
+      <td><div class="hname"><span class="led ${h.st === "ok" ? "" : h.st}" aria-label="${h.st === "crit" ? "crítico" : h.st === "att" ? "atenção" : "normal"}"></span><span>${esc(hn.nome.replace(/^Hotel /, ""))}<small>${esc(IDX.band[hn.bandeira_id].nome)}, ${esc(hn.modelo.toLowerCase())}, ${hn.uhs} UHs</small></span></div></td>
       <td><div class="cell ${h.open ? "" : "zero"}" ${heat(h.open, mx.open, "47,214,195")}>${h.open}</div></td>
       <td><div class="cell ${h.warn ? "" : "zero"}" ${heat(h.warn, mx.warn, "240,165,0")}>${h.warn}</div></td>
       <td><div class="cell ${h.late ? "" : "zero"}" ${heat(h.late, mx.late, "255,90,95")}>${h.late}</div></td>
       <td><div class="cell ${h.crit ? "" : "zero"}" ${heat(h.crit, mx.crit, "255,90,95")}>${h.crit}</div></td>
-      ${r === "prop" ? "" : `<td><div class="cell ${h.pl ? "" : "zero"}" ${heat(h.pl, mx.pl, "240,165,0")}>${h.pl}</div></td>`}
+      ${isOwner() ? "" : `<td><div class="cell ${h.pl ? "" : "zero"}" ${heat(h.pl, mx.pl, "240,165,0")}>${h.pl}</div></td>`}
       <td><div class="slabar"><div class="trk"><b style="width:${sl ?? 0}%;background:${c}"></b><em></em></div><span style="color:${c}">${sl == null ? "—" : Math.round(sl) + "%"}</span></div></td>
       <td class="spark-cell">${spark(trend, "#5CC8E0", 110, 28)}</td></tr>`;
   }).join("");
   const matrix = `<div class="panel"><div class="panel-h"><h2>Telemetria por hotel</h2><span class="hint">Cores mais fortes indicam mais ocorrências. Clique em um hotel para ver a fila dele.</span></div>
-    <div class="panel-b table-wrap"><table class="matrix"><thead><tr><th>Hotel</th><th>Em aberto</th><th>Vencem em breve</th><th>Fora do prazo</th><th>Críticos</th>${r === "prop" ? "" : "<th>Prev. atrasadas</th>"}<th>SLA 30 dias<br>(meta 90%)</th><th>Chamados abertos por dia, 14 dias</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    <div class="panel-b table-wrap"><table class="matrix"><thead><tr><th>Hotel</th><th>Em aberto</th><th>Vencem em breve</th><th>Fora do prazo</th><th>Críticos</th>${isOwner() ? "" : "<th>Prev. atrasadas</th>"}<th>SLA 30 dias<br>(meta 90%)</th><th>Chamados abertos por dia, 14 dias</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 
   // Contagem regressiva
   const runningAll = chs.filter(c => OPEN.includes(c.status) && c.status !== "Aguardando aceite");
   const cds = runningAll.filter(c => t(c.prazo_sla) > now).sort((a, b) => t(a.prazo_sla) - t(b.prazo_sla)).slice(0, 6);
   const countdown = `<div class="panel"><div class="panel-h"><h2>Contagem regressiva do SLA</h2><span class="hint">Próximos prazos a vencer</span><div class="spacer"></div>${k.late ? `<a href="#" class="badge b-red" data-act="goto-late" style="text-decoration:none">${k.late} já ${k.late === 1 ? "vencido" : "vencidos"}</a>` : ""}</div><div class="panel-b" style="padding-top:0">
-    ${cds.length ? `<ul class="cd-list">${cds.map(c => `<li class="cd-item" data-act="open-ch" data-id="${c.id}" data-deadline="${c.prazo_sla}" data-sla="${c.sla_h}" data-hid="${c.hotel_id}">
+    ${cds.length ? `<ul class="cd-list">${cds.map(c => `<li class="cd-item" data-act="open-ch" data-id="${c.id}" data-deadline="${c.prazo_sla}" data-open="${c.aberto_em}" data-hid="${c.hotel_id}">
       <div class="cd-t">${esc(c.titulo)}</div><div class="cd-time"><span class="cd-v">--:--:--</span><small class="cd-l"></small></div>
       <div class="cd-s">${prio(c.prioridade)} <span style="margin-left:6px">${esc(IDX.hotel[c.hotel_id].nome.replace(/^Hotel /, ""))}, ${esc(IDX.local[c.local_id].nome)}</span></div>
       <div class="cd-bar"><b></b></div></li>`).join("")}</ul>` : `<div class="empty">Nenhum chamado em andamento.</div>`}
@@ -366,7 +392,7 @@ function pageDashboard() {
   // Fluxo de eventos
   const aud = DB.auditoria.filter(a => !a.hotel_id || s.hoteis.includes(a.hotel_id)).filter(a => !(s.locais && a.entidade === "Chamado" && IDX.ch[a.registro] && !s.locais.includes(IDX.ch[a.registro].local_id))).slice(0, 5);
   const icFor = a => a.entidade === "Chamado" ? ["ch", "chamados"] : a.entidade === "OS" ? ["os", "os"] : ["po", "pol"];
-  const feed = r === "prop" ? "" : `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Fluxo de eventos</h2><span class="live" style="margin-left:4px"><i></i>ao vivo</span></div><div class="panel-b" style="padding-top:0"><ul class="feed">${aud.map(a => { const [cl, ic] = icFor(a); return `<li class="${now - t(a.t) < 90e3 ? "new" : ""}"><span class="ic ${cl}">${icon(ic)}</span><div>${esc(a.acao)}<div class="who">${esc(a.usuario)}, ${esc(a.entidade.toLowerCase())} ${esc(a.registro)}</div></div><span class="w" data-rel="${a.t}">${rel(a.t)}</span></li>`; }).join("")}</ul></div></div>`;
+  const feed = isOwner() ? "" : `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Fluxo de eventos</h2><span class="live" style="margin-left:4px"><i></i>ao vivo</span></div><div class="panel-b" style="padding-top:0"><ul class="feed">${aud.map(a => { const [cl, ic] = icFor(a); return `<li class="${now - t(a.t) < 90e3 ? "new" : ""}"><span class="ic ${cl}">${icon(ic)}</span><div>${esc(a.acao)}<div class="who">${esc(a.usuario)}, ${esc(a.entidade.toLowerCase())} ${esc(a.registro)}</div></div><span class="w" data-rel="${a.t}">${rel(a.t)}</span></li>`; }).join("")}</ul></div></div>`;
 
   // Fluxo diário e categorias
   const dAb = Array(days).fill(0), dEn = Array(days).fill(0), start0 = now - days * D;
@@ -408,7 +434,7 @@ function tickLive() {
   const now = Date.now();
   const clk = document.getElementById("live-clock"); if (clk) { const d = new Date(); clk.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
   document.querySelectorAll("[data-deadline]").forEach(el => {
-    const dl = t(el.dataset.deadline), slaMs = +el.dataset.sla * H, rem = dl - now, used = 1 - rem / slaMs;
+    const dl = t(el.dataset.deadline), rem = dl - now, used = (now - t(el.dataset.open)) / Math.max(1, dl - t(el.dataset.open));
     const esc_ = escalonar(el.dataset.hid) / 100;
     const st = rem < 0 ? "late" : used >= esc_ ? "warn" : "";
     const v = el.querySelector(".cd-v"), l = el.querySelector(".cd-l"), tm = el.querySelector(".cd-time"), bar = el.querySelector(".cd-bar");
@@ -423,7 +449,7 @@ setInterval(tickLive, 1000);
 
 /* ---------- Chamados ---------- */
 function hotelOptions(sel) { return scope().hoteis.map(id => `<option value="${id}" ${sel === id ? "selected" : ""}>${esc(IDX.hotel[id].nome)}</option>`).join(""); }
-function pageChamados() {
+function chamadosFiltrados() {
   const f = UI.f.ch;
   let list = scoped(DB.chamados);
   if (f.hotel) list = list.filter(c => c.hotel_id === f.hotel);
@@ -434,6 +460,10 @@ function pageChamados() {
   if (f.cat) list = list.filter(c => c.categoria_id === f.cat);
   if (f.q) { const q = f.q.toLowerCase(); list = list.filter(c => (c.id + " " + c.titulo + " " + IDX.local[c.local_id].nome).toLowerCase().includes(q)); }
   if (f.status === "abertos" || f.status === "vencidos") list.sort((a, b) => t(a.prazo_sla) - t(b.prazo_sla));
+  return list;
+}
+function pageChamados() {
+  const f = UI.f.ch, list = chamadosFiltrados();
   const per = 25, pages = Math.max(1, Math.ceil(list.length / per)); f.page = Math.min(f.page, pages - 1);
   const rows = list.slice(f.page * per, f.page * per + per);
   const showHotel = scope().hoteis.length > 1;
@@ -447,7 +477,8 @@ function pageChamados() {
     <select data-f="ch.prio" aria-label="Prioridade"><option value="">Todas as prioridades</option>${PRIOS.map(p => `<option ${f.prio === p ? "selected" : ""}>${p}</option>`).join("")}</select>
     <select data-f="ch.cat" aria-label="Categoria"><option value="">Todas as categorias</option>${DB.categorias.map(c => `<option value="${c.id}" ${f.cat === c.id ? "selected" : ""}>${esc(c.nome)}</option>`).join("")}</select>
     <div style="flex:1"></div>
-    ${role() !== "tec" ? `<button class="btn primary" data-act="novo-ch">Abrir chamado</button>` : ""}
+    <button class="btn" data-act="csv-ch">Exportar CSV</button>
+    ${role() !== "tec" && role() !== "loc" ? `<button class="btn primary" data-act="novo-ch">Abrir chamado</button>` : ""}
   </div>
   <div class="panel"><div class="table-wrap"><table>
     <thead><tr><th>Chamado</th><th>O que aconteceu</th>${showHotel ? "<th>Hotel</th>" : ""}<th>Local</th><th>Prioridade</th><th>Situação</th><th>SLA</th><th>Técnico</th><th>Aberto</th></tr></thead>
@@ -458,6 +489,7 @@ function pageChamados() {
   </table></div>
   <div class="pager" style="padding:10px 14px">${list.length} chamados<span class="row"><button class="btn sm" data-act="page" data-k="ch" data-d="-1" ${f.page === 0 ? "disabled" : ""}>Anterior</button><span>Página ${f.page + 1} de ${pages}</span><button class="btn sm" data-act="page" data-k="ch" data-d="1" ${f.page >= pages - 1 ? "disabled" : ""}>Próxima</button></span></div></div>`;
 }
+function executorDe(c) { return c.tecnico_id && (!c.executado_por || c.executado_por.tipo === "interna") ? c.tecnico_id : null; }
 function drawerChamado(c) {
   const h = IDX.hotel[c.hotel_id], l = IDX.local[c.local_id], a = c.ativo_id ? IDX.ativo[c.ativo_id] : null;
   const pol = slaEfetivo(c.hotel_id, c.prioridade);
@@ -466,41 +498,48 @@ function drawerChamado(c) {
   const ed = canEdit() && OPEN.includes(c.status);
   const tecs = DB.tecnicos.filter(x => x.hotel_id === c.hotel_id);
   const acts = [];
+  const souExecutor = executorDe(c) === UI.persona;
   if (ed) {
     if (c.status === "Aberto") acts.push(`<button class="btn primary" data-act="ch-st" data-id="${c.id}" data-st="Em atendimento" ${c.tecnico_id ? "" : "disabled title='Atribua um técnico antes'"}>Iniciar atendimento</button>`);
     if (c.status === "Em atendimento") acts.push(`<button class="btn primary" data-act="ch-st" data-id="${c.id}" data-st="Aguardando aceite">Concluir serviço</button>`, `<button class="btn" data-act="ch-st" data-id="${c.id}" data-st="Aguardando peça">Aguardar peça</button>`);
     if (c.status === "Aguardando peça") acts.push(`<button class="btn primary" data-act="ch-st" data-id="${c.id}" data-st="Em atendimento">Retomar atendimento</button>`);
-    if (c.status === "Aguardando aceite") acts.push(`<button class="btn primary" data-act="ch-st" data-id="${c.id}" data-st="Encerrado">Registrar aceite e encerrar</button>`, `<button class="btn" data-act="ch-st" data-id="${c.id}" data-st="Em atendimento">Reabrir</button>`);
+    if (c.status === "Aguardando aceite") acts.push(`<button class="btn primary" data-act="aceite" data-id="${c.id}" ${souExecutor ? "disabled title='Quem executou não aceita o próprio serviço'" : ""}>Registrar aceite</button>`, `<button class="btn" data-act="ch-st" data-id="${c.id}" data-st="Em atendimento">Reabrir</button>`);
     acts.push(`<button class="btn danger" data-act="ch-st" data-id="${c.id}" data-st="Cancelado">Cancelar chamado</button>`);
   }
-  const needBlock = uh && uh !== "Bloqueada" && OPEN.includes(c.status) && ["Crítica", "Alta"].includes(c.prioridade);
+  const ui = c.uh_indisp, uiH = ui ? ((ui.fim ? t(ui.fim) : Date.now()) - t(ui.inicio)) / H : 0;
+  const cod = c.codigos;
   return `
   <div class="drawer-h"><button class="close" data-act="close" aria-label="Fechar">×</button>
     <span class="id">${c.id}</span><h2>${esc(c.titulo)}</h2>
-    <div class="row">${statusBadge(c.status)} ${prio(c.prioridade)} ${tag(c)}</div></div>
+    <div class="row">${statusBadge(c.status)} ${prio(c.prioridade)} ${tag(c)}${c.impacto_hospede ? ' <span class="badge b-amber">Impacto no hóspede</span>' : ""}</div></div>
   <div class="drawer-b">
     <dl class="kv">
-      <dt>Hotel</dt><dd>${esc(h.nome)} <span class="muted small">(${esc(IDX.band[h.bandeira_id].nome)})</span></dd>
-      <dt>Local</dt><dd>${esc(l.nome)}${l.andar ? `, ${l.andar}º andar` : ""}${uh ? ` <span class="badge ${uh === "Bloqueada" ? "b-red" : uh === "Ocupada" ? "b-amber" : "b-green"}">${uh}</span> <span class="muted small">no TOTVS CM</span>` : ""}</dd>
+      <dt>Hotel</dt><dd>${esc(h.nome)} <span class="muted small">(${esc(IDX.band[h.bandeira_id].nome)}, ${esc(h.modelo.toLowerCase())})</span></dd>
+      <dt>Local</dt><dd>${esc(l.nome)}${l.andar ? `, ${l.andar}º andar` : ""}${l.edificacao ? `, ${esc(l.edificacao)}` : ""}${uh ? ` <span class="badge ${uh === "Bloqueada" ? "b-red" : uh === "Ocupada" ? "b-amber" : "b-green"}">${uh}</span> <span class="muted small">no PMS</span>` : ""}</dd>
       ${dono ? `<dt>Proprietário da UH</dt><dd>${esc(dono)}</dd>` : ""}
       <dt>Ativo</dt><dd>${a ? `<a href="#" data-act="open-at" data-id="${a.id}">${esc(a.nome)}</a> <span class="muted small">${a.id}</span>` : '<span class="muted">Não vinculado</span>'}</dd>
-      <dt>Categoria</dt><dd>${esc(catNome(c.categoria_id))}</dd>
-      <dt>Solicitante</dt><dd>${esc(c.solicitante)}</dd>
+      <dt>Categoria</dt><dd>${esc(catNome(c.categoria_id))}${c.categoria_id && calComercial(c.categoria_id) ? ' <span class="muted small">(relógio em horário comercial)</span>' : ""}</dd>
+      <dt>Origem</dt><dd>${esc(c.origem || "—")}${c.solicitante && c.solicitante !== c.origem ? ` <span class="muted small">(${esc(c.solicitante)})</span>` : ""}</dd>
       <dt>Aberto em</dt><dd>${fmtDT(c.aberto_em)} <span class="muted small">(${rel(c.aberto_em)})</span></dd>
       <dt>Prazo do SLA</dt><dd>${fmtDT(c.prazo_sla)} <span class="muted small">${c.sla_h} h, regra de ${esc(pol.origem === "Grupo" ? "grupo" : pol.origem)}</span></dd>
       <dt>Técnico</dt><dd>${ed ? `<span class="row"><select id="atrib" aria-label="Técnico"><option value="">Selecionar</option>${tecs.map(x => `<option value="${x.id}" ${x.id === c.tecnico_id ? "selected" : ""}>${esc(x.nome)} (${esc(x.especialidade)})</option>`).join("")}</select><button class="btn sm" data-act="atribuir" data-id="${c.id}">Atribuir</button></span>` : esc(c.tecnico_id ? nomeUser(c.tecnico_id) : "—")}</dd>
+      ${c.executado_por ? `<dt>Executado por</dt><dd>${esc(nomeExec(c.executado_por))}</dd>` : ""}
+      ${c.responsavel_custo ? `<dt>Responsável pelo custo</dt><dd><span class="badge ${c.responsavel_custo === "Locador" ? "b-blue" : "b-grey"}">${esc(c.responsavel_custo)}</span> <span class="muted small">matriz do arrendamento${c.locador_notificado_em ? `, locador notificado em ${fmtDT(c.locador_notificado_em)}` : ""}</span></dd>` : ""}
+      ${c.status === "Encerrado" ? `<dt>Custo informado</dt><dd>${c.custo ? brl(c.custo) : "Sem custo"}</dd>${cod ? `<dt>Códigos</dt><dd class="small">Falha: ${esc(cod.falha)}. Causa: ${esc(cod.causa)}. Solução: ${esc(cod.solucao)}.</dd>` : ""}` : ""}
     </dl>
-    ${uh ? `<div class="readonly-note">${icon("integ")}<span>Status da UH lido do TOTVS CM há ${rel(DB.integracao.views[2].ultima).replace("há ", "")}. ${needBlock ? "Lembrete: se a UH precisar sair de venda, o bloqueio é feito no CM pela recepção. A Central não escreve no CM." : "A Central só lê o CM; não altera status de UH."}</span></div>` : ""}
+    ${uh ? `<div class="readonly-note">${icon("integ")}<span>Status da UH lido do PMS há ${rel(DB.integracao.views[2].ultima).replace("há ", "")}. A Central só lê o PMS: o bloqueio da UH continua sendo feito no PMS pela recepção.</span></div>` : ""}
+    ${l.tipo === "uh" && c.status !== "Cancelado" && (ui || ed) ? `<div class="parada ${ui && !ui.fim ? "on" : ""}" id="uh-indisp"><div><strong>${ui ? (ui.fim ? "UH ficou indisponível" : "UH indisponível") : "UH disponível"}</strong><div class="small muted">${ui ? `${ui.fim ? `De ${fmtDT(ui.inicio)} a ${fmtDT(ui.fim)}` : `Desde ${fmtDT(ui.inicio)}`}: ${dur(uiH)}. Conta em UH-dias perdidos por manutenção.` : "Registre se a UH saiu de venda por causa deste problema."}</div></div>${ed ? `<button class="btn sm" data-act="uh-indisp" data-id="${c.id}">${ui && !ui.fim ? "Registrar UH liberada" : ui ? "Reabrir período" : "Registrar UH indisponível"}</button>` : ""}</div>` : ""}
     ${c.triagem && ed ? `<div class="triage"><h3 style="margin-top:0">Triagem</h3><p class="small muted" style="margin:0 0 10px">Quem abriu informou só o local e o problema. Classifique para definir a prioridade e o prazo.</p>
       <div class="two"><div class="field"><label for="tr-cat">Categoria</label><select id="tr-cat"><option value="">Selecione</option>${DB.categorias.map(k => `<option value="${k.id}">${esc(k.nome)}</option>`).join("")}</select></div>
       <div class="field"><label for="tr-prio">Prioridade</label><select id="tr-prio"><option value="auto">Padrão da categoria</option>${PRIOS.map(p => `<option>${p}</option>`).join("")}</select></div></div>
       <div class="row"><button class="btn primary" data-act="triar" data-id="${c.id}">Classificar chamado</button><span class="small muted" id="tr-hint"></span></div></div>` : ""}
     ${a && OPEN.includes(c.status) ? (() => { const pa = paradaAberta(a.id); return `<div class="parada ${pa ? "on" : ""}" id="parada"><div><strong>${pa ? "Equipamento parado" : "Equipamento operando"}</strong><div class="small muted">${pa ? `Desde ${fmtDT(pa.inicio)}, há ${dur((Date.now() - t(pa.inicio)) / H)}. Conta no histórico de indisponibilidade do ativo.` : "Registre se o problema deixou o equipamento fora de operação."}</div></div>${ed ? `<button class="btn sm" data-act="parada" data-id="${c.id}">${pa ? "Registrar retorno à operação" : "Registrar parada"}</button>` : ""}</div>`; })() : ""}
-    ${acts.length ? `<h3>Ações</h3><div class="row">${acts.join("")}</div>` : role() === "prop" ? `<div class="readonly-note">Proprietários acompanham os chamados das próprias UHs, sem editar.</div>` : ""}
+    ${acts.length ? `<h3>Ações</h3><div class="row">${acts.join("")}</div>${c.status === "Aguardando aceite" && souExecutor ? `<div class="readonly-note warn">${icon("pol")}<span>Você executou este serviço, então não pode aceitá-lo. O aceite fica com o solicitante, outro gerente do hotel ou, na falta dele, a gestão do CSC.</span></div>` : ""}` : isOwner() ? `<div class="readonly-note">${role() === "loc" ? "O locador acompanha o que o contrato põe sob a responsabilidade dele, sem editar." : "Proprietários acompanham os chamados das próprias UHs, sem editar."}</div>` : ""}
     <h3>Fotos</h3><div class="photos">${Array.from({ length: c.fotos }, (_, i) => `<div class="photo">Foto ${i + 1}<br>${i === 0 ? "antes" : "depois"}</div>`).join("") || '<span class="muted small">Nenhuma foto anexada.</span>'}</div>
+    ${c.aceite ? `<h3>Aceite</h3><div class="sig-view">${c.aceite.img ? `<img src="${c.aceite.img}" alt="Assinatura de ${esc(c.aceite.por)}">` : c.aceite.assinatura ? `<svg viewBox="0 0 220 60" aria-hidden="true"><path d="M8 44c14-22 24-32 32-30s-6 30 4 30 14-20 22-20 2 18 12 18 12-14 20-14 6 10 14 10 18-8 30-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>` : '<span class="muted small">Aceite sem assinatura</span>'}<div class="small"><strong>${esc(c.aceite.por)}</strong><br><span class="muted">${fmtDT(c.aceite.t)}${c.aceite.assinatura || c.aceite.img ? ", assinado no celular" : ""}</span></div></div>` : ""}
     <h3>Histórico</h3>
     <ul class="timeline">${[...c.eventos].reverse().map(e => `<li class="${e.tipo === "sistema" ? "sys" : ""}"><div>${esc(e.txt)}</div><div class="when">${fmtDT(e.t)}${e.por ? ", por " + esc(e.por) : ""}</div></li>`).join("")}</ul>
-    ${role() !== "prop" && role() !== "tec" ? `<div class="field"><label for="coment">Comentário</label><textarea id="coment" placeholder="Escreva uma atualização para a equipe"></textarea></div><button class="btn" data-act="comentar" data-id="${c.id}">Adicionar comentário</button>` : ""}
+    ${!isOwner() && role() !== "tec" ? `<div class="field"><label for="coment">Comentário</label><textarea id="coment" placeholder="Escreva uma atualização para a equipe"></textarea></div><button class="btn" data-act="comentar" data-id="${c.id}">Adicionar comentário</button>` : ""}
   </div>`;
 }
 function logEvent(c, tipo, txt) {
@@ -514,16 +553,31 @@ function setStatus(c, st) {
   if (st === "Encerrado") c.encerrado_em = now;
   if ((st === "Encerrado" || st === "Cancelado") && c.ativo_id) { const pa = paradaAberta(c.ativo_id); if (pa) { pa.fim = now; IDX.ativo[c.ativo_id].status = "Operando"; } }
   if (st === "Cancelado") c.encerrado_em = now;
+  if ((st === "Encerrado" || st === "Cancelado") && c.uh_indisp && !c.uh_indisp.fim) c.uh_indisp.fim = now;
   c.status = st;
   logEvent(c, "status", st === "Aguardando aceite" ? "Serviço concluído, aguardando aceite do solicitante" : st === "Encerrado" ? "Encerrado com aceite do solicitante" : st);
   const o = DB.os.find(x => x.chamado_id === c.id);
   if (st === "Em atendimento" && !o) {
     const nid = nextId("OS", DB.os);
-    const nos = { id: nid, origem: "corretiva", chamado_id: c.id, plano_id: null, hotel_id: c.hotel_id, local_id: c.local_id, ativo_id: c.ativo_id, titulo: c.titulo, responsavel_id: c.tecnico_id, status: "Em execução", programada_para: now, inicio: now, fim: null, horas: null, checklist: [], materiais: "" };
+    const nos = { id: nid, origem: "corretiva", chamado_id: c.id, plano_id: null, hotel_id: c.hotel_id, local_id: c.local_id, ativo_id: c.ativo_id, titulo: c.titulo, responsavel_id: c.tecnico_id, status: "Em execução", programada_para: now, inicio: now, fim: null, horas: null, checklist: [], materiais: "", executado_por: { tipo: "interna" }, responsavel_custo: c.responsavel_custo,
+      transicoes: [{ de: null, para: "Criada", t: now, por: persona().nome }, { de: "Criada", para: "Em execução", t: now, por: persona().nome }] };
     DB.os.push(nos); IDX.os[nid] = nos;
   }
-  if (o && (st === "Encerrado" || st === "Aguardando aceite")) { o.status = "Concluída"; o.fim = now; o.horas = Math.round((t(now) - t(o.inicio)) / H * 10) / 10; }
+  if (o && st === "Aguardando peça" && o.status !== "Concluída") transicaoOS(o, "Aguardando peça");
+  if (o && st === "Em atendimento" && o.status !== "Em execução") transicaoOS(o, o.status === "Concluída" ? "Reaberta" : "Em execução");
+  if (o && st === "Em atendimento") o.status = "Em execução";
+  if (o && (st === "Encerrado" || st === "Aguardando aceite") && o.status !== "Concluída") { transicaoOS(o, "Concluída"); o.status = "Concluída"; o.fim = now; o.horas = Math.round((t(now) - t(o.inicio)) / H * 10) / 10; }
 }
+/* Transições da OS: tabela só de inserção, fonte do MTTR e da Intelligence */
+function transicoesOS(o) {
+  if (o.transicoes) return o.transicoes;
+  const out = [{ de: null, para: o.origem === "preventiva" ? "Programada" : "Criada", t: o.origem === "preventiva" ? new Date(t(o.programada_para) - 20 * D).toISOString() : (o.inicio || o.programada_para), por: o.origem === "preventiva" ? "Sistema (plano preventivo)" : "Sistema" }];
+  if (o.status === "Atrasada") out.push({ de: "Programada", para: "Atrasada", t: new Date(t(o.programada_para) + 4 * H).toISOString(), por: "Sistema" });
+  if (o.inicio) out.push({ de: out[out.length - 1].para, para: "Em execução", t: o.inicio, por: nomeUser(o.responsavel_id) });
+  if (o.fim) out.push({ de: "Em execução", para: "Concluída", t: o.fim, por: nomeUser(o.responsavel_id) });
+  return out;
+}
+function transicaoOS(o, para) { o.transicoes = transicoesOS(o).slice(); const de = o.transicoes[o.transicoes.length - 1].para; o.transicoes.push({ de, para, t: new Date().toISOString(), por: persona().nome }); }
 
 /* Novo chamado: abertura mínima (local, descrição e foto); a classificação é opcional */
 function modalNovoChamado(pre = {}) {
@@ -539,6 +593,8 @@ function modalNovoChamado(pre = {}) {
       <div class="field"><label for="nc-desc">O que aconteceu</label><textarea id="nc-desc" placeholder="Ex.: o ar-condicionado não gela e está pingando"></textarea></div>
       <div class="field"><label>Fotos</label><div class="photos" id="nc-photos"><button class="photo add" data-act="nc-foto" type="button">${icon("cam")}<span>Adicionar foto</span></button></div></div>
       <label class="inline-check"><input type="checkbox" id="nc-parado"> O equipamento parou de funcionar</label>
+      <label class="inline-check"><input type="checkbox" id="nc-hosp"> Afeta o hóspede</label>
+      <label class="inline-check" id="nc-uh-wrap"><input type="checkbox" id="nc-uh"> A UH precisa sair de venda</label>
       <details class="more" id="nc-more"><summary>Classificar agora (opcional)</summary>
         <div class="two" style="margin-top:10px">
           <div class="field"><label for="nc-cat">Categoria</label><select id="nc-cat"><option value="">Deixar para a triagem</option>${DB.categorias.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join("")}</select></div>
@@ -560,8 +616,9 @@ function updateNovoChamado() {
   const s = scope(), loc = $("#nc-local"), hid = $("#nc-hotel").value;
   if (loc.dataset.h !== hid) {
     const ls = DB.locais.filter(l => l.hotel_id === hid && (!s.locais || s.locais.includes(l.id)));
-    loc.innerHTML = ls.map(l => `<option value="${l.id}">${esc(l.nome)}</option>`).join(""); loc.dataset.h = hid;
+    loc.innerHTML = ls.map(l => `<option value="${l.id}">${esc(l.nome)}${l.edificacao ? ", " + esc(l.edificacao) : ""}</option>`).join(""); loc.dataset.h = hid;
   }
+  const w = $("#nc-uh-wrap"); if (w) w.style.display = (IDX.local[loc.value] || {}).tipo === "uh" ? "" : "none";
   const x = ncPrio(), reg = x.e.origem === "Grupo" ? "grupo" : x.e.origem;
   const txt = !x.cat && x.sel === "auto" ? `Sem categoria, o CSC classifica na triagem. Até lá vale a prioridade Média: prazo de <strong>${x.e.h} h</strong>, pela regra de ${esc(reg)}.`
     : x.sel === "auto" ? `Prioridade padrão para ${esc(catNome(x.cat).toLowerCase())}: ${x.p}. Prazo de <strong>${x.e.h} h</strong>, pela regra de ${esc(reg)}.`
@@ -574,19 +631,23 @@ function salvarNovoChamado() {
   const x = ncPrio(), now = Date.now(), lid = $("#nc-local").value;
   const first = desc.split(/[.!?\n]/)[0].trim(), titulo = (first.length > 70 ? first.slice(0, 67) + "…" : first).replace(/^./, m => m.toUpperCase());
   const at = x.cat ? DB.ativos.find(a => a.local_id === lid && a.categoria_id === x.cat) : null;
-  const sol = $("#nc-sol").value, parado = $("#nc-parado").checked;
+  const sol = $("#nc-sol").value, parado = $("#nc-parado").checked, hosp = $("#nc-hosp").checked, uhOff = $("#nc-uh").checked && IDX.local[lid].tipo === "uh";
   const c = {
     id: nextId("CH", DB.chamados), hotel_id: x.hid, local_id: lid, ativo_id: at ? at.id : null, categoria_id: x.cat || null, titulo,
     descricao: desc, prioridade: x.p, status: "Aberto", aberto_em: new Date(now).toISOString(), triagem: !x.cat,
-    prazo_sla: new Date(now + x.e.h * H).toISOString(), sla_h: x.e.h, atendido_em: null, encerrado_em: null, tecnico_id: null,
-    solicitante: sol, eventos: [], fotos: UI.ncFotos
+    prazo_sla: new Date(prazoDe(x.cat, now, x.e.h)).toISOString(), sla_h: x.e.h, atendido_em: null, encerrado_em: null, tecnico_id: null,
+    solicitante: sol, eventos: [], fotos: UI.ncFotos, origem: { "Recepção": "Recepção", "Governança": "Governança", "Hóspede (via recepção)": "Hóspede, pela recepção", "Proprietário": "Proprietário" }[sol] || "Área operacional",
+    impacto_hospede: hosp || sol === "Hóspede (via recepção)", uh_indisp: uhOff ? { inicio: new Date(now).toISOString(), fim: null } : null
   };
+  const resp = DB.responsabilidade.find(r => r.hotel_id === x.hid && r.categoria_id === x.cat); if (resp) c.responsavel_custo = resp.responsavel;
   c.eventos.push({ t: c.aberto_em, tipo: "abertura", txt: "Chamado aberto por " + sol + (UI.ncFotos ? `, com ${UI.ncFotos} ${UI.ncFotos > 1 ? "fotos" : "foto"}` : ""), por: persona().nome });
   c.eventos.push({ t: c.aberto_em, tipo: "sistema", txt: x.cat ? `Prazo de SLA definido: ${x.e.h} h (prioridade ${x.p}${x.sel === "auto" ? ", padrão da categoria" : ""})` : `Aguardando triagem. Prazo provisório: ${x.e.h} h (prioridade Média)` });
   if (parado) {
     if (at) { DB.ativo_parada.push({ id: "PA-" + (DB.ativo_parada.length + 1), ativo_id: at.id, chamado_id: c.id, inicio: c.aberto_em, fim: null, motivo: titulo }); at.status = "Parado"; c.eventos.push({ t: c.aberto_em, tipo: "sistema", txt: "Parada do equipamento registrada" }); }
     else c.eventos.push({ t: c.aberto_em, tipo: "sistema", txt: "Solicitante informou equipamento parado; vincular o ativo na triagem" });
   }
+  if (uhOff) c.eventos.push({ t: c.aberto_em, tipo: "sistema", txt: "Período de UH indisponível iniciado" });
+  notificarLocador(c);
   DB.chamados.unshift(c); IDX.ch[c.id] = c;
   DB.auditoria.unshift({ t: c.aberto_em, usuario: persona().nome, entidade: "Chamado", registro: c.id, hotel_id: x.hid, acao: "Chamado aberto: " + titulo });
   save(); closeModal(); toast(`Chamado ${c.id} aberto`); go("chamados", { id: c.id });
@@ -595,17 +656,74 @@ function triar(c) {
   const cat = $("#tr-cat").value, sel = $("#tr-prio").value;
   if (!cat) { $("#tr-cat").focus(); toast("Escolha a categoria para classificar"); return false; }
   const p = sel === "auto" ? prioPadrao(cat, c.hotel_id) : sel, e = slaEfetivo(c.hotel_id, p);
-  c.categoria_id = cat; c.prioridade = p; c.sla_h = e.h; c.prazo_sla = new Date(t(c.aberto_em) + e.h * H).toISOString(); c.triagem = false;
+  c.categoria_id = cat; c.prioridade = p; c.sla_h = e.h; c.prazo_sla = new Date(prazoDe(cat, t(c.aberto_em), e.h)).toISOString(); c.triagem = false;
+  const resp = DB.responsabilidade.find(r => r.hotel_id === c.hotel_id && r.categoria_id === cat); c.responsavel_custo = resp ? resp.responsavel : undefined;
   const at = DB.ativos.find(a => a.local_id === c.local_id && a.categoria_id === cat); if (at) c.ativo_id = at.id;
-  logEvent(c, "sistema", `Triagem: ${catNome(cat)}, prioridade ${p}${sel === "auto" ? " (padrão da categoria)" : ""}. Prazo de ${e.h} h, regra de ${e.origem === "Grupo" ? "grupo" : e.origem}`);
+  logEvent(c, "sistema", `Triagem: ${catNome(cat)}, prioridade ${p}${sel === "auto" ? " (padrão da categoria)" : ""}. Prazo de ${e.h} h${calComercial(cat) ? " em horário comercial" : ""}, regra de ${e.origem === "Grupo" ? "grupo" : e.origem}`);
+  notificarLocador(c);
   save(); return true;
+}
+function notificarLocador(c) {
+  if (c.responsavel_custo !== "Locador" || c.locador_notificado_em) return;
+  c.locador_notificado_em = new Date().toISOString();
+  c.eventos.push({ t: c.locador_notificado_em, tipo: "sistema", txt: "Locador notificado: categoria sob responsabilidade dele no contrato" });
+}
+
+/* Aceite: quem executou não aceita; registra quem executou, custo, códigos e a assinatura */
+function modalAceite(c) {
+  const cd = DB.codigos[c.categoria_id] || DB.codigos._, obrig = polGrupo().codigos_obrigatorios;
+  const forns = DB.fornecedores.filter(f => f.ativo);
+  const ex = c.executado_por || { tipo: "interna" };
+  const sel = (id, arr) => `<select id="${id}"><option value="">${obrig ? "Selecione" : "Não informar"}</option>${arr.map(x => `<option>${esc(x)}</option>`).join("")}</select>`;
+  return `<div class="modal-bg" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="ac-t">
+    <div class="modal-h" id="ac-t">Aceite do serviço ${c.id}</div>
+    <div class="modal-b">
+      <p class="small muted" style="margin-top:0">${esc(c.titulo)}. ${esc(IDX.hotel[c.hotel_id].nome)}, ${esc(IDX.local[c.local_id].nome)}.</p>
+      <div class="two">
+        <div class="field"><label for="ac-exec">Executado por</label><select id="ac-exec"><option value="interna" ${ex.tipo === "interna" ? "selected" : ""}>Equipe interna${c.tecnico_id ? " (" + esc(nomeUser(c.tecnico_id)) + ")" : ""}</option>${forns.map(f => `<option value="${f.id}" ${ex.fornecedor_id === f.id ? "selected" : ""}>${esc(f.nome)}</option>`).join("")}</select></div>
+        <div class="field"><label for="ac-custo">Custo informado (R$)</label><input id="ac-custo" type="number" min="0" step="10" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Códigos de manutenção ${obrig ? "(obrigatórios pela política)" : "(opcionais pela política)"}</label><div class="three">${sel("ac-falha", cd.falha)}${sel("ac-causa", cd.causa)}${sel("ac-sol", cd.solucao)}</div><div class="small muted" style="margin-top:4px">Falha, causa e solução, do catálogo de ${esc(catNome(c.categoria_id).toLowerCase())}.</div></div>
+      <div class="field"><label for="ac-sig">Assinatura de quem aceita: ${esc(c.solicitante === "Hóspede (via recepção)" ? "Recepção" : c.solicitante)}</label><canvas id="ac-sig" class="sig-pad" width="640" height="180" aria-label="Área para assinatura"></canvas><div class="row" style="justify-content:space-between"><span class="small muted">Assine com o dedo no celular ou com o mouse.</span><button class="btn sm" data-act="ac-limpar" type="button">Limpar</button></div></div>
+    </div>
+    <div class="modal-f"><button class="btn" data-act="modal-close">Cancelar</button><button class="btn primary" data-act="ac-save" data-id="${c.id}">Aceitar e encerrar</button></div>
+  </div></div>`;
+}
+function ligarAssinatura(cv) {
+  const g = cv.getContext("2d"); let desenhando = false;
+  g.lineWidth = 3.2; g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--head").trim() || "#fff";
+  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
+  cv.addEventListener("pointerdown", e => { desenhando = true; cv.setPointerCapture(e.pointerId); const [x, y] = pos(e); g.beginPath(); g.moveTo(x, y); cv.dataset.ok = "1"; });
+  cv.addEventListener("pointermove", e => { if (!desenhando) return; const [x, y] = pos(e); g.lineTo(x, y); g.stroke(); });
+  cv.addEventListener("pointerup", () => { desenhando = false; });
+  cv.__g = g;
+}
+function salvarAceite(c) {
+  const obrig = polGrupo().codigos_obrigatorios, cv = $("#ac-sig");
+  const falha = $("#ac-falha").value, causa = $("#ac-causa").value, solu = $("#ac-sol").value;
+  if (obrig && !(falha && causa && solu)) { toast("A política exige falha, causa e solução para encerrar"); return false; }
+  if (!cv.dataset.ok) { toast("Peça a assinatura de quem está aceitando o serviço"); return false; }
+  const exv = $("#ac-exec").value, custo = parseFloat($("#ac-custo").value) || 0;
+  c.executado_por = exv === "interna" ? { tipo: "interna" } : { tipo: "fornecedor", fornecedor_id: exv };
+  c.custo = custo; if (falha || causa || solu) c.codigos = { falha: falha || "—", causa: causa || "—", solucao: solu || "—" };
+  const quem = c.solicitante === "Hóspede (via recepção)" ? "Recepção" : c.solicitante;
+  c.aceite = { t: new Date().toISOString(), por: quem, assinatura: true, img: cv.toDataURL("image/png") };
+  const o = DB.os.find(x => x.chamado_id === c.id); if (o) o.executado_por = c.executado_por;
+  logEvent(c, "sistema", `Aceite assinado por ${quem}. Executado por ${nomeExec(c.executado_por)}${custo ? ", custo informado de " + brl(custo) : ", sem custo"}`);
+  setStatus(c, "Encerrado"); save(); return true;
 }
 function closeModal() { const m = document.querySelector(".modal-bg"); if (m) m.remove(); }
 
 /* ---------- Checklist tipado (sim/não e medição com faixa) ---------- */
 const numBR = v => String(v).replace(".", ",");
 function checklistHtml(o, ed, pre) {
-  return o.checklist.map((c, i) => c.tipo === "medicao"
+  return o.checklist.map((c, i) => c.tipo === "lista"
+    ? `<div class="check-item med ${c.valor ? "okm" : ""}"><div class="med-t"><label for="${pre}-${o.id}-${i}">${esc(c.t)}</label><div class="med-f">Lista de opções</div></div><div class="med-in"><select id="${pre}-${o.id}-${i}" data-act="${pre}-list" data-id="${o.id}" data-i="${i}" ${ed ? "" : "disabled"}><option value="">Escolha</option>${c.opcoes.map(x => `<option ${c.valor === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div></div>`
+    : c.tipo === "data"
+    ? `<div class="check-item med ${c.valor ? "okm" : ""}"><div class="med-t"><label for="${pre}-${o.id}-${i}">${esc(c.t)}</label><div class="med-f">Data</div></div><div class="med-in"><input type="date" id="${pre}-${o.id}-${i}" data-act="${pre}-date" data-id="${o.id}" data-i="${i}" value="${c.valor || ""}" ${ed ? "" : "disabled"}></div></div>`
+    : c.tipo === "foto"
+    ? `<div class="check-item med ${c.ok ? "okm" : ""}"><div class="med-t"><span>${esc(c.t)}</span><div class="med-f">Foto obrigatória${c.ok ? ": anexada" : ""}</div></div><div class="med-in"><button type="button" class="btn sm" data-act="${pre}-fotoit" data-id="${o.id}" data-i="${i}" ${ed && !c.ok ? "" : "disabled"}>${c.ok ? "Foto anexada" : icon("cam") + " Tirar foto"}</button></div></div>`
+    : c.tipo === "medicao"
     ? `<div class="check-item med ${c.fora ? "fora" : c.valor != null ? "okm" : ""}"><div class="med-t"><label for="${pre}-${o.id}-${i}">${esc(c.t)}</label><div class="med-f">Faixa aceitável: ${numBR(c.min)} a ${numBR(c.max)}${c.unidade ? " " + c.unidade : ""}${c.fora ? ". Fora da faixa" : ""}</div></div>
        <div class="med-in"><input type="number" step="0.1" inputmode="decimal" id="${pre}-${o.id}-${i}" data-act="${pre}-med" data-id="${o.id}" data-i="${i}" value="${c.valor ?? ""}" ${ed ? "" : "disabled"} aria-label="${esc(c.t)}"><span>${esc(c.unidade)}</span></div></div>`
     : `<label class="check-item"><input type="checkbox" data-act="${pre}-chk" data-id="${o.id}" data-i="${i}" ${c.ok ? "checked" : ""} ${ed ? "" : "disabled"}><span>${esc(c.t)}</span></label>`).join("");
@@ -614,7 +732,8 @@ function setMedicao(o, i, v) {
   const c = o.checklist[i], n = parseFloat(String(v).replace(",", "."));
   c.valor = isNaN(n) ? null : n; c.fora = c.valor != null && (c.valor < c.min || c.valor > c.max);
 }
-const checklistPendente = o => o.checklist.some(c => c.tipo === "medicao" ? c.valor == null : !c.ok);
+const itemFeito = c => c.tipo === "medicao" ? c.valor != null : c.tipo === "lista" || c.tipo === "data" ? !!c.valor : !!c.ok;
+const checklistPendente = o => o.checklist.some(c => !itemFeito(c));
 
 /* ---------- Ordens de serviço ---------- */
 function pageOS() {
@@ -649,11 +768,31 @@ function drawerOS(o) {
     <dt>Responsável</dt><dd>${esc(nomeUser(o.responsavel_id))}</dd><dt>Programada</dt><dd>${fmtDT(o.programada_para)}</dd>
     <dt>Execução</dt><dd>${o.inicio ? fmtDT(o.inicio) : "—"}${o.fim ? " até " + fmtDT(o.fim) : ""}</dd>
     <dt>Horas apontadas</dt><dd>${o.horas != null ? String(o.horas).replace(".", ",") + " h" : "—"}</dd>
+    ${o.executado_por ? `<dt>Executado por</dt><dd>${esc(nomeExec(o.executado_por))}</dd>` : ""}
+    ${o.responsavel_custo ? `<dt>Responsável pelo custo</dt><dd><span class="badge ${o.responsavel_custo === "Locador" ? "b-blue" : "b-grey"}">${esc(o.responsavel_custo)}</span></dd>` : ""}
     ${o.materiais ? `<dt>Materiais</dt><dd>${esc(o.materiais)}</dd>` : ""}
   </dl>
   ${o.checklist.length ? `<h3>Checklist</h3>${checklistHtml(o, ed, "os")}${o.checklist.some(c => c.fora) ? `<div class="readonly-note warn">${icon("pol")}<span>${o.checklist.filter(c => c.fora).length} medição fora da faixa, registrada no histórico do ativo.</span></div>` : ""}` : ""}
-  ${ed ? `<div class="row" style="margin-top:14px"><button class="btn primary" data-act="os-concluir" data-id="${o.id}">Concluir OS</button></div>` : ""}
+  <div class="row" style="margin-top:14px">${ed ? `<button class="btn primary" data-act="os-concluir" data-id="${o.id}">Concluir OS</button>` : ""}<button class="btn" data-act="os-print" data-id="${o.id}">Imprimir OS</button></div>
+  <h3>Transições</h3><p class="small muted" style="margin-top:0">Cada mudança de estado, quando e por quem. Só é possível acrescentar; é a base do tempo médio de reparo e da Intelligence.</p>
+  <div class="table-wrap"><table><tbody>${transicoesOS(o).map(x => `<tr><td class="small" style="white-space:nowrap">${fmtDT(x.t)}</td><td class="small">${x.de ? esc(x.de) + " → " : ""}<strong>${esc(x.para)}</strong></td><td class="small muted">${esc(x.por)}</td></tr>`).join("")}</tbody></table></div>
   </div>`;
+}
+function imprimirOS(o) {
+  const c = o.chamado_id ? IDX.ch[o.chamado_id] : null, h = IDX.hotel[o.hotel_id];
+  const item = x => x.tipo === "medicao" ? `${esc(x.t)}: ${x.valor == null ? "—" : numBR(x.valor) + " " + esc(x.unidade)} (faixa ${numBR(x.min)} a ${numBR(x.max)})${x.fora ? " — FORA DA FAIXA" : ""}` : x.tipo === "lista" || x.tipo === "data" ? `${esc(x.t)}: ${esc(x.valor || "—")}` : `${x.ok ? "☑" : "☐"} ${esc(x.t)}`;
+  const el = document.createElement("div"); el.id = "print-area";
+  el.innerHTML = `<h1>Ordem de serviço ${o.id}</h1><p>${esc(DEMO_CONFIG.produto)} · ${esc(DB.tenant.nome)} · ${esc(h.nome)}</p>
+    <table><tr><th>Serviço</th><td>${esc(o.titulo)}</td></tr><tr><th>Origem</th><td>${o.origem === "preventiva" ? "Preventiva" : "Corretiva" + (c ? ", chamado " + c.id : "")}</td></tr>
+    <tr><th>Local</th><td>${esc(IDX.local[o.local_id].nome)}</td></tr><tr><th>Ativo</th><td>${o.ativo_id ? esc(IDX.ativo[o.ativo_id].nome) + " (" + o.ativo_id + ")" : "—"}</td></tr>
+    <tr><th>Responsável</th><td>${esc(nomeUser(o.responsavel_id))}</td></tr><tr><th>Executado por</th><td>${esc(nomeExec(o.executado_por))}</td></tr>
+    <tr><th>Execução</th><td>${o.inicio ? fmtDT(o.inicio) : "—"}${o.fim ? " até " + fmtDT(o.fim) : ""}, ${o.horas != null ? numBR(o.horas) + " h" : "—"}</td></tr>
+    ${c && c.custo != null ? `<tr><th>Custo informado</th><td>${brl(c.custo)}</td></tr>` : ""}</table>
+    ${o.checklist.length ? `<h2>Checklist</h2><ul>${o.checklist.map(x => `<li>${item(x)}</li>`).join("")}</ul>` : ""}
+    <h2>Fotos</h2><p>${c ? c.fotos : o.fotos || 0} foto(s) anexada(s), marcadas como antes ou depois.</p>
+    <h2>Aceite</h2>${c && c.aceite ? `<p>${esc(c.aceite.por)}, ${fmtDT(c.aceite.t)}</p>${c.aceite.img ? `<img src="${c.aceite.img}" style="height:70px">` : "<p>Assinado no celular.</p>"}` : "<p>Pendente.</p>"}
+    <p class="foot">Impresso em ${fmtDT(new Date().toISOString())} por ${esc(persona().nome)}. ${esc(DEMO_CONFIG.aviso)}.</p>`;
+  document.body.appendChild(el); window.print(); setTimeout(() => el.remove(), 500);
 }
 function concluirOS(o) {
   const now = new Date();
@@ -722,7 +861,7 @@ function pageAtivos() {
   let list = scoped(DB.ativos);
   if (f.hotel) list = list.filter(a => a.hotel_id === f.hotel);
   if (f.cat) list = list.filter(a => a.categoria_id === f.cat);
-  if (f.crit) list = list.filter(a => a.criticidade === f.crit);
+  if (f.crit) list = list.filter(a => String(a.criticidade) === f.crit);
   if (f.q) { const q = f.q.toLowerCase(); list = list.filter(a => (a.id + " " + a.nome + " " + a.fabricante + " " + IDX.local[a.local_id].nome).toLowerCase().includes(q)); }
   const per = 25, pages = Math.max(1, Math.ceil(list.length / per)); f.page = Math.min(f.page, pages - 1);
   const rows = list.slice(f.page * per, f.page * per + per);
@@ -732,14 +871,14 @@ function pageAtivos() {
     <input type="search" placeholder="Buscar por código, nome ou fabricante" value="${esc(f.q)}" data-f="at.q" aria-label="Buscar ativos">
     ${showHotel ? `<select data-f="at.hotel" aria-label="Hotel"><option value="">Todos os hotéis</option>${hotelOptions(f.hotel)}</select>` : ""}
     <select data-f="at.cat" aria-label="Categoria"><option value="">Todas as categorias</option>${DB.categorias.map(c => `<option value="${c.id}" ${f.cat === c.id ? "selected" : ""}>${esc(c.nome)}</option>`).join("")}</select>
-    <select data-f="at.crit" aria-label="Criticidade"><option value="">Toda criticidade</option>${["Alta", "Média", "Baixa"].map(c => `<option ${f.crit === c ? "selected" : ""}>${c}</option>`).join("")}</select>
+    <select data-f="at.crit" aria-label="Criticidade"><option value="">Toda criticidade</option>${[5, 4, 3, 2, 1].map(c => `<option value="${c}" ${f.crit === String(c) ? "selected" : ""}>${c} · ${esc(critNome(c))}</option>`).join("")}</select>
   </div>
   <div class="panel"><div class="table-wrap"><table><thead><tr><th>Código</th><th>Ativo</th><th>Categoria</th>${showHotel ? "<th>Hotel</th>" : ""}<th>Local</th><th>Criticidade</th><th>Próxima preventiva</th><th class="num">Chamados em 90 dias</th></tr></thead>
   <tbody>${rows.map(a => {
     const prox = DB.os.filter(o => o.ativo_id === a.id && o.status === "Programada").sort((x, y) => t(x.programada_para) - t(y.programada_para))[0];
     const late = DB.os.some(o => o.ativo_id === a.id && o.status === "Atrasada");
     const nch = DB.chamados.filter(c => c.ativo_id === a.id && t(c.aberto_em) > now - 90 * D).length;
-    return `<tr class="click" data-act="open-at" data-id="${a.id}"><td><span class="id">${a.id}</span></td><td>${esc(a.nome)}${a.status === "Parado" ? ' <span class="badge b-red">Parado</span>' : ""}<div class="small muted">${esc(a.fabricante)}${a.modelo ? ", " + esc(a.modelo) : ""}</div></td><td class="small">${esc(IDX.cat[a.categoria_id].nome)}</td>${showHotel ? `<td class="small">${esc(IDX.hotel[a.hotel_id].nome)}</td>` : ""}<td class="small">${esc(IDX.local[a.local_id].nome)}</td><td><span class="badge ${a.criticidade === "Alta" ? "b-red" : a.criticidade === "Média" ? "b-amber" : "b-grey"}">${a.criticidade}</span></td><td class="small">${late ? '<span class="badge b-red">Atrasada</span>' : prox ? fmtD(prox.programada_para) : '<span class="muted">Sem plano</span>'}</td><td class="num">${nch}</td></tr>`;
+    return `<tr class="click" data-act="open-at" data-id="${a.id}"><td><span class="id">${a.id}</span></td><td>${esc(a.nome)}${a.status === "Parado" ? ' <span class="badge b-red">Parado</span>' : ""}<div class="small muted">${esc(a.fabricante)}${a.modelo ? ", " + esc(a.modelo) : ""}</div></td><td class="small">${esc(IDX.cat[a.categoria_id].nome)}</td>${showHotel ? `<td class="small">${esc(IDX.hotel[a.hotel_id].nome)}</td>` : ""}<td class="small">${esc(IDX.local[a.local_id].nome)}</td><td>${critBadge(a.criticidade)}</td><td class="small">${late ? '<span class="badge b-red">Atrasada</span>' : prox ? fmtD(prox.programada_para) : '<span class="muted">Sem plano</span>'}</td><td class="num">${nch}</td></tr>`;
   }).join("") || `<tr><td colspan="8" class="empty">Nenhum ativo com esses filtros.</td></tr>`}</tbody></table></div>
   <div class="pager" style="padding:10px 14px">${list.length} ativos<span class="row"><button class="btn sm" data-act="page" data-k="at" data-d="-1" ${f.page === 0 ? "disabled" : ""}>Anterior</button><span>Página ${f.page + 1} de ${pages}</span><button class="btn sm" data-act="page" data-k="at" data-d="1" ${f.page >= pages - 1 ? "disabled" : ""}>Próxima</button></span></div></div>`;
 }
@@ -755,11 +894,11 @@ function drawerAtivo(a) {
   const gar = a.garantia_ate && t(a.garantia_ate) > Date.now();
   const meds = DB.os.filter(o => o.ativo_id === a.id && o.status === "Concluída").flatMap(o => o.checklist.filter(c => c.tipo === "medicao" && c.valor != null).map(c => ({ ...c, t0: o.fim })));
   const foraMed = meds.filter(m => m.fora).length;
-  return `<div class="drawer-h"><button class="close" data-act="close" aria-label="Fechar">×</button><span class="id">${a.id}</span><h2>${esc(a.nome)}</h2><div class="row"><span class="badge ${a.status === "Parado" ? "b-red" : "b-green"}">${a.status}</span><span class="badge ${a.criticidade === "Alta" ? "b-red" : "b-amber"}">Criticidade ${a.criticidade.toLowerCase()}</span></div></div>
+  return `<div class="drawer-h"><button class="close" data-act="close" aria-label="Fechar">×</button><span class="id">${a.id}</span><h2>${esc(a.nome)}</h2><div class="row"><span class="badge ${a.status === "Parado" ? "b-red" : "b-green"}">${a.status}</span>${critBadge(a.criticidade)}${(() => { const sc = intelAtivo(a); return sc.score >= polGrupo().inteligencia.limite_atencao && role() !== "loc" ? `<a href="#/inteligencia" class="badge b-amber" style="text-decoration:none" title="HubKeep Intelligence">Atenção ${sc.score}/100</a>` : ""; })()}</div></div>
   <div class="drawer-b"><div class="row" style="align-items:flex-start;gap:18px"><div class="qr-card">${qrSvg(a.qr, 96)}</div><dl class="kv" style="flex:1">
     <dt>Etiqueta</dt><dd>${a.qr}</dd><dt>Categoria</dt><dd>${esc(IDX.cat[a.categoria_id].nome)}</dd><dt>Fabricante e modelo</dt><dd>${esc(a.fabricante)}${a.modelo ? ", " + esc(a.modelo) : ""}</dd>
     <dt>Número de série</dt><dd>${esc(a.numero_serie || "—")}</dd><dt>Garantia</dt><dd>${a.garantia_ate ? `<span class="badge ${gar ? "b-green" : "b-grey"}">${gar ? "Vigente" : "Vencida"}</span> ${gar ? "até" : "em"} ${fmtD(a.garantia_ate)}` : "—"}</dd>
-    <dt>Hotel</dt><dd>${esc(IDX.hotel[a.hotel_id].nome)}</dd><dt>Local</dt><dd>${esc(IDX.local[a.local_id].nome)}</dd><dt>Instalado em</dt><dd>${fmtD(a.instalado_em)}</dd>
+    <dt>Hotel</dt><dd>${esc(IDX.hotel[a.hotel_id].nome)}</dd><dt>Local</dt><dd>${esc(IDX.local[a.local_id].nome)}</dd><dt>Compra e instalação</dt><dd>${fmtD(a.comprado_em)}, instalado em ${fmtD(a.instalado_em)}</dd>
     <dt>Planos</dt><dd>${planos.length ? planos.map(p => esc(p.nome)).join(", ") : "Nenhum"}</dd></dl></div>
   <div class="grid g-3 mini-kpis"><div><b>${dur(indisp).replace(" min", " min")}</b><span>parado em 90 dias</span></div><div><b>${DB.chamados.filter(c => c.ativo_id === a.id && t(c.aberto_em) > d90).length}</b><span>chamados em 90 dias</span></div><div><b>${meds.length ? foraMed : "—"}</b><span>medições fora da faixa</span></div></div>
   <h3>Documentos</h3><div class="docs">${(a.anexos || []).map(d => `<span class="doc">${icon("audit")}<span>${esc(d.nome)}<small>${esc(d.tipo)}${d.validade ? `, validade ${fmtD(d.validade)}` : ""}</small></span></span>`).join("") || '<span class="muted small">Nenhum documento anexado.</span>'}</div>
@@ -776,7 +915,7 @@ const IMP_EXEMPLO = () => {
     ["Chiller principal", "c2", "Cobertura", "Carrier", "MA-04"], ["Gerador de emergência", "c3", "Subsolo técnico", "Cummins", "MA-05"], ["Bomba de recalque 1", "c5", "Subsolo técnico", "KSB", "MA-06"],
     ["Bomba de recalque 2", "c5", "Casa de bombas", "KSB", "MA-06"], ["Câmara fria de carnes", "c8", "Cozinha", "Danfoss", "MA-07"], ["Câmara fria de laticínios", "c8", "Cozinha", "Danfoss", "MA-07"],
     ["Split do salão de eventos", "c7", "Salão de eventos", "Daikin", "MA-02"], ["Split da academia", "", "Academia", "LG", ""], ["Filtro da piscina", "c9", "Piscina", "Dancor", "MA-08"]
-  ].map(([nome, cat, local, fab, mod], i) => ({ linha: i + 2, nome, cat, local, fab, mod, local_id: loc(local), erro: !cat ? "Categoria em branco" : !loc(local) ? `Local "${local}" não existe no CM` : null }));
+  ].map(([nome, cat, local, fab, mod], i) => ({ linha: i + 2, nome, cat, local, fab, mod, local_id: loc(local), erro: !cat ? "Categoria em branco" : !loc(local) ? `Local "${local}" não existe no PMS` : null }));
 };
 function pageImplantacao() {
   const s = scope(), imp = DB.implantacao.filter(x => s.hoteis.includes(x.hotel_id));
@@ -785,15 +924,15 @@ function pageImplantacao() {
   const caps = DB.capturas_celular.filter(c => s.hoteis.includes(c.hotel_id));
   const U = UI.imp;
   const rows = imp.map(x => { const p = Math.min(100, Math.round(x.cadastrados / x.previstos * 100)), st = p >= 100 ? ["Completo", "b-green"] : p > 0 ? ["Em andamento", "b-amber"] : ["Não iniciado", "b-grey"];
-    return `<tr><td>${esc(IDX.hotel[x.hotel_id].nome)}<div class="small muted">${x.onda}</div></td><td><div class="slabar"><div class="trk"><b style="width:${p}%;background:${p >= 100 ? "var(--ok)" : p > 0 ? "var(--amber)" : "var(--dim)"}"></b></div><span>${p}%</span></div></td><td class="num">${x.cadastrados} de ${x.previstos}</td><td class="num">${x.etiquetados}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td>${x.cadastrados > x.etiquetados ? `<button class="btn sm" data-act="imp-print" data-id="${x.hotel_id}">Imprimir ${x.cadastrados - x.etiquetados} etiquetas</button>` : '<span class="small muted">Etiquetas em dia</span>'}</td></tr>`; }).join("");
+    return `<tr><td>${esc(IDX.hotel[x.hotel_id].nome)}<div class="small muted">${x.onda}${IDX.hotel[x.hotel_id].piloto ? ": " + esc(IDX.hotel[x.hotel_id].piloto.toLowerCase()) : ""}</div></td><td><div class="slabar"><div class="trk"><b style="width:${p}%;background:${p >= 100 ? "var(--ok)" : p > 0 ? "var(--amber)" : "var(--dim)"}"></b></div><span>${p}%</span></div></td><td class="num">${x.cadastrados} de ${x.previstos}</td><td class="num">${x.etiquetados}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td>${x.cadastrados > x.etiquetados ? `<button class="btn sm" data-act="imp-print" data-id="${x.hotel_id}">Imprimir ${x.cadastrados - x.etiquetados} etiquetas</button>` : '<span class="small muted">Etiquetas em dia</span>'}</td></tr>`; }).join("");
   const exemplo = U && U.preview ? U.preview : null;
   const importPanel = exemplo ? `<div class="table-wrap"><table><thead><tr><th class="num">Linha</th><th>Ativo</th><th>Local</th><th>Modelo aplicado</th><th>Situação</th></tr></thead><tbody>${exemplo.map(r => `<tr><td class="num">${r.linha}</td><td>${esc(r.nome)}<div class="small muted">${esc(r.fab)}</div></td><td class="small">${esc(r.local)}</td><td class="small">${r.mod ? esc(IDX.modelo[r.mod].nome) : "—"}</td><td>${r.erro ? `<span class="badge b-red">${esc(r.erro)}</span>` : '<span class="badge b-green">Pronto</span>'}</td></tr>`).join("")}</tbody></table></div>
       <div class="row" style="margin-top:12px"><button class="btn primary" data-act="imp-import">Importar ${exemplo.filter(r => !r.erro).length} ativos válidos</button><span class="small muted">As ${exemplo.filter(r => r.erro).length} linhas com erro ficam para correção, sem travar o restante.</span></div>`
-    : `<p class="small" style="margin-top:0">Envie a planilha de inventário do hotel. A Central valida cada linha contra os locais do CM e aplica o modelo de ativo, que já traz plano preventivo e checklist.</p>
+    : `<p class="small" style="margin-top:0">Envie a planilha de inventário do hotel. A Central valida cada linha contra os locais do PMS e aplica o modelo de ativo, que já traz plano preventivo e checklist.</p>
       ${U && U.done ? `<div class="readonly-note ok">${icon("os")}<span>${U.done}</span></div>` : ""}
       <button class="btn primary" data-act="imp-load">Carregar planilha de exemplo (Hotel Joinville)</button>`;
   return `<div class="grid g-4" style="margin-bottom:16px">
-    <div class="panel inst"><div class="lab">Hotéis com inventário completo</div><div class="val">${completos}<small>de ${imp.length}</small></div><div class="foot">Os hotéis do piloto entram completos.</div></div>
+    <div class="panel inst"><div class="lab">Hotéis com inventário completo</div><div class="val">${completos}<small>de ${imp.length}</small></div><div class="foot">Os 4 hotéis do piloto entram completos, começando pelos ativos críticos.</div></div>
     <div class="panel inst"><div class="lab">Ativos cadastrados</div><div class="val">${cad}<small>de ${prev}</small></div><div class="foot">${Math.round(cad / Math.max(1, prev) * 100)}% do inventário previsto.</div></div>
     <div class="panel inst"><div class="lab">Etiquetas QR impressas</div><div class="val">${etq}</div><div class="foot">${cad - etq} ativos aguardando etiqueta.</div></div>
     <div class="panel inst"><div class="lab">Cadastros do celular</div><div class="val">${caps.length}</div><div class="foot">Aguardando revisão do CSC.</div></div>
@@ -811,33 +950,84 @@ function pageImplantacao() {
     <div class="panel"><div class="panel-h"><h2>Modelos de ativo</h2><span class="hint">Um modelo traz plano preventivo e checklist prontos</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Modelo</th><th>Plano aplicado</th><th class="num">Itens</th></tr></thead><tbody>
       ${DB.modelos_ativo.map(m => { const pl = IDX.plano[m.plano_id]; return `<tr><td>${esc(m.nome)}<div class="small muted">${esc(IDX.cat[m.categoria_id].nome)}, ${esc(m.fabricante)}</div></td><td class="small">${esc(pl.nome)}, a cada ${pl.periodicidade_dias} dias</td><td class="num">${pl.checklist.length}</td></tr>`; }).join("")}
     </tbody></table></div></div>
-  </div>`;
+  </div>
+  ${role() === "csc" ? pacotesHtml() : ""}`;
+}
+const PASSOS = [["licenca", "Ativar o hotel com licença", "Admin do grupo"], ["pacote", "Aplicar o pacote da bandeira", "Modelos, checklists e planos copiados"], ["locais", "Ler UHs e áreas do PMS", "Conector do sistema hoteleiro"], ["usuarios", "Convidar usuários e papéis", "Implantador, com validade"], ["ativos", "Carregar os ativos críticos", "Planilha ou celular"], ["etiquetas", "Imprimir e colar as etiquetas", "QR em lote"]];
+function pacotesHtml() {
+  const card = ab => {
+    const pk = DB.pacotes.find(p => p.bandeira_id === ab.bandeira_id), b = IDX.band[ab.bandeira_id];
+    const feitos = PASSOS.filter(p => ab.passos[p[0]]).length;
+    return `<div class="panel" style="padding:16px 18px"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><strong style="font-size:16px">${esc(ab.nome)}</strong><div class="small muted">${esc(ab.cidade)}/${ab.uf}, ${ab.uhs} UHs, ${esc(b.nome)}, ${esc(ab.modelo.toLowerCase())}. Abertura: ${esc(ab.previsao)}.</div></div><span class="badge ${feitos === PASSOS.length ? "b-green" : feitos ? "b-amber" : "b-grey"}">${feitos} de ${PASSOS.length}</span></div>
+      <ol class="steps">${PASSOS.map(([k, l, d]) => `<li class="${ab.passos[k] ? "done" : ""}"><span>${esc(l)}<small>${ab.passos[k] ? "Feito em " + fmtDT(ab.passos[k]) : esc(d)}</small></span></li>`).join("")}</ol>
+      ${!ab.passos.pacote ? `<button class="btn primary" data-act="pkg-apply" data-id="${ab.id}" ${ab.passos.licenca ? "" : "disabled title='Ative o hotel com licença antes'"}>Aplicar pacote ${esc(b.nome)} ${esc(pk.versao)}</button>` : `<div class="readonly-note ok">${icon("os")}<span>Pacote ${esc(pk.versao)} aplicado: ${pk.modelos.length} modelos de ativo, ${pk.planos.length} planos preventivos e ${pk.planos.reduce((a, id) => a + IDX.plano[id].checklist.length, 0)} itens de checklist. Falta só o levantamento dos ativos.</span></div>`}</div>`;
+  };
+  return `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Pacote da bandeira e hotel novo em 1 dia</h2><span class="hint">Meta do piloto: hotel novo implantado em até 1 dia a partir do pacote, sem contar o levantamento de ativos</span></div>
+  <div class="panel-b"><div class="grid g-2" style="align-items:start">${DB.aberturas.map(card).join("")}</div>
+  <div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Pacote</th><th>Versão</th><th class="num">Modelos de ativo</th><th class="num">Planos preventivos</th><th class="num">Itens de checklist</th><th>Atualizado</th></tr></thead><tbody>
+  ${DB.pacotes.map(p => `<tr><td>${esc(IDX.band[p.bandeira_id].nome)}</td><td><span class="id" style="font-size:13px">${esc(p.versao)}</span></td><td class="num">${p.modelos.length}</td><td class="num">${p.planos.length}</td><td class="num">${p.planos.reduce((a, id) => a + IDX.plano[id].checklist.length, 0)}</td><td class="small">${fmtD(p.atualizado_em)}</td></tr>`).join("")}</tbody></table></div></div></div>`;
 }
 function novoAtivo(hid, lid, cat, nome, fab, modelo) {
   const n = Math.max(...DB.ativos.map(x => +x.id.split("-")[1])) + 1, h = IDX.hotel[hid];
-  const a = { id: "AT-" + String(n).padStart(4, "0"), hotel_id: hid, local_id: lid, categoria_id: cat, nome, fabricante: fab, modelo, numero_serie: cat.toUpperCase() + String(100000 + n * 7), garantia_ate: new Date(Date.now() + 730 * D).toISOString(), anexos: [], criticidade: IDX.cat[cat].critica ? "Alta" : "Média", instalado_em: new Date().toISOString(), qr: "EGV-" + h.cod_totvs + "-" + String(n).padStart(4, "0"), status: "Operando" };
+  const a = { id: "AT-" + String(n).padStart(4, "0"), hotel_id: hid, local_id: lid, categoria_id: cat, nome, fabricante: fab, modelo, numero_serie: cat.toUpperCase() + String(100000 + n * 7), garantia_ate: new Date(Date.now() + 730 * D).toISOString(), anexos: [], criticidade: IDX.cat[cat].critica ? 4 : 3, comprado_em: new Date(Date.now() - 30 * D).toISOString(), instalado_em: new Date().toISOString(), qr: "EGV-" + h.cod_totvs + "-" + String(n).padStart(4, "0"), status: "Operando" };
   DB.ativos.push(a); IDX.ativo[a.id] = a;
   const im = DB.implantacao.find(x => x.hotel_id === hid); if (im) im.cadastrados++;
   return a;
 }
 
 /* ---------- Hotéis ---------- */
+const MATRIZ_MODELOS = [
+  ["Próprio", "Total, a central despacha", "Alçadas internas", "P&L do grupo", "Não há", "Despacho, SLA, preventiva", "Sim"],
+  ["Administrado", "Operação do grupo, ativo do proprietário", "Alçadas e aprovação do proprietário acima de limite", "P&L do hotel, com rateio da central", "Proprietário vê só o seu ativo, sem editar", "Igual ao próprio, com prestação de contas", "Sim; aprovação do proprietário na fase 2"],
+  ["Arrendado", "Operação do grupo, imóvel do locador", "Conforme o contrato", "Arrendatária ou locador, por categoria", "Locador vê o que é dele", "Despacho e matriz de responsabilidade", "Sim, versão mínima"],
+  ["Afiliado", "Do hoteleiro", "Não se aplica", "O hoteleiro", "Não há", "Auditoria de padrão e conformidade", "Depois do MVP"]
+];
+const modeloBadge = m => `<span class="badge ${m === "Próprio" ? "b-outline" : m === "Administrado" ? "b-blue" : m === "Arrendado" ? "b-amber" : "b-grey"}">${esc(m)}</span>`;
 function pageHoteis() {
-  const s = scope(), chs = scoped(DB.chamados);
+  const s = scope(), chs = scoped(DB.chamados), ed = role() === "csc";
   const bands = DB.bandeiras.filter(b => DB.hoteis.some(h => h.bandeira_id === b.id && s.hoteis.includes(h.id)));
   const nAt = hid => DB.ativos.filter(a => a.hotel_id === hid).length;
+  const arr = DB.hoteis.filter(h => h.modelo === "Arrendado" && s.hoteis.includes(h.id));
+  const resp = (hid, cat) => (DB.responsabilidade.find(r => r.hotel_id === hid && r.categoria_id === cat) || {}).responsavel;
   return `<div class="grid g-3-1">
-  <div class="panel"><div class="panel-h"><h2>${esc(DB.tenant.nome)}</h2><span class="hint">Grupo, bandeiras e hotéis. Hotéis e UHs vêm do TOTVS CM.</span></div><div class="panel-b">
+  <div class="panel"><div class="panel-h"><h2>${esc(DB.tenant.nome)}</h2><span class="hint">Grupo, bandeiras e hotéis, com o modelo contratual de cada um. Hotéis e UHs vêm do PMS.</span></div><div class="panel-b">
   <ul class="tree"><li><div class="node"><strong>${esc(DB.tenant.nome)}</strong><span class="muted small">${s.hoteis.length} hotéis visíveis</span></div><ul>
   ${bands.map(b => `<li><div class="node"><strong>${esc(b.nome)}</strong>${b.condo ? '<span class="badge b-blue">condo-hotel</span>' : ""}</div><ul>
     ${DB.hoteis.filter(h => h.bandeira_id === b.id && s.hoteis.includes(h.id)).map(h => {
       const ab = chs.filter(c => c.hotel_id === h.id && OPEN.includes(c.status)).length;
-      return `<li><div class="node"><a href="#" data-act="goto-hotel" data-id="${h.id}">${esc(h.nome)}</a><span class="small muted">${h.cidade}/${h.uf}, ${h.uhs} UHs, ${nAt(h.id)} ativos, ${ab} chamados abertos</span><span class="badge b-outline">${h.cod_totvs}</span></div></li>`;
+      return `<li><div class="node"><a href="#" data-act="goto-hotel" data-id="${h.id}">${esc(h.nome)}</a>${modeloBadge(h.modelo)}${h.piloto ? `<span class="badge b-green" title="${esc(h.piloto)}">Piloto</span>` : ""}<span class="small muted">${h.cidade}/${h.uf}, ${h.uhs} UHs, ${nAt(h.id)} ativos, ${ab} chamados abertos</span><span class="badge b-outline">${h.cod_totvs}</span></div></li>`;
     }).join("")}</ul></li>`).join("")}
   </ul></li></ul></div></div>
-  <div class="panel"><div class="panel-h"><h2>Proprietários</h2><span class="hint">Linha Suítes</span></div><div class="panel-b">
-  <p class="small">Em condo-hotel, cada proprietário ou locador vê apenas os chamados das próprias UHs.</p>
-  <table><tbody>${DB.proprietarios.map(p => { const n = DB.localProprietario.filter(x => x.proprietario_id === p.id && s.hoteis.includes(IDX.local[x.local_id].hotel_id)).length; return n ? `<tr><td>${esc(p.nome)}</td><td class="num small">${n} UHs</td></tr>` : ""; }).join("") || `<tr><td class="muted small">Nenhum proprietário no seu escopo.</td></tr>`}</tbody></table></div></div></div>`;
+  <div><div class="panel"><div class="panel-h"><h2>Piloto</h2><span class="hint">4 hotéis que cobrem a matriz</span></div><div class="panel-b" style="padding-top:0"><table><tbody>
+    ${DB.hoteis.filter(h => h.piloto).map(h => `<tr><td>${esc(h.nome)}<div class="small muted">${esc(h.piloto)}</div></td><td>${modeloBadge(h.modelo)}</td></tr>`).join("")}</tbody></table></div></div>
+  <div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Proprietários e locadores</h2></div><div class="panel-b">
+  <p class="small" style="margin-top:0">No administrado, o proprietário vê só as próprias UHs. No arrendado, o locador vê o que o contrato põe sob a responsabilidade dele. Os dois só leem.</p>
+  <table><tbody>${DB.proprietarios.map(p => { const n = DB.localProprietario.filter(x => x.proprietario_id === p.id && s.hoteis.includes(IDX.local[x.local_id].hotel_id)).length; return n ? `<tr><td>${esc(p.nome)}</td><td class="num small">${n} UHs</td></tr>` : ""; }).join("")}
+  ${DB.usuarios.filter(u => u.papel === "Locador" && s.hoteis.includes(u.escopo.id)).map(u => `<tr><td>${esc(u.nome)} <span class="badge b-amber">Locador</span></td><td class="num small">${esc(IDX.hotel[u.escopo.id].nome.replace(/^Hotel /, ""))}</td></tr>`).join("")}</tbody></table></div></div></div></div>
+  <div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Matriz de modelos de empreendimento</h2><span class="hint">O modelo contratual define quem manda, quem aprova e quem paga</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Modelo</th><th>Controle operacional</th><th>Aprovação de gastos</th><th>Quem paga</th><th>Visão de terceiros</th><th>Papel da central</th><th>No MVP</th></tr></thead><tbody>
+  ${MATRIZ_MODELOS.map(r => `<tr><td>${modeloBadge(r[0])}</td>${r.slice(1).map((x, i) => `<td class="small">${i === 5 ? `<span class="badge ${x === "Sim" ? "b-green" : x.startsWith("Sim") ? "b-blue" : "b-grey"}">${esc(x)}</span>` : esc(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>
+  ${arr.length ? `<div class="panel" style="margin-top:16px" id="matriz-resp"><div class="panel-h"><h2>Matriz de responsabilidade dos arrendados</h2><span class="hint">Por hotel e categoria: quem responde pelo custo. A OS já nasce marcada, e o locador é notificado com data registrada.</span></div><div class="panel-b table-wrap"><table class="sla-grid"><thead><tr><th>Categoria</th>${arr.map(h => `<th>${esc(h.nome.replace(/^Hotel /, ""))}</th>`).join("")}</tr></thead><tbody>
+    ${DB.categorias.map(c => `<tr><td>${esc(c.nome)}</td>${arr.map(h => { const v = resp(h.id, c.id); return `<td>${ed ? `<select data-act="resp" data-h="${h.id}" data-cat="${c.id}" aria-label="Responsável por ${esc(c.nome)} em ${esc(h.nome)}"><option ${v === "Arrendatária" ? "selected" : ""}>Arrendatária</option><option ${v === "Locador" ? "selected" : ""}>Locador</option></select>` : `<span class="badge ${v === "Locador" ? "b-blue" : "b-grey"}">${esc(v || "—")}</span>`}</td>`; }).join("")}</tr>`).join("")}
+  </tbody></table></div></div>` : ""}`;
+}
+
+/* ---------- Fornecedores ---------- */
+function pageFornecedores() {
+  const s = scope(), d90 = Date.now() - 90 * D, chs = scoped(DB.chamados).filter(c => t(c.aberto_em) > d90);
+  const ed = ["csc", "band"].includes(role());
+  return `<div class="filters"><p class="small muted" style="margin:0;max-width:80ch">Cadastro mínimo, no lugar do nome em texto livre. Quem executou entra na OS e no aceite, e alimenta custos e indicadores. O portal do fornecedor fica para a fase 2.</p><div style="flex:1"></div>${ed ? `<button class="btn primary" data-act="forn-novo">Cadastrar fornecedor</button>` : ""}</div>
+  <div class="panel"><div class="table-wrap"><table><thead><tr><th>Fornecedor</th><th>CNPJ</th><th>Contato</th><th>Categorias</th><th class="num">Serviços em 90 dias</th><th class="num">Custo informado</th></tr></thead><tbody>
+  ${DB.fornecedores.map(f => { const cs = chs.filter(c => c.executado_por && c.executado_por.fornecedor_id === f.id); const custo = cs.reduce((a, c) => a + (c.custo || 0), 0);
+    return `<tr><td><strong>${esc(f.nome)}</strong></td><td class="small"><span class="id" style="font-size:13px">${esc(f.cnpj)}</span></td><td class="small">${esc(f.telefone)}<div class="muted">${esc(f.email)}</div></td><td class="small">${f.categorias.map(c => esc(IDX.cat[c].nome)).join(", ") || "—"}</td><td class="num">${cs.length}</td><td class="num">${custo ? brl(custo) : "—"}</td></tr>`; }).join("")}
+  </tbody></table></div></div>`;
+}
+function modalFornecedor() {
+  return `<div class="modal-bg" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="fo-t"><div class="modal-h" id="fo-t">Cadastrar fornecedor</div><div class="modal-b">
+    <div class="field"><label for="fo-nome">Nome</label><input id="fo-nome" placeholder="Razão social ou nome fantasia"></div>
+    <div class="two"><div class="field"><label for="fo-cnpj">CNPJ</label><input id="fo-cnpj" placeholder="00.000.000/0000-00" inputmode="numeric"></div><div class="field"><label for="fo-tel">Telefone</label><input id="fo-tel" placeholder="(00) 0000-0000"></div></div>
+    <div class="field"><label for="fo-mail">E-mail</label><input id="fo-mail" type="email" placeholder="contato@fornecedor.com.br"></div>
+    <div class="field"><label for="fo-cat">Categoria principal</label><select id="fo-cat">${DB.categorias.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join("")}</select></div>
+  </div><div class="modal-f"><button class="btn" data-act="modal-close">Cancelar</button><button class="btn primary" data-act="forn-save">Cadastrar</button></div></div></div>`;
 }
 
 /* ---------- Políticas ---------- */
@@ -862,12 +1052,19 @@ function pagePoliticas() {
   <div class="panel-b">
   ${ed ? `<div class="readonly-note">${icon("pol")}<span>Campos em cinza mostram o valor herdado. Preencha para criar uma exceção; apague para voltar a herdar. Novos chamados já usam o valor alterado, e a mudança fica na auditoria.</span></div>` : `<div class="readonly-note">Somente a gestão do CSC altera políticas. Você vê as regras que valem para o seu escopo.</div>`}
   <div class="table-wrap"><table class="sla-grid"><thead><tr><th>Escopo</th>${PRIOS.map(p => `<th class="num">${p}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>
-  <h3>Prioridade padrão por categoria</h3>
-  <p class="small muted" style="margin-top:0">Quem abre o chamado não precisa escolher a prioridade. Ela vem da categoria, e o CSC ajusta na triagem se precisar.</p>
-  <div class="table-wrap"><table class="sla-grid"><thead><tr><th>Categoria</th><th>Prioridade padrão</th><th class="num">Prazo no grupo</th></tr></thead><tbody>
-  ${DB.categorias.map(cat => { const pp = pg.prio_padrao[cat.id] || "Média"; return `<tr><td>${esc(cat.nome)}${cat.critica ? ' <span class="badge b-outline">crítico</span>' : ""}</td><td>${ed ? `<select data-act="prio-pad" data-cat="${cat.id}" aria-label="Prioridade padrão de ${esc(cat.nome)}">${PRIOS.map(p => `<option ${p === pp ? "selected" : ""}>${p}</option>`).join("")}</select>` : prio(pp)}</td><td class="num">${pg.sla[pp]} h</td></tr>`; }).join("")}
+  <h3>Prioridade padrão e relógio por categoria</h3>
+  <p class="small muted" style="margin-top:0">Quem abre o chamado não precisa escolher a prioridade. Ela vem da categoria, e o CSC ajusta na triagem se precisar. O relógio define se o prazo corre 24 horas por dia ou só no expediente do hotel: elevador parado conta sempre; pintura conta em horário comercial.</p>
+  <div class="table-wrap"><table class="sla-grid"><thead><tr><th>Categoria</th><th>Prioridade padrão</th><th class="num">Prazo no grupo</th><th>Relógio do SLA</th></tr></thead><tbody>
+  ${DB.categorias.map(cat => { const pp = pg.prio_padrao[cat.id] || "Média", com = calComercial(cat.id); return `<tr><td>${esc(cat.nome)}${cat.critica ? ' <span class="badge b-outline">crítico</span>' : ""}</td><td>${ed ? `<select data-act="prio-pad" data-cat="${cat.id}" aria-label="Prioridade padrão de ${esc(cat.nome)}">${PRIOS.map(p => `<option ${p === pp ? "selected" : ""}>${p}</option>`).join("")}</select>` : prio(pp)}</td><td class="num">${pg.sla[pp]} h</td><td>${ed ? `<select data-act="relogio" data-cat="${cat.id}" aria-label="Relógio de ${esc(cat.nome)}"><option value="24" ${com ? "" : "selected"}>24 horas, 7 dias</option><option value="com" ${com ? "selected" : ""}>Horário comercial</option></select>` : com ? "Horário comercial" : "24 horas, 7 dias"}</td></tr>`; }).join("")}
   </tbody></table></div>
-  <h3>Outras regras</h3><dl class="kv"><dt>Horário de atendimento</dt><dd>${esc(pg.horario)} (padrão do grupo)</dd><dt>Escalonamento</dt><dd>Avisar a gestão ao atingir ${pg.escalonar_em}% do prazo; Hotel São Paulo Paulista usa 70%</dd><dt>Aceite</dt><dd>Chamado só encerra com aceite do solicitante</dd></dl>
+  <h3>Outras regras</h3><dl class="kv">
+    <dt>Expediente</dt><dd>${esc(pg.expediente)}, no fuso de cada hotel</dd>
+    <dt>Feriados</dt><dd>${esc(pg.feriados)}</dd>
+    <dt>Escalonamento</dt><dd>Alerta de prazo perto de vencer e aviso à central ao atingir ${pg.escalonar_em}% do prazo; Hotel São Paulo Paulista usa 70%</dd>
+    <dt>Aceite</dt><dd>Encerra com aceite e assinatura. Quem executou não aceita o próprio serviço; sem outro gerente no hotel, decide o Gestor CSC ou o Admin do grupo</dd>
+    <dt>Códigos de manutenção</dt><dd>${ed ? `<label class="inline-check" style="margin:0"><input type="checkbox" data-act="cod-obrig" ${pg.codigos_obrigatorios ? "checked" : ""}> Exigir falha, causa e solução no aceite</label>` : pg.codigos_obrigatorios ? "Obrigatórios no aceite" : "Opcionais no aceite"} <span class="muted small">(padrão: desligado)</span></dd>
+    <dt>Criticidade do ativo</dt><dd>${[5, 4, 3, 2, 1].map(n => critBadge(n)).join(" ")} <span class="muted small">escala fixa de 1 a 5, nomes configuráveis</span></dd>
+  </dl>
   </div></div>`;
 }
 function setSla(tipo, id, pr, val) {
@@ -886,26 +1083,33 @@ function setSla(tipo, id, pr, val) {
 function pageIntegracao() {
   const ig = DB.integracao;
   const uhs = DB.locais.filter(l => l.tipo === "uh").length;
-  return `<div class="readonly-note" style="margin-top:0">${icon("integ")}<span><strong>Somente leitura.</strong> A Central lê views acordadas do TOTVS CM e grava uma cópia em área própria. Escrita no CM fica desligada até existir mecanismo homologado por escrito pela TOTVS e pela TI do cliente.</span></div>
+  const fichas = (ig.fichas || []).map(f => ({ ...f, idade: (Date.now() - t(f.ultimo_contato)) / 60e3 }));
+  const stale = ig.views.filter(v => v.status !== "ok").length + fichas.filter(f => f.idade > f.limite_min).length;
+  return `<div class="readonly-note" style="margin-top:0">${icon("integ")}<span><strong>Somente leitura.</strong> O HubKeep lê views criadas pelo cliente no PMS, com um usuário restrito a elas, e grava uma cópia em área própria. O produto funciona sem integração: o sistema hoteleiro só acrescenta contexto. Escrever no PMS só entra com mecanismo homologado pelo fornecedor do PMS, por escrito.</span></div>
   <div class="grid g-4" style="margin:14px 0 18px">
-    <div class="panel kpi good"><div class="v">${DB.hoteis.length}</div><div class="l">Hotéis mapeados</div><div class="d">Código CM ligado ao hotel na Central</div></div>
+    <div class="panel kpi good"><div class="v">${DB.hoteis.length}</div><div class="l">Hotéis mapeados</div><div class="d">Código PMS ligado ao hotel na Central</div></div>
     <div class="panel kpi good"><div class="v">${uhs.toLocaleString("pt-BR")}</div><div class="l">UHs mapeadas</div><div class="d">Sem recadastro manual</div></div>
-    <div class="panel kpi"><div class="v">${rel(ig.views[2].ultima).replace("há ", "")}</div><div class="l">Idade do status das UHs</div><div class="d">Atualizado a cada 10 minutos</div></div>
-    <div class="panel kpi warn"><div class="v">1</div><div class="l">View com atraso</div><div class="d">A Central segue com o último dado recebido</div></div>
+    <div class="panel kpi"><div class="v">${rel(ig.views[2].ultima).replace("há ", "")}</div><div class="l">Idade do status das UHs</div><div class="d">Atraso máximo monitorado: 5 minutos</div></div>
+    <div class="panel kpi ${stale ? "warn" : "good"}"><div class="v">${stale}</div><div class="l">Fontes com dado desatualizado</div><div class="d">A Central segue com o último dado e avisa na tela</div></div>
   </div>
   <div class="panel"><div class="panel-h"><h2>Views lidas</h2><span class="hint">${esc(ig.conexao)}</span><div class="spacer"></div>${role() === "csc" ? `<button class="btn" data-act="sync">Sincronizar agora</button>` : ""}</div>
   <div class="panel-b table-wrap"><table><thead><tr><th>View</th><th>Conteúdo</th><th>Frequência</th><th>Última leitura</th><th class="num">Linhas</th><th>Situação</th></tr></thead><tbody>
   ${ig.views.map(v => `<tr><td><span class="id">${v.nome}</span></td><td class="small">${esc(v.conteudo)}</td><td class="small">${v.frequencia}</td><td class="small">${fmtDT(v.ultima)} <span class="muted">(${rel(v.ultima)})</span></td><td class="num">${v.linhas.toLocaleString("pt-BR")}</td><td>${v.status === "ok" ? '<span class="badge b-green">Em dia</span>' : '<span class="badge b-amber">Atrasada</span>'}</td></tr>`).join("")}
   </tbody></table></div></div>
+  <div class="panel" style="margin-top:18px"><div class="panel-h"><h2>Ficha de conexão por hotel</h2><span class="hint">Agente instalado na rede do cliente, com saída só por HTTPS. Painel de saúde do conector.</span></div>
+  <div class="panel-b table-wrap"><table><thead><tr><th>Hotel</th><th>Código PMS</th><th>Agente</th><th>Último contato</th><th class="num">Limite</th><th>Situação</th></tr></thead><tbody>
+  ${fichas.filter(f => scope().hoteis.includes(f.hotel_id)).map(f => `<tr><td>${esc(IDX.hotel[f.hotel_id].nome)}</td><td class="small"><span class="id" style="font-size:13px">${IDX.hotel[f.hotel_id].cod_totvs}</span></td><td class="small">${esc(f.agente)}</td><td class="small" data-rel="${f.ultimo_contato}">${rel(f.ultimo_contato)}</td><td class="num small">${f.limite_min} min</td><td>${f.idade > f.limite_min ? '<span class="badge b-amber">Dado desatualizado</span>' : '<span class="badge b-green">Em dia</span>'}</td></tr>`).join("")}
+  </tbody></table><p class="small muted">O PMS usado pelo cliente está a confirmar: se for instalado, vale o agente; se for em nuvem, a leitura passa a ser pela API do fornecedor do PMS.</p></div></div>
   <div class="grid g-2" style="margin-top:18px">
   <div class="panel"><div class="panel-h"><h2>Últimas execuções</h2></div><div class="panel-b table-wrap"><table><tbody>${ig.execucoes.map(e => `<tr style="white-space:nowrap"><td class="small">${fmtDT(e.t)}</td><td class="small"><span class="id" style="font-size:13px">${e.view}</span></td><td class="small num">${e.linhas} linhas</td><td class="small num">${e.duracao_s} s</td><td class="small">${e.resultado === "Sucesso" ? '<span class="badge b-green">Sucesso</span>' : `<span class="badge b-red">Falha</span> ${esc(e.resultado.replace("Falha: ", ""))}`}</td></tr>`).join("")}</tbody></table></div></div>
   <div class="panel"><div class="panel-h"><h2>O que a Central faz e não faz</h2></div><div class="panel-b">
     <table><thead><tr><th>Operação</th><th>Situação</th></tr></thead><tbody>
     <tr><td>Ler hotéis, UHs e proprietários</td><td><span class="badge b-green">Ativo</span></td></tr>
     <tr><td>Ler status de ocupação e bloqueios de UH</td><td><span class="badge b-green">Ativo</span></td></tr>
-    <tr><td>Lembrar a equipe de bloquear UH no CM</td><td><span class="badge b-green">Ativo</span></td></tr>
-    <tr><td>Bloquear ou liberar UH direto no CM</td><td><span class="badge b-grey">Desligado até homologação</span></td></tr>
-    <tr><td>Gravar em tabelas do CM</td><td><span class="badge b-red">Não permitido</span></td></tr>
+    <tr><td>Registrar o período de UH indisponível e os UH-dias perdidos</td><td><span class="badge b-green">Ativo</span></td></tr>
+    <tr><td>Avisar quando há OS com impacto na UH e ela não está bloqueada</td><td><span class="badge b-blue">Primeira entrega pós-MVP</span></td></tr>
+    <tr><td>Bloquear ou liberar UH direto no PMS</td><td><span class="badge b-grey">Desligado até homologação</span></td></tr>
+    <tr><td>Gravar em tabelas do PMS</td><td><span class="badge b-red">Não permitido</span></td></tr>
     </tbody></table></div></div></div>`;
 }
 
@@ -914,27 +1118,45 @@ function escopoTxt(e) {
   if (e.tipo === "grupo") return "Grupo inteiro";
   if (e.tipo === "bandeira") return IDX.band[e.id].nome;
   if (e.tipo === "hotel") return IDX.hotel[e.id].nome;
+  if (e.tipo === "locador") return IDX.hotel[e.id].nome + " (categorias do locador)";
   return DB.localProprietario.filter(x => x.proprietario_id === e.id).length + " UHs próprias";
 }
 function pageUsuarios() {
   const us = DB.usuarios;
-  const demo = ["u1", "u2", "u3", "u4", "u5"];
+  const demo = ["u1", "u2", "u3", "u4", "u5", "u90"];
+  const PAPEIS = [["Admin do grupo", "Grupo", "Ativa hotéis (consome licença), bandeiras, usuários e papéis, políticas; único que desativa membros"], ["Gestor CSC", "Grupo ou bandeira", "Triagem, despacho, acompanhamento e indicadores; decide o aceite quando não há outro gerente"], ["Implantador", "Hotel, com validade obrigatória", "Cadastra locais, ativos, QR e usuários abaixo dele; não ativa hotel nem libera licença"], ["Gerente do hotel", "Hotel", "Operação do hotel, triagem, aceite e reabertura"], ["Técnico", "Hotel", "Executa a OS no app, inclusive sem rede"], ["Solicitante", "Hotel", "Abre chamados e aceita o serviço do chamado que abriu"], ["Proprietário ou locador", "UHs próprias ou hotel inteiro", "Somente leitura do que é dele: chamados, OS, ativos, anexos dos seus locais, histórico"]];
   return `<div class="panel"><div class="panel-h"><h2>Perfis para a demonstração</h2><span class="hint">Troque o perfil para ver o mesmo sistema com outro escopo de dados.</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Pessoa</th><th>Papel</th><th>Escopo</th><th></th></tr></thead><tbody>
   ${demo.map(id => { const u = IDX.user[id]; return `<tr><td><span class="row"><span class="avatar">${initials(u.nome)}</span>${esc(u.nome)}</span></td><td>${esc(u.papel)}</td><td>${esc(escopoTxt(u.escopo))}</td><td><button class="btn sm" data-act="as" data-id="${id}" ${id === UI.persona ? "disabled" : ""}>${id === UI.persona ? "Perfil atual" : "Ver como"}</button></td></tr>`; }).join("")}
   </tbody></table>
+  <h3>Papéis do produto</h3>
+  <div class="table-wrap"><table><thead><tr><th>Papel</th><th>Escopo</th><th>O que faz</th></tr></thead><tbody>${PAPEIS.map(p => `<tr><td><strong>${esc(p[0])}</strong></td><td class="small">${esc(p[1])}</td><td class="small">${esc(p[2])}</td></tr>`).join("")}</tbody></table></div>
+  <p class="small muted">Valem para todos: quem executa o serviço não aceita o próprio serviço; o proprietário não lê políticas, anexos do hotel nem movimentações de ativos no MVP.</p>
   <h3>Como o isolamento funciona</h3>
-  <p class="small" style="max-width:76ch">Cada acesso é concedido a um escopo: grupo, bandeira, hotel ou UHs de um proprietário. O banco de dados filtra cada consulta pelo escopo de quem pergunta, com segurança por linha (RLS). Um erro de tela não expõe dados de outro hotel.</p></div></div>
+  <p class="small" style="max-width:76ch">Cada acesso é concedido a um escopo: grupo, bandeira, hotel ou UHs de um proprietário. O banco de dados filtra cada consulta pelo escopo de quem pergunta, com segurança por linha (RLS). Um erro de tela não expõe dados de outro hotel. Mais de 500 testes de isolamento e de regras quebram a integração contínua se alguém furar uma regra.</p></div></div>
   <div class="panel" style="margin-top:18px"><div class="panel-h"><h2>Todos os usuários</h2><span class="hint">${us.length} pessoas</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Escopo</th></tr></thead><tbody>
-  ${us.map(u => `<tr><td>${esc(u.nome)}</td><td class="small muted">${esc(u.email)}</td><td class="small">${esc(u.papel)}</td><td class="small">${esc(escopoTxt(u.escopo))}</td></tr>`).join("")}</tbody></table></div></div>`;
+  ${us.map(u => `<tr><td>${esc(u.nome)}</td><td class="small muted">${esc(u.email)}</td><td class="small">${esc(u.papel)}</td><td class="small">${esc(escopoTxt(u.escopo))}${u.valido_ate ? ` <span class="badge b-amber">até ${fmtD(u.valido_ate)}</span>` : ""}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
 
 /* ---------- Auditoria ---------- */
+function auditoriaFiltrada() {
+  const s = scope(), f = UI.f.au;
+  let list = DB.auditoria.filter(a => !a.hotel_id || s.hoteis.includes(a.hotel_id));
+  if (isOwner()) list = list.filter(a => a.entidade === "Chamado" && IDX.ch[a.registro] && scoped([IDX.ch[a.registro]]).length);
+  if (f.ent) list = list.filter(a => a.entidade === f.ent);
+  if (f.hotel) list = list.filter(a => a.hotel_id === f.hotel);
+  if (f.q) { const q = f.q.toLowerCase(); list = list.filter(a => (a.usuario + " " + a.registro + " " + a.acao).toLowerCase().includes(q)); }
+  return list;
+}
 function pageAuditoria() {
-  const s = scope();
-  const list = DB.auditoria.filter(a => !a.hotel_id || s.hoteis.includes(a.hotel_id));
-  const f = UI.f.au, per = 30, pages = Math.max(1, Math.ceil(list.length / per)); f.page = Math.min(f.page, pages - 1);
-  return `<div class="panel"><div class="panel-h"><h2>Quem mudou o quê</h2><span class="hint">Registro permanente de alterações em chamados, OS, políticas e acessos</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Quando</th><th>Quem</th><th>Registro</th><th>Hotel</th><th>O que mudou</th></tr></thead><tbody>
-  ${list.slice(f.page * per, f.page * per + per).map(a => `<tr><td class="small">${fmtDT(a.t)}</td><td class="small">${esc(a.usuario)}</td><td class="small">${esc(a.entidade)} <span class="id" style="font-size:13px">${esc(a.registro)}</span></td><td class="small">${a.hotel_id ? esc(IDX.hotel[a.hotel_id].nome) : "Grupo"}</td><td class="small">${esc(a.acao)}</td></tr>`).join("")}
+  const f = UI.f.au, list = auditoriaFiltrada(), per = 30, pages = Math.max(1, Math.ceil(list.length / per)); f.page = Math.min(f.page, pages - 1);
+  const ents = [...new Set(DB.auditoria.map(a => a.entidade))].sort();
+  return `<div class="filters">
+    <input type="search" placeholder="Buscar por pessoa, registro ou texto" value="${esc(f.q)}" data-f="au.q" aria-label="Buscar na auditoria">
+    <select data-f="au.ent" aria-label="Tipo de registro"><option value="">Todos os registros</option>${ents.map(e => `<option ${f.ent === e ? "selected" : ""}>${esc(e)}</option>`).join("")}</select>
+    ${scope().hoteis.length > 1 ? `<select data-f="au.hotel" aria-label="Hotel"><option value="">Todos os hotéis</option>${hotelOptions(f.hotel)}</select>` : ""}
+    <div style="flex:1"></div><button class="btn" data-act="csv-au">Exportar CSV</button></div>
+  <div class="panel"><div class="panel-h"><h2>Quem mudou o quê</h2><span class="hint">Registro permanente, só de leitura, de alterações em chamados, OS, ativos, políticas e acessos</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Quando</th><th>Quem</th><th>Registro</th><th>Hotel</th><th>O que mudou</th></tr></thead><tbody>
+  ${list.slice(f.page * per, f.page * per + per).map(a => `<tr><td class="small">${fmtDT(a.t)}</td><td class="small">${esc(a.usuario)}</td><td class="small">${esc(a.entidade)} <span class="id" style="font-size:13px">${esc(a.registro)}</span></td><td class="small">${a.hotel_id ? esc(IDX.hotel[a.hotel_id].nome) : "Grupo"}</td><td class="small">${esc(a.acao)}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">Nenhum registro com esses filtros.</td></tr>`}
   </tbody></table><div class="pager">${list.length} registros<span class="row"><button class="btn sm" data-act="page" data-k="au" data-d="-1" ${f.page === 0 ? "disabled" : ""}>Anterior</button><span>Página ${f.page + 1} de ${pages}</span><button class="btn sm" data-act="page" data-k="au" data-d="1" ${f.page >= pages - 1 ? "disabled" : ""}>Próxima</button></span></div></div></div>`;
 }
 
@@ -959,7 +1181,7 @@ function phoneScreen() {
   } else if (P.view && P.view.startsWith("CH-")) {
     const c = IDX.ch[P.view];
     head = `<div class="m-head"><button data-act="ph-back" style="background:none;border:none;color:#A9C8CC;padding:0;cursor:pointer">Voltar</button><div class="t">${esc(c.titulo)}</div><div class="s">${esc(IDX.local[c.local_id].nome)}</div></div>`;
-    body = `<div class="m-card" style="cursor:default"><div class="r" style="margin:0">${prio(c.prioridade)}${tag(c)}</div><div class="s" style="margin-top:8px">${esc(c.descricao)}</div>${DB.statusUH[c.local_id] ? `<div class="s">UH ${DB.statusUH[c.local_id].toLowerCase()} no CM</div>` : ""}</div>
+    body = `<div class="m-card" style="cursor:default"><div class="r" style="margin:0">${prio(c.prioridade)}${tag(c)}</div><div class="s" style="margin-top:8px">${esc(c.descricao)}</div>${DB.statusUH[c.local_id] ? `<div class="s">UH ${DB.statusUH[c.local_id].toLowerCase()} no PMS</div>` : ""}</div>
       <div class="m-card" style="cursor:default"><div class="t">Situação: ${esc(c.status)}</div><div class="s">Aberto ${rel(c.aberto_em)} por ${esc(c.solicitante)}</div></div>
       ${c.status === "Aberto" ? `<button class="m-btn p" data-act="ph-ch" data-id="${c.id}" data-st="Em atendimento">Iniciar atendimento</button>` : ""}
       ${c.status === "Em atendimento" ? `<button class="m-btn p" data-act="ph-ch" data-id="${c.id}" data-st="Aguardando aceite">Concluir serviço</button><button class="m-btn s" data-act="ph-ch" data-id="${c.id}" data-st="Aguardando peça">Aguardar peça</button>` : ""}
@@ -968,7 +1190,7 @@ function phoneScreen() {
     body = `<div class="small muted" style="margin:2px 2px 8px">Chamados atribuídos a você</div>
       ${chs.map(c => `<div class="m-card" data-act="ph-open" data-id="${c.id}"><div class="t">${esc(c.titulo)}</div><div class="s">${esc(IDX.local[c.local_id].nome)}, ${esc(c.status.toLowerCase())}</div><div class="r">${prio(c.prioridade)}${tag(c)}</div></div>`).join("") || `<div class="m-card" style="cursor:default"><div class="s">Nenhum chamado com você agora.</div></div>`}
       <div class="small muted" style="margin:12px 2px 8px">Preventivas de hoje</div>
-      ${osHoje.map(o => `<div class="m-card" data-act="ph-open" data-id="${o.id}"><div class="t">${esc(o.titulo.split(" — ")[0])}</div><div class="s">${esc(IDX.ativo[o.ativo_id].nome)}, ${o.status === "Atrasada" ? "atrasada desde " + fmtD(o.programada_para).slice(0, 5) : "às " + fmtDT(o.programada_para).slice(6)}</div><div class="r">${statusBadge(o.status)}<span class="small muted">${o.checklist.filter(c => c.tipo === "medicao" ? c.valor != null : c.ok).length} de ${o.checklist.length} itens</span></div></div>`).join("") || `<div class="m-card" style="cursor:default"><div class="s">Preventivas do dia concluídas.</div></div>`}`;
+      ${osHoje.map(o => `<div class="m-card" data-act="ph-open" data-id="${o.id}"><div class="t">${esc(o.titulo.split(" — ")[0])}</div><div class="s">${esc(IDX.ativo[o.ativo_id].nome)}, ${o.status === "Atrasada" ? "atrasada desde " + fmtD(o.programada_para).slice(0, 5) : "às " + fmtDT(o.programada_para).slice(6)}</div><div class="r">${statusBadge(o.status)}<span class="small muted">${o.checklist.filter(itemFeito).length} de ${o.checklist.length} itens</span></div></div>`).join("") || `<div class="m-card" style="cursor:default"><div class="s">Preventivas do dia concluídas.</div></div>`}`;
   } else if (P.tab === "abrir") {
     if (!P.scan) body = `<div class="m-card" style="cursor:default;text-align:center;padding:26px 12px"><div class="t">Leia a etiqueta do ativo</div><div class="s" style="margin:6px 0 14px">Aponte a câmera para o QR code colado no equipamento</div><div style="display:grid;place-items:center">${qrSvg("scan-demo", 120)}</div><button class="m-btn p" data-act="ph-scan">Ler etiqueta</button></div><div class="small muted" style="padding:0 4px">Sem etiqueta? Abra o chamado pela UH ou pela área.</div>`;
     else { const a = IDX.ativo[P.scan]; body = `<div class="m-card" style="cursor:default"><div class="t">${esc(a.nome)}</div><div class="s">${a.id}, ${esc(IDX.local[a.local_id].nome)}</div></div>
@@ -999,21 +1221,148 @@ function phoneAction(fn) {
   save(); const ph = $("#phone"); if (ph) ph.innerHTML = phoneScreen();
 }
 
-/* ---------- Roadmap ---------- */
-function pageRoadmap() {
-  return `<p style="max-width:76ch;margin-top:0">Este protótipo mostra o escopo do MVP. As fases seguintes entram depois do piloto, priorizadas pelos dados reais de uso.</p>
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
-    <div class="panel roadmap-col" style="padding:16px 20px"><h3 style="margin-top:0">MVP, neste protótipo</h3><ul class="small">
-      <li>Chamados corretivos com SLA, atribuição e aceite</li><li>Ordens de serviço com checklist, horas e fotos</li><li>Planos preventivos com geração automática de OS</li><li>Políticas de SLA com herança grupo, bandeira e hotel</li><li>App do técnico com leitura de QR e uso sem sinal</li><li>Painel consolidado e por hotel</li><li>Isolamento por escopo, inclusive por proprietário</li><li>Leitura do TOTVS CM e auditoria</li></ul></div>
-    <div class="panel roadmap-col f2" style="padding:16px 20px"><h3 style="margin-top:0">Fase 2, após o piloto</h3><ul class="small">
-      <li>Portal de fornecedores terceiros</li><li>Orçamento por OS e aprovação por alçada</li><li>Estoque de peças ou integração com ERP</li><li>Abertura e avisos por WhatsApp</li><li>Painéis montáveis e exportações</li><li>Preventiva por horímetro ou leitura</li><li>Pesquisa de satisfação no encerramento</li><li>Bloqueio de UH no CM, só com homologação por escrito</li></ul></div>
-    <div class="panel roadmap-col f3" style="padding:16px 20px"><h3 style="margin-top:0">Fase 3, em estudo</h3><ul class="small">
-      <li>Sensores em equipamentos críticos</li><li>Manutenção preditiva</li></ul>
-      <p class="small muted">Depende de pelo menos 12 meses de histórico consistente de OS por ativo. Não faz parte da proposta atual.</p></div>
-  </div>`;
+/* ---------- Indicadores (1c) ---------- */
+const sobreposicaoH = (ini, fim, a, b) => Math.max(0, (Math.min(fim, b) - Math.max(ini, a)) / H);
+function uhDias(chs, from, to) { return chs.reduce((acc, c) => c.uh_indisp ? acc + sobreposicaoH(t(c.uh_indisp.inicio), c.uh_indisp.fim ? t(c.uh_indisp.fim) : Date.now(), from, to) / 24 : acc, 0); }
+function indicadoresDe(chs, oss, from, to) {
+  const open = chs.filter(c => OPEN.includes(c.status));
+  const s = slaWin(chs, from, to), mttr = mttrWin(chs, from, to), pv = prevWin(oss, from, to);
+  const concl = oss.filter(o => o.status === "Concluída" && o.fim && t(o.fim) >= from && t(o.fim) < to);
+  const prevN = concl.filter(o => o.origem === "preventiva").length, corrN = concl.filter(o => o.origem === "corretiva").length;
+  const enc = chs.filter(c => c.status === "Encerrado" && t(c.encerrado_em) >= from && t(c.encerrado_em) < to);
+  const novos = chs.filter(c => t(c.aberto_em) >= from && t(c.aberto_em) < to);
+  return { backlog: open.length, sla: s.pct, mttr, pv: pv.pct, razao: corrN ? prevN / corrN : null, prevN, corrN, uhd: uhDias(chs, from, to), custo: enc.reduce((a, c) => a + (c.custo || 0), 0), hosp: novos.length ? novos.filter(c => c.impacto_hospede).length / novos.length * 100 : null, novos: novos.length };
+}
+function pageIndicadores() {
+  const chs = scoped(DB.chamados), oss = scoped(DB.os), sc = scope(), now = Date.now(), from = now - 30 * D;
+  const k = indicadoresDe(chs, oss, from, now), kp = indicadoresDe(chs, oss, from - 30 * D, from);
+  const mttrTxt = v => v == null ? "—" : v < 24 ? fmt1(v) + "<small>h</small>" : fmt1(v / 24) + "<small>dias</small>";
+  const box = (lab, val, foot, delta = "") => `<div class="panel inst"><div class="lab">${lab}</div><div class="val">${val}</div>${delta}<div class="foot">${foot}</div></div>`;
+  const dlt = (a, b, unit, good) => deltaHtml(a != null && b != null ? a - b : null, unit, good, "vs. 30 dias antes");
+  // backlog por idade
+  const open = chs.filter(c => OPEN.includes(c.status));
+  const faixas = [["Até 1 dia", 0, 1], ["1 a 3 dias", 1, 3], ["3 a 7 dias", 3, 7], ["7 a 30 dias", 7, 30], ["Mais de 30 dias", 30, 1e9]];
+  const fx = faixas.map(([l, a, b]) => ({ l, n: open.filter(c => { const d = (now - t(c.aberto_em)) / D; return d >= a && d < b; }).length }));
+  const fmax = Math.max(1, ...fx.map(x => x.n));
+  const backlogIdade = `<div style="display:grid;gap:10px">${fx.map((x, i) => `<div><div style="display:flex;justify-content:space-between;font-size:13px;color:var(--steel);margin-bottom:4px"><span>${x.l}</span><span style="color:var(--head);font-family:var(--font-cond);font-weight:600;font-size:15px">${x.n}</span></div><div style="height:8px;border-radius:4px;background:var(--tint-2);overflow:hidden"><div style="height:100%;width:${Math.max(2, x.n / fmax * 100)}%;border-radius:4px;background:${i < 2 ? "var(--ok)" : i < 3 ? "var(--amber)" : "var(--red)"}"></div></div></div>`).join("")}</div>`;
+  // comparação na mesma bandeira
+  const bands = DB.bandeiras.filter(b => DB.hoteis.some(h => h.bandeira_id === b.id && sc.hoteis.includes(h.id)));
+  const bsel = UI.f.ind.band && bands.some(b => b.id === UI.f.ind.band) ? UI.f.ind.band : bands[0].id;
+  const hs = DB.hoteis.filter(h => h.bandeira_id === bsel && sc.hoteis.includes(h.id)).map(h => { const x = indicadoresDe(chs.filter(c => c.hotel_id === h.id), oss.filter(o => o.hotel_id === h.id), from, now); return { h, x, por100: chs.filter(c => c.hotel_id === h.id && t(c.aberto_em) >= from).length / h.uhs * 100 }; });
+  const best = (f, hi) => { const v = hs.map(f).filter(x => x != null); return v.length ? (hi ? Math.max(...v) : Math.min(...v)) : null; };
+  const bSla = best(r => r.x.sla, true), bMttr = best(r => r.x.mttr, false), bUhd = best(r => r.x.uhd, false), bPv = best(r => r.x.pv, true);
+  const mark = (v, b) => v != null && b != null && Math.abs(v - b) < 1e-9 ? ' class="num best"' : ' class="num"';
+  const comp = `<div class="table-wrap"><table><thead><tr><th>Hotel</th><th class="num">SLA</th><th class="num">MTTR</th><th class="num">Backlog</th><th class="num">Preventiva em dia</th><th class="num">UH-dias perdidos</th><th class="num">Chamados por 100 UHs</th></tr></thead><tbody>
+    ${hs.map(r => `<tr><td>${esc(r.h.nome)}<div class="small muted">${esc(r.h.modelo)}, ${r.h.uhs} UHs</div></td><td${mark(r.x.sla, bSla)}>${r.x.sla == null ? "—" : fmt1(r.x.sla) + "%"}</td><td${mark(r.x.mttr, bMttr)}>${r.x.mttr == null ? "—" : r.x.mttr < 24 ? fmt1(r.x.mttr) + " h" : fmt1(r.x.mttr / 24) + " d"}</td><td class="num">${r.x.backlog}</td><td${mark(r.x.pv, bPv)}>${r.x.pv == null ? "—" : fmt1(r.x.pv) + "%"}</td><td${mark(r.x.uhd, bUhd)}>${fmt1(r.x.uhd)}</td><td class="num">${fmt1(r.por100)}</td></tr>`).join("")}</tbody></table></div><p class="small muted">Em destaque, o melhor resultado da bandeira em cada coluna. Hotéis só se comparam dentro da mesma bandeira.</p>`;
+  // produtividade por equipe e hotel
+  const concl = oss.filter(o => o.status === "Concluída" && o.fim && t(o.fim) >= from);
+  const porTec = {}; concl.forEach(o => { const key = (o.executado_por && o.executado_por.tipo === "fornecedor" ? "f:" + o.executado_por.fornecedor_id : "t:" + o.responsavel_id) + "@" + o.hotel_id; const r = porTec[key] = porTec[key] || { key, n: 0, prev: 0, corr: 0, ok: 0, hotel: o.hotel_id }; r.n++; if (o.origem === "preventiva") r.prev++; else { r.corr++; const c = IDX.ch[o.chamado_id]; if (c && c.encerrado_em && t(c.encerrado_em) <= t(c.prazo_sla)) r.ok++; } });
+  const prod = Object.values(porTec).sort((a, b) => b.n - a.n).slice(0, 12);
+  const quem = k => { const id = k.split("@")[0]; return id.startsWith("f:") ? esc(IDX.forn[id.slice(2)].nome) + ' <span class="badge b-grey">fornecedor</span>' : esc(nomeUser(id.slice(2))); };
+  const prodHtml = `<div class="table-wrap"><table><thead><tr><th>Quem executou</th><th>Hotel</th><th class="num">OS concluídas</th><th class="num">Preventivas</th><th class="num">Corretivas</th><th class="num">Corretivas no prazo</th></tr></thead><tbody>${prod.map(r => `<tr><td>${quem(r.key)}</td><td class="small">${esc(IDX.hotel[r.hotel].nome)}</td><td class="num">${r.n}</td><td class="num">${r.prev}</td><td class="num">${r.corr}</td><td class="num">${r.corr ? Math.round(r.ok / r.corr * 100) + "%" : "—"}</td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="filters"><p class="small muted" style="margin:0">Últimos 30 dias, no escopo de ${esc(sc.label)}. Todos os números saem das transições das OS e dos chamados.</p><div style="flex:1"></div><button class="btn" data-act="csv-ind">Exportar CSV</button></div>
+  <div class="grid g-4" id="ind-kpis" style="margin-bottom:16px">
+    ${box("Backlog", k.backlog, "Chamados em aberto agora.")}
+    ${box("SLA cumprido", (k.sla == null ? "—" : fmt1(k.sla)) + "<small>%</small>", "Encerrados no prazo. Meta de 90%.", dlt(k.sla, kp.sla, " p.p.", true))}
+    ${box("Tempo médio de reparo", mttrTxt(k.mttr), "Da abertura ao encerramento.", deltaHtml(k.mttr != null && kp.mttr ? (k.mttr - kp.mttr) / kp.mttr * 100 : null, "%", false, "vs. 30 dias antes"))}
+    ${box("Preventiva em dia", (k.pv == null ? "—" : fmt1(k.pv)) + "<small>%</small>", "Meta de 95%.", dlt(k.pv, kp.pv, " p.p.", true))}
+    ${box("Preventiva por corretiva", k.razao == null ? "—" : fmt1(k.razao) + "<small>: 1</small>", `${k.prevN} preventivas e ${k.corrN} corretivas concluídas.`)}
+    ${box("UH-dias perdidos", fmt1(k.uhd), "UHs fora de venda por manutenção, somadas em dias.", dlt(k.uhd, kp.uhd, "", false))}
+    ${box("Impacto no hóspede", (k.hosp == null ? "—" : Math.round(k.hosp)) + "<small>%</small>", `Dos ${k.novos} chamados abertos no período.`)}
+    ${box("Custo informado", brl(k.custo), "Somado no aceite dos chamados encerrados.")}
+  </div>
+  <div class="grid g-3-1" style="align-items:start">
+    <div class="panel" id="ind-comp"><div class="panel-h"><h2>Comparação entre hotéis da mesma bandeira</h2><div class="spacer"></div><select data-act="ind-band" aria-label="Bandeira">${bands.map(b => `<option value="${b.id}" ${b.id === bsel ? "selected" : ""}>${esc(b.nome)}</option>`).join("")}</select></div><div class="panel-b">${comp}</div></div>
+    <div class="panel" id="ind-idade"><div class="panel-h"><h2>Backlog por idade</h2></div><div class="panel-b">${backlogIdade}</div></div>
+  </div>
+  <div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Produtividade por equipe e hotel</h2><span class="hint">OS concluídas em 30 dias, equipe interna e fornecedores</span></div><div class="panel-b">${prodHtml}</div></div>`;
 }
 
-const PAGES = { painel: pageDashboard, chamados: pageChamados, os: pageOS, preventiva: pagePreventiva, ativos: pageAtivos, implantacao: pageImplantacao, hoteis: pageHoteis, politicas: pagePoliticas, integracao: pageIntegracao, usuarios: pageUsuarios, auditoria: pageAuditoria, intelligence: pageIntelligence, tecnico: pageTecnico, roadmap: pageRoadmap };
+/* ---------- HubKeep Intelligence (módulo opcional) ---------- */
+function intelAtivo(a) {
+  const pol = polGrupo().inteligencia, now = Date.now(), d90 = now - 90 * D;
+  const chs = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado" && t(c.aberto_em) > d90);
+  const par = DB.ativo_parada.filter(p => p.ativo_id === a.id).reduce((s, p) => s + sobreposicaoH(t(p.inicio), p.fim ? t(p.fim) : now, d90, now), 0);
+  const fora = DB.os.filter(o => o.ativo_id === a.id && o.status === "Concluída" && o.fim && t(o.fim) > d90).reduce((s, o) => s + o.checklist.filter(c => c.fora).length, 0);
+  const garVenc = a.garantia_ate && t(a.garantia_ate) < now;
+  const comp = [
+    { k: "reincidencia", nome: "Reincidência", medido: `${chs.length} chamados corretivos em 90 dias`, nota: Math.min(100, chs.length * 20) },
+    { k: "indisponibilidade", nome: "Indisponibilidade", medido: `${fmt1(par)} h parado em 90 dias`, nota: Math.min(100, Math.round(par / 48 * 100)) },
+    { k: "criticidade", nome: "Criticidade", medido: `${a.criticidade} de 5, ${critNome(a.criticidade).toLowerCase()}`, nota: a.criticidade * 20 },
+    { k: "medicoes", nome: "Medições fora da faixa", medido: `${fora} em 90 dias`, nota: Math.min(100, fora * 50) },
+    { k: "garantia", nome: "Garantia", medido: garVenc ? `vencida em ${fmtD(a.garantia_ate)}` : "vigente", nota: garVenc ? 100 : 0 }
+  ].map(c => ({ ...c, peso: pol.pesos[c.k], contrib: c.nota * pol.pesos[c.k] / 100 }));
+  return { a, comp, score: Math.round(comp.reduce((s, c) => s + c.contrib, 0)), n90: chs.length };
+}
+function efetividade(scopeChs) {
+  const now = Date.now();
+  return scopeChs.filter(c => c.intervencao).map(c => {
+    const t0 = t(c.encerrado_em || c.aberto_em), same = DB.chamados.filter(x => x.ativo_id === c.ativo_id && x.id !== c.id && x.status !== "Cancelado");
+    const antes = same.filter(x => t(x.aberto_em) >= t0 - 90 * D && t(x.aberto_em) < t(c.aberto_em)).length;
+    const fimJan = Math.min(now, t0 + 90 * D), depois = same.filter(x => t(x.aberto_em) > t0 && t(x.aberto_em) <= fimJan).length;
+    const res = depois <= antes * 0.4 ? ["Resolveu", "b-green"] : depois >= antes * 0.75 ? ["Não resolveu", "b-red"] : ["Resolveu em parte", "b-amber"];
+    return { c, antes, depois, completa: t0 + 90 * D <= now, res };
+  });
+}
+function padraoSistemico(ativos, chs) {
+  const now = Date.now(), d90 = now - 90 * D, grupos = {};
+  ativos.forEach(a => { if (!a.modelo) return; const k = a.categoria_id + "|" + a.fabricante + "|" + a.modelo; (grupos[k] = grupos[k] || { k, cat: a.categoria_id, fab: a.fabricante, mod: a.modelo, ativos: [], n: 0, hoteis: new Set() }).ativos.push(a.id); });
+  const porCat = {};
+  Object.values(grupos).forEach(g => { const cs = chs.filter(c => c.ativo_id && g.ativos.includes(c.ativo_id) && t(c.aberto_em) > d90 && c.status !== "Cancelado"); g.n = cs.length; cs.forEach(c => g.hoteis.add(c.hotel_id)); const pc = porCat[g.cat] = porCat[g.cat] || { n: 0, a: 0 }; pc.n += g.n; pc.a += g.ativos.length; });
+  return Object.values(grupos).map(g => { const pc = porCat[g.cat], outrosA = pc.a - g.ativos.length, base = outrosA ? (pc.n - g.n) / outrosA : 0; return { ...g, taxa: g.n / g.ativos.length, base }; })
+    .filter(g => g.hoteis.size >= 3 && g.n >= 6 && g.taxa >= Math.max(0.3, g.base * 2)).sort((a, b) => b.taxa / Math.max(0.05, b.base) - a.taxa / Math.max(0.05, a.base));
+}
+function pageInteligencia() {
+  const pol = polGrupo().inteligencia, ats = scoped(DB.ativos), chs = scoped(DB.chamados);
+  const avaliados = ats.map(intelAtivo).sort((a, b) => b.score - a.score);
+  const ins = avaliados.filter(x => x.score >= pol.limite_atencao);
+  const ef = efetividade(chs), sis = padraoSistemico(ats, chs);
+  const hoje3 = new Date(); hoje3.setHours(3, 0, 0, 0);
+  const gauge = v => `<div class="score ${v >= 85 ? "hi" : v >= pol.limite_atencao ? "mid" : ""}"><b>${v}</b><span>de 100</span></div>`;
+  const card = x => { const open = UI.f.intel.open === x.a.id, top = x.comp.slice().sort((a, b) => b.contrib - a.contrib).slice(0, 2);
+    return `<div class="panel insight" data-at="${x.a.id}"><div class="ins-h">${gauge(x.score)}<div style="flex:1;min-width:0"><div class="small muted">Atenção por ativo, acima do limite de ${pol.limite_atencao}</div><a href="#" data-act="open-at" data-id="${x.a.id}" style="font-weight:600;font-size:16px;color:var(--head)">${esc(x.a.nome)}</a><div class="small muted">${esc(IDX.hotel[x.a.hotel_id].nome)}, ${esc(IDX.local[x.a.local_id].nome)}. ${esc(x.a.fabricante)}${x.a.modelo ? ", " + esc(x.a.modelo) : ""}.</div>
+      <div class="small" style="margin-top:6px">Pesou mais: ${top.map(c => `${esc(c.nome.toLowerCase())} (${esc(c.medido)})`).join("; ")}.</div></div></div>
+      <button class="btn sm why" data-act="intel-why" data-id="${x.a.id}" aria-expanded="${open}">Por que estou vendo isso?</button>
+      ${open ? `<div class="why-b"><table><thead><tr><th>Componente</th><th>Medido</th><th class="num">Nota</th><th class="num">Peso</th><th class="num">Contribuição</th></tr></thead><tbody>${x.comp.map(c => `<tr><td>${esc(c.nome)}</td><td class="small">${esc(c.medido)}</td><td class="num">${c.nota}</td><td class="num">${c.peso}%</td><td class="num"><strong>${fmt1(c.contrib)}</strong></td></tr>`).join("")}<tr><td colspan="4"><strong>Atenção</strong></td><td class="num"><strong>${x.score}</strong></td></tr></tbody></table>
+        <p class="small muted" style="margin:8px 0 0">Política <span class="id" style="font-size:12px">inteligencia.atencao_ativo</span> ${esc(pol.versao)}, limite ${pol.limite_atencao}, fórmula atencao-${esc(pol.versao)}. Cálculo determinístico, gravado com a versão da política e da fórmula. Aponta onde olhar; a decisão de reparar ou substituir é da equipe.</p></div>` : ""}</div>`; };
+  return `<div class="readonly-note" style="margin-top:0">${icon("intel")}<span><strong>Módulo opcional, contratado por este grupo.</strong> Transforma os dados de manutenção em decisão: quais ativos mais falham e custam, se a intervenção resolveu e onde agir primeiro. Todo resultado mostra de onde veio. Correlação nunca é apresentada como causa.</span></div>
+  <div class="grid g-4" style="margin:14px 0 16px">
+    <div class="panel inst"><div class="lab">Insights abertos</div><div class="val">${ins.length + sis.length}</div><div class="foot">Ativos acima do limite de atenção, mais padrões sistêmicos.</div></div>
+    <div class="panel inst"><div class="lab">Ativos avaliados</div><div class="val">${avaliados.length}</div><div class="foot">Todos os ativos do seu escopo.</div></div>
+    <div class="panel inst"><div class="lab">Janela de leitura</div><div class="val">${pol.janela_dias}<small>dias</small></div><div class="foot">Cabe a efetividade de 90 dias antes e 90 depois.</div></div>
+    <div class="panel inst"><div class="lab">Último cálculo</div><div class="val">${pad(hoje3.getHours())}:00</div><div class="foot">Job diário de ${fmtD(hoje3.toISOString())}. O resultado não é apagado.</div></div>
+  </div>
+  <div class="grid g-3-1" style="align-items:start">
+    <div><h3 style="margin:0 0 10px">Atenção por ativo</h3><div class="insights">${ins.slice(0, 6).map(card).join("") || '<div class="panel empty">Nenhum ativo acima do limite no seu escopo.</div>'}</div></div>
+    <div>
+      <div class="panel" id="intel-sis"><div class="panel-h"><h2>Padrão sistêmico</h2></div><div class="panel-b" style="padding-top:0">${sis.length ? sis.slice(0, 2).map(g => `<div class="cap" style="display:block"><strong>${esc(g.fab)} ${esc(g.mod)}</strong><div class="small muted">${esc(IDX.cat[g.cat].nome)}. ${g.n} chamados em 90 dias em ${g.hoteis.size} hotéis, ${g.ativos.length} unidades.</div><div class="small" style="margin-top:6px">${fmt1(g.taxa)} chamados por unidade, contra ${fmt1(g.base)} nos outros modelos da categoria.</div></div>`).join("") : '<div class="empty">Nenhum padrão entre hotéis no seu escopo.</div>'}<p class="small muted">O mesmo problema em vários hotéis aponta para o modelo ou o fornecedor, não para a equipe de um hotel.</p></div></div>
+      <div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Próximas versões</h2></div><div class="panel-b" style="padding-top:0"><ul class="small" style="padding-left:18px;margin:0">
+        <li><strong>1.5</strong>: impacto no hóspede, com feedback por CSV, API e webhook e classificação por IA. A IA só lê texto; nunca decide causa.</li>
+        <li><strong>2.0</strong>: custo, reparar ou substituir, fabricantes e fornecedores, visão de rede.</li>
+        <li><strong>3.0</strong>: agrupamento semântico, anomalias e previsão, com histórico suficiente.</li></ul></div></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px" id="intel-ef"><div class="panel-h"><h2>Efetividade das intervenções</h2><span class="hint">Chamados no mesmo ativo, 90 dias antes e 90 dias depois</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Intervenção</th><th>Ativo</th><th>Quando</th><th class="num">Antes</th><th class="num">Depois</th><th>Resultado</th></tr></thead><tbody>
+    ${ef.map(e => `<tr class="click" data-act="open-ch" data-id="${e.c.id}"><td>${esc(e.c.titulo)}<div class="small muted">${esc(nomeExec(e.c.executado_por))}${e.c.custo ? ", " + brl(e.c.custo) : ""}</div></td><td class="small">${esc(IDX.ativo[e.c.ativo_id].nome)}<div class="muted">${esc(IDX.hotel[e.c.hotel_id].nome)}</div></td><td class="small">${fmtD(e.c.encerrado_em)}</td><td class="num">${e.antes}</td><td class="num">${e.depois}${e.completa ? "" : '<div class="small muted">janela em curso</div>'}</td><td><span class="badge ${e.res[1]}">${e.res[0]}</span></td></tr>`).join("") || `<tr><td colspan="6" class="empty">Nenhuma intervenção marcada no seu escopo.</td></tr>`}
+  </tbody></table></div></div>`;
+}
+
+/* ---------- Roadmap ---------- */
+function pageRoadmap() {
+  const col = (cls, titulo, itens, nota) => `<div class="panel roadmap-col ${cls}" style="padding:16px 20px"><h3 style="margin-top:0">${titulo}</h3><ul class="small">${itens.map(i => `<li>${i}</li>`).join("")}</ul>${nota ? `<p class="small muted">${nota}</p>` : ""}</div>`;
+  const CRIT = [["Abrir um chamado em até 30 segundos e 3 toques a partir do QR", "Cronômetro no celular do técnico, nos 4 hotéis"], ["Nenhuma OS ou foto perdida na execução sem rede", "Teste cortando o sinal no meio do fluxo"], ["Relógio de SLA respeitando o calendário da categoria", "Elevador parado conta 24x7; pintura conta em horário comercial"], ["Hotel novo implantado a partir do pacote da bandeira em até 1 dia", "Sem contar o levantamento de ativos"], ["Carga de ativos por planilha com validação e relatório de erros", "Planilha real de um hotel do piloto"], ["Sincronização com o sistema hoteleiro com atraso máximo definido e monitorado", "Painel de saúde do conector; referência de 5 minutos"], ["Adoção pelos técnicos acima de 80% em 60 dias", "Chamados pelo sistema contra o total conhecido"]];
+  return `<p style="max-width:80ch;margin-top:0">O HubKeep funciona sem nenhuma integração: o sistema hoteleiro, o EasyGov e as fontes de feedback só acrescentam contexto. Toda exigência do cliente vira configuração ou política, nunca regra fixa no código.</p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+    ${col("", "MVP, neste protótipo", ["Chamados com triagem, SLA, atribuição, aceite com assinatura e reabertura", "OS com checklist tipado, fotos antes e depois, horas e execução sem rede", "Preventiva por tempo, com OS gerada no fuso do hotel", "Políticas com herança grupo, bandeira e hotel, e calendário de SLA por categoria", "Modelo contratual do hotel e arrendado com matriz de responsabilidade", "UH indisponível e UH-dias perdidos", "Pacote da bandeira, importação de ativos e etiquetas QR em lote", "Indicadores, auditoria, impressão e exportação respeitando o escopo", "Leitura do PMS; quatro idiomas (pt-BR, inglês, espanhol, francês)"])}
+    ${col("f2", "Logo depois do MVP", ["<strong>Fase 1d, a reavaliar:</strong> conformidade legal antes do rollout, com PMOC, AVCB, SPDA, NR-13, elevadores, reservatórios, potabilidade, piscina, dedetização e gás, com vencimento, responsável e evidência", "<strong>Primeira integração:</strong> EasyGov e status da UH. A camareira abre o chamado na rotina da governança, e a UH volta para inspeção quando a OS fecha", "Reconciliação do status da UH; bloqueio automático só com mecanismo homologado pelo fornecedor do PMS", "HubKeep Intelligence 1.0, perto ou durante o piloto"])}
+    ${col("f2", "Fase 2", ["Contexto da UH (ocupação prevista) e inspeções com OS automática", "WhatsApp e portal do fornecedor", "Custos e alçadas, inclusive a aprovação do proprietário no administrado", "Estoque e compras; componente do ativo", "IA de apoio: voz para OS e triagem", "Afiliados e relatório ao proprietário", "Escrita no sistema hoteleiro, se homologada"])}
+    ${col("f3", "Fase 3", ["Utilidades com sensores", "Plano de CAPEX", "Manutenção preditiva sobre o histórico acumulado"], "A preditiva por aprendizado de máquina não é vendida antes da fase 3: sem 12 meses ou mais de histórico limpo e sem sensores, ela não funciona.")}
+  </div>
+  <div class="panel" style="margin-top:18px" id="criterios"><div class="panel-h"><h2>Critérios de aceite do piloto</h2><span class="hint">Entram no contrato do piloto e são medidos, não declarados. Piloto em 4 hotéis: urbano próprio, econômico, administrado e arrendado.</span></div>
+  <div class="panel-b table-wrap"><table><thead><tr><th>Critério</th><th>Como se mede</th></tr></thead><tbody>${CRIT.map(c => `<tr><td>${esc(c[0])}</td><td class="small">${esc(c[1])}</td></tr>`).join("")}</tbody></table></div></div>`;
+}
+
+const PAGES = { indicadores: pageIndicadores, fornecedores: pageFornecedores, inteligencia: pageInteligencia, painel: pageDashboard, chamados: pageChamados, os: pageOS, preventiva: pagePreventiva, ativos: pageAtivos, implantacao: pageImplantacao, hoteis: pageHoteis, politicas: pagePoliticas, integracao: pageIntegracao, usuarios: pageUsuarios, auditoria: pageAuditoria, tecnico: pageTecnico, roadmap: pageRoadmap };
 
 /* ---------- Gaveta ---------- */
 function openDrawer(id, page) {
@@ -1052,6 +1401,33 @@ document.addEventListener("click", e => {
       if (pa) { pa.fim = now; at.status = "Operando"; logEvent(c, "sistema", "Equipamento de volta à operação após " + dur((t(now) - t(pa.inicio)) / H)); }
       else { DB.ativo_parada.push({ id: "PA-" + (DB.ativo_parada.length + 1), ativo_id: at.id, chamado_id: c.id, inicio: now, fim: null, motivo: c.titulo }); at.status = "Parado"; logEvent(c, "sistema", "Parada do equipamento registrada"); }
       save(); toast(pa ? "Retorno à operação registrado" : "Parada registrada"); refreshDrawer(id); break; }
+    case "aceite": { const c = IDX.ch[id]; if (executorDe(c) === UI.persona) { toast("Quem executou não aceita o próprio serviço"); break; } document.body.insertAdjacentHTML("beforeend", modalAceite(c)); ligarAssinatura($("#ac-sig")); break; }
+    case "ac-limpar": { const cv = $("#ac-sig"); cv.__g.clearRect(0, 0, cv.width, cv.height); delete cv.dataset.ok; break; }
+    case "ac-save": { const c = IDX.ch[id]; if (salvarAceite(c)) { closeModal(); toast(`${c.id} encerrado com aceite assinado`); refreshDrawer(id); } break; }
+    case "uh-indisp": { const c = IDX.ch[id], now = new Date().toISOString(), u = c.uh_indisp;
+      if (u && !u.fim) { u.fim = now; logEvent(c, "sistema", `UH liberada após ${dur((t(now) - t(u.inicio)) / H)} indisponível`); }
+      else if (u) { u.fim = null; logEvent(c, "sistema", "Período de UH indisponível reaberto"); }
+      else { c.uh_indisp = { inicio: now, fim: null }; logEvent(c, "sistema", "Período de UH indisponível iniciado"); }
+      save(); toast(c.uh_indisp.fim ? "UH liberada" : "UH registrada como indisponível"); refreshDrawer(id); break; }
+    case "pkg-apply": { const ab = DB.aberturas.find(x => x.id === id), pk = DB.pacotes.find(p => p.bandeira_id === ab.bandeira_id), now = new Date().toISOString();
+      ab.passos.pacote = now; ab.pacote_versao = pk.versao;
+      DB.auditoria.unshift({ t: now, usuario: persona().nome, entidade: "Hotel", registro: ab.id, hotel_id: null, acao: `Pacote ${IDX.band[ab.bandeira_id].nome} ${pk.versao} aplicado ao ${ab.nome}: ${pk.modelos.length} modelos e ${pk.planos.length} planos` });
+      save(); toast(`Pacote aplicado ao ${ab.nome}`); render(); break; }
+    case "forn-novo": document.body.insertAdjacentHTML("beforeend", modalFornecedor()); $("#fo-nome").focus(); break;
+    case "forn-save": { const nome = $("#fo-nome").value.trim(), cn = $("#fo-cnpj").value.trim();
+      if (!nome) { $("#fo-nome").focus(); toast("Informe o nome do fornecedor"); break; }
+      if (cn.replace(/\D/g, "").length !== 14) { $("#fo-cnpj").focus(); toast("O CNPJ precisa ter 14 dígitos"); break; }
+      const d = cn.replace(/\D/g, ""), f = { id: "f" + (DB.fornecedores.length + 1), nome, cnpj: `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`, categorias: [$("#fo-cat").value], telefone: $("#fo-tel").value.trim() || "—", email: $("#fo-mail").value.trim() || "—", ativo: true };
+      DB.fornecedores.push(f); IDX.forn[f.id] = f;
+      DB.auditoria.unshift({ t: new Date().toISOString(), usuario: persona().nome, entidade: "Fornecedor", registro: f.id, hotel_id: null, acao: "Fornecedor cadastrado: " + nome });
+      save(); closeModal(); toast("Fornecedor cadastrado"); render(); break; }
+    case "csv-ch": { const l = chamadosFiltrados(); downloadCSV("chamados.csv", ["Chamado", "Título", "Hotel", "Local", "Categoria", "Prioridade", "Situação", "Aberto em", "Prazo", "Encerrado em", "Origem", "Impacto no hóspede", "Executado por", "Custo"], l.map(c => [c.id, c.titulo, IDX.hotel[c.hotel_id].nome, IDX.local[c.local_id].nome, catNome(c.categoria_id), c.prioridade, c.status, fmtDT(c.aberto_em), fmtDT(c.prazo_sla), fmtDT(c.encerrado_em), c.origem || "", c.impacto_hospede ? "Sim" : "Não", c.executado_por ? nomeExec(c.executado_por) : "", c.custo != null ? c.custo : ""])); break; }
+    case "csv-au": { const l = auditoriaFiltrada(); downloadCSV("auditoria.csv", ["Quando", "Quem", "Registro", "Hotel", "O que mudou"], l.map(a => [fmtDT(a.t), a.usuario, a.entidade + " " + a.registro, a.hotel_id ? IDX.hotel[a.hotel_id].nome : "Grupo", a.acao])); break; }
+    case "csv-ind": { const chs = scoped(DB.chamados), oss = scoped(DB.os), now = Date.now(); downloadCSV("indicadores-por-hotel.csv", ["Hotel", "Bandeira", "Modelo", "Backlog", "SLA (%)", "MTTR (h)", "Preventiva em dia (%)", "UH-dias perdidos", "Custo informado"], scope().hoteis.map(hid => { const h = IDX.hotel[hid], x = indicadoresDe(chs.filter(c => c.hotel_id === hid), oss.filter(o => o.hotel_id === hid), now - 30 * D, now); return [h.nome, IDX.band[h.bandeira_id].nome, h.modelo, x.backlog, x.sla == null ? "" : x.sla.toFixed(1).replace(".", ","), x.mttr == null ? "" : x.mttr.toFixed(1).replace(".", ","), x.pv == null ? "" : x.pv.toFixed(1).replace(".", ","), x.uhd.toFixed(1).replace(".", ","), x.custo]; })); break; }
+    case "os-print": imprimirOS(IDX.os[id]); break;
+    case "intel-why": UI.f.intel.open = UI.f.intel.open === id ? null : id; render(); { const el2 = document.querySelector(`.insight[data-at="${id}"]`); if (el2) el2.scrollIntoView({ block: "nearest" }); } break;
+    case "os-fotoit": { const o = IDX.os[id]; o.checklist[+el.dataset.i].ok = true; o.inicio = o.inicio || new Date().toISOString(); save(); toast("Foto anexada ao item"); refreshDrawer(id); break; }
+    case "ph-fotoit": phoneAction(() => { IDX.os[id].checklist[+el.dataset.i].ok = true; }); break;
     case "imp-load": UI.imp = { preview: IMP_EXEMPLO() }; render(); break;
     case "imp-import": { const rows = UI.imp.preview.filter(r => !r.erro); rows.forEach(r => novoAtivo("h6", r.local_id, r.cat, r.nome, r.fab, IDX.modelo[r.mod] ? IDX.modelo[r.mod].nome : ""));
       DB.auditoria.unshift({ t: new Date().toISOString(), usuario: persona().nome, entidade: "Ativo", registro: "importação", hotel_id: "h6", acao: `${rows.length} ativos importados por planilha no Hotel Joinville` });
@@ -1073,7 +1449,7 @@ document.addEventListener("click", e => {
     case "comentar": { const c = IDX.ch[id], v = $("#coment").value.trim(); if (!v) { $("#coment").focus(); break; } logEvent(c, "comentario", v); save(); toast("Comentário adicionado"); refreshDrawer(id); break; }
     case "os-concluir": { const o = IDX.os[id]; if (concluirOS(o)) { toast(`${o.id} concluída`); refreshDrawer(id); } break; }
     case "cal": { if (el.dataset.d === "0") UI.cal = null; else { const b = UI.cal ? new Date(UI.cal) : new Date(); b.setDate(1); b.setMonth(b.getMonth() + +el.dataset.d); UI.cal = b.toISOString(); } render(); break; }
-    case "sync": DB.integracao.views.forEach(v => { v.ultima = new Date().toISOString(); v.status = "ok"; }); DB.integracao.execucoes.unshift({ t: new Date().toISOString(), view: "todas", linhas: 42, duracao_s: 19, resultado: "Sucesso" }); save(); toast("Leitura do TOTVS CM concluída"); render(); break;
+    case "sync": DB.integracao.views.forEach(v => { v.ultima = new Date().toISOString(); v.status = "ok"; }); DB.integracao.execucoes.unshift({ t: new Date().toISOString(), view: "todas", linhas: 42, duracao_s: 19, resultado: "Sucesso" }); save(); toast("Leitura do PMS concluída"); render(); break;
     case "as": UI.persona = id; save(); location.hash = "#/"; render(); break;
     // Celular
     case "ph-tab": UI.phone.tab = el.dataset.k; UI.phone.view = null; UI.phone.scan = null; $("#phone").innerHTML = phoneScreen(); break;
@@ -1089,7 +1465,7 @@ document.addEventListener("click", e => {
       const at = IDX.ativo[UI.phone.scan], pr = $("#ph-p").value, tt = $("#ph-t").value + ": " + at.nome.toLowerCase();
       phoneAction(() => {
         const e = slaEfetivo(at.hotel_id, pr), now = new Date().toISOString();
-        const c = { id: nextId("CH", DB.chamados), hotel_id: at.hotel_id, local_id: at.local_id, ativo_id: at.id, categoria_id: at.categoria_id, titulo: tt.charAt(0).toUpperCase() + tt.slice(1), descricao: "Aberto pelo técnico a partir da etiqueta do ativo.", prioridade: pr, status: "Em atendimento", aberto_em: now, prazo_sla: new Date(Date.now() + e.h * H).toISOString(), sla_h: e.h, atendido_em: now, encerrado_em: null, tecnico_id: TEC, solicitante: "Técnico (app)", eventos: [{ t: now, tipo: "abertura", txt: "Chamado aberto pelo app lendo a etiqueta " + at.qr, por: "Paulo Mendes" }, { t: now, tipo: "sistema", txt: `Prazo de SLA definido: ${e.h} h (prioridade ${pr})` }, { t: now, tipo: "atribuicao", txt: "Atribuído a Paulo Mendes", por: "Paulo Mendes" }], fotos: 1 };
+        const c = { id: nextId("CH", DB.chamados), hotel_id: at.hotel_id, local_id: at.local_id, ativo_id: at.id, categoria_id: at.categoria_id, titulo: tt.charAt(0).toUpperCase() + tt.slice(1), descricao: "Aberto pelo técnico a partir da etiqueta do ativo.", prioridade: pr, status: "Em atendimento", aberto_em: now, prazo_sla: new Date(Date.now() + e.h * H).toISOString(), sla_h: e.h, atendido_em: now, encerrado_em: null, tecnico_id: TEC, solicitante: "Técnico (app)", origem: "App do técnico (QR)", impacto_hospede: false, executado_por: { tipo: "interna" }, eventos: [{ t: now, tipo: "abertura", txt: "Chamado aberto pelo app lendo a etiqueta " + at.qr, por: "Paulo Mendes" }, { t: now, tipo: "sistema", txt: `Prazo de SLA definido: ${e.h} h (prioridade ${pr})` }, { t: now, tipo: "atribuicao", txt: "Atribuído a Paulo Mendes", por: "Paulo Mendes" }], fotos: 1 };
         DB.chamados.unshift(c); IDX.ch[c.id] = c;
         DB.auditoria.unshift({ t: now, usuario: "Paulo Mendes", entidade: "Chamado", registro: c.id, hotel_id: c.hotel_id, acao: "Chamado aberto pelo app: " + c.titulo });
         UI.phone.scan = null; UI.phone.tab = "hoje"; UI.phone.view = c.id;
@@ -1106,6 +1482,14 @@ document.addEventListener("change", e => {
   if (el.dataset.act === "sla") { setSla(el.dataset.tipo, el.dataset.id, el.dataset.pr, el.value); return; }
   if (el.dataset.act === "prio-pad") { const pg = DB.politicas.find(p => p.escopo_tipo === "grupo"), antes = pg.prio_padrao[el.dataset.cat]; pg.prio_padrao[el.dataset.cat] = el.value;
     DB.auditoria.unshift({ t: new Date().toISOString(), usuario: persona().nome, entidade: "Política", registro: pg.id, hotel_id: null, acao: `Prioridade padrão de ${IDX.cat[el.dataset.cat].nome}: ${antes} para ${el.value}` }); save(); toast("Prioridade padrão atualizada"); render(); return; }
+  if (el.dataset.act === "os-list" || el.dataset.act === "os-date") { const o = IDX.os[el.dataset.id]; o.checklist[+el.dataset.i].valor = el.value || null; o.inicio = o.inicio || new Date().toISOString(); save(); refreshDrawer(o.id); return; }
+  if (el.dataset.act === "ph-list" || el.dataset.act === "ph-date") { phoneAction(() => { IDX.os[el.dataset.id].checklist[+el.dataset.i].valor = el.value || null; }); return; }
+  if (el.dataset.act === "relogio") { const pg = polGrupo(), cat = el.dataset.cat, arr = pg.calendario_comercial = (pg.calendario_comercial || []).filter(x => x !== cat); if (el.value === "com") arr.push(cat);
+    DB.auditoria.unshift({ t: new Date().toISOString(), usuario: persona().nome, entidade: "Política", registro: pg.id, hotel_id: null, acao: `Relógio do SLA de ${IDX.cat[cat].nome}: ${el.value === "com" ? "horário comercial" : "24 horas, 7 dias"}` }); save(); toast("Calendário do SLA atualizado"); render(); return; }
+  if (el.dataset.act === "cod-obrig") { const pg = polGrupo(); pg.codigos_obrigatorios = el.checked; DB.auditoria.unshift({ t: new Date().toISOString(), usuario: persona().nome, entidade: "Política", registro: pg.id, hotel_id: null, acao: `Códigos de manutenção ${el.checked ? "obrigatórios" : "opcionais"} no aceite` }); save(); toast("Política atualizada"); return; }
+  if (el.dataset.act === "resp") { const r = DB.responsabilidade.find(x => x.hotel_id === el.dataset.h && x.categoria_id === el.dataset.cat), antes = r.responsavel; r.responsavel = el.value;
+    DB.auditoria.unshift({ t: new Date().toISOString(), usuario: persona().nome, entidade: "Contrato", registro: el.dataset.h, hotel_id: el.dataset.h, acao: `Responsável por ${IDX.cat[el.dataset.cat].nome}: ${antes} para ${el.value}` }); save(); toast("Matriz de responsabilidade atualizada"); return; }
+  if (el.dataset.act === "ind-band") { UI.f.ind.band = el.value; render(); return; }
   if (el.dataset.act === "os-med") { const o = IDX.os[el.dataset.id]; setMedicao(o, +el.dataset.i, el.value); o.inicio = o.inicio || new Date().toISOString(); save(); refreshDrawer(o.id); return; }
   if (el.dataset.act === "ph-med") { phoneAction(() => setMedicao(IDX.os[el.dataset.id], +el.dataset.i, el.value)); return; }
   if (el.id === "nc-cat") { updateNovoChamado(); return; }
