@@ -86,14 +86,15 @@ export interface Requisicao {
   json(status: number, dados: unknown): Response;
 }
 
-interface Falha {
+export interface Falha {
   status: number;
   codigo: string;
   parametros: Parametros | Record<string, unknown>;
   inesperada: boolean;
 }
 
-function falhaDe(e: unknown): Falha {
+/** Status e código de um erro, como a API responde (usado também pela página, P1c). */
+export function falhaDe(e: unknown): Falha {
   if (e instanceof ErroHttp) {
     return { status: e.status, codigo: e.codigo, parametros: e.parametros, inesperada: false };
   }

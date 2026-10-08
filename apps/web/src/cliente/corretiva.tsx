@@ -49,6 +49,13 @@ export interface Referencias {
   corretiva: SituacoesEPrioridades;
 }
 
+/** Situações e prioridades quando a leitura falha: os nomes caem para o catálogo. */
+export const CORRETIVA_VAZIA: SituacoesEPrioridades = {
+  idiomaPadrao: 'pt-BR',
+  situacoes: [],
+  prioridades: [],
+};
+
 /** Carrega as referências das telas; a que falhar fica vazia (os nomes caem para o catálogo). */
 export async function carregarReferencias(): Promise<Referencias> {
   const [h, c] = await Promise.all([
@@ -57,7 +64,7 @@ export async function carregarReferencias(): Promise<Referencias> {
   ]);
   return {
     hoteis: h.ok ? h.dados.hoteis : [],
-    corretiva: c.ok ? c.dados : { idiomaPadrao: 'pt-BR', situacoes: [], prioridades: [] },
+    corretiva: c.ok ? c.dados : CORRETIVA_VAZIA,
   };
 }
 
