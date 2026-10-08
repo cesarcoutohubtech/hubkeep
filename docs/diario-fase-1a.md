@@ -1369,3 +1369,14 @@ Primeira migração da instrumentação (etapa I do `docs/12`). PR de zona prote
 - **Sem histórico retroativo:** as OS que já existiam ficam sem transições, porque não há dado real antes do piloto.
 - **Pendência para o Cesar:** a transição feita sem rede leva a hora da sincronização, e não a hora do aparelho. As operações `os.iniciar`, `os.pausar` e `os.retomar` não mandam a hora do aparelho, e a `os.concluir` só manda para a parada. Se o MTTR do piloto pedir a hora do aparelho, é preciso mandar a hora em cada operação, com o limite que a parada já usa.
 - **Aviso ao agente do Intelligence:** a tabela é `app.os_transicao`, com as colunas `acao`, `de`, `para`, `quando` e `usuario_id`. Os valores são os de `ACOES_DA_OS` e `ESTADOS_DA_OS` do `@hubkeep/dominio`. O `TransicaoDaOs` do `historico.ts` (`acao`, `para`, `quando`) lê direto dessas colunas, e o worker tem SELECT no tenant do job. No comentário do `historico.ts`, a etapa passou de I3 para I5.
+
+### Respostas do Cesar (08/10/2026, depois da I5)
+- **Merges do Cesar:** #135 (I5).
+- **As nove decisões de desenho da #132:** aprovadas como propostas. O `docs/12` mudou junto:
+  - I2, I3, I4 (parte nova) e I8 com o desenho aprovado;
+  - a etapa PB foi para depois da etapa M.
+- **Hora do aparelho nas transições feitas sem rede:** sim. Entrou como tarefa I9 no `docs/12`, sem migração.
+- **ADR-039 (P1b):** aprovado. O texto foi para o `docs/03`.
+- **Bloco do piloto:** confirmado pelo Cesar, nas palavras dele. Entram o script de provisionamento, o kit por turma, o staging antes do treinamento, e o kit e o provisionamento aceitando o staging (pergunta 10). O `docs/13` foi atualizado.
+- **Data de revisão da exceção GHSA-vfj7-8cjw-p6xm:** será definida pelo Cesar.
+- **Fila (zona protegida, um PR por vez):** I2 → I3 → I4 → I6 → I7 → I8. A I9 fica fora da zona protegida e corre em paralelo, junto com a P1c.

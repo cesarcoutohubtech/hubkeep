@@ -46,13 +46,14 @@ As oito migrações da fila de zona protegida, nesta ordem (Cesar, 05 e 06/10/20
 | Tarefa | O quê | Aceite | Migração | ADR |
 |---|---|---|---|---|
 | **I1** Ativo: compra, garantia e criticidade | `app.ativo` ganha `data_compra`, `garantia_ate` e `criticidade` (1 a 5, `check`), todas anuláveis, com UPDATE para quem já edita o ativo. Os nomes dos níveis vêm do catálogo, e o tenant troca os nomes pela política `ativo.criticidade`. No PWA, os três campos ficam na parte recolhida do cadastro. | Criticidade fora de 1 a 5 é recusada pelo banco e, antes, pelo domínio, com código. Quem não escreve no hotel não altera as colunas novas (pgTAP, por papel). O nome do nível cai para o catálogo quando a política não tem o idioma. | Sim | — |
-| **I2** Hotel e local: modelo contratual e edificação (novo, 07/10) | `app.hotel` ganha o modelo contratual (próprio, administrado, arrendado, afiliado); `app.local` ganha a edificação (torre, bloco). **Desenho a aprovar.** | A definir no desenho. | Sim | A definir no desenho |
-| **I3** Fornecedor mínimo (novo, 07/10) | Cadastro mínimo do fornecedor (nome, CNPJ, contato), no lugar do nome em texto livre na OS. **Desenho a aprovar.** | A definir no desenho. | Sim: tabela nova | A definir no desenho |
-| **I4** Chamado e OS: origem, impacto no hóspede, UH indisponível, quem executa e custo | `app.chamado` ganha `origem` (`interno` por padrão, sem UPDATE) e `impacto_hospede` (anulável). `app.os` ganha `executado_por` (`equipe_interna` ou fornecedor, ligado à I3) e `custo_informado` (`numeric(12,2)`, em reais). Novo: o período de UH indisponível, base dos UH-dias perdidos. Triagem e aceite no web; a pergunta "afeta hóspede?" na abertura, também no PWA. **Desenho a aprovar na parte nova** (UH indisponível e fornecedor). | Os valores canônicos ficam no domínio, com teste de paridade com o banco. O fornecedor é exigido quando quem executa não é a equipe interna. Custo negativo é recusado com código. O UPDATE das colunas novas segue quem tria e quem aceita (pgTAP, por papel). Operação offline antiga, sem os campos, continua válida. | Sim | — |
+| **I2** Hotel e local: modelo contratual e edificação (novo, 07/10) | `app.hotel.modelo_contratual`, anulável, com `check` em `proprio`, `administrado`, `arrendado` e `afiliado`: nulo quer dizer "não informado", e o painel de implantação mostra a pendência. Grava o Admin do grupo; o conector não mexe. No MVP, só rótulo e filtro. `app.local.edificacao`, texto opcional de até 60 caracteres, com sugestão das edificações que já existem no hotel; vale para UH e área comum, e o conector não sobrescreve. Desenho aprovado em 08/10/2026 (`docs/referencia/propostas-desenho-1b.md`, item 1). | Valores canônicos no domínio, com teste de paridade. Hotéis existentes ficam nulos. Só o Admin do grupo grava o modelo (pgTAP, por papel). A edificação entra na busca do local. Operação offline antiga continua válida. | Sim | — |
+| **I3** Fornecedor mínimo (novo, 07/10) | `app.fornecedor`, do grupo: nome, CNPJ opcional (único no grupo quando informado, com o dígito conferido no domínio), contato opcional (nome, telefone e e-mail) e desativação lógica. Lê quem lê algum hotel do grupo, menos o proprietário; cadastram o Admin do grupo, o Gestor CSC e o Gerente do hotel. Portal, contrato, avaliação e custos ficam para a fase 2. Desenho aprovado em 08/10/2026 (item 2). | CNPJ inválido dá 422 com código; repetido no grupo, 409. Os seis casos de isolamento; o proprietário não lê. O contato entra na auditoria. | Sim: tabela nova | — |
+| **I4** Chamado e OS: origem, impacto no hóspede, UH indisponível, quem executa e custo | `app.chamado` ganha `origem` (`interno` por padrão, sem UPDATE) e `impacto_hospede` (anulável). `app.os` ganha `executado_por` (`equipe_interna` ou fornecedor, ligado à I3) e `custo_informado` (`numeric(12,2)`, em reais). Novo: `app.uh_indisponivel` (UH, chamado, início e fim), no modelo da parada do ativo: a pergunta "a UH ficou indisponível?" na abertura, no web e no PWA; o fim marcado por quem conclui a OS ou pela gestão do hotel, e não automático; o chamado cancelado encerra o período e fica fora dos UH-dias. A função `uhDiasPerdidos` passa para o `packages/dominio`. Triagem e aceite no web; a pergunta "afeta hóspede?" na abertura, também no PWA. Desenho da parte nova aprovado em 08/10/2026 (itens 2 e 3). | Os valores canônicos ficam no domínio, com teste de paridade com o banco. O fornecedor é exigido quando quem executa não é a equipe interna. Custo negativo é recusado com código. O UPDATE das colunas novas segue quem tria e quem aceita (pgTAP, por papel). Operação offline antiga, sem os campos, continua válida. | Sim | — |
 | **I5** Transições da OS | `app.os_transicao` (de, para, quando, quem e a ação), só com INSERT, gravada pelo caso de uso na mesma unit of work que muda o estado da OS. Lida pelo `hk_app` no recorte da OS e pelo `hk_worker` no tenant do job. Fonte do MTTR e do Intelligence. | Toda transição da corretiva grava uma linha, com teste de integração. Ninguém altera nem apaga uma transição (sem UPDATE nem DELETE, meta-testes). Os seis casos de isolamento. O worker lê só o tenant do contexto. | Sim: tabela nova | — |
 | **I6** Códigos de falha, causa e solução | `app.codigo_manutencao` (tipo, categoria opcional, nomes por idioma, chave padrão e ativa), cadastrada pelo Admin do grupo, com os padrões por categoria no catálogo. `app.os` ganha os três códigos, com FK composta. A política `os.codigos_obrigatorios`, por hotel, fica desligada por padrão. No PWA, os códigos são sugestão. | A conclusão no PWA nunca é recusada por falta de código. Com a política ligada, o aceite cobra os códigos (a confirmar com o Cesar, abaixo). Código de outra categoria é recusado pelo domínio. Os seis casos de isolamento; só o Admin do grupo grava. | Sim: tabela nova | — |
 | **I7** Módulos contratados | `licenca.modulo` (tenant, módulo e vigência), gravada pelo `hk_backoffice` e lida pelo `hk_app` e pelo `hk_worker` no próprio tenant. Até o backoffice existir, a gravação é por script de operação. A montagem do Intelligence passa a registrar a extensão das políticas só para quem tem o módulo contratado. | O tenant sem o módulo não vê nem grava as chaves `inteligencia.*` (teste de integração). O `hk_app` não grava a tabela. Os seis casos de isolamento. A tabela entra nas exceções e na lista fechada do meta-teste. | Sim: tabela nova | Talvez: o filtro por módulo no adendo ao ADR-026 |
-| **I8** Foto antes ou depois e assinatura (novo, 07/10) | A foto da OS marcada como antes ou depois; a assinatura capturada no aceite. **Desenho a aprovar.** | A definir no desenho. | Sim | A definir no desenho |
+| **I8** Foto antes ou depois e assinatura (novo, 07/10) | `app.anexo.momento`, anulável, com `check` em `antes` e `depois`, só para anexo de OS; no PWA, a sugestão segue o estado da OS, e o técnico pode trocar. A política `os.foto_depois_obrigatoria`, por hotel, desligada por padrão, pede uma foto "depois" na conclusão (sem rede, a foto vai pela fila). A assinatura é desenhada no aceite, no web, por quem aceita, e gravada como anexo imutável da OS do tipo `assinatura`; o aceite guarda o id. A política `os.assinatura_no_aceite`, por hotel, desligada por padrão. É evidência do aceite, e não assinatura digital ICP-Brasil. Desenho aprovado em 08/10/2026 (item 4). | Com as políticas desligadas, nada muda. Com a da foto ligada, a conclusão sem foto "depois" é recusada com código; com a da assinatura ligada, o aceite sem assinatura também. Fotos existentes ficam sem momento. Operação offline antiga continua válida. | Sim | — |
+| **I9** Hora do aparelho nas transições feitas sem rede (novo, 08/10) | As operações offline de início, pausa, retomada e conclusão mandam a hora em que foram feitas no aparelho. A transição grava essa hora em `quando`. O domínio ajusta, sem recusar (uma recusa travaria a fila do aparelho): a hora no futuro vira a do servidor, e a anterior à última transição da OS vira a dela. Sem a hora (operação antiga na fila), vale a do servidor. Decisão do Cesar de 08/10/2026. | Um dia offline grava as transições com as horas do aparelho, em ordem. Relógio adiantado ou atrasado não desordena nem põe transição no futuro. Operação offline antiga continua válida. | Não | — |
 
 Fim da etapa I: resumo e aviso ao agente do Kaio, no diário, com os nomes reais dos campos para o `historico.ts`.
 
@@ -66,14 +67,6 @@ Fim da etapa I: resumo e aviso ao agente do Kaio, no diário, com os nomes reais
 
 Fim da etapa P: resumo.
 
-## Etapa PB — Pacote da bandeira (novo, 07/10/2026)
-
-| Tarefa | O quê | Aceite | Migração | ADR |
-|---|---|---|---|---|
-| **PB1** Pacote da bandeira | Modelos por categoria, checklists e planos preventivos definidos por bandeira e copiados para o hotel novo da bandeira, para a implantação de um hotel em até 1 dia, sem contar o levantamento de ativos (critério de aceite do piloto). **Desenho a aprovar**, junto com as propostas dos itens novos. | A definir no desenho. A cópia segue o ADR-026: mudar o pacote não altera o hotel já implantado. | Provável | A definir no desenho |
-
-Fim da etapa PB: resumo.
-
 ## Etapa M — Implantação
 
 | Tarefa | O quê | Aceite | Migração | ADR |
@@ -83,9 +76,17 @@ Fim da etapa PB: resumo.
 | **M3** QR em lote | Gerar e imprimir os QR de vários ativos de uma vez (por hotel, local ou importação), com o código e o nome do ativo na etiqueta. A imagem e a folha de impressão são geradas no cliente, como o QR individual (B5). Também é possível gerar códigos antes de cadastrar e ligar a etiqueta ao ativo pelo PWA. | O lote só traz ativos do escopo do usuário. A etiqueta não revela o id do ativo. O código pré-gerado e ainda não ligado abre a tela de ligação no PWA, e não um ativo. | Talvez: código reservado sem ativo | — |
 | **M4** Aprovação de ativos cadastrados pelo celular | Junto com a M2. O ativo cadastrado pelo PWA entra como pendente de aprovação, e a central aprova ou recusa, a recusa com motivo, tudo com auditoria. A exigência de aprovação é política por hotel (regra 7). Os ativos que já existem passam a aprovados. **Antes de codificar, mostrar ao Cesar as propostas:** o padrão da política, quem aprova (entre Admin do grupo, Gestor CSC, Gerente do hotel e Implantador) e se o ativo pendente já pode receber chamado. | Ativo do PWA com a política ligada nasce pendente; com ela desligada, aprovado. Recusa sem motivo dá 422 com código. Quem não aprova no hotel não aprova (pgTAP, por papel). Os ativos anteriores à migração ficam aprovados. Operação offline antiga continua válida. | Sim: situação do cadastro no ativo | Talvez: aprovação do cadastro |
 
-Fim da etapa M e da fase 1b: resumo, com a lista do que ficou para a 1c.
+Fim da etapa M: resumo.
 
 **M4, o que já existe no ativo (conferido em 07/10/2026):** `app.ativo` não tem situação de cadastro. Tem só `desativado_em` (exclusão lógica) e `versao` (concorrência), e nenhum dos dois serve para pendente ou recusado sem confundir com desativado. O modelo mais próximo é o `status` de `app.local` (`ativo`, `pendente_licenca`, `inativo`), com `check` e valores canônicos no domínio, que a M4 pode seguir numa coluna nova.
+
+## Etapa PB — Pacote da bandeira (novo, 07/10/2026; depois da M1, decisão do Cesar de 08/10/2026)
+
+| Tarefa | O quê | Aceite | Migração | ADR |
+|---|---|---|---|---|
+| **PB1** Pacote da bandeira | Sem tabela de pacote: modelos de ativo (M1), checklists (P1) e planos por categoria (P2) ganham `bandeira_id` opcional, e nulo vale para o grupo inteiro. "Aplicar o pacote ao hotel": modelos e checklists só ficam filtrados pela bandeira do hotel; os planos por categoria são copiados para o hotel, pausados, e reaplicar só acrescenta o que falta. O Admin do grupo mantém o pacote; o Implantador aplica pelo painel de implantação, que registra quando o hotel entrou em implantação e quando ficou pronto, para medir a meta de 1 dia sem o levantamento de ativos. Desenho aprovado em 08/10/2026 (item 5). | A cópia segue o ADR-026: mudar o pacote não altera o hotel já implantado. Reaplicar não duplica nem sobrescreve. Os planos copiados nascem pausados. Isolamento. | Sim: `bandeira_id` nos modelos, checklists e planos | — |
+
+Fim da etapa PB e da fase 1b: resumo, com a lista do que ficou para a 1c.
 
 ## Dependente do cliente: conector real do TOTVS
 
@@ -96,10 +97,10 @@ Fim da etapa M e da fase 1b: resumo, com a lista do que ficou para a 1c.
 ## Resumo de migrações e ADRs
 
 - **Migrações previstas** (cada uma para no PR):
-  - I1 a I8, uma por PR, na ordem da etapa I;
+  - I1 a I8, uma por PR, na ordem da etapa I (I1 e I5 já no main; a I9 não tem migração);
   - P1, P2 e P3;
-  - PB1, provável;
   - M1;
+  - PB1, depois da M1;
   - M4 (situação do cadastro no ativo);
   - talvez M2 e M3.
 - **ADRs:**
@@ -108,7 +109,8 @@ Fim da etapa M e da fase 1b: resumo, com a lista do que ficou para a 1c.
   - talvez: formato e limites da importação (M2);
   - talvez: aprovação do cadastro de ativo (M4);
   - talvez: o filtro por módulo contratado no adendo ao ADR-026 (I7);
-  - a definir nos desenhos: I2, I3, I4 (parte nova), I8 e PB1.
+  - ADR-039 (P1b), aprovado em 08/10/2026;
+  - os desenhos de I2, I3, I4 (parte nova), I8 e PB1 foram aprovados em 08/10/2026 sem ADR novo; um ADR entra se a implementação pedir.
 - **Os ADR-033 a 037** (Intelligence) e o texto do adendo ao ADR-026 foram aprovados pelo Cesar em 07/10/2026, com duas condições no ADR-036 e no insight de rede que aguardam o aceite do Kaio (`docs/03`).
 
 ## Registrado para a fase 1c

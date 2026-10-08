@@ -1,6 +1,6 @@
 # Propostas de desenho dos itens novos da 1b
 
-**Situação:** proposta de 08/10/2026, do agente do núcleo, para a aprovação do Cesar. Nada disto está implementado. Os itens vêm da revisão de 07/10/2026 (`docs/referencia/documento-projeto.md`) e entram na etapa I e na etapa PB do `docs/12`. Cada item termina com as perguntas que pedem a sua decisão.
+**Situação:** proposta de 08/10/2026, do agente do núcleo. **As nove decisões foram aprovadas pelo Cesar em 08/10/2026, como propostas.** O `docs/12` mudou junto. Nada disto está implementado. Os itens vêm da revisão de 07/10/2026 (`docs/referencia/documento-projeto.md`) e entram na etapa I e na etapa PB do `docs/12`. Cada item termina com as perguntas que pedem a sua decisão.
 
 Valem para todos: regra 7 (exigência vira política), tabela nova com o modelo do `docs/02` e os seis casos de isolamento, texto pelo catálogo nos quatro idiomas, gravação pela unit of work com auditoria, e operação do técnico pela fila offline.
 
