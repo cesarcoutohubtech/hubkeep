@@ -1392,3 +1392,16 @@ Primeira migração da instrumentação (etapa I do `docs/12`). PR de zona prote
 - **Leitura nova:** `ultimaTransicaoEm`, o maior `quando` de `app.os_transicao` da OS.
 - **Teste de integração** (roda na CI): relógio atrasado, operação sem hora e relógio adiantado, com as transições em ordem e nenhuma no futuro.
 - **Não verificado:** o PWA não tem teste da tela que monta a operação, e a tela não foi vista no navegador.
+
+### P1c, detalhe do chamado no servidor e navegação por Link (08/10/2026)
+- **Detalhe no servidor:** `chamados/[id]/page.tsx` virou Server Component. Ele lê o chamado, as OS, os nomes, a linha do tempo, os hotéis, as situações e prioridades e os candidatos a responsável, e entrega tudo à tela (`tela.tsx`, no cliente). A tela cuida das ações e recarrega pela API depois de cada uma, como antes.
+  - Mesmos casos de uso e mesmo contexto da API: as rotas `GET /api/v1/chamados/{id}` e `.../linha-do-tempo` e a página montam a resposta pelo mesmo módulo (`servidor/leituras-do-chamado.ts`), e cada leitura passa pelo contrato da rota.
+  - `servidor/pagina.ts` (`carregarNaPagina`) faz para a página o que o `rota()` faz para a API: contexto pelo `resolverContexto` (token do cookie verificado pelo JWKS, tenant do `hk_tenant`), leituras num `emEscopoDeLeitura` (uma transação), erro classificado pelo `falhaDe` do `http.ts` (agora exportado), Sentry no inesperado e uma linha de log `pagina` com `duracao_ms` e `auth_ms`.
+  - Quem não vê o chamado, ou pede um id que não é UUID, recebe 404 (`notFound()`, com `not-found.tsx` traduzido pela mensagem `erro.chamado_nao_encontrado`). Sem sessão ou sem grupo escolhido (primeiro acesso), a página não decide nada e a tela carrega pela API, como antes. Outra recusa (ex.: sem permissão) chega à tela como código.
+  - Complemento que falha (linha do tempo, referências, equipes) vira vazio, como na tela que chamava a API.
+- **Link:** os links internos do painel já eram `next/link` desde a U3 e a U4 (menu, voltar, linhas das listas, implantação). Não sobrou `<a href>` interno; ficam o atalho para o conteúdo (âncora) e os links externos.
+- **Detalhe da OS:** o web não tem tela de detalhe da OS (a lista de OS abre o detalhe do chamado), então o item já está coberto. O detalhe da OS do PWA é outra arquitetura (Vite, offline) e fica fora.
+- **Testes:** `apps/web/test/carga-da-pagina.test.ts` (montagem pelos casos de uso, 404, sem contexto, recusa, inesperado) e `apps/web/test/pagina-do-chamado.test.tsx` (a página entrega os dados, 404 para quem não vê e para id inválido, e a tela já sai com o chamado no primeiro HTML).
+- **Server-Timing:** o da API não mudou. A página continua com o do proxy (`proxy` e `sessao`); um Server Component não grava cabeçalho da resposta, então o tempo da leitura da página vai na linha de log `pagina`.
+- **Não verificado no navegador.** Medir com o build de produção: o documento de `/chamados/{id}` (tempo até o chamado aparecer) contra a meta de 500 ms, e a linha `pagina` no log.
+- **Pendência para o Cesar:** a moldura só mostra a página depois do efeito que lê o cookie do grupo, então o primeiro HTML ainda sai com "carregando" e o chamado aparece na hidratação, sem pedido à API. Ler o `hk_tenant` no layout do servidor tiraria esse passo; fica para um PR próprio, se as medições pedirem.
