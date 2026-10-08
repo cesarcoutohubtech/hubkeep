@@ -73,8 +73,10 @@ Já existem, nos quatro idiomas: as frases dos motivos, os nomes dos scores e da
 2. **A ligação entre elas:** o insight de atenção abre a página do insight, e a página do ativo é a vista do score (acima).
 3. **O menu do 1.0:** só "Insights". A lista "Top ativos por atenção" do PRD (seção 19) fica para uma tela à parte, depois, ou entra agora como quarta tela.
 4. **O que fica fora das telas do 1.0:** abrir chamado, criar preventiva, vincular feedback e solicitar orçamento (PRD, seção 20) dependem de fase 2 ou da 1.5. O 1.0 decide o insight e mostra a evidência.
-5. **Os UH-dias perdidos** não aparecem: dependem da decisão em `docs/referencia/proposta-uh-indisponivel-intelligence.md`.
+5. **Os UH-dias perdidos** não aparecem no 1.0: são componente da atenção com peso 0 até existir a origem do dado (decisão de 07/10/2026 em `docs/referencia/proposta-uh-indisponivel-intelligence.md`, aprovada por Kaio, aguardando Cesar).
 6. **O gráfico de 90 dias em celular** fica pequeno. A proposta é aceitar assim no 1.0 (a tabela de componentes e os indicadores já dizem o essencial), ou dar rolagem horizontal ao gráfico.
+
+**Decisão de 07/10/2026 sobre o que o painel mostra (aprovada por Kaio, aguardando Cesar):** o resultado original gravado de cada dia. O recálculo com a política atual aparece só no painel de investigação, sob demanda e identificado como recálculo.
 
 ## Ordem de trabalho depois da aprovação
 

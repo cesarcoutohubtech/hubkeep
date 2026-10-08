@@ -403,3 +403,25 @@ Só abre depois da fila de zona protegida (a etapa I da 1b). O status de cada tr
 - **Esperando o núcleo:** as migrações da etapa I da 1b.
 - **Próximo passo:** quando a etapa I terminar, trocar os campos "(fase A)" do `historico.ts` pelos nomes reais, e abrir a `app.insight` (depois a `app.metrica_ativo_diaria`) a partir do `int-rascunhos`, uma de cada vez, com a ligação do job no web.
 - **Parada:** nada de migração, tela ou PR de zona protegida até lá.
+
+## Decisões de 07/10/2026 sobre a fila, os nomes, os UH-dias e o painel
+
+Instruções do Cesar (pauta de 07/10/2026, depois do merge do #125).
+
+### Fila e nomes
+- **`int-adr-aceite` fica fechado** até o PR da instrumentação entrar na `main`: a etapa I tem prioridade na fila de zona protegida.
+- **Os nomes provisórios ficam** (`fornecedorId`, `executadoPor`, `transicoes`). Quando cada migração da etapa I entrar na `main`, os nomes são ajustados num PR fora de zona protegida.
+
+### UH-dias: componente da atenção do ativo (aprovado por Kaio, aguardando Cesar)
+- Os UH-dias perdidos são **componente da atenção do ativo**, e não sinal próprio. O **peso fica 0** até existir a origem do dado de UH indisponível; com peso 0, a fórmula e a versão dela não mudam.
+- Isso troca a recomendação que o agente do Kaio tinha feito (sinal próprio). As objeções dela seguem como pendência de desenho para a versão da fórmula em que o peso deixar de ser 0: a UH parada sem ativo cadastrado, e a conta em dobro com a parada do ativo (15%) e o impacto no hóspede (20%).
+- Registrado em `docs/referencia/proposta-uh-indisponivel-intelligence.md`. Nada mudou no código: `uhDiasPerdidos` continua só como medida.
+
+### O que o painel mostra (aprovado por Kaio, aguardando Cesar)
+- O painel mostra o **resultado original gravado de cada dia**. O recálculo com a política atual aparece só no painel de investigação, sob demanda e identificado como recálculo.
+- Isso troca a escolha do rascunho (cálculo de maior número). O rascunho da `app.metrica_ativo_diaria` e o LEIAME foram atualizados no `int-rascunhos` (`e87d5d8`). A tabela não muda: muda a agregação e a consulta.
+- **Pendência de código:** `agregarMesDosAtivos` ainda escolhe o maior `calculo` do dia. Passa a escolher o original quando o painel for ligado (e uma consulta do recálculo, sob demanda, no painel de investigação). Não mexi no motor nesta rodada.
+
+### Ponto de retomada
+- Esperando o Cesar: a confirmação de que o hotel novo vale na variante (c), as três telas e as seis decisões da proposta, e a confirmação das duas decisões acima.
+- Esperando o núcleo: as migrações da etapa I; depois, o ajuste dos nomes e as tabelas do Intelligence, uma de cada vez.
