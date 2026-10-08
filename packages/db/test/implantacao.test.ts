@@ -142,7 +142,11 @@ describe.skipIf(!temBanco)('A5 — Implantador e painel de implantação', { tim
 
   it('o Implantador vê o painel do hotel dele', async () => {
     const p = await painel.painel(ctx(U.implantador), H1);
-    expect(p.hotel).toMatchObject({ nome: 'Hotel 1', status: 'em_implantacao' });
+    expect(p.hotel).toMatchObject({
+      nome: 'Hotel 1',
+      status: 'em_implantacao',
+      modeloContratual: null,
+    });
     expect(p.locais).toEqual({ uhsAtivas: 2, uhsPendentes: 1, areasComuns: 1, inativos: 0 });
     expect(p.papeis).toEqual([
       { papel: 'implantador', pessoas: 1 },
@@ -151,6 +155,7 @@ describe.skipIf(!temBanco)('A5 — Implantador e painel de implantação', { tim
     expect(p.pessoasSemPapelVigente.map((x) => x.nome).sort()).toEqual(['antigo', 'vencido']);
     expect(p.ativos).toEqual({ ativos: 0, semCategoria: 0, locaisSemAtivo: 4 });
     expect(p.pendencias).toEqual([
+      'modelo_contratual_nao_informado',
       'uhs_pendentes_de_licenca',
       'locais_sem_ativo',
       'sem_gerente',
@@ -214,5 +219,12 @@ describe.skipIf(!temBanco)('A5 — Implantador e painel de implantação', { tim
     await expect(semChecagem.painel(ctx(U.vencido), H1)).rejects.toMatchObject({
       codigo: 'hotel_nao_encontrado',
     });
+  });
+
+  it('com o modelo contratual informado, a pendência some (I2)', async () => {
+    await dono.query(`update app.hotel set modelo_contratual = 'administrado' where id = $1`, [H1]);
+    const p = await painel.painel(ctx(U.implantador), H1);
+    expect(p.hotel.modeloContratual).toBe('administrado');
+    expect(p.pendencias).not.toContain('modelo_contratual_nao_informado');
   });
 });

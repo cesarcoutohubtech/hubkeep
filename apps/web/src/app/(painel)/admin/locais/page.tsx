@@ -1,7 +1,8 @@
 'use client';
 // Locais do hotel (fase 1a, B1): UHs do sistema hoteleiro, só leitura, com o
 // status da licença, e áreas comuns cadastradas aqui. Visual do pacote de
-// interface (ADR-038, U4b).
+// interface (ADR-038, U4b). A edificação (I2) se edita em todo local, também
+// na UH, com a sugestão das edificações que já existem no hotel.
 import {
   Botao,
   Campo,
@@ -26,6 +27,7 @@ interface Local {
   nome: string;
   tipo: 'uh' | 'area_comum';
   andar: string | null;
+  edificacao: string | null;
   status: 'ativo' | 'pendente_licenca' | 'inativo';
   origem: 'sistema_hoteleiro' | 'manual';
   editavel: boolean;
@@ -37,6 +39,9 @@ const TOM_DO_STATUS: Record<Local['status'], TomDeSelo> = {
   inativo: 'cinza',
 };
 
+/** O datalist das edificações do hotel, que os campos de edificação sugerem. */
+const LISTA_DE_EDIFICACOES = 'hk-edificacoes-do-hotel';
+
 const texto = (f: FormData, campo: string) => {
   const v = String(f.get(campo) ?? '').trim();
   return v === '' ? null : v;
@@ -46,16 +51,19 @@ export default function LocaisDoHotel() {
   const t = useT();
   const { hoteis, hotelId, setHotelId, erro: erroDosHoteis } = useHoteis();
   const [locais, setLocais] = useState<Local[] | null>(null);
+  const [edificacoes, setEdificacoes] = useState<string[]>([]);
   const [busca, setBusca] = useState('');
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
   const carregar = useCallback(async () => {
     if (!hotelId) return;
-    const r = await chamarApi<{ locais: Local[] }>(
+    const r = await chamarApi<{ locais: Local[]; edificacoes: string[] }>(
       comBusca(`/api/v1/hoteis/${hotelId}/locais`, busca),
     );
-    if (r.ok) setLocais(r.dados.locais);
-    else setAviso({ tipo: 'erro', erro: r.erro });
+    if (r.ok) {
+      setLocais(r.dados.locais);
+      setEdificacoes(r.dados.edificacoes);
+    } else setAviso({ tipo: 'erro', erro: r.erro });
   }, [hotelId, busca]);
 
   useEffect(() => {
@@ -73,7 +81,20 @@ export default function LocaisDoHotel() {
     const f = new FormData(ev.currentTarget);
     void executar(`/api/v1/hoteis/${hotelId}/locais`, {
       method: 'POST',
-      body: JSON.stringify({ nome: texto(f, 'nome') ?? '', andar: texto(f, 'andar') }),
+      body: JSON.stringify({
+        nome: texto(f, 'nome') ?? '',
+        andar: texto(f, 'andar'),
+        edificacao: texto(f, 'edificacao'),
+      }),
+    });
+  }
+
+  function salvarEdificacao(ev: FormEvent<HTMLFormElement>, localId: string) {
+    ev.preventDefault();
+    const f = new FormData(ev.currentTarget);
+    void executar(`/api/v1/locais/${localId}/edificacao`, {
+      method: 'PUT',
+      body: JSON.stringify({ edificacao: texto(f, 'edificacao') }),
     });
   }
 
@@ -101,6 +122,11 @@ export default function LocaisDoHotel() {
           }}
         />
         <Aviso aviso={erroDosHoteis ? { tipo: 'erro', erro: erroDosHoteis } : aviso} />
+        <datalist id={LISTA_DE_EDIFICACOES}>
+          {edificacoes.map((e) => (
+            <option key={e} value={e} />
+          ))}
+        </datalist>
       </Painel>
       {!locais ? (
         <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
@@ -113,6 +139,14 @@ export default function LocaisDoHotel() {
               </Campo>
               <Campo rotulo={t('admin.locais.campo.andar')}>
                 {(p) => <Entrada {...p} name="andar" />}
+              </Campo>
+              <Campo
+                rotulo={t('admin.locais.campo.edificacao')}
+                ajuda={t('admin.locais.campo.edificacao_dica')}
+              >
+                {(p) => (
+                  <Entrada {...p} name="edificacao" list={LISTA_DE_EDIFICACOES} maxLength={60} />
+                )}
               </Campo>
               <Botao type="submit" variante="primario">
                 {t('admin.locais.acao.criar')}
@@ -129,7 +163,7 @@ export default function LocaisDoHotel() {
                 {areas.map((l) => (
                   <li key={l.id}>
                     <form
-                      key={`${l.nome}|${l.andar ?? ''}`}
+                      key={`${l.nome}|${l.andar ?? ''}|${l.edificacao ?? ''}`}
                       className="hk-em-linha"
                       onSubmit={(ev) => {
                         ev.preventDefault();
@@ -139,6 +173,7 @@ export default function LocaisDoHotel() {
                           body: JSON.stringify({
                             nome: texto(f, 'nome') ?? '',
                             andar: texto(f, 'andar'),
+                            edificacao: texto(f, 'edificacao'),
                           }),
                         });
                       }}
@@ -153,6 +188,14 @@ export default function LocaisDoHotel() {
                         name="andar"
                         defaultValue={l.andar ?? ''}
                         aria-label={t('admin.locais.campo.andar')}
+                        disabled={!l.editavel}
+                      />
+                      <Entrada
+                        name="edificacao"
+                        defaultValue={l.edificacao ?? ''}
+                        aria-label={t('admin.locais.campo.edificacao')}
+                        list={LISTA_DE_EDIFICACOES}
+                        maxLength={60}
                         disabled={!l.editavel}
                       />
                       {status(l)}
@@ -199,6 +242,7 @@ export default function LocaisDoHotel() {
                   <tr>
                     <th scope="col">{t('admin.locais.campo.nome')}</th>
                     <th scope="col">{t('admin.locais.campo.andar')}</th>
+                    <th scope="col">{t('admin.locais.campo.edificacao')}</th>
                     <th scope="col">{t('admin.locais.campo.status')}</th>
                   </tr>
                 </thead>
@@ -207,6 +251,24 @@ export default function LocaisDoHotel() {
                     <tr key={l.id}>
                       <td>{l.nome}</td>
                       <td>{l.andar ?? ''}</td>
+                      <td>
+                        <form
+                          key={l.edificacao ?? ''}
+                          className="hk-em-linha"
+                          onSubmit={(ev) => salvarEdificacao(ev, l.id)}
+                        >
+                          <Entrada
+                            name="edificacao"
+                            defaultValue={l.edificacao ?? ''}
+                            aria-label={t('admin.locais.campo.edificacao')}
+                            list={LISTA_DE_EDIFICACOES}
+                            maxLength={60}
+                          />
+                          <Botao type="submit" tamanho="pequeno">
+                            {t('admin.locais.acao.salvar')}
+                          </Botao>
+                        </form>
+                      </td>
                       <td>{status(l)}</td>
                     </tr>
                   ))}

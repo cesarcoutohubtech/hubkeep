@@ -1,7 +1,7 @@
 'use client';
 // Painel de implantação do hotel (fase 1a, A5): o que falta para o hotel
-// operar. O Implantador cadastra as pessoas pela tela de membros, abaixo do
-// próprio papel. Só o visual do pacote de interface (ADR-038, U4b); o
+// operar (inclusive o modelo contratual não informado, I2). O Implantador
+// cadastra as pessoas pela tela de membros, abaixo do próprio papel. Só o visual do pacote de interface (ADR-038, U4b); o
 // conteúdo é o mesmo.
 import { MensagemDeErro, MensagemVazia, Nota, Painel, comoBotao } from '@hubkeep/ui';
 import Link from 'next/link';
@@ -19,13 +19,16 @@ type Papel =
   | 'solicitante'
   | 'proprietario';
 type Pendencia =
+  | 'modelo_contratual_nao_informado'
   | 'sem_locais'
   | 'uhs_pendentes_de_licenca'
+  | 'locais_sem_ativo'
+  | 'ativos_sem_categoria'
   | 'sem_gerente'
   | 'sem_tecnico'
   | 'pessoas_sem_papel_vigente';
 interface PainelDoHotel {
-  hotel: { id: string; nome: string; status: string };
+  hotel: { id: string; nome: string; status: string; modeloContratual: string | null };
   locais: { uhsAtivas: number; uhsPendentes: number; areasComuns: number; inativos: number };
   ativos: { ativos: number; semCategoria: number; locaisSemAtivo: number };
   papeis: { papel: Papel; pessoas: number }[];

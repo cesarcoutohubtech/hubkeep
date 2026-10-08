@@ -71,11 +71,14 @@ export {
 } from './categorias';
 export type { CategoriaPadrao } from './categorias';
 export {
+  LIMITE_EDIFICACAO,
   PAPEIS_QUE_GERENCIAM_LOCAIS,
+  edificacoesDoHotel,
   exigirLocalEditavel,
   localEditavel,
   mesmoNomeDeLocal,
   normalizarAndar,
+  normalizarEdificacao,
   normalizarNomeDeLocal,
   origemDoLocal,
   podeGerirLocais,
@@ -120,9 +123,12 @@ export {
   podeGerirEquipes,
 } from './equipes';
 export { normalizarNomeDeBandeira, podeGerirBandeiras, podeLigarHotelABandeira } from './bandeiras';
+export { MODELOS_CONTRATUAIS, ehModeloContratual, validarModeloContratual } from './hoteis';
+export type { ModeloContratual } from './hoteis';
 export { PENDENCIAS_DE_IMPLANTACAO, podeVerImplantacao, resumirImplantacao } from './implantacao';
 export type {
   AtivoParaImplantacao,
+  HotelParaImplantacao,
   LocalParaImplantacao,
   PendenciaDeImplantacao,
   PessoaParaImplantacao,

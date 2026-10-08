@@ -7,7 +7,10 @@
 //     porta, sem a checagem da aplicação, a RLS ainda barra o outro hotel;
 //   - pendência da A4 (migração 0012, authz.hoteis_proprietario): o
 //     proprietário do hotel inteiro vê o hotel ainda sem locais, e nenhum local;
-//   - busca (B6): por trecho, sem acento; alterar o nome regrava a busca.
+//   - busca (B6): por trecho, sem acento; alterar o nome regrava a busca;
+//   - edificação (I2): editável na UH do sistema hoteleiro e na área comum,
+//     pelos papéis que gerem locais; entra na busca; ausente na alteração da
+//     área comum, fica a gravada; null apaga; as sugestões do hotel.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -230,5 +233,42 @@ describe.skipIf(!temBanco)('B1 — locais do hotel', { timeout: 60_000 }, () => 
     await casos.alterarAreaComum(ctx(U.gerenteH1), id, 'Salão de Chá', null);
     expect(await achados('cafe')).toEqual([]);
     expect(await achados('de cha')).toEqual(['Salão de Chá']);
+  });
+
+  it('edificação (I2): na UH do sistema hoteleiro e na área comum, na busca e nas sugestões', async () => {
+    await casos.alterarEdificacao(ctx(U.gerenteH1), UH, '  Torre   Á ');
+    const { id } = await casos.criarAreaComum(ctx(U.gerenteH1), H1, 'Spa', null, 'torre á');
+    const achados = async (termo: string) =>
+      (await casos.listarLocais(ctx(U.tecnico), H1, termo)).map((l) => [l.nome, l.edificacao]);
+    expect(await achados('torre a')).toEqual([
+      ['UH 101', 'Torre Á'],
+      ['Spa', 'torre á'],
+    ]);
+    // As sugestões: uma por grafia sem diferença de caixa.
+    expect(await casos.edificacoesDoHotel(ctx(U.tecnico), H1)).toHaveLength(1);
+    // Alterar a área comum sem a edificação mantém a gravada; null apaga.
+    await casos.alterarAreaComum(ctx(U.gerenteH1), id, 'Spa e sauna', null);
+    expect(await achados('sauna')).toEqual([['Spa e sauna', 'torre á']]);
+    await casos.alterarAreaComum(ctx(U.gerenteH1), id, 'Spa e sauna', null, null);
+    expect(await achados('sauna')).toEqual([['Spa e sauna', null]]);
+    expect(await achados('torre')).toEqual([['UH 101', 'Torre Á']]);
+    // A UH continua só leitura no resto; quem não gere não grava; tamanho com código.
+    await expect(casos.alterarAreaComum(ctx(U.gerenteH1), UH, 'Suíte', null)).rejects.toMatchObject(
+      { codigo: 'local_so_leitura' },
+    );
+    await expect(casos.alterarEdificacao(ctx(U.tecnico), UH, 'Torre B')).rejects.toMatchObject({
+      codigo: 'locais_fora_do_escopo',
+    });
+    await expect(
+      casos.alterarEdificacao(ctx(U.gerenteH1), UH, 'x'.repeat(61)),
+    ).rejects.toMatchObject({ codigo: 'local_edificacao_invalida' });
+    // Sem a checagem da aplicação, a RLS barra o gerente de outro hotel.
+    await expect(
+      porta.alterar(ctx(U.gerenteH2), UH, { edificacao: 'Torre Z' }),
+    ).rejects.toMatchObject({ codigo: 'local_nao_encontrado' });
+    const { rows } = await dono.query(`select edificacao, busca from app.local where id = $1`, [
+      UH,
+    ]);
+    expect(rows).toEqual([{ edificacao: 'Torre Á', busca: 'uh 101 torre a' }]);
   });
 });

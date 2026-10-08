@@ -1,7 +1,13 @@
 // Portas da ativação de hotéis (fase 1a, A1). Implementadas por packages/db,
 // com o contexto do usuário: o que cada uma devolve ou grava passa pela RLS
 // (só o Admin do grupo lê o staging e cria ou altera hotel).
-import type { Contexto, SaldoDeHoteis, SaldoDeUhs, StatusDeHotel } from '@hubkeep/dominio';
+import type {
+  Contexto,
+  ModeloContratual,
+  SaldoDeHoteis,
+  SaldoDeUhs,
+  StatusDeHotel,
+} from '@hubkeep/dominio';
 
 /** Um hotel como chegou do sistema hoteleiro (staging, entidade 'hotel'). */
 export interface HotelDoStaging {
@@ -18,6 +24,8 @@ export interface HotelCadastrado {
   fuso: string;
   sistemaOrigem: string | null;
   codExterno: string | null;
+  /** I2: nulo é "não informado"; a importação não o preenche. */
+  modeloContratual: ModeloContratual | null;
 }
 
 export interface UsoDaLicenca {

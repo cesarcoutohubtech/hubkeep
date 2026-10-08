@@ -2,7 +2,8 @@
 //
 //   ler       qualquer membro: a configuração e as políticas, com o valor de
 //             cada nível e o efetivo (hotel → grupo → padrão);
-//   gravar    só o Admin do grupo; chave e formato conferidos pelo registro de
+//   gravar    só o Admin do grupo (também o modelo contratual do hotel, I2);
+//             chave e formato conferidos pelo registro de
 //             políticas do domínio (o do núcleo e as extensões de módulo que o
 //             ponto de composição registrar); a mudança vai para a auditoria
 //             pela unit of work.
@@ -23,6 +24,7 @@ import {
   podeGerirPoliticas,
   registroDePoliticas,
   resolverPolitica,
+  validarModeloContratual,
   validarRegiao,
   type ValoresDePolitica,
 } from '@hubkeep/dominio';
@@ -31,6 +33,7 @@ import type {
   ConfiguracaoDoHotel,
   ConfiguracaoDoTenant,
   EscopoDePolitica,
+  MudancaDaConfiguracaoDoHotel,
   PortaConfiguracao,
 } from '../portas/configuracao';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
@@ -57,11 +60,7 @@ export interface CasosDeUsoDeConfiguracao {
     politicas: PoliticaResolvida[];
   }>;
   configurarTenant(ctx: Contexto, c: Omit<ConfiguracaoDoTenant, 'nome'>): Promise<void>;
-  configurarHotel(
-    ctx: Contexto,
-    hotelId: string,
-    c: Omit<ConfiguracaoDoHotel, 'id' | 'nome'>,
-  ): Promise<void>;
+  configurarHotel(ctx: Contexto, hotelId: string, c: MudancaDaConfiguracaoDoHotel): Promise<void>;
   gravarPolitica(
     ctx: Contexto,
     chave: string,
@@ -135,7 +134,15 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
       idiomaValido(c.idiomaPadrao);
       if (!fusoValido(c.fuso))
         throw new RegraViolada('fuso_invalido', 'Fuso horário inválido.', { fuso: c.fuso });
-      await deps.configuracao.configurarHotel(ctx, hotelId, c);
+      // Ausente: o gravado fica (o conector e telas antigas não mandam o campo).
+      const { modeloContratual, ...resto } = c;
+      await deps.configuracao.configurarHotel(
+        ctx,
+        hotelId,
+        modeloContratual === undefined
+          ? resto
+          : { ...resto, modeloContratual: validarModeloContratual(modeloContratual) },
+      );
     },
 
     async gravarPolitica(ctx, chave, escopo, valor) {

@@ -11,7 +11,7 @@ import { sql } from 'kysely';
 import type { Tx } from '../conexao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
-import { colunasPesquisaveisDoLocal } from './busca';
+import { colunasPesquisaveisDaUhDoSistema } from './busca';
 
 /**
  * Uso da licença de UHs no tenant do contexto: max_uhs do contrato e UHs que
@@ -80,7 +80,7 @@ export function sessaoDePromocao(uow: UnidadeDeTrabalho): SessaoDePromocao {
           tenant_id: uow.tenantId,
           hotel_id: uh.hotelId,
           tipo: 'uh',
-          ...colunasPesquisaveisDoLocal(uh.nome),
+          ...colunasPesquisaveisDaUhDoSistema(uh.nome, null),
           andar: uh.andar,
           status: uh.status,
           cod_externo: uh.chave,
@@ -105,15 +105,18 @@ export function sessaoDePromocao(uow: UnidadeDeTrabalho): SessaoDePromocao {
     },
 
     async atualizarUh(id, dados) {
+      // A edificação é do HubKeep (I2): o worker não a grava, só a lê para a
+      // busca, com a linha travada contra uma edição ao mesmo tempo.
       const antes = await tx
         .selectFrom('app.local')
-        .select(['hotel_id', 'nome', 'andar'])
+        .select(['hotel_id', 'nome', 'andar', 'edificacao'])
         .where('id', '=', id)
+        .forUpdate()
         .executeTakeFirstOrThrow();
       await tx
         .updateTable('app.local')
         .set({
-          ...colunasPesquisaveisDoLocal(dados.nome),
+          ...colunasPesquisaveisDaUhDoSistema(dados.nome, antes.edificacao),
           andar: dados.andar,
           atualizado_em: sql`now()`,
         })

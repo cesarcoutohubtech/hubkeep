@@ -121,6 +121,7 @@ export type {
   ConfiguracaoDoHotel,
   ConfiguracaoDoTenant,
   EscopoDePolitica,
+  MudancaDaConfiguracaoDoHotel,
   PoliticaGravada,
   PortaConfiguracao,
 } from './portas/configuracao';
@@ -204,7 +205,11 @@ export type {
   ResponsavelPedido,
 } from './casos-de-uso/triagem';
 export type { CasosDeUsoDeSituacoes, Prioridade, Situacao } from './casos-de-uso/situacoes';
-export type { LocalDoHotel as LocalDoHotelCadastrado, PortaLocais } from './portas/locais';
+export type {
+  LocalDoHotel as LocalDoHotelCadastrado,
+  MudancaDeLocal,
+  PortaLocais,
+} from './portas/locais';
 export { criarCasosDeUsoDeLocais } from './casos-de-uso/locais';
 export type { CasosDeUsoDeLocais, LocalListado } from './casos-de-uso/locais';
 export type { HotelEmImplantacao, PortaImplantacao } from './portas/implantacao';

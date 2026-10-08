@@ -1,7 +1,9 @@
 // GET /api/v1/hoteis/{id}/locais — UHs e áreas comuns do hotel, no escopo de
-// quem pede (RLS), com a origem e se é editável (B1). ?busca= filtra por
-// trecho, sem acento (B6).
-// POST /api/v1/hoteis/{id}/locais — cadastra uma área comum (B1).
+// quem pede (RLS), com a origem e se é editável (B1), e as edificações que já
+// existem no hotel, para a tela sugerir (I2). ?busca= filtra por trecho, sem
+// acento, no nome e na edificação (B6, I2); as edificações vêm sem o filtro.
+// POST /api/v1/hoteis/{id}/locais — cadastra uma área comum (B1), com a
+// edificação opcional (I2).
 import {
   PedidoDeAreaComum,
   RespostaDeLocaisDoHotel,
@@ -24,24 +26,30 @@ const hotelDa = (url: string) => {
 export const GET = rota('locais.listar', async (r) => {
   const ctx = await r.contexto();
   const busca = new URL(r.req.url).searchParams.get('busca');
-  const locais = await (await casosDeUsoDeLocais()).listarLocais(ctx, hotelDa(r.req.url), busca);
+  const hotelId = hotelDa(r.req.url);
+  const casos = await casosDeUsoDeLocais();
+  const locais = await casos.listarLocais(ctx, hotelId, busca);
   return r.responder(200, RespostaDeLocaisDoHotel, {
     locais: locais.map((l) => ({
       id: l.id,
       nome: l.nome,
       tipo: l.tipo,
       andar: l.andar,
+      edificacao: l.edificacao,
       status: l.status,
       origem: l.origem,
       editavel: l.editavel,
     })),
+    edificacoes: await casos.edificacoesDoHotel(ctx, hotelId),
   });
 });
 
 export const POST = rota('locais.criar_area_comum', async (r) => {
   const ctx = await r.contexto();
   const hotelId = hotelDa(r.req.url);
-  const { nome, andar } = await r.corpo(PedidoDeAreaComum);
-  const { id } = await (await casosDeUsoDeLocais()).criarAreaComum(ctx, hotelId, nome, andar);
+  const { nome, andar, edificacao } = await r.corpo(PedidoDeAreaComum);
+  const { id } = await (
+    await casosDeUsoDeLocais()
+  ).criarAreaComum(ctx, hotelId, nome, andar, edificacao);
   return r.responder(201, RespostaDeLocalAlterado, { id });
 });

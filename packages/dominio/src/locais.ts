@@ -3,7 +3,9 @@
 //   UH       vem do sistema hoteleiro (TOTVS CM) pelo conector; nome, andar e
 //            código são do sistema de origem e só leitura aqui (a próxima carga
 //            sobrescreveria). O status (ativo ou pendente de licença) é da
-//            licença (A1 e promoção do worker), não se edita à mão.
+//            licença (A1 e promoção do worker), não se edita à mão. A
+//            edificação (I2) é a exceção: o CM não a tem, então ela se edita
+//            aqui, e o conector não a sobrescreve.
 //   área     comum (piscina, cozinha, casa de máquinas) é cadastrada à mão, não
 //            conta licença (contaComoUh) e se desativa logicamente.
 // Quem gere áreas comuns: os mesmos papéis que gerem equipes, no escopo do
@@ -78,6 +80,39 @@ export function normalizarAndar(andar: string | null): string | null {
     throw new RegraViolada('local_andar_invalido', 'Andar inválido.', { maximo: 20 });
   }
   return limpo === '' ? null : limpo;
+}
+
+/**
+ * Edificação (I2): torre, bloco. Opcional, para UH e área comum; vazio vira
+ * nulo; espaços repetidos viram um; até 60 caracteres.
+ */
+export const LIMITE_EDIFICACAO = 60;
+
+export function normalizarEdificacao(edificacao: string | null): string | null {
+  const limpo = edificacao?.trim().replace(/\s+/g, ' ') ?? '';
+  if (limpo.length > LIMITE_EDIFICACAO) {
+    throw new RegraViolada('local_edificacao_invalida', 'Edificação inválida.', {
+      maximo: LIMITE_EDIFICACAO,
+    });
+  }
+  return limpo === '' ? null : limpo;
+}
+
+/**
+ * As edificações que já existem no hotel, para a tela sugerir e evitar
+ * "Torre A" e "torre a": uma por grafia sem diferença de caixa (a primeira na
+ * ordem alfabética), em ordem alfabética.
+ */
+export function edificacoesDoHotel(locais: readonly { edificacao: string | null }[]): string[] {
+  const unicas: string[] = [];
+  const todas = locais
+    .map((l) => l.edificacao)
+    .filter((e): e is string => e !== null)
+    .sort((a, b) => a.localeCompare(b));
+  for (const e of todas) {
+    if (!unicas.some((u) => mesmoNomeDeLocal(u, e))) unicas.push(e);
+  }
+  return unicas;
 }
 
 /** Duas áreas comuns ativas não têm o mesmo nome no hotel (sem diferença de caixa). */

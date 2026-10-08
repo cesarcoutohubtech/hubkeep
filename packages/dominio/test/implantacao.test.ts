@@ -38,8 +38,9 @@ describe('painel de implantação (A5)', () => {
     }
   });
 
-  it('hotel vazio: faltam locais, gerente e técnico', () => {
+  it('hotel vazio: faltam o modelo contratual, locais, gerente e técnico', () => {
     expect(resumirImplantacao(H1, [], [], AGORA).pendencias).toEqual([
+      'modelo_contratual_nao_informado',
       'sem_locais',
       'sem_gerente',
       'sem_tecnico',
@@ -96,6 +97,7 @@ describe('painel de implantação (A5)', () => {
         { localId: 'l3', categoriaId: 'c1', ativo: true },
         { localId: 'l4', categoriaId: 'c1', ativo: true },
       ],
+      { modeloContratual: 'administrado' },
     );
     expect(r.locais).toEqual({ uhsAtivas: 2, uhsPendentes: 1, areasComuns: 1, inativos: 1 });
     expect(r.ativos).toEqual({ ativos: 4, semCategoria: 0, locaisSemAtivo: 0 });
@@ -122,6 +124,7 @@ describe('painel de implantação (A5)', () => {
         { localId: 'l1', categoriaId: null, ativo: true },
         { localId: 'l2', categoriaId: null, ativo: false },
       ],
+      { modeloContratual: 'proprio' },
     );
     expect(r.ativos).toEqual({ ativos: 1, semCategoria: 1, locaisSemAtivo: 1 });
     expect(r.pendencias).toEqual([
@@ -130,5 +133,16 @@ describe('painel de implantação (A5)', () => {
       'sem_gerente',
       'sem_tecnico',
     ]);
+  });
+
+  it('modelo contratual (I2): nulo é pendência; qualquer dos quatro valores resolve', () => {
+    expect(
+      resumirImplantacao(H1, [], [], AGORA, [], { modeloContratual: null }).pendencias,
+    ).toContain('modelo_contratual_nao_informado');
+    for (const modeloContratual of ['proprio', 'administrado', 'arrendado', 'afiliado'] as const) {
+      expect(
+        resumirImplantacao(H1, [], [], AGORA, [], { modeloContratual }).pendencias,
+      ).not.toContain('modelo_contratual_nao_informado');
+    }
   });
 });

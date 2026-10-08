@@ -1,9 +1,10 @@
 // Painel de implantação do hotel (fase 1a, A5). Repete a lista de pendências
 // do domínio; tests/contratos-dominio falha se as duas divergirem.
 import { z } from 'zod';
-import { PAPEIS_API } from './api';
+import { MODELOS_CONTRATUAIS_API, PAPEIS_API } from './api';
 
 export const PENDENCIAS_DE_IMPLANTACAO_API = [
+  'modelo_contratual_nao_informado',
   'sem_locais',
   'uhs_pendentes_de_licenca',
   'locais_sem_ativo',
@@ -15,7 +16,13 @@ export const PENDENCIAS_DE_IMPLANTACAO_API = [
 
 export const RespostaDeImplantacao = z
   .object({
-    hotel: z.object({ id: z.guid(), nome: z.string(), status: z.string() }),
+    hotel: z.object({
+      id: z.guid(),
+      nome: z.string(),
+      status: z.string(),
+      /** I2: nulo é "não informado" (pendência modelo_contratual_nao_informado). */
+      modeloContratual: z.enum(MODELOS_CONTRATUAIS_API).nullable(),
+    }),
     locais: z.object({
       uhsAtivas: z.int(),
       uhsPendentes: z.int(),

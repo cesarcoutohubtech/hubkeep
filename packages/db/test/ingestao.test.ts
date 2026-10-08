@@ -2,7 +2,9 @@
 //   - reenvio do mesmo lote não duplica nada;
 //   - credencial revogada é recusada (a RLS de hk_ingestao nem a mostra);
 //   - UH nova sem saldo de licença entra como pendente_licenca;
-//   - paridade: a contagem de licença da promoção é a mesma de licenca.uso().
+//   - paridade: a contagem de licença da promoção é a mesma de licenca.uso();
+//   - a edificação da UH (I2) é do HubKeep: a promoção não a sobrescreve e a
+//     mantém na busca.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_WORKER, HK_TESTE_URL_INGESTAO, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -189,6 +191,27 @@ describe.skipIf(!temBanco)(
       expect(trilha.rows[0]).toEqual({ auditorias: 4, eventos: 4 });
       // Rodar de novo não cria nada.
       expect(await casos.promoverUhs(T.tenant)).toMatchObject({ criadas: 0, atualizadas: 0 });
+    });
+
+    it('a promoção atualiza o nome da UH e mantém a edificação gravada no HubKeep (I2)', async () => {
+      await dono.query(
+        `update app.local set edificacao = 'Torre A', busca = '101 torre a'
+          where tenant_id = $1 and cod_externo = '101'`,
+        [T.tenant],
+      );
+      await casos.receberLote(credencial, {
+        fonte: 'planilha',
+        entidade: 'uh',
+        registros: [uh('101', 'H-ATIVO', 'Suíte 101')],
+      });
+      expect(await casos.promoverUhs(T.tenant)).toMatchObject({ criadas: 0, atualizadas: 1 });
+      const { rows } = await dono.query(
+        `select nome, edificacao, busca from app.local where tenant_id = $1 and cod_externo = '101'`,
+        [T.tenant],
+      );
+      expect(rows).toEqual([
+        { nome: 'Suíte 101', edificacao: 'Torre A', busca: 'suite 101 torre a' },
+      ]);
     });
 
     it('paridade: a contagem da promoção é a mesma de licenca.uso() (item a da auditoria)', async () => {

@@ -1,9 +1,12 @@
 'use client';
 // Administração de hotéis (fase 1a, A1): o que chegou do sistema hoteleiro, a
 // importação para implantação e a ativação, que consome licença. Visual do
-// pacote de interface (ADR-038, U4b).
+// pacote de interface (ADR-038, U4b). O modelo contratual (I2) aparece e
+// filtra a lista; quem o grava é o Admin do grupo, na configuração do hotel.
+import { MODELOS_CONTRATUAIS_API } from '@hubkeep/contratos';
 import {
   Botao,
+  Campo,
   MensagemDeErro,
   MensagemVazia,
   Painel,
@@ -23,7 +26,13 @@ interface HotelParaAtivacao {
   chave: string;
   nome: string | null;
   fuso: string | null;
-  hotel: { id: string; status: string; nome: string; fuso: string } | null;
+  hotel: {
+    id: string;
+    status: string;
+    nome: string;
+    fuso: string;
+    modeloContratual: string | null;
+  } | null;
   diferencas: ('nome' | 'fuso')[];
 }
 interface Lista {
@@ -37,6 +46,10 @@ interface Lista {
 /** Cor da situação do hotel: ativo verde, em implantação âmbar, o resto cinza. */
 const TOM_DA_SITUACAO: Record<string, TomDeSelo> = { ativo: 'verde', em_implantacao: 'ambar' };
 
+/** Nulo é "não informado", que também é uma opção do filtro. */
+const NAO_INFORMADO = 'nao_informado';
+const modeloDo = (h: HotelParaAtivacao) => h.hotel?.modeloContratual ?? NAO_INFORMADO;
+
 export default function HoteisDoSistemaHoteleiro() {
   const t = useT();
   const mensagemDeErro = useMensagemDeErro();
@@ -44,6 +57,7 @@ export default function HoteisDoSistemaHoteleiro() {
   const [erroDaLista, setErroDaLista] = useState<ErroDaApi | null>(null);
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
   const [fusos, setFusos] = useState<Record<string, string>>({});
+  const [filtroDeModelo, setFiltroDeModelo] = useState('');
   const opcoesDeFuso = useMemo(() => Intl.supportedValuesOf('timeZone'), []);
 
   const carregar = useCallback(async () => {
@@ -91,6 +105,11 @@ export default function HoteisDoSistemaHoteleiro() {
 
   if (erroDaLista) return <MensagemDeErro>{mensagemDeErro(erroDaLista)}</MensagemDeErro>;
   if (!lista) return <MensagemVazia>{t('comum.carregando')}</MensagemVazia>;
+  // O filtro só olha os hotéis já importados: o que não foi importado não tem modelo.
+  const visiveis =
+    filtroDeModelo === ''
+      ? lista.hoteis
+      : lista.hoteis.filter((h) => h.hotel && modeloDo(h) === filtroDeModelo);
 
   return (
     <Painel
@@ -102,8 +121,30 @@ export default function HoteisDoSistemaHoteleiro() {
       })}
     >
       <Aviso aviso={aviso} />
+      {lista.hoteis.length > 0 && (
+        <div className="hk-filtros">
+          <Campo rotulo={t('admin.hoteis.filtro.modelo_contratual')}>
+            {(p) => (
+              <Selecao
+                {...p}
+                value={filtroDeModelo}
+                onChange={(e) => setFiltroDeModelo(e.target.value)}
+              >
+                <option value="">{t('admin.hoteis.filtro.todos')}</option>
+                {[...MODELOS_CONTRATUAIS_API, NAO_INFORMADO].map((m) => (
+                  <option key={m} value={m}>
+                    {t('hotel.modelo_contratual', { modelo: m })}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+          </Campo>
+        </div>
+      )}
       {lista.hoteis.length === 0 ? (
         <MensagemVazia>{t('admin.hoteis.vazio')}</MensagemVazia>
+      ) : visiveis.length === 0 ? (
+        <MensagemVazia>{t('admin.hoteis.filtro.vazio')}</MensagemVazia>
       ) : (
         <Tabela legenda={t('admin.hoteis.titulo')}>
           <thead>
@@ -112,11 +153,12 @@ export default function HoteisDoSistemaHoteleiro() {
               <th scope="col">{t('admin.hoteis.coluna.codigo')}</th>
               <th scope="col">{t('admin.hoteis.coluna.situacao')}</th>
               <th scope="col">{t('admin.hoteis.coluna.fuso')}</th>
+              <th scope="col">{t('admin.hoteis.coluna.modelo_contratual')}</th>
               <th scope="col">{t('admin.hoteis.coluna.acao')}</th>
             </tr>
           </thead>
           <tbody>
-            {lista.hoteis.map((h) => {
+            {visiveis.map((h) => {
               const chave = `${h.fonte}|${h.chave}`;
               return (
                 <tr key={chave}>
@@ -167,6 +209,13 @@ export default function HoteisDoSistemaHoteleiro() {
                           </option>
                         ))}
                       </Selecao>
+                    )}
+                  </td>
+                  <td>
+                    {h.hotel && (
+                      <Selo tom={h.hotel.modeloContratual ? 'azul' : 'ambar'}>
+                        {t('hotel.modelo_contratual', { modelo: modeloDo(h) })}
+                      </Selo>
                     )}
                   </td>
                   <td>

@@ -2,7 +2,8 @@
 // Histórico de um hotel, local, ativo, chamado ou OS (fase 1a, D1): quem
 // gravou, quando, a ação e o antes e o depois de cada campo, pela rota
 // GET /api/v1/auditoria. Carrega só quando pedido, como os anexos. A ação, o
-// campo e os valores conhecidos (estado, situação do cadastro, tipo de local)
+// campo e os valores conhecidos (estado, situação do cadastro, tipo de local,
+// modelo contratual do hotel)
 // saem do catálogo; os ids viram o nome que a API devolve em `referencias`, e
 // o que quem vê não lê aparece como "sem acesso". Tela funcional, sem
 // acabamento: o layout vem do protótipo.
@@ -34,6 +35,7 @@ const VALOR_DO_CATALOGO: Record<string, Chave> = {
   estadoDoChamado: 'auditoria.valor.estado',
   status: 'auditoria.valor.status',
   tipo: 'auditoria.valor.tipo',
+  modeloContratual: 'auditoria.valor.modelo_contratual',
 };
 
 /** Prefixo do nome padrão no catálogo, para situação, prioridade e categoria (ADR-027). */

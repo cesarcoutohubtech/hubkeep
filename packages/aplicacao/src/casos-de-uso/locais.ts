@@ -1,6 +1,8 @@
 // Locais do hotel (fase 1a, B1): listar UHs e áreas comuns, cadastrar,
 // renomear, desativar e reativar área comum. A UH vem do sistema hoteleiro e é
-// só leitura; o status dela é da licença. Quem lê o hotel vê os locais (RLS);
+// só leitura; o status dela é da licença. A edificação (I2) é a exceção: vale
+// para UH e área comum e se edita em qualquer local, pelos mesmos papéis que
+// gerem locais; o conector não a sobrescreve. Quem lê o hotel vê os locais (RLS);
 // gravar pede papel de gestão no hotel (domínio). A regra é injetável para o
 // teste provar que a RLS ainda barra quem não tem escrita no hotel.
 import {
@@ -14,7 +16,9 @@ import {
   exigirLocalEditavel,
   localEditavel,
   mesmoNomeDeLocal,
+  edificacoesDoHotel,
   normalizarAndar,
+  normalizarEdificacao,
   normalizarNomeDeLocal,
   origemDoLocal,
   podeGerirLocais,
@@ -29,20 +33,28 @@ export interface LocalListado extends LocalDoHotel {
 }
 
 export interface CasosDeUsoDeLocais {
-  /** Com `busca`, só os locais que têm o termo no nome, sem acento (B6). */
+  /** Com `busca`, só os locais que têm o termo no nome ou na edificação, sem acento (B6, I2). */
   listarLocais(ctx: Contexto, hotelId: string, busca?: string | null): Promise<LocalListado[]>;
+  /** As edificações que já existem no hotel, para a tela sugerir (I2). */
+  edificacoesDoHotel(ctx: Contexto, hotelId: string): Promise<string[]>;
+  /** A edificação ausente fica nula. */
   criarAreaComum(
     ctx: Contexto,
     hotelId: string,
     nome: string,
     andar: string | null,
+    edificacao?: string | null,
   ): Promise<{ id: string }>;
+  /** A edificação ausente fica a gravada; null apaga. */
   alterarAreaComum(
     ctx: Contexto,
     localId: string,
     nome: string,
     andar: string | null,
+    edificacao?: string | null,
   ): Promise<void>;
+  /** Só a edificação, em qualquer local (inclusive a UH do sistema hoteleiro); null apaga. */
+  alterarEdificacao(ctx: Contexto, localId: string, edificacao: string | null): Promise<void>;
   desativarAreaComum(ctx: Contexto, localId: string): Promise<void>;
   reativarAreaComum(ctx: Contexto, localId: string): Promise<void>;
 }
@@ -72,10 +84,14 @@ export function criarCasosDeUsoDeLocais(deps: {
         deps.relogio.agora(),
       ),
     );
-  const areaComum = async (ctx: Contexto, localId: string) => {
+  const localGerido = async (ctx: Contexto, localId: string) => {
     const l = await deps.locais.local(ctx, localId);
     if (!l) throw new NaoEncontrado('local_nao_encontrado', 'Local não encontrado.');
     await exigirNoHotel(ctx, l.hotelId);
+    return l;
+  };
+  const areaComum = async (ctx: Contexto, localId: string) => {
+    const l = await localGerido(ctx, localId);
     exigirLocalEditavel(l);
     return l;
   };
@@ -104,16 +120,33 @@ export function criarCasosDeUsoDeLocais(deps: {
         editavel: localEditavel(l),
       }));
     },
-    async criarAreaComum(ctx, hotelId, nome, andar) {
+    async edificacoesDoHotel(ctx, hotelId) {
+      await hotelVisivel(ctx, hotelId);
+      return edificacoesDoHotel(await deps.locais.locais(ctx, hotelId));
+    },
+    async criarAreaComum(ctx, hotelId, nome, andar, edificacao) {
       await exigirNoHotel(ctx, hotelId);
-      const dados = { nome: normalizarNomeDeLocal(nome), andar: normalizarAndar(andar) };
+      const dados = {
+        nome: normalizarNomeDeLocal(nome),
+        andar: normalizarAndar(andar),
+        edificacao: normalizarEdificacao(edificacao ?? null),
+      };
       await semNomeRepetido(ctx, hotelId, dados.nome);
       return deps.locais.criarAreaComum(ctx, hotelId, dados);
     },
-    async alterarAreaComum(ctx, localId, nome, andar) {
+    async alterarAreaComum(ctx, localId, nome, andar, edificacao) {
       const l = await areaComum(ctx, localId);
-      const dados = { nome: normalizarNomeDeLocal(nome), andar: normalizarAndar(andar) };
+      const dados = {
+        nome: normalizarNomeDeLocal(nome),
+        andar: normalizarAndar(andar),
+        ...(edificacao === undefined ? {} : { edificacao: normalizarEdificacao(edificacao) }),
+      };
       await semNomeRepetido(ctx, l.hotelId, dados.nome, l.id);
+      await deps.locais.alterar(ctx, localId, dados);
+    },
+    async alterarEdificacao(ctx, localId, edificacao) {
+      const dados = { edificacao: normalizarEdificacao(edificacao) };
+      await localGerido(ctx, localId);
       await deps.locais.alterar(ctx, localId, dados);
     },
     async desativarAreaComum(ctx, localId) {

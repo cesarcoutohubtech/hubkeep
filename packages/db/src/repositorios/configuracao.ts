@@ -2,9 +2,9 @@
 // unit of work, com auditoria. A RLS decide por último: só o Admin do grupo
 // altera app.tenant, app.hotel e app.politica.
 import type {
-  ConfiguracaoDoHotel,
   ConfiguracaoDoTenant,
   EscopoDePolitica,
+  MudancaDaConfiguracaoDoHotel,
 } from '@hubkeep/aplicacao';
 import { NaoEncontrado } from '@hubkeep/dominio';
 import { sql } from 'kysely';
@@ -28,12 +28,12 @@ export async function configurarTenant(
 export async function configurarHotel(
   uow: UnidadeDeTrabalho,
   hotelId: string,
-  c: Omit<ConfiguracaoDoHotel, 'id' | 'nome'>,
+  c: MudancaDaConfiguracaoDoHotel,
 ): Promise<void> {
   // O antes vai para a auditoria, para o histórico do hotel mostrar o que mudou (D1).
   const antes = await transacaoDe(uow)
     .selectFrom('app.hotel')
-    .select(['fuso', 'pais', 'subdivisao', 'moeda', 'idioma_padrao'])
+    .select(['fuso', 'pais', 'subdivisao', 'moeda', 'idioma_padrao', 'modelo_contratual'])
     .where('id', '=', hotelId)
     .executeTakeFirst();
   const r = await transacaoDe(uow)
@@ -44,6 +44,8 @@ export async function configurarHotel(
       subdivisao: c.subdivisao,
       moeda: c.moeda,
       idioma_padrao: c.idiomaPadrao,
+      // Ausente: fica o gravado (I2).
+      ...(c.modeloContratual === undefined ? {} : { modelo_contratual: c.modeloContratual }),
       atualizado_em: sql`now()`,
     })
     .where('id', '=', hotelId)
