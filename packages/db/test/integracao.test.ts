@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type AcessoBanco, criarAcessoBanco, criarBandeira } from '../src/index';
+import { type AcessoBanco, criarAcessoBanco, criarBandeira, emEscopoDeLeitura } from '../src/index';
 import { criarKysely, criarPool, emTransacao } from '../src/conexao';
 
 const URL_APP = process.env.HK_TESTE_URL_APP;
@@ -170,6 +170,38 @@ describe.skipIf(!temBanco)('packages/db contra Postgres real', { timeout: 60_000
       tx.selectFrom('app.hotel').select('id').execute(),
     );
     expect(hoteis).toEqual([]);
+  });
+
+  it('escopo de leitura (P1b): as leituras dividem uma transação somente leitura, com o contexto e a RLS', async () => {
+    const lerTudo = () =>
+      banco.withContext(ctxA, async (tx) => {
+        const r = await sql<{ inicio: string; tenant: string; somenteLeitura: string }>`
+          select now()::text as inicio,
+                 current_setting('app.tenant_id') as tenant,
+                 current_setting('transaction_read_only') as "somenteLeitura"`.execute(tx);
+        const hoteis = await tx.selectFrom('app.hotel').select('id').execute();
+        return { ...r.rows[0], hoteis: hoteis.map((h) => h.id) };
+      });
+    const [um, dois] = await emEscopoDeLeitura(() => Promise.all([lerTudo(), lerTudo()]));
+    // now() é o início da transação: igual nas duas leituras, então é a mesma.
+    expect(um?.inicio).toBe(dois?.inicio);
+    for (const l of [um, dois]) {
+      expect(l).toMatchObject({ tenant: A.tenant, somenteLeitura: 'on', hoteis: [A.hotel] });
+    }
+    // Escrita fora da unit of work, dentro do escopo, a transação recusa.
+    await expect(
+      emEscopoDeLeitura(() =>
+        banco.withContext(ctxA, (tx) =>
+          sql`update app.hotel set nome = nome where id = ${A.hotel}`.execute(tx),
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '25006' });
+    // A unit of work, no escopo, segue gravando na própria transação.
+    const bandeira = await emEscopoDeLeitura(async () => {
+      await banco.withContext(ctxA, (tx) => tx.selectFrom('app.hotel').select('id').execute());
+      return banco.executar(ctxA, (uow) => criarBandeira(uow, `Escopo ${randomUUID()}`));
+    });
+    expect(bandeira.id).toBeTruthy();
   });
 
   it('recusa contexto malformado antes de abrir transação', async () => {

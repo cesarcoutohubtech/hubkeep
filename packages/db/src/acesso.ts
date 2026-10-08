@@ -1,6 +1,7 @@
 // Fábrica do acesso ao banco, usada na raiz de composição de cada app. O pool
 // fica preso neste closure: quem recebe o AcessoBanco só consegue ler e
 // escrever através de withContext/withSistema/executar, sempre com contexto.
+import type { Kysely } from 'kysely';
 import {
   type ConfigConexao,
   type Contexto,
@@ -11,11 +12,17 @@ import {
   validarUuid,
   verificarPapel,
 } from './conexao';
+import { noEscopoDeLeitura } from './escopo-de-leitura';
 import { gravarAuditoriaEOutbox } from './repositorios/auditoria-outbox';
+import type { DB } from './tipos-banco';
 import { type UnidadeDeTrabalho, criarUnidade } from './unidade-de-trabalho';
 
 export interface AcessoBanco {
-  /** Leitura (e escrita via repositório) em nome do usuário, papel hk_app. */
+  /**
+   * Leitura em nome do usuário, papel hk_app. Dentro de um escopo de leitura
+   * (emEscopoDeLeitura, P1b), usa a transação do escopo quando o contexto é o
+   * mesmo; fora dele, abre a própria.
+   */
   withContext<T>(ctx: Contexto, fn: (tx: Tx) => Promise<T>): Promise<T>;
   /** Job do sistema, papel hk_worker, um tenant por transação. */
   withSistema<T>(ctx: { tenantId: string }, fn: (tx: Tx) => Promise<T>): Promise<T>;
@@ -68,6 +75,19 @@ export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBa
     throw e;
   }
 
+  return montarAcesso({ app, worker, ingestao });
+}
+
+/**
+ * O AcessoBanco sobre os Kysely já conferidos. Separado da fábrica para os
+ * testes de unidade, que montam o acesso sobre um pool falso.
+ */
+export function montarAcesso(dbs: {
+  app: Kysely<DB> | null;
+  worker: Kysely<DB> | null;
+  ingestao: Kysely<DB> | null;
+}): AcessoBanco {
+  const { app, worker, ingestao } = dbs;
   const exigir = <K>(db: K | null, papel: string): K => {
     if (!db) throw new Error(`Acesso ao banco criado sem conexão ${papel}.`);
     return db;
@@ -75,10 +95,21 @@ export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBa
 
   // async de propósito: contexto inválido vira Promise rejeitada, como qualquer
   // outra falha de banco, e não uma exceção síncrona que escapa do await.
-  const withContext: AcessoBanco['withContext'] = async (ctx, fn) => {
+  // A escrita (executar) usa transacaoPropria: nunca entra no escopo de leitura.
+  const transacaoPropria: AcessoBanco['withContext'] = async (ctx, fn) => {
     validarUuid(ctx.usuarioId, 'usuarioId');
     validarUuid(ctx.tenantId, 'tenantId');
     return emTransacao(exigir(app, 'hk_app'), ctx.usuarioId, ctx.tenantId, fn);
+  };
+
+  const withContext: AcessoBanco['withContext'] = async (ctx, fn) => {
+    validarUuid(ctx.usuarioId, 'usuarioId');
+    validarUuid(ctx.tenantId, 'tenantId');
+    const db = exigir(app, 'hk_app');
+    return (
+      noEscopoDeLeitura(db, ctx.usuarioId, ctx.tenantId, fn) ??
+      emTransacao(db, ctx.usuarioId, ctx.tenantId, fn)
+    );
   };
 
   // O worker não age em nome de ninguém: app.usuario_id vazio, e as policies
@@ -108,7 +139,7 @@ export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBa
     withIngestao,
     listarTenants,
     executar: (ctx, fn) =>
-      withContext(ctx, async (tx) => {
+      transacaoPropria(ctx, async (tx) => {
         const uow = criarUnidade(tx, ctx.tenantId, ctx.usuarioId);
         const resultado = await fn(uow);
         await gravarAuditoriaEOutbox(uow);

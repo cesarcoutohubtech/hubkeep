@@ -1343,3 +1343,16 @@ Primeira migração da instrumentação (etapa I do `docs/12`). PR de zona prote
   - na CI: os testes de integração do `packages/db` e o pgTAP rodam no banco da CI;
   - as telas não foram vistas no navegador.
 - **Aviso ao agente do Intelligence:** o `@hubkeep/dominio` exporta `Criticidade`, `CRITICIDADE_MAXIMA` e `ehCriticidade`, com os mesmos nomes dos que o `packages/inteligencia` tem hoje. O módulo pode passar a importar do domínio.
+
+### P1b, transação por pedido, contexto no BEGIN e pool ocioso maior (08/10/2026)
+- **BEGIN e contexto juntos:** o driver do Kysely ganhou uma subclasse (`DriverDoHubKeep`, em `packages/db/src/conexao.ts`) que, na transação aberta por `emTransacao`, manda `begin; select set_config(...), set_config(...)` num envio só, pelo protocolo simples. Os valores vão como literais, e só UUID ou vazio passa (`inicioComContexto`). O `set_config` continua local à transação. Se o início falhar, sai um `rollback` antes de a conexão voltar ao pool. A transação sozinha cai de 4 para 3 idas e voltas.
+- **Escopo de leitura:** todo GET da API roda dentro de `emEscopoDeLeitura` (`packages/db/src/escopo-de-leitura.ts`, chamado pelo `rota()` do `http.ts`).
+  - O primeiro `withContext` abre uma transação `read only` com o contexto dele. Os seguintes, com o mesmo contexto e o mesmo acesso, usam essa transação. O COMMIT sai no fim do pedido.
+  - Contexto diferente nunca reusa a transação. Leitura que falha descarta o escopo, e as seguintes abrem a própria.
+  - `executar` (unit of work) nunca entra no escopo: abre a própria transação, com auditoria e outbox juntas. Escrita fora dela, no escopo, o banco recusa (25006).
+  - Conta: N leituras num GET custavam 4N idas e voltas; agora custam N + 2. No `/hoteis/{id}/ativos` (5 leituras), o caminho crítico cai de cerca de 12 para 7.
+- **Pool:** `idleTimeoutMillis` de 10 s para 120 s, com `allowExitOnIdle`, `keepAlive` e um ouvinte de `error` no pool (antes, um cliente ocioso que caísse derrubava o processo). Justificativa no comentário de `OCIOSO_MS`.
+- **Testes:** testes de unidade novos com pool falso (`packages/db/test/transacao.test.ts`), um caso novo no `integracao.test.ts` (roda na CI) e casos do escopo no `apps/web/test/http.test.ts`.
+- **Pendência para o Cesar (ADR):** a proposta de ADR "transação por pedido de leitura e contexto no BEGIN" está no corpo do PR. O `docs/03` não foi tocado, porque é zona protegida.
+  - Confirmar pelo Supavisor com `pnpm db:fumaca-dev` (`HK_TESTE_VIA_POOLER=1`) depois do merge.
+  - Medir o `Server-Timing` de `app` em `/api/v1/hoteis/{id}/ativos` antes e depois.
