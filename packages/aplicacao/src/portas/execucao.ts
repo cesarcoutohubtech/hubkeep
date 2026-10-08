@@ -43,6 +43,8 @@ export interface AcaoNaOsDecidida {
   acao: 'iniciar' | 'pausar' | 'retomar' | 'concluir';
   osId: string;
   versao: number;
+  /** O estado lido na versão conferida: a transição grava de → para (I5). */
+  de: EstadoDaOs;
   estado: EstadoDaOs;
   situacaoId: string;
   /** O reflexo no chamado (concluir), com a versão lida no servidor; senão null. */

@@ -266,6 +266,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
       return deps.triagem.reatribuirOs(ctx, {
         osId,
         versao: p.versao,
+        de: os.estado,
         situacaoId: situacaoPara(await situacoes(ctx), 'os', d.estado),
         responsavel,
       });
@@ -285,6 +286,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
       return deps.triagem.cancelarOs(ctx, {
         osId,
         versao: p.versao,
+        de: os.estado,
         situacaoId: situacaoPara(lista, 'os', d.estado),
         motivo: d.motivo ?? '',
         chamado: {
@@ -311,6 +313,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
       return deps.triagem.aceitarOs(ctx, {
         osId,
         versao: p.versao,
+        de: os.estado,
         situacaoId: situacaoPara(lista, 'os', d.estado),
         chamado: {
           id: chamado.id,
@@ -346,6 +349,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
       return deps.triagem.reabrirOs(ctx, {
         osId,
         versao: p.versao,
+        de: os.estado,
         situacaoId: situacaoPara(lista, 'os', d.estado),
         motivo: d.motivo ?? '',
         chamado: {

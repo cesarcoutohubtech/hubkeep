@@ -173,6 +173,7 @@ describe.skipIf(!temBanco)('C3 — triagem e atribuição', { timeout: 60_000 },
     for (const t of [
       'app.evento_dominio',
       'app.auditoria',
+      'app.os_transicao',
       'app.os',
       'app.chamado',
       'app.situacao',
@@ -345,6 +346,22 @@ describe.skipIf(!temBanco)('C3 — triagem e atribuição', { timeout: 60_000 },
       'os.atribuida',
       'os.atribuida',
       'os.cancelada',
+    ]);
+    // I5: as tentativas recusadas não gravam transição.
+    const transicoes = await dono.query<{
+      acao: string;
+      de: string | null;
+      para: string;
+      usuario_id: string;
+    }>(
+      `select acao, de, para, usuario_id from app.os_transicao
+       where tenant_id = $1 and os_id = $2 order by quando, id`,
+      [TENANT, os.id],
+    );
+    expect(transicoes.rows).toEqual([
+      { acao: 'gerar', de: null, para: 'atribuida', usuario_id: U.gerente },
+      { acao: 'reatribuir', de: 'atribuida', para: 'atribuida', usuario_id: U.admin },
+      { acao: 'cancelar', de: 'atribuida', para: 'cancelada', usuario_id: U.gerente },
     ]);
   });
 

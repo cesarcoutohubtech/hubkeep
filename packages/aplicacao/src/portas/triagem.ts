@@ -98,13 +98,21 @@ export interface PortaTriagem {
   ): Promise<{ id: string; versao: number; versaoDoChamado: number }>;
   reatribuirOs(
     ctx: Contexto,
-    g: { osId: string; versao: number; situacaoId: string; responsavel: Responsavel },
+    g: {
+      osId: string;
+      versao: number;
+      /** O estado lido na versão conferida: a transição grava de → para (I5). */
+      de: EstadoDaOs;
+      situacaoId: string;
+      responsavel: Responsavel;
+    },
   ): Promise<{ versao: number }>;
   cancelarOs(
     ctx: Contexto,
     g: {
       osId: string;
       versao: number;
+      de: EstadoDaOs;
       situacaoId: string;
       motivo: string;
       chamado: ReflexoNoChamado;
@@ -113,7 +121,13 @@ export interface PortaTriagem {
   /** Aceite (C6): a OS concluída fica aceita, e o chamado, concluído. */
   aceitarOs(
     ctx: Contexto,
-    g: { osId: string; versao: number; situacaoId: string; chamado: ReflexoNoChamado },
+    g: {
+      osId: string;
+      versao: number;
+      de: EstadoDaOs;
+      situacaoId: string;
+      chamado: ReflexoNoChamado;
+    },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
   /**
    * Reabertura (C6): a mesma OS volta à execução, com o motivo na OS (o
@@ -125,6 +139,7 @@ export interface PortaTriagem {
     g: {
       osId: string;
       versao: number;
+      de: EstadoDaOs;
       situacaoId: string;
       motivo: string;
       chamado: ReflexoNoChamado;

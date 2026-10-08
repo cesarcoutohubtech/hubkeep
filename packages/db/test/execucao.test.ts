@@ -188,6 +188,7 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
       'app.operacao_offline',
       'app.os_apontamento',
       'app.os_material',
+      'app.os_transicao',
       'app.os',
       'app.chamado',
       'app.situacao',
@@ -295,6 +296,25 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
     ]);
     // A OS concluída sai da fila do dia.
     expect((await execucao.osDoDia(ctx(U.daEquipe))).map((o) => o.id)).not.toContain(osId);
+    // I5: uma transição por mudança de estado, em nome de quem fez; o reenvio não duplica.
+    const transicoes = await dono.query<{
+      acao: string;
+      de: string | null;
+      para: string;
+      usuario_id: string;
+    }>(
+      `select acao, de, para, usuario_id from app.os_transicao
+       where tenant_id = $1 and os_id = $2 order by quando, id`,
+      [TENANT, osId],
+    );
+    expect(transicoes.rows.map((t) => [t.acao, t.de, t.para])).toEqual([
+      ['gerar', null, 'atribuida'],
+      ['iniciar', 'atribuida', 'em_execucao'],
+      ['pausar', 'em_execucao', 'pausada'],
+      ['retomar', 'pausada', 'em_execucao'],
+      ['concluir', 'em_execucao', 'concluida'],
+    ]);
+    expect(transicoes.rows.slice(1).every((t) => t.usuario_id === U.daEquipe)).toBe(true);
   });
 
   it('OS reatribuída com a operação na fila: os_de_outro_responsavel, sem guardar a chave', async () => {
@@ -391,5 +411,9 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
       }),
     ).rejects.toMatchObject({ code: '42501' });
     expect(await contar(`select versao as n from app.os where id = $1`, [osId])).toBe(1);
+    // A transição recusada não deixa linha: só a geração.
+    expect(
+      await contar(`select count(*)::int as n from app.os_transicao where os_id = $1`, [osId]),
+    ).toBe(1);
   });
 });

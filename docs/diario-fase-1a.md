@@ -1356,3 +1356,16 @@ Primeira migração da instrumentação (etapa I do `docs/12`). PR de zona prote
 - **Pendência para o Cesar (ADR):** a proposta de ADR "transação por pedido de leitura e contexto no BEGIN" está no corpo do PR. O `docs/03` não foi tocado, porque é zona protegida.
   - Confirmar pelo Supavisor com `pnpm db:fumaca-dev` (`HK_TESTE_VIA_POOLER=1`) depois do merge.
   - Medir o `Server-Timing` de `app` em `/api/v1/hoteis/{id}/ativos` antes e depois.
+
+### I5, transições da OS (08/10/2026)
+- **Merges do Cesar:** #133 (I1), #134 (P1b) e #136 (correção da main: a `ativo.criticidade` na lista de políticas do teste de configuração, que só roda na CI).
+- **Migração 0031:** tabela `app.os_transicao`, com as colunas `acao`, `de` (nulo só na geração), `para`, `quando` (`now()` da transação, igual ao `atualizado_em` da OS) e `usuario_id`.
+  - Só INSERT. O meta-teste 32 trava o UPDATE em todas as tabelas só de inserção: auditoria, movimentação do ativo, apontamento, material e transição.
+  - A leitura segue o recorte da OS. A gravação é de quem tem escrita no hotel, em nome dele mesmo. O worker lê só o tenant do job.
+  - O pgTAP 025 cobre os seis casos de isolamento, o implantador vencido, o formato e a falta de UPDATE e DELETE.
+- **Gravação:** cada repositório que muda o estado da OS grava a transição na mesma unit of work, antes do reflexo no chamado, da auditoria e do evento. São elas: gerar, reatribuir, iniciar, pausar, retomar, concluir, aceitar, reabrir e cancelar.
+  - O estado de antes (`de`) vem do caso de uso, que leu a OS na versão conferida. O UPDATE confere a mesma versão, então o par gravado é o real.
+- **Testes de integração** (rodam na CI): o dia offline grava uma transição por ação, e o reenvio não duplica; triagem, reatribuição e cancelamento, com as tentativas recusadas sem linha; aceite e reabertura.
+- **Sem histórico retroativo:** as OS que já existiam ficam sem transições, porque não há dado real antes do piloto.
+- **Pendência para o Cesar:** a transição feita sem rede leva a hora da sincronização, e não a hora do aparelho. As operações `os.iniciar`, `os.pausar` e `os.retomar` não mandam a hora do aparelho, e a `os.concluir` só manda para a parada. Se o MTTR do piloto pedir a hora do aparelho, é preciso mandar a hora em cada operação, com o limite que a parada já usa.
+- **Aviso ao agente do Intelligence:** a tabela é `app.os_transicao`, com as colunas `acao`, `de`, `para`, `quando` e `usuario_id`. Os valores são os de `ACOES_DA_OS` e `ESTADOS_DA_OS` do `@hubkeep/dominio`. O `TransicaoDaOs` do `historico.ts` (`acao`, `para`, `quando`) lê direto dessas colunas, e o worker tem SELECT no tenant do job. No comentário do `historico.ts`, a etapa passou de I3 para I5.
