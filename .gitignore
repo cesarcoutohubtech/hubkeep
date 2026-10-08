@@ -11,3 +11,8 @@ apps/web/next-env.d.ts
 
 # Configuração local do Claude Code (terá o GH_TOKEN da conta de máquina, F0-12).
 .claude/settings.local.json
+
+# Mock de apresentação: cache e testes da geração de narração (fora do git)
+ferramentas/.cache-elevenlabs/
+narracao-teste/
+__pycache__/

@@ -4,17 +4,44 @@
    Para trocar o nome do cliente, edite DEMO_CONFIG. */
 
 const DEMO_CONFIG = {
-  cliente: "Grupo Slaviero",
-  produto: "Central de Manutenção",
+  cliente: "Grupo Hotel",
+  produto: "HubKeep",
+  descricao: "Operação de manutenção da rede hoteleira",
   plataforma: "EasyGov",
   aviso: "Dados fictícios de demonstração",
   semente: 20260923
 };
 
+/* Calendário de SLA: categorias em horário comercial não contam prazo fora do expediente nem em feriados.
+   Expediente de demonstração: segunda a sexta, 8h às 18h; sábado, 8h às 12h. Feriados nacionais fixos. */
+const FERIADOS_FIXOS = ["01-01", "04-21", "05-01", "09-07", "10-12", "11-02", "11-15", "11-20", "12-25"];
+function ehFeriado(d) { return FERIADOS_FIXOS.includes(String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")); }
+function janelaDoDia(d) { const w = d.getDay(); if (w === 0 || ehFeriado(d)) return null; return w === 6 ? [8, 12] : [8, 18]; }
+function somarHorasUteis(inicioMs, horas) {
+  let restante = horas * 3600e3, cur = new Date(inicioMs);
+  for (let guarda = 0; guarda < 400 && restante > 0; guarda++) {
+    const jan = janelaDoDia(cur);
+    const ini = new Date(cur); const fim = new Date(cur);
+    if (jan) { ini.setHours(jan[0], 0, 0, 0); fim.setHours(jan[1], 0, 0, 0); }
+    if (!jan || cur >= fim) { cur = new Date(cur); cur.setDate(cur.getDate() + 1); cur.setHours(0, 0, 0, 0); continue; }
+    if (cur < ini) cur = ini;
+    const disp = fim - cur;
+    if (disp >= restante) return cur.getTime() + restante;
+    restante -= disp; cur = new Date(fim); cur.setDate(cur.getDate() + 1); cur.setHours(0, 0, 0, 0);
+  }
+  return cur.getTime();
+}
+const CAL_COMERCIAL = ["c9", "c16"];
+function prazoSla(cat, inicioMs, horas) { return CAL_COMERCIAL.includes(cat) ? somarHorasUteis(inicioMs, horas) : inicioMs + horas * 3600e3; }
+
 function buildSeed() {
   // PRNG determinístico (mulberry32)
   let s = DEMO_CONFIG.semente >>> 0;
   const rnd = () => { s |= 0; s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  let s2 = (DEMO_CONFIG.semente ^ 0x5bd1e995) >>> 0;
+  const rnd2 = () => { s2 |= 0; s2 = (s2 + 0x6D2B79F5) | 0; let t = Math.imul(s2 ^ (s2 >>> 15), 1 | s2); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const pick2 = a => a[Math.floor(rnd2() * a.length)];
+  const int2 = (a, b) => a + Math.floor(rnd2() * (b - a + 1));
   const pick = a => a[Math.floor(rnd() * a.length)];
   const int = (a, b) => a + Math.floor(rnd() * (b - a + 1));
   const weighted = pairs => { const tot = pairs.reduce((x, p) => x + p[1], 0); let r = rnd() * tot; for (const [v, w] of pairs) { if ((r -= w) <= 0) return v; } return pairs[0][0]; };
@@ -46,10 +73,14 @@ function buildSeed() {
     ["h13", "Hotel Maringá", "Maringá", "PR", "b2", 88],
     ["h14", "Hotel Belo Horizonte Savassi", "Belo Horizonte", "MG", "b1", 172]
   ];
+  // Modelo contratual: define quem manda, quem aprova e quem paga. O piloto cobre a matriz.
+  const MODELO = { h1: "Próprio", h2: "Próprio", h3: "Próprio", h4: "Administrado", h5: "Próprio", h6: "Próprio", h7: "Arrendado", h8: "Arrendado", h9: "Próprio", h10: "Administrado", h11: "Administrado", h12: "Administrado", h13: "Próprio", h14: "Próprio" };
+  const PILOTO = { h1: "Urbano próprio", h2: "Econômico próprio", h11: "Administrado (condo-hotel)", h7: "Arrendado" };
   const hoteis = hoteisBase.map(([id, nome, cidade, uf, bandeira_id, uhs], i) => ({
     id, nome, cidade, uf, bandeira_id, tenant_id: "t1", uhs,
     andares: Math.max(6, Math.round(uhs / 16)),
-    cod_totvs: "CM" + String(1001 + i)
+    cod_totvs: "PMS" + String(1001 + i),
+    modelo: MODELO[id], piloto: PILOTO[id] || null, fuso: "America/Sao_Paulo"
   }));
 
   // ---------- Locais (UHs e áreas comuns) ----------
@@ -62,7 +93,8 @@ function buildSeed() {
     for (let f = 2; f <= h.andares && n < h.uhs; f++) {
       for (let u = 1; u <= perFloor && n < h.uhs; u++, n++) {
         const num = String(f) + String(u).padStart(2, "0");
-        locais.push({ id: `${h.id}-u${num}`, hotel_id: h.id, tipo: "uh", nome: "UH " + num, andar: f, cod_totvs: `${h.cod_totvs}-${num}` });
+        const ed = ["h3", "h11"].includes(h.id) ? (u <= Math.ceil(perFloor / 2) ? "Torre A" : "Torre B") : null;
+        locais.push({ id: `${h.id}-u${num}`, hotel_id: h.id, tipo: "uh", nome: "UH " + num, andar: f, cod_totvs: `${h.cod_totvs}-${num}`, edificacao: ed });
       }
     }
   });
@@ -100,7 +132,8 @@ function buildSeed() {
     { id: "c12", nome: "TV", critica: false },
     { id: "c13", nome: "Hidráulica da UH", critica: false },
     { id: "c14", nome: "Iluminação", critica: false },
-    { id: "c15", nome: "Portão e cancela", critica: false }
+    { id: "c15", nome: "Portão e cancela", critica: false },
+    { id: "c16", nome: "Pintura e acabamento", critica: false }
   ];
   const fabricantes = { c1: ["Atlas Schindler", "Otis", "ThyssenKrupp"], c2: ["Carrier", "Trane", "York"], c3: ["Cummins", "Stemac", "Heimer"], c4: ["Rinnai", "Komeco", "Bosch"], c5: ["KSB", "Schneider", "Grundfos"], c6: ["WEG", "Schneider", "Siemens"], c7: ["Daikin", "LG", "Midea", "Samsung"], c8: ["Plotter Racks", "Danfoss"], c9: ["Jacuzzi", "Dancor"], c10: ["Assa Abloy", "Salto"], c11: ["Electrolux", "Consul"], c12: ["LG", "Samsung"], c13: ["Docol", "Deca"], c14: ["Philips", "Osram"], c15: ["PPA", "Garen"] };
   const ativos = [];
@@ -142,13 +175,22 @@ function buildSeed() {
     for (let i = 0; i < 6; i++) { const u = pick(uhs); addAtivo(h, "c7", u, `Split ${u.nome}`, "Baixa"); }
   });
   const catNome = id => categorias.find(c => c.id === id).nome;
+  // Criticidade fixa de 1 a 5 (os nomes de cada nível são configuráveis na política do grupo)
+  const crit5 = a => {
+    if (/^Elevador|^Chiller principal|^Gerador|^Quadro geral/.test(a.nome)) return 5;
+    if (a.criticidade === "Alta") return 4;
+    if (a.criticidade === "Média") return 3;
+    if (/^Cancela/.test(a.nome)) return 1;
+    return 2;
+  };
+  ativos.forEach(a => { a.criticidade = crit5(a); a.comprado_em = iso(+new Date(a.instalado_em) - int2(10, 75) * D); });
 
   // ---------- Pessoas ----------
   const primeiros = ["Ana", "Bruno", "Camila", "Diego", "Eduardo", "Fabiana", "Gustavo", "Igor", "Jéssica", "Leandro", "Márcio", "Natália", "Otávio", "Rafael", "Sérgio", "Tiago", "Vanessa", "Wagner", "Alexandre", "Daniel", "Everton", "Rodrigo", "Cláudio", "André", "Priscila"];
   const sobren = ["Silva", "Santos", "Oliveira", "Pereira", "Costa", "Rodrigues", "Almeida", "Nascimento", "Lima", "Araújo", "Fernandes", "Carvalho", "Gomes", "Martins", "Rocha", "Ribeiro", "Barbosa", "Moreira", "Cardoso", "Teixeira"];
   const usuarios = [
     { id: "u1", nome: "Marina Costa", papel: "Gestora do CSC", escopo: { tipo: "grupo", id: "t1" }, email: "marina.costa@demo.com" },
-    { id: "u2", nome: "Ricardo Alves", papel: "Coordenador de bandeira", escopo: { tipo: "bandeira", id: "b1" }, email: "ricardo.alves@demo.com" },
+    { id: "u2", nome: "Ricardo Alves", papel: "Gestor CSC da bandeira", escopo: { tipo: "bandeira", id: "b1" }, email: "ricardo.alves@demo.com" },
     { id: "u3", nome: "Juliana Prado", papel: "Gerente de hotel", escopo: { tipo: "hotel", id: "h1" }, email: "juliana.prado@demo.com" },
     { id: "u4", nome: "Paulo Mendes", papel: "Técnico", escopo: { tipo: "hotel", id: "h1" }, email: "paulo.mendes@demo.com", tecnico: true },
     { id: "u5", nome: "Helena Ramos", papel: "Proprietária", escopo: { tipo: "proprietario", id: "pr1" }, email: "helena.ramos@demo.com" }
@@ -168,14 +210,23 @@ function buildSeed() {
     const g = pick(primeiros) + " " + pick(sobren);
     usuarios.push({ id: "u" + uid++, nome: g, papel: "Gerente de hotel", escopo: { tipo: "hotel", id: h.id }, email: g.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ /g, ".") + "@demo.com" });
   });
-  usuarios.push({ id: "u" + uid++, nome: "Solange Ferreira", papel: "Coordenadora de bandeira", escopo: { tipo: "bandeira", id: "b2" }, email: "solange.ferreira@demo.com" });
-  usuarios.push({ id: "u" + uid++, nome: "Otávio Brandão", papel: "Coordenador de bandeira", escopo: { tipo: "bandeira", id: "b3" }, email: "otavio.brandao@demo.com" });
+  usuarios.push({ id: "u" + uid++, nome: "Solange Ferreira", papel: "Gestora CSC da bandeira", escopo: { tipo: "bandeira", id: "b2" }, email: "solange.ferreira@demo.com" });
+  usuarios.push({ id: "u" + uid++, nome: "Otávio Brandão", papel: "Gestor CSC da bandeira", escopo: { tipo: "bandeira", id: "b3" }, email: "otavio.brandao@demo.com" });
+  // Papéis que não aparecem no seletor da demonstração, mas existem no produto
+  usuarios.push({ id: "u90", nome: "Augusto Bittencourt", papel: "Locador", escopo: { tipo: "locador", id: "h7" }, email: "augusto.bittencourt@demo.com" });
+  usuarios.push({ id: "u91", nome: "Lúcia Andrade", papel: "Admin do grupo", escopo: { tipo: "grupo", id: "t1" }, email: "lucia.andrade@demo.com" });
+  usuarios.push({ id: "u92", nome: "Rafael Teixeira", papel: "Implantador", escopo: { tipo: "hotel", id: "h6" }, email: "rafael.teixeira@demo.com", valido_ate: iso(now.getTime() + 18 * D) });
+  usuarios.push({ id: "u93", nome: "Recepção Curitiba Batel", papel: "Solicitante", escopo: { tipo: "hotel", id: "h1" }, email: "recepcao.batel@demo.com" });
   const solicitantes = ["Recepção", "Governança", "Hóspede (via recepção)", "A&B", "Gerência", "Segurança", "Eventos"];
 
   // ---------- Políticas de SLA (horas), com herança ----------
   const politicas = [
     { id: "po1", escopo_tipo: "grupo", escopo_id: "t1", sla: { "Crítica": 2, "Alta": 8, "Média": 24, "Baixa": 72 }, horario: "24h, 7 dias", escalonar_em: 80,
-      prio_padrao: { c1: "Crítica", c2: "Crítica", c3: "Alta", c4: "Alta", c5: "Crítica", c6: "Alta", c7: "Média", c8: "Crítica", c9: "Baixa", c10: "Alta", c11: "Média", c12: "Baixa", c13: "Média", c14: "Baixa", c15: "Média" } },
+      prio_padrao: { c1: "Crítica", c2: "Crítica", c3: "Alta", c4: "Alta", c5: "Crítica", c6: "Alta", c7: "Média", c8: "Crítica", c9: "Baixa", c10: "Alta", c11: "Média", c12: "Baixa", c13: "Média", c14: "Baixa", c15: "Média", c16: "Baixa" },
+      calendario_comercial: CAL_COMERCIAL.slice(), expediente: "Segunda a sexta, 8h às 18h; sábado, 8h às 12h", feriados: "Nacionais, estaduais e municipais do hotel, e os cadastrados pelo próprio hotel",
+      criticidade_nomes: { 5: "Crítico para a operação", 4: "Alto", 3: "Médio", 2: "Baixo", 1: "Mínimo" },
+      codigos_obrigatorios: false,
+      inteligencia: { versao: "v1", limite_atencao: 70, janela_dias: 180, pesos: { reincidencia: 35, indisponibilidade: 25, criticidade: 20, medicoes: 10, garantia: 10 } } },
     { id: "po2", escopo_tipo: "bandeira", escopo_id: "b3", sla: { "Alta": 4 }, horario: null, escalonar_em: null },
     { id: "po3", escopo_tipo: "hotel", escopo_id: "h3", sla: { "Crítica": 1 }, horario: null, escalonar_em: 70 }
   ];
@@ -266,7 +317,7 @@ function buildSeed() {
     const ch = {
       id: "CH-" + chn, hotel_id: hid, local_id: local.id, ativo_id: ativo ? ativo.id : null, categoria_id: cat,
       titulo, descricao: `${titulo}. Relatado em ${local.nome}.`, prioridade: prio, status,
-      aberto_em: iso(aberto), prazo_sla: iso(aberto + slaH * H), sla_h: slaH,
+      aberto_em: iso(aberto), prazo_sla: iso(prazoSla(cat, aberto, slaH)), sla_h: slaH,
       atendido_em: atendido ? iso(atendido) : null, encerrado_em: encerrado ? iso(encerrado) : null,
       tecnico_id, solicitante: eventos[0].txt.replace("Chamado aberto por ", ""), eventos,
       fotos: int(0, 3)
@@ -294,7 +345,7 @@ function buildSeed() {
     const ev = [{ t: iso(aberto), tipo: "abertura", txt: "Chamado aberto por Recepção" }, { t: iso(aberto + 0.05 * H), tipo: "sistema", txt: `Prazo de SLA definido: ${slaH} h (prioridade ${prio})` }];
     if (tec) { ev.push({ t: iso(aberto + 0.3 * H), tipo: "atribuicao", txt: `Atribuído a ${tecnicos.find(t => t.id === tec).nome}` }); ev.push({ t: iso(aberto + 0.4 * H), tipo: "status", txt: "Em atendimento" }); }
     const a = ativos.find(x => x.hotel_id === hid && titulo.includes(x.nome)) || ativos.find(x => x.local_id === lid && x.categoria_id === cat) || ativos.find(x => x.hotel_id === hid && x.categoria_id === cat);
-    chamados.unshift({ id: "CH-" + chn, hotel_id: hid, local_id: lid, ativo_id: a ? a.id : null, categoria_id: cat, titulo, descricao: titulo + ".", prioridade: prio, status, aberto_em: iso(aberto), prazo_sla: iso(aberto + slaH * H), sla_h: slaH, atendido_em: tec ? iso(aberto + 0.3 * H) : null, encerrado_em: null, tecnico_id: tec || null, solicitante: "Recepção", eventos: ev, fotos: 2 });
+    chamados.unshift({ id: "CH-" + chn, hotel_id: hid, local_id: lid, ativo_id: a ? a.id : null, categoria_id: cat, titulo, descricao: titulo + ".", prioridade: prio, status, aberto_em: iso(aberto), prazo_sla: iso(prazoSla(cat, aberto, slaH)), sla_h: slaH, atendido_em: tec ? iso(aberto + 0.3 * H) : null, encerrado_em: null, tecnico_id: tec || null, solicitante: "Recepção", eventos: ev, fotos: 2 });
   };
   destaque("h1", areaDo("h1", "Casa de máquinas").id, "c1", "Elevador social 2 parado no 9º andar", "Crítica", 1.4, "Em atendimento", "u4");
   destaque("h1", "h1-u812", "c7", "Ar-condicionado não gela", "Média", 3, "Em atendimento", "u4");
@@ -305,9 +356,9 @@ function buildSeed() {
 
   // ---------- Planos preventivos ----------
   const planosBase = [
-    ["c1", "Manutenção mensal de elevadores", 30, ["Inspecionar cabos e polias", "Testar freio de segurança", "Verificar nivelamento nos andares", "Testar interfone e alarme", "Lubrificar guias", "Registrar no livro de ocorrências"]],
+    ["c1", "Manutenção mensal de elevadores", 30, [{ t: "Condição dos cabos de tração", tipo: "lista", opcoes: ["Bom", "Desgaste leve", "Substituir"] }, "Inspecionar cabos e polias", "Testar freio de segurança", "Verificar nivelamento nos andares", "Testar interfone e alarme", "Lubrificar guias", "Registrar no livro de ocorrências"]],
     ["c2", "Inspeção mensal do chiller", 30, ["Registrar pressões de alta e baixa", "Verificar temperatura de entrada e saída", "Checar vazamentos de fluido", "Limpar filtros de água", "Verificar corrente dos compressores"]],
-    ["c3", "Teste quinzenal do gerador", 15, ["Verificar nível de óleo e combustível", "Partida em vazio por 15 minutos", "Testar transferência automática", "Checar bateria de partida", "Registrar horímetro"]],
+    ["c3", "Teste quinzenal do gerador", 15, ["Verificar nível de óleo e combustível", "Partida em vazio por 15 minutos", "Testar transferência automática", "Checar bateria de partida", { t: "Foto do painel com o horímetro", tipo: "foto" }, { t: "Data da próxima troca de óleo", tipo: "data" }]],
     ["c4", "Revisão trimestral do aquecimento", 90, ["Limpar queimadores", "Verificar pressão de gás", "Testar válvula de segurança", "Medir temperatura de saída"]],
     ["c5", "Inspeção mensal das bombas", 30, ["Verificar ruído e vibração", "Checar selo mecânico", "Medir corrente do motor", "Testar alternância entre bombas"]],
     ["c6", "Termografia semestral de quadros", 180, ["Termografia dos barramentos", "Reapertar conexões", "Verificar disjuntores e DR", "Atualizar diagrama unifilar"]],
@@ -324,7 +375,7 @@ function buildSeed() {
     c9: [{ t: "pH da água", tipo: "medicao", unidade: "", min: 7.2, max: 7.8 }, { t: "Cloro livre", tipo: "medicao", unidade: "ppm", min: 1, max: 3 }]
   };
   const planos = planosBase.map(([cat, nome, dias, checklist], i) => ({ id: "PL-" + (101 + i), categoria_id: cat, nome, periodicidade_dias: dias,
-    checklist: [...(medicoes[cat] || []), ...checklist.filter(t => !["Verificar temperatura de entrada e saída", "Medir temperatura de saída", "Medir corrente do motor", "Registrar temperatura", "Medir pH e cloro"].includes(t)).map(t => ({ t, tipo: "check" }))],
+    checklist: [...(medicoes[cat] || []), ...checklist.filter(t => typeof t !== "string" || !["Verificar temperatura de entrada e saída", "Medir temperatura de saída", "Medir corrente do motor", "Registrar temperatura", "Medir pH e cloro"].includes(t)).map(t => typeof t === "string" ? { t, tipo: "check" } : t)],
     escopo_tipo: "grupo", escopo_id: "t1", ativo: true }));
 
   // OS preventivas: últimos 60 dias até próximos 35 dias
@@ -351,6 +402,9 @@ function buildSeed() {
           inicio: concl ? iso(dia) : null, fim: concl ? iso(dia + (0.5 + rnd() * 2) * H) : null,
           horas: concl ? Math.round((0.5 + rnd() * 2) * 10) / 10 : null,
           checklist: pl.checklist.map(it => {
+            if (it.tipo === "lista") return { ...it, valor: concl ? it.opcoes[0] : null };
+            if (it.tipo === "data") return { ...it, valor: concl ? new Date(dia + 90 * D).toISOString().slice(0, 10) : null };
+            if (it.tipo === "foto") return { ...it, ok: concl };
             if (it.tipo !== "medicao") return { ...it, ok: concl };
             if (!concl) return { ...it, valor: null, fora: false };
             const fora = rnd() < 0.05, span = it.max - it.min;
@@ -383,12 +437,14 @@ function buildSeed() {
     ["MA-05", "c3", "Gerador diesel 150 kVA", "Cummins", "PL-103"], ["MA-06", "c5", "Bomba centrífuga de recalque", "KSB", "PL-105"],
     ["MA-07", "c8", "Câmara fria média temperatura", "Danfoss", "PL-108"], ["MA-08", "c9", "Filtro de piscina com bomba 1 cv", "Dancor", "PL-109"]
   ].map(([id, categoria_id, nome, fabricante, plano_id]) => ({ id, categoria_id, nome, fabricante, plano_id }));
-  const implantacao = hoteis.map((h, i) => {
-    const criticos = ativos.filter(a => a.hotel_id === h.id && a.criticidade !== "Baixa").length;
+  const ONDA = { h1: 0, h2: 0, h7: 0, h11: 0, h3: 1, h4: 1, h5: 1, h6: 1, h9: 1, h10: 1, h8: 2, h12: 2, h13: 2, h14: 2 };
+  const implantacao = hoteis.map(h => {
+    const o = ONDA[h.id];
+    const criticos = ativos.filter(a => a.hotel_id === h.id && a.criticidade >= 3).length;
     const previstos = criticos + int(4, 14);
-    const pct = i < 3 ? 1 : i < 6 ? 0.55 + rnd() * 0.35 : i < 10 ? 0.1 + rnd() * 0.35 : 0;
+    const pct = o === 0 ? 1 : o === 1 ? (h.id === "h6" ? 0.35 : 0.45 + rnd() * 0.4) : h.id === "h8" ? 0.15 : 0;
     const cad = Math.round(previstos * pct);
-    return { hotel_id: h.id, previstos, cadastrados: cad, etiquetados: Math.round(cad * (i < 3 ? 1 : 0.6 + rnd() * 0.3)), onda: i < 3 ? "Piloto" : i < 10 ? "Onda 1" : "Onda 2" };
+    return { hotel_id: h.id, previstos, cadastrados: cad, etiquetados: Math.round(cad * (o === 0 ? 1 : 0.6 + rnd() * 0.3)), onda: o === 0 ? "Piloto" : o === 1 ? "Onda 1" : "Onda 2" };
   });
   const capturas_celular = [
     { id: "CP-1", hotel_id: "h4", local: "Casa de máquinas", categoria_id: "c5", fabricante: "Schneider", modelo: "BC-92", foto: 2, por: "Técnico do Hotel São Paulo Moema" },
@@ -396,16 +452,16 @@ function buildSeed() {
     { id: "CP-3", hotel_id: "h5", local: "Cobertura", categoria_id: "c2", fabricante: "Trane", modelo: "RTAF 100 TR", foto: 3, por: "Técnico do Hotel Florianópolis Centro" }
   ];
 
-  // ---------- Integração TOTVS CM (somente leitura) ----------
+  // ---------- Integração PMS (somente leitura) ----------
   const minAtras = m => iso(now.getTime() - m * 60e3);
   const integracao = {
     modo: "Somente leitura",
     conexao: "Agente local via HTTPS (usuário de banco sem permissão de escrita)",
     views: [
-      { nome: "vw_csc_hoteis", conteudo: "Hotéis e códigos no CM", frequencia: "Diária", ultima: minAtras(612), linhas: hoteis.length, status: "ok" },
+      { nome: "vw_csc_hoteis", conteudo: "Hotéis e códigos no PMS", frequencia: "Diária", ultima: minAtras(612), linhas: hoteis.length, status: "ok" },
       { nome: "vw_csc_unidades", conteudo: "UHs, tipo e andar", frequencia: "Diária", ultima: minAtras(608), linhas: locais.filter(l => l.tipo === "uh").length, status: "ok" },
-      { nome: "vw_csc_status_uh", conteudo: "Ocupada, vaga, bloqueada", frequencia: "A cada 10 min", ultima: minAtras(4), linhas: locais.filter(l => l.tipo === "uh").length, status: "ok" },
-      { nome: "vw_csc_bloqueios", conteudo: "Bloqueios de UH por manutenção", frequencia: "A cada 15 min", ultima: minAtras(11), linhas: 37, status: "ok" },
+      { nome: "vw_csc_status_uh", conteudo: "Ocupada, vaga, bloqueada", frequencia: "A cada 5 min", ultima: minAtras(3), linhas: locais.filter(l => l.tipo === "uh").length, status: "ok" },
+      { nome: "vw_csc_bloqueios", conteudo: "Bloqueios de UH por manutenção", frequencia: "A cada 5 min", ultima: minAtras(4), linhas: 37, status: "ok" },
       { nome: "vw_csc_proprietarios", conteudo: "Proprietário por UH (condo-hotel)", frequencia: "Diária", ultima: minAtras(1480), linhas: localProprietario.length, status: "atraso" }
     ],
     execucoes: []
@@ -414,10 +470,149 @@ function buildSeed() {
     const v = pick(integracao.views);
     integracao.execucoes.push({ t: minAtras(i * 17 + int(1, 9)), view: v.nome, linhas: int(0, 60), duracao_s: int(2, 38), resultado: i === 5 ? "Falha: tempo de conexão esgotado (nova tentativa em 5 min)" : "Sucesso" });
   }
-  // status de UH (vindo do CM), para exibir no detalhe
+  // status de UH (vindo do PMS), para exibir no detalhe
   const statusUH = {};
   locais.filter(l => l.tipo === "uh").forEach(l => { statusUH[l.id] = weighted([["Ocupada", 68], ["Vaga limpa", 18], ["Vaga suja", 9], ["Bloqueada", 5]]); });
   chamados.filter(c => c.status !== "Encerrado" && c.status !== "Cancelado" && c.local_id.includes("-u") && (c.prioridade === "Alta" || c.prioridade === "Crítica")).forEach(c => { if (rnd() < 0.6) statusUH[c.local_id] = "Bloqueada"; });
+
+
+  // ---------- Fornecedores (cadastro mínimo) ----------
+  const cnpj = () => { const d = Array.from({ length: 12 }, () => int2(0, 9)).join(""); return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/0001-${String(int2(10, 99))}`; };
+  const fornecedores = [
+    ["f1", "Elevar Elevadores Ltda.", ["c1"], "(41) 3333-1200", "plantao@elevar.demo"],
+    ["f2", "FrioSul Refrigeração", ["c2", "c8", "c11"], "(41) 3022-4410", "chamados@friosul.demo"],
+    ["f3", "Hidrotec Serviços Hidráulicos", ["c13", "c5"], "(11) 4004-2210", "os@hidrotec.demo"],
+    ["f4", "Voltare Engenharia Elétrica", ["c6", "c3", "c14"], "(11) 3555-9081", "atendimento@voltare.demo"],
+    ["f5", "Clima Certo Climatização", ["c7"], "(48) 3211-7788", "suporte@climacerto.demo"],
+    ["f6", "AquaPura Piscinas", ["c9"], "(47) 3366-0900", "contato@aquapura.demo"],
+    ["f7", "Acesso Total Automação", ["c10", "c15"], "(51) 3088-1515", "servicos@acessototal.demo"],
+    ["f8", "Pinta Bem Acabamentos", ["c16"], "(41) 99812-4400", "orcamento@pintabem.demo"]
+  ].map(([id, nome, categorias, telefone, email]) => ({ id, nome, cnpj: cnpj(), categorias, telefone, email, ativo: true }));
+  const fornDe = cat => fornecedores.find(f => f.categorias.includes(cat));
+
+  // ---------- Códigos de manutenção (falha, causa, solução) por categoria ----------
+  const codigos = {
+    c1: { falha: ["Parado entre andares", "Porta não fecha", "Nivelamento irregular", "Ruído anormal"], causa: ["Desgaste de componente", "Falha elétrica", "Sujeira no trilho da porta", "Uso indevido"], solucao: ["Ajuste e regulagem", "Troca de componente", "Limpeza", "Reinício do quadro de comando"] },
+    c2: { falha: ["Alarme de alta pressão", "Baixa capacidade", "Vazamento de fluido"], causa: ["Condensador sujo", "Falha de sensor", "Desgaste do compressor"], solucao: ["Limpeza do condensador", "Troca de sensor", "Recarga de fluido", "Troca de compressor"] },
+    c5: { falha: ["Desarme", "Ruído", "Vazamento no selo"], causa: ["Sobrecorrente", "Rolamento gasto", "Selo mecânico gasto"], solucao: ["Troca de rolamento", "Troca do selo", "Ajuste do relé térmico"] },
+    c7: { falha: ["Não gela", "Pingando", "Ruído"], causa: ["Filtro sujo", "Placa eletrônica", "Dreno obstruído", "Falta de gás"], solucao: ["Limpeza", "Troca de placa", "Desobstrução do dreno", "Recarga de gás"] },
+    c8: { falha: ["Temperatura acima da faixa", "Porta sem vedação"], causa: ["Degelo travado", "Borracha danificada", "Condensador sujo"], solucao: ["Ajuste do degelo", "Troca da borracha", "Limpeza"] },
+    c10: { falha: ["Não reconhece o cartão", "Sem bateria"], causa: ["Bateria fraca", "Falha do leitor"], solucao: ["Troca de bateria", "Troca do leitor", "Reprogramação"] },
+    c13: { falha: ["Vazamento", "Entupimento", "Sem água quente"], causa: ["Vedação gasta", "Obstrução", "Falha no misturador"], solucao: ["Troca de vedação", "Desentupimento", "Troca do misturador"] },
+    _: { falha: ["Não funciona", "Funcionamento irregular"], causa: ["Desgaste", "Falha elétrica", "Uso indevido"], solucao: ["Ajuste", "Troca de componente", "Limpeza"] }
+  };
+  const codDe = cat => codigos[cat] || codigos._;
+
+  // ---------- Arrendado: matriz de responsabilidade por hotel e categoria ----------
+  const LOCADOR_CATS = { h7: ["c1", "c2", "c3", "c5", "c6"], h8: ["c1", "c3", "c5", "c6"] };
+  const responsabilidade = [];
+  Object.entries(LOCADOR_CATS).forEach(([hid, cats]) => categorias.forEach(c => responsabilidade.push({ hotel_id: hid, categoria_id: c.id, responsavel: cats.includes(c.id) ? "Locador" : "Arrendatária" })));
+  const respDe = (hid, cat) => { const r = responsabilidade.find(x => x.hotel_id === hid && x.categoria_id === cat); return r ? r.responsavel : null; };
+
+  // ---------- Histórico anterior (90 a 180 dias), base da Intelligence ----------
+  const antigos = [];
+  for (let i = 0; i < 560; i++) {
+    const hid = weightedR2(pesos), h = hoteis.find(x => x.id === hid);
+    const m = weightedR2(modelos.map(m => [m, m[3]])), [cat, titulo, lugar] = m;
+    const local = lugar === "uh" ? pick2(uhsDo(hid)) : areaDo(hid, lugar);
+    const ativo = lugar === "uh" ? (cat === "c7" ? ativos.find(a => a.local_id === local.id && a.categoria_id === "c7") : null) : (rnd2() < 0.7 ? pick2(ativos.filter(a => a.hotel_id === hid && a.categoria_id === cat)) : null);
+    antigos.push({ hid, cat, titulo, local, ativo: ativo || null, prio: prioPorCatR2(cat), age: 91 + rnd2() * 89 });
+  }
+  function weightedR2(pairs) { const tot = pairs.reduce((x, p) => x + p[1], 0); let r = rnd2() * tot; for (const [v, w] of pairs) { if ((r -= w) <= 0) return v; } return pairs[0][0]; }
+  function prioPorCatR2(cat) { return ["c1", "c2", "c5", "c8"].includes(cat) ? (rnd2() < 0.6 ? "Crítica" : "Alta") : ["c4", "c6", "c3"].includes(cat) ? "Alta" : rnd2() < 0.5 ? "Média" : "Baixa"; }
+
+  // Cenários plantados para os insights (reincidência, efetividade antes e depois, padrão sistêmico)
+  const atv = (hid, nome) => ativos.find(a => a.hotel_id === hid && a.nome === nome);
+  const bombaSP = atv("h3", "Bomba de recalque 1"), chillerFln = atv("h5", "Chiller principal"), camaraRio = atv("h10", "Câmara fria de carnes");
+  [84, 67, 49, 33, 18].forEach((d, i) => antigos.push({ hid: "h3", cat: "c5", titulo: i % 2 ? "Ruído na bomba de recalque" : "Bomba de recalque desarmando", local: IDXloc(bombaSP.local_id), ativo: bombaSP, prio: "Alta", age: d, parada: 6 + i * 2 }));
+  [172, 158, 141, 126, 110].forEach(d => antigos.push({ hid: "h5", cat: "c2", titulo: "Chiller em alarme de alta pressão", local: IDXloc(chillerFln.local_id), ativo: chillerFln, prio: "Crítica", age: d, parada: 5 }));
+  antigos.push({ hid: "h5", cat: "c2", titulo: "Troca do pressostato e limpeza do condensador", local: IDXloc(chillerFln.local_id), ativo: chillerFln, prio: "Alta", age: 98, intervencao: true, forn: "f2", custo: 18400, parada: 9 });
+  antigos.push({ hid: "h5", cat: "c2", titulo: "Chiller com baixa capacidade", local: IDXloc(chillerFln.local_id), ativo: chillerFln, prio: "Média", age: 31 });
+  [168, 139, 117].forEach(d => antigos.push({ hid: "h10", cat: "c8", titulo: "Câmara fria acima de 5 °C", local: IDXloc(camaraRio.local_id), ativo: camaraRio, prio: "Crítica", age: d, parada: 4 }));
+  antigos.push({ hid: "h10", cat: "c8", titulo: "Troca do motor do evaporador", local: IDXloc(camaraRio.local_id), ativo: camaraRio, prio: "Alta", age: 95, intervencao: true, forn: "f2", custo: 6900, parada: 7 });
+  [78, 55, 37, 12].forEach(d => antigos.push({ hid: "h10", cat: "c8", titulo: "Câmara fria acima de 5 °C", local: IDXloc(camaraRio.local_id), ativo: camaraRio, prio: "Crítica", age: d, parada: 5 }));
+  // Mesmo modelo de split falhando em vários hotéis da Linha Business
+  const splitsMidea = [];
+  ["h1", "h3", "h5", "h10", "h14"].forEach(hid => ativos.filter(a => a.hotel_id === hid && a.categoria_id === "c7" && a.local_id.includes("-u")).slice(0, 3).forEach(a => { a.fabricante = "Midea"; a.modelo = "Split Inverter 12.000 BTU"; splitsMidea.push(a); }));
+  splitsMidea.forEach((a, i) => [int2(5, 40), int2(45, 85)].slice(0, i % 3 === 2 ? 1 : 2).forEach(d => antigos.push({ hid: a.hotel_id, cat: "c7", titulo: "Ar-condicionado não gela", local: IDXloc(a.local_id), ativo: a, prio: "Média", age: d, codigo: ["Não gela", "Placa eletrônica", "Troca de placa"] })));
+  function IDXloc(id) { return locais.find(l => l.id === id); }
+
+  antigos.sort((a, b) => b.age - a.age);
+  let chOld = 4800 - antigos.length, osOld = 9000;
+  antigos.forEach(x => {
+    const aberto = now.getTime() - x.age * D - int2(0, 10) * H, slaH = slaEfetivo(x.hid, x.prio);
+    const reparoH = Math.max(0.5, slaH * (0.3 + rnd2() * 0.9)), enc = aberto + reparoH * H;
+    const tec = pick2(tecsDo(x.hid)), sol = pick2(solicitantes);
+    const c = { id: "CH-" + (++chOld), hotel_id: x.hid, local_id: x.local.id, ativo_id: x.ativo ? x.ativo.id : null, categoria_id: x.cat, titulo: x.titulo, descricao: x.titulo + ".", prioridade: x.prio, status: "Encerrado",
+      aberto_em: iso(aberto), prazo_sla: iso(prazoSla(x.cat, aberto, slaH)), sla_h: slaH, atendido_em: iso(aberto + 0.4 * H), encerrado_em: iso(enc), tecnico_id: tec.id, solicitante: sol, fotos: int2(0, 2),
+      eventos: [{ t: iso(aberto), tipo: "abertura", txt: "Chamado aberto por " + sol }, { t: iso(aberto + 0.1 * H), tipo: "sistema", txt: `Prazo de SLA definido: ${slaH} h (prioridade ${x.prio})` }, { t: iso(aberto + 0.4 * H), tipo: "atribuicao", txt: "Atribuído a " + tec.nome }, { t: iso(enc), tipo: "status", txt: "Encerrado com aceite do solicitante" }] };
+    if (x.intervencao) c.intervencao = true;
+    if (x.forn) c._forn = x.forn;
+    if (x.custo) c._custo = x.custo;
+    if (x.codigo) c._codigo = x.codigo;
+    if (x.parada && c.ativo_id) ativo_parada.push({ id: "PA-" + (ativo_parada.length + 1), ativo_id: c.ativo_id, chamado_id: c.id, inicio: c.aberto_em, fim: iso(aberto + x.parada * H), motivo: c.titulo });
+    chamados.push(c);
+    os.push({ id: "OS-" + (++osOld), origem: "corretiva", chamado_id: c.id, plano_id: null, hotel_id: c.hotel_id, local_id: c.local_id, ativo_id: c.ativo_id, titulo: c.titulo, responsavel_id: tec.id, status: "Concluída", programada_para: c.atendido_em, inicio: c.atendido_em, fim: c.encerrado_em, horas: Math.round((enc - aberto - 0.4 * H) / H * 10) / 10, checklist: [], materiais: "" });
+  });
+  // A bomba do São Paulo Paulista voltou a falhar e está em atendimento agora
+  (() => { const aberto = now.getTime() - 20 * H, slaH = slaEfetivo("h3", "Alta"), tec = tecsDo("h3")[0];
+    const c = { id: "CH-" + (++chn), hotel_id: "h3", local_id: bombaSP.local_id, ativo_id: bombaSP.id, categoria_id: "c5", titulo: "Bomba de recalque desarmando de novo", descricao: "Desarmou três vezes desde ontem.", prioridade: "Alta", status: "Em atendimento", aberto_em: iso(aberto), prazo_sla: iso(aberto + slaH * H), sla_h: slaH, atendido_em: iso(aberto + 0.5 * H), encerrado_em: null, tecnico_id: tec.id, solicitante: "Manutenção", fotos: 1,
+      eventos: [{ t: iso(aberto), tipo: "abertura", txt: "Chamado aberto por Manutenção" }, { t: iso(aberto + 0.1 * H), tipo: "sistema", txt: `Prazo de SLA definido: ${slaH} h (prioridade Alta)` }, { t: iso(aberto + 0.5 * H), tipo: "atribuicao", txt: "Atribuído a " + tec.nome }, { t: iso(aberto + 0.6 * H), tipo: "status", txt: "Em atendimento" }] };
+    chamados.unshift(c); ativo_parada.push({ id: "PA-" + (ativo_parada.length + 1), ativo_id: bombaSP.id, chamado_id: c.id, inicio: iso(aberto), fim: null, motivo: c.titulo }); bombaSP.status = "Parado";
+    osn++; os.push({ id: "OS-" + osn, origem: "corretiva", chamado_id: c.id, plano_id: null, hotel_id: "h3", local_id: c.local_id, ativo_id: bombaSP.id, titulo: c.titulo, responsavel_id: tec.id, status: "Em execução", programada_para: c.atendido_em, inicio: c.atendido_em, fim: null, horas: null, checklist: [], materiais: "" });
+  })();
+  // Medição fora da faixa recente na bomba
+  (() => { const o = os.filter(x => x.ativo_id === bombaSP.id && x.origem === "preventiva" && x.status === "Concluída").sort((a, b) => b.fim.localeCompare(a.fim))[0]; if (o) o.checklist.forEach(c => { if (c.tipo === "medicao") { c.valor = 13.6; c.fora = true; } }); })();
+  chamados.sort((a, b) => b.aberto_em.localeCompare(a.aberto_em));
+
+  // ---------- Instrumentação dos chamados (1b): origem, impacto no hóspede, UH indisponível, quem executou, custo, códigos, aceite ----------
+  const origemDe = sol => ({ "Recepção": "Recepção", "Governança": "Governança", "Hóspede (via recepção)": "Hóspede, pela recepção", "Técnico (app)": "App do técnico (QR)", "Manutenção": "Equipe de manutenção" })[sol] || "Área operacional";
+  chamados.forEach(c => {
+    const loc = locais.find(l => l.id === c.local_id), ehUH = loc.tipo === "uh";
+    c.origem = origemDe(c.solicitante);
+    c.impacto_hospede = c.solicitante === "Hóspede (via recepção)" || (ehUH && rnd2() < 0.55) || (["c1", "c4"].includes(c.categoria_id) && rnd2() < 0.7);
+    const aberto = +new Date(c.aberto_em);
+    if (ehUH && c.status !== "Cancelado" && (["Crítica", "Alta"].includes(c.prioridade) ? rnd2() < 0.75 : rnd2() < 0.12)) {
+      const fim = c.encerrado_em ? +new Date(c.encerrado_em) + (0.5 + rnd2() * 3) * H : null;
+      c.uh_indisp = { inicio: iso(aberto + 0.25 * H), fim: fim && fim < now.getTime() ? iso(fim) : null };
+      if (!c.uh_indisp.fim) statusUH[c.local_id] = "Bloqueada";
+    }
+    if (c.tecnico_id && c.status !== "Cancelado") {
+      const f = c._forn ? fornecedores.find(x => x.id === c._forn) : fornDe(c.categoria_id);
+      const usaForn = c._forn || (f && (c.categoria_id === "c1" ? rnd2() < 0.9 : ["c2", "c8", "c3"].includes(c.categoria_id) ? rnd2() < 0.5 : rnd2() < 0.08));
+      c.executado_por = usaForn ? { tipo: "fornecedor", fornecedor_id: f.id } : { tipo: "interna" };
+    }
+    if (c.status === "Encerrado") {
+      c.custo = c._custo || (c.executado_por && c.executado_por.tipo === "fornecedor" ? Math.round((600 + rnd2() * 5200) / 10) * 10 : rnd2() < 0.55 ? Math.round(rnd2() * 380 / 10) * 10 : 0);
+      const cd = codDe(c.categoria_id);
+      if (c._codigo) c.codigos = { falha: c._codigo[0], causa: c._codigo[1], solucao: c._codigo[2] };
+      else if (rnd2() < 0.62) c.codigos = { falha: pick2(cd.falha), causa: pick2(cd.causa), solucao: pick2(cd.solucao) };
+      c.aceite = { t: c.encerrado_em, por: c.solicitante === "Hóspede (via recepção)" ? "Recepção" : c.solicitante, assinatura: rnd2() < 0.8 };
+    }
+    const r = respDe(c.hotel_id, c.categoria_id);
+    if (r) {
+      c.responsavel_custo = r;
+      if (r === "Locador") { c.eventos.push({ t: iso(aberto + 0.15 * H), tipo: "sistema", txt: "Locador notificado: categoria sob responsabilidade dele no contrato" }); c.eventos.sort((a, b) => a.t.localeCompare(b.t)); c.locador_notificado_em = iso(aberto + 0.15 * H); }
+    }
+    delete c._forn; delete c._custo; delete c._codigo;
+  });
+  os.forEach(o => { if (o.chamado_id) { const c = chamados.find(x => x.id === o.chamado_id); if (c) { o.executado_por = c.executado_por || { tipo: "interna" }; if (c.responsavel_custo) o.responsavel_custo = c.responsavel_custo; } } else if (respDe(o.hotel_id, (ativos.find(a => a.id === o.ativo_id) || {}).categoria_id)) o.responsavel_custo = respDe(o.hotel_id, ativos.find(a => a.id === o.ativo_id).categoria_id); });
+
+  // ---------- Pacote da bandeira e hotéis em abertura ----------
+  const pacotes = [
+    { bandeira_id: "b1", versao: "2026.3", modelos: ["MA-01", "MA-03", "MA-04", "MA-05", "MA-06", "MA-07", "MA-08"], planos: ["PL-101", "PL-102", "PL-103", "PL-104", "PL-105", "PL-106", "PL-107", "PL-108", "PL-109"], atualizado_em: iso(now.getTime() - 12 * D) },
+    { bandeira_id: "b2", versao: "2026.2", modelos: ["MA-01", "MA-03", "MA-05", "MA-06", "MA-07"], planos: ["PL-101", "PL-103", "PL-104", "PL-105", "PL-106", "PL-107", "PL-108"], atualizado_em: iso(now.getTime() - 34 * D) },
+    { bandeira_id: "b3", versao: "2026.3", modelos: ["MA-02", "MA-03", "MA-05", "MA-06", "MA-08"], planos: ["PL-101", "PL-103", "PL-104", "PL-105", "PL-107", "PL-109"], atualizado_em: iso(now.getTime() - 9 * D) }
+  ];
+  const aberturas = [
+    { id: "ab1", nome: "Hotel Palmas", cidade: "Palmas", uf: "TO", bandeira_id: "b2", uhs: 120, modelo: "Próprio", previsao: "Dezembro de 2026",
+      passos: { licenca: iso(now.getTime() - 2 * D), pacote: null, locais: null, usuarios: null, ativos: null, etiquetas: null } },
+    { id: "ab2", nome: "Hotel Foz do Iguaçu", cidade: "Foz do Iguaçu", uf: "PR", bandeira_id: "b1", uhs: 160, modelo: "Arrendado", previsao: "2027",
+      passos: { licenca: null, pacote: null, locais: null, usuarios: null, ativos: null, etiquetas: null } }
+  ];
+
+  // ---------- Ficha de conexão por hotel (agente local) ----------
+  const fichas = hoteis.map(h => ({ hotel_id: h.id, agente: h.id === "h13" ? "hk-agente 1.3.9" : "hk-agente 1.4.2", ultimo_contato: minAtras(h.id === "h8" ? 47 : int2(1, 4)), limite_min: 5 }));
 
   // ---------- Auditoria ----------
   const auditoria = [];
@@ -429,7 +624,12 @@ function buildSeed() {
   }));
   auditoria.push({ t: minAtras(60 * 26), usuario: "Marina Costa", entidade: "Política", registro: "po3", hotel_id: "h3", acao: "SLA de prioridade Crítica no Hotel São Paulo Paulista alterado de 2 h para 1 h" });
   auditoria.push({ t: minAtras(60 * 50), usuario: "Marina Costa", entidade: "Usuário", registro: "u5", hotel_id: "h11", acao: "Acesso de proprietária concedido a Helena Ramos (3 UHs)" });
+  auditoria.push({ t: minAtras(60 * 30), usuario: "Lúcia Andrade", entidade: "Fornecedor", registro: "f8", hotel_id: null, acao: "Fornecedor cadastrado: Pinta Bem Acabamentos" });
+  auditoria.push({ t: minAtras(60 * 74), usuario: "Lúcia Andrade", entidade: "Hotel", registro: "ab1", hotel_id: null, acao: "Hotel Palmas ativado com licença (abertura prevista para dezembro de 2026)" });
+  auditoria.push({ t: minAtras(60 * 98), usuario: "Marina Costa", entidade: "Política", registro: "po1", hotel_id: null, acao: "Calendário de SLA: pintura e piscina passam a contar em horário comercial" });
   auditoria.sort((a, b) => b.t.localeCompare(a.t));
 
-  return { versao: 4, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria };
+  integracao.fichas = fichas;
+  return { versao: 6, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
+    fornecedores, codigos, responsabilidade, pacotes, aberturas };
 }
