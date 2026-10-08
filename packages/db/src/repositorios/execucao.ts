@@ -40,6 +40,7 @@ export async function andarComOs(
     acao: g.acao,
     de: g.de,
     para: g.estado,
+    quando: g.quando,
   });
   if (g.chamado) await refletirNoChamado(uow, g.chamado);
   uow.auditar({

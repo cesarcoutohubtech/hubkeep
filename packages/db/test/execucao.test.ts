@@ -358,6 +358,60 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
     });
   });
 
+  it('I9: as transições sem rede gravam a hora do aparelho, em ordem e nunca no futuro', async () => {
+    const { osId } = await osPara({ tipo: 'tecnico', usuarioId: U.tecnico });
+    // A geração recuada duas horas (pelo dono), para as horas do aparelho
+    // ficarem no passado e o ajuste ao futuro não interferir.
+    const geracao = (
+      await dono.query<{ quando: Date }>(
+        `update app.os_transicao set quando = quando - interval '2 hours'
+         where os_id = $1 and acao = 'gerar' returning quando`,
+        [osId],
+      )
+    ).rows[0]?.quando;
+    if (!geracao) throw new Error('A geração não gravou a transição.');
+    const depois = (min: number) => new Date(geracao.getTime() + min * 60_000).toISOString();
+    const agir = (
+      tipo: 'os.iniciar' | 'os.pausar' | 'os.retomar' | 'os.concluir',
+      versao: number,
+      feitaEm?: string,
+    ) =>
+      sincronizacao.receberOperacao(ctx(U.tecnico), {
+        chave: randomUUID(),
+        tipo,
+        dados: { osId, versao, ...(feitaEm ? { feitaEm } : {}) },
+      });
+    // Iniciar 1 min depois da geração; pausar com o relógio atrasado (antes da
+    // geração); retomar sem a hora (operação antiga); concluir com o relógio
+    // adiantado uma hora.
+    await agir('os.iniciar', 1, depois(1));
+    await agir('os.pausar', 2, depois(-30));
+    await agir('os.retomar', 3);
+    const antesDaConclusao = new Date();
+    await agir('os.concluir', 4, new Date(Date.now() + 3_600_000).toISOString());
+
+    const linhas = (
+      await dono.query<{ acao: string; quando: Date }>(
+        `select acao, quando from app.os_transicao where os_id = $1 order by quando, id`,
+        [osId],
+      )
+    ).rows;
+    expect(linhas.map((l) => l.acao)).toEqual([
+      'gerar',
+      'iniciar',
+      'pausar',
+      'retomar',
+      'concluir',
+    ]);
+    const [, iniciar, pausar, retomar, concluir] = linhas.map((l) => l.quando.getTime());
+    expect(iniciar).toBe(geracao.getTime() + 60_000);
+    expect(pausar).toBe(iniciar);
+    expect(retomar).toBeGreaterThan(iniciar ?? 0);
+    expect(concluir).toBeGreaterThanOrEqual(retomar ?? 0);
+    expect(concluir).toBeLessThanOrEqual(Date.now());
+    expect(concluir).toBeGreaterThanOrEqual(antesDaConclusao.getTime() - 1000);
+  });
+
   it('versão velha: conflito_de_versao; apontamento fora do limite: 422', async () => {
     const { osId } = await osPara({ tipo: 'tecnico', usuarioId: U.tecnico });
     await operar(U.tecnico, 'os.iniciar', osId, 1);

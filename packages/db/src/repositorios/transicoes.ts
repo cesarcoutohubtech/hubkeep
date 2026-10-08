@@ -14,6 +14,8 @@ export interface TransicaoGravada {
   /** Nulo só na geração da OS. */
   de: EstadoDaOs | null;
   para: EstadoDaOs;
+  /** A hora do aparelho, já ajustada pelo domínio (I9); sem ela, now() da transação. */
+  quando?: Date;
 }
 
 export async function registrarTransicao(
@@ -31,6 +33,7 @@ export async function registrarTransicao(
       acao: t.acao,
       de: t.de,
       para: t.para,
+      ...(t.quando ? { quando: t.quando } : {}),
       usuario_id: uow.usuarioId,
     })
     .execute();

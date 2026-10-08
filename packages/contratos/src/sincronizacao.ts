@@ -24,7 +24,16 @@ export const TIPOS_DE_OPERACAO_OFFLINE = [
 ] as const;
 
 /** Transição da OS pelo Técnico, com a versão esperada (ADR-029). */
-const TransicaoDaOs = z.object({ osId: z.guid(), versao: z.number().int().min(1) });
+/**
+ * A transição leva a versão da OS no aparelho e, desde a I9, a hora em que o
+ * técnico agiu (opcional: a operação guardada antes não tem). O domínio
+ * ajusta a hora fora de ordem ou no futuro (horaDaTransicao).
+ */
+const TransicaoDaOs = z.object({
+  osId: z.guid(),
+  versao: z.number().int().min(1),
+  feitaEm: z.iso.datetime().optional(),
+});
 
 export const PedidoDeOperacaoOffline = z
   .discriminatedUnion('tipo', [

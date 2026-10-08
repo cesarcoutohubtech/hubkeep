@@ -347,6 +347,7 @@ function Casca(props: {
       dados: {
         osId: o.id,
         versao: o.versao,
+        feitaEm: new Date().toISOString(),
         ...(acao === 'concluir' && resposta
           ? { equipamentoVoltou: resposta.equipamentoVoltou, concluidaEm: new Date().toISOString() }
           : {}),

@@ -11,6 +11,7 @@ import {
   type Responsavel,
   decidirNaOs,
   decidirRegistroNaOs,
+  horaDaTransicao,
   normalizarMaterial,
   validarApontamento,
 } from '../src';
@@ -160,5 +161,31 @@ describe('material em texto livre', () => {
   it('vazio ou acima de 500: material_invalido', () => {
     for (const d of ['', '   ', 'x'.repeat(501)])
       expect(codigo(() => normalizarMaterial(d))).toBe('material_invalido');
+  });
+});
+
+describe('horaDaTransicao (I9): a hora do aparelho, em ordem e nunca no futuro', () => {
+  const min = (m: number) => new Date(agora.getTime() + m * 60_000);
+  const anterior = min(-120);
+
+  it('usa a hora do aparelho entre a transição anterior e agora', () => {
+    expect(horaDaTransicao(min(-60), anterior, agora)).toEqual(min(-60));
+    expect(horaDaTransicao(min(-60), null, agora)).toEqual(min(-60));
+  });
+
+  it('sem a hora (operação antiga) ou com data inválida, usa a do servidor', () => {
+    expect(horaDaTransicao(undefined, anterior, agora)).toEqual(agora);
+    expect(horaDaTransicao(null, anterior, agora)).toEqual(agora);
+    expect(horaDaTransicao(new Date('x'), anterior, agora)).toEqual(agora);
+  });
+
+  it('relógio adiantado: a hora no futuro vira a do servidor, mesmo dentro da folga', () => {
+    expect(horaDaTransicao(min(5), anterior, agora)).toEqual(agora);
+    expect(horaDaTransicao(min(600), anterior, agora)).toEqual(agora);
+  });
+
+  it('relógio atrasado: a hora antes da transição anterior vira a da anterior', () => {
+    expect(horaDaTransicao(min(-180), anterior, agora)).toEqual(anterior);
+    expect(horaDaTransicao(anterior, anterior, agora)).toEqual(anterior);
   });
 });

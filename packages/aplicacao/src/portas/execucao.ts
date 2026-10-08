@@ -36,6 +36,8 @@ export interface PortaExecucao {
   equipesDoUsuario(ctx: Contexto): Promise<string[]>;
   /** OS atribuídas, em execução ou pausadas do usuário e das equipes dele. */
   osDoDia(ctx: Contexto): Promise<OsDoDia[]>;
+  /** A hora da última transição da OS (I5); null se ela não tem nenhuma. */
+  ultimaTransicaoEm(ctx: Contexto, osId: string): Promise<Date | null>;
 }
 
 /** Ação do Técnico sobre a OS, já decidida pelo domínio. */
@@ -46,6 +48,8 @@ export interface AcaoNaOsDecidida {
   /** O estado lido na versão conferida: a transição grava de → para (I5). */
   de: EstadoDaOs;
   estado: EstadoDaOs;
+  /** A hora da transição: a do aparelho, ajustada pelo domínio (I9). */
+  quando: Date;
   situacaoId: string;
   /** O reflexo no chamado (concluir), com a versão lida no servidor; senão null. */
   chamado: { id: string; versao: number; estado: EstadoDoChamado; situacaoId: string } | null;
