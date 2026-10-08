@@ -186,6 +186,20 @@ export interface AppEventoDominio {
   tipo: string;
 }
 
+export interface AppFornecedor {
+  atualizado_em: Generated<Timestamp>;
+  cnpj: string | null;
+  contato_email: string | null;
+  contato_nome: string | null;
+  contato_telefone: string | null;
+  criado_em: Generated<Timestamp>;
+  desativado_em: Timestamp | null;
+  id: string;
+  nome: string;
+  tenant_id: string;
+  versao: Generated<number>;
+}
+
 export interface AppHotel {
   atualizado_em: Generated<Timestamp>;
   bandeira_id: string | null;
@@ -444,6 +458,7 @@ export interface DB {
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;
+  "app.fornecedor": AppFornecedor;
   "app.hotel": AppHotel;
   "app.hotel_proprietario": AppHotelProprietario;
   "app.local": AppLocal;
