@@ -133,6 +133,13 @@ export type { CasosDeUsoDeEquipes } from './casos-de-uso/equipes';
 export type { BandeiraCadastrada, PortaBandeiras } from './portas/bandeiras';
 export { criarCasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
 export type { CasosDeUsoDeBandeiras } from './casos-de-uso/bandeiras';
+export type {
+  FornecedorCadastrado,
+  MudancaDeFornecedor,
+  PortaFornecedores,
+} from './portas/fornecedores';
+export { criarCasosDeUsoDeFornecedores } from './casos-de-uso/fornecedores';
+export type { CasosDeUsoDeFornecedores, PedidoDeFornecedor } from './casos-de-uso/fornecedores';
 export type { MembroComAtribuicoes, PortaMembros } from './portas/membros';
 export type {
   AtivoGravado,

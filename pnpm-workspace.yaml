@@ -27,6 +27,10 @@ auditConfig:
 #   GHSA-wq5f-xc86-pv6w (sharp < 0.35.5, falha na dependência librsvg;
 #   publicado em 06/10/2026): entra por next (e @sentry/nextjs > next), na
 #   otimização de imagem do web. Tirar quando o next exigir >= 0.35.5.
+#   GHSA-8r5x-fm3f-whwj e GHSA-p8wg-vrv2-v86f (handlebars <= 4.7.9, injeção de
+#   JavaScript no compile; publicados em 08/10/2026): entra só pelo lint de
+#   fronteiras (eslint-plugin-boundaries). Tirar quando o plugin exigir >= 4.7.10.
 overrides:
   source-map-js: '>=1.2.2'
   sharp: '>=0.35.5'
+  handlebars: '>=4.7.10'

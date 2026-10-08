@@ -23,6 +23,13 @@ import {
   RespostaDeBandeiras,
 } from './bandeiras';
 import {
+  PedidoDeAlteracaoDeFornecedor,
+  PedidoDeFornecedor,
+  PedidoDeVersaoDeFornecedor,
+  RespostaDeFornecedorGravado,
+  RespostaDeFornecedores,
+} from './fornecedores';
+import {
   PedidoDeCategoria,
   RespostaDeCategoriaAlterada,
   RespostaDeCategorias,
@@ -815,6 +822,83 @@ export const ROTAS: readonly Rota[] = [
     },
   },
   {
+    metodo: 'get',
+    caminho: '/api/v1/fornecedores',
+    resumo:
+      'Fornecedores do grupo (I3), ativos e desativados, pelo nome. Lê quem tem papel em algum hotel do grupo, menos o proprietário, que recebe a lista vazia.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Fornecedores', esquema: RespostaDeFornecedores },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/fornecedores',
+    resumo:
+      'Cadastra um fornecedor do grupo: nome, CNPJ opcional (com ou sem pontuação; único no grupo) e contato opcional. Admin do grupo, Gestor CSC ou Gerente do hotel.',
+    exigeTenant: true,
+    corpo: PedidoDeFornecedor,
+    respostas: {
+      201: { descricao: 'Fornecedor cadastrado', esquema: RespostaDeFornecedorGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Sem permissão (fornecedores_sem_permissao).'),
+      409: ERRO('CNPJ já cadastrado no grupo (fornecedor_cnpj_repetido).'),
+      422: ERRO(
+        'fornecedor_nome_invalido, fornecedor_cnpj_invalido, fornecedor_contato_nome_invalido, fornecedor_telefone_invalido, fornecedor_email_invalido ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/fornecedores/{id}',
+    resumo:
+      'Altera o cadastro do fornecedor (todos os campos). Leva a versão vista; se ele mudou nesse meio-tempo, 409 (ADR-029).',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDeFornecedor,
+    respostas: {
+      200: {
+        descricao: 'Fornecedor alterado, com a versão nova',
+        esquema: RespostaDeFornecedorGravado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Sem permissão (fornecedores_sem_permissao).'),
+      404: ERRO('Fornecedor não encontrado (fornecedor_nao_encontrado).'),
+      409: ERRO('fornecedor_cnpj_repetido ou conflito_de_versao (com versaoAtual).'),
+      422: ERRO(
+        'fornecedor_nome_invalido, fornecedor_cnpj_invalido, fornecedor_contato_nome_invalido, fornecedor_telefone_invalido, fornecedor_email_invalido ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/fornecedores/{id}/desativacao',
+    resumo: 'Desativa o fornecedor (exclusão lógica). Leva a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDeFornecedor,
+    respostas: {
+      200: { descricao: 'Fornecedor desativado', esquema: RespostaDeFornecedorGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Sem permissão (fornecedores_sem_permissao).'),
+      404: ERRO('Fornecedor não encontrado (fornecedor_nao_encontrado).'),
+      409: ERRO('O fornecedor mudou (conflito_de_versao, com versaoAtual).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/fornecedores/{id}/reativacao',
+    resumo: 'Reativa o fornecedor. Leva a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDeFornecedor,
+    respostas: {
+      200: { descricao: 'Fornecedor reativado', esquema: RespostaDeFornecedorGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Sem permissão (fornecedores_sem_permissao).'),
+      404: ERRO('Fornecedor não encontrado (fornecedor_nao_encontrado).'),
+      409: ERRO('O fornecedor mudou (conflito_de_versao, com versaoAtual).'),
+    },
+  },
+  {
     metodo: 'put',
     caminho: '/api/v1/hoteis/{id}/bandeira',
     resumo: 'Troca (ou tira) a bandeira do hotel; o escopo do Gestor CSC da bandeira muda na hora.',
@@ -1322,7 +1406,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/auditoria',
     resumo:
-      'O histórico de um registro (D1): hotel, local, ativo, chamado ou OS, com quem gravou, quando, a ação e o antes e o depois de cada campo, da mais antiga para a mais nova. Quem não vê o registro recebe 404. Das linhas do registro, a RLS mostra só as que quem pede lê: o proprietário lê as do local, dos ativos, dos chamados e das OS que ele vê, e não as do hotel nem as das paradas. Os ids das mudanças vêm com o nome em referencias, quando quem pede os lê.',
+      'O histórico de um registro (D1): hotel, local, ativo, chamado, OS ou fornecedor (I3), com quem gravou, quando, a ação e o antes e o depois de cada campo, da mais antiga para a mais nova. Quem não vê o registro recebe 404. Das linhas do registro, a RLS mostra só as que quem pede lê: o proprietário lê as do local, dos ativos, dos chamados e das OS que ele vê, e não as do hotel nem as das paradas. Os ids das mudanças vêm com o nome em referencias, quando quem pede os lê.',
     exigeTenant: true,
     consulta: ConsultaDoHistorico,
     respostas: {

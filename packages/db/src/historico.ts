@@ -76,10 +76,16 @@ async function referencias(
 
 export function criarPortaHistorico(banco: AcessoBanco): PortaHistorico {
   return {
+    // O fornecedor (I3) é do grupo, sem hotel: visível é o que a RLS dele mostra.
     registroVisivel: (ctx, entidade, registroId) =>
-      banco.withContext(
-        ctx,
-        async (tx) => (await hotelDoRegistro(tx, entidade, registroId)) !== null,
+      banco.withContext(ctx, async (tx) =>
+        entidade === 'fornecedor'
+          ? (await tx
+              .selectFrom('app.fornecedor')
+              .select('id')
+              .where('id', '=', registroId)
+              .executeTakeFirst()) !== undefined
+          : (await hotelDoRegistro(tx, entidade, registroId)) !== null,
       ),
 
     linhas: (ctx, entidade, registroId) =>

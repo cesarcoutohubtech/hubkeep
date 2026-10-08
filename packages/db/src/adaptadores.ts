@@ -23,6 +23,7 @@ import type {
   PortaProprietarios,
   PortaEquipes,
   PortaBandeiras,
+  PortaFornecedores,
   PortaImplantacao,
   LocalDoHotel,
   PortaConfiguracao,
@@ -68,6 +69,7 @@ import {
   renomearBandeira,
 } from './repositorios/bandeiras';
 import { registrarAnexo, removerAnexo } from './repositorios/anexos';
+import { alterarFornecedor, criarFornecedor } from './repositorios/fornecedores';
 import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { criarChamado } from './repositorios/chamados';
@@ -429,6 +431,47 @@ export function criarPortaBandeiras(banco: AcessoBanco): PortaBandeiras {
       banco.executar(ctx, (uow) => definirAtivaDaBandeira(uow, id, ativa)),
     definirBandeiraDoHotel: (ctx, hotelId, bandeiraId) =>
       banco.executar(ctx, (uow) => definirBandeiraDoHotel(uow, hotelId, bandeiraId)),
+  };
+}
+
+/**
+ * Fornecedores do grupo (fase 1b, I3), pelo hk_app: lê quem tem papel de
+ * escrita em algum hotel do grupo; grava o Admin, o Gestor CSC e o Gerente (RLS).
+ */
+export function criarPortaFornecedores(banco: AcessoBanco): PortaFornecedores {
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.fornecedor')
+            .select([
+              'id',
+              'nome',
+              'cnpj',
+              'contato_nome',
+              'contato_telefone',
+              'contato_email',
+              'desativado_em',
+              'versao',
+            ])
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map((f) => ({
+          id: f.id,
+          nome: f.nome,
+          cnpj: f.cnpj,
+          contatoNome: f.contato_nome,
+          contatoTelefone: f.contato_telefone,
+          contatoEmail: f.contato_email,
+          ativo: f.desativado_em === null,
+          versao: f.versao,
+        })),
+      ),
+    criar: (ctx, dados) => banco.executar(ctx, (uow) => criarFornecedor(uow, dados)),
+    alterar: (ctx, id, versaoEsperada, mudanca) =>
+      banco.executar(ctx, (uow) => alterarFornecedor(uow, id, versaoEsperada, mudanca)),
   };
 }
 

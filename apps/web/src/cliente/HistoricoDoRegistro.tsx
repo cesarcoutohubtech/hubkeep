@@ -27,6 +27,7 @@ const ROTULO_DA_ACAO = {
   ativo: 'auditoria.acao.ativo',
   chamado: 'corretiva.linha_do_tempo.chamado',
   os: 'corretiva.linha_do_tempo.os',
+  fornecedor: 'auditoria.acao.fornecedor',
 } as const satisfies Record<Entidade, Chave>;
 
 /** Campos cujo valor é um código com nome no catálogo. */

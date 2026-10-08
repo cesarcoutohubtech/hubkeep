@@ -1432,3 +1432,23 @@ Desenho aprovado pelo Cesar em 08/10/2026 (`docs/referencia/propostas-desenho-1b
   - na CI: o pgTAP 026 e os testes de integração do `packages/db` (configuração, locais, ingestão e implantação, com a lista de pendências atualizada) e do kit;
   - as telas não foram vistas no navegador.
 - **Aviso ao agente do Intelligence:** as colunas são `app.hotel.modelo_contratual` (nulo é "não informado") e `app.local.edificacao`. Os valores canônicos do modelo são `MODELOS_CONTRATUAIS` (tipo `ModeloContratual`, guarda `ehModeloContratual`), exportados do `@hubkeep/dominio`. No MVP, o modelo é só rótulo e filtro; o comportamento por modelo vem na 1c. O worker lê as duas colunas pelo SELECT que já tem em `app.hotel` e `app.local`.
+
+### I3, fornecedor mínimo do grupo (08/10/2026)
+
+Desenho aprovado pelo Cesar em 08/10/2026 (`docs/referencia/propostas-desenho-1b.md`, item 2). PR de zona protegida.
+- **Banco (migração 0033):**
+  - `app.fornecedor`, do grupo (sem `hotel_id`): `nome` (1 a 120), `cnpj` opcional (só os 14 dígitos, check `fornecedor_cnpj_formato`; único no grupo pelo índice parcial `fornecedor_cnpj_unico`, `(tenant_id, cnpj) where cnpj is not null`), `contato_nome`, `contato_telefone` e `contato_email` opcionais, `versao` (ADR-029), `desativado_em`, `criado_em` e `atualizado_em`; `unique (tenant_id, id)` para a FK composta da OS na I4. Sem DELETE; o UPDATE não alcança `id` nem `tenant_id`.
+  - Leitura: o Admin do grupo e quem tem papel de escrita em algum hotel do grupo (`exists (select 1 from authz.hoteis_escrita())`, que já deixa de fora o proprietário). Gravação: `authz.eh_admin_grupo()` ou `authz.hoteis_com_papel(['gestor_csc', 'gerente_hotel'])` não vazio. Sem função nova.
+  - O worker não lê: nenhum job usa o fornecedor no MVP (sem GRANT, o pgTAP confere a recusa).
+  - Auditoria sem hotel: as policies de INSERT e SELECT de `app.auditoria` ganharam o caso da entidade `fornecedor` para o Gestor CSC e o Gerente (antes, sem hotel, só o Admin e o Implantador gravavam). O INSERT exige que o registro seja um fornecedor do tenant. O resto da auditoria sem hotel não muda.
+  - pgTAP 027 com os seis casos (o do gerente e o da FK adaptados, porque a tabela não tem hotel), o implantador vencido, os três tipos de proprietário, Técnico e Implantador vigente que leem e não gravam, CNPJ único e formato, sem DELETE, worker e a auditoria do fornecedor. Meta-teste 28 com a tabela nova.
+- **Domínio (`fornecedores.ts`):** `podeGerirFornecedores` (`fornecedores_sem_permissao`), `validarCnpj` (aceita com ou sem pontuação, devolve os dígitos, confere os verificadores; `fornecedor_cnpj_invalido`), `formatarCnpj`, `normalizarNomeDeFornecedor` (`fornecedor_nome_invalido`), `normalizarContatoDeFornecedor` (`fornecedor_contato_nome_invalido`, `fornecedor_telefone_invalido`, `fornecedor_email_invalido`; e-mail em minúsculas), `validarDadosDeFornecedor` e `cnpjDeFornecedorRepetido` (409 `fornecedor_cnpj_repetido`, da violação do índice).
+- **API:** `GET` e `POST /api/v1/fornecedores`, `PUT /api/v1/fornecedores/{id}` (cadastro inteiro, com a versão), `POST .../desativacao` e `.../reativacao` (com a versão). O histórico (`GET /api/v1/auditoria`) aceita a entidade `fornecedor`.
+- **Tela:** "Fornecedores" no menu de cadastros (`admin/fornecedores`), com o cadastro, a edição de cada um, desativar e reativar e o histórico. Catálogos nos quatro idiomas, inclusive as ações e os campos novos do histórico.
+- **Kit:** três fornecedores fictícios, um do Admin, um do Gestor CSC e um da Gerente do Centro (sem CNPJ).
+- **A OS ainda não usa o fornecedor:** isso é a I4 (`executado_por`).
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes, verdes;
+  - na CI: o pgTAP 027 e o meta-teste, o teste de integração `packages/db/test/fornecedores.test.ts` (inclusive a RLS sem a checagem do domínio e o histórico do Gerente) e o kit;
+  - a tela não foi vista no navegador.
+- **Aviso ao agente do Intelligence:** a tabela é `app.fornecedor`, do tenant, com `id`, `tenant_id`, `nome`, `cnpj` (14 dígitos ou nulo), `contato_nome`, `contato_telefone`, `contato_email`, `versao`, `desativado_em`, `criado_em` e `atualizado_em`. O `hk_worker` não tem SELECT nela; se o job precisar (ex.: MTTR por fornecedor, depois da I4), o pedido vem por este diário e entra numa migração do núcleo. A ligação com a OS chega na I4.

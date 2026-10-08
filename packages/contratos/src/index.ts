@@ -180,6 +180,14 @@ export {
   RespostaDeBandeiraDoHotel,
   RespostaDeBandeiras,
 } from './bandeiras';
+export {
+  FornecedorApi,
+  PedidoDeAlteracaoDeFornecedor,
+  PedidoDeFornecedor,
+  PedidoDeVersaoDeFornecedor,
+  RespostaDeFornecedorGravado,
+  RespostaDeFornecedores,
+} from './fornecedores';
 export { CODIGOS_HTTP, ErroApi, type ProblemaDeEntrada, problemasDe } from './erro';
 export {
   ParadaApi,
