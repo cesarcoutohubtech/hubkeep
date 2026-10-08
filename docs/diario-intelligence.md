@@ -471,3 +471,11 @@ Instruções do Cesar (pauta de 07/10/2026, depois do merge do #125).
   - "3 hotéis" são os hotéis em que houve chamado do modelo na janela, e não os hotéis onde ele está instalado.
 - **A evidência do sinal** ganha `ativosDoModelo`, `taxaPorAtivo` e `basePorAtivo`; o rótulo `inteligencia.sistemico.regra` do mesmo modelo deixa de falar em "mesma falha", e a mensagem `inteligencia.sistemico.evidencia.mesmo_modelo` mostra a taxa contra a base, nos quatro idiomas.
 - **A política é validada ao gravar:** mínimos e janelas inteiros de pelo menos 1; razão contra a base positiva; `ativa` obrigatório e booleano.
+
+### Ponto de retomada (08/10/2026)
+- **PRs abertos, empilhados** (fora de zona protegida; o merge é do usuário, nesta ordem): #142 atenção v2 → #144 efetividade v2 → #145 padrão sistêmico v2. Conferir com `gh pr checks`.
+- **Esperando o Kaio:** o canal e o texto literal da aprovação do Cesar, para o campo "A aprovação do Cesar" acima (o diário sai do #142 com os dois campos em aberto).
+- **Esperando o Cesar:** as confirmações listadas nos PRs (medições como fração; "tenant inteiro"; ordem entre janela incompleta e sem base; leituras do mesmo modelo; "a versão 1 nunca foi gravada").
+- **Pronto, no `int-rascunhos` (`1deab5f`):** o texto dos adendos ao ADR-034 e ao ADR-036 (`rascunhos/adr/adendos-adr-034-e-036.md`). Entra no `int-adr-aceite`, depois das migrações da etapa I.
+- **Fora do escopo, por instrução:** o `csc-mock` não foi tocado. Quando o Cesar trouxer a versão de apresentação, a tela do Intelligence no mock é atualizada para as fórmulas novas, num PR separado.
+- **Esperando o núcleo:** as migrações da etapa I; depois, o ajuste dos nomes provisórios e as tabelas do Intelligence, um PR de zona protegida de cada vez.
