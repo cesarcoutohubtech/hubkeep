@@ -39,7 +39,7 @@ Material de apoio ao piloto da Slaviero, escrito sobre o que existe na `main` em
 
 ## Como conferi
 
-Telas, rótulos e fluxos (todos em `C:\Cesar\HubKeep\Dev\wt\int-piloto`):
+Telas, rótulos e fluxos (caminhos a partir da raiz do repositório, na `main` de 08/10/2026):
 - Catálogo pt-BR: `packages/i18n/catalogos/pt-BR.json` (rótulos e mensagens).
 - Web: `apps/web/src/cliente/moldura.tsx` (menu), `apps/web/src/app/(painel)/**/page.tsx` (chamados, detalhe, OS, hotéis, locais, categorias, ativos, equipes, proprietários, bandeiras, membros, configuração, implantação, paradas), `apps/web/src/cliente/corretiva.tsx` e `triagem.tsx` (aceite, reabertura, triagem), `apps/web/src/cliente/QrDoAtivo.tsx`, `apps/web/src/app/login` e `definir-senha`, `apps/web/src/app/api/v1/**` (rotas existentes e ausentes), `apps/web/src/app/api/cron/*` e `apps/web/vercel.json` (crons ligados).
 - PWA: `apps/tecnico/src/App.tsx` e `telas/*` (fila do dia, OS, ativos, fotos, abrir chamado, login), `os/projecao.ts`, `qr.ts`, `vite.config.ts` (manifesto).
