@@ -1,14 +1,37 @@
 // Asset Attention Score (PRD, seção 13): a fila gerencial de ativos que
-// merecem investigação. Versão 1, com os pesos do exemplo do PRD. Criticidade
-// e custo informado são opcionais: entram quando a instrumentação da 1b
-// existir e o hotel preencher. O impacto no hóspede vem, no 1.0, do indicador
-// do chamado (decisão de 05/10/2026), e a preventiva fica ausente até a 1b. O
-// peso do componente ausente vai para os presentes, e a lista de ausentes
-// mostra o que falta.
-import { CRITICIDADE_MAXIMA, type Criticidade } from './historico';
+// merecem investigação.
+//
+// Versão 2 (aprovada pelo Cesar em 08/10/2026, alinhada ao mock): nove
+// componentes, oito com peso e UH-dias com peso 0. Pesos padrão: reincidência
+// 20, tempo parado 15, impacto no hóspede 15, criticidade 15, custo informado
+// 10, preventiva atrasada 10, medições fora da faixa 10, garantia vencida 5 e
+// UH-dias 0. A versão 1 (seis componentes) fica no que já foi gravado: o
+// resultado de cada dia guarda a versão da fórmula (ADR-036), e nada gravado é
+// recalculado em silêncio.
+//
+// Componente sem dado: o peso dele é dividido entre os presentes, na
+// proporção dos pesos, e a lista de ausentes mostra o que falta. A regra é a
+// mesma para todo o tenant: não há chave por hotel que a ligue ou desligue.
+// - criticidade, custo informado, impacto no hóspede e garantia dependem do
+//   que o hotel preencheu (instrumentação da 1b);
+// - preventiva atrasada fica ausente até a etapa P;
+// - medições fora da faixa ficam ausentes até o checklist tipado (P1);
+// - UH-dias fica ausente, com peso 0, até existir a origem do dado de UH
+//   indisponível (proposta de 07/10/2026). Quando existir e o peso passar de
+//   0, a atenção ganha a versão seguinte, com o limite e os pesos definidos.
+import { CRITICIDADE_MAXIMA, type Criticidade, type SituacaoDaGarantia } from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
-export const VERSAO_ATENCAO = 1;
+export const VERSAO_ATENCAO = 2;
+
+/**
+ * Medições do checklist tipado na janela (etapa P1): quantas saíram da faixa
+ * aceitável entre as feitas. null (ou sem nenhuma medição) é sem dado.
+ */
+export interface MedicoesDoAtivo {
+  foraDaFaixa: number;
+  total: number;
+}
 
 export interface EntradaAtencao {
   /** De 1 a 5 (etapa I1 da 1b); null sem dado. */
@@ -28,8 +51,12 @@ export interface EntradaAtencao {
    * Guest Impact Score, com versão nova do score.
    */
   impactoHospede?: number | null;
-  /** Preventiva vencida ou sinal de compliance aberto (1b); null sem dado. */
-  preventivaOuCompliance?: boolean | null;
+  /** Preventiva vencida do ativo (etapa P); null sem dado. */
+  preventivaAtrasada?: boolean | null;
+  /** Medições fora da faixa na janela (checklist tipado, P1); null sem dado. */
+  medicoes?: MedicoesDoAtivo | null;
+  /** A garantia do ativo (`app.ativo.garantia_ate`); null sem a data. */
+  garantia?: SituacaoDaGarantia | null;
 }
 
 export interface ConfigAtencao {
@@ -41,12 +68,15 @@ export interface ConfigAtencao {
    */
   limiteCusto12m: number;
   pesos: {
-    criticidade: number;
     reincidencia: number;
     parada: number;
-    custo: number;
     impactoHospede: number;
-    preventivaOuCompliance: number;
+    criticidade: number;
+    custo: number;
+    preventivaAtrasada: number;
+    medicoesForaDaFaixa: number;
+    garantiaVencida: number;
+    uhDias: number;
   };
   faixas: readonly Faixa[];
   /**
@@ -60,12 +90,15 @@ export const PADRAO_ATENCAO: ConfigAtencao = {
   limiteHorasParadas: 48,
   limiteCusto12m: 10_000,
   pesos: {
-    criticidade: 0.2,
     reincidencia: 0.2,
     parada: 0.15,
-    custo: 0.15,
-    impactoHospede: 0.2,
-    preventivaOuCompliance: 0.1,
+    impactoHospede: 0.15,
+    criticidade: 0.15,
+    custo: 0.1,
+    preventivaAtrasada: 0.1,
+    medicoesForaDaFaixa: 0.1,
+    garantiaVencida: 0.05,
+    uhDias: 0,
   },
   faixas: FAIXAS_PADRAO,
   limiteInsight: 70,
@@ -77,17 +110,13 @@ export function atencaoDoAtivo(
 ): Score<ConfigAtencao> {
   const custo = e.custoInformado12m ?? null;
   const impacto = e.impactoHospede ?? null;
-  const preventiva = e.preventivaOuCompliance ?? null;
+  const preventiva = e.preventivaAtrasada ?? null;
+  const medicoes = e.medicoes && e.medicoes.total > 0 ? e.medicoes : null;
+  const garantia = e.garantia ?? null;
   return combinar(
     'atencao_ativo',
     VERSAO_ATENCAO,
     [
-      {
-        chave: 'criticidade',
-        peso: config.pesos.criticidade,
-        valor: e.criticidade === null ? null : razao(e.criticidade, CRITICIDADE_MAXIMA),
-        evidencia: { nivel: e.criticidade, maximo: CRITICIDADE_MAXIMA },
-      },
       {
         chave: 'reincidencia',
         peso: config.pesos.reincidencia,
@@ -108,22 +137,52 @@ export function atencaoDoAtivo(
         },
       },
       {
-        chave: 'custo',
-        peso: config.pesos.custo,
-        valor: custo === null ? null : razao(custo, config.limiteCusto12m),
-        evidencia: { valor12m: custo, limite: config.limiteCusto12m },
-      },
-      {
         chave: 'impacto_hospede',
         peso: config.pesos.impactoHospede,
         valor: impacto === null ? null : razao(impacto, 100),
         evidencia: { score: impacto },
       },
       {
-        chave: 'preventiva_ou_compliance',
-        peso: config.pesos.preventivaOuCompliance,
+        chave: 'criticidade',
+        peso: config.pesos.criticidade,
+        valor: e.criticidade === null ? null : razao(e.criticidade, CRITICIDADE_MAXIMA),
+        evidencia: { nivel: e.criticidade, maximo: CRITICIDADE_MAXIMA },
+      },
+      {
+        chave: 'custo',
+        peso: config.pesos.custo,
+        valor: custo === null ? null : razao(custo, config.limiteCusto12m),
+        evidencia: { valor12m: custo, limite: config.limiteCusto12m },
+      },
+      {
+        chave: 'preventiva_atrasada',
+        peso: config.pesos.preventivaAtrasada,
         valor: preventiva === null ? null : preventiva ? 1 : 0,
-        evidencia: { pendente: preventiva },
+        evidencia: { atrasada: preventiva },
+      },
+      {
+        chave: 'medicoes_fora_da_faixa',
+        peso: config.pesos.medicoesForaDaFaixa,
+        valor: medicoes === null ? null : razao(medicoes.foraDaFaixa, medicoes.total),
+        evidencia: {
+          foraDaFaixa: medicoes?.foraDaFaixa ?? null,
+          total: medicoes?.total ?? null,
+        },
+      },
+      {
+        chave: 'garantia_vencida',
+        peso: config.pesos.garantiaVencida,
+        valor: garantia === null ? null : garantia.vencida ? 1 : 0,
+        evidencia: {
+          vencida: garantia?.vencida ?? null,
+          diasVencida: garantia?.diasVencida ?? null,
+        },
+      },
+      {
+        chave: 'uh_dias',
+        peso: config.pesos.uhDias,
+        valor: null,
+        evidencia: {},
       },
     ],
     config.faixas,

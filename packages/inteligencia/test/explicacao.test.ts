@@ -31,7 +31,9 @@ function scoresCheios(): [Score, Score] {
     horasParadas: 30.5,
     custoInformado12m: 4_250.75,
     impactoHospede: 50,
-    preventivaOuCompliance: true,
+    preventivaAtrasada: true,
+    medicoes: { foraDaFaixa: 2, total: 5 },
+    garantia: { vencida: true, diasVencida: 12 },
   });
   return [r, a];
 }
@@ -48,9 +50,11 @@ describe('explicacaoDoScore', () => {
       [
         'inteligencia.motivo.atencao_ativo.criticidade',
         'inteligencia.motivo.atencao_ativo.custo',
+        'inteligencia.motivo.atencao_ativo.garantia_vencida',
         'inteligencia.motivo.atencao_ativo.impacto_hospede',
+        'inteligencia.motivo.atencao_ativo.medicoes_fora_da_faixa',
         'inteligencia.motivo.atencao_ativo.parada',
-        'inteligencia.motivo.atencao_ativo.preventiva_ou_compliance',
+        'inteligencia.motivo.atencao_ativo.preventiva_atrasada',
         'inteligencia.motivo.atencao_ativo.reincidencia',
         'inteligencia.motivo.reincidencia.apos_corretiva',
         'inteligencia.motivo.reincidencia.apos_preventiva',

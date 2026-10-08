@@ -50,7 +50,9 @@
 | `fabricante`, `modelo` | `app.ativo.fabricante`, `app.ativo.modelo` | Existe |
 | `criticidade` | `app.ativo.criticidade`, de 1 a 5, fixa (`check` no banco). A política `ativo.criticidade` só troca os nomes dos níveis. | I1 |
 | `paradas` | `app.parada_ativo.inicio` e `fim`, por `ativo_id` | Existe |
-| `preventivaOuCompliance` | O plano de preventiva da 1b. | Sem origem até a etapa P |
+| `garantiaAte` | `app.ativo.garantia_ate` (último dia da garantia). Atenção v2: garantia vencida, 5%. Sem a data, o componente fica sem dado. | I1 |
+| `preventivaAtrasada` | O plano de preventiva da 1b. Atenção v2: preventiva atrasada, 10%. | Sem origem até a etapa P |
+| `medicoes` | `{ foraDaFaixa, total }` das medições do checklist tipado na janela. Atenção v2: medições fora da faixa, 10%. | Sem origem até o P1 |
 
 ## Corretiva (`Corretiva`)
 
@@ -103,7 +105,7 @@ O rascunho da tabela está no branch `int-rascunhos` (`rascunhos/metrica/`).
 
 ## Ainda sem origem
 
-- **Preventiva:** `preventivaOuCompliance` e `aposPreventiva` esperam a etapa P da 1b. Até lá, ficam ausentes, e o peso deles vai para os outros componentes, como o ADR-034 prevê.
+- **Preventiva:** `preventivaAtrasada` (antes `preventivaOuCompliance`, até a atenção v1) e `aposPreventiva` esperam a etapa P da 1b. Até lá, ficam ausentes, e o peso deles vai para os outros componentes, como o ADR-034 prevê.
 - **Valor antigo dos campos editáveis e da política:** o recálculo de um dia passado usa o valor atual. O resultado gravado de cada dia é a fonte de verdade do histórico (decisão de 06/10/2026).
 
 ## A conferir quando a porta de leitura for escrita
