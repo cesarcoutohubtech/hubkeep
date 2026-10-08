@@ -131,13 +131,80 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
   });
 
   it('a resolução é a do registro: hotel, bandeira, grupo e padrão; o inválido cai', () => {
-    const hotel = { janelaDias: 30, limiarPercentual: 10 };
-    const bandeira = { janelaDias: 60, limiarPercentual: 15 };
-    const grupo = { janelaDias: 120, limiarPercentual: 25 };
+    const base = PADROES_DO_INTELLIGENCE[c];
+    const hotel = { ...base, janelaDias: 30, reducaoObservadaPercentual: 50 };
+    const bandeira = { ...base, janelaDias: 60, reducaoObservadaPercentual: 55 };
+    const grupo = { ...base, janelaDias: 120, reducaoObservadaPercentual: 65 };
     expect(registro.resolver(c, { hotel, bandeira, grupo })).toEqual(hotel);
     expect(registro.resolver(c, { hotel: { x: 1 }, bandeira, grupo })).toEqual(bandeira);
     expect(registro.resolver(c, { grupo })).toEqual(grupo);
     expect(registro.resolver(c, {})).toEqual(PADROES_DO_INTELLIGENCE[c]);
+  });
+
+  it('a efetividade v2: os limiares da política, na ordem (parcial < observada ≤ 100)', () => {
+    expect(PADROES_DO_INTELLIGENCE[c]).toEqual({
+      janelaDias: 90,
+      reducaoObservadaPercentual: 60,
+      reducaoParcialPercentual: 25,
+      aumentoObservadoPercentual: 20,
+      minChamadosAntes: 3,
+    });
+    const com = (campos: object) => ({ ...copia(PADROES_DO_INTELLIGENCE[c]), ...campos });
+    expect(valorValidoDoIntelligence(c, com({ reducaoObservadaPercentual: 100 }))).toBe(true);
+    for (const ruim of [
+      { reducaoParcialPercentual: 60 }, // parcial no mesmo ponto da observada
+      { reducaoParcialPercentual: 70 }, // parcial depois da observada
+      { reducaoParcialPercentual: 0 },
+      { reducaoObservadaPercentual: 101 },
+      { aumentoObservadoPercentual: 0 },
+      { minChamadosAntes: 0 },
+      { minChamadosAntes: 2.5 },
+      { janelaDias: 0 },
+      { limiarPercentual: 20 }, // campo da versão 1: fora do formato
+    ])
+      expect(valorValidoDoIntelligence(c, com(ruim))).toBe(false);
+  });
+
+  it('o sistêmico v2: booleano `ativa` em cada regra, mínimos inteiros de pelo menos 1', () => {
+    const k = 'inteligencia.sistemico';
+    const base = copia(PADROES_DO_INTELLIGENCE[k]);
+    expect(valorValidoDoIntelligence(k, base)).toBe(true);
+    const com = (mudar: (c: typeof base) => void) => {
+      const c = copia(base);
+      mudar(c);
+      return c;
+    };
+    const ruins = [
+      com((c) => {
+        c.mesmoModelo.minHoteis = 0;
+      }),
+      com((c) => {
+        c.mesmoModelo.minChamados = 2.5;
+      }),
+      com((c) => {
+        c.mesmoModelo.taxaMinimaVezesBase = 0;
+      }),
+      com((c) => {
+        (c.mesmoAndar as { ativa: unknown }).ativa = 'sim';
+      }),
+      com((c) => {
+        delete (c.crescimento as { ativa?: boolean }).ativa;
+      }),
+      com((c) => {
+        c.mesmoFornecedor.minConcluidas = 0;
+      }),
+    ];
+    for (const ruim of ruins) expect(valorValidoDoIntelligence(k, ruim)).toBe(false);
+    // Ligar uma regra e afinar a taxa são valores válidos.
+    expect(
+      valorValidoDoIntelligence(
+        k,
+        com((c) => {
+          c.mesmoAndar.ativa = true;
+          c.mesmoModelo.taxaMinima = 0;
+        }),
+      ),
+    ).toBe(true);
   });
 
   it('a validação do registro usa o formato do módulo, com o código do núcleo', () => {
