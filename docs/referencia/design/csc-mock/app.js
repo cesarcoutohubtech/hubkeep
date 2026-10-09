@@ -21,7 +21,7 @@ const UI = {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 7) { DB = d; } }
+    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 8) { DB = d; } }
     const p = localStorage.getItem(PERSONA_KEY); if (p) UI.persona = p;
     const th = localStorage.getItem(THEME_KEY); if (th) UI.theme = th;
   } catch (e) { /* armazenamento indisponível: segue com seed em memória */ }
@@ -1280,7 +1280,7 @@ function pageIndicadores() {
 
 /* ---------- HubKeep Intelligence (módulo opcional) ---------- */
 /* Fórmulas do 1.0 aprovadas em 08/10/2026 (packages/inteligencia): atenção v2, reincidência v1, efetividade v2 e
-   padrão sistêmico v1. O cálculo é repetido aqui em JavaScript só para a demonstração; os dados são fictícios. */
+   padrão sistêmico v2. O cálculo é repetido aqui em JavaScript só para a demonstração; os dados são fictícios. */
 const IA_FAIXAS = [[0, "Normal"], [30, "Observar"], [50, "Atenção"], [70, "Alta atenção"], [85, "Crítico"]];
 const iaFaixa = v => v === null ? "Dados insuficientes" : IA_FAIXAS.filter(f => v >= f[0]).pop()[1];
 const iaRazao = (x, ref) => ref > 0 ? Math.min(1, Math.max(0, x / ref)) : x > 0 ? 1 : 0;
@@ -1354,7 +1354,10 @@ function efetividade(scopeChs) {
     return { c, ch, hr, res: IA_EF[r], expl, completa: now >= t0 + J };
   });
 }
-/* Padrão sistêmico v1: regras determinísticas com mínimos na política. O resultado é sempre "possível": só uma pessoa confirma. */
+/* Padrão sistêmico v2: só o mesmo modelo vem ligado por padrão; as outras quatro regras ficam desligadas pela política (`ativa`).
+   O mesmo modelo agrupa por categoria, fabricante e modelo e pede 3 hotéis, 6 chamados em 90 dias e 5 ativos; a taxa (chamados por
+   ativo instalado) precisa ser de pelo menos o dobro da base, os outros modelos da mesma categoria, e nunca menos de 0,3.
+   O resultado é sempre "possível": só uma pessoa confirma. */
 function padraoSistemico(ativos, chs) {
   const pol = polGrupo().inteligencia.sistemico, now = Date.now(), uni = xs => [...new Set(xs)];
   const validos = chs.filter(c => c.status !== "Cancelado"), at = id => IDX.ativo[id];
@@ -1363,26 +1366,37 @@ function padraoSistemico(ativos, chs) {
   const jan = (dias, desl = 0) => c => { const fim = now - desl * D; return t(c.aberto_em) > fim - dias * D && t(c.aberto_em) <= fim; };
   const agrupar = (lista, chave) => { const m = {}; lista.forEach(c => { const k = chave(c); if (k !== null) (m[k] = m[k] || []).push(c); }); return Object.entries(m); };
   const hoteisDe = cs => uni(cs.map(c => c.hotel_id)), sinais = [];
-  const mm = pol.mesmo_modelo;
-  agrupar(validos.filter(jan(mm.janela_dias)), c => { const a = c.ativo_id && at(c.ativo_id), f = falhaDe(c); return a && a.modelo && f ? a.fabricante + "|" + a.modelo + "#" + f : null; }).forEach(([k, cs]) => {
-    const dist = uni(cs.map(c => c.ativo_id)).length; if (dist < mm.min_ativos) return;
-    const [mod, f] = k.split("#"), [fab, mdl] = mod.split("|");
-    sinais.push({ regra: "Mesmo modelo com a mesma falha", n: cs.length, hoteis: hoteisDe(cs), titulo: `${fab} ${mdl}`, quem: `Falha: ${nome(f)}`, evid: `${cs.length} chamados em ${dist} ativos, em ${hoteisDe(cs).length} hotéis, nos últimos ${mm.janela_dias} dias.` });
-  });
+  /* Mesmo modelo: ativo sem categoria, fabricante ou modelo fica fora da conta, inclusive da base. */
+  const mm = pol.mesmo_modelo, n2 = x => (Math.round(x * 100) / 100).toLocaleString("pt-BR"), norm = s => (s || "").trim().replace(/\s+/g, " ").toLowerCase();
+  const grupoDe = a => a && a.categoria_id && norm(a.fabricante) && norm(a.modelo) ? a.categoria_id + "#" + norm(a.fabricante) + "|" + norm(a.modelo) : null;
+  if (mm.ativa) {
+    const inst = {}, cat = {};
+    ativos.forEach(a => { const g = grupoDe(a); if (!g) return; inst[g] = (inst[g] || 0) + 1; (cat[a.categoria_id] = cat[a.categoria_id] || { ativos: 0, chamados: 0 }).ativos++; });
+    const porModelo = agrupar(validos.filter(jan(mm.janela_dias)), c => grupoDe(c.ativo_id && at(c.ativo_id)));
+    porModelo.forEach(([k, cs]) => { const c0 = cat[at(cs[0].ativo_id).categoria_id]; if (c0) c0.chamados += cs.length; });
+    porModelo.forEach(([k, cs]) => {
+      const a0 = at(cs[0].ativo_id), dist = uni(cs.map(c => c.ativo_id)).length, hs = hoteisDe(cs), c0 = cat[a0.categoria_id] || { ativos: 0, chamados: 0 };
+      if (hs.length < mm.min_hoteis || cs.length < mm.min_chamados || dist < mm.min_ativos) return;
+      const doModelo = inst[k] || 0, taxa = cs.length / Math.max(doModelo, dist), ativosBase = c0.ativos - doModelo, base = ativosBase > 0 ? (c0.chamados - cs.length) / ativosBase : 0;
+      if (taxa < Math.max(mm.taxa_minima, mm.taxa_vezes_base * base)) return;
+      sinais.push({ regra: "Mesmo modelo com muitos chamados", n: cs.length, hoteis: hs, titulo: `${a0.fabricante} ${a0.modelo}`, quem: `Categoria: ${nome(a0.categoria_id)}`,
+        evid: `${cs.length} chamados em ${dist} ativos do mesmo modelo, em ${hs.length} hotéis, nos últimos ${mm.janela_dias} dias: ${n2(taxa)} por ativo, contra ${n2(base)} nos outros modelos da mesma categoria.` });
+    });
+  }
   const ma = pol.mesmo_andar;
-  agrupar(validos.filter(jan(ma.janela_dias)), c => { const l = IDX.local[c.local_id], f = falhaDe(c); return l && l.andar && f ? c.hotel_id + "#" + l.andar + "#" + f : null; }).forEach(([k, cs]) => {
+  agrupar(ma.ativa ? validos.filter(jan(ma.janela_dias)) : [], c => { const l = IDX.local[c.local_id], f = falhaDe(c); return l && l.andar && f ? c.hotel_id + "#" + l.andar + "#" + f : null; }).forEach(([k, cs]) => {
     const dist = uni(cs.map(c => c.local_id)).length; if (dist < ma.min_locais) return;
     const [h, andar, f] = k.split("#");
     sinais.push({ regra: "Mesmo andar com a mesma falha", n: cs.length, hoteis: [h], titulo: `${IDX.hotel[h].nome}, ${andar}º andar`, quem: `Falha: ${nome(f)}`, evid: `${cs.length} chamados em ${dist} UHs, em ${ma.janela_dias} dias.` });
   });
   const ac = pol.mesma_area_comum;
-  agrupar(validos.filter(jan(ac.janela_dias)), c => { const l = IDX.local[c.local_id], f = falhaDe(c); return l && l.tipo === "area" && f ? c.local_id + "#" + f : null; }).forEach(([k, cs]) => {
+  agrupar(ac.ativa ? validos.filter(jan(ac.janela_dias)) : [], c => { const l = IDX.local[c.local_id], f = falhaDe(c); return l && l.tipo === "area" && f ? c.local_id + "#" + f : null; }).forEach(([k, cs]) => {
     if (cs.length < ac.min_ocorrencias) return;
     const [lid, f] = k.split("#");
     sinais.push({ regra: "Mesma área comum com a mesma falha", n: cs.length, hoteis: [cs[0].hotel_id], titulo: `${IDX.hotel[cs[0].hotel_id].nome}, ${IDX.local[lid].nome}`, quem: `Falha: ${nome(f)}`, evid: `${cs.length} ocorrências em ${ac.janela_dias} dias.` });
   });
   const pc = x => Number.isInteger(x) ? String(x) : fmt1(x), mf = pol.mesmo_fornecedor, pct = (p, todo) => Math.round(p / todo * 1000) / 10;
-  const obs = validos.filter(c => c.ativo_id && c.status === "Encerrado" && t(c.encerrado_em) > now - mf.janela_dias * D && t(c.encerrado_em) <= now - mf.dias_apos * D);
+  const obs = (mf.ativa ? validos : []).filter(c => c.ativo_id && c.status === "Encerrado" && t(c.encerrado_em) > now - mf.janela_dias * D && t(c.encerrado_em) <= now - mf.dias_apos * D);
   const voltou = c => validos.some(d => d.id !== c.id && d.ativo_id === c.ativo_id && t(d.aberto_em) >= t(c.encerrado_em) && t(d.aberto_em) <= t(c.encerrado_em) + mf.dias_apos * D);
   const internas = obs.filter(c => !c.executado_por || c.executado_por.tipo === "interna"), taxaInt = internas.length ? pct(internas.filter(voltou).length, internas.length) : null;
   agrupar(obs, c => c.executado_por && c.executado_por.tipo === "fornecedor" ? c.executado_por.fornecedor_id : null).forEach(([fid, cs]) => {
@@ -1391,8 +1405,9 @@ function padraoSistemico(ativos, chs) {
     sinais.push({ regra: "Mesmo terceiro com muitas falhas que voltam", n: v, hoteis: hoteisDe(cs), titulo: (IDX.forn[fid] || {}).nome || "Fornecedor", quem: "Taxa de volta das OS do terceiro", evid: `${v} de ${cs.length} OS tiveram nova corretiva no mesmo ativo em até ${mf.dias_apos} dias (${pc(taxa)}%)${taxaInt === null ? "" : `, contra ${pc(taxaInt)}% da equipe interna`}.` });
   });
   const cr = pol.crescimento, chave = c => { const f = falhaDe(c); return f ? c.hotel_id + "#" + f : null; };
-  const ant = Object.fromEntries(agrupar(validos.filter(jan(cr.janela_dias, cr.janela_dias)), chave));
-  agrupar(validos.filter(jan(cr.janela_dias)), chave).forEach(([k, cs]) => {
+  const doCrescimento = cr.ativa ? validos : [];
+  const ant = Object.fromEntries(agrupar(doCrescimento.filter(jan(cr.janela_dias, cr.janela_dias)), chave));
+  agrupar(doCrescimento.filter(jan(cr.janela_dias)), chave).forEach(([k, cs]) => {
     const antes = (ant[k] || []).length; if (cs.length < cr.min_atual || antes === 0) return;
     const v = pct(cs.length - antes, antes); if (v < cr.percentual) return;
     const [h, f] = k.split("#");
