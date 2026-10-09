@@ -52,6 +52,7 @@ const osGuardada = (id: string, estado: OsGuardada['estado'], versao: number): O
     ativoId: 'a1000000-0000-4000-8000-000000000001',
     paradoDesde: null,
     paradaDoChamado: false,
+    uhIndisponivelDesde: null,
   },
 });
 

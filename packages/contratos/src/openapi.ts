@@ -53,6 +53,9 @@ import {
   PedidoDeAtribuicaoDeOs,
   PedidoDeAceiteDeOs,
   PedidoDeCancelamento,
+  PedidoDeExecutorDaOs,
+  PedidoDeGeracaoDeOs,
+  PedidoDeImpactoNoHospede,
   PedidoDeReaberturaDeOs,
   PedidoDeTriagem,
   RespostaDeChamado,
@@ -125,6 +128,13 @@ import {
   RespostaDeParadasDoAtivo,
   RespostaDeParadasPendentes,
 } from './paradas';
+import {
+  PedidoDeLiberacaoDeUh,
+  PedidoDeUhIndisponivel,
+  RespostaDeUhIndisponivel,
+  RespostaDeUhLiberada,
+  RespostaDeUhMarcada,
+} from './uh-indisponivel';
 import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from './sincronizacao';
 import { ErroApi } from './erro';
 
@@ -1352,7 +1362,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/chamados',
     resumo:
-      'Abre um chamado no local (UH ou área comum), com ativo opcional do mesmo local. Abre quem tem escrita no hotel, inclusive o Solicitante. A prioridade padrão vem da política por categoria (hotel → grupo → padrão), com a cópia no chamado (ADR-026). A foto vai depois, como anexo do chamado. Com paradoDesde, grava a parada aberta do ativo (C5); se o ativo já está parado, fica a parada que existe.',
+      'Abre um chamado no local (UH ou área comum), com ativo opcional do mesmo local. Abre quem tem escrita no hotel, inclusive o Solicitante. A prioridade padrão vem da política por categoria (hotel → grupo → padrão), com a cópia no chamado (ADR-026). A foto vai depois, como anexo do chamado. Com paradoDesde, grava a parada aberta do ativo (C5); se o ativo já está parado, fica a parada que existe. Com impactoHospede, responde se afeta hóspede (null: não sei); com uhIndisponivelDesde, grava o período aberto da UH do chamado (I4), só em chamado de UH. A origem é gravada pelo servidor, interna.',
     exigeTenant: true,
     corpo: PedidoDeAberturaDeChamado,
     respostas: {
@@ -1361,7 +1371,7 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Sem escrita no hotel (chamado_fora_do_escopo).'),
       404: ERRO('local_nao_encontrado, hotel_nao_encontrado ou ativo_nao_encontrado.'),
       422: ERRO(
-        'chamado_uh_pendente_licenca, chamado_local_inativo, chamado_descricao_invalida, chamado_ativo_fora_do_local, chamado_ativo_desativado, parada_sem_ativo, parada_invalida, sem_prioridade_ativa, sem_situacao_para_estado ou entrada_invalida.',
+        'chamado_uh_pendente_licenca, chamado_local_inativo, chamado_descricao_invalida, chamado_ativo_fora_do_local, chamado_ativo_desativado, parada_sem_ativo, parada_invalida, uh_indisponivel_fora_de_uh, uh_indisponivel_periodo_invalido, sem_prioridade_ativa, sem_situacao_para_estado ou entrada_invalida.',
       ),
     },
   },
@@ -1490,17 +1500,111 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/chamados/{id}/os',
     resumo:
-      'Gera a OS do chamado aberto ou em triagem, atribuída a um Técnico do hotel ou a uma equipe do hotel; o chamado vai para em execução. No máximo uma OS não cancelada por chamado. Leva a versão vista do chamado e grava o evento os.atribuida.',
+      'Gera a OS do chamado aberto ou em triagem, atribuída a um Técnico do hotel ou a uma equipe do hotel; o chamado vai para em execução. No máximo uma OS não cancelada por chamado. Com executadoPor, quem executa (I4): a equipe interna (o padrão) ou um fornecedor ativo do grupo, com fornecedorId. Leva a versão vista do chamado e grava o evento os.atribuida.',
     exigeTenant: true,
-    corpo: PedidoDeAtribuicaoDeOs,
+    corpo: PedidoDeGeracaoDeOs,
     respostas: {
       201: { descricao: 'OS gerada, com a versão nova do chamado', esquema: RespostaDeOsGravada },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Fora dos papéis da triagem (acao_fora_do_papel).'),
-      404: ERRO('chamado_nao_encontrado ou equipe_nao_encontrada.'),
+      404: ERRO('chamado_nao_encontrado, equipe_nao_encontrada ou fornecedor_nao_encontrado.'),
       409: ERRO('conflito_de_versao (com versaoAtual), os_em_andamento ou transicao_invalida.'),
       422: ERRO(
-        'responsavel_sem_papel_tecnico, equipe_indisponivel, sem_situacao_para_estado ou entrada_invalida.',
+        'responsavel_sem_papel_tecnico, equipe_indisponivel, os_fornecedor_obrigatorio, os_fornecedor_indevido, os_fornecedor_desativado, sem_situacao_para_estado ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/os/{id}/executor',
+    resumo:
+      'Corrige quem executa a OS (I4), até a conclusão: a equipe interna ou um fornecedor ativo do grupo, com fornecedorId. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista da OS e grava o evento os.executor_definido.',
+    exigeTenant: true,
+    corpo: PedidoDeExecutorDaOs,
+    respostas: {
+      200: {
+        descricao: 'Quem executa corrigido, com a versão nova da OS',
+        esquema: RespostaDeOsGravada,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (triagem_fora_do_papel).'),
+      404: ERRO('os_nao_encontrada ou fornecedor_nao_encontrado.'),
+      409: ERRO(
+        'conflito_de_versao (com versaoAtual) ou transicao_invalida (OS concluída ou cancelada).',
+      ),
+      422: ERRO(
+        'os_fornecedor_obrigatorio, os_fornecedor_indevido, os_fornecedor_desativado ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/chamados/{id}/impacto-hospede',
+    resumo:
+      'Corrige se o chamado afeta hóspede (I4), até o aceite; null é não sei. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista do chamado e grava o evento chamado.impacto_informado.',
+    exigeTenant: true,
+    corpo: PedidoDeImpactoNoHospede,
+    respostas: {
+      200: {
+        descricao: 'Impacto corrigido, com a versão nova',
+        esquema: RespostaDeChamadoAlterado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (triagem_fora_do_papel).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+      409: ERRO(
+        'conflito_de_versao (com versaoAtual) ou transicao_invalida (chamado concluído ou cancelado).',
+      ),
+      422: ERRO('entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/chamados/{id}/uh-indisponivel',
+    resumo:
+      'Os períodos em que a UH do chamado ficou indisponível (I4), do mais novo para o mais antigo, com o tempo de cada um. Lê quem lê o chamado; o proprietário recebe só a UH, o estado e as datas (sem chamadoId, abertaPor e encerradaPor).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Períodos da UH do chamado', esquema: RespostaDeUhIndisponivel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/chamados/{id}/uh-indisponivel',
+    resumo:
+      'Marca a UH do chamado como indisponível depois da abertura (I4), sem início informado, agora. Admin do grupo, Gestor CSC ou Gerente do hotel, com o chamado em curso, até o aceite. Um período aberto por chamado; só chamado de UH.',
+    exigeTenant: true,
+    corpo: PedidoDeUhIndisponivel,
+    respostas: {
+      201: { descricao: 'UH marcada como indisponível', esquema: RespostaDeUhMarcada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis que marcam (uh_indisponivel_fora_do_papel).'),
+      404: ERRO('chamado_nao_encontrado ou local_nao_encontrado.'),
+      409: ERRO(
+        'uh_indisponivel_ja_aberta ou transicao_invalida (chamado concluído ou cancelado).',
+      ),
+      422: ERRO(
+        'uh_indisponivel_fora_de_uh, uh_indisponivel_periodo_invalido ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/uh-indisponivel/{id}/liberacao',
+    resumo:
+      'Libera a UH (I4): encerra o período aberto, sem fim informado, agora. Admin do grupo, Gestor CSC ou Gerente do hotel, a qualquer momento; quem conclui a OS libera na conclusão, pela operação offline os.concluir (uhLiberada).',
+    exigeTenant: true,
+    corpo: PedidoDeLiberacaoDeUh,
+    respostas: {
+      200: { descricao: 'UH liberada', esquema: RespostaDeUhLiberada },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis que liberam (uh_indisponivel_fora_do_papel).'),
+      404: ERRO('Período fora do escopo (uh_indisponivel_nao_encontrada).'),
+      409: ERRO('O período já foi encerrado (uh_indisponivel_nao_aberta).'),
+      422: ERRO(
+        'Fim antes do início ou no futuro (uh_indisponivel_periodo_invalido) ou entrada_invalida.',
       ),
     },
   },
@@ -1545,7 +1649,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/os/{id}/aceite',
     resumo:
-      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Leva a versão vista da OS.',
+      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Com custoInformado, o custo em reais (I4), opcional, sem aprovação nem alçada. Leva a versão vista da OS.',
     exigeTenant: true,
     corpo: PedidoDeAceiteDeOs,
     respostas: {
@@ -1556,7 +1660,7 @@ export const ROTAS: readonly Rota[] = [
       ),
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
-      422: ERRO('sem_situacao_para_estado ou entrada_invalida.'),
+      422: ERRO('os_custo_invalido, sem_situacao_para_estado ou entrada_invalida.'),
     },
   },
   {

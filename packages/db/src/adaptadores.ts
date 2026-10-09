@@ -38,6 +38,8 @@ import type {
   PortaOperacoesOffline,
   PortaPreferencias,
   PortaPromocaoDeUhs,
+  PeriodoDeUhGravado,
+  PortaUhIndisponivel,
 } from '@hubkeep/aplicacao';
 import {
   type Atribuicao,
@@ -46,6 +48,7 @@ import {
   type EstadoDaOs,
   type EstadoDoChamado,
   type Escopo,
+  type ExecutadoPor,
   ehModeloContratual,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
@@ -73,7 +76,14 @@ import { alterarFornecedor, criarFornecedor } from './repositorios/fornecedores'
 import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import { criarChamado } from './repositorios/chamados';
-import { alterarChamadoNaTriagem, cancelarOs, gerarOs, reatribuirOs } from './repositorios/triagem';
+import {
+  alterarChamadoNaTriagem,
+  cancelarOs,
+  definirQuemExecuta,
+  gerarOs,
+  reatribuirOs,
+} from './repositorios/triagem';
+import { liberarUh, marcarUhIndisponivel } from './repositorios/uh-indisponivel';
 import { aceitarOs, reabrirOs } from './repositorios/aceite';
 import { andarComOs, apontarHoras, registrarMaterial } from './repositorios/execucao';
 import { encerrarParada, registrarParada } from './repositorios/paradas';
@@ -740,13 +750,14 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
       banco.withContext(ctx, async (tx) => {
         const l = await tx
           .selectFrom('app.local')
-          .select(['id', 'hotel_id', 'status'])
+          .select(['id', 'hotel_id', 'tipo', 'status'])
           .where('id', '=', localId)
           .executeTakeFirst();
         return l
           ? {
               id: l.id,
               hotelId: l.hotel_id,
+              tipo: l.tipo,
               status: l.status as 'ativo' | 'inativo' | 'pendente_licenca',
             }
           : null;
@@ -786,6 +797,8 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
             'politica_aplicada',
             'aberto_por',
             'motivo_cancelamento',
+            'origem',
+            'impacto_hospede',
             'versao',
             'criado_em',
           ])
@@ -804,6 +817,8 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
               politicaAplicada: c.politica_aplicada,
               abertoPor: c.aberto_por,
               motivoCancelamento: c.motivo_cancelamento,
+              origem: c.origem,
+              impactoHospede: c.impacto_hospede,
               versao: c.versao,
               criadoEm: c.criado_em,
             }
@@ -822,6 +837,9 @@ const COLUNAS_DA_OS = [
   'equipe_id',
   'motivo_cancelamento',
   'motivo_reabertura',
+  'executado_por',
+  'fornecedor_id',
+  'custo_informado',
   'criado_por',
   'versao',
   'criado_em',
@@ -837,6 +855,9 @@ function paraOs(o: {
   equipe_id: string | null;
   motivo_cancelamento: string | null;
   motivo_reabertura: string | null;
+  executado_por: string;
+  fornecedor_id: string | null;
+  custo_informado: string | null;
   criado_por: string;
   versao: number;
   criado_em: Date;
@@ -854,6 +875,11 @@ function paraOs(o: {
         : { tipo: 'equipe', equipeId: o.equipe_id ?? '' },
     motivoCancelamento: o.motivo_cancelamento,
     motivoReabertura: o.motivo_reabertura,
+    // O check os_executado_por_lista garante um dos EXECUTORES_DA_OS.
+    executadoPor: o.executado_por as ExecutadoPor,
+    fornecedorId: o.fornecedor_id,
+    // numeric(12,2) chega como texto; dois decimais cabem no número.
+    custoInformado: o.custo_informado === null ? null : Number(o.custo_informado),
     criadoPor: o.criado_por,
     versao: o.versao,
     criadoEm: o.criado_em,
@@ -875,6 +901,12 @@ const paradaDoChamado = (hotel: string, chamado: string) =>
     where p.hotel_id = ${sql.ref(hotel)} and p.chamado_id = ${sql.ref(chamado)} and p.fim is null)`.as(
     'parada_do_chamado',
   );
+
+/** Início do período aberto da UH do chamado (I4); null se a UH não está indisponível. */
+const uhIndisponivelDesde = (hotel: string, chamado: string) =>
+  sql<Date | null>`(select u.inicio from app.uh_indisponivel u
+    where u.hotel_id = ${sql.ref(hotel)} and u.chamado_id = ${sql.ref(chamado)} and u.fim is null
+    limit 1)`.as('uh_indisponivel_desde');
 
 /** Triagem e OS (fase 1a, C3), pelo hk_app. */
 export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
@@ -946,6 +978,15 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           .executeTakeFirst();
         return e ? { hotelId: e.hotel_id, ativa: e.ativa } : null;
       }),
+    fornecedor: (ctx, fornecedorId) =>
+      banco.withContext(ctx, async (tx) => {
+        const f = await tx
+          .selectFrom('app.fornecedor')
+          .select('desativado_em')
+          .where('id', '=', fornecedorId)
+          .executeTakeFirst();
+        return f ? { ativo: f.desativado_em === null } : null;
+      }),
     equipesDoUsuario: (ctx) =>
       banco.withContext(ctx, async (tx) =>
         (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),
@@ -988,6 +1029,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
     alterarChamado: (ctx, chamadoId, versao, mudanca) =>
       banco.executar(ctx, (uow) => alterarChamadoNaTriagem(uow, chamadoId, versao, mudanca)),
     gerarOs: (ctx, g) => banco.executar(ctx, (uow) => gerarOs(uow, g)),
+    definirQuemExecuta: (ctx, g) => banco.executar(ctx, (uow) => definirQuemExecuta(uow, g)),
     reatribuirOs: (ctx, g) => banco.executar(ctx, (uow) => reatribuirOs(uow, g)),
     cancelarOs: (ctx, g) => banco.executar(ctx, (uow) => cancelarOs(uow, g)),
     aceitarOs: (ctx, g) => banco.executar(ctx, (uow) => aceitarOs(uow, g)),
@@ -1053,6 +1095,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           ])
           .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
           .select(paradaDoChamado('c.hotel_id', 'c.id'))
+          .select(uhIndisponivelDesde('c.hotel_id', 'c.id'))
           .where('o.estado', 'in', ['atribuida', 'em_execucao', 'pausada'])
           .where((eb) =>
             eb.or([
@@ -1085,6 +1128,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             ativoId: o.ativo_id,
             paradoDesde: o.parado_desde,
             paradaDoChamado: o.parada_do_chamado,
+            uhIndisponivelDesde: o.uh_indisponivel_desde,
           },
         }));
       }),
@@ -1201,6 +1245,78 @@ export function criarPortaParadas(banco: AcessoBanco): PortaParadas {
         })),
       ),
     encerrar: (ctx, e) => banco.executar(ctx, (uow) => encerrarParada(uow, e)),
+  };
+}
+
+const COLUNAS_DA_UH = [
+  'id',
+  'hotel_id',
+  'local_id',
+  'chamado_id',
+  'inicio',
+  'fim',
+  'aberta_por',
+  'encerrada_por',
+] as const;
+
+function paraPeriodoDeUh(u: {
+  id: string;
+  hotel_id: string;
+  local_id: string;
+  chamado_id: string;
+  inicio: Date;
+  fim: Date | null;
+  aberta_por: string;
+  encerrada_por: string | null;
+}): PeriodoDeUhGravado {
+  return {
+    id: u.id,
+    hotelId: u.hotel_id,
+    localId: u.local_id,
+    chamadoId: u.chamado_id,
+    inicio: u.inicio,
+    fim: u.fim,
+    abertaPor: u.aberta_por,
+    encerradaPor: u.encerrada_por,
+  };
+}
+
+/** UH indisponível (fase 1b, I4), pelo hk_app. */
+export function criarPortaUhIndisponivel(banco: AcessoBanco): PortaUhIndisponivel {
+  return {
+    periodo: (ctx, periodoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const u = await tx
+          .selectFrom('app.uh_indisponivel')
+          .select(COLUNAS_DA_UH)
+          .where('id', '=', periodoId)
+          .executeTakeFirst();
+        return u ? paraPeriodoDeUh(u) : null;
+      }),
+    abertoDoChamado: (ctx, chamadoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const u = await tx
+          .selectFrom('app.uh_indisponivel')
+          .select(COLUNAS_DA_UH)
+          .where('chamado_id', '=', chamadoId)
+          .where('fim', 'is', null)
+          .executeTakeFirst();
+        return u ? paraPeriodoDeUh(u) : null;
+      }),
+    doChamado: (ctx, chamadoId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.uh_indisponivel')
+            .select(COLUNAS_DA_UH)
+            .where('chamado_id', '=', chamadoId)
+            .orderBy('inicio', 'desc')
+            .orderBy('id', 'desc')
+            .execute()
+        ).map(paraPeriodoDeUh),
+      ),
+    marcar: (ctx, m) => banco.executar(ctx, (uow) => marcarUhIndisponivel(uow, m)),
+    liberar: (ctx, l) => banco.executar(ctx, (uow) => liberarUh(uow, l)),
   };
 }
 
@@ -1496,6 +1612,7 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
             registrarMaterial: (g) => registrarMaterial(uow, g),
             registrarParada: (g) => registrarParada(uow, g),
             encerrarParada: (g) => encerrarParada(uow, g),
+            liberarUh: (g) => liberarUh(uow, g),
           });
           await registrarOperacao(uow, operacao, resposta);
           return { repetida: false, resposta };

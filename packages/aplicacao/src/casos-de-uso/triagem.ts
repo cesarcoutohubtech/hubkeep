@@ -9,6 +9,11 @@
 // chamado. Toda ação leva a versão lida pela tela: se o registro mudou, 409
 // conflito_de_versao.
 //
+// Na I4: a triagem escolhe quem executa a OS (a equipe interna ou um
+// fornecedor ativo do grupo) ao gerar e corrige até a conclusão; corrige o
+// impacto no hóspede até o aceite; quem aceita informa o custo, opcional, em
+// reais; e o cancelamento do chamado encerra o período aberto da UH.
+//
 // Quem pode e para onde vai são do domínio (corretiva.ts e triagem.ts); a
 // situação de cada estado é a ativa de menor ordem (situacaoPara). As
 // checagens de papel são injetáveis, como o podeAbrir do chamado, para o
@@ -17,14 +22,21 @@ import {
   type AtorDaCorretiva,
   type CandidatoAResponsavel,
   type Contexto,
+  EXECUCAO_PADRAO,
+  type ExecutadoPor,
   NaoEncontrado,
+  type QuemExecuta,
   conflitoDeVersao,
   decidirNaOs,
   decidirNoChamado,
+  decidirQuemExecuta,
   exigirPrioridadeAtiva,
   exigirAtivoNoChamado,
   exigirResponsavelDoHotel,
+  normalizarCustoInformado,
   podeAjustarPrioridade,
+  podeAjustarQuemExecuta,
+  podeInformarImpacto,
   situacaoPara,
   validarParada,
 } from '@hubkeep/dominio';
@@ -35,6 +47,12 @@ import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/tria
 /** O responsável como a tela o escolhe. */
 export type ResponsavelPedido =
   { tipo: 'tecnico'; usuarioId: string } | { tipo: 'equipe'; equipeId: string };
+
+/** Quem executa a OS como a tela escolhe (I4). */
+export interface ExecucaoPedida {
+  executadoPor: ExecutadoPor;
+  fornecedorId?: string | null | undefined;
+}
 
 export interface CasosDeUsoDeTriagem {
   triar(
@@ -52,11 +70,24 @@ export interface CasosDeUsoDeTriagem {
     chamadoId: string,
     p: { versao: number; motivo: string },
   ): Promise<{ versao: number }>;
+  /** Sem a execução pedida, a OS é da equipe interna (I4). */
   gerarOs(
     ctx: Contexto,
     chamadoId: string,
-    p: { versao: number; responsavel: ResponsavelPedido },
+    p: { versao: number; responsavel: ResponsavelPedido; execucao?: ExecucaoPedida | undefined },
   ): Promise<{ id: string; versao: number; versaoDoChamado: number }>;
+  /** Corrige quem executa a OS, até a conclusão (I4). */
+  definirQuemExecuta(
+    ctx: Contexto,
+    osId: string,
+    p: { versao: number } & ExecucaoPedida,
+  ): Promise<{ versao: number }>;
+  /** Corrige o impacto no hóspede, até o aceite (I4); null: não informado. */
+  informarImpacto(
+    ctx: Contexto,
+    chamadoId: string,
+    p: { versao: number; impactoHospede: boolean | null },
+  ): Promise<{ versao: number }>;
   reatribuirOs(
     ctx: Contexto,
     osId: string,
@@ -67,11 +98,11 @@ export interface CasosDeUsoDeTriagem {
     osId: string,
     p: { versao: number; motivo: string },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
-  /** Aceite da OS concluída: o chamado fica concluído (C6). */
+  /** Aceite da OS concluída: o chamado fica concluído (C6), com o custo informado, opcional (I4). */
   aceitarOs(
     ctx: Contexto,
     osId: string,
-    p: { versao: number },
+    p: { versao: number; custoInformado?: number | null | undefined },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
   /**
    * Reabertura da OS concluída, com motivo: a OS e o chamado voltam à execução
@@ -93,6 +124,8 @@ export interface RegrasDaTriagem {
   decidirNaOs: typeof decidirNaOs;
   podeAjustarPrioridade: typeof podeAjustarPrioridade;
   exigirResponsavelDoHotel: typeof exigirResponsavelDoHotel;
+  podeInformarImpacto: typeof podeInformarImpacto;
+  podeAjustarQuemExecuta: typeof podeAjustarQuemExecuta;
 }
 
 export function criarCasosDeUsoDeTriagem(deps: {
@@ -109,6 +142,8 @@ export function criarCasosDeUsoDeTriagem(deps: {
     decidirNaOs,
     podeAjustarPrioridade,
     exigirResponsavelDoHotel,
+    podeInformarImpacto,
+    podeAjustarQuemExecuta,
     ...deps.regras,
   };
 
@@ -174,6 +209,16 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
   const situacoes = (ctx: Contexto) => deps.situacoes.listar(ctx);
 
+  /** Quem executa, com o fornecedor lido com o contexto de quem pede (RLS). */
+  async function quemExecuta(ctx: Contexto, pedido: ExecucaoPedida): Promise<QuemExecuta> {
+    const fornecedorId = pedido.fornecedorId ?? null;
+    const fornecedor =
+      pedido.executadoPor === 'fornecedor' && fornecedorId !== null
+        ? await deps.triagem.fornecedor(ctx, fornecedorId)
+        : null;
+    return decidirQuemExecuta(pedido, fornecedor);
+  }
+
   return {
     async triar(ctx, chamadoId, p) {
       const chamado = await chamadoNaVersao(ctx, chamadoId, p.versao);
@@ -202,17 +247,29 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
     async cancelarChamado(ctx, chamadoId, p) {
       const chamado = await chamadoNaVersao(ctx, chamadoId, p.versao);
+      const agora = deps.relogio.agora();
       const d = r.decidirNoChamado('cancelar', {
         ator: await ator(ctx),
         chamado,
         motivo: p.motivo,
-        agora: deps.relogio.agora(),
+        agora,
       });
+      // O período aberto da UH encerra junto e fica fora dos UH-dias (I4).
       return deps.triagem.alterarChamado(ctx, chamadoId, p.versao, {
         acao: 'cancelar',
         estado: d.estado,
         situacaoId: situacaoPara(await situacoes(ctx), 'chamado', d.estado),
         motivoCancelamento: d.motivo ?? '',
+        encerrarUhEm: agora,
+      });
+    },
+
+    async informarImpacto(ctx, chamadoId, p) {
+      const chamado = await chamadoNaVersao(ctx, chamadoId, p.versao);
+      r.podeInformarImpacto(await ator(ctx), chamado, deps.relogio.agora());
+      return deps.triagem.alterarChamado(ctx, chamadoId, p.versao, {
+        acao: 'informar_impacto',
+        impactoHospede: p.impactoHospede,
       });
     },
 
@@ -232,9 +289,11 @@ export function criarCasosDeUsoDeTriagem(deps: {
         chamado.hotel,
         agora,
       );
+      const execucao = p.execucao ? await quemExecuta(ctx, p.execucao) : EXECUCAO_PADRAO;
       const lista = await situacoes(ctx);
       const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.gerarOs(ctx, {
+        execucao,
         hotelId: chamado.hotel.id,
         localId: chamado.localId,
         chamadoAbertoPor: chamado.abertoPor,
@@ -247,6 +306,13 @@ export function criarCasosDeUsoDeTriagem(deps: {
           situacaoId: situacaoPara(lista, 'chamado', estadoDoChamado),
         },
       });
+    },
+
+    async definirQuemExecuta(ctx, osId, p) {
+      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      r.podeAjustarQuemExecuta(await ator(ctx), chamado, os.estado, deps.relogio.agora());
+      const execucao = await quemExecuta(ctx, p);
+      return deps.triagem.definirQuemExecuta(ctx, { osId, versao: p.versao, execucao });
     },
 
     async reatribuirOs(ctx, osId, p) {
@@ -308,9 +374,11 @@ export function criarCasosDeUsoDeTriagem(deps: {
         aceite,
         agora: deps.relogio.agora(),
       });
+      const custoInformado = normalizarCustoInformado(p.custoInformado);
       const lista = await situacoes(ctx);
       const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.aceitarOs(ctx, {
+        custoInformado,
         osId,
         versao: p.versao,
         de: os.estado,

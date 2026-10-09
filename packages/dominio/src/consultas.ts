@@ -8,7 +8,12 @@ import { RegraViolada } from './erros';
 export const TAMANHO_DA_PAGINA = 50;
 
 /** As entidades da auditoria que formam a linha do tempo do chamado. */
-export const ENTIDADES_DA_LINHA_DO_TEMPO = ['chamado', 'os', 'parada_ativo'] as const;
+export const ENTIDADES_DA_LINHA_DO_TEMPO = [
+  'chamado',
+  'os',
+  'parada_ativo',
+  'uh_indisponivel',
+] as const;
 export type EntidadeDaLinhaDoTempo = (typeof ENTIDADES_DA_LINHA_DO_TEMPO)[number];
 
 export interface FiltroDaLista {

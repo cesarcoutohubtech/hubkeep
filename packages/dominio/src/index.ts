@@ -196,6 +196,7 @@ export {
   encerraParadaNoHotel,
   podeAbrirChamado,
   podeEncerrarParada,
+  podeGerirUhIndisponivel,
   podeListarParadasPendentes,
   podeTriar,
   veDetalhesDaParada,
@@ -231,6 +232,28 @@ export {
 } from './paradas';
 export type { Parada } from './paradas';
 export {
+  ESTADOS_QUE_ACEITAM_UH_INDISPONIVEL,
+  exigirChamadoQueAceitaUhIndisponivel,
+  exigirPeriodoAberto,
+  exigirSemPeriodoAberto,
+  exigirUhParaIndisponibilidade,
+  periodoALiberarNaConclusao,
+  uhDiasPerdidos,
+  validarFimDaIndisponibilidade,
+  validarInicioDaIndisponibilidade,
+} from './uh-indisponivel';
+export type { PeriodoDeUh, PeriodoDeUhIndisponivel } from './uh-indisponivel';
+export {
+  CUSTO_MAXIMO,
+  ESTADOS_COM_EXECUTOR_AJUSTAVEL,
+  EXECUCAO_PADRAO,
+  EXECUTORES_DA_OS,
+  decidirQuemExecuta,
+  ehExecutorDaOs,
+  normalizarCustoInformado,
+} from './executor-e-custo';
+export type { ExecutadoPor, QuemExecuta } from './executor-e-custo';
+export {
   ENTIDADES_COM_SITUACAO,
   ESTADOS_POR_ENTIDADE,
   LIMITES_DA_CONFIGURACAO,
@@ -258,12 +281,14 @@ export type {
 } from './situacoes';
 export {
   LIMITE_DESCRICAO_DO_CHAMADO,
+  ORIGEM_PADRAO_DO_CHAMADO,
+  ORIGENS_DO_CHAMADO,
   exigirAtivoDoChamado,
   exigirLocalParaChamado,
   normalizarDescricaoDoChamado,
   politicaAplicadaNaAbertura,
 } from './chamados';
-export type { PoliticaAplicadaNaAbertura } from './chamados';
+export type { OrigemDoChamado, PoliticaAplicadaNaAbertura } from './chamados';
 export {
   ENTIDADES_DA_LINHA_DO_TEMPO,
   TAMANHO_DA_PAGINA,
@@ -272,10 +297,13 @@ export {
 } from './consultas';
 export type { EntidadeDaLinhaDoTempo, FiltroDaLista } from './consultas';
 export {
+  ESTADOS_COM_IMPACTO_AJUSTAVEL,
   ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
   exigirPrioridadeAtiva,
   exigirResponsavelDoHotel,
   podeAjustarPrioridade,
+  podeAjustarQuemExecuta,
+  podeInformarImpacto,
 } from './triagem';
 export type { CandidatoAResponsavel } from './triagem';
 export { PAPEIS } from './tipos';

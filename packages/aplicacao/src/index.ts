@@ -192,6 +192,18 @@ export type {
 } from './portas/paradas';
 export { criarCasosDeUsoDeParadas } from './casos-de-uso/paradas';
 export type {
+  LiberacaoDeUh,
+  MarcacaoDeUh,
+  PeriodoDeUhGravado,
+  PortaUhIndisponivel,
+} from './portas/uh-indisponivel';
+export { criarCasosDeUsoDeUhIndisponivel } from './casos-de-uso/uh-indisponivel';
+export type {
+  CasosDeUsoDeUhIndisponivel,
+  PeriodoDeUhComTempo,
+  PeriodoDeUhVisto,
+} from './casos-de-uso/uh-indisponivel';
+export type {
   CasosDeUsoDeParadas,
   ParadaComTempo,
   ParadaPendenteComTempo,
@@ -208,6 +220,7 @@ export { criarCasosDeUsoDeConsultas } from './casos-de-uso/consultas';
 export type { CasosDeUsoDeConsultas, Pagina, PedidoDeLista } from './casos-de-uso/consultas';
 export type {
   CasosDeUsoDeTriagem,
+  ExecucaoPedida,
   RegrasDaTriagem,
   ResponsavelPedido,
 } from './casos-de-uso/triagem';

@@ -233,6 +233,17 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
                     .where('chamado_id', '=', chamadoId),
                 ),
               ]),
+              eb.and([
+                eb('a.entidade', '=', 'uh_indisponivel'),
+                eb(
+                  'a.registro_id',
+                  'in',
+                  eb
+                    .selectFrom('app.uh_indisponivel')
+                    .select('id')
+                    .where('chamado_id', '=', chamadoId),
+                ),
+              ]),
             ]),
           )
           .orderBy('a.em')

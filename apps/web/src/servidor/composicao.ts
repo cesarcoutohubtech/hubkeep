@@ -11,6 +11,7 @@ import {
   type CasosDeUsoDeTriagem,
   type CasosDeUsoDeExecucao,
   type CasosDeUsoDeParadas,
+  type CasosDeUsoDeUhIndisponivel,
   type CasosDeUsoDeConsultas,
   type CasosDeUsoDeHistorico,
   type CasosDeUsoDeSituacoes,
@@ -33,6 +34,7 @@ import {
   criarCasosDeUsoDeAnexos,
   criarCasosDeUsoDeAtivos,
   criarCasosDeUsoDeParadas,
+  criarCasosDeUsoDeUhIndisponivel,
   criarCasosDeUsoDeConsultas,
   criarCasosDeUsoDeHistorico,
   criarCasosDeUsoDeCategorias,
@@ -66,6 +68,7 @@ import {
   criarPortaTriagem,
   criarPortaExecucao,
   criarPortaParadas,
+  criarPortaUhIndisponivel,
   criarPortaConsultasDaCorretiva,
   criarPortaHistorico,
   criarPortaPrioridades,
@@ -361,6 +364,7 @@ export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
     paradas: criarPortaParadas(banco),
+    uh: criarPortaUhIndisponivel(banco),
   });
 });
 
@@ -380,6 +384,18 @@ export const casosDeUsoDeParadas = memo<CasosDeUsoDeParadas>(async () => {
   return criarCasosDeUsoDeParadas({
     paradas: criarPortaParadas(banco),
     ativos: criarPortaAtivos(banco),
+    triagem: criarPortaTriagem(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** UH indisponível pelo web (fase 1b, I4): os períodos do chamado, a marcação e a liberação. */
+export const casosDeUsoDeUhIndisponivel = memo<CasosDeUsoDeUhIndisponivel>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeUhIndisponivel({
+    uh: criarPortaUhIndisponivel(banco),
+    chamados: criarPortaChamados(banco),
     triagem: criarPortaTriagem(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,

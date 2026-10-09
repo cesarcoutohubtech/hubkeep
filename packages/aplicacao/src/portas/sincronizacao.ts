@@ -8,6 +8,7 @@ import type { DadosDeChamado } from './chamados';
 import type { AcaoNaOsDecidida } from './execucao';
 import type { EncerramentoDeParada, RegistroDeParada } from './paradas';
 import type { PreferenciasGravadas } from './preferencias';
+import type { LiberacaoDeUh } from './uh-indisponivel';
 
 /** Resposta guardada com a chave e devolvida igual a cada reenvio. */
 export type RespostaDeOperacao = Record<string, string | number | boolean | null>;
@@ -47,6 +48,8 @@ export interface SessaoDeOperacao {
   registrarParada(g: RegistroDeParada): Promise<{ id: string }>;
   /** Encerra a parada aberta (C5); já encerrada: Conflito parada_nao_aberta. */
   encerrarParada(g: EncerramentoDeParada): Promise<void>;
+  /** Libera a UH na conclusão da OS (I4); já liberada: Conflito uh_indisponivel_nao_aberta. */
+  liberarUh(g: LiberacaoDeUh): Promise<void>;
 }
 
 export interface PortaOperacoesOffline {

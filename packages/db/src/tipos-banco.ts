@@ -31,6 +31,8 @@ export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
+export type Numeric = ColumnType<string, number | string, number | string>;
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface AppAnexo {
@@ -143,8 +145,10 @@ export interface AppChamado {
   estado: string;
   hotel_id: string;
   id: string;
+  impacto_hospede: boolean | null;
   local_id: string;
   motivo_cancelamento: string | null;
+  origem: Generated<string>;
   politica_aplicada: Json;
   prioridade_id: string;
   situacao_id: string;
@@ -278,8 +282,11 @@ export interface AppOs {
   chamado_id: string;
   criado_em: Generated<Timestamp>;
   criado_por: string;
+  custo_informado: Numeric | null;
   equipe_id: string | null;
   estado: string;
+  executado_por: Generated<string>;
+  fornecedor_id: string | null;
   hotel_id: string;
   id: string;
   local_id: string;
@@ -407,6 +414,20 @@ export interface AppTenant {
   subdivisao: string | null;
 }
 
+export interface AppUhIndisponivel {
+  aberta_por: string;
+  atualizado_em: Generated<Timestamp>;
+  chamado_id: string;
+  criado_em: Generated<Timestamp>;
+  encerrada_por: string | null;
+  fim: Timestamp | null;
+  hotel_id: string;
+  id: string;
+  inicio: Timestamp;
+  local_id: string;
+  tenant_id: string;
+}
+
 export interface LicencaContrato {
   atualizado_em: Generated<Timestamp>;
   atualizado_por: string;
@@ -476,6 +497,7 @@ export interface DB {
   "app.proprietario": AppProprietario;
   "app.situacao": AppSituacao;
   "app.tenant": AppTenant;
+  "app.uh_indisponivel": AppUhIndisponivel;
   "licenca.contrato": LicencaContrato;
   "staging.carga": StagingCarga;
   "staging.credencial_agente": StagingCredencialAgente;

@@ -18,6 +18,8 @@ import {
   ENTIDADES_COM_SITUACAO_API,
   ENTIDADES_COM_HISTORICO_API,
   ENTIDADES_DA_LINHA_DO_TEMPO_API,
+  EXECUTORES_DA_OS_API,
+  ORIGENS_DO_CHAMADO_API,
   ESTADOS_DA_OS_API,
   ESTADOS_DO_CHAMADO_API,
   PRIORIDADES_PADRAO_API,
@@ -39,6 +41,8 @@ import {
   ENTIDADES_COM_SITUACAO,
   ENTIDADES_COM_HISTORICO,
   ENTIDADES_DA_LINHA_DO_TEMPO,
+  EXECUTORES_DA_OS,
+  ORIGENS_DO_CHAMADO,
   ESTADOS_DA_OS,
   ESTADOS_DO_CHAMADO,
   PRIORIDADES_PADRAO,
@@ -156,6 +160,11 @@ describe('contratos × domínio', () => {
 
   it('as entidades da linha do tempo da API são as do domínio (C7)', () => {
     expect([...ENTIDADES_DA_LINHA_DO_TEMPO_API]).toEqual([...ENTIDADES_DA_LINHA_DO_TEMPO]);
+  });
+
+  it('a origem do chamado e quem executa a OS na API são os do domínio (I4)', () => {
+    expect([...ORIGENS_DO_CHAMADO_API]).toEqual([...ORIGENS_DO_CHAMADO]);
+    expect([...EXECUTORES_DA_OS_API]).toEqual([...EXECUTORES_DA_OS]);
   });
 
   it('as entidades com histórico da API são as do domínio (D1)', () => {

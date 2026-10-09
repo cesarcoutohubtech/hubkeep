@@ -3,11 +3,19 @@
 // resolvidas no servidor, e a foto vai depois, como anexo do chamado. A
 // triagem e as ações da OS levam a versão vista (ADR-029). Os limites finos
 // (descrição, motivo, ativo no local, UH pendente, quem recebe a OS) são
-// validados no domínio, com código.
+// validados no domínio, com código. Na I4, a abertura responde se afeta
+// hóspede e se a UH ficou indisponível; a OS guarda quem executa (equipe
+// interna ou fornecedor do grupo) e o custo informado no aceite.
 import { z } from 'zod';
 import { ESTADOS_DA_OS_API, ESTADOS_DO_CHAMADO_API } from './situacoes';
 
 const versao = z.number().int().min(1);
+
+/** De onde veio o trabalho (I4); o teste contratos × domínio confere com ORIGENS_DO_CHAMADO. */
+export const ORIGENS_DO_CHAMADO_API = ['interno'] as const;
+
+/** Quem executa a OS (I4); o teste contratos × domínio confere com EXECUTORES_DA_OS. */
+export const EXECUTORES_DA_OS_API = ['equipe_interna', 'fornecedor'] as const;
 
 export const PedidoDeAberturaDeChamado = z
   .object({
@@ -16,6 +24,10 @@ export const PedidoDeAberturaDeChamado = z
     descricao: z.string().max(4000),
     /** Equipamento parado desde (C5): grava a parada aberta do ativo; exige o ativo. */
     paradoDesde: z.iso.datetime().nullish(),
+    /** Afeta hóspede? (I4) null ou ausente: não sei. */
+    impactoHospede: z.boolean().nullish(),
+    /** A UH indisponível desde (I4): grava o período aberto da UH; só em chamado de UH. */
+    uhIndisponivelDesde: z.iso.datetime().nullish(),
   })
   .meta({ id: 'PedidoDeAberturaDeChamado' });
 
@@ -37,6 +49,10 @@ export const ChamadoApi = z
     politicaAplicada: z.record(z.string(), z.unknown()),
     abertoPor: z.guid(),
     motivoCancelamento: z.string().nullable(),
+    /** De onde veio o trabalho (I4). */
+    origem: z.enum(ORIGENS_DO_CHAMADO_API),
+    /** Afeta hóspede? null: não informado (I4). */
+    impactoHospede: z.boolean().nullable(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
   })
@@ -61,6 +77,12 @@ export const OsApi = z
     motivoCancelamento: z.string().nullable(),
     /** O último motivo de reabertura (C6); o histórico fica na auditoria. */
     motivoReabertura: z.string().nullable(),
+    /** Quem executa (I4): a equipe interna ou o fornecedor do grupo. */
+    executadoPor: z.enum(EXECUTORES_DA_OS_API),
+    /** O fornecedor, só quando executada por fornecedor. */
+    fornecedorId: z.guid().nullable(),
+    /** O custo informado no aceite, em reais (I4); null: não informado. */
+    custoInformado: z.number().nullable(),
     criadoPor: z.guid(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
@@ -158,7 +180,12 @@ export const RespostaDeListaDeOs = z
   .meta({ id: 'RespostaDeListaDeOs' });
 
 /** As entidades da auditoria que formam a linha do tempo do chamado (C7). */
-export const ENTIDADES_DA_LINHA_DO_TEMPO_API = ['chamado', 'os', 'parada_ativo'] as const;
+export const ENTIDADES_DA_LINHA_DO_TEMPO_API = [
+  'chamado',
+  'os',
+  'parada_ativo',
+  'uh_indisponivel',
+] as const;
 
 /** Uma ação da auditoria do chamado, das OS dele ou das paradas do chamado (C7). */
 export const EventoDaLinhaDoTempoApi = z
@@ -200,6 +227,29 @@ export const PedidoDeAtribuicaoDeOs = z
   .object({ versao, responsavel: ResponsavelApi })
   .meta({ id: 'PedidoDeAtribuicaoDeOs' });
 
+/**
+ * Gerar a OS (C3), com quem executa (I4): sem executadoPor, a equipe interna.
+ * O fornecedor é exigido quando quem executa é fornecedor (domínio).
+ */
+export const PedidoDeGeracaoDeOs = PedidoDeAtribuicaoDeOs.extend({
+  executadoPor: z.enum(EXECUTORES_DA_OS_API).optional(),
+  fornecedorId: z.guid().nullish(),
+}).meta({ id: 'PedidoDeGeracaoDeOs' });
+
+/** Corrigir quem executa a OS, até a conclusão (I4). */
+export const PedidoDeExecutorDaOs = z
+  .object({
+    versao,
+    executadoPor: z.enum(EXECUTORES_DA_OS_API),
+    fornecedorId: z.guid().nullish(),
+  })
+  .meta({ id: 'PedidoDeExecutorDaOs' });
+
+/** Corrigir o impacto no hóspede, até o aceite (I4); null: não sei. */
+export const PedidoDeImpactoNoHospede = z
+  .object({ versao, impactoHospede: z.boolean().nullable() })
+  .meta({ id: 'PedidoDeImpactoNoHospede' });
+
 export const RespostaDeChamadoAlterado = z
   .object({ id: z.guid(), versao: z.int() })
   .meta({ id: 'RespostaDeChamadoAlterado' });
@@ -208,8 +258,13 @@ export const RespostaDeOsGravada = z
   .object({ id: z.guid(), versao: z.int(), versaoDoChamado: z.int().optional() })
   .meta({ id: 'RespostaDeOsGravada' });
 
-/** Aceitar a OS concluída (C6): só a versão vista da OS. */
-export const PedidoDeAceiteDeOs = z.object({ versao }).meta({ id: 'PedidoDeAceiteDeOs' });
+/**
+ * Aceitar a OS concluída (C6): a versão vista da OS e, opcional, o custo
+ * informado em reais (I4), conferido no domínio (não negativo, dois decimais).
+ */
+export const PedidoDeAceiteDeOs = z
+  .object({ versao, custoInformado: z.number().nullish() })
+  .meta({ id: 'PedidoDeAceiteDeOs' });
 
 /**
  * Reabrir a OS concluída (C6): o motivo é normalizado no domínio (até 500).
@@ -250,6 +305,8 @@ export const OsDoDiaApi = z
       paradoDesde: z.iso.datetime().nullable(),
       /** A parada aberta é deste chamado: a OS encerra, e a conclusão pergunta se voltou. */
       paradaDoChamado: z.boolean(),
+      /** Início do período aberto da UH do chamado (I4): a conclusão pergunta se foi liberada. */
+      uhIndisponivelDesde: z.iso.datetime().nullable(),
     }),
   })
   .meta({ id: 'OsDoDiaApi' });

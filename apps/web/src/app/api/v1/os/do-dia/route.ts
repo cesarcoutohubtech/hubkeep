@@ -24,6 +24,7 @@ export const GET = rota('os.do_dia', async (r) => {
         ...o.chamado,
         estado: o.chamado.estado as (typeof ESTADOS_DO_CHAMADO_API)[number],
         paradoDesde: o.chamado.paradoDesde?.toISOString() ?? null,
+        uhIndisponivelDesde: o.chamado.uhIndisponivelDesde?.toISOString() ?? null,
       },
     })),
   });

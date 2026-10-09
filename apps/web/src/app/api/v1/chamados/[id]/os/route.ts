@@ -1,7 +1,8 @@
 // POST /api/v1/chamados/{id}/os — gera a OS do chamado, atribuída a um Técnico
 // ou a uma equipe do hotel, na versão vista do chamado (C3; ADR-029). No
-// máximo uma OS não cancelada por chamado (409 os_em_andamento).
-import { PedidoDeAtribuicaoDeOs, RespostaDeOsGravada } from '@hubkeep/contratos';
+// máximo uma OS não cancelada por chamado (409 os_em_andamento). Com
+// executadoPor, quem executa (I4): a equipe interna ou um fornecedor do grupo.
+import { PedidoDeGeracaoDeOs, RespostaDeOsGravada } from '@hubkeep/contratos';
 import { casosDeUsoDeTriagem } from '../../../../../../servidor/composicao';
 import { ErroHttp, rota } from '../../../../../../servidor/http';
 
@@ -14,7 +15,12 @@ export const POST = rota('os.gerar', async (r) => {
   const ctx = await r.contexto();
   const id = CAMINHO.exec(new URL(r.req.url).pathname)?.[1];
   if (!id) throw new ErroHttp(404, 'chamado_nao_encontrado');
-  const pedido = await r.corpo(PedidoDeAtribuicaoDeOs);
-  const gravado = await (await casosDeUsoDeTriagem()).gerarOs(ctx, id, pedido);
+  const { executadoPor, fornecedorId, ...pedido } = await r.corpo(PedidoDeGeracaoDeOs);
+  const gravado = await (
+    await casosDeUsoDeTriagem()
+  ).gerarOs(ctx, id, {
+    ...pedido,
+    execucao: executadoPor ? { executadoPor, fornecedorId } : undefined,
+  });
   return r.responder(201, RespostaDeOsGravada, gravado);
 });

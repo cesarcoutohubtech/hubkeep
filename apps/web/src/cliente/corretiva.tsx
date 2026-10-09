@@ -560,6 +560,7 @@ const ROTULO_DA_ENTIDADE = {
   chamado: 'corretiva.linha_do_tempo.chamado',
   os: 'corretiva.linha_do_tempo.os',
   parada_ativo: 'corretiva.linha_do_tempo.parada_ativo',
+  uh_indisponivel: 'corretiva.linha_do_tempo.uh_indisponivel',
 } as const satisfies Record<EventoDaLinhaDoTempo['entidade'], Chave>;
 
 export function LinhaDoTempo({ eventos }: { eventos: EventoDaLinhaDoTempo[] }) {
