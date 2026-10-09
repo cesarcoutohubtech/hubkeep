@@ -1467,7 +1467,7 @@ Desenho aprovado pelo Cesar em 08/10/2026 (`docs/referencia/propostas-desenho-1b
   - limite de 60 caracteres da edificação: mantido;
   - ler o `hk_tenant` no layout do servidor: só se a medição mostrar ganho. O cookie é só preferência; a participação no tenant continua conferida (o banco só aceita tenant de que o usuário é membro);
   - página que chama os casos de uso direto no servidor (P1c): adendo curto ao ADR-039, já no `docs/03` (texto aguarda a aprovação).
-- **Medidas:** os comandos do `db:fumaca-dev` pelo pooler e da leitura do `Server-Timing` de `/api/v1/hoteis/{id}/ativos` foram passados ao Cesar; ele roda.
+- **Medidas:** os comandos da fumaça pelo pooler (o nome certo é `pnpm db:fumaca --ambiente dev`; `db:fumaca-dev` não existe) e da leitura do `Server-Timing` de `/api/v1/hoteis/{id}/ativos` foram passados ao Cesar; ele roda.
 - **Exceção GHSA-vfj7-8cjw-p6xm:** revisão em 08/11/2026 ou antes do piloto, o que vier primeiro. A data está no comentário da exceção, no `pnpm-workspace.yaml`.
 - **Nomes:** a etapa de checklist e preventiva passou de P1 a P3 para **PV1 a PV3**, para não confundir com a P1 de desempenho. Mudou no `docs/12` e nos documentos do piloto. O diário da fase 1a fica como está: lá, P1 é desempenho.
 - **Fila (zona protegida, um PR por vez):** correção do teste 29 → I4 → CNPJ alfanumérico e código do Gestor CSC sem hotel → I6 → I7 → I8. O Cesar é avisado a cada PR pronto para merge e `db push`.

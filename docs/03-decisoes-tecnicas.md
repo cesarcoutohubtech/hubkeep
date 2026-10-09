@@ -903,7 +903,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Durante o GET, a conexão fica presa ao pedido do primeiro `withContext` até o fim do handler, inclusive na espera que não é do banco. Com `max: 5` por instância, isso pesa sob concorrência alta.
 - Um GET que precise escrever terá de usar a unit of work, numa segunda conexão. Hoje nenhum GET da `/api/v1` escreve.
 - As páginas do servidor que chamam casos de uso fora do `rota()` ainda não usam o escopo. Podem passar a usar na P1c.
-- A confirmação pelo Supavisor (`pnpm db:fumaca-dev` com `HK_TESTE_VIA_POOLER=1`) e a medida do `Server-Timing` antes e depois ficam registradas no diário.
+- A confirmação pelo Supavisor (`pnpm db:fumaca --ambiente dev`, que já liga o `HK_TESTE_VIA_POOLER=1`) e a medida do `Server-Timing` antes e depois ficam registradas no diário.
 
 **Adendo — página do servidor que chama os casos de uso (P1c, 08/10/2026).** Status: forma (adendo curto) decidida pelo Cesar em 09/10/2026; texto aguarda a aprovação dele.
 - Uma página do App Router pode montar os dados no servidor chamando os mesmos casos de uso da API, sem passar pela `/api/v1`. Hoje isso vale para o detalhe do chamado (`chamados/[id]/page.tsx`).
