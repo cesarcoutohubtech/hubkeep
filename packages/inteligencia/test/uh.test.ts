@@ -1,6 +1,9 @@
-// UH-dias perdidos por manutenção (proposta de 07/10/2026, aguardando aprovação).
+// UH-dias perdidos por manutenção. A função mora no domínio desde a I4
+// (`uhDiasPerdidos`, de `app.uh_indisponivel`); estes casos ficam aqui como
+// o contrato que o componente UH-dias da atenção vai usar quando o peso
+// deixar de ser 0.
+import { type PeriodoDeUhIndisponivel, uhDiasPerdidos } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
-import { type PeriodoDeUhIndisponivel, uhDiasPerdidos } from '../src';
 import { agora, dia, hora } from './apoio';
 
 const periodo = (

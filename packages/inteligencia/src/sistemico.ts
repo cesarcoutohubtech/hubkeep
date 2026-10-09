@@ -2,7 +2,7 @@
 // determinísticas: mesmo modelo, mesma área (andar das UHs ou a mesma área
 // comum), mesmo fornecedor e crescimento da mesma falha. O resultado é sempre
 // "possível": só uma pessoa confirma. A regra do feedback externo espera a 1.5.
-// Agrupar por falha usa o código de falha da instrumentação (fase A); sem ele,
+// Agrupar por falha usa o código de falha da instrumentação (etapa I6); sem ele,
 // o agrupamento cai na categoria do ativo, e a corretiva sem nenhum dos dois
 // fica de fora.
 //

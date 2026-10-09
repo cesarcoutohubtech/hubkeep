@@ -86,7 +86,7 @@ export interface AtivoDoDia extends AtivoAnalisado {
   paradas: readonly Parada[];
   /** Preventiva vencida do ativo (etapa P); ausente sem dado. */
   preventivaAtrasada?: boolean | null;
-  /** Medições do checklist tipado na janela (P1); ausente sem dado. */
+  /** Medições do checklist tipado na janela (PV1); ausente sem dado. */
   medicoes?: MedicoesDoAtivo | null;
 }
 

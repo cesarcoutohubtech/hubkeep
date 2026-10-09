@@ -2,7 +2,7 @@
 // substituição? Nunca decide: conta critérios atingidos, cada um com o valor e
 // o limite, e a lista é a justificativa. Critério sem dado fica como não
 // avaliado (atingido null), e não conta. Custo, garantia e valor de reposição
-// dependem da instrumentação (fase A); a tela de decisão é da 2.0.
+// dependem da instrumentação (etapa I da 1b); a tela de decisão é da 2.0.
 import { CRITICIDADE_MAXIMA, type Criticidade } from './historico';
 import { razao } from './score';
 

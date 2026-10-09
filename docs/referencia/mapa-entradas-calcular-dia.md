@@ -17,7 +17,7 @@
   - I1: ativo (compra, garantia e criticidade), **na `main`**;
   - I2: modelo contratual do hotel e edificação do local, **na `main`**;
   - I3: fornecedor mínimo do grupo, **na `main`**;
-  - I4: chamado e OS (executado por, custo, impacto no hóspede, UH indisponível);
+  - I4: chamado e OS (executado por, custo, impacto no hóspede, UH indisponível), **na `main`**;
   - I5: transições da OS, **na `main`**;
   - I6: códigos de manutenção;
   - I7: módulos contratados (`licenca.modulo`);
@@ -56,7 +56,7 @@
 | `paradas` | `app.parada_ativo.inicio` e `fim`, por `ativo_id` | Existe |
 | `garantiaAte` | `app.ativo.garantia_ate` (último dia da garantia). Atenção v2: garantia vencida, 5%. Sem a data, o componente fica sem dado. | I1 |
 | `preventivaAtrasada` | O plano de preventiva da 1b. Atenção v2: preventiva atrasada, 10%. | Sem origem até a etapa P |
-| `medicoes` | `{ foraDaFaixa, total }` das medições do checklist tipado na janela. Atenção v2: medições fora da faixa, 10%. | Sem origem até o P1 |
+| `medicoes` | `{ foraDaFaixa, total }` das medições do checklist tipado na janela. Atenção v2: medições fora da faixa, 10%. | Sem origem até a PV1 (antes P1) |
 
 ## Corretiva (`Corretiva`)
 
@@ -68,12 +68,12 @@
 | `abertaEm` | `app.chamado.criado_em` | Existe |
 | `concluidaEm`, `reaberturas` | `app.os_transicao` (de, para, quando, quem e a ação), lida pelo `hk_worker` no tenant do job. As transições até a data do cálculo passam por `conclusaoEReaberturas`. O worker não lê a auditoria (decisão de 06/10/2026). As colunas são `acao`, `de`, `para`, `quando` e `usuario_id`; o motor lê `acao`, `para` e `quando`. | Existe (I5) |
 | `codigoFalha` | `app.os.codigo_falha_id` | I6 |
-| `executadoPor` | `app.os.executado_por`: `equipe_interna` ou `fornecedor` (o documento de 07/10 trocou `terceiro` por `fornecedor`) | I4 |
-| `fornecedorId` | A chave do cadastro de fornecedor (`app.fornecedor`), que substitui o nome digitado (`terceiro_nome`). A regra do mesmo fornecedor compara este id. | `app.fornecedor` existe (I3; o worker não lê a tabela). A coluna da OS que aponta para ela vem na I4 (nome a confirmar) |
-| `custoInformado` | `app.os.custo_informado` | I4 |
-| `impactoHospede` | `app.chamado.impacto_hospede` | I4 |
+| `executadoPor` | `app.os.executado_por`: `equipe_interna` ou `fornecedor` (o documento de 07/10 trocou `terceiro` por `fornecedor`). `not null default 'equipe_interna'`: as OS anteriores à 0034 ficaram com o padrão. Tipo `ExecutadoPor` e lista `EXECUTORES_DA_OS` do domínio. | Existe (I4) |
+| `fornecedorId` | A chave do cadastro de fornecedor (`app.fornecedor`), que substitui o nome digitado (`terceiro_nome`). A regra do mesmo fornecedor compara este id. `app.os.fornecedor_id`, FK composta para `app.fornecedor` (I3); o check `os_fornecedor_quando_externo` só aceita o id com `executado_por = 'fornecedor'`. O worker lê a coluna da OS, não a tabela do fornecedor. | Existe (I4) |
+| `custoInformado` | `app.os.custo_informado`, `numeric(12,2)`, não negativo, gravado no aceite. Chega como texto pelo driver: quem lê converte para número. | Existe (I4) |
+| `impactoHospede` | `app.chamado.impacto_hospede`, boolean; nulo é "não informado". | Existe (I4) |
 | `aposPreventiva` | A OS preventiva da 1b, reconhecida pelo plano. | Sem origem até a etapa P |
-| Período de UH indisponível (`PeriodoDeUhIndisponivel`: UH, chamado, início e fim) | O período novo do chamado (1b, item Chamado e OS). **Só para a medida proposta** `uhDiasPerdidos`, que nenhum score usa e o `calcularDia` não chama: `docs/referencia/proposta-uh-indisponivel-intelligence.md`. | I4 (nome das colunas a confirmar) |
+| Período de UH indisponível (`PeriodoDeUhIndisponivel` do domínio: `hotelId`, `localId`, `chamadoId`, `inicio`, `fim`, `chamadoCancelado`) | `app.uh_indisponivel` (`hotel_id`, `local_id`, `chamado_id`, `inicio`, `fim`), lida pelo `hk_worker` no tenant do job; `chamadoCancelado` vem de `app.chamado.estado = 'cancelado'`. `uhDiasPerdidos` mora no `@hubkeep/dominio` desde a I4, e a cópia do módulo saiu. Componente UH-dias da atenção, com peso 0: o `calcularDia` ainda não a chama. | Existe (I4) |
 
 ## Local (`LocalAnalisado`)
 
@@ -104,7 +104,7 @@ O rascunho da tabela está no branch `int-rascunhos` (`rascunhos/metrica/`).
 ## Mudanças de 07/10/2026 (revisão do escopo do Cesar)
 
 1. **Fornecedor como tabela:** a regra do mesmo fornecedor passa a usar o id do cadastro (`fornecedorId`), e não o nome digitado. A comparação de nomes normalizados (`chaveDeTerceiro`) saiu do motor. A OS executada por fornecedor sem o id não entra na regra.
-2. **UH indisponível:** o período vem do chamado. Proposta de como entra, em `docs/referencia/proposta-uh-indisponivel-intelligence.md`: **sinal próprio, e não componente da atenção**, a aprovar.
+2. **UH indisponível:** o período vem do chamado. Proposta de como entra, em `docs/referencia/proposta-uh-indisponivel-intelligence.md`: **sinal próprio, e não componente da atenção**, a aprovar. **Superado em 07/10/2026:** componente da atenção, com peso 0 (diário do Intelligence).
 3. **Modelo contratual do hotel:** dimensão das comparações de rede da versão 2.0 (próprio, administrado, arrendado, afiliado). **Não implementado agora:** o 1.0 compara hotéis e bandeiras como estão. Quando a 2.0 vier, entram o campo em `HotelDoDia`, o recorte nas agregações (`agregarMesDosHoteis` por modelo) e a regra de que insight de rede não mistura modelos sem dizer. Registrado aqui para o desenho não precisar de migração de volta.
 
 ## Ainda sem origem
