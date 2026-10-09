@@ -329,6 +329,14 @@ O Kaio pediu para seguir a pauta do agente do núcleo (`docs/diario-fase-1a.md`,
 - **ADR-036, aprovado pelo Cesar com uma condição.** Cada resultado diário grava a versão da política e a da fórmula usadas, e um recálculo fica marcado como recálculo, com a versão nova.
 - **Hotel novo num insight de rede, aprovado pelo Cesar com uma condição.** O hash da lista de hotéis é calculado fora do `packages/inteligencia` (no job, com `node:crypto`, ou no banco, com `sha256()`), a função pura devolve só a lista canônica, e nada de SHA-256 escrito à mão.
 - **Aceite do Kaio às duas condições:** em 07/10/2026, ao pedir que o agente as aplicasse. Elas estão aplicadas (abaixo). O Kaio pode corrigir este registro.
+- **Texto literal da aprovação do Cesar** (colado pelo usuário no chat deste agente em 09/10/2026, sem alteração). Canal: o Documento do projeto do Cesar no claude.ai, seção "Registro de decisões da revisão". Dia: 07/10/2026. Canal e dia informados pelo Kaio em 09/10/2026:
+
+  > “Eu, Cesar, aprovo o ADR-033 a 037, o adendo ao ADR-026 e as três regras do #101, com as duas condições: o resultado diário grava a versão da política e da fórmula, com o recálculo marcado; e o hash do insight de rede é calculado fora da função pura.”
+
+  As duas condições do texto são as do ADR-036 (versão da política e da fórmula no resultado diário, recálculo marcado) e a do hash do insight de rede, ambas registradas acima e já aplicadas.
+- **Texto literal do aceite do Kaio às duas condições** (passado pelo Kaio ao agente em 09/10/2026, sem alteração):
+
+  > "Eu, Kaio, aceito as duas condições do Cesar de 07/10: o resultado diário grava a versão da política e da fórmula, com o recálculo marcado; e o hash do insight de rede é calculado fora da função pura."
 - **Superado:** a proposta de um SHA-256 próprio no TypeScript, que estava no rascunho. Saiu.
 
 ### O que ficou fora do merge, e foi recolocado
@@ -430,7 +438,11 @@ Instruções do Cesar (pauta de 07/10/2026, depois do merge do #125).
 
 ### A aprovação do Cesar
 - **Quando e por onde:** o Cesar aprovou **por escrito, em 08/10/2026**, as três propostas do alinhamento do motor com o mock oficial (identidade oficial, ADR-038): atenção v2, efetividade sem linguagem de causa e padrão sistêmico com os mínimos do mock. O Kaio passou a aprovação ao agente na pauta de 08/10. Canal: **[a preencher com o canal do Cesar]**.
-- **Texto do Cesar:** **[a colar: o Kaio vai passar o texto literal, e ele entra aqui antes do merge]**.
+- **Texto do Cesar** (passado pelo Kaio ao agente em 09/10/2026, sem alteração):
+
+  > Eu, Cesar, aprovo em 08/10/2026: a atenção por ativo versão 2, com os oito componentes e os pesos padrão propostos; a efetividade sem linguagem de causa, com os limiares e o mínimo de 3 chamados antes; o padrão sistêmico do 1.0 só com a regra do mesmo modelo e os mínimos de 3 hotéis, 6 chamados em 90 dias e 5 ativos; e o mock de apresentação como mock oficial único na main.
+
+  Nota do agente: o texto fala em "oito componentes", como a pauta de 08/10; a lista de pesos da pauta, e o motor, têm nove, porque os UH-dias entram com peso 0 e sem dado. A leitura aplicada é a da lista de pesos. **[a confirmar com o Cesar]**
 - **A análise que originou o alinhamento** (08/10/2026): a tabela componente a componente entre o mock e o motor da `main`. Os números do mock eram: atenção com cinco componentes (reincidência 35, indisponibilidade 25, criticidade 20, medições fora da faixa 10, garantia vencida 10); efetividade por razão depois ÷ antes (40% e 75%); padrão sistêmico com 3 hotéis, 6 chamados em 90 dias e taxa de pelo menos o dobro da base (mínimo 0,3).
 
 ### O que foi aprovado, por área, e onde entra
@@ -474,7 +486,7 @@ Instruções do Cesar (pauta de 07/10/2026, depois do merge do #125).
 
 ### Ponto de retomada (08/10/2026)
 - **PRs abertos, empilhados** (fora de zona protegida; o merge é do usuário, nesta ordem): #142 atenção v2 → #144 efetividade v2 → #145 padrão sistêmico v2. Conferir com `gh pr checks`.
-- **Esperando o Kaio:** o canal e o texto literal da aprovação do Cesar, para o campo "A aprovação do Cesar" acima (o diário sai do #142 com os dois campos em aberto).
+- **Esperando o Kaio:** o canal e o texto literal da aprovação do Cesar, para o campo "A aprovação do Cesar" acima (o diário sai do #142 com os dois campos em aberto). O texto chegou em 09/10/2026; o canal ainda não.
 - **Esperando o Cesar:** as confirmações listadas nos PRs (medições como fração; "tenant inteiro"; ordem entre janela incompleta e sem base; leituras do mesmo modelo; "a versão 1 nunca foi gravada").
 - **Pronto, no `int-rascunhos` (`1deab5f`):** o texto dos adendos ao ADR-034 e ao ADR-036 (`rascunhos/adr/adendos-adr-034-e-036.md`). Entra no `int-adr-aceite`, depois das migrações da etapa I.
 - **Fora do escopo, por instrução:** o `csc-mock` não foi tocado. Quando o Cesar trouxer a versão de apresentação, a tela do Intelligence no mock é atualizada para as fórmulas novas, num PR separado.
@@ -507,4 +519,4 @@ Depois do merge do #148, conferi o `historico.ts` e o mapa das entradas contra a
 - **Main verde** no merge do #148; nenhum PR aberto do Intelligence além deste.
 - **Esperando o núcleo:** a I4 (chamado e OS), a I6 e a I7. Quando a I4 entrar, trocar `executadoPor`, `fornecedorId`, `custoInformado`, `impactoHospede` e o período de UH indisponível pelos nomes reais, num PR fora de zona protegida.
 - **`int-adr-aceite` continua fechado** (a instrumentação não terminou), e as tabelas do Intelligence esperam a I7 (aviso do núcleo: a fila de zona protegida abre para elas depois da I7).
-- **Esperando o Kaio e o Cesar:** o canal e o texto literal da aprovação do Cesar no diário, e as confirmações dos PRs de 08/10.
+- **Esperando o Kaio e o Cesar:** o canal da aprovação do Cesar de 08/10 (o texto literal entrou em 09/10/2026), e as confirmações dos PRs de 08/10.
