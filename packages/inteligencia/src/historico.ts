@@ -8,9 +8,9 @@ import { type AcaoDaOs, type EstadoDaOs, type Parada, tempoParadoTotal } from '@
 import { DIA_MS, HORA_MS } from './score';
 
 /**
- * Quem executou a OS, gravado na triagem (etapa I2 da 1b, `app.os.executado_por`):
- * a equipe interna ou um fornecedor. Os nomes das colunas seguem as propostas do
- * agente do núcleo; a camada que lê o banco adapta.
+ * Quem executou a OS, gravado na triagem (etapa I4 da 1b, `app.os.executado_por`,
+ * ainda fora da `main`): a equipe interna ou um fornecedor. Os nomes seguem as
+ * propostas do agente do núcleo; a camada que lê o banco adapta.
  */
 export type ExecutadoPor = 'equipe_interna' | 'fornecedor';
 
@@ -100,9 +100,10 @@ export const ehCriticidade = (n: unknown): n is Criticidade =>
   Number.isInteger(n) && (n as number) >= 1 && (n as number) <= CRITICIDADE_MAXIMA;
 
 /**
- * Uma transição da OS (etapa I3 da 1b, `app.os_transicao`: de, para, quando,
- * quem e a ação), gravada pelo caso de uso na mesma unit of work que muda o
- * estado. Os nomes das colunas vêm no aviso do agente do núcleo.
+ * Uma transição da OS (etapa I5 da 1b, `app.os_transicao`, migração 0031),
+ * gravada pelo caso de uso na mesma unit of work que muda o estado. As colunas
+ * são `acao`, `de`, `para`, `quando` e `usuario_id`; o motor lê só `acao`,
+ * `para` e `quando`.
  */
 export interface TransicaoDaOs {
   acao: AcaoDaOs;
