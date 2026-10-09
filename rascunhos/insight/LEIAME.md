@@ -65,7 +65,7 @@ Para cada detecção (família, lista canônica de hotéis, faixa):
 
 - **Retenção da métrica diária:** opção B, janela de leitura de 180 dias, configurável por política, nada apagado (`rascunhos/metrica/LEIAME.md` e ADR-035/036). A janela precisa ser pelo menos o dobro da janela da efetividade, conferido ao gravar e na leitura pelo job.
 - **O resultado gravado de cada dia é a fonte de verdade do histórico.** Ele guarda a configuração usada, a versão da fórmula e a da política (condição do Cesar de 07/10/2026).
-  - **Reproduzidas no recálculo:** a conclusão e as reaberturas, pelas transições da OS (`app.os_transicao`, I3) até aquele dia (`conclusaoEReaberturas`).
+  - **Reproduzidas no recálculo:** a conclusão e as reaberturas, pelas transições da OS (`app.os_transicao`, I5) até aquele dia (`conclusaoEReaberturas`).
   - **Com o valor atual:** os campos editáveis da OS, do chamado, do ativo e do local, e a política vigente. Por isso o recálculo não reproduz exatamente o que foi gravado, e fica marcado como recálculo.
   - O `hk_worker` não lê a auditoria.
 

@@ -20,13 +20,13 @@
   |---|---|---|
   | Reincidência de falhas | 20 | o score de reincidência do mesmo ativo |
   | Tempo parado | 15 | `app.parada_ativo` na janela da reincidência |
-  | Impacto no hóspede | 15 | `app.chamado.impacto_hospede` (1.0), até o Guest Impact Score da 1.5 |
+  | Impacto no hóspede | 15 | `app.chamado.impacto_hospede` (I4, 1.0), até o Guest Impact Score da 1.5 |
   | Criticidade | 15 | `app.ativo.criticidade`, de 1 a 5 (I1) |
-  | Custo informado | 10 | `app.os.custo_informado` em 12 meses |
-  | Preventiva atrasada | 10 | plano de preventiva (etapa P); sem dado até lá |
-  | Medições fora da faixa | 10 | checklist tipado (P1); sem dado até lá |
+  | Custo informado | 10 | `app.os.custo_informado` (I4) em 12 meses |
+  | Preventiva atrasada | 10 | plano de preventiva (etapa PV); sem dado até lá |
+  | Medições fora da faixa | 10 | checklist tipado (PV1, antes P1); sem dado até lá |
   | Garantia vencida | 5 | `app.ativo.garantia_ate` (I1); vale até o fim do dia da data |
-  | UH-dias | 0 | origem ainda não existe; peso 0 e sem dado |
+  | UH-dias | 0 | `app.uh_indisponivel` (I4), com `uhDiasPerdidos` do domínio; peso 0 e sem dado: o `calcularDia` ainda não lê |
 
 - **Garantia** entra no `AtivoAnalisado` (`garantiaAte`). O componente vale 1 quando venceu e 0 dentro da garantia; sem a data, é sem dado.
 - **Medições:** o valor é a fração das medições da janela que saíram da faixa aceitável; sem nenhuma medição, é sem dado.
