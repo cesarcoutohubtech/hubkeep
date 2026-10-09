@@ -264,7 +264,10 @@ reset role;
 
 set local role hk_backoffice;
 select results_eq(
-  'select tenant_nome, hoteis_ativos::int, uhs_ativas::int from licenca.uso() order by tenant_nome',
+  -- Só os tenants deste teste: o dev compartilhado tem o tenant de demonstração do kit.
+  $$ select tenant_nome, hoteis_ativos::int, uhs_ativas::int from licenca.uso()
+     where tenant_id in ('10000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000000')
+     order by tenant_nome $$,
   $$ values ('Grupo A', 1, 2), ('Grupo B', 1, 1) $$,
   'backoffice vê só agregados de licença');
 select throws_ok('select * from app.hotel', '42501', null,

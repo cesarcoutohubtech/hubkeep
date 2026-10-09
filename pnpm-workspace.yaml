@@ -14,7 +14,9 @@ allowBuilds:
 #   aninhado; sem versão corrigida em 05/10/2026): só entra pelo lint de
 #   fronteiras (eslint-plugin-boundaries > micromatch) e pelo gerador de tipos
 #   (kysely-codegen > micromatch), ferramentas de desenvolvimento que só leem
-#   padrões do próprio repositório. Revisar quando sair a correção.
+#   padrões do próprio repositório. Revisão: em 08/11/2026 ou antes do
+#   piloto, o que vier primeiro (decisão do Cesar de 09/10/2026); antes
+#   disso, se sair a correção.
 auditConfig:
   ignoreGhsas:
     - GHSA-vfj7-8cjw-p6xm

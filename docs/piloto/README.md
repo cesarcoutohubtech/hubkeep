@@ -18,7 +18,7 @@ Material de apoio ao piloto da Slaviero, escrito sobre o que existe na `main` em
 
 **[ainda não existe]**
 - Importação de ativos por planilha (M2), QR em lote e etiqueta de impressão (M3), modelos por categoria (M1), aprovação de ativos cadastrados pelo celular (M4).
-- Checklist tipado, planos preventivos e geração automática de OS (P1 a P3).
+- Checklist tipado, planos preventivos e geração automática de OS (PV1 a PV3).
 - SLA, notificações, indicadores, impressão da OS e CSV, aceite automático (job), nível bandeira das políticas (fase 1c).
 - Recuperação de senha (1c, `docs/11`), segundo fator para Admin, Gestor CSC e Implantador (SP1, `docs/05`), e-mail de produção, staging e produção (F0-12).
 - Script de provisionamento de cliente, rodado pelo backoffice: cria o grupo, o contrato de licença, o primeiro Admin e os padrões (situações, prioridades, categorias e políticas). Decidido em 08/10/2026; entra na preparação do piloto.

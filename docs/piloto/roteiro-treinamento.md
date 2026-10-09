@@ -113,7 +113,7 @@ Dados e contas do `docs/10`: Grupo Demonstração, Hotel Demonstração Centro (
 | 12 | Admin (`admin@demo.hubkeep.test`) | **Hotéis**: **Ativar** o Serra (só uma vez por ambiente) e ver as UHs saírem de "pendente de licença"; **Membros e papéis**: **Convidar pessoa** (só com e-mail da equipe) | Mensagem "Hotel ativado. N UHs foram liberadas..." |
 | 13 | Qualquer um | Provocar uma recusa e conferir que a mensagem vem traduzida, nunca como código | Texto no idioma escolhido |
 
-Não incluir no treinamento, porque **[ainda não existe]**: checklist e plano preventivo (P1 a P3), importação de ativos e QR em lote (M2, M3), aprovação de ativo cadastrado pelo celular (M4), códigos de falha e "executado por" (I2, I4), SLA, notificações, indicadores, impressão da OS e CSV (fase 1c).
+Não incluir no treinamento, porque **[ainda não existe]**: checklist e plano preventivo (PV1 a PV3), importação de ativos e QR em lote (M2, M3), aprovação de ativo cadastrado pelo celular (M4), códigos de falha e "executado por" (I2, I4), SLA, notificações, indicadores, impressão da OS e CSV (fase 1c).
 
 ## 6. Em caso de problema
 

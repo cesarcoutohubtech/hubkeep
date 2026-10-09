@@ -261,6 +261,12 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Consequência:** um evento publicado por quem não pode escrever já não chega ao worker (ex.: um `membro.convidado` forjado dispararia e-mail).
 
+**Adendo — auditoria sem hotel do fornecedor (I3 da fase 1b, migração 0033).** Status: forma (adendo) decidida pelo Cesar em 09/10/2026; texto aguarda a aprovação dele.
+- **O que mudou:** as policies de INSERT e SELECT de `app.auditoria` ganharam um caso a mais na auditoria sem hotel: a entidade `fornecedor`, para o Gestor CSC e o Gerente do hotel (`authz.hoteis_com_papel(['gestor_csc', 'gerente_hotel'])` não vazio), além do Admin do grupo e do Implantador vigente.
+- **Por quê:** o fornecedor é do grupo (sem `hotel_id`), e quem o cadastra no dia a dia é o Gestor CSC ou o Gerente. Sem o caso novo, a unit of work deles não conseguiria gravar a auditoria na mesma transação (ADR-006).
+- **Limite:** o INSERT exige que `registro_id` seja um fornecedor do próprio tenant, então o caso não abre a auditoria sem hotel para outras entidades. O resto da regra do ADR-021 não muda.
+- **Testes:** pgTAP 027: o Gerente grava e o Gestor CSC e o Gerente leem a auditoria do fornecedor; o Gerente continua sem auditoria sem hotel de outra entidade; o Técnico e o proprietário não gravam nem leem.
+
 ## ADR-022 — Multi-idioma no MVP: catálogos ICU compartilhados e nenhum texto fixo
 
 **Status:** aprovada por Cesar em 25/09/2026 (revisão do PR #19). Registra a decisão de o HubKeep sair multi-idioma no MVP e as adaptações obrigatórias. A escolha da biblioteca foi feita na F0-10b (item "Biblioteca ICU"), aprovada por Cesar em 26/09/2026 (revisão do PR #27).
@@ -897,4 +903,11 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Durante o GET, a conexão fica presa ao pedido do primeiro `withContext` até o fim do handler, inclusive na espera que não é do banco. Com `max: 5` por instância, isso pesa sob concorrência alta.
 - Um GET que precise escrever terá de usar a unit of work, numa segunda conexão. Hoje nenhum GET da `/api/v1` escreve.
 - As páginas do servidor que chamam casos de uso fora do `rota()` ainda não usam o escopo. Podem passar a usar na P1c.
-- A confirmação pelo Supavisor (`pnpm db:fumaca-dev` com `HK_TESTE_VIA_POOLER=1`) e a medida do `Server-Timing` antes e depois ficam registradas no diário.
+- A confirmação pelo Supavisor (`pnpm db:fumaca --ambiente dev`, que já liga o `HK_TESTE_VIA_POOLER=1`) e a medida do `Server-Timing` antes e depois ficam registradas no diário.
+
+**Adendo — página do servidor que chama os casos de uso (P1c, 08/10/2026).** Status: forma (adendo curto) decidida pelo Cesar em 09/10/2026; texto aguarda a aprovação dele.
+- Uma página do App Router pode montar os dados no servidor chamando os mesmos casos de uso da API, sem passar pela `/api/v1`. Hoje isso vale para o detalhe do chamado (`chamados/[id]/page.tsx`).
+- A página usa `carregarNaPagina` (`apps/web/src/servidor/pagina.ts`), que faz o papel do `rota()`: contexto pelo `resolverContexto` (token verificado pelo JWKS e tenant do `hk_tenant`), leituras num `emEscopoDeLeitura` (uma transação, como este ADR), erro classificado pelo `falhaDe`, Sentry e linha de log `pagina`.
+- A resposta da página e a da API saem do mesmo módulo de leitura e passam pelo contrato da rota, para não divergirem.
+- O cookie `hk_tenant` é só preferência de qual grupo abrir: o banco só aceita tenant de que o usuário é membro (`authz`), como na API.
+- Só leitura. Escrita continua pela API e pela unit of work.
