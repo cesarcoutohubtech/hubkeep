@@ -1,4 +1,4 @@
-// Conclusão e reaberturas pelas transições da OS (app.os_transicao, etapa I3
+// Conclusão e reaberturas pelas transições da OS (app.os_transicao, etapa I5
 // da 1b) e a criticidade fixa de 1 a 5 (etapa I1).
 import { describe, expect, it } from 'vitest';
 import {

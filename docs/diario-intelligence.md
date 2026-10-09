@@ -484,3 +484,27 @@ Instruções do Cesar (pauta de 07/10/2026, depois do merge do #125).
 - O mock oficial já trazia a atenção v2 e a efetividade v2 (PR #147 do agente do núcleo), mas o padrão sistêmico estava na v1: o mesmo modelo agrupava por modelo e falha, e as cinco regras apareciam ligadas. Este PR leva a tela para a v2: só o mesmo modelo ligado por padrão (3 hotéis, 6 chamados em 90 dias, 5 ativos, taxa contra a base, dobro e mínimo de 0,3), as outras quatro com `ativa: false` na política do seed, e o texto do sinal igual ao do catálogo.
 - A versão do cache local do mock sobe para 8, porque a política do seed mudou de formato. Conferido no navegador: com os dados do seed, a tela mostra um sinal (Midea Split Inverter, 29 chamados em 17 ativos de 6 hotéis, 1,26 por ativo contra 0,1) e nenhum erro de script.
 - Diferença conhecida, só de demonstração: a garantia no mock vence no instante da data; no motor, no dia seguinte (UTC). Não muda nenhum número da tela.
+
+## Etapa I na `main`: conferência dos nomes do motor (09/10/2026)
+
+Depois do merge do #148, conferi o `historico.ts` e o mapa das entradas contra as migrações que o núcleo já pôs na `main` (I1, I2, I3 e I5). PR fora de zona protegida; só comentários e documentação, nenhuma linha de lógica mudou.
+
+### O que entrou na `main` e o que o motor lê
+- **I1 (0030), ativo:** `app.ativo.data_compra`, `garantia_ate` e `criticidade` (1 a 5). O motor já usa `garantiaAte` e `criticidade` com esses nomes. Nada a trocar.
+- **I5 (0031), transições da OS:** `app.os_transicao` com `acao`, `de`, `para`, `quando` e `usuario_id`; o `hk_worker` lê no tenant do job. O `TransicaoDaOs` (`acao`, `para`, `quando`) já bate com as colunas, então o nome `transicoes` fica. O motor não usa `de` nem `usuario_id`.
+- **I2 (0032), hotel e local:** `app.hotel.modelo_contratual` (nulo é "não informado"; valores em `MODELOS_CONTRATUAIS` do domínio) e `app.local.edificacao`. O motor 1.0 não os carrega: o modelo contratual continua registrado como dimensão das comparações de rede da 2.0.
+- **I3 (0033), fornecedor:** `app.fornecedor` do grupo. O `hk_worker` **não** tem SELECT nela, e o motor só precisa do id (`fornecedorId`), que virá da OS. Nenhum pedido ao núcleo por enquanto.
+
+### O que continua provisório
+- `executadoPor`, `fornecedorId` e o período de UH indisponível dependem da **I4** (chamado e OS), que ainda não está na `main`. Os nomes ficam como estão até ela entrar. O mesmo vale para `custoInformado` e `impactoHospede`, que seguem os nomes das propostas, ainda sem coluna na `main`.
+- `codigoFalha` espera a I6; o filtro por módulo e o registro da extensão de políticas, a I7.
+
+### O que mudou neste PR
+- **Numeração:** a etapa I tem oito migrações desde 08/10 (aviso do núcleo no `docs/diario-fase-1a.md`). O mapa e os comentários do `historico.ts` e do `transicoes.test.ts` ainda usavam a numeração de cinco (transições como I3, chamado e OS como I2, módulos como I5). Foram corrigidos para I5, I4 e I7, e o mapa passou a dizer o que já está na `main`.
+- **`TransicaoDaOs`:** o comentário agora lista as colunas reais da migração 0031.
+
+### Ponto de retomada (09/10/2026)
+- **Main verde** no merge do #148; nenhum PR aberto do Intelligence além deste.
+- **Esperando o núcleo:** a I4 (chamado e OS), a I6 e a I7. Quando a I4 entrar, trocar `executadoPor`, `fornecedorId`, `custoInformado`, `impactoHospede` e o período de UH indisponível pelos nomes reais, num PR fora de zona protegida.
+- **`int-adr-aceite` continua fechado** (a instrumentação não terminou), e as tabelas do Intelligence esperam a I7 (aviso do núcleo: a fila de zona protegida abre para elas depois da I7).
+- **Esperando o Kaio e o Cesar:** o canal e o texto literal da aprovação do Cesar no diário, e as confirmações dos PRs de 08/10.
