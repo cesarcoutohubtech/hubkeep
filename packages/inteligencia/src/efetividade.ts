@@ -26,7 +26,7 @@ export interface EntradaEfetividade {
   /** Corretivas do escopo (ativo, local, andar ou categoria), já filtradas. */
   corretivas: readonly Corretiva[];
   paradas: readonly Parada[];
-  /** Custo real das OS (fase A); null sem dado. */
+  /** Custo informado das OS (`app.os.custo_informado`, I4); null sem dado. */
   custos?: readonly Custo[] | null;
 }
 

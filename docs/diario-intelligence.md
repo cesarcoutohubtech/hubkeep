@@ -520,3 +520,27 @@ Depois do merge do #148, conferi o `historico.ts` e o mapa das entradas contra a
 - **Esperando o núcleo:** a I4 (chamado e OS), a I6 e a I7. Quando a I4 entrar, trocar `executadoPor`, `fornecedorId`, `custoInformado`, `impactoHospede` e o período de UH indisponível pelos nomes reais, num PR fora de zona protegida.
 - **`int-adr-aceite` continua fechado** (a instrumentação não terminou), e as tabelas do Intelligence esperam a I7 (aviso do núcleo: a fila de zona protegida abre para elas depois da I7).
 - **Esperando o Kaio e o Cesar:** o canal da aprovação do Cesar de 08/10 (o texto literal entrou em 09/10/2026), e as confirmações dos PRs de 08/10.
+
+## I4 na `main`: os nomes reais no motor (09/10/2026)
+
+Pedido do Kaio de 09/10/2026, depois do merge do #151 (I4) e do #152 (telas). PR fora de zona protegida.
+
+### O que a I4 trouxe e como o motor lê
+- **`app.os.executado_por`** (`equipe_interna` ou `fornecedor`, `not null default 'equipe_interna'`): o motor passa a usar o `ExecutadoPor` do `@hubkeep/dominio` (lista `EXECUTORES_DA_OS`), e não a cópia própria. O `historico.ts` reexporta o tipo, então quem importava do motor não muda. As OS anteriores à 0034 ficaram com o padrão; o campo continua opcional na `Corretiva` porque o chamado sem OS não tem quem executou.
+- **`app.os.fornecedor_id`**: o `fornecedorId` já tinha esse nome. O banco amarra o id a `executado_por = 'fornecedor'` (`os_fornecedor_quando_externo`), a mesma regra do `fornecedorDaOs`.
+- **`app.os.custo_informado`** (`numeric(12,2)`): o `custoInformado` já tinha esse nome. O driver devolve texto; quem lê o banco converte para número antes de entregar ao motor.
+- **`app.chamado.impacto_hospede`** (boolean; nulo é "não informado"): o `impactoHospede` já tinha esse nome.
+- **`app.uh_indisponivel`** (`hotel_id`, `local_id`, `chamado_id`, `inicio`, `fim`): o `uhDiasPerdidos` e o `PeriodoDeUhIndisponivel` passaram para o domínio na I4, com o `chamadoCancelado` (o período de chamado cancelado não conta). A cópia do módulo (`src/uh.ts`) saiu, e o `uh.test.ts` ficou, apontando para o domínio, como o contrato do componente UH-dias da atenção (peso 0).
+- **Nenhum nome de campo do motor mudou**: os provisórios já eram os da proposta aprovada. Mudaram o tipo de origem (`ExecutadoPor`), a função de UH-dias (do domínio) e os comentários, que agora dizem a coluna e a migração. Nenhuma fórmula mudou, então nenhuma versão sobe.
+
+### Outros ajustes do mesmo PR
+- **PV1:** o núcleo renomeou a etapa do checklist tipado de P1 para PV1 (aviso no `docs/diario-fase-1a.md`). Mudou nos comentários do motor e no mapa das entradas. As entradas antigas deste diário ficam como foram escritas: onde dizem "checklist tipado (P1)", leia PV1.
+- **"Fase A"** saiu dos comentários: cada campo diz a etapa (I4 ou I6).
+- **Mapa das entradas:** as linhas da I4 passam a "Existe (I4)", com as colunas reais; o item que ainda dizia "UH-dias como sinal próprio, a aprovar" ganhou a nota de que foi superado em 07/10.
+
+### Verificação
+- Testes do pacote: 202 passando; tipos do pacote e do web ok; eslint no pacote sem apontamentos; os testes da raiz que tocam o Intelligence (composição, contratos e fronteiras) passando.
+
+### Ponto de retomada (09/10/2026)
+- **Esperando o núcleo:** a I6 (códigos de manutenção, `codigoFalha`) e a I7 (módulos). Depois da I7, a fila de zona protegida abre para o `int-adr-aceite` e as tabelas do Intelligence, uma por vez.
+- **A ligação do job** (a camada que lê o banco e monta a `Corretiva`) ainda não existe: é ela que vai ler as colunas acima e converter o custo. Entra com a `app.insight`.

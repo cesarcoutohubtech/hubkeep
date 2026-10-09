@@ -1,18 +1,23 @@
 // HubKeep Intelligence: o histórico que o motor lê. São formas mínimas,
 // montadas pela aplicação a partir das portas do núcleo (chamado, OS, parada,
-// ativo, local). O motor nunca lê banco. Os campos marcados com "(fase A)"
-// dependem da instrumentação do núcleo, que entra no começo da 1b
-// (docs/referencia/lacunas-instrumentacao-intelligence.md), e ficam null ou
-// ausentes enquanto ela não existir; o score marca o componente como ausente.
-import { type AcaoDaOs, type EstadoDaOs, type Parada, tempoParadoTotal } from '@hubkeep/dominio';
+// ativo, local). O motor nunca lê banco. Os campos da instrumentação do
+// núcleo (etapa I da 1b) dizem a coluna de origem; o que ainda não foi
+// preenchido fica null ou ausente, e o score marca o componente como sem dado.
+import {
+  type AcaoDaOs,
+  type EstadoDaOs,
+  type ExecutadoPor,
+  type Parada,
+  tempoParadoTotal,
+} from '@hubkeep/dominio';
 import { DIA_MS, HORA_MS } from './score';
 
 /**
- * Quem executou a OS, gravado na triagem (etapa I4 da 1b, `app.os.executado_por`,
- * ainda fora da `main`): a equipe interna ou um fornecedor. Os nomes seguem as
- * propostas do agente do núcleo; a camada que lê o banco adapta.
+ * Quem executou a OS (`app.os.executado_por`, etapa I4, migração 0034): a
+ * equipe interna ou um fornecedor. O tipo e a lista (`EXECUTORES_DA_OS`) são do
+ * domínio, e o check do banco repete a lista.
  */
-export type ExecutadoPor = 'equipe_interna' | 'fornecedor';
+export type { ExecutadoPor };
 
 /** Uma corretiva: o chamado e a OS dele, vistos pelo que importa à análise. */
 export interface Corretiva {
@@ -25,21 +30,28 @@ export interface Corretiva {
   concluidaEm: Date | null;
   /** Vezes que a OS foi reaberta até a data do cálculo (`conclusaoEReaberturas`). */
   reaberturas: number;
-  /** Código de falha (fase A, `app.os.codigo_falha_id`); null sem dado. */
+  /** Código de falha (`app.os.codigo_falha_id`, etapa I6); null sem dado. */
   codigoFalha: string | null;
   /** Aberta pouco depois de uma preventiva do ativo (fase 1b); undefined sem dado. */
   aposPreventiva?: boolean;
-  /** Fase A, `app.os.executado_por`; undefined antes da migração. */
+  /**
+   * `app.os.executado_por` (I4). A OS anterior à 0034 ficou com o padrão
+   * `equipe_interna`; ausente quando o chamado ainda não tem OS.
+   */
   executadoPor?: ExecutadoPor;
   /**
-   * O fornecedor cadastrado (`app.fornecedor`, 1b), só quando executada por
-   * fornecedor. O id, e não o nome digitado, é o que a regra do mesmo fornecedor
-   * compara.
+   * `app.os.fornecedor_id` (I4), do cadastro `app.fornecedor` (I3); o banco só
+   * aceita com `executado_por = 'fornecedor'`. O id, e não o nome digitado, é o
+   * que a regra do mesmo fornecedor compara.
    */
   fornecedorId?: string | null;
-  /** Fase A, `app.os.custo_informado`, em reais, no aceite; null não informado. */
+  /**
+   * `app.os.custo_informado` (I4, `numeric(12,2)`), em reais, gravado no
+   * aceite; null não informado. O driver devolve texto: quem lê o banco
+   * converte para número.
+   */
   custoInformado?: number | null;
-  /** Fase A, `app.chamado.impacto_hospede`: afeta hóspede? null é "não sei". */
+  /** `app.chamado.impacto_hospede` (I4): afeta hóspede? null é "não informado". */
   impactoHospede?: boolean | null;
 }
 

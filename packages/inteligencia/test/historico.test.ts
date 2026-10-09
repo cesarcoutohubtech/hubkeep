@@ -1,4 +1,4 @@
-// Campos da instrumentação (fase A): o fornecedor pelo id, o custo
+// Campos da instrumentação (I4): o fornecedor pelo id, o custo
 // informado somado na janela e o impacto no hóspede pelo indicador do chamado,
 // com null quando ninguém respondeu.
 import { describe, expect, it } from 'vitest';

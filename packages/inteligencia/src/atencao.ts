@@ -15,7 +15,7 @@
 // - criticidade, custo informado, impacto no hóspede e garantia dependem do
 //   que o hotel preencheu (instrumentação da 1b);
 // - preventiva atrasada fica ausente até a etapa P;
-// - medições fora da faixa ficam ausentes até o checklist tipado (P1);
+// - medições fora da faixa ficam ausentes até o checklist tipado (PV1);
 // - UH-dias fica ausente, com peso 0, até existir a origem do dado de UH
 //   indisponível (proposta de 07/10/2026). Quando existir e o peso passar de
 //   0, a atenção ganha a versão seguinte, com o limite e os pesos definidos.
@@ -25,7 +25,7 @@ import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score'
 export const VERSAO_ATENCAO = 2;
 
 /**
- * Medições do checklist tipado na janela (etapa P1): quantas saíram da faixa
+ * Medições do checklist tipado na janela (etapa PV1): quantas saíram da faixa
  * aceitável entre as feitas. null (ou sem nenhuma medição) é sem dado.
  */
 export interface MedicoesDoAtivo {
@@ -41,7 +41,7 @@ export interface EntradaAtencao {
   /** Horas paradas na janela (parada do ativo, C5). */
   horasParadas: number | null;
   /**
-   * Soma do custo informado no aceite em 12 meses (fase A, `custoInformadoNaJanela`);
+   * Soma do custo informado no aceite em 12 meses (`custoInformadoNaJanela`);
    * null quando nenhuma OS tem custo informado.
    */
   custoInformado12m?: number | null;
@@ -53,7 +53,7 @@ export interface EntradaAtencao {
   impactoHospede?: number | null;
   /** Preventiva vencida do ativo (etapa P); null sem dado. */
   preventivaAtrasada?: boolean | null;
-  /** Medições fora da faixa na janela (checklist tipado, P1); null sem dado. */
+  /** Medições fora da faixa na janela (checklist tipado, PV1); null sem dado. */
   medicoes?: MedicoesDoAtivo | null;
   /** A garantia do ativo (`app.ativo.garantia_ate`); null sem a data. */
   garantia?: SituacaoDaGarantia | null;
