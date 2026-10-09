@@ -5,7 +5,10 @@
 //   - o contato entra na auditoria, sem hotel, com o evento no outbox, e o
 //     histórico do fornecedor aparece para quem o cadastra;
 //   - o proprietário não lê; o Técnico lê e não grava: 403 com código, e com a
-//     checagem da aplicação removida a RLS ainda barra.
+//     checagem da aplicação removida a RLS ainda barra;
+//   - o CNPJ alfanumérico entra (0035), em maiúsculas e sem pontuação;
+//   - o Gestor CSC de uma bandeira sem hotel recebe fornecedores_sem_hotel, e
+//     sem a checagem da aplicação a RLS ainda barra.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -34,12 +37,14 @@ if (!temBanco && process.env.HK_EXIGIR_BANCO === '1') {
 const TENANT = randomUUID();
 const HOTEL = randomUUID();
 const BANDEIRA = randomUUID();
+const BANDEIRA_VAZIA = randomUUID();
 const U = {
   admin: randomUUID(),
   gestor: randomUUID(),
   gerente: randomUUID(),
   tecnico: randomUUID(),
   dono: randomUUID(),
+  gestorSemHotel: randomUUID(),
 };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 
@@ -56,8 +61,8 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
     await dono.connect();
     await dono.query(`insert into app.tenant (id, nome) values ($1, 'Grupo I3')`, [TENANT]);
     await dono.query(
-      `insert into app.bandeira (id, tenant_id, nome) values ($1, $2, 'Bandeira I3')`,
-      [BANDEIRA, TENANT],
+      `insert into app.bandeira (id, tenant_id, nome) values ($1, $3, 'Bandeira I3'), ($2, $3, 'Bandeira vazia')`,
+      [BANDEIRA, BANDEIRA_VAZIA, TENANT],
     );
     await dono.query(
       `insert into app.hotel (id, tenant_id, bandeira_id, nome, fuso, status) values ($1, $2, $3, 'Hotel I3', 'UTC', 'ativo')`,
@@ -96,6 +101,11 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
         HOTEL,
       ],
     );
+    await dono.query(
+      `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, bandeira_id, concedido_por)
+       values ($1, $2, $3, 'gestor_csc', 'bandeira', $4, $5)`,
+      [randomUUID(), TENANT, U.gestorSemHotel, BANDEIRA_VAZIA, U.admin],
+    );
     banco = await criarAcessoBanco({ app: { url: URL_APP ?? '', max: 2 } });
     const deps = {
       fornecedores: criarPortaFornecedores(banco),
@@ -106,6 +116,7 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
     semChecagem = criarCasosDeUsoDeFornecedores({
       ...deps,
       podeGerir: () => ({ permitido: true }),
+      exigirAlcance: () => undefined,
     });
     historico = criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(banco) });
   });
@@ -243,5 +254,23 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
       [TENANT],
     );
     expect(rows[0]).toEqual({ n: 3 });
+  });
+
+  it('CNPJ alfanumérico entra em maiúsculas, sem pontuação (0035)', async () => {
+    const { id } = await casos.cadastrar(ctx(U.gerente), {
+      nome: 'Climatização Nova',
+      cnpj: '12.abc.345/01de-35',
+    });
+    const { rows } = await dono.query(`select cnpj from app.fornecedor where id = $1`, [id]);
+    expect(rows[0]).toEqual({ cnpj: '12ABC34501DE35' });
+  });
+
+  it('Gestor CSC de bandeira sem hotel: fornecedores_sem_hotel; sem a checagem, a RLS barra', async () => {
+    await expect(
+      casos.cadastrar(ctx(U.gestorSemHotel), { nome: 'Do gestor sem hotel' }),
+    ).rejects.toMatchObject({ codigo: 'fornecedores_sem_hotel' });
+    await expect(
+      semChecagem.cadastrar(ctx(U.gestorSemHotel), { nome: 'Do gestor sem hotel' }),
+    ).rejects.toMatchObject({ code: '42501' });
   });
 });

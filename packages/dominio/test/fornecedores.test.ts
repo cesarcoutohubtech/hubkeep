@@ -5,6 +5,7 @@ import type { Atribuicao } from '../src/index';
 import {
   cnpjDeFornecedorRepetido,
   cnpjValido,
+  exigirHotelParaGerirFornecedores,
   formatarCnpj,
   normalizarContatoDeFornecedor,
   normalizarNomeDeFornecedor,
@@ -96,6 +97,67 @@ describe('CNPJ', () => {
 
   it('o repetido é Conflito com código', () => {
     expect(cnpjDeFornecedorRepetido()).toMatchObject({ codigo: 'fornecedor_cnpj_repetido' });
+  });
+
+  it('alfanumérico (Receita, desde julho de 2026): o exemplo oficial confere', () => {
+    expect(cnpjValido('12ABC34501DE35')).toBe(true);
+    expect(cnpjValido('12ABC34501DE36')).toBe(false);
+    // Os verificadores continuam numéricos, e só maiúsculas no formato guardado.
+    expect(cnpjValido('12ABC34501DEA5')).toBe(false);
+    expect(cnpjValido('12abc34501de35')).toBe(false);
+  });
+
+  it('alfanumérico com pontuação e minúsculas vira os 14 caracteres em maiúsculas', () => {
+    expect(validarCnpj('12.ABC.345/01DE-35')).toBe('12ABC34501DE35');
+    expect(validarCnpj(' 12.abc.345/01de-35 ')).toBe('12ABC34501DE35');
+    for (const cnpj of ['12.ABC.345/01DE-36', '12ABC34501DE3', '12ABC34501DE35X', '12ÁBC34501DE35'])
+      expect(() => validarCnpj(cnpj)).toThrow(
+        expect.objectContaining({ codigo: 'fornecedor_cnpj_invalido' }),
+      );
+  });
+
+  it('formata o alfanumérico com a mesma máscara', () => {
+    expect(formatarCnpj('12ABC34501DE35')).toBe('12.ABC.345/01DE-35');
+  });
+});
+
+describe('o papel alcança algum hotel para gravar fornecedor', () => {
+  const H1 = { id: 'h1', bandeiraId: 'b1' };
+  const vazio = (f: () => void) => {
+    try {
+      f();
+      return null;
+    } catch (e) {
+      return (e as { codigo: string }).codigo;
+    }
+  };
+
+  it('Gestor CSC de bandeira com hotel, sim; de bandeira sem hotel, fornecedores_sem_hotel', () => {
+    const gestor = [atr('gestor_csc', { tipo: 'bandeira', bandeiraId: 'b1' })];
+    expect(vazio(() => exigirHotelParaGerirFornecedores(gestor, [H1], AGORA))).toBeNull();
+    const semHotel = [atr('gestor_csc', { tipo: 'bandeira', bandeiraId: 'b2' })];
+    expect(vazio(() => exigirHotelParaGerirFornecedores(semHotel, [H1], AGORA))).toBe(
+      'fornecedores_sem_hotel',
+    );
+    expect(vazio(() => exigirHotelParaGerirFornecedores(semHotel, [], AGORA))).toBe(
+      'fornecedores_sem_hotel',
+    );
+  });
+
+  it('o Gerente do hotel alcança o hotel dele; o Admin do grupo grava mesmo sem hotel', () => {
+    const gerente = [atr('gerente_hotel', { tipo: 'hotel', hotelId: 'h1' })];
+    expect(vazio(() => exigirHotelParaGerirFornecedores(gerente, [H1], AGORA))).toBeNull();
+    const admin = [atr('admin_grupo', { tipo: 'grupo' })];
+    expect(vazio(() => exigirHotelParaGerirFornecedores(admin, [], AGORA))).toBeNull();
+  });
+
+  it('o papel vencido não alcança', () => {
+    const vencido = [
+      atr('gestor_csc', { tipo: 'bandeira', bandeiraId: 'b1' }, new Date('2026-10-01T00:00:00Z')),
+    ];
+    expect(vazio(() => exigirHotelParaGerirFornecedores(vencido, [H1], AGORA))).toBe(
+      'fornecedores_sem_hotel',
+    );
   });
 });
 

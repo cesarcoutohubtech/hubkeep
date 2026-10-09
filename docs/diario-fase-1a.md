@@ -1534,3 +1534,16 @@ PR fora da zona protegida, sobre a API da I4 (#151).
   - na CI: os testes de integração do `packages/db` com o tipo do local e o fornecedor nos nomes do detalhe;
   - as telas não foram vistas no navegador.
 - **Fica para depois:** a edificação no nome do local no PWA (decisão 6 do Cesar), num PR próprio, fora da zona protegida.
+
+### CNPJ alfanumérico e o Gestor CSC sem hotel (09/10/2026)
+
+Decisões 2 e 4 do Cesar de 09/10/2026. PR de zona protegida, depois da I4 e da I4b (#152).
+- **CNPJ alfanumérico (migração 0035):** o check `fornecedor_cnpj_formato` passa a aceitar 12 caracteres em letras maiúsculas ou dígitos e 2 dígitos verificadores. O CNPJ numérico continua valendo, e o índice de CNPJ único no grupo não muda.
+  - Domínio: o cálculo dos verificadores usa o código de cada caractere menos 48 (o dígito vale ele mesmo, e A vale 17), com os mesmos pesos. Confere o exemplo da Receita (12.ABC.345/01DE-35) e os CNPJs numéricos de antes;
+  - `validarCnpj` aceita pontuação e minúsculas e guarda os 14 caracteres em maiúsculas, sem pontuação; `formatarCnpj` usa a mesma máscara;
+  - contrato da API (`FornecedorApi.cnpj`) e pgTAP 027 (41 asserções: o alfanumérico entra, a minúscula não) atualizados. A mensagem de CNPJ inválido deixou de falar em "14 dígitos".
+- **Gestor CSC de bandeira sem hotel:** antes recebia o 403 genérico do banco (`sem_permissao`). Agora a aplicação confere, antes de gravar, se o papel de Gestor CSC ou Gerente alcança algum hotel visível do grupo (`exigirHotelParaGerirFornecedores`, a mesma conta da policy) e devolve 403 `fornecedores_sem_hotel`, com mensagem nos quatro idiomas. O Admin do grupo grava mesmo sem hotel. A policy não muda: sem a checagem da aplicação, a RLS continua recusando (teste de integração).
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes, verdes;
+  - na CI: o pgTAP 027 e o teste de integração `packages/db/test/fornecedores.test.ts` (o alfanumérico gravado em maiúsculas e o Gestor CSC sem hotel).
+- **Depois do merge:** `db push` da 0035.

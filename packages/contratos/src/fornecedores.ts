@@ -1,17 +1,18 @@
 // Fornecedores do grupo (fase 1b, I3): lista, cadastro, alteração com a versão
 // vista (ADR-029), desativação e reativação. O CNPJ chega com ou sem
 // pontuação; a normalização, os dígitos verificadores e o contato são
-// conferidos no domínio, com código de erro. Volta só com os 14 dígitos.
+// conferidos no domínio, com código de erro. Volta com os 14 caracteres, sem
+// pontuação (o CNPJ alfanumérico entra desde 09/10/2026, migração 0035).
 import { z } from 'zod';
 
 export const FornecedorApi = z
   .object({
     id: z.guid(),
     nome: z.string(),
-    /** Só os 14 dígitos; null quando não informado. */
+    /** Os 14 caracteres sem pontuação (alfanumérico desde 09/10/2026); null quando não informado. */
     cnpj: z
       .string()
-      .regex(/^\d{14}$/)
+      .regex(/^[0-9A-Z]{12}\d{2}$/)
       .nullable(),
     contatoNome: z.string().nullable(),
     contatoTelefone: z.string().nullable(),

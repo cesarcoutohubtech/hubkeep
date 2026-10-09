@@ -2,9 +2,11 @@
 // docs/referencia/propostas-desenho-1b.md, item 2). O fornecedor é do grupo, e
 // não do hotel: o Gerente cadastra o fornecedor local, que fica visível para o
 // grupo. Aqui ficam as regras: quem cadastra e altera, o CNPJ com os dígitos
-// verificadores, o nome e o contato. O banco guarda só o formato (14 dígitos,
-// único no grupo) e a autorização por papel (policies da migração 0033).
+// verificadores, o nome e o contato. O banco guarda só o formato (14
+// caracteres, único no grupo; alfanumérico desde a 0035) e a autorização por
+// papel (policies da migração 0033).
 // Portal, contrato, avaliação, custos e alçadas são da fase 2.
+import { escopoCobreHotel } from './equipes';
 import { Conflito, PermissaoNegada, RegraViolada } from './erros';
 import { type Resultado, ehAdminGrupo, vigente } from './permissoes';
 import type { Atribuicao, Papel } from './tipos';
@@ -44,43 +46,84 @@ export function podeGerirFornecedores(minhas: readonly Atribuicao[], agora: Date
       };
 }
 
+/**
+ * O Gestor CSC e o Gerente gravam fornecedor pelo papel que alcança algum
+ * hotel do grupo (authz.hoteis_com_papel na policy). O Gestor CSC de uma
+ * bandeira ainda sem hotel tem o papel, mas não alcança nenhum: recebe 403
+ * fornecedores_sem_hotel, com mensagem própria (decisão do Cesar de
+ * 09/10/2026), em vez da recusa genérica do banco. `hoteis` são os hotéis
+ * visíveis a quem pede. O Admin do grupo grava mesmo sem hotel.
+ */
+export function exigirHotelParaGerirFornecedores(
+  minhas: readonly Atribuicao[],
+  hoteis: readonly { id: string; bandeiraId: string | null }[],
+  agora: Date,
+): void {
+  if (ehAdminGrupo(minhas, agora)) return;
+  const alcanca = minhas.some(
+    (a) =>
+      vigente(a, agora) &&
+      PAPEIS_QUE_GERENCIAM_FORNECEDORES.includes(a.papel) &&
+      hoteis.some((h) => escopoCobreHotel(a, h)),
+  );
+  if (!alcanca) {
+    throw new PermissaoNegada(
+      'fornecedores_sem_hotel',
+      'O papel de quem pede ainda não alcança nenhum hotel do grupo.',
+    );
+  }
+}
+
 const PESOS_DO_PRIMEIRO = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 const PESOS_DO_SEGUNDO = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 
-function digitoVerificador(digitos: readonly number[], pesos: readonly number[]): number {
-  const soma = pesos.reduce((s, peso, i) => s + peso * (digitos[i] ?? 0), 0);
+function digitoVerificador(valores: readonly number[], pesos: readonly number[]): number {
+  const soma = pesos.reduce((s, peso, i) => s + peso * (valores[i] ?? 0), 0);
   const resto = soma % 11;
   return resto < 2 ? 0 : 11 - resto;
 }
 
-/** O CNPJ de 14 dígitos (sem pontuação) tem os dois dígitos verificadores certos? */
+/**
+ * O CNPJ sem pontuação: 12 caracteres, letras maiúsculas ou dígitos (o
+ * alfanumérico da Receita, desde julho de 2026), e 2 dígitos verificadores.
+ */
+const FORMATO_DO_CNPJ = /^[0-9A-Z]{12}\d{2}$/;
+
+/**
+ * O CNPJ tem os dois dígitos verificadores certos? No cálculo, cada caractere
+ * vale o código dele menos 48 (os dígitos valem eles mesmos, e A vale 17), com
+ * os mesmos pesos do CNPJ numérico, que continua valendo.
+ */
 export function cnpjValido(cnpj: string): boolean {
-  if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
-  const d = [...cnpj].map(Number);
+  if (!FORMATO_DO_CNPJ.test(cnpj) || /^(.)\1{13}$/.test(cnpj)) return false;
+  const v = [...cnpj].map((c) => c.charCodeAt(0) - 48);
   return (
-    digitoVerificador(d, PESOS_DO_PRIMEIRO) === d[12] &&
-    digitoVerificador(d, PESOS_DO_SEGUNDO) === d[13]
+    digitoVerificador(v, PESOS_DO_PRIMEIRO) === v[12] &&
+    digitoVerificador(v, PESOS_DO_SEGUNDO) === v[13]
   );
 }
 
 /**
- * CNPJ opcional: vazio vira null; com pontuação (11.222.333/0001-81) ou sem,
- * vira só os 14 dígitos, com os verificadores conferidos. Inválido: 422
+ * CNPJ opcional: vazio vira null; com pontuação (11.222.333/0001-81 ou
+ * 12.ABC.345/01DE-35) ou sem, e com letras minúsculas ou maiúsculas, vira os
+ * 14 caracteres em maiúsculas, com os verificadores conferidos. Inválido: 422
  * fornecedor_cnpj_invalido.
  */
 export function validarCnpj(cnpj: string | null | undefined): string | null {
   const texto = cnpj?.trim() ?? '';
   if (texto === '') return null;
-  const digitos = /^[\d.\-/\s]+$/.test(texto) ? texto.replace(/\D/g, '') : '';
-  if (!cnpjValido(digitos)) {
+  const limpo = /^[0-9A-Za-z.\-/\s]+$/.test(texto)
+    ? texto.replace(/[.\-/\s]/g, '').toUpperCase()
+    : '';
+  if (!cnpjValido(limpo)) {
     throw new RegraViolada('fornecedor_cnpj_invalido', 'CNPJ inválido.');
   }
-  return digitos;
+  return limpo;
 }
 
-/** Os 14 dígitos com a máscara usual (11.222.333/0001-81), para a tela; outro texto volta igual. */
+/** Os 14 caracteres com a máscara usual (11.222.333/0001-81), para a tela; outro texto volta igual. */
 export function formatarCnpj(cnpj: string): string {
-  const m = /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/.exec(cnpj);
+  const m = /^([0-9A-Z]{2})([0-9A-Z]{3})([0-9A-Z]{3})([0-9A-Z]{4})(\d{2})$/.exec(cnpj);
   return m ? `${m[1]}.${m[2]}.${m[3]}/${m[4]}-${m[5]}` : cnpj;
 }
 
