@@ -1452,3 +1452,28 @@ Desenho aprovado pelo Cesar em 08/10/2026 (`docs/referencia/propostas-desenho-1b
   - na CI: o pgTAP 027 e o meta-teste, o teste de integração `packages/db/test/fornecedores.test.ts` (inclusive a RLS sem a checagem do domínio e o histórico do Gerente) e o kit;
   - a tela não foi vista no navegador.
 - **Aviso ao agente do Intelligence:** a tabela é `app.fornecedor`, do tenant, com `id`, `tenant_id`, `nome`, `cnpj` (14 dígitos ou nulo), `contato_nome`, `contato_telefone`, `contato_email`, `versao`, `desativado_em`, `criado_em` e `atualizado_em`. O `hk_worker` não tem SELECT nela; se o job precisar (ex.: MTTR por fornecedor, depois da I4), o pedido vem por este diário e entra numa migração do núcleo. A ligação com a OS chega na I4.
+
+### Respostas do Cesar (09/10/2026, depois da I3)
+- **Merges e `db push` do Cesar:** #141 (I3). A 0033 está no dev: `migration list` confere, e o pgTAP contra o dev passou em tudo, menos no teste 29 do `002` (corrigido abaixo).
+- **Fornecedor (I3):**
+  - mudança nas policies de `app.auditoria`: adendo ao ADR-021, já no `docs/03` (texto aguarda a aprovação);
+  - CNPJ alfanumérico (formato da Receita desde julho de 2026): aceitar, com o dígito verificador do formato novo. Muda o check `fornecedor_cnpj_formato` (migração nova) e o `validarCnpj`. Entra num PR de zona protegida próprio, logo depois da I4, para não atrasar a I4;
+  - CNPJ de fornecedor desativado continua reservado no grupo: reativação em vez de novo cadastro. É o comportamento atual (409 `fornecedor_cnpj_repetido`);
+  - Gestor CSC de bandeira sem hotel: código de erro próprio, com mensagem nos quatro idiomas. Hoje recebe 42501 sem código. Vai no mesmo PR do CNPJ alfanumérico;
+  - CNPJs do kit: continuam inventados, com dígito válido, nunca CNPJ real. Os dois do kit (`98765432000198` e `13579246000101`) já têm dígito válido; nada a mudar.
+- **Hotel e local (I2) e desempenho (P1):**
+  - edificação no nome do local no PWA, quando preenchida ("UH 101 · Torre A"): sim. PR fora da zona protegida, em paralelo com a fila;
+  - busca por nome e edificação: só este registro, sem adendo ao ADR-030. A busca de locais acha pelo trecho do nome ou da edificação;
+  - limite de 60 caracteres da edificação: mantido;
+  - ler o `hk_tenant` no layout do servidor: só se a medição mostrar ganho. O cookie é só preferência; a participação no tenant continua conferida (o banco só aceita tenant de que o usuário é membro);
+  - página que chama os casos de uso direto no servidor (P1c): adendo curto ao ADR-039, já no `docs/03` (texto aguarda a aprovação).
+- **Medidas:** os comandos do `db:fumaca-dev` pelo pooler e da leitura do `Server-Timing` de `/api/v1/hoteis/{id}/ativos` foram passados ao Cesar; ele roda.
+- **Exceção GHSA-vfj7-8cjw-p6xm:** revisão em 08/11/2026 ou antes do piloto, o que vier primeiro. A data está no comentário da exceção, no `pnpm-workspace.yaml`.
+- **Nomes:** a etapa de checklist e preventiva passou de P1 a P3 para **PV1 a PV3**, para não confundir com a P1 de desempenho. Mudou no `docs/12` e nos documentos do piloto. O diário da fase 1a fica como está: lá, P1 é desempenho.
+- **Fila (zona protegida, um PR por vez):** correção do teste 29 → I4 → CNPJ alfanumérico e código do Gestor CSC sem hotel → I6 → I7 → I8. O Cesar é avisado a cada PR pronto para merge e `db push`.
+- **Aviso ao agente do Intelligence:** o checklist tipado agora é a **PV1** (antes P1), e a preventiva, PV2 e PV3. O `docs/diario-intelligence.md` cita "checklist tipado (P1)"; ajustar no próximo PR de vocês. A I4 vem a seguir.
+
+### Teste 29 do `002_isolamento_escopo` no dev (09/10/2026)
+- **Problema:** o teste compara todo o resultado de `licenca.uso()`. No dev compartilhado existe o tenant "Grupo Demonstração" do kit, então o teste falhava lá e passava na CI, que começa com o banco vazio.
+- **Correção:** o teste filtra pelos dois tenants que ele mesmo cria. A asserção continua a mesma: o `hk_backoffice` vê só os agregados.
+- **Verificação:** pgTAP contra o dev, com rollback, passou: 812 testes ok em 27 arquivos.

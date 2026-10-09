@@ -116,7 +116,7 @@ Em **Configuração e políticas**, painel **Políticas**:
 - **Políticas de SLA** (prazos por prioridade, horário, escalonamento), notificações e indicadores: **[ainda não existe]** (fase 1c).
 - **Nomes dos níveis de criticidade:** **[vai mudar na 1b]** (I1, política `ativo.criticidade`).
 - **Códigos de falha, causa e solução** e política `os.codigos_obrigatorios`: **[vai mudar na 1b]** (I4).
-- Plano preventivo, checklist e modelos por categoria: **[ainda não existe]** (P1 a P3, M1).
+- Plano preventivo, checklist e modelos por categoria: **[ainda não existe]** (PV1 a PV3, M1).
 
 ### Etapa 9. Ativar o hotel
 

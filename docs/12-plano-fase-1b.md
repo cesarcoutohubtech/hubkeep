@@ -29,11 +29,11 @@ Fonte do escopo:
 
 | Decisão | Proposta | Usada em |
 |---|---|---|
-| **Campos tipados comuns** (ADR-028, aprovado) | O checklist usa os mesmos tipos do campo estendido do ativo (`packages/dominio/src/campos-tipados.ts`): texto curto, número com unidade, data, lista e sim/não, com rótulos nos quatro idiomas. | P1, P2, M1 |
-| **Cópia no registro** (ADR-026, aprovado) | A OS preventiva guarda a cópia do checklist e do plano que a geraram. Mudar o modelo ou o plano não altera OS já gerada. | P1, P3 |
-| **Preventiva gerada pelo worker** (ADR-005, aprovado) | A geração roda uma vez por dia, no `hk_worker`, um tenant por transação, com `for update skip locked`. A rota de cron volta ao `vercel.json` só quando a tarefa P3 existir (B9 do `docs/11`). | P3 |
-| **Origem da OS** (relatório de lacunas) | A OS preventiva não tem chamado; ela se reconhece pelo plano (`plano_id`). Hoje `app.os.chamado_id` é `not null`, e a P3 muda isso com a exigência de um dos dois. | P3 |
-| **Política por hotel, herança hotel → grupo** (ADR-026 e o adendo de 06/10/2026) | As obrigatoriedades novas (códigos na OS, checklist completo) são políticas desligadas por padrão, resolvidas pelo registro de políticas. | I6, P1 |
+| **Campos tipados comuns** (ADR-028, aprovado) | O checklist usa os mesmos tipos do campo estendido do ativo (`packages/dominio/src/campos-tipados.ts`): texto curto, número com unidade, data, lista e sim/não, com rótulos nos quatro idiomas. | PV1, PV2, M1 |
+| **Cópia no registro** (ADR-026, aprovado) | A OS preventiva guarda a cópia do checklist e do plano que a geraram. Mudar o modelo ou o plano não altera OS já gerada. | PV1, PV3 |
+| **Preventiva gerada pelo worker** (ADR-005, aprovado) | A geração roda uma vez por dia, no `hk_worker`, um tenant por transação, com `for update skip locked`. A rota de cron volta ao `vercel.json` só quando a tarefa PV3 existir (B9 do `docs/11`). | PV3 |
+| **Origem da OS** (relatório de lacunas) | A OS preventiva não tem chamado; ela se reconhece pelo plano (`plano_id`). Hoje `app.os.chamado_id` é `not null`, e a PV3 muda isso com a exigência de um dos dois. | PV3 |
+| **Política por hotel, herança hotel → grupo** (ADR-026 e o adendo de 06/10/2026) | As obrigatoriedades novas (códigos na OS, checklist completo) são políticas desligadas por padrão, resolvidas pelo registro de políticas. | I6, PV1 |
 
 ## Etapa I — Instrumentação
 
@@ -57,15 +57,15 @@ As oito migrações da fila de zona protegida, nesta ordem (Cesar, 05 e 06/10/20
 
 Fim da etapa I: resumo e aviso ao agente do Kaio, no diário, com os nomes reais dos campos para o `historico.ts`.
 
-## Etapa P — Preventiva
+## Etapa PV — Preventiva
 
 | Tarefa | O quê | Aceite | Migração | ADR |
 |---|---|---|---|---|
-| **P1** Checklist tipado | Modelo de checklist do tenant: itens com os tipos comuns (ADR-028), rótulo nos quatro idiomas, marca de obrigatório e versão. A OS guarda a cópia do checklist aplicado e as respostas. Respondido no PWA, offline, com a operação `os.responder_checklist`. A obrigatoriedade de completar o checklist antes da conclusão é política por hotel, desligada por padrão. | Resposta fora do tipo do item dá 422 com código. Mudar o modelo não altera a OS que já tem o checklist. Um dia offline sincroniza as respostas sem duplicar. Com a política ligada, a conclusão sem os itens obrigatórios é recusada com código. Isolamento. | Sim: modelo e respostas | Novo: checklist tipado (modelo versionado e cópia na OS) |
-| **P2** Planos preventivos | Plano por ativo ou por categoria num hotel: periodicidade por tempo (dias, semanas, meses), checklist, responsável padrão (técnico ou equipe) e data de início. Ativar, pausar e encerrar, com desativação lógica. Quem gere o hotel cadastra. | Periodicidade inválida dá 422 com código. O plano de outro hotel dá 404. Pausar não apaga o histórico. Isolamento. | Sim: `app.plano_preventivo` | Novo: preventiva por tempo (com P3) |
-| **P3** Geração automática de OS | O job diário do worker gera a OS preventiva de cada plano vencido, com a cópia do plano e do checklist, atribuída ao responsável padrão e com o evento `os.atribuida` no outbox. A geração é idempotente por plano e por data prevista. A OS preventiva não tem chamado. | Rodar o job duas vezes no mesmo dia não duplica a OS. Plano pausado não gera. Hotel desativado ou em implantação não gera. A OS preventiva segue a mesma máquina de estados da corretiva, sem o aceite do solicitante. O worker só grava no tenant do contexto. A rota volta ao `vercel.json` com teste. | Sim: `plano_id` e `data_prevista` em `app.os`, `chamado_id` anulável com a exigência de um dos dois, e GRANT do worker | O mesmo de P2 |
+| **PV1** Checklist tipado | Modelo de checklist do tenant: itens com os tipos comuns (ADR-028), rótulo nos quatro idiomas, marca de obrigatório e versão. A OS guarda a cópia do checklist aplicado e as respostas. Respondido no PWA, offline, com a operação `os.responder_checklist`. A obrigatoriedade de completar o checklist antes da conclusão é política por hotel, desligada por padrão. | Resposta fora do tipo do item dá 422 com código. Mudar o modelo não altera a OS que já tem o checklist. Um dia offline sincroniza as respostas sem duplicar. Com a política ligada, a conclusão sem os itens obrigatórios é recusada com código. Isolamento. | Sim: modelo e respostas | Novo: checklist tipado (modelo versionado e cópia na OS) |
+| **PV2** Planos preventivos | Plano por ativo ou por categoria num hotel: periodicidade por tempo (dias, semanas, meses), checklist, responsável padrão (técnico ou equipe) e data de início. Ativar, pausar e encerrar, com desativação lógica. Quem gere o hotel cadastra. | Periodicidade inválida dá 422 com código. O plano de outro hotel dá 404. Pausar não apaga o histórico. Isolamento. | Sim: `app.plano_preventivo` | Novo: preventiva por tempo (com PV3) |
+| **PV3** Geração automática de OS | O job diário do worker gera a OS preventiva de cada plano vencido, com a cópia do plano e do checklist, atribuída ao responsável padrão e com o evento `os.atribuida` no outbox. A geração é idempotente por plano e por data prevista. A OS preventiva não tem chamado. | Rodar o job duas vezes no mesmo dia não duplica a OS. Plano pausado não gera. Hotel desativado ou em implantação não gera. A OS preventiva segue a mesma máquina de estados da corretiva, sem o aceite do solicitante. O worker só grava no tenant do contexto. A rota volta ao `vercel.json` com teste. | Sim: `plano_id` e `data_prevista` em `app.os`, `chamado_id` anulável com a exigência de um dos dois, e GRANT do worker | O mesmo de PV2 |
 
-Fim da etapa P: resumo.
+Fim da etapa PV: resumo.
 
 ## Etapa M — Implantação
 
@@ -84,7 +84,7 @@ Fim da etapa M: resumo.
 
 | Tarefa | O quê | Aceite | Migração | ADR |
 |---|---|---|---|---|
-| **PB1** Pacote da bandeira | Sem tabela de pacote: modelos de ativo (M1), checklists (P1) e planos por categoria (P2) ganham `bandeira_id` opcional, e nulo vale para o grupo inteiro. "Aplicar o pacote ao hotel": modelos e checklists só ficam filtrados pela bandeira do hotel; os planos por categoria são copiados para o hotel, pausados, e reaplicar só acrescenta o que falta. O Admin do grupo mantém o pacote; o Implantador aplica pelo painel de implantação, que registra quando o hotel entrou em implantação e quando ficou pronto, para medir a meta de 1 dia sem o levantamento de ativos. Desenho aprovado em 08/10/2026 (item 5). | A cópia segue o ADR-026: mudar o pacote não altera o hotel já implantado. Reaplicar não duplica nem sobrescreve. Os planos copiados nascem pausados. Isolamento. | Sim: `bandeira_id` nos modelos, checklists e planos | — |
+| **PB1** Pacote da bandeira | Sem tabela de pacote: modelos de ativo (M1), checklists (PV1) e planos por categoria (PV2) ganham `bandeira_id` opcional, e nulo vale para o grupo inteiro. "Aplicar o pacote ao hotel": modelos e checklists só ficam filtrados pela bandeira do hotel; os planos por categoria são copiados para o hotel, pausados, e reaplicar só acrescenta o que falta. O Admin do grupo mantém o pacote; o Implantador aplica pelo painel de implantação, que registra quando o hotel entrou em implantação e quando ficou pronto, para medir a meta de 1 dia sem o levantamento de ativos. Desenho aprovado em 08/10/2026 (item 5). | A cópia segue o ADR-026: mudar o pacote não altera o hotel já implantado. Reaplicar não duplica nem sobrescreve. Os planos copiados nascem pausados. Isolamento. | Sim: `bandeira_id` nos modelos, checklists e planos | — |
 
 Fim da etapa PB e da fase 1b: resumo, com a lista do que ficou para a 1c.
 
@@ -98,14 +98,14 @@ Fim da etapa PB e da fase 1b: resumo, com a lista do que ficou para a 1c.
 
 - **Migrações previstas** (cada uma para no PR):
   - I1 a I8, uma por PR, na ordem da etapa I (I1 e I5 já no main; a I9 não tem migração);
-  - P1, P2 e P3;
+  - PV1, PV2 e PV3;
   - M1;
   - PB1, depois da M1;
   - M4 (situação do cadastro no ativo);
   - talvez M2 e M3.
 - **ADRs:**
-  - novo: checklist tipado, com modelo versionado e cópia na OS (P1);
-  - novo: preventiva por tempo e geração idempotente pelo worker (P2 e P3);
+  - novo: checklist tipado, com modelo versionado e cópia na OS (PV1);
+  - novo: preventiva por tempo e geração idempotente pelo worker (PV2 e PV3);
   - talvez: formato e limites da importação (M2);
   - talvez: aprovação do cadastro de ativo (M4);
   - talvez: o filtro por módulo contratado no adendo ao ADR-026 (I7);

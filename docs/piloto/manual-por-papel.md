@@ -89,7 +89,7 @@ Proprietário (UH ou hotel inteiro) só lê o que é dele; não grava nada.
 - Data de compra, garantia e criticidade no cadastro pelo celular: **[vai mudar na 1b]** (I1; ficam numa parte recolhida, "Compra, garantia e criticidade").
 - Códigos de falha, causa e solução na conclusão: **[vai mudar na 1b]** (I4; só como sugestão, a conclusão nunca é recusada por falta de código).
 - Pergunta "afeta hóspede?" na abertura do chamado: **[vai mudar na 1b]** (I2).
-- Checklist da preventiva: **[ainda não existe]** (P1 a P3).
+- Checklist da preventiva: **[ainda não existe]** (PV1 a PV3).
 
 **Ler o QR do ativo.** O app não tem leitor próprio. Apontar a câmera do celular para a etiqueta: o QR leva a `/q/<código>` e abre o ativo no PWA (pelo aparelho, ou pela rede se ele não estiver guardado). Sem rede e sem o ativo no aparelho: "Este ativo não está guardado no aparelho. Abra o QR de novo quando houver conexão." Para abrir chamado a partir da etiqueta, o fluxo de hoje é abrir o ativo e voltar a **Abrir chamado**. Leitura que já preenche o chamado: **[ainda não existe]**.
 
@@ -185,7 +185,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - **Painel de implantação:** "O que falta" por hotel (ver guia de implantação).
 - Sem tela, só pela API ou script de operação: situações e prioridades padrão (instalação), credencial do agente conector (criar e revogar), gravar política de prioridade por categoria.
 
-**Nas telas de 1b.** Nomes dos níveis de criticidade na configuração, cadastro de códigos de manutenção (falha, causa, solução), "executado por" e custo informado no aceite: **[vai mudar na 1b]** (I1, I2, I4). Importação de ativos por planilha, QR em lote, modelos por categoria, aprovação de ativos cadastrados pelo celular, planos preventivos e checklist: **[ainda não existe]** (M1 a M4, P1 a P3).
+**Nas telas de 1b.** Nomes dos níveis de criticidade na configuração, cadastro de códigos de manutenção (falha, causa, solução), "executado por" e custo informado no aceite: **[vai mudar na 1b]** (I1, I2, I4). Importação de ativos por planilha, QR em lote, modelos por categoria, aprovação de ativos cadastrados pelo celular, planos preventivos e checklist: **[ainda não existe]** (M1 a M4, PV1 a PV3).
 
 ## 7. Outros papéis (para consulta)
 
