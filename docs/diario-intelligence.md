@@ -329,6 +329,11 @@ O Kaio pediu para seguir a pauta do agente do núcleo (`docs/diario-fase-1a.md`,
 - **ADR-036, aprovado pelo Cesar com uma condição.** Cada resultado diário grava a versão da política e a da fórmula usadas, e um recálculo fica marcado como recálculo, com a versão nova.
 - **Hotel novo num insight de rede, aprovado pelo Cesar com uma condição.** O hash da lista de hotéis é calculado fora do `packages/inteligencia` (no job, com `node:crypto`, ou no banco, com `sha256()`), a função pura devolve só a lista canônica, e nada de SHA-256 escrito à mão.
 - **Aceite do Kaio às duas condições:** em 07/10/2026, ao pedir que o agente as aplicasse. Elas estão aplicadas (abaixo). O Kaio pode corrigir este registro.
+- **Texto literal da aprovação do Cesar** (colado pelo usuário no chat deste agente em 09/10/2026, sem alteração; o canal e o dia em que o Cesar escreveu a mensagem não vieram com o texto e ficam **[a confirmar com o Cesar]**):
+
+  > “Eu, Cesar, aprovo o ADR-033 a 037, o adendo ao ADR-026 e as três regras do #101, com as duas condições: o resultado diário grava a versão da política e da fórmula, com o recálculo marcado; e o hash do insight de rede é calculado fora da função pura.”
+
+  As duas condições do texto são as do ADR-036 (versão da política e da fórmula no resultado diário, recálculo marcado) e a do hash do insight de rede, ambas registradas acima e já aplicadas.
 - **Superado:** a proposta de um SHA-256 próprio no TypeScript, que estava no rascunho. Saiu.
 
 ### O que ficou fora do merge, e foi recolocado
