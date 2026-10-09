@@ -2,7 +2,7 @@
 // contexto do usuário: a RLS mostra os chamados dos hotéis que ele lê (e os
 // das UHs e do hotel inteiro do proprietário) e só deixa abrir quem tem
 // escrita no hotel, em nome dele mesmo.
-import type { Contexto, StatusDeLocal } from '@hubkeep/dominio';
+import type { Contexto, OrigemDoChamado, StatusDeLocal, TipoDeLocal } from '@hubkeep/dominio';
 
 export interface ChamadoGravado {
   id: string;
@@ -17,6 +17,10 @@ export interface ChamadoGravado {
   politicaAplicada: unknown;
   abertoPor: string;
   motivoCancelamento: string | null;
+  /** De onde veio o trabalho (I4); sem UPDATE. */
+  origem: string;
+  /** Afeta hóspede? null: não informado (I4). */
+  impactoHospede: boolean | null;
   versao: number;
   criadoEm: Date;
 }
@@ -30,6 +34,15 @@ export interface DadosDeChamado {
   situacaoId: string;
   prioridadeId: string;
   politicaAplicada: object;
+  /** De onde veio o trabalho (I4): na abertura pelo web e pelo PWA, sempre interno. */
+  origem: OrigemDoChamado;
+  /** Afeta hóspede? null: não informado (I4). */
+  impactoHospede: boolean | null;
+  /**
+   * A UH indisponível desde (I4): grava o período aberto da UH do chamado
+   * junto com ele. Só em chamado de UH.
+   */
+  uhIndisponivelDesde: Date | null;
   /**
    * O equipamento parado desde (C5): grava a parada aberta do ativo junto com
    * o chamado. Se o ativo já tem parada aberta, fica a que existe.
@@ -43,7 +56,7 @@ export interface PortaChamados {
   local(
     ctx: Contexto,
     localId: string,
-  ): Promise<{ id: string; hotelId: string; status: StatusDeLocal } | null>;
+  ): Promise<{ id: string; hotelId: string; tipo: TipoDeLocal; status: StatusDeLocal } | null>;
   ativo(
     ctx: Contexto,
     ativoId: string,

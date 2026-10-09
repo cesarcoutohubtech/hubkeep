@@ -7,6 +7,15 @@ import type { StatusDeLocal } from './licenca';
 
 export const LIMITE_DESCRICAO_DO_CHAMADO = 2000;
 
+/**
+ * De onde veio o trabalho (I4): gravada na abertura e sem UPDATE. Hoje todo
+ * chamado é interno; a integração (IX2) acrescenta a dela, com migração que
+ * amplia o check chamado_origem_lista (0034).
+ */
+export const ORIGENS_DO_CHAMADO = ['interno'] as const;
+export type OrigemDoChamado = (typeof ORIGENS_DO_CHAMADO)[number];
+export const ORIGEM_PADRAO_DO_CHAMADO: OrigemDoChamado = 'interno';
+
 /** Descrição: sem espaços nas pontas, de 1 a 2000 caracteres; as quebras de linha ficam. */
 export function normalizarDescricaoDoChamado(descricao: string): string {
   const limpa = descricao.trim();

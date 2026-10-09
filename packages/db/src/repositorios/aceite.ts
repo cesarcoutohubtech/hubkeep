@@ -4,7 +4,8 @@
 // gestão do hotel, o UPDATE não acha linha (404). Toda gravação confere a
 // versão (ADR-029). A reabertura grava o motivo na OS (motivo_reabertura, o
 // último; o histórico fica na auditoria e no evento) e, com o equipamento
-// parado, abre a parada do ativo no mesmo chamado, na mesma unit of work.
+// parado, abre a parada do ativo no mesmo chamado, na mesma unit of work. O
+// aceite grava o custo informado (I4), quando vem.
 import type { ReflexoNoChamado } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
@@ -23,13 +24,16 @@ async function decidirAceite(
     situacaoId: string;
     motivo: string | null;
     chamado: ReflexoNoChamado;
+    /** Só no aceite (I4); null: não informado. */
+    custoInformado?: number | null;
   },
 ): Promise<{ versao: number; versaoDoChamado: number }> {
   const tx = transacaoDe(uow);
+  const custo = g.custoInformado ?? null;
   const para = acao === 'aceitar' ? 'aceita' : 'em_execucao';
   const antes = await tx
     .selectFrom('app.os')
-    .select(['estado', 'situacao_id', 'motivo_reabertura', 'versao'])
+    .select(['estado', 'situacao_id', 'motivo_reabertura', 'custo_informado', 'versao'])
     .where('id', '=', g.osId)
     .executeTakeFirst();
   const r = await tx
@@ -38,6 +42,7 @@ async function decidirAceite(
       estado: para,
       situacao_id: g.situacaoId,
       ...(g.motivo !== null ? { motivo_reabertura: g.motivo } : {}),
+      ...(custo !== null ? { custo_informado: custo.toFixed(2) } : {}),
       versao: sql<number>`versao + 1`,
       atualizado_em: sql`now()`,
     })
@@ -56,6 +61,7 @@ async function decidirAceite(
     antes,
     depois: {
       ...(g.motivo !== null ? { motivo: g.motivo } : {}),
+      ...(custo !== null ? { custoInformado: custo } : {}),
       situacaoId: g.situacaoId,
       versao: r.versao,
       estadoDoChamado: g.chamado.estado,
@@ -69,6 +75,7 @@ async function decidirAceite(
       hotelId: r.hotel_id,
       chamadoId: r.chamado_id,
       ...(g.motivo !== null ? { motivo: g.motivo } : {}),
+      ...(custo !== null ? { custoInformado: custo } : {}),
     },
   });
   return { versao: r.versao, versaoDoChamado: chamado.versao };
@@ -82,6 +89,7 @@ export const aceitarOs = (
     de: EstadoDaOs;
     situacaoId: string;
     chamado: ReflexoNoChamado;
+    custoInformado: number | null;
   },
 ) => decidirAceite(uow, 'aceitar', { ...g, motivo: null });
 

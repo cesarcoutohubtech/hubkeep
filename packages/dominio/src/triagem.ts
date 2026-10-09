@@ -5,12 +5,14 @@
 import {
   type AtorDaCorretiva,
   type ChamadoParaRegra,
+  type EstadoDaOs,
   type EstadoDoChamado,
   type Responsavel,
   podeTriar,
 } from './corretiva';
 import { Conflito, RegraViolada } from './erros';
 import { escopoCobreHotel } from './equipes';
+import { ESTADOS_COM_EXECUTOR_AJUSTAVEL } from './executor-e-custo';
 import { vigente } from './permissoes';
 import type { PrioridadeParaRegra } from './situacoes';
 import type { Atribuicao } from './tipos';
@@ -85,6 +87,48 @@ export function podeAjustarPrioridade(
     throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
       acao: 'priorizar',
       estado: chamado.estado,
+    });
+  }
+}
+
+/** O impacto no hóspede (I4) se corrige com o chamado em curso, até o aceite. */
+export const ESTADOS_COM_IMPACTO_AJUSTAVEL: readonly EstadoDoChamado[] = [
+  'aberto',
+  'em_triagem',
+  'em_execucao',
+  'aguardando_aceite',
+];
+
+/** Corrigir o impacto no hóspede: papel da triagem no hotel (403) e chamado em curso (409). */
+export function podeInformarImpacto(
+  ator: AtorDaCorretiva,
+  chamado: ChamadoParaRegra,
+  agora: Date,
+): void {
+  podeTriar(ator, chamado.hotel, agora);
+  if (!ESTADOS_COM_IMPACTO_AJUSTAVEL.includes(chamado.estado)) {
+    throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
+      acao: 'informar_impacto',
+      estado: chamado.estado,
+    });
+  }
+}
+
+/**
+ * Corrigir quem executa a OS (I4): papel da triagem no hotel (403) e a OS
+ * ainda não concluída nem cancelada (409).
+ */
+export function podeAjustarQuemExecuta(
+  ator: AtorDaCorretiva,
+  chamado: ChamadoParaRegra,
+  estadoDaOs: EstadoDaOs,
+  agora: Date,
+): void {
+  podeTriar(ator, chamado.hotel, agora);
+  if (!ESTADOS_COM_EXECUTOR_AJUSTAVEL.includes(estadoDaOs)) {
+    throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
+      acao: 'definir_executor',
+      estado: estadoDaOs,
     });
   }
 }

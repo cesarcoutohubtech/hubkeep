@@ -1477,3 +1477,35 @@ Desenho aprovado pelo Cesar em 08/10/2026 (`docs/referencia/propostas-desenho-1b
 - **Problema:** o teste compara todo o resultado de `licenca.uso()`. No dev compartilhado existe o tenant "Grupo Demonstração" do kit, então o teste falhava lá e passava na CI, que começa com o banco vazio.
 - **Correção:** o teste filtra pelos dois tenants que ele mesmo cria. A asserção continua a mesma: o `hk_backoffice` vê só os agregados.
 - **Verificação:** pgTAP contra o dev, com rollback, passou: 812 testes ok em 27 arquivos.
+
+### I4, chamado e OS: origem, impacto no hóspede, quem executa, custo e UH indisponível (09/10/2026)
+
+Desenho aprovado pelo Cesar em 08/10/2026 (`docs/12`, I4; `docs/referencia/propostas-desenho-1b.md`, itens 2 e 3). A I4 foi dividida em dois PRs: este, de zona protegida, com a migração, o domínio, a API e os testes; e a I4b, fora da zona protegida, com as telas do web (triagem, aceite e detalhe) e do PWA (as perguntas na abertura e na conclusão).
+- **Banco (migração 0034):**
+  - `app.chamado.origem` (`not null default 'interno'`, sem UPDATE; check `chamado_origem_lista`) e `app.chamado.impacto_hospede` (boolean anulável; nulo é "não informado"; GRANT de UPDATE);
+  - `app.os.executado_por` (`not null default 'equipe_interna'`; check `os_executado_por_lista` com `equipe_interna` e `fornecedor`), `app.os.fornecedor_id` (FK composta `(tenant_id, fornecedor_id)` para `app.fornecedor`) e `app.os.custo_informado` (`numeric(12,2)`, não negativo). O check `os_fornecedor_quando_externo` amarra o fornecedor a quem executa. GRANT de UPDATE nas três; quem grava segue o `app_update` da OS que já existia;
+  - `app.uh_indisponivel`, no modelo da parada do ativo: `local_id`, `chamado_id`, `inicio`, `fim`, `aberta_por` e `encerrada_por`. A FK `(hotel_id, chamado_id, local_id)` prende o período ao local do chamado; um período aberto por chamado (índice único parcial); a mesma UH aceita períodos de chamados diferentes. Policies como as da parada; o worker lê no tenant do job;
+  - os checks das listas seguem o do modelo contratual (0032): o teste `tests/valores-canonicos-banco.test.ts` lê as migrações e falha se divergirem do domínio.
+- **Domínio:**
+  - `chamados.ts`: `ORIGENS_DO_CHAMADO` e `ORIGEM_PADRAO_DO_CHAMADO`;
+  - `executor-e-custo.ts`: `EXECUTORES_DA_OS`, `decidirQuemExecuta` (`os_fornecedor_obrigatorio`, `os_fornecedor_indevido`, `os_fornecedor_desativado`, `fornecedor_nao_encontrado`), `ESTADOS_COM_EXECUTOR_AJUSTAVEL` (atribuída, em execução e pausada) e `normalizarCustoInformado` (`os_custo_invalido`: não negativo, dois decimais, até o teto da coluna);
+  - `triagem.ts`: `podeInformarImpacto` (triagem, chamado até o aceite) e `podeAjustarQuemExecuta` (triagem, OS até a conclusão);
+  - `uh-indisponivel.ts`: só UH (`uh_indisponivel_fora_de_uh`), início e fim (`uh_indisponivel_periodo_invalido`, com a folga do relógio), um aberto por chamado (`uh_indisponivel_ja_aberta`, `uh_indisponivel_nao_aberta`), `periodoALiberarNaConclusao` e `uhDiasPerdidos` (veio do Intelligence; o período de chamado cancelado não conta);
+  - `corretiva.ts`: `podeGerirUhIndisponivel` (Admin, Gestor CSC e Gerente; `uh_indisponivel_fora_do_papel`).
+- **Aplicação:**
+  - abertura com `impactoHospede` e `uhIndisponivelDesde`; a origem é gravada pelo servidor;
+  - triagem: `gerarOs` com quem executa (sem escolha, a equipe interna), `definirQuemExecuta`, `informarImpacto`, aceite com `custoInformado`, e o cancelamento do chamado encerra o período aberto da UH;
+  - `uh-indisponivel.ts`: os períodos do chamado (o proprietário recebe só a UH, o estado e as datas), marcar depois e liberar, pela gestão;
+  - execução: na conclusão, `uhLiberada` encerra o período na mesma operação offline (resposta `uhLiberada`); a fila do dia traz `uhIndisponivelDesde`.
+- **API:** `POST /api/v1/chamados/{id}/impacto-hospede`, `POST /api/v1/os/{id}/executor`, `GET` e `POST /api/v1/chamados/{id}/uh-indisponivel` e `POST /api/v1/uh-indisponivel/{id}/liberacao`. A geração da OS aceita `executadoPor` e `fornecedorId`; o aceite, `custoInformado`; a abertura, `impactoHospede` e `uhIndisponivelDesde`; a operação `os.concluir`, `uhLiberada`. O chamado e a OS da API trazem os campos novos, e a linha do tempo, a UH (entidade `uh_indisponivel`, ações `marcar` e `liberar`).
+- **Catálogos:** os dez códigos de erro novos e as ações novas da linha do tempo, nos quatro idiomas.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes, verdes; o domínio ganhou 62 testes;
+  - na CI: o pgTAP 028 (50 asserções) e o meta-teste 28, e o teste de integração `packages/db/test/chamado-os-uh.test.ts` (inclusive a RLS sem a regra do domínio e a operação offline antiga);
+  - sem tela nova neste PR: a I4b traz as telas.
+- **Aviso ao agente do Intelligence:** os nomes reais, para trocar no `historico.ts` e no `uh.ts` num PR fora de zona protegida:
+  - `app.chamado.origem` (`interno`) e `app.chamado.impacto_hospede` (boolean ou nulo);
+  - `app.os.executado_por` (`equipe_interna` ou `fornecedor`, os mesmos valores do `ExecutadoPor` de vocês), `app.os.fornecedor_id` e `app.os.custo_informado` (`numeric(12,2)`, chega como texto pelo driver);
+  - `app.uh_indisponivel` (`hotel_id`, `local_id`, `chamado_id`, `inicio`, `fim`); o período de chamado cancelado é encerrado no cancelamento, e quem calcula os UH-dias deixa de fora (`app.chamado.estado = 'cancelado'`);
+  - `uhDiasPerdidos` agora mora no `@hubkeep/dominio`, com o campo opcional `chamadoCancelado` no período; o motor pode importar de lá e apagar a cópia do módulo;
+  - o `hk_worker` lê `app.uh_indisponivel` e as colunas novas de `app.chamado` e `app.os`; `app.fornecedor` continua sem GRANT para ele.

@@ -34,6 +34,7 @@ const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsNoAparelho => ({
     ativoId: null,
     paradoDesde: null,
     paradaDoChamado: false,
+    uhIndisponivelDesde: null,
   },
   pendentes,
 });

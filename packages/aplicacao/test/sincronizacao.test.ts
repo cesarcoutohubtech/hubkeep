@@ -53,6 +53,7 @@ function montar() {
         encerrarParada: async () => {
           parada.aberta = false;
         },
+        liberarUh: async () => {},
       });
       guardadas.set(op.chave, resposta);
       return { repetida: false, resposta };

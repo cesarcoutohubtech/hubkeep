@@ -271,6 +271,25 @@ const PAPEIS_QUE_ENCERRAM_PARADA: readonly Papel[] = [
   ...PAPEIS_DA_TRIAGEM,
 ];
 
+/**
+ * Marcar a UH indisponível depois da abertura e liberá-la pelo web (I4): o
+ * Admin e os papéis da triagem no hotel, como na parada. Quem conclui a OS
+ * libera na conclusão, pela regra da transição.
+ */
+export function podeGerirUhIndisponivel(
+  ator: AtorDaCorretiva,
+  hotel: ChamadoParaRegra['hotel'],
+  agora: Date,
+): void {
+  if (!temPapelNoHotel(ator, PAPEIS_QUE_ENCERRAM_PARADA, hotel, agora)) {
+    throw new PermissaoNegada(
+      'uh_indisponivel_fora_do_papel',
+      'Você não marca nem libera UH neste hotel.',
+      { hotelId: hotel.id },
+    );
+  }
+}
+
 /** O mesmo que podeEncerrarParada, sem erro: filtra a lista das paradas pendentes. */
 export const encerraParadaNoHotel = (
   ator: AtorDaCorretiva,

@@ -1,5 +1,6 @@
 // POST /api/v1/os/{id}/aceite — aceita a OS concluída; o chamado fica
-// concluído. Quem abriu o chamado ou o Gerente do hotel (C6; ADR-029).
+// concluído. Quem abriu o chamado ou o Gerente do hotel (C6; ADR-029), com o
+// custo informado, opcional (I4).
 import { PedidoDeAceiteDeOs, RespostaDeOsGravada } from '@hubkeep/contratos';
 import { casosDeUsoDeTriagem } from '../../../../../../servidor/composicao';
 import { ErroHttp, rota } from '../../../../../../servidor/http';

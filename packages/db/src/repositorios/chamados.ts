@@ -1,11 +1,13 @@
 // Chamados (fase 1a, C2), na unit of work, com auditoria e evento. A RLS
 // decide por último: abre quem tem escrita no hotel, em nome dele mesmo. Com o
-// equipamento parado (C5), a parada aberta do ativo vai na mesma unit of work.
+// equipamento parado (C5), a parada aberta do ativo vai na mesma unit of work;
+// com a UH indisponível (I4), o período aberto da UH também.
 import type { DadosDeChamado } from '@hubkeep/aplicacao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 import { colunasPesquisaveisDoChamado } from './busca';
 import { pararNaAbertura } from './paradas';
+import { marcarUhIndisponivel } from './uh-indisponivel';
 
 export async function criarChamado(
   uow: UnidadeDeTrabalho,
@@ -27,10 +29,20 @@ export async function criarChamado(
       situacao_id: d.situacaoId,
       prioridade_id: d.prioridadeId,
       politica_aplicada: JSON.stringify(d.politicaAplicada),
+      origem: d.origem,
+      impacto_hospede: d.impactoHospede,
       aberto_por: uow.usuarioId,
     })
     .execute();
   uow.auditar({ entidade: 'chamado', registroId: id, acao: 'abrir', hotelId, depois: d });
+  if (d.uhIndisponivelDesde !== null) {
+    await marcarUhIndisponivel(uow, {
+      hotelId,
+      localId: d.localId,
+      chamadoId: id,
+      inicio: d.uhIndisponivelDesde,
+    });
+  }
   if (d.paradaDesde !== null && d.ativoId !== null) {
     await pararNaAbertura(uow, {
       hotelId,
@@ -48,6 +60,8 @@ export async function criarChamado(
       localId: d.localId,
       ativoId: d.ativoId,
       prioridadeId: d.prioridadeId,
+      origem: d.origem,
+      impactoHospede: d.impactoHospede,
     },
   });
   return { id, versao: 1 };

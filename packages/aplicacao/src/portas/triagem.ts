@@ -2,13 +2,17 @@
 // packages/db, com o contexto do usuário: a RLS mostra o chamado e as OS dos
 // hotéis que ele lê e só deixa gravar os papéis da triagem (migração 0022) e,
 // no aceite, também quem abriu o chamado (0026). Toda gravação é uma
-// unit of work, com auditoria e evento, e confere a versão (ADR-029).
+// unit of work, com auditoria e evento, e confere a versão (ADR-029). Na I4,
+// a OS guarda quem executa (equipe interna ou fornecedor do grupo) e o custo
+// informado no aceite, e o chamado, o impacto no hóspede.
 import type {
   Atribuicao,
   Contexto,
   DadosDoAceite,
   EstadoDaOs,
   EstadoDoChamado,
+  ExecutadoPor,
+  QuemExecuta,
   Responsavel,
 } from '@hubkeep/dominio';
 
@@ -35,6 +39,11 @@ export interface OsGravada {
   motivoCancelamento: string | null;
   /** O último motivo de reabertura (C6); o histórico fica na auditoria. */
   motivoReabertura: string | null;
+  /** Quem executa (I4): a equipe interna ou o fornecedor do grupo. */
+  executadoPor: ExecutadoPor;
+  fornecedorId: string | null;
+  /** O custo informado no aceite, em reais (I4); null: não informado. */
+  custoInformado: number | null;
   criadoPor: string;
   versao: number;
   criadoEm: Date;
@@ -42,11 +51,18 @@ export interface OsGravada {
 
 /** O que muda no chamado, já decidido pelo domínio. */
 export interface MudancaNoChamado {
-  acao: 'triar' | 'priorizar' | 'cancelar';
+  acao: 'triar' | 'priorizar' | 'cancelar' | 'informar_impacto';
   estado?: EstadoDoChamado;
   situacaoId?: string;
   prioridadeId?: string;
   motivoCancelamento?: string;
+  /** Afeta hóspede? (I4) null: não informado. */
+  impactoHospede?: boolean | null;
+  /**
+   * No cancelamento (I4): encerra nesta hora o período aberto da UH do
+   * chamado, se houver, na mesma unit of work.
+   */
+  encerrarUhEm?: Date;
 }
 
 /** O reflexo da ação da OS no chamado (estado e situação), com a versão lida. */
@@ -65,6 +81,8 @@ export interface PortaTriagem {
   /** Atribuições da pessoa visíveis a quem pergunta (a triagem lê as de Técnico nos hotéis dela). */
   atribuicoesDe(ctx: Contexto, usuarioId: string): Promise<Atribuicao[]>;
   equipe(ctx: Contexto, equipeId: string): Promise<{ hotelId: string; ativa: boolean } | null>;
+  /** O fornecedor do grupo visível a quem pede (I3), para a triagem escolher; senão null. */
+  fornecedor(ctx: Contexto, fornecedorId: string): Promise<{ ativo: boolean } | null>;
   /** Equipes ativas de que quem pede é membro ativo (o aceite confere se ele executa a OS). */
   equipesDoUsuario(ctx: Contexto): Promise<string[]>;
   /**
@@ -94,8 +112,15 @@ export interface PortaTriagem {
       chamadoAbertoPor: string;
       situacaoId: string;
       responsavel: Responsavel;
+      /** Quem executa (I4); sem escolha na triagem, a equipe interna. */
+      execucao: QuemExecuta;
     },
   ): Promise<{ id: string; versao: number; versaoDoChamado: number }>;
+  /** Corrige quem executa a OS (I4), na unit of work, com auditoria e evento. */
+  definirQuemExecuta(
+    ctx: Contexto,
+    g: { osId: string; versao: number; execucao: QuemExecuta },
+  ): Promise<{ versao: number }>;
   reatribuirOs(
     ctx: Contexto,
     g: {
@@ -118,7 +143,10 @@ export interface PortaTriagem {
       chamado: ReflexoNoChamado;
     },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
-  /** Aceite (C6): a OS concluída fica aceita, e o chamado, concluído. */
+  /**
+   * Aceite (C6): a OS concluída fica aceita, e o chamado, concluído. Com o
+   * custo informado (I4), a OS o guarda.
+   */
   aceitarOs(
     ctx: Contexto,
     g: {
@@ -127,6 +155,7 @@ export interface PortaTriagem {
       de: EstadoDaOs;
       situacaoId: string;
       chamado: ReflexoNoChamado;
+      custoInformado: number | null;
     },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
   /**

@@ -464,7 +464,7 @@ select is(
     'app.local', 'app.local_proprietario', 'app.membro', 'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_material', 'app.os_transicao', 'app.parada_ativo', 'app.politica',
     'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.situacao',
-    'app.tenant', 'licenca.contrato', 'staging.carga', 'staging.credencial_agente',
+    'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'staging.carga', 'staging.credencial_agente',
     'staging.registro_externo'
   ]::text[],
   'lista fechada de tabelas: tabela nova entra aqui com os casos de isolamento dela');

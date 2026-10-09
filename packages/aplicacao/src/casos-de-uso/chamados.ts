@@ -9,20 +9,26 @@
 // operação offline do PWA (chamado.abrir), que grava uma vez só (ADR-025).
 // Quem abre pode marcar o equipamento como parado (C5): a parada aberta do
 // ativo nasce na mesma unit of work; se o ativo já estava parado, fica a
-// parada que existe e o chamado abre do mesmo jeito.
+// parada que existe e o chamado abre do mesmo jeito. Na I4, quem abre também
+// responde se afeta hóspede (sim, não ou não sei) e se a UH ficou
+// indisponível: o período aberto da UH nasce na mesma unit of work. A origem
+// é gravada pelo servidor, sempre interna.
 import {
   type AtorDaCorretiva,
   type Contexto,
   NaoEncontrado,
+  ORIGEM_PADRAO_DO_CHAMADO,
   exigirAtivoDoChamado,
   exigirAtivoNoChamado,
   exigirLocalParaChamado,
+  exigirUhParaIndisponibilidade,
   normalizarDescricaoDoChamado,
   podeAbrirChamado,
   politicaAplicadaNaAbertura,
   prioridadePadraoDoChamado,
   resolverPolitica,
   situacaoPara,
+  validarInicioDaIndisponibilidade,
   validarParada,
 } from '@hubkeep/dominio';
 import type { ChamadoGravado, DadosDeChamado, PortaChamados } from '../portas/chamados';
@@ -35,6 +41,10 @@ export interface PedidoDeAberturaDeChamado {
   descricao: string;
   /** Equipamento parado desde (ISO 8601; C5): exige o ativo. */
   paradoDesde?: string | null | undefined;
+  /** Afeta hóspede? null ou ausente: não informado (I4). */
+  impactoHospede?: boolean | null | undefined;
+  /** A UH indisponível desde (ISO 8601; I4): só em chamado de UH. */
+  uhIndisponivelDesde?: string | null | undefined;
 }
 
 export interface CasosDeUsoDeChamados {
@@ -95,6 +105,16 @@ export function criarCasosDeUsoDeChamados(deps: {
       ).inicio;
     }
 
+    // UH indisponível (I4): o período aberto nasce com o chamado.
+    let uhIndisponivelDesde: Date | null = null;
+    if (pedido.uhIndisponivelDesde != null) {
+      exigirUhParaIndisponibilidade(local);
+      uhIndisponivelDesde = validarInicioDaIndisponibilidade(
+        new Date(pedido.uhIndisponivelDesde),
+        deps.relogio.agora(),
+      );
+    }
+
     const [niveis, situacoes, prioridades] = await Promise.all([
       deps.chamados.politica(ctx, local.hotelId, CHAVE),
       deps.situacoes.listar(ctx),
@@ -115,6 +135,9 @@ export function criarCasosDeUsoDeChamados(deps: {
         situacaoId: situacaoPara(situacoes, 'chamado', 'aberto'),
         prioridadeId: prioridade.prioridadeId,
         politicaAplicada: politicaAplicadaNaAbertura({ categoriaId, prioridade }),
+        origem: ORIGEM_PADRAO_DO_CHAMADO,
+        impactoHospede: pedido.impactoHospede ?? null,
+        uhIndisponivelDesde,
         paradaDesde,
       },
     };

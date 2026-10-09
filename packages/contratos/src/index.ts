@@ -61,6 +61,8 @@ export {
   ChamadoResumidoApi,
   ConsultaDaLista,
   ENTIDADES_DA_LINHA_DO_TEMPO_API,
+  EXECUTORES_DA_OS_API,
+  ORIGENS_DO_CHAMADO_API,
   EventoDaLinhaDoTempoApi,
   NomesDoChamadoApi,
   OsResumidaApi,
@@ -75,6 +77,9 @@ export {
   PedidoDeAtribuicaoDeOs,
   PedidoDeAceiteDeOs,
   PedidoDeCancelamento,
+  PedidoDeExecutorDaOs,
+  PedidoDeGeracaoDeOs,
+  PedidoDeImpactoNoHospede,
   PedidoDeReaberturaDeOs,
   PedidoDeTriagem,
   ResponsavelApi,
@@ -197,6 +202,14 @@ export {
   RespostaDeParadasDoAtivo,
   RespostaDeParadasPendentes,
 } from './paradas';
+export {
+  PedidoDeLiberacaoDeUh,
+  PedidoDeUhIndisponivel,
+  PeriodoDeUhApi,
+  RespostaDeUhIndisponivel,
+  RespostaDeUhLiberada,
+  RespostaDeUhMarcada,
+} from './uh-indisponivel';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';
 export {

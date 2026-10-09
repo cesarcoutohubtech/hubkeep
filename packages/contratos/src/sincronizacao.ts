@@ -73,6 +73,8 @@ export const PedidoDeOperacaoOffline = z
        */
       dados: TransicaoDaOs.extend({
         equipamentoVoltou: z.boolean().optional(),
+        /** Com a UH do chamado indisponível (I4): "a UH foi liberada?"; sim, encerra com essa hora. */
+        uhLiberada: z.boolean().optional(),
         concluidaEm: z.iso.datetime().optional(),
       }),
     }),

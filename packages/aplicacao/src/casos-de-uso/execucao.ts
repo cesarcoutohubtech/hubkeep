@@ -13,7 +13,10 @@
 // Só uma aberta por ativo; a que ele encerra é a do chamado desta OS. Na
 // conclusão, com a parada do chamado aberta, o técnico responde se o
 // equipamento voltou a funcionar; sim, a parada encerra com a hora da
-// conclusão, na mesma operação (paradaAEncerrarNaConclusao).
+// conclusão, na mesma operação (paradaAEncerrarNaConclusao). Do mesmo jeito,
+// com a UH do chamado indisponível (I4), quem conclui responde se a UH foi
+// liberada; sim, o período encerra com a hora da conclusão
+// (periodoALiberarNaConclusao).
 import {
   type AtorDaCorretiva,
   type Contexto,
@@ -29,8 +32,10 @@ import {
   horaDaTransicao,
   normalizarMaterial,
   paradaAEncerrarNaConclusao,
+  periodoALiberarNaConclusao,
   situacaoPara,
   validarApontamento,
+  validarFimDaIndisponibilidade,
   validarFimDaParada,
   validarParada,
 } from '@hubkeep/dominio';
@@ -39,6 +44,7 @@ import type { EncerramentoDeParada, PortaParadas, RegistroDeParada } from '../po
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaSituacoes } from '../portas/situacoes';
 import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/triagem';
+import type { LiberacaoDeUh, PortaUhIndisponivel } from '../portas/uh-indisponivel';
 
 export type AcaoDoTecnico = AcaoNaOsDecidida['acao'];
 
@@ -53,6 +59,8 @@ export interface CasosDeUsoDeExecucao {
       feitaEm?: Date | undefined;
       /** Só na conclusão: a resposta à pergunta sobre a parada do chamado. */
       equipamentoVoltou?: boolean | undefined;
+      /** Só na conclusão: a resposta à pergunta "a UH foi liberada?" (I4). */
+      uhLiberada?: boolean | undefined;
       /** Só na conclusão: a hora do aparelho, que vira o fim da parada. */
       concluidaEm?: Date | undefined;
     },
@@ -89,6 +97,8 @@ export function criarCasosDeUsoDeExecucao(deps: {
   relogio: Relogio;
   /** Opcional só para os testes que não registram parada; a composição sempre passa. */
   paradas?: Pick<PortaParadas, 'abertaDoAtivo'>;
+  /** Opcional só para os testes que não liberam UH; a composição sempre passa. */
+  uh?: Pick<PortaUhIndisponivel, 'abertoDoChamado'>;
   /** Padrão: as do domínio. Só o teste de aceite troca, para provar a RLS sozinha. */
   regras?: {
     decidirNaOs?: typeof decidirNaOs;
@@ -152,6 +162,24 @@ export function criarCasosDeUsoDeExecucao(deps: {
     return { id: alvo.id, hotelId: os.hotelId, fim };
   }
 
+  /** "UH liberada" na conclusão (I4): o período aberto do chamado encerra com a hora da conclusão. */
+  async function uhDaConclusao(
+    ctx: Contexto,
+    os: OsGravada,
+    chamado: ChamadoParaTriagem,
+    p: { uhLiberada?: boolean | undefined; concluidaEm?: Date | undefined },
+  ): Promise<LiberacaoDeUh | null> {
+    if (p.uhLiberada !== true || !deps.uh) return null;
+    const alvo = periodoALiberarNaConclusao(
+      await deps.uh.abertoDoChamado(ctx, chamado.id),
+      p.uhLiberada,
+    );
+    if (!alvo) return null;
+    const agora = deps.relogio.agora();
+    const fim = validarFimDaIndisponibilidade(alvo.inicio, p.concluidaEm ?? agora, agora);
+    return { id: alvo.id, hotelId: os.hotelId, fim };
+  }
+
   return {
     async prepararAcao(ctx, acao, p) {
       const { os, chamado } = await osEChamado(ctx, p.osId);
@@ -172,9 +200,11 @@ export function criarCasosDeUsoDeExecucao(deps: {
       );
       const encerrarParada =
         acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
+      const liberarUh = acao === 'concluir' ? await uhDaConclusao(ctx, os, chamado, p) : null;
       const situacoes = await deps.situacoes.listar(ctx);
       return {
         encerrarParada,
+        liberarUh,
         acao,
         osId: os.id,
         versao: p.versao,

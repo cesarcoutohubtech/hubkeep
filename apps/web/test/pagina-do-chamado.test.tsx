@@ -80,6 +80,8 @@ describe('tela do detalhe com os dados do servidor', () => {
         politicaAplicada: {},
         abertoPor: U,
         motivoCancelamento: null,
+        origem: 'interno',
+        impactoHospede: null,
         versao: 1,
         criadoEm: '2026-10-08T12:00:00.000Z',
       },

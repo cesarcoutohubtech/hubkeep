@@ -47,6 +47,8 @@ export type OperacaoOffline =
         /** A hora do aparelho em que o técnico agiu (I9, ISO 8601). */
         feitaEm?: string | undefined;
         equipamentoVoltou?: boolean | undefined;
+        /** Na conclusão, com a UH do chamado indisponível: "a UH foi liberada?" (I4). */
+        uhLiberada?: boolean | undefined;
         concluidaEm?: string | undefined;
       };
     }
@@ -140,24 +142,29 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
         case 'os.retomar':
         case 'os.concluir': {
           const acao = operacao.tipo.slice('os.'.length) as AcaoDoTecnico;
-          const { osId, versao, feitaEm, equipamentoVoltou, concluidaEm } = operacao.dados;
+          const { osId, versao, feitaEm, equipamentoVoltou, uhLiberada, concluidaEm } =
+            operacao.dados;
           const g = await execucao().prepararAcao(ctx, acao, {
             osId,
             versao,
             feitaEm: feitaEm === undefined ? undefined : new Date(feitaEm),
             equipamentoVoltou,
+            uhLiberada,
             concluidaEm: concluidaEm === undefined ? undefined : new Date(concluidaEm),
           });
-          // A parada encerra na mesma unit of work da conclusão: o reenvio
-          // devolve a resposta guardada e não encerra de novo.
+          // A parada e a UH encerram na mesma unit of work da conclusão: o
+          // reenvio devolve a resposta guardada e não encerra de novo.
           const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
             const { versao } = await s.andarComOs(g);
             if (g.encerrarParada) await s.encerrarParada(g.encerrarParada);
+            if (g.liberarUh) await s.liberarUh(g.liberarUh);
             return {
               id: g.osId,
               versao,
               estado: g.estado,
-              ...(acao === 'concluir' ? { paradaEncerrada: Boolean(g.encerrarParada) } : {}),
+              ...(acao === 'concluir'
+                ? { paradaEncerrada: Boolean(g.encerrarParada), uhLiberada: Boolean(g.liberarUh) }
+                : {}),
             };
           });
           return { chave: operacao.chave, ...r };

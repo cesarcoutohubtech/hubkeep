@@ -1,12 +1,15 @@
 // Triagem e OS (fase 1a, C3), na unit of work, com auditoria e evento. A RLS
 // decide por último (policies de app.os e app_update de app.chamado, migração
 // 0022): fora dos papéis da triagem, o INSERT é recusado (42501) e o UPDATE
-// não acha linha. Toda gravação confere a versão (ADR-029).
+// não acha linha. Toda gravação confere a versão (ADR-029). Na I4, a OS
+// guarda quem executa (equipe interna ou fornecedor do grupo), o chamado, o
+// impacto no hóspede, e o cancelamento do chamado libera a UH.
 import type { MudancaNoChamado, ReflexoNoChamado } from '@hubkeep/aplicacao';
 import {
   Conflito,
   type EstadoDaOs,
   NaoEncontrado,
+  type QuemExecuta,
   type Responsavel,
   conflitoDeVersao,
 } from '@hubkeep/dominio';
@@ -15,6 +18,7 @@ import { novoId } from '../ids';
 import type { Tx } from '../conexao';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 import { registrarTransicao } from './transicoes';
+import { liberarUhDoChamadoCancelado } from './uh-indisponivel';
 
 /** O índice os_uma_ativa_por_chamado recusou: outra triagem gerou a OS antes. */
 function osEmAndamento(e: unknown): never {
@@ -82,7 +86,7 @@ export async function alterarChamadoNaTriagem(
   const tx = transacaoDe(uow);
   const antes = await tx
     .selectFrom('app.chamado')
-    .select(['estado', 'situacao_id', 'prioridade_id', 'versao'])
+    .select(['estado', 'situacao_id', 'prioridade_id', 'impacto_hospede', 'versao'])
     .where('id', '=', chamadoId)
     .executeTakeFirst();
   const r = await tx
@@ -92,6 +96,7 @@ export async function alterarChamadoNaTriagem(
       ...(m.situacaoId !== undefined ? { situacao_id: m.situacaoId } : {}),
       ...(m.prioridadeId !== undefined ? { prioridade_id: m.prioridadeId } : {}),
       ...(m.motivoCancelamento !== undefined ? { motivo_cancelamento: m.motivoCancelamento } : {}),
+      ...(m.impactoHospede !== undefined ? { impacto_hospede: m.impactoHospede } : {}),
       versao: sql<number>`versao + 1`,
       atualizado_em: sql`now()`,
     })
@@ -100,18 +105,27 @@ export async function alterarChamadoNaTriagem(
     .returning(['hotel_id', 'versao'])
     .executeTakeFirst();
   if (!r) return semLinha(tx, 'app.chamado', chamadoId, versaoEsperada);
+  const { encerrarUhEm, ...mudanca } = m;
   uow.auditar({
     entidade: 'chamado',
     registroId: chamadoId,
     acao: m.acao,
     hotelId: r.hotel_id,
     antes,
-    depois: { ...m, versao: r.versao },
+    depois: { ...mudanca, versao: r.versao },
   });
+  if (encerrarUhEm !== undefined) {
+    await liberarUhDoChamadoCancelado(uow, {
+      chamadoId,
+      hotelId: r.hotel_id,
+      fim: encerrarUhEm,
+    });
+  }
   const tipo = {
     triar: 'chamado.triado',
     priorizar: 'chamado.prioridade_alterada',
     cancelar: 'chamado.cancelado',
+    informar_impacto: 'chamado.impacto_informado',
   }[m.acao];
   uow.publicar({
     tipo,
@@ -121,6 +135,7 @@ export async function alterarChamadoNaTriagem(
       hotelId: r.hotel_id,
       versao: r.versao,
       ...(m.prioridadeId !== undefined ? { prioridadeId: m.prioridadeId } : {}),
+      ...(m.impactoHospede !== undefined ? { impactoHospede: m.impactoHospede } : {}),
     },
   });
   return { versao: r.versao };
@@ -135,6 +150,7 @@ export async function gerarOs(
     chamadoAbertoPor: string;
     situacaoId: string;
     responsavel: Responsavel;
+    execucao: QuemExecuta;
   },
 ): Promise<{ id: string; versao: number; versaoDoChamado: number }> {
   if (!uow.usuarioId) throw new Error('Geração de OS exige usuário no contexto.');
@@ -153,6 +169,8 @@ export async function gerarOs(
       estado: 'atribuida',
       situacao_id: g.situacaoId,
       ...colunasDoResponsavel(g.responsavel),
+      executado_por: g.execucao.executadoPor,
+      fornecedor_id: g.execucao.fornecedorId,
       criado_por: uow.usuarioId,
     })
     .execute()
@@ -170,7 +188,12 @@ export async function gerarOs(
     registroId: id,
     acao: 'gerar',
     hotelId: g.hotelId,
-    depois: { chamadoId: g.chamado.id, responsavel: g.responsavel, situacaoId: g.situacaoId },
+    depois: {
+      chamadoId: g.chamado.id,
+      responsavel: g.responsavel,
+      situacaoId: g.situacaoId,
+      ...g.execucao,
+    },
   });
   uow.publicar({
     tipo: 'os.atribuida',
@@ -181,9 +204,51 @@ export async function gerarOs(
       chamadoId: g.chamado.id,
       acao: 'gerar',
       responsavel: g.responsavel,
+      ...g.execucao,
     },
   });
   return { id, versao: 1, versaoDoChamado: chamado.versao };
+}
+
+/** Corrige quem executa a OS (I4), com a versão conferida. */
+export async function definirQuemExecuta(
+  uow: UnidadeDeTrabalho,
+  g: { osId: string; versao: number; execucao: QuemExecuta },
+): Promise<{ versao: number }> {
+  const tx = transacaoDe(uow);
+  const antes = await tx
+    .selectFrom('app.os')
+    .select(['executado_por', 'fornecedor_id', 'versao'])
+    .where('id', '=', g.osId)
+    .executeTakeFirst();
+  const r = await tx
+    .updateTable('app.os')
+    .set({
+      executado_por: g.execucao.executadoPor,
+      fornecedor_id: g.execucao.fornecedorId,
+      versao: sql<number>`versao + 1`,
+      atualizado_em: sql`now()`,
+    })
+    .where('id', '=', g.osId)
+    .where('versao', '=', g.versao)
+    .returning(['hotel_id', 'chamado_id', 'versao'])
+    .executeTakeFirst();
+  if (!r) return semLinha(tx, 'app.os', g.osId, g.versao);
+  uow.auditar({
+    entidade: 'os',
+    registroId: g.osId,
+    acao: 'definir_executor',
+    hotelId: r.hotel_id,
+    antes,
+    depois: { ...g.execucao, versao: r.versao },
+  });
+  uow.publicar({
+    tipo: 'os.executor_definido',
+    entidade: 'os',
+    registroId: g.osId,
+    payload: { hotelId: r.hotel_id, chamadoId: r.chamado_id, ...g.execucao },
+  });
+  return { versao: r.versao };
 }
 
 export async function reatribuirOs(
