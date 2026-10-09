@@ -18,6 +18,7 @@ import {
   aceitaRegistro,
   acoesPossiveis,
   paradaPossivel,
+  perguntaDaUhNaConclusao,
   perguntaNaConclusao,
   projetarOs,
 } from '../src/os/projecao';
@@ -130,6 +131,33 @@ describe('parada do ativo na projeção (C5)', () => {
     const [naoVoltou] = projetarOs([parada], [concluir(false)]);
     expect(naoVoltou?.estado).toBe('concluida');
     expect(naoVoltou?.chamado.paradoDesde).toBe('2026-09-29T07:00:00.000Z');
+  });
+
+  it('concluir com a UH indisponível (I4): liberada encerra junto, não liberada mantém', () => {
+    const guardada = osGuardada(OS1, 'em_execucao', 2);
+    const indisponivel = {
+      ...guardada,
+      chamado: { ...guardada.chamado, uhIndisponivelDesde: '2026-09-29T07:00:00.000Z' },
+    };
+    const [antes] = projetarOs([indisponivel], []);
+    expect(antes && perguntaDaUhNaConclusao(antes)).toBe(true);
+    const concluir = (uhLiberada: boolean) =>
+      naFila('os.concluir', {
+        osId: OS1,
+        versao: 2,
+        uhLiberada,
+        concluidaEm: '2026-09-29T10:00:00.000Z',
+      });
+    const [liberada] = projetarOs([indisponivel], [concluir(true)]);
+    expect(liberada).toMatchObject({ estado: 'concluida', versao: 3 });
+    expect(liberada?.chamado.uhIndisponivelDesde).toBeNull();
+    const [naoLiberada] = projetarOs([indisponivel], [concluir(false)]);
+    expect(naoLiberada?.chamado.uhIndisponivelDesde).toBe('2026-09-29T07:00:00.000Z');
+    // A OS guardada antes da I4 não tem o campo e não pergunta.
+    const semCampo: Partial<OsGuardada['chamado']> = { ...guardada.chamado };
+    delete semCampo.uhIndisponivelDesde;
+    const [antiga] = projetarOs([{ ...guardada, chamado: semCampo } as OsGuardada], []);
+    expect(antiga && perguntaDaUhNaConclusao(antiga)).toBe(false);
   });
 
   it('registrada já com o fim não deixa o ativo parado', () => {

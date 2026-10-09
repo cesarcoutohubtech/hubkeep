@@ -15,6 +15,8 @@ export interface LocalGuardado {
   id: string;
   nome: string;
   status: 'ativo' | 'pendente_licenca' | 'inativo';
+  /** UH ou área comum (I4: só a UH fica indisponível). Opcional: a referência guardada antes da I4 não tem. */
+  tipo?: 'uh' | 'area_comum';
 }
 
 export interface CampoGuardado {

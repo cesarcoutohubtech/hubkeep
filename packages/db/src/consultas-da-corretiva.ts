@@ -161,6 +161,7 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
             'c.aberto_por',
             'h.nome as hotel',
             'l.nome as local',
+            'l.tipo as local_tipo',
             'a.nome as ativo',
             'm.nome as aberto_por_nome',
           ])
@@ -175,23 +176,40 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
           .leftJoin('app.equipe as e', (j) =>
             j.onRef('e.tenant_id', '=', 'o.tenant_id').onRef('e.id', '=', 'o.equipe_id'),
           )
+          // O fornecedor que executa (I4); quem não lê o fornecedor (o proprietário) fica sem o nome.
+          .leftJoin('app.fornecedor as f', (j) =>
+            j.onRef('f.tenant_id', '=', 'o.tenant_id').onRef('f.id', '=', 'o.fornecedor_id'),
+          )
           .select([
             'o.tecnico_id',
             'm.nome as tecnico_nome',
             'o.equipe_id',
             'e.nome as equipe_nome',
+            'o.fornecedor_id',
+            'f.nome as fornecedor_nome',
           ])
           .where('o.chamado_id', '=', chamadoId)
           .execute();
         const pessoas: Record<string, string> = {};
         const equipes: Record<string, string> = {};
+        const fornecedores: Record<string, string> = {};
         if (c.aberto_por_nome !== null) pessoas[c.aberto_por] = c.aberto_por_nome;
         for (const r of responsaveis) {
           if (r.tecnico_id !== null && r.tecnico_nome !== null)
             pessoas[r.tecnico_id] = r.tecnico_nome;
           if (r.equipe_id !== null && r.equipe_nome !== null) equipes[r.equipe_id] = r.equipe_nome;
+          if (r.fornecedor_id !== null && r.fornecedor_nome !== null)
+            fornecedores[r.fornecedor_id] = r.fornecedor_nome;
         }
-        return { hotel: c.hotel, local: c.local, ativo: c.ativo, pessoas, equipes };
+        return {
+          hotel: c.hotel,
+          local: c.local,
+          localTipo: c.local_tipo,
+          ativo: c.ativo,
+          pessoas,
+          equipes,
+          fornecedores,
+        };
       }),
 
     linhaDoTempo: (ctx, chamadoId) =>

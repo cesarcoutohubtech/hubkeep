@@ -29,7 +29,15 @@ function porta(total: number) {
     os: vi.fn(async () => []),
     nomesDoChamado: vi.fn(async (_c, id: string) =>
       id === 'visivel'
-        ? { hotel: 'Hotel', local: null, ativo: null, pessoas: {}, equipes: {} }
+        ? {
+            hotel: 'Hotel',
+            local: null,
+            localTipo: null,
+            ativo: null,
+            pessoas: {},
+            equipes: {},
+            fornecedores: {},
+          }
         : null,
     ),
     linhaDoTempo: vi.fn(async () => []),

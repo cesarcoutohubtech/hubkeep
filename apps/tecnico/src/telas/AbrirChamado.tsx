@@ -7,12 +7,16 @@
 // A foto do chamado vai pelo web, com rede; a foto sem rede entra com a OS (C4).
 // Com o ativo escolhido, quem abre pode marcar o equipamento como parado (C5):
 // a parada aberta nasce com o chamado, desde a hora da abertura no aparelho.
+// Na I4, quem abre responde se afeta hóspede (sim, não ou não sei) e, num
+// chamado de UH, se a UH ficou indisponível: o período aberto da UH nasce com
+// o chamado, também desde a hora da abertura no aparelho.
 import {
   ErroDeDominio,
   NaoEncontrado,
   exigirAtivoDoChamado,
   exigirAtivoNoChamado,
   exigirLocalParaChamado,
+  exigirUhParaIndisponibilidade,
   normalizarDescricaoDoChamado,
 } from '@hubkeep/dominio';
 import {
@@ -36,7 +40,15 @@ export interface AberturaDeChamado {
   descricao: string;
   /** Equipamento parado desde (ISO 8601; C5); null se não marcou. */
   paradoDesde: string | null;
+  /** Afeta hóspede? null: não sei (I4). */
+  impactoHospede: boolean | null;
+  /** A UH indisponível desde (ISO 8601; I4); null se não marcou. */
+  uhIndisponivelDesde: string | null;
 }
+
+/** O valor do seletor "afeta hóspede?" como a operação leva (I4). */
+export const impactoDoValor = (valor: string): boolean | null =>
+  valor === 'sim' ? true : valor === 'nao' ? false : null;
 
 export function AbrirChamado(props: {
   referencia: Referencia | null;
@@ -69,6 +81,8 @@ export function AbrirChamado(props: {
   // Os desativados não aparecem; a UH pendente aparece, e a recusa diz o motivo.
   const locais = (referencia.locais[hotelId] ?? []).filter((l) => l.status !== 'inativo');
   const ativos = (referencia.ativos[hotelId] ?? []).filter((a) => a.localId === localId && a.ativo);
+  // Só a UH fica indisponível; a referência guardada antes da I4 não tem o tipo.
+  const ehUh = locais.find((l) => l.id === localId)?.tipo === 'uh';
 
   async function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -86,11 +100,16 @@ export function AbrirChamado(props: {
       const descricao = normalizarDescricaoDoChamado(String(f.get('descricao') ?? ''));
       const parado = f.get('parado') === 'on';
       if (parado) exigirAtivoNoChamado(ativoId);
+      const uhIndisponivel = f.get('uhIndisponivel') === 'on';
+      if (uhIndisponivel) exigirUhParaIndisponibilidade({ tipo: local.tipo ?? 'area_comum' });
+      const agora = new Date().toISOString();
       await props.aoAbrir({
         localId: local.id,
         ativoId,
         descricao,
-        paradoDesde: parado ? new Date().toISOString() : null,
+        paradoDesde: parado ? agora : null,
+        impactoHospede: impactoDoValor(String(f.get('impacto') ?? '')),
+        uhIndisponivelDesde: uhIndisponivel ? agora : null,
       });
       formulario.reset();
       setLocalId('');
@@ -163,6 +182,21 @@ export function AbrirChamado(props: {
             <input type="checkbox" name="parado" />
             {t('tecnico.chamado.parado')}
           </label>
+          {ehUh && (
+            <label className="tc-marcar">
+              <input type="checkbox" name="uhIndisponivel" />
+              {t('tecnico.chamado.uh_indisponivel')}
+            </label>
+          )}
+          <Campo rotulo={t('tecnico.chamado.impacto')}>
+            {(p) => (
+              <Selecao {...p} name="impacto" defaultValue="nao_sei">
+                <option value="nao_sei">{t('tecnico.chamado.impacto_nao_sei')}</option>
+                <option value="sim">{t('tecnico.chamado.impacto_sim')}</option>
+                <option value="nao">{t('tecnico.chamado.impacto_nao')}</option>
+              </Selecao>
+            )}
+          </Campo>
           <Campo rotulo={t('tecnico.chamado.descricao')}>
             {(p) => <AreaDeTexto {...p} name="descricao" rows={4} required />}
           </Campo>

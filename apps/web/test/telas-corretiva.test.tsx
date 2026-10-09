@@ -134,9 +134,11 @@ const detalhe: DetalheDoChamado = {
   nomes: {
     hotel: 'Hotel Um',
     local: 'UH 101',
+    localTipo: 'uh',
     ativo: 'Frigobar 101',
     pessoas: { [T]: 'Bruno Solicitante', [U]: 'Ana Técnica' },
     equipes: {},
+    fornecedores: {},
   },
 };
 

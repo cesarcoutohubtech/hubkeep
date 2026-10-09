@@ -1509,3 +1509,28 @@ Desenho aprovado pelo Cesar em 08/10/2026 (`docs/12`, I4; `docs/referencia/propo
   - `app.uh_indisponivel` (`hotel_id`, `local_id`, `chamado_id`, `inicio`, `fim`); o período de chamado cancelado é encerrado no cancelamento, e quem calcula os UH-dias deixa de fora (`app.chamado.estado = 'cancelado'`);
   - `uhDiasPerdidos` agora mora no `@hubkeep/dominio`, com o campo opcional `chamadoCancelado` no período; o motor pode importar de lá e apagar a cópia do módulo;
   - o `hk_worker` lê `app.uh_indisponivel` e as colunas novas de `app.chamado` e `app.os`; `app.fornecedor` continua sem GRANT para ele.
+
+### Depois da I4 (09/10/2026)
+- **Merge e `db push` do Cesar:** #151 (I4). A 0034 está no dev: `migration list` confere, e o pgTAP contra o dev, com rollback, passou: 862 testes ok em 28 arquivos, sem nenhuma falha.
+
+### I4b, telas da I4 no web e no PWA (09/10/2026)
+
+PR fora da zona protegida, sobre a API da I4 (#151).
+- **Web, detalhe do chamado:**
+  - o chamado mostra se afeta hóspede (sim, não ou não informado);
+  - cada OS mostra quem executa (a equipe interna ou o fornecedor, pelo nome) e o custo informado, em reais;
+  - o aceite ganhou o campo do custo, opcional; vazio vai como não informado;
+  - painel novo "UH indisponível", com os períodos do chamado (aberto ou liberado, com as horas), "Liberar UH" no período aberto e "Marcar UH indisponível" (desde quando, com agora como padrão) com o chamado em curso e sem período aberto. Some em chamado de área comum sem períodos;
+  - triagem: "Quem executa" na geração da OS (equipe interna ou fornecedor ativo do grupo) e na correção até a conclusão, e "Afeta hóspede?" corrigido até o aceite.
+- **API:** os nomes do detalhe (`GET /api/v1/chamados/{id}`) ganharam o tipo do local (`localTipo`) e os nomes dos fornecedores das OS (`fornecedores`). O join respeita a RLS: o proprietário fica sem o nome do fornecedor.
+- **O web não tem tela de abertura de chamado** (a abertura é pelo PWA). Lá, a UH indisponível e o impacto entram pela gestão no detalhe do chamado.
+- **PWA:**
+  - abertura: "Afeta hóspede?" (sim, não ou não sei; o padrão é não sei) e, num chamado de UH, "A UH ficou indisponível", desde a hora da abertura no aparelho. A referência de locais guarda o tipo; a guardada antes da I4b não tem e não mostra a pergunta da UH;
+  - OS: a nota "UH indisponível desde..." e, na conclusão, a pergunta "A UH foi liberada?". Com a parada do chamado aberta também, a pergunta da parada vem antes, e as duas respostas vão na mesma operação `os.concluir`;
+  - a projeção tira a UH indisponível da OS quando a conclusão na fila diz que foi liberada.
+- **Catálogos:** os textos novos nos quatro idiomas.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes, verdes (testes novos das telas do web e do PWA, inclusive o pseudo-idioma);
+  - na CI: os testes de integração do `packages/db` com o tipo do local e o fornecedor nos nomes do detalhe;
+  - as telas não foram vistas no navegador.
+- **Fica para depois:** a edificação no nome do local no PWA (decisão 6 do Cesar), num PR próprio, fora da zona protegida.

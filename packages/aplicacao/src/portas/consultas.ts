@@ -47,11 +47,15 @@ export interface OsResumida {
 export interface NomesDoChamado {
   hotel: string | null;
   local: string | null;
+  /** UH ou área comum (I4: só a UH fica indisponível); null se quem pede não lê o local. */
+  localTipo: 'uh' | 'area_comum' | null;
   ativo: string | null;
   /** Quem abriu e os Técnicos das OS, por usuário. */
   pessoas: Record<string, string>;
   /** As equipes das OS, por id. */
   equipes: Record<string, string>;
+  /** Os fornecedores que executam as OS (I4), por id; quem não lê o fornecedor recebe vazio. */
+  fornecedores: Record<string, string>;
 }
 
 /** Uma ação da auditoria do chamado, das OS dele ou das paradas do chamado. */

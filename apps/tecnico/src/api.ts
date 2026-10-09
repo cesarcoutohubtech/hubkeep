@@ -153,7 +153,7 @@ export async function lerReferencia(
         ler(`/api/v1/hoteis/${hotel.id}/locais`).then((d) => RespostaDeLocaisDoHotel.parse(d)),
         ler(`/api/v1/hoteis/${hotel.id}/ativos`).then((d) => RespostaDeAtivosDoHotel.parse(d)),
       ]);
-      locais[hotel.id] = l.locais.map(({ id, nome, status }) => ({ id, nome, status }));
+      locais[hotel.id] = l.locais.map(({ id, nome, status, tipo }) => ({ id, nome, status, tipo }));
       ativos[hotel.id] = a.ativos;
       nomesDeCriticidade[hotel.id] = a.nomesDeCriticidade;
     }

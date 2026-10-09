@@ -12,6 +12,7 @@ import {
   type CandidatosAResponsavel,
   TriagemDoChamado,
   acoesPossiveis,
+  execucaoDoValor,
   responsavelDoValor,
 } from '../src/cliente/triagem';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
@@ -94,9 +95,11 @@ const detalheDe = (
   nomes: {
     hotel: 'Hotel Um',
     local: 'UH 104',
+    localTipo: 'uh',
     ativo: null,
     pessoas: { [U]: 'Ana Técnica' },
     equipes: {},
+    fornecedores: {},
   },
 });
 
@@ -108,13 +111,28 @@ const acoes: AcoesDaTriagem = {
   cancelarChamado: nada,
   reatribuirOs: nada,
   cancelarOs: nada,
+  informarImpacto: nada,
+  definirExecutor: nada,
 };
 
+const F_ATIVO = '0193a000-0000-7000-8000-0000000000f1';
+const F_INATIVO = '0193a000-0000-7000-8000-0000000000f2';
+const fornecedores = [
+  { id: F_ATIVO, nome: 'Refrigeração Sul', ativo: true },
+  { id: F_INATIVO, nome: 'Refrigeração Velha', ativo: false },
+];
+
 /** Os valores que vêm do banco (nomes do cliente), fora do catálogo. */
-const DADOS = ['Equipe Centro', 'Ana Técnica'];
+const DADOS = ['Equipe Centro', 'Ana Técnica', 'Refrigeração Sul'];
 
 const painel = (detalhe: DetalheDoChamado, c: CandidatosAResponsavel | null = candidatos) => (
-  <TriagemDoChamado detalhe={detalhe} refs={refs} candidatos={c} acoes={acoes} />
+  <TriagemDoChamado
+    detalhe={detalhe}
+    refs={refs}
+    candidatos={c}
+    fornecedores={fornecedores}
+    acoes={acoes}
+  />
 );
 
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
@@ -190,6 +208,40 @@ describe('ações da triagem por estado', () => {
   });
 });
 
+describe('impacto e quem executa (I4)', () => {
+  it('impacto até o aceite; quem executa até a conclusão da OS', () => {
+    const impacto = (d: DetalheDoChamado) => acoesPossiveis(d).impacto;
+    expect(impacto(detalheDe('aberto'))).toBe(true);
+    expect(impacto(detalheDe('aguardando_aceite', [osDe('concluida')]))).toBe(true);
+    expect(impacto(detalheDe('concluido', [osDe('aceita')]))).toBe(false);
+    expect(impacto(detalheDe('cancelado'))).toBe(false);
+    const ajustaveis = (estado: OsDoChamado['estado']) =>
+      acoesPossiveis(detalheDe('em_execucao', [osDe(estado)])).osComExecutorAjustavel.length;
+    expect(ajustaveis('atribuida')).toBe(1);
+    expect(ajustaveis('em_execucao')).toBe(1);
+    expect(ajustaveis('pausada')).toBe(1);
+    expect(ajustaveis('concluida')).toBe(0);
+    expect(ajustaveis('cancelada')).toBe(0);
+  });
+
+  it('quem executa pelo valor da opção', () => {
+    expect(execucaoDoValor('equipe_interna')).toEqual({ executadoPor: 'equipe_interna' });
+    expect(execucaoDoValor(`fornecedor:${F_ATIVO}`)).toEqual({
+      executadoPor: 'fornecedor',
+      fornecedorId: F_ATIVO,
+    });
+    expect(execucaoDoValor('fornecedor:')).toBeNull();
+    expect(execucaoDoValor('')).toBeNull();
+  });
+
+  it('a escolha mostra a equipe interna e só os fornecedores ativos', () => {
+    const html = renderizar('pt-BR', painel(detalheDe('em_triagem')));
+    expect(html).toContain('value="equipe_interna"');
+    expect(html).toContain(`value="fornecedor:${F_ATIVO}"`);
+    expect(html).not.toContain('Refrigeração Velha');
+  });
+});
+
 describe('seletor de responsável', () => {
   it('técnico ou equipe pelo valor da opção; o resto é nulo', () => {
     expect(responsavelDoValor(`tecnico:${U}`)).toEqual({ tipo: 'tecnico', usuarioId: U });
@@ -235,6 +287,11 @@ describe('painel da triagem em cada idioma', () => {
       'corretiva.triagem.cancelar_os',
       'corretiva.triagem.cancelar_chamado',
       'corretiva.triagem.nada_a_fazer',
+      'corretiva.triagem.executor',
+      'corretiva.triagem.equipe_interna',
+      'corretiva.triagem.salvar_executor',
+      'corretiva.triagem.impacto',
+      'corretiva.triagem.salvar_impacto',
       'prioridade.padrao.urgente',
     ] as const)
       expect(html).toContain(m[chave].replace(/'/g, '&#x27;'));

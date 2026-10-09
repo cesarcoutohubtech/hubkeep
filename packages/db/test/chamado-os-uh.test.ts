@@ -33,6 +33,7 @@ import {
   type AcessoBanco,
   criarAcessoBanco,
   criarPortaChamados,
+  criarPortaConsultasDaCorretiva,
   criarPortaExecucao,
   criarPortaOperacoesOffline,
   criarPortaParadas,
@@ -541,5 +542,26 @@ describe.skipIf(!temBanco)('I4 — chamado, OS e UH indisponível', { timeout: 6
     expect(Object.keys(doDono[0] ?? {}).sort()).toEqual(
       ['fim', 'hotelId', 'id', 'inicio', 'localId', 'tempoIndisponivelMs'].sort(),
     );
+  });
+
+  it('os nomes do detalhe trazem o tipo do local e o fornecedor; o proprietário fica sem o fornecedor', async () => {
+    const { id } = await chamados.abrir(ctx(U.gerente), {
+      localId: UH,
+      descricao: 'Ar gelando pouco',
+    });
+    await triagem.gerarOs(ctx(U.gerente), id, {
+      versao: 1,
+      responsavel: { tipo: 'tecnico', usuarioId: U.tecnico },
+      execucao: { executadoPor: 'fornecedor', fornecedorId: FORNECEDOR },
+    });
+    const consultas = criarPortaConsultasDaCorretiva(banco);
+    expect(await consultas.nomesDoChamado(ctx(U.gerente), id)).toMatchObject({
+      localTipo: 'uh',
+      fornecedores: { [FORNECEDOR]: 'Refrigeração Ativa' },
+    });
+    expect(await consultas.nomesDoChamado(ctx(U.dono), id)).toMatchObject({
+      localTipo: 'uh',
+      fornecedores: {},
+    });
   });
 });

@@ -81,9 +81,11 @@ function fontes(sobrescrever: Partial<Record<string, unknown>> = {}) {
       nomesDoChamado: marcar('nomesDoChamado', {
         hotel: 'Hotel Um',
         local: 'UH 101',
+        localTipo: 'uh',
         ativo: null,
         pessoas: { [USUARIO]: 'Ana' },
         equipes: {},
+        fornecedores: {},
       }) as never,
       linhaDoTempo: marcar('linhaDoTempo', [
         {
