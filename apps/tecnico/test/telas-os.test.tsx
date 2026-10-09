@@ -56,7 +56,7 @@ const fila = (lista: OsNoAparelho[] | null, antigaDesde: number | null = null) =
   />
 );
 
-const tela = (o: OsNoAparelho, perguntando = false) => (
+const tela = (o: OsNoAparelho, perguntando: boolean | 'parada' | 'uh' = false) => (
   <Os
     os={o}
     perguntando={perguntando}
@@ -185,6 +185,31 @@ describe('tela da OS', () => {
         expect(html).toContain(m[chave]);
       // Sem a parada do chamado, a pergunta não aparece.
       expect(renderizar(idioma, tela(base, true))).not.toContain('data-pergunta');
+    },
+  );
+
+  it.each(IDIOMAS)(
+    '%s: concluir com a UH do chamado indisponível pergunta se foi liberada (I4)',
+    (idioma) => {
+      const m = mensagensDe(idioma);
+      const base = os('em_execucao');
+      const indisponivel: OsNoAparelho = {
+        ...base,
+        chamado: { ...base.chamado, uhIndisponivelDesde: '2026-10-09T09:00:00.000Z' },
+      };
+      expect(renderizar(idioma, tela(indisponivel))).toContain('data-uh-indisponivel-desde');
+      const html = renderizar(idioma, tela(indisponivel, 'uh'));
+      expect(html).toContain('data-pergunta="uh"');
+      for (const chave of [
+        'tecnico.os.concluir.pergunta_uh',
+        'tecnico.os.concluir.uh_liberada',
+        'tecnico.os.concluir.uh_nao_liberada',
+        'tecnico.os.concluir.desistir',
+      ] as const)
+        expect(html).toContain(m[chave]);
+      // Sem a UH indisponível, a pergunta não aparece.
+      expect(renderizar(idioma, tela(base, 'uh'))).not.toContain('data-pergunta');
+      expect(renderizar(idioma, tela(base))).not.toContain('data-uh-indisponivel-desde');
     },
   );
 

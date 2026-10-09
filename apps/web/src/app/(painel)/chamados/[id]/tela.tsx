@@ -11,6 +11,11 @@
 // mesmos casos de uso da API numa transação só. Esta parte, no navegador,
 // cuida das ações e recarrega pela API depois de cada uma. Sem dados iniciais
 // (sem sessão ou sem grupo escolhido ainda), carrega pela API ao montar.
+//
+// I4: os períodos da UH indisponível, com marcar e liberar pela gestão, quem
+// executa a OS (com os fornecedores do grupo, lidos pela API), o impacto no
+// hóspede e o custo no aceite. Os períodos e os fornecedores vêm sempre pela
+// API, mesmo com os dados iniciais do servidor.
 import { MensagemVazia, Nota, Painel } from '@hubkeep/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -30,9 +35,12 @@ import {
 } from '../../../../cliente/corretiva';
 import {
   type CandidatosAResponsavel,
+  type Execucao,
+  type FornecedorParaEscolha,
   type Responsavel,
   TriagemDoChamado,
 } from '../../../../cliente/triagem';
+import { type PeriodoDeUh, UhIndisponivelDoChamado } from '../../../../cliente/uh-indisponivel';
 import { useT } from '../../../../i18n/cliente';
 import type { TelaDoChamado as DadosDaTela } from '../../../../servidor/leituras-do-chamado';
 
@@ -62,19 +70,38 @@ export function TelaDoChamado({
   const [candidatos, setCandidatos] = useState<CandidatosAResponsavel | null>(
     inicial?.candidatos ?? null,
   );
+  const [periodos, setPeriodos] = useState<PeriodoDeUh[] | null>(null);
+  const [fornecedores, setFornecedores] = useState<FornecedorParaEscolha[] | null>(null);
   // Com os dados (ou a recusa) do servidor, nada a pedir ao montar.
   const veioDoServidor = inicial !== null || erroInicial !== null;
+
+  const carregarPeriodos = useCallback(async () => {
+    const u = await chamarApi<{ periodos: PeriodoDeUh[] }>(
+      `/api/v1/chamados/${id}/uh-indisponivel`,
+    );
+    setPeriodos(u.ok ? u.dados.periodos : null);
+  }, [id]);
 
   const carregar = useCallback(async () => {
     const [d, l] = await Promise.all([
       chamarApi<DetalheDoChamado>(`/api/v1/chamados/${id}`),
       chamarApi<{ eventos: EventoDaLinhaDoTempo[] }>(`/api/v1/chamados/${id}/linha-do-tempo`),
+      carregarPeriodos(),
     ]);
     if (d.ok) setDetalhe(d.dados);
     else setAviso({ tipo: 'erro', erro: d.erro });
     setEventos(l.ok ? l.dados.eventos : []);
     return d.ok ? d.dados.chamado.hotelId : null;
-  }, [id]);
+  }, [id, carregarPeriodos]);
+
+  // Períodos da UH e fornecedores: sempre pela API. Sem acesso aos
+  // fornecedores (ex.: o proprietário), a escolha fica só com a equipe interna.
+  useEffect(() => {
+    void carregarPeriodos();
+    void chamarApi<{ fornecedores: FornecedorParaEscolha[] }>('/api/v1/fornecedores').then((r) =>
+      setFornecedores(r.ok ? r.dados.fornecedores : null),
+    );
+  }, [carregarPeriodos]);
 
   useEffect(() => {
     if (veioDoServidor) return;
@@ -94,10 +121,10 @@ export function TelaDoChamado({
     await carregar();
   }
 
-  async function aceitar(os: OsDoChamado) {
+  async function aceitar(os: OsDoChamado, custoInformado: number | null) {
     const r = await chamarApi<unknown>(`/api/v1/os/${os.id}/aceite`, {
       method: 'POST',
-      body: JSON.stringify({ versao: os.versao }),
+      body: JSON.stringify({ versao: os.versao, custoInformado }),
     });
     setParadaExistente(false);
     setAviso(r.ok ? { tipo: 'ok' } : { tipo: 'erro', erro: r.erro });
@@ -129,13 +156,20 @@ export function TelaDoChamado({
             <ChamadoEmDetalhe
               detalhe={detalhe}
               refs={refs}
-              aoAceitar={(os) => void aceitar(os)}
+              aoAceitar={(os, custo) => void aceitar(os, custo)}
               aoReabrir={(os, p) => void reabrir(os, p)}
+            />
+            <UhIndisponivelDoChamado
+              detalhe={detalhe}
+              periodos={periodos}
+              aoMarcar={(desde) => void enviar(`/api/v1/chamados/${id}/uh-indisponivel`, { desde })}
+              aoLiberar={(p) => void enviar(`/api/v1/uh-indisponivel/${p.id}/liberacao`, {})}
             />
             <TriagemDoChamado
               detalhe={detalhe}
               refs={refs}
               candidatos={candidatos}
+              fornecedores={fornecedores}
               acoes={acoesDaTriagem(detalhe, enviar)}
             />
           </div>
@@ -168,8 +202,13 @@ function acoesDaTriagem(
       void enviar(`${chamado}/triagem`, { versao, prioridadeId }),
     priorizar: (prioridadeId: string) =>
       void enviar(`${chamado}/prioridade`, { versao, prioridadeId }),
-    gerarOs: (responsavel: Responsavel) => void enviar(`${chamado}/os`, { versao, responsavel }),
+    gerarOs: (responsavel: Responsavel, execucao: Execucao) =>
+      void enviar(`${chamado}/os`, { versao, responsavel, ...execucao }),
     cancelarChamado: (motivo: string) => void enviar(`${chamado}/cancelamento`, { versao, motivo }),
+    informarImpacto: (impactoHospede: boolean | null) =>
+      void enviar(`${chamado}/impacto-hospede`, { versao, impactoHospede }),
+    definirExecutor: (os: OsDoChamado, execucao: Execucao) =>
+      void enviar(`/api/v1/os/${os.id}/executor`, { versao: os.versao, ...execucao }),
     reatribuirOs: (os: OsDoChamado, responsavel: Responsavel) =>
       void enviar(`/api/v1/os/${os.id}/reatribuicao`, { versao: os.versao, responsavel }),
     cancelarOs: (os: OsDoChamado, motivo: string) =>

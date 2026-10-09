@@ -51,7 +51,7 @@ import {
 import { AbrirChamado, type AberturaDeChamado } from './telas/AbrirChamado';
 import { type EstadoDaFila, FilaDoDia, useMotivo } from './telas/FilaDoDia';
 import { Login } from './telas/Login';
-import { Os } from './telas/Os';
+import { Os, type RespostasDaConclusao } from './telas/Os';
 
 const INTERVALO_MS = 30_000;
 const FILA_VAZIA: EstadoDaFila = { pendentes: 0, rejeitadas: [] };
@@ -334,14 +334,11 @@ function Casca(props: {
 
   /**
    * A transição leva a versão da OS no aparelho (a guardada mais as transições
-   * na fila). A conclusão com a parada do chamado aberta leva a resposta e a
-   * hora do aparelho, que vira o fim da parada se o equipamento voltou.
+   * na fila). A conclusão com a parada ou a UH do chamado em aberto leva as
+   * respostas e a hora do aparelho, que vira o fim da parada se o equipamento
+   * voltou e o da UH indisponível se a UH foi liberada (I4).
    */
-  const agirNaOs = (
-    o: OsNoAparelho,
-    acao: AcaoDoTecnico,
-    resposta?: { equipamentoVoltou: boolean },
-  ) =>
+  const agirNaOs = (o: OsNoAparelho, acao: AcaoDoTecnico, resposta?: RespostasDaConclusao) =>
     enfileirar({
       tipo: `os.${acao}`,
       dados: {
@@ -349,7 +346,13 @@ function Casca(props: {
         versao: o.versao,
         feitaEm: new Date().toISOString(),
         ...(acao === 'concluir' && resposta
-          ? { equipamentoVoltou: resposta.equipamentoVoltou, concluidaEm: new Date().toISOString() }
+          ? {
+              ...(resposta.equipamentoVoltou !== undefined
+                ? { equipamentoVoltou: resposta.equipamentoVoltou }
+                : {}),
+              ...(resposta.uhLiberada !== undefined ? { uhLiberada: resposta.uhLiberada } : {}),
+              concluidaEm: new Date().toISOString(),
+            }
           : {}),
       },
     });

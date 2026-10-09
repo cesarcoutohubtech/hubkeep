@@ -5,7 +5,7 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ProvedorDeIdioma } from '../src/i18n';
 import type { Referencia } from '../src/referencia/banco';
-import { AbrirChamado } from '../src/telas/AbrirChamado';
+import { AbrirChamado, impactoDoValor } from '../src/telas/AbrirChamado';
 
 const referencia: Referencia = {
   usuarioId: 'u',
@@ -40,7 +40,16 @@ describe('abertura de chamado no PWA', () => {
     expect(html).toContain(m['tecnico.chamado.sem_ativo']);
     expect(html).toContain(m['tecnico.chamado.acao.abrir']);
     expect(html).toContain(m['tecnico.chamado.parado']);
+    expect(html).toContain(m['tecnico.chamado.impacto']);
+    expect(html).toContain(m['tecnico.chamado.impacto_nao_sei']);
     expect(renderizar(idioma, null)).toContain(m['tecnico.ativos.sem_referencia']);
+  });
+
+  it('afeta hóspede: sim, não ou não sei (I4)', () => {
+    expect(impactoDoValor('sim')).toBe(true);
+    expect(impactoDoValor('nao')).toBe(false);
+    expect(impactoDoValor('nao_sei')).toBeNull();
+    expect(impactoDoValor('')).toBeNull();
   });
 
   it('o local desativado não aparece; a UH pendente aparece, e a recusa diz o motivo', () => {

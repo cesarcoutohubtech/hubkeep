@@ -94,11 +94,15 @@ export const NomesDoChamadoApi = z
   .object({
     hotel: z.string().nullable(),
     local: z.string().nullable(),
+    /** UH ou área comum (I4: só a UH fica indisponível); null se quem pede não lê o local. */
+    localTipo: z.enum(['uh', 'area_comum']).nullable(),
     ativo: z.string().nullable(),
     /** Quem abriu e os Técnicos das OS, por usuário. */
     pessoas: z.record(z.guid(), z.string()),
     /** As equipes das OS, por id. */
     equipes: z.record(z.guid(), z.string()),
+    /** Os fornecedores que executam as OS (I4), por id; quem não lê o fornecedor recebe vazio. */
+    fornecedores: z.record(z.guid(), z.string()),
   })
   .meta({ id: 'NomesDoChamadoApi' });
 

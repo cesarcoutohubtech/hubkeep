@@ -3,7 +3,9 @@
 // das listas, linhas de chamado e de OS, as OS do chamado com o aceite e a
 // reabertura (C6) e a linha do tempo. Só apresentação: as páginas carregam os
 // dados pela API, que devolve o escopo de cada papel (RLS) e decide quem aceita
-// ou reabre (o erro volta como código e é traduzido aqui).
+// ou reabre (o erro volta como código e é traduzido aqui). Na I4, o detalhe
+// mostra se afeta hóspede, quem executa cada OS e o custo informado, e o
+// aceite leva o custo, opcional, em reais.
 import type {
   ChamadoResumidoApi,
   EventoDaLinhaDoTempoApi,
@@ -394,6 +396,48 @@ export interface PedidoDeReabertura {
   paradoDesde: string | null;
 }
 
+/**
+ * Custo do campo do aceite (I4): vazio é não informado; o resto vai como
+ * número, e o servidor confere (não negativo, dois decimais).
+ */
+export function custoDoCampo(valor: string): number | null {
+  const limpo = valor.trim().replace(',', '.');
+  return limpo === '' ? null : Number(limpo);
+}
+
+/** O impacto no hóspede como o catálogo o nomeia (I4). */
+export const chaveDoImpacto = (impacto: boolean | null): 'sim' | 'nao' | 'nao_informado' =>
+  impacto === null ? 'nao_informado' : impacto ? 'sim' : 'nao';
+
+function Aceite(props: { aoAceitar: (custoInformado: number | null) => void }) {
+  const t = useT();
+  const [custo, setCusto] = useState('');
+  function enviar(ev: FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    props.aoAceitar(custoDoCampo(custo));
+  }
+  return (
+    <form onSubmit={enviar}>
+      <Campo rotulo={t('corretiva.aceite.custo')} ajuda={t('corretiva.aceite.custo_dica')}>
+        {(p) => (
+          <Entrada
+            {...p}
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={custo}
+            onChange={(e) => setCusto(e.target.value)}
+          />
+        )}
+      </Campo>
+      <Botao type="submit" variante="primario">
+        {t('corretiva.aceite.aceitar')}
+      </Botao>
+    </form>
+  );
+}
+
 /** Data e hora locais no formato do campo datetime-local (AAAA-MM-DDTHH:MM). */
 export const agoraNoCampo = (agora = new Date()): string => {
   const p = (n: number) => String(n).padStart(2, '0');
@@ -447,7 +491,7 @@ function Reabertura(props: { temAtivo: boolean; aoReabrir: (p: PedidoDeReabertur
 export function ChamadoEmDetalhe(props: {
   detalhe: DetalheDoChamado;
   refs: Referencias | null;
-  aoAceitar: (os: OsDoChamado) => void;
+  aoAceitar: (os: OsDoChamado, custoInformado: number | null) => void;
   aoReabrir: (os: OsDoChamado, p: PedidoDeReabertura) => void;
 }) {
   const t = useT();
@@ -489,6 +533,9 @@ export function ChamadoEmDetalhe(props: {
                 data: intl.formatDate(chamado.criadoEm, dataCurta),
               })}
             </p>
+            <p className="hk-suave" data-impacto={chaveDoImpacto(chamado.impactoHospede)}>
+              {t('corretiva.chamado.impacto', { impacto: chaveDoImpacto(chamado.impactoHospede) })}
+            </p>
             {chamado.motivoCancelamento && (
               <p className="hk-suave">
                 {t('corretiva.motivo_cancelamento', { motivo: chamado.motivoCancelamento })}
@@ -516,6 +563,23 @@ export function ChamadoEmDetalhe(props: {
                       {t('corretiva.os.responsavel', { nome: responsavel(o) })}
                     </span>
                   </div>
+                  <p className="hk-suave" data-executado-por={o.executadoPor}>
+                    {o.executadoPor === 'fornecedor'
+                      ? t('corretiva.os.executado_por_fornecedor', {
+                          nome: nomes.nome(o.fornecedorId ? n.fornecedores[o.fornecedorId] : null),
+                        })
+                      : t('corretiva.os.executado_pela_equipe')}
+                  </p>
+                  {o.custoInformado !== null && (
+                    <p className="hk-suave" data-custo={o.custoInformado}>
+                      {t('corretiva.os.custo', {
+                        custo: intl.formatNumber(o.custoInformado, {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }),
+                      })}
+                    </p>
+                  )}
                   {o.motivoReabertura && (
                     <p className="hk-suave">
                       {t('corretiva.os.motivo_reabertura', { motivo: o.motivoReabertura })}
@@ -530,11 +594,7 @@ export function ChamadoEmDetalhe(props: {
                     <div className="hk-bloco" data-tom="atencao">
                       <p className="hk-bloco-titulo">{t('corretiva.aceite.titulo')}</p>
                       <p className="hk-suave">{t('corretiva.aceite.descricao')}</p>
-                      <div>
-                        <Botao variante="primario" onClick={() => props.aoAceitar(o)}>
-                          {t('corretiva.aceite.aceitar')}
-                        </Botao>
-                      </div>
+                      <Aceite aoAceitar={(custo) => props.aoAceitar(o, custo)} />
                       <Reabertura
                         temAtivo={chamado.ativoId !== null}
                         aoReabrir={(p) => props.aoReabrir(o, p)}

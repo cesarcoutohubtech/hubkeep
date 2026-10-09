@@ -8,7 +8,8 @@
 // e de quando são as do domínio, as mesmas do servidor, que confere de novo.
 // A parada do ativo (C5) também: registrada aberta, o ativo aparece parado
 // desde o início dela; encerrada, deixa de aparecer. A conclusão com "o
-// equipamento voltou a funcionar" encerra a parada do chamado junto.
+// equipamento voltou a funcionar" encerra a parada do chamado junto, e a com
+// "UH liberada" (I4), o período da UH indisponível.
 import { ESTADOS_QUE_ACEITAM_REGISTRO, type EstadoDaOs, TRANSICOES_DA_OS } from '@hubkeep/dominio';
 import type { FotoNaFila, OperacaoNaFila } from '../fila/banco';
 import type { OsGuardada } from './banco';
@@ -58,15 +59,19 @@ export function projetarOs(
     const acao = acaoDoTipo(op.tipo);
     if (!acao) continue;
     const t = TRANSICOES_DA_OS[acao];
-    const { versao, equipamentoVoltou } = op.dados as {
+    const { versao, equipamentoVoltou, uhLiberada } = op.dados as {
       versao: number;
       equipamentoVoltou?: boolean;
+      uhLiberada?: boolean;
     };
     if (versao === os.versao && (t.de as readonly string[]).includes(os.estado)) {
       os.estado = t.para as EstadoDaOs;
       os.versao += 1;
       if (acao === 'concluir' && equipamentoVoltou === true && os.chamado.paradaDoChamado) {
         os.chamado = { ...os.chamado, paradoDesde: null, paradaDoChamado: false };
+      }
+      if (acao === 'concluir' && uhLiberada === true) {
+        os.chamado = { ...os.chamado, uhIndisponivelDesde: null };
       }
     }
   }
@@ -95,3 +100,10 @@ export function paradaPossivel(os: OsNoAparelho): 'registrar' | 'encerrar' | nul
 /** Concluir com a parada do chamado aberta pede a resposta: o equipamento voltou? */
 export const perguntaNaConclusao = (os: OsNoAparelho): boolean =>
   os.chamado.paradoDesde != null && os.chamado.paradaDoChamado === true;
+
+/**
+ * Concluir com a UH do chamado indisponível pede a resposta: a UH foi liberada?
+ * (I4). A OS guardada antes da I4 não tem o campo e não pergunta.
+ */
+export const perguntaDaUhNaConclusao = (os: OsNoAparelho): boolean =>
+  os.chamado.uhIndisponivelDesde != null;

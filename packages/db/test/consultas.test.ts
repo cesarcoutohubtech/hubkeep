@@ -394,9 +394,11 @@ describe.skipIf(!temBanco)('C7 — listas e linha do tempo', { timeout: 60_000 }
     expect(await consultas.nomesDoChamado(ctx(U.gerente), id.c1)).toEqual({
       hotel: 'Hotel Um',
       local: 'UH 101',
+      localTipo: 'uh',
       ativo: 'Frigobar 101',
       pessoas: { [U.solicitante]: 'solicitante', [U.tecnico]: 'tecnico' },
       equipes: {},
+      fornecedores: {},
     });
     for (const [quem, chamado] of [
       [U.gerente2, id.c1],

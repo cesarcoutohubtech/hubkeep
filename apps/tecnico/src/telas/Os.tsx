@@ -8,7 +8,9 @@
 // chamado (C5), o técnico registra que o equipamento está parado e encerra a
 // parada quando ele volta a funcionar, também pela fila. Concluir com a parada
 // do chamado aberta pede a resposta "o equipamento voltou a funcionar?", que
-// vai na operação de concluir (sim: a parada encerra junto).
+// vai na operação de concluir (sim: a parada encerra junto). Do mesmo jeito,
+// com a UH do chamado indisponível (I4), a conclusão pergunta se a UH foi
+// liberada (sim: o período encerra junto). Com as duas, a da parada vem antes.
 import { ErroDeDominio, normalizarMaterial, validarApontamento } from '@hubkeep/dominio';
 import { AreaDeTexto, Botao, Campo, Entrada, MensagemDeErro, Painel, Selo } from '@hubkeep/ui';
 import { type FormEvent, useState } from 'react';
@@ -20,18 +22,21 @@ import {
   aceitaRegistro,
   acoesPossiveis,
   paradaPossivel,
+  perguntaDaUhNaConclusao,
   perguntaNaConclusao,
 } from '../os/projecao';
 import { TOM_DO_ESTADO, rotuloDoEstado, useMotivo } from './FilaDoDia';
 import { TelaDoTecnico } from './TelaDoTecnico';
 
+/** As respostas da conclusão: a da parada do chamado (C5) e a da UH indisponível (I4). */
+export interface RespostasDaConclusao {
+  equipamentoVoltou?: boolean;
+  uhLiberada?: boolean;
+}
+
 export interface AcoesDaOs {
-  /** Na conclusão com a parada do chamado aberta, com a resposta do técnico. */
-  aoAgir: (
-    os: OsNoAparelho,
-    acao: AcaoDoTecnico,
-    resposta?: { equipamentoVoltou: boolean },
-  ) => Promise<void>;
+  /** Na conclusão com a parada ou a UH do chamado em aberto, com as respostas do técnico. */
+  aoAgir: (os: OsNoAparelho, acao: AcaoDoTecnico, resposta?: RespostasDaConclusao) => Promise<void>;
   aoApontar: (osId: string, inicio: Date, fim: Date) => Promise<void>;
   aoRegistrarMaterial: (osId: string, descricao: string) => Promise<void>;
   aoFotografar: (osId: string, arquivo: File) => Promise<void>;
@@ -69,14 +74,37 @@ export function PerguntaDaParada(props: {
   );
 }
 
+/** A pergunta da conclusão com a UH do chamado indisponível (I4): sim, não ou desistir. */
+export function PerguntaDaUh(props: {
+  aoResponder: (uhLiberada: boolean) => void;
+  aoDesistir: () => void;
+}) {
+  const t = useT();
+  return (
+    <Painel titulo={t('tecnico.os.concluir.pergunta_uh')} nivel={3}>
+      <div role="group" data-pergunta="uh" className="tc-acoes">
+        <Botao variante="primario" onClick={() => props.aoResponder(true)}>
+          {t('tecnico.os.concluir.uh_liberada')}
+        </Botao>
+        <Botao onClick={() => props.aoResponder(false)}>
+          {t('tecnico.os.concluir.uh_nao_liberada')}
+        </Botao>
+        <Botao onClick={props.aoDesistir}>{t('tecnico.os.concluir.desistir')}</Botao>
+      </div>
+    </Painel>
+  );
+}
+
+type Pergunta = 'parada' | 'uh';
+
 export function Os(
   props: AcoesDaOs & {
     os: OsNoAparelho;
     aoVoltar: () => void;
     /** Para testes; no app, window.confirm. */
     confirmar?: (mensagem: string) => boolean;
-    /** Para testes: a tela já com a pergunta da parada aberta. */
-    perguntando?: boolean;
+    /** Para testes: a tela já com uma pergunta da conclusão aberta (true é a da parada). */
+    perguntando?: boolean | Pergunta;
   },
 ) {
   const t = useT();
@@ -88,7 +116,11 @@ export function Os(
   const [aviso, setAviso] = useState<{ tipo: 'ok' } | { tipo: 'erro'; codigo: string } | null>(
     null,
   );
-  const [perguntando, setPerguntando] = useState(props.perguntando ?? false);
+  // A pergunta da conclusão em aberto: a da parada antes, depois a da UH.
+  const [pergunta, setPergunta] = useState<Pergunta | null>(
+    props.perguntando === true ? 'parada' : props.perguntando || null,
+  );
+  const [respostas, setRespostas] = useState<RespostasDaConclusao>({});
 
   /** Roda o pedido; erro de regra vira aviso com o motivo pelo catálogo. */
   async function tentar(fazer: () => Promise<void>): Promise<boolean> {
@@ -104,16 +136,29 @@ export function Os(
   }
 
   async function agir(acao: AcaoDoTecnico) {
-    // Com a parada do chamado aberta, a resposta à pergunta é a confirmação.
-    if (acao === 'concluir' && perguntaNaConclusao(os)) return setPerguntando(true);
+    // Com a parada ou a UH do chamado em aberto, a resposta à pergunta é a confirmação.
+    if (acao === 'concluir' && perguntaNaConclusao(os)) return setPergunta('parada');
+    if (acao === 'concluir' && perguntaDaUhNaConclusao(os)) return setPergunta('uh');
     if (acao === 'concluir' && !confirmar(t('tecnico.os.concluir.confirmar'))) return;
     await tentar(() => props.aoAgir(os, acao));
   }
 
-  async function concluirRespondendo(equipamentoVoltou: boolean) {
-    setPerguntando(false);
-    await tentar(() => props.aoAgir(os, 'concluir', { equipamentoVoltou }));
+  async function concluirRespondendo(resposta: RespostasDaConclusao) {
+    const todas = { ...respostas, ...resposta };
+    // Respondida a da parada, a da UH vem em seguida, se houver.
+    if (resposta.equipamentoVoltou !== undefined && perguntaDaUhNaConclusao(os)) {
+      setRespostas(todas);
+      return setPergunta('uh');
+    }
+    setPergunta(null);
+    setRespostas({});
+    await tentar(() => props.aoAgir(os, 'concluir', todas));
   }
+
+  const desistir = () => {
+    setPergunta(null);
+    setRespostas({});
+  };
 
   async function apontar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -177,6 +222,16 @@ export function Os(
             })}
           </p>
         )}
+        {os.chamado.uhIndisponivelDesde && (
+          <p className="tc-nota" data-uh-indisponivel-desde={os.chamado.uhIndisponivelDesde}>
+            {t('tecnico.os.uh.desde', {
+              quando: intl.formatDate(os.chamado.uhIndisponivelDesde, {
+                dateStyle: 'short',
+                timeStyle: 'short',
+              }),
+            })}
+          </p>
+        )}
       </Painel>
 
       {aviso?.tipo === 'ok' && (
@@ -214,10 +269,16 @@ export function Os(
           </Botao>
         )}
       </div>
-      {perguntando && perguntaNaConclusao(os) && (
+      {pergunta === 'parada' && perguntaNaConclusao(os) && (
         <PerguntaDaParada
-          aoResponder={(voltou) => void concluirRespondendo(voltou)}
-          aoDesistir={() => setPerguntando(false)}
+          aoResponder={(voltou) => void concluirRespondendo({ equipamentoVoltou: voltou })}
+          aoDesistir={desistir}
+        />
+      )}
+      {pergunta === 'uh' && perguntaDaUhNaConclusao(os) && (
+        <PerguntaDaUh
+          aoResponder={(liberada) => void concluirRespondendo({ uhLiberada: liberada })}
+          aoDesistir={desistir}
         />
       )}
 
