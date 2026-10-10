@@ -29,7 +29,10 @@ function scoresCheios(): [Score, Score] {
     criticidade: 4,
     reincidencia: r,
     horasParadas: 30.5,
-    custoInformado12m: 4_250.75,
+    custo: {
+      ativo: { soma: 4_250.75, informadas: 3, encerradas: 4 },
+      tenant: { informadas: 30, encerradas: 40 },
+    },
     impactoHospede: 50,
     preventivaAtrasada: true,
     medicoes: { foraDaFaixa: 2, total: 5 },

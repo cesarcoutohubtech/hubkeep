@@ -22,6 +22,11 @@
 //   fica na tela do ativo;
 // - as horas paradas e o impacto no hóspede da atenção usam a janela da
 //   reincidência do hotel; o custo informado, 12 meses (365 dias);
+// - o custo informado vale quando pelo menos metade das corretivas encerradas
+//   do tenant na janela tem o dado (Kaio e Cesar, 10/10/2026): a conta usa
+//   todas as corretivas da entrada, de todos os hotéis, e não só as dos hotéis
+//   do cálculo; as medições valem nos ativos das categorias com item de
+//   medição (`categoriasComMedicao`);
 // - o sinal sistêmico não tem score: entra com a faixa fixa 'atencao' e vale
 //   no hotel quando todas as corretivas são de um hotel; senão, na rede, da
 //   bandeira quando os hotéis são todos dela, ou do grupo.
@@ -38,7 +43,7 @@ import {
   type Corretiva,
   type Criticidade,
   type LocalAnalisado,
-  custoInformadoNaJanela,
+  custoNaJanela,
   horasParadasNoTrecho,
   impactoHospedeDosChamados,
   situacaoDaGarantia,
@@ -86,7 +91,10 @@ export interface AtivoDoDia extends AtivoAnalisado {
   paradas: readonly Parada[];
   /** Preventiva vencida do ativo (etapa P); ausente sem dado. */
   preventivaAtrasada?: boolean | null;
-  /** Medições do checklist tipado na janela (PV1); ausente sem dado. */
+  /**
+   * Medições do checklist tipado na janela (PV1). Só contam se a categoria do
+   * ativo está em `categoriasComMedicao`; lá, ausente é nenhuma medição.
+   */
   medicoes?: MedicoesDoAtivo | null;
 }
 
@@ -96,8 +104,16 @@ export interface EntradaDoDia {
   recalculo?: boolean;
   hoteis: readonly HotelDoDia[];
   ativos: readonly AtivoDoDia[];
-  /** Corretivas do tenant; as de ativo ou hotel fora da lista são ignoradas. */
+  /**
+   * Corretivas do tenant; as de ativo ou hotel fora da lista não entram nos
+   * scores, mas contam na disponibilidade do custo no tenant.
+   */
   corretivas: readonly Corretiva[];
+  /**
+   * Categorias cujo plano tem item de medição (checklist tipado, PV1). Fora
+   * delas, as medições do ativo são sem dado. Ausente até a PV1: nenhuma.
+   */
+  categoriasComMedicao?: readonly string[];
   locais: readonly LocalAnalisado[];
   /** Política do grupo: o sinal sistêmico cruza hotéis. */
   sistemico?: ConfigSistemico;
@@ -172,6 +188,8 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
     (c) => c.ativoId as string,
   );
   const dia = e.agora.toISOString().slice(0, 10);
+  const custoDoTenant = custoNaJanela(e.corretivas, e.agora, JANELA_CUSTO_DIAS);
+  const comMedicao = new Set(e.categoriasComMedicao ?? []);
 
   const resultados = [...ativos]
     .sort((a, b) => a.id.localeCompare(b.id))
@@ -190,10 +208,16 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
             agora,
             e.agora,
           ),
-          custoInformado12m: custoInformadoNaJanela(cs, e.agora, JANELA_CUSTO_DIAS),
+          custo: {
+            ativo: custoNaJanela(cs, e.agora, JANELA_CUSTO_DIAS),
+            tenant: custoDoTenant,
+          },
           impactoHospede: impactoHospedeDosChamados(cs, e.agora, cfgR.janelaDias),
           preventivaAtrasada: a.preventivaAtrasada ?? null,
-          medicoes: a.medicoes ?? null,
+          medicoes:
+            a.categoriaId !== null && comMedicao.has(a.categoriaId)
+              ? (a.medicoes ?? { foraDaFaixa: 0, total: 0 })
+              : null,
           garantia: situacaoDaGarantia(a, e.agora),
         },
         h.atencao ?? PADRAO_ATENCAO,

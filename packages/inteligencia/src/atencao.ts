@@ -5,32 +5,76 @@
 // componentes, oito com peso e UH-dias com peso 0. Pesos padrão: reincidência
 // 20, tempo parado 15, impacto no hóspede 15, criticidade 15, custo informado
 // 10, preventiva atrasada 10, medições fora da faixa 10, garantia vencida 5 e
-// UH-dias 0. A versão 1 (seis componentes) fica no que já foi gravado: o
-// resultado de cada dia guarda a versão da fórmula (ADR-036), e nada gravado é
-// recalculado em silêncio.
+// UH-dias 0. O resultado de cada dia guarda a versão da fórmula (ADR-036), e
+// nada gravado é recalculado em silêncio.
 //
-// Componente sem dado: o peso dele é dividido entre os presentes, na
-// proporção dos pesos, e a lista de ausentes mostra o que falta. A regra é a
-// mesma para todo o tenant: não há chave por hotel que a ligue ou desligue.
-// - criticidade, custo informado, impacto no hóspede e garantia dependem do
-//   que o hotel preencheu (instrumentação da 1b);
-// - preventiva atrasada fica ausente até a etapa P;
-// - medições fora da faixa ficam ausentes até o checklist tipado (PV1);
-// - UH-dias fica ausente, com peso 0, até existir a origem do dado de UH
-//   indisponível (proposta de 07/10/2026). Quando existir e o peso passar de
-//   0, a atenção ganha a versão seguinte, com o limite e os pesos definidos.
-import { CRITICIDADE_MAXIMA, type Criticidade, type SituacaoDaGarantia } from './historico';
+// Disponibilidade de cada componente (respostas do Kaio de 10/10/2026,
+// aprovadas pelo Cesar no mesmo dia). O componente sem dado tem o peso dividido
+// entre os presentes, na proporção dos pesos, e a lista de ausentes mostra o
+// que falta. A regra é a mesma para todo o tenant: não há chave por hotel que
+// a ligue ou desligue.
+// - tempo parado e impacto no hóspede estão sempre disponíveis: o que não foi
+//   marcado é "não teve";
+// - garantia sem a data conta como não vencida (0): o peso é pequeno, e não se
+//   pune o dado que falta;
+// - custo informado é o único em que "não informado" difere de "zero": ele
+//   está disponível quando pelo menos 50% das corretivas encerradas do tenant,
+//   na janela, têm o custo (`custoDisponivelNoTenant`); abaixo disso, fica sem
+//   dado em todos os hotéis. Disponível, o ativo soma só as corretivas que têm
+//   o dado;
+// - medições fora da faixa: a disponibilidade é por categoria (sem item de
+//   medição no plano da categoria, sem dado); o ativo com menos medições na
+//   janela que o mínimo da política contribui 0, sem redistribuir. Até o
+//   checklist tipado (PV1), nenhuma categoria tem medição;
+// - preventiva atrasada fica sem dado até a etapa PV; criticidade, sem o
+//   cadastro; reincidência, sem dado nenhum;
+// - UH-dias fica sem dado, com peso 0 (decisão de 07/10/2026). Quando a origem
+//   for lida e o peso passar de 0, a atenção ganha a versão seguinte.
+//
+// A versão 2 é a primeira gravada: a versão 1 existiu só no código e nos
+// testes, antes das tabelas do ADR-036, e a numeração continua.
+import {
+  CRITICIDADE_MAXIMA,
+  type Criticidade,
+  type CustoNaJanela,
+  type SituacaoDaGarantia,
+} from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
 export const VERSAO_ATENCAO = 2;
 
 /**
  * Medições do checklist tipado na janela (etapa PV1): quantas saíram da faixa
- * aceitável entre as feitas. null (ou sem nenhuma medição) é sem dado.
+ * aceitável entre as feitas. Só existe para o ativo cuja categoria tem item de
+ * medição no plano; sem isso, o componente é sem dado.
  */
 export interface MedicoesDoAtivo {
   foraDaFaixa: number;
   total: number;
+}
+
+/**
+ * Parte mínima das corretivas encerradas do tenant, na janela, com o custo
+ * informado, para o componente valer (Kaio e Cesar, 10/10/2026). Fica na
+ * fórmula, e não na política: a política da atenção se resolve por hotel, e a
+ * regra precisa ser a mesma em todos os hotéis do tenant.
+ */
+export const MINIMO_DE_CUSTO_INFORMADO_NO_TENANT = 0.5;
+
+/** As corretivas encerradas do tenant na janela, com e sem o custo. */
+export interface CustoNoTenant {
+  informadas: number;
+  encerradas: number;
+}
+
+/** O custo vale no tenant quando pelo menos metade das encerradas tem o dado. */
+export const custoDisponivelNoTenant = (t: CustoNoTenant): boolean =>
+  t.encerradas > 0 && t.informadas / t.encerradas >= MINIMO_DE_CUSTO_INFORMADO_NO_TENANT;
+
+/** O custo que a atenção usa: o do ativo e o do tenant, na mesma janela. */
+export interface CustoDaAtencao {
+  ativo: CustoNaJanela;
+  tenant: CustoNoTenant;
 }
 
 export interface EntradaAtencao {
@@ -38,24 +82,27 @@ export interface EntradaAtencao {
   criticidade: Criticidade | null;
   /** O score de reincidência do mesmo ativo, na mesma data. */
   reincidencia: Score;
-  /** Horas paradas na janela (parada do ativo, C5). */
+  /** Horas paradas na janela (parada do ativo, C5). Sempre disponível: null conta 0. */
   horasParadas: number | null;
   /**
-   * Soma do custo informado no aceite em 12 meses (`custoInformadoNaJanela`);
-   * null quando nenhuma OS tem custo informado.
+   * O custo informado no aceite em 12 meses, do ativo e do tenant
+   * (`custoNaJanela`). Ausente: sem dado, como no tenant abaixo do mínimo.
    */
-  custoInformado12m?: number | null;
+  custo?: CustoDaAtencao | null;
   /**
-   * Impacto no hóspede, de 0 a 100; null sem dado. No 1.0, a porcentagem dos
-   * chamados que afetaram hóspede (`impactoHospedeDosChamados`); na 1.5, o
-   * Guest Impact Score, com versão nova do score.
+   * Impacto no hóspede, de 0 a 100. No 1.0, a porcentagem dos chamados que
+   * afetaram hóspede (`impactoHospedeDosChamados`); na 1.5, o Guest Impact
+   * Score, com versão nova do score. Sempre disponível: ausente conta 0.
    */
   impactoHospede?: number | null;
-  /** Preventiva vencida do ativo (etapa P); null sem dado. */
+  /** Preventiva vencida do ativo (etapa PV); null sem dado. */
   preventivaAtrasada?: boolean | null;
-  /** Medições fora da faixa na janela (checklist tipado, PV1); null sem dado. */
+  /**
+   * Medições fora da faixa na janela (checklist tipado, PV1). null: a
+   * categoria do ativo não tem item de medição, e o componente é sem dado.
+   */
   medicoes?: MedicoesDoAtivo | null;
-  /** A garantia do ativo (`app.ativo.garantia_ate`); null sem a data. */
+  /** A garantia do ativo (`app.ativo.garantia_ate`); null sem a data, que conta como não vencida. */
   garantia?: SituacaoDaGarantia | null;
 }
 
@@ -67,6 +114,11 @@ export interface ConfigAtencao {
    * custo de reposição (fase 2), a referência é da política do hotel.
    */
   limiteCusto12m: number;
+  /**
+   * Medições na janela abaixo das quais o ativo contribui 0 no componente, sem
+   * redistribuir (inteiro, de pelo menos 1).
+   */
+  minMedicoes: number;
   pesos: {
     reincidencia: number;
     parada: number;
@@ -89,6 +141,7 @@ export interface ConfigAtencao {
 export const PADRAO_ATENCAO: ConfigAtencao = {
   limiteHorasParadas: 48,
   limiteCusto12m: 10_000,
+  minMedicoes: 3,
   pesos: {
     reincidencia: 0.2,
     parada: 0.15,
@@ -104,14 +157,21 @@ export const PADRAO_ATENCAO: ConfigAtencao = {
   limiteInsight: 70,
 };
 
+/** A política da atenção além do formato: o mínimo de medições é inteiro e de pelo menos 1. */
+export const configAtencaoValida = (c: ConfigAtencao): boolean =>
+  Number.isInteger(c.minMedicoes) && c.minMedicoes >= 1;
+
 export function atencaoDoAtivo(
   e: EntradaAtencao,
   config: ConfigAtencao = PADRAO_ATENCAO,
 ): Score<ConfigAtencao> {
-  const custo = e.custoInformado12m ?? null;
-  const impacto = e.impactoHospede ?? null;
+  const horas = e.horasParadas ?? 0;
+  const impacto = e.impactoHospede ?? 0;
+  const custo = e.custo ?? null;
+  const comCusto = custo !== null && custoDisponivelNoTenant(custo.tenant);
   const preventiva = e.preventivaAtrasada ?? null;
-  const medicoes = e.medicoes && e.medicoes.total > 0 ? e.medicoes : null;
+  const medicoes = e.medicoes ?? null;
+  const poucasMedicoes = medicoes !== null && medicoes.total < config.minMedicoes;
   const garantia = e.garantia ?? null;
   return combinar(
     'atencao_ativo',
@@ -130,16 +190,13 @@ export function atencaoDoAtivo(
       {
         chave: 'parada',
         peso: config.pesos.parada,
-        valor: e.horasParadas === null ? null : razao(e.horasParadas, config.limiteHorasParadas),
-        evidencia: {
-          horas: e.horasParadas === null ? null : Math.round(e.horasParadas * 10) / 10,
-          limite: config.limiteHorasParadas,
-        },
+        valor: razao(horas, config.limiteHorasParadas),
+        evidencia: { horas: Math.round(horas * 10) / 10, limite: config.limiteHorasParadas },
       },
       {
         chave: 'impacto_hospede',
         peso: config.pesos.impactoHospede,
-        valor: impacto === null ? null : razao(impacto, 100),
+        valor: razao(impacto, 100),
         evidencia: { score: impacto },
       },
       {
@@ -151,8 +208,19 @@ export function atencaoDoAtivo(
       {
         chave: 'custo',
         peso: config.pesos.custo,
-        valor: custo === null ? null : razao(custo, config.limiteCusto12m),
-        evidencia: { valor12m: custo, limite: config.limiteCusto12m },
+        valor: comCusto ? razao(custo.ativo.soma, config.limiteCusto12m) : null,
+        evidencia: {
+          valor12m: comCusto ? custo.ativo.soma : null,
+          limite: config.limiteCusto12m,
+          informadas: custo?.ativo.informadas ?? null,
+          encerradas: custo?.ativo.encerradas ?? null,
+          disponivelNoTenant: comCusto,
+          percentualNoTenant:
+            custo && custo.tenant.encerradas > 0
+              ? Math.round((custo.tenant.informadas / custo.tenant.encerradas) * 1000) / 10
+              : null,
+          minimoNoTenant: MINIMO_DE_CUSTO_INFORMADO_NO_TENANT * 100,
+        },
       },
       {
         chave: 'preventiva_atrasada',
@@ -163,19 +231,27 @@ export function atencaoDoAtivo(
       {
         chave: 'medicoes_fora_da_faixa',
         peso: config.pesos.medicoesForaDaFaixa,
-        valor: medicoes === null ? null : razao(medicoes.foraDaFaixa, medicoes.total),
+        valor:
+          medicoes === null
+            ? null
+            : poucasMedicoes
+              ? 0
+              : razao(medicoes.foraDaFaixa, medicoes.total),
         evidencia: {
           foraDaFaixa: medicoes?.foraDaFaixa ?? null,
           total: medicoes?.total ?? null,
+          minimo: config.minMedicoes,
+          abaixoDoMinimo: poucasMedicoes,
         },
       },
       {
         chave: 'garantia_vencida',
         peso: config.pesos.garantiaVencida,
-        valor: garantia === null ? null : garantia.vencida ? 1 : 0,
+        valor: garantia?.vencida ? 1 : 0,
         evidencia: {
-          vencida: garantia?.vencida ?? null,
-          diasVencida: garantia?.diasVencida ?? null,
+          vencida: garantia?.vencida ?? false,
+          diasVencida: garantia?.diasVencida ?? 0,
+          semData: garantia === null,
         },
       },
       {

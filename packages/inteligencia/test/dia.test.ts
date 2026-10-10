@@ -144,17 +144,23 @@ describe('calcularDia: scores e métrica do dia', () => {
     expect(parada?.evidencia).toMatchObject({ horas: 26 });
   });
 
-  it('a garantia do ativo e as medições entram na atenção; sem a data, o componente fica sem dado', () => {
+  it('a garantia e as medições entram na atenção; sem a data, não vencida; medição só na categoria com item', () => {
     const r = calcularDia({
       agora,
       hoteis: [{ hotelId: 'h1', bandeiraId: 'b1' }],
       ativos: [
-        ativo({ id: 'a1', garantiaAte: dia(-10), medicoes: { foraDaFaixa: 1, total: 4 } }),
-        ativo({ id: 'a2', garantiaAte: dia(30) }),
-        ativo({ id: 'a3' }),
+        ativo({
+          id: 'a1',
+          categoriaId: 'ar',
+          garantiaAte: dia(-10),
+          medicoes: { foraDaFaixa: 1, total: 4 },
+        }),
+        ativo({ id: 'a2', categoriaId: 'ar', garantiaAte: dia(30) }),
+        ativo({ id: 'a3', categoriaId: 'tv', medicoes: { foraDaFaixa: 4, total: 4 } }),
       ],
       corretivas: [],
       locais: [],
+      categoriasComMedicao: ['ar'],
     });
     const comp = (id: string, chave: string) =>
       r.ativos.find((a) => a.ativoId === id)?.atencao.componentes.find((c) => c.chave === chave);
@@ -164,8 +170,65 @@ describe('calcularDia: scores e métrica do dia', () => {
     });
     expect(comp('a1', 'medicoes_fora_da_faixa')).toMatchObject({ valor: 0.25 });
     expect(comp('a2', 'garantia_vencida')).toMatchObject({ valor: 0 });
-    expect(comp('a3', 'garantia_vencida')?.valor).toBeNull();
+    // Categoria com item de medição e nenhuma medição: abaixo do mínimo, conta 0.
+    expect(comp('a2', 'medicoes_fora_da_faixa')).toMatchObject({
+      valor: 0,
+      evidencia: { total: 0, abaixoDoMinimo: true },
+    });
+    expect(comp('a3', 'garantia_vencida')).toMatchObject({
+      valor: 0,
+      evidencia: { semData: true },
+    });
+    // Categoria sem item de medição: sem dado, mesmo com medições na entrada.
     expect(comp('a3', 'medicoes_fora_da_faixa')?.valor).toBeNull();
+  });
+
+  it('sem categoriasComMedicao (antes da PV1), as medições ficam sem dado em todos', () => {
+    const r = calcularDia({
+      agora,
+      hoteis: [{ hotelId: 'h1', bandeiraId: 'b1' }],
+      ativos: [ativo({ id: 'a1', categoriaId: 'ar', medicoes: { foraDaFaixa: 1, total: 4 } })],
+      corretivas: [],
+      locais: [],
+    });
+    expect(r.ativos[0]?.atencao.ausentes).toContain('medicoes_fora_da_faixa');
+  });
+
+  it('o custo vale pela metade das corretivas encerradas do tenant, inclusive de hotel fora do cálculo', () => {
+    const com = (ativoId: string, hotelId: string, custoInformado: number | null) =>
+      corretiva({ ativoId, hotelId, abertaEm: dia(-30), concluidaEm: dia(-29), custoInformado });
+    const entrada = (corretivas: Corretiva[]) =>
+      calcularDia({
+        agora,
+        hoteis: [{ hotelId: 'h1', bandeiraId: 'b1' }],
+        ativos: [ativo({ id: 'a1' }), ativo({ id: 'a2' })],
+        corretivas,
+        locais: [],
+      });
+    const custo = (r: ReturnType<typeof calcularDia>, id: string) =>
+      r.ativos.find((a) => a.ativoId === id)?.atencao.componentes.find((c) => c.chave === 'custo');
+
+    // 2 de 4 encerradas do tenant com custo (uma de outro hotel): disponível.
+    const sim = entrada([
+      com('a1', 'h1', 2000),
+      com('a1', 'h1', null),
+      com('a2', 'h1', null),
+      com('z1', 'outro', 500),
+    ]);
+    expect(custo(sim, 'a1')).toMatchObject({
+      valor: 0.2,
+      evidencia: { valor12m: 2000, informadas: 1, encerradas: 2, disponivelNoTenant: true },
+    });
+    // O ativo sem nenhum custo informado soma 0, e não fica sem dado.
+    expect(custo(sim, 'a2')).toMatchObject({ valor: 0, evidencia: { informadas: 0 } });
+
+    // 1 de 3: abaixo da metade, sem dado em todos os ativos.
+    const nao = entrada([com('a1', 'h1', 2000), com('a1', 'h1', null), com('a2', 'h1', null)]);
+    expect(custo(nao, 'a1')).toMatchObject({
+      valor: null,
+      evidencia: { valor12m: null, disponivelNoTenant: false, percentualNoTenant: 33.3 },
+    });
+    expect(custo(nao, 'a2')?.valor).toBeNull();
   });
 
   it('ativo, corretiva e local de hotel fora da lista não entram', () => {
