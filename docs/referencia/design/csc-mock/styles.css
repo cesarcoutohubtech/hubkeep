@@ -590,17 +590,13 @@ details.more[open] summary { color: var(--ink); }
 .steps li.done::before { content: "✓"; background: var(--ok-soft); color: var(--ok); }
 .steps li span small { display: block; color: var(--dim); font-size: 12px; }
 td.best { color: var(--ok); font-weight: 600; }
-.insights { display: grid; gap: 12px; }
-.insight { padding: 14px 16px; }
-.ins-h { display: flex; gap: 14px; align-items: flex-start; }
 .score { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-content: center; text-align: center; border: 3px solid var(--line); }
 .score b { font-family: var(--font-cond); font-size: 24px; line-height: 1; color: var(--head); }
 .score span { font-size: 10px; color: var(--steel); }
 .score.mid { border-color: var(--amber); }
 .score.hi { border-color: var(--red); }
-.insight .why { margin-top: 10px; }
-.why-b { margin-top: 10px; border-top: 1px solid var(--line-2); padding-top: 10px; }
-.why-b table td, .why-b table th { padding: 5px 8px; font-size: 13px; }
+/* HubKeep Intelligence: a borda reforça o indicador que pede atenção; o texto diz o mesmo. */
+.inst.warn { box-shadow: inset 3px 0 0 var(--amber); }
 .nav-group { white-space: nowrap; }
 #print-area { display: none; }
 @media print {

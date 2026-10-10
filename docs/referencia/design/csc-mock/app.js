@@ -12,7 +12,7 @@ const OPEN = ["Aberto", "Em atendimento", "Aguardando peça", "Aguardando aceite
 let DB, IDX;
 const UI = {
   persona: "u1",
-  f: { ch: { q: "", hotel: "", status: "abertos", prio: "", cat: "", page: 0 }, os: { origem: "", status: "", hotel: "", page: 0 }, at: { q: "", hotel: "", cat: "", crit: "", page: 0 }, au: { q: "", ent: "", hotel: "", page: 0 }, ind: { band: "" }, intel: { open: null } },
+  f: { ch: { q: "", hotel: "", status: "abertos", prio: "", cat: "", page: 0 }, os: { origem: "", status: "", hotel: "", page: 0 }, at: { q: "", hotel: "", cat: "", crit: "", page: 0 }, au: { q: "", ent: "", hotel: "", page: 0 }, ind: { band: "" }, intel: { estado: "abertos", tipo: "", escopo: "", faixa: "" } },
   cal: null, calHotel: null, theme: "dark", ncFotos: 0, imp: null,
   phone: { tab: "hoje", view: null, offline: false, pend: 0, scan: null }
 };
@@ -21,7 +21,7 @@ const UI = {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 9) { DB = d; } }
+    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 10) { DB = d; } }
     const p = localStorage.getItem(PERSONA_KEY); if (p) UI.persona = p;
     const th = localStorage.getItem(THEME_KEY); if (th) UI.theme = th;
   } catch (e) { /* armazenamento indisponível: segue com seed em memória */ }
@@ -42,12 +42,16 @@ function reindex() {
   IDX.donoDe = {}; DB.localProprietario.forEach(x => IDX.donoDe[x.local_id] = x.proprietario_id);
   IDX.modelo = m(DB.modelos_ativo);
   IDX.forn = m(DB.fornecedores);
+  if (!DB.ia) seedInteligencia(); // o que o job diário do Intelligence gravou (seed.js)
+  IDX.ins = m(DB.insights);
 }
 
 /* ---------- Utilidades ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const t = s => +new Date(s);
+/* Datas em milissegundos, com cache: o job simulado do Intelligence lê as mesmas datas milhares de vezes. */
+const T_CACHE = new Map();
+const t = s => { let v = T_CACHE.get(s); if (v === undefined) { v = +new Date(s); if (typeof s === "string") T_CACHE.set(s, v); } return v; };
 const pad = n => String(n).padStart(2, "0");
 function fmtDT(s) { if (!s) return "—"; const d = new Date(s); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function fmtD(s) { if (!s) return "—"; const d = new Date(s); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`; }
@@ -57,7 +61,9 @@ function dur(h) {
   if (h < 24) { const tot = Math.round(h * 60), hh = Math.floor(tot / 60), mm = tot % 60; return hh + " h" + (mm ? " " + mm + " min" : ""); }
   const tot = Math.round(h), d = Math.floor(tot / 24), hh = tot % 24; return d + " d" + (hh ? " " + hh + " h" : "");
 }
-const num1 = v => v == null ? "—" : v.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+/* Formatadores criados uma vez: toLocaleString com opções cria um formatador a cada chamada. */
+const NF_NUM1 = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }), NF_BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }), NF_FMT1 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const num1 = v => v == null ? "—" : NF_NUM1.format(v);
 function rel(s) { const diff = (Date.now() - t(s)) / H; return diff >= 0 ? "há " + dur(diff) : "em " + dur(-diff); }
 const nomeUser = id => (IDX.user[id] || {}).nome || "—";
 const initials = n => n.split(" ").filter(Boolean).slice(0, 2).map(x => x[0]).join("").toUpperCase();
@@ -106,7 +112,7 @@ const critNome = n => (polGrupo().criticidade_nomes || {})[n] || String(n);
 const critBadge = n => `<span class="badge ${n >= 5 ? "b-red" : n >= 4 ? "b-amber" : n >= 3 ? "b-blue" : "b-grey"}" title="Criticidade ${n} de 5">${n} · ${esc(critNome(n))}</span>`;
 const calComercial = cat => (polGrupo().calendario_comercial || []).includes(cat);
 const prazoDe = (cat, inicioMs, h) => calComercial(cat) ? somarHorasUteis(inicioMs, h) : inicioMs + h * H;
-const brl = v => v == null ? "—" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const brl = v => v == null ? "—" : NF_BRL.format(v);
 const nomeExec = e => !e ? "—" : e.tipo === "fornecedor" ? (IDX.forn[e.fornecedor_id] || {}).nome || "Fornecedor" : "Equipe interna";
 function downloadCSV(nome, cab, linhas) {
   const q = v => { const x = v == null ? "" : String(v); return /[";\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
@@ -231,7 +237,7 @@ function render() {
   const p = persona(), s = scope();
   const openCount = scoped(DB.chamados).filter(c => OPEN.includes(c.status)).length;
   const nav = navItems().map(it => it.group ? `<div class="nav-group">${it.group}</div>` :
-    `<a href="#/${it.id}" class="${it.id === page ? "active" : ""}" ${it.id === page ? 'aria-current="page"' : ""}>${icon(it.icon)}<span>${it.label}</span>${it.id === "chamados" ? `<span class="count">${openCount}</span>` : ""}</a>`).join("");
+    `<a href="#/${it.id}" class="${it.id === page ? "active" : ""}" ${it.id === page ? 'aria-current="page"' : ""}>${icon(it.icon)}<span>${it.label}</span>${it.id === "chamados" ? `<span class="count">${openCount}</span>` : it.id === "inteligencia" ? `<span class="count">${iaVisiveis().filter(iaAberto).length}</span>` : ""}</a>`).join("");
   const personas = ["u1", "u2", "u3", "u4", "u5", "u90"].map(id => { const u = IDX.user[id]; return `<option value="${id}" ${id === UI.persona ? "selected" : ""}>${esc(u.nome)} (${esc(u.papel)})</option>`; }).join("");
   $("#app").innerHTML = `
   <div class="app">
@@ -299,7 +305,7 @@ function ring(pct, target, color) {
     <circle cx="31" cy="31" r="${r}" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c * v / 100} ${c}" transform="rotate(-90 31 31)"/>
     <circle cx="${tx}" cy="${ty}" r="3.2" style="fill:var(--head);stroke:var(--surface)" stroke-width="1.5"><title>Meta: ${target}%</title></circle></svg>`;
 }
-const fmt1 = v => v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmt1 = v => NF_FMT1.format(v);
 function deltaHtml(d, unit, goodWhenUp, ref) {
   if (d == null || !isFinite(d)) return `<span class="delta flat">sem base de comparação</span>`;
   if (Math.abs(d) < 0.05) return `<span class="delta flat">estável ${ref}</span>`;
@@ -390,7 +396,7 @@ function pageDashboard() {
     <div class="row" style="justify-content:flex-end;margin-top:8px"><a href="#/chamados" class="small">Ver fila completa</a></div></div></div>`;
 
   // Fluxo de eventos
-  const aud = DB.auditoria.filter(a => !a.hotel_id || s.hoteis.includes(a.hotel_id)).filter(a => !(s.locais && a.entidade === "Chamado" && IDX.ch[a.registro] && !s.locais.includes(IDX.ch[a.registro].local_id))).slice(0, 5);
+  const aud = DB.auditoria.filter(a => audVisivel(a, s)).filter(a => !(s.locais && a.entidade === "Chamado" && IDX.ch[a.registro] && !s.locais.includes(IDX.ch[a.registro].local_id))).slice(0, 5);
   const icFor = a => a.entidade === "Chamado" ? ["ch", "chamados"] : a.entidade === "OS" ? ["os", "os"] : ["po", "pol"];
   const feed = isOwner() ? "" : `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Fluxo de eventos</h2><span class="live" style="margin-left:4px"><i></i>ao vivo</span></div><div class="panel-b" style="padding-top:0"><ul class="feed">${aud.map(a => { const [cl, ic] = icFor(a); return `<li class="${now - t(a.t) < 90e3 ? "new" : ""}"><span class="ic ${cl}">${icon(ic)}</span><div>${esc(a.acao)}<div class="who">${esc(a.usuario)}, ${esc(a.entidade.toLowerCase())} ${esc(a.registro)}</div></div><span class="w" data-rel="${a.t}">${rel(a.t)}</span></li>`; }).join("")}</ul></div></div>`;
 
@@ -895,7 +901,7 @@ function drawerAtivo(a) {
   const gar = a.garantia_ate && t(a.garantia_ate) > Date.now();
   const meds = DB.os.filter(o => o.ativo_id === a.id && o.status === "Concluída").flatMap(o => o.checklist.filter(c => c.tipo === "medicao" && c.valor != null).map(c => ({ ...c, t0: o.fim })));
   const foraMed = meds.filter(m => m.fora).length;
-  return `<div class="drawer-h"><button class="close" data-act="close" aria-label="Fechar">×</button><span class="id">${a.id}</span><h2>${esc(a.nome)}</h2><div class="row"><span class="badge ${a.status === "Parado" ? "b-red" : "b-green"}">${a.status}</span>${critBadge(a.criticidade)}${(() => { const sc = intelAtivo(a); return sc.score >= polGrupo().inteligencia.limite_atencao && role() !== "loc" ? `<a href="#/inteligencia" class="badge b-amber" style="text-decoration:none" title="HubKeep Intelligence">Atenção ${sc.score}/100</a>` : ""; })()}</div></div>
+  return `<div class="drawer-h"><button class="close" data-act="close" aria-label="Fechar">×</button><span class="id">${a.id}</span><h2>${esc(a.nome)}</h2><div class="row"><span class="badge ${a.status === "Parado" ? "b-red" : "b-green"}">${a.status}</span>${critBadge(a.criticidade)}${(() => { const sc = iaGravado(a.id); return sc && ["csc", "band", "hotel"].includes(role()) ? `<a href="#/inteligencia?ativo=${a.id}" class="badge ${sc.score >= polGrupo().inteligencia.limite_atencao ? "b-amber" : "b-outline"}" style="text-decoration:none" title="Ver a atenção do ativo no HubKeep Intelligence">Atenção ${sc.score}/100</a>` : ""; })()}</div></div>
   <div class="drawer-b"><div class="row" style="align-items:flex-start;gap:18px"><div class="qr-card">${qrSvg(a.qr, 96)}</div><dl class="kv" style="flex:1">
     <dt>Etiqueta</dt><dd>${a.qr}</dd><dt>Categoria</dt><dd>${esc(IDX.cat[a.categoria_id].nome)}</dd><dt>Fabricante e modelo</dt><dd>${esc(a.fabricante)}${a.modelo ? ", " + esc(a.modelo) : ""}</dd>
     <dt>Número de série</dt><dd>${esc(a.numero_serie || "—")}</dd><dt>Garantia</dt><dd>${a.garantia_ate ? `<span class="badge ${gar ? "b-green" : "b-grey"}">${gar ? "Vigente" : "Vencida"}</span> ${gar ? "até" : "em"} ${fmtD(a.garantia_ate)}` : "—"}</dd>
@@ -1141,7 +1147,7 @@ function pageUsuarios() {
 /* ---------- Auditoria ---------- */
 function auditoriaFiltrada() {
   const s = scope(), f = UI.f.au;
-  let list = DB.auditoria.filter(a => !a.hotel_id || s.hoteis.includes(a.hotel_id));
+  let list = DB.auditoria.filter(a => audVisivel(a, s));
   if (isOwner()) list = list.filter(a => a.entidade === "Chamado" && IDX.ch[a.registro] && scoped([IDX.ch[a.registro]]).length);
   if (f.ent) list = list.filter(a => a.entidade === f.ent);
   if (f.hotel) list = list.filter(a => a.hotel_id === f.hotel);
@@ -1293,16 +1299,21 @@ function iaCombinar(partes) {
   const valor = soma > 0 ? Math.round(comp.reduce((s, c) => s + c.pontos, 0)) : null;
   return { valor, faixa: iaFaixa(valor), comp };
 }
-function iaReincidencia(a, now) {
+/* Índice por ativo, para o job simulado calcular 90 dias sem varrer todos os chamados e OS a cada ativo. */
+function iaIndice() {
+  const por = (xs, k) => { const m = {}; xs.forEach(x => { if (x[k]) (m[x[k]] = m[x[k]] || []).push(x); }); return m; };
+  return { ch: por(DB.chamados, "ativo_id"), par: por(DB.ativo_parada, "ativo_id"), prev: por(DB.os.filter(o => o.origem === "preventiva"), "ativo_id"), custo: {}, med: {} };
+}
+function iaReincidencia(a, now, ix) {
   const ini = now - 90 * D;
-  const todas = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado" && t(c.aberto_em) <= now).sort((x, y) => t(x.aberto_em) - t(y.aberto_em));
+  const todas = (ix ? ix.ch[a.id] || [] : DB.chamados.filter(c => c.ativo_id === a.id)).filter(c => c.status !== "Cancelado" && t(c.aberto_em) <= now).sort((x, y) => t(x.aberto_em) - t(y.aberto_em));
   const jan = todas.filter(c => t(c.aberto_em) > ini), n = jan.length;
   const ints = jan.slice(1).map((c, i) => (t(c.aberto_em) - t(jan[i].aberto_em)) / D), med = ints.length ? ints.reduce((s, x) => s + x, 0) / ints.length : null;
   const reab = jan.reduce((s, c) => s + (c.reaberturas || 0), 0);
   const cods = jan.filter(c => c.codigos && c.codigos.falha), cont = {};
   cods.forEach(c => { cont[c.codigos.falha] = (cont[c.codigos.falha] || 0) + 1; });
   const [cod, vezes] = Object.entries(cont).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))[0] || [null, 0];
-  const voltas = jan.filter(c => { const ant = todas.filter(x => t(x.aberto_em) < t(c.aberto_em)).pop(); if (!ant || !ant.encerrado_em) return false; const d = (t(c.aberto_em) - t(ant.encerrado_em)) / D; return d >= 0 && d <= 30; }).length;
+  const voltas = jan.filter(c => { const ant = todas.filter(x => t(x.aberto_em) < t(c.aberto_em)).pop(); if (!ant || !ant.encerrado_em || t(ant.encerrado_em) > now) return false; const d = (t(c.aberto_em) - t(ant.encerrado_em)) / D; return d >= 0 && d <= 30; }).length;
   return iaCombinar([
     { k: "corretivas", peso: 0.30, valor: iaRazao(n, 5), medido: `${n} ${n === 1 ? "corretiva" : "corretivas"} nos últimos 90 dias` },
     { k: "intervalo", peso: 0.15, valor: med === null ? 0 : 1 - iaRazao(med, 30), medido: med === null ? "Sem intervalo a medir" : `Intervalo médio de ${fmt1(med)} dias entre as falhas` },
@@ -1325,18 +1336,23 @@ function iaCustoNoGrupo(now) {
   return { enc: enc.length, inf, pct: enc.length ? Math.round(inf / enc.length * 1000) / 10 : null, ok: enc.length > 0 && inf / enc.length >= IA_MIN_CUSTO_NO_GRUPO };
 }
 const iaCategoriaComMedicao = cat => DB.planos.some(p => p.categoria_id === cat && p.checklist.some(i => i.tipo === "medicao"));
-function intelAtivo(a) {
-  const pol = polGrupo().inteligencia, P = pol.pesos, now = Date.now(), d90 = now - 90 * D, d12m = now - 365 * D;
-  const rei = iaReincidencia(a, now), grupo = iaCustoNoGrupo(now), minMed = pol.min_medicoes || 3;
-  const chs = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado"), ch90 = chs.filter(c => t(c.aberto_em) > d90);
-  const horas = DB.ativo_parada.filter(p => p.ativo_id === a.id).reduce((s, p) => s + sobreposicaoH(t(p.inicio), p.fim ? t(p.fim) : now, d90, now), 0);
+/* Preventiva atrasada no dia do cálculo: no dia de hoje vale a situação da OS; num dia passado, a OS já programada
+   que ainda não tinha terminado. */
+const iaAtrasadaEm = (o, now) => now >= Date.now() - D ? o.status === "Atrasada" : t(o.programada_para) < now && (o.status === "Atrasada" || (!!o.fim && t(o.fim) > now));
+/* Atenção de um ativo num momento. Sem `now`, é o cálculo de agora (o recálculo da página do insight); o job simulado
+   passa o dia e o índice. Só entram fatos até o momento do cálculo. */
+function intelAtivo(a, now = Date.now(), ix = null) {
+  const pol = ix ? ix.pol || (ix.pol = polGrupo().inteligencia) : polGrupo().inteligencia, P = pol.pesos, d90 = now - 90 * D, d12m = now - 365 * D;
+  const rei = iaReincidencia(a, now, ix), grupo = ix ? (ix.custo[now] = ix.custo[now] || iaCustoNoGrupo(now)) : iaCustoNoGrupo(now), minMed = pol.min_medicoes || 3;
+  const chs = (ix ? ix.ch[a.id] || [] : DB.chamados.filter(c => c.ativo_id === a.id)).filter(c => c.status !== "Cancelado" && t(c.aberto_em) <= now), ch90 = chs.filter(c => t(c.aberto_em) > d90);
+  const horas = (ix ? ix.par[a.id] || [] : DB.ativo_parada.filter(p => p.ativo_id === a.id)).reduce((s, p) => s + sobreposicaoH(t(p.inicio), p.fim ? t(p.fim) : now, d90, now), 0);
   const imp = ch90.length ? Math.round(ch90.filter(c => c.impacto_hospede === true).length / ch90.length * 100) : 0;
-  const encA = chs.filter(c => c.status === "Encerrado" && c.encerrado_em && t(c.encerrado_em) > d12m), infA = encA.filter(c => c.custo != null);
+  const encA = chs.filter(c => c.status === "Encerrado" && c.encerrado_em && t(c.encerrado_em) > d12m && t(c.encerrado_em) <= now), infA = encA.filter(c => c.custo != null);
   const custo = grupo.ok ? infA.reduce((s, c) => s + c.custo, 0) : null;
-  const prevs = DB.os.filter(o => o.origem === "preventiva" && o.ativo_id === a.id), atras = prevs.length ? prevs.some(o => o.status === "Atrasada") : null;
+  const prevs = ix ? ix.prev[a.id] || [] : DB.os.filter(o => o.origem === "preventiva" && o.ativo_id === a.id), atras = prevs.length ? prevs.some(o => iaAtrasadaEm(o, now)) : null;
   let med = 0, fora = 0;
-  prevs.filter(o => o.status === "Concluída" && o.fim && t(o.fim) > d90).forEach(o => o.checklist.filter(c => c.tipo === "medicao").forEach(c => { med++; if (c.fora) fora++; }));
-  const comMed = iaCategoriaComMedicao(a.categoria_id), poucas = comMed && med < minMed;
+  prevs.filter(o => o.status === "Concluída" && o.fim && t(o.fim) > d90 && t(o.fim) <= now).forEach(o => o.checklist.filter(c => c.tipo === "medicao").forEach(c => { med++; if (c.fora) fora++; }));
+  const comMed = ix ? (ix.med[a.categoria_id] ??= iaCategoriaComMedicao(a.categoria_id)) : iaCategoriaComMedicao(a.categoria_id), poucas = comMed && med < minMed;
   const garV = a.garantia_ate ? t(a.garantia_ate) < now : false, garDias = garV ? Math.floor((now - t(a.garantia_ate)) / D) : 0;
   const sc = iaCombinar([
     { k: "reincidencia", nome: "Reincidência de falhas", peso: P.reincidencia / 100, valor: rei.valor === null ? null : rei.valor / 100, medido: rei.valor === null ? "Sem dado" : `Reincidência de falhas em ${rei.valor}` },
@@ -1352,8 +1368,59 @@ function intelAtivo(a) {
     { k: "garantia", nome: "Garantia vencida", peso: P.garantia / 100, valor: garV ? 1 : 0, medido: !a.garantia_ate ? "Sem a data de fim da garantia: conta como não vencida" : garV ? `Garantia vencida há ${garDias} ${garDias === 1 ? "dia" : "dias"}` : "Garantia vigente" },
     { k: "uh_dias", nome: "UH-dias indisponíveis", peso: P.uh_dias / 100, valor: null, medido: "Sem origem do dado ainda" }
   ]);
-  return { a, comp: sc.comp, score: sc.valor, faixa: sc.faixa, n90: ch90.length };
+  return { a, comp: sc.comp, score: sc.valor, faixa: sc.faixa, n90: ch90.length, horas: Math.round(horas * 10) / 10, imp };
 }
+/* Ciclo de vida do insight (ADR-033, packages/inteligencia/src/insight.ts): estados, ações e quem decide. O score sugere e
+   a pessoa decide: o job só abre ou atualiza; toda transição é de uma pessoa. Resolver e descartar pedem nota (1 a 500). */
+const IA_TIPOS = { atencao_ativo: "Ativo pede atenção", sistemico: "Possível problema sistêmico" };
+const IA_ESTADOS = { novo: "Novo", em_revisao: "Em revisão", aceito: "Aceito", em_acao: "Em ação", monitorando: "Monitorando", resolvido: "Resolvido", descartado: "Descartado" };
+const IA_ABERTOS = ["novo", "em_revisao", "aceito", "em_acao", "monitorando"];
+const IA_ACOES = {
+  revisar: { rot: "Revisar", de: ["novo"], para: "em_revisao" },
+  aceitar: { rot: "Aceitar", de: ["novo", "em_revisao"], para: "aceito" },
+  agir: { rot: "Agir", de: ["aceito"], para: "em_acao" },
+  monitorar: { rot: "Monitorar", de: ["em_acao"], para: "monitorando" },
+  resolver: { rot: "Resolver", de: ["aceito", "em_acao", "monitorando"], para: "resolvido", nota: true },
+  descartar: { rot: "Descartar", de: ["novo", "em_revisao", "aceito"], para: "descartado", nota: true }
+};
+const IA_MOTIVOS = { nao_relevante: "Não relevante", substituido: "Substituído por outro insight" };
+const iaAberto = i => IA_ABERTOS.includes(i.estado);
+const IA_COMP_NOMES = { reincidencia: "Reincidência de falhas", parada: "Tempo parado", impacto_hospede: "Impacto em hóspedes", criticidade: "Criticidade", custo: "Custo informado", preventiva_atrasada: "Preventiva atrasada", medicoes: "Medições fora da faixa", garantia: "Garantia vencida", uh_dias: "UH-dias indisponíveis" };
+/* O resultado gravado de hoje para um ativo (seed.js guarda a composição em listas, para caber no navegador). */
+function iaGravado(aid) {
+  const g = DB.ia.hoje[aid]; if (!g) return null;
+  return { score: g[0], faixa: iaFaixa(g[0]), horas: g[2], impacto: g[3], comp: g[1].map(([k, peso, valor, pesoEf, pontos, medido]) => ({ k, nome: IA_COMP_NOMES[k], peso, valor, pesoEf, pontos, medido })) };
+}
+/* Aplica a ação de uma pessoa. Quem decide primeiro vira o responsável (simplificação do mock). */
+function iaAplicar(ins, acao, usuario_id, quando, { nota = null, motivo = null } = {}) {
+  const A = IA_ACOES[acao], de = ins.estado;
+  ins.estado = A.para; ins.responsavel_id = ins.responsavel_id || usuario_id;
+  if (acao === "resolver" || acao === "descartar") ins.encerrado_em = quando;
+  if (acao === "descartar") ins.motivo_descarte = motivo;
+  ins.historico.push({ t: quando, tipo: "acao", acao, de, para: A.para, usuario_id, nota: nota || null, motivo: motivo || null });
+}
+/* Quem lê: quem tem acesso a todos os hotéis do insight (hotel_ids <@ hoteis_leitura), como a RLS da app.insight. */
+const iaVisiveis = () => { const hs = scope().hoteis; return DB.insights.filter(i => i.hotel_ids.every(h => hs.includes(h))); };
+const iaEscopoTxt = i => i.alcance.tipo === "hotel" ? IDX.hotel[i.hotel_ids[0]].nome : `${i.hotel_ids.length} hotéis ${i.alcance.bandeira_id ? "da bandeira " + IDX.band[i.alcance.bandeira_id].nome : "do grupo"}`;
+const iaTitulo = i => i.tipo === "sistemico" ? i.evidencia.titulo : IDX.ativo[i.escopo.ativo_id].nome;
+const iaFaixaCls = f => ({ "Crítico": "b-red", "Alta atenção": "b-amber", "Atenção": "b-amber", "Observar": "b-blue" })[f] || "b-grey";
+const iaEstadoCls = e => ({ novo: "b-amber", em_revisao: "b-blue", aceito: "b-blue", em_acao: "b-blue", monitorando: "b-green", resolvido: "b-outline", descartado: "b-outline" })[e];
+/* "Substitui o insight X" e "Substituído pelo insight Y", calculados pelo vínculo (substituidoPor, no motor). Só cita o
+   insight que quem lê também enxerga. */
+function iaSubstituicao(i) {
+  const vis = new Set(iaVisiveis().map(x => x.id)), ant = i.anterior_id && IDX.ins[i.anterior_id];
+  const subst = ant && vis.has(ant.id) && (!ant.encerrado_em || t(ant.encerrado_em) > t(i.aberto_em)) ? ant.id : null;
+  const novo = DB.insights.filter(x => x.anterior_id === i.id && vis.has(x.id) && (!i.encerrado_em || t(x.aberto_em) < t(i.encerrado_em))).sort((x, y) => t(y.aberto_em) - t(x.aberto_em))[0];
+  return { substitui: subst, substituidoPor: novo ? novo.id : null };
+}
+function iaDecidir(i, acao, extra = {}) {
+  const now = new Date().toISOString(), de = i.estado;
+  iaAplicar(i, acao, UI.persona, now, extra);
+  DB.auditoria.unshift({ t: now, usuario: persona().nome, entidade: "Insight", registro: i.id, hotel_id: i.alcance.tipo === "hotel" ? i.hotel_ids[0] : null, hotel_ids: i.hotel_ids,
+    acao: `${IA_ACOES[acao].rot}: ${IA_ESTADOS[de]} para ${IA_ESTADOS[i.estado]}${extra.motivo ? ` (${IA_MOTIVOS[extra.motivo]})` : ""}${extra.nota ? `. Nota: ${extra.nota}` : ""}` });
+  UI.iaForm = null; save(); toast(`${i.id}: ${IA_ESTADOS[i.estado].toLowerCase()}`); render();
+}
+const audVisivel = (a, s) => (!a.hotel_id || s.hoteis.includes(a.hotel_id)) && (!a.hotel_ids || a.hotel_ids.every(h => s.hoteis.includes(h)));
 /* Efetividade v2: a mesma janela antes e depois da intervenção. Fala em variação observada, nunca em causa.
    Sem base de comparação prevalece sobre janela incompleta (10/10/2026): é definitivo no dia da intervenção. */
 const IA_EF = { reducao_observada: ["Redução observada", "b-green"], reducao_parcial: ["Redução parcial", "b-amber"], sem_mudanca_relevante: ["Sem mudança relevante", "b-grey"], aumento_observado: ["Aumento observado", "b-red"], sem_base_de_comparacao: ["Sem base de comparação", "b-grey"], janela_incompleta: ["Janela incompleta", "b-blue"] };
@@ -1381,8 +1448,8 @@ function efetividade(scopeChs) {
    Respostas de 10/10/2026: fabricante e modelo sem maiúsculas, acentos e espaços extras; o ativo baixado antes do início da
    janela (`desativado_em`) não conta, nem no modelo nem na base; sem outro modelo na categoria, a regra não dispara.
    O resultado é sempre "possível": só uma pessoa confirma. */
-function padraoSistemico(ativos, chs) {
-  const pol = polGrupo().inteligencia.sistemico, now = Date.now(), uni = xs => [...new Set(xs)];
+function padraoSistemico(ativos, chs, now = Date.now()) {
+  const pol = polGrupo().inteligencia.sistemico, uni = xs => [...new Set(xs)];
   const validos = chs.filter(c => c.status !== "Cancelado"), at = id => IDX.ativo[id];
   const falhaDe = c => (c.codigos && c.codigos.falha) || (c.ativo_id && at(c.ativo_id) ? at(c.ativo_id).categoria_id : null);
   const nome = f => (IDX.cat[f] || {}).nome || f;
@@ -1405,7 +1472,7 @@ function padraoSistemico(ativos, chs) {
       if (ativosBase <= 0) return; // sem outro modelo na categoria, não há com o que comparar
       const base = (c0.chamados - cs.length) / ativosBase;
       if (taxa < Math.max(mm.taxa_minima, mm.taxa_vezes_base * base)) return;
-      sinais.push({ regra: "Mesmo modelo com muitos chamados", n: cs.length, hoteis: hs, titulo: `${a0.fabricante} ${a0.modelo}`, quem: `Categoria: ${nome(a0.categoria_id)}`,
+      sinais.push({ regra: "Mesmo modelo com muitos chamados", k: "mesmo_modelo", chave: k, n: cs.length, ativos: dist, hoteis: hs, taxa, base, janela: mm.janela_dias, chamados: cs.map(c => c.id).sort(), categoria_id: a0.categoria_id, titulo: `${a0.fabricante} ${a0.modelo}`, quem: `Categoria: ${nome(a0.categoria_id)}`,
         evid: `${cs.length} chamados em ${dist} ativos do mesmo modelo, em ${hs.length} hotéis, nos últimos ${mm.janela_dias} dias: ${n2(taxa)} por ativo, contra ${n2(base)} nos outros modelos da mesma categoria.` });
     });
   }
@@ -1441,44 +1508,225 @@ function padraoSistemico(ativos, chs) {
   });
   return sinais.sort((a, b) => b.n - a.n);
 }
-function pageInteligencia() {
-  const pol = polGrupo().inteligencia, ats = scoped(DB.ativos), chs = scoped(DB.chamados);
-  const avaliados = ats.map(intelAtivo).sort((a, b) => b.score - a.score);
-  const ins = avaliados.filter(x => x.score >= pol.limite_atencao);
-  const ef = efetividade(chs), sis = padraoSistemico(ats, chs);
-  const hoje3 = new Date(); hoje3.setHours(3, 0, 0, 0);
-  const gauge = v => `<div class="score ${v >= 85 ? "hi" : v >= pol.limite_atencao ? "mid" : ""}"><b>${v}</b><span>de 100</span></div>`;
-  const semDado = x => x.comp.filter(c => c.valor === null && c.peso > 0), totalPeso = x => x.comp.reduce((s, c) => s + c.peso, 0);
-  const card = x => { const open = UI.f.intel.open === x.a.id, top = x.comp.filter(c => c.valor !== null && c.pontos > 0).sort((a, b) => b.pontos - a.pontos).slice(0, 3), sd = semDado(x);
-    return `<div class="panel insight" data-at="${x.a.id}"><div class="ins-h">${gauge(x.score)}<div style="flex:1;min-width:0"><div class="small muted">${esc(x.faixa)}: atenção por ativo, acima do limite de ${pol.limite_atencao}</div><a href="#" data-act="open-at" data-id="${x.a.id}" style="font-weight:600;font-size:16px;color:var(--head)">${esc(x.a.nome)}</a><div class="small muted">${esc(IDX.hotel[x.a.hotel_id].nome)}, ${esc(IDX.local[x.a.local_id].nome)}. ${esc(x.a.fabricante)}${x.a.modelo ? ", " + esc(x.a.modelo) : ""}.</div>
-      <div class="small" style="margin-top:6px">Pesou mais: ${top.map(c => esc(c.medido.charAt(0).toLowerCase() + c.medido.slice(1))).join("; ")}.</div></div></div>
-      <button class="btn sm why" data-act="intel-why" data-id="${x.a.id}" aria-expanded="${open}">Por que estou vendo isso?</button>
-      ${open ? `<div class="why-b"><table><thead><tr><th>Componente</th><th>Medido</th><th class="num">Valor</th><th class="num">Peso</th><th class="num">Peso usado</th><th class="num">Pontos</th></tr></thead><tbody>${x.comp.map(c => c.valor === null
-        ? `<tr><td>${esc(c.nome)}</td><td class="small muted">${esc(c.medido)}</td><td class="num">—</td><td class="num">${Math.round(c.peso * 100)}%</td><td class="num">—</td><td class="num">0,0</td></tr>`
-        : `<tr><td>${esc(c.nome)}</td><td class="small">${esc(c.medido)}</td><td class="num">${Math.round(c.valor * 100)}</td><td class="num">${Math.round(c.peso * 100)}%</td><td class="num">${fmt1(c.pesoEf * 100)}%</td><td class="num"><strong>${fmt1(c.pontos)}</strong></td></tr>`).join("")}<tr><td colspan="5"><strong>Atenção</strong></td><td class="num"><strong>${x.score}</strong></td></tr></tbody></table>
-        ${sd.length ? `<p class="small" style="margin:8px 0 0">Sem dado: ${sd.map(c => esc(c.nome.toLowerCase())).join(", ")}. ${sd.length === 1 ? "O peso dele" : "O peso deles"} (${Math.round(sd.reduce((s, c) => s + c.peso, 0) / totalPeso(x) * 100)}%) foi dividido entre os componentes que têm dado, na proporção dos pesos.</p>` : ""}
-        <p class="small muted" style="margin:8px 0 0">Política <span class="id" style="font-size:12px">inteligencia.atencao_ativo</span> ${esc(pol.versao)}, limite ${pol.limite_atencao}, fórmula atencao-${esc(pol.versao)}. Cálculo determinístico, gravado com a versão da política e da fórmula. Aponta onde olhar; a decisão de reparar ou substituir é da equipe.</p></div>` : ""}</div>`; };
-  return `<div class="ia-aviso" role="note"><strong>Prévia com dados fictícios.</strong> Os ativos, os chamados, os custos e as intervenções desta tela são inventados para a demonstração. As regras seguem o Intelligence 1.0; o módulo ainda está em desenvolvimento.</div>
+/* Lista de insights (proposta das telas do 1.0, decisões de 10/10/2026): o único item de menu do módulo. Lê os insights
+   gravados pelo job; a efetividade fica como seção abaixo da lista. */
+function pageInteligencia(params) {
+  if (params.ins) return iaPaginaInsight(params.ins);
+  if (params.ativo) return iaPaginaAtivo(params.ativo);
+  return iaListaDeInsights();
+}
+function iaListaDeInsights() {
+  const pol = polGrupo().inteligencia, f = UI.f.intel, vis = iaVisiveis(), abertos = vis.filter(iaAberto);
+  const ordemF = x => IA_FAIXAS.findIndex(y => y[1] === x.faixa);
+  let list = vis;
+  if (f.estado === "abertos") list = list.filter(iaAberto); else if (f.estado) list = list.filter(i => i.estado === f.estado);
+  if (f.tipo) list = list.filter(i => i.tipo === f.tipo);
+  if (f.escopo === "rede") list = list.filter(i => i.alcance.tipo === "rede"); else if (f.escopo) list = list.filter(i => i.alcance.tipo === "hotel" && i.hotel_ids[0] === f.escopo);
+  if (f.faixa) list = list.filter(i => i.faixa === f.faixa);
+  list = list.slice().sort((a, b) => (iaAberto(b) - iaAberto(a)) || (ordemF(b) - ordemF(a)) || (t(b.ultima_deteccao_em) - t(a.ultima_deteccao_em)));
+  const ef = efetividade(scoped(DB.chamados)), ia = DB.ia, multi = scope().hoteis.length > 1;
+  const ind = (lab, val, foot, cls) => `<div class="panel inst ${cls || ""}"><div class="lab">${lab}</div><div class="val">${val}</div><div class="foot">${foot}</div></div>`;
+  const altos = abertos.filter(i => ["Alta atenção", "Crítico"].includes(i.faixa)).length, sis = abertos.filter(i => i.tipo === "sistemico").length, semResp = abertos.filter(i => !i.responsavel_id).length;
+  const linha = i => {
+    const sub = iaSubstituicao(i);
+    return `<tr class="click" data-act="ia-ins" data-tipo="${i.tipo}" data-id="${i.id}"><td><span class="badge ${iaFaixaCls(i.faixa)}">${esc(i.faixa)}</span></td><td><span class="id">${i.id}</span></td>
+      <td><div class="small muted">${IA_TIPOS[i.tipo]}</div><a href="#/inteligencia?ins=${i.id}" style="font-weight:600;color:var(--head)">${esc(iaTitulo(i))}</a>${sub.substitui ? `<div class="small muted">Substitui o insight ${sub.substitui}</div>` : ""}${sub.substituidoPor ? `<div class="small muted">Substituído pelo insight ${sub.substituidoPor}</div>` : ""}</td>
+      <td class="small">${esc(iaEscopoTxt(i))}</td><td class="num">${i.valor === null ? "—" : `<strong>${i.valor}</strong>`}</td>
+      <td><span class="badge ${iaEstadoCls(i.estado)}">${IA_ESTADOS[i.estado]}</span>${i.estado === "descartado" ? `<div class="small muted">${IA_MOTIVOS[i.motivo_descarte]}</div>` : ""}</td>
+      <td class="small">${i.responsavel_id ? esc(nomeUser(i.responsavel_id)) : '<span class="muted">Sem responsável</span>'}</td><td class="small">${fmtD(i.ultima_deteccao_em)}</td></tr>`;
+  };
+  return `<div class="ia-aviso" role="note"><strong>Prévia com dados fictícios.</strong> Os ativos, os chamados, os custos, as intervenções e os insights desta tela são inventados para a demonstração. As regras seguem o Intelligence 1.0; o módulo ainda está em desenvolvimento.</div>
   <div class="readonly-note" style="margin-top:12px">${icon("intel")}<span><strong>Módulo opcional, contratado por este grupo.</strong> Transforma os dados de manutenção em decisão: quais ativos mais falham e custam, o que mudou depois da intervenção e onde agir primeiro. Todo resultado mostra de onde veio. Correlação nunca é apresentada como causa.</span></div>
+  <div class="grid g-4" style="margin:14px 0 6px">
+    ${ind("Insights abertos", abertos.length, "Ainda sem decisão final, no seu escopo.")}
+    ${ind("Em alta atenção ou crítico", altos, "Ativos com atenção de 70 ou mais.", altos ? "warn" : "")}
+    ${ind("Possíveis problemas sistêmicos", sis, "O mesmo problema em vários hotéis.")}
+    ${ind("Sem responsável", semResp, "Ninguém decidiu nada ainda.", semResp ? "warn" : "")}
+  </div>
+  <p class="small muted" id="ia-calc" style="margin:0 0 14px">Último cálculo do job diário: ${fmtD(ia.calculado_em)}, às ${pad(new Date(ia.calculado_em).getHours())}:00. Fórmula da atenção versão ${ia.versao_formula}, política <span class="id" style="font-size:12px">inteligencia.atencao_ativo</span> ${esc(ia.versao_politica)}, limite ${pol.limite_atencao}. O resultado gravado de cada dia não é apagado.</p>
+  <div class="filters">
+    <select data-f="intel.estado" aria-label="Estado"><option value="abertos" ${f.estado === "abertos" ? "selected" : ""}>Abertos</option><option value="" ${!f.estado ? "selected" : ""}>Todos os estados</option>${Object.entries(IA_ESTADOS).map(([k, v]) => `<option value="${k}" ${f.estado === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+    <select data-f="intel.tipo" aria-label="Tipo"><option value="">Todos os tipos</option>${Object.entries(IA_TIPOS).map(([k, v]) => `<option value="${k}" ${f.tipo === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+    ${multi ? `<select data-f="intel.escopo" aria-label="Escopo"><option value="">Todo o seu escopo</option><option value="rede" ${f.escopo === "rede" ? "selected" : ""}>Insights de rede</option>${hotelOptions(f.escopo)}</select>` : ""}
+    <select data-f="intel.faixa" aria-label="Faixa"><option value="">Todas as faixas</option>${["Crítico", "Alta atenção", "Atenção"].map(x => `<option ${f.faixa === x ? "selected" : ""}>${x}</option>`).join("")}</select>
+  </div>
+  <div class="panel" id="ia-lista"><div class="table-wrap"><table><thead><tr><th>Faixa</th><th>Insight</th><th>O que é</th><th>Escopo</th><th class="num">Score</th><th>Estado</th><th>Responsável</th><th>Última detecção</th></tr></thead>
+    <tbody>${list.map(linha).join("") || `<tr><td colspan="8" class="empty">${vis.length ? "Nenhum insight com esses filtros." : "Nenhum insight no seu escopo."}</td></tr>`}</tbody></table></div>
+    <p class="small muted" style="margin:0;padding:10px 14px">O insight sugere onde olhar; quem decide é uma pessoa. O possível problema sistêmico não tem score e entra na faixa Atenção. Você vê só o insight cujos hotéis você enxerga por inteiro.</p></div>
+  <div class="panel" style="margin-top:16px" id="intel-ef"><div class="panel-h"><h2>Efetividade das intervenções</h2><span class="hint">Chamados no mesmo ativo, ${pol.efetividade.janela_dias} dias antes e ${pol.efetividade.janela_dias} dias depois</span></div><div class="panel-b table-wrap">${iaTabelaEfetividade(ef)}</div></div>
+  <div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Próximas versões</h2><span class="hint">Só nesta apresentação; não faz parte do produto</span></div><div class="panel-b" style="padding-top:0"><ul class="small" style="padding-left:18px;margin:0">
+    <li><strong>1.5</strong>: impacto no hóspede, com feedback por CSV, API e webhook e classificação por IA. A IA só lê texto; nunca decide causa.</li>
+    <li><strong>2.0</strong>: custo, reparar ou substituir, fabricantes e fornecedores, visão de rede.</li>
+    <li><strong>3.0</strong>: agrupamento semântico, anomalias e previsão, com histórico suficiente.</li></ul></div></div>`;
+}
+/* Quem decide (packages/inteligencia, podeDecidirInsight): no insight de hotel, o Admin do grupo, o Gestor CSC e o
+   Gerente que cobrem o hotel; no de rede, só o Admin do grupo e o Gestor CSC que cobrem todos os hotéis (escopo de
+   grupo, ou da bandeira quando todos os hotéis são dela). O gerente nunca decide insight de rede. */
+const IA_PAPEIS_QUE_DECIDEM = ["Admin do grupo", "Gestora do CSC", "Gestor CSC da bandeira", "Gestora CSC da bandeira", "Gerente de hotel"];
+function iaPodeDecidir(i) {
+  const p = persona(), e = p.escopo;
+  if (!IA_PAPEIS_QUE_DECIDEM.includes(p.papel) || !iaVisiveis().includes(i)) return false;
+  if (i.alcance.tipo === "hotel") { const h = i.hotel_ids[0]; return e.tipo === "grupo" || (e.tipo === "bandeira" && IDX.hotel[h].bandeira_id === e.id) || (e.tipo === "hotel" && e.id === h); }
+  if (p.papel === "Gerente de hotel") return false;
+  return e.tipo === "grupo" || (e.tipo === "bandeira" && i.alcance.bandeira_id === e.id);
+}
+const iaQuemDecide = i => i.alcance.tipo === "hotel" ? `O Admin do grupo, o Gestor CSC e o Gerente que cobrem o ${IDX.hotel[i.hotel_ids[0]].nome}.`
+  : `Insight de rede: só o Admin do grupo e o Gestor CSC que cobrem todos os ${i.hotel_ids.length} hotéis${i.alcance.bandeira_id ? `, com escopo de grupo ou da bandeira ${IDX.band[i.alcance.bandeira_id].nome}` : ", com escopo de grupo"}. O gerente de hotel não decide insight de rede.`;
+/* Os chamados ligados ao insight: os do ativo, ou os do mesmo modelo nos hotéis do insight. Só os do escopo de quem lê. */
+function iaChamadosDoInsight(i) {
+  const chs = scoped(DB.chamados).filter(c => c.status !== "Cancelado" && c.ativo_id);
+  if (i.tipo === "atencao_ativo") return chs.filter(c => c.ativo_id === i.escopo.ativo_id);
+  const norm = s => (s || "").normalize("NFD").replace(/\p{M}/gu, "").trim().replace(/\s+/g, " ").toLowerCase();
+  const chave = a => a.categoria_id + "#" + norm(a.fabricante) + "|" + norm(a.modelo);
+  return chs.filter(c => i.hotel_ids.includes(c.hotel_id) && chave(IDX.ativo[c.ativo_id]) === i.escopo.chave);
+}
+/* Barras simples em SVG, com o resumo no aria-label; os números também ficam em texto, logo abaixo. */
+function iaBarras(vals, rotulos, resumo) {
+  const w = 600, h = 120, max = Math.max(1, ...vals), bw = w / vals.length;
+  return `<svg viewBox="0 0 ${w} ${h + 18}" role="img" aria-label="${esc(resumo)}" style="width:100%;height:auto;display:block">
+    ${vals.map((v, k) => `<rect x="${k * bw + 4}" y="${h - v / max * (h - 12)}" width="${bw - 8}" height="${v / max * (h - 12)}" rx="3" style="fill:var(--amber)"/><text x="${k * bw + bw / 2}" y="${h + 14}" text-anchor="middle" style="fill:var(--steel);font-size:11px">${rotulos[k]}</text>`).join("")}</svg>`;
+}
+function iaPaginaInsight(id) {
+  const i = IDX.ins[id];
+  const voltar = `<p style="margin:0 0 12px"><a href="#/inteligencia">← Insights</a></p>`;
+  if (!i || !iaVisiveis().includes(i)) return `${voltar}<div class="panel empty">Este insight não existe ou não está no seu escopo: só quem enxerga todos os hotéis de um insight consegue abri-lo.</div>`;
+  const pol = polGrupo().inteligencia, sub = iaSubstituicao(i), ant = sub.substitui && IDX.ins[sub.substitui], pode = iaPodeDecidir(i), form = UI.iaForm && UI.iaForm.id === i.id ? UI.iaForm : null;
+  const at = i.tipo === "atencao_ativo" ? IDX.ativo[i.escopo.ativo_id] : null, chs = iaChamadosDoInsight(i), now = Date.now();
+  // série: chamados por semana nas últimas 12 semanas
+  const sem = [...Array(12)].map((_, k) => { const fim = now - (11 - k) * 7 * D, ini = fim - 7 * D; return { ini, n: chs.filter(c => t(c.aberto_em) > ini && t(c.aberto_em) <= fim).length }; });
+  const rot = sem.map(x => { const d = new Date(x.ini + D); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; });
+  // efetividade: intervenções nos ativos do insight, encerradas depois da primeira decisão de aceitar ou agir
+  const dec = i.historico.find(h => h.tipo === "acao" && ["aceitar", "agir"].includes(h.acao));
+  const ef = dec ? efetividade(chs.filter(c => c.intervencao && c.encerrado_em && t(c.encerrado_em) > t(dec.t))) : [];
+  const acoes = Object.entries(IA_ACOES).filter(([, A]) => A.de.includes(i.estado));
+  const ev = i.evidencia, mm = pol.sistemico.mesmo_modelo;
+  const porQue = i.tipo === "sistemico"
+    ? `<p style="margin-top:0"><strong>${esc(ev.regra)}.</strong> ${esc(ev.evid)}</p>
+       <p class="small">A regra pede pelo menos ${mm.min_hoteis} hotéis, ${mm.min_chamados} chamados em ${mm.janela_dias} dias e ${mm.min_ativos} ativos do mesmo modelo, com uma taxa de pelo menos ${mm.taxa_vezes_base} vezes a dos outros modelos da mesma categoria, e nunca menos de ${fmt1(mm.taxa_minima)} chamado por ativo. ${esc(ev.quem)}.</p>
+       <p class="small muted" style="margin-bottom:0">É um sinal, e não uma conclusão: o mesmo problema em vários lugares pode apontar para o modelo, a área ou o fornecedor. Só uma pessoa confirma.</p>`
+    : `<p style="margin-top:0">Atenção <strong>${ev.valor}</strong> na última detecção (${esc(ev.faixa)}), acima do limite de ${ev.limite}. O que mais pesou:</p>
+       <ul class="small" style="padding-left:18px">${ev.top.map(([n, m]) => `<li><strong>${esc(n)}</strong>: ${esc(m)}</li>`).join("")}</ul>
+       <p class="small muted" style="margin-bottom:0">O score mostra o que pesou, e não a causa. A decisão de reparar ou substituir é da equipe.</p>`;
+  const resumoAtivo = at ? (() => { const g = iaGravado(at.id); return `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>O ativo</h2></div><div class="panel-b" style="padding-top:0"><dl class="kv">
+      <dt>Ativo</dt><dd><a href="#" data-act="open-at" data-id="${at.id}">${esc(at.nome)}</a> <span class="id">${at.id}</span></dd><dt>Hotel e local</dt><dd>${esc(IDX.hotel[at.hotel_id].nome)}, ${esc(IDX.local[at.local_id].nome)}</dd>
+      <dt>Categoria</dt><dd>${esc(IDX.cat[at.categoria_id].nome)}</dd><dt>Fabricante e modelo</dt><dd>${esc(at.fabricante)}${at.modelo ? ", " + esc(at.modelo) : ""}</dd><dt>Criticidade</dt><dd>${critBadge(at.criticidade)}</dd>
+      <dt>Atenção gravada hoje</dt><dd>${g ? `${g.score} (${esc(g.faixa)}). <a href="#/inteligencia?ativo=${at.id}" id="ia-ver-ativo">Ver a atenção do ativo</a>` : "—"}</dd><dt>Chamados em 90 dias</dt><dd>${chs.filter(c => t(c.aberto_em) > now - 90 * D).length}</dd></dl></div></div>`; })() : "";
+  const tabelaChamados = i.tipo === "sistemico" ? (() => { const ids = new Set(ev.chamado_ids), lista = chs.filter(c => ids.has(c.id)).sort((a, b) => b.aberto_em.localeCompare(a.aberto_em)); return `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Chamados que levaram ao insight</h2><span class="hint">Só os dos hotéis do seu escopo</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Chamado</th><th>O que aconteceu</th><th>Hotel</th><th>Ativo</th><th>Aberto em</th><th>Situação</th></tr></thead><tbody>
+      ${lista.map(c => `<tr class="click" data-act="open-ch" data-id="${c.id}"><td><span class="id">${c.id}</span></td><td>${esc(c.titulo)}</td><td class="small">${esc(IDX.hotel[c.hotel_id].nome)}</td><td class="small">${esc(IDX.ativo[c.ativo_id].nome)}<div class="muted">${esc(IDX.local[c.local_id].nome)}</div></td><td class="small">${fmtD(c.aberto_em)}</td><td>${statusBadge(c.status)}</td></tr>`).join("") || '<tr><td colspan="6" class="empty">Nenhum chamado no seu escopo.</td></tr>'}</tbody></table></div></div>`; })() : "";
+  const recalc = at && UI.iaRecalc === i.id ? (() => { const r = intelAtivo(at), g = iaGravado(at.id); return `<div class="readonly-note" style="margin-top:10px"><span><strong>Recálculo de agora, com a política atual (${esc(pol.versao)}): atenção ${r.score} (${esc(r.faixa)}).</strong> Não é gravado e não muda o insight. O resultado gravado hoje às ${pad(new Date(DB.ia.calculado_em).getHours())}:00 continua valendo: ${g ? g.score : "—"}.</span></div>`; })() : "";
+  const formHtml = form ? `<div class="field" style="margin-top:12px">${form.acao === "descartar" ? `<label for="ia-motivo">Motivo do descarte</label><select id="ia-motivo"><option value="nao_relevante">${IA_MOTIVOS.nao_relevante}</option><option value="substituido">${IA_MOTIVOS.substituido}</option></select>
+      <p class="small muted" style="margin:6px 0 10px">"Não relevante" silencia este problema por 30 dias, a menos que a faixa suba.</p>` : ""}
+      <label for="ia-nota">Nota (obrigatória)</label><textarea id="ia-nota" maxlength="500" placeholder="Por que ${form.acao === "descartar" ? "descartar" : "resolver"} este insight"></textarea></div>
+      <div class="row"><button class="btn primary" data-act="ia-confirmar" data-id="${i.id}">${IA_ACOES[form.acao].rot}</button><button class="btn" data-act="ia-cancelar">Cancelar</button></div>` : "";
+  const decisao = `<div class="panel" id="ia-decisao"><div class="panel-h"><h2>Decisão</h2></div><div class="panel-b" style="padding-top:0">
+      <p style="margin-top:0"><span class="badge ${iaEstadoCls(i.estado)}">${IA_ESTADOS[i.estado]}</span>${i.estado === "descartado" ? ` <span class="small muted">${IA_MOTIVOS[i.motivo_descarte]}</span>` : ""}</p>
+      <p class="small">Responsável: ${i.responsavel_id ? esc(nomeUser(i.responsavel_id)) : '<span class="muted">sem responsável</span>'}</p>
+      ${!iaAberto(i) ? `<p class="small muted">Encerrado em ${fmtD(i.encerrado_em)}. Um problema que volta abre um insight novo, ligado a este.</p>`
+        : pode ? `<div class="row" style="flex-wrap:wrap;gap:8px">${acoes.map(([k, A]) => `<button class="btn ${k === "descartar" ? "" : "primary"}" data-act="ia-acao" data-acao="${k}" data-id="${i.id}" ${form && form.acao === k ? 'aria-pressed="true"' : ""}>${A.rot}</button>`).join("")}</div>${formHtml}`
+        : `<p class="small"><strong>Você não decide este insight.</strong> Pode acompanhar a evidência e o histórico.</p>`}
+      <p class="small muted" style="margin-bottom:0"><strong>Quem decide:</strong> ${esc(iaQuemDecide(i))}</p></div></div>`;
+  const historico = `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Histórico</h2></div><div class="panel-b" style="padding-top:0"><ul class="timeline">
+      ${i.historico.slice().reverse().map(h => h.tipo === "job" ? `<li class="sys"><div class="when">${fmtDT(h.t)}</div>${esc(h.txt)}</li>`
+        : `<li><div class="when">${fmtDT(h.t)}</div><strong>${esc(nomeUser(h.usuario_id))}</strong>: ${IA_ACOES[h.acao].rot.toLowerCase()} (${IA_ESTADOS[h.de]} → ${IA_ESTADOS[h.para]})${h.motivo ? `. Motivo: ${IA_MOTIVOS[h.motivo]}` : ""}${h.nota ? `<div class="small muted">${esc(h.nota)}</div>` : ""}</li>`).join("")}</ul></div></div>`;
+  return `${voltar}<div class="ia-aviso" role="note"><strong>Prévia com dados fictícios.</strong> O insight, os chamados e as decisões são inventados para a demonstração.</div>
+  <div class="panel" style="margin-top:12px" id="ia-cabecalho"><div class="panel-b">
+    <div class="small muted">${IA_TIPOS[i.tipo]} <span class="id">${i.id}</span></div>
+    <h2 style="margin:4px 0 6px">${esc(iaTitulo(i))} <span class="badge ${iaFaixaCls(i.faixa)}">${esc(i.faixa)}</span>${i.valor !== null ? ` <span class="badge b-outline">Score ${i.valor}</span>` : ""}</h2>
+    <div class="small">${esc(iaEscopoTxt(i))}${i.alcance.tipo === "rede" ? `: ${i.hotel_ids.map(h => esc(IDX.hotel[h].nome)).join(", ")}` : ""}</div>
+    <div class="small muted">Aberto em ${fmtD(i.aberto_em)}. Última detecção em ${fmtD(i.ultima_deteccao_em)}.${i.encerrado_em ? ` Encerrado em ${fmtD(i.encerrado_em)}.` : ""}</div>
+    ${ant ? `<p class="small" style="margin:8px 0 0">Este insight substitui o <a href="#/inteligencia?ins=${ant.id}">${ant.id}</a>${iaAberto(ant) ? `, que continua ${IA_ESTADOS[ant.estado].toLowerCase()}` : ""}.</p>` : ""}
+    ${sub.substituidoPor ? `<p class="small" style="margin:8px 0 0">Substituído pelo insight <a href="#/inteligencia?ins=${sub.substituidoPor}">${sub.substituidoPor}</a>, que inclui mais hotéis.</p>` : ""}
+  </div></div>
+  <div class="grid g-3-1" style="align-items:start;margin-top:16px">
+    <div>
+      <div class="panel" id="ia-porque"><div class="panel-h"><h2>Por que estou vendo isso?</h2></div><div class="panel-b" style="padding-top:0">${porQue}
+        ${at ? `<div class="row" style="margin-top:12px"><button class="btn sm" data-act="ia-recalc" data-id="${i.id}" aria-expanded="${UI.iaRecalc === i.id}">${UI.iaRecalc === i.id ? "Esconder o recálculo" : "Recalcular com a política atual"}</button></div>${recalc}` : ""}</div></div>
+      <div class="panel" style="margin-top:16px" id="ia-serie"><div class="panel-h"><h2>Chamados por semana</h2><span class="hint">Últimas 12 semanas${i.tipo === "sistemico" ? ", do mesmo modelo nos hotéis do insight que você enxerga" : ", neste ativo"}</span></div><div class="panel-b">
+        ${iaBarras(sem.map(x => x.n), rot, `Chamados por semana nas últimas 12 semanas: ${sem.map(x => x.n).join(", ")}`)}
+        <p class="small muted" style="margin:8px 0 0">Em números, semana a semana: ${sem.map((x, k) => `${rot[k]}: ${x.n}`).join("; ")}.</p></div></div>
+      ${tabelaChamados}${resumoAtivo}
+      ${ef.length ? `<div class="panel" style="margin-top:16px" id="ia-ef-insight"><div class="panel-h"><h2>Efetividade da intervenção</h2><span class="hint">Intervenção registrada depois da decisão de ${fmtD(dec.t)}</span></div><div class="panel-b table-wrap">${iaTabelaEfetividade(ef)}</div></div>` : ""}
+    </div>
+    <div>${decisao}${historico}</div>
+  </div>`;
+}
+/* Atenção nos últimos 90 dias: uma linha por dia gravado, sobre as faixas e a linha do limite do insight. */
+function iaGraficoAtencao(serie, limite, rotulo) {
+  const w = 600, h = 160, n = serie.length, x = k => k * w / (n - 1), y = v => h - v / 100 * h;
+  const faixas = IA_FAIXAS.map(([de, nome], k) => [de, (IA_FAIXAS[k + 1] || [100])[0], nome]);
+  const cor = { "Normal": "transparent", "Observar": "var(--tint-2)", "Atenção": "rgba(240,165,0,.10)", "Alta atenção": "rgba(240,165,0,.18)", "Crítico": "rgba(255,90,95,.16)" };
+  const pts = serie.map((v, k) => v === null ? null : `${x(k).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean).join(" ");
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="${esc(rotulo)}" style="width:100%;height:160px;display:block">
+    ${faixas.map(([de, ate, nome]) => `<rect x="0" y="${y(ate)}" width="${w}" height="${y(de) - y(ate)}" style="fill:${cor[nome]}"/>`).join("")}
+    <line x1="0" x2="${w}" y1="${y(limite)}" y2="${y(limite)}" style="stroke:var(--amber)" stroke-width="1.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>
+    <polyline points="${pts}" fill="none" style="stroke:var(--head)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+/* Detalhe do ativo: a vista do score, aberta pela página do insight ou pela ficha do ativo. Não decide nada. */
+function iaPaginaAtivo(id) {
+  const a = IDX.ativo[id], voltar = `<p style="margin:0 0 12px"><a href="#/inteligencia">← Insights</a></p>`;
+  if (!a || !scoped([a]).length) return `${voltar}<div class="panel empty">Este ativo não existe ou não está no seu escopo.</div>`;
+  const pol = polGrupo().inteligencia, ia = DB.ia, g = iaGravado(a.id), serie = ia.serie[a.id] || [], lim = pol.limite_atencao;
+  if (!g) return `${voltar}<div class="panel empty">Ainda não há resultado gravado para ${esc(a.nome)}: o job diário calcula o ativo novo na próxima execução.</div>`;
+  const dia = k => { const d = new Date(t(ia.inicio) + k * D); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; };
+  const vals = serie.map((v, k) => [v, k]).filter(([v]) => v !== null), min = vals.reduce((m, p) => p[0] < m[0] ? p : m, vals[0]), max = vals.reduce((m, p) => p[0] > m[0] ? p : m, vals[0]);
+  const acima = vals.filter(([v]) => v >= lim).length;
+  const resumo = `Atenção gravada hoje ${g.score}; mínima de ${min[0]} em ${dia(min[1])}; máxima de ${max[0]} em ${dia(max[1])}; ${acima} de ${vals.length} dias no limite de ${lim} ou acima.`;
+  const comp = g.comp.filter(c => c.peso > 0), uh = g.comp.filter(c => c.peso === 0 && c.valor === null), sd = comp.filter(c => c.valor === null);
+  const top = comp.filter(c => c.valor !== null && c.pontos > 0).sort((x, y) => y.pontos - x.pontos).slice(0, 3);
+  const comp90 = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado" && t(c.aberto_em) > Date.now() - 90 * D);
+  const ins = iaVisiveis().filter(i => i.escopo.ativo_id === a.id).sort((x, y) => t(y.aberto_em) - t(x.aberto_em));
+  const ef = efetividade(scoped(DB.chamados).filter(c => c.ativo_id === a.id));
+  const ind = (lab, val, foot, cls) => `<div class="panel inst ${cls || ""}"><div class="lab">${lab}</div><div class="val">${val}</div><div class="foot">${foot}</div></div>`;
+  const horas = g.horas == null ? "—" : fmt1(g.horas), imp = g.impacto == null ? "—" : g.impacto + "%";
+  return `${voltar}<div class="ia-aviso" role="note"><strong>Prévia com dados fictícios.</strong> O ativo, os chamados e os resultados gravados são inventados para a demonstração.</div>
+  <div class="panel" style="margin-top:12px" id="ia-ativo-cab"><div class="panel-b">
+    <div class="small muted">Atenção ao ativo <span class="id">${a.id}</span></div>
+    <h2 style="margin:4px 0 6px">${esc(a.nome)} <span class="badge ${iaFaixaCls(g.faixa)}">${esc(g.faixa)}</span></h2>
+    <div class="small">${esc(IDX.hotel[a.hotel_id].nome)}, ${esc(IDX.local[a.local_id].nome)}. ${esc(IDX.cat[a.categoria_id].nome)}: ${esc(a.fabricante)}${a.modelo ? ", " + esc(a.modelo) : ""}.</div>
+    <p class="small" style="margin:8px 0 0"><a href="#" data-act="open-at" data-id="${a.id}">Abrir a ficha do ativo</a></p></div></div>
   <div class="grid g-4" style="margin:14px 0 16px">
-    <div class="panel inst"><div class="lab">Insights abertos</div><div class="val">${ins.length + sis.length}</div><div class="foot">Ativos acima do limite de atenção, mais possíveis padrões sistêmicos.</div></div>
-    <div class="panel inst"><div class="lab">Ativos avaliados</div><div class="val">${avaliados.length}</div><div class="foot">Todos os ativos do seu escopo.</div></div>
-    <div class="panel inst"><div class="lab">Janela de leitura</div><div class="val">${pol.janela_dias}<small>dias</small></div><div class="foot">Cabe a efetividade de 90 dias antes e 90 depois.</div></div>
-    <div class="panel inst"><div class="lab">Último cálculo</div><div class="val">${pad(hoje3.getHours())}:00</div><div class="foot">Job diário de ${fmtD(hoje3.toISOString())}. O resultado não é apagado.</div></div>
+    ${ind("Atenção", `${g.score}<small>de 100</small>`, `${esc(g.faixa)}. O insight abre a partir de ${lim}.`, g.score >= lim ? "warn" : "")}
+    ${ind("Criticidade", `${a.criticidade}<small>de 5</small>`, esc(critNome(a.criticidade)) + ".")}
+    ${ind("Horas paradas", `${horas}<small>h</small>`, "Nos últimos 90 dias.")}
+    ${ind("Impacto em hóspedes", imp, `Dos ${comp90.length} chamados dos últimos 90 dias.`)}
   </div>
   <div class="grid g-3-1" style="align-items:start">
-    <div><h3 style="margin:0 0 10px">Atenção por ativo</h3><div class="insights">${ins.slice(0, 6).map(card).join("") || '<div class="panel empty">Nenhum ativo acima do limite no seu escopo.</div>'}</div></div>
     <div>
-      <div class="panel" id="intel-sis"><div class="panel-h"><h2>Padrão sistêmico</h2></div><div class="panel-b" style="padding-top:0">${sis.length ? sis.slice(0, 3).map(g => `<div class="cap" style="display:block"><div class="small muted">${esc(g.regra)}</div><strong>${esc(g.titulo)}</strong> <span class="badge b-amber">Possível</span><div class="small muted">${esc(g.quem)}.</div><div class="small" style="margin-top:6px">${esc(g.evid)}</div></div>`).join("") : '<div class="empty">Nenhum padrão entre hotéis no seu escopo.</div>'}<p class="small muted">O mesmo problema em vários lugares pode apontar para o modelo, a área ou o fornecedor, e não para a equipe de um hotel. É sempre um possível problema: só uma pessoa confirma.</p></div></div>
-      <div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Próximas versões</h2></div><div class="panel-b" style="padding-top:0"><ul class="small" style="padding-left:18px;margin:0">
-        <li><strong>1.5</strong>: impacto no hóspede, com feedback por CSV, API e webhook e classificação por IA. A IA só lê texto; nunca decide causa.</li>
-        <li><strong>2.0</strong>: custo, reparar ou substituir, fabricantes e fornecedores, visão de rede.</li>
-        <li><strong>3.0</strong>: agrupamento semântico, anomalias e previsão, com histórico suficiente.</li></ul></div></div>
+      <div class="panel" id="ia-ativo-porque"><div class="panel-h"><h2>Por que estou vendo isso?</h2></div><div class="panel-b" style="padding-top:0">
+        ${top.length ? `<ul class="small" style="padding-left:18px;margin-top:0">${top.map(c => `<li><strong>${esc(c.nome)}</strong>: ${esc(c.medido)}</li>`).join("")}</ul>` : '<p class="small">Nenhum fator pesou neste score.</p>'}
+        <p class="small muted" style="margin-bottom:0">O score mostra o que pesou, e não a causa. A decisão de reparar ou substituir é da equipe, na página do insight.</p></div></div>
+      <div class="panel" style="margin-top:16px" id="ia-grafico"><div class="panel-h"><h2>Atenção nos últimos 90 dias</h2><span class="hint">Um valor por dia gravado, sobre as faixas; a linha tracejada é o limite do insight (${lim})</span></div><div class="panel-b">
+        ${iaGraficoAtencao(serie, lim, resumo)}
+        <div class="row small muted" style="justify-content:space-between;margin-top:4px"><span>${dia(0)}</span><span>${dia(serie.length - 1)}</span></div>
+        <p class="small" style="margin:8px 0 0">${esc(resumo)}</p>
+        <details class="small" style="margin-top:6px"><summary>Ver os ${serie.length} valores, dia a dia</summary><p class="muted" style="margin:6px 0 0">${serie.map((v, k) => `${dia(k)}: ${v === null ? "—" : v}`).join("; ")}.</p></details></div></div>
+      <div class="panel" style="margin-top:16px" id="ia-composicao"><div class="panel-h"><h2>Como o score foi composto</h2></div><div class="panel-b table-wrap" style="padding-top:0">
+        <table><thead><tr><th>Componente</th><th>Medido</th><th class="num">Valor</th><th class="num">Peso</th><th class="num">Peso usado</th><th class="num">Pontos</th></tr></thead><tbody>
+        ${comp.map(c => c.valor === null
+          ? `<tr><td>${esc(c.nome)}</td><td class="small muted">${esc(c.medido)}</td><td class="num">—</td><td class="num">${Math.round(c.peso * 100)}%</td><td class="num">—</td><td class="num">0,0</td></tr>`
+          : `<tr><td>${esc(c.nome)}</td><td class="small">${esc(c.medido)}</td><td class="num">${Math.round(c.valor * 100)}</td><td class="num">${Math.round(c.peso * 100)}%</td><td class="num">${fmt1(c.pesoEf * 100)}%</td><td class="num"><strong>${fmt1(c.pontos)}</strong></td></tr>`).join("")}
+        <tr><td colspan="5"><strong>Atenção</strong></td><td class="num"><strong>${g.score}</strong></td></tr></tbody></table>
+        ${sd.length ? `<p class="small" style="margin:8px 0 0">Sem dado: ${sd.map(c => esc(c.nome.toLowerCase())).join(", ")}. ${sd.length === 1 ? "O peso dele" : "O peso deles"} (${Math.round(sd.reduce((s, c) => s + c.peso, 0) / comp.reduce((s, c) => s + c.peso, 0) * 100)}%) foi dividido entre os componentes que têm dado, na proporção dos pesos.</p>` : ""}
+        ${uh.length ? `<p class="small muted" style="margin:6px 0 0" id="ia-uh">Ainda sem dado: ${uh.map(c => `${c.k === "uh_dias" ? "UH-dias" : esc(c.nome)} (peso 0)`).join(", ")}.</p>` : ""}</div></div>
+      <div class="panel" style="margin-top:16px" id="ia-ativo-ef"><div class="panel-h"><h2>Intervenções neste ativo</h2><span class="hint">Chamados no mesmo ativo, ${pol.efetividade.janela_dias} dias antes e ${pol.efetividade.janela_dias} dias depois</span></div><div class="panel-b table-wrap">${iaTabelaEfetividade(ef, "Nenhuma intervenção marcada neste ativo.")}</div></div>
     </div>
-  </div>
-  <div class="panel" style="margin-top:16px" id="intel-ef"><div class="panel-h"><h2>Efetividade das intervenções</h2><span class="hint">Chamados no mesmo ativo, ${polGrupo().inteligencia.efetividade.janela_dias} dias antes e ${polGrupo().inteligencia.efetividade.janela_dias} dias depois</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Intervenção</th><th>Ativo</th><th>Quando</th><th class="num">Chamados antes</th><th class="num">Chamados depois</th><th class="num">Horas paradas</th><th>Variação observada</th></tr></thead><tbody>
-    ${ef.map(e => `<tr class="click" data-act="open-ch" data-id="${e.c.id}"><td>${esc(e.c.titulo)}<div class="small muted">${esc(nomeExec(e.c.executado_por))}${e.c.custo != null ? ", " + brl(e.c.custo) : ""}</div></td><td class="small">${esc(IDX.ativo[e.c.ativo_id].nome)}<div class="muted">${esc(IDX.hotel[e.c.hotel_id].nome)}</div></td><td class="small">${fmtD(e.c.encerrado_em)}</td><td class="num">${e.ch.antes}</td><td class="num">${e.ch.depois}${e.completa ? "" : '<div class="small muted">janela em curso</div>'}</td><td class="num small">${fmt1(e.hr.antes)} → ${fmt1(e.hr.depois)}</td><td><span class="badge ${e.res[1]}">${e.res[0]}</span><div class="small muted" style="max-width:34ch">${esc(e.expl)}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Nenhuma intervenção marcada no seu escopo.</td></tr>`}
-  </tbody></table><p class="small muted" style="margin:10px 0 0">É a variação observada nos chamados depois da intervenção. Ela não prova que a intervenção foi a causa.</p></div></div>`;
+    <div>
+      <div class="panel" id="ia-gravado"><div class="panel-h"><h2>Como este resultado foi gravado</h2></div><div class="panel-b" style="padding-top:0"><dl class="kv">
+        <dt>Calculado em</dt><dd>${fmtD(ia.calculado_em)}, às ${pad(new Date(ia.calculado_em).getHours())}:00</dd>
+        <dt>Cálculo</dt><dd>Original, do job diário</dd>
+        <dt>Fórmula</dt><dd>Atenção ao ativo, versão ${ia.versao_formula}</dd>
+        <dt>Política</dt><dd><span class="id" style="font-size:12px">inteligencia.atencao_ativo</span> ${esc(ia.versao_politica)}, limite ${lim}</dd></dl>
+        <p class="small muted" style="margin-bottom:0">O resultado gravado de cada dia não muda. O recálculo com a política atual fica na página do insight, sob demanda.</p></div></div>
+      <div class="panel" style="margin-top:16px" id="ia-ativo-insights"><div class="panel-h"><h2>Insights deste ativo</h2></div><div class="panel-b" style="padding-top:0">
+        ${ins.map(i => `<p style="margin:0 0 8px"><a href="#/inteligencia?ins=${i.id}">${i.id}</a> <span class="badge ${iaEstadoCls(i.estado)}">${IA_ESTADOS[i.estado]}</span><br><span class="small muted">Aberto em ${fmtD(i.aberto_em)}; última detecção em ${fmtD(i.ultima_deteccao_em)}.</span></p>`).join("") || '<p class="small muted" style="margin:0">Nenhum insight deste ativo no seu escopo.</p>'}</div></div>
+    </div>
+  </div>`;
+}
+/* A tabela de efetividade, usada na lista, na página do ativo e na página do insight. */
+function iaTabelaEfetividade(ef, vazio = "Nenhuma intervenção marcada no seu escopo.") {
+  return `<table><thead><tr><th>Intervenção</th><th>Ativo</th><th>Quando</th><th class="num">Chamados antes</th><th class="num">Chamados depois</th><th class="num">Horas paradas</th><th>Variação observada</th></tr></thead><tbody>
+    ${ef.map(e => `<tr class="click" data-act="open-ch" data-id="${e.c.id}"><td>${esc(e.c.titulo)}<div class="small muted">${esc(nomeExec(e.c.executado_por))}${e.c.custo != null ? ", " + brl(e.c.custo) : ""}</div></td><td class="small">${esc(IDX.ativo[e.c.ativo_id].nome)}<div class="muted">${esc(IDX.hotel[e.c.hotel_id].nome)}</div></td><td class="small">${fmtD(e.c.encerrado_em)}</td><td class="num">${e.ch.antes}</td><td class="num">${e.ch.depois}${e.completa ? "" : '<div class="small muted">janela em curso</div>'}</td><td class="num small">${fmt1(e.hr.antes)} → ${fmt1(e.hr.depois)}</td><td><span class="badge ${e.res[1]}">${e.res[0]}</span><div class="small muted" style="max-width:34ch">${esc(e.expl)}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">${vazio}</td></tr>`}
+  </tbody></table><p class="small muted" style="margin:10px 0 0">É a variação observada nos chamados depois da intervenção. Ela não prova que a intervenção foi a causa.</p>`;
 }
 
 /* ---------- Roadmap ---------- */
@@ -1513,10 +1761,10 @@ function openDrawer(id, page) {
 }
 function closeDrawer(updateHash = true) {
   document.querySelectorAll(".drawer, .drawer-bg").forEach(e => e.remove());
-  if (updateHash) { const { page } = route(); history.replaceState(null, "", "#/" + page); }
+  if (updateHash) { const { page, params } = route(); delete params.id; const qs = new URLSearchParams(params).toString(); history.replaceState(null, "", "#/" + page + (qs ? "?" + qs : "")); }
 }
 function refreshDrawer(id) { const { page } = route(); render(); if (!route().params.id) openDrawer(id, page); }
-function showItem(id) { const { page } = route(); go(page, { id }); }
+function showItem(id) { const { page, params } = route(); go(page, { ...params, id }); }
 
 /* ---------- Eventos ---------- */
 document.addEventListener("click", e => {
@@ -1559,7 +1807,16 @@ document.addEventListener("click", e => {
     case "csv-au": { const l = auditoriaFiltrada(); downloadCSV("auditoria.csv", ["Quando", "Quem", "Registro", "Hotel", "O que mudou"], l.map(a => [fmtDT(a.t), a.usuario, a.entidade + " " + a.registro, a.hotel_id ? IDX.hotel[a.hotel_id].nome : "Grupo", a.acao])); break; }
     case "csv-ind": { const chs = scoped(DB.chamados), oss = scoped(DB.os), now = Date.now(); downloadCSV("indicadores-por-hotel.csv", ["Hotel", "Bandeira", "Modelo", "Backlog", "SLA (%)", "MTTR (h)", "Preventiva em dia (%)", "UH-dias perdidos", "Custo informado"], scope().hoteis.map(hid => { const h = IDX.hotel[hid], x = indicadoresDe(chs.filter(c => c.hotel_id === hid), oss.filter(o => o.hotel_id === hid), now - 30 * D, now); return [h.nome, IDX.band[h.bandeira_id].nome, h.modelo, x.backlog, x.sla == null ? "" : x.sla.toFixed(1).replace(".", ","), x.mttr == null ? "" : x.mttr.toFixed(1).replace(".", ","), x.pv == null ? "" : x.pv.toFixed(1).replace(".", ","), x.uhd.toFixed(1).replace(".", ","), x.custo]; })); break; }
     case "os-print": imprimirOS(IDX.os[id]); break;
-    case "intel-why": UI.f.intel.open = UI.f.intel.open === id ? null : id; render(); { const el2 = document.querySelector(`.insight[data-at="${id}"]`); if (el2) el2.scrollIntoView({ block: "nearest" }); } break;
+    case "ia-ins": if (!e.target.closest("a")) go("inteligencia", { ins: id }); break;
+    case "ia-recalc": UI.iaRecalc = UI.iaRecalc === id ? null : id; render(); break;
+    case "ia-cancelar": UI.iaForm = null; render(); break;
+    case "ia-acao": { const i = IDX.ins[id], acao = el.dataset.acao;
+      if (!iaPodeDecidir(i) || !IA_ACOES[acao].de.includes(i.estado)) { toast("Esta ação não vale para você ou para o estado atual"); break; }
+      if (IA_ACOES[acao].nota) { UI.iaForm = { id, acao }; render(); { const n = $("#ia-nota"); if (n) n.focus(); } break; }
+      iaDecidir(i, acao); break; }
+    case "ia-confirmar": { const i = IDX.ins[id], nota = ($("#ia-nota").value || "").trim(), motivo = $("#ia-motivo") ? $("#ia-motivo").value : null;
+      if (!nota) { $("#ia-nota").focus(); toast("A nota é obrigatória"); break; }
+      iaDecidir(i, UI.iaForm.acao, { nota: nota.slice(0, 500), motivo }); break; }
     case "os-fotoit": { const o = IDX.os[id]; o.checklist[+el.dataset.i].ok = true; o.inicio = o.inicio || new Date().toISOString(); save(); toast("Foto anexada ao item"); refreshDrawer(id); break; }
     case "ph-fotoit": phoneAction(() => { IDX.os[id].checklist[+el.dataset.i].ok = true; }); break;
     case "imp-load": UI.imp = { preview: IMP_EXEMPLO() }; render(); break;

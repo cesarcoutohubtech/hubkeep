@@ -647,7 +647,130 @@ function buildSeed() {
   auditoria.push({ t: minAtras(60 * 98), usuario: "Marina Costa", entidade: "Política", registro: "po1", hotel_id: null, acao: "Calendário de SLA: pintura e piscina passam a contar em horário comercial" });
   auditoria.sort((a, b) => b.t.localeCompare(a.t));
 
+  // ---------- Caso de demonstração do Intelligence no Hotel Curitiba Batel (dados fictícios) ----------
+  // Fica no fim e sem sorteio, para não mudar o resto do seed. O Elevador social 2 (o do chamado crítico de hoje) parou
+  // várias vezes com hóspedes: a atenção passa do limite há cerca de 30 dias, a gerente decide, e a troca do operador de
+  // porta entra como intervenção depois da decisão. A página do insight mostra a efetividade dela.
+  {
+    const es2 = atv("h1", "Elevador social 2"), forn = fornDe("c1"), tec = tecsDo("h1")[0], slaH = slaEfetivo("h1", "Crítica");
+    let livre = Math.min(...chamados.map(c => +c.id.split("-")[1])), osLivre = Math.max(...os.map(o => +o.id.split("-")[1]));
+    chamados.filter(c => c.ativo_id === es2.id && c.status !== "Cancelado").forEach(c => { c.impacto_hospede = true; });
+    [[82, false, 1900, 5], [57, false, 2100, 6], [31, false, 2400, 6], [13, true, 9600, 8]].forEach(([age, intv, custo, parada]) => {
+      const aberto = now.getTime() - age * D - 2 * H, enc = aberto + 4 * H, sol = intv ? "Gerência" : "Recepção";
+      const titulo = intv ? "Troca do operador de porta" : "Elevador parado entre andares";
+      const c = { id: "CH-" + (--livre), hotel_id: "h1", local_id: es2.local_id, ativo_id: es2.id, categoria_id: "c1", titulo,
+        descricao: intv ? "Troca do operador de porta pelo fornecedor, depois das paradas repetidas." : "Elevador parou entre andares com hóspedes.", prioridade: "Crítica", status: "Encerrado",
+        aberto_em: iso(aberto), prazo_sla: iso(prazoSla("c1", aberto, slaH)), sla_h: slaH, atendido_em: iso(aberto + 0.4 * H), encerrado_em: iso(enc), tecnico_id: tec.id, solicitante: sol, fotos: 1,
+        eventos: [{ t: iso(aberto), tipo: "abertura", txt: "Chamado aberto por " + sol }, { t: iso(aberto + 0.1 * H), tipo: "sistema", txt: `Prazo de SLA definido: ${slaH} h (prioridade Crítica)` }, { t: iso(aberto + 0.4 * H), tipo: "atribuicao", txt: "Atribuído a " + tec.nome }, { t: iso(enc), tipo: "status", txt: "Encerrado com aceite do solicitante" }],
+        origem: origemDe(sol), impacto_hospede: !intv, executado_por: { tipo: "fornecedor", fornecedor_id: forn.id }, custo,
+        codigos: { falha: "Parada entre andares", causa: "Desgaste de componente", solucao: intv ? "Troca do operador de porta" : "Ajuste do operador de porta" }, aceite: { t: iso(enc), por: sol, assinatura: true } };
+      if (intv) c.intervencao = true;
+      chamados.push(c);
+      ativo_parada.push({ id: "PA-" + (ativo_parada.length + 1), ativo_id: es2.id, chamado_id: c.id, inicio: c.aberto_em, fim: iso(aberto + parada * H), motivo: titulo });
+      os.push({ id: "OS-" + (++osLivre), origem: "corretiva", chamado_id: c.id, plano_id: null, hotel_id: "h1", local_id: c.local_id, ativo_id: es2.id, titulo, responsavel_id: tec.id, status: "Concluída", programada_para: c.atendido_em, inicio: c.atendido_em, fim: c.encerrado_em, horas: 3.6, checklist: [], materiais: "", executado_por: c.executado_por });
+    });
+    chamados.sort((a, b) => b.aberto_em.localeCompare(a.aberto_em));
+  }
+
   integracao.fichas = fichas;
-  return { versao: 9, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
+  return { versao: 10, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
     fornecedores, codigos, responsabilidade, pacotes, aberturas };
+}
+
+/* ---------- HubKeep Intelligence: o que o job diário gravou (dados fictícios) ----------
+   Aprovado por Kaio em 10/10/2026: as telas leem os insights e os resultados diários gravados, no lugar do cálculo na
+   hora. Roda depois do buildSeed (pelo reindex do app.js), com as fórmulas do Intelligence do app.js:
+   - resultado diário: a atenção de cada ativo às 03:00 de cada um dos últimos 90 dias, com a versão da fórmula e a da
+     política. O dia de hoje guarda também a composição; os outros dias, só o valor;
+   - insights: o job aplica, dia a dia, a regra de detecção do motor (decidirDeteccao, em packages/inteligencia). O mesmo
+     conjunto de hotéis atualiza; o conjunto contido num aberto não faz nada; hotel a mais abre um insight novo, ligado ao
+     aberto mais recente; sem aberto, abre ligado ao último encerrado, salvo o descarte "não relevante" de menos de 30
+     dias sem subida de faixa. O job nunca muda o estado;
+   - as decisões das pessoas são o roteiro da demonstração (roteiroDoInsight), aplicadas na data de cada uma. */
+function seedInteligencia() {
+  const pol = polGrupo().inteligencia, ix = iaIndice(), iso = x => new Date(x).toISOString();
+  const hoje = new Date(); hoje.setHours(3, 0, 0, 0);
+  const base = hoje.getTime(), DIAS = 90, ordem = f => IA_FAIXAS.findIndex(x => x[1] === f);
+  const serie = {}, composicao = {}, insights = [], pendentes = [];
+  let seq = 100;
+  DB.ativos.forEach(a => { serie[a.id] = []; });
+  const mesmo = (x, y) => x.length === y.length && x.every(h => y.includes(h));
+  const alcanceDe = hs => {
+    if (hs.length === 1) return { tipo: "hotel", hotel_id: hs[0], bandeira_id: IDX.hotel[hs[0]].bandeira_id };
+    const bs = [...new Set(hs.map(h => IDX.hotel[h].bandeira_id))];
+    return { tipo: "rede", bandeira_id: bs.length === 1 ? bs[0] : null };
+  };
+  const planejar = (ins, em, acao, usuario_id, extra = {}) => pendentes.push({ ins, em, acao, usuario_id, ...extra });
+  const detectar = (d, now) => {
+    const daFamilia = insights.filter(i => i.familia === d.familia);
+    const abertos = daFamilia.filter(iaAberto).sort((x, y) => t(y.aberto_em) - t(x.aberto_em));
+    const igual = abertos.find(i => mesmo(i.hotel_ids, d.hotel_ids));
+    if (igual) {
+      if (ordem(d.faixa) > ordem(igual.faixa)) igual.historico.push({ t: iso(now), tipo: "job", txt: `Faixa subiu para ${d.faixa}` });
+      Object.assign(igual, { ultima_deteccao_em: iso(now), faixa: d.faixa, valor: d.valor, evidencia: d.evidencia });
+      return;
+    }
+    if (abertos.some(i => d.hotel_ids.every(h => i.hotel_ids.includes(h)))) return;
+    let anterior = abertos[0] || null;
+    if (!anterior) {
+      const enc = daFamilia.filter(i => i.encerrado_em).sort((x, y) => t(y.encerrado_em) - t(x.encerrado_em))[0];
+      if (enc && enc.estado === "descartado" && enc.motivo_descarte === "nao_relevante" && now - t(enc.encerrado_em) < 30 * D && ordem(d.faixa) <= ordem(enc.faixa)) return;
+      anterior = enc || null;
+    }
+    const ins = { id: "INS-" + String(++seq).padStart(4, "0"), ...d, aberto_em: iso(now), ultima_deteccao_em: iso(now), encerrado_em: null, estado: "novo", responsavel_id: null,
+      anterior_id: anterior ? anterior.id : null, motivo_descarte: null,
+      historico: [{ t: iso(now), tipo: "job", txt: anterior && iaAberto(anterior) ? `Aberto pelo job diário, com hotel a mais que o ${anterior.id}` : anterior ? `Aberto pelo job diário; o ${anterior.id} já estava encerrado` : "Aberto pelo job diário" }] };
+    insights.push(ins);
+    roteiroDoInsight(ins, anterior, now, base, planejar);
+  };
+  const aplicarAte = now => {
+    pendentes.sort((x, y) => x.em - y.em);
+    while (pendentes.length && pendentes[0].em <= now) {
+      const p = pendentes.shift();
+      if (IA_ACOES[p.acao].de.includes(p.ins.estado)) iaAplicar(p.ins, p.acao, p.usuario_id, iso(p.em), p);
+    }
+  };
+  for (let k = DIAS - 1; k >= 0; k--) {
+    const now = base - k * D;
+    aplicarAte(now);
+    DB.ativos.forEach(a => {
+      const r = intelAtivo(a, now, ix);
+      serie[a.id].push(r.score);
+      // Compacto, para caber no armazenamento do navegador: [atenção, composição, horas paradas, impacto em hóspedes (%)],
+      // e cada componente como [componente, peso, valor, peso usado, pontos, medido].
+      if (k === 0) composicao[a.id] = [r.score, r.comp.map(c => [c.k, c.peso, c.valor === null ? null : Math.round(c.valor * 1000) / 1000, Math.round(c.pesoEf * 10000) / 10000, Math.round(c.pontos * 100) / 100, c.medido]), r.horas, r.imp];
+      if (r.score === null || r.score < pol.limite_atencao) return;
+      const top = r.comp.filter(c => c.valor !== null && c.pontos > 0).sort((x, y) => y.pontos - x.pontos).slice(0, 3).map(c => [c.nome, c.medido]);
+      detectar({ tipo: "atencao_ativo", familia: `atencao_ativo|ativo=${a.id}|hotel=${a.hotel_id}`, escopo: { ativo_id: a.id, hotel_id: a.hotel_id }, alcance: alcanceDe([a.hotel_id]), hotel_ids: [a.hotel_id],
+        faixa: r.faixa, valor: r.score, versao: 2, evidencia: { valor: r.score, faixa: r.faixa, top, limite: pol.limite_atencao } }, now);
+    });
+    padraoSistemico(DB.ativos, DB.chamados, now).filter(s => s.k).forEach(s => {
+      const hs = [...new Set(s.hoteis)].sort();
+      detectar({ tipo: "sistemico", familia: `sistemico|${s.k}|${s.chave}`, escopo: { regra: s.k, chave: s.chave, categoria_id: s.categoria_id }, alcance: alcanceDe(hs), hotel_ids: hs, faixa: "Atenção", valor: null, versao: 2,
+        evidencia: { regra: s.regra, titulo: s.titulo, quem: s.quem, evid: s.evid, n: s.n, ativos: s.ativos, hoteis: hs.length, taxa: s.taxa, base: s.base, janela: s.janela, chamado_ids: s.chamados } }, now);
+    });
+  }
+  aplicarAte(Date.now());
+  DB.ia = { calculado_em: iso(base), versao_formula: 2, versao_politica: pol.versao, inicio: iso(base - (DIAS - 1) * D), dias: DIAS, serie, hoje: composicao };
+  DB.insights = insights;
+}
+/* O roteiro das pessoas na demonstração: quem decide cada insight, quando e com que nota. Só vale para os casos
+   plantados; o resto fica como o job deixou. Insight aberto há 20 dias ou menos continua "novo". */
+function roteiroDoInsight(ins, anterior, now, base, planejar) {
+  const at = ins.escopo.ativo_id ? IDX.ativo[ins.escopo.ativo_id] : null, recente = base - now <= 20 * D, h = x => now + x * D + 7 * H;
+  const decisor = ins.alcance.tipo === "rede" && ins.alcance.bandeira_id === "b1" ? "u2" : "u1";
+  if (at && at.hotel_id === "h3" && at.nome === "Elevador social 2") {
+    planejar(ins, h(1), "revisar", "u2"); planejar(ins, h(2), "aceitar", "u2");
+    planejar(ins, h(9), "agir", "u2", { nota: "OS corretiva para o ajuste das portas, com parada programada com o fabricante." });
+  } else if (at && at.hotel_id === "h1" && at.nome === "Elevador social 2") {
+    planejar(ins, h(1), "revisar", "u3"); planejar(ins, h(2), "aceitar", "u3");
+    const iv = DB.chamados.find(c => c.ativo_id === at.id && c.intervencao && t(c.aberto_em) > now);
+    if (iv) { planejar(ins, t(iv.aberto_em), "agir", "u3", { nota: `Chamado ${iv.id}: troca do operador de porta pelo fornecedor.` }); planejar(ins, t(iv.encerrado_em) + 2 * H, "monitorar", "u3"); }
+  } else if (ins.tipo === "sistemico" && /midea/i.test(ins.evidencia.titulo)) {
+    if (!recente) planejar(ins, h(3), "revisar", decisor);
+    if (anterior && iaAberto(anterior) && !recente) planejar(anterior, now + 1 * D + 9 * H, "descartar", anterior.alcance.tipo === "rede" && anterior.alcance.bandeira_id === "b1" ? "u2" : "u1", { motivo: "substituido", nota: `Substituído pelo ${ins.id}, que inclui mais hotéis.` });
+  } else if (ins.tipo === "sistemico" && !recente) {
+    planejar(ins, h(2), "revisar", "u1");
+    planejar(ins, h(4), "descartar", "u1", { motivo: "nao_relevante", nota: "Os chamados têm causas diferentes em cada hotel; não há padrão do modelo." });
+  }
 }
