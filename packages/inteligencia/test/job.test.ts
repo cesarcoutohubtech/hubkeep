@@ -94,6 +94,7 @@ describe('executarDiaDoTenant: o dia normal', () => {
     expect(r).toEqual({
       dia: '2026-09-30',
       recalculo: false,
+      semModulo: false,
       ativos: 2,
       metricasGravadas: 2,
       metricasJaGravadas: 0,
@@ -184,6 +185,73 @@ describe('executarDiaDoTenant: o recálculo', () => {
       ['2026-09-20', 1, true],
       ['2026-09-20', 1, true],
     ]);
+  });
+});
+
+describe('executarDiaDoTenant: só no tenant com o módulo vigente (I7)', () => {
+  const vazio = (dia: string, recalculo = false) => ({
+    dia,
+    recalculo,
+    semModulo: true,
+    ativos: 0,
+    metricasGravadas: 0,
+    metricasJaGravadas: 0,
+    insightsAbertos: 0,
+    insightsAtualizados: 0,
+    insightsIgnorados: 0,
+  });
+
+  it('sem o módulo: só lê os módulos, não grava nada', async () => {
+    const { banco, fonte, portas } = cenario({ modulos: [] });
+    expect(await executarDiaDoTenant(portas, { agora })).toEqual(vazio('2026-09-30'));
+    expect(fonte.lidas).toEqual(['modulos']);
+    expect(banco.metricas).toEqual([]);
+    expect(banco.insights).toEqual([]);
+  });
+
+  it('vencido, ainda não iniciado ou de vigência inválida: não roda', async () => {
+    for (const modulo of [
+      { modulo: 'inteligencia', inicio: dia(-100), fim: agora },
+      { modulo: 'inteligencia', inicio: dia(1), fim: null },
+      { modulo: 'inteligencia', inicio: dia(-10), fim: dia(-20) },
+    ]) {
+      const { banco, portas } = cenario({ modulos: [modulo] });
+      expect(await executarDiaDoTenant(portas, { agora })).toMatchObject({ semModulo: true });
+      expect(banco.metricas).toEqual([]);
+    }
+  });
+
+  it('vigente em agora, com prazo: roda e lê tudo', async () => {
+    const { banco, fonte, portas } = cenario({
+      modulos: [{ modulo: 'inteligencia', inicio: dia(-100), fim: dia(1) }],
+    });
+    expect(await executarDiaDoTenant(portas, { agora })).toMatchObject({
+      semModulo: false,
+      metricasGravadas: 2,
+    });
+    expect([...fonte.lidas].sort()).toEqual(
+      [
+        'ativos',
+        'calculosDoDia',
+        'corretivas',
+        'hoteis',
+        'insights',
+        'locais',
+        'modulos',
+        'politicaSistemica',
+      ].sort(),
+    );
+    expect(banco.metricas).toHaveLength(2);
+  });
+
+  it('recálculo: vale a vigência no dia recalculado', async () => {
+    const inicio = new Date('2026-09-25T03:00:00Z');
+    const { banco, portas } = cenario({ modulos: [{ modulo: 'inteligencia', inicio, fim: null }] });
+    expect(
+      await executarDiaDoTenant(portas, { agora: fimDoDia('2026-09-20'), recalculo: true }),
+    ).toEqual(vazio('2026-09-20', true));
+    await executarDiaDoTenant(portas, { agora: fimDoDia('2026-09-26'), recalculo: true });
+    expect(banco.metricas.map((m) => m.dia)).toEqual(['2026-09-26', '2026-09-26']);
   });
 });
 

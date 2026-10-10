@@ -6,6 +6,7 @@
 // lista canônica (node:crypto ou sha256()); aqui a lista entra como está, que é
 // injetiva do mesmo jeito, e o pacote puro continua sem node (o hash é coberto
 // no pgTAP e no teste da ligação).
+import type { ModuloContratado } from '@hubkeep/dominio';
 import {
   type AtivoDoDia,
   type AtualizacaoDeInsight,
@@ -91,21 +92,41 @@ export interface DadosDoTenant {
   corretivas: CorretivaDaFonte[];
   locais: LocalAnalisado[];
   sistemico?: ConfigSistemico;
+  /** Sem a lista, o tenant tem o módulo `inteligencia` vigente desde 01/01/2026, sem prazo. */
+  modulos?: ModuloContratado[];
 }
+
+export const MODULO_VIGENTE: ModuloContratado = {
+  modulo: 'inteligencia',
+  inicio: new Date('2026-01-01T03:00:00Z'),
+  fim: null,
+};
 
 export class FonteEmMemoria implements FonteDoJob {
   constructor(
     private readonly banco: BancoEmMemoria,
     public dados: DadosDoTenant,
   ) {}
-  hoteis = async () => this.dados.hoteis;
-  ativos = async () => this.dados.ativos;
+  /** As leituras feitas, em ordem, para conferir que o tenant sem o módulo só lê os módulos. */
+  lidas: string[] = [];
+  private ler = <T>(nome: string, valor: T): T => {
+    this.lidas.push(nome);
+    return valor;
+  };
+  modulos = async () => this.ler('modulos', this.dados.modulos ?? [MODULO_VIGENTE]);
+  hoteis = async () => this.ler('hoteis', this.dados.hoteis);
+  ativos = async () => this.ler('ativos', this.dados.ativos);
   corretivas = async (agora: Date) =>
-    this.dados.corretivas.filter((c) => c.abertaEm.getTime() <= agora.getTime());
-  locais = async () => this.dados.locais;
-  politicaSistemica = async () => this.dados.sistemico;
-  insights = async (): Promise<readonly InsightExistente[]> => this.banco.insights;
+    this.ler(
+      'corretivas',
+      this.dados.corretivas.filter((c) => c.abertaEm.getTime() <= agora.getTime()),
+    );
+  locais = async () => this.ler('locais', this.dados.locais);
+  politicaSistemica = async () => this.ler('politicaSistemica', this.dados.sistemico);
+  insights = async (): Promise<readonly InsightExistente[]> =>
+    this.ler('insights', this.banco.insights);
   calculosDoDia = async (dia: string): Promise<ReadonlyMap<string, number>> => {
+    this.lidas.push('calculosDoDia');
     const m = new Map<string, number>();
     for (const l of this.banco.metricas)
       if (l.dia === dia) m.set(l.ativoId, Math.max(m.get(l.ativoId) ?? 0, l.calculo));

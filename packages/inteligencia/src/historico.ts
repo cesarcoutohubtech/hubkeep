@@ -30,7 +30,11 @@ export interface Corretiva {
   concluidaEm: Date | null;
   /** Vezes que a OS foi reaberta até a data do cálculo (`conclusaoEReaberturas`). */
   reaberturas: number;
-  /** Código de falha (`app.os.codigo_falha_id`, etapa I6); null sem dado. */
+  /**
+   * Código de falha (`app.os.codigo_falha_id`, I6, migração 0036): o id de um
+   * código de `app.codigo_manutencao` com tipo `falha`. null sem dado (a OS
+   * sem código ou anterior à 0036). O motor compara o id; o nome é da tela.
+   */
   codigoFalha: string | null;
   /** Aberta pouco depois de uma preventiva do ativo (fase 1b); undefined sem dado. */
   aposPreventiva?: boolean;

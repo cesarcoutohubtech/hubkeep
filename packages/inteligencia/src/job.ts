@@ -12,9 +12,13 @@
 //   cálculo seguinte e a marca de recálculo, e não abre nem atualiza insight. O
 //   `agora` de um dia passado é o fim dele (fimDoDia).
 // - O job nunca muda o estado de um insight (ADR-033).
+// - Só roda no tenant com o módulo `inteligencia` vigente em `agora`
+//   (`licenca.modulo`, I7; adendo ao ADR-026 de 10/10/2026): sem ele, não lê
+//   mais nada nem grava. No recálculo, vale a vigência no dia recalculado.
 // - A chave de unicidade do insight (família mais o SHA-256 da lista canônica
 //   de hotéis) é montada por quem grava, com node:crypto ou sha256(): nada de
 //   hash aqui.
+import { type ModuloContratado, modulosVigentes } from '@hubkeep/dominio';
 import type { LinhaDaMetricaDiaria } from './agregacao';
 import { type AtivoDoDia, type DeteccaoDoDia, type HotelDoDia, calcularDia } from './dia';
 import {
@@ -33,7 +37,13 @@ export type CorretivaDaFonte = Omit<Corretiva, 'concluidaEm' | 'reaberturas'> & 
 
 /** O que o job lê do tenant. Todas as leituras são do contexto dele (RLS). */
 export interface FonteDoJob {
-  /** Os hotéis a calcular, com as políticas já resolvidas (registro do núcleo) e a versão delas. */
+  /** Os módulos contratados do tenant (`licenca.modulo`, I7), lidos pelo hk_worker no tenant do job. */
+  modulos(): Promise<readonly ModuloContratado[]>;
+  /**
+   * Os hotéis a calcular, com as políticas já resolvidas e a versão delas. O
+   * registro é o do tenant (`registrosDePoliticasPorModulo(...).doTenant`), com
+   * as chaves `inteligencia.*`, porque o job só chega aqui com o módulo vigente.
+   */
   hoteis(): Promise<readonly HotelDoDia[]>;
   /** Os ativos, com as paradas até `agora`. */
   ativos(agora: Date): Promise<readonly AtivoDoDia[]>;
@@ -82,6 +92,8 @@ export interface ParametrosDoJob {
 export interface ResumoDoJob {
   dia: string;
   recalculo: boolean;
+  /** O tenant sem o módulo vigente em `agora`: o job não leu o resto nem gravou. */
+  semModulo: boolean;
   ativos: number;
   metricasGravadas: number;
   /** Ativos cujo dia já estava gravado: o job não grava de novo (fora do recálculo). */
@@ -100,6 +112,19 @@ export async function executarDiaDoTenant(
 ): Promise<ResumoDoJob> {
   const { fonte, gravacao } = portas;
   const recalculo = p.recalculo ?? false;
+  if (!modulosVigentes(await fonte.modulos(), p.agora).has('inteligencia')) {
+    return {
+      dia: p.agora.toISOString().slice(0, 10),
+      recalculo,
+      semModulo: true,
+      ativos: 0,
+      metricasGravadas: 0,
+      metricasJaGravadas: 0,
+      insightsAbertos: 0,
+      insightsAtualizados: 0,
+      insightsIgnorados: 0,
+    };
+  }
   const [hoteis, ativos, corretivasDaFonte, locais, sistemico, insights] = await Promise.all([
     fonte.hoteis(),
     fonte.ativos(p.agora),
@@ -139,6 +164,7 @@ export async function executarDiaDoTenant(
   const resumo: ResumoDoJob = {
     dia: resultado.dia,
     recalculo,
+    semModulo: false,
     ativos: resultado.ativos.length,
     metricasGravadas: linhas.length,
     metricasJaGravadas: jaGravadas,

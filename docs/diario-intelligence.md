@@ -874,3 +874,28 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
   1. adaptar o motor aos nomes reais da I6 e da I7, num PR fora de zona protegida;
   2. seguir a fila de zona protegida, um PR por vez, conferindo antes que não há outro aberto: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job.
   - Continua esperando o comentário do Kaio na issue #169.
+
+## I6 e I7 na `main`: o motor com os nomes reais (10/10/2026)
+
+Depois do merge do #176 ("Cesar aqui", 10/10/2026), este é o primeiro passo do ponto de retomada da seção anterior. PR fora de zona protegida.
+
+### O que a I6 e a I7 trouxeram e como o motor lê
+- **I6, `app.os.codigo_falha_id`:**
+  - o `codigoFalha` já tinha esse nome, e nenhum campo mudou;
+  - o id é de um código de `app.codigo_manutencao` com tipo `falha`; o motor compara o id, e o nome que a tela mostra vem de `nomes`, que o `hk_worker` lê no tenant do job;
+  - a causa e a solução (`codigo_causa_id`, `codigo_solucao_id`) não entram no motor 1.0.
+- **I7, `licenca.modulo`:**
+  - a `FonteDoJob` ganhou `modulos()`, lida pelo `hk_worker` no tenant do job;
+  - o `executarDiaDoTenant` confere primeiro se o módulo `inteligencia` vale em `agora`, com o `modulosVigentes` do domínio. Sem ele (sem linha, vencido, ainda não iniciado ou com a vigência inválida), não lê o resto nem grava, e o resumo volta com `semModulo: true`;
+  - **no recálculo**, vale a vigência no dia recalculado (o `agora` é o fim dele). Um dia anterior ao contrato não é recalculado, e um dia do tempo de contrato pode ser, mesmo com o módulo já vencido. É detalhe de implementação dentro do adendo da I7 (ADR-033: decisão do Kaio), e fica para ele confirmar;
+  - as políticas que chegam em `hoteis()` e `politicaSistemica()` são as do registro do tenant (`doTenant`), com a extensão do Intelligence, porque o job só chega a elas com o módulo vigente.
+- **Nenhuma fórmula mudou**, então nenhuma versão sobe.
+
+### Verificação
+- Testes do pacote: 229 passando, com os quatro casos novos do job (sem o módulo; vencido, futuro ou inválido; vigente com prazo; recálculo antes e depois do início).
+
+### Ponto de retomada (10/10/2026)
+- **O mapa das entradas** (`docs/referencia/mapa-entradas-calcular-dia.md`) não tem mais nenhuma linha esperando a etapa I. Continuam sem origem só as medições (PV1) e o `aposPreventiva` (etapa P).
+- **Próximo:** a fila de zona protegida, um PR por vez, conferindo antes que não há outro aberto: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job (é ela que implementa o `modulos()` e as outras leituras).
+- **Esperando o Kaio:** o comentário na issue #169 e a confirmação da vigência no recálculo.
+- **Esperando o Cesar:** a aprovação do adendo da I7 ao ADR-026.
