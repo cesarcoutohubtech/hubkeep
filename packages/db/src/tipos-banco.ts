@@ -308,6 +308,25 @@ export interface AppMembro {
   usuario_id: string;
 }
 
+export interface AppMetricaAtivoDiaria {
+  atencao: number | null;
+  ativo_id: string;
+  calculado_em: Generated<Timestamp>;
+  calculo: Generated<number>;
+  detalhe_atencao: Json;
+  detalhe_reincidencia: Json;
+  dia: Timestamp;
+  faixa_atencao: string;
+  hotel_id: string;
+  id: string;
+  recalculo: Generated<boolean>;
+  reincidencia: number | null;
+  tenant_id: string;
+  versao_formula_atencao: number;
+  versao_formula_reincidencia: number;
+  versao_politica: string;
+}
+
 export interface AppOperacaoOffline {
   chave: string;
   recebida_em: Generated<Timestamp>;
@@ -541,6 +560,7 @@ export interface DB {
   "app.local": AppLocal;
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
+  "app.metrica_ativo_diaria": AppMetricaAtivoDiaria;
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
   "app.os_apontamento": AppOsApontamento;

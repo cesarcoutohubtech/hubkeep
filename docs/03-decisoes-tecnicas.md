@@ -913,6 +913,11 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **O painel mostra o resultado original gravado de cada dia** (decisão de 07/10/2026). Os recálculos seguem guardados e aparecem só no painel de investigação, sob demanda e identificados como recálculo. O recálculo de um dia nunca gravado é o único registro do dia e aparece como tal.
 - O recálculo grava só métrica: não abre nem atualiza insight.
 
+**Quem lê a métrica diária** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence; aguarda a aprovação escrita do Kaio, porque muda quem vê): só quem decide, como no insight de hotel (ADR-033).
+- O Admin do grupo, o Gestor CSC e o Gerente com o hotel.
+- O Técnico, o solicitante, o implantador e o proprietário não leem, nem o proprietário do hotel inteiro: o Intelligence é gerencial.
+- Na migração 0039, a policy de leitura usa os papéis em lista explícita, e não `authz.hoteis_leitura()`, que inclui o proprietário com escopo de hotel (pgTAP 032).
+
 **Decisão:**
 - **Job diário** por Vercel Cron: `hk_worker`, um tenant por transação, unit of work com auditoria e evento.
 - **Resultados diários** em `app.metrica_ativo_diaria` (e `app.metrica_hotel_diaria`, se a performance pedir).

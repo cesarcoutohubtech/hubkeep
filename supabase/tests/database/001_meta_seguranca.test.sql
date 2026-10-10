@@ -465,7 +465,8 @@ select is(
     'app.anexo', 'app.ativo', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
     'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.codigo_manutencao', 'app.equipe',
     'app.equipe_membro', 'app.evento_dominio', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
-    'app.insight', 'app.local', 'app.local_proprietario', 'app.membro', 'app.operacao_offline', 'app.os',
+    'app.insight', 'app.local', 'app.local_proprietario', 'app.membro', 'app.metrica_ativo_diaria',
+    'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_material', 'app.os_transicao', 'app.parada_ativo', 'app.politica',
     'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.situacao',
     'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'licenca.modulo', 'staging.carga', 'staging.credencial_agente',
@@ -521,10 +522,10 @@ $$, 'service_role sem USAGE em app, staging, licenca e authz');
 select is_empty($$
   select r.papel || ' ' || t.tabela
   from (values ('hk_app'), ('hk_worker'), ('hk_ingestao'), ('hk_backoffice')) r(papel)
-  cross join (values ('app.auditoria'), ('app.ativo_movimentacao'), ('app.os_apontamento'),
-                     ('app.os_material'), ('app.os_transicao')) t(tabela)
+  cross join (values ('app.auditoria'), ('app.ativo_movimentacao'), ('app.metrica_ativo_diaria'),
+                     ('app.os_apontamento'), ('app.os_material'), ('app.os_transicao')) t(tabela)
   where has_any_column_privilege(r.papel, t.tabela, 'UPDATE')
-$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, apontamento, material, transição)');
+$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição)');
 
 select * from finish();
 rollback;

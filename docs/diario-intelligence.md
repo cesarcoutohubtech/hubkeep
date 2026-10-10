@@ -939,3 +939,23 @@ Segundo PR da fila de zona protegida do Intelligence, depois do merge do #181 (a
 - **PR aberto:** `int-insight-tabela` (zona protegida; o merge e o `db push` são do Cesar).
 - **Esperando o Kaio:** quem lê o insight, o comentário na issue #169, a confirmação da vigência no recálculo e a aprovação escrita do texto dos adendos ao ADR-034 e ao ADR-036 (que também precisa do Cesar).
 - **Depois do merge e do `db push`:** `supabase migration list` e `pnpm db:testar-dev`; depois, a `app.metrica_ativo_diaria`, a partir do rascunho.
+
+## `int-metrica-ativo-diaria`: a `app.metrica_ativo_diaria` (migração 0039, 10/10/2026)
+
+Terceiro PR da fila de zona protegida do Intelligence, depois do merge do #182 (a `app.insight`), com a retomada do Cesar ("Cesar aqui", 10/10/2026). A CI da main no e6dbe17 estava verde e nenhum outro PR estava aberto. O `db push` da 0038 no dev ainda não tinha sido feito quando o branch nasceu.
+
+- **Do rascunho (`rascunhos/metrica/`):** a migração e o pgTAP, com o número 0039 e o 032. O `rascunhos/insight/` saiu do `int-rascunhos`, porque já está na main.
+- **Quem lê, decidido pelo Cesar em 10/10/2026** (aguarda o Kaio, porque muda quem vê): só quem decide, como no insight de hotel. O rascunho usava `authz.hoteis_leitura()`, que deixa ler o Técnico, o solicitante, o implantador e o proprietário do hotel inteiro; o comentário dizia que o proprietário não lia, mas o pgTAP só cobria o proprietário da UH, que não está em `hoteis_leitura`. Agora:
+  - a policy usa `authz.hoteis_com_papel` com o Admin do grupo, o Gestor CSC e o Gerente;
+  - o pgTAP prova que o Gestor CSC vê só os hotéis da bandeira dele e que o Técnico, o solicitante, o implantador válido e o proprietário do hotel inteiro não leem. São 33 testes.
+- **Meta-testes:** a tabela entra na lista fechada (28) e nas tabelas só de inserção (32). Nenhum campo recebe UPDATE, então o 18 não muda.
+- **Paridade:** nada a acrescentar. A faixa da atenção é a chave de uma das faixas do score (`FAIXAS_PADRAO`, que a política pode trocar) ou `dados_insuficientes`, sem lista canônica no domínio; por isso a coluna não tem check de lista, como a `faixa` do insight.
+- **Versões nos dados do teste:** a atenção está na versão 2 (adendo de 08/10 ao ADR-036), e os dados do pgTAP usam `versao_formula_atencao = 2`.
+- **Tipos do banco:** `AppMetricaAtivoDiaria` no `tipos-banco.ts`, à mão, no formato do `kysely-codegen`. O `pnpm db:types` confere depois do `db push`.
+- **No `docs/03`:** quem lê a métrica diária, no ADR-036. **No `docs/02`:** o modelo de leitura.
+- **Fora deste PR:** o particionamento (pendência do ADR-036, decisão do Cesar), as tabelas do resumo mensal, o repositório da métrica e a ligação do job.
+
+### Ponto de retomada (10/10/2026)
+- **PR aberto:** `int-metrica-ativo-diaria` (zona protegida; o merge e o `db push` são do Cesar).
+- **Esperando o Kaio:** quem lê o insight e a métrica diária, o comentário na issue #169, a confirmação da vigência no recálculo e a aprovação escrita do texto dos adendos ao ADR-034 e ao ADR-036 (que também precisa do Cesar).
+- **Depois do merge e do `db push` da 0038 e da 0039:** `supabase migration list` e `pnpm db:testar-dev`; depois, a ligação do job no web, com as portas do `executarDiaDoTenant` sobre o `packages/db`.
