@@ -6,23 +6,25 @@
 > **Conflito:** onde o mock e o documento divergem, vale o documento. A divergência aparece em "Não copiar do mock".
 > **Companheiro:** `paridade-mock-1b.md`, mesmo formato.
 
-O mock tem regras que se contradizem entre si ou que o documento não define. Elas estão reunidas logo abaixo e precisam de decisão antes da implementação. Cada item depois traz as telas do mock, o que elas mostram, as regras visíveis, quem vê e uma lista de paridade para conferir no PR.
+O mock tem regras que se contradizem entre si ou que o documento não define. Elas estão reunidas logo abaixo e foram decididas pelo Cesar em 10/10/2026, para valer quando a 1c começar. Cada item depois traz as telas do mock, o que elas mostram, as regras visíveis, quem vê e uma lista de paridade para conferir no PR.
 
 Papéis do mock: `csc` (Gestor CSC do grupo), `band` (Gestor CSC da bandeira), `hotel` (gerente do hotel), `tec` (técnico), `prop` (proprietária, administrado) e `loc` (locador, arrendado).
 
 ---
 
-## Decidir antes de implementar
+## Decididas antes de implementar (Cesar, 10/10/2026)
 
-| Ponto | O que o mock faz | Por que decidir | Recomendação |
-| --- | --- | --- | --- |
-| Fim do tempo médio de reparo | Mede da abertura ao **encerramento** (aceite), "por semana" | O SLA do mock para quando o serviço é concluído (estado "Aguardando aceite"), mas o MTTR continua contando até o aceite. Uma demora do solicitante em aceitar piora o MTTR da manutenção | MTTR da abertura até o **serviço concluído**, pelas transições da OS; o tempo até o aceite vira um indicador separado, se a central quiser |
-| "Aguardando peça" | O estado existe, mas o relógio do SLA **não pausa** | Pausar ou não é regra de política e muda todos os prazos | Não pausar por padrão; pausa como opção da política por categoria, com o tempo pausado aparecendo na ficha |
-| Escalonamento por bandeira | O limite de escalonamento (80% do prazo) é lido do hotel ou do grupo; a bandeira é pulada | O documento põe o nível bandeira na herança de todas as políticas | Seguir a herança completa: hotel, depois bandeira, depois grupo |
-| Meta de SLA | "Meta 90%" fixa na tela | Uma meta fixa no código contraria a regra de que toda exigência do cliente vira política | Meta de SLA como política, com padrão 90% |
-| "Fluxo de eventos ao vivo" | São os 5 últimos registros da **auditoria**, no escopo de quem vê | Não é tempo real: é uma leitura da auditoria. O selo "ao vivo" promete mais do que entrega | Manter como "Últimos eventos", lido da auditoria ao abrir o painel e a cada 60 segundos; tirar o "ao vivo" |
-| Gráficos do painel e "chamados por 100 UHs" | Existem no mock e não estão na especificação da 1c | Já foram levados ao Cesar no mapa main × mock | Incluir na 1c; usam os mesmos dados |
-| Separador do CSV | Ponto e vírgula, com BOM | Correto para o Excel em português, espanhol e francês; em inglês o Excel espera vírgula | Separador pelo formato regional de quem exporta, mantendo o BOM |
+As sete foram aprovadas pelo Cesar em 10/10/2026, conforme as recomendações ("Cesar aqui", no chat do agente). Valem quando a 1c começar; nada foi implementado. A decisão 2 depende de um adendo ao ADR-027, que aguarda a aprovação do Cesar (`docs/diario-fase-1a.md`, seção "Decisões da paridade da 1c").
+
+| # | Ponto | O que o mock faz | Por que decidir | Decisão (Cesar, 10/10/2026) |
+| --- | --- | --- | --- | --- |
+| 1 | Fim do tempo médio de reparo | Mede da abertura ao **encerramento** (aceite), "por semana" | O SLA do mock para quando o serviço é concluído (estado "Aguardando aceite"), mas o MTTR continua contando até o aceite. Uma demora do solicitante em aceitar piora o MTTR da manutenção | **Decidido:** MTTR da abertura até o **serviço concluído**, pelas transições da OS; o tempo até o aceite pode virar um indicador à parte |
+| 2 | "Aguardando peça" | O estado existe, mas o relógio do SLA **não pausa** | Pausar ou não é regra de política e muda todos os prazos | **Decidido:** não pausa por padrão; a pausa é opção da política por categoria, com o tempo pausado exibido na ficha. Depende do adendo ao ADR-027 (a pausa lê o estado da OS, e não a situação) |
+| 3 | Escalonamento por bandeira | O limite de escalonamento (80% do prazo) é lido do hotel ou do grupo; a bandeira é pulada | O documento põe o nível bandeira na herança de todas as políticas | **Decidido:** herança completa: hotel, depois bandeira, depois grupo |
+| 4 | Meta de SLA | "Meta 90%" fixa na tela | Uma meta fixa no código contraria a regra de que toda exigência do cliente vira política | **Decidido:** meta de SLA como política, com padrão de 90% |
+| 5 | "Fluxo de eventos ao vivo" | São os 5 últimos registros da **auditoria**, no escopo de quem vê | Não é tempo real: é uma leitura da auditoria. O selo "ao vivo" promete mais do que entrega | **Decidido:** "Últimos eventos", lidos da auditoria ao abrir o painel e a cada 60 segundos, sem o selo "ao vivo" |
+| 6 | Gráficos do painel e "chamados por 100 UHs" | Existem no mock e não estão na especificação da 1c | Já foram levados ao Cesar no mapa main × mock | **Decidido:** os gráficos do painel (abertos por dia, abertos × encerrados, onde mais quebra) e "chamados por 100 UHs" entram na 1c |
+| 7 | Separador do CSV | Ponto e vírgula, com BOM | Correto para o Excel em português, espanhol e francês; em inglês o Excel espera vírgula | **Decidido:** separador pelo formato regional de quem exporta, mantendo o BOM |
 
 ---
 
@@ -45,7 +47,7 @@ Papéis do mock: `csc` (Gestor CSC do grupo), `band` (Gestor CSC da bandeira), `
 
 **Paridade**
 
-- [ ] Herança hotel → bandeira → grupo em todas as chaves de política, inclusive o escalonamento (ver "Decidir antes de implementar").
+- [ ] Herança hotel → bandeira → grupo em todas as chaves de política, inclusive o escalonamento (decisão 3).
 - [ ] Valor herdado em cinza e exceção preenchida; apagar volta a herdar.
 - [ ] Origem da regra exibida no prazo do chamado.
 - [ ] Mudança gravada na auditoria e aplicada só a chamados novos.
@@ -78,6 +80,7 @@ Papéis do mock: `csc` (Gestor CSC do grupo), `band` (Gestor CSC da bandeira), `
 - [ ] Feriados nacionais e regionais de fábrica, mais os municipais e os do próprio hotel.
 - [ ] Prazo calculado em horas úteis quando o relógio é de horário comercial.
 - [ ] Critério do piloto: elevador parado conta 24x7; pintura conta em horário comercial.
+- [ ] Pausa do relógio por categoria, desligada por padrão, com o tempo pausado na ficha (decisão 2, com o adendo ao ADR-027).
 
 ---
 
@@ -103,7 +106,7 @@ Papéis do mock: `csc` (Gestor CSC do grupo), `band` (Gestor CSC da bandeira), `
 - [ ] Alerta de prazo perto de vencer e escalonamento à central quando passar do limite.
 - [ ] O relógio para na conclusão do serviço.
 
-**Não copiar do mock:** o escalonamento pula a bandeira na herança (ver "Decidir antes de implementar").
+**Não copiar do mock:** o escalonamento pula a bandeira na herança (decisão 3).
 
 ---
 
@@ -138,7 +141,8 @@ Papéis do mock: `csc` (Gestor CSC do grupo), `band` (Gestor CSC da bandeira), `
 - [ ] Quadro por hotel com as colunas e a regra de situação acima; o nome da seção decidido pelo Cesar (sugestão: "Situação por hotel").
 - [ ] Contagem regressiva dos 6 próximos prazos.
 - [ ] Cartões próprios do proprietário e do locador.
-- [ ] Gráficos e "Últimos eventos", se aprovados (ver "Decidir antes de implementar").
+- [ ] Meta de SLA lida da política, com padrão de 90% (decisão 4).
+- [ ] Gráficos (abertos por dia, abertos × encerrados, onde mais quebra) e "Últimos eventos", lidos da auditoria ao abrir e a cada 60 segundos, sem "ao vivo" (decisões 5 e 6).
 
 ---
 
@@ -186,8 +190,9 @@ Papéis do mock: `csc` (Gestor CSC do grupo), `band` (Gestor CSC da bandeira), `
 
 **Não copiar do mock**
 
-- O tempo médio de reparo do mock vai até o aceite (ver "Decidir antes de implementar").
-- "Chamados por 100 UHs" só entra se for aprovado.
+- O tempo médio de reparo do mock vai até o aceite. Na 1c, vai até o serviço concluído (decisão 1).
+
+"Chamados por 100 UHs" entra na 1c (decisão 6).
 
 ---
 
@@ -208,7 +213,7 @@ Papéis do mock: `csc` (Gestor CSC do grupo), `band` (Gestor CSC da bandeira), `
 
 - [ ] OS impressa com fotos, checklist e assinatura, nos campos acima.
 - [ ] CSV com o escopo de quem exporta, e o aviso com o número de linhas.
-- [ ] Separador do CSV pelo formato regional (ver "Decidir antes de implementar").
+- [ ] Separador do CSV pelo formato regional de quem exporta, com BOM (decisão 7).
 
 **Não copiar do mock:** o custo informado não aparece na impressão para o proprietário.
 

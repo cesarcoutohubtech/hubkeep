@@ -16,6 +16,20 @@ Primeira versão de 08/10/2026, a partir da revisão de escopo de 07/10/2026 (`d
 | Arrendado mínimo | Matriz de responsabilidade por hotel e categoria (arrendatária ou locador), OS marcada com o responsável, locador com acesso de leitura, notificação com registro de data | Novo (07/10) |
 | Idiomas | Catálogo completo nos quatro idiomas, com tradução profissional | Plano original |
 
+### Decisões da paridade com o mock (Cesar, 10/10/2026)
+
+As sete decisões de `docs/referencia/paridade-mock-1c.md` ("Decididas antes de implementar"), aprovadas pelo Cesar em 10/10/2026 conforme as recomendações. Valem quando a 1c começar e entram no detalhe de tarefa da proposta da 1c.
+
+| # | Decisão | Onde entra |
+|---|---|---|
+| 1 | MTTR da abertura até o serviço concluído, pelas transições da OS (`app.os_transicao`, I5). O tempo até o aceite pode virar indicador à parte. | Painel de indicadores |
+| 2 | "Aguardando peça" não pausa o SLA por padrão. A pausa é opção da política por categoria, e a ficha mostra o tempo pausado. Depende do adendo ao ADR-027, que aguarda a aprovação do Cesar: a pausa lê o estado da OS, e não a situação. | Calendário de SLA |
+| 3 | Escalonamento com herança completa: hotel, bandeira e grupo. | Monitor de SLA; Políticas |
+| 4 | Meta de SLA como política, com padrão de 90%. | Painel; Painel de indicadores |
+| 5 | "Últimos eventos" lidos da auditoria ao abrir o painel e a cada 60 segundos, sem o selo "ao vivo". O escopo é o da auditoria (ADR-021): sem adendo, o proprietário e o locador não leem auditoria. | Painel |
+| 6 | Gráficos do painel (abertos por dia, abertos × encerrados, onde mais quebra) e "chamados por 100 UHs" entram na 1c. | Painel; Painel de indicadores |
+| 7 | Separador do CSV pelo formato regional de quem exporta, mantendo o BOM. | Impressão e exportação; Auditoria geral |
+
 ### Auditoria geral (decisão do Cesar de 07/10/2026)
 
 | O quê | Aceite |
