@@ -1032,3 +1032,29 @@ Depois do merge do #183 e do `db push` da 0039 ("Cesar aqui", 10/10/2026). O `su
    - A versão do seed passou a 11: quem já abriu o mock recebe os dados novos, e as alterações salvas no navegador são descartadas.
 
 As duas perguntas do #179 que estavam abertas ficam respondidas.
+
+## `int-job-auditoria`: uma auditoria por execução do job (10/10/2026)
+
+**Contexto ("Cesar aqui", 10/10/2026, noite).**
+- Um texto com "Aprovo", redigido num chat do Claude, foi colado na sessão. Ele pedia:
+  - tirar o Gerente do hotel da leitura;
+  - uma janela de 180 dias;
+  - auditoria com quem disparou;
+  - recálculo com a política vigente no dia.
+- O agente mostrou que o texto contradizia a `main` (0038, 0039, `PAPEIS_DO_INSIGHT`) e que o banco não guarda o histórico da `app.politica`.
+- A revisão do mesmo texto, colada em seguida, **não vale como aprovação**: aprovação é escrita na issue, com o login de quem aprova. O Cesar deixou a aprovação da #169 para depois.
+- **As posições abaixo seguem a revisão e aguardam as aprovações escritas de Cesar e de Kaio:**
+  - **Quem lê e decide:** fica como está na `main`. Admin do grupo e Gestor CSC no próprio escopo; Gerente do hotel no próprio hotel, lendo e decidindo, sem ver insight de rede. Sem migração 0040.
+  - **Janela de 180 dias:** já vale (a janela de leitura tem mínimo de 180 dias, e o job lê 365).
+  - **Auditoria:** uma por execução em cada tenant, mesmo sem gravar nada, com quem disparou e as versões de fórmula e de política por hotel. Substitui a auditoria por dia da métrica do #184. O Cesar confirmou seguir com este PR.
+  - **Recálculo:** o ADR-036 fica como está, com a política atual, em linhas novas marcadas. Recalcular com a política da época fica para quando houver um caso concreto; o ponto de partida será a configuração gravada no detalhe da métrica original, sem migração.
+
+**O que o PR faz.**
+- **Motor:** `executarDiaDoTenant` chama `registrarExecucao` no fim de toda execução num tenant com o módulo vigente, inclusive quando nada é gravado e no recálculo. Leva:
+  - quem disparou (`disparadoPor`, 'cron' por padrão, ou o usuário do recálculo);
+  - o resumo;
+  - as versões das fórmulas (reincidência 1, atenção 2, sistêmico 2);
+  - a versão da política de cada hotel do dia.
+- **Tenant sem o módulo:** não ganha registro, porque o job não grava nada nele (I7).
+- **Banco:** a auditoria `job_inteligencia`, com a ação `calcular_dia` ou `recalcular_dia`, sem usuário (é o worker); quem disparou vai no `depois`. A auditoria `gravar_dia` da métrica saiu.
+- **Testes:** o registro no `job.test.ts`, a sessão em memória do web e a integração do `packages/db`, que só roda na CI.

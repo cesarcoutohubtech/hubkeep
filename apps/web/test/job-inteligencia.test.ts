@@ -4,6 +4,7 @@
 import type {
   ChamadoDoJob,
   DeteccaoNoInsightDoJob,
+  ExecucaoNoBancoDoJob,
   MetricaDoJob,
   NovoInsightDoJob,
   PortaDoJobDoIntelligence,
@@ -140,6 +141,8 @@ class SessaoEmMemoria implements SessaoDoJobDoIntelligence {
     return { id: `i${this.abertos.length}` };
   };
   atualizarInsight = async (d: DeteccaoNoInsightDoJob) => void this.atualizados.push(d);
+  execucoes: ExecucaoNoBancoDoJob[] = [];
+  registrarExecucao = async (e: ExecucaoNoBancoDoJob) => void this.execucoes.push(e);
 }
 
 describe('portasDoJob sobre a sessão do banco', () => {
@@ -195,6 +198,7 @@ describe('portasDoJob sobre a sessão do banco', () => {
     const r = await executarDiaDoTenant(portasDoJob(sessao, registros, agora), { agora });
     expect(r.semModulo).toBe(true);
     expect(sessao.lidas).toEqual(['modulos']);
+    expect(sessao.execucoes).toEqual([]);
     expect(sessao.metricas).toEqual([]);
     expect(sessao.abertos).toEqual([]);
   });
@@ -214,5 +218,14 @@ describe('criarJobDoDia', () => {
     const r = await job('22200000-0000-0000-0000-000000000001');
     expect(tenants).toEqual(['22200000-0000-0000-0000-000000000001']);
     expect(r).toMatchObject({ dia: '2026-09-30', metricasGravadas: 1 });
+    // A execução fica registrada como disparada pelo cron, com a política de cada hotel do dia.
+    expect(sessao.execucoes).toMatchObject([
+      {
+        disparadoPor: 'cron',
+        dia: '2026-09-30',
+        metricasGravadas: 1,
+        versoesDePolitica: { [H1]: 'inteligencia.atencao_ativo=p1@2026-09-01T00:00:00.000Z' },
+      },
+    ]);
   });
 });
