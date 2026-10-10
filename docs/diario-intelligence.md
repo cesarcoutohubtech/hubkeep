@@ -800,11 +800,11 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
   - A regra é do domínio, e não do banco. O mock (#163) já faz o primeiro ponto; a reatribuição ainda não está nele.
   - Registrada também no rascunho da `app.insight` (`int-rascunhos`, `rascunhos/insight/LEIAME.md`, `0b6202a`).
 - **Proposta de processo para o ADR-033, do Kaio, aguardando Cesar:** o que for detalhe de implementação do ADR-033 é decidido só com o Kaio. O que muda a decisão do ADR continua com a aprovação escrita de Cesar e Kaio.
-- **Canal oficial de aprovação do Intelligence:** a issue "Aprovações pendentes do Intelligence". Ela reúne, em ordem de data, tudo o que está como "aguardando Cesar" neste diário e no `int-rascunhos`, com uma caixa de seleção por item.
+- **Canal oficial de aprovação do Intelligence:** a issue "Aprovações pendentes do Intelligence" (#166, https://github.com/cesarcoutohubtech/hubkeep/issues/166). Ela reúne, em ordem de data, tudo o que está como "aguardando Cesar" neste diário e no `int-rascunhos`, com uma caixa de seleção por item.
   - O Cesar marca o que aprova e comenta "Aprovo os itens marcados". Nos itens não marcados, comenta o motivo.
   - Quando o Cesar comentar, este diário e o `int-rascunhos` são atualizados citando o link do comentário.
 
 ### Ponto de retomada (10/10/2026)
-- **Esperando o Cesar:** o comentário na issue de aprovações.
+- **Esperando o Cesar:** o comentário na issue #166, com os itens marcados.
 - **Esperando o Kaio:** o canal das aprovações do Cesar de 08/10 e de 10/10.
 - **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.
