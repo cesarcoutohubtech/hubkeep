@@ -28,6 +28,15 @@ export interface AceiteAutomatico {
   dias: number;
 }
 
+/**
+ * Códigos de falha, causa e solução obrigatórios no aceite (I6). Desligado por
+ * padrão. Ligado, o aceite no web exige os três; a conclusão no PWA nunca é
+ * recusada por falta deles (decisão do Cesar de 10/10/2026).
+ */
+export interface CodigosObrigatorios {
+  ligado: boolean;
+}
+
 /** Categoria de ativo (id) → prioridade padrão do chamado (id). As duas entram em B2 e C1. */
 export type PrioridadePadraoPorCategoria = Record<string, string>;
 
@@ -40,6 +49,7 @@ export type NomesDeCriticidade = Partial<Record<`${Criticidade}`, Rotulos>>;
 
 export interface ValoresDePolitica {
   'os.aceite_automatico': AceiteAutomatico;
+  'os.codigos_obrigatorios': CodigosObrigatorios;
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria;
   'ativo.criticidade': NomesDeCriticidade;
 }
@@ -60,6 +70,11 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
       Number.isInteger(v['dias']) &&
       (v['dias'] as number) >= 1 &&
       (v['dias'] as number) <= 60,
+  },
+  'os.codigos_obrigatorios': {
+    padrao: { ligado: false },
+    valido: (v): v is CodigosObrigatorios =>
+      objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
   },
   'chamado.prioridade_padrao_por_categoria': {
     padrao: {},

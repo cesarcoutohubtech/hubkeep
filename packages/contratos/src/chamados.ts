@@ -5,8 +5,10 @@
 // (descrição, motivo, ativo no local, UH pendente, quem recebe a OS) são
 // validados no domínio, com código. Na I4, a abertura responde se afeta
 // hóspede e se a UH ficou indisponível; a OS guarda quem executa (equipe
-// interna ou fornecedor do grupo) e o custo informado no aceite.
+// interna ou fornecedor do grupo) e o custo informado no aceite. Na I6, a OS
+// guarda os códigos de falha, causa e solução, e o aceite pode corrigi-los.
 import { z } from 'zod';
+import { CodigosDaOsApi } from './codigos-manutencao';
 import { ESTADOS_DA_OS_API, ESTADOS_DO_CHAMADO_API } from './situacoes';
 
 const versao = z.number().int().min(1);
@@ -83,6 +85,8 @@ export const OsApi = z
     fornecedorId: z.guid().nullable(),
     /** O custo informado no aceite, em reais (I4); null: não informado. */
     custoInformado: z.number().nullable(),
+    /** Falha, causa e solução (I6): sugeridos na conclusão, confirmados no aceite. */
+    codigos: CodigosDaOsApi,
     criadoPor: z.guid(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
@@ -265,9 +269,12 @@ export const RespostaDeOsGravada = z
 /**
  * Aceitar a OS concluída (C6): a versão vista da OS e, opcional, o custo
  * informado em reais (I4), conferido no domínio (não negativo, dois decimais).
+ * Com `codigos` (I6), os três substituem os da OS; sem eles, ficam os que o
+ * técnico sugeriu. Com a política os.codigos_obrigatorios ligada no hotel, o
+ * aceite sem os três é recusado (422 codigos_obrigatorios_no_aceite).
  */
 export const PedidoDeAceiteDeOs = z
-  .object({ versao, custoInformado: z.number().nullish() })
+  .object({ versao, custoInformado: z.number().nullish(), codigos: CodigosDaOsApi.optional() })
   .meta({ id: 'PedidoDeAceiteDeOs' });
 
 /**

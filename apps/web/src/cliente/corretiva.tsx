@@ -5,7 +5,11 @@
 // dados pela API, que devolve o escopo de cada papel (RLS) e decide quem aceita
 // ou reabre (o erro volta como código e é traduzido aqui). Na I4, o detalhe
 // mostra se afeta hóspede, quem executa cada OS e o custo informado, e o
-// aceite leva o custo, opcional, em reais.
+// aceite leva o custo, opcional, em reais. Na I6, a OS mostra os códigos de
+// falha, causa e solução, e o aceite traz os três, já com a sugestão do
+// técnico, para quem aceita confirmar ou corrigir; a lista de cada um vem da
+// API (os que servem para a OS). Com a política os.codigos_obrigatorios ligada
+// no hotel, a API recusa o aceite sem os três, e a recusa aparece traduzida.
 import type {
   ChamadoResumidoApi,
   EventoDaLinhaDoTempoApi,
@@ -29,9 +33,16 @@ import {
   type TomDeSelo,
 } from '@hubkeep/ui';
 import Link from 'next/link';
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { chamarApi } from './api';
+import {
+  type CodigoNaTela,
+  type CodigosDoTenant,
+  TIPOS_DE_CODIGO,
+  type TipoDeCodigo,
+  useNomeDoCodigo,
+} from './codigos-manutencao';
 import { HistoricoDoRegistro } from './HistoricoDoRegistro';
 import { useIdioma, useT } from '../i18n/cliente';
 
@@ -43,6 +54,8 @@ export type OsResumida = z.infer<typeof OsResumidaApi>;
 export type EventoDaLinhaDoTempo = z.infer<typeof EventoDaLinhaDoTempoApi>;
 export type DetalheDoChamado = z.infer<typeof RespostaDeChamado>;
 export type OsDoChamado = DetalheDoChamado['os'][number];
+/** Os três códigos da OS (I6); null em cada um: não informado. */
+export type CodigosDaOsNaTela = OsDoChamado['codigos'];
 export type SituacoesEPrioridades = z.infer<typeof RespostaDeSituacoesEPrioridades>;
 
 /** Hotéis visíveis (GET /api/v1/hoteis) e as situações e prioridades do tenant. */
@@ -409,15 +422,85 @@ export function custoDoCampo(valor: string): number | null {
 export const chaveDoImpacto = (impacto: boolean | null): 'sim' | 'nao' | 'nao_informado' =>
   impacto === null ? 'nao_informado' : impacto ? 'sim' : 'nao';
 
-function Aceite(props: { aoAceitar: (custoInformado: number | null) => void }) {
+const CAMPO_DO_TIPO: Record<TipoDeCodigo, keyof CodigosDaOsNaTela> = {
+  falha: 'falhaId',
+  causa: 'causaId',
+  solucao: 'solucaoId',
+};
+
+/**
+ * Os códigos que servem para a OS (GET /api/v1/os/{id}/codigos), por tipo; null
+ * enquanto carrega ou se a leitura falhar (o aceite segue sem os campos).
+ */
+function useCodigosDaOs(osId: string, ligado: boolean) {
+  const [porTipo, setPorTipo] = useState<Record<TipoDeCodigo, string[]> | null>(null);
+  useEffect(() => {
+    if (!ligado) return;
+    let vivo = true;
+    void chamarApi<Record<TipoDeCodigo, string[]>>(`/api/v1/os/${osId}/codigos`).then((r) => {
+      if (vivo && r.ok) setPorTipo(r.dados);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [osId, ligado]);
+  return porTipo;
+}
+
+function Aceite(props: {
+  os: OsDoChamado;
+  codigos: CodigosDoTenant | null;
+  aoAceitar: (custoInformado: number | null, codigos: CodigosDaOsNaTela | undefined) => void;
+}) {
   const t = useT();
+  const nomeDoCodigo = useNomeDoCodigo(props.codigos);
+  const porTipo = useCodigosDaOs(props.os.id, props.codigos !== null);
   const [custo, setCusto] = useState('');
+  const [escolhidos, setEscolhidos] = useState<CodigosDaOsNaTela | null>(null);
+  const porId = new Map((props.codigos?.codigos ?? []).map((c) => [c.id, c]));
+  /** O valor do campo: o escolhido, senão a sugestão do técnico, se ela ainda serve. */
+  const valor = (tipo: TipoDeCodigo): string => {
+    const campo = CAMPO_DO_TIPO[tipo];
+    if (escolhidos) return escolhidos[campo] ?? '';
+    const sugerido = props.os.codigos[campo];
+    return sugerido && porTipo?.[tipo].includes(sugerido) ? sugerido : '';
+  };
+  const atuais = (): CodigosDaOsNaTela => ({
+    falhaId: valor('falha') || null,
+    causaId: valor('causa') || null,
+    solucaoId: valor('solucao') || null,
+  });
   function enviar(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
-    props.aoAceitar(custoDoCampo(custo));
+    props.aoAceitar(custoDoCampo(custo), porTipo ? atuais() : undefined);
   }
   return (
     <form onSubmit={enviar}>
+      {porTipo &&
+        TIPOS_DE_CODIGO.map((tipo) => (
+          <Campo key={tipo} rotulo={t('corretiva.aceite.codigo', { tipo })}>
+            {(p) => (
+              <Selecao
+                {...p}
+                name={CAMPO_DO_TIPO[tipo]}
+                value={valor(tipo)}
+                onChange={(e) =>
+                  setEscolhidos({ ...atuais(), [CAMPO_DO_TIPO[tipo]]: e.target.value || null })
+                }
+              >
+                <option value="">{t('corretiva.aceite.codigo_nao_informado')}</option>
+                {porTipo[tipo].map((id) => {
+                  const c: CodigoNaTela | undefined = porId.get(id);
+                  return (
+                    <option key={id} value={id}>
+                      {c ? nomeDoCodigo(c) : id}
+                    </option>
+                  );
+                })}
+              </Selecao>
+            )}
+          </Campo>
+        ))}
       <Campo rotulo={t('corretiva.aceite.custo')} ajuda={t('corretiva.aceite.custo_dica')}>
         {(p) => (
           <Entrada
@@ -435,6 +518,29 @@ function Aceite(props: { aoAceitar: (custoInformado: number | null) => void }) {
         {t('corretiva.aceite.aceitar')}
       </Botao>
     </form>
+  );
+}
+
+/** Os códigos da OS (I6), por nome, para o detalhe; nada se não houver nenhum. */
+function CodigosDaOs(props: { os: OsDoChamado; codigos: CodigosDoTenant | null }) {
+  const t = useT();
+  const nomeDoCodigo = useNomeDoCodigo(props.codigos);
+  const porId = new Map((props.codigos?.codigos ?? []).map((c) => [c.id, c]));
+  const itens = TIPOS_DE_CODIGO.flatMap((tipo) => {
+    const id = props.os.codigos[CAMPO_DO_TIPO[tipo]];
+    if (id === null) return [];
+    const c = porId.get(id);
+    return [{ tipo, id, nome: c ? nomeDoCodigo(c) : t('corretiva.os.codigo_sem_nome') }];
+  });
+  if (itens.length === 0) return null;
+  return (
+    <ul className="hk-sublista" data-codigos-da-os>
+      {itens.map((i) => (
+        <li key={i.tipo} className="hk-suave" data-codigo={i.id}>
+          {t('corretiva.os.codigo', { tipo: i.tipo, nome: i.nome })}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -491,7 +597,13 @@ function Reabertura(props: { temAtivo: boolean; aoReabrir: (p: PedidoDeReabertur
 export function ChamadoEmDetalhe(props: {
   detalhe: DetalheDoChamado;
   refs: Referencias | null;
-  aoAceitar: (os: OsDoChamado, custoInformado: number | null) => void;
+  /** Os códigos do tenant (I6); sem eles, o aceite não mostra os campos de código. */
+  codigos?: CodigosDoTenant | null;
+  aoAceitar: (
+    os: OsDoChamado,
+    custoInformado: number | null,
+    codigos?: CodigosDaOsNaTela | undefined,
+  ) => void;
   aoReabrir: (os: OsDoChamado, p: PedidoDeReabertura) => void;
 }) {
   const t = useT();
@@ -580,6 +692,7 @@ export function ChamadoEmDetalhe(props: {
                       })}
                     </p>
                   )}
+                  <CodigosDaOs os={o} codigos={props.codigos ?? null} />
                   {o.motivoReabertura && (
                     <p className="hk-suave">
                       {t('corretiva.os.motivo_reabertura', { motivo: o.motivoReabertura })}
@@ -594,7 +707,11 @@ export function ChamadoEmDetalhe(props: {
                     <div className="hk-bloco" data-tom="atencao">
                       <p className="hk-bloco-titulo">{t('corretiva.aceite.titulo')}</p>
                       <p className="hk-suave">{t('corretiva.aceite.descricao')}</p>
-                      <Aceite aoAceitar={(custo) => props.aoAceitar(o, custo)} />
+                      <Aceite
+                        os={o}
+                        codigos={props.codigos ?? null}
+                        aoAceitar={(custo, codigos) => props.aoAceitar(o, custo, codigos)}
+                      />
                       <Reabertura
                         temAtivo={chamado.ativoId !== null}
                         aoReabrir={(p) => props.aoReabrir(o, p)}

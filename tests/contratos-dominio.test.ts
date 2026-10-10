@@ -25,6 +25,7 @@ import {
   PRIORIDADES_PADRAO_API,
   PREFIXOS_DO_NUCLEO_API,
   PedidoDePolitica,
+  TIPOS_DE_CODIGO_DE_MANUTENCAO_API,
 } from '../packages/contratos/src/index';
 import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
@@ -47,6 +48,7 @@ import {
   ESTADOS_DO_CHAMADO,
   PRIORIDADES_PADRAO,
   PREFIXOS_DO_NUCLEO,
+  TIPOS_DE_CODIGO_DE_MANUTENCAO,
 } from '../packages/dominio/src/index';
 import { IDIOMAS } from '../packages/i18n/src/index';
 
@@ -89,6 +91,15 @@ describe('contratos × domínio', () => {
         { ligado: true, dias: 7, extra: 1 },
         { ligado: true },
         [true, 7],
+        null,
+      ],
+      'os.codigos_obrigatorios': [
+        { ligado: true },
+        { ligado: false },
+        { ligado: 'sim' },
+        { ligado: true, extra: 1 },
+        {},
+        true,
         null,
       ],
       'chamado.prioridade_padrao_por_categoria': [
@@ -165,6 +176,10 @@ describe('contratos × domínio', () => {
   it('a origem do chamado e quem executa a OS na API são os do domínio (I4)', () => {
     expect([...ORIGENS_DO_CHAMADO_API]).toEqual([...ORIGENS_DO_CHAMADO]);
     expect([...EXECUTORES_DA_OS_API]).toEqual([...EXECUTORES_DA_OS]);
+  });
+
+  it('os tipos de código de manutenção da API são os do domínio (I6)', () => {
+    expect([...TIPOS_DE_CODIGO_DE_MANUTENCAO_API]).toEqual([...TIPOS_DE_CODIGO_DE_MANUTENCAO]);
   });
 
   it('as entidades com histórico da API são as do domínio (D1)', () => {

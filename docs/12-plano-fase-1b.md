@@ -119,7 +119,7 @@ O plano da 1c está no `docs/13-plano-fase-1c.md`, com a auditoria geral registr
 
 ## A confirmar com o Cesar
 
-1. **Cobrança dos códigos (I6):** com a política `os.codigos_obrigatorios` ligada, os códigos são cobrados no aceite, e não na conclusão do técnico (relatório de lacunas, decisões de 05/10/2026).
+1. **Cobrança dos códigos (I6), confirmada pelo Cesar em 10/10/2026:** no PWA, o técnico preenche os códigos como sugestão, e a conclusão nunca é recusada por falta deles; com a política `os.codigos_obrigatorios` ligada, o aceite no web exige falha, causa e solução, com mensagem de recusa (diário da 1a, seção da I6).
 2. **Aceite da OS preventiva:** quem aceita, já que ela não tem quem abriu. A proposta é o Gerente do hotel, ou, sem Gerente, o Gestor CSC, como na C6.
 3. **Modelos por categoria (M1):** a leitura deste plano é modelo de ativo para acelerar a implantação, com checklist e plano sugeridos. Se o cliente pensava em modelo de checklist por categoria apenas, a M1 encolhe.
 4. **Planilha (M2):** só CSV no MVP, com o modelo baixado na tela, ou também XLSX.

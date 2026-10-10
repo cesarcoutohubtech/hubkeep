@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   casosDeUsoDeConsultas,
   casosDeUsoDeChamados,
+  casosDeUsoDeCodigos,
   casosDeUsoDeEquipes,
   casosDeUsoDeHistorico,
   casosDeUsoDeSituacoes,
@@ -54,6 +55,7 @@ const TABELAS = [
   'app.os_transicao',
   'app.os',
   'app.chamado',
+  'app.codigo_manutencao',
   'app.ativo_movimentacao',
   'app.ativo',
   'app.equipe_membro',
@@ -177,6 +179,31 @@ describe.skipIf(!temAmbiente)('dados de demonstração do kit de teste', { timeo
       [TENANT, r.chamados.emExecucaoParado],
     );
     expect(Number(parada.rows[0].n)).toBe(1);
+  });
+
+  it('os códigos de falha, causa e solução do roteiro (I6)', async () => {
+    const triagem = await casosDeUsoDeTriagem();
+    const { codigos } = await (await casosDeUsoDeCodigos()).listarCodigos(ctx('admin'));
+    const chave = (id: string | null) =>
+      id === null ? null : (codigos.find((c) => c.id === id)?.chavePadrao ?? id);
+    const daOs = async (c: keyof ResultadoDaDemonstracao['chamados']) => {
+      const [os] = await triagem.osDoChamado(ctx('admin'), r.chamados[c]);
+      return os
+        ? [chave(os.codigos.falhaId), chave(os.codigos.causaId), chave(os.codigos.solucaoId)]
+        : [];
+    };
+    // Sugeridos na conclusão; a solução fica para o aceite.
+    expect(await daOs('aguardandoAceite')).toEqual([
+      'falha_ruido_anormal',
+      'causa_desgaste_natural',
+      null,
+    ]);
+    // Confirmados no aceite.
+    expect(await daOs('concluido')).toEqual([
+      'falha_nao_aquece',
+      'causa_desgaste_natural',
+      'solucao_troca_de_peca',
+    ]);
   });
 
   it('cada chamado com a prioridade do roteiro, pela política da categoria', async () => {

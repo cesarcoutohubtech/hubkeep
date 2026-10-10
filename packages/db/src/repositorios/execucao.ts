@@ -26,6 +26,13 @@ export async function andarComOs(
     .set({
       estado: g.estado,
       situacao_id: g.situacaoId,
+      ...(g.codigos
+        ? {
+            codigo_falha_id: g.codigos.codigos.falhaId,
+            codigo_causa_id: g.codigos.codigos.causaId,
+            codigo_solucao_id: g.codigos.codigos.solucaoId,
+          }
+        : {}),
       versao: sql<number>`versao + 1`,
       atualizado_em: sql`now()`,
     })
@@ -53,6 +60,9 @@ export async function andarComOs(
       situacaoId: g.situacaoId,
       versao: r.versao,
       ...(g.chamado ? { estadoDoChamado: g.chamado.estado } : {}),
+      ...(g.codigos
+        ? { codigos: g.codigos.codigos, codigosDescartados: g.codigos.descartados }
+        : {}),
     },
   });
   uow.publicar({

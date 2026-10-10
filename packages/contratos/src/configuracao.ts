@@ -14,6 +14,8 @@ import { MODELOS_CONTRATUAIS_API } from './api';
 import { IDIOMAS_API } from './preferencias';
 
 const AceiteAutomatico = z.strictObject({ ligado: z.boolean(), dias: z.int().min(1).max(60) });
+/** Códigos obrigatórios no aceite (I6); desligado por padrão. */
+const CodigosObrigatorios = z.strictObject({ ligado: z.boolean() });
 const PrioridadePadraoPorCategoria = z.record(z.guid(), z.guid());
 
 /** Nome de cada nível da criticidade (1 a 5) por idioma, parcial (I1). */
@@ -26,6 +28,7 @@ export const NomesDeCriticidadeApi = z
 
 export const FORMATOS_DE_POLITICA_API = {
   'os.aceite_automatico': AceiteAutomatico,
+  'os.codigos_obrigatorios': CodigosObrigatorios,
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria,
   'ativo.criticidade': NomesDeCriticidadeApi,
 } as const;
@@ -54,6 +57,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('os.aceite_automatico'),
     escopo: EscopoDePolitica,
     valor: AceiteAutomatico.nullable(),
+  }),
+  z.object({
+    chave: z.literal('os.codigos_obrigatorios'),
+    escopo: EscopoDePolitica,
+    valor: CodigosObrigatorios.nullable(),
   }),
   z.object({
     chave: z.literal('chamado.prioridade_padrao_por_categoria'),
@@ -138,6 +146,7 @@ export const RespostaDeConfiguracao = z
     politicas: z.array(
       z.discriminatedUnion('chave', [
         resolvida('os.aceite_automatico', AceiteAutomatico),
+        resolvida('os.codigos_obrigatorios', CodigosObrigatorios),
         resolvida('chamado.prioridade_padrao_por_categoria', PrioridadePadraoPorCategoria),
         resolvida('ativo.criticidade', NomesDeCriticidadeApi),
       ]),

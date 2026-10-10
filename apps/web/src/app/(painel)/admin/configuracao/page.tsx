@@ -4,7 +4,7 @@
 // de interface (ADR-038, U4b). Os nomes dos níveis de criticidade do ativo
 // (I1) são editados por idioma; o campo vazio usa o nome do catálogo. O
 // modelo contratual do hotel (I2) fica na configuração do hotel; vazio é "não
-// informado".
+// informado". Os códigos obrigatórios no aceite (I6) ligam por grupo ou hotel.
 import { MODELOS_CONTRATUAIS_API } from '@hubkeep/contratos';
 import { IDIOMAS } from '@hubkeep/i18n';
 import {
@@ -41,6 +41,14 @@ type PoliticaSemCriticidade =
       grupo: Aceite | null;
       hotel: Aceite | null;
       efetiva: Aceite;
+      origem: Origem;
+    }
+  | {
+      chave: 'os.codigos_obrigatorios';
+      padrao: { ligado: boolean };
+      grupo: { ligado: boolean } | null;
+      hotel: { ligado: boolean } | null;
+      efetiva: { ligado: boolean };
       origem: Origem;
     }
   | {
@@ -176,6 +184,7 @@ export default function ConfiguracaoDoGrupo() {
     (p) => p.chave === 'chamado.prioridade_padrao_por_categoria',
   );
   const criticidade = dados.politicas.find((p) => p.chave === 'ativo.criticidade');
+  const codigos = dados.politicas.find((p) => p.chave === 'os.codigos_obrigatorios');
   const origem = (o: Origem) => (
     <Selo tom={TOM_DA_ORIGEM[o]}>{t('admin.configuracao.origem', { origem: o })}</Selo>
   );
@@ -318,6 +327,71 @@ export default function ConfiguracaoDoGrupo() {
                     <Botao
                       tamanho="pequeno"
                       onClick={() => void gravarPolitica('os.aceite_automatico', 'hotel', null)}
+                    >
+                      {t('admin.configuracao.acao.herdar_hotel')}
+                    </Botao>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+          {codigos?.chave === 'os.codigos_obrigatorios' && (
+            <section
+              key={JSON.stringify(codigos)}
+              className="hk-bloco"
+              data-politica={codigos.chave}
+            >
+              <h3 className="hk-bloco-titulo">{t('admin.configuracao.codigos.titulo')}</h3>
+              <div className="hk-linha-de-botoes">
+                <span className="hk-suave">
+                  {t('admin.configuracao.codigos.resumo', {
+                    ligado: String(codigos.efetiva.ligado),
+                  })}
+                </span>
+                {origem(codigos.origem)}
+              </div>
+              <p className="hk-suave">{t('admin.configuracao.codigos.dica')}</p>
+              <form
+                className="hk-em-linha"
+                onSubmit={(ev) => {
+                  ev.preventDefault();
+                  const f = new FormData(ev.currentTarget);
+                  const escopo =
+                    (ev.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'hotel'
+                      ? 'hotel'
+                      : 'grupo';
+                  void gravarPolitica('os.codigos_obrigatorios', escopo, {
+                    ligado: f.get('ligado') === 'on',
+                  });
+                }}
+              >
+                <label className="hk-marcar">
+                  <input type="checkbox" name="ligado" defaultChecked={codigos.efetiva.ligado} />
+                  {t('admin.configuracao.codigos.ligado')}
+                </label>
+                <Botao type="submit" value="grupo">
+                  {t('admin.configuracao.acao.gravar_grupo')}
+                </Botao>
+                {dados.hotel && (
+                  <Botao type="submit" value="hotel">
+                    {t('admin.configuracao.acao.gravar_hotel')}
+                  </Botao>
+                )}
+              </form>
+              {(codigos.grupo || codigos.hotel) && (
+                <div className="hk-linha-de-botoes">
+                  {codigos.grupo && (
+                    <Botao
+                      tamanho="pequeno"
+                      onClick={() => void gravarPolitica('os.codigos_obrigatorios', 'grupo', null)}
+                    >
+                      {t('admin.configuracao.acao.herdar_grupo')}
+                    </Botao>
+                  )}
+                  {codigos.hotel && (
+                    <Botao
+                      tamanho="pequeno"
+                      onClick={() => void gravarPolitica('os.codigos_obrigatorios', 'hotel', null)}
                     >
                       {t('admin.configuracao.acao.herdar_hotel')}
                     </Botao>
