@@ -898,4 +898,25 @@ Depois do merge do #176 ("Cesar aqui", 10/10/2026), este é o primeiro passo do 
 - **O mapa das entradas** (`docs/referencia/mapa-entradas-calcular-dia.md`) não tem mais nenhuma linha esperando a etapa I. Continuam sem origem só as medições (PV1) e o `aposPreventiva` (etapa P).
 - **Próximo:** a fila de zona protegida, um PR por vez, conferindo antes que não há outro aberto: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job (é ela que implementa o `modulos()` e as outras leituras).
 - **Esperando o Kaio:** o comentário na issue #169 e a confirmação da vigência no recálculo.
-- **Esperando o Cesar:** a aprovação do adendo da I7 ao ADR-026.
+- **Esperando o Cesar:** a aprovação do adendo da I7 ao ADR-026. **Atualização:** aprovado por Cesar em 10/10/2026 (registro no `docs/diario-fase-1a.md`, #178).
+
+## `int-adr-aceite`: o `docs/03` no estado real (10/10/2026)
+
+Primeiro PR da fila de zona protegida do Intelligence, aberto depois do merge do #179, com a confirmação do Cesar ("Cesar aqui", 10/10/2026). Nenhum outro PR estava aberto no repositório.
+
+- **Branch novo, `int-adr-aceite-v2`, a partir da `main`.** O `int-adr-aceite` de 07/10 partia de uma `main` antiga e trazia "aguardando Cesar" em itens que a #166 já aprovou. O texto dele foi reaproveitado, com as aprovações de 10/10, e o branch antigo fica como está.
+- **O que entra no `docs/03`:**
+  - **ADR-026:** o adendo da I7 passa a "aprovado por Cesar em 10/10/2026";
+  - **ADR-033:** as aprovações de 10/10 (#166), o processo do ADR-033, o hotel novo na variante (c), o responsável pelo insight, a família e a chave, a regra do job pela família e o motivo do descarte;
+  - **ADR-034:** o adendo da atenção v2, do `int-rascunhos` (`rascunhos/adr/adendos-adr-034-e-036.md`);
+  - **ADR-035:** a validação entre chaves, a conferência na leitura e a remissão aos adendos de 08/10;
+  - **ADR-036:** o aceite do Kaio à condição, como ela foi aplicada (o painel mostra o resultado original) e o adendo das versões e do formato das políticas, do `int-rascunhos`.
+- **Status dos dois adendos:** o conteúdo foi aprovado por Cesar e Kaio em 10/10/2026; o texto aguarda a aprovação escrita dos dois. Merge não aprova ADR.
+- **Itens "aprovado por Kaio":** foram dados no chat deste agente; a confirmação do Kaio com o próprio login continua na issue #169.
+- **Fora deste PR:** as três regras do cálculo do dia (#101), que entram com a `app.insight`, e o adendo proposto ao ADR-027 (núcleo, aguarda o Cesar).
+
+### Ponto de retomada (10/10/2026)
+- **PR aberto:** `int-adr-aceite-v2` (zona protegida; o merge é do Cesar, com bypass).
+- **Esperando o Cesar e o Kaio:** a aprovação escrita do texto dos adendos ao ADR-034 e ao ADR-036.
+- **Esperando o Kaio:** o comentário na issue #169 e a confirmação da vigência no recálculo.
+- **Depois do merge:** tirar o texto dos adendos do `int-rascunhos` e abrir a `app.insight`, a partir do rascunho.
