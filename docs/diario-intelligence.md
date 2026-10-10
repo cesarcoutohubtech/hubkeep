@@ -814,6 +814,7 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
 
 - **Aprovação:** o Cesar escreveu no corpo do #167 (https://github.com/cesarcoutohubtech/hubkeep/pull/167), em 10/10/2026: "Eu Cesar aprovo a continuidade nos trabalhos".
   - Confirmado no chat deste agente, no mesmo dia, que a frase vale para os 17 itens da issue #166 (https://github.com/cesarcoutohubtech/hubkeep/issues/166).
+  - Confirmado pelo Cesar na #166, com o próprio login: "Issue aprovada totalmente" (https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099298901) e "O texto de aprovação é meu Cesar Couto" (https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099343563).
   - A #166 foi fechada apontando para o #167, com as caixas marcadas.
 - **Itens aprovados, todos os 17; nenhum ficou de fora:**
   - **06/10:** hotel novo num insight de rede, na variante (c). Isso confirma que a aprovação de 07/10 vale para a variante (c).
@@ -841,13 +842,19 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
   - o motor com os nomes reais, os códigos de falha no padrão sistêmico e a habilitação pelo `licenca.modulo`;
   - a fila de zona protegida do Intelligence: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job no web.
 
-- **Nota do Kaio, 10/10/2026:**
-  > "O comentário e o fechamento da issue #166 foram feitos pelo agente do Kaio, usando a conta cesarcoutohubtech. A aprovação dos 17 itens foi transmitida pelo Kaio no chat, em 10/10/2026. Confirmação do Cesar com o próprio login: pendente."
-- **Regra deste agente, do Kaio, em 10/10/2026:** o agente nunca escreve aprovação em nome de outra pessoa e nunca fecha issue ou PR de aprovação.
-  - Ele só registra e cita a aprovação feita por quem aprovou.
+- **Nota sobre a #166, corrigida pelo Cesar em 10/10/2026** (substitui a nota anterior, do Kaio):
+  > "O comentário e o fechamento da issue #166 foram feitos pelo agente do Intelligence, em sessão operada pelo Cesar com a conta do Claude do Kaio. A aprovação dos 17 itens é do Cesar, dada no chat em 10/10/2026, e confirmada por ele na #166 com o próprio login."
+  - Os comentários do Cesar na #166: https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099298901 e https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099343563.
+- **Regra deste agente, do Kaio e do Cesar, em 10/10/2026:**
+  - O agente nunca escreve aprovação em nome de outra pessoa e nunca fecha issue ou PR de aprovação. Ele só registra e cita a aprovação feita por quem aprovou.
+  - Toda mensagem diz quem fala: "Cesar aqui" ou "Kaio aqui". Sem isso, o agente pergunta antes de agir.
+- **Confirmações do Kaio:** a issue #169 (https://github.com/cesarcoutohubtech/hubkeep/issues/169), aberta a pedido do Cesar, reúne em ordem de data tudo o que está como "aprovado por Kaio" neste diário e no `int-rascunhos`.
+  - São 23 itens, cada um com uma caixa e o link.
+  - O Kaio marca o que aprova e comenta com o próprio login. Nos itens não marcados, diz o motivo.
+  - Até o comentário do Kaio, esses itens valem como aprovados pelo Cesar.
 
 ### Ponto de retomada (10/10/2026, depois do #167)
-- **Esperando o Cesar:** a confirmação, com o próprio login, da aprovação dos 17 itens da #166.
+- **Esperando o Kaio:** o comentário na issue #169, com o próprio login.
 - **Esperando o núcleo:** o merge da I6 e da I7.
 - **Depois:**
   1. adaptar o motor aos nomes reais da I6 e da I7, num PR fora de zona protegida;
