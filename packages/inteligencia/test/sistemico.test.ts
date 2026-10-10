@@ -10,6 +10,7 @@ import {
   type LocalAnalisado,
   PADRAO_SISTEMICO,
   VERSAO_SISTEMICO,
+  chaveDeModelo,
   detectarSistemicos as detectar,
 } from '../src';
 import { agora, corretiva, dia, todasAsRegras } from './apoio';
@@ -87,14 +88,25 @@ describe('mesmo andar', () => {
 });
 
 describe('mesmo modelo (versão 2: mínimos da política e taxa contra a base)', () => {
+  /** Outro modelo na categoria, sem chamado: sem ele, a regra não dispara (10/10/2026). */
+  const semChamado: AtivoAnalisado = {
+    id: 'base',
+    hotelId: 'h0',
+    categoriaId: 'hvac',
+    fabricante: 'Daikin',
+    modelo: 'D1',
+  };
   const D = (
     as: readonly AtivoAnalisado[],
     cs: ReturnType<typeof corretiva>[],
     c = PADRAO_SISTEMICO,
+    comOutroModelo = true,
   ) =>
-    detectar({ corretivas: cs, ativos: as, locais: [] }, agora, c).filter(
-      (s) => s.regra === 'mesmo_modelo',
-    );
+    detectar(
+      { corretivas: cs, ativos: comOutroModelo ? [...as, semChamado] : as, locais: [] },
+      agora,
+      c,
+    ).filter((s) => s.regra === 'mesmo_modelo');
   /** `n` ativos do mesmo modelo (grafias diferentes, como chegam do cadastro), em `hoteis` hotéis. */
   const parque = (n: number, hoteis: number, categoriaId = 'hvac'): AtivoAnalisado[] =>
     Array.from({ length: n }, (_, i) => ({
@@ -202,11 +214,13 @@ describe('mesmo modelo (versão 2: mínimos da política e taxa contra a base)',
     const cs = chamados(as);
     const base = outros(10);
     // Base de 5 chamados em 10 ativos = 0,5; o dobro é 1,0, e a taxa de 1,0 passa.
-    const noLimite = D([...as, ...base], [...cs, ...chamados(base.slice(0, 5))]);
+    const noLimite = D([...as, ...base], [...cs, ...chamados(base.slice(0, 5))], undefined, false);
     expect(noLimite).toHaveLength(1);
     expect(noLimite[0]?.evidencia).toMatchObject({ taxaPorAtivo: 1, basePorAtivo: 0.5 });
     // Base de 6 em 10 = 0,6; o dobro é 1,2, e a taxa de 1,0 não passa.
-    expect(D([...as, ...base], [...cs, ...chamados(base.slice(0, 6))])).toEqual([]);
+    expect(D([...as, ...base], [...cs, ...chamados(base.slice(0, 6))], undefined, false)).toEqual(
+      [],
+    );
   });
 
   it('a taxa nunca vale menos que 0,3: 6 chamados em 30 ativos instalados (0,2) não é sinal', () => {
@@ -258,6 +272,76 @@ describe('mesmo modelo (versão 2: mínimos da política e taxa contra a base)',
         mesmoModelo: { ...m, minHoteis: 2, minChamados: 3, minAtivos: 3 },
       }),
     ).toHaveLength(1);
+  });
+
+  it('sem outro modelo instalado na categoria, a regra não dispara', () => {
+    const as = parque(6, 3);
+    const cs = chamados(as);
+    expect(D(as, cs, PADRAO_SISTEMICO, false)).toEqual([]);
+    // Outro modelo em outra categoria, ou sem fabricante e modelo, não é comparação.
+    const outraCategoria = { ...semChamado, categoriaId: 'bomba' };
+    const semModelo = { ...semChamado, fabricante: null, modelo: null };
+    expect(D([...as, outraCategoria, semModelo], cs, PADRAO_SISTEMICO, false)).toEqual([]);
+    expect(D(as, cs)).toHaveLength(1);
+  });
+
+  it('ativo instalado é o que esteve ativo na janela: o baixado antes do início não conta', () => {
+    // 6 chamados em 30 ativos: 0,2, abaixo de 0,3. Com 10 baixados antes da janela, 6 em 20: 0,3.
+    const trinta = parque(30, 3);
+    const comChamado = trinta.slice(0, 6);
+    const baixar = (quando: Date) =>
+      trinta.map((a, i) => (i >= 20 ? { ...a, desativadoEm: quando } : a));
+    expect(D(trinta, chamados(comChamado))).toEqual([]);
+    const sinais = D(baixar(dia(-100)), chamados(comChamado));
+    expect(sinais).toHaveLength(1);
+    expect(sinais[0]?.evidencia).toMatchObject({ ativosDoModelo: 20, taxaPorAtivo: 0.3 });
+    // Baixado no meio da janela conta inteiro (1.0).
+    expect(D(baixar(dia(-50)), chamados(comChamado))).toEqual([]);
+  });
+
+  it('o outro modelo baixado antes da janela não serve de base', () => {
+    const as = parque(6, 3);
+    const baixado = { ...semChamado, desativadoEm: dia(-120) };
+    expect(D([...as, baixado], chamados(as), PADRAO_SISTEMICO, false)).toEqual([]);
+    const naJanela = { ...semChamado, desativadoEm: dia(-30) };
+    expect(D([...as, naJanela], chamados(as), PADRAO_SISTEMICO, false)).toHaveLength(1);
+  });
+
+  it('os 3 hotéis são os com chamado contado: ter o modelo instalado não basta', () => {
+    // 6 ativos com chamado em 2 hotéis e o mesmo modelo instalado num terceiro, sem chamado.
+    const comChamado = parque(6, 2);
+    const noTerceiro: AtivoAnalisado = {
+      ...(comChamado[0] as AtivoAnalisado),
+      id: 't1',
+      hotelId: 'h9',
+    };
+    expect(D([...comChamado, noTerceiro], chamados(comChamado))).toEqual([]);
+  });
+
+  it('fabricante e modelo sem maiúsculas, acentos e espaços extras', () => {
+    expect(chaveDeModelo({ fabricante: '  Mídea ', modelo: 'Split   Inverter  12' })).toBe(
+      'midea|split inverter 12',
+    );
+    expect(chaveDeModelo({ fabricante: 'MIDEA', modelo: 'split inverter 12' })).toBe(
+      'midea|split inverter 12',
+    );
+    expect(chaveDeModelo({ fabricante: 'Ar Condicionado Pólo', modelo: 'Ç-200' })).toBe(
+      'ar condicionado polo|c-200',
+    );
+    expect(chaveDeModelo({ fabricante: 'Midea', modelo: '   ' })).toBeNull();
+    expect(chaveDeModelo({ fabricante: null, modelo: 'X' })).toBeNull();
+    // Grafias diferentes do mesmo modelo, em 3 hotéis, viram um sinal só.
+    const grafias = ['Mídea', 'MIDEA', ' midea ', 'Midea', 'MÍDEA', 'midéa'];
+    const as: AtivoAnalisado[] = grafias.map((fabricante, i) => ({
+      id: `g${i}`,
+      hotelId: `h${i % 3}`,
+      categoriaId: 'hvac',
+      fabricante,
+      modelo: i % 2 ? 'Split  Inverter' : 'split inverter',
+    }));
+    const sinais = D(as, chamados(as));
+    expect(sinais).toHaveLength(1);
+    expect(sinais[0]?.chave).toEqual({ categoriaId: 'hvac', modelo: 'midea|split inverter' });
   });
 
   it('só o mesmo modelo vem ligado: as outras quatro regras ficam desligadas no padrão', () => {

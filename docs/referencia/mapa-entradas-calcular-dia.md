@@ -51,7 +51,8 @@
 |---|---|---|
 | `id`, `hotelId` | `app.ativo.id`, `app.ativo.hotel_id` | Existe |
 | `categoriaId` | `app.ativo.categoria_id` | Existe |
-| `fabricante`, `modelo` | `app.ativo.fabricante`, `app.ativo.modelo` | Existe |
+| `fabricante`, `modelo` | `app.ativo.fabricante`, `app.ativo.modelo`. O mesmo modelo compara sem maiúsculas, acentos e espaços extras (`chaveDeModelo`). | Existe |
+| `desativadoEm` | `app.ativo.desativado_em` (exclusão lógica). O mesmo modelo não conta o ativo baixado antes do início da janela, nem no modelo nem na base; por isso quem lê o banco manda também os ativos baixados dentro da janela. | Existe |
 | `criticidade` | `app.ativo.criticidade`, de 1 a 5, fixa (`check` no banco). A política `ativo.criticidade` só troca os nomes dos níveis. | I1 |
 | `paradas` | `app.parada_ativo.inicio` e `fim`, por `ativo_id` | Existe |
 | `garantiaAte` | `app.ativo.garantia_ate` (último dia da garantia). Atenção v2: garantia vencida, 5%. Sem a data, o componente fica sem dado. | I1 |

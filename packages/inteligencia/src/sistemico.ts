@@ -14,6 +14,21 @@
 // - além dos mínimos, a taxa do modelo (chamados por ativo instalado, em 90
 //   dias) precisa ser de pelo menos o dobro da base, e nunca menos de 0,3. A
 //   base é a taxa dos outros modelos da mesma categoria no tenant.
+//
+// Respostas de 10/10/2026 (Kaio e Cesar):
+// - fabricante e modelo comparados sem maiúsculas, acentos e espaços extras
+//   (`chaveDeModelo`); o ativo sem modelo fica fora da regra;
+// - ativo instalado é o que esteve ativo em algum momento da janela: o
+//   baixado (`desativadoEm`) antes do início não conta, nem no modelo nem na
+//   base; o instalado no meio conta inteiro no 1.0;
+// - sem outro modelo instalado na categoria, a regra não dispara: sem
+//   comparação, não dá para atribuir o problema ao modelo (o mesmo princípio
+//   do "sem base" da efetividade);
+// - os 3 hotéis são hotéis distintos com pelo menos um chamado contado na
+//   janela em ativos do modelo; ter o modelo instalado não basta.
+//
+// A versão continua a 2: nenhum sinal foi gravado ainda, e ela é a primeira
+// que um sinal gravado vai levar.
 import {
   type AtivoAnalisado,
   type Corretiva,
@@ -177,13 +192,19 @@ export function detectarSistemicos(
   // mínimos da política e a taxa de chamados por ativo contra a da base. Só
   // entra o ativo com categoria, fabricante e modelo; sem os três, não se sabe
   // se é o mesmo modelo, e ele fica de fora da conta toda, inclusive da base.
+  // O ativo baixado antes do início da janela também fica de fora, com os
+  // chamados dele.
   const mm = config.mesmoModelo;
+  const inicioDoModelo = agora.getTime() - mm.janelaDias * DIA_MS;
+  const naJanelaDoAtivo = (a: AtivoAnalisado): boolean =>
+    !a.desativadoEm || a.desativadoEm.getTime() > inicioDoModelo;
+  const ativosDoModelo = new Map(e.ativos.filter(naJanelaDoAtivo).map((a) => [a.id, a]));
   const grupoDoAtivo = (a: AtivoAnalisado | undefined): string | null => {
     const modelo = a ? chaveDeModelo(a) : null;
     return a?.categoriaId && modelo ? JSON.stringify([a.categoriaId, modelo]) : null;
   };
   if (mm.ativa) {
-    const instalados = agrupar(e.ativos, grupoDoAtivo);
+    const instalados = agrupar([...ativosDoModelo.values()], grupoDoAtivo);
     const naBaseDaCategoria = new Map<string, { ativos: number; chamados: number }>();
     const naJanelaDoModelo = e.corretivas.filter(naJanela(mm.janelaDias));
     for (const [k, doGrupo] of instalados) {
@@ -195,7 +216,7 @@ export function detectarSistemicos(
       });
     }
     const porModelo = agrupar(naJanelaDoModelo, (c) =>
-      grupoDoAtivo(c.ativoId ? ativos.get(c.ativoId) : undefined),
+      grupoDoAtivo(c.ativoId ? ativosDoModelo.get(c.ativoId) : undefined),
     );
     for (const [k, cs] of porModelo) {
       const [categoriaId] = JSON.parse(k) as [string, string];
@@ -212,7 +233,9 @@ export function detectarSistemicos(
       const categoria = naBaseDaCategoria.get(categoriaId) as { ativos: number; chamados: number };
       const taxa = cs.length / Math.max(doModelo, distintos);
       const ativosDaBase = categoria.ativos - doModelo;
-      const base = ativosDaBase > 0 ? (categoria.chamados - cs.length) / ativosDaBase : 0;
+      // Sem outro modelo instalado na categoria, não há com o que comparar.
+      if (ativosDaBase <= 0) continue;
+      const base = (categoria.chamados - cs.length) / ativosDaBase;
       if (taxa < Math.max(mm.taxaMinima, mm.taxaMinimaVezesBase * base)) continue;
       sinais.push({
         regra: 'mesmo_modelo',

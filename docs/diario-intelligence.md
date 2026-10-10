@@ -669,3 +669,51 @@ O vazio e o zero são distintos no banco e no aceite do `apps/web`:
 - **Esperando o Cesar:** o ok às respostas desta seção e da anterior. Com o ok, a implementação entra num PR fora de zona protegida, com a versão de cada fórmula conforme a regra do adendo.
 - **Esperando o Kaio:** o canal da aprovação do Cesar de 08/10.
 - **Esperando o núcleo:** a I6 e a I7. Depois da I7, a fila de zona protegida abre para o `int-adr-aceite` e as tabelas do Intelligence, uma por vez.
+
+## Aprovação do Cesar e implementação das respostas de 10/10 (10/10/2026)
+
+### A aprovação do Cesar
+- **Texto literal do Cesar** (passado pelo usuário no chat deste agente em 10/10/2026, sem alteração):
+
+  > Aprovado. Podem seguir.
+
+- **Dia:** 10/10/2026. **Canal:** o usuário passou a frase no chat deste agente, como "O cesar disse:". O canal em que o Cesar escreveu não veio com o texto. A mensagem do Kaio trazia o lugar do texto ainda com o marcador "[cole aqui o texto do Cesar]", e por isso o registro é a frase passada pelo usuário. **[canal a confirmar com o Kaio]**
+- **O que ela aprova**, pela mensagem do Kaio do mesmo dia: as propostas de 08/10 e as respostas de 10/10 (as duas seções acima). O Kaio confirmou a leitura do agente de que ativo baixado é o `app.ativo.desativado_em` anterior ao início da janela.
+- **O que ela não aprova:** o texto dos adendos ao ADR-034 e ao ADR-036. Ele segue no `int-rascunhos` para o `int-adr-aceite`, depois da I6 e da I7. Merge não aprova ADR.
+
+### Os três PRs (fora de zona protegida, cada um a partir da `main`, sem empilhar)
+1. **Atenção** (#157, `int-atencao-respostas`): a versão continua 2, a primeira gravada, com os pesos padrão aprovados.
+   - Tempo parado e impacto no hóspede ficam sempre disponíveis.
+   - Garantia sem data conta como não vencida.
+   - Medições: fração, com mínimo na política (`minMedicoes`, padrão 3, mínimo 1) e disponibilidade por categoria (`categoriasComMedicao`). Abaixo do mínimo, o ativo contribui 0.
+   - Custo: regra dos 50% das corretivas encerradas do tenant. O ativo soma só as corretivas que têm o dado.
+   - O detalhamento ganha uma nota por linha (custo em X de Y corretivas, custo sem dado no tenant, medições abaixo do mínimo e garantia sem data), nos quatro idiomas.
+   - **Escolha do agente, a confirmar com o Kaio:** os 50% ficaram fixos na fórmula, e não na política. A política da atenção se resolve por hotel, e a regra precisa ser a mesma em todos os hotéis do tenant.
+2. **Efetividade** (#158, `int-efetividade-ordem`): "sem base de comparação" prevalece sobre "janela incompleta".
+   - Os limiares continuam na política.
+   - A versão continua 2, que é a primeira gravada.
+   - O rótulo do "sem base" diz que o resultado vale desde o dia da intervenção.
+3. **Padrão sistêmico** (este PR, `int-sistemico-respostas`):
+   - **Normalização:** fabricante e modelo sem maiúsculas, acentos e espaços extras.
+   - **Ativos instalados:** o ativo baixado antes do início da janela não conta, nem no modelo nem na base (`AtivoAnalisado.desativadoEm`).
+   - **Sem outro modelo na categoria:** a regra não dispara.
+   - **Os 3 hotéis:** contam só os hotéis com chamado contado no modelo, como já era.
+   - **Versão:** continua 2, a primeira gravada. Só o mesmo modelo segue ligado por padrão, com os mínimos na política.
+
+**Versões:** nenhuma sobe nos três PRs. Pela regra do adendo, a versão só sobe quando a fórmula muda depois da primeira gravação, e nada foi gravado ainda.
+
+**Registro de políticas:** nenhuma chave nova. As três chaves (`inteligencia.atencao_ativo`, `inteligencia.efetividade` e `inteligencia.sistemico`) já existem. O campo novo `minMedicoes` é validado pela extensão do Intelligence.
+
+### Fora deste trabalho
+- **Mock de apresentação:** já está na `main`. O #143 ("mock de apresentação como mock oficial único") entrou em 08/10/2026.
+  - A tela do Intelligence no mock recebeu a atenção v2 e a efetividade v2 no #147 (agente do núcleo) e o padrão sistêmico v2 no #148.
+  - As respostas de 10/10 ainda não entraram no mock, e o aceite do mock ainda grava 0 no custo vazio (`parseFloat(...) || 0`).
+  - Fica para um PR depois destes três, quando o Kaio mandar seguir.
+
+### Ponto de retomada (10/10/2026)
+- **Merge do Kaio, na ordem:** #157, #158 e este. Os três saem da `main` e não dependem um do outro. Este é o único que mexe no diário.
+- **Esperando o Kaio:**
+  - o canal da aprovação do Cesar de 08/10;
+  - o canal da aprovação de 10/10;
+  - a confirmação da regra dos 50% fixa na fórmula.
+- **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.

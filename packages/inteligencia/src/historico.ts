@@ -68,6 +68,12 @@ export interface AtivoAnalisado {
    * como sem dado.
    */
   garantiaAte?: Date | null;
+  /**
+   * Baixa do ativo (`app.ativo.desativado_em`, exclusão lógica); null ou
+   * ausente enquanto ativo. O mesmo modelo não conta o ativo baixado antes do
+   * início da janela.
+   */
+  desativadoEm?: Date | null;
 }
 
 /** Se a garantia do ativo já venceu na data do cálculo. */
@@ -151,11 +157,15 @@ export function conclusaoEReaberturas(
 export const ordenarPorAbertura = <T extends { abertaEm: Date }>(xs: readonly T[]): T[] =>
   [...xs].sort((a, b) => a.abertaEm.getTime() - b.abertaEm.getTime());
 
-/** Texto livre comparável: sem espaço sobrando nem repetido, sem caixa. */
+/**
+ * Texto livre comparável (Kaio e Cesar, 10/10/2026): sem maiúsculas, sem
+ * acentos, sem espaços nas pontas e com os espaços repetidos do meio
+ * reduzidos a um.
+ */
 const normalizar = (s: string | null | undefined): string =>
-  s?.trim().replace(/\s+/g, ' ').toLowerCase() ?? '';
+  s?.normalize('NFD').replace(/\p{M}/gu, '').trim().replace(/\s+/g, ' ').toLowerCase() ?? '';
 
-/** Fabricante e modelo comparáveis entre hotéis. */
+/** Fabricante e modelo comparáveis entre hotéis; null sem um dos dois. */
 export const chaveDeModelo = (a: Pick<AtivoAnalisado, 'fabricante' | 'modelo'>): string | null => {
   const f = normalizar(a.fabricante);
   const m = normalizar(a.modelo);
