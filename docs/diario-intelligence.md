@@ -717,3 +717,18 @@ O vazio e o zero são distintos no banco e no aceite do `apps/web`:
   - o canal da aprovação de 10/10;
   - a confirmação da regra dos 50% fixa na fórmula.
 - **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.
+
+## Depois do merge dos #157, #158 e #159 (10/10/2026)
+
+Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026.
+
+- **Regra dos 50% fixa na fórmula: aprovado por Kaio (10/10/2026).** O Kaio confirmou a escolha do #157. É regra de qualidade de dado do tenant, e a política da atenção se resolve por hotel. Mudar o limiar exige versão nova da fórmula.
+- **Aprovação do Cesar de 10/10:** o canal continua **[a confirmar]** até o Kaio colar o texto do Cesar.
+- **Rascunho dos adendos** (`int-rascunhos`, `5c4f1e5`): as marcas das propostas de 08/10 e das respostas de 10/10 passaram a "aprovado por Cesar e Kaio em 10/10/2026". A regra dos 50% fixa na fórmula entrou como "aprovado por Kaio". O texto dos adendos continua precisando da revisão do Cesar no PR `int-adr-aceite`.
+- **Mock (#160):** o PR leva as respostas de 10/10 para a tela do Intelligence. Mudam a atenção, a efetividade e o sistêmico, o aceite passa a gravar o custo vazio como vazio, e o seed não informa custo em parte das corretivas internas. Fica fora de zona protegida, e o merge espera a revisão do Cesar, porque o mock é identidade.
+  - Com a regra das medições, a "Bomba de recalque 1" sai da lista de atenção da demonstração: cai de 74 para 69, porque tem 2 medições, abaixo do mínimo de 3.
+
+### Ponto de retomada (10/10/2026)
+- **Esperando o Cesar:** a revisão do #160.
+- **Esperando o Kaio:** o canal das aprovações do Cesar de 08/10 e de 10/10.
+- **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.
