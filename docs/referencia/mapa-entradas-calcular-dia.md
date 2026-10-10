@@ -54,9 +54,9 @@
 | `fabricante`, `modelo` | `app.ativo.fabricante`, `app.ativo.modelo` | Existe |
 | `criticidade` | `app.ativo.criticidade`, de 1 a 5, fixa (`check` no banco). A política `ativo.criticidade` só troca os nomes dos níveis. | I1 |
 | `paradas` | `app.parada_ativo.inicio` e `fim`, por `ativo_id` | Existe |
-| `garantiaAte` | `app.ativo.garantia_ate` (último dia da garantia). Atenção v2: garantia vencida, 5%. Sem a data, o componente fica sem dado. | I1 |
+| `garantiaAte` | `app.ativo.garantia_ate` (último dia da garantia). Atenção v2: garantia vencida, 5%. Sem a data, conta como não vencida (0), com peso (respostas de 10/10/2026). | I1 |
 | `preventivaAtrasada` | O plano de preventiva da 1b. Atenção v2: preventiva atrasada, 10%. | Sem origem até a etapa P |
-| `medicoes` | `{ foraDaFaixa, total }` das medições do checklist tipado na janela. Atenção v2: medições fora da faixa, 10%. | Sem origem até a PV1 (antes P1) |
+| `medicoes` | `{ foraDaFaixa, total }` das medições do checklist tipado na janela. Atenção v2: medições fora da faixa, 10%. Só conta no ativo cuja categoria está em `categoriasComMedicao` (entrada do dia: as categorias com item de medição no plano); fora delas, sem dado. Abaixo do mínimo da política (`minMedicoes`, padrão 3), o ativo contribui 0. | Sem origem até a PV1 (antes P1) |
 
 ## Corretiva (`Corretiva`)
 
@@ -70,8 +70,8 @@
 | `codigoFalha` | `app.os.codigo_falha_id` | I6 |
 | `executadoPor` | `app.os.executado_por`: `equipe_interna` ou `fornecedor` (o documento de 07/10 trocou `terceiro` por `fornecedor`). `not null default 'equipe_interna'`: as OS anteriores à 0034 ficaram com o padrão. Tipo `ExecutadoPor` e lista `EXECUTORES_DA_OS` do domínio. | Existe (I4) |
 | `fornecedorId` | A chave do cadastro de fornecedor (`app.fornecedor`), que substitui o nome digitado (`terceiro_nome`). A regra do mesmo fornecedor compara este id. `app.os.fornecedor_id`, FK composta para `app.fornecedor` (I3); o check `os_fornecedor_quando_externo` só aceita o id com `executado_por = 'fornecedor'`. O worker lê a coluna da OS, não a tabela do fornecedor. | Existe (I4) |
-| `custoInformado` | `app.os.custo_informado`, `numeric(12,2)`, não negativo, gravado no aceite. Chega como texto pelo driver: quem lê converte para número. | Existe (I4) |
-| `impactoHospede` | `app.chamado.impacto_hospede`, boolean; nulo é "não informado". | Existe (I4) |
+| `custoInformado` | `app.os.custo_informado`, `numeric(12,2)`, não negativo, gravado no aceite. Chega como texto pelo driver: quem lê converte para número. O vazio precisa chegar como null, e não 0: a atenção conta as corretivas encerradas com e sem o custo (regra dos 50% do tenant). Para isso, o `calcularDia` precisa receber as corretivas encerradas do tenant inteiro na janela de 12 meses, e não só as dos hotéis do cálculo. | Existe (I4) |
+| `impactoHospede` | `app.chamado.impacto_hospede`, boolean; nulo é "não informado" na tela, e a atenção conta como "não teve". | Existe (I4) |
 | `aposPreventiva` | A OS preventiva da 1b, reconhecida pelo plano. | Sem origem até a etapa P |
 | Período de UH indisponível (`PeriodoDeUhIndisponivel` do domínio: `hotelId`, `localId`, `chamadoId`, `inicio`, `fim`, `chamadoCancelado`) | `app.uh_indisponivel` (`hotel_id`, `local_id`, `chamado_id`, `inicio`, `fim`), lida pelo `hk_worker` no tenant do job; `chamadoCancelado` vem de `app.chamado.estado = 'cancelado'`. `uhDiasPerdidos` mora no `@hubkeep/dominio` desde a I4, e a cópia do módulo saiu. Componente UH-dias da atenção, com peso 0: o `calcularDia` ainda não a chama. | Existe (I4) |
 

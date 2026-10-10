@@ -51,7 +51,10 @@ export interface Corretiva {
    * converte para número.
    */
   custoInformado?: number | null;
-  /** `app.chamado.impacto_hospede` (I4): afeta hóspede? null é "não informado". */
+  /**
+   * `app.chamado.impacto_hospede` (I4): afeta hóspede? null é "não informado"
+   * na tela; a atenção conta como "não teve" (`impactoHospedeDosChamados`).
+   */
   impactoHospede?: boolean | null;
 }
 
@@ -64,8 +67,8 @@ export interface AtivoAnalisado {
   modelo: string | null;
   /**
    * Fim da garantia, de `app.ativo.garantia_ate` (etapa I1): o último dia em
-   * que ela vale. Ausente ou null: sem a data, e a atenção marca o componente
-   * como sem dado.
+   * que ela vale. Ausente ou null: sem a data, e a atenção conta como não
+   * vencida (respostas de 10/10/2026).
    */
   garantiaAte?: Date | null;
 }
@@ -171,48 +174,62 @@ export const fornecedorDaOs = (
   c: Pick<Corretiva, 'executadoPor' | 'fornecedorId'>,
 ): string | null => (c.executadoPor === 'fornecedor' ? (c.fornecedorId ?? null) : null);
 
+/** O custo informado das corretivas encerradas (concluídas) numa janela. */
+export interface CustoNaJanela {
+  /** Soma do custo das corretivas que têm o dado; 0 quando nenhuma tem. */
+  soma: number;
+  /** Corretivas encerradas na janela com o custo preenchido. */
+  informadas: number;
+  /** Corretivas encerradas na janela. */
+  encerradas: number;
+}
+
 /**
- * Soma do custo informado das corretivas concluídas na janela. null quando
- * nenhuma tem custo informado: o componente fica ausente, e não zero.
+ * O custo informado das corretivas encerradas (concluídas) na janela. O custo
+ * vazio (null, ou a OS sem a coluna) não conta como zero: entra em
+ * `encerradas` e fica fora de `informadas` e da soma.
  */
-export function custoInformadoNaJanela(
+export function custoNaJanela(
   corretivas: readonly Corretiva[],
   agora: Date,
   janelaDias: number,
-): number | null {
+): CustoNaJanela {
   const inicio = agora.getTime() - janelaDias * DIA_MS;
-  const comCusto = corretivas.filter(
+  const encerradas = corretivas.filter(
     (c) =>
       c.concluidaEm !== null &&
       c.concluidaEm.getTime() > inicio &&
-      c.concluidaEm.getTime() <= agora.getTime() &&
-      c.custoInformado !== undefined &&
-      c.custoInformado !== null,
+      c.concluidaEm.getTime() <= agora.getTime(),
   );
-  return comCusto.length ? comCusto.reduce((s, c) => s + (c.custoInformado as number), 0) : null;
+  const comCusto = encerradas.filter(
+    (c) => c.custoInformado !== undefined && c.custoInformado !== null,
+  );
+  return {
+    soma: comCusto.reduce((s, c) => s + (c.custoInformado as number), 0),
+    informadas: comCusto.length,
+    encerradas: encerradas.length,
+  };
 }
 
 /**
  * Impacto no hóspede pelo indicador do chamado (decisão de 05/10/2026, até o
  * Guest Impact Score da 1.5): a porcentagem, de 0 a 100, dos chamados abertos
- * na janela que afetaram hóspede, entre os que têm a resposta. "Não sei" e o
- * chamado anterior à migração ficam fora da conta; sem nenhuma resposta, null.
+ * na janela que afetaram hóspede. Sempre disponível (Kaio e Cesar, 10/10/2026):
+ * o chamado sem a marca (null, ou anterior à migração) conta como "não teve", e
+ * sem chamado na janela o valor é 0.
  */
 export function impactoHospedeDosChamados(
   corretivas: readonly Corretiva[],
   agora: Date,
   janelaDias: number,
-): number | null {
+): number {
   const inicio = agora.getTime() - janelaDias * DIA_MS;
-  const respondidas = corretivas.filter(
-    (c) =>
-      c.abertaEm.getTime() > inicio &&
-      c.abertaEm.getTime() <= agora.getTime() &&
-      typeof c.impactoHospede === 'boolean',
+  const naJanela = corretivas.filter(
+    (c) => c.abertaEm.getTime() > inicio && c.abertaEm.getTime() <= agora.getTime(),
   );
-  if (!respondidas.length) return null;
-  const afetaram = respondidas.filter((c) => c.impactoHospede).length;
-  return Math.round((afetaram / respondidas.length) * 1000) / 10;
+  if (!naJanela.length) return 0;
+  const afetaram = naJanela.filter((c) => c.impactoHospede === true).length;
+  return Math.round((afetaram / naJanela.length) * 1000) / 10;
 }
 
 /** Horas paradas dentro do trecho [de, ate), com as paradas sobrepostas contadas uma vez. */

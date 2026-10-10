@@ -18,7 +18,7 @@
 // efetividade, para caber o antes e o depois: conferido ao gravar qualquer das
 // duas (validarJanelaDeLeitura) e pelo job na leitura (janelaDeLeituraEfetiva).
 import { type ExtensaoDePolitica, RegraViolada } from '@hubkeep/dominio';
-import { PADRAO_ATENCAO, type ConfigAtencao } from './atencao';
+import { PADRAO_ATENCAO, type ConfigAtencao, configAtencaoValida } from './atencao';
 import {
   PADRAO_EFETIVIDADE,
   type ConfigEfetividade,
@@ -121,6 +121,8 @@ export function valorValidoDoIntelligence<C extends ChaveDePoliticaDoIntelligenc
     );
   }
   if (!mesmoFormato(valor, PADROES_DO_INTELLIGENCE[chave], '')) return false;
+  // Atenção: o mínimo de medições é inteiro e de pelo menos 1.
+  if (chave === 'inteligencia.atencao_ativo') return configAtencaoValida(valor as ConfigAtencao);
   // Efetividade: os limiares precisam estar na ordem (parcial < observada ≤ 100).
   if (chave === 'inteligencia.efetividade')
     return limiaresDeEfetividadeValidos(valor as ConfigEfetividade);

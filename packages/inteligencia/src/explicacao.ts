@@ -4,7 +4,7 @@
 // `inteligencia.motivo.<score>.<componente>`, e os valores são os números e
 // textos da evidência do componente (ids e listas ficam de fora: a tela mostra
 // os registros pela evidência, filtrados pela RLS da origem).
-import { type Score, motivosDoScore } from './score';
+import { type Componente, type Score, motivosDoScore } from './score';
 
 export interface Explicacao {
   chave: string;
@@ -48,6 +48,12 @@ export interface LinhaDoDetalhamento {
   valor: number | null;
   pontos: number;
   valores: Readonly<Record<string, string | number>>;
+  /**
+   * O que a linha precisa dizer além do valor, pronto para o catálogo: o custo
+   * informado em X de Y corretivas, o custo sem dado no tenant, as medições
+   * abaixo do mínimo e a garantia sem data. null quando não há.
+   */
+  nota: Explicacao | null;
 }
 
 export interface Detalhamento {
@@ -63,6 +69,32 @@ export interface Detalhamento {
   chaveDoAviso: string | null;
   /** Os valores do aviso, além dos nomes (`componentes`), que quem exibe monta pelo `chaveDoNome`. */
   valoresDoAviso: { quantidade: number; peso: number };
+}
+
+/** A nota de uma linha da atenção (respostas de 10/10/2026), ou null. */
+function notaDaLinha(score: Pick<Score, 'chave'>, c: Componente): Explicacao | null {
+  if (score.chave !== 'atencao_ativo') return null;
+  const ev = c.evidencia;
+  const n = (k: string): number => (typeof ev[k] === 'number' ? (ev[k] as number) : 0);
+  if (c.chave === 'custo' && typeof ev['encerradas'] === 'number') {
+    return ev['disponivelNoTenant'] === true
+      ? {
+          chave: 'inteligencia.detalhamento.custo_informado_em',
+          valores: { informadas: n('informadas'), encerradas: n('encerradas') },
+        }
+      : {
+          chave: 'inteligencia.detalhamento.custo_sem_dado_no_tenant',
+          valores: { percentual: n('percentualNoTenant'), minimo: n('minimoNoTenant') },
+        };
+  }
+  if (c.chave === 'medicoes_fora_da_faixa' && ev['abaixoDoMinimo'] === true)
+    return {
+      chave: 'inteligencia.detalhamento.medicoes_abaixo_do_minimo',
+      valores: { total: n('total'), minimo: n('minimo') },
+    };
+  if (c.chave === 'garantia_vencida' && ev['semData'] === true)
+    return { chave: 'inteligencia.detalhamento.garantia_sem_data', valores: {} };
+  return null;
 }
 
 /**
@@ -86,6 +118,7 @@ export function detalhamentoDoScore(score: Score): Detalhamento {
       valor: c.valor,
       pontos: c.pontos,
       valores,
+      nota: notaDaLinha(score, c),
     };
   });
   const semDadoComPeso = score.componentes

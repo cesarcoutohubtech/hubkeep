@@ -112,6 +112,24 @@ describe('políticas do Intelligence (ADR-035)', () => {
       ).toBe(vale);
   });
 
+  it('o mínimo de medições é campo da atenção, padrão 3, inteiro e de pelo menos 1', () => {
+    expect(PADRAO_ATENCAO.minMedicoes).toBe(3);
+    for (const [minimo, vale] of [
+      [1, true],
+      [3, true],
+      [10, true],
+      [0, false],
+      [2.5, false],
+      [-1, false],
+    ] as const)
+      expect(
+        valorValidoDoIntelligence('inteligencia.atencao_ativo', {
+          ...copia(PADRAO_ATENCAO),
+          minMedicoes: minimo,
+        }),
+      ).toBe(vale);
+  });
+
   it('chave do protótipo não é chave do Intelligence', () => {
     expect(ehChaveDePoliticaDoIntelligence('toString')).toBe(false);
     expect(ehChaveDePoliticaDoIntelligence('inteligencia.reincidencia')).toBe(true);

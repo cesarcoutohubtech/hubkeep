@@ -1,12 +1,12 @@
-// Campos da instrumentação (I4): o fornecedor pelo id, o custo
-// informado somado na janela e o impacto no hóspede pelo indicador do chamado,
-// com null quando ninguém respondeu.
+// Campos da instrumentação (I4): o fornecedor pelo id, o custo informado das
+// corretivas encerradas na janela (com e sem o dado) e o impacto no hóspede
+// pelo indicador do chamado, sempre disponível (respostas de 10/10/2026).
 import { describe, expect, it } from 'vitest';
 import {
   type Score,
   atencaoDoAtivo,
   fornecedorDaOs,
-  custoInformadoNaJanela,
+  custoNaJanela,
   impactoHospedeDosChamados,
 } from '../src';
 import { agora, corretiva, dia } from './apoio';
@@ -17,18 +17,25 @@ describe('impacto no hóspede pelo indicador do chamado', () => {
     corretiva({ abertaEm: dia(-20), impactoHospede: false }),
     corretiva({ abertaEm: dia(-30), impactoHospede: false }),
     corretiva({ abertaEm: dia(-40), impactoHospede: true }),
-    // "Não sei", anterior à migração e fora da janela: não entram na conta.
+    // Sem a marca e anterior à migração: contam como "não teve".
     corretiva({ abertaEm: dia(-5), impactoHospede: null }),
     corretiva({ abertaEm: dia(-6) }),
+    // Fora da janela: não entra.
     corretiva({ abertaEm: dia(-200), impactoHospede: true }),
   ];
 
-  it('porcentagem dos chamados respondidos que afetaram hóspede', () => {
-    expect(impactoHospedeDosChamados(cs, agora, 90)).toBe(50);
+  it('porcentagem dos chamados da janela que afetaram hóspede; não marcado é "não teve"', () => {
+    // 2 de 6.
+    expect(impactoHospedeDosChamados(cs, agora, 90)).toBe(33.3);
   });
 
-  it('sem nenhuma resposta, null: o componente fica ausente', () => {
-    expect(impactoHospedeDosChamados(cs.slice(4, 6), agora, 90)).toBeNull();
+  it('só chamados sem marca: 0, e não sem dado', () => {
+    expect(impactoHospedeDosChamados(cs.slice(4, 6), agora, 90)).toBe(0);
+  });
+
+  it('sem chamado na janela: 0', () => {
+    expect(impactoHospedeDosChamados([], agora, 90)).toBe(0);
+    expect(impactoHospedeDosChamados(cs.slice(6), agora, 90)).toBe(0);
   });
 
   it('entra na atenção por ativo como o componente de impacto no hóspede', () => {
@@ -47,8 +54,8 @@ describe('impacto no hóspede pelo indicador do chamado', () => {
       horasParadas: 24,
       impactoHospede: impactoHospedeDosChamados(cs, agora, 90),
     });
-    // (0,154 + 0,075 + 0,5 × 0,15) / 0,50 = 61.
-    expect(s.valor).toBe(61);
+    // Garantia sem data conta 0 e tem peso: (0,154 + 0,075 + 0,333 × 0,15 + 0) / 0,55 = 51.
+    expect(s.valor).toBe(51);
     expect(s.ausentes).not.toContain('impacto_hospede');
   });
 });
@@ -66,25 +73,27 @@ describe('fornecedor da OS', () => {
   });
 });
 describe('custo informado na janela', () => {
-  it('soma o custo das OS concluídas na janela', () => {
+  it('soma o custo das corretivas encerradas na janela que têm o dado, e conta as duas', () => {
     const cs = [
       corretiva({ abertaEm: dia(-40), concluidaEm: dia(-38), custoInformado: 1200.5 }),
       corretiva({ abertaEm: dia(-20), concluidaEm: dia(-19), custoInformado: 300 }),
-      // Fora da janela, sem conclusão e sem custo informado: não somam.
+      // Encerrada sem o custo: conta em encerradas, não em informadas.
+      corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9), custoInformado: null }),
+      corretiva({ abertaEm: dia(-12), concluidaEm: dia(-11) }),
+      // Fora da janela e sem conclusão: não contam.
       corretiva({ abertaEm: dia(-400), concluidaEm: dia(-399), custoInformado: 9000 }),
       corretiva({ abertaEm: dia(-5), concluidaEm: null, custoInformado: 500 }),
-      corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9), custoInformado: null }),
     ];
-    expect(custoInformadoNaJanela(cs, agora, 365)).toBe(1500.5);
+    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 1500.5, informadas: 2, encerradas: 4 });
   });
 
-  it('ninguém informou custo: null, e não zero', () => {
+  it('ninguém informou custo: soma 0, com 0 informadas', () => {
     const cs = [corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9) })];
-    expect(custoInformadoNaJanela(cs, agora, 365)).toBeNull();
+    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 0, informadas: 0, encerradas: 1 });
   });
 
   it('custo zero informado conta como informado', () => {
     const cs = [corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9), custoInformado: 0 })];
-    expect(custoInformadoNaJanela(cs, agora, 365)).toBe(0);
+    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 0, informadas: 1, encerradas: 1 });
   });
 });
