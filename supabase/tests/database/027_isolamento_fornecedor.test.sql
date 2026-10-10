@@ -96,8 +96,8 @@ select throws_ok(
   '23514', null, 'CNPJ sem pontuação');
 select lives_ok(
   $$ insert into app.fornecedor (id, tenant_id, nome, cnpj) values
-     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'Alfanumérico', '12ABC34501DE35') $$,
-  'CNPJ alfanumérico: 12 letras maiúsculas ou dígitos e 2 dígitos verificadores (0035)');
+     (gen_random_uuid(), '20000000-0000-0000-0000-000000000000', 'Alfanumérico', '12ABC34501DE35') $$,
+  'CNPJ alfanumérico: 12 letras maiúsculas ou dígitos e 2 dígitos verificadores (0035; no grupo B, fora das contagens do A)');
 select throws_ok(
   $$ insert into app.fornecedor (id, tenant_id, nome, cnpj) values
      (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'Minúsculo', '12abc34501de35') $$,
