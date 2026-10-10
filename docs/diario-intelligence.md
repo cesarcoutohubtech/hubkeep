@@ -755,3 +755,37 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
   - o lugar da efetividade e do quadro "Próximas versões" nas três telas;
   - a ordem dos PRs do mock para o que falta.
 - **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.
+
+## Vitrine, efetividade e mock das três telas (10/10/2026)
+
+Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, depois do merge do #162. Decisões **aprovadas por Kaio, aguardando Cesar**:
+
+1. **Vitrine de 07/10:** sai do `int-rascunhos` (`rascunhos/telas-vitrine/`), porque o histórico do git a guarda. Feito no commit `260d8e8` do `int-rascunhos`.
+2. **A efetividade não é tipo de insight.** Ela aparece em três lugares:
+   - na lista de insights, como seção abaixo da lista, como já estava no mock;
+   - na página do ativo, com as intervenções dele;
+   - na página do insight, quando houver intervenção registrada depois da decisão.
+3. **"Próximas versões"** fica só no mock, fora do produto.
+
+A proposta das telas (`docs/referencia/proposta-telas-intelligence-1-0.md`) recebeu as três decisões.
+
+**Mock das três telas** (#163, fora de zona protegida; o merge espera a revisão do Cesar):
+- **Commits:** um por tela, nesta ordem: lista de insights, página do insight e detalhe do ativo.
+- **Dados gravados:**
+  - o seed simula o job diário, com os resultados dos últimos 90 dias e as versões da fórmula e da política;
+  - os insights saem da regra de detecção do motor (`decidirDeteccao`);
+  - as decisões das pessoas entram como roteiro da demonstração.
+- **Caso novo no seed:** o Elevador social 2 do Hotel Curitiba Batel, sem sorteio, para a gerente ter um insight do hotel dela para decidir, com uma intervenção depois da decisão.
+- **Conferido no navegador:**
+  - a gestora do CSC, o gestor da bandeira e a gerente;
+  - a gerente não decide insight de rede: não o vê, e pelo link direto a página diz que está fora do escopo;
+  - o console fica sem erros.
+- **Tour:** as falas são as mesmas e a narração não foi regerada; só mudaram os seletores do capítulo do Intelligence.
+- **Para o Cesar decidir na revisão:** o caso novo do Batel e a regra do mock de que quem decide primeiro vira o responsável. O produto ainda não tem regra de atribuição do insight.
+
+### Ponto de retomada (10/10/2026)
+- **Esperando o Cesar:**
+  - as decisões das telas de 10/10, as seis e as três acima;
+  - a revisão do #163.
+- **Esperando o Kaio:** o canal das aprovações do Cesar de 08/10 e de 10/10.
+- **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.

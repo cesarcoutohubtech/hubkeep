@@ -87,4 +87,12 @@ Levantamento de 10/10/2026, contra a tela `#/inteligencia` da `main`. Hoje o moc
   - Faltam os indicadores, os três fatores, o gráfico de 90 dias com os números em texto, o bloco "como foi gravado" e os insights do ativo.
   - A tabela de composição já existe no cartão. O UH-dias aparece nela como linha comum, com traço e 0%, e precisa virar a linha discreta da decisão 5.
 
-**Fica para decidir:** a tabela de efetividade e o quadro "Próximas versões" do mock não têm lugar nas três telas. A efetividade não é tipo de insight no motor (só `atencao_ativo` e `sistemico`).
+**O mock das três telas** está no PR #163, com a revisão do Cesar pendente.
+
+## Efetividade e "Próximas versões" (decisões de 10/10/2026, aprovadas por Kaio, aguardando Cesar)
+
+- **A efetividade não é tipo de insight.** Ela aparece em três lugares:
+  - na lista de insights, como seção abaixo da lista;
+  - na página do ativo, com as intervenções dele;
+  - na página do insight, quando houver intervenção registrada depois da decisão.
+- **"Próximas versões"** fica só no mock, fora do produto.
