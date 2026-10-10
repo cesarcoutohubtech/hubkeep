@@ -736,8 +736,9 @@ function seedInteligencia() {
     DB.ativos.forEach(a => {
       const r = intelAtivo(a, now, ix);
       serie[a.id].push(r.score);
-      // Composição compacta, para caber no armazenamento do navegador: [componente, peso, valor, peso usado, pontos, medido].
-      if (k === 0) composicao[a.id] = [r.score, r.comp.map(c => [c.k, c.peso, c.valor === null ? null : Math.round(c.valor * 1000) / 1000, Math.round(c.pesoEf * 10000) / 10000, Math.round(c.pontos * 100) / 100, c.medido])];
+      // Compacto, para caber no armazenamento do navegador: [atenção, composição, horas paradas, impacto em hóspedes (%)],
+      // e cada componente como [componente, peso, valor, peso usado, pontos, medido].
+      if (k === 0) composicao[a.id] = [r.score, r.comp.map(c => [c.k, c.peso, c.valor === null ? null : Math.round(c.valor * 1000) / 1000, Math.round(c.pesoEf * 10000) / 10000, Math.round(c.pontos * 100) / 100, c.medido]), r.horas, r.imp];
       if (r.score === null || r.score < pol.limite_atencao) return;
       const top = r.comp.filter(c => c.valor !== null && c.pontos > 0).sort((x, y) => y.pontos - x.pontos).slice(0, 3).map(c => [c.nome, c.medido]);
       detectar({ tipo: "atencao_ativo", familia: `atencao_ativo|ativo=${a.id}|hotel=${a.hotel_id}`, escopo: { ativo_id: a.id, hotel_id: a.hotel_id }, alcance: alcanceDe([a.hotel_id]), hotel_ids: [a.hotel_id],

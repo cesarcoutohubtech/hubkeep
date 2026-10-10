@@ -901,7 +901,7 @@ function drawerAtivo(a) {
   const gar = a.garantia_ate && t(a.garantia_ate) > Date.now();
   const meds = DB.os.filter(o => o.ativo_id === a.id && o.status === "Concluída").flatMap(o => o.checklist.filter(c => c.tipo === "medicao" && c.valor != null).map(c => ({ ...c, t0: o.fim })));
   const foraMed = meds.filter(m => m.fora).length;
-  return `<div class="drawer-h"><button class="close" data-act="close" aria-label="Fechar">×</button><span class="id">${a.id}</span><h2>${esc(a.nome)}</h2><div class="row"><span class="badge ${a.status === "Parado" ? "b-red" : "b-green"}">${a.status}</span>${critBadge(a.criticidade)}${(() => { const sc = iaGravado(a.id); return sc && sc.score >= polGrupo().inteligencia.limite_atencao && role() !== "loc" ? `<a href="#/inteligencia" class="badge b-amber" style="text-decoration:none" title="HubKeep Intelligence">Atenção ${sc.score}/100</a>` : ""; })()}</div></div>
+  return `<div class="drawer-h"><button class="close" data-act="close" aria-label="Fechar">×</button><span class="id">${a.id}</span><h2>${esc(a.nome)}</h2><div class="row"><span class="badge ${a.status === "Parado" ? "b-red" : "b-green"}">${a.status}</span>${critBadge(a.criticidade)}${(() => { const sc = iaGravado(a.id); return sc && ["csc", "band", "hotel"].includes(role()) ? `<a href="#/inteligencia?ativo=${a.id}" class="badge ${sc.score >= polGrupo().inteligencia.limite_atencao ? "b-amber" : "b-outline"}" style="text-decoration:none" title="Ver a atenção do ativo no HubKeep Intelligence">Atenção ${sc.score}/100</a>` : ""; })()}</div></div>
   <div class="drawer-b"><div class="row" style="align-items:flex-start;gap:18px"><div class="qr-card">${qrSvg(a.qr, 96)}</div><dl class="kv" style="flex:1">
     <dt>Etiqueta</dt><dd>${a.qr}</dd><dt>Categoria</dt><dd>${esc(IDX.cat[a.categoria_id].nome)}</dd><dt>Fabricante e modelo</dt><dd>${esc(a.fabricante)}${a.modelo ? ", " + esc(a.modelo) : ""}</dd>
     <dt>Número de série</dt><dd>${esc(a.numero_serie || "—")}</dd><dt>Garantia</dt><dd>${a.garantia_ate ? `<span class="badge ${gar ? "b-green" : "b-grey"}">${gar ? "Vigente" : "Vencida"}</span> ${gar ? "até" : "em"} ${fmtD(a.garantia_ate)}` : "—"}</dd>
@@ -1368,7 +1368,7 @@ function intelAtivo(a, now = Date.now(), ix = null) {
     { k: "garantia", nome: "Garantia vencida", peso: P.garantia / 100, valor: garV ? 1 : 0, medido: !a.garantia_ate ? "Sem a data de fim da garantia: conta como não vencida" : garV ? `Garantia vencida há ${garDias} ${garDias === 1 ? "dia" : "dias"}` : "Garantia vigente" },
     { k: "uh_dias", nome: "UH-dias indisponíveis", peso: P.uh_dias / 100, valor: null, medido: "Sem origem do dado ainda" }
   ]);
-  return { a, comp: sc.comp, score: sc.valor, faixa: sc.faixa, n90: ch90.length };
+  return { a, comp: sc.comp, score: sc.valor, faixa: sc.faixa, n90: ch90.length, horas: Math.round(horas * 10) / 10, imp };
 }
 /* Ciclo de vida do insight (ADR-033, packages/inteligencia/src/insight.ts): estados, ações e quem decide. O score sugere e
    a pessoa decide: o job só abre ou atualiza; toda transição é de uma pessoa. Resolver e descartar pedem nota (1 a 500). */
@@ -1389,7 +1389,7 @@ const IA_COMP_NOMES = { reincidencia: "Reincidência de falhas", parada: "Tempo 
 /* O resultado gravado de hoje para um ativo (seed.js guarda a composição em listas, para caber no navegador). */
 function iaGravado(aid) {
   const g = DB.ia.hoje[aid]; if (!g) return null;
-  return { score: g[0], faixa: iaFaixa(g[0]), comp: g[1].map(([k, peso, valor, pesoEf, pontos, medido]) => ({ k, nome: IA_COMP_NOMES[k], peso, valor, pesoEf, pontos, medido })) };
+  return { score: g[0], faixa: iaFaixa(g[0]), horas: g[2], impacto: g[3], comp: g[1].map(([k, peso, valor, pesoEf, pontos, medido]) => ({ k, nome: IA_COMP_NOMES[k], peso, valor, pesoEf, pontos, medido })) };
 }
 /* Aplica a ação de uma pessoa. Quem decide primeiro vira o responsável (simplificação do mock). */
 function iaAplicar(ins, acao, usuario_id, quando, { nota = null, motivo = null } = {}) {
@@ -1512,6 +1512,7 @@ function padraoSistemico(ativos, chs, now = Date.now()) {
    gravados pelo job; a efetividade fica como seção abaixo da lista. */
 function pageInteligencia(params) {
   if (params.ins) return iaPaginaInsight(params.ins);
+  if (params.ativo) return iaPaginaAtivo(params.ativo);
   return iaListaDeInsights();
 }
 function iaListaDeInsights() {
@@ -1609,7 +1610,7 @@ function iaPaginaInsight(id) {
   const resumoAtivo = at ? (() => { const g = iaGravado(at.id); return `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>O ativo</h2></div><div class="panel-b" style="padding-top:0"><dl class="kv">
       <dt>Ativo</dt><dd><a href="#" data-act="open-at" data-id="${at.id}">${esc(at.nome)}</a> <span class="id">${at.id}</span></dd><dt>Hotel e local</dt><dd>${esc(IDX.hotel[at.hotel_id].nome)}, ${esc(IDX.local[at.local_id].nome)}</dd>
       <dt>Categoria</dt><dd>${esc(IDX.cat[at.categoria_id].nome)}</dd><dt>Fabricante e modelo</dt><dd>${esc(at.fabricante)}${at.modelo ? ", " + esc(at.modelo) : ""}</dd><dt>Criticidade</dt><dd>${critBadge(at.criticidade)}</dd>
-      <dt>Atenção gravada hoje</dt><dd>${g ? `${g.score} (${esc(g.faixa)})` : "—"}</dd><dt>Chamados em 90 dias</dt><dd>${chs.filter(c => t(c.aberto_em) > now - 90 * D).length}</dd></dl></div></div>`; })() : "";
+      <dt>Atenção gravada hoje</dt><dd>${g ? `${g.score} (${esc(g.faixa)}). <a href="#/inteligencia?ativo=${at.id}" id="ia-ver-ativo">Ver a atenção do ativo</a>` : "—"}</dd><dt>Chamados em 90 dias</dt><dd>${chs.filter(c => t(c.aberto_em) > now - 90 * D).length}</dd></dl></div></div>`; })() : "";
   const tabelaChamados = i.tipo === "sistemico" ? (() => { const ids = new Set(ev.chamado_ids), lista = chs.filter(c => ids.has(c.id)).sort((a, b) => b.aberto_em.localeCompare(a.aberto_em)); return `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Chamados que levaram ao insight</h2><span class="hint">Só os dos hotéis do seu escopo</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Chamado</th><th>O que aconteceu</th><th>Hotel</th><th>Ativo</th><th>Aberto em</th><th>Situação</th></tr></thead><tbody>
       ${lista.map(c => `<tr class="click" data-act="open-ch" data-id="${c.id}"><td><span class="id">${c.id}</span></td><td>${esc(c.titulo)}</td><td class="small">${esc(IDX.hotel[c.hotel_id].nome)}</td><td class="small">${esc(IDX.ativo[c.ativo_id].nome)}<div class="muted">${esc(IDX.local[c.local_id].nome)}</div></td><td class="small">${fmtD(c.aberto_em)}</td><td>${statusBadge(c.status)}</td></tr>`).join("") || '<tr><td colspan="6" class="empty">Nenhum chamado no seu escopo.</td></tr>'}</tbody></table></div></div>`; })() : "";
   const recalc = at && UI.iaRecalc === i.id ? (() => { const r = intelAtivo(at), g = iaGravado(at.id); return `<div class="readonly-note" style="margin-top:10px"><span><strong>Recálculo de agora, com a política atual (${esc(pol.versao)}): atenção ${r.score} (${esc(r.faixa)}).</strong> Não é gravado e não muda o insight. O resultado gravado hoje às ${pad(new Date(DB.ia.calculado_em).getHours())}:00 continua valendo: ${g ? g.score : "—"}.</span></div>`; })() : "";
@@ -1647,6 +1648,78 @@ function iaPaginaInsight(id) {
       ${ef.length ? `<div class="panel" style="margin-top:16px" id="ia-ef-insight"><div class="panel-h"><h2>Efetividade da intervenção</h2><span class="hint">Intervenção registrada depois da decisão de ${fmtD(dec.t)}</span></div><div class="panel-b table-wrap">${iaTabelaEfetividade(ef)}</div></div>` : ""}
     </div>
     <div>${decisao}${historico}</div>
+  </div>`;
+}
+/* Atenção nos últimos 90 dias: uma linha por dia gravado, sobre as faixas e a linha do limite do insight. */
+function iaGraficoAtencao(serie, limite, rotulo) {
+  const w = 600, h = 160, n = serie.length, x = k => k * w / (n - 1), y = v => h - v / 100 * h;
+  const faixas = IA_FAIXAS.map(([de, nome], k) => [de, (IA_FAIXAS[k + 1] || [100])[0], nome]);
+  const cor = { "Normal": "transparent", "Observar": "var(--tint-2)", "Atenção": "rgba(240,165,0,.10)", "Alta atenção": "rgba(240,165,0,.18)", "Crítico": "rgba(255,90,95,.16)" };
+  const pts = serie.map((v, k) => v === null ? null : `${x(k).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean).join(" ");
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="${esc(rotulo)}" style="width:100%;height:160px;display:block">
+    ${faixas.map(([de, ate, nome]) => `<rect x="0" y="${y(ate)}" width="${w}" height="${y(de) - y(ate)}" style="fill:${cor[nome]}"/>`).join("")}
+    <line x1="0" x2="${w}" y1="${y(limite)}" y2="${y(limite)}" style="stroke:var(--amber)" stroke-width="1.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>
+    <polyline points="${pts}" fill="none" style="stroke:var(--head)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+/* Detalhe do ativo: a vista do score, aberta pela página do insight ou pela ficha do ativo. Não decide nada. */
+function iaPaginaAtivo(id) {
+  const a = IDX.ativo[id], voltar = `<p style="margin:0 0 12px"><a href="#/inteligencia">← Insights</a></p>`;
+  if (!a || !scoped([a]).length) return `${voltar}<div class="panel empty">Este ativo não existe ou não está no seu escopo.</div>`;
+  const pol = polGrupo().inteligencia, ia = DB.ia, g = iaGravado(a.id), serie = ia.serie[a.id] || [], lim = pol.limite_atencao;
+  if (!g) return `${voltar}<div class="panel empty">Ainda não há resultado gravado para ${esc(a.nome)}: o job diário calcula o ativo novo na próxima execução.</div>`;
+  const dia = k => { const d = new Date(t(ia.inicio) + k * D); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; };
+  const vals = serie.map((v, k) => [v, k]).filter(([v]) => v !== null), min = vals.reduce((m, p) => p[0] < m[0] ? p : m, vals[0]), max = vals.reduce((m, p) => p[0] > m[0] ? p : m, vals[0]);
+  const acima = vals.filter(([v]) => v >= lim).length;
+  const resumo = `Atenção gravada hoje ${g.score}; mínima de ${min[0]} em ${dia(min[1])}; máxima de ${max[0]} em ${dia(max[1])}; ${acima} de ${vals.length} dias no limite de ${lim} ou acima.`;
+  const comp = g.comp.filter(c => c.peso > 0), uh = g.comp.filter(c => c.peso === 0 && c.valor === null), sd = comp.filter(c => c.valor === null);
+  const top = comp.filter(c => c.valor !== null && c.pontos > 0).sort((x, y) => y.pontos - x.pontos).slice(0, 3);
+  const comp90 = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado" && t(c.aberto_em) > Date.now() - 90 * D);
+  const ins = iaVisiveis().filter(i => i.escopo.ativo_id === a.id).sort((x, y) => t(y.aberto_em) - t(x.aberto_em));
+  const ef = efetividade(scoped(DB.chamados).filter(c => c.ativo_id === a.id));
+  const ind = (lab, val, foot, cls) => `<div class="panel inst ${cls || ""}"><div class="lab">${lab}</div><div class="val">${val}</div><div class="foot">${foot}</div></div>`;
+  const horas = g.horas == null ? "—" : fmt1(g.horas), imp = g.impacto == null ? "—" : g.impacto + "%";
+  return `${voltar}<div class="ia-aviso" role="note"><strong>Prévia com dados fictícios.</strong> O ativo, os chamados e os resultados gravados são inventados para a demonstração.</div>
+  <div class="panel" style="margin-top:12px" id="ia-ativo-cab"><div class="panel-b">
+    <div class="small muted">Atenção ao ativo <span class="id">${a.id}</span></div>
+    <h2 style="margin:4px 0 6px">${esc(a.nome)} <span class="badge ${iaFaixaCls(g.faixa)}">${esc(g.faixa)}</span></h2>
+    <div class="small">${esc(IDX.hotel[a.hotel_id].nome)}, ${esc(IDX.local[a.local_id].nome)}. ${esc(IDX.cat[a.categoria_id].nome)}: ${esc(a.fabricante)}${a.modelo ? ", " + esc(a.modelo) : ""}.</div>
+    <p class="small" style="margin:8px 0 0"><a href="#" data-act="open-at" data-id="${a.id}">Abrir a ficha do ativo</a></p></div></div>
+  <div class="grid g-4" style="margin:14px 0 16px">
+    ${ind("Atenção", `${g.score}<small>de 100</small>`, `${esc(g.faixa)}. O insight abre a partir de ${lim}.`, g.score >= lim ? "warn" : "")}
+    ${ind("Criticidade", `${a.criticidade}<small>de 5</small>`, esc(critNome(a.criticidade)) + ".")}
+    ${ind("Horas paradas", `${horas}<small>h</small>`, "Nos últimos 90 dias.")}
+    ${ind("Impacto em hóspedes", imp, `Dos ${comp90.length} chamados dos últimos 90 dias.`)}
+  </div>
+  <div class="grid g-3-1" style="align-items:start">
+    <div>
+      <div class="panel" id="ia-ativo-porque"><div class="panel-h"><h2>Por que estou vendo isso?</h2></div><div class="panel-b" style="padding-top:0">
+        ${top.length ? `<ul class="small" style="padding-left:18px;margin-top:0">${top.map(c => `<li><strong>${esc(c.nome)}</strong>: ${esc(c.medido)}</li>`).join("")}</ul>` : '<p class="small">Nenhum fator pesou neste score.</p>'}
+        <p class="small muted" style="margin-bottom:0">O score mostra o que pesou, e não a causa. A decisão de reparar ou substituir é da equipe, na página do insight.</p></div></div>
+      <div class="panel" style="margin-top:16px" id="ia-grafico"><div class="panel-h"><h2>Atenção nos últimos 90 dias</h2><span class="hint">Um valor por dia gravado, sobre as faixas; a linha tracejada é o limite do insight (${lim})</span></div><div class="panel-b">
+        ${iaGraficoAtencao(serie, lim, resumo)}
+        <div class="row small muted" style="justify-content:space-between;margin-top:4px"><span>${dia(0)}</span><span>${dia(serie.length - 1)}</span></div>
+        <p class="small" style="margin:8px 0 0">${esc(resumo)}</p>
+        <details class="small" style="margin-top:6px"><summary>Ver os ${serie.length} valores, dia a dia</summary><p class="muted" style="margin:6px 0 0">${serie.map((v, k) => `${dia(k)}: ${v === null ? "—" : v}`).join("; ")}.</p></details></div></div>
+      <div class="panel" style="margin-top:16px" id="ia-composicao"><div class="panel-h"><h2>Como o score foi composto</h2></div><div class="panel-b table-wrap" style="padding-top:0">
+        <table><thead><tr><th>Componente</th><th>Medido</th><th class="num">Valor</th><th class="num">Peso</th><th class="num">Peso usado</th><th class="num">Pontos</th></tr></thead><tbody>
+        ${comp.map(c => c.valor === null
+          ? `<tr><td>${esc(c.nome)}</td><td class="small muted">${esc(c.medido)}</td><td class="num">—</td><td class="num">${Math.round(c.peso * 100)}%</td><td class="num">—</td><td class="num">0,0</td></tr>`
+          : `<tr><td>${esc(c.nome)}</td><td class="small">${esc(c.medido)}</td><td class="num">${Math.round(c.valor * 100)}</td><td class="num">${Math.round(c.peso * 100)}%</td><td class="num">${fmt1(c.pesoEf * 100)}%</td><td class="num"><strong>${fmt1(c.pontos)}</strong></td></tr>`).join("")}
+        <tr><td colspan="5"><strong>Atenção</strong></td><td class="num"><strong>${g.score}</strong></td></tr></tbody></table>
+        ${sd.length ? `<p class="small" style="margin:8px 0 0">Sem dado: ${sd.map(c => esc(c.nome.toLowerCase())).join(", ")}. ${sd.length === 1 ? "O peso dele" : "O peso deles"} (${Math.round(sd.reduce((s, c) => s + c.peso, 0) / comp.reduce((s, c) => s + c.peso, 0) * 100)}%) foi dividido entre os componentes que têm dado, na proporção dos pesos.</p>` : ""}
+        ${uh.length ? `<p class="small muted" style="margin:6px 0 0" id="ia-uh">Ainda sem dado: ${uh.map(c => `${c.k === "uh_dias" ? "UH-dias" : esc(c.nome)} (peso 0)`).join(", ")}.</p>` : ""}</div></div>
+      <div class="panel" style="margin-top:16px" id="ia-ativo-ef"><div class="panel-h"><h2>Intervenções neste ativo</h2><span class="hint">Chamados no mesmo ativo, ${pol.efetividade.janela_dias} dias antes e ${pol.efetividade.janela_dias} dias depois</span></div><div class="panel-b table-wrap">${iaTabelaEfetividade(ef, "Nenhuma intervenção marcada neste ativo.")}</div></div>
+    </div>
+    <div>
+      <div class="panel" id="ia-gravado"><div class="panel-h"><h2>Como este resultado foi gravado</h2></div><div class="panel-b" style="padding-top:0"><dl class="kv">
+        <dt>Calculado em</dt><dd>${fmtD(ia.calculado_em)}, às ${pad(new Date(ia.calculado_em).getHours())}:00</dd>
+        <dt>Cálculo</dt><dd>Original, do job diário</dd>
+        <dt>Fórmula</dt><dd>Atenção ao ativo, versão ${ia.versao_formula}</dd>
+        <dt>Política</dt><dd><span class="id" style="font-size:12px">inteligencia.atencao_ativo</span> ${esc(ia.versao_politica)}, limite ${lim}</dd></dl>
+        <p class="small muted" style="margin-bottom:0">O resultado gravado de cada dia não muda. O recálculo com a política atual fica na página do insight, sob demanda.</p></div></div>
+      <div class="panel" style="margin-top:16px" id="ia-ativo-insights"><div class="panel-h"><h2>Insights deste ativo</h2></div><div class="panel-b" style="padding-top:0">
+        ${ins.map(i => `<p style="margin:0 0 8px"><a href="#/inteligencia?ins=${i.id}">${i.id}</a> <span class="badge ${iaEstadoCls(i.estado)}">${IA_ESTADOS[i.estado]}</span><br><span class="small muted">Aberto em ${fmtD(i.aberto_em)}; última detecção em ${fmtD(i.ultima_deteccao_em)}.</span></p>`).join("") || '<p class="small muted" style="margin:0">Nenhum insight deste ativo no seu escopo.</p>'}</div></div>
+    </div>
   </div>`;
 }
 /* A tabela de efetividade, usada na lista, na página do ativo e na página do insight. */

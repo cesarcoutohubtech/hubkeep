@@ -520,8 +520,11 @@
         await a.say("A HubKeep Intelligence é um módulo opcional. Ela aponta onde agir primeiro, a partir dos dados de manutenção.");
         await a.point("#ia-lista tbody tr", { ms: 2400 });
         await a.say("Todo resultado mostra de onde veio: cada componente, o peso e a versão da política.");
-        await a.point("#ia-calc", { ms: 3000 });
+        await a.click('#ia-lista tr[data-tipo="atencao_ativo"] a', { ms: 900 });
+        await a.click("#ia-ver-ativo", { ms: 900 });
+        await a.point("#ia-composicao", { ms: 3000 });
         await a.say("Ela também mede se a intervenção resolveu, comparando 90 dias antes e 90 dias depois.");
+        await a.nav("inteligencia");
         await a.point("#intel-ef table", { ms: 2600 });
         await a.say("E encontra o mesmo problema em vários hotéis, o que aponta para o modelo do equipamento, e não para a equipe.");
         await a.point('#ia-lista tr[data-tipo="sistemico"]', { ms: 2600 });
