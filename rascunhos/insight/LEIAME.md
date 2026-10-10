@@ -61,6 +61,13 @@ Para cada detecção (família, lista canônica de hotéis, faixa):
 - A pessoa escolhe o motivo ao descartar, junto com a nota, que continua obrigatória (`decidirNoInsight`, com o erro `motivo_de_descarte_invalido`, nos quatro catálogos).
 - O "substituído" é o caminho para encerrar o anterior quando já existe o novo.
 
+### 5. Responsável pelo insight (aprovado por Kaio em 10/10/2026, aguardando Cesar)
+
+- Quem toma a primeira ação no insight vira o responsável (`responsavel_id`).
+- O Admin do grupo e o Gestor CSC podem reatribuir, com registro na auditoria.
+- A regra é do domínio (`packages/inteligencia`), e não do banco. A tabela já tem o UPDATE de `responsavel_id` para o `hk_app`, no escopo de quem decide; a reatribuição grava auditoria e evento pela unit of work.
+- O mock (#163) já faz o primeiro ponto; a reatribuição ainda não está nele.
+
 ## Decisões anteriores de 06/10/2026
 
 - **Retenção da métrica diária:** opção B, janela de leitura de 180 dias, configurável por política, nada apagado (`rascunhos/metrica/LEIAME.md` e ADR-035/036). A janela precisa ser pelo menos o dobro da janela da efetividade, conferido ao gravar e na leitura pelo job.
