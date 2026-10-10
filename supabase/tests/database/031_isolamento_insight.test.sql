@@ -23,12 +23,15 @@
 -- família, termina no hash do conjunto e é curta, inclusive com 80 hotéis; o
 -- sha256() do banco confere com o do node:crypto; o motivo do descarte é
 -- canônico e só existe no descartado.
+-- Auditoria da decisão sem hotel (0040, Cesar em 10/10/2026): o Gerente e o
+-- Gestor CSC gravam a do insight que veem, e só dele; o técnico não grava; só
+-- o Admin do grupo lê.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(53);
+select plan(62);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -330,6 +333,52 @@ select is_empty('select 1 from app.insight', 'proprietário do hotel inteiro nã
 -- Caso 4 — implantador vencido do Hotel 1
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000008', true)) ctx;
 select is_empty('select 1 from app.insight', 'implantador vencido não vê nada');
+
+-- Auditoria da decisão sem hotel (0040): quem decide grava a do insight que vê
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000002', true)) ctx;
+select lives_ok(
+  $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, depois, usuario_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', null, 'insight',
+      'e1000000-0000-0000-0000-000000000001', 'revisar', '{"estado": "em_revisao"}',
+      'aaaaaaaa-0000-0000-0000-000000000002') $$,
+  'gerente audita, sem hotel, a decisão do insight do hotel dele');
+select throws_ok(
+  $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', null, 'insight',
+      'e1000000-0000-0000-0000-000000000002', 'revisar', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
+  '42501', null, 'gerente não audita insight de rede, que não vê');
+select throws_ok(
+  $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', null, 'insight',
+      gen_random_uuid(), 'revisar', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
+  '42501', null, 'gerente não audita insight que não existe');
+select is_empty($$ select 1 from app.auditoria where entidade = 'insight' $$,
+  'gerente não lê a auditoria do insight (sem hotel, só o Admin do grupo)');
+
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000003', true)) ctx;
+select lives_ok(
+  $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', null, 'insight',
+      'e1000000-0000-0000-0000-000000000002', 'aceitar', 'aaaaaaaa-0000-0000-0000-000000000003') $$,
+  'gestor da bandeira audita, sem hotel, a decisão do insight de rede da bandeira');
+select throws_ok(
+  $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', null, 'insight',
+      'e1000000-0000-0000-0000-000000000003', 'aceitar', 'aaaaaaaa-0000-0000-0000-000000000003') $$,
+  '42501', null, 'gestor da bandeira não audita o insight de grupo, que não vê');
+
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000004', true)) ctx;
+select throws_ok(
+  $$ insert into app.auditoria (id, tenant_id, hotel_id, entidade, registro_id, acao, usuario_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', null, 'insight',
+      'e1000000-0000-0000-0000-000000000001', 'aceitar', 'aaaaaaaa-0000-0000-0000-000000000004') $$,
+  '42501', null, 'técnico não audita insight sem hotel');
+select is_empty($$ select 1 from app.auditoria where entidade = 'insight' $$,
+  'técnico não lê a auditoria do insight');
+
+select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000001', true)) ctx;
+select results_eq($$ select count(*)::int from app.auditoria where entidade = 'insight' $$,
+  $$ values (2) $$, 'admin do grupo lê a auditoria do insight');
 
 -- Worker: só o tenant do job; grava detecção, não muda estado
 reset role;

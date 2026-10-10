@@ -44,8 +44,18 @@ export {
 } from './adaptadores';
 export { criarPortaConsultasDaCorretiva } from './consultas-da-corretiva';
 export { criarPortaHistorico } from './historico';
-export { criarPortaDoJobDoIntelligence } from './inteligencia';
-export type { PortaDoJobDoIntelligence } from './inteligencia';
+export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from './inteligencia';
+export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
+export type {
+  ChamadoDoInsightNoBanco,
+  ContagemDeInsightsNoBanco,
+  DecisaoNoBanco,
+  FiltroDeInsightsNoBanco,
+  InsightComEvidenciaNoBanco,
+  InsightDoPainelNoBanco,
+  InsightLigadoNoBanco,
+  NomesDoPainelNoBanco,
+} from './repositorios/inteligencia-painel';
 export type {
   AtivoDoJob,
   ChamadoDoJob,

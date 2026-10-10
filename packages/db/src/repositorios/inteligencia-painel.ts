@@ -1,0 +1,359 @@
+// O painel do Intelligence (as telas do 1.0), pelo hk_app com o contexto de
+// quem pede: a RLS da app.insight deixa ler e decidir só quem decide, no
+// próprio escopo (migração 0038), e a do chamado recorta os chamados da
+// evidência. Aqui só IO; as regras (quem decide, as transições, o
+// responsável) são do packages/inteligencia, que este pacote não importa
+// (ADR-037).
+//
+// A decisão grava o estado, o responsável e, no encerramento, quem encerrou,
+// com a trava de versão, uma auditoria (ação = a ação da pessoa) e o evento
+// insight.decidido. A auditoria do insight vai sem hotel_id (Cesar,
+// 10/10/2026): a RLS da app.auditoria deixaria o técnico e o solicitante do
+// hotel lê-la, e o insight é só de quem decide.
+import { NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
+import { sql } from 'kysely';
+import type { Tx } from '../conexao';
+import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+
+export interface InsightDoPainelNoBanco {
+  id: string;
+  hotelId: string | null;
+  bandeiraId: string | null;
+  hotelIds: string[];
+  tipo: string;
+  escopo: Record<string, string>;
+  estado: string;
+  faixa: string;
+  valor: number | null;
+  versaoScore: number;
+  anteriorId: string | null;
+  primeiraDeteccaoEm: Date;
+  ultimaDeteccaoEm: Date;
+  responsavelId: string | null;
+  encerradoEm: Date | null;
+  encerradoPor: string | null;
+  nota: string | null;
+  motivoDeDescarte: string | null;
+  versao: number;
+}
+
+export interface InsightComEvidenciaNoBanco extends InsightDoPainelNoBanco {
+  detalhe: unknown;
+  evidencia: unknown;
+}
+
+export interface FiltroDeInsightsNoBanco {
+  estados: readonly string[];
+  tipo?: string;
+  faixa?: string;
+  hotelId?: string;
+}
+
+export interface ContagemDeInsightsNoBanco {
+  tipo: string;
+  faixa: string;
+  comResponsavel: boolean;
+  quantidade: number;
+}
+
+export interface InsightLigadoNoBanco {
+  id: string;
+  anteriorId: string | null;
+  abertoEm: Date;
+  encerradoEm: Date | null;
+}
+
+export interface ChamadoDoInsightNoBanco {
+  id: string;
+  hotelId: string;
+  ativoId: string | null;
+  abertoEm: Date;
+  estado: string;
+  descricao: string;
+}
+
+export interface NomesDoPainelNoBanco {
+  hoteis: Record<string, string>;
+  bandeiras: Record<string, string>;
+  pessoas: Record<string, string>;
+}
+
+export interface DecisaoNoBanco {
+  insightId: string;
+  acao: string;
+  versaoEsperada: number;
+  estado: string;
+  nota: string | null;
+  motivoDeDescarte: string | null;
+  responsavelId: string;
+  encerradoEm: Date | null;
+  encerradoPor: string | null;
+  em: Date;
+}
+
+const data = (v: Date | string) => (v instanceof Date ? v : new Date(v));
+
+const COLUNAS = [
+  'id',
+  'hotel_id',
+  'bandeira_id',
+  'hotel_ids',
+  'tipo',
+  'escopo',
+  'estado',
+  'faixa',
+  'valor',
+  'versao_score',
+  'anterior_id',
+  'primeira_deteccao_em',
+  'ultima_deteccao_em',
+  'responsavel_id',
+  'encerrado_em',
+  'encerrado_por',
+  'nota',
+  'motivo_descarte',
+  'versao',
+] as const;
+
+type LinhaDoInsight = {
+  id: string;
+  hotel_id: string | null;
+  bandeira_id: string | null;
+  hotel_ids: string[];
+  tipo: string;
+  escopo: unknown;
+  estado: string;
+  faixa: string;
+  valor: number | null;
+  versao_score: number;
+  anterior_id: string | null;
+  primeira_deteccao_em: Date | string;
+  ultima_deteccao_em: Date | string;
+  responsavel_id: string | null;
+  encerrado_em: Date | string | null;
+  encerrado_por: string | null;
+  nota: string | null;
+  motivo_descarte: string | null;
+  versao: number;
+};
+
+function doBanco(i: LinhaDoInsight): InsightDoPainelNoBanco {
+  return {
+    id: i.id,
+    hotelId: i.hotel_id,
+    bandeiraId: i.bandeira_id,
+    hotelIds: i.hotel_ids,
+    tipo: i.tipo,
+    escopo: i.escopo as Record<string, string>,
+    estado: i.estado,
+    faixa: i.faixa,
+    valor: i.valor,
+    versaoScore: i.versao_score,
+    anteriorId: i.anterior_id,
+    primeiraDeteccaoEm: data(i.primeira_deteccao_em),
+    ultimaDeteccaoEm: data(i.ultima_deteccao_em),
+    responsavelId: i.responsavel_id,
+    encerradoEm: i.encerrado_em === null ? null : data(i.encerrado_em),
+    encerradoPor: i.encerrado_por,
+    nota: i.nota,
+    motivoDeDescarte: i.motivo_descarte,
+    versao: i.versao,
+  };
+}
+
+export async function contagensDeInsights(
+  tx: Tx,
+  estados: readonly string[],
+): Promise<ContagemDeInsightsNoBanco[]> {
+  if (!estados.length) return [];
+  const linhas = await tx
+    .selectFrom('app.insight')
+    .select([
+      'tipo',
+      'faixa',
+      sql<boolean>`responsavel_id is not null`.as('com_responsavel'),
+      sql<number>`count(*)::int`.as('quantidade'),
+    ])
+    .where('estado', 'in', estados)
+    .groupBy(['tipo', 'faixa', sql`responsavel_id is not null`])
+    .execute();
+  return linhas.map((l) => ({
+    tipo: l.tipo,
+    faixa: l.faixa,
+    comResponsavel: l.com_responsavel,
+    quantidade: l.quantidade,
+  }));
+}
+
+export async function insightsDoPainel(
+  tx: Tx,
+  filtro: FiltroDeInsightsNoBanco,
+  limite: number,
+): Promise<InsightDoPainelNoBanco[]> {
+  if (!filtro.estados.length) return [];
+  let q = tx.selectFrom('app.insight').select(COLUNAS).where('estado', 'in', filtro.estados);
+  if (filtro.tipo) q = q.where('tipo', '=', filtro.tipo);
+  if (filtro.faixa) q = q.where('faixa', '=', filtro.faixa);
+  if (filtro.hotelId) q = q.where(sql<boolean>`hotel_ids @> array[${filtro.hotelId}]::uuid[]`);
+  const linhas = await q
+    .orderBy('ultima_deteccao_em', 'desc')
+    .orderBy('id')
+    .limit(limite)
+    .execute();
+  return linhas.map(doBanco);
+}
+
+export async function insightDoPainel(
+  tx: Tx,
+  id: string,
+): Promise<InsightComEvidenciaNoBanco | null> {
+  const i = await tx
+    .selectFrom('app.insight')
+    .select([...COLUNAS, 'detalhe', 'evidencia'])
+    .where('id', '=', id)
+    .executeTakeFirst();
+  return i ? { ...doBanco(i), detalhe: i.detalhe, evidencia: i.evidencia } : null;
+}
+
+/** Os anteriores destes insights e os que os têm como anterior. */
+export async function insightsLigados(
+  tx: Tx,
+  ids: readonly string[],
+): Promise<InsightLigadoNoBanco[]> {
+  if (!ids.length) return [];
+  const linhas = await tx
+    .selectFrom('app.insight')
+    .select(['id', 'anterior_id', 'primeira_deteccao_em', 'encerrado_em'])
+    .where((eb) =>
+      eb.or([
+        eb('anterior_id', 'in', ids),
+        eb(
+          'id',
+          'in',
+          eb
+            .selectFrom('app.insight as x')
+            .select('x.anterior_id')
+            .where('x.id', 'in', ids)
+            .where('x.anterior_id', 'is not', null),
+        ),
+      ]),
+    )
+    .execute();
+  return linhas.map((l) => ({
+    id: l.id,
+    anteriorId: l.anterior_id,
+    abertoEm: data(l.primeira_deteccao_em),
+    encerradoEm: l.encerrado_em === null ? null : data(l.encerrado_em),
+  }));
+}
+
+export async function chamadosDoInsight(
+  tx: Tx,
+  ids: readonly string[],
+): Promise<ChamadoDoInsightNoBanco[]> {
+  if (!ids.length) return [];
+  const linhas = await tx
+    .selectFrom('app.chamado')
+    .select(['id', 'hotel_id', 'ativo_id', 'criado_em', 'estado', 'descricao'])
+    .where('id', 'in', ids)
+    .execute();
+  return linhas.map((c) => ({
+    id: c.id,
+    hotelId: c.hotel_id,
+    ativoId: c.ativo_id,
+    abertoEm: data(c.criado_em),
+    estado: c.estado,
+    descricao: c.descricao,
+  }));
+}
+
+export async function nomesDoPainel(
+  tx: Tx,
+  p: {
+    hotelIds: readonly string[];
+    bandeiraIds: readonly string[];
+    usuarioIds: readonly string[];
+  },
+): Promise<NomesDoPainelNoBanco> {
+  const [hoteis, bandeiras, pessoas] = await Promise.all([
+    p.hotelIds.length
+      ? tx.selectFrom('app.hotel').select(['id', 'nome']).where('id', 'in', p.hotelIds).execute()
+      : [],
+    p.bandeiraIds.length
+      ? tx
+          .selectFrom('app.bandeira')
+          .select(['id', 'nome'])
+          .where('id', 'in', p.bandeiraIds)
+          .execute()
+      : [],
+    p.usuarioIds.length
+      ? tx
+          .selectFrom('app.membro')
+          .select(['usuario_id as id', 'nome'])
+          .where('usuario_id', 'in', p.usuarioIds)
+          .execute()
+      : [],
+  ]);
+  const mapa = (xs: readonly { id: string; nome: string }[]) =>
+    Object.fromEntries(xs.map((x) => [x.id, x.nome]));
+  return { hoteis: mapa(hoteis), bandeiras: mapa(bandeiras), pessoas: mapa(pessoas) };
+}
+
+export async function decidirInsightNoBanco(
+  uow: UnidadeDeTrabalho,
+  d: DecisaoNoBanco,
+): Promise<{ versao: number }> {
+  const tx = transacaoDe(uow);
+  // O FOR UPDATE aplica também a policy de UPDATE: fora do escopo, não há linha.
+  const antes = await tx
+    .selectFrom('app.insight')
+    .select(['estado', 'responsavel_id', 'hotel_id', 'hotel_ids', 'versao'])
+    .where('id', '=', d.insightId)
+    .forUpdate()
+    .executeTakeFirst();
+  if (!antes) throw new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
+  if (antes.versao !== d.versaoEsperada) throw conflitoDeVersao(antes.versao);
+  const r = await tx
+    .updateTable('app.insight')
+    .set({
+      estado: d.estado,
+      nota: d.nota,
+      motivo_descarte: d.motivoDeDescarte,
+      responsavel_id: d.responsavelId,
+      encerrado_em: d.encerradoEm,
+      encerrado_por: d.encerradoPor,
+      versao: sql<number>`versao + 1`,
+      atualizado_em: d.em,
+    })
+    .where('id', '=', d.insightId)
+    .returning('versao')
+    .executeTakeFirstOrThrow();
+  uow.auditar({
+    entidade: 'insight',
+    registroId: d.insightId,
+    acao: d.acao,
+    hotelId: null,
+    antes: { estado: antes.estado, responsavelId: antes.responsavel_id, versao: antes.versao },
+    depois: {
+      estado: d.estado,
+      responsavelId: d.responsavelId,
+      nota: d.nota,
+      motivoDeDescarte: d.motivoDeDescarte,
+      versao: r.versao,
+    },
+  });
+  uow.publicar({
+    tipo: 'insight.decidido',
+    entidade: 'insight',
+    registroId: d.insightId,
+    payload: {
+      acao: d.acao,
+      de: antes.estado,
+      para: d.estado,
+      hotelId: antes.hotel_id,
+      hotelIds: antes.hotel_ids,
+      responsavelId: d.responsavelId,
+    },
+  });
+  return { versao: r.versao };
+}

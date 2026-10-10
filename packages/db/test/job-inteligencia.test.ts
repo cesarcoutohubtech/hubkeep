@@ -392,14 +392,17 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       evidencia: { corretivaIds: [C.recente] },
     });
     const auditoria = await q(
-      `select entidade, acao, usuario_id, depois from app.auditoria where tenant_id = $1 order by em, acao`,
+      `select entidade, acao, usuario_id, hotel_id, depois from app.auditoria where tenant_id = $1 order by em, acao`,
       [T],
     );
-    expect(auditoria.rows.map((a) => [a.entidade, a.acao, a.usuario_id]).sort()).toEqual(
+    // Sem hotel_id: só o Admin do grupo lê pelo banco (Cesar, 10/10/2026).
+    expect(
+      auditoria.rows.map((a) => [a.entidade, a.acao, a.usuario_id, a.hotel_id]).sort(),
+    ).toEqual(
       [
-        ['insight', 'abrir', null],
-        ['insight', 'atualizar_deteccao', null],
-        ['job_inteligencia', 'calcular_dia', null],
+        ['insight', 'abrir', null, null],
+        ['insight', 'atualizar_deteccao', null, null],
+        ['job_inteligencia', 'calcular_dia', null, null],
       ].sort(),
     );
     // Quem disparou e as versões ficam no registro da execução.

@@ -75,6 +75,7 @@ import {
   criarPortaUhIndisponivel,
   criarPortaConsultasDaCorretiva,
   criarPortaDoJobDoIntelligence,
+  criarPortaDoPainelDoIntelligence,
   criarPortaHistorico,
   criarPortaPrioridades,
   criarPortaSituacoes,
@@ -216,6 +217,21 @@ export async function calcularDiaDoIntelligence(tenantId: string) {
     relogio: relogioDoSistema,
   })(tenantId);
 }
+
+/**
+ * O painel do Intelligence (as telas do 1.0): a leitura e a decisão do insight
+ * com o hk_app e o contexto de quem pede. Sem o módulo vigente, ou sem papel
+ * que decide, os casos de uso devolvem 404 inteligencia_indisponivel.
+ */
+export const casosDeUsoDoPainelDoIntelligence = memo(async () => {
+  const banco = await acessoBanco();
+  return inteligencia.painel({
+    porta: criarPortaDoPainelDoIntelligence(banco),
+    modulos: criarPortaModulos(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
 
 /** Tenants para os jobs de cron (hk_worker). */
 export async function tenantsDoSistema(): Promise<string[]> {

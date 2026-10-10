@@ -1075,3 +1075,47 @@ As duas perguntas do #179 que estavam abertas ficam respondidas.
 **O que este PR faz:**
 - **Lint:** a tela em pasta `inteligencia` do `apps/web/src/app` passa a importar o código de cliente do web (`cliente/api`, `i18n/cliente`) por caminho relativo, como qualquer página. É o que o adendo de 06/10/2026 ao ADR-026 já diz ("veem o que a rota e a página veem"); a configuração liberava só o servidor do web. A pasta do módulo no servidor continua fora do alcance da tela. Casos novos no `tests/fronteiras.test.ts`; os dois "permite" falham sem a mudança.
 - **`packages/ui`:** `Indicadores` (`hk-indicadores`, a fileira que se ajusta à largura, com nome de grupo opcional para o leitor de tela) e `Dados` (`hk-dados`, pares de rótulo e valor numa `dl`, em uma coluna no celular), como a proposta das telas previa.
+
+## `int-insight-servidor`: a leitura e a decisão do insight no servidor (10/10/2026)
+
+Segundo dos PRs das telas do painel (a ordem e as decisões do Cesar estão na seção do `int-telas-base`). **Zona protegida**, com a migração 0040; o merge e o `db push` são do Cesar.
+
+**Correção: a auditoria sem `hotel_id` pede migração.** Na seção do `int-telas-base`, o agente escreveu que a mudança era "sem migração". Para o job, que grava com o `hk_worker`, é verdade. Para a decisão de uma pessoa, não: a primeira CI do #189 falhou com `new row violates row-level security policy for table "auditoria"`. O INSERT da `app.auditoria` pelo `hk_app` só aceita `hotel_id` nulo do Admin do grupo e do implantador. Com isso, o Gestor CSC também não conseguiria auditar a decisão de um insight de rede.
+- **Decisão do Cesar** ("Cesar aqui", 10/10/2026, no chat do agente do Intelligence): a migração 0040, no próprio #189, para não ter dois PRs abertos.
+- **O que a 0040 muda:** só o INSERT da `app.auditoria`, no molde do fornecedor (0033). A linha pode ter `hotel_id` nulo quando:
+  - a entidade é `insight`;
+  - quem grava tem papel de Gestor CSC ou de Gerente do hotel;
+  - o insight existe e é visível a quem grava (a subconsulta passa pela RLS da `app.insight`).
+- **A leitura não muda:** a linha sem hotel continua só do Admin do grupo.
+- **Pedido ao núcleo:** a `app.auditoria` é tabela do núcleo, e este pedido fica registrado aqui, no diário de quem pede. O Cesar aprovou no chat.
+- **pgTAP 031:** nove casos novos (de 53 para 62). O Gerente e o Gestor gravam a auditoria do insight que veem, e só dele; o técnico não grava; só o Admin do grupo lê.
+
+**Correção sobre o #188 (`int-telas-base`):** ele era de zona protegida, porque o `eslint.config.mjs` está na lista do `.github/workflows/zona-protegida.yml`. O agente o abriu achando que estava fora; a descrição do PR foi corrigida, e o Cesar fez o merge com bypass. A lista que vale é a do workflow.
+
+**O que o PR faz.**
+- **Motor (`packages/inteligencia/src/painel.ts`):** o painel em código puro, por portas, como o job.
+  - **Casos de uso:** `resumoDoPainel`, `listarInsights`, `verInsight` e `decidirInsight`.
+  - **Portão:** sem o módulo vigente, ou sem papel que decide insight, o painel responde 404 `inteligencia_indisponivel`, e o menu não mostra o item.
+  - **Responsável:** quem toma a primeira ação vira o responsável (aprovado por Cesar, #166).
+  - **Substituição:** "substitui" e "substituído por" pelo vínculo `anterior_id`.
+  - **Página do insight:** os chamados da evidência que quem lê vê, e a série de 12 semanas.
+  - **Decisão:** a transição de `decidirNoInsight`, com a trava de versão.
+- **Banco (`packages/db/src/repositorios/inteligencia-painel.ts`):**
+  - **Leitura pelo `hk_app`:** contagens, lista com filtros (estado, tipo, faixa, hotel; até 500), insight com a evidência, ligados, chamados e nomes.
+  - **Decisão na unit of work:** auditoria com a ação da pessoa e evento `insight.decidido`.
+- **Auditoria do insight sem `hotel_id`:** vale nas três ações, `abrir` e `atualizar_deteccao` do job e a decisão (Cesar, 10/10/2026).
+- **Web:**
+  - a montagem do módulo ganhou `painel`, e a composição, `casosDeUsoDoPainelDoIntelligence`;
+  - quatro rotas: `GET /api/v1/inteligencia/resumo`, `GET /api/v1/inteligencia/insights`, `GET /api/v1/inteligencia/insights/{id}` e `POST /api/v1/inteligencia/insights/{id}/decisao`;
+  - contratos e OpenAPI;
+  - as mensagens `erro.inteligencia_indisponivel` e `erro.insight_nao_encontrado` nos quatro idiomas.
+- **Testes:**
+  - o motor em memória (`test/painel.test.ts`);
+  - a ligação no web, com as listas da API iguais às do motor;
+  - a integração do `packages/db` (`test/painel-inteligencia.test.ts`), que só roda na CI. Ela cobre quem lê o quê por papel, os ligados, os chamados recortados pela RLS, a trava de versão e o técnico sem leitura da auditoria do insight.
+
+**Fica para depois, fora deste PR:**
+- **Reatribuição** do responsável pelo Admin do grupo e pelo Gestor CSC (aprovada, #166). Pede a lista de quem pode receber o insight; entra num PR próprio.
+- **Detalhe do ativo** (a terceira tela): a leitura da `app.metrica_ativo_diaria`. Entra num PR próprio, antes da tela.
+- **Efetividade** nos três lugares e o **recálculo sob demanda** na página do insight. Ficam depois das três telas.
+- **Número do insight:** a proposta das telas tem a coluna "número do insight" ("INS-0133" no mock), mas a `app.insight` não tem número sequencial. Até haver decisão, a tela mostra o tipo e o escopo como link.
