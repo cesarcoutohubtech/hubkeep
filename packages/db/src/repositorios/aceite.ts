@@ -5,11 +5,12 @@
 // versão (ADR-029). A reabertura grava o motivo na OS (motivo_reabertura, o
 // último; o histórico fica na auditoria e no evento) e, com o equipamento
 // parado, abre a parada do ativo no mesmo chamado, na mesma unit of work. O
-// aceite grava o custo informado (I4), quando vem.
+// aceite grava o custo informado (I4), quando vem, e os três códigos de
+// falha, causa e solução (I6), quando quem aceita os manda.
 import type { ReflexoNoChamado } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
-import type { EstadoDaOs } from '@hubkeep/dominio';
+import type { CodigosDaOs, EstadoDaOs } from '@hubkeep/dominio';
 import { pararNaAbertura } from './paradas';
 import { registrarTransicao } from './transicoes';
 import { refletirNoChamado, semLinha } from './triagem';
@@ -26,14 +27,26 @@ async function decidirAceite(
     chamado: ReflexoNoChamado;
     /** Só no aceite (I4); null: não informado. */
     custoInformado?: number | null;
+    /** Só no aceite (I6); null: ficam os da OS. */
+    codigos?: CodigosDaOs | null;
   },
 ): Promise<{ versao: number; versaoDoChamado: number }> {
   const tx = transacaoDe(uow);
   const custo = g.custoInformado ?? null;
+  const codigos = g.codigos ?? null;
   const para = acao === 'aceitar' ? 'aceita' : 'em_execucao';
   const antes = await tx
     .selectFrom('app.os')
-    .select(['estado', 'situacao_id', 'motivo_reabertura', 'custo_informado', 'versao'])
+    .select([
+      'estado',
+      'situacao_id',
+      'motivo_reabertura',
+      'custo_informado',
+      'codigo_falha_id',
+      'codigo_causa_id',
+      'codigo_solucao_id',
+      'versao',
+    ])
     .where('id', '=', g.osId)
     .executeTakeFirst();
   const r = await tx
@@ -43,6 +56,13 @@ async function decidirAceite(
       situacao_id: g.situacaoId,
       ...(g.motivo !== null ? { motivo_reabertura: g.motivo } : {}),
       ...(custo !== null ? { custo_informado: custo.toFixed(2) } : {}),
+      ...(codigos !== null
+        ? {
+            codigo_falha_id: codigos.falhaId,
+            codigo_causa_id: codigos.causaId,
+            codigo_solucao_id: codigos.solucaoId,
+          }
+        : {}),
       versao: sql<number>`versao + 1`,
       atualizado_em: sql`now()`,
     })
@@ -62,6 +82,7 @@ async function decidirAceite(
     depois: {
       ...(g.motivo !== null ? { motivo: g.motivo } : {}),
       ...(custo !== null ? { custoInformado: custo } : {}),
+      ...(codigos !== null ? { codigos } : {}),
       situacaoId: g.situacaoId,
       versao: r.versao,
       estadoDoChamado: g.chamado.estado,
@@ -90,6 +111,7 @@ export const aceitarOs = (
     situacaoId: string;
     chamado: ReflexoNoChamado;
     custoInformado: number | null;
+    codigos: CodigosDaOs | null;
   },
 ) => decidirAceite(uow, 'aceitar', { ...g, motivo: null });
 

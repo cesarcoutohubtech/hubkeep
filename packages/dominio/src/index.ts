@@ -109,6 +109,7 @@ export {
 export type {
   AceiteAutomatico,
   ChaveDePolitica,
+  CodigosObrigatorios,
   ExtensaoDePolitica,
   NiveisDePolitica,
   NomesDeCriticidade,
@@ -256,8 +257,28 @@ export {
   normalizarCustoInformado,
 } from './executor-e-custo';
 export type { ExecutadoPor, QuemExecuta } from './executor-e-custo';
-export { TIPOS_DE_CODIGO_DE_MANUTENCAO, ehTipoDeCodigoDeManutencao } from './codigos-manutencao';
-export type { TipoDeCodigoDeManutencao } from './codigos-manutencao';
+export {
+  CODIGOS_PADRAO,
+  LIMITE_DO_NOME_DE_CODIGO,
+  SEM_CODIGOS,
+  TIPOS_DE_CODIGO_DE_MANUTENCAO,
+  codigoServe,
+  codigosQueServem,
+  ehTipoDeCodigoDeManutencao,
+  exigirCodigosNoAceite,
+  podeGerirCodigos,
+  sugestaoDosCodigos,
+  validarCodigosDaOs,
+  validarNomesDeCodigo,
+  validarTipoDeCodigo,
+} from './codigos-manutencao';
+export type {
+  CodigoPadrao,
+  CodigoParaRegra,
+  CodigosDaOs,
+  CodigosSugeridos,
+  TipoDeCodigoDeManutencao,
+} from './codigos-manutencao';
 export {
   ENTIDADES_COM_SITUACAO,
   ESTADOS_POR_ENTIDADE,

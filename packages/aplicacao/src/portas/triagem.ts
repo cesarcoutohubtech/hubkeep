@@ -4,9 +4,12 @@
 // no aceite, também quem abriu o chamado (0026). Toda gravação é uma
 // unit of work, com auditoria e evento, e confere a versão (ADR-029). Na I4,
 // a OS guarda quem executa (equipe interna ou fornecedor do grupo) e o custo
-// informado no aceite, e o chamado, o impacto no hóspede.
+// informado no aceite, e o chamado, o impacto no hóspede. Na I6, a OS guarda
+// os códigos de falha, causa e solução, sugeridos na conclusão e confirmados
+// no aceite.
 import type {
   Atribuicao,
+  CodigosDaOs,
   Contexto,
   DadosDoAceite,
   EstadoDaOs,
@@ -44,6 +47,8 @@ export interface OsGravada {
   fornecedorId: string | null;
   /** O custo informado no aceite, em reais (I4); null: não informado. */
   custoInformado: number | null;
+  /** Falha, causa e solução (I6); null em cada um: não informado. */
+  codigos: CodigosDaOs;
   criadoPor: string;
   versao: number;
   criadoEm: Date;
@@ -83,6 +88,12 @@ export interface PortaTriagem {
   equipe(ctx: Contexto, equipeId: string): Promise<{ hotelId: string; ativa: boolean } | null>;
   /** O fornecedor do grupo visível a quem pede (I3), para a triagem escolher; senão null. */
   fornecedor(ctx: Contexto, fornecedorId: string): Promise<{ ativo: boolean } | null>;
+  /** Valor gravado da política no hotel e no grupo, como está no banco (a resolução é do domínio). */
+  politica(
+    ctx: Contexto,
+    hotelId: string,
+    chave: string,
+  ): Promise<{ hotel?: unknown; grupo?: unknown }>;
   /** Equipes ativas de que quem pede é membro ativo (o aceite confere se ele executa a OS). */
   equipesDoUsuario(ctx: Contexto): Promise<string[]>;
   /**
@@ -145,7 +156,8 @@ export interface PortaTriagem {
   ): Promise<{ versao: number; versaoDoChamado: number }>;
   /**
    * Aceite (C6): a OS concluída fica aceita, e o chamado, concluído. Com o
-   * custo informado (I4), a OS o guarda.
+   * custo informado (I4), a OS o guarda. Com os códigos (I6), a OS grava os
+   * três; null: ficam os que já estão.
    */
   aceitarOs(
     ctx: Contexto,
@@ -156,6 +168,7 @@ export interface PortaTriagem {
       situacaoId: string;
       chamado: ReflexoNoChamado;
       custoInformado: number | null;
+      codigos: CodigosDaOs | null;
     },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
   /**

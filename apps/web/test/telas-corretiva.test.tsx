@@ -126,6 +126,7 @@ const detalhe: DetalheDoChamado = {
       executadoPor: 'equipe_interna',
       fornecedorId: null,
       custoInformado: null,
+      codigos: { falhaId: null, causaId: null, solucaoId: null },
       criadoPor: T,
       versao: 4,
       criadoEm: '2026-09-30T13:00:00.000Z',

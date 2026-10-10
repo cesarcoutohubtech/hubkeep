@@ -42,6 +42,9 @@ describe('políticas (ADR-026)', () => {
     ['os.aceite_automatico', { ligado: true, dias: 61 }, 'politica_valor_invalido'],
     ['os.aceite_automatico', { ligado: true, dias: 7, extra: 1 }, 'politica_valor_invalido'],
     ['os.aceite_automatico', [true, 7], 'politica_valor_invalido'],
+    ['os.codigos_obrigatorios', { ligado: 'sim' }, 'politica_valor_invalido'],
+    ['os.codigos_obrigatorios', { ligado: true, extra: 1 }, 'politica_valor_invalido'],
+    ['os.codigos_obrigatorios', true, 'politica_valor_invalido'],
     ['chamado.prioridade_padrao_por_categoria', { nao_uuid: U1 }, 'politica_valor_invalido'],
     ['chamado.nao_existe', {}, 'politica_desconhecida'],
     ['ativo.criticidade', { 6: { 'pt-BR': 'Seis' } }, 'politica_valor_invalido'],
@@ -64,6 +67,14 @@ describe('políticas (ADR-026)', () => {
     const nomes = { 1: { 'pt-BR': 'Baixa', en: 'Low' }, 5: { fr: 'Critique' } };
     expect(validarPolitica('ativo.criticidade', nomes)).toEqual(nomes);
     expect(resolverPolitica('ativo.criticidade', {})).toEqual({});
+    // I6: desligada por padrão; o hotel liga.
+    expect(resolverPolitica('os.codigos_obrigatorios', {})).toEqual({ ligado: false });
+    expect(
+      resolverPolitica('os.codigos_obrigatorios', {
+        hotel: { ligado: true },
+        grupo: { ligado: false },
+      }),
+    ).toEqual({ ligado: true });
   });
 
   it('só o Admin do grupo configura', () => {

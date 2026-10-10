@@ -1572,9 +1572,36 @@ PR de zona protegida, aberto pelo agente do Intelligence na exceção do Cesar (
 - **Depois do merge:** `db push` da 0036.
 - **Ponto de retomada:** o PR da I6 aguarda o merge e o `db push` do Cesar. Depois de "mergeado e aplicado", o agente do Intelligence abre o PR das regras, dos casos de uso e das telas da I6, fora da zona protegida, e a migração da I7 com o adendo ao ADR-026, que é o próximo PR de zona protegida.
 
+### I6 — regras, casos de uso, API e telas (10/10/2026)
+
+O #173 foi mergeado, e o `db push` da 0035 e da 0036 chegou ao dev na segunda tentativa ("Cesar aqui", 10/10/2026). A primeira rodou no checkout principal ainda no `b9aaa77`, sem os arquivos das duas migrações. O pgTAP contra o dev passou inteiro: 910 testes em 29 arquivos. PR fora da zona protegida, aberto pelo agente do Intelligence na exceção do Cesar.
+- **Domínio** (`codigos-manutencao.ts`):
+  - os 37 códigos padrão: 5 falhas gerais, 14 falhas das categorias padrão (cada categoria tem ao menos uma), 9 causas e 9 soluções gerais. O nome de cada um fica no catálogo (`codigo_manutencao.padrao.<chave>`), e `tests/codigos-padrao-catalogo.test.ts` confere os dois lados;
+  - só o Admin do grupo gere (`codigos_so_admin`); o nome do código do grupo é obrigatório (`codigo_nome_invalido`);
+  - o código serve para a OS se está ativo, é do tipo da coluna e é da categoria do ativo do chamado ou de todas. **Sem ativo no chamado, ou com o ativo sem categoria, vale qualquer código ativo do tipo**: não há com o que comparar (decisão deste agente, para o Cesar conferir no PR);
+  - **no aceite**, o código que não serve é recusado, com o tipo da coluna: `codigo_nao_encontrado`, `codigo_de_outro_tipo`, `codigo_inativo` ou `codigo_de_outra_categoria`;
+  - **na conclusão**, o código que não serve é descartado, e a conclusão segue. A auditoria da OS guarda os descartados, com o motivo, e a resposta da operação diz quantos foram (`codigosDescartados`). Assim um código desativado enquanto o aparelho estava sem rede não trava a fila;
+  - a política `os.codigos_obrigatorios` (`{ ligado }`, desligada por padrão) entra no registro do núcleo e no contrato. Ligada no hotel, o aceite sem os três é recusado com `codigos_obrigatorios_no_aceite` e o número que falta. Nunca é cobrada na conclusão.
+- **Aceite:** com `codigos`, os três substituem os da OS; sem eles, ficam os que o técnico sugeriu, e é sobre esses que a política cobra.
+- **API:** `GET` e `POST /api/v1/codigos-de-manutencao`, `PUT /api/v1/codigos-de-manutencao/{id}` (nomes), desativação, reativação e `POST .../padrao`, que é idempotente e instala a falha de uma categoria padrão só se o tenant tiver a categoria. `GET /api/v1/os/{id}/codigos` devolve os ids que servem para a OS, por tipo, para a lista do aceite. A `OsApi` ganha `codigos`, e o `os.concluir` da fila ganha `codigos`, opcional. O OpenAPI tem as seis rotas.
+- **Telas:**
+  - cadastro do Admin em "Códigos de manutenção" (`/admin/codigos`), com um painel por tipo;
+  - o bloco da política na configuração, por grupo ou por hotel;
+  - o detalhe da OS mostra os códigos;
+  - o aceite traz os três campos com a sugestão do técnico já escolhida;
+  - no PWA, o painel "Falha, causa e solução (opcional)" na OS em execução ou pausada, com os códigos da referência local (os da categoria do ativo primeiro). A referência guardada antes da I6 segue sem códigos, e a tela sem o painel;
+  - os 77 textos novos nos quatro catálogos.
+- **Kit:** o script instala os códigos padrão. Na conclusão do aquecedor, o técnico sugere falha e causa, sem solução. O forno é aceito com os três. O `docs/10` ganha os passos do Admin (cadastro e política), do Gerente (aceite com a política ligada no Centro) e do Técnico (sugestão no PWA).
+- **Testes:**
+  - domínio: padrões, quem gere, o filtro, a recusa no aceite, a sugestão que nunca recusa e a política;
+  - integração (`packages/db/test/codigos-manutencao.test.ts`, só na CI): cadastro, a RLS sem a checagem, a lista da OS, a conclusão com descarte e o aceite com a política desligada e ligada;
+  - telas do web e do PWA nos quatro idiomas e no pseudo-idioma;
+  - a paridade dos tipos e da política entre contrato e domínio.
+- **Ponto de retomada:** o PR fica para o Cesar revisar e mergear. É fora da zona protegida, então não segura a fila. O próximo PR de zona protegida é a migração da I7 (`licenca.modulo`), com o adendo ao ADR-026 em "aguarda aprovação", e para no link até "mergeado e aplicado".
+
 ### I7 — módulos contratados: a migração e o adendo ao ADR-026 (10/10/2026)
 
-PR de zona protegida, aberto pelo agente do Intelligence na exceção do Cesar, depois do merge da migração da I6 (#173) e do `db push` da 0036 ("Cesar aqui", 10/10/2026). O PR das telas da I6 (#174) fica fora da zona protegida e não segura a fila.
+PR de zona protegida, aberto pelo agente do Intelligence na exceção do Cesar, depois do merge da migração da I6 (#173) e do `db push` da 0036 ("Cesar aqui", 10/10/2026). O PR das telas da I6 (#174), fora da zona protegida, foi mergeado antes deste; o diário dele vem logo acima.
 - **Migração 0037** (`20261010180824_licenca_modulo.sql`), no modelo de `licenca.contrato`:
   - `licenca.modulo` guarda o tenant, o módulo (`inteligencia`, com check), a vigência (`inicio`, `fim` anulável), `atualizado_em` e `atualizado_por`, com uma linha por módulo no tenant;
   - lê o `hk_app`, quando quem pede é Admin do grupo ou lê algum hotel (inclusive o proprietário), e o `hk_worker`, no tenant do job;

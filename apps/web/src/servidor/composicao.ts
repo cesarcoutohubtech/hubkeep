@@ -8,6 +8,7 @@ import {
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
+  type CasosDeUsoDeCodigos,
   type CasosDeUsoDeTriagem,
   type CasosDeUsoDeExecucao,
   type CasosDeUsoDeParadas,
@@ -39,6 +40,7 @@ import {
   criarCasosDeUsoDeHistorico,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
+  criarCasosDeUsoDeCodigos,
   criarCasosDeUsoDeTriagem,
   criarCasosDeUsoDeExecucao,
   criarCasosDeUsoDeSituacoes,
@@ -65,6 +67,7 @@ import {
   criarPortaAtivos,
   criarPortaCategorias,
   criarPortaChamados,
+  criarPortaCodigos,
   criarPortaTriagem,
   criarPortaExecucao,
   criarPortaParadas,
@@ -319,6 +322,18 @@ export const casosDeUsoDeCategorias = memo<CasosDeUsoDeCategorias>(async () => {
   });
 });
 
+/** Códigos de falha, causa e solução (fase 1b, I6), pelo hk_app. */
+export const casosDeUsoDeCodigos = memo<CasosDeUsoDeCodigos>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeCodigos({
+    codigos: criarPortaCodigos(banco),
+    categorias: criarPortaCategorias(banco),
+    triagem: criarPortaTriagem(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
 /** Situações e prioridades do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
 export const casosDeUsoDeSituacoes = memo<CasosDeUsoDeSituacoes>(async () => {
   const banco = await acessoBanco();
@@ -349,6 +364,7 @@ export const casosDeUsoDeTriagem = memo<CasosDeUsoDeTriagem>(async () => {
     triagem: criarPortaTriagem(banco),
     situacoes: criarPortaSituacoes(banco),
     prioridades: criarPortaPrioridades(banco),
+    codigos: criarPortaCodigos(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });
@@ -365,6 +381,7 @@ export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
     relogio: relogioDoSistema,
     paradas: criarPortaParadas(banco),
     uh: criarPortaUhIndisponivel(banco),
+    codigos: criarPortaCodigos(banco),
   });
 });
 

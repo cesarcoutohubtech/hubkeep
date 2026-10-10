@@ -17,8 +17,14 @@
 // com a UH do chamado indisponível (I4), quem conclui responde se a UH foi
 // liberada; sim, o período encerra com a hora da conclusão
 // (periodoALiberarNaConclusao).
+//
+// Códigos de falha, causa e solução (I6): na conclusão, o técnico sugere; o
+// que não serve (de outro tipo, desativado, de outra categoria) é descartado,
+// e a conclusão nunca é recusada por eles (decisão do Cesar de 10/10/2026).
+// A política os.codigos_obrigatorios é cobrada só no aceite, no web.
 import {
   type AtorDaCorretiva,
+  type CodigosSugeridos,
   type Contexto,
   Conflito,
   NaoEncontrado,
@@ -34,11 +40,13 @@ import {
   paradaAEncerrarNaConclusao,
   periodoALiberarNaConclusao,
   situacaoPara,
+  sugestaoDosCodigos,
   validarApontamento,
   validarFimDaIndisponibilidade,
   validarFimDaParada,
   validarParada,
 } from '@hubkeep/dominio';
+import type { PortaCodigos } from '../portas/codigos-manutencao';
 import type { AcaoNaOsDecidida, OsDoDia, PortaExecucao } from '../portas/execucao';
 import type { EncerramentoDeParada, PortaParadas, RegistroDeParada } from '../portas/paradas';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
@@ -63,6 +71,8 @@ export interface CasosDeUsoDeExecucao {
       uhLiberada?: boolean | undefined;
       /** Só na conclusão: a hora do aparelho, que vira o fim da parada. */
       concluidaEm?: Date | undefined;
+      /** Só na conclusão: os códigos sugeridos pelo técnico (I6); nunca recusam. */
+      codigos?: CodigosSugeridos | undefined;
     },
   ): Promise<AcaoNaOsDecidida>;
   prepararApontamento(
@@ -99,6 +109,8 @@ export function criarCasosDeUsoDeExecucao(deps: {
   paradas?: Pick<PortaParadas, 'abertaDoAtivo'>;
   /** Opcional só para os testes que não liberam UH; a composição sempre passa. */
   uh?: Pick<PortaUhIndisponivel, 'abertoDoChamado'>;
+  /** Opcional só para os testes que não sugerem código; a composição sempre passa. */
+  codigos?: Pick<PortaCodigos, 'listar' | 'categoriaDoAtivo'>;
   /** Padrão: as do domínio. Só o teste de aceite troca, para provar a RLS sozinha. */
   regras?: {
     decidirNaOs?: typeof decidirNaOs;
@@ -180,6 +192,20 @@ export function criarCasosDeUsoDeExecucao(deps: {
     return { id: alvo.id, hotelId: os.hotelId, fim };
   }
 
+  /** Os códigos sugeridos na conclusão (I6): o que não serve é descartado, nunca recusado. */
+  async function codigosDaConclusao(
+    ctx: Contexto,
+    chamado: ChamadoParaTriagem,
+    pedido: CodigosSugeridos | undefined,
+  ): Promise<NonNullable<AcaoNaOsDecidida['codigos']> | null> {
+    if (!pedido || !deps.codigos) return null;
+    const [lista, categoria] = await Promise.all([
+      deps.codigos.listar(ctx),
+      chamado.ativoId === null ? null : deps.codigos.categoriaDoAtivo(ctx, chamado.ativoId),
+    ]);
+    return sugestaoDosCodigos(pedido, lista, categoria);
+  }
+
   return {
     async prepararAcao(ctx, acao, p) {
       const { os, chamado } = await osEChamado(ctx, p.osId);
@@ -201,8 +227,11 @@ export function criarCasosDeUsoDeExecucao(deps: {
       const encerrarParada =
         acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
       const liberarUh = acao === 'concluir' ? await uhDaConclusao(ctx, os, chamado, p) : null;
+      const codigos =
+        acao === 'concluir' ? await codigosDaConclusao(ctx, chamado, p.codigos) : null;
       const situacoes = await deps.situacoes.listar(ctx);
       return {
+        codigos,
         encerrarParada,
         liberarUh,
         acao,
