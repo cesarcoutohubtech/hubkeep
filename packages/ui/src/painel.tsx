@@ -48,6 +48,44 @@ export interface PropsDoIndicador {
   tom?: TomDeIndicador;
 }
 
+export interface PropsDosIndicadores {
+  /** Nome do grupo para o leitor de tela. */
+  rotulo?: string;
+  children: ReactNode;
+}
+
+/** A fileira de indicadores: colunas que se ajustam à largura da tela. */
+export function Indicadores({ rotulo, children }: PropsDosIndicadores) {
+  return (
+    <div className="hk-indicadores" role={rotulo ? 'group' : undefined} aria-label={rotulo}>
+      {children}
+    </div>
+  );
+}
+
+export interface ParDeDados {
+  rotulo: ReactNode;
+  valor: ReactNode;
+}
+
+export interface PropsDosDados {
+  itens: readonly ParDeDados[];
+}
+
+/** Pares de rótulo e valor (`dl`), como o bloco "como este resultado foi gravado". */
+export function Dados({ itens }: PropsDosDados) {
+  return (
+    <dl className="hk-dados">
+      {itens.map((item, i) => (
+        <div key={i} className="hk-dados-par">
+          <dt>{item.rotulo}</dt>
+          <dd>{item.valor}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function Indicador({ rotulo, valor, unidade, detalhe, tom = 'neutro' }: PropsDoIndicador) {
   return (
     <div className="hk-indicador" data-tom={tom}>
