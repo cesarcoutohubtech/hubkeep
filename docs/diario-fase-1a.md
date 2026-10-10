@@ -1557,3 +1557,17 @@ Decisão 2 do Cesar de 09/10/2026. PR de zona protegida, depois da I4 e da I4b (
   - na CI: o pgTAP 027 e o teste de integração `packages/db/test/fornecedores.test.ts` (o alfanumérico gravado em maiúsculas).
 - **Depois do merge:** `db push` da 0035.
 - **Ponto de retomada:** o PR do CNPJ aguarda o merge e o `db push` do Cesar. Depois de "mergeado e aplicado", o agente do Intelligence faz a I6 (zona protegida) e para; depois a I7. O Gestor CSC sem hotel continua com o agente do núcleo, a partir do `020a5a0`.
+
+### I6 — códigos de falha, causa e solução: a migração (10/10/2026)
+
+PR de zona protegida, aberto pelo agente do Intelligence na exceção do Cesar (acima), depois do merge do CNPJ alfanumérico (#171) e do `db push` da 0035 ("mergeado e aplicado", Cesar, 10/10/2026). Nenhum rascunho anterior da I6 existia.
+- **Migração 0036** (`20261010164213_codigo_manutencao.sql`):
+  - `app.codigo_manutencao`, do grupo, no modelo da situação e da prioridade (ADR-027): `tipo` (`falha`, `causa` ou `solucao`, com check), `categoria_id` anulável (FK composta com `app.categoria_ativo`; nulo vale para todas), `chave_padrao` (código padrão do catálogo, uma vez por tipo no tenant), `nomes` por idioma e `ativa`. Todo código tem nome pela chave padrão ou pelos `nomes` (check);
+  - lê o Admin do grupo e quem lê algum hotel, inclusive o proprietário; grava só o Admin do grupo; depois de criado, mudam só `nomes`, `ativa` e `atualizado_em`; o worker lê no tenant do job; sem DELETE;
+  - `app.os` ganha `codigo_falha_id`, `codigo_causa_id` e `codigo_solucao_id`, anuláveis, com FK composta para o código do próprio tenant e GRANT de UPDATE, que segue o `app_update` da OS (a gestão do hotel, o Técnico responsável e quem abriu o chamado). Índice parcial no código de falha, para a reincidência do Intelligence.
+- **pgTAP 029** (46 asserções): os seis casos, a integridade da tabela, quem grava os códigos da OS (o gerente do hotel e o Técnico responsável, sim; outro técnico, o de outro hotel e o proprietário, não) e o worker.
+- **Meta-teste 28:** a tabela nova na lista fechada.
+- **Tipos** (`packages/db/src/tipos-banco.ts`) e a lista `TIPOS_DE_CODIGO_DE_MANUTENCAO` no domínio, com a paridade em `tests/valores-canonicos-banco.test.ts`.
+- **Fica para o PR seguinte, fora da zona protegida, depois do merge** (decisão 4 do Cesar de 10/10/2026): os códigos padrão por categoria no catálogo, as regras do domínio (o tipo certo em cada coluna, o código ativo e da categoria do ativo), a política `os.codigos_obrigatorios` (desligada por padrão; ligada, o aceite no web exige os três, com mensagem de recusa; a conclusão no PWA nunca é recusada por falta deles), os casos de uso, a API, o cadastro do Admin, o aceite no web, a sugestão no PWA e o kit de teste.
+- **Depois do merge:** `db push` da 0036.
+- **Ponto de retomada:** o PR da I6 aguarda o merge e o `db push` do Cesar. Depois de "mergeado e aplicado", o agente do Intelligence abre o PR das regras, dos casos de uso e das telas da I6, fora da zona protegida, e a migração da I7 com o adendo ao ADR-026, que é o próximo PR de zona protegida.

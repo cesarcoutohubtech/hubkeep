@@ -156,6 +156,18 @@ export interface AppChamado {
   versao: Generated<number>;
 }
 
+export interface AppCodigoManutencao {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  categoria_id: string | null;
+  chave_padrao: string | null;
+  criado_em: Generated<Timestamp>;
+  id: string;
+  nomes: Generated<Json>;
+  tenant_id: string;
+  tipo: string;
+}
+
 export interface AppEquipe {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -280,6 +292,9 @@ export interface AppOs {
   atualizado_em: Generated<Timestamp>;
   chamado_aberto_por: string | null;
   chamado_id: string;
+  codigo_causa_id: string | null;
+  codigo_falha_id: string | null;
+  codigo_solucao_id: string | null;
   criado_em: Generated<Timestamp>;
   criado_por: string;
   custo_informado: Numeric | null;
@@ -476,6 +491,7 @@ export interface DB {
   "app.bandeira": AppBandeira;
   "app.categoria_ativo": AppCategoriaAtivo;
   "app.chamado": AppChamado;
+  "app.codigo_manutencao": AppCodigoManutencao;
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;

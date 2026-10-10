@@ -459,7 +459,7 @@ select is(
    where n.nspname in ('app', 'staging', 'licenca') and c.relkind in ('r', 'p')),
   array[
     'app.anexo', 'app.ativo', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
-    'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.equipe',
+    'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.codigo_manutencao', 'app.equipe',
     'app.equipe_membro', 'app.evento_dominio', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
     'app.local', 'app.local_proprietario', 'app.membro', 'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_material', 'app.os_transicao', 'app.parada_ativo', 'app.politica',
