@@ -732,3 +732,26 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026.
 - **Esperando o Cesar:** a revisão do #160.
 - **Esperando o Kaio:** o canal das aprovações do Cesar de 08/10 e de 10/10.
 - **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.
+
+## Decisões das telas do 1.0 (10/10/2026)
+
+Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, depois do merge dos #160 e #161. As seis decisões estão em `docs/referencia/proposta-telas-intelligence-1-0.md`, seção "Decisões de 10/10/2026", **aprovadas por Kaio, aguardando Cesar**. Em resumo:
+
+1. **Estrutura das três telas** aprovada. A referência visual passa a ser a tela do Intelligence do mock na `main`. As imagens de 07/10 (`docs/referencia/design/intelligence-1-0/`) saíram do repositório. O que o mock ainda não tem entra primeiro no mock, num PR com a revisão do Cesar; o código vem depois.
+2. **Decidir só na página do insight.** A página do ativo mostra o score e leva ao insight.
+3. **Menu** com um único item, "HubKeep Intelligence", que abre a lista de insights.
+4. **Fora do 1.0:** abrir chamado, criar preventiva, vincular feedback e pedir orçamento.
+5. **UH-dias** numa linha discreta no fim da tabela de composição: "Ainda sem dado: UH-dias (peso 0)".
+6. **Gráfico de 90 dias** pequeno no celular, com os números também em texto.
+
+**A vitrine de 07/10** (`int-rascunhos`, `rascunhos/telas-vitrine/`) deixou de ser referência. Continua no rascunho até o Kaio dizer se sai.
+
+**Narração do tour** (`docs/referencia/design/csc-mock/tour.js`, capítulo "Intelligence"): nenhuma fala cita número ou ativo do Intelligence, então nenhuma muda com o #160. Os seletores do capítulo continuam encontrando a tela. Depois do #160, a lista de atenção da persona do tour mostra um cartão só, o "Elevador social 2" (94), e a fala não depende de quantos são.
+
+### Ponto de retomada (10/10/2026)
+- **Esperando o Cesar:** as seis decisões das telas.
+- **Esperando o Kaio:**
+  - o canal das aprovações do Cesar de 08/10 e de 10/10;
+  - o lugar da efetividade e do quadro "Próximas versões" nas três telas;
+  - a ordem dos PRs do mock para o que falta.
+- **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.
