@@ -859,3 +859,6 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
 - **Depois:**
   1. adaptar o motor aos nomes reais da I6 e da I7, num PR fora de zona protegida;
   2. seguir a fila de zona protegida, um PR por vez, conferindo antes que não há outro aberto: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job.
+
+### Exceção do Cesar: CNPJ alfanumérico, I6 e I7 por este agente (10/10/2026)
+- Por decisão do Cesar de 10/10/2026, este agente faz o CNPJ alfanumérico, a I6 e a I7 no lugar do agente do núcleo, em branches `1b-*`. O registro, as decisões e o ponto de retomada estão no diário do núcleo, `docs/diario-fase-1a.md`, seção "Exceção do Cesar: o agente do Intelligence faz o CNPJ alfanumérico, a I6 e a I7". Terminada a I7, a exceção acaba e este agente volta ao ponto de retomada acima.
