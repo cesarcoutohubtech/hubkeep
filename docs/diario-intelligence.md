@@ -1007,3 +1007,11 @@ Depois do merge do #183 e do `db push` da 0039 ("Cesar aqui", 10/10/2026). O `su
   - a confirmação da vigência no recálculo;
   - a aprovação escrita do texto dos adendos ao ADR-034 e ao ADR-036, que também precisa do Cesar.
 - **Depois do merge:** rodar a rota no dev, com o `CRON_SECRET` do dev, num tenant com o módulo, e conferir a métrica e a auditoria gravadas.
+
+**Depois do merge (#184, 10/10/2026):**
+- Na CI do PR, o job do banco rodou os testes de integração da ligação contra Postgres real: 7 da sessão do job no `packages/db` e 4 da ligação no web.
+- **A rodada no dev fica para quando o painel for ler a métrica** (Cesar, 10/10/2026, opção c). A métrica só recebe INSERT, e o que o job gravasse no dev compartilhado ficaria lá para sempre.
+- **Próximo:** esperar o Kaio nas aprovações acima. Depois:
+  - o PR de zona protegida com as decisões de 10/10 no ADR-036;
+  - as telas do painel lendo a métrica e o insight;
+  - com elas, o agendamento da rota no `vercel.json` e a primeira rodada no dev.
