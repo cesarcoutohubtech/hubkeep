@@ -245,6 +245,35 @@ export interface AppHotelProprietario {
   vigencia_inicio: Timestamp;
 }
 
+export interface AppInsight {
+  anterior_id: string | null;
+  atualizado_em: Generated<Timestamp>;
+  bandeira_id: string | null;
+  chave: string;
+  criado_em: Generated<Timestamp>;
+  detalhe: Generated<Json>;
+  encerrado_em: Timestamp | null;
+  encerrado_por: string | null;
+  escopo: Json;
+  estado: Generated<string>;
+  evidencia: Generated<Json>;
+  faixa: string;
+  familia: string;
+  hotel_id: string | null;
+  hotel_ids: string[];
+  id: string;
+  motivo_descarte: string | null;
+  nota: string | null;
+  primeira_deteccao_em: Timestamp;
+  responsavel_id: string | null;
+  tenant_id: string;
+  tipo: string;
+  ultima_deteccao_em: Timestamp;
+  valor: number | null;
+  versao: Generated<number>;
+  versao_score: number;
+}
+
 export interface AppLocal {
   andar: string | null;
   atualizado_em: Generated<Timestamp>;
@@ -508,6 +537,7 @@ export interface DB {
   "app.fornecedor": AppFornecedor;
   "app.hotel": AppHotel;
   "app.hotel_proprietario": AppHotelProprietario;
+  "app.insight": AppInsight;
   "app.local": AppLocal;
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
