@@ -254,6 +254,11 @@ describe('calcularDia: detecções sistêmicas', () => {
     ids.map(([id, hotelId]) =>
       ativo({ id, hotelId, categoriaId: 'hvac', fabricante: 'Acme', modelo: 'X1' }),
     );
+  // Outro modelo na categoria, sem chamado: sem ele não há com o que comparar,
+  // e o mesmo modelo não dispara (respostas de 10/10/2026).
+  const base = [
+    ativo({ id: 'o1', hotelId: 'h1', categoriaId: 'hvac', fabricante: 'Trane', modelo: 'T9' }),
+  ];
   const falhas = (as: readonly AtivoDoDia[]): Corretiva[] =>
     as.map((a, i) =>
       corretiva({ hotelId: a.hotelId, ativoId: a.id, codigoFalha: 'ruido', abertaEm: dia(-i * 7) }),
@@ -302,7 +307,7 @@ describe('calcularDia: detecções sistêmicas', () => {
     const r = calcularDia({
       agora,
       hoteis: daBandeira,
-      ativos: as,
+      ativos: [...as, ...base],
       corretivas: falhas(as),
       locais: [],
     });
@@ -325,7 +330,13 @@ describe('calcularDia: detecções sistêmicas', () => {
       ['m5', 'h3'],
       ['m6', 'h3'],
     ]);
-    const r = calcularDia({ agora, hoteis, ativos: as, corretivas: falhas(as), locais: [] });
+    const r = calcularDia({
+      agora,
+      hoteis,
+      ativos: [...as, ...base],
+      corretivas: falhas(as),
+      locais: [],
+    });
     const modelo = r.deteccoes.find((d) => d.regra === 'mesmo_modelo');
     expect(modelo?.alcance).toEqual({ tipo: 'rede', bandeiraId: null });
     expect(modelo?.hotelIds).toEqual(['h1', 'h2', 'h3']);
@@ -346,7 +357,7 @@ describe('calcularDia: detecções sistêmicas', () => {
     const r = calcularDia({
       agora,
       hoteis,
-      ativos: [ativo({ id: 'a1', criticidade: 5 }), ...as],
+      ativos: [ativo({ id: 'a1', criticidade: 5 }), ...as, ...base],
       corretivas: [
         ...doA1,
         ...doModelo5,
