@@ -252,7 +252,8 @@ $$, 'nenhuma trigger em auth.users');
 --     o Admin do grupo altera (policy app_update de app.hotel), e
 --     app.ativo.local_id (adendo de 28/09/2026, B3c), para mover o ativo
 --     dentro do mesmo hotel: o hotel_id continua imutável, e a FK
---     (hotel_id, local_id) recusa local de outro hotel.
+--     (hotel_id, local_id) recusa local de outro hotel. hotel_ids é o alcance
+--     do insight de rede (0038): também é escopo.
 select is_empty($$
   select table_schema || '.' || table_name || '.' || column_name || ':' || grantee
   from information_schema.column_privileges
@@ -261,7 +262,7 @@ select is_empty($$
     and grantee like 'hk\_%'
     and column_name in ('id', 'tenant_id', 'hotel_id', 'local_id', 'usuario_id',
                         'proprietario_id', 'bandeira_id', 'papel', 'escopo_tipo',
-                        'concedido_por')
+                        'concedido_por', 'hotel_ids')
     and not (table_schema = 'app' and table_name = 'hotel'
              and column_name = 'bandeira_id' and grantee = 'hk_app')
     and not (table_schema = 'app' and table_name = 'ativo'
@@ -464,7 +465,7 @@ select is(
     'app.anexo', 'app.ativo', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
     'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.codigo_manutencao', 'app.equipe',
     'app.equipe_membro', 'app.evento_dominio', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
-    'app.local', 'app.local_proprietario', 'app.membro', 'app.operacao_offline', 'app.os',
+    'app.insight', 'app.local', 'app.local_proprietario', 'app.membro', 'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_material', 'app.os_transicao', 'app.parada_ativo', 'app.politica',
     'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.situacao',
     'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'licenca.modulo', 'staging.carga', 'staging.credencial_agente',

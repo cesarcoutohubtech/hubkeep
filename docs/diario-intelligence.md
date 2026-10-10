@@ -919,4 +919,23 @@ Primeiro PR da fila de zona protegida do Intelligence, aberto depois do merge do
 - **PR aberto:** `int-adr-aceite-v2` (zona protegida; o merge é do Cesar, com bypass).
 - **Esperando o Cesar e o Kaio:** a aprovação escrita do texto dos adendos ao ADR-034 e ao ADR-036.
 - **Esperando o Kaio:** o comentário na issue #169 e a confirmação da vigência no recálculo.
-- **Depois do merge:** tirar o texto dos adendos do `int-rascunhos` e abrir a `app.insight`, a partir do rascunho.
+- **Depois do merge:** tirar o texto dos adendos do `int-rascunhos` e abrir a `app.insight`, a partir do rascunho. **Atualização:** #180 mergeado; o texto saiu do `int-rascunhos` (d267cb6).
+
+## `int-insight-tabela`: a `app.insight` (migração 0038, 10/10/2026)
+
+Segundo PR da fila de zona protegida do Intelligence, depois do merge do #181 (adendo ao ADR-027, do núcleo), com a confirmação do Cesar ("Cesar aqui", 10/10/2026). Nenhum outro PR estava aberto. O `int-insight` de 06/10 é outro branch, antigo, e fica como está.
+
+- **Do rascunho (`rascunhos/insight/`):** a migração e o pgTAP, com o número 0038 e o 031.
+- **Quem lê, decidido pelo Cesar em 10/10/2026** (aguarda o Kaio, porque muda quem vê): só quem decide. O rascunho deixava ler quem lê o hotel e, na rede, quem lê todos os hotéis do insight. Isso divergia do ADR-033 ("só quem tem escopo de grupo ou bandeira lê" o de rede) e tinha um furo: `authz.hoteis_leitura()` inclui o proprietário com escopo de hotel, que o pgTAP do rascunho não cobria. Agora:
+  - a policy de leitura é a mesma da decisão, com os papéis em lista explícita;
+  - o pgTAP prova que o Técnico, o gerente de vários hotéis (no insight de rede) e o proprietário do hotel inteiro não leem. São 53 testes.
+- **Paridade:** os checks do estado e do motivo do descarte estão em `tests/valores-canonicos-banco.test.ts`, contra `ESTADOS_DO_INSIGHT` e `MOTIVOS_DE_DESCARTE`, como os da I4, I6 e I7. O `paridade-estados.test.ts` do `packages/db` olha policies e índices, e nenhum dos dois cita estado do insight; além disso, o `packages/db` não depende do módulo. O check do motivo virou `motivo_descarte in (...)`, porque null já passa num check.
+- **Meta-testes:** a `app.insight` entra na lista fechada (28), e `hotel_ids` entra nos campos de escopo sem UPDATE (18).
+- **Tipos do banco:** `AppInsight` no `tipos-banco.ts`, no formato do `kysely-codegen`, à mão, como na 0037. O `pnpm db:types` confere depois do `db push`.
+- **No `docs/03`:** as três regras do cálculo do dia (#101) e quem lê o insight, no ADR-033. **No `docs/02`:** o modelo de leitura do insight.
+- **Fora deste PR:** o repositório do insight e a ligação do job, que vêm depois da `app.metrica_ativo_diaria`.
+
+### Ponto de retomada (10/10/2026)
+- **PR aberto:** `int-insight-tabela` (zona protegida; o merge e o `db push` são do Cesar).
+- **Esperando o Kaio:** quem lê o insight, o comentário na issue #169, a confirmação da vigência no recálculo e a aprovação escrita do texto dos adendos ao ADR-034 e ao ADR-036 (que também precisa do Cesar).
+- **Depois do merge e do `db push`:** `supabase migration list` e `pnpm db:testar-dev`; depois, a `app.metrica_ativo_diaria`, a partir do rascunho.

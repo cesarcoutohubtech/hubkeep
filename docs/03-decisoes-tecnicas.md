@@ -763,7 +763,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Quem aprova ADR do Intelligence:** Cesar e Kaio, os dois, por escrito (decisão de 30/09/2026, reafirmada pelo Cesar em 06/10/2026). O registro de 05/10/2026, feito na sessão do agente do Kaio, que aceitava a aprovação de um só, fica revogado. O merge do PR que trouxe estes ADRs ao `docs/03` (#97) não conta como aprovação. Vale para o ADR-033 ao ADR-037 e para as três regras do cálculo do dia (#101).
 
-**Aprovações do Cesar de 07/10/2026:** ADR-033, ADR-034, ADR-035 (com a revisão de 06/10/2026) e ADR-037, sem condição; as três regras do cálculo do dia (#101), que entram neste documento com o PR da `app.insight`; ADR-036 com uma condição (no próprio ADR), aceita pelo Kaio em 07/10/2026.
+**Aprovações do Cesar de 07/10/2026:** ADR-033, ADR-034, ADR-035 (com a revisão de 06/10/2026) e ADR-037, sem condição; as três regras do cálculo do dia (#101), que entraram neste documento com o PR da `app.insight` (seção "Três regras do cálculo do dia", abaixo); ADR-036 com uma condição (no próprio ADR), aceita pelo Kaio em 07/10/2026.
 
 **Aprovações do Cesar de 10/10/2026** (os 17 itens da issue #166, https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099298901): as correções deste documento que estavam no rascunho de 07/10 (ADR-033, ADR-035 e ADR-036), o hotel novo na variante (c), o painel com o resultado original, o responsável pelo insight e o processo do ADR-033. Esses itens tinham sido aprovados pelo Kaio no chat do agente do Intelligence; a confirmação do Kaio com o próprio login está na issue #169.
 
@@ -807,6 +807,18 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - um conjunto com hotel a mais abre um insight novo, ligado ao aberto mais recente da família;
   - sem insight aberto na família, abre um novo, ligado ao último encerrado, salvo o silêncio de 30 dias depois do descarte "não relevante", a menos que a faixa suba. O descarte "substituído" e o resolvido não silenciam.
 - **Motivo do descarte:** `nao_relevante` ou `substituido`, canônico no domínio, com teste de paridade com o banco, e só no insight descartado. Quem descarta escolhe o motivo e escreve a nota, que continua obrigatória.
+- **Quem lê o insight** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence; aguarda a aprovação escrita do Kaio, porque muda quem vê): só quem decide.
+  - Insight de hotel: o Admin do grupo, o Gestor CSC e o Gerente com o hotel.
+  - Insight de rede: o Admin do grupo e o Gestor CSC que cobrem todos os hotéis do insight.
+  - O Técnico, o solicitante, o implantador e o proprietário não leem, nem o proprietário do hotel inteiro: o Intelligence é gerencial.
+  - Na migração 0038, a policy de leitura é a mesma da decisão, com os papéis em lista explícita, e não `authz.hoteis_leitura()`, que inclui o proprietário com escopo de hotel (pgTAP 031).
+- **Três regras do cálculo do dia** (#101; aprovadas por Kaio em 06/10/2026 e por Cesar em 07/10/2026):
+  1. **Tipos de insight no 1.0:** a atenção ao ativo, quando passa do limite, e o sinal sistêmico. A reincidência já é componente da atenção e não abre insight próprio, para o mesmo ativo não ter dois. A substituição fica na tela do ativo.
+  2. **Janelas da atenção:** o tempo parado e o impacto no hóspede usam a janela da reincidência do hotel (90 dias no padrão), e o custo informado usa 12 meses.
+  3. **Insight sistêmico:**
+     - não tem score e entra com a faixa fixa `atencao` (`FAIXA_DO_SISTEMICO`). Como a faixa não sobe, depois do descarte "não relevante" só reabre quando passam os 30 dias;
+     - vale no hotel quando todas as corretivas são de um hotel;
+     - senão, vale na rede: da bandeira, quando os hotéis são todos dela, ou do grupo.
 - **Sem tabela de sinais no 1.0:** o motor lê o núcleo pelas portas. A tabela de sinais nasce na 1.5, só para o feedback externo, com os três estados de associação.
 - **Texto pelo catálogo:** o insight guarda tipo, chaves e números, e não título nem resumo (regra 11).
 - Tudo auditado pela unit of work.
