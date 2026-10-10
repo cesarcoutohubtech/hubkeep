@@ -512,7 +512,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - A composição chega à pasta do módulo só pela função `montarInteligencia` (`tests/composicao-inteligencia.test.ts`). Desligar o módulo é tirar essa chamada.
   - Os pacotes do núcleo e o resto do web continuam proibidos (`tests/fronteiras.test.ts`).
 
-**Adendo — políticas de módulo só para o tenant que tem o módulo (I7, 10/10/2026).** Status: aguarda aprovação do Cesar (decisão 3 do Cesar de 10/10/2026: adendo curto, no mesmo PR da migração da I7).
+**Adendo — políticas de módulo só para o tenant que tem o módulo (I7, 10/10/2026).** Status: aprovado por Cesar em 10/10/2026 (decisão 3 do Cesar do mesmo dia: adendo curto, no mesmo PR da migração da I7).
 - **`licenca.modulo`** (migração 0037):
   - guarda o tenant, o módulo e a vigência (início e fim; fim nulo é sem prazo), com uma linha por módulo no tenant;
   - grava o `hk_backoffice`, por script de operação até o backoffice existir;
@@ -756,12 +756,20 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Quem aprova ADR do Intelligence:** Cesar e Kaio, os dois, por escrito (decisão de 30/09/2026, reafirmada pelo Cesar em 06/10/2026). O registro de 05/10/2026, feito na sessão do agente do Kaio, que aceitava a aprovação de um só, fica revogado. O merge do PR que trouxe estes ADRs ao `docs/03` (#97) não conta como aprovação. Vale para o ADR-033 ao ADR-037 e para as três regras do cálculo do dia (#101).
 
-**Aprovações do Cesar de 07/10/2026:** ADR-033, ADR-034, ADR-035 (com a revisão de 06/10/2026) e ADR-037, sem condição; as três regras do cálculo do dia (#101), que entram neste documento com o PR da `app.insight`; ADR-036 com uma condição (no próprio ADR), que aguarda o aceite do Kaio.
+**Aprovações do Cesar de 07/10/2026:** ADR-033, ADR-034, ADR-035 (com a revisão de 06/10/2026) e ADR-037, sem condição; as três regras do cálculo do dia (#101), que entram neste documento com o PR da `app.insight`; ADR-036 com uma condição (no próprio ADR), aceita pelo Kaio em 07/10/2026.
 
-**Hotel novo num insight de rede** (decisão de Kaio de 06/10/2026: o job encerra o insight e abre outro, ligado pelo `anterior_id`, e `hotel_ids` continua sem UPDATE): aprovada por Cesar em 07/10/2026, com uma condição que aguarda o aceite do Kaio.
-- O hash da lista de hotéis é calculado fora do `packages/inteligencia`: no job, com `node:crypto`, ou no banco, com `sha256()`.
-- A função pura do módulo devolve só a lista canônica dos hotéis.
-- Nada de SHA-256 escrito à mão.
+**Aprovações do Cesar de 10/10/2026** (os 17 itens da issue #166, https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099298901): as correções deste documento que estavam no rascunho de 07/10 (ADR-033, ADR-035 e ADR-036), o hotel novo na variante (c), o painel com o resultado original, o responsável pelo insight e o processo do ADR-033. Esses itens tinham sido aprovados pelo Kaio no chat do agente do Intelligence; a confirmação do Kaio com o próprio login está na issue #169.
+
+**Processo do ADR-033** (proposta do Kaio, aprovada por Cesar em 10/10/2026, na #166):
+- **Detalhe de implementação** dentro de um ADR do Intelligence já aprovado é decidido só pelo Kaio: limiares, mínimos, regras de desempate, valores padrão de política dentro de uma regra aprovada, textos e rótulos, e ajustes no seed e no mock que não mudam regra.
+- **Continua com Cesar e Kaio:** componente novo, estado novo ou fonte de dado nova; mudança em quem vê ou em quem decide; e qualquer mudança nos princípios (explicabilidade, correlação não é causa, IA só para texto, módulo nunca importado pelo núcleo).
+
+**Hotel novo num insight de rede** (decisão de Kaio de 06/10/2026, na variante (c)): o job abre um insight novo, ligado ao anterior pelo `anterior_id`, e o anterior continua aberto até uma pessoa resolver ou descartar. O job nunca muda estado, e `hotel_ids` continua sem UPDATE. Na tela e na API, o anterior aparece como "substituído pelo insight X", calculado pelo vínculo, e o descarte aceita o motivo "substituído". Não há estado novo.
+- **Aprovada por Cesar em 07/10/2026, com uma condição, aceita por Kaio em 07/10/2026:**
+  - o hash da lista de hotéis é calculado fora do `packages/inteligencia`: no job, com `node:crypto`, ou no banco, com `sha256()`;
+  - a função pura do módulo devolve só a lista canônica dos hotéis;
+  - nada de SHA-256 escrito à mão.
+- A aprovação de 07/10 foi dada sobre o texto anterior deste parágrafo, em que o job encerrava o insight e abria outro. O Cesar confirmou em 10/10/2026, na #166, que ela vale para a variante (c).
 
 **Contexto:** o PRD do Intelligence (`docs/referencia/prd-hubkeep-intelligence-v1.md`, seções 21 e 22) propõe `intelligence_signal` e `intelligence_insight`, com status em inglês e uma tabela de sinais que copia o núcleo.
 
@@ -778,6 +786,20 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **O score sugere e a pessoa decide:**
   - o job abre ou atualiza o insight do mesmo escopo e da mesma regra, sem abrir um segundo;
   - só uma pessoa aceita, descarta ou resolve.
+- **Responsável pelo insight** (aprovado por Kaio e por Cesar em 10/10/2026, na #166):
+  - quem toma a primeira ação no insight vira o responsável;
+  - o Admin do grupo e o Gestor CSC podem reatribuir, com auditoria;
+  - a regra é do domínio, e não do banco.
+- **Família e chave** (aprovado por Kaio em 06/10/2026 e por Cesar em 10/10/2026, na #166):
+  - a **família** é o tipo, a regra e o escopo, sem a lista de hotéis;
+  - a **chave** de unicidade é a família, `|hoteis=` e o SHA-256, em hexadecimal, da lista canônica de hotéis (UUIDs em texto minúsculo, em ordem, separados por vírgula, em UTF-8). O hash existe porque o índice btree não aceita entrada acima de cerca de 2,7 KB, e a lista estoura com uns 70 hotéis. `hotel_ids` guarda a lista completa;
+  - vale um insight aberto por chave. O conjunto novo de hotéis tem outro hash, e por isso o insight novo e o anterior da mesma família ficam abertos juntos.
+- **Regra do job pela família:**
+  - o mesmo conjunto de hotéis atualiza o insight aberto;
+  - um conjunto contido no de um insight aberto (saiu hotel, ou nada mudou) não faz nada;
+  - um conjunto com hotel a mais abre um insight novo, ligado ao aberto mais recente da família;
+  - sem insight aberto na família, abre um novo, ligado ao último encerrado, salvo o silêncio de 30 dias depois do descarte "não relevante", a menos que a faixa suba. O descarte "substituído" e o resolvido não silenciam.
+- **Motivo do descarte:** `nao_relevante` ou `substituido`, canônico no domínio, com teste de paridade com o banco, e só no insight descartado. Quem descarta escolhe o motivo e escreve a nota, que continua obrigatória.
 - **Sem tabela de sinais no 1.0:** o motor lê o núcleo pelas portas. A tabela de sinais nasce na 1.5, só para o feedback externo, com os três estados de associação.
 - **Texto pelo catálogo:** o insight guarda tipo, chaves e números, e não título nem resumo (regra 11).
 - Tudo auditado pela unit of work.
@@ -800,6 +822,36 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **"Por que estou vendo isso?"** sai de `motivosDoScore`, com a frase no catálogo, nos quatro idiomas.
 - Sem view materializada e sem função SQL nova.
 
+**Adendo — atenção ao ativo na versão 2 (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026; o texto deste adendo aguarda a aprovação escrita de Cesar e de Kaio. O motor mudou nos PRs #157 (atenção), #158 (efetividade) e #159 (padrão sistêmico).
+- **Oito componentes com peso e os UH-dias com peso 0**, nove no motor. Os pesos padrão são política (ADR-035) e somam 100:
+
+  | Componente | Peso | Origem |
+  |---|---|---|
+  | Reincidência de falhas | 20 | o score de reincidência do mesmo ativo |
+  | Tempo parado | 15 | `app.parada_ativo` na janela da reincidência |
+  | Impacto no hóspede | 15 | `app.chamado.impacto_hospede` (I4, 1.0), até o Guest Impact Score da 1.5 |
+  | Criticidade | 15 | `app.ativo.criticidade`, de 1 a 5 (I1) |
+  | Custo informado | 10 | `app.os.custo_informado` (I4) em 12 meses |
+  | Preventiva atrasada | 10 | plano de preventiva (etapa PV); sem dado até lá |
+  | Medições fora da faixa | 10 | checklist tipado (PV1); sem dado até lá |
+  | Garantia vencida | 5 | `app.ativo.garantia_ate` (I1); vale até o fim do dia da data |
+  | UH-dias | 0 | `app.uh_indisponivel` (I4); peso 0 e sem dado: o `calcularDia` ainda não lê |
+
+- **Garantia:** vale 1 quando venceu e 0 dentro da garantia. Sem a data, conta como não vencida: o peso é pequeno, e não se pune o dado que falta.
+- **Medições:** o valor é a fração das medições da janela que saíram da faixa, e não a contagem. Se o plano da categoria não tem item de medição, o componente fica sem dado nos ativos dela, e o peso é redistribuído. O ativo com menos medições que o mínimo da política (padrão 3, mínimo 1) contribui 0, sem redistribuir.
+- **Preventiva atrasada** substitui "preventiva ou compliance".
+- **UH-dias** (decisão de 07/10/2026) é componente da atenção, e não sinal próprio. Com peso 0 e sem dado, não muda o score nem a versão. Quando o peso passar de 0, a atenção ganha a versão seguinte.
+- **Dado ausente:** a regra deste ADR vale para o tenant inteiro, sem chave por hotel que a ligue ou desligue.
+- **Custo informado, disponível no tenant inteiro:** é o único componente em que "não informado" é diferente de "zero".
+  - Conta como disponível quando pelo menos 50% das corretivas encerradas do tenant, na janela, têm o custo preenchido; abaixo disso, fica sem dado para todos os hotéis, e o peso é redistribuído.
+  - Com o componente disponível, o ativo soma só o custo das corretivas que têm o dado, e o detalhamento mostra "custo informado em X de Y corretivas".
+  - O limiar de 50% é fixo na fórmula (`MINIMO_DE_CUSTO_INFORMADO_NO_TENANT`), e não campo da política: é regra de qualidade de dado do tenant. Mudar o limiar exige versão nova da fórmula.
+  - A regra depende de o custo vazio ser gravado como null, e não como 0, como já fazem a coluna (I4) e o aceite do `apps/web`.
+- **Sempre disponíveis:** impacto no hóspede e tempo parado. Não marcar é "não teve", e não "sem dado".
+- **Detalhamento:** o `detalhamentoDoScore` mostra cada componente sem dado, o peso configurado, o peso usado e a fração redistribuída. O componente de peso 0 sem dado não conta como redistribuição.
+- **Versão gravada:** a versão 1 existiu só no código e nos testes, sem nenhum resultado gravado. A versão 2 é a primeira a ser gravada, e é a ela que se aplica "a versão 1 fica congelada na primeira gravação de resultado". A numeração não recomeça.
+- A política `inteligencia.atencao_ativo` muda de formato (os nomes dos pesos) e não ganha chave nova.
+
 ## ADR-035 — Intelligence: pesos, limites e faixas como políticas
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-3, e por Cesar em 07/10/2026. Revisão de 06/10/2026, que aplica as decisões do Cesar do mesmo dia, a janela de leitura de 180 dias e a validação entre chaves: aprovada por Kaio e por Cesar (07/10/2026). Aprovada pelos dois.
@@ -812,13 +864,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - `inteligencia.sistemico`;
   - `inteligencia.substituicao`.
 - **Uma sexta chave,** `inteligencia.metrica_janela_leitura` (revisão de 06/10/2026), para a janela de leitura da métrica diária do ADR-036. O padrão é 180 dias, que também é o mínimo.
+- **Validação entre chaves** (revisão de 06/10/2026, aprovada pelos dois em 07/10/2026): a `inteligencia.metrica_janela_leitura` precisa ser pelo menos o dobro da `janelaDias` da `inteligencia.efetividade`, no mesmo escopo, para caber a comparação antes e depois.
+  - O formato de cada chave, no registro do núcleo, não enxerga a outra. Por isso a validação é do módulo.
+  - Ao gravar qualquer uma das duas, o valor é conferido contra o valor resolvido da outra no mesmo escopo. A gravação que quebrar a relação é recusada com código (`janela_de_leitura_curta`).
+  - **Conferência na leitura** (aprovada por Kaio e por Cesar em 10/10/2026, na #166): a relação pode quebrar sem gravação, quando o hotel herda um valor novo do grupo. Se a janela resolvida for menor que o dobro da janela da efetividade, quem lê (o job e as consultas) usa o dobro e registra um aviso de configuração, com as duas chaves e os dois valores.
 - **Resolução pelo registro do núcleo** (adendo ao ADR-026):
   - as chaves entram no `registroDePoliticas` pela extensão do módulo (prefixo `inteligencia.`), na montagem do Intelligence, junto com o filtro por módulo contratado (`licenca.modulo`);
   - o módulo não tem resolução própria: vale hotel → bandeira → grupo → padrão, e o valor com escopo de bandeira só entra na 1c;
   - a mudança é auditada.
 - **Só o Admin do grupo** altera as políticas do Intelligence.
 - **Padrões:**
-  - os pesos e faixas do PRD e os limites de `packages/inteligencia` (`PADRAO_*`), até o ajuste com os dados do piloto;
+  - os pesos e faixas do PRD e os limites de `packages/inteligencia` (`PADRAO_*`), até o ajuste com os dados do piloto. Os formatos e padrões da atenção, da efetividade e do sistêmico mudaram com os adendos de 08/10/2026 (ADR-034 e ADR-036);
   - o custo da atenção por ativo compara o custo informado em 12 meses com R$ 10.000, enquanto não houver custo de reposição (fase 2);
   - **o limite que faz a atenção sugerir insight** é o campo `limiteInsight` da `inteligencia.atencao_ativo`, com padrão 70 e de 0 a 100 (Cesar, 06/10/2026).
 - **Criticidade fixa de 1 a 5** (Cesar, 06/10/2026). O motor divide o nível por 5. A política `ativo.criticidade` do núcleo só troca o nome de cada nível.
@@ -826,11 +882,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
-**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar aguarda o aceite do Kaio.
+**Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar foi aceita por Kaio em 07/10/2026 e está aplicada no motor.
 
-**Condição do Cesar (07/10/2026):**
+**Condição do Cesar (07/10/2026), aceita por Kaio em 07/10/2026:**
 - Cada resultado diário grava a versão da política e a versão da fórmula usadas.
 - Um recálculo fica marcado como recálculo, com a versão nova.
+
+**Como a condição foi aplicada** (aprovado por Kaio em 07/10/2026 e por Cesar em 10/10/2026, na #166):
+- Cada linha de `app.metrica_ativo_diaria` guarda a versão da fórmula da reincidência e a da atenção, a versão da política (texto que identifica as linhas de `app.politica` que resolveram as políticas do hotel, ou `padrao`) e a configuração usada, no detalhamento de cada score.
+- Um recálculo é outra linha, do mesmo ativo e dia, com o número de cálculo seguinte e a marca de recálculo, com as versões de hoje. O recálculo de um dia que nunca foi gravado entra com o cálculo 1 e a marca. A tabela só recebe INSERT: nenhum papel atualiza ou apaga.
+- **O painel mostra o resultado original gravado de cada dia** (decisão de 07/10/2026). Os recálculos seguem guardados e aparecem só no painel de investigação, sob demanda e identificados como recálculo. O recálculo de um dia nunca gravado é o único registro do dia e aparece como tal.
+- O recálculo grava só métrica: não abre nem atualiza insight.
 
 **Decisão:**
 - **Job diário** por Vercel Cron: `hk_worker`, um tenant por transação, unit of work com auditoria e evento.
@@ -851,6 +913,31 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - A análise está em `docs/referencia/retencao-metrica-diaria.md` (opção A). A decisão é do Cesar, antes do piloto ou quando o volume pedir.
 - Toda tabela com `tenant_id NOT NULL`, RLS forçada, policies por papel e os seis casos de isolamento.
 - **Recálculo pontual** por handler do outbox, nunca por trigger. Nenhuma IA em request de painel.
+
+**Adendo — versões gravadas por área e formato das políticas (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026; o texto deste adendo aguarda a aprovação escrita de Cesar e de Kaio.
+- **Versões vigentes:** reincidência 1, atenção ao ativo 2, efetividade 2 e sinal sistêmico 2.
+  - A métrica diária grava `versao_formula_reincidencia` e `versao_formula_atencao`.
+  - O insight grava a versão da detecção que o abriu (`versao_score`: a da atenção, ou a do sinal sistêmico).
+  - A efetividade é calculada sob demanda na tela do ativo e devolve a própria versão; se um dia for gravada, grava a versão junto.
+- **A efetividade na versão 2** compara a mesma janela antes e depois e fala só em variação observada, nunca em causa (PRD, princípio 7). Pela variação dos chamados:
+  - redução de 60% ou mais: redução observada;
+  - de 25% a menos de 60%: redução parcial;
+  - de mais de −25% a menos de +20%: sem mudança relevante;
+  - aumento de 20% ou mais: aumento observado;
+  - menos de 3 chamados antes: sem base de comparação;
+  - menos de 90 dias depois: janela incompleta.
+
+  Quando os dois últimos valem juntos, prevalece "sem base de comparação", que já é definitivo no dia da intervenção. Os limiares, a base mínima e a janela são campos da `inteligencia.efetividade`; a janela de 90 dias cabe na janela de leitura de 180 dias.
+- **O padrão sistêmico na versão 2:**
+  - só a regra do mesmo modelo vem ligada por padrão; as outras quatro (mesmo andar, área comum, mesmo fornecedor e crescimento) ficam desligadas, com o campo `ativa` em cada regra;
+  - o mesmo modelo agrupa por categoria, fabricante e modelo, sem a falha, e exige na política 3 hotéis, 6 chamados em 90 dias e 5 ativos;
+  - fabricante e modelo são comparados sem maiúsculas, sem acentos, sem espaços nas pontas e com os espaços repetidos reduzidos a um; o ativo sem modelo fica fora da regra;
+  - a taxa do modelo (chamados por ativo instalado, em 90 dias) precisa ser pelo menos o dobro da base, e nunca menos de 0,3. A base é a taxa dos outros modelos da mesma categoria no tenant;
+  - ativo instalado é o que esteve ativo em algum momento da janela: o baixado antes do início não conta, e o instalado no meio conta inteiro;
+  - sem outro modelo na categoria, a regra não dispara: sem comparação, não dá para atribuir o problema ao modelo;
+  - os 3 hotéis são hotéis distintos com pelo menos um chamado contado na janela em ativos do modelo; ter o modelo instalado não basta;
+  - o escopo do insight do mesmo modelo passa a `{ categoriaId, modelo }`, e a família muda junto (`sistemico|categoriaId=...|modelo=...|regra=mesmo_modelo`).
+- **O formato das políticas muda nas três chaves** (atenção: pesos; efetividade: limiares; sistêmico: `ativa` e mínimos). Quando o formato mudou, nenhum valor de política do Intelligence podia ser gravado (a extensão do módulo ainda não estava registrada), então não há valor antigo a migrar. Daqui para a frente, mudar o formato de uma chave exige versão nova da fórmula e um plano para os valores já gravados.
 
 ## ADR-037 — Intelligence: o módulo depende do núcleo, nunca o contrário
 
