@@ -146,6 +146,11 @@ describe('fronteiras entre pacotes', () => {
     ['rota do Intelligence importando db', ROTA_INT, '@hubkeep/db'],
     ['rota do Intelligence importando auth-admin', ROTA_INT, '@hubkeep/auth-admin'],
     [
+      'tela do Intelligence importando a pasta do módulo',
+      TELA_INT,
+      '../../../servidor/modulos/inteligencia',
+    ],
+    [
       'rota do núcleo importando a pasta do módulo',
       ROTA,
       '../../../../servidor/modulos/inteligencia',
@@ -237,6 +242,9 @@ describe('fronteiras entre pacotes', () => {
     ['rota do web importando ui', ROTA, '@hubkeep/ui'],
     ['PWA importando ui', 'apps/tecnico/src/x.ts', '@hubkeep/ui'],
     ['tela do Intelligence importando ui', TELA_INT, '@hubkeep/ui'],
+    // ...e o código de cliente do web, como qualquer página (ADR-026, adendo de 06/10/2026).
+    ['tela do Intelligence importando a API do cliente', TELA_INT, '../../../cliente/api'],
+    ['tela do Intelligence importando o i18n do cliente', TELA_INT, '../../../i18n/cliente'],
     ['ui importando React', UI, 'react'],
     ['ui importando arquivo do próprio pacote', UI, './index.ts'],
   ];

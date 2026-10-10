@@ -312,7 +312,14 @@ export default tseslint.config(
             // isso o par é liberado pelo tipo, não pela relação.
             { allow: { dependency: { relationship: { to: 'internal' } } } },
             { from: { element: { type: 'web' } }, allow: para('web-servidor') },
-            { from: { element: { type: 'web-telas-inteligencia' } }, allow: para('web-servidor') },
+            // A tela do Intelligence vê o que a página vê (ADR-026, adendo de
+            // 06/10/2026): o servidor do web e o código de cliente do web
+            // (chamarApi, useT), por caminho relativo. A pasta do módulo no
+            // servidor continua fora (só a composição a alcança).
+            {
+              from: { element: { type: 'web-telas-inteligencia' } },
+              allow: para('web-servidor', 'web'),
+            },
             // A composição chega à pasta do módulo por caminho relativo.
             {
               from: { element: { type: 'web-servidor' } },

@@ -20,8 +20,15 @@ export type { PropsDaEstrutura, PropsDoItemDeMenu, PropsDoLink } from './estrutu
 export { Marca, SimboloDaMarca } from './marca';
 export { MensagemDeErro, MensagemVazia, Nota, TONS_DE_NOTA } from './mensagens';
 export type { PropsDaMensagem, TomDeNota } from './mensagens';
-export { Indicador, Painel, TONS_DE_INDICADOR } from './painel';
-export type { PropsDoIndicador, PropsDoPainel, TomDeIndicador } from './painel';
+export { Dados, Indicador, Indicadores, Painel, TONS_DE_INDICADOR } from './painel';
+export type {
+  ParDeDados,
+  PropsDoIndicador,
+  PropsDoPainel,
+  PropsDosDados,
+  PropsDosIndicadores,
+  TomDeIndicador,
+} from './painel';
 export { NIVEIS_DE_PRIORIDADE, Selo, SeloDePrioridade, TONS_DE_SELO } from './selos';
 export type { NivelDePrioridade, TomDeSelo } from './selos';
 export { Tabela } from './tabela';
