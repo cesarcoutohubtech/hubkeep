@@ -4,6 +4,7 @@
 - **Levantamento de 06/10/2026,** feito pelo agente do Kaio sobre a `main` no `a27e961`. Os tipos do banco vêm de `packages/db/src/tipos-banco.ts`, e as ações da auditoria, dos repositórios de `packages/db`.
 - **Revisto no mesmo dia** com as decisões do Cesar: o fim de `docs/referencia/lacunas-instrumentacao-intelligence.md` e a etapa I de `docs/12-plano-fase-1b.md`.
 - **Revisto em 09/10/2026:** a numeração da etapa I passou a oito tarefas (aviso do núcleo de 08/10) e I1, I2, I3 e I5 já estão na `main`. As colunas conferidas estão em `docs/diario-intelligence.md`, seção "Etapa I na `main`".
+- **Revisto em 10/10/2026:** a I6 e a I7 entraram na `main` (migrações 0036 e 0037), e a etapa I terminou para o Intelligence. As linhas da I6 e da I7 passaram a "Existe".
 - **Revisto em 07/10/2026** com a revisão do escopo do Cesar (`docs/referencia/HubKeep — Documento do projeto.md`): fornecedor como tabela, UH indisponível no chamado e modelo contratual do hotel, e com as versões gravadas em cada resultado diário. Os nomes exatos das colunas novas vêm das propostas de desenho do agente do núcleo, que ainda não saíram no diário dele: onde a coluna aparece abaixo, o nome é provisório.
 
 **Para quê:** saber, para cada dado que o `calcularDia` (`packages/inteligencia/src/dia.ts`) usa:
@@ -19,8 +20,8 @@
   - I3: fornecedor mínimo do grupo, **na `main`**;
   - I4: chamado e OS (executado por, custo, impacto no hóspede, UH indisponível), **na `main`**;
   - I5: transições da OS, **na `main`**;
-  - I6: códigos de manutenção;
-  - I7: módulos contratados (`licenca.modulo`);
+  - I6: códigos de manutenção, **na `main`**;
+  - I7: módulos contratados (`licenca.modulo`), **na `main`**;
   - I8: fotos e assinatura (sem entrada para o Intelligence).
 - **Itens novos da 1b** do documento consolidado de 07/10 (a ordem de lá: ativo; hotel e local; chamado e OS; fornecedor; transições; códigos; módulos):
   - hotel e local: modelo contratual do hotel e edificação do local;
@@ -33,7 +34,7 @@
 | Campo | Origem | Situação |
 |---|---|---|
 | `agora` | Relógio do job (porta `Relogio`). Para recalcular um dia passado, o fim dele (`fimDoDia`). | Existe |
-| `sistemico` (configuração) | A chave `inteligencia.sistemico` de `app.politica`, no escopo de grupo, resolvida pelo `registroDePoliticas` do núcleo (#106). | A extensão é registrada com I7 |
+| `sistemico` (configuração) | A chave `inteligencia.sistemico` de `app.politica`, no escopo de grupo, resolvida pelo registro do tenant: `registrosDePoliticasPorModulo(...).doTenant`, com a extensão do Intelligence, porque o job só lê com o módulo vigente. | Existe (I7): `montarInteligencia` registra a extensão ligada ao módulo `inteligencia` |
 
 ## Hotel (`HotelDoDia`)
 
@@ -43,7 +44,7 @@
 | `bandeiraId` | `app.hotel.bandeira_id` | Existe |
 | `versaoPolitica` | O que identifica as linhas de `app.politica` que resolveram as duas políticas do hotel (id e `atualizado_em` de cada uma), montado pela ligação do servidor. `padrao` sem política gravada. É o que o ADR-036 grava em cada resultado diário (condição do Cesar de 07/10/2026). | Existe (`app.politica.id`, `atualizado_em`) |
 | Modelo contratual (próprio, administrado, arrendado, afiliado) | O atributo novo do hotel, na 1b. **Registrado como dimensão** das comparações de rede da versão 2.0, sem uso no 1.0: o `HotelDoDia` não o carrega. Ver a seção abaixo. | Existe (I2): `app.hotel.modelo_contratual`, com os valores de `MODELOS_CONTRATUAIS` do domínio; nulo é "não informado" |
-| `reincidencia`, `atencao` (configurações) | As chaves `inteligencia.reincidencia` e `inteligencia.atencao_ativo`, resolvidas pelo registro do núcleo (hotel → bandeira → grupo → padrão). O valor com escopo de bandeira só entra na 1c. O limite do insight é campo da `inteligencia.atencao_ativo` (`limiteInsight`, padrão 70). | A extensão é registrada com I7. Até lá, valem os `PADRAO_*` |
+| `reincidencia`, `atencao` (configurações) | As chaves `inteligencia.reincidencia` e `inteligencia.atencao_ativo`, resolvidas pelo registro do tenant (hotel → bandeira → grupo → padrão), o mesmo da linha `sistemico`. O valor com escopo de bandeira só entra na 1c. O limite do insight é campo da `inteligencia.atencao_ativo` (`limiteInsight`, padrão 70). | Existe (I7). Sem política gravada, valem os `PADRAO_*` |
 
 ## Ativo (`AtivoDoDia`)
 
@@ -68,7 +69,7 @@
 | `ativoId` | `app.chamado.ativo_id`. A OS não tem ativo próprio. | Existe |
 | `abertaEm` | `app.chamado.criado_em` | Existe |
 | `concluidaEm`, `reaberturas` | `app.os_transicao` (de, para, quando, quem e a ação), lida pelo `hk_worker` no tenant do job. As transições até a data do cálculo passam por `conclusaoEReaberturas`. O worker não lê a auditoria (decisão de 06/10/2026). As colunas são `acao`, `de`, `para`, `quando` e `usuario_id`; o motor lê `acao`, `para` e `quando`. | Existe (I5) |
-| `codigoFalha` | `app.os.codigo_falha_id` | I6 |
+| `codigoFalha` | `app.os.codigo_falha_id`: o id de um código de `app.codigo_manutencao` com `tipo = 'falha'`, FK composta com o tenant. Anulável: a OS sem código, a anterior à 0036 e a do tenant que não cobra os códigos (política `os.codigos_obrigatorios`, desligada por padrão) chegam com null. O motor compara o id; o nome que a tela mostra vem de `app.codigo_manutencao.nomes`, que o `hk_worker` lê no tenant do job. O código desativado (`ativa = false`) continua contando no histórico. A causa e a solução (`codigo_causa_id`, `codigo_solucao_id`) não entram no motor 1.0. | Existe (I6) |
 | `executadoPor` | `app.os.executado_por`: `equipe_interna` ou `fornecedor` (o documento de 07/10 trocou `terceiro` por `fornecedor`). `not null default 'equipe_interna'`: as OS anteriores à 0034 ficaram com o padrão. Tipo `ExecutadoPor` e lista `EXECUTORES_DA_OS` do domínio. | Existe (I4) |
 | `fornecedorId` | A chave do cadastro de fornecedor (`app.fornecedor`), que substitui o nome digitado (`terceiro_nome`). A regra do mesmo fornecedor compara este id. `app.os.fornecedor_id`, FK composta para `app.fornecedor` (I3); o check `os_fornecedor_quando_externo` só aceita o id com `executado_por = 'fornecedor'`. O worker lê a coluna da OS, não a tabela do fornecedor. | Existe (I4) |
 | `custoInformado` | `app.os.custo_informado`, `numeric(12,2)`, não negativo, gravado no aceite. Chega como texto pelo driver: quem lê converte para número. O vazio precisa chegar como null, e não 0: a atenção conta as corretivas encerradas com e sem o custo (regra dos 50% do tenant). Para isso, o `calcularDia` precisa receber as corretivas encerradas do tenant inteiro na janela de 12 meses, e não só as dos hotéis do cálculo. | Existe (I4) |
@@ -86,11 +87,11 @@
 
 ## O que mudou com as decisões do Cesar (06/10/2026)
 
-1. **Políticas:** o `registroDePoliticas` do núcleo (#106) tem uma resolução só, e o módulo não tem resolução própria. A extensão do Intelligence (`EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE`) é registrada em `montarInteligencia` junto com o filtro por módulo contratado (I7). Até lá, o job usa os `PADRAO_*`.
+1. **Políticas:** o `registroDePoliticas` do núcleo (#106) tem uma resolução só, e o módulo não tem resolução própria. A extensão do Intelligence (`EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE`) é registrada em `montarInteligencia`, ligada ao módulo `inteligencia` (I7, na `main` desde 10/10/2026): vale só para o tenant com o módulo vigente.
 2. **Criticidade:** escala fixa de 1 a 5, sem máximo por política.
 3. **Limite do insight:** campo `limiteInsight` da `inteligencia.atencao_ativo`, padrão 70.
 4. **Conclusão e reaberturas:** vêm das transições da OS (I5), e não da auditoria. Com elas, o recálculo de um dia passado vê a conclusão e as reaberturas como estavam naquele dia.
-5. **Módulo contratado por tenant:** `licenca.modulo` (I7), lida pelo `hk_worker` no próprio tenant. É assim que o job sabe em quais tenants rodar.
+5. **Módulo contratado por tenant:** `licenca.modulo` (I7), lida pelo `hk_worker` no próprio tenant (`FonteDoJob.modulos`). O `executarDiaDoTenant` confere primeiro se o `inteligencia` vale em `agora` (`modulosVigentes` do domínio); sem ele, não lê o resto nem grava, e o resumo volta com `semModulo`. No recálculo, vale a vigência no dia recalculado.
 
 ## O que o job grava de volta (ADR-036, condição do Cesar de 07/10/2026)
 
