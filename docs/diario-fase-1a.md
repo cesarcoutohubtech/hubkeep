@@ -1666,3 +1666,42 @@ Com este PR, o CNPJ alfanumérico, a I6 e a I7 estão entregues pelo agente do I
 - **Ponto de retomada:**
   - O PR das regras da I7 fica para o Cesar revisar e mergear. É fora da zona protegida, então não segura a fila.
   - O adendo da I7 ao ADR-026 aguarda a aprovação do Cesar.
+
+### Aprovação do adendo da I7 ao ADR-026 (10/10/2026)
+
+"Eu cesar aprovo o o adendo ao ADR-026" (Cesar, no chat deste agente, 10/10/2026). É o adendo "políticas de módulo só para o tenant que tem o módulo (I7, 10/10/2026)".
+- O status no `docs/03-decisoes-tecnicas.md` ainda diz "aguarda aprovação do Cesar". O `docs/03` é zona protegida: a troca para "aprovado por Cesar em 10/10/2026" entra no próximo PR de zona protegida que o Cesar indicar.
+
+### Decisões da paridade da 1c (10/10/2026)
+
+O Cesar aprovou em 10/10/2026, no chat deste agente ("Cesar aqui"), as sete decisões da seção "Decidir antes de implementar" de `docs/referencia/paridade-mock-1c.md`, conforme as recomendações. Valem quando a 1c começar; nada foi implementado. O registro está também no `docs/13-plano-fase-1c.md` e na própria paridade, onde a seção passou a "Decididas antes de implementar".
+
+Texto do Cesar (sem alteração):
+
+> 1. MTTR da abertura até o serviço concluído, pelas transições da OS; o tempo até o aceite pode virar indicador à parte.
+> 2. "Aguardando peça" não pausa o SLA por padrão; a pausa é opção da política por categoria, com o tempo pausado exibido na ficha.
+> 3. Escalonamento com herança completa: hotel, bandeira e grupo.
+> 4. Meta de SLA como política, com padrão de 90%.
+> 5. "Últimos eventos" lidos da auditoria ao abrir o painel e a cada 60 segundos, sem o selo "ao vivo".
+> 6. Gráficos do painel (abertos por dia, abertos × encerrados, onde mais quebra) e "chamados por 100 UHs" entram na 1c.
+> 7. Separador do CSV pelo formato regional de quem exporta, mantendo o BOM.
+
+**Conferência contra os ADRs:**
+- **1:** sem adendo. As transições da OS já existem (`app.os_transicao`, I5), e o indicador é regra do domínio.
+- **2: pede adendo ao ADR-027.** O ADR-027 diz que "a tela mostra a situação, e as regras usam o estado". No sistema, "Aguardando peça" é uma situação configurável, e não um estado canônico. A pausa do SLA precisa ler o estado da OS. O texto proposto está abaixo e aguarda a aprovação do Cesar.
+- **3:** sem adendo. O ADR-026 já põe a bandeira na herança na 1c.
+- **4:** sem adendo. É uma chave nova do registro de políticas do núcleo (ADR-026), sem cópia no chamado, porque a meta não muda o prazo de um chamado.
+- **5:** sem adendo, se o escopo for o do ADR-021: auditoria com hotel, só dos hotéis em que o usuário escreve; sem hotel, só para o Admin do grupo e o Implantador. Consequência: o proprietário e o locador, que só leem, não têm "Últimos eventos". Mostrar a eles pediria adendo ao ADR-021.
+- **6:** sem adendo. Os gráficos usam os mesmos dados dos indicadores.
+- **7:** sem adendo. O formato regional segue o ADR-022 (idioma de quem exporta).
+
+**Adendo proposto ao ADR-027** (aguarda aprovação do Cesar; entra no `docs/03` por PR de zona protegida, depois da aprovação):
+
+> **Adendo — pausa do SLA pelo estado da OS, nunca pela situação (1c; decisão 2 do Cesar de 10/10/2026).** Status: aguarda aprovação do Cesar.
+> - **"Aguardando peça" é situação do estado `pausada` da OS**, e não um estado novo. Ela entra nas situações padrão do catálogo, com `chave_padrao`. O tenant pode criar outras situações de `pausada`, e todas seguem a mesma regra.
+> - **A pausa do relógio é regra do domínio e lê o estado:** com a política ligada para a categoria, o tempo com a OS em `pausada` não conta no prazo do chamado. A situação continua sendo só o nome que a tela mostra.
+> - **A política** é por categoria, com a herança hotel → bandeira → grupo e desligada por padrão. O chamado copia na abertura a política aplicada (ADR-026): mudá-la não altera o prazo de chamado aberto.
+> - **O tempo pausado** sai das transições da OS (`pausar` e `retomar`, em `app.os_transicao`, I5) e aparece na ficha.
+> - **Limite:** com a política ligada, toda pausa da OS da categoria para o relógio, inclusive a de fim de turno. Se a central quiser pausar só por falta de peça, o caminho é um motivo da pausa no domínio, que fica para decisão própria.
+
+**Pendente com o Cesar:** a aprovação do adendo ao ADR-027.
