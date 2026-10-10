@@ -167,7 +167,7 @@ describe.skipIf(!temBanco)('I6 — códigos de falha, causa e solução', { time
     await dono.query(
       `insert into app.ativo (codigo_qr, id, tenant_id, hotel_id, local_id, categoria_id, nome, busca)
        values ($1, $2, $3, $4, $5, $6, 'Frigobar 101', 'frigobar 101')`,
-      ['CODIGO0001', FRIGOBAR, TENANT, H1, UH, categoria['refrigeracao']],
+      ['C0D1G00001', FRIGOBAR, TENANT, H1, UH, categoria['refrigeracao']],
     );
 
     const portaCodigos = criarPortaCodigos(banco);

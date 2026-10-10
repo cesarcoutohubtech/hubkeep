@@ -199,7 +199,12 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
 
     const lidas = (await comExtensao.lerConfiguracao(ctx(U.admin), H1)).politicas;
     expect(lidas.map((p) => p.chave).sort()).toEqual(
-      ['ativo.criticidade', 'chamado.prioridade_padrao_por_categoria', ACEITE].sort(),
+      [
+        'ativo.criticidade',
+        'chamado.prioridade_padrao_por_categoria',
+        ACEITE,
+        'os.codigos_obrigatorios',
+      ].sort(),
     );
   });
 
