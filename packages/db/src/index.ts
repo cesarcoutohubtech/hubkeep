@@ -44,6 +44,22 @@ export {
 } from './adaptadores';
 export { criarPortaConsultasDaCorretiva } from './consultas-da-corretiva';
 export { criarPortaHistorico } from './historico';
+export { criarPortaDoJobDoIntelligence } from './inteligencia';
+export type { PortaDoJobDoIntelligence } from './inteligencia';
+export type {
+  AtivoDoJob,
+  ChamadoDoJob,
+  DeteccaoNoInsightDoJob,
+  HotelDoJob,
+  InsightDoJob,
+  LocalDoJob,
+  MetricaDoJob,
+  NovoInsightDoJob,
+  OsDoJob,
+  PoliticaDoJob,
+  SessaoDoJobDoIntelligence,
+  TransicaoDoJob,
+} from './repositorios/inteligencia';
 export { novoId } from './ids';
 export { criptografiaDoServidor } from './criptografia';
 export { atrasoDaTentativa, processarOutbox } from './repositorios/outbox';

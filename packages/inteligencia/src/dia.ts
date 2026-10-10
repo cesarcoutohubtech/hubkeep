@@ -144,6 +144,11 @@ export interface DeteccaoDoDia extends Deteccao {
   hotelIds: readonly string[];
   /** Ids de origem (corretivas), que a RLS da tabela de origem filtra. */
   corretivaIds: readonly string[];
+  /**
+   * O que o insight guarda como detalhamento: o score da atenção, com os
+   * componentes e a configuração usada, ou o sinal sistêmico com a evidência.
+   */
+  detalhe: Score | SinalSistemico;
 }
 
 export interface ResultadoDoDia {
@@ -181,7 +186,11 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
   const agora = e.agora.getTime();
   const hoteis = new Map(e.hoteis.map((h) => [h.hotelId, h]));
   const ativos = e.ativos.filter((a) => hoteis.has(a.hotelId));
-  const idsDeAtivo = new Set(ativos.map((a) => a.id));
+  // O ativo baixado sai do score e da métrica a partir da baixa (Cesar,
+  // 10/10/2026; aguarda o Kaio), para o ativo trocado não gerar insight. Ele
+  // continua na base do sinal sistêmico, que conta o ativo instalado na janela.
+  const emUso = ativos.filter((a) => !a.desativadoEm || a.desativadoEm.getTime() > agora);
+  const idsDeAtivo = new Set(emUso.map((a) => a.id));
   const corretivas = e.corretivas.filter((c) => hoteis.has(c.hotelId));
   const doAtivo = porChave(
     corretivas.filter((c) => c.ativoId !== null && idsDeAtivo.has(c.ativoId)),
@@ -191,7 +200,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
   const custoDoTenant = custoNaJanela(e.corretivas, e.agora, JANELA_CUSTO_DIAS);
   const comMedicao = new Set(e.categoriasComMedicao ?? []);
 
-  const resultados = [...ativos]
+  const resultados = [...emUso]
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((a): ResultadoDoAtivo => {
       const h = hoteis.get(a.hotelId) as HotelDoDia;
@@ -243,6 +252,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
       versao: r.atencao.versao,
       escopo,
       hotelIds: [r.hotelId],
+      detalhe: r.atencao,
       corretivaIds: (doAtivo.get(r.ativoId) ?? [])
         .filter(
           (c) =>
@@ -272,6 +282,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
       regra: s.regra,
       hotelIds: listaCanonicaDeHoteis(s.evidencia.hotelIds),
       corretivaIds: s.evidencia.corretivaIds,
+      detalhe: s,
     });
   }
 
@@ -290,6 +301,8 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
       versaoFormulaReincidencia: r.reincidencia.versao,
       versaoFormulaAtencao: r.atencao.versao,
       versaoPolitica: hoteis.get(r.hotelId)?.versaoPolitica ?? VERSAO_DE_POLITICA_PADRAO,
+      detalheReincidencia: r.reincidencia,
+      detalheAtencao: r.atencao,
     })),
     sistemicos,
     deteccoes,

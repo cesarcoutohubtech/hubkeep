@@ -74,6 +74,7 @@ import {
   criarPortaParadas,
   criarPortaUhIndisponivel,
   criarPortaConsultasDaCorretiva,
+  criarPortaDoJobDoIntelligence,
   criarPortaHistorico,
   criarPortaPrioridades,
   criarPortaSituacoes,
@@ -201,6 +202,19 @@ export async function promoverUhsDoTenant(tenantId: string) {
   return criarCasosDeUsoDeIngestao({
     promocao: criarPortasDeIngestao(await acessoBancoDoWorker()).promocao,
   }).promoverUhs(tenantId);
+}
+
+/**
+ * O job diário do Intelligence num tenant (hk_worker, ADR-036); a rota
+ * /api/cron/inteligencia chama para todos. O tenant sem o módulo vigente volta
+ * com semModulo e sem gravar nada.
+ */
+export async function calcularDiaDoIntelligence(tenantId: string) {
+  return inteligencia.jobDoDia({
+    porta: criarPortaDoJobDoIntelligence(await acessoBancoDoWorker()),
+    registros: registrosDePoliticas,
+    relogio: relogioDoSistema,
+  })(tenantId);
 }
 
 /** Tenants para os jobs de cron (hk_worker). */

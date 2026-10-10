@@ -959,3 +959,51 @@ Terceiro PR da fila de zona protegida do Intelligence, depois do merge do #182 (
 - **PR aberto:** `int-metrica-ativo-diaria` (zona protegida; o merge e o `db push` são do Cesar).
 - **Esperando o Kaio:** quem lê o insight e a métrica diária, o comentário na issue #169, a confirmação da vigência no recálculo e a aprovação escrita do texto dos adendos ao ADR-034 e ao ADR-036 (que também precisa do Cesar).
 - **Depois do merge e do `db push` da 0038 e da 0039:** `supabase migration list` e `pnpm db:testar-dev`; depois, a ligação do job no web, com as portas do `executarDiaDoTenant` sobre o `packages/db`.
+
+## `int-job-ligacao`: a ligação do job diário no web (10/10/2026)
+
+Depois do merge do #183 e do `db push` da 0039 ("Cesar aqui", 10/10/2026). O `supabase migration list` mostrou a 0038 e a 0039 no dev, e o `pnpm db:testar-dev` passou com 1026 testes em 32 arquivos. Este PR não toca a zona protegida.
+
+**Decisões do Cesar de 10/10/2026, no chat do agente do Intelligence.** Aguardam a aprovação escrita do Kaio, porque mudam quem gera insight. O texto entra no ADR-036 (`docs/03`) num PR de zona protegida depois da aprovação.
+- **O que entra no cálculo**, as três propostas do mapa das entradas:
+  - só os hotéis com status `ativo`;
+  - o ativo baixado sai do score e da métrica a partir da baixa, mas continua na base do sinal sistêmico;
+  - o chamado cancelado sem OS não é corretiva. Com mais de uma OS, vale a que não foi cancelada; só com canceladas, a mais recente.
+- **Agendamento:** a rota `/api/cron/inteligencia` existe, com o segredo, o laço por tenant e o `hk_worker`, mas fica fora do `vercel.json`, como o SLA e a preventiva. Entra no agendamento quando o painel for ler a métrica.
+- **Auditoria e evento:**
+  - insight: uma auditoria por abertura (`abrir`) e por atualização (`atualizar_deteccao`), com o evento `insight.aberto`, e `insight.subiu_de_faixa` quando a faixa sobe;
+  - métrica: uma auditoria por tenant e dia (`gravar_dia`, com o número de linhas), sem evento;
+  - evento sem consumidor fica pendente no outbox até existir quem o leia.
+
+**O que o PR leva:**
+- **Motor (`packages/inteligencia`):**
+  - `fonte.ts` (novo): `corretivasDosChamados` (o chamado e a OS que vale), `inicioDaLeitura` (a maior janela que alguma regra do dia olha, pelas políticas resolvidas), `hoteisDoDia` (só os ativos, as políticas pelo registro do tenant e a versão da política) e `politicaSistemicaDoGrupo`;
+  - a versão da política é `chave=id@atualizado_em` de cada linha que resolveu, separadas por `;`, ou `padrao`;
+  - `FonteDoJob.ativos` e `FonteDoJob.corretivas` recebem o `desde`, e `corretivas` passa a entregar os chamados com as OS (`ChamadoDaFonte`);
+  - a linha da métrica leva o detalhamento dos dois scores (`detalheReincidencia`, `detalheAtencao`), que vai para `detalhe_*`; a detecção leva o `detalhe` do insight (o score da atenção, ou o sinal sistêmico com a evidência);
+  - o `calcularDia` tira do score o ativo baixado até `agora`.
+- **Banco (`packages/db`):** `criarPortaDoJobDoIntelligence`, uma sessão por tenant numa unit of work só (`executarComoSistema`). As leituras e as gravações do dia estão na mesma transação: se algo falha, nada do dia fica, e o job seguinte refaz o dia. Só IO: as linhas saem como o banco as guarda.
+- **Web (`apps/web/src/servidor/modulos/inteligencia/job.ts`):**
+  - as portas do `executarDiaDoTenant` sobre a sessão, com os módulos e as políticas lidos uma vez;
+  - a chave do insight por `node:crypto`, com o vetor do pgTAP 031;
+  - `montarInteligencia().jobDoDia`, que a composição chama em `calcularDiaDoIntelligence`. A composição continua importando só `montarInteligencia`.
+- **Testes:**
+  - no motor: `fonte.test.ts`, o ativo baixado no `dia.test.ts`, e o `desde` e o chamado cancelado no `job.test.ts`;
+  - no web: `job-inteligencia.test.ts`, com o vetor do hash e as portas sobre uma sessão em memória;
+  - no banco: `job-inteligencia.test.ts`, contra Postgres real, só na CI.
+
+**Fora deste PR:**
+- o recálculo pontual por handler do outbox (ADR-036);
+- o fechamento do mês (as tabelas do resumo mensal ainda não existem);
+- as categorias com medição (PV1) e a preventiva (etapa P), que seguem sem origem;
+- o agendamento no `vercel.json`.
+
+### Ponto de retomada (10/10/2026)
+- **PR aberto:** `int-job-ligacao` (fora da zona protegida).
+- **Esperando o Kaio:**
+  - quem lê o insight e a métrica diária;
+  - as três decisões acima;
+  - o comentário na issue #169;
+  - a confirmação da vigência no recálculo;
+  - a aprovação escrita do texto dos adendos ao ADR-034 e ao ADR-036, que também precisa do Cesar.
+- **Depois do merge:** rodar a rota no dev, com o `CRON_SECRET` do dev, num tenant com o módulo, e conferir a métrica e a auditoria gravadas.
