@@ -1078,7 +1078,17 @@ As duas perguntas do #179 que estavam abertas ficam respondidas.
 
 ## `int-insight-servidor`: a leitura e a decisão do insight no servidor (10/10/2026)
 
-Segundo dos PRs das telas do painel (a ordem e as decisões do Cesar estão na seção do `int-telas-base`). Fora da zona protegida, sem migração.
+Segundo dos PRs das telas do painel (a ordem e as decisões do Cesar estão na seção do `int-telas-base`). **Zona protegida**, com a migração 0040; o merge e o `db push` são do Cesar.
+
+**Correção: a auditoria sem `hotel_id` pede migração.** Na seção do `int-telas-base`, o agente escreveu que a mudança era "sem migração". Para o job, que grava com o `hk_worker`, é verdade. Para a decisão de uma pessoa, não: a primeira CI do #189 falhou com `new row violates row-level security policy for table "auditoria"`. O INSERT da `app.auditoria` pelo `hk_app` só aceita `hotel_id` nulo do Admin do grupo e do implantador. Com isso, o Gestor CSC também não conseguiria auditar a decisão de um insight de rede.
+- **Decisão do Cesar** ("Cesar aqui", 10/10/2026, no chat do agente do Intelligence): a migração 0040, no próprio #189, para não ter dois PRs abertos.
+- **O que a 0040 muda:** só o INSERT da `app.auditoria`, no molde do fornecedor (0033). A linha pode ter `hotel_id` nulo quando:
+  - a entidade é `insight`;
+  - quem grava tem papel de Gestor CSC ou de Gerente do hotel;
+  - o insight existe e é visível a quem grava (a subconsulta passa pela RLS da `app.insight`).
+- **A leitura não muda:** a linha sem hotel continua só do Admin do grupo.
+- **Pedido ao núcleo:** a `app.auditoria` é tabela do núcleo, e este pedido fica registrado aqui, no diário de quem pede. O Cesar aprovou no chat.
+- **pgTAP 031:** nove casos novos (de 53 para 62). O Gerente e o Gestor gravam a auditoria do insight que veem, e só dele; o técnico não grava; só o Admin do grupo lê.
 
 **Correção sobre o #188 (`int-telas-base`):** ele era de zona protegida, porque o `eslint.config.mjs` está na lista do `.github/workflows/zona-protegida.yml`. O agente o abriu achando que estava fora; a descrição do PR foi corrigida, e o Cesar fez o merge com bypass. A lista que vale é a do workflow.
 
