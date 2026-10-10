@@ -116,6 +116,7 @@ export function portasDoJob(
           subiuDeFaixa,
           em,
         }),
+      registrarExecucao: (execucao) => sessao.registrarExecucao(execucao),
     },
   };
 }

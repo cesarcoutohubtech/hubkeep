@@ -8,8 +8,12 @@
 // packages/inteligencia, que este pacote não importa (ADR-037): as linhas saem
 // como o banco as guarda, e a ligação do servidor do web as entrega ao motor.
 //
-// - Métrica (app.metrica_ativo_diaria): só INSERT. Uma auditoria por tenant e
-//   dia gravado, com o número de linhas, e nenhum evento (Cesar, 10/10/2026).
+// - Execução: uma auditoria por execução no tenant, mesmo sem gravar nada, com
+//   quem disparou ('cron' ou o usuário do recálculo), o resumo, as versões das
+//   fórmulas e a versão da política de cada hotel (Cesar, 10/10/2026). A
+//   auditoria é do sistema (usuario_id vazio): quem disparou vai no registro.
+// - Métrica (app.metrica_ativo_diaria): só INSERT, sem auditoria por linha
+//   (a da execução conta as linhas) e sem evento.
 // - Insight (app.insight): o job abre e atualiza a detecção, nunca o estado.
 //   Uma auditoria por abertura e por atualização; evento insight.aberto, e
 //   insight.subiu_de_faixa quando a faixa sobe (Cesar, 10/10/2026). Evento sem
@@ -151,6 +155,20 @@ export interface DeteccaoNoInsightDoJob {
   em: Date;
 }
 
+export interface ExecucaoNoBancoDoJob {
+  disparadoPor: string;
+  dia: string;
+  recalculo: boolean;
+  ativos: number;
+  metricasGravadas: number;
+  metricasJaGravadas: number;
+  insightsAbertos: number;
+  insightsAtualizados: number;
+  insightsIgnorados: number;
+  versoesDeFormula: Readonly<Record<string, number>>;
+  versoesDePolitica: Readonly<Record<string, string>>;
+}
+
 /** O que o job lê e grava num tenant, tudo na transação da sessão. */
 export interface SessaoDoJobDoIntelligence {
   modulos(): Promise<ModuloContratado[]>;
@@ -172,6 +190,8 @@ export interface SessaoDoJobDoIntelligence {
   gravarMetricas(linhas: readonly MetricaDoJob[]): Promise<void>;
   abrirInsight(novo: NovoInsightDoJob): Promise<{ id: string }>;
   atualizarInsight(deteccao: DeteccaoNoInsightDoJob): Promise<void>;
+  /** A auditoria da execução no tenant. */
+  registrarExecucao(execucao: ExecucaoNoBancoDoJob): Promise<void>;
 }
 
 const LOTE_DE_METRICAS = 500;
@@ -452,17 +472,6 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
           )
           .execute();
       }
-      const [primeira] = linhas;
-      uow.auditar({
-        entidade: 'metrica_ativo_diaria',
-        registroId: novoId(),
-        acao: 'gravar_dia',
-        depois: {
-          dia: primeira?.dia ?? null,
-          recalculo: primeira?.recalculo ?? false,
-          linhas: linhas.length,
-        },
-      });
     },
 
     async abrirInsight(n) {
@@ -518,6 +527,27 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
         },
       });
       return { id };
+    },
+
+    async registrarExecucao(e) {
+      uow.auditar({
+        entidade: 'job_inteligencia',
+        registroId: novoId(),
+        acao: e.recalculo ? 'recalcular_dia' : 'calcular_dia',
+        depois: {
+          disparadoPor: e.disparadoPor,
+          dia: e.dia,
+          recalculo: e.recalculo,
+          ativos: e.ativos,
+          metricasGravadas: e.metricasGravadas,
+          metricasJaGravadas: e.metricasJaGravadas,
+          insightsAbertos: e.insightsAbertos,
+          insightsAtualizados: e.insightsAtualizados,
+          insightsIgnorados: e.insightsIgnorados,
+          versoesDeFormula: e.versoesDeFormula,
+          versoesDePolitica: e.versoesDePolitica,
+        },
+      });
     },
 
     async atualizarInsight(d) {

@@ -209,6 +209,39 @@ describe('executarDiaDoTenant: o recálculo', () => {
   });
 });
 
+describe('executarDiaDoTenant: o registro de cada execução', () => {
+  it('quem disparou, o resumo, as versões das fórmulas e a da política de cada hotel', async () => {
+    const { banco, portas } = cenario();
+    const r = await executarDiaDoTenant(portas, { agora });
+    expect(banco.execucoes).toEqual([
+      {
+        ...r,
+        disparadoPor: 'cron',
+        versoesDeFormula: { reincidencia: 1, atencao: 2, sistemico: 2 },
+        versoesDePolitica: { h1: 'hotel:p1@2026-09-01', h2: 'padrao', h3: 'padrao' },
+      },
+    ]);
+  });
+
+  it('uma por execução, mesmo quando não grava nada; o recálculo leva quem pediu', async () => {
+    const { banco, portas } = cenario();
+    await executarDiaDoTenant(portas, { agora });
+    await executarDiaDoTenant(portas, { agora });
+    await executarDiaDoTenant(portas, {
+      agora: fimDoDia('2026-09-20'),
+      recalculo: true,
+      disparadoPor: 'u-gestor',
+    });
+    expect(
+      banco.execucoes.map((e) => [e.disparadoPor, e.dia, e.recalculo, e.metricasGravadas]),
+    ).toEqual([
+      ['cron', '2026-09-30', false, 2],
+      ['cron', '2026-09-30', false, 0],
+      ['u-gestor', '2026-09-20', true, 2],
+    ]);
+  });
+});
+
 describe('executarDiaDoTenant: só no tenant com o módulo vigente (I7)', () => {
   const vazio = (dia: string, recalculo = false) => ({
     dia,
@@ -228,6 +261,8 @@ describe('executarDiaDoTenant: só no tenant com o módulo vigente (I7)', () => 
     expect(fonte.lidas).toEqual(['modulos']);
     expect(banco.metricas).toEqual([]);
     expect(banco.insights).toEqual([]);
+    // Nem o registro da execução: o job não grava nada no tenant sem o módulo.
+    expect(banco.execucoes).toEqual([]);
   });
 
   it('vencido, ainda não iniciado ou de vigência inválida: não roda', async () => {

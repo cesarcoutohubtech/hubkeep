@@ -349,6 +349,19 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
         subiuDeFaixa: true,
         em: agora,
       });
+      await s.registrarExecucao({
+        disparadoPor: 'cron',
+        dia: '2026-09-02',
+        recalculo: false,
+        ativos: 1,
+        metricasGravadas: 1,
+        metricasJaGravadas: 0,
+        insightsAbertos: 1,
+        insightsAtualizados: 1,
+        insightsIgnorados: 0,
+        versoesDeFormula: { reincidencia: 1, atencao: 2, sistemico: 2 },
+        versoesDePolitica: { [H1]: 'padrao' },
+      });
       return aberto;
     });
 
@@ -379,16 +392,24 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       evidencia: { corretivaIds: [C.recente] },
     });
     const auditoria = await q(
-      `select entidade, acao, usuario_id from app.auditoria where tenant_id = $1 order by em, acao`,
+      `select entidade, acao, usuario_id, depois from app.auditoria where tenant_id = $1 order by em, acao`,
       [T],
     );
     expect(auditoria.rows.map((a) => [a.entidade, a.acao, a.usuario_id]).sort()).toEqual(
       [
         ['insight', 'abrir', null],
         ['insight', 'atualizar_deteccao', null],
-        ['metrica_ativo_diaria', 'gravar_dia', null],
+        ['job_inteligencia', 'calcular_dia', null],
       ].sort(),
     );
+    // Quem disparou e as versões ficam no registro da execução.
+    expect(auditoria.rows.find((a) => a.entidade === 'job_inteligencia')?.depois).toMatchObject({
+      disparadoPor: 'cron',
+      dia: '2026-09-02',
+      metricasGravadas: 1,
+      versoesDeFormula: { reincidencia: 1, atencao: 2, sistemico: 2 },
+      versoesDePolitica: { [H1]: 'padrao' },
+    });
     const eventos = await q(
       `select tipo, registro_id from app.evento_dominio where tenant_id = $1 order by tipo`,
       [T],

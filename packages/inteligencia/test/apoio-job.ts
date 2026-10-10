@@ -14,6 +14,7 @@ import {
   type ConfigSistemico,
   type CorretivaDaFonte,
   type DeteccaoDoDia,
+  type ExecucaoDoJob,
   ESTADOS_ABERTOS_DO_INSIGHT,
   type FonteDoJob,
   type GravacaoDoJob,
@@ -39,6 +40,7 @@ export interface InsightGravado extends InsightExistente {
 export class BancoEmMemoria {
   metricas: LinhaDaMetricaDiaria[] = [];
   insights: InsightGravado[] = [];
+  execucoes: ExecucaoDoJob[] = [];
   private seq = 0;
 
   gravarMetricas(linhas: readonly LinhaDaMetricaDiaria[]): void {
@@ -179,6 +181,7 @@ export class GravacaoEmMemoria implements GravacaoDoJob {
     this.banco.abrir(n);
   };
   atualizarInsight = async (a: AtualizacaoDeInsight) => this.banco.atualizar(a);
+  registrarExecucao = async (e: ExecucaoDoJob) => void this.banco.execucoes.push(e);
 }
 
 export type { DeteccaoDoDia };

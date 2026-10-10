@@ -18,16 +18,29 @@
 // - A chave de unicidade do insight (família mais o SHA-256 da lista canônica
 //   de hotéis) é montada por quem grava, com node:crypto ou sha256(): nada de
 //   hash aqui.
+// - Cada execução num tenant com o módulo vigente deixa um registro
+//   (`registrarExecucao`), mesmo sem gravar nada: quem disparou, o resumo, as
+//   versões das fórmulas e a versão da política de cada hotel (Cesar,
+//   10/10/2026). Quem grava o transforma em auditoria, na unit of work do dia.
+//   O tenant sem o módulo não ganha registro: o job não grava nada nele.
 // - A leitura dos ativos e dos chamados começa em `inicioDaLeitura`, calculado
 //   com as políticas já resolvidas; o chamado vira corretiva por
 //   `corretivasDosChamados` (fonte.ts).
 import { type ModuloContratado, modulosVigentes } from '@hubkeep/dominio';
 import type { LinhaDaMetricaDiaria } from './agregacao';
-import { type AtivoDoDia, type DeteccaoDoDia, type HotelDoDia, calcularDia } from './dia';
+import {
+  type AtivoDoDia,
+  type DeteccaoDoDia,
+  type HotelDoDia,
+  VERSAO_DE_POLITICA_PADRAO,
+  calcularDia,
+} from './dia';
 import { type ChamadoDaFonte, corretivasDosChamados, inicioDaLeitura } from './fonte';
 import { type Corretiva, type LocalAnalisado, conclusaoEReaberturas } from './historico';
 import { type InsightExistente, decidirDeteccao } from './insight';
-import { type ConfigSistemico, PADRAO_SISTEMICO } from './sistemico';
+import { VERSAO_ATENCAO } from './atencao';
+import { VERSAO_REINCIDENCIA } from './reincidencia';
+import { type ConfigSistemico, PADRAO_SISTEMICO, VERSAO_SISTEMICO } from './sistemico';
 
 /** O que o job lê do tenant. Todas as leituras são do contexto dele (RLS). */
 export interface FonteDoJob {
@@ -78,6 +91,8 @@ export interface GravacaoDoJob {
   gravarMetricas(linhas: readonly LinhaDaMetricaDiaria[]): Promise<void>;
   abrirInsight(novo: NovoInsight): Promise<void>;
   atualizarInsight(atualizacao: AtualizacaoDeInsight): Promise<void>;
+  /** O registro da execução, que quem grava põe na auditoria. */
+  registrarExecucao(execucao: ExecucaoDoJob): Promise<void>;
 }
 
 export interface PortasDoJob {
@@ -88,6 +103,8 @@ export interface PortasDoJob {
 export interface ParametrosDoJob {
   agora: Date;
   recalculo?: boolean;
+  /** Quem disparou: 'cron', ou o id do usuário que pediu o recálculo. Sem o campo, 'cron'. */
+  disparadoPor?: string;
 }
 
 export interface ResumoDoJob {
@@ -103,6 +120,21 @@ export interface ResumoDoJob {
   insightsAtualizados: number;
   insightsIgnorados: number;
 }
+
+/** O que fica registrado de cada execução num tenant com o módulo vigente. */
+export interface ExecucaoDoJob extends ResumoDoJob {
+  disparadoPor: string;
+  /** As versões das fórmulas usadas no dia. */
+  versoesDeFormula: { reincidencia: number; atencao: number; sistemico: number };
+  /** A versão da política de cada hotel do dia (`HotelDoDia.versaoPolitica`, ou `padrao`). */
+  versoesDePolitica: Readonly<Record<string, string>>;
+}
+
+export const VERSOES_DE_FORMULA_DO_JOB: ExecucaoDoJob['versoesDeFormula'] = {
+  reincidencia: VERSAO_REINCIDENCIA,
+  atencao: VERSAO_ATENCAO,
+  sistemico: VERSAO_SISTEMICO,
+};
 
 const naOrdemDoJob = (a: DeteccaoDoDia, b: DeteccaoDoDia): number =>
   a.familia.localeCompare(b.familia) || a.hotelIds.join(',').localeCompare(b.hotelIds.join(','));
@@ -176,9 +208,9 @@ export async function executarDiaDoTenant(
     insightsAtualizados: 0,
     insightsIgnorados: 0,
   };
-  if (recalculo) return resumo;
 
-  for (const deteccao of [...resultado.deteccoes].sort(naOrdemDoJob)) {
+  // O recálculo não abre nem atualiza insight.
+  for (const deteccao of recalculo ? [] : [...resultado.deteccoes].sort(naOrdemDoJob)) {
     const decisao = decidirDeteccao(insights, deteccao, p.agora);
     if (decisao.acao === 'abrir') {
       await gravacao.abrirInsight({ deteccao, anteriorId: decisao.anteriorId, agora: p.agora });
@@ -195,5 +227,16 @@ export async function executarDiaDoTenant(
       resumo.insightsIgnorados += 1;
     }
   }
+
+  await gravacao.registrarExecucao({
+    ...resumo,
+    disparadoPor: p.disparadoPor ?? 'cron',
+    versoesDeFormula: VERSOES_DE_FORMULA_DO_JOB,
+    versoesDePolitica: Object.fromEntries(
+      [...hoteis]
+        .sort((a, b) => a.hotelId.localeCompare(b.hotelId))
+        .map((h) => [h.hotelId, h.versaoPolitica ?? VERSAO_DE_POLITICA_PADRAO]),
+    ),
+  });
   return resumo;
 }

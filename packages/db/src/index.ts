@@ -50,6 +50,7 @@ export type {
   AtivoDoJob,
   ChamadoDoJob,
   DeteccaoNoInsightDoJob,
+  ExecucaoNoBancoDoJob,
   HotelDoJob,
   InsightDoJob,
   LocalDoJob,
