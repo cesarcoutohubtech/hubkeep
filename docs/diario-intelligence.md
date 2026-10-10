@@ -1059,6 +1059,23 @@ As duas perguntas do #179 que estavam abertas ficam respondidas.
 - **Banco:** a auditoria `job_inteligencia`, com a ação `calcular_dia` ou `recalcular_dia`, sem usuário (é o worker); quem disparou vai no `depois`. A auditoria `gravar_dia` da métrica saiu.
 - **Testes:** o registro no `job.test.ts`, a sessão em memória do web e a integração do `packages/db`, que só roda na CI.
 
+## As telas do painel: decisões do Cesar e a base (`int-telas-base`, 10/10/2026)
+
+**Decisões do Cesar** ("Cesar aqui", 10/10/2026, no chat do agente do Intelligence, depois do merge do #187):
+- **Linha do tempo do insight:** fica fora do 1.0. A página do insight mostra só as datas do próprio registro: primeira e última detecção, responsável, e quem encerrou e quando. A linha do tempo completa fica para uma tabela própria depois do piloto. Isso muda o "Histórico" da proposta das telas (`docs/referencia/proposta-telas-intelligence-1-0.md`).
+  - Motivo: não há tabela de transições, e a RLS da `app.auditoria` deixa a auditoria do insight de rede (`hotel_id` nulo) só para o Admin do grupo; o Gestor CSC da bandeira ficaria sem histórico.
+- **Auditoria do insight sem `hotel_id`:** as auditorias `abrir` e `atualizar_deteccao` passam a ser gravadas com `hotel_id` nulo, como a `job_inteligencia`. Hoje a RLS da `app.auditoria` (`hotel_id in authz.hoteis_escrita()`) deixa o técnico e o solicitante do hotel lerem essas linhas pelo banco, o que contraria "só quem decide lê o insight". Nenhuma tela ou rota mostra essas linhas, e o job ainda não rodou no dev. Entra no PR do servidor, sem migração.
+- **Item de menu "HubKeep Intelligence":** a moldura do núcleo (`apps/web/src/cliente/moldura.tsx`) ganha o item, que aparece quando a rota `GET /api/v1/inteligencia/resumo` responde: 404 sem o módulo ou sem papel que decide; a contagem dos abertos quando há. A moldura não importa o pacote do Intelligence. Fica registrado também no diário do núcleo, no PR das telas.
+
+**A ordem dos PRs:**
+1. `int-telas-base` (este): a liberação do lint e o `packages/ui`.
+2. O servidor: a leitura e a decisão do insight, com hk_app (porta, casos de uso, contratos, rotas `/api/v1/inteligencia/...`), a regra do responsável e a auditoria sem `hotel_id`.
+3. As telas: a lista, a página do insight e o detalhe do ativo, o item de menu e os textos nos quatro idiomas.
+
+**O que este PR faz:**
+- **Lint:** a tela em pasta `inteligencia` do `apps/web/src/app` passa a importar o código de cliente do web (`cliente/api`, `i18n/cliente`) por caminho relativo, como qualquer página. É o que o adendo de 06/10/2026 ao ADR-026 já diz ("veem o que a rota e a página veem"); a configuração liberava só o servidor do web. A pasta do módulo no servidor continua fora do alcance da tela. Casos novos no `tests/fronteiras.test.ts`; os dois "permite" falham sem a mudança.
+- **`packages/ui`:** `Indicadores` (`hk-indicadores`, a fileira que se ajusta à largura, com nome de grupo opcional para o leitor de tela) e `Dados` (`hk-dados`, pares de rótulo e valor numa `dl`, em uma coluna no celular), como a proposta das telas previa.
+
 ## `int-insight-servidor`: a leitura e a decisão do insight no servidor (10/10/2026)
 
 Segundo dos PRs das telas do painel (a ordem e as decisões do Cesar estão na seção do `int-telas-base`). Fora da zona protegida, sem migração.

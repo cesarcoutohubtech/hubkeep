@@ -13,7 +13,9 @@ import {
   Entrada,
   Estrutura,
   GrupoDeMenu,
+  Dados,
   Indicador,
+  Indicadores,
   ItemDeMenu,
   Marca,
   MensagemDeErro,
@@ -127,6 +129,29 @@ describe('Painel e Indicador', () => {
         </Painel>,
       ),
     ).toMatch(/<h3 id=/);
+  });
+
+  it('a fileira de indicadores é um grupo nomeado quando tem rótulo', () => {
+    expect(html(<Indicadores rotulo="Resumo">x</Indicadores>)).toBe(
+      '<div class="hk-indicadores" role="group" aria-label="Resumo">x</div>',
+    );
+    expect(html(<Indicadores>x</Indicadores>)).toBe('<div class="hk-indicadores">x</div>');
+  });
+
+  it('os dados são pares dt e dd numa dl', () => {
+    expect(
+      html(
+        <Dados
+          itens={[
+            { rotulo: 'Calculado em', valor: '10/10/2026' },
+            { rotulo: 'Cálculo', valor: '1' },
+          ]}
+        />,
+      ),
+    ).toBe(
+      '<dl class="hk-dados"><div class="hk-dados-par"><dt>Calculado em</dt><dd>10/10/2026</dd></div>' +
+        '<div class="hk-dados-par"><dt>Cálculo</dt><dd>1</dd></div></dl>',
+    );
   });
 
   it.each(TONS_DE_INDICADOR)('indicador %s', (tom) => {

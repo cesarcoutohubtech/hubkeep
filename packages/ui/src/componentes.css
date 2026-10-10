@@ -451,6 +451,42 @@
   color: var(--hk-texto-suave);
 }
 
+/* A fileira de indicadores: tantas colunas quantas couberem. */
+.hk-indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+/* Pares de rótulo e valor. */
+.hk-dados {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.hk-dados-par {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 12px;
+}
+
+.hk-dados dt {
+  color: var(--hk-texto-suave);
+}
+
+.hk-dados dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .hk-dados-par {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
 /* ---------- Tabela ---------- */
 .hk-tabela-rolagem {
   overflow-x: auto;
