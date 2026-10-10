@@ -3,13 +3,21 @@
 // O resultado fala só em variação observada, nunca em causa (PRD, princípio 7):
 // a tela traduz 'reducao_observada', e não "a troca resolveu".
 //
-// Versão 2 (aprovada pelo Cesar em 08/10/2026, alinhada ao mock): os limiares
-// vêm da política `inteligencia.efetividade`. Pela variação dos chamados:
-// redução de 60% ou mais = redução observada; de 25% a menos de 60% = redução
-// parcial; de mais de −25% a menos de +20% = sem mudança relevante; aumento de
-// 20% ou mais = aumento observado; menos de 3 chamados antes = sem base de
-// comparação; menos de 90 dias depois = janela incompleta (que vale primeiro).
-// A versão 1 (limiar único de 20% nos dois sentidos) fica no que já foi gravado.
+// Versão 2 (aprovada pelo Cesar em 08/10/2026, alinhada ao mock, com as
+// respostas de 10/10/2026): os limiares vêm da política
+// `inteligencia.efetividade`. Pela variação dos chamados: redução de 60% ou
+// mais = redução observada; de 25% a menos de 60% = redução parcial; de mais de
+// −25% a menos de +20% = sem mudança relevante; aumento de 20% ou mais =
+// aumento observado; menos de 3 chamados antes = sem base de comparação; menos
+// de 90 dias depois = janela incompleta.
+//
+// Quando valem os dois, "sem base de comparação" prevalece: ele já é
+// definitivo no dia da intervenção, porque menos chamados antes que o mínimo
+// nunca vira uma comparação válida, por mais que a janela termine.
+//
+// A versão 1 (limiar único de 20% nos dois sentidos) nunca foi gravada: a
+// efetividade é calculada sob demanda, e a 2 é a primeira versão que um
+// resultado gravado vai levar.
 import type { Parada } from '@hubkeep/dominio';
 import { type Corretiva, horasParadasNoTrecho } from './historico';
 import { DIA_MS } from './score';
@@ -175,9 +183,9 @@ export function efetividadeAntesDepois(
   const diasDecorridos = Math.max(0, Math.floor((agora.getTime() - t) / DIA_MS));
   const chamados = metricas[0] as MetricaAntesDepois;
   let resultado: ResultadoEfetividade;
-  if (agora.getTime() < t + janela) resultado = 'janela_incompleta';
-  else if (chamados.variacaoPercentual === null || chamados.antes < config.minChamadosAntes)
+  if (chamados.variacaoPercentual === null || chamados.antes < config.minChamadosAntes)
     resultado = 'sem_base_de_comparacao';
+  else if (agora.getTime() < t + janela) resultado = 'janela_incompleta';
   else if (-chamados.variacaoPercentual >= config.reducaoObservadaPercentual)
     resultado = 'reducao_observada';
   else if (-chamados.variacaoPercentual >= config.reducaoParcialPercentual)
