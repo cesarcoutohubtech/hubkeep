@@ -5,6 +5,7 @@
 //
 // Score sem dado (null) não entra na média nem no máximo: conta só em
 // `diasSemDado`, como no score, onde dado ausente não vira zero.
+import type { Score } from './score';
 
 /**
  * Resultado diário de um ativo, como a agregação o lê. Um recálculo de um dia
@@ -39,6 +40,12 @@ export interface LinhaDaMetricaDiaria extends MetricaDiaria {
   versaoFormulaAtencao: number;
   /** Identifica as linhas de app.politica usadas (`HotelDoDia.versaoPolitica`); `padrao` sem política gravada. */
   versaoPolitica: string;
+  /**
+   * O detalhamento de cada score, com os componentes e a configuração usada
+   * (`Score.configuracao`): vai para `detalhe_reincidencia` e `detalhe_atencao`.
+   */
+  detalheReincidencia: Score;
+  detalheAtencao: Score;
 }
 
 export interface ResumoDeScore {

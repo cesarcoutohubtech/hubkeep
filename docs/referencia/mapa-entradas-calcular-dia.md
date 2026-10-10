@@ -114,10 +114,16 @@ O rascunho da tabela está no branch `int-rascunhos` (`rascunhos/metrica/`).
 - **Preventiva:** `preventivaAtrasada` (antes `preventivaOuCompliance`, até a atenção v1) e `aposPreventiva` esperam a etapa P da 1b. Até lá, ficam ausentes, e o peso deles vai para os outros componentes, como o ADR-034 prevê.
 - **Valor antigo dos campos editáveis e da política:** o recálculo de um dia passado usa o valor atual. O resultado gravado de cada dia é a fonte de verdade do histórico (decisão de 06/10/2026).
 
-## A conferir quando a porta de leitura for escrita
+## Decidido quando a porta de leitura foi escrita (Cesar, 10/10/2026; aguarda o Kaio)
 
-- **Que chamado conta como corretiva:**
-  - excluir o chamado cancelado sem OS (proposta);
-  - quando o chamado tem mais de uma OS (OS cancelada e outra gerada), usar a OS que não foi cancelada.
-- **Ativo desativado** (`app.ativo.desativado_em`): sai do cálculo a partir da data da desativação (proposta). Assim, o ativo trocado não fica gerando insight.
-- **Hotel desativado ou em implantação** (`app.hotel.status`): proposta de calcular só os hotéis `ativo`.
+As três propostas valem, no `packages/inteligencia/src/fonte.ts` e no `calcularDia`:
+- **Que chamado conta como corretiva** (`corretivasDosChamados`):
+  - o chamado cancelado sem OS fica fora;
+  - com mais de uma OS (a cancelada e a que a substituiu), vale a que não foi cancelada; só com canceladas, a mais recente.
+- **Ativo desativado** (`app.ativo.desativado_em`): sai do score e da métrica a partir da baixa, para o ativo trocado não gerar insight. Continua na base do sinal sistêmico, que conta o ativo instalado na janela.
+- **Hotel desativado ou em implantação** (`app.hotel.status`): só os hotéis `ativo` entram no dia (`hoteisDoDia`).
+
+**Até onde a leitura volta** (`inicioDaLeitura`): a maior janela que alguma regra do dia olha, pelas políticas resolvidas. Com os padrões, são os 12 meses do custo informado. A ligação traz:
+- os chamados abertos depois desse instante, ou com transição de OS depois dele;
+- os ativos sem baixa antes dele;
+- as paradas que terminam depois dele.

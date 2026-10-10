@@ -13,6 +13,7 @@ import {
   type DadosDoTenant,
   FonteEmMemoria,
   GravacaoEmMemoria,
+  chamadoDaCorretiva,
   chaveDeTeste,
 } from './apoio-job';
 import { agora, dia } from './apoio';
@@ -155,6 +156,26 @@ describe('executarDiaDoTenant: o dia normal', () => {
     await executarDiaDoTenant(portas, { agora: dia(1) });
     expect(banco.insights).toHaveLength(1);
     expect(banco.insights[0]?.estado).toBe('em_acao');
+  });
+
+  it('lê ativos e chamados desde o início da leitura, e o chamado cancelado sem OS não conta', async () => {
+    const cancelado = {
+      ...chamadoDaCorretiva(corretiva({ ativoId: 'a2', hotelId: 'h2', abertaEm: dia(-2) })),
+      estado: 'cancelado' as const,
+      os: [],
+    };
+    const { banco, fonte, portas } = cenario({ chamados: [cancelado] });
+    await executarDiaDoTenant(portas, { agora });
+    expect(fonte.desde).toEqual([dia(-365), dia(-365)]);
+    // Com o cancelado contando, a2 teria uma corretiva a mais na janela da reincidência.
+    const scores = (b: BancoEmMemoria) =>
+      b.metricas.map((m) => [m.ativoId, m.reincidencia, m.atencao]);
+    const sem = cenario();
+    await executarDiaDoTenant(sem.portas, { agora });
+    expect(scores(banco)).toEqual(scores(sem.banco));
+    const aberto = cenario({ chamados: [{ ...cancelado, estado: 'aberto' }] });
+    await executarDiaDoTenant(aberto.portas, { agora });
+    expect(scores(aberto.banco)).not.toEqual(scores(sem.banco));
   });
 });
 

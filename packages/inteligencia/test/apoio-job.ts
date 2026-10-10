@@ -10,6 +10,7 @@ import type { ModuloContratado } from '@hubkeep/dominio';
 import {
   type AtivoDoDia,
   type AtualizacaoDeInsight,
+  type ChamadoDaFonte,
   type ConfigSistemico,
   type CorretivaDaFonte,
   type DeteccaoDoDia,
@@ -94,7 +95,34 @@ export interface DadosDoTenant {
   sistemico?: ConfigSistemico;
   /** Sem a lista, o tenant tem o módulo `inteligencia` vigente desde 01/01/2026, sem prazo. */
   modulos?: ModuloContratado[];
+  /** Chamados como o banco os guarda, além das corretivas acima. */
+  chamados?: ChamadoDaFonte[];
 }
+
+/**
+ * A corretiva dos testes como o banco a guardaria: o chamado com uma OS viva,
+ * que leva o código de falha, o executor, o custo e as transições.
+ */
+export const chamadoDaCorretiva = (c: CorretivaDaFonte): ChamadoDaFonte => ({
+  id: c.id,
+  hotelId: c.hotelId,
+  localId: c.localId,
+  ativoId: c.ativoId,
+  abertaEm: c.abertaEm,
+  estado: 'em_execucao',
+  impactoHospede: c.impactoHospede ?? null,
+  os: [
+    {
+      estado: 'em_execucao',
+      criadaEm: c.abertaEm,
+      codigoFalha: c.codigoFalha,
+      executadoPor: c.executadoPor ?? 'equipe_interna',
+      fornecedorId: c.fornecedorId ?? null,
+      custoInformado: c.custoInformado ?? null,
+      transicoes: c.transicoes,
+    },
+  ],
+});
 
 export const MODULO_VIGENTE: ModuloContratado = {
   modulo: 'inteligencia',
@@ -115,12 +143,21 @@ export class FonteEmMemoria implements FonteDoJob {
   };
   modulos = async () => this.ler('modulos', this.dados.modulos ?? [MODULO_VIGENTE]);
   hoteis = async () => this.ler('hoteis', this.dados.hoteis);
-  ativos = async () => this.ler('ativos', this.dados.ativos);
-  corretivas = async (agora: Date) =>
-    this.ler(
+  /** O `desde` que o job pediu às leituras de ativos e de chamados. */
+  desde: Date[] = [];
+  ativos = async (_agora: Date, desde: Date) => {
+    this.desde.push(desde);
+    return this.ler('ativos', this.dados.ativos);
+  };
+  corretivas = async (agora: Date, desde: Date) => {
+    this.desde.push(desde);
+    return this.ler(
       'corretivas',
-      this.dados.corretivas.filter((c) => c.abertaEm.getTime() <= agora.getTime()),
+      [...this.dados.corretivas.map(chamadoDaCorretiva), ...(this.dados.chamados ?? [])].filter(
+        (c) => c.abertaEm.getTime() <= agora.getTime(),
+      ),
     );
+  };
   locais = async () => this.ler('locais', this.dados.locais);
   politicaSistemica = async () => this.ler('politicaSistemica', this.dados.sistemico);
   insights = async (): Promise<readonly InsightExistente[]> =>

@@ -18,22 +18,16 @@
 // - A chave de unicidade do insight (família mais o SHA-256 da lista canônica
 //   de hotéis) é montada por quem grava, com node:crypto ou sha256(): nada de
 //   hash aqui.
+// - A leitura dos ativos e dos chamados começa em `inicioDaLeitura`, calculado
+//   com as políticas já resolvidas; o chamado vira corretiva por
+//   `corretivasDosChamados` (fonte.ts).
 import { type ModuloContratado, modulosVigentes } from '@hubkeep/dominio';
 import type { LinhaDaMetricaDiaria } from './agregacao';
 import { type AtivoDoDia, type DeteccaoDoDia, type HotelDoDia, calcularDia } from './dia';
-import {
-  type Corretiva,
-  type LocalAnalisado,
-  type TransicaoDaOs,
-  conclusaoEReaberturas,
-} from './historico';
+import { type ChamadoDaFonte, corretivasDosChamados, inicioDaLeitura } from './fonte';
+import { type Corretiva, type LocalAnalisado, conclusaoEReaberturas } from './historico';
 import { type InsightExistente, decidirDeteccao } from './insight';
-import type { ConfigSistemico } from './sistemico';
-
-/** A corretiva como a fonte a entrega: com as transições da OS, de onde saem a conclusão e as reaberturas. */
-export type CorretivaDaFonte = Omit<Corretiva, 'concluidaEm' | 'reaberturas'> & {
-  transicoes: readonly TransicaoDaOs[];
-};
+import { type ConfigSistemico, PADRAO_SISTEMICO } from './sistemico';
 
 /** O que o job lê do tenant. Todas as leituras são do contexto dele (RLS). */
 export interface FonteDoJob {
@@ -45,10 +39,17 @@ export interface FonteDoJob {
    * as chaves `inteligencia.*`, porque o job só chega aqui com o módulo vigente.
    */
   hoteis(): Promise<readonly HotelDoDia[]>;
-  /** Os ativos, com as paradas até `agora`. */
-  ativos(agora: Date): Promise<readonly AtivoDoDia[]>;
-  /** As corretivas abertas até `agora`, com as transições da OS. */
-  corretivas(agora: Date): Promise<readonly CorretivaDaFonte[]>;
+  /**
+   * Os ativos que já existiam em `agora`, menos os baixados antes de `desde`
+   * (o baixado na janela ainda conta na base do sinal sistêmico), com as
+   * paradas que começaram até `agora` e não terminaram antes de `desde`.
+   */
+  ativos(agora: Date, desde: Date): Promise<readonly AtivoDoDia[]>;
+  /**
+   * Os chamados abertos até `agora` que foram abertos depois de `desde` ou têm
+   * transição de OS depois de `desde`, com todas as OS e as transições delas.
+   */
+  corretivas(agora: Date, desde: Date): Promise<readonly ChamadoDaFonte[]>;
   locais(): Promise<readonly LocalAnalisado[]>;
   /** A política `inteligencia.sistemico` resolvida para o grupo, ou undefined para o padrão. */
   politicaSistemica(): Promise<ConfigSistemico | undefined>;
@@ -125,16 +126,19 @@ export async function executarDiaDoTenant(
       insightsIgnorados: 0,
     };
   }
-  const [hoteis, ativos, corretivasDaFonte, locais, sistemico, insights] = await Promise.all([
+  const [hoteis, locais, sistemico, insights] = await Promise.all([
     fonte.hoteis(),
-    fonte.ativos(p.agora),
-    fonte.corretivas(p.agora),
     fonte.locais(),
     fonte.politicaSistemica(),
     fonte.insights(),
   ]);
+  const desde = inicioDaLeitura(hoteis, sistemico ?? PADRAO_SISTEMICO, p.agora);
+  const [ativos, chamados] = await Promise.all([
+    fonte.ativos(p.agora, desde),
+    fonte.corretivas(p.agora, desde),
+  ]);
 
-  const corretivas: Corretiva[] = corretivasDaFonte.map(({ transicoes, ...c }) => ({
+  const corretivas: Corretiva[] = corretivasDosChamados(chamados).map(({ transicoes, ...c }) => ({
     ...c,
     ...conclusaoEReaberturas(transicoes, p.agora),
   }));

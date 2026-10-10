@@ -77,7 +77,11 @@ describe('calcularDia: scores e métrica do dia', () => {
       versaoFormulaReincidencia: 1,
       versaoFormulaAtencao: 2,
       versaoPolitica: 'padrao',
+      detalheReincidencia: a1?.reincidencia,
+      detalheAtencao: a1?.atencao,
     });
+    // O detalhamento leva a configuração usada (ADR-036).
+    expect(r.metricas[0]?.detalheAtencao.configuracao).toEqual(PADRAO_ATENCAO);
 
     const atencao = r.deteccoes.filter((d) => d.tipo === 'atencao_ativo');
     expect(atencao).toHaveLength(1);
@@ -90,6 +94,23 @@ describe('calcularDia: scores e métrica do dia', () => {
       escopo: { ativoId: 'a1', hotelId: 'h1' },
     });
     expect(atencao[0]?.corretivaIds).toHaveLength(6);
+    expect(atencao[0]?.detalhe).toBe(a1?.atencao);
+  });
+
+  it('o ativo baixado sai do score e da métrica a partir da baixa', () => {
+    const entrada = (desativadoEm: Date) => ({
+      agora,
+      hoteis,
+      ativos: [ativo({ id: 'a1', criticidade: 5, desativadoEm }), ativo({ id: 'a2' })],
+      corretivas: problematico('a1'),
+      locais: [],
+    });
+    const baixado = calcularDia(entrada(dia(-1)));
+    expect(baixado.metricas.map((m) => m.ativoId)).toEqual(['a2']);
+    expect(baixado.deteccoes).toEqual([]);
+    // Recalculado um dia antes da baixa, o ativo ainda conta.
+    const antes = calcularDia({ ...entrada(dia(1)), agora });
+    expect(antes.metricas.map((m) => m.ativoId)).toEqual(['a1', 'a2']);
   });
 
   it('a2, com uma corretiva, tem métrica e nenhuma detecção', () => {
