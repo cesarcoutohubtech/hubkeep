@@ -602,3 +602,70 @@ Status de cada uma: aprovado por Kaio, aguardando Cesar.
   - Com o ok, a implementação entra num PR fora de zona protegida.
 - **Esperando o Kaio:** o canal da aprovação do Cesar de 08/10.
 - **Esperando o núcleo:** a I6 e a I7. Depois da I7, a fila de zona protegida abre para o `int-adr-aceite` e as tabelas do Intelligence, uma por vez.
+
+## Respostas do Kaio às perguntas da implementação (10/10/2026)
+
+O Kaio respondeu às perguntas que a seção anterior deixou para a implementação e pediu o registro como **aprovado por Kaio, aguardando Cesar**. Canal: o chat deste agente, colado pelo usuário em 10/10/2026. **Nada disso foi implementado:** o motor só muda depois do ok do Cesar.
+
+### Texto do Kaio (sem alteração)
+
+> 1. Mínimo de medições na política: padrão 3, mínimo 1.
+> 2. A regra dos 50% vale só para o custo informado. Impacto no hóspede e
+>    tempo parado estão sempre disponíveis (não marcado = não teve).
+>    Garantia em branco = não vencida. Medições: disponibilidade por
+>    categoria (sem item de medição no plano da categoria = sem dado);
+>    ativo com menos de 3 medições contribui 0, sem redistribuir. Confira
+>    se a coluna de custo da I4 distingue vazio (null) de zero e me diga.
+> 3. Com o custo disponível no tenant, o ativo soma só as corretivas que
+>    têm o dado; o detalhamento mostra "custo informado em X de Y
+>    corretivas".
+> 4. Mesmo modelo: sem maiúsculas, sem acentos, sem espaços nas pontas e
+>    com espaços repetidos no meio reduzidos a um.
+> 5. Leituras do #145: ativos instalados = ativos em algum momento da
+>    janela (baixados antes do início não contam; instalados no meio contam
+>    inteiros); sem outro modelo na categoria, a regra não dispara; 3 hotéis
+>    = hotéis distintos com pelo menos um chamado contado na janela em
+>    ativos do modelo.
+
+### As respostas e o que muda no motor depois do ok do Cesar
+
+Status de cada uma: aprovado por Kaio, aguardando Cesar.
+
+1. **Mínimo de medições na política** `inteligencia.atencao_ativo`: padrão 3, mínimo 1. O Kaio explicou que segue a regra dos pesos e limites: nenhum limiar fica fixo na fórmula.
+   - **No motor:** campo novo na política, com a validação do mínimo 1 ao gravar.
+2. **Disponibilidade por componente.** Esta resposta substitui a leitura da seção anterior, que aplicava a regra dos 50% a todos os componentes da corretiva. Também muda o mínimo de medições da resposta 2 daquela seção: com menos medições que o mínimo, o ativo contribui 0, e não "sem dado".
+   - **Custo informado:** é o único componente com a regra dos 50%, porque só nele "não informado" é diferente de "zero".
+     - **No motor:** é desenho novo. Hoje o custo fica sem dado só no ativo sem nenhum custo informado. A entrada do `calcularDia` passa a precisar da conta das corretivas encerradas do tenant na janela, com e sem custo.
+   - **Impacto no hóspede e tempo parado:** estão sempre disponíveis. Não marcar é "não teve".
+     - **No motor, impacto:** hoje o `impactoHospedeDosChamados` calcula a fração só entre os chamados respondidos. O null fica fora da conta, e sem nenhum respondido o componente fica sem dado. Com o ok, o null conta como "não teve" e o componente nunca fica sem dado. Sem chamado na janela, o valor é 0.
+     - **No motor, tempo parado:** nada muda. O `horasParadasNoTrecho` já devolve número sempre.
+   - **Garantia em branco:** conta como não vencida. O peso é pequeno, e não se pune o dado que falta.
+     - **No motor:** hoje a garantia sem data fica sem dado (#142). Com o ok, vale 0.
+   - **Medições:** a disponibilidade é por categoria. Sem item de medição no plano da categoria, o componente fica sem dado nos ativos dela, e o peso é redistribuído. O ativo com menos medições que o mínimo contribui 0, sem redistribuir.
+     - **No motor:** a entrada passa a dizer se o plano da categoria tem item de medição. O plano é da etapa PV, e até lá o componente continua sem dado.
+3. **Custo disponível no tenant:** o ativo soma só o custo das corretivas que têm o dado. O detalhamento mostra "custo informado em X de Y corretivas".
+   - **No motor:** a soma já ignora o null (`custoInformadoNaJanela`). O detalhamento ganha os dois números e uma mensagem nova no catálogo (`packages/i18n`), nos quatro idiomas.
+4. **Normalização do mesmo modelo:** sem maiúsculas, sem acentos, sem espaços nas pontas e com os espaços repetidos do meio reduzidos a um.
+   - **No motor:** falta só tirar os acentos. O resto o `normalizar` do `historico.ts` já faz.
+5. **Leituras do #145.**
+   - **Ativos instalados:** contam os ativos que estiveram ativos em algum momento da janela. O baixado antes do início não conta, e o instalado no meio conta inteiro no 1.0.
+     - **No motor:** hoje contam todos os ativos que o motor recebe. A leitura do agente é que "baixado" é o `app.ativo.desativado_em` anterior ao início da janela. O `AtivoAnalisado` ganha esse campo, e quem lê o banco passa a mandar também os ativos desativados dentro da janela.
+   - **Sem outro modelo na categoria:** a regra não dispara. Sem comparação, não dá para atribuir o problema ao modelo, o mesmo princípio do "sem base" da efetividade.
+     - **No motor:** hoje a base vira 0 e vale só o mínimo de 0,3. Isso muda.
+   - **Os 3 hotéis:** são hotéis distintos com pelo menos um chamado contado na janela em ativos do modelo. Ter o modelo instalado não basta.
+     - **No motor:** já é assim.
+
+### A conferência do custo na I4 (pedido do Kaio)
+O vazio e o zero são distintos no banco e no aceite do `apps/web`:
+- **Banco:** `app.os.custo_informado` é `numeric(12, 2)`, anulável e sem default (migração `20261009150000_chamado_os_uh_indisponivel.sql`). O check `os_custo_nao_negativo` aceita null ou valor maior ou igual a 0, e as OS anteriores à 0034 ficaram com null.
+- **Tela do aceite:** o campo começa vazio, e o `custoDoCampo` (`apps/web/src/cliente/corretiva.tsx`) devolve null para o campo vazio. Zero só chega se alguém digitar 0.
+- **Gravação:** o repositório do aceite (`packages/db/src/repositorios/aceite.ts`) só grava o custo quando ele não é null. A leitura (`packages/db/src/adaptadores.ts`) devolve null para null.
+- **O mock** (`docs/referencia/design/csc-mock/app.js`, aceite) faz diferente: o campo de custo tem `placeholder="0"`, e `parseFloat(...) || 0` transforma o vazio em 0. É só demonstração e não toca o banco. Mas, se o mock for usado para mostrar a regra dos 50%, ele precisa gravar null no vazio. Não mexi no mock.
+
+### Onde mais ficou registrado
+- **Rascunho dos adendos ao ADR-034 e ao ADR-036**, no `int-rascunhos` (`rascunhos/adr/adendos-adr-034-e-036.md`, `6454723`): as respostas entraram no texto, com a marca "aprovado por Kaio em 10/10/2026, aguardando Cesar".
+
+### Ponto de retomada (10/10/2026)
+- **Esperando o Cesar:** o ok às respostas desta seção e da anterior. Com o ok, a implementação entra num PR fora de zona protegida, com a versão de cada fórmula conforme a regra do adendo.
+- **Esperando o Kaio:** o canal da aprovação do Cesar de 08/10.
+- **Esperando o núcleo:** a I6 e a I7. Depois da I7, a fila de zona protegida abre para o `int-adr-aceite` e as tabelas do Intelligence, uma por vez.
