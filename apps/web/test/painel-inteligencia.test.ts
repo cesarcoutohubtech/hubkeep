@@ -80,7 +80,7 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
     insight: async (_ctx, id) => insights.find((i) => i.id === id) ?? null,
     ligados: async () => [],
     chamados: async () => [],
-    nomes: async () => ({ hoteis: { [H1]: 'Hotel 1' }, bandeiras: {}, pessoas: {} }),
+    nomes: async () => ({ hoteis: { [H1]: 'Hotel 1' }, bandeiras: {}, pessoas: {}, ativos: {} }),
     decidir: async (_ctx, d) => {
       decisoes.push(d);
       return { versao: d.versaoEsperada + 1 };

@@ -275,11 +275,13 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
       hotelIds: [H1, H2],
       bandeiraIds: [B1],
       usuarioIds: [U.gerente],
+      ativoIds: [],
     });
     expect(nomes).toEqual({
       hoteis: { [H1]: 'Hotel 1', [H2]: 'Hotel 2' },
       bandeiras: { [B1]: 'Aurora' },
       pessoas: { [U.gerente]: 'gerente' },
+      ativos: {},
     });
   });
 
@@ -436,6 +438,13 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
     expect(
       ids(await porta.insightsDoEscopo(ctx(U.gerente), 'atencao_ativo', 'ativoId', A, 50)),
     ).toEqual([IA]);
+    const nomes = await porta.nomes(ctx(U.gerente), {
+      hotelIds: [],
+      bandeiraIds: [],
+      usuarioIds: [],
+      ativoIds: [A],
+    });
+    expect(nomes.ativos).toEqual({ [A]: 'Elevador social 2' });
     expect(await porta.insightsDoEscopo(ctx(U.tecnico), 'atencao_ativo', 'ativoId', A, 50)).toEqual(
       [],
     );

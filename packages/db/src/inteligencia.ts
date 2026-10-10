@@ -62,6 +62,7 @@ export interface PortaDoPainelDoIntelligence {
       hotelIds: readonly string[];
       bandeiraIds: readonly string[];
       usuarioIds: readonly string[];
+      ativoIds: readonly string[];
     },
   ): Promise<NomesDoPainelNoBanco>;
   /** Na unit of work de quem decide: o estado, a auditoria e o evento. */

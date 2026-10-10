@@ -79,6 +79,7 @@ export interface NomesDoPainelNoBanco {
   hoteis: Record<string, string>;
   bandeiras: Record<string, string>;
   pessoas: Record<string, string>;
+  ativos: Record<string, string>;
 }
 
 export interface AtivoDoPainelNoBanco {
@@ -300,9 +301,10 @@ export async function nomesDoPainel(
     hotelIds: readonly string[];
     bandeiraIds: readonly string[];
     usuarioIds: readonly string[];
+    ativoIds: readonly string[];
   },
 ): Promise<NomesDoPainelNoBanco> {
-  const [hoteis, bandeiras, pessoas] = await Promise.all([
+  const [hoteis, bandeiras, pessoas, ativos] = await Promise.all([
     p.hotelIds.length
       ? tx.selectFrom('app.hotel').select(['id', 'nome']).where('id', 'in', p.hotelIds).execute()
       : [],
@@ -320,10 +322,18 @@ export async function nomesDoPainel(
           .where('usuario_id', 'in', p.usuarioIds)
           .execute()
       : [],
+    p.ativoIds.length
+      ? tx.selectFrom('app.ativo').select(['id', 'nome']).where('id', 'in', p.ativoIds).execute()
+      : [],
   ]);
   const mapa = (xs: readonly { id: string; nome: string }[]) =>
     Object.fromEntries(xs.map((x) => [x.id, x.nome]));
-  return { hoteis: mapa(hoteis), bandeiras: mapa(bandeiras), pessoas: mapa(pessoas) };
+  return {
+    hoteis: mapa(hoteis),
+    bandeiras: mapa(bandeiras),
+    pessoas: mapa(pessoas),
+    ativos: mapa(ativos),
+  };
 }
 
 export async function decidirInsightNoBanco(

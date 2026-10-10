@@ -806,6 +806,7 @@
   "inteligencia.insight.acao": "{acao, select, revisar {Revisar} aceitar {Aceptar} agir {Actuar} monitorar {Dar seguimiento} resolver {Resolver} descartar {Descartar} other {{acao}}}",
   "inteligencia.sistemico.regra": "{regra, select, mesmo_modelo {Mismo modelo con muchas solicitudes} mesmo_andar {Mismo piso con la misma falla} mesma_area_comum {Misma área común con la misma falla} mesmo_fornecedor {Mismo tercero con muchas fallas que vuelven} crescimento_categoria {La misma falla en aumento} other {{regra}}}",
   "inteligencia.sistemico.evidencia.mesmo_modelo": "{quantidade, plural, one {# solicitud} other {# solicitudes}} en {distintos, plural, one {# activo} other {# activos}} del mismo modelo, en {hoteis, plural, one {# hotel} other {# hoteles}}, en los últimos {janelaDias} días: {taxa, number, ::.##} por activo, frente a {base, number, ::.##} en los otros modelos de la misma categoría",
+  "inteligencia.sistemico.evidencia.generica": "{quantidade, plural, one {# solicitud} other {# solicitudes}} en {hoteis, plural, one {# hotel} other {# hoteles}}, en los últimos {janelaDias} días",
   "erro.motivo_de_descarte_invalido": "Elige un motivo válido para descartar el insight.",
   "erro.janela_de_leitura_curta": "La ventana de lectura debe ser de al menos el doble de la ventana de la efectividad: como mínimo {minimo, plural, one {# día} other {# días}}.",
   "inteligencia.insight.motivo_descarte": "{motivo, select, nao_relevante {No relevante} substituido {Sustituido por otro insight} other {{motivo}}}",

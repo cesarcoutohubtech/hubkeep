@@ -9,6 +9,7 @@ import {
   type PortasDoPainel,
   acoesDoEstado,
   chamadosDaEvidencia,
+  explicacaoDoSinal,
   decidirInsight,
   listarInsights,
   responsavelDepoisDaAcao,
@@ -130,6 +131,7 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDoPainel & { m: Memoria } {
       hoteis: Object.fromEntries(p.hotelIds.map((h) => [h, `Hotel ${h}`])),
       bandeiras: Object.fromEntries(p.bandeiraIds.map((b) => [b, `Bandeira ${b}`])),
       pessoas: Object.fromEntries(p.usuarioIds.map((u) => [u, `Pessoa ${u}`])),
+      ativos: Object.fromEntries(p.ativoIds.map((a) => [a, `Ativo ${a}`])),
     }),
     decidir: async (d) => {
       mem.decisoes.push(d);
@@ -249,6 +251,7 @@ describe('lista', () => {
     ]);
     expect(nomes.hoteis).toEqual({ h1: 'Hotel h1', h2: 'Hotel h2', h3: 'Hotel h3' });
     expect(nomes.pessoas).toEqual({ u9: 'Pessoa u9' });
+    expect(nomes.ativos).toEqual({ a1: 'Ativo a1' });
   });
 
   it('o que abriu depois do encerramento do anterior é recorrência, não substituição', () => {
@@ -438,6 +441,30 @@ describe('detalhe do ativo', () => {
     });
     await expect(verAtivo(emMemoria({ modulos: [] }), 'a1', agora)).rejects.toMatchObject({
       codigo: 'inteligencia_indisponivel',
+    });
+  });
+});
+
+describe('a evidência do sinal sistêmico para o catálogo', () => {
+  const evidencia = {
+    quantidade: 9,
+    distintos: 4,
+    janelaDias: 90,
+    hotelIds: ['h1', 'h2', 'h3'],
+    corretivaIds: [],
+    taxaPorAtivo: 2.25,
+    basePorAtivo: 0.5,
+  };
+  it('o mesmo modelo, com as taxas', () => {
+    expect(explicacaoDoSinal({ regra: 'mesmo_modelo', evidencia })).toEqual({
+      chave: 'inteligencia.sistemico.evidencia.mesmo_modelo',
+      valores: { quantidade: 9, hoteis: 3, janelaDias: 90, distintos: 4, taxa: 2.25, base: 0.5 },
+    });
+  });
+  it('as outras regras, a frase genérica', () => {
+    expect(explicacaoDoSinal({ regra: 'mesmo_andar', evidencia })).toEqual({
+      chave: 'inteligencia.sistemico.evidencia.generica',
+      valores: { quantidade: 9, hoteis: 3, janelaDias: 90 },
     });
   });
 });

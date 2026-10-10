@@ -97,6 +97,7 @@ export const NomesDoPainelApi = z
     hoteis: z.record(z.guid(), z.string()),
     bandeiras: z.record(z.guid(), z.string()),
     pessoas: z.record(z.guid(), z.string()),
+    ativos: z.record(z.guid(), z.string()),
   })
   .meta({ id: 'NomesDoPainelApi' });
 

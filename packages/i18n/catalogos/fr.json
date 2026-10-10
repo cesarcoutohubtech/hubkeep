@@ -806,6 +806,7 @@
   "inteligencia.insight.acao": "{acao, select, revisar {Examiner} aceitar {Accepter} agir {Agir} monitorar {Suivre} resolver {Résoudre} descartar {Écarter} other {{acao}}}",
   "inteligencia.sistemico.regra": "{regra, select, mesmo_modelo {Même modèle avec beaucoup de demandes} mesmo_andar {Même étage avec la même panne} mesma_area_comum {Même espace commun avec la même panne} mesmo_fornecedor {Même prestataire avec beaucoup de pannes qui reviennent} crescimento_categoria {La même panne en hausse} other {{regra}}}",
   "inteligencia.sistemico.evidencia.mesmo_modelo": "{quantidade, plural, one {# demande} other {# demandes}} sur {distintos, plural, one {# équipement} other {# équipements}} du même modèle, dans {hoteis, plural, one {# hôtel} other {# hôtels}}, ces {janelaDias} derniers jours : {taxa, number, ::.##} par équipement, contre {base, number, ::.##} pour les autres modèles de la même catégorie",
+  "inteligencia.sistemico.evidencia.generica": "{quantidade, plural, one {# demande} other {# demandes}} dans {hoteis, plural, one {# hôtel} other {# hôtels}}, sur les {janelaDias} derniers jours",
   "erro.motivo_de_descarte_invalido": "Choisissez un motif valable pour écarter l’insight.",
   "erro.janela_de_leitura_curta": "La fenêtre de lecture doit valoir au moins le double de la fenêtre d’efficacité : au minimum {minimo, plural, one {# jour} other {# jours}}.",
   "inteligencia.insight.motivo_descarte": "{motivo, select, nao_relevante {Non pertinent} substituido {Remplacé par un autre insight} other {{motivo}}}",

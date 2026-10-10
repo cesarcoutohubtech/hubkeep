@@ -132,6 +132,8 @@ export interface NomesDoPainel {
   hoteis: Readonly<Record<string, string>>;
   bandeiras: Readonly<Record<string, string>>;
   pessoas: Readonly<Record<string, string>>;
+  /** Os ativos citados no escopo dos insights (`ativoId`). */
+  ativos: Readonly<Record<string, string>>;
 }
 
 export interface DecisaoGravada {
@@ -163,6 +165,7 @@ export interface PortasDoPainel {
     hotelIds: readonly string[];
     bandeiraIds: readonly string[];
     usuarioIds: readonly string[];
+    ativoIds: readonly string[];
   }): Promise<NomesDoPainel>;
   /** Grava com a trava de versão (conflito_de_versao), a auditoria e o evento. */
   decidir(d: DecisaoGravada): Promise<{ versao: number }>;
@@ -362,6 +365,7 @@ function nomesDe(p: PortasDoPainel, insights: readonly InsightDoPainel[]) {
     hotelIds: unicos(insights.flatMap((i) => i.hotelIds)),
     bandeiraIds: unicos(insights.map((i) => i.bandeiraId)),
     usuarioIds: unicos(insights.flatMap((i) => [i.responsavelId, i.encerradoPor])),
+    ativoIds: unicos(insights.map((i) => i.escopo.ativoId ?? null)),
   });
 }
 
@@ -479,7 +483,7 @@ async function faltando(
 ): Promise<Readonly<Record<string, string>>> {
   const novos = unicos(hotelIds).filter((h) => !(h in conhecidos));
   if (!novos.length) return {};
-  return (await p.nomes({ hotelIds: novos, bandeiraIds: [], usuarioIds: [] })).hoteis;
+  return (await p.nomes({ hotelIds: novos, bandeiraIds: [], usuarioIds: [], ativoIds: [] })).hoteis;
 }
 
 /**
@@ -557,6 +561,7 @@ export async function verAtivo(
       hotelIds: [ativo.hotelId],
       bandeiraIds: unicos([ativo.bandeiraId]),
       usuarioIds: unicos(insights.flatMap((i) => [i.responsavelId, i.encerradoPor])),
+      ativoIds: [ativo.id],
     }),
   ]);
   return {

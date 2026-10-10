@@ -1137,3 +1137,6 @@ Continuação do #189: a leitura que a terceira tela, o detalhe do ativo, vai us
   - no motor, a série, o último dia, a página sem dados e quem não decide;
   - no web, a resposta passando pelo contrato;
   - na integração do `packages/db`, só na CI: o recálculo fica fora, o dia antes da data também, e o técnico lê o ativo mas não a métrica nem o insight.
+- **Para as telas (acrescentado no mesmo PR):**
+  - **Nomes:** a resposta passa a trazer `ativos`, o nome dos ativos citados no escopo dos insights (`ativoId`), para o título da linha do insight de atenção.
+  - **`explicacaoDoSinal`:** a evidência do sinal sistêmico vira chave de catálogo e valores. A regra do mesmo modelo tem frase própria; as outras usam a frase nova `inteligencia.sistemico.evidencia.generica`, com chamados, hotéis e janela, nos quatro idiomas, até ganharem a sua.
