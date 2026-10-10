@@ -1695,7 +1695,7 @@ Texto do Cesar (sem alteração):
 - **6:** sem adendo. Os gráficos usam os mesmos dados dos indicadores.
 - **7:** sem adendo. O formato regional segue o ADR-022 (idioma de quem exporta).
 
-**Adendo proposto ao ADR-027** (aguarda aprovação do Cesar; entra no `docs/03` por PR de zona protegida, depois da aprovação):
+**Adendo proposto ao ADR-027** (aprovado por Cesar em 10/10/2026; ver a seção seguinte):
 
 > **Adendo — pausa do SLA pelo estado da OS, nunca pela situação (1c; decisão 2 do Cesar de 10/10/2026).** Status: aguarda aprovação do Cesar.
 > - **"Aguardando peça" é situação do estado `pausada` da OS**, e não um estado novo. Ela entra nas situações padrão do catálogo, com `chave_padrao`. O tenant pode criar outras situações de `pausada`, e todas seguem a mesma regra.
@@ -1704,4 +1704,11 @@ Texto do Cesar (sem alteração):
 > - **O tempo pausado** sai das transições da OS (`pausar` e `retomar`, em `app.os_transicao`, I5) e aparece na ficha.
 > - **Limite:** com a política ligada, toda pausa da OS da categoria para o relógio, inclusive a de fim de turno. Se a central quiser pausar só por falta de peça, o caminho é um motivo da pausa no domínio, que fica para decisão própria.
 
-**Pendente com o Cesar:** a aprovação do adendo ao ADR-027.
+**Pendente com o Cesar:** a aprovação do adendo ao ADR-027. **Atualização:** aprovado (seção seguinte).
+
+### Aprovação do adendo ao ADR-027 (10/10/2026)
+
+"Adendo ADR-027 aprovado. Pode seguir." (Cesar, no chat do agente do Intelligence, 10/10/2026, "Cesar aqui", depois do merge do #180).
+- O texto entrou no `docs/03-decisoes-tecnicas.md`, no fim do ADR-027, sem mudança além do status, que passou a "aprovado por Cesar em 10/10/2026". Vale quando a 1c começar; nada foi implementado.
+- O plano da 1c e a paridade com o mock deixaram de dizer que a decisão 2 depende do adendo.
+- O status do adendo da I7 ao ADR-026 mudou no `docs/03` pelo #180.
