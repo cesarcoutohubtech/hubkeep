@@ -45,6 +45,7 @@ import {
   criarCasosDeUsoDeExecucao,
   criarCasosDeUsoDeSituacoes,
   criarCasosDeUsoDeConfiguracao,
+  criarPoliticasDoTenant,
   criarCasosDeUsoDeEquipes,
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeFornecedores,
@@ -77,6 +78,7 @@ import {
   criarPortaPrioridades,
   criarPortaSituacoes,
   criarPortaConfiguracao,
+  criarPortaModulos,
   criarPortaEquipes,
   criarPortaBandeiras,
   criarPortaFornecedores,
@@ -97,7 +99,7 @@ import {
   conferirAlvoDoBanco,
   tlsDaConexao,
 } from '@hubkeep/db';
-import { registroDePoliticas } from '@hubkeep/dominio';
+import { registrosDePoliticasPorModulo } from '@hubkeep/dominio';
 import { criarVerificadorJwks } from './identidade';
 import { montarInteligencia } from './modulos/inteligencia';
 
@@ -125,9 +127,11 @@ const conexao = (nome: string) => {
 };
 
 // O Intelligence (módulo opcional) entra só por aqui. Extensão inválida lança
-// na carga do módulo, nunca num request.
+// na carga do módulo, nunca num request. As chaves de um módulo valem só para
+// o tenant com o módulo vigente (adendo da I7 ao ADR-026): os registros são
+// montados aqui, e cada request escolhe o seu (criarPoliticasDoTenant).
 const inteligencia = montarInteligencia();
-const politicas = registroDePoliticas(inteligencia.extensoesDePolitica);
+const registrosDePoliticas = registrosDePoliticasPorModulo(inteligencia.extensoesDePolitica);
 
 /** Memoiza uma Promise, sem ficar preso a ela se rejeitar (o próximo pedido tenta de novo). */
 function memo<T>(criar: () => Promise<T>): () => Promise<T> {
@@ -287,7 +291,11 @@ export const casosDeUsoDeConfiguracao = memo<CasosDeUsoDeConfiguracao>(async () 
     configuracao: criarPortaConfiguracao(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
-    politicas,
+    politicas: criarPoliticasDoTenant({
+      registros: registrosDePoliticas,
+      modulos: criarPortaModulos(banco),
+      relogio: relogioDoSistema,
+    }),
   });
 });
 

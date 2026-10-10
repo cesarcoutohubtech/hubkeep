@@ -4,9 +4,9 @@
 //             cada nível e o efetivo (hotel → grupo → padrão);
 //   gravar    só o Admin do grupo (também o modelo contratual do hotel, I2);
 //             chave e formato conferidos pelo registro de
-//             políticas do domínio (o do núcleo e as extensões de módulo que o
-//             ponto de composição registrar); a mudança vai para a auditoria
-//             pela unit of work.
+//             políticas do tenant (o do núcleo e as extensões dos módulos que
+//             o tenant tem vigentes, adendo da I7); a mudança vai para a
+//             auditoria pela unit of work.
 // A leitura devolve só as chaves do núcleo: a tela das políticas de um módulo
 // é do módulo.
 // A regra de quem grava é injetável para o teste provar que a RLS ainda barra.
@@ -20,7 +20,6 @@ import {
   RegraViolada,
   type Resultado,
   exigir,
-  type RegistroDePoliticas,
   podeGerirPoliticas,
   registroDePoliticas,
   resolverPolitica,
@@ -37,6 +36,7 @@ import type {
   PortaConfiguracao,
 } from '../portas/configuracao';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
+import type { PoliticasDoTenant } from './modulos';
 
 /** Por chave: o padrão, o valor gravado em cada nível (nulo se não há ou se está fora do formato), o efetivo e de onde veio. */
 export type PoliticaResolvida = {
@@ -81,11 +81,15 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
   relogio: Relogio;
   /** Padrão: podeGerirPoliticas do domínio. Só o teste de aceite troca. */
   podeGerir?: (minhas: readonly Atribuicao[], agora: Date) => Resultado;
-  /** Padrão: só as chaves do núcleo. O ponto de composição soma as extensões. */
-  politicas?: RegistroDePoliticas;
+  /**
+   * O registro do tenant de quem pede. Padrão: só as chaves do núcleo. O ponto
+   * de composição escolhe pelos módulos vigentes (criarPoliticasDoTenant).
+   */
+  politicas?: PoliticasDoTenant;
 }): CasosDeUsoDeConfiguracao {
   const podeGerir = deps.podeGerir ?? podeGerirPoliticas;
-  const politicas = deps.politicas ?? registroDePoliticas([]);
+  const doNucleo = registroDePoliticas([]);
+  const politicasDo = deps.politicas ?? (async () => doNucleo);
   const exigirAdmin = async (ctx: Contexto) =>
     exigir(podeGerir(await deps.atribuicoes.doUsuario(ctx), deps.relogio.agora()));
 
@@ -147,7 +151,9 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
 
     async gravarPolitica(ctx, chave, escopo, valor) {
       await exigirAdmin(ctx);
-      // Valor null volta a herdar; a chave ainda precisa existir no registro.
+      // Valor null volta a herdar; a chave ainda precisa existir no registro
+      // do tenant (chave de módulo que o tenant não tem: politica_desconhecida).
+      const politicas = await politicasDo(ctx);
       politicas.validar(chave, valor === null ? politicas.padrao(chave) : valor);
       await deps.configuracao.gravarPolitica(ctx, chave, escopo, valor);
     },

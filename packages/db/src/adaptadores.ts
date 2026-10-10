@@ -36,6 +36,7 @@ import type {
   PortaHoteis,
   PortaIngestao,
   PortaMembros,
+  PortaModulos,
   PortaOperacoesOffline,
   PortaPreferencias,
   PortaPromocaoDeUhs,
@@ -738,6 +739,29 @@ export function criarPortaCategorias(banco: AcessoBanco): PortaCategorias {
 }
 
 /** Códigos de falha, causa e solução (fase 1b, I6), pelo hk_app. */
+/**
+ * Módulos contratados do tenant (I7), pelo hk_app com o contexto de quem pede.
+ * A RLS só deixa ler quem tem papel vigente no tenant; para os outros, vazio.
+ */
+export function criarPortaModulos(banco: AcessoBanco): PortaModulos {
+  return {
+    contratados: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('licenca.modulo')
+            .select(['modulo', 'inicio', 'fim'])
+            .where('tenant_id', '=', ctx.tenantId)
+            .execute()
+        ).map((m) => ({
+          modulo: m.modulo,
+          inicio: new Date(m.inicio),
+          fim: m.fim && new Date(m.fim),
+        })),
+      ),
+  };
+}
+
 export function criarPortaCodigos(banco: AcessoBanco): PortaCodigos {
   return {
     idiomaPadrao: (ctx) =>

@@ -126,6 +126,9 @@ export type {
   PortaConfiguracao,
 } from './portas/configuracao';
 export { criarCasosDeUsoDeConfiguracao } from './casos-de-uso/configuracao';
+export type { PortaModulos } from './portas/modulos';
+export { criarPoliticasDoTenant } from './casos-de-uso/modulos';
+export type { PoliticasDoTenant } from './casos-de-uso/modulos';
 export type { CasosDeUsoDeConfiguracao, PoliticaResolvida } from './casos-de-uso/configuracao';
 export type { EquipeDoHotel, PortaEquipes } from './portas/equipes';
 export { criarCasosDeUsoDeEquipes } from './casos-de-uso/equipes';

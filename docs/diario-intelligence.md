@@ -862,3 +862,15 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
 
 ### Exceção do Cesar: CNPJ alfanumérico, I6 e I7 por este agente (10/10/2026)
 - Por decisão do Cesar de 10/10/2026, este agente faz o CNPJ alfanumérico, a I6 e a I7 no lugar do agente do núcleo, em branches `1b-*`. O registro, as decisões e o ponto de retomada estão no diário do núcleo, `docs/diario-fase-1a.md`, seção "Exceção do Cesar: o agente do Intelligence faz o CNPJ alfanumérico, a I6 e a I7". Terminada a I7, a exceção acaba e este agente volta ao ponto de retomada acima.
+
+### Fim da exceção e volta à fila (10/10/2026)
+- **Entregue na exceção:** o CNPJ alfanumérico (#171), a I6 (#173, migração 0036, e #174, regras e telas) e a I7 (#175, migração 0037, e o PR das regras, fora da zona protegida). O detalhe está no diário do núcleo, `docs/diario-fase-1a.md`.
+- **O que muda para o Intelligence:**
+  - os códigos ficam em `app.os.codigo_falha_id`, `codigo_causa_id` e `codigo_solucao_id`, com o cadastro em `app.codigo_manutencao` e o tipo `falha`, `causa` ou `solucao`;
+  - a habilitação do módulo fica em `licenca.modulo`, e a regra de vigência em `moduloVigente`, no domínio;
+  - as chaves `inteligencia.*` só valem para o tenant com o módulo vigente. `montarInteligencia` já registra a extensão ligada ao módulo `inteligencia`;
+  - o job, quando for ligado, segue a mesma regra no tenant do job (adendo da I7 ao ADR-026, que aguarda a aprovação do Cesar).
+- **Ponto de retomada:**
+  1. adaptar o motor aos nomes reais da I6 e da I7, num PR fora de zona protegida;
+  2. seguir a fila de zona protegida, um PR por vez, conferindo antes que não há outro aberto: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job.
+  - Continua esperando o comentário do Kaio na issue #169.

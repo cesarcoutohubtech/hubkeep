@@ -83,18 +83,19 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
     // Um módulo de mentira: o domínio e o caso de uso não conhecem chave de módulo.
     comExtensao = criarCasosDeUsoDeConfiguracao({
       ...deps,
-      politicas: registroDePoliticas([
-        {
-          prefixo: 'modulo_teste.',
-          chaves: [EXTENSAO],
-          padrao: () => ({ limite: 70 }),
-          valido: (_c, v) =>
-            typeof v === 'object' &&
-            v !== null &&
-            Object.keys(v).length === 1 &&
-            Number.isInteger((v as { limite?: unknown }).limite),
-        },
-      ]),
+      politicas: async () =>
+        registroDePoliticas([
+          {
+            prefixo: 'modulo_teste.',
+            chaves: [EXTENSAO],
+            padrao: () => ({ limite: 70 }),
+            valido: (_c, v) =>
+              typeof v === 'object' &&
+              v !== null &&
+              Object.keys(v).length === 1 &&
+              Number.isInteger((v as { limite?: unknown }).limite),
+          },
+        ]),
     });
   });
 

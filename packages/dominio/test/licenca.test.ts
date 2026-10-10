@@ -4,9 +4,12 @@ import {
   contaComoHotel,
   contaComoUh,
   decidirAtivacao,
+  moduloVigente,
+  modulosVigentes,
   saldoDeHoteis,
   saldoDeUhs,
   statusDaUhNova,
+  vigenciaDeModuloValida,
 } from '../src/licenca';
 
 describe('licença de UHs', () => {
@@ -71,5 +74,48 @@ describe('licença de hotéis e ativação (fase 1a, A1)', () => {
       ativar: false,
       motivo: 'ja_ativo',
     });
+  });
+});
+
+describe('módulos contratados (I7)', () => {
+  const d = (iso: string) => new Date(iso);
+  const AGORA = d('2026-10-10T12:00:00Z');
+
+  it('vale de inicio (inclusive) até fim (exclusive); sem fim, vale desde o início', () => {
+    const v = { inicio: d('2026-10-01T00:00:00Z'), fim: d('2026-11-01T00:00:00Z') };
+    expect(moduloVigente(v, AGORA)).toBe(true);
+    expect(moduloVigente(v, v.inicio)).toBe(true);
+    expect(moduloVigente(v, v.fim)).toBe(false);
+    expect(moduloVigente(v, d('2026-09-30T23:59:59Z'))).toBe(false);
+    expect(moduloVigente({ inicio: v.inicio, fim: null }, d('2099-01-01T00:00:00Z'))).toBe(true);
+    expect(moduloVigente({ inicio: d('2026-10-11T00:00:00Z'), fim: null }, AGORA)).toBe(false);
+  });
+
+  it('vigência que se grava: datas válidas e fim depois do início', () => {
+    const inicio = d('2026-10-01T00:00:00Z');
+    expect(vigenciaDeModuloValida({ inicio, fim: null })).toBe(true);
+    expect(vigenciaDeModuloValida({ inicio, fim: d('2026-10-02T00:00:00Z') })).toBe(true);
+    expect(vigenciaDeModuloValida({ inicio, fim: inicio })).toBe(false);
+    expect(vigenciaDeModuloValida({ inicio, fim: d('2026-09-01T00:00:00Z') })).toBe(false);
+    expect(vigenciaDeModuloValida({ inicio: d('x'), fim: null })).toBe(false);
+    expect(vigenciaDeModuloValida({ inicio, fim: d('x') })).toBe(false);
+  });
+
+  it('os vigentes do tenant: módulo fora da lista ou vencido não vale (falha fechada)', () => {
+    const inicio = d('2026-01-01T00:00:00Z');
+    expect([...modulosVigentes([{ modulo: 'inteligencia', inicio, fim: null }], AGORA)]).toEqual([
+      'inteligencia',
+    ]);
+    expect(
+      modulosVigentes(
+        [
+          { modulo: 'inteligencia', inicio, fim: d('2026-10-10T12:00:00Z') },
+          { modulo: 'outro', inicio, fim: null },
+          { modulo: 'inteligencia', inicio: d('x'), fim: null },
+        ],
+        AGORA,
+      ).size,
+    ).toBe(0);
+    expect(modulosVigentes([], AGORA).size).toBe(0);
   });
 });
