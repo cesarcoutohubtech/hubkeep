@@ -518,14 +518,13 @@
       nome: "Intelligence", est: 40, run: async a => {
         await a.setup({ persona: "u1", hash: "#/inteligencia" });
         await a.say("A HubKeep Intelligence é um módulo opcional. Ela aponta onde agir primeiro, a partir dos dados de manutenção.");
-        await a.point(".insight", { ms: 2400 });
+        await a.point("#ia-lista tbody tr", { ms: 2400 });
         await a.say("Todo resultado mostra de onde veio: cada componente, o peso e a versão da política.");
-        await a.click(".insight .why", { ms: 900 });
-        await a.point(".why-b", { ms: 3000 });
+        await a.point("#ia-calc", { ms: 3000 });
         await a.say("Ela também mede se a intervenção resolveu, comparando 90 dias antes e 90 dias depois.");
         await a.point("#intel-ef table", { ms: 2600 });
         await a.say("E encontra o mesmo problema em vários hotéis, o que aponta para o modelo do equipamento, e não para a equipe.");
-        await a.point("#intel-sis", { ms: 2600 });
+        await a.point('#ia-lista tr[data-tipo="sistemico"]', { ms: 2600 });
       }
     },
     {
