@@ -226,7 +226,7 @@ function buildSeed() {
       calendario_comercial: CAL_COMERCIAL.slice(), expediente: "Segunda a sexta, 8h às 18h; sábado, 8h às 12h", feriados: "Nacionais, estaduais e municipais do hotel, e os cadastrados pelo próprio hotel",
       criticidade_nomes: { 5: "Crítico para a operação", 4: "Alto", 3: "Médio", 2: "Baixo", 1: "Mínimo" },
       codigos_obrigatorios: false,
-      inteligencia: { versao: "v2", limite_atencao: 70, janela_dias: 180, limite_horas_paradas: 48, limite_custo_12m: 10000,
+      inteligencia: { versao: "v2", limite_atencao: 70, janela_dias: 180, limite_horas_paradas: 48, limite_custo_12m: 10000, min_medicoes: 3,
         pesos: { reincidencia: 20, parada: 15, impacto_hospede: 15, criticidade: 15, custo: 10, preventiva_atrasada: 10, medicoes: 10, garantia: 5, uh_dias: 0 },
         efetividade: { janela_dias: 90, reducao_observada: 60, reducao_parcial: 25, aumento_observado: 20, min_chamados_antes: 3 },
         sistemico: { mesmo_modelo: { ativa: true, min_hoteis: 3, min_chamados: 6, min_ativos: 5, janela_dias: 90, taxa_vezes_base: 2, taxa_minima: 0.3 },
@@ -590,7 +590,7 @@ function buildSeed() {
       c.executado_por = usaForn ? { tipo: "fornecedor", fornecedor_id: f.id } : { tipo: "interna" };
     }
     if (c.status === "Encerrado") {
-      c.custo = c._custo || (c.executado_por && c.executado_por.tipo === "fornecedor" ? Math.round((600 + rnd2() * 5200) / 10) * 10 : rnd2() < 0.55 ? Math.round(rnd2() * 380 / 10) * 10 : 0);
+      c.custo = c._custo || (c.executado_por && c.executado_por.tipo === "fornecedor" ? Math.round((600 + rnd2() * 5200) / 10) * 10 : rnd2() < 0.55 ? Math.round(rnd2() * 380 / 10) * 10 : null);
       const cd = codDe(c.categoria_id);
       if (c._codigo) c.codigos = { falha: c._codigo[0], causa: c._codigo[1], solucao: c._codigo[2] };
       else if (rnd2() < 0.62) c.codigos = { falha: pick2(cd.falha), causa: pick2(cd.causa), solucao: pick2(cd.solucao) };
@@ -648,6 +648,6 @@ function buildSeed() {
   auditoria.sort((a, b) => b.t.localeCompare(a.t));
 
   integracao.fichas = fichas;
-  return { versao: 8, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
+  return { versao: 9, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
     fornecedores, codigos, responsabilidade, pacotes, aberturas };
 }

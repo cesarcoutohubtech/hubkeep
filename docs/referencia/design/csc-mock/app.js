@@ -21,7 +21,7 @@ const UI = {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 8) { DB = d; } }
+    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 9) { DB = d; } }
     const p = localStorage.getItem(PERSONA_KEY); if (p) UI.persona = p;
     const th = localStorage.getItem(THEME_KEY); if (th) UI.theme = th;
   } catch (e) { /* armazenamento indisponível: segue com seed em memória */ }
@@ -525,7 +525,7 @@ function drawerChamado(c) {
       <dt>Técnico</dt><dd>${ed ? `<span class="row"><select id="atrib" aria-label="Técnico"><option value="">Selecionar</option>${tecs.map(x => `<option value="${x.id}" ${x.id === c.tecnico_id ? "selected" : ""}>${esc(x.nome)} (${esc(x.especialidade)})</option>`).join("")}</select><button class="btn sm" data-act="atribuir" data-id="${c.id}">Atribuir</button></span>` : esc(c.tecnico_id ? nomeUser(c.tecnico_id) : "—")}</dd>
       ${c.executado_por ? `<dt>Executado por</dt><dd>${esc(nomeExec(c.executado_por))}</dd>` : ""}
       ${c.responsavel_custo ? `<dt>Responsável pelo custo</dt><dd><span class="badge ${c.responsavel_custo === "Locador" ? "b-blue" : "b-grey"}">${esc(c.responsavel_custo)}</span> <span class="muted small">matriz do arrendamento${c.locador_notificado_em ? `, locador notificado em ${fmtDT(c.locador_notificado_em)}` : ""}</span></dd>` : ""}
-      ${c.status === "Encerrado" ? `<dt>Custo informado</dt><dd>${c.custo ? brl(c.custo) : "Sem custo"}</dd>${cod ? `<dt>Códigos</dt><dd class="small">Falha: ${esc(cod.falha)}. Causa: ${esc(cod.causa)}. Solução: ${esc(cod.solucao)}.</dd>` : ""}` : ""}
+      ${c.status === "Encerrado" ? `<dt>Custo informado</dt><dd>${c.custo != null ? brl(c.custo) : "Não informado"}</dd>${cod ? `<dt>Códigos</dt><dd class="small">Falha: ${esc(cod.falha)}. Causa: ${esc(cod.causa)}. Solução: ${esc(cod.solucao)}.</dd>` : ""}` : ""}
     </dl>
     ${uh ? `<div class="readonly-note">${icon("integ")}<span>Status da UH lido do PMS há ${rel(DB.integracao.views[2].ultima).replace("há ", "")}. A Central só lê o PMS: o bloqueio da UH continua sendo feito no PMS pela recepção.</span></div>` : ""}
     ${l.tipo === "uh" && c.status !== "Cancelado" && (ui || ed) ? `<div class="parada ${ui && !ui.fim ? "on" : ""}" id="uh-indisp"><div><strong>${ui ? (ui.fim ? "UH ficou indisponível" : "UH indisponível") : "UH disponível"}</strong><div class="small muted">${ui ? `${ui.fim ? `De ${fmtDT(ui.inicio)} a ${fmtDT(ui.fim)}` : `Desde ${fmtDT(ui.inicio)}`}: ${dur(uiH)}. Conta em UH-dias perdidos por manutenção.` : "Registre se a UH saiu de venda por causa deste problema."}</div></div>${ed ? `<button class="btn sm" data-act="uh-indisp" data-id="${c.id}">${ui && !ui.fim ? "Registrar UH liberada" : ui ? "Reabrir período" : "Registrar UH indisponível"}</button>` : ""}</div>` : ""}
@@ -681,7 +681,7 @@ function modalAceite(c) {
       <p class="small muted" style="margin-top:0">${esc(c.titulo)}. ${esc(IDX.hotel[c.hotel_id].nome)}, ${esc(IDX.local[c.local_id].nome)}.</p>
       <div class="two">
         <div class="field"><label for="ac-exec">Executado por</label><select id="ac-exec"><option value="interna" ${ex.tipo === "interna" ? "selected" : ""}>Equipe interna${c.tecnico_id ? " (" + esc(nomeUser(c.tecnico_id)) + ")" : ""}</option>${forns.map(f => `<option value="${f.id}" ${ex.fornecedor_id === f.id ? "selected" : ""}>${esc(f.nome)}</option>`).join("")}</select></div>
-        <div class="field"><label for="ac-custo">Custo informado (R$)</label><input id="ac-custo" type="number" min="0" step="10" inputmode="decimal" placeholder="0"></div>
+        <div class="field"><label for="ac-custo">Custo informado (R$)</label><input id="ac-custo" type="number" min="0" step="10" inputmode="decimal" aria-describedby="ac-custo-d"><div class="small muted" id="ac-custo-d" style="margin-top:4px">Em branco, fica como não informado; 0 é custo zero.</div></div>
       </div>
       <div class="field"><label>Códigos de manutenção ${obrig ? "(obrigatórios pela política)" : "(opcionais pela política)"}</label><div class="three">${sel("ac-falha", cd.falha)}${sel("ac-causa", cd.causa)}${sel("ac-sol", cd.solucao)}</div><div class="small muted" style="margin-top:4px">Falha, causa e solução, do catálogo de ${esc(catNome(c.categoria_id).toLowerCase())}.</div></div>
       <div class="field"><label for="ac-sig">Assinatura de quem aceita: ${esc(c.solicitante === "Hóspede (via recepção)" ? "Recepção" : c.solicitante)}</label><canvas id="ac-sig" class="sig-pad" width="640" height="180" aria-label="Área para assinatura"></canvas><div class="row" style="justify-content:space-between"><span class="small muted">Assine com o dedo no celular ou com o mouse.</span><button class="btn sm" data-act="ac-limpar" type="button">Limpar</button></div></div>
@@ -703,13 +703,14 @@ function salvarAceite(c) {
   const falha = $("#ac-falha").value, causa = $("#ac-causa").value, solu = $("#ac-sol").value;
   if (obrig && !(falha && causa && solu)) { toast("A política exige falha, causa e solução para encerrar"); return false; }
   if (!cv.dataset.ok) { toast("Peça a assinatura de quem está aceitando o serviço"); return false; }
-  const exv = $("#ac-exec").value, custo = parseFloat($("#ac-custo").value) || 0;
+  const exv = $("#ac-exec").value, bruto = $("#ac-custo").value.trim(), custo = bruto === "" ? null : parseFloat(bruto);
+  if (custo !== null && !(custo >= 0)) { toast("Informe um custo de zero ou mais, ou deixe em branco"); return false; }
   c.executado_por = exv === "interna" ? { tipo: "interna" } : { tipo: "fornecedor", fornecedor_id: exv };
   c.custo = custo; if (falha || causa || solu) c.codigos = { falha: falha || "—", causa: causa || "—", solucao: solu || "—" };
   const quem = c.solicitante === "Hóspede (via recepção)" ? "Recepção" : c.solicitante;
   c.aceite = { t: new Date().toISOString(), por: quem, assinatura: true, img: cv.toDataURL("image/png") };
   const o = DB.os.find(x => x.chamado_id === c.id); if (o) o.executado_por = c.executado_por;
-  logEvent(c, "sistema", `Aceite assinado por ${quem}. Executado por ${nomeExec(c.executado_por)}${custo ? ", custo informado de " + brl(custo) : ", sem custo"}`);
+  logEvent(c, "sistema", `Aceite assinado por ${quem}. Executado por ${nomeExec(c.executado_por)}${custo !== null ? ", custo informado de " + brl(custo) : ", custo não informado"}`);
   setStatus(c, "Encerrado"); save(); return true;
 }
 function closeModal() { const m = document.querySelector(".modal-bg"); if (m) m.remove(); }
@@ -1279,8 +1280,9 @@ function pageIndicadores() {
 }
 
 /* ---------- HubKeep Intelligence (módulo opcional) ---------- */
-/* Fórmulas do 1.0 aprovadas em 08/10/2026 (packages/inteligencia): atenção v2, reincidência v1, efetividade v2 e
-   padrão sistêmico v2. O cálculo é repetido aqui em JavaScript só para a demonstração; os dados são fictícios. */
+/* Fórmulas do 1.0 aprovadas em 08/10/2026, com as respostas aprovadas em 10/10/2026 (packages/inteligencia): atenção v2,
+   reincidência v1, efetividade v2 e padrão sistêmico v2. O cálculo é repetido aqui em JavaScript só para a demonstração;
+   os dados são fictícios. */
 const IA_FAIXAS = [[0, "Normal"], [30, "Observar"], [50, "Atenção"], [70, "Alta atenção"], [85, "Crítico"]];
 const iaFaixa = v => v === null ? "Dados insuficientes" : IA_FAIXAS.filter(f => v >= f[0]).pop()[1];
 const iaRazao = (x, ref) => ref > 0 ? Math.min(1, Math.max(0, x / ref)) : x > 0 ? 1 : 0;
@@ -1310,31 +1312,50 @@ function iaReincidencia(a, now) {
     { k: "apos_preventiva", peso: 0.10, valor: null, medido: "Sem dado" }
   ]);
 }
+/* Disponibilidade de cada componente da atenção (respostas aprovadas em 10/10/2026):
+   - tempo parado e impacto no hóspede sempre disponíveis: o que não foi marcado é "não teve";
+   - garantia sem a data conta como não vencida;
+   - custo informado vale quando pelo menos 50% das corretivas encerradas do grupo, em 12 meses, têm o custo (fixo na
+     fórmula); abaixo disso, sem dado em todos os hotéis. Disponível, o ativo soma só as corretivas com o dado;
+   - medições valem nos ativos das categorias com item de medição no plano; abaixo do mínimo da política, contribuem 0. */
+const IA_MIN_CUSTO_NO_GRUPO = 0.5;
+function iaCustoNoGrupo(now) {
+  const enc = DB.chamados.filter(c => c.status === "Encerrado" && c.encerrado_em && t(c.encerrado_em) > now - 365 * D && t(c.encerrado_em) <= now);
+  const inf = enc.filter(c => c.custo != null).length;
+  return { enc: enc.length, inf, pct: enc.length ? Math.round(inf / enc.length * 1000) / 10 : null, ok: enc.length > 0 && inf / enc.length >= IA_MIN_CUSTO_NO_GRUPO };
+}
+const iaCategoriaComMedicao = cat => DB.planos.some(p => p.categoria_id === cat && p.checklist.some(i => i.tipo === "medicao"));
 function intelAtivo(a) {
   const pol = polGrupo().inteligencia, P = pol.pesos, now = Date.now(), d90 = now - 90 * D, d12m = now - 365 * D;
-  const rei = iaReincidencia(a, now);
+  const rei = iaReincidencia(a, now), grupo = iaCustoNoGrupo(now), minMed = pol.min_medicoes || 3;
   const chs = DB.chamados.filter(c => c.ativo_id === a.id && c.status !== "Cancelado"), ch90 = chs.filter(c => t(c.aberto_em) > d90);
   const horas = DB.ativo_parada.filter(p => p.ativo_id === a.id).reduce((s, p) => s + sobreposicaoH(t(p.inicio), p.fim ? t(p.fim) : now, d90, now), 0);
-  const imp = ch90.length ? Math.round(ch90.filter(c => c.impacto_hospede).length / ch90.length * 100) : null;
-  const inf = chs.filter(c => c.status === "Encerrado" && c.custo != null && t(c.encerrado_em) > d12m), custo = inf.length ? inf.reduce((s, c) => s + c.custo, 0) : null;
+  const imp = ch90.length ? Math.round(ch90.filter(c => c.impacto_hospede === true).length / ch90.length * 100) : 0;
+  const encA = chs.filter(c => c.status === "Encerrado" && c.encerrado_em && t(c.encerrado_em) > d12m), infA = encA.filter(c => c.custo != null);
+  const custo = grupo.ok ? infA.reduce((s, c) => s + c.custo, 0) : null;
   const prevs = DB.os.filter(o => o.origem === "preventiva" && o.ativo_id === a.id), atras = prevs.length ? prevs.some(o => o.status === "Atrasada") : null;
   let med = 0, fora = 0;
   prevs.filter(o => o.status === "Concluída" && o.fim && t(o.fim) > d90).forEach(o => o.checklist.filter(c => c.tipo === "medicao").forEach(c => { med++; if (c.fora) fora++; }));
-  const garV = a.garantia_ate ? t(a.garantia_ate) < now : null, garDias = garV ? Math.floor((now - t(a.garantia_ate)) / D) : 0;
+  const comMed = iaCategoriaComMedicao(a.categoria_id), poucas = comMed && med < minMed;
+  const garV = a.garantia_ate ? t(a.garantia_ate) < now : false, garDias = garV ? Math.floor((now - t(a.garantia_ate)) / D) : 0;
   const sc = iaCombinar([
     { k: "reincidencia", nome: "Reincidência de falhas", peso: P.reincidencia / 100, valor: rei.valor === null ? null : rei.valor / 100, medido: rei.valor === null ? "Sem dado" : `Reincidência de falhas em ${rei.valor}` },
     { k: "parada", nome: "Tempo parado", peso: P.parada / 100, valor: iaRazao(horas, pol.limite_horas_paradas), medido: `${fmt1(horas)} horas parado na janela` },
-    { k: "impacto_hospede", nome: "Impacto em hóspedes", peso: P.impacto_hospede / 100, valor: imp === null ? null : iaRazao(imp, 100), medido: imp === null ? "Sem dado" : `${imp}% dos chamados afetaram hóspedes` },
+    { k: "impacto_hospede", nome: "Impacto em hóspedes", peso: P.impacto_hospede / 100, valor: iaRazao(imp, 100), medido: ch90.length ? `${imp}% dos chamados afetaram hóspedes; o que não foi marcado conta como não` : "Nenhum chamado na janela" },
     { k: "criticidade", nome: "Criticidade", peso: P.criticidade / 100, valor: a.criticidade ? iaRazao(a.criticidade, 5) : null, medido: a.criticidade ? `Criticidade ${a.criticidade} de 5` : "Sem dado" },
-    { k: "custo", nome: "Custo informado", peso: P.custo / 100, valor: custo === null ? null : iaRazao(custo, pol.limite_custo_12m), medido: custo === null ? "Sem dado" : `Custo informado de ${brl(custo)} em 12 meses` },
+    { k: "custo", nome: "Custo informado", peso: P.custo / 100, valor: custo === null ? null : iaRazao(custo, pol.limite_custo_12m),
+      medido: custo === null ? `O custo foi informado em ${grupo.pct === null ? 0 : fmt1(grupo.pct)}% das corretivas encerradas do grupo nos últimos 12 meses, menos que os ${IA_MIN_CUSTO_NO_GRUPO * 100}% necessários: sem dado em todos os hotéis`
+        : `Custo informado de ${brl(custo)} em 12 meses; custo informado em ${infA.length} de ${encA.length} ${encA.length === 1 ? "corretiva encerrada" : "corretivas encerradas"}` },
     { k: "preventiva_atrasada", nome: "Preventiva atrasada", peso: P.preventiva_atrasada / 100, valor: atras === null ? null : atras ? 1 : 0, medido: atras === null ? "Sem dado" : atras ? "Preventiva atrasada" : "Preventivas em dia" },
-    { k: "medicoes", nome: "Medições fora da faixa", peso: P.medicoes / 100, valor: med ? iaRazao(fora, med) : null, medido: med ? `${fora} ${fora === 1 ? "medição" : "medições"} fora da faixa, entre ${med} feitas` : "Sem dado" },
-    { k: "garantia", nome: "Garantia vencida", peso: P.garantia / 100, valor: garV === null ? null : garV ? 1 : 0, medido: garV === null ? "Sem dado" : garV ? `Garantia vencida há ${garDias} ${garDias === 1 ? "dia" : "dias"}` : "Garantia vigente" },
+    { k: "medicoes", nome: "Medições fora da faixa", peso: P.medicoes / 100, valor: !comMed ? null : poucas ? 0 : iaRazao(fora, med),
+      medido: !comMed ? "O plano da categoria não tem item de medição" : poucas ? `${med === 0 ? "Nenhuma medição" : med === 1 ? "1 medição" : med + " medições"} na janela, abaixo do mínimo de ${minMed}: o componente conta 0` : `${fora} ${fora === 1 ? "medição" : "medições"} fora da faixa, entre ${med} feitas` },
+    { k: "garantia", nome: "Garantia vencida", peso: P.garantia / 100, valor: garV ? 1 : 0, medido: !a.garantia_ate ? "Sem a data de fim da garantia: conta como não vencida" : garV ? `Garantia vencida há ${garDias} ${garDias === 1 ? "dia" : "dias"}` : "Garantia vigente" },
     { k: "uh_dias", nome: "UH-dias indisponíveis", peso: P.uh_dias / 100, valor: null, medido: "Sem origem do dado ainda" }
   ]);
   return { a, comp: sc.comp, score: sc.valor, faixa: sc.faixa, n90: ch90.length };
 }
-/* Efetividade v2: a mesma janela antes e depois da intervenção. Fala em variação observada, nunca em causa. */
+/* Efetividade v2: a mesma janela antes e depois da intervenção. Fala em variação observada, nunca em causa.
+   Sem base de comparação prevalece sobre janela incompleta (10/10/2026): é definitivo no dia da intervenção. */
 const IA_EF = { reducao_observada: ["Redução observada", "b-green"], reducao_parcial: ["Redução parcial", "b-amber"], sem_mudanca_relevante: ["Sem mudança relevante", "b-grey"], aumento_observado: ["Aumento observado", "b-red"], sem_base_de_comparacao: ["Sem base de comparação", "b-grey"], janela_incompleta: ["Janela incompleta", "b-blue"] };
 function efetividade(scopeChs) {
   const pol = polGrupo().inteligencia.efetividade, now = Date.now(), J = pol.janela_dias * D;
@@ -1345,8 +1366,8 @@ function efetividade(scopeChs) {
     const ch = par(cor.filter(x => t(x.aberto_em) >= t0 - J && t(x.aberto_em) < t0).length, cor.filter(x => t(x.aberto_em) >= t0 && t(x.aberto_em) < fimD).length), hr = par(hp(t0 - J, t0), hp(t0, fimD));
     const dias = Math.max(0, Math.floor((now - t0) / D));
     let r, expl;
-    if (now < t0 + J) { r = "janela_incompleta"; expl = `Passaram ${dias} de ${pol.janela_dias} dias depois da intervenção.`; }
-    else if (ch.v === null || ch.antes < pol.min_chamados_antes) { r = "sem_base_de_comparacao"; expl = `Houve menos de ${pol.min_chamados_antes} chamados nos ${pol.janela_dias} dias antes da intervenção.`; }
+    if (ch.v === null || ch.antes < pol.min_chamados_antes) { r = "sem_base_de_comparacao"; expl = `Houve menos de ${pol.min_chamados_antes} chamados nos ${pol.janela_dias} dias antes da intervenção. Esse resultado já vale no dia da intervenção e não muda quando a janela terminar.`; }
+    else if (now < t0 + J) { r = "janela_incompleta"; expl = `Passaram ${dias} de ${pol.janela_dias} dias depois da intervenção.`; }
     else if (-ch.v >= pol.reducao_observada) { r = "reducao_observada"; expl = `Os chamados caíram ${pol.reducao_observada}% ou mais em relação aos ${pol.janela_dias} dias antes.`; }
     else if (-ch.v >= pol.reducao_parcial) { r = "reducao_parcial"; expl = `Os chamados caíram de ${pol.reducao_parcial}% a menos de ${pol.reducao_observada}% em relação aos ${pol.janela_dias} dias antes.`; }
     else if (ch.v >= pol.aumento_observado) { r = "aumento_observado"; expl = `Os chamados subiram ${pol.aumento_observado}% ou mais em relação aos ${pol.janela_dias} dias antes.`; }
@@ -1357,6 +1378,8 @@ function efetividade(scopeChs) {
 /* Padrão sistêmico v2: só o mesmo modelo vem ligado por padrão; as outras quatro regras ficam desligadas pela política (`ativa`).
    O mesmo modelo agrupa por categoria, fabricante e modelo e pede 3 hotéis, 6 chamados em 90 dias e 5 ativos; a taxa (chamados por
    ativo instalado) precisa ser de pelo menos o dobro da base, os outros modelos da mesma categoria, e nunca menos de 0,3.
+   Respostas de 10/10/2026: fabricante e modelo sem maiúsculas, acentos e espaços extras; o ativo baixado antes do início da
+   janela (`desativado_em`) não conta, nem no modelo nem na base; sem outro modelo na categoria, a regra não dispara.
    O resultado é sempre "possível": só uma pessoa confirma. */
 function padraoSistemico(ativos, chs) {
   const pol = polGrupo().inteligencia.sistemico, now = Date.now(), uni = xs => [...new Set(xs)];
@@ -1367,17 +1390,20 @@ function padraoSistemico(ativos, chs) {
   const agrupar = (lista, chave) => { const m = {}; lista.forEach(c => { const k = chave(c); if (k !== null) (m[k] = m[k] || []).push(c); }); return Object.entries(m); };
   const hoteisDe = cs => uni(cs.map(c => c.hotel_id)), sinais = [];
   /* Mesmo modelo: ativo sem categoria, fabricante ou modelo fica fora da conta, inclusive da base. */
-  const mm = pol.mesmo_modelo, n2 = x => (Math.round(x * 100) / 100).toLocaleString("pt-BR"), norm = s => (s || "").trim().replace(/\s+/g, " ").toLowerCase();
+  const mm = pol.mesmo_modelo, n2 = x => (Math.round(x * 100) / 100).toLocaleString("pt-BR"), norm = s => (s || "").normalize("NFD").replace(/\p{M}/gu, "").trim().replace(/\s+/g, " ").toLowerCase();
   const grupoDe = a => a && a.categoria_id && norm(a.fabricante) && norm(a.modelo) ? a.categoria_id + "#" + norm(a.fabricante) + "|" + norm(a.modelo) : null;
   if (mm.ativa) {
-    const inst = {}, cat = {};
-    ativos.forEach(a => { const g = grupoDe(a); if (!g) return; inst[g] = (inst[g] || 0) + 1; (cat[a.categoria_id] = cat[a.categoria_id] || { ativos: 0, chamados: 0 }).ativos++; });
-    const porModelo = agrupar(validos.filter(jan(mm.janela_dias)), c => grupoDe(c.ativo_id && at(c.ativo_id)));
+    const inst = {}, cat = {}, iniMM = now - mm.janela_dias * D, naJanelaMM = a => !a.desativado_em || t(a.desativado_em) > iniMM;
+    const doMM = new Set(ativos.filter(naJanelaMM).map(a => a.id));
+    ativos.filter(naJanelaMM).forEach(a => { const g = grupoDe(a); if (!g) return; inst[g] = (inst[g] || 0) + 1; (cat[a.categoria_id] = cat[a.categoria_id] || { ativos: 0, chamados: 0 }).ativos++; });
+    const porModelo = agrupar(validos.filter(jan(mm.janela_dias)), c => grupoDe(c.ativo_id && doMM.has(c.ativo_id) && at(c.ativo_id)));
     porModelo.forEach(([k, cs]) => { const c0 = cat[at(cs[0].ativo_id).categoria_id]; if (c0) c0.chamados += cs.length; });
     porModelo.forEach(([k, cs]) => {
       const a0 = at(cs[0].ativo_id), dist = uni(cs.map(c => c.ativo_id)).length, hs = hoteisDe(cs), c0 = cat[a0.categoria_id] || { ativos: 0, chamados: 0 };
       if (hs.length < mm.min_hoteis || cs.length < mm.min_chamados || dist < mm.min_ativos) return;
-      const doModelo = inst[k] || 0, taxa = cs.length / Math.max(doModelo, dist), ativosBase = c0.ativos - doModelo, base = ativosBase > 0 ? (c0.chamados - cs.length) / ativosBase : 0;
+      const doModelo = inst[k] || 0, taxa = cs.length / Math.max(doModelo, dist), ativosBase = c0.ativos - doModelo;
+      if (ativosBase <= 0) return; // sem outro modelo na categoria, não há com o que comparar
+      const base = (c0.chamados - cs.length) / ativosBase;
       if (taxa < Math.max(mm.taxa_minima, mm.taxa_vezes_base * base)) return;
       sinais.push({ regra: "Mesmo modelo com muitos chamados", n: cs.length, hoteis: hs, titulo: `${a0.fabricante} ${a0.modelo}`, quem: `Categoria: ${nome(a0.categoria_id)}`,
         evid: `${cs.length} chamados em ${dist} ativos do mesmo modelo, em ${hs.length} hotéis, nos últimos ${mm.janela_dias} dias: ${n2(taxa)} por ativo, contra ${n2(base)} nos outros modelos da mesma categoria.` });
@@ -1451,7 +1477,7 @@ function pageInteligencia() {
     </div>
   </div>
   <div class="panel" style="margin-top:16px" id="intel-ef"><div class="panel-h"><h2>Efetividade das intervenções</h2><span class="hint">Chamados no mesmo ativo, ${polGrupo().inteligencia.efetividade.janela_dias} dias antes e ${polGrupo().inteligencia.efetividade.janela_dias} dias depois</span></div><div class="panel-b table-wrap"><table><thead><tr><th>Intervenção</th><th>Ativo</th><th>Quando</th><th class="num">Chamados antes</th><th class="num">Chamados depois</th><th class="num">Horas paradas</th><th>Variação observada</th></tr></thead><tbody>
-    ${ef.map(e => `<tr class="click" data-act="open-ch" data-id="${e.c.id}"><td>${esc(e.c.titulo)}<div class="small muted">${esc(nomeExec(e.c.executado_por))}${e.c.custo ? ", " + brl(e.c.custo) : ""}</div></td><td class="small">${esc(IDX.ativo[e.c.ativo_id].nome)}<div class="muted">${esc(IDX.hotel[e.c.hotel_id].nome)}</div></td><td class="small">${fmtD(e.c.encerrado_em)}</td><td class="num">${e.ch.antes}</td><td class="num">${e.ch.depois}${e.completa ? "" : '<div class="small muted">janela em curso</div>'}</td><td class="num small">${fmt1(e.hr.antes)} → ${fmt1(e.hr.depois)}</td><td><span class="badge ${e.res[1]}">${e.res[0]}</span><div class="small muted" style="max-width:34ch">${esc(e.expl)}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Nenhuma intervenção marcada no seu escopo.</td></tr>`}
+    ${ef.map(e => `<tr class="click" data-act="open-ch" data-id="${e.c.id}"><td>${esc(e.c.titulo)}<div class="small muted">${esc(nomeExec(e.c.executado_por))}${e.c.custo != null ? ", " + brl(e.c.custo) : ""}</div></td><td class="small">${esc(IDX.ativo[e.c.ativo_id].nome)}<div class="muted">${esc(IDX.hotel[e.c.hotel_id].nome)}</div></td><td class="small">${fmtD(e.c.encerrado_em)}</td><td class="num">${e.ch.antes}</td><td class="num">${e.ch.depois}${e.completa ? "" : '<div class="small muted">janela em curso</div>'}</td><td class="num small">${fmt1(e.hr.antes)} → ${fmt1(e.hr.depois)}</td><td><span class="badge ${e.res[1]}">${e.res[0]}</span><div class="small muted" style="max-width:34ch">${esc(e.expl)}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Nenhuma intervenção marcada no seu escopo.</td></tr>`}
   </tbody></table><p class="small muted" style="margin:10px 0 0">É a variação observada nos chamados depois da intervenção. Ela não prova que a intervenção foi a causa.</p></div></div>`;
 }
 
