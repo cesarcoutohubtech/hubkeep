@@ -544,3 +544,61 @@ Pedido do Kaio de 09/10/2026, depois do merge do #151 (I4) e do #152 (telas). PR
 ### Ponto de retomada (09/10/2026)
 - **Esperando o núcleo:** a I6 (códigos de manutenção, `codigoFalha`) e a I7 (módulos). Depois da I7, a fila de zona protegida abre para o `int-adr-aceite` e as tabelas do Intelligence, uma por vez.
 - **A ligação do job** (a camada que lê o banco e monta a `Corretiva`) ainda não existe: é ela que vai ler as colunas acima e converter o custo. Entra com a `app.insight`.
+
+## Respostas do Kaio às confirmações de 08/10 (10/10/2026)
+
+As seis leituras que os PRs de 08/10 (#142, #144 e #145) deixaram para o Cesar confirmar. O Kaio respondeu às seis e pediu o registro como **aprovado por Kaio, aguardando Cesar**. Canal: o chat deste agente, colado pelo usuário em 10/10/2026. **Nada disso foi implementado:** o motor só muda depois do ok do Cesar.
+
+### Texto do Kaio (sem alteração)
+
+> 1. São oito componentes com peso mais os UH-dias com peso 0 (nove no motor); o texto "oito" foi redação.
+> 2. Medições fora da faixa como fração, com mínimo de 3 medições na janela.
+> 3. Componente disponível quando pelo menos 50% das corretivas encerradas do tenant na janela têm o dado; abaixo disso, sem dado para todos.
+> 4. "Sem base" prevalece sobre "janela incompleta".
+> 5. Mesmo modelo: fabricante e modelo sem maiúsculas, acentos e espaços nas pontas; ativo sem modelo fica fora.
+> 6. A primeira versão gravada da atenção é a 2; a versão 1 nunca foi gravada.
+
+### As seis, com as razões do Kaio e o que muda no motor depois do ok do Cesar
+
+Status de cada uma: aprovado por Kaio, aguardando Cesar.
+
+1. **Oito ou nove componentes.** O Kaio explicou que a diferença veio da redação do texto que ele sugeriu ao Cesar. A proposta aprovada tem oito componentes com peso e os UH-dias com peso 0, e o motor conta nove. O conteúdo é o mesmo, então só a redação muda. A nota do agente no texto do Cesar de 08/10 ("a confirmar com o Cesar") fica respondida por esta linha.
+   - **No motor:** nada muda. O comentário do `atencao.ts` já diz "nove componentes, oito com peso e UH-dias com peso 0".
+2. **Medições fora da faixa como fração, com mínimo de 3 na janela.** Para o Kaio, a fração é mais justa que a contagem com o ativo que tem muitos itens de checklist. Com menos de 3 medições na janela, o componente fica sem dado.
+   - **No motor:** a fração já é o que ele calcula. O mínimo não existe: hoje uma medição basta, e só zero medição deixa o componente sem dado.
+   - **Pergunta do agente, para a implementação:** o mínimo de 3 fica fixo na fórmula ou vira campo da política `inteligencia.atencao_ativo`?
+3. **"Tenant inteiro".** O componente conta como disponível quando pelo menos 50% das corretivas encerradas do tenant, na janela, têm o dado preenchido. Abaixo disso, fica sem dado para todos os hotéis, e o peso vai para os outros componentes. O Kaio explicou o motivo: assim um hotel que preenche e outro que não preenche não ficam com pesos diferentes.
+   - **No motor:** é outro desenho. Hoje o peso sem dado é redistribuído ativo a ativo, e era essa a leitura que o PR #142 deixou para confirmar. A mudança pede no `calcularDia` a conta das corretivas encerradas do tenant na janela, com e sem cada dado.
+   - **Perguntas do agente, para a implementação:**
+     - A regra vale para quais componentes? Minha leitura são os que vêm da corretiva encerrada: impacto no hóspede e custo informado. Fica a confirmar se vale também para o tempo parado.
+     - Quando o componente está disponível no tenant, que valor tem o ativo cujas corretivas não têm o dado? Zero, ou sem dado só para aquele ativo?
+4. **"Sem base de comparação" prevalece sobre "janela incompleta"** quando os dois valem. Pela explicação do Kaio, o resultado já é definitivo no dia da intervenção: menos de 3 chamados antes nunca vira uma comparação válida, por mais que a janela termine.
+   - **No motor:** inverte a ordem de hoje. Hoje `janela_incompleta` vale primeiro (`efetividade.ts`), por escolha minha no #144.
+   - **Nota do agente:** a efetividade é calculada sob demanda e nada dela foi gravado. Pela regra do adendo ("mudou a fórmula depois da primeira gravação, sobe a versão"), a versão continua 2. Fica a confirmar com o Cesar junto com o resto.
+5. **Mesmo modelo.** Fabricante e modelo são comparados sem diferenciar maiúsculas, acentos e espaços nas pontas. Ativo sem modelo fica fora da regra.
+   - **No motor:** o `chaveDeModelo` (`historico.ts`) já tira os espaços das pontas, junta os espaços repetidos do meio e ignora maiúsculas. Ativo sem fabricante ou modelo já fica de fora. Falta tirar os acentos.
+   - **Pergunta do agente, para a implementação:** os espaços repetidos do meio continuam juntados? O Kaio falou só das pontas.
+   - **Nota do agente:** o Kaio disse "se a pergunta do Code era outra, me traga o detalhe". O PR #145 deixou outras quatro leituras do mesmo modelo para confirmar (diário de 08/10, "Leituras minhas, a confirmar"):
+     - "ativo instalado" são todos os ativos do modelo que o motor recebe;
+     - o ativo sem categoria, fabricante ou modelo fica fora da conta, inclusive da base;
+     - sem outros modelos na categoria, a base é 0 e vale só o mínimo de 0,3;
+     - "3 hotéis" são os hotéis com chamado do modelo na janela.
+
+     A resposta cobre a segunda, em parte, porque fala do ativo sem modelo. As outras três seguem a confirmar.
+6. **"Versão 1 nunca gravada".** A numeração continua, e a primeira versão gravada da atenção é a 2. A 1 existe no texto do ADR-034, e renumerar só confunde. Este diário registra que a versão 1 nunca foi gravada: ela existiu só no código e nos testes, antes das tabelas do ADR-036.
+   - **No motor:** nada muda. É o que o código e o rascunho dos adendos já diziam.
+
+### Onde mais ficou registrado
+- **Rascunho dos adendos ao ADR-034 e ao ADR-036**, no `int-rascunhos` (`rascunhos/adr/adendos-adr-034-e-036.md`, `3b9eeff`): as seis respostas entraram no texto, cada uma com a marca "aprovado por Kaio, aguardando Cesar". O que estava escrito do jeito antigo foi trocado pelas respostas, e o adendo diz o que ainda é pergunta.
+
+### Ponto de retomada (10/10/2026)
+- **Esperando o Cesar:**
+  - o ok às seis respostas acima;
+  - as perguntas do agente para a implementação:
+    - o mínimo de medições fixo ou na política;
+    - os componentes da regra dos 50% e o valor do ativo sem o dado;
+    - os espaços do meio no mesmo modelo;
+    - as três leituras do mesmo modelo ainda abertas.
+  - Com o ok, a implementação entra num PR fora de zona protegida.
+- **Esperando o Kaio:** o canal da aprovação do Cesar de 08/10.
+- **Esperando o núcleo:** a I6 e a I7. Depois da I7, a fila de zona protegida abre para o `int-adr-aceite` e as tabelas do Intelligence, uma por vez.
