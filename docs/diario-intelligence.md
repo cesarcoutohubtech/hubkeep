@@ -809,3 +809,46 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
 - **Esperando o Cesar:** o comentário na issue #166, com os itens marcados.
 - **Esperando o Kaio:** o canal das aprovações do Cesar de 08/10 e de 10/10.
 - **Esperando o núcleo:** a I6 e a I7. Depois, o `int-adr-aceite` e as tabelas do Intelligence.
+
+## Aprovação do Cesar aos itens da issue #166 (10/10/2026)
+
+- **Aprovação:** o Cesar escreveu no corpo do #167 (https://github.com/cesarcoutohubtech/hubkeep/pull/167), em 10/10/2026: "Eu Cesar aprovo a continuidade nos trabalhos".
+  - Confirmado no chat deste agente, no mesmo dia, que a frase vale para os 17 itens da issue #166 (https://github.com/cesarcoutohubtech/hubkeep/issues/166).
+  - A #166 foi fechada apontando para o #167, com as caixas marcadas.
+- **Itens aprovados, todos os 17; nenhum ficou de fora:**
+  - **06/10:** hotel novo num insight de rede, na variante (c). Isso confirma que a aprovação de 07/10 vale para a variante (c).
+  - **07/10:**
+    - as correções do `docs/03` no `int-adr-aceite`: ADR-033 com a variante (c) e o motivo do descarte; ADR-035 com a validação entre chaves; ADR-036 com o aceite do Kaio;
+    - os UH-dias como componente da atenção, com peso 0;
+    - o painel mostra o resultado original gravado de cada dia.
+  - **10/10:**
+    - os 50% do custo informado ficam fixos na fórmula;
+    - as seis decisões das telas do 1.0;
+    - a vitrine de 07/10 sai do `int-rascunhos`;
+    - a efetividade aparece em três lugares;
+    - "Próximas versões" fica só no mock;
+    - o caso novo do Batel no seed do mock (#163);
+    - o responsável pelo insight;
+    - a proposta de processo do ADR-033.
+- **Processo do ADR-033, em vigor desde esta aprovação:** detalhe de implementação dentro de um ADR do Intelligence já aprovado é decidido só pelo Kaio, nos termos do texto corrigido da seção anterior.
+  - Continuam com Cesar e Kaio:
+    - componente, estado ou fonte de dado nova;
+    - mudança em quem vê ou em quem decide;
+    - mudança nos princípios.
+  - O texto do `docs/03` muda pelo `int-adr-aceite`.
+- **`int-rascunhos`:** as marcas de "aguardando Cesar" passaram a "aprovado por Cesar em 10/10/2026", com o link do #167.
+- **O que ainda depende do núcleo:** a I6 e a I7 não estão na `main`. Sem elas, ficam parados:
+  - o motor com os nomes reais, os códigos de falha no padrão sistêmico e a habilitação pelo `licenca.modulo`;
+  - a fila de zona protegida do Intelligence: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job no web.
+
+- **Nota do Kaio, 10/10/2026:**
+  > "O comentário e o fechamento da issue #166 foram feitos pelo agente do Kaio, usando a conta cesarcoutohubtech. A aprovação dos 17 itens foi transmitida pelo Kaio no chat, em 10/10/2026. Confirmação do Cesar com o próprio login: pendente."
+- **Regra deste agente, do Kaio, em 10/10/2026:** o agente nunca escreve aprovação em nome de outra pessoa e nunca fecha issue ou PR de aprovação.
+  - Ele só registra e cita a aprovação feita por quem aprovou.
+
+### Ponto de retomada (10/10/2026, depois do #167)
+- **Esperando o Cesar:** a confirmação, com o próprio login, da aprovação dos 17 itens da #166.
+- **Esperando o núcleo:** o merge da I6 e da I7.
+- **Depois:**
+  1. adaptar o motor aos nomes reais da I6 e da I7, num PR fora de zona protegida;
+  2. seguir a fila de zona protegida, um PR por vez, conferindo antes que não há outro aberto: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job.
