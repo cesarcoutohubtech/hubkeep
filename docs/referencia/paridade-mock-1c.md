@@ -14,12 +14,12 @@ Papéis do mock: `csc` (Gestor CSC do grupo), `band` (Gestor CSC da bandeira), `
 
 ## Decididas antes de implementar (Cesar, 10/10/2026)
 
-As sete foram aprovadas pelo Cesar em 10/10/2026, conforme as recomendações ("Cesar aqui", no chat do agente). Valem quando a 1c começar; nada foi implementado. A decisão 2 depende de um adendo ao ADR-027, que aguarda a aprovação do Cesar (`docs/diario-fase-1a.md`, seção "Decisões da paridade da 1c").
+As sete foram aprovadas pelo Cesar em 10/10/2026, conforme as recomendações ("Cesar aqui", no chat do agente). Valem quando a 1c começar; nada foi implementado. A decisão 2 segue o adendo ao ADR-027, aprovado pelo Cesar em 10/10/2026 (`docs/03-decisoes-tecnicas.md`; registro no `docs/diario-fase-1a.md`).
 
 | # | Ponto | O que o mock faz | Por que decidir | Decisão (Cesar, 10/10/2026) |
 | --- | --- | --- | --- | --- |
 | 1 | Fim do tempo médio de reparo | Mede da abertura ao **encerramento** (aceite), "por semana" | O SLA do mock para quando o serviço é concluído (estado "Aguardando aceite"), mas o MTTR continua contando até o aceite. Uma demora do solicitante em aceitar piora o MTTR da manutenção | **Decidido:** MTTR da abertura até o **serviço concluído**, pelas transições da OS; o tempo até o aceite pode virar um indicador à parte |
-| 2 | "Aguardando peça" | O estado existe, mas o relógio do SLA **não pausa** | Pausar ou não é regra de política e muda todos os prazos | **Decidido:** não pausa por padrão; a pausa é opção da política por categoria, com o tempo pausado exibido na ficha. Depende do adendo ao ADR-027 (a pausa lê o estado da OS, e não a situação) |
+| 2 | "Aguardando peça" | O estado existe, mas o relógio do SLA **não pausa** | Pausar ou não é regra de política e muda todos os prazos | **Decidido:** não pausa por padrão; a pausa é opção da política por categoria, com o tempo pausado exibido na ficha. Segue o adendo ao ADR-027, aprovado (a pausa lê o estado da OS, e não a situação) |
 | 3 | Escalonamento por bandeira | O limite de escalonamento (80% do prazo) é lido do hotel ou do grupo; a bandeira é pulada | O documento põe o nível bandeira na herança de todas as políticas | **Decidido:** herança completa: hotel, depois bandeira, depois grupo |
 | 4 | Meta de SLA | "Meta 90%" fixa na tela | Uma meta fixa no código contraria a regra de que toda exigência do cliente vira política | **Decidido:** meta de SLA como política, com padrão de 90% |
 | 5 | "Fluxo de eventos ao vivo" | São os 5 últimos registros da **auditoria**, no escopo de quem vê | Não é tempo real: é uma leitura da auditoria. O selo "ao vivo" promete mais do que entrega | **Decidido:** "Últimos eventos", lidos da auditoria ao abrir o painel e a cada 60 segundos, sem o selo "ao vivo" |

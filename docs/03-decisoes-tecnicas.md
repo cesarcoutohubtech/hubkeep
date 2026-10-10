@@ -627,6 +627,13 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 10. **Motivo da reabertura (alterado):** coluna `app.os.motivo_reabertura` na 0026, com o último motivo (1 a 500, mesmo check do motivo de cancelamento; UPDATE só nessa coluna nova). Aparece na OS da API (`OsApi.motivoReabertura`), na fila do dia (`OsDoDiaApi.motivoReabertura`, guardada no aparelho) e na tela da OS do PWA ("Reaberta no aceite: …"). O histórico continua na auditoria e no evento. O aceite não apaga a coluna.
 11. **Reabertura com o equipamento parado (aprovado, com acréscimo):** o pedido de reabertura aceita `paradoDesde`; com ele, abre uma parada nova do ativo no mesmo chamado, ligada à OS reaberta, na mesma unit of work (a encerrada não reabre). Sem ativo no chamado, 422 `parada_sem_ativo`; início no futuro, 422 `parada_invalida`; ativo já parado (por este ou outro chamado), fica a parada que existe e a reabertura segue (`paradaId` nulo), como na abertura do chamado (item 2 da C5). A tela da reabertura, com a opção "equipamento parado", entra na C7.
 
+**Adendo — pausa do SLA pelo estado da OS, nunca pela situação (1c; decisão 2 do Cesar de 10/10/2026).** Status: aprovado por Cesar em 10/10/2026. Vale quando a 1c começar.
+- **"Aguardando peça" é situação do estado `pausada` da OS**, e não um estado novo. Ela entra nas situações padrão do catálogo, com `chave_padrao`. O tenant pode criar outras situações de `pausada`, e todas seguem a mesma regra.
+- **A pausa do relógio é regra do domínio e lê o estado:** com a política ligada para a categoria, o tempo com a OS em `pausada` não conta no prazo do chamado. A situação continua sendo só o nome que a tela mostra.
+- **A política** é por categoria, com a herança hotel → bandeira → grupo e desligada por padrão. O chamado copia na abertura a política aplicada (ADR-026): mudá-la não altera o prazo de chamado aberto.
+- **O tempo pausado** sai das transições da OS (`pausar` e `retomar`, em `app.os_transicao`, I5) e aparece na ficha.
+- **Limite:** com a política ligada, toda pausa da OS da categoria para o relógio, inclusive a de fim de turno. Se a central quiser pausar só por falta de peça, o caminho é um motivo da pausa no domínio, que fica para decisão própria.
+
 ## ADR-028 — Campos tipados por definição (ativo na 1a, checklist na 1b)
 
 **Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição de tipos comuns com o checklist e rótulos em quatro idiomas.
