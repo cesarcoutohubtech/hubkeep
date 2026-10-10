@@ -270,8 +270,8 @@ $$, 'nenhum UPDATE em campo de escopo (exceto app.hotel.bandeira_id e app.ativo.
 
 -- 19. Policy que libera tudo (using/with check = true) só nas exceções
 --     conhecidas: a leitura de hk_authz nas tabelas de escopo (evita recursão),
---     o backoffice no contrato de licença e o worker listando tenants.
---     Nunca para hk_app.
+--     o backoffice no contrato de licença e nos módulos contratados (I7) e o
+--     worker listando tenants. Nunca para hk_app.
 select is_empty($$
   select schemaname || '.' || tablename || '.' || policyname
   from pg_policies
@@ -289,6 +289,9 @@ select is_empty($$
              ('licenca', 'contrato',           'backoffice_select', '{hk_backoffice}'),
              ('licenca', 'contrato',           'backoffice_insert', '{hk_backoffice}'),
              ('licenca', 'contrato',           'backoffice_update', '{hk_backoffice}'),
+             ('licenca', 'modulo',             'backoffice_select', '{hk_backoffice}'),
+             ('licenca', 'modulo',             'backoffice_insert', '{hk_backoffice}'),
+             ('licenca', 'modulo',             'backoffice_update', '{hk_backoffice}'),
              ('app',     'tenant',             'worker_select',     '{hk_worker}')
     )
 $$, 'policy com using/with check (true) só nas exceções de hk_authz, backoffice e worker em tenant');
@@ -464,7 +467,7 @@ select is(
     'app.local', 'app.local_proprietario', 'app.membro', 'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_material', 'app.os_transicao', 'app.parada_ativo', 'app.politica',
     'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.situacao',
-    'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'staging.carga', 'staging.credencial_agente',
+    'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'licenca.modulo', 'staging.carga', 'staging.credencial_agente',
     'staging.registro_externo'
   ]::text[],
   'lista fechada de tabelas: tabela nova entra aqui com os casos de isolamento dela');

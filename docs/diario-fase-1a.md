@@ -1571,3 +1571,23 @@ PR de zona protegida, aberto pelo agente do Intelligence na exceção do Cesar (
 - **Fica para o PR seguinte, fora da zona protegida, depois do merge** (decisão 4 do Cesar de 10/10/2026): os códigos padrão por categoria no catálogo, as regras do domínio (o tipo certo em cada coluna, o código ativo e da categoria do ativo), a política `os.codigos_obrigatorios` (desligada por padrão; ligada, o aceite no web exige os três, com mensagem de recusa; a conclusão no PWA nunca é recusada por falta deles), os casos de uso, a API, o cadastro do Admin, o aceite no web, a sugestão no PWA e o kit de teste.
 - **Depois do merge:** `db push` da 0036.
 - **Ponto de retomada:** o PR da I6 aguarda o merge e o `db push` do Cesar. Depois de "mergeado e aplicado", o agente do Intelligence abre o PR das regras, dos casos de uso e das telas da I6, fora da zona protegida, e a migração da I7 com o adendo ao ADR-026, que é o próximo PR de zona protegida.
+
+### I7 — módulos contratados: a migração e o adendo ao ADR-026 (10/10/2026)
+
+PR de zona protegida, aberto pelo agente do Intelligence na exceção do Cesar, depois do merge da migração da I6 (#173) e do `db push` da 0036 ("Cesar aqui", 10/10/2026). O PR das telas da I6 (#174) fica fora da zona protegida e não segura a fila.
+- **Migração 0037** (`20261010180824_licenca_modulo.sql`), no modelo de `licenca.contrato`:
+  - `licenca.modulo` guarda o tenant, o módulo (`inteligencia`, com check), a vigência (`inicio`, `fim` anulável), `atualizado_em` e `atualizado_por`, com uma linha por módulo no tenant;
+  - lê o `hk_app`, quando quem pede é Admin do grupo ou lê algum hotel (inclusive o proprietário), e o `hk_worker`, no tenant do job;
+  - grava só o `hk_backoffice` (INSERT e UPDATE da vigência), sem filtro de tenant, como no contrato;
+  - ninguém tem DELETE.
+- **pgTAP 030** (30 asserções): os seis casos, a integridade, o backoffice (grava em qualquer tenant, não muda o módulo nem o tenant), o worker e a ingestão.
+- **Meta-teste:** as três policies do backoffice nas exceções do 19 e a tabela na lista fechada do 28.
+- **Tipos** (`LicencaModulo`) e a lista `MODULOS_CONTRATAVEIS` no domínio, com a paridade em `tests/valores-canonicos-banco.test.ts`.
+- **Adendo ao ADR-026**, em "aguarda aprovação": dois registros montados na partida, escolhidos a cada request pela vigência do módulo do tenant, e falha fechada.
+- **Fica para o PR seguinte, fora da zona protegida, depois do merge:**
+  - o script de operação que grava o módulo como `hk_backoffice`;
+  - a regra da vigência no domínio;
+  - a escolha do registro por request na montagem (`montarInteligencia` passa a registrar a extensão, e a composição só a usa para o tenant com o módulo);
+  - o teste de integração: o tenant sem o módulo não vê nem grava as chaves `inteligencia.*`.
+- **Depois do merge:** `db push` da 0037.
+- **Ponto de retomada:** o PR da I7 aguarda o merge e o `db push` do Cesar, e o adendo aguarda a aprovação dele. Depois de "mergeado e aplicado", este agente abre o PR da I7 fora da zona protegida. Com isso, a exceção termina: o agente registra o fim dela no diário e volta à fila do Intelligence.

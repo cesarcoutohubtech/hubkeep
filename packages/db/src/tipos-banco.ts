@@ -451,6 +451,16 @@ export interface LicencaContrato {
   tenant_id: string;
 }
 
+export interface LicencaModulo {
+  atualizado_em: Generated<Timestamp>;
+  atualizado_por: string;
+  fim: Timestamp | null;
+  id: string;
+  inicio: Timestamp;
+  modulo: string;
+  tenant_id: string;
+}
+
 export interface StagingCarga {
   entidade: string;
   erro: string | null;
@@ -515,6 +525,7 @@ export interface DB {
   "app.tenant": AppTenant;
   "app.uh_indisponivel": AppUhIndisponivel;
   "licenca.contrato": LicencaContrato;
+  "licenca.modulo": LicencaModulo;
   "staging.carga": StagingCarga;
   "staging.credencial_agente": StagingCredencialAgente;
   "staging.registro_externo": StagingRegistroExterno;

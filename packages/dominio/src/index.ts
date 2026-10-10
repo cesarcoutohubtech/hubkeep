@@ -149,15 +149,18 @@ export type {
 } from './implantacao';
 export { podeAlterarAtivoDoMembro, podeAlterarValidade, podeGerirMembros } from './membros';
 export {
+  MODULOS_CONTRATAVEIS,
   contaComoHotel,
   contaComoUh,
   decidirAtivacao,
+  ehModuloContratavel,
   saldoDeHoteis,
   saldoDeUhs,
   statusDaUhNova,
 } from './licenca';
 export type {
   DecisaoDeAtivacao,
+  ModuloContratavel,
   SaldoDeHoteis,
   SaldoDeUhs,
   StatusDeHotel,

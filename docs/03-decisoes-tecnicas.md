@@ -512,6 +512,20 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - A composição chega à pasta do módulo só pela função `montarInteligencia` (`tests/composicao-inteligencia.test.ts`). Desligar o módulo é tirar essa chamada.
   - Os pacotes do núcleo e o resto do web continuam proibidos (`tests/fronteiras.test.ts`).
 
+**Adendo — políticas de módulo só para o tenant que tem o módulo (I7, 10/10/2026).** Status: aguarda aprovação do Cesar (decisão 3 do Cesar de 10/10/2026: adendo curto, no mesmo PR da migração da I7).
+- **`licenca.modulo`** (migração 0037):
+  - guarda o tenant, o módulo e a vigência (início e fim; fim nulo é sem prazo), com uma linha por módulo no tenant;
+  - grava o `hk_backoffice`, por script de operação até o backoffice existir;
+  - lê o `hk_app`, para quem tem papel vigente no tenant, e o `hk_worker`, no tenant do job.
+- **A vigência é regra do domínio:** o módulo vale de `inicio` até `fim`, exclusive. A lista dos módulos (`MODULOS_CONTRATAVEIS`) mora no domínio, e o check do banco repete os valores.
+- **Dois registros, escolhidos a cada request:**
+  - o ponto de composição monta, na partida, o registro só com o núcleo e o registro com a extensão de cada módulo; a extensão inválida continua lançando na partida;
+  - a cada request, o servidor lê `licenca.modulo` com o contexto de quem pede e usa a extensão de um módulo só se o tenant o tiver vigente.
+- **Tenant sem o módulo:** as chaves dele não existem. Gravar volta `politica_desconhecida`, e a leitura não as mostra. O valor gravado antes de o módulo vencer fica no banco, sem efeito, e volta a valer se o módulo for renovado.
+- **Falha fechada:** quem não lê `licenca.modulo` (sem papel vigente no tenant) não recebe as chaves do módulo.
+- **Worker:** o job de um módulo, quando existir, segue a mesma regra no tenant do job.
+- **No PR seguinte, fora da zona protegida:** o script de operação, a regra da vigência, a escolha do registro na montagem e o teste de integração do tenant sem o módulo.
+
 ## ADR-027 — Estados canônicos no domínio; situações e prioridades configuráveis por tenant
 
 **Status:** aprovada por Cesar em 26/09/2026 (PR #35), com a condição dos nomes em quatro idiomas.
