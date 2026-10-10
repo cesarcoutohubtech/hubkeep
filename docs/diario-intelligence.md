@@ -847,6 +847,7 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
   - Ele só registra e cita a aprovação feita por quem aprovou.
 
 ### Ponto de retomada (10/10/2026, depois do #167)
+- **Esperando o Cesar:** a confirmação, com o próprio login, da aprovação dos 17 itens da #166.
 - **Esperando o núcleo:** o merge da I6 e da I7.
 - **Depois:**
   1. adaptar o motor aos nomes reais da I6 e da I7, num PR fora de zona protegida;
