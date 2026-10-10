@@ -12,6 +12,7 @@ import {
   type InsightDoPainel,
   LIMITE_DA_LISTA,
   type ListaDeInsights,
+  type PaginaDoAtivo,
   type PaginaDoInsight,
   type PortasDoPainel,
   type ResumoDoPainel,
@@ -22,6 +23,7 @@ import {
   ehTipoDeInsight,
   listarInsights,
   resumoDoPainel,
+  verAtivo,
   verInsight,
 } from '@hubkeep/inteligencia';
 
@@ -50,6 +52,7 @@ export interface CasosDeUsoDoPainel {
   resumo(ctx: Contexto): Promise<ResumoDoPainel>;
   listar(ctx: Contexto, pedido: PedidoDeListaDoPainel): Promise<ListaDeInsights>;
   ver(ctx: Contexto, insightId: string): Promise<PaginaDoInsight>;
+  ativo(ctx: Contexto, ativoId: string): Promise<PaginaDoAtivo>;
   decidir(
     ctx: Contexto,
     insightId: string,
@@ -89,6 +92,10 @@ export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDoPaine
     chamados: (ids) => porta.chamados(ctx, ids),
     nomes: (p) => porta.nomes(ctx, p),
     decidir: (d) => porta.decidir(ctx, d),
+    ativo: (id) => porta.ativo(ctx, id),
+    metricasDoAtivo: (ativoId, desde) => porta.metricasDoAtivo(ctx, ativoId, desde),
+    insightsDoEscopo: async (tipo, chave, valor) =>
+      (await porta.insightsDoEscopo(ctx, tipo, chave, valor, LIMITE_DA_LISTA)).map(noMotor),
   };
 }
 
@@ -98,6 +105,7 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
     resumo: (ctx) => resumoDoPainel(portasDoPainel(deps, ctx), agora()),
     listar: (ctx, pedido) => listarInsights(portasDoPainel(deps, ctx), pedido, agora()),
     ver: (ctx, insightId) => verInsight(portasDoPainel(deps, ctx), insightId, agora()),
+    ativo: (ctx, ativoId) => verAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
     decidir: (ctx, insightId, pedido) =>
       decidirInsight(
         portasDoPainel(deps, ctx),

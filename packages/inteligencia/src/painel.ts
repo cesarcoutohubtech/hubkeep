@@ -14,6 +14,10 @@
 //   pelo Gestor CSC fica para depois.
 // - Sem linha do tempo no 1.0 (Cesar, 10/10/2026): a página mostra as datas
 //   do próprio registro.
+// - Detalhe do ativo: o resultado original gravado de cada dia (decisão de
+//   07/10/2026, aprovada por Cesar na #166), nos últimos 90 dias. A página
+//   só existe para quem decide o insight do hotel do ativo: a métrica nunca
+//   tem mais leitores que o insight (Cesar, 10/10/2026).
 import {
   type Atribuicao,
   type ModuloContratado,
@@ -162,6 +166,60 @@ export interface PortasDoPainel {
   }): Promise<NomesDoPainel>;
   /** Grava com a trava de versão (conflito_de_versao), a auditoria e o evento. */
   decidir(d: DecisaoGravada): Promise<{ versao: number }>;
+  /** O ativo, se quem pede o lê, com a bandeira do hotel dele. */
+  ativo(id: string): Promise<AtivoDoPainel | null>;
+  /**
+   * O resultado original de cada dia (o primeiro cálculo, sem recálculo) a
+   * partir de `desde` (AAAA-MM-DD), em ordem de dia.
+   */
+  metricasDoAtivo(ativoId: string, desde: string): Promise<readonly MetricaDoPainel[]>;
+  /** Os insights de um tipo com este par no escopo, do mais novo ao mais antigo. */
+  insightsDoEscopo(
+    tipo: TipoDeInsight,
+    chave: string,
+    valor: string,
+  ): Promise<readonly InsightDoPainel[]>;
+}
+
+/** Dias da série de atenção da página do ativo. */
+export const DIAS_DA_SERIE_DO_ATIVO = 90;
+
+export interface AtivoDoPainel {
+  id: string;
+  nome: string;
+  hotelId: string;
+  bandeiraId: string | null;
+  criticidade: number | null;
+  desativadoEm: Date | null;
+}
+
+/** Uma linha da `app.metrica_ativo_diaria`, como o job gravou. */
+export interface MetricaDoPainel {
+  /** AAAA-MM-DD. */
+  dia: string;
+  calculo: number;
+  recalculo: boolean;
+  calculadoEm: Date;
+  atencao: number | null;
+  faixa: string;
+  reincidencia: number | null;
+  versaoFormulaAtencao: number;
+  versaoFormulaReincidencia: number;
+  versaoPolitica: string;
+  /** O `Score` da atenção, com os componentes e a configuração (limite do insight). */
+  detalheAtencao: unknown;
+  detalheReincidencia: unknown;
+}
+
+export interface PaginaDoAtivo {
+  ativo: AtivoDoPainel;
+  /** A atenção de cada dia gravado nos últimos 90 dias, em ordem de dia. */
+  serie: { dia: string; atencao: number | null; faixa: string }[];
+  /** O último dia gravado, com o detalhe; null se o job ainda não gravou nenhum. */
+  atual: MetricaDoPainel | null;
+  /** Os insights de atenção deste ativo, abertos e encerrados. */
+  insights: ItemDaLista[];
+  nomes: NomesDoPainel;
 }
 
 export const LIMITE_DA_LISTA = 500;
@@ -460,4 +518,56 @@ export async function decidirInsight(
     em: agora,
   });
   return { versao, estado: r.estado, responsavelId };
+}
+
+const ativoNaoEncontrado = () => new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
+
+/**
+ * O detalhe do ativo no Intelligence: a atenção dos últimos 90 dias, o último
+ * resultado gravado com o detalhe, e os insights do ativo. Quem não decide o
+ * insight do hotel do ativo recebe ativo_nao_encontrado, como se não o lesse.
+ */
+export async function verAtivo(
+  p: PortasDoPainel,
+  ativoId: string,
+  agora: Date,
+): Promise<PaginaDoAtivo> {
+  const atribuicoes = await exigirPainel(p, agora);
+  const ativo = await p.ativo(ativoId);
+  if (
+    !ativo ||
+    !podeDecidirInsight(
+      atribuicoes,
+      { tipo: 'hotel', hotelId: ativo.hotelId, bandeiraId: ativo.bandeiraId },
+      agora,
+    )
+  ) {
+    throw ativoNaoEncontrado();
+  }
+  const desde = new Date(agora.getTime() - (DIAS_DA_SERIE_DO_ATIVO - 1) * DIA_MS)
+    .toISOString()
+    .slice(0, 10);
+  const [metricas, insights] = await Promise.all([
+    p.metricasDoAtivo(ativo.id, desde),
+    p.insightsDoEscopo('atencao_ativo', 'ativoId', ativo.id),
+  ]);
+  const [ligados, nomes] = await Promise.all([
+    insights.length ? p.ligados(insights.map((i) => i.id)) : Promise.resolve([]),
+    p.nomes({
+      hotelIds: [ativo.hotelId],
+      bandeiraIds: unicos([ativo.bandeiraId]),
+      usuarioIds: unicos(insights.flatMap((i) => [i.responsavelId, i.encerradoPor])),
+    }),
+  ]);
+  return {
+    ativo,
+    serie: metricas.map((m) => ({ dia: m.dia, atencao: m.atencao, faixa: m.faixa })),
+    atual: metricas.at(-1) ?? null,
+    insights: insights.map((i) => ({
+      ...i,
+      ...vinculos(i, ligados),
+      podeDecidir: podeDecidirInsight(atribuicoes, alcanceDoInsight(i), agora),
+    })),
+    nomes,
+  };
 }

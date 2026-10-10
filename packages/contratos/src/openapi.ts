@@ -150,6 +150,7 @@ import {
   PedidoDeDecisaoDoInsight,
   RespostaDaDecisaoDoInsight,
   RespostaDeInsights,
+  RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
 } from './inteligencia';
@@ -1843,6 +1844,20 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO(
         'inteligencia_indisponivel, ou insight_nao_encontrado (fora do escopo ou inexistente).',
+      ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/ativos/{id}',
+    resumo:
+      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, e os insights de atenção do ativo. Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Ativo', esquema: RespostaDoAtivoNoIntelligence },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, ou ativo_nao_encontrado (fora do escopo de quem decide ou inexistente).',
       ),
     },
   },

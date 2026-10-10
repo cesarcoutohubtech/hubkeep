@@ -151,3 +151,43 @@ export const RespostaDaDecisaoDoInsight = z
     responsavelId: z.guid(),
   })
   .meta({ id: 'RespostaDaDecisaoDoInsight' });
+
+/** Uma linha da métrica diária do ativo, como o job gravou (ADR-036). */
+export const MetricaDoAtivoApi = z
+  .object({
+    /** AAAA-MM-DD. */
+    dia: z.iso.date(),
+    calculo: z.int(),
+    recalculo: z.boolean(),
+    calculadoEm: Data,
+    atencao: z.int().nullable(),
+    faixa: z.string(),
+    reincidencia: z.int().nullable(),
+    versaoFormulaAtencao: z.int(),
+    versaoFormulaReincidencia: z.int(),
+    versaoPolitica: z.string(),
+    /** O score da atenção: componentes, pesos, valores e a configuração (limite do insight). */
+    detalheAtencao: z.unknown(),
+    detalheReincidencia: z.unknown(),
+  })
+  .meta({ id: 'MetricaDoAtivoApi' });
+
+/** O detalhe do ativo no Intelligence: a atenção dos últimos 90 dias e os insights do ativo. */
+export const RespostaDoAtivoNoIntelligence = z
+  .object({
+    ativo: z.object({
+      id: z.guid(),
+      nome: z.string(),
+      hotelId: z.guid(),
+      bandeiraId: z.guid().nullable(),
+      criticidade: z.int().nullable(),
+      desativadoEm: Data.nullable(),
+    }),
+    /** O resultado original de cada dia gravado, em ordem de dia. */
+    serie: z.array(z.object({ dia: z.iso.date(), atencao: z.int().nullable(), faixa: z.string() })),
+    /** O último dia gravado, com o detalhe; nulo se o job ainda não gravou nenhum. */
+    atual: MetricaDoAtivoApi.nullable(),
+    insights: z.array(InsightApi),
+    nomes: NomesDoPainelApi,
+  })
+  .meta({ id: 'RespostaDoAtivoNoIntelligence' });

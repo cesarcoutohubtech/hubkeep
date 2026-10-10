@@ -5,6 +5,9 @@
 // responsável) são do packages/inteligencia, que este pacote não importa
 // (ADR-037).
 //
+// O detalhe do ativo lê a app.metrica_ativo_diaria: o resultado original de
+// cada dia (o primeiro cálculo, sem recálculo; o recálculo é outra linha).
+//
 // A decisão grava o estado, o responsável e, no encerramento, quem encerrou,
 // com a trava de versão, uma auditoria (ação = a ação da pessoa) e o evento
 // insight.decidido. A auditoria do insight vai sem hotel_id (Cesar,
@@ -76,6 +79,30 @@ export interface NomesDoPainelNoBanco {
   hoteis: Record<string, string>;
   bandeiras: Record<string, string>;
   pessoas: Record<string, string>;
+}
+
+export interface AtivoDoPainelNoBanco {
+  id: string;
+  nome: string;
+  hotelId: string;
+  bandeiraId: string | null;
+  criticidade: number | null;
+  desativadoEm: Date | null;
+}
+
+export interface MetricaDoPainelNoBanco {
+  dia: string;
+  calculo: number;
+  recalculo: boolean;
+  calculadoEm: Date;
+  atencao: number | null;
+  faixa: string;
+  reincidencia: number | null;
+  versaoFormulaAtencao: number;
+  versaoFormulaReincidencia: number;
+  versaoPolitica: string;
+  detalheAtencao: unknown;
+  detalheReincidencia: unknown;
 }
 
 export interface DecisaoNoBanco {
@@ -356,4 +383,88 @@ export async function decidirInsightNoBanco(
     },
   });
   return { versao: r.versao };
+}
+
+export async function ativoDoPainel(tx: Tx, id: string): Promise<AtivoDoPainelNoBanco | null> {
+  const a = await tx
+    .selectFrom('app.ativo as a')
+    .innerJoin('app.hotel as h', 'h.id', 'a.hotel_id')
+    .select(['a.id', 'a.nome', 'a.hotel_id', 'h.bandeira_id', 'a.criticidade', 'a.desativado_em'])
+    .where('a.id', '=', id)
+    .executeTakeFirst();
+  return a
+    ? {
+        id: a.id,
+        nome: a.nome,
+        hotelId: a.hotel_id,
+        bandeiraId: a.bandeira_id,
+        criticidade: a.criticidade,
+        desativadoEm: a.desativado_em === null ? null : data(a.desativado_em),
+      }
+    : null;
+}
+
+/** O primeiro cálculo de cada dia, sem recálculo, a partir de `desde` (AAAA-MM-DD). */
+export async function metricasDoAtivo(
+  tx: Tx,
+  ativoId: string,
+  desde: string,
+): Promise<MetricaDoPainelNoBanco[]> {
+  const linhas = await tx
+    .selectFrom('app.metrica_ativo_diaria')
+    .distinctOn('dia')
+    .select([
+      sql<string>`dia::text`.as('dia'),
+      'calculo',
+      'recalculo',
+      'calculado_em',
+      'atencao',
+      'faixa_atencao',
+      'reincidencia',
+      'versao_formula_atencao',
+      'versao_formula_reincidencia',
+      'versao_politica',
+      'detalhe_atencao',
+      'detalhe_reincidencia',
+    ])
+    .where('ativo_id', '=', ativoId)
+    .where('recalculo', '=', false)
+    .where('dia', '>=', sql<Date>`${desde}::date`)
+    .orderBy('dia')
+    .orderBy('calculo')
+    .execute();
+  return linhas.map((m) => ({
+    dia: m.dia,
+    calculo: m.calculo,
+    recalculo: m.recalculo,
+    calculadoEm: data(m.calculado_em),
+    atencao: m.atencao,
+    faixa: m.faixa_atencao,
+    reincidencia: m.reincidencia,
+    versaoFormulaAtencao: m.versao_formula_atencao,
+    versaoFormulaReincidencia: m.versao_formula_reincidencia,
+    versaoPolitica: m.versao_politica,
+    detalheAtencao: m.detalhe_atencao,
+    detalheReincidencia: m.detalhe_reincidencia,
+  }));
+}
+
+/** Os insights de um tipo com o par `chave` = `valor` no escopo, do mais novo ao mais antigo. */
+export async function insightsDoEscopo(
+  tx: Tx,
+  tipo: string,
+  chave: string,
+  valor: string,
+  limite: number,
+): Promise<InsightDoPainelNoBanco[]> {
+  const linhas = await tx
+    .selectFrom('app.insight')
+    .select(COLUNAS)
+    .where('tipo', '=', tipo)
+    .where(sql<boolean>`escopo ->> ${chave} = ${valor}`)
+    .orderBy('primeira_deteccao_em', 'desc')
+    .orderBy('id')
+    .limit(limite)
+    .execute();
+  return linhas.map(doBanco);
 }

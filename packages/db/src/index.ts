@@ -47,6 +47,7 @@ export { criarPortaHistorico } from './historico';
 export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from './inteligencia';
 export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
 export type {
+  AtivoDoPainelNoBanco,
   ChamadoDoInsightNoBanco,
   ContagemDeInsightsNoBanco,
   DecisaoNoBanco,
@@ -54,6 +55,7 @@ export type {
   InsightComEvidenciaNoBanco,
   InsightDoPainelNoBanco,
   InsightLigadoNoBanco,
+  MetricaDoPainelNoBanco,
   NomesDoPainelNoBanco,
 } from './repositorios/inteligencia-painel';
 export type {
