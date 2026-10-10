@@ -71,12 +71,48 @@ export function decidirAtivacao(entrada: {
 /**
  * Módulos contratáveis (I7, licenca.modulo). O banco repete a lista no check
  * licenca_modulo_lista (migração 0037), e tests/valores-canonicos-banco.test.ts
- * confere a paridade. Se o módulo vale agora (a vigência) é regra daqui; a
- * regra entra com a montagem do servidor, no PR seguinte, fora da zona
- * protegida.
+ * confere a paridade. Se o módulo vale agora (a vigência) é regra daqui
+ * (moduloVigente), nunca do banco.
  */
 export const MODULOS_CONTRATAVEIS = ['inteligencia'] as const;
 export type ModuloContratavel = (typeof MODULOS_CONTRATAVEIS)[number];
 
 export const ehModuloContratavel = (v: unknown): v is ModuloContratavel =>
   typeof v === 'string' && (MODULOS_CONTRATAVEIS as readonly string[]).includes(v);
+
+/** Um módulo de licenca.modulo, como o servidor lê no tenant. */
+export interface ModuloContratado {
+  /** Texto do banco; o que não for da lista (MODULOS_CONTRATAVEIS) não vale. */
+  modulo: string;
+  inicio: Date;
+  /** Nulo: sem prazo. */
+  fim: Date | null;
+}
+
+const dataValida = (d: Date) => !Number.isNaN(d.getTime());
+
+/**
+ * Vigência que se grava: datas válidas e o fim, se houver, depois do início
+ * (o check licenca_modulo_vigencia repete a ordem). O script de operação
+ * confere antes de gravar.
+ */
+export const vigenciaDeModuloValida = (v: { inicio: Date; fim: Date | null }): boolean =>
+  dataValida(v.inicio) && (v.fim === null || (dataValida(v.fim) && v.fim > v.inicio));
+
+/** O módulo vale de inicio (inclusive) até fim (exclusive); sem fim, vale desde o início. */
+export const moduloVigente = (v: { inicio: Date; fim: Date | null }, agora: Date): boolean =>
+  vigenciaDeModuloValida(v) && v.inicio <= agora && (v.fim === null || agora < v.fim);
+
+/**
+ * Os módulos que valem agora no tenant. Módulo fora da lista ou com a
+ * vigência inválida não vale (falha fechada).
+ */
+export function modulosVigentes(
+  contratados: readonly ModuloContratado[],
+  agora: Date,
+): ReadonlySet<ModuloContratavel> {
+  const vigentes = new Set<ModuloContratavel>();
+  for (const c of contratados)
+    if (ehModuloContratavel(c.modulo) && moduloVigente(c, agora)) vigentes.add(c.modulo);
+  return vigentes;
+}

@@ -1618,3 +1618,51 @@ PR de zona protegida, aberto pelo agente do Intelligence na exceção do Cesar, 
   - o teste de integração: o tenant sem o módulo não vê nem grava as chaves `inteligencia.*`.
 - **Depois do merge:** `db push` da 0037.
 - **Ponto de retomada:** o PR da I7 aguarda o merge e o `db push` do Cesar, e o adendo aguarda a aprovação dele. Depois de "mergeado e aplicado", este agente abre o PR da I7 fora da zona protegida. Com isso, a exceção termina: o agente registra o fim dela no diário e volta à fila do Intelligence.
+
+### I7 — políticas por módulo contratado: regra, montagem e script (10/10/2026)
+
+O #175 foi mergeado, e o `db push` da 0037 chegou ao dev ("Cesar aqui", 10/10/2026). O `migration list` mostra a 0037 no remoto, e o pgTAP contra o dev passou inteiro: 940 testes em 30 arquivos, com as 30 asserções do 030. PR fora da zona protegida, aberto pelo agente do Intelligence na exceção do Cesar. Segue o adendo ao ADR-026, que continua em "aguarda aprovação".
+- **Domínio:**
+  - `licenca.ts`:
+    - `moduloVigente`: o módulo vale de `inicio` (inclusive) até `fim` (exclusive), e sem fim vale desde o início;
+    - `vigenciaDeModuloValida`: datas válidas e o fim depois do início;
+    - `modulosVigentes`: os módulos do tenant que valem agora. O módulo fora da lista ou com a vigência inválida não vale (falha fechada).
+  - `politicas.ts`: `registrosDePoliticasPorModulo` monta na partida um registro para cada combinação dos módulos com extensão. Com o Intelligence, são dois: o do núcleo e o do núcleo com as chaves `inteligencia.*`.
+    - `doTenant` escolhe o registro pelos módulos vigentes.
+    - O módulo repetido ou fora da lista lança na partida, como a extensão inválida.
+- **Aplicação:**
+  - a porta `PortaModulos` (`contratados`, só leitura);
+  - `criarPoliticasDoTenant`: lê `licenca.modulo` com o contexto de quem pede e escolhe o registro;
+  - a configuração recebe essa função no lugar do registro fixo, e `gravarPolitica` usa o registro do tenant de quem pede.
+- **Banco:** `criarPortaModulos`, pelo `hk_app` com `withContext`. A RLS só deixa ler quem tem papel vigente no tenant; para os outros, a lista vem vazia e o registro é o do núcleo.
+- **Web:**
+  - `montarInteligencia` passa a registrar a `EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE` ligada ao módulo `inteligencia`;
+  - a composição monta os registros na partida e escolhe um a cada request;
+  - o web passa a depender de `@hubkeep/inteligencia`. A importação continua só na pasta do módulo, conferida pelo lint e por `tests/composicao-inteligencia.test.ts`.
+- **Tenant sem o módulo, ou com o módulo vencido:**
+  - gravar `inteligencia.*` volta `politica_desconhecida`, inclusive o `null` de voltar a herdar;
+  - o valor gravado antes do vencimento fica no banco, sem efeito.
+  - A leitura da configuração já devolvia só as chaves do núcleo; a tela das políticas do módulo é do módulo.
+- **Script de operação** (`pnpm ops:modulo`, `scripts/ops/modulo-contratado.ts`):
+  - sem `--modulo`, lista os módulos do tenant;
+  - com `--modulo`, `--inicio`, `--fim` opcional e `--por`, cria a linha ou muda a vigência. Ninguém apaga: encerrar é dar fim;
+  - conecta com a string do dono (conferida pelo `ambiente.ts`) e grava como `hk_backoffice`, numa transação;
+  - `--dry-run` mostra e desfaz; o grupo inexistente falha pela FK, com mensagem.
+  - Roda só no dev. Staging e produção entram com o roteiro de operação deles, por decisão revisada.
+  - Conferido contra o dev sem gravar nada: o `hk_backoffice` lê e chega à FK com um tenant inexistente, sem erro de permissão.
+- **Testes:**
+  - domínio: a vigência, os vigentes e os registros por módulo;
+  - integração (`packages/db/test/modulos-contratados.test.ts`, só na CI), com o tenant:
+    - sem o módulo;
+    - com o módulo vigente, gravado como `hk_backoffice`, enquanto o outro tenant continua sem;
+    - sem papel vigente, que não lê o módulo;
+    - com o módulo vencido;
+  - o script: os argumentos e o UUID v7 (`tests/modulo-contratado-ops.test.ts`) e o ambiente declarado (`tests/ambiente-ops.test.ts`).
+- **Kit:** o `docs/10` diz como contratar o módulo no dev pelo script.
+
+### Fim da exceção do Cesar (10/10/2026)
+
+Com este PR, o CNPJ alfanumérico, a I6 e a I7 estão entregues pelo agente do Intelligence: CNPJ no #171; I6 no #173 e no #174; I7 no #175 e neste PR. A exceção termina aqui. O agente volta à fila do Intelligence (`docs/diario-intelligence.md`), e as próximas tarefas do núcleo voltam ao agente do núcleo.
+- **Ponto de retomada:**
+  - O PR das regras da I7 fica para o Cesar revisar e mergear. É fora da zona protegida, então não segura a fila.
+  - O adendo da I7 ao ADR-026 aguarda a aprovação do Cesar.

@@ -271,6 +271,7 @@ O botão **Ver histórico** fica no detalhe do chamado (abaixo da linha do tempo
 - **Linha do tempo e histórico do proprietário antes do `db push` da migração da D1:** até a migração 0028 chegar ao dev, o proprietário recebe a linha do tempo e o histórico vazios, sem erro. Os outros papéis já veem tudo.
 - **Histórico anterior à fase 1a:** o histórico mostra o que a auditoria gravou. Não há histórico do que foi feito antes de cada tela existir.
 - **SLA, escalonamento e notificações:** fase 1c. Os eventos ficam no outbox do dev, e nenhum e-mail sai, porque o cron só roda na Vercel.
+- **Políticas do Intelligence:** ainda não têm tela, e o grupo do kit não tem o módulo contratado. Para contratar no dev (até o backoffice existir), com a `DEV_SESSION_POOLER` da seção 2 e o id do grupo: `pnpm ops:modulo --ambiente dev --tenant <id> --modulo inteligencia --inicio 2026-10-10T00:00:00-03:00 --por "<seu nome>"`. Sem `--modulo`, o script lista; com `--dry-run`, mostra e desfaz.
 - **Outro tenant:** o kit cria um grupo só. O isolamento entre tenants está coberto pelos testes pgTAP e de integração na CI.
 
 ## 6. Rodar de novo e recomeçar

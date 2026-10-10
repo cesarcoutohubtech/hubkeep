@@ -136,6 +136,7 @@ describe('ambientes declarados pelos scripts de scripts/ops', () => {
     ['verificar-papeis.ts', ['ci', 'dev']],
     ['fumaca-db.ts', ['dev']],
     ['testar-banco-dev.mjs', ['dev']],
+    ['modulo-contratado.ts', ['dev']],
     ['configurar-papeis.ts', ['ci', 'dev', 'staging', 'producao']],
   ])('%s declara %j', (arquivo, esperado) => {
     const lista = declarados(arquivo);

@@ -4,17 +4,22 @@
 // (tests/composicao-inteligencia.test.ts). Desligar o módulo é tirar esta
 // chamada da composição: nada mais do núcleo depende daqui.
 //
-// O conteúdo é do agente do Intelligence. Por enquanto não registra nada: a
-// extensão das políticas entra junto com o filtro por módulo contratado
-// (licenca.modulo, fase 1b), para o tenant sem o Intelligence não ver nem
-// gravar as chaves dele.
-import type { ExtensaoDePolitica } from '@hubkeep/dominio';
+// O conteúdo é do agente do Intelligence. As chaves inteligencia.* entram no
+// registro de políticas ligadas ao módulo 'inteligencia': valem só para o
+// tenant com o módulo vigente em licenca.modulo (I7; adendo ao ADR-026 de
+// 10/10/2026). O tenant sem o Intelligence não as grava (politica_desconhecida).
+import type { ExtensaoDeModulo } from '@hubkeep/dominio';
+import { EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE } from '@hubkeep/inteligencia';
 
 export interface MontagemDoIntelligence {
-  /** Somadas às chaves do núcleo no registro de políticas da composição. */
-  extensoesDePolitica: readonly ExtensaoDePolitica[];
+  /** Somadas às chaves do núcleo só para o tenant com o módulo vigente. */
+  extensoesDePolitica: readonly ExtensaoDeModulo[];
 }
 
 export function montarInteligencia(): MontagemDoIntelligence {
-  return { extensoesDePolitica: [] };
+  return {
+    extensoesDePolitica: [
+      { modulo: 'inteligencia', extensao: EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE },
+    ],
+  };
 }

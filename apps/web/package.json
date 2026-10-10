@@ -22,6 +22,7 @@
     "@hubkeep/dominio": "workspace:*",
     "@hubkeep/i18n": "workspace:*",
     "@hubkeep/imagem": "workspace:*",
+    "@hubkeep/inteligencia": "workspace:*",
     "@hubkeep/ui": "workspace:*",
     "@sentry/nextjs": "^11.0.0",
     "@supabase/ssr": "^0.12.7",

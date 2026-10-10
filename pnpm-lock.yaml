@@ -156,6 +156,9 @@ importers:
       '@hubkeep/imagem':
         specifier: workspace:*
         version: link:../../packages/imagem
+      '@hubkeep/inteligencia':
+        specifier: workspace:*
+        version: link:../../packages/inteligencia
       '@hubkeep/ui':
         specifier: workspace:*
         version: link:../../packages/ui

@@ -5,8 +5,9 @@
 // O módulo não tem resolução própria (adendo ao ADR-026, 06/10/2026): as
 // chaves entram no registroDePoliticas do núcleo pela EXTENSAO_DE_POLITICAS_
 // DO_INTELLIGENCE, montada na composição do web (montarInteligencia), e a
-// resolução é a do registro, hotel → bandeira → grupo → padrão. A extensão só
-// é registrada junto com o filtro por módulo contratado (licenca.modulo, 1b).
+// resolução é a do registro, hotel → bandeira → grupo → padrão. A extensão é
+// registrada ligada ao módulo inteligencia: vale só para o tenant com o módulo
+// vigente em licenca.modulo (I7; adendo ao ADR-026 de 10/10/2026).
 //
 // O formato é o do padrão: as mesmas chaves, números finitos e não negativos,
 // ao menos um peso positivo, o limite do insight até 100 e faixas válidas. Os

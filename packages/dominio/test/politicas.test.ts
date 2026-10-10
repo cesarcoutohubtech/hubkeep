@@ -6,6 +6,7 @@ import {
   ehChaveDePolitica,
   podeGerirPoliticas,
   registroDePoliticas,
+  registrosDePoliticasPorModulo,
   resolverPolitica,
   validarPolitica,
   validarRegiao,
@@ -151,6 +152,44 @@ describe('registro de políticas (extensão de módulo, adendo ao ADR-026)', () 
     ['padrão fora do formato', [modulo({ padrao: () => ({ n: 'x' }) })]],
   ] as const)('extensão inválida lança na montagem: %s', (_caso, extensoes) => {
     expect(() => registroDePoliticas(extensoes)).toThrow(Error);
+  });
+
+  describe('por módulo contratado (adendo da I7)', () => {
+    const inteligencia = (e: Partial<ExtensaoDePolitica> = {}) => ({
+      modulo: 'inteligencia' as const,
+      extensao: modulo({ prefixo: 'inteligencia.', chaves: ['inteligencia.a'], ...e }),
+    });
+
+    it('o tenant sem o módulo só tem as chaves do núcleo; com ele, as do módulo também', () => {
+      const r = registrosDePoliticasPorModulo([inteligencia()]);
+      expect(r.doNucleo.chaves()).toEqual(CHAVES_DE_POLITICA);
+      expect(r.doTenant(new Set()).chaves()).toEqual(CHAVES_DE_POLITICA);
+      expect(() => r.doTenant(new Set()).validar('inteligencia.a', { n: 1 })).toThrow(
+        expect.objectContaining({ codigo: 'politica_desconhecida' }),
+      );
+      const comModulo = r.doTenant(new Set(['inteligencia']));
+      expect(comModulo.chaves()).toEqual([...CHAVES_DE_POLITICA, 'inteligencia.a']);
+      expect(comModulo.validar('inteligencia.a', { n: 3 })).toEqual({ n: 3 });
+      // Montados na partida: o mesmo registro em todo request.
+      expect(r.doTenant(new Set(['inteligencia']))).toBe(comModulo);
+      expect(r.doTenant(new Set())).toBe(r.doNucleo);
+    });
+
+    it('sem extensão de módulo, todo tenant fica com o núcleo', () => {
+      const r = registrosDePoliticasPorModulo([]);
+      expect(r.doTenant(new Set(['inteligencia'])).chaves()).toEqual(CHAVES_DE_POLITICA);
+    });
+
+    it.each([
+      [
+        'módulo repetido',
+        [inteligencia(), inteligencia({ prefixo: 'outro.', chaves: ['outro.a'] })],
+      ],
+      ['módulo fora da lista', [{ modulo: 'outro' as 'inteligencia', extensao: modulo() }]],
+      ['extensão inválida', [inteligencia({ chaves: ['fora.a'] })]],
+    ] as const)('lança na montagem: %s', (_caso, extensoes) => {
+      expect(() => registrosDePoliticasPorModulo(extensoes)).toThrow(Error);
+    });
   });
 
   it('chave herdada do protótipo não é política', () => {

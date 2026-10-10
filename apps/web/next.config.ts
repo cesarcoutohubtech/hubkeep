@@ -11,6 +11,7 @@ const config: NextConfig = {
     '@hubkeep/dominio',
     '@hubkeep/i18n',
     '@hubkeep/imagem',
+    '@hubkeep/inteligencia',
     '@hubkeep/ui',
   ],
   // Driver nativo do Postgres fica fora do bundle do servidor.

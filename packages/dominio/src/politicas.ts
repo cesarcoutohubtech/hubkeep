@@ -11,9 +11,14 @@
 // monta o registroDePoliticas com as chaves do núcleo e as do módulo, e os
 // casos de uso de configuração recebem o registro. O domínio não conhece
 // chave de módulo nenhuma (decisão do Cesar de 06/10/2026, adendo ao ADR-026).
+// As chaves de um módulo valem só para o tenant que tem o módulo vigente
+// (adendo da I7, 10/10/2026): registrosDePoliticasPorModulo monta, na partida,
+// o registro de cada combinação de módulos, e o servidor escolhe um a cada
+// request (doTenant), pela vigência lida em licenca.modulo.
 import { type Criticidade, NIVEIS_DE_CRITICIDADE } from './ativos';
 import { IDIOMAS_DE_ROTULO, LIMITES_DE_CAMPO, type Rotulos } from './campos-tipados';
 import { PermissaoNegada, RegraViolada } from './erros';
+import { MODULOS_CONTRATAVEIS, type ModuloContratavel } from './licenca';
 import { type Resultado, ehAdminGrupo } from './permissoes';
 import type { Atribuicao } from './tipos';
 
@@ -232,6 +237,58 @@ export function registroDePoliticas(extensoes: readonly ExtensaoDePolitica[]): R
         if (v !== undefined && d.valido(v)) return v;
       return d.padrao;
     },
+  };
+}
+
+/** A extensão de um módulo contratável: as chaves dela só valem para o tenant com o módulo. */
+export interface ExtensaoDeModulo {
+  modulo: ModuloContratavel;
+  extensao: ExtensaoDePolitica;
+}
+
+/** Os registros de cada combinação de módulos, montados na partida. */
+export interface RegistrosDePoliticas {
+  /** Só as chaves do núcleo: o tenant sem módulo nenhum, ou quem não lê licenca.modulo. */
+  readonly doNucleo: RegistroDePoliticas;
+  /** O núcleo e as extensões dos módulos vigentes do tenant; módulo sem extensão não muda nada. */
+  doTenant(vigentes: ReadonlySet<ModuloContratavel>): RegistroDePoliticas;
+}
+
+/**
+ * Monta, na partida, um registro para cada combinação dos módulos com
+ * extensão: com um módulo só, o do núcleo e o do núcleo com o módulo. Módulo
+ * repetido, fora da lista ou extensão inválida lança Error, como em
+ * registroDePoliticas: na partida, nunca num request.
+ */
+export function registrosDePoliticasPorModulo(
+  extensoes: readonly ExtensaoDeModulo[],
+): RegistrosDePoliticas {
+  const modulos: ModuloContratavel[] = [];
+  for (const { modulo } of extensoes) {
+    if (!(MODULOS_CONTRATAVEIS as readonly string[]).includes(modulo) || modulos.includes(modulo)) {
+      throw new Error(`Módulo de extensão de política inválido ou repetido: ${modulo}`);
+    }
+    modulos.push(modulo);
+  }
+  // A combinação é a máscara dos módulos, na ordem das extensões.
+  const registros = new Map<number, RegistroDePoliticas>();
+  for (let mascara = 0; mascara < 2 ** modulos.length; mascara++) {
+    registros.set(
+      mascara,
+      registroDePoliticas(
+        extensoes.filter((_e, i) => (mascara & (2 ** i)) !== 0).map((e) => e.extensao),
+      ),
+    );
+  }
+  const registro = (mascara: number) => {
+    const r = registros.get(mascara);
+    if (!r) throw new Error(`Combinação de módulos sem registro: ${mascara}`);
+    return r;
+  };
+  return {
+    doNucleo: registro(0),
+    doTenant: (vigentes) =>
+      registro(modulos.reduce((m, modulo, i) => (vigentes.has(modulo) ? m | (2 ** i) : m), 0)),
   };
 }
 

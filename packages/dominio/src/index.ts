@@ -101,6 +101,7 @@ export {
   POLITICAS,
   ehChaveDePolitica,
   registroDePoliticas,
+  registrosDePoliticasPorModulo,
   podeGerirPoliticas,
   resolverPolitica,
   validarPolitica,
@@ -110,11 +111,13 @@ export type {
   AceiteAutomatico,
   ChaveDePolitica,
   CodigosObrigatorios,
+  ExtensaoDeModulo,
   ExtensaoDePolitica,
   NiveisDePolitica,
   NomesDeCriticidade,
   PrioridadePadraoPorCategoria,
   RegistroDePoliticas,
+  RegistrosDePoliticas,
   ValoresDePolitica,
 } from './politicas';
 export {
@@ -155,12 +158,16 @@ export {
   contaComoUh,
   decidirAtivacao,
   ehModuloContratavel,
+  moduloVigente,
+  modulosVigentes,
   saldoDeHoteis,
   saldoDeUhs,
   statusDaUhNova,
+  vigenciaDeModuloValida,
 } from './licenca';
 export type {
   DecisaoDeAtivacao,
+  ModuloContratado,
   ModuloContratavel,
   SaldoDeHoteis,
   SaldoDeUhs,
