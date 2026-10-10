@@ -1712,3 +1712,11 @@ Texto do Cesar (sem alteração):
 - O texto entrou no `docs/03-decisoes-tecnicas.md`, no fim do ADR-027, sem mudança além do status, que passou a "aprovado por Cesar em 10/10/2026". Vale quando a 1c começar; nada foi implementado.
 - O plano da 1c e a paridade com o mock deixaram de dizer que a decisão 2 depende do adendo.
 - O status do adendo da I7 ao ADR-026 mudou no `docs/03` pelo #180.
+
+## Item de menu do HubKeep Intelligence na moldura (pelo agente do Intelligence, 10/10/2026)
+
+Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/moldura.tsx`) é do núcleo. A mudança foi autorizada pelo Cesar no chat do agente do Intelligence em 10/10/2026 ("Cesar aqui"), e o detalhe está no `docs/diario-intelligence.md`, seção `int-telas`.
+- **O item:** "HubKeep Intelligence", no grupo "Módulo opcional", com a contagem dos insights abertos. Aparece só quando `GET /api/v1/inteligencia/resumo` responde 200; sem o módulo no grupo, ou sem papel que decide insight, a rota responde 404 e o item não existe.
+- **Fora do `MENU`:** o item fica em `ITEM_DO_INTELLIGENCE`, para o teste da moldura continuar exigindo página e título só dos itens fixos. O teste ganhou os casos do item novo.
+- **Títulos da barra:** as três rotas do módulo (`/inteligencia/insights`, `/inteligencia/insights/{id}` e `/inteligencia/ativos/{id}`).
+- **Sem importar o módulo:** a moldura fala só com a API, e o lint de fronteiras continua barrando o `@hubkeep/inteligencia` fora das pastas liberadas.

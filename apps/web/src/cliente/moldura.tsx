@@ -11,6 +11,12 @@
 // Idioma (F0-10b): o layout já resolve pelo perfil. O seletor grava a escolha
 // no perfil (PUT /api/v1/preferencias), e o idioma resolvido vai para o
 // cookie hk_idioma só para a tela de login seguir nele depois de sair.
+//
+// HubKeep Intelligence (módulo opcional; decisão do Cesar de 10/10/2026): o
+// item do menu aparece só quando GET /api/v1/inteligencia/resumo responde,
+// com a contagem dos insights abertos. Sem o módulo no grupo, ou sem papel
+// que decide insight, a rota responde 404 e o item não existe. A moldura não
+// importa o pacote do módulo: fala só com a API.
 import { type Chave, type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import {
   Botao,
@@ -33,6 +39,7 @@ import {
   useTrocarIdioma,
 } from '../i18n/cliente';
 import { COOKIE_TEMA } from '../tema';
+import { chamarApi } from './api';
 import { sair as encerrarSessao } from './sessao';
 
 interface Sessao {
@@ -79,6 +86,17 @@ export const MENU: readonly { grupo: Chave; itens: readonly { href: string; chav
   },
 ];
 
+/** O item do Intelligence, fora do MENU: só aparece com o módulo e o papel. */
+export const ITEM_DO_INTELLIGENCE = {
+  grupo: 'menu.grupo.modulo_opcional',
+  href: '/inteligencia/insights',
+  chave: 'menu.inteligencia',
+} as const satisfies { grupo: Chave; href: string; chave: Chave };
+
+/** O item do Intelligence fica ativo em todas as telas do módulo. */
+export const intelligenceAtivo = (caminho: string) =>
+  caminho === '/inteligencia' || caminho.startsWith('/inteligencia/');
+
 /** Item do menu que corresponde ao caminho: o próprio, ou o pai (/chamados/123). */
 export const itemAtivo = (caminho: string, href: string) =>
   href === '/' ? caminho === '/' : caminho === href || caminho.startsWith(`${href}/`);
@@ -102,6 +120,9 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/admin\/membros$/, 'admin.membros.titulo'],
   [/^\/admin\/configuracao$/, 'admin.configuracao.titulo'],
   [/^\/admin\/implantacao$/, 'admin.implantacao.titulo'],
+  [/^\/inteligencia\/insights$/, 'menu.inteligencia'],
+  [/^\/inteligencia\/insights\/[^/]+$/, 'inteligencia.pagina.titulo'],
+  [/^\/inteligencia\/ativos\/[^/]+$/, 'inteligencia.ativo.titulo'],
 ];
 
 export const tituloDaRota = (caminho: string): Chave | undefined =>
@@ -130,6 +151,8 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
   const [grupoPronto, setGrupoPronto] = useState(false);
   const [preferencias, setPreferencias] = useState<Preferencias | null>(null);
   const [tema, setTema] = useState<Tema>(temaInicial);
+  // Insights abertos, ou null: sem o Intelligence para quem vê, sem item.
+  const [abertos, setAbertos] = useState<number | null>(null);
 
   useEffect(() => {
     const salvo = lerCookie(COOKIE_TENANT);
@@ -162,6 +185,13 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
   useEffect(() => {
     if (tenant) void sincronizarIdioma();
   }, [tenant, sincronizarIdioma]);
+
+  useEffect(() => {
+    if (!grupoPronto) return;
+    void chamarApi<{ abertos: number }>('/api/v1/inteligencia/resumo').then((r) =>
+      setAbertos(r.ok ? r.dados.abertos : null),
+    );
+  }, [grupoPronto, caminho]);
 
   function trocarGrupo(tn: string) {
     gravarCookieTenant(tn);
@@ -199,20 +229,36 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
       rotuloDoMenu={t('menu.rotulo')}
       rotuloPularParaConteudo={t('menu.pular')}
       {...(titulo ? { titulo: t(titulo) } : {})}
-      menu={MENU.map((g) => (
-        <GrupoDeMenu key={g.grupo} rotulo={t(g.grupo)}>
-          {g.itens.map((i) => (
-            <ItemDeMenu
-              key={i.href}
-              href={i.href}
-              componente={Link}
-              ativo={itemAtivo(caminho, i.href)}
-            >
-              {t(i.chave)}
-            </ItemDeMenu>
+      menu={
+        <>
+          {MENU.map((g) => (
+            <GrupoDeMenu key={g.grupo} rotulo={t(g.grupo)}>
+              {g.itens.map((i) => (
+                <ItemDeMenu
+                  key={i.href}
+                  href={i.href}
+                  componente={Link}
+                  ativo={itemAtivo(caminho, i.href)}
+                >
+                  {t(i.chave)}
+                </ItemDeMenu>
+              ))}
+            </GrupoDeMenu>
           ))}
-        </GrupoDeMenu>
-      ))}
+          {abertos !== null && (
+            <GrupoDeMenu rotulo={t(ITEM_DO_INTELLIGENCE.grupo)}>
+              <ItemDeMenu
+                href={ITEM_DO_INTELLIGENCE.href}
+                componente={Link}
+                ativo={intelligenceAtivo(caminho)}
+                contagem={abertos}
+              >
+                {t(ITEM_DO_INTELLIGENCE.chave)}
+              </ItemDeMenu>
+            </GrupoDeMenu>
+          )}
+        </>
+      }
       rodapeDoMenu={sessao?.email ?? undefined}
       acoes={
         <>
