@@ -18,7 +18,7 @@
 -- um aberto por chave, encerramento em nome próprio, nenhum UPDATE em campo de
 -- escopo, sem INSERT pelo hk_app, sem DELETE; o worker vê e grava só o tenant
 -- do job e não muda o estado.
--- Família e chave (aprovado por Kaio e por Cesar em 10/10/2026, #167): o insight novo de um
+-- Família e chave (aprovado por Kaio e por Cesar em 10/10/2026, #166): o insight novo de um
 -- conjunto com hotel a mais fica aberto junto com o anterior da mesma família;
 -- a chave começa pela família, termina no hash do conjunto e é curta, inclusive
 -- com 80 hotéis; o sha256() do banco confere com o do node:crypto; o motivo do descarte é canônico e só existe no descartado.
@@ -152,7 +152,7 @@ select throws_ok(
              array['11100000-0000-0000-0000-000000000001']::uuid[], 'atencao_ativo', 'k6j|hoteis=' || repeat('0', 64), 'k6j', '{}', 'atencao', 1, now(), now(), now()) $$,
   '23514', null, 'encerrado sem quem encerrou');
 
--- Família e chave (aprovado por Kaio e por Cesar em 10/10/2026, #167): o insight de rede com
+-- Família e chave (aprovado por Kaio e por Cesar em 10/10/2026, #166): o insight de rede com
 -- um hotel a mais tem outra chave (outro hash do conjunto) e a mesma família.
 -- O novo e o anterior ficam abertos juntos; o vínculo é o anterior_id.
 select lives_ok(

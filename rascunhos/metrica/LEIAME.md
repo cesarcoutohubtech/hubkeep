@@ -18,7 +18,7 @@ No motor (`packages/inteligencia`):
 - `executarDiaDoTenant` numera o cálculo, não grava de novo um dia já gravado e, no recálculo, só grava métrica: não abre nem atualiza insight;
 - `fimDoDia('AAAA-MM-DD')` dá o `agora` para recalcular um dia passado.
 
-**O painel mostra o resultado original gravado de cada dia** (o de menor número, com `recalculo = false`); os recálculos seguem guardados e aparecem só no painel de investigação, sob demanda e identificados como recálculo, com a política atual. Decisão de 07/10/2026, **aprovada por Kaio e por Cesar** (Cesar em 10/10/2026, https://github.com/cesarcoutohubtech/hubkeep/pull/167). Muda só a agregação e a consulta: `agregarMesDosAtivos` hoje ainda pega o de maior número, e passa a pegar o original quando o painel for ligado. Um recálculo de dia nunca gravado (`calculo = 1`, `recalculo = true`) é o único registro do dia e aparece como tal.
+**O painel mostra o resultado original gravado de cada dia** (o de menor número, com `recalculo = false`); os recálculos seguem guardados e aparecem só no painel de investigação, sob demanda e identificados como recálculo, com a política atual. Decisão de 07/10/2026, **aprovada por Kaio e por Cesar** (Cesar em 10/10/2026, https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099298901). Muda só a agregação e a consulta: `agregarMesDosAtivos` hoje ainda pega o de maior número, e passa a pegar o original quando o painel for ligado. Um recálculo de dia nunca gravado (`calculo = 1`, `recalculo = true`) é o único registro do dia e aparece como tal.
 
 ## 2. A tabela
 

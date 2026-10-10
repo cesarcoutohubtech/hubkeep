@@ -24,7 +24,7 @@
 - O job não muda estado (ADR-033), e `hotel_ids` continua sem UPDATE (ADR-011, meta-teste 18).
 - Na tela e na API, o anterior aparece como "substituído pelo insight X", calculado pelo vínculo (`substituidoPor`, no motor). Não há estado novo.
 - **Cesar, 07/10/2026:** aprovou com uma condição, o hash fora da função pura (abaixo). O Kaio aceitou em 07/10/2026.
-- **Cesar, 10/10/2026:** confirmou que a aprovação vale para a variante (c), junto com os outros itens da issue #166 (https://github.com/cesarcoutohubtech/hubkeep/pull/167).
+- **Cesar, 10/10/2026:** confirmou que a aprovação vale para a variante (c), junto com os outros itens da issue #166 (https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099298901).
 - **Pendente:** o texto do ADR-033 no `docs/03` ainda descreve a primeira versão ("o job encerra o insight e abre outro"). Ele se corrige no `int-adr-aceite`.
 
 ### 2. Família e chave, com a condição do Cesar sobre o hash
@@ -62,7 +62,7 @@ Para cada detecção (família, lista canônica de hotéis, faixa):
 - A pessoa escolhe o motivo ao descartar, junto com a nota, que continua obrigatória (`decidirNoInsight`, com o erro `motivo_de_descarte_invalido`, nos quatro catálogos).
 - O "substituído" é o caminho para encerrar o anterior quando já existe o novo.
 
-### 5. Responsável pelo insight (aprovado por Kaio e por Cesar em 10/10/2026, https://github.com/cesarcoutohubtech/hubkeep/pull/167)
+### 5. Responsável pelo insight (aprovado por Kaio e por Cesar em 10/10/2026, https://github.com/cesarcoutohubtech/hubkeep/issues/166#issuecomment-6099298901)
 
 - Quem toma a primeira ação no insight vira o responsável (`responsavel_id`).
 - O Admin do grupo e o Gestor CSC podem reatribuir, com registro na auditoria.

@@ -48,8 +48,8 @@
 --   faixa, o detalhamento e a evidência, só no tenant do job. Não muda estado.
 -- Sem INSERT pelo hk_app (o insight nasce do job) e sem DELETE para ninguém.
 -- Nenhum campo de escopo (hotel_id, bandeira_id, hotel_ids) recebe UPDATE.
---   Hotel novo num insight de rede (opção c, aprovada por Kaio, aguardando
---   Cesar): o conjunto novo tem outra chave (outro hash) e a mesma família, então
+--   Hotel novo num insight de rede (opção c, aprovada por Kaio e pelo
+--   Cesar em 10/10/2026, #166): o conjunto novo tem outra chave (outro hash) e a mesma família, então
 --   o job abre o insight novo, ligado pelo anterior_id, e o anterior continua
 --   aberto até uma pessoa resolver ou descartar. O job não muda estado, e
 --   hotel_ids não recebe UPDATE. A regra pela família está no LEIAME.md.

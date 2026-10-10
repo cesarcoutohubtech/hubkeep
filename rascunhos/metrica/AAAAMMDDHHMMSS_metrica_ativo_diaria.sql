@@ -23,8 +23,8 @@
 --     entra com calculo = 1 e recalculo = true. O painel mostra o
 --     resultado original gravado de cada dia (o de menor número, que não é
 --     recálculo); o recálculo só aparece no painel de investigação, sob demanda
---     e identificado (decisão de 07/10/2026, aprovada por Kaio, aguardando
---     Cesar). Nada é apagado;
+--     e identificado (decisão de 07/10/2026, aprovada por Kaio e pelo
+--     Cesar em 10/10/2026, #166). Nada é apagado;
 --   - uma linha por (ativo, dia, cálculo): índice único, que também faz o job
 --     rodar duas vezes no mesmo dia sem duplicar.
 -- Lê (hk_app): quem tem leitura do hotel (authz.hoteis_leitura). O proprietário
