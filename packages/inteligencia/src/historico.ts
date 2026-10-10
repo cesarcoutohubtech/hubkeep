@@ -67,8 +67,8 @@ export interface AtivoAnalisado {
   modelo: string | null;
   /**
    * Fim da garantia, de `app.ativo.garantia_ate` (etapa I1): o último dia em
-   * que ela vale. Ausente ou null: sem a data, e a atenção marca o componente
-   * como sem dado.
+   * que ela vale. Ausente ou null: sem a data, e a atenção conta como não
+   * vencida (respostas de 10/10/2026).
    */
   garantiaAte?: Date | null;
 }
