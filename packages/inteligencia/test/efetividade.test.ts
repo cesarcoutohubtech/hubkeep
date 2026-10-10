@@ -43,7 +43,11 @@ describe('efetividade da intervenção', () => {
 
   it('o depois ainda sem a janela inteira fica como incompleto', () => {
     const e = efetividadeAntesDepois(
-      { intervencaoEm: dia(-30), corretivas: corretivasEm([-200]), paradas: [] },
+      {
+        intervencaoEm: dia(-30),
+        corretivas: [-40, -50, -60].map((d) => corretiva({ abertaEm: dia(d) })),
+        paradas: [],
+      },
       agora,
     );
     expect([e.resultado, e.diasDecorridos]).toEqual(['janela_incompleta', 30]);
@@ -122,18 +126,25 @@ describe('efetividade da intervenção', () => {
     expect(resultadoCom([], 5).resultado).toBe('sem_base_de_comparacao');
   });
 
-  it('menos de 90 dias depois: janela incompleta, antes de qualquer outro resultado', () => {
+  it('menos de 90 dias depois: janela incompleta, antes das faixas de variação', () => {
     const corretivas = corretivasEm(dez);
     const em = (decorridos: number) =>
       efetividadeAntesDepois({ intervencaoEm: t, corretivas, paradas: [] }, dia(decorridos, t))
         .resultado;
+    expect(em(0)).toBe('janela_incompleta');
     expect(em(89)).toBe('janela_incompleta');
     expect(em(90)).toBe('reducao_observada');
-    // Sem base e janela incompleta: a janela vale primeiro.
-    expect(
-      efetividadeAntesDepois({ intervencaoEm: t, corretivas: [], paradas: [] }, dia(10, t))
-        .resultado,
-    ).toBe('janela_incompleta');
+  });
+
+  it('sem base e janela incompleta: sem base prevalece, já no dia da intervenção, e não muda', () => {
+    const doisAntes = corretivasEm([-5, -30]);
+    const em = (decorridos: number, corretivas = doisAntes) =>
+      efetividadeAntesDepois({ intervencaoEm: t, corretivas, paradas: [] }, dia(decorridos, t))
+        .resultado;
+    for (const d of [0, 10, 89, 90, 200]) expect(em(d)).toBe('sem_base_de_comparacao');
+    for (const d of [0, 10, 90]) expect(em(d, [])).toBe('sem_base_de_comparacao');
+    // Com 3 antes, a base existe, e a janela volta a valer até o dia 90.
+    expect(em(10, corretivasEm([-5, -30, -60]))).toBe('janela_incompleta');
   });
 
   it('os limiares vêm da configuração', () => {
@@ -216,6 +227,11 @@ describe('rótulos da efetividade: variação observada, nunca causa', () => {
     expect(
       t('inteligencia.efetividade.explicacao', { resultado: 'reducao_parcial', ...valores }),
     ).toBe('Os chamados caíram de 25% a menos de 60% em relação aos 90 dias antes.');
+    expect(
+      t('inteligencia.efetividade.explicacao', { resultado: 'sem_base_de_comparacao', ...valores }),
+    ).toBe(
+      'Houve menos de 3 chamados nos 90 dias antes da intervenção. Esse resultado já vale no dia da intervenção e não muda quando a janela terminar.',
+    );
   });
 
   it.each(IDIOMAS)('%s: nenhum texto fala em causa nem em problema resolvido', (idioma) => {
