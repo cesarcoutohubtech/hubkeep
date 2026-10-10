@@ -16,14 +16,19 @@
 // executa a OS (com os fornecedores do grupo, lidos pela API), o impacto no
 // hóspede e o custo no aceite. Os períodos e os fornecedores vêm sempre pela
 // API, mesmo com os dados iniciais do servidor.
+//
+// I6: os códigos do tenant vêm pela API; o aceite leva falha, causa e solução,
+// com a sugestão do técnico já escolhida.
 import { MensagemVazia, Nota, Painel } from '@hubkeep/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { HistoricoDoRegistro } from '../../../../cliente/HistoricoDoRegistro';
+import { useCodigosDoTenant } from '../../../../cliente/codigos-manutencao';
 import {
   Aviso,
   ChamadoEmDetalhe,
+  type CodigosDaOsNaTela,
   type DetalheDoChamado,
   type EventoDaLinhaDoTempo,
   LinhaDoTempo,
@@ -58,6 +63,7 @@ export function TelaDoChamado({
   erroInicial: ErroDaApi | null;
 }) {
   const t = useT();
+  const { dados: codigos } = useCodigosDoTenant();
   const [refs, setRefs] = useState<Referencias | null>(
     inicial && { hoteis: inicial.hoteis, corretiva: inicial.corretiva ?? CORRETIVA_VAZIA },
   );
@@ -121,10 +127,14 @@ export function TelaDoChamado({
     await carregar();
   }
 
-  async function aceitar(os: OsDoChamado, custoInformado: number | null) {
+  async function aceitar(
+    os: OsDoChamado,
+    custoInformado: number | null,
+    codigos: CodigosDaOsNaTela | undefined,
+  ) {
     const r = await chamarApi<unknown>(`/api/v1/os/${os.id}/aceite`, {
       method: 'POST',
-      body: JSON.stringify({ versao: os.versao, custoInformado }),
+      body: JSON.stringify({ versao: os.versao, custoInformado, ...(codigos ? { codigos } : {}) }),
     });
     setParadaExistente(false);
     setAviso(r.ok ? { tipo: 'ok' } : { tipo: 'erro', erro: r.erro });
@@ -156,7 +166,8 @@ export function TelaDoChamado({
             <ChamadoEmDetalhe
               detalhe={detalhe}
               refs={refs}
-              aoAceitar={(os, custo) => void aceitar(os, custo)}
+              codigos={codigos}
+              aoAceitar={(os, custo, codigosDaOs) => void aceitar(os, custo, codigosDaOs)}
               aoReabrir={(os, p) => void reabrir(os, p)}
             />
             <UhIndisponivelDoChamado

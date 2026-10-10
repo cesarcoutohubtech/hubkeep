@@ -76,6 +76,17 @@ export const PedidoDeOperacaoOffline = z
         /** Com a UH do chamado indisponível (I4): "a UH foi liberada?"; sim, encerra com essa hora. */
         uhLiberada: z.boolean().optional(),
         concluidaEm: z.iso.datetime().optional(),
+        /**
+         * Os códigos sugeridos pelo técnico (I6), todos opcionais. O que não
+         * serve é descartado no servidor; a conclusão nunca é recusada por eles.
+         */
+        codigos: z
+          .object({
+            falhaId: z.guid().nullish(),
+            causaId: z.guid().nullish(),
+            solucaoId: z.guid().nullish(),
+          })
+          .optional(),
       }),
     }),
     z.object({

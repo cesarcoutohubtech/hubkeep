@@ -40,6 +40,7 @@ import {
   casosDeUsoDeBandeiras,
   casosDeUsoDeCategorias,
   casosDeUsoDeChamados,
+  casosDeUsoDeCodigos,
   casosDeUsoDeConfiguracao,
   casosDeUsoDeEquipes,
   casosDeUsoDeFornecedores,
@@ -419,6 +420,17 @@ export async function semearDemonstracao(
     if (!id) throw new Error(`Prioridade padrão ${chave} não encontrada.`);
     return id;
   };
+  // Códigos de falha, causa e solução padrão (I6), depois das categorias: a
+  // falha de cada categoria padrão entra junto. A política
+  // os.codigos_obrigatorios fica desligada; o roteiro do kit liga no hotel.
+  const codigosUc = await casosDeUsoDeCodigos();
+  await codigosUc.instalarCodigosPadrao(ctxAdmin);
+  const { codigos: codigosDoGrupo } = await codigosUc.listarCodigos(ctxAdmin);
+  const codigo = (chave: string) => {
+    const id = codigosDoGrupo.find((c) => c.chavePadrao === chave)?.id;
+    if (!id) throw new Error(`Código padrão ${chave} não encontrado.`);
+    return id;
+  };
   // Prioridade por categoria: sem esta política, todo chamado abria na de
   // menor peso (Baixa). Gravar de novo reaproveita a linha do grupo.
   await (
@@ -609,7 +621,12 @@ export async function semearDemonstracao(
     chamadoId: string,
     osId: string,
     acao: 'iniciar' | 'concluir',
-    extra: { equipamentoVoltou?: boolean; concluidaEm?: string } = {},
+    extra: {
+      equipamentoVoltou?: boolean;
+      concluidaEm?: string;
+      /** Os códigos sugeridos na conclusão (I6). */
+      codigos?: { falhaId?: string; causaId?: string; solucaoId?: string };
+    } = {},
   ) => {
     const os = await osAtual('tecnicoCentro', chamadoId, osId);
     await operar('tecnicoCentro', `os:${cenario}:${acao}`, {
@@ -674,7 +691,14 @@ export async function semearDemonstracao(
     tipo: 'os.registrar_material',
     dados: { osId: osAceite, descricao: 'Rolamento do motor da bomba' },
   });
-  await agir('aguardandoAceite', chamados.aguardandoAceite, osAceite, 'concluir');
+  // O técnico sugere a falha e a causa e deixa a solução em branco (I6): com a
+  // política ligada no hotel, o aceite cobra a solução (roteiro do kit).
+  await agir('aguardandoAceite', chamados.aguardandoAceite, osAceite, 'concluir', {
+    codigos: {
+      falhaId: codigo('falha_ruido_anormal'),
+      causaId: codigo('causa_desgaste_natural'),
+    },
+  });
 
   // Cancelado pelo Gerente, com o motivo.
   chamados.cancelado = await abrir(
@@ -707,10 +731,21 @@ export async function semearDemonstracao(
     equipeId: equipe.id,
   });
   await agir('concluido', chamados.concluido, osConcluida, 'iniciar');
-  await agir('concluido', chamados.concluido, osConcluida, 'concluir');
+  const codigosDoForno = {
+    falhaId: codigo('falha_nao_aquece'),
+    causaId: codigo('causa_desgaste_natural'),
+    solucaoId: codigo('solucao_troca_de_peca'),
+  };
+  await agir('concluido', chamados.concluido, osConcluida, 'concluir', {
+    codigos: codigosDoForno,
+  });
   const concluida = await osAtual('gerenteCentro', chamados.concluido, osConcluida);
   if (concluida.estado === 'concluida') {
-    await triagem.aceitarOs(ctx('gerenteCentro'), osConcluida, { versao: concluida.versao });
+    // O Gerente confirma os três códigos sugeridos pelo técnico (I6).
+    await triagem.aceitarOs(ctx('gerenteCentro'), osConcluida, {
+      versao: concluida.versao,
+      codigos: codigosDoForno,
+    });
   }
 
   // No Praia, hotel do proprietário do hotel inteiro: aberto pelo Gerente.

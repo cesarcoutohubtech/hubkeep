@@ -51,7 +51,7 @@ import {
 import { AbrirChamado, type AberturaDeChamado } from './telas/AbrirChamado';
 import { type EstadoDaFila, FilaDoDia, useMotivo } from './telas/FilaDoDia';
 import { Login } from './telas/Login';
-import { Os, type RespostasDaConclusao } from './telas/Os';
+import { type CodigosParaSugerir, Os, type RespostasDaConclusao } from './telas/Os';
 
 const INTERVALO_MS = 30_000;
 const FILA_VAZIA: EstadoDaFila = { pendentes: 0, rejeitadas: [] };
@@ -351,6 +351,7 @@ function Casca(props: {
                 ? { equipamentoVoltou: resposta.equipamentoVoltou }
                 : {}),
               ...(resposta.uhLiberada !== undefined ? { uhLiberada: resposta.uhLiberada } : {}),
+              ...(resposta.codigos ? { codigos: resposta.codigos } : {}),
               concluidaEm: new Date().toISOString(),
             }
           : {}),
@@ -449,10 +450,24 @@ function Casca(props: {
   }
 
   const aberta = os?.find((o) => o.id === osAberta);
+  /** Os códigos da referência e a categoria do ativo do chamado, para a sugestão na conclusão (I6). */
+  const codigosParaSugerir = (o: OsNoAparelho): CodigosParaSugerir | undefined => {
+    if (!referencia?.codigos) return undefined;
+    const ativo = o.chamado.ativoId
+      ? referencia.ativos[o.hotelId]?.find((a) => a.id === o.chamado.ativoId)
+      : undefined;
+    return {
+      lista: referencia.codigos,
+      categoriaDoAtivo: ativo?.categoriaId ?? null,
+      idiomaPadrao: referencia.idiomaPadrao,
+      idioma: props.idioma,
+    };
+  };
   if (sessao && tela === 'os' && aberta) {
     return (
       <Os
         os={aberta}
+        codigos={codigosParaSugerir(aberta)}
         aoAgir={agirNaOs}
         aoApontar={apontarHoras}
         aoRegistrarMaterial={registrarMaterial}

@@ -1,7 +1,14 @@
 // Porta da execução da OS (fase 1a, C4). Implementada por packages/db, com o
 // contexto do usuário. As gravações vão pelas operações offline do PWA
 // (SessaoDeOperacao, ADR-025); aqui ficam as leituras.
-import type { Contexto, EstadoDaOs, EstadoDoChamado, Responsavel } from '@hubkeep/dominio';
+import type {
+  CodigosDaOs,
+  Contexto,
+  EstadoDaOs,
+  EstadoDoChamado,
+  Responsavel,
+  TipoDeCodigoDeManutencao,
+} from '@hubkeep/dominio';
 import type { EncerramentoDeParada } from './paradas';
 import type { LiberacaoDeUh } from './uh-indisponivel';
 
@@ -60,4 +67,13 @@ export interface AcaoNaOsDecidida {
   encerrarParada?: EncerramentoDeParada | null;
   /** Concluir com "UH liberada" (I4): o período da UH a encerrar na mesma operação. */
   liberarUh?: LiberacaoDeUh | null;
+  /**
+   * Concluir com os códigos sugeridos pelo técnico (I6): os que servem, a
+   * gravar na OS, e os descartados, com o motivo, para a auditoria. null ou
+   * ausente: a conclusão não mexe nos códigos.
+   */
+  codigos?: {
+    codigos: CodigosDaOs;
+    descartados: { tipo: TipoDeCodigoDeManutencao; motivo: string }[];
+  } | null;
 }

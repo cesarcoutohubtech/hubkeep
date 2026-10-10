@@ -11,8 +11,33 @@
 // vai na operação de concluir (sim: a parada encerra junto). Do mesmo jeito,
 // com a UH do chamado indisponível (I4), a conclusão pergunta se a UH foi
 // liberada (sim: o período encerra junto). Com as duas, a da parada vem antes.
-import { ErroDeDominio, normalizarMaterial, validarApontamento } from '@hubkeep/dominio';
-import { AreaDeTexto, Botao, Campo, Entrada, MensagemDeErro, Painel, Selo } from '@hubkeep/ui';
+//
+// Códigos de falha, causa e solução (I6): enquanto a OS está em execução ou
+// pausada, o técnico pode escolher os três, como sugestão, entre os que servem
+// para a categoria do ativo (os dela primeiro). Nenhum é obrigatório, e a
+// conclusão nunca é recusada por eles (decisão do Cesar de 10/10/2026); os
+// escolhidos vão na operação de concluir.
+import {
+  CODIGOS_PADRAO,
+  type CodigosSugeridos,
+  ErroDeDominio,
+  TIPOS_DE_CODIGO_DE_MANUTENCAO,
+  type TipoDeCodigoDeManutencao,
+  codigosQueServem,
+  normalizarMaterial,
+  validarApontamento,
+} from '@hubkeep/dominio';
+import { type Chave, type IdiomaDeExibicao, ehIdioma, resolverNome } from '@hubkeep/i18n';
+import {
+  AreaDeTexto,
+  Botao,
+  Campo,
+  Entrada,
+  MensagemDeErro,
+  Painel,
+  Selecao,
+  Selo,
+} from '@hubkeep/ui';
 import { type FormEvent, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n';
@@ -25,6 +50,7 @@ import {
   perguntaDaUhNaConclusao,
   perguntaNaConclusao,
 } from '../os/projecao';
+import type { CodigoGuardado } from '../referencia/banco';
 import { TOM_DO_ESTADO, rotuloDoEstado, useMotivo } from './FilaDoDia';
 import { TelaDoTecnico } from './TelaDoTecnico';
 
@@ -32,7 +58,79 @@ import { TelaDoTecnico } from './TelaDoTecnico';
 export interface RespostasDaConclusao {
   equipamentoVoltou?: boolean;
   uhLiberada?: boolean;
+  /** Os códigos sugeridos pelo técnico (I6); só os escolhidos. */
+  codigos?: CodigosSugeridos;
 }
+
+/** Os códigos que a tela da OS oferece (I6), da referência guardada no aparelho. */
+export interface CodigosParaSugerir {
+  lista: readonly CodigoGuardado[];
+  /** A categoria do ativo do chamado; null sem ativo ou sem categoria (vale qualquer uma). */
+  categoriaDoAtivo: string | null;
+  idiomaPadrao: string;
+  idioma: IdiomaDeExibicao;
+}
+
+const CAMPO_DO_TIPO = {
+  falha: 'falhaId',
+  causa: 'causaId',
+  solucao: 'solucaoId',
+} as const satisfies Record<TipoDeCodigoDeManutencao, keyof CodigosSugeridos>;
+
+const CHAVES_DO_CATALOGO = new Set(CODIGOS_PADRAO.map((c) => c.chave));
+
+/** Falha, causa e solução, opcionais, como sugestão (I6). */
+export function SugestaoDeCodigos(props: {
+  codigos: CodigosParaSugerir;
+  valor: CodigosSugeridos;
+  aoMudar: (valor: CodigosSugeridos) => void;
+}) {
+  const t = useT();
+  const { lista, categoriaDoAtivo, idioma } = props.codigos;
+  const idiomaPadrao = ehIdioma(props.codigos.idiomaPadrao) ? props.codigos.idiomaPadrao : 'pt-BR';
+  const nome = (c: CodigoGuardado) =>
+    resolverNome(c.nomes, idioma, {
+      doCatalogo:
+        c.chavePadrao && CHAVES_DO_CATALOGO.has(c.chavePadrao)
+          ? t(`codigo_manutencao.padrao.${c.chavePadrao}` as Chave)
+          : null,
+      idiomaPadrao,
+    }) ?? c.id;
+  return (
+    <Painel titulo={t('tecnico.os.codigos.titulo')}>
+      <p className="tc-nota">{t('tecnico.os.codigos.dica')}</p>
+      {TIPOS_DE_CODIGO_DE_MANUTENCAO.map((tipo) => {
+        const campo = CAMPO_DO_TIPO[tipo];
+        return (
+          <Campo key={tipo} rotulo={t('codigo_manutencao.tipo', { tipo })}>
+            {(p) => (
+              <Selecao
+                {...p}
+                name={campo}
+                value={props.valor[campo] ?? ''}
+                onChange={(e) => props.aoMudar({ ...props.valor, [campo]: e.target.value || null })}
+              >
+                <option value="">{t('tecnico.os.codigos.nenhum')}</option>
+                {codigosQueServem(lista, tipo, categoriaDoAtivo).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {nome(c)}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+          </Campo>
+        );
+      })}
+    </Painel>
+  );
+}
+
+/** Só os códigos escolhidos; undefined se nenhum. */
+const escolhidos = (v: CodigosSugeridos): CodigosSugeridos | undefined => {
+  const saida: CodigosSugeridos = {};
+  for (const campo of Object.values(CAMPO_DO_TIPO)) if (v[campo]) saida[campo] = v[campo];
+  return Object.keys(saida).length > 0 ? saida : undefined;
+};
 
 export interface AcoesDaOs {
   /** Na conclusão com a parada ou a UH do chamado em aberto, com as respostas do técnico. */
@@ -105,6 +203,8 @@ export function Os(
     confirmar?: (mensagem: string) => boolean;
     /** Para testes: a tela já com uma pergunta da conclusão aberta (true é a da parada). */
     perguntando?: boolean | Pergunta;
+    /** Os códigos para sugerir na conclusão (I6); sem eles, a tela não mostra os campos. */
+    codigos?: CodigosParaSugerir | undefined;
   },
 ) {
   const t = useT();
@@ -121,6 +221,12 @@ export function Os(
     props.perguntando === true ? 'parada' : props.perguntando || null,
   );
   const [respostas, setRespostas] = useState<RespostasDaConclusao>({});
+  const [sugestao, setSugestao] = useState<CodigosSugeridos>({});
+  /** As respostas da conclusão com os códigos escolhidos, se houver. */
+  const comCodigos = (r: RespostasDaConclusao): RespostasDaConclusao => {
+    const codigos = escolhidos(sugestao);
+    return codigos ? { ...r, codigos } : r;
+  };
 
   /** Roda o pedido; erro de regra vira aviso com o motivo pelo catálogo. */
   async function tentar(fazer: () => Promise<void>): Promise<boolean> {
@@ -140,7 +246,8 @@ export function Os(
     if (acao === 'concluir' && perguntaNaConclusao(os)) return setPergunta('parada');
     if (acao === 'concluir' && perguntaDaUhNaConclusao(os)) return setPergunta('uh');
     if (acao === 'concluir' && !confirmar(t('tecnico.os.concluir.confirmar'))) return;
-    await tentar(() => props.aoAgir(os, acao));
+    const codigos = acao === 'concluir' ? escolhidos(sugestao) : undefined;
+    await tentar(() => (codigos ? props.aoAgir(os, acao, { codigos }) : props.aoAgir(os, acao)));
   }
 
   async function concluirRespondendo(resposta: RespostasDaConclusao) {
@@ -152,7 +259,7 @@ export function Os(
     }
     setPergunta(null);
     setRespostas({});
-    await tentar(() => props.aoAgir(os, 'concluir', todas));
+    await tentar(() => props.aoAgir(os, 'concluir', comCodigos(todas)));
   }
 
   const desistir = () => {
@@ -284,6 +391,9 @@ export function Os(
 
       {aceitaRegistro(os.estado) ? (
         <>
+          {props.codigos && props.codigos.lista.length > 0 && (
+            <SugestaoDeCodigos codigos={props.codigos} valor={sugestao} aoMudar={setSugestao} />
+          )}
           <Painel titulo={t('tecnico.os.horas.titulo')}>
             <form onSubmit={(e) => void apontar(e)}>
               <Campo rotulo={t('tecnico.os.horas.inicio')}>

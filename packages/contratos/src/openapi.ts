@@ -36,6 +36,14 @@ import {
   RespostaDeCategoriasPadrao,
 } from './categorias';
 import {
+  PedidoDeCodigoDeManutencao,
+  PedidoDeNomesDeCodigo,
+  RespostaDeCodigoAlterado,
+  RespostaDeCodigosDaOs,
+  RespostaDeCodigosDeManutencao,
+  RespostaDeCodigosPadrao,
+} from './codigos-manutencao';
+import {
   PedidoDePrioridade,
   PedidoDeSituacao,
   PedidoDeSituacaoNova,
@@ -1227,6 +1235,83 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/codigos-de-manutencao',
+    resumo:
+      'Códigos de falha, causa e solução do tenant, inclusive os desativados, com o idioma padrão para a volta dos nomes (I6, ADR-027). Lê o Admin do grupo e quem lê algum hotel.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Códigos', esquema: RespostaDeCodigosDeManutencao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/codigos-de-manutencao',
+    resumo:
+      'Cria um código do tenant: tipo, categoria de ativo (nula: todas) e nomes. O tipo e a categoria não mudam depois. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeCodigoDeManutencao,
+    respostas: {
+      201: { descricao: 'Código criado', esquema: RespostaDeCodigoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (codigos_so_admin).'),
+      404: ERRO('Categoria não encontrada (categoria_nao_encontrada).'),
+      422: ERRO('codigo_nome_invalido, codigo_tipo_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/codigos-de-manutencao/{id}',
+    resumo: 'Altera os nomes do código. No padrão, o nome vazio volta ao do catálogo.',
+    exigeTenant: true,
+    corpo: PedidoDeNomesDeCodigo,
+    respostas: {
+      200: { descricao: 'Código alterado', esquema: RespostaDeCodigoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (codigos_so_admin).'),
+      404: ERRO('Código não encontrado (codigo_nao_encontrado).'),
+      422: ERRO('codigo_nome_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/codigos-de-manutencao/{id}/desativacao',
+    resumo:
+      'Desativa o código (exclusão lógica). A OS que já o tem continua com ele; a conclusão e o aceite novos não o aceitam.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Código desativado', esquema: RespostaDeCodigoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (codigos_so_admin).'),
+      404: ERRO('Código não encontrado (codigo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/codigos-de-manutencao/{id}/reativacao',
+    resumo: 'Reativa o código.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Código reativado', esquema: RespostaDeCodigoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (codigos_so_admin).'),
+      404: ERRO('Código não encontrado (codigo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/codigos-de-manutencao/padrao',
+    resumo:
+      'Instala os códigos padrão do catálogo que o tenant ainda não tem. A falha de uma categoria padrão entra só se o tenant tiver a categoria. Idempotente.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Quantos foram instalados', esquema: RespostaDeCodigosPadrao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (codigos_so_admin).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/situacoes-e-prioridades',
     resumo:
       'Situações (ligadas aos estados canônicos do chamado e da OS) e prioridades do tenant, na ordem da tela, com o idioma padrão para a volta dos nomes (ADR-027).',
@@ -1646,10 +1731,22 @@ export const ROTAS: readonly Rota[] = [
     },
   },
   {
+    metodo: 'get',
+    caminho: '/api/v1/os/{id}/codigos',
+    resumo:
+      'Os códigos que servem para a OS, por tipo: ativos, da categoria do ativo do chamado primeiro, depois os de todas (I6). A lista do aceite; os nomes vêm de /api/v1/codigos-de-manutencao.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Ids por tipo', esquema: RespostaDeCodigosDaOs },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('OS fora do escopo (os_nao_encontrada).'),
+    },
+  },
+  {
     metodo: 'post',
     caminho: '/api/v1/os/{id}/aceite',
     resumo:
-      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Com custoInformado, o custo em reais (I4), opcional, sem aprovação nem alçada. Leva a versão vista da OS.',
+      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Com custoInformado, o custo em reais (I4), opcional, sem aprovação nem alçada. Com codigos (I6), falha, causa e solução substituem os sugeridos pelo técnico; com a política os.codigos_obrigatorios ligada no hotel, o aceite exige os três. Leva a versão vista da OS.',
     exigeTenant: true,
     corpo: PedidoDeAceiteDeOs,
     respostas: {
@@ -1660,7 +1757,9 @@ export const ROTAS: readonly Rota[] = [
       ),
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
-      422: ERRO('os_custo_invalido, sem_situacao_para_estado ou entrada_invalida.'),
+      422: ERRO(
+        'os_custo_invalido, codigos_obrigatorios_no_aceite (faltam), codigo_nao_encontrado, codigo_de_outro_tipo, codigo_inativo ou codigo_de_outra_categoria (tipo), sem_situacao_para_estado ou entrada_invalida.',
+      ),
     },
   },
   {

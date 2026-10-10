@@ -50,6 +50,14 @@ export type OperacaoOffline =
         /** Na conclusão, com a UH do chamado indisponível: "a UH foi liberada?" (I4). */
         uhLiberada?: boolean | undefined;
         concluidaEm?: string | undefined;
+        /** Na conclusão, os códigos sugeridos pelo técnico (I6); nunca recusam. */
+        codigos?:
+          | {
+              falhaId?: string | null | undefined;
+              causaId?: string | null | undefined;
+              solucaoId?: string | null | undefined;
+            }
+          | undefined;
       };
     }
   | {
@@ -142,7 +150,7 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
         case 'os.retomar':
         case 'os.concluir': {
           const acao = operacao.tipo.slice('os.'.length) as AcaoDoTecnico;
-          const { osId, versao, feitaEm, equipamentoVoltou, uhLiberada, concluidaEm } =
+          const { osId, versao, feitaEm, equipamentoVoltou, uhLiberada, concluidaEm, codigos } =
             operacao.dados;
           const g = await execucao().prepararAcao(ctx, acao, {
             osId,
@@ -151,6 +159,7 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
             equipamentoVoltou,
             uhLiberada,
             concluidaEm: concluidaEm === undefined ? undefined : new Date(concluidaEm),
+            codigos,
           });
           // A parada e a UH encerram na mesma unit of work da conclusão: o
           // reenvio devolve a resposta guardada e não encerra de novo.
@@ -163,7 +172,11 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
               versao,
               estado: g.estado,
               ...(acao === 'concluir'
-                ? { paradaEncerrada: Boolean(g.encerrarParada), uhLiberada: Boolean(g.liberarUh) }
+                ? {
+                    paradaEncerrada: Boolean(g.encerrarParada),
+                    uhLiberada: Boolean(g.liberarUh),
+                    codigosDescartados: g.codigos?.descartados.length ?? 0,
+                  }
                 : {}),
             };
           });

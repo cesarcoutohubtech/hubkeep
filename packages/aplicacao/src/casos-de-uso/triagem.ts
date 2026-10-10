@@ -14,6 +14,11 @@
 // impacto no hóspede até o aceite; quem aceita informa o custo, opcional, em
 // reais; e o cancelamento do chamado encerra o período aberto da UH.
 //
+// Na I6: quem aceita confirma ou corrige os códigos de falha, causa e solução
+// que o técnico sugeriu; o código que não serve é recusado. Com a política
+// os.codigos_obrigatorios ligada no hotel, o aceite exige os três
+// (decisão do Cesar de 10/10/2026); a conclusão no PWA nunca é cobrada.
+//
 // Quem pode e para onde vai são do domínio (corretiva.ts e triagem.ts); a
 // situação de cada estado é a ativa de menor ordem (situacaoPara). As
 // checagens de papel são injetáveis, como o podeAbrir do chamado, para o
@@ -21,6 +26,7 @@
 import {
   type AtorDaCorretiva,
   type CandidatoAResponsavel,
+  type CodigosDaOs,
   type Contexto,
   EXECUCAO_PADRAO,
   type ExecutadoPor,
@@ -32,17 +38,23 @@ import {
   decidirQuemExecuta,
   exigirPrioridadeAtiva,
   exigirAtivoNoChamado,
+  exigirCodigosNoAceite,
   exigirResponsavelDoHotel,
   normalizarCustoInformado,
   podeAjustarPrioridade,
   podeAjustarQuemExecuta,
   podeInformarImpacto,
+  resolverPolitica,
   situacaoPara,
+  validarCodigosDaOs,
   validarParada,
 } from '@hubkeep/dominio';
+import type { PortaCodigos } from '../portas/codigos-manutencao';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaPrioridades, PortaSituacoes } from '../portas/situacoes';
 import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/triagem';
+
+const CODIGOS_OBRIGATORIOS = 'os.codigos_obrigatorios';
 
 /** O responsável como a tela o escolhe. */
 export type ResponsavelPedido =
@@ -98,11 +110,19 @@ export interface CasosDeUsoDeTriagem {
     osId: string,
     p: { versao: number; motivo: string },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
-  /** Aceite da OS concluída: o chamado fica concluído (C6), com o custo informado, opcional (I4). */
+  /**
+   * Aceite da OS concluída: o chamado fica concluído (C6), com o custo
+   * informado, opcional (I4). Com `codigos` (I6), os três substituem os da OS;
+   * sem eles, ficam os sugeridos pelo técnico.
+   */
   aceitarOs(
     ctx: Contexto,
     osId: string,
-    p: { versao: number; custoInformado?: number | null | undefined },
+    p: {
+      versao: number;
+      custoInformado?: number | null | undefined;
+      codigos?: CodigosDaOs | undefined;
+    },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
   /**
    * Reabertura da OS concluída, com motivo: a OS e o chamado voltam à execução
@@ -134,6 +154,8 @@ export function criarCasosDeUsoDeTriagem(deps: {
   prioridades: Pick<PortaPrioridades, 'listar'>;
   atribuicoes: Pick<PortaAtribuicoes, 'doUsuario'>;
   relogio: Relogio;
+  /** Os códigos da OS no aceite (I6). Opcional só para os testes que não aceitam com código. */
+  codigos?: Pick<PortaCodigos, 'listar' | 'categoriaDoAtivo'>;
   /** Padrão: as do domínio. Só o teste de aceite troca. */
   regras?: Partial<RegrasDaTriagem>;
 }): CasosDeUsoDeTriagem {
@@ -217,6 +239,20 @@ export function criarCasosDeUsoDeTriagem(deps: {
         ? await deps.triagem.fornecedor(ctx, fornecedorId)
         : null;
     return decidirQuemExecuta(pedido, fornecedor);
+  }
+
+  /** Os códigos pedidos no aceite, conferidos contra a categoria do ativo do chamado (I6). */
+  async function codigosDoAceite(
+    ctx: Contexto,
+    chamado: ChamadoParaTriagem,
+    pedido: CodigosDaOs,
+  ): Promise<CodigosDaOs> {
+    if (!deps.codigos) throw new Error('Aceite com códigos sem a porta de códigos.');
+    const [lista, categoria] = await Promise.all([
+      deps.codigos.listar(ctx),
+      chamado.ativoId === null ? null : deps.codigos.categoriaDoAtivo(ctx, chamado.ativoId),
+    ]);
+    return validarCodigosDaOs(pedido, lista, categoria);
   }
 
   return {
@@ -375,9 +411,16 @@ export function criarCasosDeUsoDeTriagem(deps: {
         agora: deps.relogio.agora(),
       });
       const custoInformado = normalizarCustoInformado(p.custoInformado);
+      const codigos = p.codigos ? await codigosDoAceite(ctx, chamado, p.codigos) : null;
+      const politica = await deps.triagem.politica(ctx, chamado.hotel.id, CODIGOS_OBRIGATORIOS);
+      exigirCodigosNoAceite(
+        resolverPolitica(CODIGOS_OBRIGATORIOS, politica).ligado,
+        codigos ?? os.codigos,
+      );
       const lista = await situacoes(ctx);
       const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.aceitarOs(ctx, {
+        codigos,
         custoInformado,
         osId,
         versao: p.versao,

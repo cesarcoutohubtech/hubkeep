@@ -162,6 +162,9 @@ export type {
 export type { CategoriaGravada, PortaCategorias } from './portas/categorias';
 export { criarCasosDeUsoDeCategorias } from './casos-de-uso/categorias';
 export type { CasosDeUsoDeCategorias, CategoriaDeAtivo } from './casos-de-uso/categorias';
+export type { CodigoGravado, PortaCodigos } from './portas/codigos-manutencao';
+export { criarCasosDeUsoDeCodigos } from './casos-de-uso/codigos-manutencao';
+export type { CasosDeUsoDeCodigos, CodigoDeManutencao } from './casos-de-uso/codigos-manutencao';
 export type {
   PortaPrioridades,
   PortaSituacoes,

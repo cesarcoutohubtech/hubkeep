@@ -65,6 +65,7 @@ const osDe = (estado: OsDoChamado['estado']): OsDoChamado => ({
   executadoPor: 'equipe_interna',
   fornecedorId: null,
   custoInformado: null,
+  codigos: { falhaId: null, causaId: null, solucaoId: null },
   criadoPor: U,
   versao: 2,
   criadoEm: '2026-09-30T13:00:00.000Z',

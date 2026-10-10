@@ -11,6 +11,7 @@ import type {
   PortaAtribuicoes,
   PortaCategorias,
   PortaChamados,
+  PortaCodigos,
   OsGravada,
   PortaTriagem,
   PortaExecucao,
@@ -49,6 +50,7 @@ import {
   type EstadoDoChamado,
   type Escopo,
   type ExecutadoPor,
+  type TipoDeCodigoDeManutencao,
   ehModeloContratual,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
@@ -85,6 +87,7 @@ import {
 } from './repositorios/triagem';
 import { liberarUh, marcarUhIndisponivel } from './repositorios/uh-indisponivel';
 import { aceitarOs, reabrirOs } from './repositorios/aceite';
+import { alterarCodigo, criarCodigo } from './repositorios/codigos-manutencao';
 import { andarComOs, apontarHoras, registrarMaterial } from './repositorios/execucao';
 import { encerrarParada, registrarParada } from './repositorios/paradas';
 import {
@@ -734,6 +737,47 @@ export function criarPortaCategorias(banco: AcessoBanco): PortaCategorias {
   };
 }
 
+/** Códigos de falha, causa e solução (fase 1b, I6), pelo hk_app. */
+export function criarPortaCodigos(banco: AcessoBanco): PortaCodigos {
+  return {
+    idiomaPadrao: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const t = await tx.selectFrom('app.tenant').select('idioma_padrao').executeTakeFirst();
+        return (t?.idioma_padrao ?? 'pt-BR') as Awaited<ReturnType<PortaCodigos['idiomaPadrao']>>;
+      }),
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.codigo_manutencao')
+            .select(['id', 'tipo', 'categoria_id', 'chave_padrao', 'nomes', 'ativa'])
+            .orderBy('criado_em')
+            .orderBy('id')
+            .execute()
+        ).map((c) => ({
+          id: c.id,
+          // O check codigo_manutencao_tipo_lista garante um dos tipos do domínio.
+          tipo: c.tipo as TipoDeCodigoDeManutencao,
+          categoriaId: c.categoria_id,
+          chavePadrao: c.chave_padrao,
+          nomes: c.nomes,
+          ativa: c.ativa,
+        })),
+      ),
+    criar: (ctx, c) => banco.executar(ctx, (uow) => criarCodigo(uow, c)),
+    alterar: (ctx, id, mudanca) => banco.executar(ctx, (uow) => alterarCodigo(uow, id, mudanca)),
+    categoriaDoAtivo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await tx
+          .selectFrom('app.ativo')
+          .select('categoria_id')
+          .where('id', '=', ativoId)
+          .executeTakeFirst();
+        return a?.categoria_id ?? null;
+      }),
+  };
+}
+
 /** Chamados (fase 1a, C2), pelo hk_app. */
 export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
   return {
@@ -840,6 +884,9 @@ const COLUNAS_DA_OS = [
   'executado_por',
   'fornecedor_id',
   'custo_informado',
+  'codigo_falha_id',
+  'codigo_causa_id',
+  'codigo_solucao_id',
   'criado_por',
   'versao',
   'criado_em',
@@ -858,6 +905,9 @@ function paraOs(o: {
   executado_por: string;
   fornecedor_id: string | null;
   custo_informado: string | null;
+  codigo_falha_id: string | null;
+  codigo_causa_id: string | null;
+  codigo_solucao_id: string | null;
   criado_por: string;
   versao: number;
   criado_em: Date;
@@ -880,6 +930,11 @@ function paraOs(o: {
     fornecedorId: o.fornecedor_id,
     // numeric(12,2) chega como texto; dois decimais cabem no número.
     custoInformado: o.custo_informado === null ? null : Number(o.custo_informado),
+    codigos: {
+      falhaId: o.codigo_falha_id,
+      causaId: o.codigo_causa_id,
+      solucaoId: o.codigo_solucao_id,
+    },
     criadoPor: o.criado_por,
     versao: o.versao,
     criadoEm: o.criado_em,
@@ -987,6 +1042,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           .executeTakeFirst();
         return f ? { ativo: f.desativado_em === null } : null;
       }),
+    politica: (ctx, hotelId, chave) => niveisDaPolitica(banco, ctx, hotelId, chave),
     equipesDoUsuario: (ctx) =>
       banco.withContext(ctx, async (tx) =>
         (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),

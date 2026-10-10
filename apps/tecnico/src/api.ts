@@ -5,6 +5,7 @@ import {
   PedidoDeOperacaoOffline,
   RespostaDeAtivosDoHotel,
   RespostaDeCategorias,
+  RespostaDeCodigosDeManutencao,
   RespostaDeHoteis,
   RespostaDeLocaisDoHotel,
   RespostaDeOperacaoOffline,
@@ -126,6 +127,8 @@ export async function lerOsDoDia(
  * Referência do técnico (B3b): hotéis visíveis, com locais e ativos de cada um,
  * e as categorias do tenant, validados pelos contratos. null sem rede, sem
  * sessão ou com qualquer resposta que não seja 200: fica valendo a guardada.
+ * Os códigos de manutenção (I6) são sugestão: se a leitura deles falhar, a
+ * referência segue sem eles.
  */
 export async function lerReferencia(
   c: Credenciais,
@@ -141,9 +144,12 @@ export async function lerReferencia(
     return r.json();
   };
   try {
-    const [{ hoteis }, categorias] = await Promise.all([
+    const [{ hoteis }, categorias, codigos] = await Promise.all([
       ler('/api/v1/hoteis').then((d) => RespostaDeHoteis.parse(d)),
       ler('/api/v1/categorias-de-ativo').then((d) => RespostaDeCategorias.parse(d)),
+      ler('/api/v1/codigos-de-manutencao')
+        .then((d) => RespostaDeCodigosDeManutencao.parse(d).codigos)
+        .catch(() => undefined),
     ]);
     const locais: Referencia['locais'] = {};
     const ativos: Referencia['ativos'] = {};
@@ -166,6 +172,7 @@ export async function lerReferencia(
       nomesDeCriticidade,
       idiomaPadrao: categorias.idiomaPadrao,
       categorias: categorias.categorias,
+      ...(codigos ? { codigos } : {}),
       lidaEm: Date.now(),
     };
   } catch {

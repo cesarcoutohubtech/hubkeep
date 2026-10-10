@@ -3,7 +3,8 @@
 // ativo sem rede (ADR-025). Um registro por usuário, com o tenant em que foi
 // lido: outro tenant ou outra pessoa no aparelho não o enxergam. Sair apaga o
 // registro de quem sai (saida.ts, ajuste (b)). Banco separado da fila, para a
-// atualização de um não mexer no outro.
+// atualização de um não mexer no outro. Na I6, também os códigos de falha,
+// causa e solução, para o técnico sugerir na conclusão sem rede.
 import type { ValorDeCampo } from '@hubkeep/dominio';
 
 export interface HotelGuardado {
@@ -57,6 +58,16 @@ export interface AtivoGuardado {
   criticidade?: number | null;
 }
 
+/** Um código de falha, causa ou solução do tenant (I6). */
+export interface CodigoGuardado {
+  id: string;
+  tipo: 'falha' | 'causa' | 'solucao';
+  categoriaId: string | null;
+  chavePadrao: string | null;
+  nomes: Partial<Record<string, string>>;
+  ativa: boolean;
+}
+
 /** Nome de cada nível da criticidade por idioma (política ativo.criticidade do hotel, I1). */
 export type NomesDeCriticidadeGuardados = Partial<Record<string, Partial<Record<string, string>>>>;
 
@@ -72,6 +83,8 @@ export interface Referencia {
   nomesDeCriticidade?: Record<string, NomesDeCriticidadeGuardados>;
   idiomaPadrao: string;
   categorias: CategoriaGuardada[];
+  /** Os códigos do tenant (I6). Opcional: a referência guardada antes da I6 não tem. */
+  codigos?: CodigoGuardado[];
   /** Milissegundos desde 1970. */
   lidaEm: number;
 }

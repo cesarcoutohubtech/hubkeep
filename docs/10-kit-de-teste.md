@@ -101,6 +101,7 @@ Um grupo fictício, **Grupo Demonstração**, no dev. Tudo passa pelos casos de 
   - modelo contratual (I2): o Centro é próprio e o Praia, arrendado. O Serra fica sem modelo, e o painel de implantação mostra a pendência "modelo contratual não informado"; o Admin informa na configuração do hotel.
   - edificação (I2): no Centro, as UHs 101 a 104 ficam na Torre A, as 201 e 202 na Torre B, e a Piscina na "Área externa". A busca de locais acha por "torre b". O script só grava no hotel sem modelo e no local sem edificação: o que foi mudado pela tela fica.
 - **Categorias, situações e prioridades** padrão.
+- **Códigos de falha, causa e solução** padrão (I6): as falhas gerais, uma ou duas por categoria padrão, e as causas e soluções gerais. A política `os.codigos_obrigatorios` fica **desligada**; o roteiro liga no Centro para testar a cobrança no aceite.
 - **Prioridade padrão por categoria**, como política do grupo: elevadores e segurança, Urgente; refrigeração, elétrica, hidráulica e cozinha, Alta; lavanderia, eletrônicos e piscina, Média; mobiliário, Baixa. Os chamados abrem com a prioridade da categoria do ativo; o do chuveiro, sem ativo, fica em Alta, ajustada pelo Gerente. Num grupo criado antes disto, rodar o script de novo ajusta os chamados ainda em curso; os concluídos e o cancelado guardam a prioridade da abertura.
 - **Ativos**:
   - no Centro: Frigobar UH 101, Ar-condicionado UH 102, TV UH 103, Aquecedor da piscina e Forno combinado;
@@ -133,9 +134,9 @@ Os e-mails são do domínio `.test`, que não existe: nenhum e-mail sai, e as co
 | Chuveiro sem água quente | Centro, UH 104 | Aberto (pela Solicitante) | Triagem pelo web (passo a passo na seção 4) |
 | Frigobar não gela | Centro, UH 101, com ativo | OS atribuída ao Técnico, não iniciada | Fila do dia no PWA; o proprietário da UH vê |
 | Ar-condicionado desligando sozinho | Centro, UH 102, com ativo | OS em execução, equipamento parado desde 2 h antes | Conclusão com "o equipamento voltou?"; paradas |
-| Aquecedor da piscina com ruído | Centro, Piscina, com ativo | OS concluída, aguardando aceite (aberto pela Solicitante) | Aceite e reabertura com motivo |
+| Aquecedor da piscina com ruído | Centro, Piscina, com ativo | OS concluída, aguardando aceite (aberto pela Solicitante); o Técnico sugeriu a falha "Ruído ou vibração anormal" e a causa "Desgaste natural", sem solução | Aceite e reabertura com motivo; os códigos no aceite (I6) |
 | TV sem sinal | Centro, UH 103 | Cancelado, com o motivo | Motivo no detalhe e na linha do tempo |
-| Forno não chega à temperatura | Centro, Cozinha | Concluído (OS da Equipe Centro, aceita pelo Gerente) | Linha do tempo completa |
+| Forno não chega à temperatura | Centro, Cozinha | Concluído (OS da Equipe Centro, aceita pelo Gerente com falha "Não aquece", causa "Desgaste natural" e solução "Troca de peça") | Linha do tempo completa; os códigos no detalhe da OS |
 | Ar-condicionado pingando no carpete | Praia, UH 101, com ativo | Aberto (pelo Gerente do Praia) | Escopo do proprietário do hotel inteiro; triagem pelo Gerente do Praia |
 
 ## 4. Roteiro por papel
@@ -149,6 +150,8 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - em "Administração de hotéis", ver os três importados e **ativar o Serra**: as 3 UHs saem de pendentes;
   - bandeiras, configuração e políticas, membros e papéis (convidar alguém de verdade só com um e-mail da equipe, porque o e-mail padrão do Supabase só entrega para ela), proprietários e vínculos, equipes, locais, categorias e ativos (incluindo o QR);
   - "Chamados": os 7, com os filtros de hotel, situação, prioridade e período; "Ordens de serviço": as 4;
+  - em "Códigos de manutenção" (I6): ver as três listas (falhas, causas e soluções), criar um código do grupo para uma categoria (ex.: falha "Vedação da porta solta", em Refrigeração), renomear em outro idioma, desativar e reativar; o tipo e a categoria não mudam depois de criado;
+  - em "Configuração", na política "Códigos obrigatórios no aceite", ligar **só no Hotel Centro** (gravar no hotel) para o passo do Gerente abaixo, e desligar no fim (voltar a herdar);
   - no detalhe, a linha do tempo com quem fez, quando e o motivo;
   - o **histórico** de cada registro (passo a passo abaixo).
 - **Deve ser barrado:** nada dentro do grupo. Para testar outro tenant, é preciso um segundo grupo (não faz parte do kit).
@@ -172,11 +175,15 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - os 6 chamados do Centro;
   - a **triagem** do chuveiro, do começo ao fim (passo a passo abaixo);
   - **aceitar** a OS do aquecedor, ou **reabrir** com motivo (e, por ter ativo, marcar "o equipamento está parado" com data e hora);
+  - no aceite do aquecedor (I6), ver a falha e a causa sugeridas pelo Técnico já escolhidas e a solução em branco; as listas trazem primeiro os códigos da categoria do ativo (Piscina) e depois os gerais, sem os de outras categorias;
+  - no detalhe do forno, ver a falha, a causa e a solução da OS aceita;
   - equipes do Centro;
   - a tela de paradas abertas com OS concluída;
   - em "Fornecedores", ver os três do grupo, cadastrar um novo e alterar o contato de um deles; o histórico do fornecedor mostra quem cadastrou e o que mudou, inclusive o contato.
 - **Deve ser barrado:**
   - o Praia não aparece;
+  - com a política "Códigos obrigatórios no aceite" ligada no Centro pelo Admin, aceitar o aquecedor sem escolher a solução volta "Neste hotel, o aceite exige falha, causa e solução. Falta 1 código."; escolhida a solução, o aceite passa. Com a política desligada, o aceite passa sem código nenhum;
+  - em "Códigos de manutenção", criar ou desativar um código volta "Só o Admin do grupo gere os códigos de manutenção.";
   - em "Fornecedores", o CNPJ com dígito errado (ex.: 98.765.432/0001-99) volta "CNPJ inválido", e o CNPJ de outro fornecedor do grupo (ex.: 13.579.246/0001-01) volta "Já existe um fornecedor com este CNPJ no grupo".
 
 ### Gerente do Praia (web)
@@ -189,6 +196,7 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
 - **No PWA deve conseguir:**
   - fila do dia com o Frigobar (atribuída) e o Ar-condicionado UH 102 (em execução);
   - no Frigobar: iniciar, pausar, retomar, apontar horas, registrar material, tirar foto e concluir;
+  - antes de concluir o Frigobar (I6), no painel "Falha, causa e solução (opcional)", ver primeiro as falhas de Refrigeração e depois as gerais; escolher uma falha e deixar o resto em branco, ou deixar tudo em branco: a conclusão passa nos dois casos, inclusive sem rede e com a política ligada no hotel;
   - no Ar-condicionado: concluir e responder "o equipamento voltou a funcionar?". Com "não", a parada continua aberta e aparece para o Gerente na tela de paradas;
   - abrir chamado;
   - ativos, pelo QR impresso no web ou pelo endereço `/q/<código>`.

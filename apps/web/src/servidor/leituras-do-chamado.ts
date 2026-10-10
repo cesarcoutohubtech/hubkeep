@@ -92,6 +92,7 @@ export async function detalheDoChamado(
       executadoPor: o.executadoPor,
       fornecedorId: o.fornecedorId,
       custoInformado: o.custoInformado,
+      codigos: o.codigos,
       criadoPor: o.criadoPor,
       versao: o.versao,
       criadoEm: o.criadoEm.toISOString(),

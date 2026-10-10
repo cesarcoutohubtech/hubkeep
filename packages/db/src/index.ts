@@ -21,6 +21,7 @@ export {
   criarPortaFornecedores,
   criarPortaAtivos,
   criarPortaCategorias,
+  criarPortaCodigos,
   criarPortaChamados,
   criarPortaTriagem,
   criarPortaExecucao,
