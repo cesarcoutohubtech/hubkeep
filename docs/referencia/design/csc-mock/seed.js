@@ -189,7 +189,7 @@ function buildSeed() {
   const primeiros = ["Ana", "Bruno", "Camila", "Diego", "Eduardo", "Fabiana", "Gustavo", "Igor", "Jéssica", "Leandro", "Márcio", "Natália", "Otávio", "Rafael", "Sérgio", "Tiago", "Vanessa", "Wagner", "Alexandre", "Daniel", "Everton", "Rodrigo", "Cláudio", "André", "Priscila"];
   const sobren = ["Silva", "Santos", "Oliveira", "Pereira", "Costa", "Rodrigues", "Almeida", "Nascimento", "Lima", "Araújo", "Fernandes", "Carvalho", "Gomes", "Martins", "Rocha", "Ribeiro", "Barbosa", "Moreira", "Cardoso", "Teixeira"];
   const usuarios = [
-    { id: "u1", nome: "Marina Costa", papel: "Gestora do CSC", escopo: { tipo: "grupo", id: "t1" }, email: "marina.costa@demo.com" },
+    { id: "u1", nome: "Marina Costa", papel: "Admin do grupo e Gestora do CSC", escopo: { tipo: "grupo", id: "t1" }, email: "marina.costa@demo.com" },
     { id: "u2", nome: "Ricardo Alves", papel: "Gestor CSC da bandeira", escopo: { tipo: "bandeira", id: "b1" }, email: "ricardo.alves@demo.com" },
     { id: "u3", nome: "Juliana Prado", papel: "Gerente de hotel", escopo: { tipo: "hotel", id: "h1" }, email: "juliana.prado@demo.com" },
     { id: "u4", nome: "Paulo Mendes", papel: "Técnico", escopo: { tipo: "hotel", id: "h1" }, email: "paulo.mendes@demo.com", tecnico: true },
@@ -673,7 +673,7 @@ function buildSeed() {
   }
 
   integracao.fichas = fichas;
-  return { versao: 10, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
+  return { versao: 11, gerado_em: iso(now), tenant, bandeiras, hoteis, locais, proprietarios, localProprietario, categorias, ativos, ativo_parada, modelos_ativo, implantacao, capturas_celular, usuarios, tecnicos, politicas, chamados, os, planos, integracao, statusUH, auditoria,
     fornecedores, codigos, responsabilidade, pacotes, aberturas };
 }
 

@@ -39,7 +39,7 @@ O sistema abre no tema escuro, de sala de controle. O botão **Tema claro** no t
 ## Durante a apresentação
 
 - As alterações ficam salvas no navegador. **Restaurar dados da demo**, no rodapé do menu, volta tudo ao estado inicial. Faça isso antes de cada apresentação.
-- O seletor **Ver como**, no topo, troca o perfil e mostra o isolamento por escopo: Gestora do CSC, Gestor CSC da bandeira, gerente de hotel, técnico, proprietária (administrado) e locador (arrendado).
+- O seletor **Ver como**, no topo, troca o perfil e mostra o isolamento por escopo: Admin do grupo e Gestora do CSC, Gestor CSC da bandeira, gerente de hotel, técnico, proprietária (administrado) e locador (arrendado).
 
 ## Demonstração guiada (vídeo interativo)
 
@@ -78,7 +78,7 @@ Para trocar por uma locução gravada, substitua os MP3 e ajuste `ms` em `narrac
 
 ## Roteiro sugerido para apresentar ao vivo (cerca de 12 minutos)
 
-1. **Painel como Marina (gestora do CSC).** Os indicadores e a situação dos 14 hotéis. Clique em um hotel com chamado fora do prazo.
+1. **Painel como Marina (Admin do grupo e gestora do CSC).** Os indicadores e a situação dos 14 hotéis. Clique em um hotel com chamado fora do prazo.
 2. **Chamado crítico.** "Elevador social 2 parado no 9º andar": prazo de 2 h pela regra do grupo, origem, quem executa, equipamento parado e histórico.
 3. **Abrir chamado e triagem.** No Suítes Balneário Camboriú, só local, problema e foto. Na triagem, hidráulica e prioridade Alta: o prazo vira 4 h, herdado da Linha Suítes.
 4. **Aceite com assinatura.** Em Chamados, filtre "Aguardando aceite". Registre quem executou, o custo e os códigos, e colha a assinatura. Mostre que o técnico que executou não consegue aceitar. Imprima a OS.

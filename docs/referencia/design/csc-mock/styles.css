@@ -6,7 +6,7 @@
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url("fontes/barlow-condensed-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url("fontes/barlow-condensed-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 /* HubKeep — tema "sala de controle".
-   Cada cor tem um significado: verde-água = normal/ao vivo, âmbar = atenção, vermelho = vencido/crítico. */
+   Cada cor tem um significado: verde-água = normal, âmbar = atenção, vermelho = vencido/crítico. */
 :root {
   --bg: #081A20;
   --surface: #0E252D;
@@ -188,10 +188,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tag.done { --c: #A9BDC1; --bg: var(--tint-2); }
 
 /* ---------- Painel: sala de controle ---------- */
-.live { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ok); }
-.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(47,214,195,.6); animation: livepulse 2s infinite; }
-@keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(47,214,195,.55); } 70% { box-shadow: 0 0 0 8px rgba(47,214,195,0); } 100% { box-shadow: 0 0 0 0 rgba(47,214,195,0); } }
-
 .status-band {
   display: grid; grid-template-columns: 1fr auto; gap: 18px 30px; align-items: center;
   padding: 20px 24px; border-radius: 14px; margin-bottom: 16px; border: 1px solid var(--line-2);
