@@ -67,3 +67,16 @@ export function decidirAtivacao(entrada: {
   // Ao ativar, as UHs pendentes do hotel entram até onde o saldo de UHs deixar.
   return { ativar: true, uhsALiberar: Math.min(entrada.uhsPendentes, saldoDeUhs(entrada.uhs)) };
 }
+
+/**
+ * Módulos contratáveis (I7, licenca.modulo). O banco repete a lista no check
+ * licenca_modulo_lista (migração 0037), e tests/valores-canonicos-banco.test.ts
+ * confere a paridade. Se o módulo vale agora (a vigência) é regra daqui; a
+ * regra entra com a montagem do servidor, no PR seguinte, fora da zona
+ * protegida.
+ */
+export const MODULOS_CONTRATAVEIS = ['inteligencia'] as const;
+export type ModuloContratavel = (typeof MODULOS_CONTRATAVEIS)[number];
+
+export const ehModuloContratavel = (v: unknown): v is ModuloContratavel =>
+  typeof v === 'string' && (MODULOS_CONTRATAVEIS as readonly string[]).includes(v);

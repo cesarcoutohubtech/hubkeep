@@ -2,14 +2,16 @@
 // (ORIGENS_DO_CHAMADO e EXECUTORES_DA_OS), e as colunas app.chamado.origem e
 // app.os.executado_por têm checks com os mesmos valores (migração 0034). O
 // mesmo vale para o tipo do código de manutenção (I6,
-// TIPOS_DE_CODIGO_DE_MANUTENCAO, migração 0036). Este teste lê as migrações e
+// TIPOS_DE_CODIGO_DE_MANUTENCAO, migração 0036) e para o módulo contratado (I7,
+// MODULOS_CONTRATAVEIS, migração 0037). Este teste lê as migrações e
 // falha se um check e a lista do domínio divergirem: valor novo exige migração
-// que amplia o check. Os pgTAP 028 e 029 provam, no banco, que o check recusa
-// o que está fora.
+// que amplia o check. Os pgTAP 028, 029 e 030 provam, no banco, que o check
+// recusa o que está fora.
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   EXECUTORES_DA_OS,
+  MODULOS_CONTRATAVEIS,
   ORIGENS_DO_CHAMADO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
 } from '../packages/dominio/src/index';
@@ -51,5 +53,11 @@ describe('valores canônicos: banco × domínio (I6)', () => {
     expect(valoresDoCheck('codigo_manutencao_tipo_lista', 'tipo')).toEqual([
       ...TIPOS_DE_CODIGO_DE_MANUTENCAO,
     ]);
+  });
+});
+
+describe('valores canônicos: banco × domínio (I7)', () => {
+  it('licenca_modulo_lista aceita exatamente os MODULOS_CONTRATAVEIS do domínio', () => {
+    expect(valoresDoCheck('licenca_modulo_lista', 'modulo')).toEqual([...MODULOS_CONTRATAVEIS]);
   });
 });
