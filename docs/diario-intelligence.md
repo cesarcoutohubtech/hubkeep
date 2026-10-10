@@ -841,6 +841,11 @@ Instruções do Kaio, coladas pelo usuário no chat deste agente em 10/10/2026, 
   - o motor com os nomes reais, os códigos de falha no padrão sistêmico e a habilitação pelo `licenca.modulo`;
   - a fila de zona protegida do Intelligence: `int-adr-aceite`, `app.insight`, `app.metrica_ativo_diaria` e a ligação do job no web.
 
+- **Nota do Kaio, 10/10/2026:**
+  > "O comentário e o fechamento da issue #166 foram feitos pelo agente do Kaio, usando a conta cesarcoutohubtech. A aprovação dos 17 itens foi transmitida pelo Kaio no chat, em 10/10/2026. Confirmação do Cesar com o próprio login: pendente."
+- **Regra deste agente, do Kaio, em 10/10/2026:** o agente nunca escreve aprovação em nome de outra pessoa e nunca fecha issue ou PR de aprovação.
+  - Ele só registra e cita a aprovação feita por quem aprovou.
+
 ### Ponto de retomada (10/10/2026, depois do #167)
 - **Esperando o núcleo:** o merge da I6 e da I7.
 - **Depois:**
