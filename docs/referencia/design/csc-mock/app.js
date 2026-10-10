@@ -362,7 +362,7 @@ function pageDashboard() {
       <div class="spark">${spark(prevS, col(k.pv, 95, 85), 220, 38, false)}</div><div class="foot">Meta de 95%. ${k.prevLate} atrasadas em 30 dias.</div></div>`}
   </div>`;
 
-  // Matriz de telemetria por hotel
+  // Situação por hotel
   const mx = { open: Math.max(1, ...hs.map(h => h.open)), warn: Math.max(1, ...hs.map(h => h.warn)), late: Math.max(1, ...hs.map(h => h.late)), crit: Math.max(1, ...hs.map(h => h.crit)), pl: Math.max(1, ...hs.map(h => h.pl)) };
   const heat = (v, m, rgb) => v ? `style="background:rgba(${rgb},${(.18 + .6 * v / m).toFixed(2)})"` : "";
   const order = { crit: 0, att: 1, ok: 2 };
@@ -382,7 +382,7 @@ function pageDashboard() {
       <td><div class="slabar"><div class="trk"><b style="width:${sl ?? 0}%;background:${c}"></b><em></em></div><span style="color:${c}">${sl == null ? "—" : Math.round(sl) + "%"}</span></div></td>
       <td class="spark-cell">${spark(trend, "#5CC8E0", 110, 28)}</td></tr>`;
   }).join("");
-  const matrix = `<div class="panel"><div class="panel-h"><h2>Telemetria por hotel</h2><span class="hint">Cores mais fortes indicam mais ocorrências. Clique em um hotel para ver a fila dele.</span></div>
+  const matrix = `<div class="panel"><div class="panel-h"><h2>Situação por hotel</h2><span class="hint">Cores mais fortes indicam mais ocorrências. Clique em um hotel para ver a fila dele.</span></div>
     <div class="panel-b table-wrap"><table class="matrix"><thead><tr><th>Hotel</th><th>Em aberto</th><th>Vencem em breve</th><th>Fora do prazo</th><th>Críticos</th>${isOwner() ? "" : "<th>Prev. atrasadas</th>"}<th>SLA 30 dias<br>(meta 90%)</th><th>Chamados abertos por dia, 14 dias</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 
   // Contagem regressiva
@@ -395,10 +395,10 @@ function pageDashboard() {
       <div class="cd-bar"><b></b></div></li>`).join("")}</ul>` : `<div class="empty">Nenhum chamado em andamento.</div>`}
     <div class="row" style="justify-content:flex-end;margin-top:8px"><a href="#/chamados" class="small">Ver fila completa</a></div></div></div>`;
 
-  // Fluxo de eventos
+  // Últimos eventos (decisão 5 do Cesar, 10/10/2026: lidos da auditoria, sem o selo "ao vivo")
   const aud = DB.auditoria.filter(a => audVisivel(a, s)).filter(a => !(s.locais && a.entidade === "Chamado" && IDX.ch[a.registro] && !s.locais.includes(IDX.ch[a.registro].local_id))).slice(0, 5);
   const icFor = a => a.entidade === "Chamado" ? ["ch", "chamados"] : a.entidade === "OS" ? ["os", "os"] : ["po", "pol"];
-  const feed = isOwner() ? "" : `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Fluxo de eventos</h2><span class="live" style="margin-left:4px"><i></i>ao vivo</span></div><div class="panel-b" style="padding-top:0"><ul class="feed">${aud.map(a => { const [cl, ic] = icFor(a); return `<li class="${now - t(a.t) < 90e3 ? "new" : ""}"><span class="ic ${cl}">${icon(ic)}</span><div>${esc(a.acao)}<div class="who">${esc(a.usuario)}, ${esc(a.entidade.toLowerCase())} ${esc(a.registro)}</div></div><span class="w" data-rel="${a.t}">${rel(a.t)}</span></li>`; }).join("")}</ul></div></div>`;
+  const feed = isOwner() ? "" : `<div class="panel" style="margin-top:16px"><div class="panel-h"><h2>Últimos eventos</h2></div><div class="panel-b" style="padding-top:0"><ul class="feed">${aud.map(a => { const [cl, ic] = icFor(a); return `<li class="${now - t(a.t) < 90e3 ? "new" : ""}"><span class="ic ${cl}">${icon(ic)}</span><div>${esc(a.acao)}<div class="who">${esc(a.usuario)}, ${esc(a.entidade.toLowerCase())} ${esc(a.registro)}</div></div><span class="w" data-rel="${a.t}">${rel(a.t)}</span></li>`; }).join("")}</ul></div></div>`;
 
   // Fluxo diário e categorias
   const dAb = Array(days).fill(0), dEn = Array(days).fill(0), start0 = now - days * D;
@@ -1057,7 +1057,7 @@ function pagePoliticas() {
   });
   return `<div class="panel"><div class="panel-h"><h2>Prazo de atendimento por prioridade</h2><span class="hint">Horas até concluir o serviço. A regra mais específica vence: hotel, depois bandeira, depois grupo.</span></div>
   <div class="panel-b">
-  ${ed ? `<div class="readonly-note">${icon("pol")}<span>Campos em cinza mostram o valor herdado. Preencha para criar uma exceção; apague para voltar a herdar. Novos chamados já usam o valor alterado, e a mudança fica na auditoria.</span></div>` : `<div class="readonly-note">Somente a gestão do CSC altera políticas. Você vê as regras que valem para o seu escopo.</div>`}
+  ${ed ? `<div class="readonly-note">${icon("pol")}<span>Campos em cinza mostram o valor herdado. Preencha para criar uma exceção; apague para voltar a herdar. Novos chamados já usam o valor alterado, e a mudança fica na auditoria.</span></div>` : `<div class="readonly-note">Somente o Admin do grupo altera políticas. Você vê as regras que valem para o seu escopo.</div>`}
   <div class="table-wrap"><table class="sla-grid"><thead><tr><th>Escopo</th>${PRIOS.map(p => `<th class="num">${p}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>
   <h3>Prioridade padrão e relógio por categoria</h3>
   <p class="small muted" style="margin-top:0">Quem abre o chamado não precisa escolher a prioridade. Ela vem da categoria, e o CSC ajusta na triagem se precisar. O relógio define se o prazo corre 24 horas por dia ou só no expediente do hotel: elevador parado conta sempre; pintura conta em horário comercial.</p>
@@ -1099,7 +1099,7 @@ function pageIntegracao() {
     <div class="panel kpi"><div class="v">${rel(ig.views[2].ultima).replace("há ", "")}</div><div class="l">Idade do status das UHs</div><div class="d">Atraso máximo monitorado: 5 minutos</div></div>
     <div class="panel kpi ${stale ? "warn" : "good"}"><div class="v">${stale}</div><div class="l">Fontes com dado desatualizado</div><div class="d">A Central segue com o último dado e avisa na tela</div></div>
   </div>
-  <div class="panel"><div class="panel-h"><h2>Views lidas</h2><span class="hint">${esc(ig.conexao)}</span><div class="spacer"></div>${role() === "csc" ? `<button class="btn" data-act="sync">Sincronizar agora</button>` : ""}</div>
+  <div class="panel"><div class="panel-h"><h2>Views lidas</h2><span class="hint">${esc(ig.conexao)}</span><div class="spacer"></div>${proximaLeitura(ig.views)}</div>
   <div class="panel-b table-wrap"><table><thead><tr><th>View</th><th>Conteúdo</th><th>Frequência</th><th>Última leitura</th><th class="num">Linhas</th><th>Situação</th></tr></thead><tbody>
   ${ig.views.map(v => `<tr><td><span class="id">${v.nome}</span></td><td class="small">${esc(v.conteudo)}</td><td class="small">${v.frequencia}</td><td class="small">${fmtDT(v.ultima)} <span class="muted">(${rel(v.ultima)})</span></td><td class="num">${v.linhas.toLocaleString("pt-BR")}</td><td>${v.status === "ok" ? '<span class="badge b-green">Em dia</span>' : '<span class="badge b-amber">Atrasada</span>'}</td></tr>`).join("")}
   </tbody></table></div></div>
@@ -1118,6 +1118,17 @@ function pageIntegracao() {
     <tr><td>Bloquear ou liberar UH direto no PMS</td><td><span class="badge b-grey">Desligado até homologação</span></td></tr>
     <tr><td>Gravar em tabelas do PMS</td><td><span class="badge b-red">Não permitido</span></td></tr>
     </tbody></table></div></div></div>`;
+}
+
+/* A leitura do PMS segue a frequência de cada view; a Central não força leitura.
+   A próxima é a mais cedo entre as views que ainda não passaram do horário (a
+   atrasada já aparece como "Atrasada" na tabela). */
+const FREQ_MIN = f => /diária/i.test(f) ? 1440 : +((/(\d+)\s*min/.exec(f) || [])[1] || 0);
+function proximaLeitura(views) {
+  const agora = Date.now();
+  const faltam = views.map(v => t(v.ultima) + FREQ_MIN(v.frequencia) * 60e3 - agora).filter(ms => ms > 0);
+  if (!faltam.length) return "";
+  return `<span class="hint">Próxima leitura em ${Math.max(1, Math.ceil(Math.min(...faltam) / 60e3))} min</span>`;
 }
 
 /* ---------- Usuários ---------- */
@@ -1840,7 +1851,6 @@ document.addEventListener("click", e => {
     case "comentar": { const c = IDX.ch[id], v = $("#coment").value.trim(); if (!v) { $("#coment").focus(); break; } logEvent(c, "comentario", v); save(); toast("Comentário adicionado"); refreshDrawer(id); break; }
     case "os-concluir": { const o = IDX.os[id]; if (concluirOS(o)) { toast(`${o.id} concluída`); refreshDrawer(id); } break; }
     case "cal": { if (el.dataset.d === "0") UI.cal = null; else { const b = UI.cal ? new Date(UI.cal) : new Date(); b.setDate(1); b.setMonth(b.getMonth() + +el.dataset.d); UI.cal = b.toISOString(); } render(); break; }
-    case "sync": DB.integracao.views.forEach(v => { v.ultima = new Date().toISOString(); v.status = "ok"; }); DB.integracao.execucoes.unshift({ t: new Date().toISOString(), view: "todas", linhas: 42, duracao_s: 19, resultado: "Sucesso" }); save(); toast("Leitura do PMS concluída"); render(); break;
     case "as": UI.persona = id; save(); location.hash = "#/"; render(); break;
     // Celular
     case "ph-tab": UI.phone.tab = el.dataset.k; UI.phone.view = null; UI.phone.scan = null; $("#phone").innerHTML = phoneScreen(); break;
