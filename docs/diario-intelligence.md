@@ -1015,3 +1015,20 @@ Depois do merge do #183 e do `db push` da 0039 ("Cesar aqui", 10/10/2026). O `su
   - o PR de zona protegida com as decisões de 10/10 no ADR-036;
   - as telas do painel lendo a métrica e o insight;
   - com elas, o agendamento da rota no `vercel.json` e a primeira rodada no dev.
+
+## Decisões do Cesar de 10/10/2026, fim do dia, e o mock (`int-mock-ao-vivo-politicas`)
+
+"Cesar aqui", 10/10/2026, no chat do agente do Intelligence.
+
+1. **Quem lê a `app.metrica_ativo_diaria`:** a mesma regra do insight, "só quem decide". A métrica **nunca** tem mais leitores que o insight. Fica mantida a condição de gravar a versão da política e a da fórmula em cada resultado (ADR-036, condição de 07/10).
+   - Já é o que a migração 0039 e o pgTAP 032 fazem. Nada muda no banco.
+   - Como a regra é do Intelligence, o texto no ADR-036 ainda pede a aprovação escrita do Kaio. A frase "nunca mais leitores que o insight" entra junto, no PR de zona protegida das decisões de 10/10.
+2. **#179, o selo "Ao vivo" da faixa de estado do painel:** sai do mock. O painel não promete atualização periódica.
+   - O relógio e as contagens regressivas continuam andando no navegador, porque são contas sobre os dados da tela e não leitura nova.
+   - A narração do tour não foi regerada. A fala 8 ainda diz que a contagem regressiva "corre ao vivo", o que continua valendo para a contagem.
+3. **#179, quem altera as políticas:** o Admin do grupo, como no documento do projeto. É só texto do mock, sem migração.
+   - A Marina passa a ser "Admin do grupo e Gestora do CSC", e o tour das políticas continua com ela.
+   - A tela de políticas libera a edição só para quem é Admin do grupo e diz isso no aviso. O Gestor CSC da bandeira continua vendo "Somente o Admin do grupo altera políticas".
+   - A versão do seed passou a 11: quem já abriu o mock recebe os dados novos, e as alterações salvas no navegador são descartadas.
+
+As duas perguntas do #179 que estavam abertas ficam respondidas.

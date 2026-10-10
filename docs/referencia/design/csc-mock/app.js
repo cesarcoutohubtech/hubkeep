@@ -21,7 +21,7 @@ const UI = {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 10) { DB = d; } }
+    if (raw) { const d = JSON.parse(raw); if (d && d.versao === 11) { DB = d; } }
     const p = localStorage.getItem(PERSONA_KEY); if (p) UI.persona = p;
     const th = localStorage.getItem(THEME_KEY); if (th) UI.theme = th;
   } catch (e) { /* armazenamento indisponível: segue com seed em memória */ }
@@ -97,7 +97,7 @@ function scoped(list, localKey = "local_id") {
 }
 const role = () => {
   const p = persona().papel;
-  if (p === "Gestora do CSC") return "csc";
+  if (p === "Gestora do CSC" || p === "Admin do grupo e Gestora do CSC") return "csc";
   if (p.includes("bandeira")) return "band";
   if (p === "Gerente de hotel") return "hotel";
   if (p === "Técnico") return "tec";
@@ -334,7 +334,7 @@ function pageDashboard() {
   const sub = [warnTot ? `${warnTot} ${plural(warnTot, "vence", "vencem")} em breve` : null, k.crit ? `${k.crit} ${plural(k.crit, "crítico", "críticos")} em atendimento` : null, !isOwner() && k.prevLate ? `${k.prevLate} preventivas atrasadas em 30 dias` : null].filter(Boolean).join(". ") || "Nenhum chamado perto de vencer.";
   const stLabel = { crit: "Estado da rede: crítico", att: "Estado da rede: atenção", ok: "Estado da rede: normal" }[band].replace("rede", hs.length > 1 ? "rede" : "operação");
   const statusBand = `<section class="status-band ${band}" aria-label="Estado da operação">
-    <div><div class="meta"><span class="live"><i></i>Ao vivo</span><span>${stLabel}</span></div>
+    <div><div class="meta"><span>${stLabel}</span></div>
       <div class="headline">${headline}</div><div class="sub">${sub}.</div></div>
     <div class="clock-wrap"><div class="clock" id="live-clock">--:--:--</div><div class="meta clock-meta"><span>${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</span><span>PMS lido <span data-rel="${DB.integracao.views[2].ultima}">${rel(DB.integracao.views[2].ultima)}</span></span></div></div>
     ${hs.length > 1 ? `<div class="health-bar" aria-hidden="true">${hs.slice().sort((a, b) => ({ crit: 0, att: 1, ok: 2 }[a.st] - { crit: 0, att: 1, ok: 2 }[b.st])).map(h => `<i class="${h.st === "ok" ? "" : h.st}" title="${esc(IDX.hotel[h.hid].nome)}"></i>`).join("")}</div>
@@ -1038,8 +1038,10 @@ function modalFornecedor() {
 }
 
 /* ---------- Políticas ---------- */
+/* Só o Admin do grupo altera políticas (Cesar, 10/10/2026, como no documento do projeto). */
+const ehAdminDoGrupo = () => persona().papel.startsWith("Admin do grupo");
 function pagePoliticas() {
-  const ed = role() === "csc";
+  const ed = ehAdminDoGrupo();
   const pg = DB.politicas.find(p => p.escopo_tipo === "grupo");
   const polOf = (tipo, id) => DB.politicas.find(p => p.escopo_tipo === tipo && p.escopo_id === id);
   const s = scope();
@@ -1057,7 +1059,7 @@ function pagePoliticas() {
   });
   return `<div class="panel"><div class="panel-h"><h2>Prazo de atendimento por prioridade</h2><span class="hint">Horas até concluir o serviço. A regra mais específica vence: hotel, depois bandeira, depois grupo.</span></div>
   <div class="panel-b">
-  ${ed ? `<div class="readonly-note">${icon("pol")}<span>Campos em cinza mostram o valor herdado. Preencha para criar uma exceção; apague para voltar a herdar. Novos chamados já usam o valor alterado, e a mudança fica na auditoria.</span></div>` : `<div class="readonly-note">Somente o Admin do grupo altera políticas. Você vê as regras que valem para o seu escopo.</div>`}
+  ${ed ? `<div class="readonly-note">${icon("pol")}<span>Você altera como Admin do grupo. Campos em cinza mostram o valor herdado. Preencha para criar uma exceção; apague para voltar a herdar. Novos chamados já usam o valor alterado, e a mudança fica na auditoria.</span></div>` : `<div class="readonly-note">Somente o Admin do grupo altera políticas. Você vê as regras que valem para o seu escopo.</div>`}
   <div class="table-wrap"><table class="sla-grid"><thead><tr><th>Escopo</th>${PRIOS.map(p => `<th class="num">${p}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>
   <h3>Prioridade padrão e relógio por categoria</h3>
   <p class="small muted" style="margin-top:0">Quem abre o chamado não precisa escolher a prioridade. Ela vem da categoria, e o CSC ajusta na triagem se precisar. O relógio define se o prazo corre 24 horas por dia ou só no expediente do hotel: elevador parado conta sempre; pintura conta em horário comercial.</p>
@@ -1573,7 +1575,7 @@ function iaListaDeInsights() {
 /* Quem decide (packages/inteligencia, podeDecidirInsight): no insight de hotel, o Admin do grupo, o Gestor CSC e o
    Gerente que cobrem o hotel; no de rede, só o Admin do grupo e o Gestor CSC que cobrem todos os hotéis (escopo de
    grupo, ou da bandeira quando todos os hotéis são dela). O gerente nunca decide insight de rede. */
-const IA_PAPEIS_QUE_DECIDEM = ["Admin do grupo", "Gestora do CSC", "Gestor CSC da bandeira", "Gestora CSC da bandeira", "Gerente de hotel"];
+const IA_PAPEIS_QUE_DECIDEM = ["Admin do grupo", "Admin do grupo e Gestora do CSC", "Gestora do CSC", "Gestor CSC da bandeira", "Gestora CSC da bandeira", "Gerente de hotel"];
 function iaPodeDecidir(i) {
   const p = persona(), e = p.escopo;
   if (!IA_PAPEIS_QUE_DECIDEM.includes(p.papel) || !iaVisiveis().includes(i)) return false;
