@@ -78,7 +78,7 @@ Para trocar por uma locução gravada, substitua os MP3 e ajuste `ms` em `narrac
 
 ## Roteiro sugerido para apresentar ao vivo (cerca de 12 minutos)
 
-1. **Painel como Marina (gestora do CSC).** Os indicadores e a telemetria dos 14 hotéis. Clique em um hotel com chamado fora do prazo.
+1. **Painel como Marina (gestora do CSC).** Os indicadores e a situação dos 14 hotéis. Clique em um hotel com chamado fora do prazo.
 2. **Chamado crítico.** "Elevador social 2 parado no 9º andar": prazo de 2 h pela regra do grupo, origem, quem executa, equipamento parado e histórico.
 3. **Abrir chamado e triagem.** No Suítes Balneário Camboriú, só local, problema e foto. Na triagem, hidráulica e prioridade Alta: o prazo vira 4 h, herdado da Linha Suítes.
 4. **Aceite com assinatura.** Em Chamados, filtre "Aguardando aceite". Registre quem executou, o custo e os códigos, e colha a assinatura. Mostre que o técnico que executou não consegue aceitar. Imprima a OS.
