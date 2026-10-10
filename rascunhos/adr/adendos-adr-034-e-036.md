@@ -6,6 +6,8 @@
 
 **Status dos adendos:** aprovado por Kaio, aguardando Cesar. Aprovar as propostas não aprova este texto: ADR do Intelligence precisa da aprovação escrita de Cesar **e** de Kaio, e merge não aprova ADR.
 
+**Respostas do Kaio de 10/10/2026:** as seis leituras que os PRs de 08/10 deixaram para o Cesar confirmar entraram no texto abaixo, cada uma com a marca **[aprovado por Kaio em 10/10/2026, aguardando Cesar]**. O registro, com o texto do Kaio e as perguntas que ficam para a implementação, está no `docs/diario-intelligence.md`, seção "Respostas do Kaio às confirmações de 08/10". O motor ainda não mudou: a implementação espera o ok do Cesar.
+
 ---
 
 ## Adendo ao ADR-034 (a colar depois da seção Decisão)
@@ -14,7 +16,7 @@
 
 **Status:** as propostas foram aprovadas por escrito pelo Cesar em 08/10/2026; este texto aguarda a aprovação escrita de Kaio e de Cesar.
 
-- **A atenção ao ativo passa para a versão 2**, com nove componentes e os pesos padrão abaixo. Os pesos são política (ADR-035) e somam 100.
+- **A atenção ao ativo passa para a versão 2**, com oito componentes com peso e os UH-dias com peso 0: nove no motor. Os pesos padrão estão abaixo; são política (ADR-035) e somam 100. O "oito componentes" do texto do Cesar de 08/10 foi redação, e o conteúdo é o mesmo. **[aprovado por Kaio em 10/10/2026, aguardando Cesar]**
 
   | Componente | Peso | Origem |
   |---|---|---|
@@ -29,11 +31,13 @@
   | UH-dias | 0 | `app.uh_indisponivel` (I4), com `uhDiasPerdidos` do domínio; peso 0 e sem dado: o `calcularDia` ainda não lê |
 
 - **Garantia** entra no `AtivoAnalisado` (`garantiaAte`). O componente vale 1 quando venceu e 0 dentro da garantia; sem a data, é sem dado.
-- **Medições:** o valor é a fração das medições da janela que saíram da faixa aceitável; sem nenhuma medição, é sem dado.
+- **Medições:** o valor é a fração das medições da janela que saíram da faixa aceitável, e não a contagem, que pesaria contra o ativo com muitos itens de checklist. Com menos de 3 medições na janela, é sem dado. **[aprovado por Kaio em 10/10/2026, aguardando Cesar]** Fica para a implementação: o mínimo de 3 é fixo ou campo da política.
 - **Preventiva atrasada** substitui "preventiva ou compliance".
 - **UH-dias** (decisão de 07/10/2026) é componente da atenção, e não sinal próprio. Com peso 0 e sem dado, não muda o score nem a versão. Quando existir o dado e o peso passar de 0, a atenção ganha a versão seguinte, com o limite e os pesos redistribuídos.
-- **Dado ausente** (a regra deste ADR, reafirmada): o peso do componente sem dado vai para os presentes, na proporção dos pesos. A regra é a mesma para todo o tenant e não há chave por hotel que a ligue ou desligue. O detalhamento (`detalhamentoDoScore`) mostra cada componente "sem dado", o peso configurado, o peso usado e a fração do peso que foi redistribuída. O componente de peso 0 sem dado não conta como redistribuição.
-- **Versão gravada:** a versão 1 existiu só no código e nos testes; nenhum resultado foi gravado com ela, porque as tabelas do ADR-036 ainda não existem. Por isso a versão 2 é a primeira a ser gravada, e é a ela que se aplica a frase deste ADR "a versão 1 fica congelada na primeira gravação de resultado". Mudou a fórmula depois da primeira gravação, sobe a versão. **[a confirmar com o Cesar]**
+- **Dado ausente** (a regra deste ADR, reafirmada): o peso do componente sem dado vai para os presentes, na proporção dos pesos. A regra é a mesma para todo o tenant e não há chave por hotel que a ligue ou desligue.
+- **Disponível no tenant inteiro:** o componente conta como disponível quando pelo menos 50% das corretivas encerradas do tenant, na janela, têm o dado preenchido. Abaixo disso, fica sem dado para todos os hotéis, e o peso é redistribuído. Assim, o hotel que preenche e o que não preenche não ficam com pesos diferentes. **[aprovado por Kaio em 10/10/2026, aguardando Cesar]** Ficam para a implementação: quais componentes seguem a regra (a leitura do agente: os que vêm da corretiva encerrada, impacto no hóspede e custo informado) e o valor do ativo sem o dado quando o componente está disponível no tenant.
+- **Detalhamento:** o `detalhamentoDoScore` mostra cada componente "sem dado", o peso configurado, o peso usado e a fração do peso que foi redistribuída. O componente de peso 0 sem dado não conta como redistribuição.
+- **Versão gravada:** a versão 1 existiu só no código e nos testes; nenhum resultado foi gravado com ela, porque as tabelas do ADR-036 ainda não existem. Por isso a versão 2 é a primeira a ser gravada, e é a ela que se aplica a frase deste ADR "a versão 1 fica congelada na primeira gravação de resultado". Mudou a fórmula depois da primeira gravação, sobe a versão. A numeração não recomeça: a 1 existe no texto deste ADR, e renumerar só confunde. **[aprovado por Kaio em 10/10/2026, aguardando Cesar]**
 - A política `inteligencia.atencao_ativo` muda de formato (os nomes dos pesos) e não ganha chave nova.
 
 ---
@@ -55,12 +59,15 @@
   - de mais de −25% a menos de +20%: sem mudança relevante;
   - aumento de 20% ou mais: aumento observado;
   - menos de 3 chamados antes: sem base de comparação;
-  - menos de 90 dias depois: janela incompleta, que vale primeiro.
+  - menos de 90 dias depois: janela incompleta.
+
+  Quando os dois últimos valem juntos, prevalece "sem base de comparação". Ele já é definitivo no dia da intervenção: menos de 3 chamados antes nunca vira uma comparação válida, por mais que a janela termine. **[aprovado por Kaio em 10/10/2026, aguardando Cesar]**
 
   Os limiares, a base mínima e a janela são campos da política `inteligencia.efetividade`. A janela de 90 dias continua cabendo na janela de leitura de 180 dias (o dobro, como já exige a validação entre chaves).
 - **O padrão sistêmico na versão 2:**
   - só a regra do mesmo modelo vem ligada por padrão; as outras quatro (mesmo andar, área comum, mesmo fornecedor e crescimento) ficam desligadas por política, com o campo `ativa` em cada regra;
   - o mesmo modelo agrupa por categoria, fabricante e modelo, sem a falha, e exige na política 3 hotéis, 6 chamados em 90 dias e 5 ativos;
+  - fabricante e modelo são comparados sem diferenciar maiúsculas, acentos e espaços nas pontas; o ativo sem modelo fica fora da regra. **[aprovado por Kaio em 10/10/2026, aguardando Cesar]** Fica para a implementação: os espaços repetidos do meio continuam juntados, como o motor faz hoje;
   - a taxa do modelo (chamados por ativo instalado, em 90 dias) precisa ser de pelo menos o dobro da base e nunca menos de 0,3. A base é a taxa dos outros modelos da mesma categoria no tenant;
   - o escopo do insight do mesmo modelo passa a `{ categoriaId, modelo }`, e a família do insight muda junto (`sistemico|categoriaId=...|modelo=...|regra=mesmo_modelo`).
 - **O formato das políticas muda nas três chaves** (atenção: pesos; efetividade: limiares; sistêmico: `ativa` e mínimos). Nenhum valor de política do Intelligence foi gravado (a extensão só é registrada junto com o filtro por módulo, 1b), então não há valor antigo a migrar. Daqui para a frente, mudar o formato de uma chave exige versão nova da fórmula e um plano para os valores já gravados.
