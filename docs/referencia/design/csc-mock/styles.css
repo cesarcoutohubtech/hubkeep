@@ -597,7 +597,6 @@ td.best { color: var(--ok); font-weight: 600; }
 .score.hi { border-color: var(--red); }
 /* HubKeep Intelligence: a borda reforça o indicador que pede atenção; o texto diz o mesmo. */
 .inst.warn { box-shadow: inset 3px 0 0 var(--amber); }
-#ia-lista tbody tr[data-ins] { cursor: default; }
 .nav-group { white-space: nowrap; }
 #print-area { display: none; }
 @media print {
