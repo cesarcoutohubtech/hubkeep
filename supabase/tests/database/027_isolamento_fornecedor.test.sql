@@ -21,7 +21,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(39);
+select plan(41);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -93,7 +93,15 @@ select lives_ok(
 select throws_ok(
   $$ insert into app.fornecedor (id, tenant_id, nome, cnpj) values
      (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'Pontuado', '11.222.333/0001-81') $$,
-  '23514', null, 'CNPJ só com os 14 dígitos');
+  '23514', null, 'CNPJ sem pontuação');
+select lives_ok(
+  $$ insert into app.fornecedor (id, tenant_id, nome, cnpj) values
+     (gen_random_uuid(), '20000000-0000-0000-0000-000000000000', 'Alfanumérico', '12ABC34501DE35') $$,
+  'CNPJ alfanumérico: 12 letras maiúsculas ou dígitos e 2 dígitos verificadores (0035; no grupo B, fora das contagens do A)');
+select throws_ok(
+  $$ insert into app.fornecedor (id, tenant_id, nome, cnpj) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'Minúsculo', '12abc34501de35') $$,
+  '23514', null, 'CNPJ alfanumérico só em maiúsculas (o domínio converte)');
 select throws_ok(
   $$ insert into app.fornecedor (id, tenant_id, nome) values
      (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '   ') $$,

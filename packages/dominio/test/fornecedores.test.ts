@@ -97,6 +97,27 @@ describe('CNPJ', () => {
   it('o repetido é Conflito com código', () => {
     expect(cnpjDeFornecedorRepetido()).toMatchObject({ codigo: 'fornecedor_cnpj_repetido' });
   });
+
+  it('alfanumérico (Receita, desde julho de 2026): o exemplo oficial confere', () => {
+    expect(cnpjValido('12ABC34501DE35')).toBe(true);
+    expect(cnpjValido('12ABC34501DE36')).toBe(false);
+    // Os verificadores continuam numéricos, e só maiúsculas no formato guardado.
+    expect(cnpjValido('12ABC34501DEA5')).toBe(false);
+    expect(cnpjValido('12abc34501de35')).toBe(false);
+  });
+
+  it('alfanumérico com pontuação e minúsculas vira os 14 caracteres em maiúsculas', () => {
+    expect(validarCnpj('12.ABC.345/01DE-35')).toBe('12ABC34501DE35');
+    expect(validarCnpj(' 12.abc.345/01de-35 ')).toBe('12ABC34501DE35');
+    for (const cnpj of ['12.ABC.345/01DE-36', '12ABC34501DE3', '12ABC34501DE35X', '12ÁBC34501DE35'])
+      expect(() => validarCnpj(cnpj)).toThrow(
+        expect.objectContaining({ codigo: 'fornecedor_cnpj_invalido' }),
+      );
+  });
+
+  it('formata o alfanumérico com a mesma máscara', () => {
+    expect(formatarCnpj('12ABC34501DE35')).toBe('12.ABC.345/01DE-35');
+  });
 });
 
 describe('nome e contato', () => {

@@ -420,7 +420,7 @@
   "erro.fornecedores_sem_permissao": "Solo el administrador del grupo, el gestor del centro de servicios y el gerente del hotel registran proveedores.",
   "erro.fornecedor_nao_encontrado": "Proveedor no encontrado.",
   "erro.fornecedor_nome_invalido": "Indica un nombre de proveedor de hasta {maximo} caracteres.",
-  "erro.fornecedor_cnpj_invalido": "CNPJ inválido. Revisa los 14 dígitos.",
+  "erro.fornecedor_cnpj_invalido": "CNPJ inválido. Revisa los 14 caracteres (solo números, o letras y números en el CNPJ alfanumérico) y los 2 dígitos finales.",
   "erro.fornecedor_cnpj_repetido": "Ya existe un proveedor con este CNPJ en el grupo.",
   "erro.fornecedor_contato_nome_invalido": "Indica un nombre de contacto de hasta {maximo} caracteres.",
   "erro.fornecedor_telefone_invalido": "Teléfono del contacto inválido.",
