@@ -1080,6 +1080,8 @@ As duas perguntas do #179 que estavam abertas ficam respondidas.
 
 Segundo dos PRs das telas do painel (a ordem e as decisões do Cesar estão na seção do `int-telas-base`). Fora da zona protegida, sem migração.
 
+**Correção sobre o #188 (`int-telas-base`):** ele era de zona protegida, porque o `eslint.config.mjs` está na lista do `.github/workflows/zona-protegida.yml`. O agente o abriu achando que estava fora; a descrição do PR foi corrigida, e o Cesar fez o merge com bypass. A lista que vale é a do workflow.
+
 **O que o PR faz.**
 - **Motor (`packages/inteligencia/src/painel.ts`):** o painel em código puro, por portas, como o job.
   - **Casos de uso:** `resumoDoPainel`, `listarInsights`, `verInsight` e `decidirInsight`.
