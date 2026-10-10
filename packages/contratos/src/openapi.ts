@@ -846,7 +846,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/fornecedores',
     resumo:
-      'Cadastra um fornecedor do grupo: nome, CNPJ opcional (com ou sem pontuação; único no grupo) e contato opcional. Admin do grupo, Gestor CSC ou Gerente do hotel.',
+      'Cadastra um fornecedor do grupo: nome, CNPJ opcional (numérico ou alfanumérico, com ou sem pontuação; único no grupo) e contato opcional. Admin do grupo, Gestor CSC ou Gerente do hotel.',
     exigeTenant: true,
     corpo: PedidoDeFornecedor,
     respostas: {

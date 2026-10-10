@@ -62,6 +62,12 @@ describe('fornecedores (I3)', () => {
     ]);
   });
 
+  it('CNPJ alfanumérico entra em maiúsculas, sem pontuação', async () => {
+    const { casos, criados } = montar([gerente]);
+    await casos.cadastrar(ctx, { nome: 'Nova', cnpj: '12.abc.345/01de-35' });
+    expect(criados).toEqual([expect.objectContaining({ cnpj: '12ABC34501DE35' })]);
+  });
+
   it('CNPJ inválido é recusado antes da porta', async () => {
     const { casos, criados } = montar([gerente]);
     await expect(casos.cadastrar(ctx, { nome: 'X', cnpj: '11222333000182' })).rejects.toMatchObject(

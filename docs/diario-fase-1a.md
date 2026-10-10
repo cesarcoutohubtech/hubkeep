@@ -1534,3 +1534,26 @@ PR fora da zona protegida, sobre a API da I4 (#151).
   - na CI: os testes de integração do `packages/db` com o tipo do local e o fornecedor nos nomes do detalhe;
   - as telas não foram vistas no navegador.
 - **Fica para depois:** a edificação no nome do local no PWA (decisão 6 do Cesar), num PR próprio, fora da zona protegida.
+
+### Exceção do Cesar: o agente do Intelligence faz o CNPJ alfanumérico, a I6 e a I7 (10/10/2026)
+
+Decisão do Cesar de 10/10/2026, no chat da sessão do agente do Intelligence ("Cesar aqui"). O agente do Intelligence faz, no lugar do agente do núcleo, o CNPJ alfanumérico, a I6 (códigos de manutenção) e a I7 (módulos contratados), em branches `1b-*`. Fora disso, o escopo dele continua o do Intelligence, e a exceção acaba quando a I7 terminar.
+- **Ordem:** CNPJ, depois a I6, depois a I7. Um PR de zona protegida por vez; em cada um, o agente para até o Cesar dizer "mergeado e aplicado". O merge com bypass e o `db push` são do Cesar.
+- **Divisão de cada I:** no PR de zona protegida, a migração, o pgTAP, os tipos e as listas canônicas do domínio. Regras, casos de uso, API e telas vão num PR separado, fora de zona protegida, depois do merge da migração (como na I4 e na I4b).
+- **Decisões do Cesar para a I6:** no PWA, o técnico preenche falha, causa e solução como sugestão, e a conclusão nunca é recusada por falta delas. Com a política `os.codigos_obrigatorios` ligada, o aceite no web exige os três códigos, com mensagem de recusa.
+- **Decisão do Cesar para a I7:** um adendo curto ao ADR-026, sobre registrar as políticas de um módulo só para o tenant que tem o módulo, vai no mesmo PR da migração da I7, para a aprovação dele.
+- **Fica com o agente do núcleo:** o código próprio para o Gestor CSC sem hotel (`fornecedores_sem_hotel`). Ele estava no mesmo commit do CNPJ (`020a5a0`, branch `1b-cnpj-alfanumerico`), que fica intacto no remoto como fonte; o PR do CNPJ leva só a parte do CNPJ.
+- **Levantamento antes de começar:** nenhum rascunho da I6 nem da I7 em branch ou worktree (o `wt/instrumentacao` está limpo, na I1); nenhum PR de zona protegida aberto.
+
+### CNPJ alfanumérico (09/10/2026, PR em 10/10/2026)
+
+Decisão 2 do Cesar de 09/10/2026. PR de zona protegida, depois da I4 e da I4b (#152), aberto pelo agente do Intelligence na exceção acima, a partir do commit `020a5a0` do agente do núcleo, sem a parte do Gestor CSC sem hotel.
+- **Migração 0035:** o check `fornecedor_cnpj_formato` passa a aceitar 12 caracteres em letras maiúsculas ou dígitos e 2 dígitos verificadores. O CNPJ numérico continua valendo, e o índice de CNPJ único no grupo não muda.
+  - Domínio: o cálculo dos verificadores usa o código de cada caractere menos 48 (o dígito vale ele mesmo, e A vale 17), com os mesmos pesos. Confere o exemplo da Receita (12.ABC.345/01DE-35) e os CNPJs numéricos de antes;
+  - `validarCnpj` aceita pontuação e minúsculas e guarda os 14 caracteres em maiúsculas, sem pontuação; `formatarCnpj` usa a mesma máscara;
+  - contrato da API (`FornecedorApi.cnpj`) e pgTAP 027 (41 asserções: o alfanumérico entra, a minúscula não) atualizados. A mensagem de CNPJ inválido deixou de falar em "14 dígitos".
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes;
+  - na CI: o pgTAP 027 e o teste de integração `packages/db/test/fornecedores.test.ts` (o alfanumérico gravado em maiúsculas).
+- **Depois do merge:** `db push` da 0035.
+- **Ponto de retomada:** o PR do CNPJ aguarda o merge e o `db push` do Cesar. Depois de "mergeado e aplicado", o agente do Intelligence faz a I6 (zona protegida) e para; depois a I7. O Gestor CSC sem hotel continua com o agente do núcleo, a partir do `020a5a0`.

@@ -5,7 +5,8 @@
 //   - o contato entra na auditoria, sem hotel, com o evento no outbox, e o
 //     histórico do fornecedor aparece para quem o cadastra;
 //   - o proprietário não lê; o Técnico lê e não grava: 403 com código, e com a
-//     checagem da aplicação removida a RLS ainda barra.
+//     checagem da aplicação removida a RLS ainda barra;
+//   - o CNPJ alfanumérico entra (0035), em maiúsculas e sem pontuação.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -243,5 +244,14 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
       [TENANT],
     );
     expect(rows[0]).toEqual({ n: 3 });
+  });
+
+  it('CNPJ alfanumérico entra em maiúsculas, sem pontuação (0035)', async () => {
+    const { id } = await casos.cadastrar(ctx(U.gerente), {
+      nome: 'Climatização Nova',
+      cnpj: '12.abc.345/01de-35',
+    });
+    const { rows } = await dono.query(`select cnpj from app.fornecedor where id = $1`, [id]);
+    expect(rows[0]).toEqual({ cnpj: '12ABC34501DE35' });
   });
 });
