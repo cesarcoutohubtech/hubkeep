@@ -38,6 +38,8 @@
   "admin.configuracao.criticidade.nivel": "Level {nivel}",
   "erro.configuracao_so_admin": "Only the group Admin changes the settings.",
   "erro.insight_fora_do_escopo": "You don't decide on insights in this scope.",
+  "erro.insight_nao_encontrado": "Insight not found.",
+  "erro.inteligencia_indisponivel": "HubKeep Intelligence is not available to you in this group.",
   "erro.politica_desconhecida": "Unknown policy.",
   "erro.politica_valor_invalido": "The value does not match the policy format.",
   "erro.politica_nao_encontrada": "Policy not found.",

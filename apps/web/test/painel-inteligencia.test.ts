@@ -1,0 +1,167 @@
+// A ligação do painel do Intelligence (as telas do 1.0), sem banco: as portas
+// do motor sobre uma porta do packages/db em memória, com a forma das linhas
+// do banco; e as listas da API iguais às do motor.
+import {
+  ACOES_DO_INSIGHT_API,
+  ESTADOS_DO_INSIGHT_API,
+  FAIXAS_DO_INSIGHT_API,
+  FILTROS_DE_ESTADO_DO_INSIGHT_API,
+  MOTIVOS_DE_DESCARTE_API,
+  RespostaDoInsight,
+  TIPOS_DE_INSIGHT_API,
+} from '@hubkeep/contratos';
+import type {
+  DecisaoNoBanco,
+  InsightComEvidenciaNoBanco,
+  PortaDoPainelDoIntelligence,
+} from '@hubkeep/db';
+import type { Atribuicao } from '@hubkeep/dominio';
+import {
+  ACOES_DO_INSIGHT,
+  ESTADOS_DO_INSIGHT,
+  FAIXAS_PADRAO,
+  FILTROS_DE_ESTADO_DO_INSIGHT,
+  MOTIVOS_DE_DESCARTE,
+  TIPOS_DE_INSIGHT,
+} from '@hubkeep/inteligencia';
+import { describe, expect, it } from 'vitest';
+import { insightNaApi, dataNaApi } from '../src/app/api/v1/inteligencia/serializar';
+import { criarPainel } from '../src/servidor/modulos/inteligencia/painel';
+
+const agora = new Date('2026-10-10T12:00:00Z');
+const H1 = '11100000-0000-0000-0000-000000000001';
+const I1 = '22200000-0000-0000-0000-000000000001';
+const U1 = '33300000-0000-0000-0000-000000000001';
+const ctx = { usuarioId: U1, tenantId: '44400000-0000-0000-0000-000000000001' };
+
+const gerente: Atribuicao = {
+  id: 'a1',
+  usuarioId: U1,
+  papel: 'gerente_hotel',
+  escopo: { tipo: 'hotel', hotelId: H1 },
+  validoAte: null,
+  revogadoEm: null,
+};
+
+const linha = (extra: Partial<InsightComEvidenciaNoBanco> = {}): InsightComEvidenciaNoBanco => ({
+  id: I1,
+  hotelId: H1,
+  bandeiraId: null,
+  hotelIds: [H1],
+  tipo: 'atencao_ativo',
+  escopo: { ativoId: 'a', hotelId: H1 },
+  estado: 'novo',
+  faixa: 'alta_atencao',
+  valor: 75,
+  versaoScore: 2,
+  anteriorId: null,
+  primeiraDeteccaoEm: new Date('2026-10-01T00:00:00Z'),
+  ultimaDeteccaoEm: new Date('2026-10-09T00:00:00Z'),
+  responsavelId: null,
+  encerradoEm: null,
+  encerradoPor: null,
+  nota: null,
+  motivoDeDescarte: null,
+  versao: 1,
+  detalhe: { chave: 'atencao_ativo' },
+  evidencia: { corretivaIds: [] },
+  ...extra,
+});
+
+function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
+  const decisoes: DecisaoNoBanco[] = [];
+  const porta: PortaDoPainelDoIntelligence = {
+    contagens: async () => [
+      { tipo: 'atencao_ativo', faixa: 'critico', comResponsavel: false, quantidade: 2 },
+    ],
+    insights: async () => insights,
+    insight: async (_ctx, id) => insights.find((i) => i.id === id) ?? null,
+    ligados: async () => [],
+    chamados: async () => [],
+    nomes: async () => ({ hoteis: { [H1]: 'Hotel 1' }, bandeiras: {}, pessoas: {} }),
+    decidir: async (_ctx, d) => {
+      decisoes.push(d);
+      return { versao: d.versaoEsperada + 1 };
+    },
+  };
+  return { porta, decisoes };
+}
+
+const painel = (insights: InsightComEvidenciaNoBanco[], modulos = true) => {
+  const { porta, decisoes } = portaEmMemoria(insights);
+  return {
+    decisoes,
+    casos: criarPainel({
+      porta,
+      modulos: {
+        contratados: async () =>
+          modulos
+            ? [{ modulo: 'inteligencia', inicio: new Date('2026-01-01T00:00:00Z'), fim: null }]
+            : [],
+      },
+      atribuicoes: { doUsuario: async () => [gerente] },
+      relogio: { agora: () => agora },
+    }),
+  };
+};
+
+describe('as listas da API são as do motor', () => {
+  it('tipos, estados, filtros, ações, motivos e faixas', () => {
+    expect([...TIPOS_DE_INSIGHT_API]).toEqual([...TIPOS_DE_INSIGHT]);
+    expect([...ESTADOS_DO_INSIGHT_API]).toEqual([...ESTADOS_DO_INSIGHT]);
+    expect([...FILTROS_DE_ESTADO_DO_INSIGHT_API]).toEqual([...FILTROS_DE_ESTADO_DO_INSIGHT]);
+    expect([...ACOES_DO_INSIGHT_API]).toEqual([...ACOES_DO_INSIGHT]);
+    expect([...MOTIVOS_DE_DESCARTE_API]).toEqual([...MOTIVOS_DE_DESCARTE]);
+    expect([...FAIXAS_DO_INSIGHT_API]).toEqual(FAIXAS_PADRAO.map((f) => f.chave));
+  });
+});
+
+describe('o painel sobre a porta do banco', () => {
+  it('sem o módulo: inteligencia_indisponivel', async () => {
+    await expect(painel([linha()], false).casos.resumo(ctx)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+  });
+
+  it('o resumo pelas contagens do banco', async () => {
+    expect(await painel([linha()]).casos.resumo(ctx)).toEqual({
+      abertos: 2,
+      altaAtencaoOuCritico: 2,
+      sistemicos: 0,
+      semResponsavel: 2,
+    });
+  });
+
+  it('a página passa pelo contrato da API', async () => {
+    const p = await painel([linha()]).casos.ver(ctx, I1);
+    const resposta = {
+      insight: insightNaApi(p.insight),
+      chamados: [],
+      serie: p.serie.map((s) => ({ inicio: dataNaApi(s.inicio), quantidade: s.quantidade })),
+      nomes: p.nomes,
+    };
+    expect(RespostaDoInsight.parse(resposta).insight).toMatchObject({
+      id: I1,
+      primeiraDeteccaoEm: '2026-10-01T00:00:00.000Z',
+      encerradoEm: null,
+      acoes: ['revisar', 'aceitar', 'descartar'],
+      podeDecidir: true,
+    });
+  });
+
+  it('a decisão leva o usuário do contexto como responsável', async () => {
+    const { casos, decisoes } = painel([linha()]);
+    expect(await casos.decidir(ctx, I1, { acao: 'aceitar', versao: 1 })).toEqual({
+      versao: 2,
+      estado: 'aceito',
+      responsavelId: U1,
+    });
+    expect(decisoes[0]).toMatchObject({ acao: 'aceitar', responsavelId: U1, encerradoPor: null });
+  });
+
+  it('linha do banco fora das listas do motor é defeito, não dado', async () => {
+    await expect(painel([linha({ estado: 'inventado' })]).casos.ver(ctx, I1)).rejects.toThrow(
+      'Estado de insight desconhecido',
+    );
+  });
+});

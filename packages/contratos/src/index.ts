@@ -221,6 +221,23 @@ export {
   RespostaDeUhLiberada,
   RespostaDeUhMarcada,
 } from './uh-indisponivel';
+export {
+  ACOES_DO_INSIGHT_API,
+  ChamadoDoInsightApi,
+  ConsultaDeInsights,
+  ESTADOS_DO_INSIGHT_API,
+  FAIXAS_DO_INSIGHT_API,
+  FILTROS_DE_ESTADO_DO_INSIGHT_API,
+  InsightApi,
+  MOTIVOS_DE_DESCARTE_API,
+  NomesDoPainelApi,
+  PedidoDeDecisaoDoInsight,
+  RespostaDaDecisaoDoInsight,
+  RespostaDeInsights,
+  RespostaDoInsight,
+  RespostaDoResumoDoIntelligence,
+  TIPOS_DE_INSIGHT_API,
+} from './inteligencia';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';
 export {

@@ -145,6 +145,14 @@ import {
 } from './uh-indisponivel';
 import { PedidoDeOperacaoOffline, RespostaDeOperacaoOffline } from './sincronizacao';
 import { ErroApi } from './erro';
+import {
+  ConsultaDeInsights,
+  PedidoDeDecisaoDoInsight,
+  RespostaDaDecisaoDoInsight,
+  RespostaDeInsights,
+  RespostaDoInsight,
+  RespostaDoResumoDoIntelligence,
+} from './inteligencia';
 
 type Esquema = z.ZodType;
 
@@ -1794,6 +1802,66 @@ export const ROTAS: readonly Rota[] = [
     respostas: {
       200: { descricao: 'OS do dia', esquema: RespostaDeOsDoDia },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  // HubKeep Intelligence (módulo opcional): sem o módulo vigente no tenant, ou
+  // sem papel que decide insight, toda rota devolve 404 inteligencia_indisponivel.
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/resumo',
+    resumo:
+      'Os quatro indicadores do Intelligence, sobre os insights abertos que quem pede lê: abertos, em alta atenção ou crítico, sistêmicos e sem responsável. O menu mostra o item "HubKeep Intelligence" só quando esta rota responde 200. Lê quem decide insight (Admin do grupo, Gestor CSC e Gerente do hotel, no próprio escopo).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Indicadores', esquema: RespostaDoResumoDoIntelligence },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Sem o módulo ou sem papel que decide (inteligencia_indisponivel).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/insights',
+    resumo:
+      'Os insights que quem pede lê (a RLS da app.insight: o Gerente, só os do próprio hotel; o insight de rede, só o Admin do grupo e o Gestor CSC que cobrem os hotéis dele), da última detecção mais recente para a mais antiga, até 500. Abertos por padrão; filtros por estado, tipo, faixa e hotel. Cada um com a substituição nos dois sentidos e se quem pede o decide, e os nomes de hotéis, bandeiras e pessoas.',
+    exigeTenant: true,
+    consulta: ConsultaDeInsights,
+    respostas: {
+      200: { descricao: 'Insights', esquema: RespostaDeInsights },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Sem o módulo ou sem papel que decide (inteligencia_indisponivel).'),
+      422: ERRO('Filtro fora do formato (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/insights/{id}',
+    resumo:
+      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê e a série de chamados por semana nas últimas 12 semanas.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Insight', esquema: RespostaDoInsight },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, ou insight_nao_encontrado (fora do escopo ou inexistente).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/insights/{id}/decisao',
+    resumo:
+      'Uma pessoa decide o insight (ADR-033): revisar, aceitar, agir, monitorar, resolver ou descartar, conforme o estado. Resolver e descartar pedem nota; descartar pede o motivo. Quem toma a primeira ação vira o responsável. Grava com a trava de versão, auditoria e o evento insight.decidido.',
+    exigeTenant: true,
+    corpo: PedidoDeDecisaoDoInsight,
+    respostas: {
+      200: { descricao: 'Insight decidido', esquema: RespostaDaDecisaoDoInsight },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede lê, mas não decide neste escopo (insight_fora_do_escopo).'),
+      404: ERRO('inteligencia_indisponivel ou insight_nao_encontrado.'),
+      409: ERRO(
+        'Outra pessoa decidiu antes (conflito_de_versao) ou a ação não vale no estado (transicao_invalida).',
+      ),
+      422: ERRO('motivo_obrigatorio, motivo_de_descarte_invalido ou entrada_invalida.'),
     },
   },
 ];

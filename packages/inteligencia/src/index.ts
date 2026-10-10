@@ -9,6 +9,7 @@ export * from './fonte';
 export * from './historico';
 export * from './insight';
 export * from './job';
+export * from './painel';
 export * from './politicas';
 export * from './reincidencia';
 export * from './score';

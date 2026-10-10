@@ -17,7 +17,10 @@
 // - Insight (app.insight): o job abre e atualiza a detecção, nunca o estado.
 //   Uma auditoria por abertura e por atualização; evento insight.aberto, e
 //   insight.subiu_de_faixa quando a faixa sobe (Cesar, 10/10/2026). Evento sem
-//   consumidor fica pendente no outbox até existir quem o leia.
+//   consumidor fica pendente no outbox até existir quem o leia. A auditoria
+//   do insight vai sem hotel_id (Cesar, 10/10/2026): a RLS da app.auditoria
+//   deixaria o técnico e o solicitante do hotel lê-la, e o insight é só de
+//   quem decide.
 // - A chave do insight chega pronta (família, '|hoteis=' e o SHA-256 da lista
 //   canônica, montado na ligação com node:crypto); o banco confere o formato.
 import type {
@@ -502,7 +505,7 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
         entidade: 'insight',
         registroId: id,
         acao: 'abrir',
-        hotelId: n.hotelId,
+        hotelId: null,
         depois: {
           tipo: n.tipo,
           familia: n.familia,
@@ -575,7 +578,7 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
         entidade: 'insight',
         registroId: d.insightId,
         acao: 'atualizar_deteccao',
-        hotelId: antes.hotel_id,
+        hotelId: null,
         antes: { faixa: antes.faixa, valor: antes.valor, versaoScore: antes.versao_score },
         depois: { faixa: d.faixa, valor: d.valor, versaoScore: d.versaoScore },
       });
