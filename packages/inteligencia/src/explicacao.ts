@@ -5,6 +5,7 @@
 // textos da evidência do componente (ids e listas ficam de fora: a tela mostra
 // os registros pela evidência, filtrados pela RLS da origem).
 import { type Componente, type Score, motivosDoScore } from './score';
+import type { SinalSistemico } from './sistemico';
 
 export interface Explicacao {
   chave: string;
@@ -138,4 +139,26 @@ export function detalhamentoDoScore(score: Score): Detalhamento {
       peso: ha ? pesoRedistribuido : 0,
     },
   };
+}
+
+/**
+ * A evidência do sinal sistêmico, pronta para o catálogo. A regra do mesmo
+ * modelo tem frase própria, com as taxas; as outras, a genérica (chamados,
+ * hotéis e janela), até ganharem a sua.
+ */
+export function explicacaoDoSinal(sinal: Pick<SinalSistemico, 'regra' | 'evidencia'>): Explicacao {
+  const e = sinal.evidencia;
+  const comuns = { quantidade: e.quantidade, hoteis: e.hotelIds.length, janelaDias: e.janelaDias };
+  if (sinal.regra === 'mesmo_modelo') {
+    return {
+      chave: 'inteligencia.sistemico.evidencia.mesmo_modelo',
+      valores: {
+        ...comuns,
+        distintos: e.distintos,
+        taxa: e.taxaPorAtivo ?? 0,
+        base: e.basePorAtivo ?? 0,
+      },
+    };
+  }
+  return { chave: 'inteligencia.sistemico.evidencia.generica', valores: comuns };
 }

@@ -3,16 +3,20 @@ import { describe, expect, it } from 'vitest';
 import {
   type DecisaoGravada,
   type InsightComEvidencia,
+  type AtivoDoPainel,
   type InsightLigado,
+  type MetricaDoPainel,
   type PortasDoPainel,
   acoesDoEstado,
   chamadosDaEvidencia,
+  explicacaoDoSinal,
   decidirInsight,
   listarInsights,
   responsavelDepoisDaAcao,
   resumoDoPainel,
   serieSemanal,
   substitui,
+  verAtivo,
   verInsight,
 } from '../src/index';
 
@@ -64,6 +68,9 @@ interface Memoria {
   chamados: { id: string; hotelId: string; abertoEm: Date }[];
   decisoes: DecisaoGravada[];
   filtros: unknown[];
+  ativos: AtivoDoPainel[];
+  metricas: (MetricaDoPainel & { ativoId: string })[];
+  desdes: string[];
 }
 
 function emMemoria(m: Partial<Memoria> = {}): PortasDoPainel & { m: Memoria } {
@@ -74,6 +81,18 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDoPainel & { m: Memoria } {
     chamados: [],
     decisoes: [],
     filtros: [],
+    ativos: [
+      {
+        id: 'a1',
+        nome: 'Elevador social 2',
+        hotelId: 'h1',
+        bandeiraId: 'b1',
+        criticidade: 5,
+        desativadoEm: null,
+      },
+    ],
+    metricas: [],
+    desdes: [],
     ...m,
   };
   return {
@@ -112,13 +131,37 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDoPainel & { m: Memoria } {
       hoteis: Object.fromEntries(p.hotelIds.map((h) => [h, `Hotel ${h}`])),
       bandeiras: Object.fromEntries(p.bandeiraIds.map((b) => [b, `Bandeira ${b}`])),
       pessoas: Object.fromEntries(p.usuarioIds.map((u) => [u, `Pessoa ${u}`])),
+      ativos: Object.fromEntries(p.ativoIds.map((a) => [a, `Ativo ${a}`])),
     }),
     decidir: async (d) => {
       mem.decisoes.push(d);
       return { versao: d.versaoEsperada + 1 };
     },
+    ativo: async (id) => mem.ativos.find((a) => a.id === id) ?? null,
+    metricasDoAtivo: async (ativoId, desde) => {
+      mem.desdes.push(desde);
+      return mem.metricas.filter((x) => x.ativoId === ativoId && x.dia >= desde);
+    },
+    insightsDoEscopo: async (tipo, chave, valor) =>
+      mem.insights.filter((i) => i.tipo === tipo && i.escopo[chave] === valor),
   };
 }
+
+const metrica = (dia: string, atencao: number | null): MetricaDoPainel & { ativoId: string } => ({
+  ativoId: 'a1',
+  dia,
+  calculo: 1,
+  recalculo: false,
+  calculadoEm: new Date(`${dia}T03:00:00Z`),
+  atencao,
+  faixa: atencao === null ? 'dados_insuficientes' : atencao >= 70 ? 'alta_atencao' : 'atencao',
+  reincidencia: 40,
+  versaoFormulaAtencao: 2,
+  versaoFormulaReincidencia: 1,
+  versaoPolitica: 'padrao',
+  detalheAtencao: { chave: 'atencao_ativo', valor: atencao },
+  detalheReincidencia: { chave: 'reincidencia' },
+});
 
 describe('o painel só existe com o módulo e com papel que decide', () => {
   it.each([
@@ -208,6 +251,7 @@ describe('lista', () => {
     ]);
     expect(nomes.hoteis).toEqual({ h1: 'Hotel h1', h2: 'Hotel h2', h3: 'Hotel h3' });
     expect(nomes.pessoas).toEqual({ u9: 'Pessoa u9' });
+    expect(nomes.ativos).toEqual({ a1: 'Ativo a1' });
   });
 
   it('o que abriu depois do encerramento do anterior é recorrência, não substituição', () => {
@@ -359,5 +403,68 @@ describe('peças puras', () => {
     // antes(85) fica fora; antes(83) cai na primeira semana; agora, na última.
     expect(serie.map((s) => s.quantidade)).toEqual([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2]);
     expect(serie[0]?.inicio).toEqual(antes(84));
+  });
+});
+
+describe('detalhe do ativo', () => {
+  it('a série dos últimos 90 dias, o último dia com o detalhe e os insights do ativo', async () => {
+    const p = emMemoria({
+      metricas: [metrica('2026-10-08', 60), metrica('2026-10-09', null), metrica('2026-10-10', 75)],
+      insights: [insight(), insight({ id: 'outro', escopo: { ativoId: 'a2', hotelId: 'h1' } })],
+    });
+    const pagina = await verAtivo(p, 'a1', agora);
+    expect(p.m.desdes).toEqual(['2026-07-13']);
+    expect(pagina.serie).toEqual([
+      { dia: '2026-10-08', atencao: 60, faixa: 'atencao' },
+      { dia: '2026-10-09', atencao: null, faixa: 'dados_insuficientes' },
+      { dia: '2026-10-10', atencao: 75, faixa: 'alta_atencao' },
+    ]);
+    expect(pagina.atual).toMatchObject({ dia: '2026-10-10', calculo: 1, versaoPolitica: 'padrao' });
+    expect(pagina.insights.map((i) => [i.id, i.podeDecidir])).toEqual([['i1', true]]);
+    expect(pagina.nomes.hoteis).toEqual({ h1: 'Hotel h1' });
+  });
+
+  it('sem nenhum dia gravado, a página existe sem resultado', async () => {
+    const pagina = await verAtivo(emMemoria({ insights: [] }), 'a1', agora);
+    expect([pagina.serie, pagina.atual, pagina.insights]).toEqual([[], null, []]);
+  });
+
+  it('quem não decide o insight do hotel do ativo não vê a página', async () => {
+    const deOutroHotel = emMemoria({
+      atribuicoes: [atribuicao('gerente_hotel', { tipo: 'hotel', hotelId: 'h2' })],
+    });
+    await expect(verAtivo(deOutroHotel, 'a1', agora)).rejects.toMatchObject({
+      codigo: 'ativo_nao_encontrado',
+    });
+    await expect(verAtivo(emMemoria(), 'nao-existe', agora)).rejects.toMatchObject({
+      codigo: 'ativo_nao_encontrado',
+    });
+    await expect(verAtivo(emMemoria({ modulos: [] }), 'a1', agora)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+  });
+});
+
+describe('a evidência do sinal sistêmico para o catálogo', () => {
+  const evidencia = {
+    quantidade: 9,
+    distintos: 4,
+    janelaDias: 90,
+    hotelIds: ['h1', 'h2', 'h3'],
+    corretivaIds: [],
+    taxaPorAtivo: 2.25,
+    basePorAtivo: 0.5,
+  };
+  it('o mesmo modelo, com as taxas', () => {
+    expect(explicacaoDoSinal({ regra: 'mesmo_modelo', evidencia })).toEqual({
+      chave: 'inteligencia.sistemico.evidencia.mesmo_modelo',
+      valores: { quantidade: 9, hoteis: 3, janelaDias: 90, distintos: 4, taxa: 2.25, base: 0.5 },
+    });
+  });
+  it('as outras regras, a frase genérica', () => {
+    expect(explicacaoDoSinal({ regra: 'mesmo_andar', evidencia })).toEqual({
+      chave: 'inteligencia.sistemico.evidencia.generica',
+      valores: { quantidade: 9, hoteis: 3, janelaDias: 90 },
+    });
   });
 });

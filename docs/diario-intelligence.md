@@ -1119,3 +1119,24 @@ Segundo dos PRs das telas do painel (a ordem e as decisões do Cesar estão na s
 - **Detalhe do ativo** (a terceira tela): a leitura da `app.metrica_ativo_diaria`. Entra num PR próprio, antes da tela.
 - **Efetividade** nos três lugares e o **recálculo sob demanda** na página do insight. Ficam depois das três telas.
 - **Número do insight:** a proposta das telas tem a coluna "número do insight" ("INS-0133" no mock), mas a `app.insight` não tem número sequencial. Até haver decisão, a tela mostra o tipo e o escopo como link.
+
+## `int-ativo-metrica`: o detalhe do ativo lendo a métrica diária (10/10/2026)
+
+Continuação do #189: a leitura que a terceira tela, o detalhe do ativo, vai usar. Fora da zona protegida, sem migração. A branch partiu da `int-insight-servidor`, e o PR abre depois do merge do #189.
+
+- **Motor (`verAtivo`, em `painel.ts`):**
+  - **O que a página traz:** a atenção de cada dia gravado nos últimos 90 dias, o último dia com o detalhe (o `Score`, que já traz os componentes e o limite do insight na configuração) e os insights de atenção do ativo.
+  - **Qual resultado:** o original de cada dia, o primeiro cálculo sem recálculo (decisão de 07/10/2026, aprovada por Cesar na #166).
+- **Quem vê:** só quem decide o insight do hotel do ativo. Para os outros, a resposta é `ativo_nao_encontrado`, porque a métrica nunca tem mais leitores que o insight (Cesar, 10/10/2026). A RLS da métrica (0039) já faz o mesmo no banco; o portão na aplicação evita a página com o ativo e sem a métrica para quem lê o ativo por outro papel.
+- **Banco:**
+  - `ativoDoPainel` traz o ativo com a bandeira do hotel;
+  - `metricasDoAtivo` traz o primeiro cálculo de cada dia sem recálculo (`distinct on (dia)`) a partir da data pedida;
+  - `insightsDoEscopo` traz os insights de um tipo com um par no escopo. O tipo e a chave vêm do motor.
+- **Web:** `GET /api/v1/inteligencia/ativos/{id}`, com o contrato `RespostaDoAtivoNoIntelligence` e a entrada no OpenAPI.
+- **Testes:**
+  - no motor, a série, o último dia, a página sem dados e quem não decide;
+  - no web, a resposta passando pelo contrato;
+  - na integração do `packages/db`, só na CI: o recálculo fica fora, o dia antes da data também, e o técnico lê o ativo mas não a métrica nem o insight.
+- **Para as telas (acrescentado no mesmo PR):**
+  - **Nomes:** a resposta passa a trazer `ativos`, o nome dos ativos citados no escopo dos insights (`ativoId`), para o título da linha do insight de atenção.
+  - **`explicacaoDoSinal`:** a evidência do sinal sistêmico vira chave de catálogo e valores. A regra do mesmo modelo tem frase própria; as outras usam a frase nova `inteligencia.sistemico.evidencia.generica`, com chamados, hotéis e janela, nos quatro idiomas, até ganharem a sua.

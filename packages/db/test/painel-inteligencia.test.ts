@@ -6,7 +6,9 @@
 //   - os ligados por anterior_id, nos dois sentidos;
 //   - os chamados da evidência recortados pela RLS do chamado;
 //   - a decisão com a trava de versão, a auditoria sem hotel_id e o evento;
-//     fora do escopo, a linha não aparece.
+//     fora do escopo, a linha não aparece;
+//   - o detalhe do ativo: o primeiro cálculo de cada dia (sem o recálculo)
+//     desde a data pedida, só para quem decide; e os insights pelo escopo.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { createHash, randomUUID } from 'node:crypto';
@@ -205,8 +207,10 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
     for (const t of [
       'app.evento_dominio',
       'app.auditoria',
+      'app.metrica_ativo_diaria',
       'app.insight',
       'app.chamado',
+      'app.ativo',
       'app.situacao',
       'app.prioridade',
       'app.local',
@@ -271,11 +275,13 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
       hotelIds: [H1, H2],
       bandeiraIds: [B1],
       usuarioIds: [U.gerente],
+      ativoIds: [],
     });
     expect(nomes).toEqual({
       hoteis: { [H1]: 'Hotel 1', [H2]: 'Hotel 2' },
       bandeiras: { [B1]: 'Aurora' },
       pessoas: { [U.gerente]: 'gerente' },
+      ativos: {},
     });
   });
 
@@ -359,5 +365,88 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
         em: agora,
       }),
     ).rejects.toMatchObject({ codigo: 'insight_nao_encontrado' });
+  });
+
+  it('o detalhe do ativo: o primeiro cálculo de cada dia, só para quem decide', async () => {
+    const A = randomUUID();
+    const IA = randomUUID();
+    await q(
+      `insert into app.ativo (id, tenant_id, hotel_id, local_id, nome, busca, codigo_qr, criticidade)
+       values ($1, $2, $3, $4, 'Elevador social 2', 'elevador social 2', 'ABCDEFGHJ1', 5)`,
+      [A, TENANT, H1, L1],
+    );
+    const metrica = (dia: string, calculo: number, recalculo: boolean, atencao: number | null) =>
+      q(
+        `insert into app.metrica_ativo_diaria (id, tenant_id, hotel_id, ativo_id, dia, calculo,
+           recalculo, atencao, faixa_atencao, versao_formula_reincidencia, versao_formula_atencao,
+           versao_politica, detalhe_reincidencia, detalhe_atencao)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, 2, 'padrao', '{}', $10)`,
+        [
+          randomUUID(),
+          TENANT,
+          H1,
+          A,
+          dia,
+          calculo,
+          recalculo,
+          atencao,
+          atencao === null ? 'dados_insuficientes' : 'atencao',
+          JSON.stringify({ chave: 'atencao_ativo', valor: atencao }),
+        ],
+      );
+    await metrica('2026-09-01', 1, false, 10);
+    await metrica('2026-10-01', 1, false, 60);
+    await metrica('2026-10-01', 2, true, 90);
+    await metrica('2026-10-02', 1, false, null);
+    await q(
+      `insert into app.insight (id, tenant_id, hotel_id, bandeira_id, hotel_ids, tipo, familia, chave,
+         escopo, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+       values ($1, $2, $3, $4, array[$3]::uuid[], 'atencao_ativo', 'f-ativo', $5, $6, 'atencao', 60, 2,
+         now(), now())`,
+      [
+        IA,
+        TENANT,
+        H1,
+        B1,
+        `f-ativo|hoteis=${hash(H1)}`,
+        JSON.stringify({ ativoId: A, hotelId: H1 }),
+      ],
+    );
+
+    expect(await porta.ativo(ctx(U.gerente), A)).toEqual({
+      id: A,
+      nome: 'Elevador social 2',
+      hotelId: H1,
+      bandeiraId: B1,
+      criticidade: 5,
+      desativadoEm: null,
+    });
+    const doGerente = await porta.metricasDoAtivo(ctx(U.gerente), A, '2026-09-15');
+    expect(doGerente.map((m) => [m.dia, m.calculo, m.recalculo, m.atencao])).toEqual([
+      ['2026-10-01', 1, false, 60],
+      ['2026-10-02', 1, false, null],
+    ]);
+    expect(doGerente[0]).toMatchObject({
+      faixa: 'atencao',
+      versaoFormulaAtencao: 2,
+      versaoPolitica: 'padrao',
+      detalheAtencao: { chave: 'atencao_ativo', valor: 60 },
+    });
+    expect(await porta.metricasDoAtivo(ctx(U.gestor), A, '2026-09-15')).toHaveLength(2);
+    // O técnico do hotel lê o ativo, mas não a métrica.
+    expect(await porta.metricasDoAtivo(ctx(U.tecnico), A, '2026-09-15')).toEqual([]);
+    expect(
+      ids(await porta.insightsDoEscopo(ctx(U.gerente), 'atencao_ativo', 'ativoId', A, 50)),
+    ).toEqual([IA]);
+    const nomes = await porta.nomes(ctx(U.gerente), {
+      hotelIds: [],
+      bandeiraIds: [],
+      usuarioIds: [],
+      ativoIds: [A],
+    });
+    expect(nomes.ativos).toEqual({ [A]: 'Elevador social 2' });
+    expect(await porta.insightsDoEscopo(ctx(U.tecnico), 'atencao_ativo', 'ativoId', A, 50)).toEqual(
+      [],
+    );
   });
 });

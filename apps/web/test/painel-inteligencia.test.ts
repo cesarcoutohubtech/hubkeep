@@ -7,6 +7,7 @@ import {
   FAIXAS_DO_INSIGHT_API,
   FILTROS_DE_ESTADO_DO_INSIGHT_API,
   MOTIVOS_DE_DESCARTE_API,
+  RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   TIPOS_DE_INSIGHT_API,
 } from '@hubkeep/contratos';
@@ -32,6 +33,7 @@ const agora = new Date('2026-10-10T12:00:00Z');
 const H1 = '11100000-0000-0000-0000-000000000001';
 const I1 = '22200000-0000-0000-0000-000000000001';
 const U1 = '33300000-0000-0000-0000-000000000001';
+const A1 = '55500000-0000-0000-0000-000000000001';
 const ctx = { usuarioId: U1, tenantId: '44400000-0000-0000-0000-000000000001' };
 
 const gerente: Atribuicao = {
@@ -78,11 +80,39 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
     insight: async (_ctx, id) => insights.find((i) => i.id === id) ?? null,
     ligados: async () => [],
     chamados: async () => [],
-    nomes: async () => ({ hoteis: { [H1]: 'Hotel 1' }, bandeiras: {}, pessoas: {} }),
+    nomes: async () => ({ hoteis: { [H1]: 'Hotel 1' }, bandeiras: {}, pessoas: {}, ativos: {} }),
     decidir: async (_ctx, d) => {
       decisoes.push(d);
       return { versao: d.versaoEsperada + 1 };
     },
+    ativo: async (_ctx, id) =>
+      id === A1
+        ? {
+            id: A1,
+            nome: 'Elevador social 2',
+            hotelId: H1,
+            bandeiraId: null,
+            criticidade: 5,
+            desativadoEm: null,
+          }
+        : null,
+    metricasDoAtivo: async () => [
+      {
+        dia: '2026-10-10',
+        calculo: 1,
+        recalculo: false,
+        calculadoEm: new Date('2026-10-10T03:00:00Z'),
+        atencao: 75,
+        faixa: 'alta_atencao',
+        reincidencia: 40,
+        versaoFormulaAtencao: 2,
+        versaoFormulaReincidencia: 1,
+        versaoPolitica: 'padrao',
+        detalheAtencao: { chave: 'atencao_ativo' },
+        detalheReincidencia: { chave: 'reincidencia' },
+      },
+    ],
+    insightsDoEscopo: async () => insights,
   };
   return { porta, decisoes };
 }
@@ -147,6 +177,20 @@ describe('o painel sobre a porta do banco', () => {
       acoes: ['revisar', 'aceitar', 'descartar'],
       podeDecidir: true,
     });
+  });
+
+  it('o detalhe do ativo passa pelo contrato da API', async () => {
+    const p = await painel([linha()]).casos.ativo(ctx, A1);
+    const resposta = RespostaDoAtivoNoIntelligence.parse({
+      ativo: { ...p.ativo, desativadoEm: null },
+      serie: p.serie,
+      atual: p.atual && { ...p.atual, calculadoEm: dataNaApi(p.atual.calculadoEm) },
+      insights: p.insights.map(insightNaApi),
+      nomes: p.nomes,
+    });
+    expect(resposta.serie).toEqual([{ dia: '2026-10-10', atencao: 75, faixa: 'alta_atencao' }]);
+    expect(resposta.atual).toMatchObject({ calculadoEm: '2026-10-10T03:00:00.000Z', calculo: 1 });
+    expect(resposta.insights.map((i) => i.id)).toEqual([I1]);
   });
 
   it('a decisão leva o usuário do contexto como responsável', async () => {

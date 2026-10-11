@@ -8,6 +8,7 @@
 import type { Contexto } from '@hubkeep/dominio';
 import type { AcessoBanco } from './acesso';
 import {
+  type AtivoDoPainelNoBanco,
   type ChamadoDoInsightNoBanco,
   type ContagemDeInsightsNoBanco,
   type DecisaoNoBanco,
@@ -15,13 +16,17 @@ import {
   type InsightComEvidenciaNoBanco,
   type InsightDoPainelNoBanco,
   type InsightLigadoNoBanco,
+  type MetricaDoPainelNoBanco,
   type NomesDoPainelNoBanco,
+  ativoDoPainel,
   chamadosDoInsight,
   contagensDeInsights,
   decidirInsightNoBanco,
   insightDoPainel,
   insightsDoPainel,
+  insightsDoEscopo,
   insightsLigados,
+  metricasDoAtivo,
   nomesDoPainel,
 } from './repositorios/inteligencia-painel';
 import {
@@ -57,10 +62,20 @@ export interface PortaDoPainelDoIntelligence {
       hotelIds: readonly string[];
       bandeiraIds: readonly string[];
       usuarioIds: readonly string[];
+      ativoIds: readonly string[];
     },
   ): Promise<NomesDoPainelNoBanco>;
   /** Na unit of work de quem decide: o estado, a auditoria e o evento. */
   decidir(ctx: Contexto, d: DecisaoNoBanco): Promise<{ versao: number }>;
+  ativo(ctx: Contexto, id: string): Promise<AtivoDoPainelNoBanco | null>;
+  metricasDoAtivo(ctx: Contexto, ativoId: string, desde: string): Promise<MetricaDoPainelNoBanco[]>;
+  insightsDoEscopo(
+    ctx: Contexto,
+    tipo: string,
+    chave: string,
+    valor: string,
+    limite: number,
+  ): Promise<InsightDoPainelNoBanco[]>;
 }
 
 export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPainelDoIntelligence {
@@ -73,5 +88,10 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
     chamados: (ctx, ids) => banco.withContext(ctx, (tx) => chamadosDoInsight(tx, ids)),
     nomes: (ctx, p) => banco.withContext(ctx, (tx) => nomesDoPainel(tx, p)),
     decidir: (ctx, d) => banco.executar(ctx, (uow) => decidirInsightNoBanco(uow, d)),
+    ativo: (ctx, id) => banco.withContext(ctx, (tx) => ativoDoPainel(tx, id)),
+    metricasDoAtivo: (ctx, ativoId, desde) =>
+      banco.withContext(ctx, (tx) => metricasDoAtivo(tx, ativoId, desde)),
+    insightsDoEscopo: (ctx, tipo, chave, valor, limite) =>
+      banco.withContext(ctx, (tx) => insightsDoEscopo(tx, tipo, chave, valor, limite)),
   };
 }
