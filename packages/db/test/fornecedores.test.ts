@@ -35,12 +35,14 @@ if (!temBanco && process.env.HK_EXIGIR_BANCO === '1') {
 const TENANT = randomUUID();
 const HOTEL = randomUUID();
 const BANDEIRA = randomUUID();
+const BANDEIRA_VAZIA = randomUUID();
 const U = {
   admin: randomUUID(),
   gestor: randomUUID(),
   gerente: randomUUID(),
   tecnico: randomUUID(),
   dono: randomUUID(),
+  gestorSemHotel: randomUUID(),
 };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 
@@ -97,6 +99,15 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
         HOTEL,
       ],
     );
+    await dono.query(
+      `insert into app.bandeira (id, tenant_id, nome) values ($1, $2, 'Bandeira vazia')`,
+      [BANDEIRA_VAZIA, TENANT],
+    );
+    await dono.query(
+      `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, bandeira_id, concedido_por)
+       values ($1, $2, $3, 'gestor_csc', 'bandeira', $4, $5)`,
+      [randomUUID(), TENANT, U.gestorSemHotel, BANDEIRA_VAZIA, U.admin],
+    );
     banco = await criarAcessoBanco({ app: { url: URL_APP ?? '', max: 2 } });
     const deps = {
       fornecedores: criarPortaFornecedores(banco),
@@ -107,6 +118,7 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
     semChecagem = criarCasosDeUsoDeFornecedores({
       ...deps,
       podeGerir: () => ({ permitido: true }),
+      exigirAlcance: () => undefined,
     });
     historico = criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(banco) });
   });
@@ -253,5 +265,14 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
     });
     const { rows } = await dono.query(`select cnpj from app.fornecedor where id = $1`, [id]);
     expect(rows[0]).toEqual({ cnpj: '12ABC34501DE35' });
+  });
+
+  it('Gestor CSC de bandeira sem hotel: fornecedores_sem_hotel; sem a checagem, a RLS barra', async () => {
+    await expect(
+      casos.cadastrar(ctx(U.gestorSemHotel), { nome: 'Do gestor sem hotel' }),
+    ).rejects.toMatchObject({ codigo: 'fornecedores_sem_hotel' });
+    await expect(
+      semChecagem.cadastrar(ctx(U.gestorSemHotel), { nome: 'Do gestor sem hotel' }),
+    ).rejects.toMatchObject({ code: '42501' });
   });
 });

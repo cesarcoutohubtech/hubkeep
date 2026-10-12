@@ -16,12 +16,22 @@ const gerente: Atribuicao = {
   revogadoEm: null,
 };
 const tecnico: Atribuicao = { ...gerente, papel: 'tecnico' };
+const gestorDeBandeira: Atribuicao = {
+  ...gerente,
+  papel: 'gestor_csc',
+  escopo: { tipo: 'bandeira', bandeiraId: 'b-vazia' },
+};
+const admin: Atribuicao = { ...gerente, papel: 'admin_grupo', escopo: { tipo: 'grupo' } };
 
-function montar(minhas: Atribuicao[]) {
+function montar(
+  minhas: Atribuicao[],
+  hoteis: { id: string; bandeiraId: string | null }[] = [{ id: 'h', bandeiraId: null }],
+) {
   const criados: unknown[] = [];
   const alterados: { id: string; versao: number; mudanca: MudancaDeFornecedor }[] = [];
   const casos = criarCasosDeUsoDeFornecedores({
     fornecedores: {
+      hoteis: async () => hoteis,
       listar: async () => [],
       criar: async (_ctx, dados) => {
         criados.push(dados);
@@ -106,5 +116,23 @@ describe('fornecedores (I3)', () => {
       [4, { desativado: true }],
       [5, { desativado: false }],
     ]);
+  });
+
+  it('Gestor CSC de bandeira sem hotel: 403 fornecedores_sem_hotel, sem chegar à porta', async () => {
+    const { casos, criados, alterados } = montar([gestorDeBandeira], []);
+    await expect(casos.cadastrar(ctx, { nome: 'X' })).rejects.toMatchObject({
+      codigo: 'fornecedores_sem_hotel',
+    });
+    await expect(casos.reativar(ctx, 'f', 1)).rejects.toMatchObject({
+      codigo: 'fornecedores_sem_hotel',
+    });
+    expect(criados).toEqual([]);
+    expect(alterados).toEqual([]);
+  });
+
+  it('o Admin do grupo grava mesmo sem hotel', async () => {
+    const { casos, criados } = montar([admin], []);
+    await casos.cadastrar(ctx, { nome: 'Do admin' });
+    expect(criados).toHaveLength(1);
   });
 });

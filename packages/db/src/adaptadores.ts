@@ -454,6 +454,13 @@ export function criarPortaBandeiras(banco: AcessoBanco): PortaBandeiras {
  */
 export function criarPortaFornecedores(banco: AcessoBanco): PortaFornecedores {
   return {
+    hoteis: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (await tx.selectFrom('app.hotel').select(['id', 'bandeira_id']).execute()).map((h) => ({
+          id: h.id,
+          bandeiraId: h.bandeira_id,
+        })),
+      ),
     listar: (ctx) =>
       banco.withContext(ctx, async (tx) =>
         (
