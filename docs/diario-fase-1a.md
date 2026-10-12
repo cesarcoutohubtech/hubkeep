@@ -1840,3 +1840,22 @@ Pedido do Cesar no chat ("Cesar aqui", 12/10/2026), em seis itens. Situação ao
 - agora, o #193 (I8, núcleo);
 - depois, na ordem do núcleo: a PV1 (0042), quando o ADR-040 for aprovado, e o PR do staging (`[remotes.staging]` e o adendo ao ADR-024), quando o Cesar quiser;
 - o PR de zona protegida do Intelligence que estiver pronto (por exemplo, as decisões de 10/10 no ADR-036) entra entre dois do núcleo. Basta registrar aqui ou no diário do Intelligence antes de abrir, conferindo no GitHub que nenhum outro está aberto.
+
+## PV1 — checklist tipado, migração 0042 (12/10/2026)
+
+ADR-040 e as 21 decisões aprovados pelo Cesar em 12/10/2026. PR de zona protegida com a estrutura; o domínio, os casos de uso, a API, as telas e o kit vão no PR seguinte, fora da zona protegida, depois do merge e do `db push` (modelo da I6).
+
+- **Migração 0042** (`20261012200000_checklist.sql`):
+  - `app.checklist_modelo`, do grupo. Leem a gestão e o Implantador; só o Admin do grupo grava; a categoria é FK composta e opcional.
+  - `app.os_checklist`, uma por OS, com a cópia dos nomes, dos itens e da versão e as respostas.
+    - Lê quem lê a OS.
+    - Aplica a gestão do hotel, em nome dela mesma.
+    - Alteram a gestão (troca do modelo) e o Técnico responsável, ele ou membro ativo da equipe (respostas).
+  - O worker lê as duas no tenant do job. O INSERT do worker na cópia fica para a PV3 (0044).
+- **Risco aceito**, como na 0023: o GRANT de UPDATE da cópia vale para todos os papéis do `hk_app`. A aplicação nunca grava o modelo nem os itens pelo Técnico, e a auditoria registra tudo.
+- **Testes:** pgTAP 034 (seis casos, papéis, equipe, imutáveis e worker) e as duas tabelas na lista fechada do meta-teste 28. Tipos do banco à mão, no formato do gerador, até o `pnpm db:types` depois do `db push`.
+- **Junto, na zona protegida:**
+  - o texto do ADR-040 no `docs/03`, já como aprovado;
+  - no `CLAUDE.md`, a regra dos worktrees (removido logo depois do merge, no máximo 3 por agente) e a do PR sempre com base na `main`, pedidas pelo Cesar em 12/10/2026;
+  - a linha do checklist no `docs/02`.
+- **Para o agente do Intelligence:** as tabelas novas são `app.checklist_modelo` (`id`, `tenant_id`, `categoria_id`, `nomes`, `itens`, `versao`, `ativa`) e `app.os_checklist` (`os_id`, `modelo_id`, `modelo_versao`, `nomes`, `itens`, `respostas`, `criado_por`). O worker já lê as duas.
