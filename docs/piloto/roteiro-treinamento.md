@@ -1,6 +1,6 @@
 # Roteiro de treinamento do piloto
 
-Proposta de treinamento para os hotéis do piloto, escrita sobre o que existe na `main`. Durações e agenda são **propostas** para o Cesar ajustar. O que ainda não existe ou vai mudar na 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (`docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface; o passo a passo por papel está em `manual-por-papel.md`.
+Proposta de treinamento para os hotéis do piloto, escrita sobre o que existe na `main` (atualizada em 12/10/2026 com as entregas da 1b até o #194). Durações e agenda são **propostas** para o Cesar ajustar. O que ainda não existe ou vai mudar na 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (`docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface; o passo a passo por papel está em `manual-por-papel.md`.
 
 ## 1. Os hotéis do piloto
 
@@ -13,7 +13,7 @@ O piloto é em **4 hotéis**, decidido pelo Cesar em 07/10/2026: um urbano próp
 | 3 | [nome a definir pela Slaviero] | Administrado | [a definir] | [a definir] | [a definir] |
 | 4 | [nome a definir pela Slaviero] | Arrendado | [a definir] | [a definir] | [a definir] |
 
-Os quatro perfis diferem em quem opera e em quem é dono do ativo. Isso pode mudar o que o treinamento destaca (por exemplo, o papel de Proprietário nos hotéis administrado e arrendado). Confirmar com a Slaviero se o perfil altera quem participa da sessão.
+Os quatro perfis diferem em quem opera e em quem é dono do ativo. O perfil agora é o campo **Modelo contratual** da configuração do hotel (Próprio, Administrado, Arrendado, Afiliado ou Não informado). Confirmar com a Slaviero o modelo contratual de cada hotel do piloto. Isso pode mudar o que o treinamento destaca (por exemplo, o papel de Proprietário nos hotéis administrado e arrendado). Confirmar com a Slaviero se o perfil altera quem participa da sessão.
 
 Idiomas: a interface sai em pt-BR, en, es e fr, com traduções de en, es e fr provisórias até a revisão (`docs/04`). Se houver usuário de espanhol ou francês no piloto, treinar no idioma dele e registrar o feedback da tradução.
 
@@ -64,11 +64,11 @@ Por hotel, o dia presencial soma cerca de 4 h (B, C e o fechamento). A sessão A
 | 0:00 a 0:20 | Visão: ciclo do chamado (Aberto, Em triagem, Em execução, Aguardando aceite, Concluído) e da OS; quem faz o quê. Entrar, trocar **Idioma**, **Sair** |
 | 0:20 a 0:40 | Lista de **Chamados**: filtros, detalhe, **Linha do tempo**, **Ver histórico** |
 | 0:40 a 1:30 | **Triagem e atribuição** (exercícios 3, 4 e 5) |
-| 1:30 a 1:50 | **Aceite** e **Reabrir** (exercício 6) |
-| 1:50 a 2:10 | **Paradas a encerrar** (exercício 7) |
-| 2:10 a 2:30 | Cadastros do hotel: Locais, Equipes, Ativos, **Ver QR**; dúvidas |
+| 1:30 a 1:50 | **Aceite** (com falha, causa, solução e custo informado) e **Reabrir** (exercícios 6 e 15) |
+| 1:50 a 2:10 | **Paradas a encerrar** e **UH indisponível** (exercícios 7 e 14) |
+| 2:10 a 2:30 | Cadastros do hotel: Locais (com edificação), Equipes, Ativos (com compra, garantia e criticidade), **Fornecedores**, **Ver QR**; dúvidas |
 
-Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**, **Hotéis** (Trazer para implantação, Ativar), **Configuração e políticas**.
+Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**, **Hotéis** (Trazer para implantação, Ativar), **Configuração e políticas** (modelo contratual, nomes da criticidade, códigos obrigatórios no aceite), **Códigos de manutenção** (só o Admin). Se o grupo contratar o HubKeep Intelligence **[a confirmar]**, acrescentar o menu do módulo (lista de insights, "Por que estou vendo isso?" e a decisão).
 
 ### Sessão B. Técnicos (2 h, mais 1 h de prática)
 
@@ -76,8 +76,8 @@ Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**,
 |---|---|
 | 0:00 a 0:15 | Instalar e entrar; conferir o PWA instalado; conferir idioma |
 | 0:15 a 0:35 | **Fila do dia**: faixa de rede, contador de operações, **Enviar agora** |
-| 0:35 a 1:15 | Executar OS: **Iniciar**, **Apontar horas**, **Registrar material**, foto, **Concluir** (exercício 4) |
-| 1:15 a 1:35 | Parada do equipamento e a pergunta "O equipamento voltou a funcionar?" (exercício 5) |
+| 0:35 a 1:15 | Executar OS: **Iniciar**, **Apontar horas**, **Registrar material**, foto, falha, causa e solução, **Concluir** (exercício 4) |
+| 1:15 a 1:35 | Parada do equipamento e a pergunta "O equipamento voltou a funcionar?"; UH indisponível e a pergunta "A UH foi liberada para uso?" (exercícios 5 e 14) |
 | 1:35 a 2:00 | Offline (exercício 8) |
 | Prática (1 h) | No hotel: ler QR real, abrir o ativo, **Fotos**, **Alterar** e abrir **Abrir chamado** (exercício 9) |
 
@@ -86,12 +86,12 @@ Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**,
 | Tempo | Conteúdo |
 |---|---|
 | 0:00 a 0:10 | Instalar, entrar, idioma |
-| 0:10 a 0:30 | **Abrir chamado** (exercício 2), inclusive sem rede |
+| 0:10 a 0:30 | **Abrir chamado** (exercício 2), inclusive sem rede, com **Afeta hóspede?** e **A UH ficou indisponível** |
 | 0:30 a 0:45 | Acompanhar pelo web e **Aceitar** a OS do chamado que abriu (exercício 6) |
 
 ### Sessão D. Implantação (1 h 30)
 
-**Membros e papéis** (convidar, **Conceder papel**, **Revogar**, validade), **Equipes**, **Cadastrar ativo**, **Ver QR**, **Painel de implantação**, critérios de hotel pronto.
+**Membros e papéis** (convidar, **Conceder papel**, **Revogar**, validade), **Locais** (edificação), **Equipes**, **Cadastrar ativo** (com compra, garantia e criticidade), **Fornecedores**, **Códigos de manutenção**, **Ver QR**, **Painel de implantação** (inclusive a pendência do modelo contratual), critérios de hotel pronto.
 
 ## 5. Exercícios práticos com o kit de teste
 
@@ -112,8 +112,12 @@ Dados e contas do `docs/10`: Grupo Demonstração, Hotel Demonstração Centro (
 | 11 | Gestor CSC (`gestor.csc@demo.hubkeep.test`) | Filtrar **Chamados** por **Hotel**, **Situação**, **Prioridade**, **De** e **Até**; tentar abrir o chamado do Praia | O Praia não aparece (escopo da Bandeira Azul); o link direto dá "não encontrado" |
 | 12 | Admin (`admin@demo.hubkeep.test`) | **Hotéis**: **Ativar** o Serra (só uma vez por ambiente) e ver as UHs saírem de "pendente de licença"; **Membros e papéis**: **Convidar pessoa** (só com e-mail da equipe) | Mensagem "Hotel ativado. N UHs foram liberadas..." |
 | 13 | Qualquer um | Provocar uma recusa e conferir que a mensagem vem traduzida, nunca como código | Texto no idioma escolhido |
+| 14 | Solicitante, Técnico e Gerente do Centro | Solicitante, no PWA: **Abrir chamado** numa UH, **Afeta hóspede?** "Sim", marcar **A UH ficou indisponível**. Gerente: **Triar** e **Gerar OS** para o Técnico. Técnico: iniciar e **Concluir**, respondendo **Não, continua indisponível**. Gerente: no detalhe do chamado, **Liberar UH** | O detalhe mostra "Afeta hóspede" e o painel "UH indisponível" com o período; depois de liberar, "Liberada", com "UH liberada" na **Linha do tempo** |
+| 15 | Admin, Gerente e Técnico do Centro | Admin: **Fornecedores**, **Cadastrar** um fornecedor fictício. Gerente: num chamado em triagem, **Gerar OS** com **Quem executa** no fornecedor (o **Responsável** continua sendo o Técnico). Técnico: escolher falha, causa e solução e concluir. Quem abriu o chamado: **Aceitar** com **Custo informado (R$)** | O detalhe mostra "Executada pelo fornecedor ..." e "Custo informado: R$ ..."; com "Códigos obrigatórios no aceite" ligado no hotel, o aceite sem os três códigos é recusado |
 
-Não incluir no treinamento, porque **[ainda não existe]**: checklist e plano preventivo (PV1 a PV3), importação de ativos e QR em lote (M2, M3), aprovação de ativo cadastrado pelo celular (M4), códigos de falha e "executado por" (I2, I4), SLA, notificações, indicadores, impressão da OS e CSV (fase 1c).
+Os exercícios 14 e 15 usam chamados criados na hora: o kit ainda não tem dados de UH indisponível, fornecedor ou custo.
+
+Não incluir no treinamento, porque **[ainda não existe]**: checklist e plano preventivo (PV1 a PV3), importação de ativos e QR em lote (M2, M3), aprovação de ativo cadastrado pelo celular (M4), SLA, notificações, indicadores, impressão da OS e CSV (fase 1c). Foto "antes" ou "depois" e assinatura no aceite: **[vai mudar na 1b]** (I8).
 
 ## 6. Em caso de problema
 
@@ -128,6 +132,10 @@ Não incluir no treinamento, porque **[ainda não existe]**: checklist e plano p
 | "Sua sessão expirou. Entre de novo." | Entrar de novo. Conferir antes se há operação pendente (não use **Sair** com pendência) |
 | "Você não tem permissão para esta ação." ou "Seu papel não permite esta ação neste hotel." | Conferir o papel em **Membros e papéis**; ver a tabela de quem faz o quê no manual |
 | "A UH está pendente de licença e não recebe chamado." | Admin: **Hotéis** e saldo de licença; abrir o chamado em outro local enquanto isso |
+| "Neste hotel, o aceite exige falha, causa e solução. ..." | Preencher **Falha**, **Causa** e **Solução** no aceite; a política é do Admin do grupo |
+| "Você não marca nem libera UH neste hotel." | Só Admin, Gestor CSC e Gerente marcam e liberam pelo web; o Técnico libera ao concluir a OS |
+| "Seu papel ainda não alcança nenhum hotel do grupo, então você não cadastra fornecedores..." | O Gestor CSC sem hotel no escopo pede ao Admin do grupo |
+| UH continua "Indisponível" depois do aceite | Normal: o aceite não libera a UH. Usar **Liberar UH** no detalhe do chamado |
 | "Não há espaço livre neste aparelho para guardar a foto." ou "Há fotos demais aguardando envio neste aparelho." | Liberar espaço ou conectar para enviar as fotos pendentes |
 | Não consegue entrar, esqueceu a senha | No treinamento, as contas de demonstração têm senha conhecida: o instrutor informa. No piloto isso não deve acontecer, porque ele só começa depois da 1c, que traz o e-mail próprio e a recuperação de senha (**[ainda não existe]** hoje). Se acontecer antes, anotar e escalar ao suporte |
 | QR não abre o ativo | Sem rede e sem o ativo guardado: conectar e ler de novo. "Ativo não encontrado": conferir se o ativo é do hotel do técnico e se a etiqueta é a do ativo |
@@ -144,20 +152,22 @@ Por hotel, ao final dos dias de treinamento:
 - [ ] Entrou, trocou o idioma e saiu sem ajuda.
 - [ ] Triou um chamado, gerou OS para técnico e para equipe e reatribuiu.
 - [ ] Cancelou uma OS e um chamado com motivo.
-- [ ] Aceitou e reabriu uma OS concluída (e, em chamado com ativo, usou "O equipamento está parado").
+- [ ] Aceitou e reabriu uma OS concluída (e, em chamado com ativo, usou "O equipamento está parado"), conferindo falha, causa, solução e o custo informado.
 - [ ] Encerrou uma parada em **Paradas a encerrar**.
+- [ ] Corrigiu o impacto no hóspede e quem executa; marcou e liberou uma UH indisponível.
 - [ ] Sabe usar os filtros e **Ver histórico**.
 
 **Técnicos**
 - [ ] PWA instalado, com sessão aberta e fila do dia lida.
 - [ ] Executou uma OS do início ao fim (iniciar, horas, material, foto, concluir).
-- [ ] Respondeu à pergunta do equipamento parado.
+- [ ] Respondeu à pergunta do equipamento parado e à da UH liberada.
+- [ ] Escolheu falha, causa e solução numa OS.
 - [ ] Trabalhou offline e confirmou "Tudo enviado." ao voltar a rede.
 - [ ] Leu um QR real e abriu o ativo.
 - [ ] Abriu um chamado pelo PWA.
 
 **Solicitantes**
-- [ ] Abriu um chamado (com e sem rede) e acompanhou pelo web.
+- [ ] Abriu um chamado (com e sem rede), respondendo "Afeta hóspede?" e, em UH, "A UH ficou indisponível", e acompanhou pelo web.
 - [ ] Aceitou a OS do chamado que abriu.
 
 **Geral**
