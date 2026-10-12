@@ -6,7 +6,7 @@
 - **ADR-040**, checklist tipado, com modelo versionado e cópia na OS (PV1);
 - **ADR-041**, preventiva por tempo e geração idempotente pelo worker (PV2 e PV3).
 
-O texto de cada ADR entra no `docs/03` no PR de zona protegida da migração correspondente, já como aprovado. As 21 decisões numeradas abaixo foram levadas ao Cesar junto com a aprovação dos ADRs; a resposta fica registrada no diário. M2 e M4 não pedem ADR: as decisões ficam registradas aqui e no diário.
+O texto de cada ADR entra no `docs/03` no PR de zona protegida da migração correspondente, já como aprovado. As 21 decisões numeradas abaixo foram aprovadas pelo Cesar em 12/10/2026, como propostas ("proposta: ..." de cada uma). M2 e M4 não pedem ADR: as decisões ficam registradas aqui e no diário.
 
 Valem para todos os itens:
 - regra 7: exigência vira política, desligada por padrão;

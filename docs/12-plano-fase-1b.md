@@ -59,7 +59,7 @@ Fim da etapa I: resumo e aviso ao agente do Kaio, no diário, com os nomes reais
 
 ## Etapa PV — Preventiva
 
-**Desenho de 12/10/2026:** `docs/referencia/propostas-desenho-pv-implantacao.md` (PV1 a PV3, M1 a M4, PB1 e M3). Os ADR-040 (checklist) e ADR-041 (preventiva) foram aprovados pelo Cesar em 12/10/2026, no chat; o texto de cada um entra no `docs/03` no PR de zona protegida da migração correspondente.
+**Desenho de 12/10/2026:** `docs/referencia/propostas-desenho-pv-implantacao.md` (PV1 a PV3, M1 a M4, PB1 e M3). Os ADR-040 (checklist) e ADR-041 (preventiva) foram aprovados pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho, como propostas; o texto de cada um entra no `docs/03` no PR de zona protegida da migração correspondente.
 
 | Tarefa | O quê | Aceite | Migração | ADR |
 |---|---|---|---|---|

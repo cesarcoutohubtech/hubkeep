@@ -1845,7 +1845,7 @@ Pedido do Cesar no chat ("Cesar aqui", 12/10/2026), em seis itens. Situação ao
 
 Mensagem do Cesar no chat ("Cesar aqui", 12/10/2026): aprova os ADR-040 e ADR-041, e pede para deixar o staging mais para frente no projeto, "em um ponto que não dê mais para avançar sem".
 
-- **ADRs:** o ADR-040 (checklist tipado, PV1) e o ADR-041 (preventiva por tempo, PV2 e PV3) estão aprovados. O texto de cada um entra no `docs/03` no PR de zona protegida da migração correspondente, já como aprovado: o ADR-040 com a 0042 e o ADR-041 com a 0043. As 21 decisões numeradas de `docs/referencia/propostas-desenho-pv-implantacao.md` foram levadas ao Cesar junto; a resposta entra aqui.
+- **ADRs:** o ADR-040 (checklist tipado, PV1) e o ADR-041 (preventiva por tempo, PV2 e PV3) estão aprovados. O texto de cada um entra no `docs/03` no PR de zona protegida da migração correspondente, já como aprovado: o ADR-040 com a 0042 e o ADR-041 com a 0043. As 21 decisões numeradas de `docs/referencia/propostas-desenho-pv-implantacao.md` foram aprovadas pelo Cesar em seguida, no mesmo dia, como propostas no documento ("Cesar aqui", 12/10/2026), com o pedido de seguir com a 1b e toda a 1c.
 - **Portão do staging** (`docs/13`): o staging fica para o fim da 1c no dev, antes de qualquer passo que precise de endereço publicado. Até lá, só o dev, sem custo novo. Param no portão:
   - o treinamento;
   - o PWA instalado no aparelho;
