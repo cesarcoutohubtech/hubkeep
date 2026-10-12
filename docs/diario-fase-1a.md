@@ -1728,3 +1728,18 @@ Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/mold
 - **Fora do `MENU`:** o item fica em `ITEM_DO_INTELLIGENCE`, para o teste da moldura continuar exigindo página e título só dos itens fixos. O teste ganhou os casos do item novo.
 - **Títulos da barra:** as três rotas do módulo (`/inteligencia/insights`, `/inteligencia/insights/{id}` e `/inteligencia/ativos/{id}`).
 - **Sem importar o módulo:** a moldura fala só com a API, e o lint de fronteiras continua barrando o `@hubkeep/inteligencia` fora das pastas liberadas.
+
+## Fila nova do Cesar (12/10/2026)
+
+Pedido do Cesar no chat ("Cesar aqui", 12/10/2026), em seis itens. Situação ao fim do dia:
+1. **`pnpm install --force`** nos worktrees `1b-cnpj-alfa` e `1b-i2-hotel-local`, depois de AGENTS.md apagados por engano dentro do `node_modules` (pacote `next` e `supabase-js`). Os arquivos voltaram, e lint, typecheck e testes passaram nos dois. Na pasta principal, quem roda é o Cesar.
+2. **Fila de zona protegida:** a correção do teste 29 do `002` (#150) e o CNPJ alfanumérico (#171) já estavam na main. Falta só a I8, no #193: verde (a "zona protegida" falha de propósito, ADR-023), atualizado com a main, à espera do merge e do `db push` da 0041 pelo Cesar. A I8b (telas) tem commit local e vira PR depois do merge do #193.
+3. **Núcleo da 1b:** o desenho da PV1 a PV3, da M1 a M4, do PB1 e da M3 está em `docs/referencia/propostas-desenho-pv-implantacao.md`, com 21 decisões e os ADR-040 (checklist) e ADR-041 (preventiva) propostos. **Parado no ADR**, como pedido: nenhuma migração começa antes da aprovação.
+4. **Provisionamento e kit por turma:** #196, fora da zona protegida (seção anterior deste diário, no branch do #196). O adendo ao ADR-024 e o `[remotes.staging]` entram num PR de zona protegida, quando for a vez. Dos ajustes pequenos: as prioridades realistas já estavam no kit (7bac32e); a lista de responsáveis só com Técnicos espera a I8b, porque mexe nas mesmas telas; o override do `handlebars` continua (o `eslint-plugin-boundaries` 7.2.0 ainda fixa o 4.7.9).
+5. **Desenho da 1c:** `docs/referencia/propostas-desenho-1c.md`, com uma proposta por item (calendário de SLA, arrendado mínimo, definição dos indicadores e auditoria geral) e 14 decisões. Achado: o `docs/13` diz que o Implantador lê a auditoria sem hotel, mas a RLS não deixa; a proposta é corrigir o texto.
+6. **Plano do staging:** `docs/referencia/plano-staging-treinamento.md`, com 15 passos, quem faz cada um e os custos (mínimo de cerca de US$ 45 a 55 por mês, com Supabase Pro e Vercel Pro).
+
+**Vez na fila de zona protegida (para o agente do Intelligence):**
+- agora, o #193 (I8, núcleo);
+- depois, na ordem do núcleo: a PV1 (0042), quando o ADR-040 for aprovado, e o PR do staging (`[remotes.staging]` e o adendo ao ADR-024), quando o Cesar quiser;
+- o PR de zona protegida do Intelligence que estiver pronto (por exemplo, as decisões de 10/10 no ADR-036) entra entre dois do núcleo. Basta registrar aqui ou no diário do Intelligence antes de abrir, conferindo no GitHub que nenhum outro está aberto.

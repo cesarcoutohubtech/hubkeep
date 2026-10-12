@@ -48,4 +48,6 @@ O piloto só começa depois da 1c, que traz o e-mail próprio e a recuperação 
 - **Kit de teste por turma:** opção que cria um grupo de demonstração novo por turma, com e-mails próprios, sem apagar nada (resposta 3 do Cesar, 08/10/2026).
   - O kit e o script de provisionamento aceitam o staging (pergunta 10 do `docs/piloto/README.md`, confirmada pelo Cesar em 08/10/2026). Hoje o script do kit recusa o que não é o dev, e o ADR-024 limita a secret key fora da Vercel: o ajuste entra com um adendo ao ADR-024.
 - **Implantação:** agente instalado na rede do cliente, carga dos ativos críticos, etiquetas, treinamento por papel (`docs/piloto/`).
-- **Ajustes do teste manual do Cesar:** lista de responsáveis só com técnicos do hotel; prioridades realistas nos dados de demonstração.
+- **Ajustes do teste manual do Cesar:** lista de responsáveis só com técnicos do hotel. As prioridades realistas nos dados de demonstração já entraram (7bac32e).
+
+**Propostas de 12/10/2026, para a aprovação do Cesar:** o desenho do calendário de SLA, do arrendado mínimo, dos indicadores e da auditoria geral está em `docs/referencia/propostas-desenho-1c.md`; o plano do staging do treinamento, com os custos, em `docs/referencia/plano-staging-treinamento.md`.
