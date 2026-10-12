@@ -1179,3 +1179,4 @@ Terceiro dos PRs das telas (a ordem está na seção do `int-telas-base`). Fora 
   - o número do insight, que espera decisão: a tela usa o título como link;
   - a ficha do ativo do núcleo, que não tem rota de detalhe, então não há link para ela.
 - **Não conferido no navegador:** o dev não tem a 0040, e nenhum job rodou lá. A primeira rodada, com o `vercel.json`, fica para depois do merge.
+- **Atualização (12/10/2026):** a `main` com o #190 e o #191 entrou no branch. O único conflito foi no diário do núcleo, onde cada lado acrescentou uma seção; as duas ficaram. Typecheck, lint e testes verdes no local. O dev já tem a 0040 (conferido no fechamento de 10/10), mas nenhum job rodou lá, então as telas ainda não foram conferidas no navegador com dados; isso fica antes do merge do PR.
