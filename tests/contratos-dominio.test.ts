@@ -6,6 +6,7 @@ import {
   CHAVES_DE_POLITICA_API,
   FORMATOS_DE_POLITICA_API,
   IDIOMAS_API,
+  MOMENTOS_DA_FOTO_API,
   PAPEIS_API,
   CATEGORIAS_PADRAO_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
@@ -36,6 +37,7 @@ import {
   PAPEIS,
   PENDENCIAS_DE_IMPLANTACAO,
   MODELOS_CONTRATUAIS,
+  MOMENTOS_DA_FOTO,
   POLITICAS,
   ACOES_DA_OS,
   ACOES_DO_CHAMADO,
@@ -102,6 +104,24 @@ describe('contratos × domínio', () => {
         true,
         null,
       ],
+      'os.foto_depois_obrigatoria': [
+        { ligado: true },
+        { ligado: false },
+        { ligado: 1 },
+        { ligado: true, extra: 1 },
+        {},
+        false,
+        null,
+      ],
+      'os.assinatura_no_aceite': [
+        { ligado: true },
+        { ligado: false },
+        { ligado: 'nao' },
+        { ligado: false, extra: 1 },
+        {},
+        [],
+        null,
+      ],
       'chamado.prioridade_padrao_por_categoria': [
         {},
         { [U]: U },
@@ -137,6 +157,10 @@ describe('contratos × domínio', () => {
         ]);
       }
     }
+  });
+
+  it('os momentos da foto da OS da API são os do domínio (I8)', () => {
+    expect([...MOMENTOS_DA_FOTO_API]).toEqual([...MOMENTOS_DA_FOTO]);
   });
 
   it('as pendências do painel de implantação são as do domínio', () => {

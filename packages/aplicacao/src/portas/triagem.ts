@@ -78,6 +78,12 @@ export interface ReflexoNoChamado {
   situacaoId: string;
 }
 
+/** A assinatura do aceite (I8): o PNG já enviado, com o caminho conferido. */
+export interface AssinaturaDoAceite {
+  hotelId: string;
+  caminho: string;
+}
+
 export interface PortaTriagem {
   chamado(ctx: Contexto, chamadoId: string): Promise<ChamadoParaTriagem | null>;
   /** Todas as OS do chamado, da mais antiga para a mais nova. */
@@ -157,7 +163,8 @@ export interface PortaTriagem {
   /**
    * Aceite (C6): a OS concluída fica aceita, e o chamado, concluído. Com o
    * custo informado (I4), a OS o guarda. Com os códigos (I6), a OS grava os
-   * três; null: ficam os que já estão.
+   * três; null: ficam os que já estão. Com a assinatura (I8), o anexo é
+   * registrado na mesma unit of work e a OS guarda o id; null: a OS fica sem.
    */
   aceitarOs(
     ctx: Contexto,
@@ -169,6 +176,7 @@ export interface PortaTriagem {
       chamado: ReflexoNoChamado;
       custoInformado: number | null;
       codigos: CodigosDaOs | null;
+      assinatura: AssinaturaDoAceite | null;
     },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
   /**

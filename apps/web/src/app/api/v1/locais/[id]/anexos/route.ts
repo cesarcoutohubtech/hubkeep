@@ -20,6 +20,8 @@ export const GET = rota('anexos.listar_local', async (r) => {
       tipo: a.tipo as 'image/jpeg',
       nome: a.nome,
       temMiniatura: a.temMiniatura,
+      momento: a.momento,
+      assinatura: a.assinatura,
       usuarioId: a.usuarioId,
       nomeUsuario: a.nomeUsuario,
       criadoEm: a.criadoEm.toISOString(),
