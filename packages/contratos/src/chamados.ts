@@ -87,6 +87,8 @@ export const OsApi = z
     custoInformado: z.number().nullable(),
     /** Falha, causa e solução (I6): sugeridos na conclusão, confirmados no aceite. */
     codigos: CodigosDaOsApi,
+    /** O anexo da assinatura do último aceite (I8); null: aceite sem assinatura. */
+    assinaturaAceiteId: z.guid().nullable(),
     criadoPor: z.guid(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
@@ -116,6 +118,8 @@ export const RespostaDeChamado = z
     /** As OS do chamado, da mais antiga para a mais nova (no máximo uma não cancelada). */
     os: z.array(OsApi),
     nomes: NomesDoChamadoApi,
+    /** A política os.assinatura_no_aceite do hotel (I8): o aceite pede a assinatura. */
+    assinaturaNoAceite: z.boolean(),
   })
   .meta({ id: 'RespostaDeChamado' });
 
@@ -311,6 +315,16 @@ export const OsDoDiaApi = z
     motivoReabertura: z.string().nullable(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
+    /**
+     * Fotos "depois" registradas na OS (I8). O servidor sempre manda; opcional
+     * para o PWA ler a API anterior à I8 (sem ele: nenhuma).
+     */
+    fotosDepois: z.int().optional(),
+    /**
+     * A política os.foto_depois_obrigatoria do hotel (I8): concluir pede foto
+     * "depois". O servidor sempre manda; sem ele, desligada.
+     */
+    fotoDepoisObrigatoria: z.boolean().optional(),
     chamado: z.object({
       id: z.guid(),
       descricao: z.string(),

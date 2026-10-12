@@ -95,6 +95,7 @@ describe('tela do detalhe com os dados do servidor', () => {
         equipes: {},
         fornecedores: {},
       },
+      assinaturaNoAceite: false,
     },
     eventos: [],
     hoteis: [{ id: H, nome: 'Hotel Um', status: 'ativo', bandeiraId: null }],

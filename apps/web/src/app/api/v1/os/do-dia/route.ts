@@ -20,6 +20,8 @@ export const GET = rota('os.do_dia', async (r) => {
       motivoReabertura: o.motivoReabertura,
       versao: o.versao,
       criadoEm: o.criadoEm.toISOString(),
+      fotosDepois: o.fotosDepois,
+      fotoDepoisObrigatoria: o.fotoDepoisObrigatoria,
       chamado: {
         ...o.chamado,
         estado: o.chamado.estado as (typeof ESTADOS_DO_CHAMADO_API)[number],

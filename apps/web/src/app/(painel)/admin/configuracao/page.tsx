@@ -4,9 +4,11 @@
 // de interface (ADR-038, U4b). Os nomes dos níveis de criticidade do ativo
 // (I1) são editados por idioma; o campo vazio usa o nome do catálogo. O
 // modelo contratual do hotel (I2) fica na configuração do hotel; vazio é "não
-// informado". Os códigos obrigatórios no aceite (I6) ligam por grupo ou hotel.
+// informado". Os códigos obrigatórios no aceite (I6), a foto "depois" na
+// conclusão e a assinatura no aceite (I8) ligam por grupo ou hotel, no mesmo
+// bloco (BlocoLigado).
 import { MODELOS_CONTRATUAIS_API } from '@hubkeep/contratos';
-import { IDIOMAS } from '@hubkeep/i18n';
+import { type Chave, IDIOMAS } from '@hubkeep/i18n';
 import {
   Botao,
   Campo,
@@ -44,7 +46,7 @@ type PoliticaSemCriticidade =
       origem: Origem;
     }
   | {
-      chave: 'os.codigos_obrigatorios';
+      chave: ChaveLigada;
       padrao: { ligado: boolean };
       grupo: { ligado: boolean } | null;
       hotel: { ligado: boolean } | null;
@@ -71,6 +73,37 @@ type Politica =
       origem: Origem;
     };
 type Origem = 'hotel' | 'grupo' | 'padrao';
+
+/** As políticas de ligar ou desligar (I6 e I8), com os textos de cada uma. */
+const POLITICAS_LIGADAS = [
+  'os.codigos_obrigatorios',
+  'os.foto_depois_obrigatoria',
+  'os.assinatura_no_aceite',
+] as const;
+type ChaveLigada = (typeof POLITICAS_LIGADAS)[number];
+const TEXTOS_LIGADOS: Record<
+  ChaveLigada,
+  { titulo: Chave; resumo: Chave; dica: Chave; ligado: Chave }
+> = {
+  'os.codigos_obrigatorios': {
+    titulo: 'admin.configuracao.codigos.titulo',
+    resumo: 'admin.configuracao.codigos.resumo',
+    dica: 'admin.configuracao.codigos.dica',
+    ligado: 'admin.configuracao.codigos.ligado',
+  },
+  'os.foto_depois_obrigatoria': {
+    titulo: 'admin.configuracao.foto_depois.titulo',
+    resumo: 'admin.configuracao.foto_depois.resumo',
+    dica: 'admin.configuracao.foto_depois.dica',
+    ligado: 'admin.configuracao.foto_depois.ligado',
+  },
+  'os.assinatura_no_aceite': {
+    titulo: 'admin.configuracao.assinatura.titulo',
+    resumo: 'admin.configuracao.assinatura.resumo',
+    dica: 'admin.configuracao.assinatura.dica',
+    ligado: 'admin.configuracao.assinatura.ligado',
+  },
+};
 const NIVEIS = [1, 2, 3, 4, 5] as const;
 interface Configuracao {
   tenant: Regiao & { nome: string };
@@ -184,7 +217,12 @@ export default function ConfiguracaoDoGrupo() {
     (p) => p.chave === 'chamado.prioridade_padrao_por_categoria',
   );
   const criticidade = dados.politicas.find((p) => p.chave === 'ativo.criticidade');
-  const codigos = dados.politicas.find((p) => p.chave === 'os.codigos_obrigatorios');
+  const ligadas = POLITICAS_LIGADAS.flatMap((chave) => {
+    const p = dados.politicas.find((x) => x.chave === chave);
+    return p && (POLITICAS_LIGADAS as readonly string[]).includes(p.chave)
+      ? [p as Extract<Politica, { chave: ChaveLigada }>]
+      : [];
+  });
   const origem = (o: Origem) => (
     <Selo tom={TOM_DA_ORIGEM[o]}>{t('admin.configuracao.origem', { origem: o })}</Selo>
   );
@@ -335,71 +373,66 @@ export default function ConfiguracaoDoGrupo() {
               )}
             </section>
           )}
-          {codigos?.chave === 'os.codigos_obrigatorios' && (
-            <section
-              key={JSON.stringify(codigos)}
-              className="hk-bloco"
-              data-politica={codigos.chave}
-            >
-              <h3 className="hk-bloco-titulo">{t('admin.configuracao.codigos.titulo')}</h3>
-              <div className="hk-linha-de-botoes">
-                <span className="hk-suave">
-                  {t('admin.configuracao.codigos.resumo', {
-                    ligado: String(codigos.efetiva.ligado),
-                  })}
-                </span>
-                {origem(codigos.origem)}
-              </div>
-              <p className="hk-suave">{t('admin.configuracao.codigos.dica')}</p>
-              <form
-                className="hk-em-linha"
-                onSubmit={(ev) => {
-                  ev.preventDefault();
-                  const f = new FormData(ev.currentTarget);
-                  const escopo =
-                    (ev.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'hotel'
-                      ? 'hotel'
-                      : 'grupo';
-                  void gravarPolitica('os.codigos_obrigatorios', escopo, {
-                    ligado: f.get('ligado') === 'on',
-                  });
-                }}
-              >
-                <label className="hk-marcar">
-                  <input type="checkbox" name="ligado" defaultChecked={codigos.efetiva.ligado} />
-                  {t('admin.configuracao.codigos.ligado')}
-                </label>
-                <Botao type="submit" value="grupo">
-                  {t('admin.configuracao.acao.gravar_grupo')}
-                </Botao>
-                {dados.hotel && (
-                  <Botao type="submit" value="hotel">
-                    {t('admin.configuracao.acao.gravar_hotel')}
-                  </Botao>
-                )}
-              </form>
-              {(codigos.grupo || codigos.hotel) && (
+          {ligadas.map((p) => {
+            const tx = TEXTOS_LIGADOS[p.chave];
+            return (
+              <section key={JSON.stringify(p)} className="hk-bloco" data-politica={p.chave}>
+                <h3 className="hk-bloco-titulo">{t(tx.titulo)}</h3>
                 <div className="hk-linha-de-botoes">
-                  {codigos.grupo && (
-                    <Botao
-                      tamanho="pequeno"
-                      onClick={() => void gravarPolitica('os.codigos_obrigatorios', 'grupo', null)}
-                    >
-                      {t('admin.configuracao.acao.herdar_grupo')}
-                    </Botao>
-                  )}
-                  {codigos.hotel && (
-                    <Botao
-                      tamanho="pequeno"
-                      onClick={() => void gravarPolitica('os.codigos_obrigatorios', 'hotel', null)}
-                    >
-                      {t('admin.configuracao.acao.herdar_hotel')}
-                    </Botao>
-                  )}
+                  <span className="hk-suave">
+                    {t(tx.resumo, { ligado: String(p.efetiva.ligado) })}
+                  </span>
+                  {origem(p.origem)}
                 </div>
-              )}
-            </section>
-          )}
+                <p className="hk-suave">{t(tx.dica)}</p>
+                <form
+                  className="hk-em-linha"
+                  onSubmit={(ev) => {
+                    ev.preventDefault();
+                    const f = new FormData(ev.currentTarget);
+                    const escopo =
+                      (ev.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'hotel'
+                        ? 'hotel'
+                        : 'grupo';
+                    void gravarPolitica(p.chave, escopo, { ligado: f.get('ligado') === 'on' });
+                  }}
+                >
+                  <label className="hk-marcar">
+                    <input type="checkbox" name="ligado" defaultChecked={p.efetiva.ligado} />
+                    {t(tx.ligado)}
+                  </label>
+                  <Botao type="submit" value="grupo">
+                    {t('admin.configuracao.acao.gravar_grupo')}
+                  </Botao>
+                  {dados.hotel && (
+                    <Botao type="submit" value="hotel">
+                      {t('admin.configuracao.acao.gravar_hotel')}
+                    </Botao>
+                  )}
+                </form>
+                {(p.grupo || p.hotel) && (
+                  <div className="hk-linha-de-botoes">
+                    {p.grupo && (
+                      <Botao
+                        tamanho="pequeno"
+                        onClick={() => void gravarPolitica(p.chave, 'grupo', null)}
+                      >
+                        {t('admin.configuracao.acao.herdar_grupo')}
+                      </Botao>
+                    )}
+                    {p.hotel && (
+                      <Botao
+                        tamanho="pequeno"
+                        onClick={() => void gravarPolitica(p.chave, 'hotel', null)}
+                      >
+                        {t('admin.configuracao.acao.herdar_hotel')}
+                      </Botao>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
           {prioridade && (
             <section className="hk-bloco">
               <h3 className="hk-bloco-titulo">{t('admin.configuracao.prioridade.titulo')}</h3>

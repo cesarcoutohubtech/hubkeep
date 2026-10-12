@@ -7,6 +7,7 @@
 // guardado só troca quando a API responde de novo.
 import type { OsDoDiaApi } from '@hubkeep/contratos';
 
+/** A guardada antes da I8 não tem as fotos "depois" nem a política da foto (opcionais). */
 export type OsGuardada = OsDoDiaApi;
 
 export interface OsDoDiaGuardadas {

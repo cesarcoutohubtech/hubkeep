@@ -9,6 +9,7 @@
 // (anexo.foto): na mesma fila, sai na ordem em que foi tirada, antes da
 // conclusão que vem depois dela. Os bytes vão como ArrayBuffer, que o
 // IndexedDB guarda em qualquer navegador; o envio é o de anexos/fotos.ts.
+import type { MomentoDaFoto } from '@hubkeep/dominio';
 import type { PedidoDeOperacaoOffline } from '@hubkeep/contratos';
 
 export type EstadoDaOperacao = 'pendente' | 'rejeitada';
@@ -22,6 +23,8 @@ export interface FotoNaFila {
   foto: ArrayBuffer;
   miniatura: ArrayBuffer;
   nome: string | null;
+  /** Antes ou depois (I8); a foto que entrou na fila antes da I8 não tem. */
+  momento?: MomentoDaFoto | null;
 }
 
 export type TipoDaOperacao = PedidoDeOperacaoOffline['tipo'] | 'anexo.foto';

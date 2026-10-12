@@ -55,6 +55,8 @@ const os = (estado: OsNoAparelho['estado']): OsNoAparelho => ({
   motivoReabertura: null,
   versao: 2,
   criadoEm: '2026-10-10T08:00:00.000Z',
+  fotosDepois: 0,
+  fotoDepoisObrigatoria: false,
   chamado: {
     id: 'c1000000-0000-4000-8000-000000000001',
     descricao: 'Frigobar quente',

@@ -17,13 +17,21 @@
 // para a categoria do ativo (os dela primeiro). Nenhum é obrigatório, e a
 // conclusão nunca é recusada por eles (decisão do Cesar de 10/10/2026); os
 // escolhidos vão na operação de concluir.
+//
+// Foto antes ou depois (I8): a foto vale também com a OS atribuída. A tela
+// sugere o momento pelo estado (antes, com a OS atribuída; depois, no resto),
+// e o técnico pode trocar. Com a política do hotel ligada, concluir sem foto
+// "depois" (na API ou na fila) avisa e não enfileira; o servidor confere de novo.
 import {
   CODIGOS_PADRAO,
   type CodigosSugeridos,
   ErroDeDominio,
+  MOMENTOS_DA_FOTO,
+  type MomentoDaFoto,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
   type TipoDeCodigoDeManutencao,
   codigosQueServem,
+  momentoSugerido,
   normalizarMaterial,
   validarApontamento,
 } from '@hubkeep/dominio';
@@ -44,8 +52,10 @@ import { useT } from '../i18n';
 import {
   type AcaoDoTecnico,
   type OsNoAparelho,
+  aceitaFoto,
   aceitaRegistro,
   acoesPossiveis,
+  faltaFotoDepois,
   paradaPossivel,
   perguntaDaUhNaConclusao,
   perguntaNaConclusao,
@@ -137,7 +147,7 @@ export interface AcoesDaOs {
   aoAgir: (os: OsNoAparelho, acao: AcaoDoTecnico, resposta?: RespostasDaConclusao) => Promise<void>;
   aoApontar: (osId: string, inicio: Date, fim: Date) => Promise<void>;
   aoRegistrarMaterial: (osId: string, descricao: string) => Promise<void>;
-  aoFotografar: (osId: string, arquivo: File) => Promise<void>;
+  aoFotografar: (osId: string, arquivo: File, momento: MomentoDaFoto) => Promise<void>;
   /** Equipamento parado agora (C5). */
   aoRegistrarParada: (osId: string) => Promise<void>;
   /** Equipamento voltou a funcionar agora (C5). */
@@ -222,6 +232,9 @@ export function Os(
   );
   const [respostas, setRespostas] = useState<RespostasDaConclusao>({});
   const [sugestao, setSugestao] = useState<CodigosSugeridos>({});
+  // O momento escolhido pelo técnico; sem escolha, o sugerido pelo estado.
+  const [momentoEscolhido, setMomentoEscolhido] = useState<MomentoDaFoto | null>(null);
+  const momento = momentoEscolhido ?? momentoSugerido(os.estado);
   /** As respostas da conclusão com os códigos escolhidos, se houver. */
   const comCodigos = (r: RespostasDaConclusao): RespostasDaConclusao => {
     const codigos = escolhidos(sugestao);
@@ -242,6 +255,9 @@ export function Os(
   }
 
   async function agir(acao: AcaoDoTecnico) {
+    if (acao === 'concluir' && faltaFotoDepois(os)) {
+      return setAviso({ tipo: 'erro', codigo: 'foto_depois_obrigatoria' });
+    }
     // Com a parada ou a UH do chamado em aberto, a resposta à pergunta é a confirmação.
     if (acao === 'concluir' && perguntaNaConclusao(os)) return setPergunta('parada');
     if (acao === 'concluir' && perguntaDaUhNaConclusao(os)) return setPergunta('uh');
@@ -293,7 +309,7 @@ export function Os(
 
   async function fotografar(arquivo: File | undefined) {
     if (!arquivo) return;
-    await tentar(() => props.aoFotografar(os.id, arquivo));
+    await tentar(() => props.aoFotografar(os.id, arquivo, momento));
   }
 
   return (
@@ -414,27 +430,50 @@ export function Os(
               <Botao type="submit">{t('tecnico.os.material.registrar')}</Botao>
             </form>
           </Painel>
-
-          <Painel titulo={t('tecnico.os.fotos.titulo')}>
-            <Campo rotulo={t('tecnico.fotos.tirar')}>
-              {(p) => (
-                <Entrada
-                  {...p}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(e) => {
-                    const arquivo = e.currentTarget.files?.[0];
-                    e.currentTarget.value = '';
-                    void fotografar(arquivo);
-                  }}
-                />
-              )}
-            </Campo>
-          </Painel>
         </>
       ) : (
         <p className="tc-nota">{t('tecnico.os.sem_registro')}</p>
+      )}
+
+      {aceitaFoto(os.estado) && (
+        <Painel titulo={t('tecnico.os.fotos.titulo')}>
+          {os.fotoDepoisObrigatoria && (
+            <p className="tc-nota" data-fotos-depois={os.fotosDepois}>
+              {t('tecnico.os.fotos.depois_obrigatoria', { n: os.fotosDepois })}
+            </p>
+          )}
+          <Campo rotulo={t('tecnico.os.fotos.momento')}>
+            {(p) => (
+              <Selecao
+                {...p}
+                name="momento"
+                value={momento}
+                onChange={(e) => setMomentoEscolhido(e.target.value as MomentoDaFoto)}
+              >
+                {MOMENTOS_DA_FOTO.map((m) => (
+                  <option key={m} value={m}>
+                    {t('tecnico.os.fotos.momento_opcao', { momento: m })}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+          </Campo>
+          <Campo rotulo={t('tecnico.fotos.tirar')}>
+            {(p) => (
+              <Entrada
+                {...p}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => {
+                  const arquivo = e.currentTarget.files?.[0];
+                  e.currentTarget.value = '';
+                  void fotografar(arquivo);
+                }}
+              />
+            )}
+          </Campo>
+        </Painel>
       )}
     </TelaDoTecnico>
   );

@@ -2,15 +2,25 @@
 // Anexos de um hotel, local ou ativo (fase 1a, B4; ADR-024): lista, envio e
 // remoção. O envio (enviar-anexo) comprime a imagem e gera a miniatura pelo
 // mesmo código do PWA; PDF vai como está. Abrir pede uma URL de 5 minutos.
+// As fotos da OS (I8) aparecem só para ver, no detalhe do chamado: com o
+// momento (antes ou depois) e a assinatura do aceite marcada; quem tira a
+// foto é o técnico, no PWA.
 // Tela funcional, sem acabamento: o layout vem do protótipo.
-import { Botao, Campo, Entrada, MensagemDeErro } from '@hubkeep/ui';
+import { Botao, Campo, Entrada, MensagemDeErro, Selo } from '@hubkeep/ui';
 import { useCallback, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useMensagemDeErro, useT } from '../i18n/cliente';
 import { type ErroDaApi, chamarApi } from './api';
 import { type Entidade, enviarAnexo } from './enviar-anexo';
 
-const RECURSO: Record<Entidade, string> = { hotel: 'hoteis', local: 'locais', ativo: 'ativos' };
+type EntidadeDaLista = Entidade | 'os';
+
+const RECURSO: Record<EntidadeDaLista, string> = {
+  hotel: 'hoteis',
+  local: 'locais',
+  ativo: 'ativos',
+  os: 'os',
+};
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
 interface Anexo {
@@ -21,14 +31,21 @@ interface Anexo {
   nomeUsuario: string | null;
   criadoEm: string;
   podeRemover: boolean;
+  /** Foto da OS antes ou depois (I8). */
+  momento?: 'antes' | 'depois' | null;
+  /** A assinatura do aceite (I8). */
+  assinatura?: boolean;
 }
 
 export function AnexosDoRegistro({
   entidade,
   registroId,
+  somenteLeitura = false,
 }: {
-  entidade: Entidade;
+  entidade: EntidadeDaLista;
   registroId: string;
+  /** Sem envio (as fotos da OS entram pelo PWA). */
+  somenteLeitura?: boolean;
 }) {
   const t = useT();
   const intl = useIntl();
@@ -46,6 +63,7 @@ export function AnexosDoRegistro({
   }, [entidade, registroId]);
 
   async function enviar(arquivo: File) {
+    if (entidade === 'os') return;
     setEnviando(true);
     setErro(null);
     try {
@@ -105,6 +123,10 @@ export function AnexosDoRegistro({
                   quem: a.nomeUsuario ?? t('admin.anexos.alguem'),
                 })}
               </span>
+              {a.momento && (
+                <Selo tom="azul">{t('admin.anexos.momento', { momento: a.momento })}</Selo>
+              )}
+              {a.assinatura && <Selo tom="ambar">{t('admin.anexos.assinatura')}</Selo>}
               <span className="hk-linha-de-botoes">
                 <Botao tamanho="pequeno" onClick={() => void abrir(a.id)}>
                   {t('admin.anexos.acao.abrir')}
@@ -119,21 +141,23 @@ export function AnexosDoRegistro({
           ))}
         </ul>
       )}
-      <Campo rotulo={enviando ? t('admin.anexos.enviando') : t('admin.anexos.acao.enviar')}>
-        {(c) => (
-          <Entrada
-            {...c}
-            type="file"
-            accept={TIPOS.join(',')}
-            disabled={enviando}
-            onChange={(e) => {
-              const arquivo = e.currentTarget.files?.[0];
-              e.currentTarget.value = '';
-              if (arquivo) void enviar(arquivo);
-            }}
-          />
-        )}
-      </Campo>
+      {!somenteLeitura && (
+        <Campo rotulo={enviando ? t('admin.anexos.enviando') : t('admin.anexos.acao.enviar')}>
+          {(c) => (
+            <Entrada
+              {...c}
+              type="file"
+              accept={TIPOS.join(',')}
+              disabled={enviando}
+              onChange={(e) => {
+                const arquivo = e.currentTarget.files?.[0];
+                e.currentTarget.value = '';
+                if (arquivo) void enviar(arquivo);
+              }}
+            />
+          )}
+        </Campo>
+      )}
       {erro && <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>}
     </div>
   );

@@ -919,6 +919,7 @@ const COLUNAS_DA_OS = [
   'codigo_falha_id',
   'codigo_causa_id',
   'codigo_solucao_id',
+  'assinatura_aceite_id',
   'criado_por',
   'versao',
   'criado_em',
@@ -940,6 +941,7 @@ function paraOs(o: {
   codigo_falha_id: string | null;
   codigo_causa_id: string | null;
   codigo_solucao_id: string | null;
+  assinatura_aceite_id: string | null;
   criado_por: string;
   versao: number;
   criado_em: Date;
@@ -967,6 +969,7 @@ function paraOs(o: {
       causaId: o.codigo_causa_id,
       solucaoId: o.codigo_solucao_id,
     },
+    assinaturaAceiteId: o.assinatura_aceite_id,
     criadoPor: o.criado_por,
     versao: o.versao,
     criadoEm: o.criado_em,
@@ -1195,6 +1198,16 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
           .select(paradaDoChamado('c.hotel_id', 'c.id'))
           .select(uhIndisponivelDesde('c.hotel_id', 'c.id'))
+          .select((eb) =>
+            eb
+              .selectFrom('app.anexo as a')
+              .select((e) => e.fn.countAll<string>().as('n'))
+              .whereRef('a.hotel_id', '=', 'o.hotel_id')
+              .whereRef('a.os_id', '=', 'o.id')
+              .where('a.momento', '=', 'depois')
+              .where('a.removido_em', 'is', null)
+              .as('fotos_depois'),
+          )
           .where('o.estado', 'in', ['atribuida', 'em_execucao', 'pausada'])
           .where((eb) =>
             eb.or([
@@ -1217,6 +1230,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           motivoReabertura: o.motivo_reabertura,
           versao: o.versao,
           criadoEm: o.criado_em,
+          fotosDepois: Number(o.fotos_depois ?? 0),
           chamado: {
             id: o.chamado_id,
             descricao: o.descricao,

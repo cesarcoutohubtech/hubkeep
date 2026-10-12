@@ -4,7 +4,9 @@
 //   - a fila do dia no IndexedDB, por usuário e tenant, apagada ao sair;
 //   - a foto da OS na fila: sobe na ordem (antes da conclusão que veio
 //     depois), e o reenvio não duplica, com o Storage recusando o arquivo
-//     repetido na URL ou no PUT e a API recusando o registro repetido.
+//     repetido na URL ou no PUT e a API recusando o registro repetido;
+//   - a foto antes ou depois (I8): o momento vai no registro, as fotos "depois"
+//     da fila contam na projeção, e a foto vale com a OS atribuída.
 // O servidor falso faz o papel da API e do Storage; o envio é o de verdade.
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
@@ -15,8 +17,10 @@ import { type FilaDeOperacoes, type OperacaoNaFila, abrirFila } from '../src/fil
 import { sincronizar } from '../src/fila/sincronizar';
 import { type OsGuardada, abrirOsDoDia } from '../src/os/banco';
 import {
+  aceitaFoto,
   aceitaRegistro,
   acoesPossiveis,
+  faltaFotoDepois,
   paradaPossivel,
   perguntaDaUhNaConclusao,
   perguntaNaConclusao,
@@ -385,7 +389,10 @@ describe('foto da OS na fila', () => {
       {
         usuarioId: A,
         tipo: 'anexo.foto',
-        dados: await fotoParaFila(OS1, new Blob(['x']), 'vazamento.jpg', { preparar, novoId }),
+        dados: await fotoParaFila(OS1, new Blob(['x']), 'vazamento.jpg', 'depois', {
+          preparar,
+          novoId,
+        }),
       },
       1,
     );
@@ -452,12 +459,91 @@ describe('foto da OS na fila', () => {
 
   it('a foto de outro usuário não sai com esta sessão', async () => {
     const s = servidor();
-    const dados = await fotoParaFila(OS1, new Blob(['x']), null, { preparar, novoId });
+    const dados = await fotoParaFila(OS1, new Blob(['x']), null, null, { preparar, novoId });
     const op = await fila.enfileirar({ usuarioId: B, tipo: 'anexo.foto', dados }, 1);
     expect(await criarEnvioDeFoto(credenciais, s.requisitar)(op)).toEqual({
       tipo: 'tentar_depois',
       motivo: 'outra_sessao',
     });
     expect(s.log).toEqual([]);
+  });
+});
+
+describe('foto antes ou depois (I8)', () => {
+  const foto = (momento: 'antes' | 'depois' | null | undefined, osId = OS1) =>
+    ({
+      entidade: 'os',
+      registroId: osId,
+      arquivoId: 'f',
+      miniaturaArquivoId: 'm',
+      foto: new ArrayBuffer(1),
+      miniatura: new ArrayBuffer(1),
+      nome: null,
+      ...(momento === undefined ? {} : { momento }),
+    }) as const;
+
+  it('a foto vale com a OS atribuída; horas e material, não', () => {
+    expect(
+      ['atribuida', 'em_execucao', 'pausada', 'concluida'].map((e) => aceitaFoto(e as 'pausada')),
+    ).toEqual([true, true, true, false]);
+    expect(aceitaRegistro('atribuida')).toBe(false);
+  });
+
+  it('as fotos "depois" da fila somam às da API; a "antes", a sem momento e a recusada, não', () => {
+    const [os] = projetarOs(
+      [{ ...osGuardada(OS1, 'em_execucao', 2), fotosDepois: 1, fotoDepoisObrigatoria: true }],
+      [
+        naFila('anexo.foto', foto('depois')),
+        naFila('anexo.foto', foto('antes')),
+        naFila('anexo.foto', foto(undefined)),
+        naFila('anexo.foto', foto('depois'), 'rejeitada'),
+        naFila('anexo.foto', foto('depois', OS2)),
+      ],
+    );
+    expect(os).toMatchObject({ fotosDepois: 2, fotoDepoisObrigatoria: true, pendentes: 3 });
+  });
+
+  it('com a política ligada, falta foto "depois" até a primeira; desligada, nunca', () => {
+    const guardada = { ...osGuardada(OS1, 'em_execucao', 2), fotoDepoisObrigatoria: true };
+    const [sem] = projetarOs([guardada], [naFila('anexo.foto', foto('antes'))]);
+    expect(sem && faltaFotoDepois(sem)).toBe(true);
+    const [com] = projetarOs([guardada], [naFila('anexo.foto', foto('depois'))]);
+    expect(com && faltaFotoDepois(com)).toBe(false);
+    // A guardada antes da I8, sem os campos: nenhuma foto e a política desligada.
+    const [antiga] = projetarOs([osGuardada(OS1, 'em_execucao', 2)], []);
+    expect(antiga).toMatchObject({ fotosDepois: 0, fotoDepoisObrigatoria: false });
+    expect(antiga && faltaFotoDepois(antiga)).toBe(false);
+  });
+
+  it('o momento vai no registro; a foto da fila antes da I8 vai sem momento', async () => {
+    const corpos: unknown[] = [];
+    const requisitar: typeof fetch = async (entrada, init) => {
+      const url = String(entrada);
+      const corpo = init?.body && typeof init.body === 'string' ? JSON.parse(init.body) : null;
+      if (url.endsWith('/api/v1/anexos/url-de-upload')) {
+        const caminho = `t1/h1/os/${OS1}/${corpo.arquivoId}.jpg`;
+        return new Response(
+          JSON.stringify({
+            caminho,
+            url: `https://storage/${caminho}`,
+            token: 't',
+            expiraEm: '2026-10-12T12:00:00.000Z',
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith('https://storage/')) return new Response('{}', { status: 200 });
+      corpos.push(corpo);
+      return new Response(JSON.stringify({ id: 'anexo-1' }), { status: 201 });
+    };
+    const envio = criarEnvioDeFoto(credenciais, requisitar);
+    expect(await envio(naFila('anexo.foto', foto('antes')))).toEqual({ tipo: 'aceita' });
+    expect(await envio(naFila('anexo.foto', foto(undefined)))).toEqual({ tipo: 'aceita' });
+    expect(corpos).toMatchObject([{ momento: 'antes' }, { momento: null }]);
+  });
+
+  it('a foto preparada para a fila leva o momento escolhido', async () => {
+    const dados = await fotoParaFila(OS1, new Blob(['x']), null, 'antes', { preparar, novoId });
+    expect(dados.momento).toBe('antes');
   });
 });
