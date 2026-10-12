@@ -10,6 +10,7 @@ import {
   type EstadoDaOs,
   type Papel,
   decidirNaOs,
+  ehTecnicoDoHotel,
   exigirChamadoSemOsEmAndamento,
   exigirPrioridadeAtiva,
   exigirResponsavelDoHotel,
@@ -158,6 +159,20 @@ describe('quem recebe a OS', () => {
       expect(codigo(() => exigirResponsavelDoHotel(tecnico(atribuicoes), HOTEL, agora))).toBe(
         'responsavel_sem_papel_tecnico',
       );
+  });
+
+  it('a lista de responsáveis usa a mesma regra (ehTecnicoDoHotel)', () => {
+    const atribuicoes = [
+      atr('tec-1', 'tecnico', noHotel),
+      atr('tec-2', 'tecnico', { tipo: 'bandeira', bandeiraId: HOTEL.bandeiraId }),
+      atr('tec-3', 'tecnico', noHotel, { validoAte: new Date('2026-09-01') }),
+      atr('ger-1', 'gerente_hotel', noHotel),
+      atr('tec-4', 'tecnico', { tipo: 'hotel', hotelId: 'hotel-2' }),
+    ];
+    const naLista = ['tec-1', 'tec-2', 'tec-3', 'ger-1', 'tec-4'].filter((u) =>
+      ehTecnicoDoHotel(atribuicoes, u, HOTEL, agora),
+    );
+    expect(naLista).toEqual(['tec-1', 'tec-2']);
   });
 
   it('equipe ativa do hotel; de outro hotel ou desativada, não', () => {

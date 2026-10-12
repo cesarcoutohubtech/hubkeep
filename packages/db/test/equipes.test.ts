@@ -102,6 +102,16 @@ describe.skipIf(!temBanco)('A6 — equipes do hotel', { timeout: 60_000 }, () =>
     await dono.query(`delete from auth.users where id = any($1::uuid[])`, [Object.values(U)]);
   });
 
+  it('a lista de quem recebe a OS traz só os Técnicos do hotel', async () => {
+    const doH1 = await casos.listarEquipes(ctx(U.gerenteH1), H1);
+    expect(doH1.tecnicos).toEqual([{ usuarioId: U.tecnico, nome: 'tecnico' }]);
+    // Os membros ativos continuam todos, para pôr numa equipe.
+    expect(doH1.disponiveis.length).toBeGreaterThanOrEqual(4);
+    // O Técnico do H1 não cobre o H2.
+    expect((await casos.listarEquipes(ctx(U.gerenteH2), H2)).tecnicos).toEqual([]);
+    expect((await casos.listarEquipes(ctx(U.admin), H2)).tecnicos).toEqual([]);
+  });
+
   it('o gerente cria equipes, põe e tira membro; o técnico fica em duas equipes', async () => {
     const eletrica = await casos.criarEquipe(ctx(U.gerenteH1), H1, 'Elétrica');
     const noite = await casos.criarEquipe(ctx(U.gerenteH1), H1, 'Plantão noite');

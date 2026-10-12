@@ -226,7 +226,7 @@ O painel **Triagem e atribuição** fica no detalhe do chamado, abaixo das OS. E
 1. **Abrir o chamado.** Em "Chamados", abrir "Chuveiro sem água quente" (aberto). O painel vem aberto, com **Triar**, **Gerar OS** e **Cancelar chamado**.
 2. **Triar.** Escolher a prioridade **Urgente** (ou "Manter a atual") e clicar em **Triar**. A situação vira "em triagem" com a prioridade nova, e a linha do tempo ganha "Chamado em triagem". Agora aparece **Ajustar prioridade** no lugar de Triar.
 3. **Ajustar prioridade.** Trocar para **Alta** e conferir "Prioridade alterada" na linha do tempo.
-4. **Tentar uma OS para quem não é Técnico.** Em **Gerar OS**, a lista traz as equipes ativas do hotel e as pessoas ativas do grupo. Escolher a **Solicitante** e gerar: tem de voltar recusado, com a mensagem de que a pessoa não é Técnico ativo neste hotel.
+4. **A lista só traz quem pode receber a OS.** Em **Gerar OS**, a lista traz as equipes ativas do hotel e só os Técnicos com papel vigente no hotel (no Centro, o **Técnico do Centro**). A Solicitante, o Gerente e o Técnico do Praia não aparecem. Se alguém mandar outra pessoa direto pela API, a recusa continua: "a pessoa não é Técnico ativo neste hotel".
 5. **Gerar a OS para a equipe.** Escolher **Equipe Centro** e gerar. O chamado vai para "em execução", a OS aparece como atribuída à Equipe Centro, e o painel passa a mostrar **Reatribuir** e **Cancelar OS** para ela.
 6. **Reatribuir.** Passar a OS para o **Técnico do Centro**. No PWA dele, a OS entra na fila do dia.
 7. **Cancelar a OS.** Com um motivo (por exemplo, "Aberto em duplicidade"). O chamado volta à triagem, a OS fica cancelada com o motivo, e **Gerar OS** volta a aparecer para uma OS nova.
@@ -267,7 +267,6 @@ O botão **Ver histórico** fica no detalhe do chamado (abaixo da linha do tempo
 
 ## 5. O que ainda não dá para testar pela tela
 
-- **Lista de responsáveis só com Técnicos:** o seletor de "Gerar OS" e "Reatribuir" traz as pessoas ativas do grupo, porque é a lista que a rota das equipes do hotel já devolve. Quem não é Técnico do hotel é recusado pela API (passo 4 acima). Filtrar a lista pede uma rota nova de leitura, fora desta tarefa.
 - **Linha do tempo e histórico do proprietário antes do `db push` da migração da D1:** até a migração 0028 chegar ao dev, o proprietário recebe a linha do tempo e o histórico vazios, sem erro. Os outros papéis já veem tudo.
 - **Histórico anterior à fase 1a:** o histórico mostra o que a auditoria gravou. Não há histórico do que foi feito antes de cada tela existir.
 - **SLA, escalonamento e notificações:** fase 1c. Os eventos ficam no outbox do dev, e nenhum e-mail sai, porque o cron só roda na Vercel.

@@ -1799,3 +1799,16 @@ Fila nova do Cesar de 12/10/2026, item 4 (docs/13, "Preparação do piloto", res
   - no local: lint, typecheck e os testes de todos os pacotes. Novos: `tests/provisionamento-ops.test.ts` (pedido e turma), os casos do staging em `tests/ambiente-ops.test.ts` e `grupoDaTurma`;
   - na CI, com o Supabase do runner: `apps/web/test/provisionamento/provisionar.test.ts` (grupo, contrato, convite pelo outbox, auditoria, padrões e a segunda execução);
   - não rodei nada contra o dev nem contra o staging.
+
+## Lista de responsáveis só com Técnicos do hotel (12/10/2026)
+
+Ajuste do teste manual do Cesar (`docs/13`, "Ajustes do teste manual"), da fila nova de 12/10/2026, item 4. PR fora da zona protegida, sem migração, sobre a I8b (as duas mexem na tela do chamado).
+- **Antes:** o seletor de "Gerar OS" e "Reatribuir" trazia todos os membros ativos do grupo, e a API recusava quem não era Técnico do hotel (`responsavel_sem_papel_tecnico`).
+- **Agora:**
+  - `GET /api/v1/hoteis/{id}/equipes` devolve também `tecnicos`: os membros ativos com papel de Técnico vigente que cobre o hotel (no hotel, na bandeira dele ou no grupo). O seletor da triagem usa essa lista; a tela das equipes continua com todos os membros (`disponiveis`), para pôr numa equipe;
+  - a regra é a mesma da gravação: `ehTecnicoDoHotel`, no domínio, usada pela lista e por `exigirResponsavelDoHotel`. A API continua recusando outra pessoa;
+  - a leitura das atribuições de Técnico já era permitida à triagem pela RLS (migração 0022). Para quem não lê, a lista vem vazia.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes. Novos: a regra no domínio e as fixtures do web;
+  - na CI: o caso novo em `packages/db/test/equipes.test.ts` (o Gerente vê só o Técnico do hotel dele);
+  - a tela não foi vista no navegador.
