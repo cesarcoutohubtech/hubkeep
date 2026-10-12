@@ -554,6 +554,15 @@ export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
           disponiveis: disponiveis.map((m) => ({ usuarioId: m.usuario_id, nome: m.nome })),
         };
       }),
+    atribuicoesDeTecnico: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await selecionar(tx)
+            .where('papel', '=', 'tecnico')
+            .where('revogado_em', 'is', null)
+            .execute()
+        ).map(paraAtribuicao),
+      ),
     criar: (ctx, hotelId, nome) => banco.executar(ctx, (uow) => criarEquipe(uow, hotelId, nome)),
     renomear: (ctx, id, nome) => banco.executar(ctx, (uow) => alterarEquipe(uow, id, { nome })),
     definirAtiva: (ctx, id, ativa) =>

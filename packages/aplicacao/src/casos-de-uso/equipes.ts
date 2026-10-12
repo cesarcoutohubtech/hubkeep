@@ -9,6 +9,7 @@ import {
   type Contexto,
   NaoEncontrado,
   type Resultado,
+  ehTecnicoDoHotel,
   exigir,
   normalizarNomeDeEquipe,
   podeGerirEquipes,
@@ -23,10 +24,21 @@ type RegraDeEquipes = (
 ) => Resultado;
 
 export interface CasosDeUsoDeEquipes {
+  /**
+   * As equipes do hotel, os membros ativos (para pôr numa equipe) e os
+   * Técnicos do hotel: os membros ativos com papel de Técnico vigente que
+   * cobre o hotel, a lista de quem pode receber a OS (a mesma regra da
+   * gravação, ehTecnicoDoHotel). Quem não lê as atribuições de Técnico do
+   * hotel pela RLS recebe a lista vazia.
+   */
   listarEquipes(
     ctx: Contexto,
     hotelId: string,
-  ): Promise<{ equipes: EquipeDoHotel[]; disponiveis: { usuarioId: string; nome: string }[] }>;
+  ): Promise<{
+    equipes: EquipeDoHotel[];
+    disponiveis: { usuarioId: string; nome: string }[];
+    tecnicos: { usuarioId: string; nome: string }[];
+  }>;
   criarEquipe(ctx: Contexto, hotelId: string, nome: string): Promise<{ id: string }>;
   renomearEquipe(ctx: Contexto, equipeId: string, nome: string): Promise<void>;
   desativarEquipe(ctx: Contexto, equipeId: string): Promise<void>;
@@ -59,8 +71,16 @@ export function criarCasosDeUsoDeEquipes(deps: {
   return {
     // Quem lê o hotel vê as equipes (RLS); gravar pede o papel de gestão.
     async listarEquipes(ctx, hotelId) {
-      await hotelVisivel(ctx, hotelId);
-      return deps.equipes.listar(ctx, hotelId);
+      const hotel = await hotelVisivel(ctx, hotelId);
+      const [lista, atribuicoes] = await Promise.all([
+        deps.equipes.listar(ctx, hotelId),
+        deps.equipes.atribuicoesDeTecnico(ctx),
+      ]);
+      const agora = deps.relogio.agora();
+      const tecnicos = lista.disponiveis.filter((m) =>
+        ehTecnicoDoHotel(atribuicoes, m.usuarioId, hotel, agora),
+      );
+      return { ...lista, tecnicos };
     },
     async criarEquipe(ctx, hotelId, nome) {
       await exigirNoHotel(ctx, await hotelVisivel(ctx, hotelId));

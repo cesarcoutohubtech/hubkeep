@@ -15,6 +15,8 @@ export const RespostaDeEquipes = z
     equipes: z.array(EquipeApi),
     /** Membros ativos do tenant, para escolher quem entra numa equipe. */
     disponiveis: z.array(z.object({ usuarioId: z.guid(), nome: z.string() })),
+    /** Técnicos com papel vigente que cobre o hotel: quem pode receber a OS. */
+    tecnicos: z.array(z.object({ usuarioId: z.guid(), nome: z.string() })),
   })
   .meta({ id: 'RespostaDeEquipes' });
 
