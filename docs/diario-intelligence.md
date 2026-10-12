@@ -1180,3 +1180,15 @@ Terceiro dos PRs das telas (a ordem está na seção do `int-telas-base`). Fora 
   - a ficha do ativo do núcleo, que não tem rota de detalhe, então não há link para ela.
 - **Não conferido no navegador:** o dev não tem a 0040, e nenhum job rodou lá. A primeira rodada, com o `vercel.json`, fica para depois do merge.
 - **Atualização (12/10/2026):** a `main` com o #190 e o #191 entrou no branch. O único conflito foi no diário do núcleo, onde cada lado acrescentou uma seção; as duas ficaram. Typecheck, lint e testes verdes no local. O dev já tem a 0040 (conferido no fechamento de 10/10), mas nenhum job rodou lá, então as telas ainda não foram conferidas no navegador com dados; isso fica antes do merge do PR.
+- **Merge:** o Cesar fez o merge do #192 sem a conferência no navegador (12/10/2026). Ela fica para a seção seguinte, com o job rodado no dev.
+
+## `int-job-agendamento`: o job diário no `vercel.json` e a primeira rodada no dev (12/10/2026)
+
+Decisões do Cesar de 12/10/2026, no chat do agente do Intelligence ("Cesar aqui"), depois do merge do #192. PR fora da zona protegida.
+- **Horário:** uma vez por dia às 03:00 de Brasília, `0 6 * * *` no `vercel.json` (o cron da Vercel é em UTC). A rota já existia (#184) e ficava fora do agendamento até o painel ler a métrica.
+- **Primeira rodada no dev**, pelo web local apontando para o `HubKeep-dev`, com um `CRON_SECRET` só daquela rodada, sem gravar em arquivo. **Aviso à equipe:** a métrica só recebe INSERT, e as linhas desta rodada ficam no dev compartilhado.
+  - Sem o módulo, a rota respondeu 200 e não leu nada: o Grupo Demonstração do kit não tinha o Intelligence contratado.
+  - **Módulo contratado no dev**, com a autorização do Cesar: `pnpm ops:modulo` no tenant do kit (`0199a1f0-de30-7000-8000-00000000de30`), `inteligencia` a partir de 10/10/2026 00:00 de Brasília, sem prazo, "por Cesar". O `--dry-run` foi conferido antes.
+  - Segunda rodada: 200, 1 tenant, 7 ativos, 7 métricas gravadas, nenhum insight (os chamados do kit não passam do limite da atenção) e nenhuma falha.
+- **A resposta da rota** soma só os números de cada tenant, então o `semModulo` não aparece nela; a primeira rodada só se explicou pelo kit. Fica registrado, sem mudança neste PR.
+- **Telas no navegador:** o detalhe do ativo já tem métrica para conferir; a página do insight só terá dados quando algum insight abrir no dev.
