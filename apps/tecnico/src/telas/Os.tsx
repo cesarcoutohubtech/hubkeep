@@ -63,6 +63,7 @@ import {
 import type { CodigoGuardado } from '../referencia/banco';
 import { TOM_DO_ESTADO, rotuloDoEstado, useMotivo } from './FilaDoDia';
 import { TelaDoTecnico } from './TelaDoTecnico';
+import { nomeDoLocal } from '../locais';
 
 /** As respostas da conclusão: a da parada do chamado (C5) e a da UH indisponível (I4). */
 export interface RespostasDaConclusao {
@@ -315,7 +316,12 @@ export function Os(
   return (
     <TelaDoTecnico
       titulo={t('tecnico.os.titulo')}
-      subtitulo={t('tecnico.os.local', { local: os.chamado.localNome })}
+      subtitulo={t('tecnico.os.local', {
+        local: nomeDoLocal(t, {
+          nome: os.chamado.localNome,
+          edificacao: os.chamado.localEdificacao,
+        }),
+      })}
       acao={
         <Botao tamanho="pequeno" onClick={props.aoVoltar}>
           {t('comum.voltar')}

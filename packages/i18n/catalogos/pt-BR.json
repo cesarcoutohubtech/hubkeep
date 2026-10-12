@@ -577,6 +577,7 @@
   "erro.espaco_insuficiente": "Não há espaço livre neste aparelho para guardar a foto.",
   "tecnico.os.pendentes": "{n, plural, one {# registro aguardando envio} other {# registros aguardando envio}}",
   "tecnico.os.titulo": "Ordem de serviço",
+  "tecnico.local.nome_com_edificacao": "{nome} · {edificacao}",
   "tecnico.os.local": "Local: {local}",
   "tecnico.os.acao.iniciar": "Iniciar",
   "tecnico.os.acao.pausar": "Pausar",

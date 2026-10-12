@@ -577,6 +577,7 @@
   "erro.espaco_insuficiente": "There isn't enough free space on this device to store the photo.",
   "tecnico.os.pendentes": "{n, plural, one {# entry waiting to be sent} other {# entries waiting to be sent}}",
   "tecnico.os.titulo": "Work order",
+  "tecnico.local.nome_com_edificacao": "{nome} · {edificacao}",
   "tecnico.os.local": "Location: {local}",
   "tecnico.os.acao.iniciar": "Start",
   "tecnico.os.acao.pausar": "Pause",

@@ -204,7 +204,9 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
 - **Deve ser barrado:**
   - aceitar a própria OS no web (detalhe do aquecedor), porque quem executou não aceita;
   - em "Fornecedores" (web), a lista aparece, mas cadastrar, alterar e desativar voltam "Só o Admin do grupo, o Gestor CSC e o Gerente do hotel cadastram fornecedores".
-- **Conferir também:** ao sair do PWA, a fila do dia é apagada do aparelho.
+- **Conferir também:**
+  - ao sair do PWA, a fila do dia é apagada do aparelho;
+  - os locais do Centro com edificação aparecem com ela no PWA: "UH 102 · Torre A" na fila do dia e na OS, e "UH 101 · Torre A" ou "Piscina · Área externa" ao abrir chamado e nos ativos.
 
 ### Técnico do Praia (PWA)
 

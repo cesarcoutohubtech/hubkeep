@@ -98,6 +98,24 @@ describe('fila do dia com OS', () => {
   });
 });
 
+describe('local com a edificação (I2)', () => {
+  const naTorre: OsNoAparelho = {
+    ...os('atribuida'),
+    chamado: { ...os('atribuida').chamado, localEdificacao: 'Torre A' },
+  };
+
+  it.each(IDIOMAS)('%s: a fila e a OS mostram "UH 101 · Torre A"', (idioma) => {
+    expect(renderizar(idioma, fila([naTorre]))).toContain('UH 101 · Torre A');
+    expect(renderizar(idioma, tela(naTorre))).toContain('UH 101 · Torre A');
+  });
+
+  it('sem a edificação (ou com a API anterior), só o nome', () => {
+    const html = renderizar('pt-BR', fila([os('atribuida')]));
+    expect(html).toContain('UH 101');
+    expect(html).not.toContain('UH 101 ·');
+  });
+});
+
 describe('tela da OS', () => {
   it.each(IDIOMAS)('%s', (idioma) => {
     const m = mensagensDe(idioma);

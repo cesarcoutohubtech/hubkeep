@@ -32,6 +32,8 @@ export interface OsDoDia {
     descricao: string;
     localId: string;
     localNome: string;
+    /** Edificação do local (I2); null: não informada. */
+    localEdificacao: string | null;
     prioridadeId: string;
     estado: EstadoDoChamado;
     /** O ativo do chamado (C5): sem ele, não há parada. */

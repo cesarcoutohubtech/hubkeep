@@ -577,6 +577,7 @@
   "erro.espaco_insuficiente": "Il n'y a pas assez d'espace libre sur cet appareil pour enregistrer la photo.",
   "tecnico.os.pendentes": "{n, plural, one {# saisie en attente d’envoi} other {# saisies en attente d’envoi}}",
   "tecnico.os.titulo": "Ordre de travail",
+  "tecnico.local.nome_com_edificacao": "{nome} · {edificacao}",
   "tecnico.os.local": "Lieu : {local}",
   "tecnico.os.acao.iniciar": "Démarrer",
   "tecnico.os.acao.pausar": "Mettre en pause",
