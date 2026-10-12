@@ -19,6 +19,7 @@
     "db:fumaca": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/fumaca-db.ts",
     "ops:modulo": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/modulo-contratado.ts",
     "ops:config-remota": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/ler-config-remota.ts",
+    "ops:provisionar": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/provisionar-cliente.ts",
     "demo:dados": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/dados-demonstracao.ts"
   },
   "devDependencies": {

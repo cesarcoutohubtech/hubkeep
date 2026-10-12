@@ -76,50 +76,72 @@ export function lerArgs(
 const HOSTS_LOCAIS = new Set(['localhost', '127.0.0.1', '::1']);
 const hostLocal = (host: string) => HOSTS_LOCAIS.has(host.toLowerCase().replace(/^\[|\]$/g, ''));
 
+/** Ambientes com projeto Supabase próprio e bloco `[remotes.<nome>]` no config.toml. */
+export type Remoto = 'dev' | 'staging';
+
+/** Nome do projeto Supabase de cada remoto, nas mensagens. */
+const PROJETO: Record<Remoto, string> = { dev: 'HubKeep-dev', staging: 'HubKeep-staging' };
+
 /**
- * Project ref do HubKeep-dev: o `project_id` do bloco `[remotes.dev]` do
+ * Project ref de um remoto: o `project_id` do bloco `[remotes.<remoto>]` do
  * supabase/config.toml. Lido do arquivo, e não fixado aqui, para haver uma
- * fonte só — a mesma que a CLI usa para saber qual remoto é o dev.
+ * fonte só — a mesma que a CLI usa para saber qual remoto é qual. O bloco do
+ * staging entra com o projeto (F0-12, PR de zona protegida); até lá, todo
+ * script recusa o staging antes de conectar.
  */
-export function refDoDevNoConfig(toml: string): string {
+export function refDoRemotoNoConfig(toml: string, remoto: Remoto): string {
+  const cabecalho = `[remotes.${remoto}]`;
   let noBloco = false;
   // O trim() também tira o fim de linha CRLF de um config.toml salvo no Windows.
   for (const linha of toml.split('\n')) {
     const t = linha.trim();
-    if (t.startsWith('[')) noBloco = t === '[remotes.dev]';
+    if (t.startsWith('[')) noBloco = t === cabecalho;
     else if (noBloco) {
       const m = /^project_id\s*=\s*"([^"]*)"/.exec(t);
       if (m) {
         const ref = m[1] ?? '';
         if (!/^[a-z]{20}$/.test(ref)) {
-          throw new Error('project_id de [remotes.dev] no config.toml não é um project ref.');
+          throw new Error(`project_id de ${cabecalho} no config.toml não é um project ref.`);
         }
         return ref;
       }
     }
   }
-  throw new Error('project_id de [remotes.dev] não encontrado no supabase/config.toml.');
+  throw new Error(`project_id de ${cabecalho} não encontrado no supabase/config.toml.`);
 }
 
-export const lerRefDoDev = () =>
-  refDoDevNoConfig(readFileSync(new URL('../../supabase/config.toml', import.meta.url), 'utf8'));
+export const refDoDevNoConfig = (toml: string) => refDoRemotoNoConfig(toml, 'dev');
+
+const lerConfigToml = () =>
+  readFileSync(new URL('../../supabase/config.toml', import.meta.url), 'utf8');
+
+export const lerRefDoDev = () => refDoRemotoNoConfig(lerConfigToml(), 'dev');
+export const lerRefDoStaging = () => refDoRemotoNoConfig(lerConfigToml(), 'staging');
+
+/** Ref que a string de conexão tem de conter: o do dev e o do staging; ci e produção não têm. */
+export function refEsperado(amb: Ambiente): string | undefined {
+  if (amb === 'dev') return lerRefDoDev();
+  if (amb === 'staging') return lerRefDoStaging();
+  return undefined;
+}
 
 /**
  * Confere, sem conectar, que a string de conexão é do ambiente pedido:
  *   - ci: Postgres local do runner. É o ambiente sem TLS e o que grava
  *     fixtures à vontade; apontado para fora, faria as duas coisas num banco
  *     de verdade.
- *   - dev: o usuário (`postgres.<ref>` no Supavisor) ou o host
- *     (`db.<ref>.supabase.co`) contém o ref do dev. A senha fica fora da busca.
- *   - staging e producao: sem ref no config.toml ainda (F0-12); produção
- *     continua exigindo --confirmar-producao (exigirConfirmacaoProducao).
+ *   - dev e staging: o usuário (`postgres.<ref>` no Supavisor) ou o host
+ *     (`db.<ref>.supabase.co`) contém o ref do `[remotes.<ambiente>]`. A
+ *     senha fica fora da busca.
+ *   - producao: sem ref no config.toml; continua exigindo
+ *     --confirmar-producao (exigirConfirmacaoProducao).
  * As mensagens nunca incluem a string de conexão, que tem a senha.
  */
 export function conferirAlvo(
   amb: Ambiente,
   nomeVar: string,
   bruta: string,
-  refDev: string | undefined,
+  ref: string | undefined,
 ): void {
   let u: URL;
   try {
@@ -132,13 +154,13 @@ export function conferirAlvo(
       `${nomeVar} precisa apontar para o Postgres local da CI (localhost, 127.0.0.1 ou ::1). Nada foi conectado.`,
     );
   }
-  if (amb === 'dev') {
-    if (!refDev) throw new Error('Ref do dev não informado para conferir o alvo.');
+  if (amb === 'dev' || amb === 'staging') {
+    if (!ref) throw new Error(`Ref do ${amb} não informado para conferir o alvo.`);
     const usuario = decodeURIComponent(u.username);
-    if (!usuario.includes(refDev) && !u.hostname.includes(refDev)) {
+    if (!usuario.includes(ref) && !u.hostname.includes(ref)) {
       throw new Error(
-        `${nomeVar} não é do HubKeep-dev: a string de conexão não contém o ref ${refDev} ` +
-          '([remotes.dev] project_id em supabase/config.toml). Nada foi conectado.',
+        `${nomeVar} não é do ${PROJETO[amb]}: a string de conexão não contém o ref ${ref} ` +
+          `([remotes.${amb}] project_id em supabase/config.toml). Nada foi conectado.`,
       );
     }
   }
@@ -148,7 +170,7 @@ function lerUrl(amb: Ambiente): URL {
   const nomeVar = CONEXAO_DONO[amb];
   const bruta = process.env[nomeVar];
   if (!bruta) throw new Error(`${nomeVar} não está definida.`);
-  conferirAlvo(amb, nomeVar, bruta, amb === 'dev' ? lerRefDoDev() : undefined);
+  conferirAlvo(amb, nomeVar, bruta, refEsperado(amb));
   return new URL(bruta);
 }
 
