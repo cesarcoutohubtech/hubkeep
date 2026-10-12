@@ -56,10 +56,25 @@ import {
   recebimentoDeLotes,
 } from '../../src/servidor/composicao';
 import { convitesDeDemonstracao, identidadeDeDemonstracao } from '../../src/servidor/demonstracao';
+import { PRIORIDADE_POR_CATEGORIA } from '../provisionamento/padroes';
 
 /** Tenant fixo da demonstração no dev: rodar de novo cai no mesmo grupo. */
 export const TENANT_DA_DEMONSTRACAO = '0199a1f0-de30-7000-8000-00000000de30';
 export const NOME_DO_GRUPO = 'Grupo Demonstração';
+
+/**
+ * Turma de treinamento (docs/13, resposta 3 do Cesar de 08/10/2026): um grupo
+ * novo por turma, com tenant, nome e domínio de e-mail próprios, sem apagar o
+ * grupo de outra turma. O tenant sai fixo do número: rodar de novo com a
+ * mesma turma cai no mesmo grupo.
+ */
+export function grupoDaTurma(turma: number): { tenantId: string; nome: string; dominio: string } {
+  return {
+    tenantId: idFixo(TENANT_DA_DEMONSTRACAO, `turma-${turma}`),
+    nome: `${NOME_DO_GRUPO} — Turma ${turma}`,
+    dominio: `turma${turma}.demo.hubkeep.test`,
+  };
+}
 const FONTE = 'planilha';
 const FUSO = 'America/Sao_Paulo';
 
@@ -69,6 +84,8 @@ export interface OpcoesDaDemonstracao {
   /** Senha de teste de todas as contas. */
   senha: string;
   tenantId?: string;
+  /** Turma de treinamento: grupo, nome e domínio próprios (grupoDaTurma). */
+  turma?: number | null;
   /** Domínio dos e-mails; precisa terminar em .test. */
   dominio?: string;
   /** Site do web, para o link de aceite gravado no convite (nenhum e-mail sai). */
@@ -203,23 +220,7 @@ const DADOS_DA_I1: Partial<
   gelo: { dataCompra: null, garantiaAte: null, criticidade: 3 },
 };
 
-/**
- * Prioridade padrão por categoria, gravada como política do grupo (ADR-026),
- * no que se espera de um hotel: parar um elevador ou a segurança é urgente;
- * frio, energia, água e cozinha param a operação ou o quarto; o resto espera.
- */
-const PRIORIDADE_POR_CATEGORIA = {
-  elevadores: 'urgente',
-  seguranca: 'urgente',
-  refrigeracao: 'alta',
-  eletrica: 'alta',
-  hidraulica: 'alta',
-  cozinha: 'alta',
-  lavanderia: 'media',
-  eletronicos: 'media',
-  piscina: 'media',
-  mobiliario: 'baixa',
-} as const satisfies Record<CategoriaPadrao, string>;
+// A prioridade padrão por categoria é a de todo grupo novo (provisionamento/padroes.ts).
 
 /** O que cada chamado mostra no teste (roteiro no docs/10-kit-de-teste.md). */
 export const CENARIOS = [
@@ -251,8 +252,10 @@ const conflito = (e: unknown, codigo: string) => e instanceof Conflito && e.codi
 export async function semearDemonstracao(
   o: OpcoesDaDemonstracao,
 ): Promise<ResultadoDaDemonstracao> {
-  const tenantId = o.tenantId ?? TENANT_DA_DEMONSTRACAO;
-  const dominio = o.dominio ?? 'demo.hubkeep.test';
+  const daTurma = o.turma ? grupoDaTurma(o.turma) : null;
+  const tenantId = o.tenantId ?? daTurma?.tenantId ?? TENANT_DA_DEMONSTRACAO;
+  const nomeDoGrupo = daTurma?.nome ?? NOME_DO_GRUPO;
+  const dominio = o.dominio ?? daTurma?.dominio ?? 'demo.hubkeep.test';
   const site = o.site ?? 'http://localhost:3000';
   const log = o.log ?? (() => undefined);
   const emailDe = (p: Pessoa) => `${PESSOAS[p].email}@${dominio}`;
@@ -263,7 +266,7 @@ export async function semearDemonstracao(
     email: emailDe('admin'),
     nome: PESSOAS.admin.nome,
     tenantId,
-    nomeTenant: NOME_DO_GRUPO,
+    nomeTenant: nomeDoGrupo,
   });
   await identidade.vincularTenant(admin.usuarioId, tenantId);
   const dono = new pg.Client({ connectionString: o.urlDono });
@@ -271,7 +274,7 @@ export async function semearDemonstracao(
   try {
     await dono.query(
       `insert into app.tenant (id, nome) values ($1, $2) on conflict (id) do nothing`,
-      [tenantId, NOME_DO_GRUPO],
+      [tenantId, nomeDoGrupo],
     );
     // Três hotéis e 40 UHs: dá para ativar o terceiro hotel no teste.
     await dono.query(
@@ -512,7 +515,7 @@ export async function semearDemonstracao(
           email: pedido.email,
           nome: pedido.nome,
           tenantId,
-          nomeTenant: NOME_DO_GRUPO,
+          nomeTenant: nomeDoGrupo,
         })
       ).usuarioId;
     }
