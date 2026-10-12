@@ -23,7 +23,7 @@ Fonte do escopo:
   - o nível bandeira das políticas (1c, com o SLA);
   - preventiva por uso ou por medidor: o `docs/00` fala em preventiva por tempo;
   - nada de fase 2: custos e alçadas, portal do fornecedor, estoque, inspeções com OS automática. O fornecedor mínimo (nome, CNPJ, contato) entrou no MVP em 07/10/2026 (I3).
-- **Ambiente:** só o dev. O staging chega com a F0-12, na preparação do piloto (`docs/13`).
+- **Ambiente:** só o dev. O staging fica para o portão do staging, no fim da 1c e antes do treinamento (`docs/13`, decisão do Cesar de 12/10/2026).
 
 ## Decisões transversais (antes das etapas)
 
@@ -59,7 +59,7 @@ Fim da etapa I: resumo e aviso ao agente do Kaio, no diário, com os nomes reais
 
 ## Etapa PV — Preventiva
 
-**Desenho de 12/10/2026, para a aprovação do Cesar:** `docs/referencia/propostas-desenho-pv-implantacao.md` (PV1 a PV3, M1 a M4, PB1 e M3), com os ADR-040 e ADR-041 propostos.
+**Desenho de 12/10/2026:** `docs/referencia/propostas-desenho-pv-implantacao.md` (PV1 a PV3, M1 a M4, PB1 e M3). Os ADR-040 (checklist) e ADR-041 (preventiva) foram aprovados pelo Cesar em 12/10/2026, no chat; o texto de cada um entra no `docs/03` no PR de zona protegida da migração correspondente.
 
 | Tarefa | O quê | Aceite | Migração | ADR |
 |---|---|---|---|---|
@@ -106,8 +106,8 @@ Fim da etapa PB e da fase 1b: resumo, com a lista do que ficou para a 1c.
   - M4 (situação do cadastro no ativo);
   - talvez M2 e M3.
 - **ADRs:**
-  - novo: checklist tipado, com modelo versionado e cópia na OS (PV1);
-  - novo: preventiva por tempo e geração idempotente pelo worker (PV2 e PV3);
+  - ADR-040, checklist tipado, com modelo versionado e cópia na OS (PV1), aprovado em 12/10/2026;
+  - ADR-041, preventiva por tempo e geração idempotente pelo worker (PV2 e PV3), aprovado em 12/10/2026;
   - talvez: formato e limites da importação (M2);
   - talvez: aprovação do cadastro de ativo (M4);
   - talvez: o filtro por módulo contratado no adendo ao ADR-026 (I7);

@@ -2,11 +2,11 @@
 
 **Situação:** proposta de 12/10/2026, do agente do núcleo, para a aprovação do Cesar. Nada disto está implementado. Os itens são os das etapas PV, M e PB do `docs/12`, na ordem da fila nova do Cesar (12/10/2026): checklist (PV1), planos (PV2), geração de OS (PV3), implantação de ativos (M2 e M4, com o M1, de que o pacote depende), pacote da bandeira (PB1) e QR em lote (M3).
 
-**Dois ADRs novos**, que param aqui para a aprovação:
+**Dois ADRs novos, aprovados pelo Cesar em 12/10/2026** (no chat):
 - **ADR-040**, checklist tipado, com modelo versionado e cópia na OS (PV1);
 - **ADR-041**, preventiva por tempo e geração idempotente pelo worker (PV2 e PV3).
 
-O texto de cada ADR entra no `docs/03` no PR de zona protegida da migração correspondente, com o status "aguarda aprovação" até o Cesar aprovar o texto. M2 e M4 não pedem ADR: as decisões ficam registradas aqui e no diário.
+O texto de cada ADR entra no `docs/03` no PR de zona protegida da migração correspondente, já como aprovado. As 21 decisões numeradas abaixo foram levadas ao Cesar junto com a aprovação dos ADRs; a resposta fica registrada no diário. M2 e M4 não pedem ADR: as decisões ficam registradas aqui e no diário.
 
 Valem para todos os itens:
 - regra 7: exigência vira política, desligada por padrão;
@@ -267,4 +267,4 @@ Cada migração vai num PR de zona protegida, um por vez no repositório, combin
 | 6 | PB1 pacote da bandeira | 0047 | — |
 | 7 | M3 códigos reservados | 0048 | — |
 
-A numeração supõe a I8 (0041) mergeada antes. O adendo ao ADR-024 (provisionamento e kit no staging) entra na fila quando o Cesar quiser, entre dois destes.
+A numeração supõe a I8 (0041) mergeada antes, o que aconteceu em 12/10/2026 (#193). O adendo ao ADR-024 (provisionamento e kit no staging) e o `[remotes.staging]` não entram nesta fila: ficam para o portão do staging, no fim da 1c (`docs/13`, decisão do Cesar de 12/10/2026).

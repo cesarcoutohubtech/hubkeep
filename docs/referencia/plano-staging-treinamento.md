@@ -1,6 +1,6 @@
 # Plano do staging para o treinamento dos hotéis
 
-**Situação:** proposta de 12/10/2026, do agente do núcleo, para a aprovação do Cesar. É a parte de staging da F0-12 (`docs/04`, `docs/13`), que vem antes do treinamento: o treinamento acontece no staging, e não no dev (resposta 2 do Cesar, 08/10/2026). A produção fica para a preparação do piloto, com o mesmo roteiro.
+**Situação:** proposta de 12/10/2026, do agente do núcleo. **Adiada pelo Cesar em 12/10/2026** para o portão do staging, o ponto em que não dá mais para avançar sem ele: o fim da 1c no dev, antes do treinamento (`docs/13`). As cinco decisões abaixo e o adendo ao ADR-024 voltam ao Cesar nesse momento, e nada deste plano é criado nem contratado antes. É a parte de staging da F0-12 (`docs/04`, `docs/13`), que vem antes do treinamento: o treinamento acontece no staging, e não no dev (resposta 2 do Cesar, 08/10/2026). A produção fica para a preparação do piloto, com o mesmo roteiro.
 
 **Como ler:** cada passo diz quem faz.
 - **Cesar:** conta, pagamento, DNS, segredo, `db push`, `config push` e merge de zona protegida;

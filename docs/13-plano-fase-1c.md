@@ -43,11 +43,33 @@ O piloto só começa depois da 1c, que traz o e-mail próprio e a recuperação 
 - **Segurança:** MFA obrigatório para Admin do grupo, Gestor CSC e Implantador; CSP de script no app do técnico; limite de requisições.
 - **Desempenho:** metas da P1 cumpridas no build de produção.
 - **Produção (F0-12):** domínio, Vercel Pro, Supabase de staging e produção, deploy, e-mail com DNS, PITR, SSL obrigatório.
-  - A parte de **staging** vem antes do treinamento dos hotéis, e não só antes do piloto: o treinamento acontece no staging, e não no dev (resposta 2 do Cesar, 08/10/2026).
+  - A parte de **staging** vem antes do treinamento dos hotéis, e não só antes do piloto: o treinamento acontece no staging, e não no dev (resposta 2 do Cesar, 08/10/2026). Quando, exatamente, está no portão do staging, abaixo.
 - **Provisionamento de cliente:** script do backoffice que cria o grupo, o contrato de licença, o primeiro Admin e os padrões (situações, prioridades, categorias e políticas). Reaproveita o primeiro passo do kit de teste (resposta 4 do Cesar, 08/10/2026).
 - **Kit de teste por turma:** opção que cria um grupo de demonstração novo por turma, com e-mails próprios, sem apagar nada (resposta 3 do Cesar, 08/10/2026).
   - O kit e o script de provisionamento aceitam o staging (pergunta 10 do `docs/piloto/README.md`, confirmada pelo Cesar em 08/10/2026). Hoje o script do kit recusa o que não é o dev, e o ADR-024 limita a secret key fora da Vercel: o ajuste entra com um adendo ao ADR-024.
 - **Implantação:** agente instalado na rede do cliente, carga dos ativos críticos, etiquetas, treinamento por papel (`docs/piloto/`).
 - **Ajustes do teste manual do Cesar:** lista de responsáveis só com técnicos do hotel. As prioridades realistas nos dados de demonstração já entraram (7bac32e).
 
-**Propostas de 12/10/2026, para a aprovação do Cesar:** o desenho do calendário de SLA, do arrendado mínimo, dos indicadores e da auditoria geral está em `docs/referencia/propostas-desenho-1c.md`; o plano do staging do treinamento, com os custos, em `docs/referencia/plano-staging-treinamento.md`.
+### Portão do staging (decisão do Cesar de 12/10/2026)
+
+O staging fica para o ponto do projeto em que não dá mais para avançar sem ele (Cesar, 12/10/2026). Esse ponto é **o fim da 1c no dev, antes de qualquer passo que precise de um endereço publicado**. Até lá, só existe o dev, e nada é criado na Vercel nem no Supabase além dele. Os custos do staging (cerca de US$ 45 a 55 por mês) também só começam no portão.
+
+**O que anda sem o staging:**
+- toda a 1b e toda a 1c, no dev, com o app rodando no notebook;
+- os scripts de provisionamento e do kit por turma (#196), que já aceitam o staging assim que o `[remotes.staging]` existir no `supabase/config.toml`, sem mudança de código.
+
+**O que para no portão, porque precisa do staging:**
+- o treinamento dos hotéis, que acontece no staging (resposta 2 do Cesar, 08/10/2026), com o kit por turma;
+- a instalação do PWA no Android e no iOS, que pede HTTPS fora do `localhost` (F0-11, ADR-025), e o push no celular conferido no aparelho;
+- os crons rodando sozinhos num ambiente publicado (outbox, promoção, Intelligence, preventiva da PV3 e monitor de SLA da 1c). No dev, eles são chamados à mão;
+- o e-mail com links para um endereço público (convite e recuperação de senha), com o domínio e o DNS.
+
+**Ordem a partir do fim da 1c:**
+1. portão do staging: os passos 1 a 15 de `docs/referencia/plano-staging-treinamento.md`, começando pela aprovação das cinco decisões do plano e do adendo ao ADR-024, e pelo PR de zona protegida com o `[remotes.staging]`;
+2. conferência do roteiro e do PWA no aparelho, no staging;
+3. treinamento das turmas;
+4. produção e piloto, com o mesmo roteiro.
+
+Se alguma tarefa antes do fim da 1c passar a depender de um endereço publicado, o agente para e avisa o Cesar, em vez de antecipar o staging.
+
+**Propostas de 12/10/2026, para a aprovação do Cesar:** o desenho do calendário de SLA, do arrendado mínimo, dos indicadores e da auditoria geral está em `docs/referencia/propostas-desenho-1c.md`; o plano do staging do treinamento, com os custos, em `docs/referencia/plano-staging-treinamento.md`, para o portão do staging.

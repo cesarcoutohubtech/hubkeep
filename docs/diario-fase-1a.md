@@ -1840,3 +1840,17 @@ Pedido do Cesar no chat ("Cesar aqui", 12/10/2026), em seis itens. Situação ao
 - agora, o #193 (I8, núcleo);
 - depois, na ordem do núcleo: a PV1 (0042), quando o ADR-040 for aprovado, e o PR do staging (`[remotes.staging]` e o adendo ao ADR-024), quando o Cesar quiser;
 - o PR de zona protegida do Intelligence que estiver pronto (por exemplo, as decisões de 10/10 no ADR-036) entra entre dois do núcleo. Basta registrar aqui ou no diário do Intelligence antes de abrir, conferindo no GitHub que nenhum outro está aberto.
+
+## ADR-040 e ADR-041 aprovados, e o staging no portão (12/10/2026)
+
+Mensagem do Cesar no chat ("Cesar aqui", 12/10/2026): aprova os ADR-040 e ADR-041, e pede para deixar o staging mais para frente no projeto, "em um ponto que não dê mais para avançar sem".
+
+- **ADRs:** o ADR-040 (checklist tipado, PV1) e o ADR-041 (preventiva por tempo, PV2 e PV3) estão aprovados. O texto de cada um entra no `docs/03` no PR de zona protegida da migração correspondente, já como aprovado: o ADR-040 com a 0042 e o ADR-041 com a 0043. As 21 decisões numeradas de `docs/referencia/propostas-desenho-pv-implantacao.md` foram levadas ao Cesar junto; a resposta entra aqui.
+- **Portão do staging** (`docs/13`): o staging fica para o fim da 1c no dev, antes de qualquer passo que precise de endereço publicado. Até lá, só o dev, sem custo novo. Param no portão:
+  - o treinamento;
+  - o PWA instalado no aparelho;
+  - os crons rodando sozinhos;
+  - o e-mail com links públicos.
+  O plano de `docs/referencia/plano-staging-treinamento.md` ficou como está, marcado como adiado; as cinco decisões dele e o adendo ao ADR-024 voltam ao Cesar no portão. Os scripts do #196 já aceitam o staging quando o `[remotes.staging]` existir.
+- **Fila de zona protegida do núcleo,** daqui em diante: PV1 (0042, com o texto do ADR-040 e a regra dos worktrees no `CLAUDE.md`), PV2 (0043, com o ADR-041), PV3 (0044), M1 (0045), M4 e M2 (0046), PB1 (0047) e M3 (0048). O PR do staging saiu desta fila. O PR de zona protegida do Intelligence que estiver pronto entra entre dois do núcleo, como antes.
+- **Worktrees** (regra do Cesar de 12/10/2026): os do #197, do #200 e o `d1-teste-proprietario` foram removidos. O commit 28b1785 continua na branch local `1a-d1-teste-proprietario`.
