@@ -18,8 +18,14 @@
 //             existe fora do escopo.
 //   remoção   lógica; remove quem enviou ou quem gere o hotel (domínio).
 // A entidade pode ter regra própria para anexar (regraParaAnexar): na OS, só
-// o responsável, com a OS em execução ou pausada (C4). Vale no upload e no
-// registro.
+// o responsável, com a OS atribuída, em execução ou pausada (C4 e I8). Vale
+// no upload e no registro.
+//
+// Foto antes ou depois (I8): o anexo da OS pode levar o momento; fora da OS,
+// 422 momento_so_na_os. A assinatura do aceite tem URL própria
+// (pedirUrlDaAssinatura): quem pode aceitar a OS (regraParaAssinar, da
+// triagem) recebe a URL de um PNG novo na pasta da OS; o registro é feito
+// pelo aceite, na mesma unit of work. Ninguém remove a assinatura.
 import {
   type Atribuicao,
   Conflito,
@@ -31,7 +37,9 @@ import {
   exigir,
   normalizarNomeDeAnexo,
   podeRemoverAnexo,
+  type MomentoDaFoto,
   validarMiniatura,
+  validarMomentoDoAnexo,
 } from '@hubkeep/dominio';
 import {
   type AnexoGravado,
@@ -112,11 +120,13 @@ export interface DependenciasDeAnexos {
     entidade: EntidadeComAnexo,
     registroId: string,
   ) => Promise<void>;
+  /** Quem pode aceitar a OS, para a URL da assinatura (I8; casos de uso de triagem). */
+  regraParaAssinar?: (ctx: Contexto, osId: string) => Promise<void>;
   /** Padrão: podeRemoverAnexo do domínio. Só o teste de aceite troca. */
   podeRemover?: (
     minhas: readonly Atribuicao[],
     hotel: { id: string; bandeiraId: string | null },
-    anexo: { usuarioId: string },
+    anexo: { usuarioId: string; assinatura?: boolean },
     usuarioId: string,
     agora: Date,
   ) => Resultado;
@@ -129,6 +139,8 @@ export interface PedidoDeRegistroDeAnexo {
   miniaturaCaminho?: string | null | undefined;
   /** Nome original do arquivo. */
   nome?: string | null | undefined;
+  /** Foto da OS antes ou depois (I8). */
+  momento?: MomentoDaFoto | null | undefined;
 }
 
 export interface AnexoListado extends Omit<
@@ -150,6 +162,11 @@ export interface CasosDeUsoDeAnexos {
       /** Gerado no aparelho, para o caminho ser o mesmo no reenvio (C4); senão, novo. */
       arquivoId?: string | undefined;
     },
+  ): Promise<{ caminho: string; url: string; token: string; expiraEm: Date }>;
+  /** URL de upload da assinatura do aceite (I8): um PNG novo na pasta da OS. */
+  pedirUrlDaAssinatura(
+    ctx: Contexto,
+    osId: string,
   ): Promise<{ caminho: string; url: string; token: string; expiraEm: Date }>;
   pedirUrlDeDownload(ctx: Contexto, caminho: string): Promise<{ url: string; expiraEm: Date }>;
   registrar(ctx: Contexto, pedido: PedidoDeRegistroDeAnexo): Promise<{ id: string }>;
@@ -208,6 +225,23 @@ export function criarCasosDeUsoDeAnexos(deps: DependenciasDeAnexos): CasosDeUsoD
       return { caminho, url, token, expiraEm: emSegundos(SEGUNDOS_URL_DE_UPLOAD) };
     },
 
+    async pedirUrlDaAssinatura(ctx, osId) {
+      const hotelId = await deps.escopo.hotelDoRegistro(ctx, 'os', osId);
+      if (!hotelId) throw registroNaoEncontrado('os');
+      if (!(await deps.escopo.escreveNoHotel(ctx, hotelId))) throw semEscrita();
+      if (!deps.regraParaAssinar) throw new Error('Assinatura sem a regra de quem aceita.');
+      await deps.regraParaAssinar(ctx, osId);
+      const caminho = [ctx.tenantId, hotelId, 'os', osId, `${deps.novoId()}.png`]
+        .join('/')
+        .toLowerCase();
+      const urlDoArquivo = await deps.armazenamento.urlDeUpload(caminho);
+      if (!urlDoArquivo) {
+        throw new Conflito('arquivo_ja_enviado', 'Este arquivo já foi enviado.', { caminho });
+      }
+      const { url, token } = urlDoArquivo;
+      return { caminho, url, token, expiraEm: emSegundos(SEGUNDOS_URL_DE_UPLOAD) };
+    },
+
     async pedirUrlDeDownload(ctx, caminho) {
       const c = lerCaminho(caminho);
       if (!c) throw naoEncontrado();
@@ -224,6 +258,7 @@ export function criarCasosDeUsoDeAnexos(deps: DependenciasDeAnexos): CasosDeUsoD
       if (!c || pedido.caminho !== pedido.caminho.toLowerCase()) {
         throw new RegraViolada('caminho_de_anexo_invalido', 'Caminho de anexo inválido.');
       }
+      const momento = validarMomentoDoAnexo(c.entidade, pedido.momento);
       if (c.tenantId !== ctx.tenantId.toLowerCase()) throw registroNaoEncontrado(c.entidade);
       const hotelId = await deps.escopo.hotelDoRegistro(ctx, c.entidade, c.registroId);
       if (hotelId?.toLowerCase() !== c.hotelId) throw registroNaoEncontrado(c.entidade);
@@ -250,6 +285,7 @@ export function criarCasosDeUsoDeAnexos(deps: DependenciasDeAnexos): CasosDeUsoD
         miniaturaCaminho,
         tipo: c.tipo,
         nome: normalizarNomeDeAnexo(pedido.nome),
+        momento,
       });
     },
 
@@ -268,6 +304,8 @@ export function criarCasosDeUsoDeAnexos(deps: DependenciasDeAnexos): CasosDeUsoD
         registroId: a.registroId,
         tipo: a.tipo,
         nome: a.nome,
+        momento: a.momento,
+        assinatura: a.assinatura,
         usuarioId: a.usuarioId,
         nomeUsuario: a.nomeUsuario,
         criadoEm: a.criadoEm,

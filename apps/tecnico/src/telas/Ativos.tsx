@@ -35,6 +35,7 @@ import type { PortaDeFotos } from '../anexos/fotos';
 import { filtrarPorBusca } from '../busca';
 import { useMotivo } from './FilaDoDia';
 import { FotosDoAtivo } from './FotosDoAtivo';
+import { nomeDoLocal as nomeComEdificacao } from '../locais';
 
 type Valor = string | number | boolean;
 
@@ -189,7 +190,7 @@ function Formulario(p: PropsDoFormulario) {
             .filter((l) => l.status !== 'inativo')
             .map((l) => (
               <option key={l.id} value={l.id}>
-                {l.nome}
+                {nomeDoLocal(l.id)}
               </option>
             ))}
         </select>
@@ -349,7 +350,10 @@ export function Ativos(props: {
   const locais = referencia.locais[hotelId] ?? [];
   const doHotel = referencia.ativos[hotelId] ?? [];
   const ativos = filtrarPorBusca(doHotel, busca);
-  const nomeDoLocal = (id: string) => locais.find((l) => l.id === id)?.nome ?? id;
+  const nomeDoLocal = (id: string) => {
+    const l = locais.find((x) => x.id === id);
+    return l ? nomeComEdificacao(t, l) : id;
+  };
   const pendentes = props.pendentes.filter((p) => locais.some((l) => l.id === p.localId));
 
   /** Valida com as regras do domínio; recusa vira aviso com o código, sem ir à fila. */

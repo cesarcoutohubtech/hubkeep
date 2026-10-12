@@ -1035,3 +1035,18 @@ fieldset.hk-em-linha > legend {
   height: 18px;
   accent-color: var(--hk-botao-primario-fundo);
 }
+
+/* Quadro da assinatura do aceite (I8): o traço usa a cor do texto do tema; o
+   PNG enviado é desenhado à parte, em preto sobre branco. */
+.hk-assinatura {
+  display: block;
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 3 / 1;
+  border: 1px dashed var(--hk-linha);
+  border-radius: 8px;
+  background: var(--hk-superficie);
+  color: var(--hk-texto);
+  touch-action: none;
+  cursor: crosshair;
+}

@@ -22,6 +22,10 @@
 // que não serve (de outro tipo, desativado, de outra categoria) é descartado,
 // e a conclusão nunca é recusada por eles (decisão do Cesar de 10/10/2026).
 // A política os.codigos_obrigatorios é cobrada só no aceite, no web.
+//
+// Foto "depois" (I8): com a política os.foto_depois_obrigatoria ligada no
+// hotel, a conclusão exige ao menos uma foto "depois" registrada na OS. Sem
+// rede, a foto sai da fila antes da conclusão, que vem depois dela.
 import {
   type AtorDaCorretiva,
   type CodigosSugeridos,
@@ -33,12 +37,14 @@ import {
   decidirNaOs,
   decidirRegistroNaOs,
   exigirAtivoNoChamado,
+  exigirFotoDepoisNaConclusao,
   exigirParadaAberta,
   exigirSemParadaAberta,
   horaDaTransicao,
   normalizarMaterial,
   paradaAEncerrarNaConclusao,
   periodoALiberarNaConclusao,
+  resolverPolitica,
   situacaoPara,
   sugestaoDosCodigos,
   validarApontamento,
@@ -55,6 +61,8 @@ import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/tria
 import type { LiberacaoDeUh, PortaUhIndisponivel } from '../portas/uh-indisponivel';
 
 export type AcaoDoTecnico = AcaoNaOsDecidida['acao'];
+
+const FOTO_DEPOIS_OBRIGATORIA = 'os.foto_depois_obrigatoria';
 
 export interface CasosDeUsoDeExecucao {
   prepararAcao(
@@ -95,13 +103,16 @@ export interface CasosDeUsoDeExecucao {
     ctx: Contexto,
     p: { osId: string; fim: Date },
   ): Promise<EncerramentoDeParada>;
-  /** A fila do dia do Técnico: as OS dele e das equipes dele ainda em curso. */
+  /**
+   * A fila do dia do Técnico: as OS dele e das equipes dele ainda em curso,
+   * com as fotos "depois" e a política da foto do hotel (I8).
+   */
   osDoDia(ctx: Contexto): Promise<OsDoDia[]>;
 }
 
 export function criarCasosDeUsoDeExecucao(deps: {
   execucao: PortaExecucao;
-  triagem: Pick<PortaTriagem, 'chamado' | 'os'>;
+  triagem: Pick<PortaTriagem, 'chamado' | 'os' | 'politica'>;
   situacoes: Pick<PortaSituacoes, 'listar'>;
   atribuicoes: Pick<PortaAtribuicoes, 'doUsuario'>;
   relogio: Relogio;
@@ -193,6 +204,13 @@ export function criarCasosDeUsoDeExecucao(deps: {
   }
 
   /** Os códigos sugeridos na conclusão (I6): o que não serve é descartado, nunca recusado. */
+  /** A foto "depois" na conclusão, com a política ligada no hotel (I8). */
+  async function exigirFotoDepois(ctx: Contexto, os: OsGravada, chamado: ChamadoParaTriagem) {
+    const politica = await deps.triagem.politica(ctx, chamado.hotel.id, FOTO_DEPOIS_OBRIGATORIA);
+    if (!resolverPolitica(FOTO_DEPOIS_OBRIGATORIA, politica).ligado) return;
+    exigirFotoDepoisNaConclusao(true, await deps.execucao.fotosDepois(ctx, os.id));
+  }
+
   async function codigosDaConclusao(
     ctx: Contexto,
     chamado: ChamadoParaTriagem,
@@ -224,6 +242,7 @@ export function criarCasosDeUsoDeExecucao(deps: {
         await deps.execucao.ultimaTransicaoEm(ctx, os.id),
         deps.relogio.agora(),
       );
+      if (acao === 'concluir') await exigirFotoDepois(ctx, os, chamado);
       const encerrarParada =
         acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
       const liberarUh = acao === 'concluir' ? await uhDaConclusao(ctx, os, chamado, p) : null;
@@ -289,6 +308,25 @@ export function criarCasosDeUsoDeExecucao(deps: {
       return { id: aberta.id, hotelId: os.hotelId, fim };
     },
 
-    osDoDia: (ctx) => deps.execucao.osDoDia(ctx),
+    async osDoDia(ctx) {
+      const lista = await deps.execucao.osDoDia(ctx);
+      // A política da foto "depois" (I8), uma leitura por hotel da fila.
+      const hoteis = [...new Set(lista.map((o) => o.hotelId))];
+      const ligada = new Map(
+        await Promise.all(
+          hoteis.map(
+            async (h) =>
+              [
+                h,
+                resolverPolitica(
+                  FOTO_DEPOIS_OBRIGATORIA,
+                  await deps.triagem.politica(ctx, h, FOTO_DEPOIS_OBRIGATORIA),
+                ).ligado,
+              ] as const,
+          ),
+        ),
+      );
+      return lista.map((o) => ({ ...o, fotoDepoisObrigatoria: ligada.get(o.hotelId) ?? false }));
+    },
   };
 }

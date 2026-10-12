@@ -24,6 +24,8 @@ const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsNoAparelho => ({
   motivoReabertura: null,
   versao: 1,
   criadoEm: '2026-09-29T08:00:00.000Z',
+  fotosDepois: 0,
+  fotoDepoisObrigatoria: false,
   chamado: {
     id: 'c1000000-0000-4000-8000-000000000001',
     descricao: 'Chuveiro frio',
@@ -96,6 +98,24 @@ describe('fila do dia com OS', () => {
   });
 });
 
+describe('local com a edificação (I2)', () => {
+  const naTorre: OsNoAparelho = {
+    ...os('atribuida'),
+    chamado: { ...os('atribuida').chamado, localEdificacao: 'Torre A' },
+  };
+
+  it.each(IDIOMAS)('%s: a fila e a OS mostram "UH 101 · Torre A"', (idioma) => {
+    expect(renderizar(idioma, fila([naTorre]))).toContain('UH 101 · Torre A');
+    expect(renderizar(idioma, tela(naTorre))).toContain('UH 101 · Torre A');
+  });
+
+  it('sem a edificação (ou com a API anterior), só o nome', () => {
+    const html = renderizar('pt-BR', fila([os('atribuida')]));
+    expect(html).toContain('UH 101');
+    expect(html).not.toContain('UH 101 ·');
+  });
+});
+
 describe('tela da OS', () => {
   it.each(IDIOMAS)('%s', (idioma) => {
     const m = mensagensDe(idioma);
@@ -109,6 +129,27 @@ describe('tela da OS', () => {
     expect(atribuida).toContain(m['tecnico.os.acao.iniciar']);
     expect(atribuida).toContain(m['tecnico.os.sem_registro']);
     expect(atribuida).not.toContain(m['tecnico.os.horas.apontar']);
+    // A foto "antes" (I8): a foto vale com a OS atribuída.
+    expect(atribuida).toContain(m['tecnico.fotos.tirar']);
+    expect(atribuida).toContain(m['tecnico.os.fotos.momento']);
+  });
+
+  it('o momento sugerido pelo estado: antes com a OS atribuída, depois em execução (I8)', () => {
+    const selecionado = (html: string) =>
+      /<option value="(antes|depois)" selected=""/.exec(html)?.[1];
+    expect(selecionado(renderizar('pt-BR', tela(os('atribuida'))))).toBe('antes');
+    expect(selecionado(renderizar('pt-BR', tela(os('em_execucao'))))).toBe('depois');
+    expect(selecionado(renderizar('pt-BR', tela(os('pausada'))))).toBe('depois');
+    expect(renderizar('pt-BR', tela(os('em_execucao')))).toContain('Depois do serviço');
+  });
+
+  it.each(IDIOMAS)('%s: com a política da foto ligada, a tela avisa e conta (I8)', (idioma) => {
+    const m = mensagensDe(idioma);
+    const ligada = { ...os('em_execucao'), fotoDepoisObrigatoria: true, fotosDepois: 0 };
+    const html = renderizar(idioma, tela(ligada));
+    expect(html).toContain('data-fotos-depois="0"');
+    expect(m['tecnico.os.fotos.depois_obrigatoria'].length).toBeGreaterThan(10);
+    expect(renderizar(idioma, tela(os('em_execucao')))).not.toContain('data-fotos-depois');
   });
 
   it('as ações pelo estado, com as regras do domínio', () => {

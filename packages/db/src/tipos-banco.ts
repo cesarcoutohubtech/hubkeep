@@ -36,6 +36,7 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface AppAnexo {
+  assinatura: Generated<boolean>;
   ativo_id: string | null;
   caminho: string;
   chamado_id: string | null;
@@ -45,6 +46,7 @@ export interface AppAnexo {
   id: string;
   local_id: string | null;
   miniatura_caminho: string | null;
+  momento: string | null;
   nome: string | null;
   os_id: string | null;
   removido_em: Timestamp | null;
@@ -337,6 +339,7 @@ export interface AppOperacaoOffline {
 }
 
 export interface AppOs {
+  assinatura_aceite_id: string | null;
   atualizado_em: Generated<Timestamp>;
   chamado_aberto_por: string | null;
   chamado_id: string;

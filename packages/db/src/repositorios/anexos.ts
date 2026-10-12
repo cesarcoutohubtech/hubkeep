@@ -2,7 +2,9 @@
 // evento. O arquivo já está no Storage; aqui só se grava a quem ele pertence.
 // A RLS decide por último: sem escrita no hotel, o INSERT é recusado (42501) e
 // o UPDATE da remoção não acha linha. O check anexo_caminho_do_registro recusa
-// um caminho que não seja do tenant, do hotel e do registro da linha.
+// um caminho que não seja do tenant, do hotel e do registro da linha. A foto
+// da OS leva o momento (I8); a assinatura do aceite é registrada pelo aceite,
+// com assinatura = true, e a policy de UPDATE não a alcança (migração 0041).
 import type { DadosDeAnexo } from '@hubkeep/aplicacao';
 import { Conflito, NaoEncontrado } from '@hubkeep/dominio';
 import { sql } from 'kysely';
@@ -23,7 +25,9 @@ function arquivoRepetido(e: unknown): never {
 export async function registrarAnexo(
   uow: UnidadeDeTrabalho,
   d: DadosDeAnexo,
+  opcoes: { assinatura?: boolean } = {},
 ): Promise<{ id: string }> {
+  const assinatura = opcoes.assinatura ?? false;
   if (!uow.usuarioId) throw new Error('Registro de anexo exige usuário no contexto.');
   const id = novoId();
   await transacaoDe(uow)
@@ -41,6 +45,8 @@ export async function registrarAnexo(
       miniatura_caminho: d.miniaturaCaminho,
       tipo: d.tipo,
       nome: d.nome,
+      momento: d.momento,
+      assinatura,
       usuario_id: uow.usuarioId,
     })
     .execute()
@@ -57,13 +63,22 @@ export async function registrarAnexo(
       miniaturaCaminho: d.miniaturaCaminho,
       tipo: d.tipo,
       nome: d.nome,
+      ...(d.momento !== null ? { momento: d.momento } : {}),
+      ...(assinatura ? { assinatura } : {}),
     },
   });
   uow.publicar({
     tipo: 'anexo.registrado',
     entidade: 'anexo',
     registroId: id,
-    payload: { hotelId: d.hotelId, entidade: d.entidade, registroId: d.registroId, tipo: d.tipo },
+    payload: {
+      hotelId: d.hotelId,
+      entidade: d.entidade,
+      registroId: d.registroId,
+      tipo: d.tipo,
+      ...(d.momento !== null ? { momento: d.momento } : {}),
+      ...(assinatura ? { assinatura } : {}),
+    },
   });
   return { id };
 }

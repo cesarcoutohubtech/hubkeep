@@ -179,6 +179,7 @@ export type { ChamadoGravado, DadosDeChamado, PortaChamados } from './portas/cha
 export { criarCasosDeUsoDeChamados } from './casos-de-uso/chamados';
 export type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './casos-de-uso/chamados';
 export type {
+  AssinaturaDoAceite,
   ChamadoParaTriagem,
   MudancaNoChamado,
   OsGravada,

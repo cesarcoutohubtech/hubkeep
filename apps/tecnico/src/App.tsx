@@ -14,7 +14,7 @@
 // fila, na ordem em que foram feitos, e a parada do ativo (C5) também. O
 // espaço do aparelho (persistência, aviso de pendência antiga, teto das fotos)
 // está em armazenamento.ts.
-import { RegraViolada } from '@hubkeep/dominio';
+import { type MomentoDaFoto, RegraViolada } from '@hubkeep/dominio';
 import { type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -378,12 +378,12 @@ function Casca(props: {
     enfileirar({ tipo: 'os.encerrar_parada', dados: { osId, fim: new Date().toISOString() } });
 
   /** A foto entra comprimida e só abaixo do teto de espaço (adendo ao ADR-025, (b)). */
-  async function fotografarOs(osId: string, arquivo: File) {
+  async function fotografarOs(osId: string, arquivo: File, momento: MomentoDaFoto) {
     const usuarioId = sessaoAtual.current?.user.id;
     if (!fila.current || !usuarioId) return;
     let dados;
     try {
-      dados = await fotoParaFila(osId, arquivo, arquivo.name || null);
+      dados = await fotoParaFila(osId, arquivo, arquivo.name || null, momento);
     } catch {
       throw new RegraViolada('foto_ilegivel', 'Foto ilegível.');
     }

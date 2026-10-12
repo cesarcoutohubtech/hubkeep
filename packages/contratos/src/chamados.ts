@@ -87,6 +87,8 @@ export const OsApi = z
     custoInformado: z.number().nullable(),
     /** Falha, causa e solução (I6): sugeridos na conclusão, confirmados no aceite. */
     codigos: CodigosDaOsApi,
+    /** O anexo da assinatura do último aceite (I8); null: aceite sem assinatura. */
+    assinaturaAceiteId: z.guid().nullable(),
     criadoPor: z.guid(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
@@ -116,6 +118,8 @@ export const RespostaDeChamado = z
     /** As OS do chamado, da mais antiga para a mais nova (no máximo uma não cancelada). */
     os: z.array(OsApi),
     nomes: NomesDoChamadoApi,
+    /** A política os.assinatura_no_aceite do hotel (I8): o aceite pede a assinatura. */
+    assinaturaNoAceite: z.boolean(),
   })
   .meta({ id: 'RespostaDeChamado' });
 
@@ -271,10 +275,18 @@ export const RespostaDeOsGravada = z
  * informado em reais (I4), conferido no domínio (não negativo, dois decimais).
  * Com `codigos` (I6), os três substituem os da OS; sem eles, ficam os que o
  * técnico sugeriu. Com a política os.codigos_obrigatorios ligada no hotel, o
- * aceite sem os três é recusado (422 codigos_obrigatorios_no_aceite).
+ * aceite sem os três é recusado (422 codigos_obrigatorios_no_aceite). Com
+ * `assinaturaCaminho` (I8), o PNG enviado pela URL da assinatura; com a
+ * política os.assinatura_no_aceite ligada, o aceite sem ela é recusado (422
+ * assinatura_obrigatoria_no_aceite).
  */
 export const PedidoDeAceiteDeOs = z
-  .object({ versao, custoInformado: z.number().nullish(), codigos: CodigosDaOsApi.optional() })
+  .object({
+    versao,
+    custoInformado: z.number().nullish(),
+    codigos: CodigosDaOsApi.optional(),
+    assinaturaCaminho: z.string().min(1).max(500).nullish(),
+  })
   .meta({ id: 'PedidoDeAceiteDeOs' });
 
 /**
@@ -303,11 +315,23 @@ export const OsDoDiaApi = z
     motivoReabertura: z.string().nullable(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
+    /**
+     * Fotos "depois" registradas na OS (I8). O servidor sempre manda; opcional
+     * para o PWA ler a API anterior à I8 (sem ele: nenhuma).
+     */
+    fotosDepois: z.int().optional(),
+    /**
+     * A política os.foto_depois_obrigatoria do hotel (I8): concluir pede foto
+     * "depois". O servidor sempre manda; sem ele, desligada.
+     */
+    fotoDepoisObrigatoria: z.boolean().optional(),
     chamado: z.object({
       id: z.guid(),
       descricao: z.string(),
       localId: z.guid(),
       localNome: z.string(),
+      /** Edificação do local (I2). Opcional: o PWA lê a API anterior sem ela. */
+      localEdificacao: z.string().nullable().optional(),
       prioridadeId: z.guid(),
       estado: z.enum(ESTADOS_DO_CHAMADO_API),
       /** O ativo do chamado (C5); sem ele, não há parada. */

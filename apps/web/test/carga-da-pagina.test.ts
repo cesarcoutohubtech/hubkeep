@@ -58,6 +58,7 @@ function fontes(sobrescrever: Partial<Record<string, unknown>> = {}) {
       }) as never,
     }),
     triagem: async () => ({
+      assinaturaNoAceite: async () => false,
       osDoChamado: marcar('osDoChamado', [
         {
           id: OS,
@@ -72,6 +73,7 @@ function fontes(sobrescrever: Partial<Record<string, unknown>> = {}) {
           fornecedorId: null,
           custoInformado: null,
           codigos: { falhaId: null, causaId: null, solucaoId: null },
+          assinaturaAceiteId: null,
           criadoPor: USUARIO,
           versao: 1,
           criadoEm: EM,
@@ -114,7 +116,7 @@ function fontes(sobrescrever: Partial<Record<string, unknown>> = {}) {
       }) as never,
     }),
     equipes: async () => ({
-      listarEquipes: marcar('equipes', { equipes: [], disponiveis: [] }) as never,
+      listarEquipes: marcar('equipes', { equipes: [], disponiveis: [], tecnicos: [] }) as never,
     }),
   };
   return { f, chamadas };
@@ -135,7 +137,7 @@ describe('telaDoChamado: montagem pelos casos de uso da API', () => {
     expect(tela.eventos[0]?.em).toBe(EM.toISOString());
     expect(tela.hoteis).toEqual([{ id: H, nome: 'Hotel Um', status: 'ativo', bandeiraId: null }]);
     expect(tela.corretiva?.idiomaPadrao).toBe('pt-BR');
-    expect(tela.candidatos).toEqual({ equipes: [], disponiveis: [] });
+    expect(tela.candidatos).toEqual({ equipes: [], disponiveis: [], tecnicos: [] });
     expect(falhas).toEqual([]);
     // O chamado é lido primeiro, com o contexto de quem pede; as equipes, do hotel dele.
     expect(chamadas[0]).toBe(`chamado:${JSON.stringify([CTX, C])}`);

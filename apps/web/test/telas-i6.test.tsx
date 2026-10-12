@@ -66,6 +66,7 @@ const os = (c: OsDoChamado['codigos']): OsDoChamado => ({
   fornecedorId: null,
   custoInformado: null,
   codigos: c,
+  assinaturaAceiteId: null,
   criadoPor: U,
   versao: 4,
   criadoEm: '2026-10-10T12:00:00.000Z',
@@ -99,6 +100,7 @@ const detalhe = (o: OsDoChamado): DetalheDoChamado => ({
     equipes: {},
     fornecedores: {},
   },
+  assinaturaNoAceite: false,
 });
 
 const nada = () => undefined;

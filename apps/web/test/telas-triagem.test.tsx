@@ -50,7 +50,7 @@ const candidatos: CandidatosAResponsavel = {
     { id: E, nome: 'Equipe Centro', ativa: true },
     { id: C, nome: 'Equipe Antiga', ativa: false },
   ],
-  disponiveis: [{ usuarioId: U, nome: 'Ana Técnica' }],
+  tecnicos: [{ usuarioId: U, nome: 'Ana Técnica' }],
 };
 
 const osDe = (estado: OsDoChamado['estado']): OsDoChamado => ({
@@ -66,6 +66,7 @@ const osDe = (estado: OsDoChamado['estado']): OsDoChamado => ({
   fornecedorId: null,
   custoInformado: null,
   codigos: { falhaId: null, causaId: null, solucaoId: null },
+  assinaturaAceiteId: null,
   criadoPor: U,
   versao: 2,
   criadoEm: '2026-09-30T13:00:00.000Z',
@@ -102,6 +103,7 @@ const detalheDe = (
     equipes: {},
     fornecedores: {},
   },
+  assinaturaNoAceite: false,
 });
 
 const nada = () => undefined;
@@ -259,7 +261,7 @@ describe('seletor de responsável', () => {
     expect(html).toContain(`value="tecnico:${U}"`);
     const vazio = renderizar(
       'pt-BR',
-      painel(detalheDe('em_triagem'), { equipes: [], disponiveis: [] }),
+      painel(detalheDe('em_triagem'), { equipes: [], tecnicos: [] }),
     );
     expect(vazio).toContain(mensagensDe('pt-BR')['corretiva.triagem.sem_candidatos']);
   });

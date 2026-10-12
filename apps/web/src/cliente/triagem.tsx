@@ -32,7 +32,8 @@ import { useT } from '../i18n/cliente';
 /** Quem pode receber a OS, como GET /api/v1/hoteis/{id}/equipes devolve. */
 export interface CandidatosAResponsavel {
   equipes: { id: string; nome: string; ativa: boolean }[];
-  disponiveis: { usuarioId: string; nome: string }[];
+  /** Só os Técnicos do hotel: a API recusa qualquer outra pessoa. */
+  tecnicos: { usuarioId: string; nome: string }[];
 }
 
 export type Responsavel =
@@ -138,7 +139,7 @@ function SeletorDeResponsavel(props: {
   aoMudar: (v: string) => void;
 }) {
   const t = useT();
-  const pessoas = props.candidatos?.disponiveis ?? [];
+  const pessoas = props.candidatos?.tecnicos ?? [];
   const equipes = (props.candidatos?.equipes ?? []).filter((e) => e.ativa);
   if (pessoas.length === 0 && equipes.length === 0) {
     return <p className="hk-suave">{t('corretiva.triagem.sem_candidatos')}</p>;

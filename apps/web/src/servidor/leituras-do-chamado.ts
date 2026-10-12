@@ -35,7 +35,7 @@ import {
 /** De onde vêm os casos de uso; nos testes, falsos. */
 export interface FontesDoChamado {
   chamados: () => Promise<Pick<CasosDeUsoDeChamados, 'chamado'>>;
-  triagem: () => Promise<Pick<CasosDeUsoDeTriagem, 'osDoChamado'>>;
+  triagem: () => Promise<Pick<CasosDeUsoDeTriagem, 'osDoChamado' | 'assinaturaNoAceite'>>;
   consultas: () => Promise<Pick<CasosDeUsoDeConsultas, 'nomesDoChamado' | 'linhaDoTempo'>>;
   papeis: () => Promise<Pick<CasosDeUsoDePapeis, 'listarHoteisVisiveis'>>;
   situacoes: () => Promise<Pick<CasosDeUsoDeSituacoes, 'listarSituacoesEPrioridades'>>;
@@ -58,9 +58,11 @@ export async function detalheDoChamado(
   f: FontesDoChamado = FONTES,
 ): Promise<z.input<typeof RespostaDeChamado>> {
   const c = await (await f.chamados()).chamado(ctx, id);
-  const [os, nomes] = await Promise.all([
-    (await f.triagem()).osDoChamado(ctx, id),
+  const triagem = await f.triagem();
+  const [os, nomes, assinaturaNoAceite] = await Promise.all([
+    triagem.osDoChamado(ctx, id),
     (await f.consultas()).nomesDoChamado(ctx, id),
+    triagem.assinaturaNoAceite(ctx, c.hotelId),
   ]);
   return {
     chamado: {
@@ -93,11 +95,13 @@ export async function detalheDoChamado(
       fornecedorId: o.fornecedorId,
       custoInformado: o.custoInformado,
       codigos: o.codigos,
+      assinaturaAceiteId: o.assinaturaAceiteId,
       criadoPor: o.criadoPor,
       versao: o.versao,
       criadoEm: o.criadoEm.toISOString(),
     })),
     nomes,
+    assinaturaNoAceite,
   };
 }
 

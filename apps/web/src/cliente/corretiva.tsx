@@ -10,6 +10,9 @@
 // técnico, para quem aceita confirmar ou corrigir; a lista de cada um vem da
 // API (os que servem para a OS). Com a política os.codigos_obrigatorios ligada
 // no hotel, a API recusa o aceite sem os três, e a recusa aparece traduzida.
+// Na I8, com a política os.assinatura_no_aceite ligada no hotel, o aceite traz
+// o quadro da assinatura (assinatura.tsx); a OS aceita com assinatura mostra o
+// botão para vê-la, e as fotos da OS aparecem com o momento (antes ou depois).
 import type {
   ChamadoResumidoApi,
   EventoDaLinhaDoTempoApi,
@@ -35,7 +38,9 @@ import {
 import Link from 'next/link';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { AnexosDoRegistro } from './AnexosDoRegistro';
 import { chamarApi } from './api';
+import { AssinaturaDoAceite, QuadroDeAssinatura, type Traco } from './assinatura';
 import {
   type CodigoNaTela,
   type CodigosDoTenant,
@@ -450,13 +455,20 @@ function useCodigosDaOs(osId: string, ligado: boolean) {
 function Aceite(props: {
   os: OsDoChamado;
   codigos: CodigosDoTenant | null;
-  aoAceitar: (custoInformado: number | null, codigos: CodigosDaOsNaTela | undefined) => void;
+  /** A política do hotel (I8): o aceite traz o quadro da assinatura. */
+  assinaturaNoAceite: boolean;
+  aoAceitar: (
+    custoInformado: number | null,
+    codigos: CodigosDaOsNaTela | undefined,
+    assinatura: Traco[] | null,
+  ) => void;
 }) {
   const t = useT();
   const nomeDoCodigo = useNomeDoCodigo(props.codigos);
   const porTipo = useCodigosDaOs(props.os.id, props.codigos !== null);
   const [custo, setCusto] = useState('');
   const [escolhidos, setEscolhidos] = useState<CodigosDaOsNaTela | null>(null);
+  const [tracos, setTracos] = useState<Traco[]>([]);
   const porId = new Map((props.codigos?.codigos ?? []).map((c) => [c.id, c]));
   /** O valor do campo: o escolhido, senão a sugestão do técnico, se ela ainda serve. */
   const valor = (tipo: TipoDeCodigo): string => {
@@ -472,7 +484,11 @@ function Aceite(props: {
   });
   function enviar(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
-    props.aoAceitar(custoDoCampo(custo), porTipo ? atuais() : undefined);
+    props.aoAceitar(
+      custoDoCampo(custo),
+      porTipo ? atuais() : undefined,
+      props.assinaturaNoAceite && tracos.length > 0 ? tracos : null,
+    );
   }
   return (
     <form onSubmit={enviar}>
@@ -514,6 +530,13 @@ function Aceite(props: {
           />
         )}
       </Campo>
+      {props.assinaturaNoAceite && (
+        <div className="hk-pilha">
+          <p className="hk-bloco-titulo">{t('corretiva.aceite.assinatura.titulo')}</p>
+          <p className="hk-suave">{t('corretiva.aceite.assinatura.dica')}</p>
+          <QuadroDeAssinatura aoMudar={setTracos} />
+        </div>
+      )}
       <Botao type="submit" variante="primario">
         {t('corretiva.aceite.aceitar')}
       </Botao>
@@ -603,6 +626,7 @@ export function ChamadoEmDetalhe(props: {
     os: OsDoChamado,
     custoInformado: number | null,
     codigos?: CodigosDaOsNaTela | undefined,
+    assinatura?: Traco[] | null,
   ) => void;
   aoReabrir: (os: OsDoChamado, p: PedidoDeReabertura) => void;
 }) {
@@ -693,6 +717,7 @@ export function ChamadoEmDetalhe(props: {
                     </p>
                   )}
                   <CodigosDaOs os={o} codigos={props.codigos ?? null} />
+                  {o.assinaturaAceiteId && <AssinaturaDoAceite anexoId={o.assinaturaAceiteId} />}
                   {o.motivoReabertura && (
                     <p className="hk-suave">
                       {t('corretiva.os.motivo_reabertura', { motivo: o.motivoReabertura })}
@@ -710,7 +735,10 @@ export function ChamadoEmDetalhe(props: {
                       <Aceite
                         os={o}
                         codigos={props.codigos ?? null}
-                        aoAceitar={(custo, codigos) => props.aoAceitar(o, custo, codigos)}
+                        assinaturaNoAceite={props.detalhe.assinaturaNoAceite}
+                        aoAceitar={(custo, codigos, assinatura) =>
+                          props.aoAceitar(o, custo, codigos, assinatura)
+                        }
                       />
                       <Reabertura
                         temAtivo={chamado.ativoId !== null}
@@ -718,6 +746,7 @@ export function ChamadoEmDetalhe(props: {
                       />
                     </div>
                   )}
+                  <AnexosDoRegistro entidade="os" registroId={o.id} somenteLeitura />
                   <HistoricoDoRegistro
                     key={`${o.id}-${o.versao}`}
                     entidade="os"

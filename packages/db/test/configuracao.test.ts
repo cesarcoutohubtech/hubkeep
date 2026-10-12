@@ -205,6 +205,8 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
         'chamado.prioridade_padrao_por_categoria',
         ACEITE,
         'os.codigos_obrigatorios',
+        'os.foto_depois_obrigatoria',
+        'os.assinatura_no_aceite',
       ].sort(),
     );
   });

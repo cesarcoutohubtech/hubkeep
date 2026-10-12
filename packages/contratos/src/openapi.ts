@@ -624,7 +624,7 @@ export const ROTAS: readonly Rota[] = [
         'O arquivo já foi registrado (anexo_ja_registrado), ou a OS não aceita foto (transicao_invalida, os_de_outro_responsavel).',
       ),
       422: ERRO(
-        'caminho_de_anexo_invalido, miniatura_invalida, anexo_nome_invalido ou entrada_invalida.',
+        'caminho_de_anexo_invalido, miniatura_invalida, anexo_nome_invalido, momento_da_foto_invalido, momento_so_na_os ou entrada_invalida.',
       ),
     },
   },
@@ -660,7 +660,9 @@ export const ROTAS: readonly Rota[] = [
     respostas: {
       200: { descricao: 'Anexo removido', esquema: RespostaDeAnexoRemovido },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
-      403: ERRO('Só quem enviou ou quem gere o hotel (remover_anexo_fora_do_escopo).'),
+      403: ERRO(
+        'Só quem enviou ou quem gere o hotel (remover_anexo_fora_do_escopo); a assinatura do aceite ninguém remove (assinatura_nao_se_remove).',
+      ),
       404: ERRO('Anexo fora do escopo ou já removido (anexo_nao_encontrado).'),
     },
   },
@@ -1763,7 +1765,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/os/{id}/aceite',
     resumo:
-      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Com custoInformado, o custo em reais (I4), opcional, sem aprovação nem alçada. Com codigos (I6), falha, causa e solução substituem os sugeridos pelo técnico; com a política os.codigos_obrigatorios ligada no hotel, o aceite exige os três. Leva a versão vista da OS.',
+      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Com custoInformado, o custo em reais (I4), opcional, sem aprovação nem alçada. Com codigos (I6), falha, causa e solução substituem os sugeridos pelo técnico; com a política os.codigos_obrigatorios ligada no hotel, o aceite exige os três. Com assinaturaCaminho (I8), o PNG enviado pela URL da assinatura, registrado como anexo da OS no mesmo aceite; com a política os.assinatura_no_aceite ligada no hotel, o aceite exige a assinatura. É evidência do aceite, e não assinatura digital ICP-Brasil. Leva a versão vista da OS.',
     exigeTenant: true,
     corpo: PedidoDeAceiteDeOs,
     respostas: {
@@ -1775,8 +1777,24 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
       422: ERRO(
-        'os_custo_invalido, codigos_obrigatorios_no_aceite (faltam), codigo_nao_encontrado, codigo_de_outro_tipo, codigo_inativo ou codigo_de_outra_categoria (tipo), sem_situacao_para_estado ou entrada_invalida.',
+        'os_custo_invalido, codigos_obrigatorios_no_aceite (faltam), codigo_nao_encontrado, codigo_de_outro_tipo, codigo_inativo ou codigo_de_outra_categoria (tipo), assinatura_obrigatoria_no_aceite, assinatura_invalida, sem_situacao_para_estado ou entrada_invalida.',
       ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/os/{id}/assinatura/url-de-upload',
+    resumo:
+      'URL assinada para enviar a assinatura do aceite (I8): um PNG novo na pasta da OS, desenhado no web. Só para quem pode aceitar a OS concluída agora (as mesmas regras do aceite). O caminho devolvido vai no aceite (assinaturaCaminho).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'URL de upload (PUT do PNG)', esquema: RespostaDeUrlDeUpload },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO(
+        'Sem escrita no hotel (anexo_sem_escrita_no_hotel), ou quem pede não aceita a OS (acao_fora_do_papel).',
+      ),
+      404: ERRO('OS fora do escopo (registro_nao_encontrado ou os_nao_encontrada).'),
+      409: ERRO('A OS não está concluída (transicao_invalida).'),
     },
   },
   {

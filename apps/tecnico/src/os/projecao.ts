@@ -9,17 +9,28 @@
 // A parada do ativo (C5) também: registrada aberta, o ativo aparece parado
 // desde o início dela; encerrada, deixa de aparecer. A conclusão com "o
 // equipamento voltou a funcionar" encerra a parada do chamado junto, e a com
-// "UH liberada" (I4), o período da UH indisponível.
-import { ESTADOS_QUE_ACEITAM_REGISTRO, type EstadoDaOs, TRANSICOES_DA_OS } from '@hubkeep/dominio';
+// "UH liberada" (I4), o período da UH indisponível. As fotos "depois" na fila
+// somam às que a API contou (I8): com a política do hotel ligada, a tela só
+// conclui com ao menos uma.
+import {
+  ESTADOS_QUE_ACEITAM_FOTO,
+  ESTADOS_QUE_ACEITAM_REGISTRO,
+  type EstadoDaOs,
+  TRANSICOES_DA_OS,
+} from '@hubkeep/dominio';
 import type { FotoNaFila, OperacaoNaFila } from '../fila/banco';
 import type { OsGuardada } from './banco';
 
 export const ACOES_DO_TECNICO = ['iniciar', 'pausar', 'retomar', 'concluir'] as const;
 export type AcaoDoTecnico = (typeof ACOES_DO_TECNICO)[number];
 
-export interface OsNoAparelho extends OsGuardada {
+export interface OsNoAparelho extends Omit<OsGuardada, 'fotosDepois' | 'fotoDepoisObrigatoria'> {
   /** Operações desta OS ainda na fila: transições, horas, material e fotos. */
   pendentes: number;
+  /** Fotos "depois" da OS: as que a API contou e as da fila (I8). */
+  fotosDepois: number;
+  /** A política da foto "depois" do hotel (I8); a guardada antes da I8 conta como desligada. */
+  fotoDepoisObrigatoria: boolean;
 }
 
 const acaoDoTipo = (tipo: OperacaoNaFila['tipo']): AcaoDoTecnico | null => {
@@ -38,13 +49,27 @@ export function projetarOs(
   guardadas: readonly OsGuardada[],
   fila: readonly OperacaoNaFila[],
 ): OsNoAparelho[] {
-  const porId = new Map(guardadas.map((o) => [o.id, { ...o, pendentes: 0 }]));
+  const porId = new Map<string, OsNoAparelho>(
+    guardadas.map((o) => [
+      o.id,
+      {
+        ...o,
+        pendentes: 0,
+        fotosDepois: o.fotosDepois ?? 0,
+        fotoDepoisObrigatoria: o.fotoDepoisObrigatoria === true,
+      },
+    ]),
+  );
   for (const op of fila) {
     // A recusada não aconteceu: fica na tela até o técnico dispensar.
     if (op.estado !== 'pendente') continue;
     const os = porId.get(osDaOperacao(op) ?? '');
     if (!os) continue;
     os.pendentes += 1;
+    if (op.tipo === 'anexo.foto') {
+      if ((op.dados as FotoNaFila).momento === 'depois') os.fotosDepois += 1;
+      continue;
+    }
     if (op.tipo === 'os.registrar_parada') {
       const d = op.dados as { inicio: string; fim: string | null };
       if (d.fim === null) {
@@ -82,9 +107,17 @@ export function projetarOs(
 export const acoesPossiveis = (estado: EstadoDaOs): AcaoDoTecnico[] =>
   ACOES_DO_TECNICO.filter((a) => (TRANSICOES_DA_OS[a].de as readonly string[]).includes(estado));
 
-/** Horas, material, fotos e parada: só com a OS em execução ou pausada. */
+/** Horas, material e parada: só com a OS em execução ou pausada. */
 export const aceitaRegistro = (estado: EstadoDaOs): boolean =>
   ESTADOS_QUE_ACEITAM_REGISTRO.includes(estado);
+
+/** Foto: também com a OS atribuída, a foto "antes" (I8). */
+export const aceitaFoto = (estado: EstadoDaOs): boolean =>
+  ESTADOS_QUE_ACEITAM_FOTO.includes(estado);
+
+/** Com a política do hotel ligada, concluir pede ao menos uma foto "depois" (I8). */
+export const faltaFotoDepois = (os: OsNoAparelho): boolean =>
+  os.fotoDepoisObrigatoria && os.fotosDepois < 1;
 
 /**
  * O que a tela oferece sobre a parada do ativo do chamado (C5). A parada

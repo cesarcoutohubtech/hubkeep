@@ -47,6 +47,7 @@ const osDe = (o: Partial<OsDoChamado>, i: number): OsDoChamado => ({
   fornecedorId: null,
   custoInformado: null,
   codigos: { falhaId: null, causaId: null, solucaoId: null },
+  assinaturaAceiteId: null,
   criadoPor: U,
   versao: 3,
   criadoEm: '2026-10-09T12:00:00.000Z',
@@ -84,6 +85,7 @@ const detalheDe = (
     equipes: {},
     fornecedores: { [F]: 'Refrigeração Sul' },
   },
+  assinaturaNoAceite: false,
 });
 
 const aberto: PeriodoDeUh = {

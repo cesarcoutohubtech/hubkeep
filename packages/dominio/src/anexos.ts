@@ -4,6 +4,7 @@
 // e depois é registrado na unit of work. Anexa quem escreve no hotel (a mesma
 // condição da URL de upload, ADR-024); remove quem enviou o arquivo ou quem
 // gere os locais do hotel. A remoção é lógica: o arquivo fica no Storage.
+// A assinatura do aceite (I8) é imutável: ninguém a remove.
 // A miniatura é gerada no aparelho e enviada como um segundo objeto do mesmo
 // registro; ela é sempre uma imagem.
 import { escopoCobreHotel } from './equipes';
@@ -44,10 +45,19 @@ export function validarMiniatura(
 export function podeRemoverAnexo(
   minhas: readonly Atribuicao[],
   hotel: { id: string; bandeiraId: string | null },
-  anexo: { usuarioId: string },
+  anexo: { usuarioId: string; assinatura?: boolean },
   usuarioId: string,
   agora: Date,
 ): Resultado {
+  if (anexo.assinatura) {
+    return {
+      permitido: false,
+      erro: new PermissaoNegada(
+        'assinatura_nao_se_remove',
+        'A assinatura do aceite não pode ser removida.',
+      ),
+    };
+  }
   const pode =
     anexo.usuarioId === usuarioId ||
     minhas.some(

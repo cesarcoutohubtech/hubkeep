@@ -20,6 +20,7 @@ import type { OperacaoNaFila } from '../fila/banco';
 import { nomeDoIdioma, opcoesDeIdioma, useT } from '../i18n';
 import type { OsNoAparelho } from '../os/projecao';
 import { FaixaDaRede, TelaDoTecnico } from './TelaDoTecnico';
+import { nomeDoLocal } from '../locais';
 
 export interface OperacaoRecusada {
   chave: string;
@@ -166,7 +167,10 @@ export function FilaDoDia(props: {
                 <button className="tc-cartao" onClick={() => props.aoAbrirOs(o.id)}>
                   <span className="tc-cartao-titulo">
                     {t('tecnico.fila.item', {
-                      local: o.chamado.localNome,
+                      local: nomeDoLocal(t, {
+                        nome: o.chamado.localNome,
+                        edificacao: o.chamado.localEdificacao,
+                      }),
                       descricao: o.chamado.descricao,
                     })}
                   </span>

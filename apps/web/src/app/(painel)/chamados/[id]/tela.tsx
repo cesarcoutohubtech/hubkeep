@@ -19,11 +19,16 @@
 //
 // I6: os códigos do tenant vêm pela API; o aceite leva falha, causa e solução,
 // com a sugestão do técnico já escolhida.
+//
+// I8: com a assinatura desenhada, o PNG vai antes ao Storage pela URL da
+// assinatura, e o aceite leva o caminho; a falha do envio aparece traduzida e
+// o aceite não sai.
 import { MensagemVazia, Nota, Painel } from '@hubkeep/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { HistoricoDoRegistro } from '../../../../cliente/HistoricoDoRegistro';
+import { type Traco, enviarAssinatura, pngDaAssinatura } from '../../../../cliente/assinatura';
 import { useCodigosDoTenant } from '../../../../cliente/codigos-manutencao';
 import {
   Aviso,
@@ -131,10 +136,28 @@ export function TelaDoChamado({
     os: OsDoChamado,
     custoInformado: number | null,
     codigos: CodigosDaOsNaTela | undefined,
+    assinatura: Traco[] | null | undefined,
   ) {
+    let assinaturaCaminho: string | undefined;
+    if (assinatura && assinatura.length > 0) {
+      const png = await pngDaAssinatura(assinatura);
+      const enviada = png
+        ? await enviarAssinatura(os.id, png)
+        : ({ ok: false, erro: { codigo: 'envio_de_arquivo_falhou', parametros: {} } } as const);
+      if (!enviada.ok) {
+        setAviso({ tipo: 'erro', erro: enviada.erro });
+        return;
+      }
+      assinaturaCaminho = enviada.caminho;
+    }
     const r = await chamarApi<unknown>(`/api/v1/os/${os.id}/aceite`, {
       method: 'POST',
-      body: JSON.stringify({ versao: os.versao, custoInformado, ...(codigos ? { codigos } : {}) }),
+      body: JSON.stringify({
+        versao: os.versao,
+        custoInformado,
+        ...(codigos ? { codigos } : {}),
+        ...(assinaturaCaminho ? { assinaturaCaminho } : {}),
+      }),
     });
     setParadaExistente(false);
     setAviso(r.ok ? { tipo: 'ok' } : { tipo: 'erro', erro: r.erro });
@@ -167,7 +190,9 @@ export function TelaDoChamado({
               detalhe={detalhe}
               refs={refs}
               codigos={codigos}
-              aoAceitar={(os, custo, codigosDaOs) => void aceitar(os, custo, codigosDaOs)}
+              aoAceitar={(os, custo, codigosDaOs, assinatura) =>
+                void aceitar(os, custo, codigosDaOs, assinatura)
+              }
               aoReabrir={(os, p) => void reabrir(os, p)}
             />
             <UhIndisponivelDoChamado

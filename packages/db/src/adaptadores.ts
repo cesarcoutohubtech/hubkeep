@@ -53,6 +53,7 @@ import {
   type ExecutadoPor,
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
+  ehMomentoDaFoto,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
@@ -553,6 +554,15 @@ export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
           disponiveis: disponiveis.map((m) => ({ usuarioId: m.usuario_id, nome: m.nome })),
         };
       }),
+    atribuicoesDeTecnico: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await selecionar(tx)
+            .where('papel', '=', 'tecnico')
+            .where('revogado_em', 'is', null)
+            .execute()
+        ).map(paraAtribuicao),
+      ),
     criar: (ctx, hotelId, nome) => banco.executar(ctx, (uow) => criarEquipe(uow, hotelId, nome)),
     renomear: (ctx, id, nome) => banco.executar(ctx, (uow) => alterarEquipe(uow, id, { nome })),
     definirAtiva: (ctx, id, ativa) =>
@@ -918,6 +928,7 @@ const COLUNAS_DA_OS = [
   'codigo_falha_id',
   'codigo_causa_id',
   'codigo_solucao_id',
+  'assinatura_aceite_id',
   'criado_por',
   'versao',
   'criado_em',
@@ -939,6 +950,7 @@ function paraOs(o: {
   codigo_falha_id: string | null;
   codigo_causa_id: string | null;
   codigo_solucao_id: string | null;
+  assinatura_aceite_id: string | null;
   criado_por: string;
   versao: number;
   criado_em: Date;
@@ -966,6 +978,7 @@ function paraOs(o: {
       causaId: o.codigo_causa_id,
       solucaoId: o.codigo_solucao_id,
     },
+    assinaturaAceiteId: o.assinatura_aceite_id,
     criadoPor: o.criado_por,
     versao: o.versao,
     criadoEm: o.criado_em,
@@ -1148,6 +1161,17 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           .executeTakeFirst();
         return r?.quando ? new Date(r.quando) : null;
       }),
+    fotosDepois: (ctx, osId) =>
+      banco.withContext(ctx, async (tx) => {
+        const r = await tx
+          .selectFrom('app.anexo')
+          .select((eb) => eb.fn.countAll<string>().as('n'))
+          .where('os_id', '=', osId)
+          .where('momento', '=', 'depois')
+          .where('removido_em', 'is', null)
+          .executeTakeFirst();
+        return Number(r?.n ?? 0);
+      }),
     equipesDoUsuario: (ctx) =>
       banco.withContext(ctx, async (tx) =>
         (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),
@@ -1176,6 +1200,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             'c.descricao',
             'c.local_id',
             'l.nome as local_nome',
+            'l.edificacao as local_edificacao',
             'c.prioridade_id',
             'c.estado as chamado_estado',
             'c.ativo_id',
@@ -1183,6 +1208,16 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
           .select(paradaDoChamado('c.hotel_id', 'c.id'))
           .select(uhIndisponivelDesde('c.hotel_id', 'c.id'))
+          .select((eb) =>
+            eb
+              .selectFrom('app.anexo as a')
+              .select((e) => e.fn.countAll<string>().as('n'))
+              .whereRef('a.hotel_id', '=', 'o.hotel_id')
+              .whereRef('a.os_id', '=', 'o.id')
+              .where('a.momento', '=', 'depois')
+              .where('a.removido_em', 'is', null)
+              .as('fotos_depois'),
+          )
           .where('o.estado', 'in', ['atribuida', 'em_execucao', 'pausada'])
           .where((eb) =>
             eb.or([
@@ -1205,11 +1240,13 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           motivoReabertura: o.motivo_reabertura,
           versao: o.versao,
           criadoEm: o.criado_em,
+          fotosDepois: Number(o.fotos_depois ?? 0),
           chamado: {
             id: o.chamado_id,
             descricao: o.descricao,
             localId: o.local_id,
             localNome: o.local_nome,
+            localEdificacao: o.local_edificacao,
             prioridadeId: o.prioridade_id,
             estado: o.chamado_estado as EstadoDoChamado,
             ativoId: o.ativo_id,
@@ -1777,6 +1814,8 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
         'a.miniatura_caminho',
         'a.tipo',
         'a.nome',
+        'a.momento',
+        'a.assinatura',
         'a.usuario_id',
         'm.nome as nome_usuario',
         'a.criado_em',
@@ -1794,6 +1833,8 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
     miniatura_caminho: string | null;
     tipo: string;
     nome: string | null;
+    momento: string | null;
+    assinatura: boolean;
     usuario_id: string;
     nome_usuario: string | null;
     criado_em: Date;
@@ -1807,6 +1848,8 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
     miniaturaCaminho: a.miniatura_caminho,
     tipo: a.tipo,
     nome: a.nome,
+    momento: ehMomentoDaFoto(a.momento) ? a.momento : null,
+    assinatura: a.assinatura,
     usuarioId: a.usuario_id,
     nomeUsuario: a.nome_usuario,
     criadoEm: a.criado_em,

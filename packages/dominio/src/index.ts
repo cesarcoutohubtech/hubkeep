@@ -109,8 +109,10 @@ export {
 } from './politicas';
 export type {
   AceiteAutomatico,
+  AssinaturaNoAceite,
   ChaveDePolitica,
   CodigosObrigatorios,
+  FotoDepoisObrigatoria,
   ExtensaoDeModulo,
   ExtensaoDePolitica,
   NiveisDePolitica,
@@ -196,6 +198,7 @@ export {
   PAPEIS_QUE_ABREM_CHAMADO,
   TRANSICOES_DA_OS,
   TRANSICOES_DO_CHAMADO,
+  ESTADOS_QUE_ACEITAM_FOTO,
   ESTADOS_QUE_ACEITAM_REGISTRO,
   REGISTROS_NA_OS,
   decidirNaOs,
@@ -280,6 +283,15 @@ export {
   validarNomesDeCodigo,
   validarTipoDeCodigo,
 } from './codigos-manutencao';
+export {
+  MOMENTOS_DA_FOTO,
+  ehMomentoDaFoto,
+  exigirAssinaturaNoAceite,
+  exigirFotoDepoisNaConclusao,
+  momentoSugerido,
+  validarMomentoDoAnexo,
+} from './fotos-e-assinatura';
+export type { MomentoDaFoto } from './fotos-e-assinatura';
 export type {
   CodigoPadrao,
   CodigoParaRegra,
@@ -334,6 +346,7 @@ export {
   ESTADOS_COM_IMPACTO_AJUSTAVEL,
   ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
   exigirPrioridadeAtiva,
+  ehTecnicoDoHotel,
   exigirResponsavelDoHotel,
   podeAjustarPrioridade,
   podeAjustarQuemExecuta,

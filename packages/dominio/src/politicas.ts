@@ -42,6 +42,22 @@ export interface CodigosObrigatorios {
   ligado: boolean;
 }
 
+/**
+ * Foto "depois" obrigatória na conclusão (I8). Desligada por padrão. Ligada,
+ * a conclusão exige ao menos uma foto "depois" registrada na OS.
+ */
+export interface FotoDepoisObrigatoria {
+  ligado: boolean;
+}
+
+/**
+ * Assinatura no aceite (I8). Desligada por padrão. Ligada, o aceite no web
+ * exige a assinatura desenhada por quem aceita.
+ */
+export interface AssinaturaNoAceite {
+  ligado: boolean;
+}
+
 /** Categoria de ativo (id) → prioridade padrão do chamado (id). As duas entram em B2 e C1. */
 export type PrioridadePadraoPorCategoria = Record<string, string>;
 
@@ -55,6 +71,8 @@ export type NomesDeCriticidade = Partial<Record<`${Criticidade}`, Rotulos>>;
 export interface ValoresDePolitica {
   'os.aceite_automatico': AceiteAutomatico;
   'os.codigos_obrigatorios': CodigosObrigatorios;
+  'os.foto_depois_obrigatoria': FotoDepoisObrigatoria;
+  'os.assinatura_no_aceite': AssinaturaNoAceite;
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria;
   'ativo.criticidade': NomesDeCriticidade;
 }
@@ -79,6 +97,16 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
   'os.codigos_obrigatorios': {
     padrao: { ligado: false },
     valido: (v): v is CodigosObrigatorios =>
+      objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
+  },
+  'os.foto_depois_obrigatoria': {
+    padrao: { ligado: false },
+    valido: (v): v is FotoDepoisObrigatoria =>
+      objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
+  },
+  'os.assinatura_no_aceite': {
+    padrao: { ligado: false },
+    valido: (v): v is AssinaturaNoAceite =>
       objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
   },
   'chamado.prioridade_padrao_por_categoria': {

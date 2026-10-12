@@ -1721,6 +1721,54 @@ Decisão 4 do Cesar de 09/10/2026. Ficou com o agente do núcleo quando o CNPJ a
 - **A policy não muda:** sem a checagem da aplicação, a RLS continua recusando (teste de integração).
 - **Verificação:** no local, lint, typecheck e os testes de todos os pacotes, verdes; na CI, o teste de integração `packages/db/test/fornecedores.test.ts` com o Gestor CSC numa bandeira sem hotel.
 
+### I8 — foto antes ou depois e assinatura no aceite: migração, regras e API (12/10/2026)
+
+Desenho aprovado pelo Cesar em 08/10/2026 (item 4). PR de zona protegida, com a migração 0041 e o pgTAP 033. As telas ficam para a I8b, fora da zona protegida.
+- **Foto:** `app.anexo.momento` ("antes" ou "depois"), anulável e só em anexo de OS, com os valores do domínio (`MOMENTOS_DA_FOTO`, teste de paridade). As fotos que já existem ficam sem momento. O PWA vai sugerir o momento pelo estado da OS (`momentoSugerido`), e o técnico poderá trocar.
+- **Foto com a OS atribuída:** a foto "antes" é tirada antes de iniciar. Por isso, anexar foto passou a valer também na OS `atribuida` (`ESTADOS_QUE_ACEITAM_FOTO`). Horas, material e parada continuam só em execução ou pausada.
+- **Políticas por hotel, desligadas por padrão** (ADR-026; nos contratos e no teste de paridade):
+  - `os.foto_depois_obrigatoria`: cobrada na conclusão, que exige ao menos uma foto "depois" não removida. A foto "antes" não conta. No PWA, a foto vai pela mesma fila de operações, antes da conclusão. Uma foto da fila feita antes da I8, sem momento, não satisfaz a política;
+  - `os.assinatura_no_aceite`: o aceite exige a assinatura de quem aceita.
+- **Assinatura:** desenhada no aceite, no web (a tela é da I8b), e enviada antes por uma URL própria, `POST /api/v1/os/{id}/assinatura/url-de-upload`. A URL sai só para quem pode aceitar a OS concluída agora: a regra é a do aceite (`exigirQuemAceita`), e o caminho é um PNG novo na pasta da OS. O aceite leva `assinaturaCaminho`, conferido como PNG da pasta da OS (senão, 422 `assinatura_invalida`). O anexo é gravado com `assinatura = true` na mesma unit of work do aceite. É evidência do aceite, e não assinatura digital ICP-Brasil.
+- **Escolhas de implementação** (dentro do desenho):
+  - a assinatura é uma coluna booleana em `app.anexo`, e não uma entidade nova. Um check a prende a PNG de OS, sem momento e sem miniatura;
+  - é imutável: a policy de UPDATE do anexo (só a remoção lógica tem GRANT) não alcança a linha da assinatura. O domínio também recusa (403 `assinatura_nao_se_remove`), e a lista de anexos devolve `podeRemover: false`;
+  - `app.os.assinatura_aceite_id` tem FK composta `(hotel_id, id, assinatura_aceite_id)` → `anexo (hotel_id, os_id, id)`: a OS só aponta anexo dela mesma. O aceite sempre grava o campo, com a assinatura nova ou nulo. Reaberta e aceita de novo, a OS fica com a do último aceite, e a anterior continua no anexo e na auditoria;
+  - o GRANT de UPDATE por coluna em `assinatura_aceite_id` traz o mesmo risco aceito da 0023 e da 0026. Vale para todo papel que passa na policy de UPDATE da OS, mas a aplicação só grava o campo no aceite, e toda gravação fica na auditoria.
+- **API:** `momento` no registro e na lista de anexos, onde também entra `assinatura`; `assinaturaCaminho` no aceite; as duas políticas na configuração; seis códigos de erro novos, com mensagem nos quatro idiomas.
+- **Testes:**
+  - domínio: momento, sugestão, as duas exigências, foto na OS atribuída, políticas e remoção;
+  - aplicação: anexos, com o momento e a URL da assinatura;
+  - paridade: `anexo_momento_lista` × `MOMENTOS_DA_FOTO` e as políticas da API × as do domínio;
+  - integração, só na CI: `packages/db/test/fotos-e-assinatura.test.ts`;
+  - pgTAP 033: checks, FK, imutabilidade, isolamento e worker.
+- **Para a I8b:**
+  - web: o canvas da assinatura no aceite, só com a política ligada; as duas políticas na configuração do Admin; o momento e a assinatura na lista de anexos;
+  - PWA: o momento sugerido e trocável; a foto com a OS atribuída; o aviso antes de concluir sem foto "depois" quando a política estiver ligada;
+  - API: a política da foto e a contagem na fila do dia, e a da assinatura no detalhe do chamado.
+
+### I8b — telas da foto antes ou depois e da assinatura no aceite (12/10/2026)
+
+PR fora da zona protegida, sobre a API da I8 (#193).
+- **API, sem migração:**
+  - a fila do dia (`GET /api/v1/os/do-dia`) traz `fotosDepois` (fotos "depois" não removidas) e `fotoDepoisObrigatoria` (a política do hotel, resolvida pelo caso de uso, uma leitura por hotel da fila). Os dois campos são opcionais no contrato, para o PWA ler uma API anterior à I8 sem quebrar: a falta vira 0 e desligada;
+  - o detalhe do chamado traz `assinaturaNoAceite` (a política do hotel) e, em cada OS, `assinaturaAceiteId`.
+- **PWA:**
+  - o painel de fotos aparece com a OS atribuída, em execução ou pausada (`aceitaFoto`), e não só no bloco de registro;
+  - o momento da foto vem sugerido pelo estado da OS ("antes" com a OS atribuída, "depois" em execução ou pausada) e pode ser trocado antes de fotografar. A foto vai pela fila com o momento;
+  - com a política ligada, a tela mostra quantas fotos "depois" a OS tem (as da fila contam). Concluir sem nenhuma mostra o aviso `foto_depois_obrigatoria` e não enfileira a conclusão. O servidor continua conferindo.
+- **Web:**
+  - aceite: com a política ligada, o quadro da assinatura (canvas com eventos de ponteiro: dedo, caneta ou mouse) e o botão de limpar. No aceite, a tela gera o PNG (preto sobre branco, 600×200), pede a URL da assinatura, envia e só então aceita com `assinaturaCaminho`. Se o envio falha, mostra o erro e não aceita;
+  - OS aceita com assinatura: "Aceite com assinatura" e o botão "Ver assinatura", que abre o PNG por uma URL de 5 minutos;
+  - anexos da OS no detalhe do chamado, só para ver, com os selos de momento e de assinatura (também nas outras listas de anexos);
+  - configuração do Admin: as duas políticas novas no bloco das políticas ligáveis, que passou a ser genérico (o dos códigos de manutenção entrou nele);
+  - estilo `.hk-assinatura` em `packages/ui`, só com tokens.
+- **Catálogos:** os textos novos do PWA, do aceite, da OS, dos anexos e da configuração, nos quatro idiomas.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes, verdes. Novos: `apps/web/test/telas-i8.test.tsx` e casos em `apps/tecnico/test/os.test.ts` e `telas-os.test.tsx`;
+  - integração, só na CI: `packages/db/test/fotos-e-assinatura.test.ts` estendido com a fila do dia, a política da assinatura e a assinatura da OS;
+  - as telas não foram vistas no navegador.
+
 ## Item de menu do HubKeep Intelligence na moldura (pelo agente do Intelligence, 10/10/2026)
 
 Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/moldura.tsx`) é do núcleo. A mudança foi autorizada pelo Cesar no chat do agente do Intelligence em 10/10/2026 ("Cesar aqui"), e o detalhe está no `docs/diario-intelligence.md`, seção `int-telas`.
@@ -1728,6 +1776,55 @@ Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/mold
 - **Fora do `MENU`:** o item fica em `ITEM_DO_INTELLIGENCE`, para o teste da moldura continuar exigindo página e título só dos itens fixos. O teste ganhou os casos do item novo.
 - **Títulos da barra:** as três rotas do módulo (`/inteligencia/insights`, `/inteligencia/insights/{id}` e `/inteligencia/ativos/{id}`).
 - **Sem importar o módulo:** a moldura fala só com a API, e o lint de fronteiras continua barrando o `@hubkeep/inteligencia` fora das pastas liberadas.
+
+## Provisionamento de cliente e kit por turma, preparados para o staging (12/10/2026)
+
+Fila nova do Cesar de 12/10/2026, item 4 (docs/13, "Preparação do piloto", respostas 3 e 4 de 08/10/2026). PR fora da zona protegida. O staging só passa a valer depois do PR de zona protegida do `[remotes.staging]` e do adendo ao ADR-024, que entram na fila quando o Cesar quiser (`docs/referencia/plano-staging-treinamento.md`).
+- **Scripts e staging** (`scripts/ops/ambiente.ts`):
+  - o ref do alvo sai do bloco `[remotes.<ambiente>]` do `config.toml`, para o dev e para o staging (`refDoRemotoNoConfig`, `refEsperado`). Sem o `[remotes.staging]`, todo script recusa o staging antes de conectar;
+  - isso vale também para o `db:papeis --ambiente staging`, que antes não conferia o ref (só pedia o ref digitado). Agora confere os dois;
+  - as variáveis do web de cada ambiente e a conferência das conexões dos papéis ficaram num módulo comum (`web-do-ambiente.ts`), usado pelo kit e pelo provisionamento.
+- **Kit por turma:** `pnpm demo:dados --ambiente dev|staging [--turma N]`. A turma (1 a 99) cria o "Grupo Demonstração — Turma N", com tenant fixo pelo número e e-mails `@turmaN.demo.hubkeep.test`, sem apagar nada. Sem `--turma`, é o grupo de sempre.
+- **Provisionamento:** `pnpm ops:provisionar --ambiente dev|staging`, com nome, primeiro Admin, limites da licença e quem autorizou; `--tenant` completa, e `--dry-run` não grava.
+  - **Backoffice, pelo dono, numa transação:** grupo, contrato, membro, papel de Admin do grupo, a auditoria sem usuário ("Sistema") e o evento `membro.convidado`. O convite sai pelo outbox, como o convite pela tela (ADR-018). O script processa o outbox do tenant no fim, sem esperar o cron;
+  - **identidade:** a do convite (sem senha, sem confirmação, sem e-mail na criação), em `apps/web/src/servidor/provisionamento.ts`. É o uso da secret key que a regra 5 já autoriza (convites); e-mail `.test` é recusado;
+  - **padrões, pelos casos de uso, no contexto do primeiro Admin:** categorias, situações e prioridades, códigos e a prioridade por categoria. A auditoria deles fica em nome do Admin, porque os casos de uso pedem um usuário (registrado no `docs/10`);
+  - **idempotente:** nome repetido sem `--tenant` é recusado; com `--tenant`, rodar de novo não duplica, não muda a licença e não reenvia o convite.
+- **Padrões comuns:** a prioridade por categoria do kit passou para `apps/web/test/provisionamento/padroes.ts`, usada pelos dois.
+- **Ajustes pequenos da fila:**
+  - as prioridades realistas do kit já tinham entrado (7bac32e); o `docs/13` ainda as listava;
+  - a lista de responsáveis só com Técnicos mexe nas telas da I8b e fica para depois do merge dela;
+  - o override do `handlebars` continua: o `eslint-plugin-boundaries` 7.2.0, a última versão, ainda fixa o `handlebars` 4.7.9.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes. Novos: `tests/provisionamento-ops.test.ts` (pedido e turma), os casos do staging em `tests/ambiente-ops.test.ts` e `grupoDaTurma`;
+  - na CI, com o Supabase do runner: `apps/web/test/provisionamento/provisionar.test.ts` (grupo, contrato, convite pelo outbox, auditoria, padrões e a segunda execução);
+  - não rodei nada contra o dev nem contra o staging.
+
+## Lista de responsáveis só com Técnicos do hotel (12/10/2026)
+
+Ajuste do teste manual do Cesar (`docs/13`, "Ajustes do teste manual"), da fila nova de 12/10/2026, item 4. PR fora da zona protegida, sem migração, sobre a I8b (as duas mexem na tela do chamado).
+- **Antes:** o seletor de "Gerar OS" e "Reatribuir" trazia todos os membros ativos do grupo, e a API recusava quem não era Técnico do hotel (`responsavel_sem_papel_tecnico`).
+- **Agora:**
+  - `GET /api/v1/hoteis/{id}/equipes` devolve também `tecnicos`: os membros ativos com papel de Técnico vigente que cobre o hotel (no hotel, na bandeira dele ou no grupo). O seletor da triagem usa essa lista; a tela das equipes continua com todos os membros (`disponiveis`), para pôr numa equipe;
+  - a regra é a mesma da gravação: `ehTecnicoDoHotel`, no domínio, usada pela lista e por `exigirResponsavelDoHotel`. A API continua recusando outra pessoa;
+  - a leitura das atribuições de Técnico já era permitida à triagem pela RLS (migração 0022). Para quem não lê, a lista vem vazia.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes. Novos: a regra no domínio e as fixtures do web;
+  - na CI: o caso novo em `packages/db/test/equipes.test.ts` (o Gerente vê só o Técnico do hotel dele);
+  - a tela não foi vista no navegador.
+
+## Edificação no nome do local no PWA (12/10/2026)
+
+Decisão 6 do Cesar de 09/10/2026 (respostas depois da I3): o PWA mostra a edificação junto do nome do local, quando preenchida ("UH 101 · Torre A"). PR fora da zona protegida, sem migração, sobre a I8b (as duas mexem na tela da OS do PWA).
+- **Onde:** a fila do dia, a tela da OS, a escolha do local ao abrir chamado e os ativos (escolha do local e "no local").
+- **Fonte:**
+  - a lista de locais do aparelho já trazia a edificação (`GET /api/v1/hoteis/{id}/locais`, desde a I2);
+  - a fila do dia passou a trazer `localEdificacao` no chamado. É opcional no contrato, para o PWA ler a API anterior; sem ela, aparece só o nome.
+- **Texto:** a junção sai do catálogo (`tecnico.local.nome_com_edificacao`, nos quatro idiomas), pelo `nomeDoLocal` de `apps/tecnico/src/locais.ts`.
+- **Kit:** o roteiro do Técnico do Centro confere a edificação ("UH 102 · Torre A"; o kit já grava as edificações do Centro desde a I2).
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes. Novos: a fila e a OS com a edificação nos quatro idiomas, e sem ela;
+  - o PWA não foi visto no aparelho.
 
 ## Fila nova do Cesar (12/10/2026)
 
