@@ -59,6 +59,8 @@ Fim da etapa I: resumo e aviso ao agente do Kaio, no diário, com os nomes reais
 
 ## Etapa PV — Preventiva
 
+**Desenho de 12/10/2026, para a aprovação do Cesar:** `docs/referencia/propostas-desenho-pv-implantacao.md` (PV1 a PV3, M1 a M4, PB1 e M3), com os ADR-040 e ADR-041 propostos.
+
 | Tarefa | O quê | Aceite | Migração | ADR |
 |---|---|---|---|---|
 | **PV1** Checklist tipado | Modelo de checklist do tenant: itens com os tipos comuns (ADR-028), rótulo nos quatro idiomas, marca de obrigatório e versão. A OS guarda a cópia do checklist aplicado e as respostas. Respondido no PWA, offline, com a operação `os.responder_checklist`. A obrigatoriedade de completar o checklist antes da conclusão é política por hotel, desligada por padrão. | Resposta fora do tipo do item dá 422 com código. Mudar o modelo não altera a OS que já tem o checklist. Um dia offline sincroniza as respostas sem duplicar. Com a política ligada, a conclusão sem os itens obrigatórios é recusada com código. Isolamento. | Sim: modelo e respostas | Novo: checklist tipado (modelo versionado e cópia na OS) |
