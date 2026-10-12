@@ -1754,3 +1754,26 @@ Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/mold
 - **Fora do `MENU`:** o item fica em `ITEM_DO_INTELLIGENCE`, para o teste da moldura continuar exigindo página e título só dos itens fixos. O teste ganhou os casos do item novo.
 - **Títulos da barra:** as três rotas do módulo (`/inteligencia/insights`, `/inteligencia/insights/{id}` e `/inteligencia/ativos/{id}`).
 - **Sem importar o módulo:** a moldura fala só com a API, e o lint de fronteiras continua barrando o `@hubkeep/inteligencia` fora das pastas liberadas.
+
+## Provisionamento de cliente e kit por turma, preparados para o staging (12/10/2026)
+
+Fila nova do Cesar de 12/10/2026, item 4 (docs/13, "Preparação do piloto", respostas 3 e 4 de 08/10/2026). PR fora da zona protegida. O staging só passa a valer depois do PR de zona protegida do `[remotes.staging]` e do adendo ao ADR-024, que entram na fila quando o Cesar quiser (`docs/referencia/plano-staging-treinamento.md`).
+- **Scripts e staging** (`scripts/ops/ambiente.ts`):
+  - o ref do alvo sai do bloco `[remotes.<ambiente>]` do `config.toml`, para o dev e para o staging (`refDoRemotoNoConfig`, `refEsperado`). Sem o `[remotes.staging]`, todo script recusa o staging antes de conectar;
+  - isso vale também para o `db:papeis --ambiente staging`, que antes não conferia o ref (só pedia o ref digitado). Agora confere os dois;
+  - as variáveis do web de cada ambiente e a conferência das conexões dos papéis ficaram num módulo comum (`web-do-ambiente.ts`), usado pelo kit e pelo provisionamento.
+- **Kit por turma:** `pnpm demo:dados --ambiente dev|staging [--turma N]`. A turma (1 a 99) cria o "Grupo Demonstração — Turma N", com tenant fixo pelo número e e-mails `@turmaN.demo.hubkeep.test`, sem apagar nada. Sem `--turma`, é o grupo de sempre.
+- **Provisionamento:** `pnpm ops:provisionar --ambiente dev|staging`, com nome, primeiro Admin, limites da licença e quem autorizou; `--tenant` completa, e `--dry-run` não grava.
+  - **Backoffice, pelo dono, numa transação:** grupo, contrato, membro, papel de Admin do grupo, a auditoria sem usuário ("Sistema") e o evento `membro.convidado`. O convite sai pelo outbox, como o convite pela tela (ADR-018). O script processa o outbox do tenant no fim, sem esperar o cron;
+  - **identidade:** a do convite (sem senha, sem confirmação, sem e-mail na criação), em `apps/web/src/servidor/provisionamento.ts`. É o uso da secret key que a regra 5 já autoriza (convites); e-mail `.test` é recusado;
+  - **padrões, pelos casos de uso, no contexto do primeiro Admin:** categorias, situações e prioridades, códigos e a prioridade por categoria. A auditoria deles fica em nome do Admin, porque os casos de uso pedem um usuário (registrado no `docs/10`);
+  - **idempotente:** nome repetido sem `--tenant` é recusado; com `--tenant`, rodar de novo não duplica, não muda a licença e não reenvia o convite.
+- **Padrões comuns:** a prioridade por categoria do kit passou para `apps/web/test/provisionamento/padroes.ts`, usada pelos dois.
+- **Ajustes pequenos da fila:**
+  - as prioridades realistas do kit já tinham entrado (7bac32e); o `docs/13` ainda as listava;
+  - a lista de responsáveis só com Técnicos mexe nas telas da I8b e fica para depois do merge dela;
+  - o override do `handlebars` continua: o `eslint-plugin-boundaries` 7.2.0, a última versão, ainda fixa o `handlebars` 4.7.9.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes. Novos: `tests/provisionamento-ops.test.ts` (pedido e turma), os casos do staging em `tests/ambiente-ops.test.ts` e `grupoDaTurma`;
+  - na CI, com o Supabase do runner: `apps/web/test/provisionamento/provisionar.test.ts` (grupo, contrato, convite pelo outbox, auditoria, padrões e a segunda execução);
+  - não rodei nada contra o dev nem contra o staging.

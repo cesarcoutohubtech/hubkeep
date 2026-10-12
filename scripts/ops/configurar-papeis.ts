@@ -40,9 +40,10 @@ import {
 } from './terminal.ts';
 
 // Todos os ambientes: o script só altera papéis (LOGIN e senha), não grava nem
-// apaga dado. No dev, a string de conexão precisa conter o ref de [remotes.dev]
-// (conexaoDono). Staging e produção são interativos (MODO_INTERATIVO); produção
-// ainda exige --confirmar-producao.
+// apaga dado. No dev e no staging, a string de conexão precisa conter o ref de
+// [remotes.dev] ou [remotes.staging] (conexaoDono); sem o bloco do staging no
+// config.toml, o staging é recusado. Staging e produção são interativos
+// (MODO_INTERATIVO); produção ainda exige --confirmar-producao.
 const AMBIENTES_PERMITIDOS: readonly Ambiente[] = ['ci', 'dev', 'staging', 'producao'];
 const MODO_INTERATIVO: readonly Ambiente[] = ['staging', 'producao'];
 

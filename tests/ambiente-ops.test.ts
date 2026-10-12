@@ -10,6 +10,7 @@ import {
   lerArgs,
   lerRefDoDev,
   refDoDevNoConfig,
+  refDoRemotoNoConfig,
 } from '../scripts/ops/ambiente.ts';
 
 const REF = 'abcdefghijklmnopqrst';
@@ -58,6 +59,26 @@ describe('refDoDevNoConfig', () => {
   });
 });
 
+describe('refDoRemotoNoConfig', () => {
+  it('lê o bloco do remoto pedido', () => {
+    const toml = [
+      '[remotes.dev]',
+      `project_id = "${REF}"`,
+      '[remotes.staging]',
+      `project_id = "${OUTRO}"`,
+    ].join('\n');
+    expect(refDoRemotoNoConfig(toml, 'staging')).toBe(OUTRO);
+    expect(refDoRemotoNoConfig(toml, 'dev')).toBe(REF);
+  });
+
+  it('sem [remotes.staging], o staging falha antes de conectar', () => {
+    const toml = `[remotes.dev]\nproject_id = "${REF}"\n`;
+    expect(erroDe(() => refDoRemotoNoConfig(toml, 'staging'))).toMatch(
+      /\[remotes\.staging\] não encontrado/,
+    );
+  });
+});
+
 describe('conferirAlvo', () => {
   const pooler = (ref: string) =>
     `postgresql://postgres.${ref}:${SENHA}@aws-0-sa-east-1.pooler.supabase.com:5432/postgres`;
@@ -80,6 +101,14 @@ describe('conferirAlvo', () => {
     expect(erroDe(() => conferirAlvo('dev', 'DEV_SESSION_POOLER', url, REF))).toMatch(
       /não é do HubKeep-dev/,
     );
+  });
+
+  it('staging: só com o ref do [remotes.staging], e o erro não mostra a string', () => {
+    expect(() => conferirAlvo('staging', 'DATABASE_URL_OWNER', pooler(OUTRO), OUTRO)).not.toThrow();
+    const erro = erroDe(() => conferirAlvo('staging', 'DATABASE_URL_OWNER', pooler(REF), OUTRO));
+    expect(erro).toMatch(/não é do HubKeep-staging/);
+    expect(erro).not.toContain(SENHA);
+    expect(() => conferirAlvo('staging', 'DATABASE_URL_OWNER', pooler(OUTRO), undefined)).toThrow();
   });
 
   it('dev: sem o ref para comparar, falha fechado', () => {
@@ -138,6 +167,10 @@ describe('ambientes declarados pelos scripts de scripts/ops', () => {
     ['testar-banco-dev.mjs', ['dev']],
     ['modulo-contratado.ts', ['dev']],
     ['configurar-papeis.ts', ['ci', 'dev', 'staging', 'producao']],
+    // Kit de teste e provisionamento no staging do treinamento: decisão do
+    // Cesar de 08/10/2026 (docs/13), com o adendo ao ADR-024.
+    ['dados-demonstracao.ts', ['dev', 'staging']],
+    ['provisionar-cliente.ts', ['dev', 'staging']],
   ])('%s declara %j', (arquivo, esperado) => {
     const lista = declarados(arquivo);
     expect(lista).toEqual(esperado);
