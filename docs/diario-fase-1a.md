@@ -1747,6 +1747,28 @@ Desenho aprovado pelo Cesar em 08/10/2026 (item 4). PR de zona protegida, com a 
   - PWA: o momento sugerido e trocável; a foto com a OS atribuída; o aviso antes de concluir sem foto "depois" quando a política estiver ligada;
   - API: a política da foto e a contagem na fila do dia, e a da assinatura no detalhe do chamado.
 
+### I8b — telas da foto antes ou depois e da assinatura no aceite (12/10/2026)
+
+PR fora da zona protegida, sobre a API da I8 (#193).
+- **API, sem migração:**
+  - a fila do dia (`GET /api/v1/os/do-dia`) traz `fotosDepois` (fotos "depois" não removidas) e `fotoDepoisObrigatoria` (a política do hotel, resolvida pelo caso de uso, uma leitura por hotel da fila). Os dois campos são opcionais no contrato, para o PWA ler uma API anterior à I8 sem quebrar: a falta vira 0 e desligada;
+  - o detalhe do chamado traz `assinaturaNoAceite` (a política do hotel) e, em cada OS, `assinaturaAceiteId`.
+- **PWA:**
+  - o painel de fotos aparece com a OS atribuída, em execução ou pausada (`aceitaFoto`), e não só no bloco de registro;
+  - o momento da foto vem sugerido pelo estado da OS ("antes" com a OS atribuída, "depois" em execução ou pausada) e pode ser trocado antes de fotografar. A foto vai pela fila com o momento;
+  - com a política ligada, a tela mostra quantas fotos "depois" a OS tem (as da fila contam). Concluir sem nenhuma mostra o aviso `foto_depois_obrigatoria` e não enfileira a conclusão. O servidor continua conferindo.
+- **Web:**
+  - aceite: com a política ligada, o quadro da assinatura (canvas com eventos de ponteiro: dedo, caneta ou mouse) e o botão de limpar. No aceite, a tela gera o PNG (preto sobre branco, 600×200), pede a URL da assinatura, envia e só então aceita com `assinaturaCaminho`. Se o envio falha, mostra o erro e não aceita;
+  - OS aceita com assinatura: "Aceite com assinatura" e o botão "Ver assinatura", que abre o PNG por uma URL de 5 minutos;
+  - anexos da OS no detalhe do chamado, só para ver, com os selos de momento e de assinatura (também nas outras listas de anexos);
+  - configuração do Admin: as duas políticas novas no bloco das políticas ligáveis, que passou a ser genérico (o dos códigos de manutenção entrou nele);
+  - estilo `.hk-assinatura` em `packages/ui`, só com tokens.
+- **Catálogos:** os textos novos do PWA, do aceite, da OS, dos anexos e da configuração, nos quatro idiomas.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes, verdes. Novos: `apps/web/test/telas-i8.test.tsx` e casos em `apps/tecnico/test/os.test.ts` e `telas-os.test.tsx`;
+  - integração, só na CI: `packages/db/test/fotos-e-assinatura.test.ts` estendido com a fila do dia, a política da assinatura e a assinatura da OS;
+  - as telas não foram vistas no navegador.
+
 ## Item de menu do HubKeep Intelligence na moldura (pelo agente do Intelligence, 10/10/2026)
 
 Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/moldura.tsx`) é do núcleo. A mudança foi autorizada pelo Cesar no chat do agente do Intelligence em 10/10/2026 ("Cesar aqui"), e o detalhe está no `docs/diario-intelligence.md`, seção `int-telas`.

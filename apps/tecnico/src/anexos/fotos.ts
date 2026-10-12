@@ -10,8 +10,10 @@
 //     Storage; a API devolve o caminho, e o envio segue sem o PUT;
 //   - PUT recusado pelo Storage como duplicado (409 no corpo): idem;
 //   - registro recusado com 409 anexo_ja_registrado: a foto já estava feita.
-// A regra da OS (responsável, em execução ou pausada) volta como recusa, com
-// o código, igual às outras operações da fila.
+// A regra da OS (responsável, atribuída, em execução ou pausada) volta como
+// recusa, com o código, igual às outras operações da fila. A foto da OS leva
+// o momento, antes ou depois (I8), que vai no registro.
+import type { MomentoDaFoto } from '@hubkeep/dominio';
 import {
   RespostaDeAnexoRegistrado,
   RespostaDeAnexos,
@@ -143,6 +145,7 @@ export async function fotoParaFila(
   osId: string,
   arquivo: Blob,
   nome: string | null,
+  momento: MomentoDaFoto | null,
   deps: { preparar?: (arquivo: Blob) => Promise<FotoPreparada>; novoId?: () => string } = {},
 ): Promise<FotoNaFila> {
   const preparada = await (deps.preparar ?? prepararFoto)(arquivo);
@@ -155,6 +158,7 @@ export async function fotoParaFila(
     foto: await preparada.foto.arrayBuffer(),
     miniatura: await preparada.miniatura.arrayBuffer(),
     nome,
+    momento,
   };
 }
 
@@ -242,7 +246,12 @@ export function criarEnvioDeFoto(c: Credenciais, requisitar: typeof fetch = fetc
     try {
       const caminho = await subir(f, f.arquivoId, f.foto);
       const miniaturaCaminho = await subir(f, f.miniaturaArquivoId, f.miniatura);
-      const r = await chamar('/api/v1/anexos', { caminho, miniaturaCaminho, nome: f.nome });
+      const r = await chamar('/api/v1/anexos', {
+        caminho,
+        miniaturaCaminho,
+        nome: f.nome,
+        momento: f.momento ?? null,
+      });
       if (r.status === 201 || r.status === 200) return { tipo: 'aceita' };
       const codigo = erroDa(r.corpo)?.codigo;
       if (r.status === 409 && codigo === 'anexo_ja_registrado') return { tipo: 'aceita' };

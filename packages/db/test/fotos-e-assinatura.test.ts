@@ -11,7 +11,9 @@
 //     no evento; caminho de outra OS é recusado;
 //   - a URL da assinatura só para quem pode aceitar a OS concluída;
 //   - ninguém remove a assinatura: o domínio recusa e, com a checagem
-//     removida, a RLS não acha a linha.
+//     removida, a RLS não acha a linha;
+//   - para as telas (I8b): a fila do dia traz as fotos "depois" e a política
+//     da foto; a triagem diz se o hotel pede a assinatura, e a OS traz o id.
 // O Storage fica de fora (URL falsa).
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
@@ -70,6 +72,7 @@ describe.skipIf(!temBanco)(
     let chamados: ReturnType<typeof criarCasosDeUsoDeChamados>;
     let triagem: ReturnType<typeof criarCasosDeUsoDeTriagem>;
     let sincronizacao: ReturnType<typeof criarCasosDeUsoDeSincronizacao>;
+    let execucao: ReturnType<typeof criarCasosDeUsoDeExecucao>;
     let anexos: ReturnType<typeof criarCasosDeUsoDeAnexos>;
     let semChecagem: ReturnType<typeof criarCasosDeUsoDeAnexos>;
 
@@ -187,7 +190,7 @@ describe.skipIf(!temBanco)(
         atribuicoes,
         relogio: relogioDoSistema,
       });
-      const execucao = criarCasosDeUsoDeExecucao({
+      execucao = criarCasosDeUsoDeExecucao({
         execucao: criarPortaExecucao(banco),
         triagem: portaTriagem,
         situacoes,
@@ -278,6 +281,8 @@ describe.skipIf(!temBanco)(
 
     it('com a política da foto desligada (padrão), conclui sem foto', async () => {
       const { osId } = await osAtribuida();
+      const naFila = (await execucao.osDoDia(ctx(U.tecnico))).find((o) => o.id === osId);
+      expect(naFila).toMatchObject({ fotosDepois: 0, fotoDepoisObrigatoria: false });
       await operar('os.iniciar', osId, 1);
       const { resposta } = await operar('os.concluir', osId, 2);
       expect(resposta).toMatchObject({ estado: 'concluida' });
@@ -293,6 +298,9 @@ describe.skipIf(!temBanco)(
           codigo: 'foto_depois_obrigatoria',
         });
         await foto(osId, 'depois');
+        // A fila do dia (I8b): a contagem e a política, para o PWA avisar antes.
+        const naFila = (await execucao.osDoDia(ctx(U.tecnico))).find((o) => o.id === osId);
+        expect(naFila).toMatchObject({ fotosDepois: 1, fotoDepoisObrigatoria: true });
         const { resposta } = await operar('os.concluir', osId, 2);
         expect(resposta).toMatchObject({ estado: 'concluida' });
       } finally {
@@ -315,6 +323,7 @@ describe.skipIf(!temBanco)(
 
     it('com a política da assinatura desligada (padrão), aceita sem ela; a OS fica sem', async () => {
       const { osId, versao } = await osConcluida();
+      expect(await triagem.assinaturaNoAceite(ctx(U.gerente), H1)).toBe(false);
       await triagem.aceitarOs(ctx(U.gerente), osId, { versao });
       const os = await dono.query(`select assinatura_aceite_id from app.os where id = $1`, [osId]);
       expect(os.rows[0]).toEqual({ assinatura_aceite_id: null });
@@ -325,6 +334,7 @@ describe.skipIf(!temBanco)(
       try {
         const { osId, versao } = await osConcluida();
         const gerente = ctx(U.gerente);
+        expect(await triagem.assinaturaNoAceite(gerente, H1)).toBe(true);
         await expect(triagem.aceitarOs(gerente, osId, { versao })).rejects.toMatchObject({
           codigo: 'assinatura_obrigatoria_no_aceite',
         });
@@ -357,6 +367,17 @@ describe.skipIf(!temBanco)(
           [osId],
         );
         expect(os.rows[0]).toEqual({ estado: 'aceita', assinatura_aceite_id: assinaturaId });
+        const chamadoId =
+          (
+            await dono.query<{ chamado_id: string }>(
+              `select chamado_id from app.os where id = $1`,
+              [osId],
+            )
+          ).rows[0]?.chamado_id ?? '';
+        const [daTela] = (await triagem.osDoChamado(gerente, chamadoId)).filter(
+          (o) => o.id === osId,
+        );
+        expect(daTela?.assinaturaAceiteId).toBe(assinaturaId);
         const auditoria = await dono.query<{ depois: { assinaturaId?: string } }>(
           `select depois from app.auditoria where tenant_id = $1 and registro_id = $2 and acao = 'aceitar'`,
           [TENANT, osId],

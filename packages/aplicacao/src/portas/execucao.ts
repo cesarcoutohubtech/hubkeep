@@ -23,6 +23,10 @@ export interface OsDoDia {
   motivoReabertura: string | null;
   versao: number;
   criadoEm: Date;
+  /** Fotos "depois" registradas na OS e não removidas (I8). */
+  fotosDepois: number;
+  /** A política os.foto_depois_obrigatoria do hotel, resolvida (I8). */
+  fotoDepoisObrigatoria: boolean;
   chamado: {
     id: string;
     descricao: string;
@@ -44,8 +48,11 @@ export interface OsDoDia {
 export interface PortaExecucao {
   /** Equipes ativas de que o usuário do contexto é membro ativo. */
   equipesDoUsuario(ctx: Contexto): Promise<string[]>;
-  /** OS atribuídas, em execução ou pausadas do usuário e das equipes dele. */
-  osDoDia(ctx: Contexto): Promise<OsDoDia[]>;
+  /**
+   * OS atribuídas, em execução ou pausadas do usuário e das equipes dele. A
+   * política da foto "depois" é resolvida pelo caso de uso.
+   */
+  osDoDia(ctx: Contexto): Promise<Omit<OsDoDia, 'fotoDepoisObrigatoria'>[]>;
   /** A hora da última transição da OS (I5); null se ela não tem nenhuma. */
   ultimaTransicaoEm(ctx: Contexto, osId: string): Promise<Date | null>;
   /** Fotos "depois" registradas na OS e não removidas (I8). */

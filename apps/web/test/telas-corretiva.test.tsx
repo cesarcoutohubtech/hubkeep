@@ -127,6 +127,7 @@ const detalhe: DetalheDoChamado = {
       fornecedorId: null,
       custoInformado: null,
       codigos: { falhaId: null, causaId: null, solucaoId: null },
+      assinaturaAceiteId: null,
       criadoPor: T,
       versao: 4,
       criadoEm: '2026-09-30T13:00:00.000Z',
@@ -141,6 +142,7 @@ const detalhe: DetalheDoChamado = {
     equipes: {},
     fornecedores: {},
   },
+  assinaturaNoAceite: false,
 };
 
 const eventos: EventoDaLinhaDoTempo[] = [

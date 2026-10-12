@@ -103,7 +103,10 @@ export interface CasosDeUsoDeExecucao {
     ctx: Contexto,
     p: { osId: string; fim: Date },
   ): Promise<EncerramentoDeParada>;
-  /** A fila do dia do Técnico: as OS dele e das equipes dele ainda em curso. */
+  /**
+   * A fila do dia do Técnico: as OS dele e das equipes dele ainda em curso,
+   * com as fotos "depois" e a política da foto do hotel (I8).
+   */
   osDoDia(ctx: Contexto): Promise<OsDoDia[]>;
 }
 
@@ -305,6 +308,25 @@ export function criarCasosDeUsoDeExecucao(deps: {
       return { id: aberta.id, hotelId: os.hotelId, fim };
     },
 
-    osDoDia: (ctx) => deps.execucao.osDoDia(ctx),
+    async osDoDia(ctx) {
+      const lista = await deps.execucao.osDoDia(ctx);
+      // A política da foto "depois" (I8), uma leitura por hotel da fila.
+      const hoteis = [...new Set(lista.map((o) => o.hotelId))];
+      const ligada = new Map(
+        await Promise.all(
+          hoteis.map(
+            async (h) =>
+              [
+                h,
+                resolverPolitica(
+                  FOTO_DEPOIS_OBRIGATORIA,
+                  await deps.triagem.politica(ctx, h, FOTO_DEPOIS_OBRIGATORIA),
+                ).ligado,
+              ] as const,
+          ),
+        ),
+      );
+      return lista.map((o) => ({ ...o, fotoDepoisObrigatoria: ligada.get(o.hotelId) ?? false }));
+    },
   };
 }

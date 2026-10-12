@@ -49,6 +49,8 @@ export interface OsGravada {
   custoInformado: number | null;
   /** Falha, causa e solução (I6); null em cada um: não informado. */
   codigos: CodigosDaOs;
+  /** O anexo da assinatura do último aceite (I8); null: aceite sem assinatura. */
+  assinaturaAceiteId: string | null;
   criadoPor: string;
   versao: number;
   criadoEm: Date;

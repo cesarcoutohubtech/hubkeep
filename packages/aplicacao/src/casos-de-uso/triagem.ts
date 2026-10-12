@@ -143,6 +143,8 @@ export interface CasosDeUsoDeTriagem {
   ): Promise<{ versao: number; versaoDoChamado: number }>;
   /** Quem pede pode aceitar a OS agora (I8: a URL da assinatura)? Senão, o erro do aceite. */
   exigirQuemAceita(ctx: Contexto, osId: string): Promise<void>;
+  /** A política os.assinatura_no_aceite do hotel, resolvida (I8: a tela do aceite pede a assinatura). */
+  assinaturaNoAceite(ctx: Contexto, hotelId: string): Promise<boolean>;
   /**
    * Reabertura da OS concluída, com motivo: a OS e o chamado voltam à execução
    * (C6). Com `paradoDesde`, o equipamento está parado: abre a parada do
@@ -493,6 +495,11 @@ export function criarCasosDeUsoDeTriagem(deps: {
         aceite,
         agora: deps.relogio.agora(),
       });
+    },
+
+    async assinaturaNoAceite(ctx, hotelId) {
+      const politica = await deps.triagem.politica(ctx, hotelId, ASSINATURA_NO_ACEITE);
+      return resolverPolitica(ASSINATURA_NO_ACEITE, politica).ligado;
     },
 
     async reabrirOs(ctx, osId, p) {

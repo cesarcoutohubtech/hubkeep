@@ -58,6 +58,7 @@ function fontes(sobrescrever: Partial<Record<string, unknown>> = {}) {
       }) as never,
     }),
     triagem: async () => ({
+      assinaturaNoAceite: async () => false,
       osDoChamado: marcar('osDoChamado', [
         {
           id: OS,
@@ -72,6 +73,7 @@ function fontes(sobrescrever: Partial<Record<string, unknown>> = {}) {
           fornecedorId: null,
           custoInformado: null,
           codigos: { falhaId: null, causaId: null, solucaoId: null },
+          assinaturaAceiteId: null,
           criadoPor: USUARIO,
           versao: 1,
           criadoEm: EM,
