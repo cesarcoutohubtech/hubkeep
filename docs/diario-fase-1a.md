@@ -1776,3 +1776,16 @@ Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/mold
 - **Fora do `MENU`:** o item fica em `ITEM_DO_INTELLIGENCE`, para o teste da moldura continuar exigindo página e título só dos itens fixos. O teste ganhou os casos do item novo.
 - **Títulos da barra:** as três rotas do módulo (`/inteligencia/insights`, `/inteligencia/insights/{id}` e `/inteligencia/ativos/{id}`).
 - **Sem importar o módulo:** a moldura fala só com a API, e o lint de fronteiras continua barrando o `@hubkeep/inteligencia` fora das pastas liberadas.
+
+## Lista de responsáveis só com Técnicos do hotel (12/10/2026)
+
+Ajuste do teste manual do Cesar (`docs/13`, "Ajustes do teste manual"), da fila nova de 12/10/2026, item 4. PR fora da zona protegida, sem migração, sobre a I8b (as duas mexem na tela do chamado).
+- **Antes:** o seletor de "Gerar OS" e "Reatribuir" trazia todos os membros ativos do grupo, e a API recusava quem não era Técnico do hotel (`responsavel_sem_papel_tecnico`).
+- **Agora:**
+  - `GET /api/v1/hoteis/{id}/equipes` devolve também `tecnicos`: os membros ativos com papel de Técnico vigente que cobre o hotel (no hotel, na bandeira dele ou no grupo). O seletor da triagem usa essa lista; a tela das equipes continua com todos os membros (`disponiveis`), para pôr numa equipe;
+  - a regra é a mesma da gravação: `ehTecnicoDoHotel`, no domínio, usada pela lista e por `exigirResponsavelDoHotel`. A API continua recusando outra pessoa;
+  - a leitura das atribuições de Técnico já era permitida à triagem pela RLS (migração 0022). Para quem não lê, a lista vem vazia.
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes. Novos: a regra no domínio e as fixtures do web;
+  - na CI: o caso novo em `packages/db/test/equipes.test.ts` (o Gerente vê só o Técnico do hotel dele);
+  - a tela não foi vista no navegador.

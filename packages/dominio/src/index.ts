@@ -346,6 +346,7 @@ export {
   ESTADOS_COM_IMPACTO_AJUSTAVEL,
   ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
   exigirPrioridadeAtiva,
+  ehTecnicoDoHotel,
   exigirResponsavelDoHotel,
   podeAjustarPrioridade,
   podeAjustarQuemExecuta,

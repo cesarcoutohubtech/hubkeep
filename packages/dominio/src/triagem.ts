@@ -22,6 +22,22 @@ export type CandidatoAResponsavel =
   | { tipo: 'tecnico'; usuarioId: string; atribuicoes: readonly Atribuicao[] }
   | { tipo: 'equipe'; equipeId: string; hotelId: string; ativa: boolean };
 
+/** A pessoa tem papel de Técnico vigente que cobre o hotel? A mesma regra da lista e da gravação. */
+export function ehTecnicoDoHotel(
+  atribuicoes: readonly Atribuicao[],
+  usuarioId: string,
+  hotel: ChamadoParaRegra['hotel'],
+  agora: Date,
+): boolean {
+  return atribuicoes.some(
+    (a) =>
+      a.usuarioId === usuarioId &&
+      a.papel === 'tecnico' &&
+      vigente(a, agora) &&
+      escopoCobreHotel(a, hotel),
+  );
+}
+
 /**
  * A OS vai para um Técnico com papel vigente que cubra o hotel, ou para uma
  * equipe ativa do próprio hotel (A6). Devolve o responsável que a OS guarda.
@@ -32,14 +48,7 @@ export function exigirResponsavelDoHotel(
   agora: Date,
 ): Responsavel {
   if (candidato.tipo === 'tecnico') {
-    const tecnico = candidato.atribuicoes.some(
-      (a) =>
-        a.usuarioId === candidato.usuarioId &&
-        a.papel === 'tecnico' &&
-        vigente(a, agora) &&
-        escopoCobreHotel(a, hotel),
-    );
-    if (!tecnico) {
+    if (!ehTecnicoDoHotel(candidato.atribuicoes, candidato.usuarioId, hotel, agora)) {
       throw new RegraViolada(
         'responsavel_sem_papel_tecnico',
         'A pessoa escolhida não é Técnico ativo neste hotel.',
