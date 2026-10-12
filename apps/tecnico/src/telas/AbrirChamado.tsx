@@ -33,6 +33,7 @@ import { useT } from '../i18n';
 import type { Referencia } from '../referencia/banco';
 import { useMotivo } from './FilaDoDia';
 import { TelaDoTecnico } from './TelaDoTecnico';
+import { nomeDoLocal } from '../locais';
 
 export interface AberturaDeChamado {
   localId: string;
@@ -160,7 +161,7 @@ export function AbrirChamado(props: {
                 <option value="">{t('tecnico.chamado.escolha_o_local')}</option>
                 {locais.map((l) => (
                   <option key={l.id} value={l.id}>
-                    {l.nome}
+                    {nomeDoLocal(t, l)}
                   </option>
                 ))}
               </Selecao>

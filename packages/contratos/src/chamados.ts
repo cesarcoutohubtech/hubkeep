@@ -330,6 +330,8 @@ export const OsDoDiaApi = z
       descricao: z.string(),
       localId: z.guid(),
       localNome: z.string(),
+      /** Edificação do local (I2). Opcional: o PWA lê a API anterior sem ela. */
+      localEdificacao: z.string().nullable().optional(),
       prioridadeId: z.guid(),
       estado: z.enum(ESTADOS_DO_CHAMADO_API),
       /** O ativo do chamado (C5); sem ele, não há parada. */

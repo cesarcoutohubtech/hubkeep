@@ -1812,3 +1812,16 @@ Ajuste do teste manual do Cesar (`docs/13`, "Ajustes do teste manual"), da fila 
   - no local: lint, typecheck e os testes de todos os pacotes. Novos: a regra no domínio e as fixtures do web;
   - na CI: o caso novo em `packages/db/test/equipes.test.ts` (o Gerente vê só o Técnico do hotel dele);
   - a tela não foi vista no navegador.
+
+## Edificação no nome do local no PWA (12/10/2026)
+
+Decisão 6 do Cesar de 09/10/2026 (respostas depois da I3): o PWA mostra a edificação junto do nome do local, quando preenchida ("UH 101 · Torre A"). PR fora da zona protegida, sem migração, sobre a I8b (as duas mexem na tela da OS do PWA).
+- **Onde:** a fila do dia, a tela da OS, a escolha do local ao abrir chamado e os ativos (escolha do local e "no local").
+- **Fonte:**
+  - a lista de locais do aparelho já trazia a edificação (`GET /api/v1/hoteis/{id}/locais`, desde a I2);
+  - a fila do dia passou a trazer `localEdificacao` no chamado. É opcional no contrato, para o PWA ler a API anterior; sem ela, aparece só o nome.
+- **Texto:** a junção sai do catálogo (`tecnico.local.nome_com_edificacao`, nos quatro idiomas), pelo `nomeDoLocal` de `apps/tecnico/src/locais.ts`.
+- **Kit:** o roteiro do Técnico do Centro confere a edificação ("UH 102 · Torre A"; o kit já grava as edificações do Centro desde a I2).
+- **Verificação:**
+  - no local: lint, typecheck e os testes de todos os pacotes. Novos: a fila e a OS com a edificação nos quatro idiomas, e sem ela;
+  - o PWA não foi visto no aparelho.
