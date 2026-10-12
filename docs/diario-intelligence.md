@@ -1140,3 +1140,43 @@ Continuação do #189: a leitura que a terceira tela, o detalhe do ativo, vai us
 - **Para as telas (acrescentado no mesmo PR):**
   - **Nomes:** a resposta passa a trazer `ativos`, o nome dos ativos citados no escopo dos insights (`ativoId`), para o título da linha do insight de atenção.
   - **`explicacaoDoSinal`:** a evidência do sinal sistêmico vira chave de catálogo e valores. A regra do mesmo modelo tem frase própria; as outras usam a frase nova `inteligencia.sistemico.evidencia.generica`, com chamados, hotéis e janela, nos quatro idiomas, até ganharem a sua.
+
+## `int-telas`: as três telas do painel (10/10/2026)
+
+Terceiro dos PRs das telas (a ordem está na seção do `int-telas-base`). Fora da zona protegida. A branch partiu da `int-ativo-metrica` e só vira PR depois dos merges do #189 e do PR do detalhe do ativo.
+
+- **Rotas:** `apps/web/src/app/(painel)/inteligencia/`, no elemento liberado do lint.
+  - `insights/` é a lista;
+  - `insights/[id]/` é a página do insight;
+  - `ativos/[id]/` é o detalhe do ativo;
+  - `comum.tsx` reúne os selos, o título e o escopo, as datas e os dois gráficos em SVG.
+- **Lista:**
+  - a nota do módulo opcional;
+  - os quatro indicadores do resumo;
+  - os filtros por estado, tipo, faixa e hotel; o de hotel só aparece com mais de um hotel visível;
+  - a tabela com faixa, o que é, escopo, score, estado, responsável e última detecção;
+  - a substituição nos dois sentidos, em link.
+  - O título do insight de atenção é o nome do ativo; o do sistêmico, o nome da regra.
+- **Página do insight:**
+  - o cabeçalho com as datas do registro, sem linha do tempo (decisão do Cesar);
+  - "Por que estou vendo isso?": no sistêmico, a regra, a evidência e o aviso do sinal; na atenção, o limite, os três fatores e o aviso do score;
+  - os chamados por semana, com os números também em texto;
+  - os chamados da evidência que quem lê vê (sistêmico), ou o ativo, com link para o detalhe (atenção);
+  - a coluna de decisão: as ações do estado, o formulário de resolver ou descartar (motivo, aviso dos 30 dias, nota obrigatória) e o texto de quem decide por escopo. Quem não decide vê "Você não decide este insight".
+- **Detalhe do ativo:**
+  - os quatro indicadores: atenção com o limite, criticidade, horas paradas e impacto em hóspedes, tirados do detalhe gravado;
+  - os três fatores;
+  - a atenção dos últimos 90 dias sobre as faixas, com a linha do limite, o resumo em texto e os valores dia a dia num `details`;
+  - a composição do score, com a nota de cada linha e o aviso do peso dividido, e os UH-dias numa linha discreta no fim (decisão 5);
+  - "Como este resultado foi gravado" (`Dados`);
+  - os insights do ativo.
+  - A página não decide nada.
+- **Moldura:** o item "HubKeep Intelligence" com a contagem dos abertos, pela rota do resumo, registrado também no diário do núcleo.
+- **Textos:** 116 chaves novas nos quatro idiomas.
+- **Testes:** as três telas renderizadas nos quatro idiomas e no pseudo-idioma, sem chave crua, mais casos de conteúdo e de quem decide; e a moldura com o item novo.
+- **Fora destas telas:**
+  - a efetividade nos três lugares e o recálculo sob demanda;
+  - o número do insight, que espera decisão: a tela usa o título como link;
+  - a ficha do ativo do núcleo, que não tem rota de detalhe, então não há link para ela.
+- **Não conferido no navegador:** o dev não tem a 0040, e nenhum job rodou lá. A primeira rodada, com o `vercel.json`, fica para depois do merge.
+- **Atualização (12/10/2026):** a `main` com o #190 e o #191 entrou no branch. O único conflito foi no diário do núcleo, onde cada lado acrescentou uma seção; as duas ficaram. Typecheck, lint e testes verdes no local. O dev já tem a 0040 (conferido no fechamento de 10/10), mas nenhum job rodou lá, então as telas ainda não foram conferidas no navegador com dados; isso fica antes do merge do PR.

@@ -1720,3 +1720,11 @@ Decisão 4 do Cesar de 09/10/2026. Ficou com o agente do núcleo quando o CNPJ a
 - **Agora:** antes de gravar, a aplicação confere se o papel de Gestor CSC ou Gerente alcança algum hotel visível do grupo (`exigirHotelParaGerirFornecedores`, a mesma conta da policy) e devolve 403 `fornecedores_sem_hotel`, com mensagem nos quatro idiomas. O Admin do grupo grava mesmo sem hotel. A porta dos fornecedores ganhou a leitura dos hotéis visíveis.
 - **A policy não muda:** sem a checagem da aplicação, a RLS continua recusando (teste de integração).
 - **Verificação:** no local, lint, typecheck e os testes de todos os pacotes, verdes; na CI, o teste de integração `packages/db/test/fornecedores.test.ts` com o Gestor CSC numa bandeira sem hotel.
+
+## Item de menu do HubKeep Intelligence na moldura (pelo agente do Intelligence, 10/10/2026)
+
+Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/moldura.tsx`) é do núcleo. A mudança foi autorizada pelo Cesar no chat do agente do Intelligence em 10/10/2026 ("Cesar aqui"), e o detalhe está no `docs/diario-intelligence.md`, seção `int-telas`.
+- **O item:** "HubKeep Intelligence", no grupo "Módulo opcional", com a contagem dos insights abertos. Aparece só quando `GET /api/v1/inteligencia/resumo` responde 200; sem o módulo no grupo, ou sem papel que decide insight, a rota responde 404 e o item não existe.
+- **Fora do `MENU`:** o item fica em `ITEM_DO_INTELLIGENCE`, para o teste da moldura continuar exigindo página e título só dos itens fixos. O teste ganhou os casos do item novo.
+- **Títulos da barra:** as três rotas do módulo (`/inteligencia/insights`, `/inteligencia/insights/{id}` e `/inteligencia/ativos/{id}`).
+- **Sem importar o módulo:** a moldura fala só com a API, e o lint de fronteiras continua barrando o `@hubkeep/inteligencia` fora das pastas liberadas.

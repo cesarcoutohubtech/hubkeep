@@ -6,7 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({}));
 vi.mock('../src/cliente/sessao', () => ({ sair: vi.fn() }));
 
-const { MENU, itemAtivo, tituloDaRota } = await import('../src/cliente/moldura');
+const { ITEM_DO_INTELLIGENCE, MENU, intelligenceAtivo, itemAtivo, tituloDaRota } =
+  await import('../src/cliente/moldura');
 
 describe('menu da moldura', () => {
   const itens = MENU.flatMap((g) => g.itens);
@@ -45,5 +46,24 @@ describe('título da barra pela rota', () => {
   it('o título do cadastro vem da própria tela', () => {
     expect(tituloDaRota('/admin/ativos')).toBe('admin.ativos.titulo');
     expect(tituloDaRota('/admin/ativos/x')).toBeUndefined();
+  });
+});
+
+describe('o item do HubKeep Intelligence', () => {
+  it('tem página e título, fora do MENU (só aparece com o módulo e o papel)', () => {
+    expect(existsSync(`src/app/(painel)${ITEM_DO_INTELLIGENCE.href}/page.tsx`)).toBe(true);
+    expect(MENU.flatMap((g) => g.itens).map((i) => i.href)).not.toContain(
+      ITEM_DO_INTELLIGENCE.href,
+    );
+    expect(tituloDaRota('/inteligencia/insights')).toBe('menu.inteligencia');
+    expect(tituloDaRota('/inteligencia/insights/0190a')).toBe('inteligencia.pagina.titulo');
+    expect(tituloDaRota('/inteligencia/ativos/0190a')).toBe('inteligencia.ativo.titulo');
+  });
+
+  it('fica ativo em todas as telas do módulo', () => {
+    expect(intelligenceAtivo('/inteligencia/insights')).toBe(true);
+    expect(intelligenceAtivo('/inteligencia/ativos/0190a')).toBe(true);
+    expect(intelligenceAtivo('/inteligencia-x')).toBe(false);
+    expect(intelligenceAtivo('/admin/ativos')).toBe(false);
   });
 });
