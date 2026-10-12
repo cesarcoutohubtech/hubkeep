@@ -6,6 +6,7 @@
 // caracteres, único no grupo; alfanumérico desde a 0035) e a autorização por
 // papel (policies da migração 0033).
 // Portal, contrato, avaliação, custos e alçadas são da fase 2.
+import { escopoCobreHotel } from './equipes';
 import { Conflito, PermissaoNegada, RegraViolada } from './erros';
 import { type Resultado, ehAdminGrupo, vigente } from './permissoes';
 import type { Atribuicao, Papel } from './tipos';
@@ -43,6 +44,34 @@ export function podeGerirFornecedores(minhas: readonly Atribuicao[], agora: Date
           'Só o Admin do grupo, o Gestor CSC e o Gerente do hotel cadastram fornecedores.',
         ),
       };
+}
+
+/**
+ * O Gestor CSC e o Gerente gravam fornecedor pelo papel que alcança algum
+ * hotel do grupo (authz.hoteis_com_papel na policy). O Gestor CSC de uma
+ * bandeira ainda sem hotel tem o papel, mas não alcança nenhum: recebe 403
+ * fornecedores_sem_hotel, com mensagem própria (decisão do Cesar de
+ * 09/10/2026), em vez da recusa genérica do banco. `hoteis` são os hotéis
+ * visíveis a quem pede. O Admin do grupo grava mesmo sem hotel.
+ */
+export function exigirHotelParaGerirFornecedores(
+  minhas: readonly Atribuicao[],
+  hoteis: readonly { id: string; bandeiraId: string | null }[],
+  agora: Date,
+): void {
+  if (ehAdminGrupo(minhas, agora)) return;
+  const alcanca = minhas.some(
+    (a) =>
+      vigente(a, agora) &&
+      PAPEIS_QUE_GERENCIAM_FORNECEDORES.includes(a.papel) &&
+      hoteis.some((h) => escopoCobreHotel(a, h)),
+  );
+  if (!alcanca) {
+    throw new PermissaoNegada(
+      'fornecedores_sem_hotel',
+      'O papel de quem pede ainda não alcança nenhum hotel do grupo.',
+    );
+  }
 }
 
 const PESOS_DO_PRIMEIRO = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];

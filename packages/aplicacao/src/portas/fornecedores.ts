@@ -16,6 +16,8 @@ export type MudancaDeFornecedor = DadosDeFornecedor | { desativado: boolean };
 export interface PortaFornecedores {
   /** Ordenados pelo nome. */
   listar(ctx: Contexto): Promise<FornecedorCadastrado[]>;
+  /** Os hotéis do grupo visíveis a quem pede, com a bandeira (o papel alcança algum?). */
+  hoteis(ctx: Contexto): Promise<{ id: string; bandeiraId: string | null }[]>;
   /**
    * Na unit of work, com auditoria e evento. CNPJ repetido no grupo: Conflito
    * fornecedor_cnpj_repetido.

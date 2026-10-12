@@ -5,6 +5,7 @@ import type { Atribuicao } from '../src/index';
 import {
   cnpjDeFornecedorRepetido,
   cnpjValido,
+  exigirHotelParaGerirFornecedores,
   formatarCnpj,
   normalizarContatoDeFornecedor,
   normalizarNomeDeFornecedor,
@@ -177,5 +178,45 @@ describe('nome e contato', () => {
       contatoTelefone: null,
       contatoEmail: null,
     });
+  });
+});
+
+describe('o papel alcança algum hotel para gravar fornecedor', () => {
+  const H1 = { id: 'h1', bandeiraId: 'b1' };
+  const recusa = (f: () => void) => {
+    try {
+      f();
+      return null;
+    } catch (e) {
+      return (e as { codigo: string }).codigo;
+    }
+  };
+
+  it('Gestor CSC de bandeira com hotel, sim; de bandeira sem hotel, fornecedores_sem_hotel', () => {
+    const gestor = [atr('gestor_csc', { tipo: 'bandeira', bandeiraId: 'b1' })];
+    expect(recusa(() => exigirHotelParaGerirFornecedores(gestor, [H1], AGORA))).toBeNull();
+    const semHotel = [atr('gestor_csc', { tipo: 'bandeira', bandeiraId: 'b2' })];
+    expect(recusa(() => exigirHotelParaGerirFornecedores(semHotel, [H1], AGORA))).toBe(
+      'fornecedores_sem_hotel',
+    );
+    expect(recusa(() => exigirHotelParaGerirFornecedores(semHotel, [], AGORA))).toBe(
+      'fornecedores_sem_hotel',
+    );
+  });
+
+  it('o Gerente do hotel alcança o hotel dele; o Admin do grupo grava mesmo sem hotel', () => {
+    const gerente = [atr('gerente_hotel', { tipo: 'hotel', hotelId: 'h1' })];
+    expect(recusa(() => exigirHotelParaGerirFornecedores(gerente, [H1], AGORA))).toBeNull();
+    const admin = [atr('admin_grupo', { tipo: 'grupo' })];
+    expect(recusa(() => exigirHotelParaGerirFornecedores(admin, [], AGORA))).toBeNull();
+  });
+
+  it('o papel vencido não alcança', () => {
+    const vencido = [
+      atr('gestor_csc', { tipo: 'bandeira', bandeiraId: 'b1' }, new Date('2026-10-01T00:00:00Z')),
+    ];
+    expect(recusa(() => exigirHotelParaGerirFornecedores(vencido, [H1], AGORA))).toBe(
+      'fornecedores_sem_hotel',
+    );
   });
 });

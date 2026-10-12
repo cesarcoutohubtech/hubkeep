@@ -4,12 +4,15 @@
 // proprietário recebe a lista vazia. Gravar é do Admin do grupo, do Gestor CSC
 // e do Gerente do hotel (podeGerirFornecedores); a regra é injetável para o
 // teste de aceite provar que a RLS ainda barra. A OS passa a usar o
-// fornecedor na I4.
+// fornecedor na I4. O papel que não alcança nenhum hotel (o Gestor CSC de uma
+// bandeira ainda sem hotel) recebe fornecedores_sem_hotel, com mensagem
+// própria, antes da recusa genérica do banco.
 import {
   type Atribuicao,
   type Contexto,
   type Resultado,
   exigir,
+  exigirHotelParaGerirFornecedores,
   podeGerirFornecedores,
   validarDadosDeFornecedor,
 } from '@hubkeep/dominio';
@@ -42,10 +45,17 @@ export function criarCasosDeUsoDeFornecedores(deps: {
   relogio: Relogio;
   /** Padrão: podeGerirFornecedores do domínio. Só o teste de aceite troca. */
   podeGerir?: (minhas: readonly Atribuicao[], agora: Date) => Resultado;
+  /** Padrão: exigirHotelParaGerirFornecedores do domínio. Só o teste de aceite troca. */
+  exigirAlcance?: typeof exigirHotelParaGerirFornecedores;
 }): CasosDeUsoDeFornecedores {
   const podeGerir = deps.podeGerir ?? podeGerirFornecedores;
-  const exigirGestao = async (ctx: Contexto) =>
-    exigir(podeGerir(await deps.atribuicoes.doUsuario(ctx), deps.relogio.agora()));
+  const exigirAlcance = deps.exigirAlcance ?? exigirHotelParaGerirFornecedores;
+  const exigirGestao = async (ctx: Contexto) => {
+    const minhas = await deps.atribuicoes.doUsuario(ctx);
+    const agora = deps.relogio.agora();
+    exigir(podeGerir(minhas, agora));
+    exigirAlcance(minhas, await deps.fornecedores.hoteis(ctx), agora);
+  };
 
   return {
     listar: (ctx) => deps.fornecedores.listar(ctx),

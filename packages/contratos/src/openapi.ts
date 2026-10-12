@@ -869,7 +869,9 @@ export const ROTAS: readonly Rota[] = [
     respostas: {
       201: { descricao: 'Fornecedor cadastrado', esquema: RespostaDeFornecedorGravado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
-      403: ERRO('Sem permissão (fornecedores_sem_permissao).'),
+      403: ERRO(
+        'Sem permissão (fornecedores_sem_permissao), ou o papel de Gestor CSC ou Gerente ainda não alcança nenhum hotel (fornecedores_sem_hotel).',
+      ),
       409: ERRO('CNPJ já cadastrado no grupo (fornecedor_cnpj_repetido).'),
       422: ERRO(
         'fornecedor_nome_invalido, fornecedor_cnpj_invalido, fornecedor_contato_nome_invalido, fornecedor_telefone_invalido, fornecedor_email_invalido ou entrada_invalida.',
@@ -889,7 +891,9 @@ export const ROTAS: readonly Rota[] = [
         esquema: RespostaDeFornecedorGravado,
       },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
-      403: ERRO('Sem permissão (fornecedores_sem_permissao).'),
+      403: ERRO(
+        'Sem permissão (fornecedores_sem_permissao), ou o papel de Gestor CSC ou Gerente ainda não alcança nenhum hotel (fornecedores_sem_hotel).',
+      ),
       404: ERRO('Fornecedor não encontrado (fornecedor_nao_encontrado).'),
       409: ERRO('fornecedor_cnpj_repetido ou conflito_de_versao (com versaoAtual).'),
       422: ERRO(
@@ -906,7 +910,9 @@ export const ROTAS: readonly Rota[] = [
     respostas: {
       200: { descricao: 'Fornecedor desativado', esquema: RespostaDeFornecedorGravado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
-      403: ERRO('Sem permissão (fornecedores_sem_permissao).'),
+      403: ERRO(
+        'Sem permissão (fornecedores_sem_permissao), ou o papel de Gestor CSC ou Gerente ainda não alcança nenhum hotel (fornecedores_sem_hotel).',
+      ),
       404: ERRO('Fornecedor não encontrado (fornecedor_nao_encontrado).'),
       409: ERRO('O fornecedor mudou (conflito_de_versao, com versaoAtual).'),
     },
@@ -920,7 +926,9 @@ export const ROTAS: readonly Rota[] = [
     respostas: {
       200: { descricao: 'Fornecedor reativado', esquema: RespostaDeFornecedorGravado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
-      403: ERRO('Sem permissão (fornecedores_sem_permissao).'),
+      403: ERRO(
+        'Sem permissão (fornecedores_sem_permissao), ou o papel de Gestor CSC ou Gerente ainda não alcança nenhum hotel (fornecedores_sem_hotel).',
+      ),
       404: ERRO('Fornecedor não encontrado (fornecedor_nao_encontrado).'),
       409: ERRO('O fornecedor mudou (conflito_de_versao, com versaoAtual).'),
     },
