@@ -342,11 +342,10 @@ describe.skipIf(!temBanco)('C4a — execução da OS', { timeout: 60_000 }, () =
     expect((await operar(U.outro, 'os.iniciar', osId, 2)).resposta).toMatchObject({ versao: 3 });
   });
 
-  it('foto na OS (C4b): o responsável, com a OS em execução ou pausada', async () => {
+  it('foto na OS (C4b e I8): o responsável, com a OS atribuída, em execução ou pausada', async () => {
     const { osId } = await osPara({ tipo: 'tecnico', usuarioId: U.tecnico });
-    await expect(execucao.exigirFoto(ctx(U.tecnico), osId)).rejects.toMatchObject({
-      codigo: 'transicao_invalida',
-    });
+    // A foto "antes" (I8): vale com a OS atribuída, ainda não iniciada.
+    await expect(execucao.exigirFoto(ctx(U.tecnico), osId)).resolves.toBeUndefined();
     await operar(U.tecnico, 'os.iniciar', osId, 1);
     await expect(execucao.exigirFoto(ctx(U.tecnico), osId)).resolves.toBeUndefined();
     await expect(execucao.exigirFoto(ctx(U.outro), osId)).rejects.toMatchObject({
