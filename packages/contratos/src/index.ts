@@ -134,6 +134,7 @@ export {
 export {
   AnexoApi,
   ENTIDADES_COM_ANEXO_API,
+  MOMENTOS_DA_FOTO_API,
   PedidoDeRegistroDeAnexo,
   PedidoDeUrlDeDownload,
   PedidoDeUrlDeUpload,

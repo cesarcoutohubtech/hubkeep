@@ -1,6 +1,7 @@
 // Anexos (F0-10 e B4) com portas em memória: escopo antes de qualquer URL,
 // caminho calculado aqui, download conferido de novo e 404 para tudo fora do
-// escopo; o registro confere o caminho e a miniatura antes de gravar.
+// escopo; o registro confere o caminho e a miniatura antes de gravar. Na I8,
+// o momento da foto da OS e a URL da assinatura do aceite.
 import {
   type Atribuicao,
   Conflito,
@@ -29,6 +30,7 @@ function montar(opcoes: {
   /** Caminhos que já têm arquivo no Storage. */
   noStorage?: string[];
   regraParaAnexar?: (ctx: Contexto, entidade: string, registroId: string) => Promise<void>;
+  regraParaAssinar?: (ctx: Contexto, osId: string) => Promise<void>;
 }) {
   const emitidas: string[] = [];
   const registrados: DadosDeAnexo[] = [];
@@ -54,6 +56,7 @@ function montar(opcoes: {
       leNoHotel: async () => opcoes.le ?? true,
     },
     ...(opcoes.regraParaAnexar ? { regraParaAnexar: opcoes.regraParaAnexar } : {}),
+    ...(opcoes.regraParaAssinar ? { regraParaAssinar: opcoes.regraParaAssinar } : {}),
     armazenamento: {
       urlDeUpload: async (c) => {
         if (opcoes.noStorage?.includes(c)) return null;
@@ -205,6 +208,7 @@ describe('registro do anexo (B4)', () => {
         miniaturaCaminho: MINIATURA,
         tipo: 'image/jpeg',
         nome: 'foto da UH.jpg',
+        momento: null,
       },
     ]);
   });
@@ -271,6 +275,8 @@ const gravado = (extra: Partial<AnexoGravado> = {}): AnexoGravado => ({
   miniaturaCaminho: MINIATURA,
   tipo: 'image/jpeg',
   nome: null,
+  momento: null,
+  assinatura: false,
   usuarioId: 'u',
   nomeUsuario: 'Usuário',
   criadoEm: AGORA,
@@ -348,5 +354,86 @@ describe('anexos registrados (B4)', () => {
     });
     await casos.remover(ctx, 'x1');
     expect(removidos).toEqual(['x1']);
+  });
+});
+
+const OS = '0a100000-0000-4000-8000-000000000001';
+const FOTO_DA_OS = `${TENANT}/${HOTEL}/os/${OS}/${ID}.jpg`;
+
+describe('foto antes ou depois (I8)', () => {
+  it('a foto da OS grava o momento', async () => {
+    const { casos, registrados } = montar({});
+    await casos.registrar(ctx, { caminho: FOTO_DA_OS, momento: 'depois' });
+    expect(registrados[0]).toMatchObject({ entidade: 'os', registroId: OS, momento: 'depois' });
+  });
+
+  it('sem momento, a foto fica sem (nulo)', async () => {
+    const { casos, registrados } = montar({});
+    await casos.registrar(ctx, { caminho: FOTO_DA_OS, momento: null });
+    expect(registrados[0]?.momento).toBeNull();
+  });
+
+  it('momento fora da OS: 422 momento_so_na_os, sem gravar', async () => {
+    const { casos, registrados } = montar({});
+    await expect(
+      casos.registrar(ctx, { caminho: CAMINHO, momento: 'antes' }),
+    ).rejects.toMatchObject({ codigo: 'momento_so_na_os' });
+    expect(registrados).toEqual([]);
+  });
+
+  it('a lista devolve o momento e a assinatura; a assinatura ninguém remove', async () => {
+    const { casos } = montar({
+      anexos: [
+        gravado({ entidade: 'os', registroId: OS, momento: 'antes' }),
+        gravado({ id: 'x2', entidade: 'os', registroId: OS, assinatura: true }),
+      ],
+    });
+    const lista = await casos.listar(ctx, 'os', OS);
+    expect(lista.map((a) => [a.id, a.momento, a.assinatura, a.podeRemover])).toEqual([
+      ['x1', 'antes', false, true],
+      ['x2', null, true, false],
+    ]);
+  });
+
+  it('remover a assinatura: 403 assinatura_nao_se_remove', async () => {
+    const { casos, removidos } = montar({
+      anexos: [gravado({ entidade: 'os', registroId: OS, assinatura: true })],
+    });
+    await expect(casos.remover(ctx, 'x1')).rejects.toMatchObject({
+      codigo: 'assinatura_nao_se_remove',
+    });
+    expect(removidos).toEqual([]);
+  });
+});
+
+describe('URL da assinatura do aceite (I8)', () => {
+  it('quem aceita recebe a URL de um PNG novo na pasta da OS', async () => {
+    const regras: string[] = [];
+    const { casos, emitidas } = montar({
+      regraParaAssinar: async (_c, id) => void regras.push(id),
+    });
+    const r = await casos.pedirUrlDaAssinatura(ctx, OS);
+    expect(r.caminho).toBe(`${TENANT}/${HOTEL}/os/${OS}/${ID}.png`);
+    expect(regras).toEqual([OS]);
+    expect(emitidas).toEqual([`upload:${r.caminho}`]);
+  });
+
+  it('quem não pode aceitar não recebe URL', async () => {
+    const { casos, emitidas } = montar({
+      regraParaAssinar: async () => {
+        throw new PermissaoNegada('aceitar_os_fora_do_papel', 'x');
+      },
+    });
+    await expect(casos.pedirUrlDaAssinatura(ctx, OS)).rejects.toBeInstanceOf(PermissaoNegada);
+    expect(emitidas).toEqual([]);
+  });
+
+  it.each([
+    ['OS que o usuário não enxerga', { hotel: null }, NaoEncontrado],
+    ['sem escrita no hotel', { escreve: false }, PermissaoNegada],
+  ] as const)('%s: sem URL', async (_n, opcoes, erro) => {
+    const { casos, emitidas } = montar({ ...opcoes, regraParaAssinar: async () => {} });
+    await expect(casos.pedirUrlDaAssinatura(ctx, OS)).rejects.toBeInstanceOf(erro);
+    expect(emitidas).toEqual([]);
   });
 });

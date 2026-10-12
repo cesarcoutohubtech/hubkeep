@@ -5,15 +5,17 @@
 // TIPOS_DE_CODIGO_DE_MANUTENCAO, migração 0036) e para o módulo contratado (I7,
 // MODULOS_CONTRATAVEIS, migração 0037) e, no Intelligence, para o estado e o
 // motivo do descarte do insight (ESTADOS_DO_INSIGHT e MOTIVOS_DE_DESCARTE,
-// migração 0038). Este teste lê as migrações e
+// migração 0038), e o momento da foto da OS (I8, MOMENTOS_DA_FOTO, migração
+// 0041). Este teste lê as migrações e
 // falha se um check e a lista do domínio divergirem: valor novo exige migração
 // que amplia o check. Os pgTAP 028, 029 e 030 provam, no banco, que o check
-// recusa o que está fora (o 031, no insight).
+// recusa o que está fora (o 031, no insight; o 033, no momento da foto).
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   EXECUTORES_DA_OS,
   MODULOS_CONTRATAVEIS,
+  MOMENTOS_DA_FOTO,
   ORIGENS_DO_CHAMADO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
 } from '../packages/dominio/src/index';
@@ -62,6 +64,12 @@ describe('valores canônicos: banco × domínio (I6)', () => {
 describe('valores canônicos: banco × domínio (I7)', () => {
   it('licenca_modulo_lista aceita exatamente os MODULOS_CONTRATAVEIS do domínio', () => {
     expect(valoresDoCheck('licenca_modulo_lista', 'modulo')).toEqual([...MODULOS_CONTRATAVEIS]);
+  });
+});
+
+describe('valores canônicos: banco × domínio (I8)', () => {
+  it('anexo_momento_lista aceita exatamente os MOMENTOS_DA_FOTO do domínio', () => {
+    expect(valoresDoCheck('anexo_momento_lista', 'momento')).toEqual([...MOMENTOS_DA_FOTO]);
   });
 });
 

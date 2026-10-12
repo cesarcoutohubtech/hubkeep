@@ -1,6 +1,8 @@
 // Anexos (F0-10 e B4, ADR-024). O caminho do arquivo é calculado pela API; o
 // cliente só diz a que registro o anexo pertence e o tipo. Depois do envio, o
-// aparelho registra o caminho (e o da miniatura, gerada nele).
+// aparelho registra o caminho (e o da miniatura, gerada nele). Na I8, a foto
+// da OS pode levar o momento (antes ou depois), e a assinatura do aceite tem
+// URL própria (/api/v1/os/{id}/assinatura/url-de-upload).
 import { z } from 'zod';
 
 export const ENTIDADES_COM_ANEXO_API = ['hotel', 'local', 'ativo', 'chamado', 'os'] as const;
@@ -10,6 +12,8 @@ export const TIPOS_DE_ANEXO_API = [
   'image/webp',
   'application/pdf',
 ] as const;
+/** Momento da foto da OS (I8), igual ao do domínio (tests/contratos-dominio). */
+export const MOMENTOS_DA_FOTO_API = ['antes', 'depois'] as const;
 
 export const PedidoDeUrlDeUpload = z
   .object({
@@ -52,6 +56,8 @@ export const PedidoDeRegistroDeAnexo = z
     miniaturaCaminho: z.string().min(1).max(500).nullish(),
     /** Nome original do arquivo. */
     nome: z.string().max(500).nullish(),
+    /** Foto da OS antes ou depois (I8); fora da OS, 422 momento_so_na_os. */
+    momento: z.enum(MOMENTOS_DA_FOTO_API).nullish(),
   })
   .meta({ id: 'PedidoDeRegistroDeAnexo' });
 
@@ -69,6 +75,10 @@ export const AnexoApi = z
     tipo: z.enum(TIPOS_DE_ANEXO_API),
     nome: z.string().nullable(),
     temMiniatura: z.boolean(),
+    /** Foto da OS antes ou depois (I8); null: sem momento. */
+    momento: z.enum(MOMENTOS_DA_FOTO_API).nullable(),
+    /** A assinatura do aceite (I8): imutável, ninguém a remove. */
+    assinatura: z.boolean(),
     usuarioId: z.guid(),
     /** Nome de quem enviou; null se o usuário não enxerga o membro. */
     nomeUsuario: z.string().nullable(),

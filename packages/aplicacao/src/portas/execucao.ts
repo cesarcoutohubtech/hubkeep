@@ -48,6 +48,8 @@ export interface PortaExecucao {
   osDoDia(ctx: Contexto): Promise<OsDoDia[]>;
   /** A hora da última transição da OS (I5); null se ela não tem nenhuma. */
   ultimaTransicaoEm(ctx: Contexto, osId: string): Promise<Date | null>;
+  /** Fotos "depois" registradas na OS e não removidas (I8). */
+  fotosDepois(ctx: Contexto, osId: string): Promise<number>;
 }
 
 /** Ação do Técnico sobre a OS, já decidida pelo domínio. */

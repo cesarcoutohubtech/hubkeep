@@ -247,10 +247,13 @@ export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () => {
     armazenamento: criarArmazenamentoDeAnexos({ url: urlSupabase() }),
     relogio: relogioDoSistema,
     novoId,
-    // A foto na OS: responsável, com a OS em execução ou pausada (C4).
+    // A foto na OS: responsável, com a OS atribuída, em execução ou pausada (C4 e I8).
     regraParaAnexar: async (ctx, entidade, registroId) => {
       if (entidade === 'os') await (await casosDeUsoDeExecucao()).exigirFoto(ctx, registroId);
     },
+    // A assinatura do aceite: quem pode aceitar a OS agora (I8).
+    regraParaAssinar: async (ctx, osId) =>
+      (await casosDeUsoDeTriagem()).exigirQuemAceita(ctx, osId),
   });
 });
 

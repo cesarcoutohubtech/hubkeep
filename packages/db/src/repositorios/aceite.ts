@@ -6,11 +6,15 @@
 // último; o histórico fica na auditoria e no evento) e, com o equipamento
 // parado, abre a parada do ativo no mesmo chamado, na mesma unit of work. O
 // aceite grava o custo informado (I4), quando vem, e os três códigos de
-// falha, causa e solução (I6), quando quem aceita os manda.
-import type { ReflexoNoChamado } from '@hubkeep/aplicacao';
+// falha, causa e solução (I6), quando quem aceita os manda. Com a assinatura
+// (I8), o anexo é registrado antes, na mesma unit of work, e a OS guarda o id
+// (FK para um anexo da própria OS, migração 0041); sem ela, a OS fica sem
+// (a de um aceite anterior, antes da reabertura, fica no anexo e na auditoria).
+import type { AssinaturaDoAceite, ReflexoNoChamado } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 import type { CodigosDaOs, EstadoDaOs } from '@hubkeep/dominio';
+import { registrarAnexo } from './anexos';
 import { pararNaAbertura } from './paradas';
 import { registrarTransicao } from './transicoes';
 import { refletirNoChamado, semLinha } from './triagem';
@@ -29,11 +33,14 @@ async function decidirAceite(
     custoInformado?: number | null;
     /** Só no aceite (I6); null: ficam os da OS. */
     codigos?: CodigosDaOs | null;
+    /** Só no aceite (I8): o anexo da assinatura; null: sem assinatura. */
+    assinaturaId?: string | null;
   },
 ): Promise<{ versao: number; versaoDoChamado: number }> {
   const tx = transacaoDe(uow);
   const custo = g.custoInformado ?? null;
   const codigos = g.codigos ?? null;
+  const assinaturaId = g.assinaturaId ?? null;
   const para = acao === 'aceitar' ? 'aceita' : 'em_execucao';
   const antes = await tx
     .selectFrom('app.os')
@@ -45,6 +52,7 @@ async function decidirAceite(
       'codigo_falha_id',
       'codigo_causa_id',
       'codigo_solucao_id',
+      'assinatura_aceite_id',
       'versao',
     ])
     .where('id', '=', g.osId)
@@ -63,6 +71,7 @@ async function decidirAceite(
             codigo_solucao_id: codigos.solucaoId,
           }
         : {}),
+      ...(acao === 'aceitar' ? { assinatura_aceite_id: assinaturaId } : {}),
       versao: sql<number>`versao + 1`,
       atualizado_em: sql`now()`,
     })
@@ -83,6 +92,7 @@ async function decidirAceite(
       ...(g.motivo !== null ? { motivo: g.motivo } : {}),
       ...(custo !== null ? { custoInformado: custo } : {}),
       ...(codigos !== null ? { codigos } : {}),
+      ...(assinaturaId !== null ? { assinaturaId } : {}),
       situacaoId: g.situacaoId,
       versao: r.versao,
       estadoDoChamado: g.chamado.estado,
@@ -97,12 +107,13 @@ async function decidirAceite(
       chamadoId: r.chamado_id,
       ...(g.motivo !== null ? { motivo: g.motivo } : {}),
       ...(custo !== null ? { custoInformado: custo } : {}),
+      ...(assinaturaId !== null ? { assinaturaId } : {}),
     },
   });
   return { versao: r.versao, versaoDoChamado: chamado.versao };
 }
 
-export const aceitarOs = (
+export async function aceitarOs(
   uow: UnidadeDeTrabalho,
   g: {
     osId: string;
@@ -112,8 +123,28 @@ export const aceitarOs = (
     chamado: ReflexoNoChamado;
     custoInformado: number | null;
     codigos: CodigosDaOs | null;
+    assinatura: AssinaturaDoAceite | null;
   },
-) => decidirAceite(uow, 'aceitar', { ...g, motivo: null });
+): Promise<{ versao: number; versaoDoChamado: number }> {
+  const { assinatura, ...resto } = g;
+  const anexo = assinatura
+    ? await registrarAnexo(
+        uow,
+        {
+          hotelId: assinatura.hotelId,
+          entidade: 'os',
+          registroId: g.osId,
+          caminho: assinatura.caminho,
+          miniaturaCaminho: null,
+          tipo: 'image/png',
+          nome: null,
+          momento: null,
+        },
+        { assinatura: true },
+      )
+    : null;
+  return decidirAceite(uow, 'aceitar', { ...resto, motivo: null, assinaturaId: anexo?.id ?? null });
+}
 
 export async function reabrirOs(
   uow: UnidadeDeTrabalho,

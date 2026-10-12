@@ -1721,6 +1721,32 @@ Decisão 4 do Cesar de 09/10/2026. Ficou com o agente do núcleo quando o CNPJ a
 - **A policy não muda:** sem a checagem da aplicação, a RLS continua recusando (teste de integração).
 - **Verificação:** no local, lint, typecheck e os testes de todos os pacotes, verdes; na CI, o teste de integração `packages/db/test/fornecedores.test.ts` com o Gestor CSC numa bandeira sem hotel.
 
+### I8 — foto antes ou depois e assinatura no aceite: migração, regras e API (12/10/2026)
+
+Desenho aprovado pelo Cesar em 08/10/2026 (item 4). PR de zona protegida, com a migração 0041 e o pgTAP 033. As telas ficam para a I8b, fora da zona protegida.
+- **Foto:** `app.anexo.momento` ("antes" ou "depois"), anulável e só em anexo de OS, com os valores do domínio (`MOMENTOS_DA_FOTO`, teste de paridade). As fotos que já existem ficam sem momento. O PWA vai sugerir o momento pelo estado da OS (`momentoSugerido`), e o técnico poderá trocar.
+- **Foto com a OS atribuída:** a foto "antes" é tirada antes de iniciar. Por isso, anexar foto passou a valer também na OS `atribuida` (`ESTADOS_QUE_ACEITAM_FOTO`). Horas, material e parada continuam só em execução ou pausada.
+- **Políticas por hotel, desligadas por padrão** (ADR-026; nos contratos e no teste de paridade):
+  - `os.foto_depois_obrigatoria`: cobrada na conclusão, que exige ao menos uma foto "depois" não removida. A foto "antes" não conta. No PWA, a foto vai pela mesma fila de operações, antes da conclusão. Uma foto da fila feita antes da I8, sem momento, não satisfaz a política;
+  - `os.assinatura_no_aceite`: o aceite exige a assinatura de quem aceita.
+- **Assinatura:** desenhada no aceite, no web (a tela é da I8b), e enviada antes por uma URL própria, `POST /api/v1/os/{id}/assinatura/url-de-upload`. A URL sai só para quem pode aceitar a OS concluída agora: a regra é a do aceite (`exigirQuemAceita`), e o caminho é um PNG novo na pasta da OS. O aceite leva `assinaturaCaminho`, conferido como PNG da pasta da OS (senão, 422 `assinatura_invalida`). O anexo é gravado com `assinatura = true` na mesma unit of work do aceite. É evidência do aceite, e não assinatura digital ICP-Brasil.
+- **Escolhas de implementação** (dentro do desenho):
+  - a assinatura é uma coluna booleana em `app.anexo`, e não uma entidade nova. Um check a prende a PNG de OS, sem momento e sem miniatura;
+  - é imutável: a policy de UPDATE do anexo (só a remoção lógica tem GRANT) não alcança a linha da assinatura. O domínio também recusa (403 `assinatura_nao_se_remove`), e a lista de anexos devolve `podeRemover: false`;
+  - `app.os.assinatura_aceite_id` tem FK composta `(hotel_id, id, assinatura_aceite_id)` → `anexo (hotel_id, os_id, id)`: a OS só aponta anexo dela mesma. O aceite sempre grava o campo, com a assinatura nova ou nulo. Reaberta e aceita de novo, a OS fica com a do último aceite, e a anterior continua no anexo e na auditoria;
+  - o GRANT de UPDATE por coluna em `assinatura_aceite_id` traz o mesmo risco aceito da 0023 e da 0026. Vale para todo papel que passa na policy de UPDATE da OS, mas a aplicação só grava o campo no aceite, e toda gravação fica na auditoria.
+- **API:** `momento` no registro e na lista de anexos, onde também entra `assinatura`; `assinaturaCaminho` no aceite; as duas políticas na configuração; seis códigos de erro novos, com mensagem nos quatro idiomas.
+- **Testes:**
+  - domínio: momento, sugestão, as duas exigências, foto na OS atribuída, políticas e remoção;
+  - aplicação: anexos, com o momento e a URL da assinatura;
+  - paridade: `anexo_momento_lista` × `MOMENTOS_DA_FOTO` e as políticas da API × as do domínio;
+  - integração, só na CI: `packages/db/test/fotos-e-assinatura.test.ts`;
+  - pgTAP 033: checks, FK, imutabilidade, isolamento e worker.
+- **Para a I8b:**
+  - web: o canvas da assinatura no aceite, só com a política ligada; as duas políticas na configuração do Admin; o momento e a assinatura na lista de anexos;
+  - PWA: o momento sugerido e trocável; a foto com a OS atribuída; o aviso antes de concluir sem foto "depois" quando a política estiver ligada;
+  - API: a política da foto e a contagem na fila do dia, e a da assinatura no detalhe do chamado.
+
 ## Item de menu do HubKeep Intelligence na moldura (pelo agente do Intelligence, 10/10/2026)
 
 Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/moldura.tsx`) é do núcleo. A mudança foi autorizada pelo Cesar no chat do agente do Intelligence em 10/10/2026 ("Cesar aqui"), e o detalhe está no `docs/diario-intelligence.md`, seção `int-telas`.

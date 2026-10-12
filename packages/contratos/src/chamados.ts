@@ -271,10 +271,18 @@ export const RespostaDeOsGravada = z
  * informado em reais (I4), conferido no domínio (não negativo, dois decimais).
  * Com `codigos` (I6), os três substituem os da OS; sem eles, ficam os que o
  * técnico sugeriu. Com a política os.codigos_obrigatorios ligada no hotel, o
- * aceite sem os três é recusado (422 codigos_obrigatorios_no_aceite).
+ * aceite sem os três é recusado (422 codigos_obrigatorios_no_aceite). Com
+ * `assinaturaCaminho` (I8), o PNG enviado pela URL da assinatura; com a
+ * política os.assinatura_no_aceite ligada, o aceite sem ela é recusado (422
+ * assinatura_obrigatoria_no_aceite).
  */
 export const PedidoDeAceiteDeOs = z
-  .object({ versao, custoInformado: z.number().nullish(), codigos: CodigosDaOsApi.optional() })
+  .object({
+    versao,
+    custoInformado: z.number().nullish(),
+    codigos: CodigosDaOsApi.optional(),
+    assinaturaCaminho: z.string().min(1).max(500).nullish(),
+  })
   .meta({ id: 'PedidoDeAceiteDeOs' });
 
 /**
