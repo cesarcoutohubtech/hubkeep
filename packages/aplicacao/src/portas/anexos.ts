@@ -2,7 +2,7 @@
 // bucket privado sem policy para o usuário; a URL assinada sai do auth-admin
 // (dono da secret key) só depois de o escopo ser conferido pela RLS, no hk_app.
 // O registro do arquivo (app.anexo, B4) é gravado na unit of work.
-import type { Contexto } from '@hubkeep/dominio';
+import type { Contexto, MomentoDaFoto } from '@hubkeep/dominio';
 
 /** Entidades que recebem anexo; o chamado entrou na C2, e a OS (fotos da execução) na C4. */
 export const ENTIDADES_COM_ANEXO = ['hotel', 'local', 'ativo', 'chamado', 'os'] as const;
@@ -44,6 +44,10 @@ export interface AnexoGravado {
   miniaturaCaminho: string | null;
   tipo: string;
   nome: string | null;
+  /** Foto da OS antes ou depois (I8); null: sem momento. */
+  momento: MomentoDaFoto | null;
+  /** A assinatura do aceite (I8): imutável, ninguém a remove. */
+  assinatura: boolean;
   usuarioId: string;
   /** Nome do membro que enviou; null se a RLS não mostra o membro. */
   nomeUsuario: string | null;
@@ -60,6 +64,8 @@ export interface DadosDeAnexo {
   miniaturaCaminho: string | null;
   tipo: string;
   nome: string | null;
+  /** Só na OS (I8); null: sem momento. */
+  momento: MomentoDaFoto | null;
 }
 
 /** Registro dos anexos (implementado em packages/db, hk_app). */

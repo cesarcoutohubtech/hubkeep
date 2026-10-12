@@ -53,6 +53,7 @@ import {
   type ExecutadoPor,
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
+  ehMomentoDaFoto,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
@@ -1148,6 +1149,17 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           .executeTakeFirst();
         return r?.quando ? new Date(r.quando) : null;
       }),
+    fotosDepois: (ctx, osId) =>
+      banco.withContext(ctx, async (tx) => {
+        const r = await tx
+          .selectFrom('app.anexo')
+          .select((eb) => eb.fn.countAll<string>().as('n'))
+          .where('os_id', '=', osId)
+          .where('momento', '=', 'depois')
+          .where('removido_em', 'is', null)
+          .executeTakeFirst();
+        return Number(r?.n ?? 0);
+      }),
     equipesDoUsuario: (ctx) =>
       banco.withContext(ctx, async (tx) =>
         (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),
@@ -1777,6 +1789,8 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
         'a.miniatura_caminho',
         'a.tipo',
         'a.nome',
+        'a.momento',
+        'a.assinatura',
         'a.usuario_id',
         'm.nome as nome_usuario',
         'a.criado_em',
@@ -1794,6 +1808,8 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
     miniatura_caminho: string | null;
     tipo: string;
     nome: string | null;
+    momento: string | null;
+    assinatura: boolean;
     usuario_id: string;
     nome_usuario: string | null;
     criado_em: Date;
@@ -1807,6 +1823,8 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
     miniaturaCaminho: a.miniatura_caminho,
     tipo: a.tipo,
     nome: a.nome,
+    momento: ehMomentoDaFoto(a.momento) ? a.momento : null,
+    assinatura: a.assinatura,
     usuarioId: a.usuario_id,
     nomeUsuario: a.nome_usuario,
     criadoEm: a.criado_em,

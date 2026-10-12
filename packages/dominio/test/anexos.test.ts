@@ -61,4 +61,16 @@ describe('anexos (B4)', () => {
     const outroHotel = [atr('gerente_hotel', { tipo: 'hotel', hotelId: 'h2' })];
     expect(podeRemoverAnexo(outroHotel, H1, { usuarioId: 'v' }, 'u', AGORA).permitido).toBe(false);
   });
+
+  it('a assinatura do aceite ninguém remove, nem quem a enviou nem o Admin (I8)', () => {
+    for (const minhas of [
+      [atr('solicitante', { tipo: 'hotel', hotelId: 'h1' })],
+      [atr('gerente_hotel', { tipo: 'hotel', hotelId: 'h1' })],
+      [atr('admin_grupo', { tipo: 'grupo' })],
+    ]) {
+      const r = podeRemoverAnexo(minhas, H1, { usuarioId: 'u', assinatura: true }, 'u', AGORA);
+      expect(r.permitido).toBe(false);
+      if (!r.permitido) expect(r.erro.codigo).toBe('assinatura_nao_se_remove');
+    }
+  });
 });

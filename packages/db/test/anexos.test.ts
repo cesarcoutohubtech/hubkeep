@@ -317,6 +317,7 @@ describe.skipIf(!temBanco)('B4 — anexos de local e ativo', { timeout: 60_000 }
       miniaturaCaminho: null,
       tipo: 'image/jpeg',
       nome: null,
+      momento: null,
     });
     // Caminho de outro tenant: o check da linha recusa.
     await expect(

@@ -508,10 +508,20 @@ export type RegistroNaOs = (typeof REGISTROS_NA_OS)[number];
 export const ESTADOS_QUE_ACEITAM_REGISTRO: readonly EstadoDaOs[] = ['em_execucao', 'pausada'];
 
 /**
+ * A foto vale também na OS atribuída, ainda não iniciada: é a foto "antes"
+ * (I8, desenho aprovado em 08/10/2026).
+ */
+export const ESTADOS_QUE_ACEITAM_FOTO: readonly EstadoDaOs[] = [
+  'atribuida',
+  ...ESTADOS_QUE_ACEITAM_REGISTRO,
+];
+
+/**
  * Apontar horas, registrar material, anexar foto ou registrar e encerrar a
  * parada do ativo (C5): o Técnico do hotel
  * responsável pela OS (403 fora do papel; 409 os_de_outro_responsavel), com a
- * OS em execução ou pausada (409 transicao_invalida).
+ * OS em execução ou pausada (409 transicao_invalida). A foto vale também na
+ * OS atribuída (I8).
  */
 export function decidirRegistroNaOs(
   registro: RegistroNaOs,
@@ -523,7 +533,9 @@ export function decidirRegistroNaOs(
   },
 ): void {
   exigirPapel(['responsavel'], registro, p.ator, p.chamado, p.os, p.agora);
-  if (!ESTADOS_QUE_ACEITAM_REGISTRO.includes(p.os.estado)) {
+  const estados =
+    registro === 'anexar_foto' ? ESTADOS_QUE_ACEITAM_FOTO : ESTADOS_QUE_ACEITAM_REGISTRO;
+  if (!estados.includes(p.os.estado)) {
     throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
       acao: registro,
       estado: p.os.estado,

@@ -22,6 +22,10 @@
 // que não serve (de outro tipo, desativado, de outra categoria) é descartado,
 // e a conclusão nunca é recusada por eles (decisão do Cesar de 10/10/2026).
 // A política os.codigos_obrigatorios é cobrada só no aceite, no web.
+//
+// Foto "depois" (I8): com a política os.foto_depois_obrigatoria ligada no
+// hotel, a conclusão exige ao menos uma foto "depois" registrada na OS. Sem
+// rede, a foto sai da fila antes da conclusão, que vem depois dela.
 import {
   type AtorDaCorretiva,
   type CodigosSugeridos,
@@ -33,12 +37,14 @@ import {
   decidirNaOs,
   decidirRegistroNaOs,
   exigirAtivoNoChamado,
+  exigirFotoDepoisNaConclusao,
   exigirParadaAberta,
   exigirSemParadaAberta,
   horaDaTransicao,
   normalizarMaterial,
   paradaAEncerrarNaConclusao,
   periodoALiberarNaConclusao,
+  resolverPolitica,
   situacaoPara,
   sugestaoDosCodigos,
   validarApontamento,
@@ -55,6 +61,8 @@ import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/tria
 import type { LiberacaoDeUh, PortaUhIndisponivel } from '../portas/uh-indisponivel';
 
 export type AcaoDoTecnico = AcaoNaOsDecidida['acao'];
+
+const FOTO_DEPOIS_OBRIGATORIA = 'os.foto_depois_obrigatoria';
 
 export interface CasosDeUsoDeExecucao {
   prepararAcao(
@@ -101,7 +109,7 @@ export interface CasosDeUsoDeExecucao {
 
 export function criarCasosDeUsoDeExecucao(deps: {
   execucao: PortaExecucao;
-  triagem: Pick<PortaTriagem, 'chamado' | 'os'>;
+  triagem: Pick<PortaTriagem, 'chamado' | 'os' | 'politica'>;
   situacoes: Pick<PortaSituacoes, 'listar'>;
   atribuicoes: Pick<PortaAtribuicoes, 'doUsuario'>;
   relogio: Relogio;
@@ -193,6 +201,13 @@ export function criarCasosDeUsoDeExecucao(deps: {
   }
 
   /** Os códigos sugeridos na conclusão (I6): o que não serve é descartado, nunca recusado. */
+  /** A foto "depois" na conclusão, com a política ligada no hotel (I8). */
+  async function exigirFotoDepois(ctx: Contexto, os: OsGravada, chamado: ChamadoParaTriagem) {
+    const politica = await deps.triagem.politica(ctx, chamado.hotel.id, FOTO_DEPOIS_OBRIGATORIA);
+    if (!resolverPolitica(FOTO_DEPOIS_OBRIGATORIA, politica).ligado) return;
+    exigirFotoDepoisNaConclusao(true, await deps.execucao.fotosDepois(ctx, os.id));
+  }
+
   async function codigosDaConclusao(
     ctx: Contexto,
     chamado: ChamadoParaTriagem,
@@ -224,6 +239,7 @@ export function criarCasosDeUsoDeExecucao(deps: {
         await deps.execucao.ultimaTransicaoEm(ctx, os.id),
         deps.relogio.agora(),
       );
+      if (acao === 'concluir') await exigirFotoDepois(ctx, os, chamado);
       const encerrarParada =
         acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
       const liberarUh = acao === 'concluir' ? await uhDaConclusao(ctx, os, chamado, p) : null;

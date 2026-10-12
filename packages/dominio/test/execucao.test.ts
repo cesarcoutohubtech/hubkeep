@@ -58,6 +58,8 @@ describe('registro na OS: responsável, com a OS em execução ou pausada', () =
     aceita: false,
     cancelada: false,
   };
+  // A foto vale também na OS atribuída: é a foto "antes" (I8).
+  const ACEITA_FOTO: Record<EstadoDaOs, boolean> = { ...ACEITA, atribuida: true };
   for (const registro of REGISTROS_NA_OS)
     for (const estado of ESTADOS_DA_OS)
       it(`${registro} em ${estado}`, () => {
@@ -68,7 +70,8 @@ describe('registro na OS: responsável, com a OS em execução ou pausada', () =
             os: { estado, responsavel: DO_TECNICO },
             agora,
           });
-        if (ACEITA[estado]) expect(f).not.toThrow();
+        const aceita = registro === 'anexar_foto' ? ACEITA_FOTO : ACEITA;
+        if (aceita[estado]) expect(f).not.toThrow();
         else expect(codigo(f)).toBe('transicao_invalida');
       });
 

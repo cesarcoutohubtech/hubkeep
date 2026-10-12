@@ -19,6 +19,12 @@
 // os.codigos_obrigatorios ligada no hotel, o aceite exige os três
 // (decisão do Cesar de 10/10/2026); a conclusão no PWA nunca é cobrada.
 //
+// Na I8: o aceite pode levar a assinatura de quem aceita, desenhada no web e
+// enviada antes pela URL da assinatura (exigirQuemAceita decide quem a
+// recebe). O caminho tem de ser um PNG da pasta da OS; o anexo e o aceite
+// são gravados na mesma unit of work. Com a política os.assinatura_no_aceite
+// ligada no hotel, o aceite exige a assinatura.
+//
 // Quem pode e para onde vai são do domínio (corretiva.ts e triagem.ts); a
 // situação de cada estado é a ativa de menor ordem (situacaoPara). As
 // checagens de papel são injetáveis, como o podeAbrir do chamado, para o
@@ -32,12 +38,14 @@ import {
   type ExecutadoPor,
   NaoEncontrado,
   type QuemExecuta,
+  RegraViolada,
   conflitoDeVersao,
   decidirNaOs,
   decidirNoChamado,
   decidirQuemExecuta,
   exigirPrioridadeAtiva,
   exigirAtivoNoChamado,
+  exigirAssinaturaNoAceite,
   exigirCodigosNoAceite,
   exigirResponsavelDoHotel,
   normalizarCustoInformado,
@@ -52,9 +60,16 @@ import {
 import type { PortaCodigos } from '../portas/codigos-manutencao';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaPrioridades, PortaSituacoes } from '../portas/situacoes';
-import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/triagem';
+import type {
+  AssinaturaDoAceite,
+  ChamadoParaTriagem,
+  OsGravada,
+  PortaTriagem,
+} from '../portas/triagem';
 
 const CODIGOS_OBRIGATORIOS = 'os.codigos_obrigatorios';
+const ASSINATURA_NO_ACEITE = 'os.assinatura_no_aceite';
+const ARQUIVO_PNG = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.png$/;
 
 /** O responsável como a tela o escolhe. */
 export type ResponsavelPedido =
@@ -113,7 +128,8 @@ export interface CasosDeUsoDeTriagem {
   /**
    * Aceite da OS concluída: o chamado fica concluído (C6), com o custo
    * informado, opcional (I4). Com `codigos` (I6), os três substituem os da OS;
-   * sem eles, ficam os sugeridos pelo técnico.
+   * sem eles, ficam os sugeridos pelo técnico. Com `assinaturaCaminho` (I8),
+   * o PNG enviado pela URL da assinatura.
    */
   aceitarOs(
     ctx: Contexto,
@@ -122,8 +138,11 @@ export interface CasosDeUsoDeTriagem {
       versao: number;
       custoInformado?: number | null | undefined;
       codigos?: CodigosDaOs | undefined;
+      assinaturaCaminho?: string | null | undefined;
     },
   ): Promise<{ versao: number; versaoDoChamado: number }>;
+  /** Quem pede pode aceitar a OS agora (I8: a URL da assinatura)? Senão, o erro do aceite. */
+  exigirQuemAceita(ctx: Contexto, osId: string): Promise<void>;
   /**
    * Reabertura da OS concluída, com motivo: a OS e o chamado voltam à execução
    * (C6). Com `paradoDesde`, o equipamento está parado: abre a parada do
@@ -204,13 +223,29 @@ export function criarCasosDeUsoDeTriagem(deps: {
     return c;
   }
 
-  async function osNaVersao(ctx: Contexto, osId: string, versao: number) {
+  async function osEChamado(ctx: Contexto, osId: string, versao?: number) {
     const os = await deps.triagem.os(ctx, osId);
     if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-    if (os.versao !== versao) throw conflitoDeVersao(os.versao);
+    if (versao !== undefined && os.versao !== versao) throw conflitoDeVersao(os.versao);
     const chamado = await deps.triagem.chamado(ctx, os.chamadoId);
     if (!chamado) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
     return { os, chamado };
+  }
+
+  const osNaVersao = (ctx: Contexto, osId: string, versao: number) => osEChamado(ctx, osId, versao);
+
+  /** O caminho da assinatura (I8): um PNG da pasta da OS, no tenant e no hotel dela. */
+  function assinaturaDoAceite(
+    ctx: Contexto,
+    hotelId: string,
+    osId: string,
+    caminho: string,
+  ): AssinaturaDoAceite {
+    const pasta = `${[ctx.tenantId, hotelId, 'os', osId].join('/').toLowerCase()}/`;
+    if (!caminho.startsWith(pasta) || !ARQUIVO_PNG.test(caminho.slice(pasta.length))) {
+      throw new RegraViolada('assinatura_invalida', 'Assinatura inválida.');
+    }
+    return { hotelId, caminho };
   }
 
   async function candidato(
@@ -417,11 +452,24 @@ export function criarCasosDeUsoDeTriagem(deps: {
         resolverPolitica(CODIGOS_OBRIGATORIOS, politica).ligado,
         codigos ?? os.codigos,
       );
+      const assinatura = p.assinaturaCaminho
+        ? assinaturaDoAceite(ctx, chamado.hotel.id, osId, p.assinaturaCaminho)
+        : null;
+      const politicaDaAssinatura = await deps.triagem.politica(
+        ctx,
+        chamado.hotel.id,
+        ASSINATURA_NO_ACEITE,
+      );
+      exigirAssinaturaNoAceite(
+        resolverPolitica(ASSINATURA_NO_ACEITE, politicaDaAssinatura).ligado,
+        assinatura !== null,
+      );
       const lista = await situacoes(ctx);
       const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.aceitarOs(ctx, {
         codigos,
         custoInformado,
+        assinatura,
         osId,
         versao: p.versao,
         de: os.estado,
@@ -432,6 +480,18 @@ export function criarCasosDeUsoDeTriagem(deps: {
           estado: estadoDoChamado,
           situacaoId: situacaoPara(lista, 'chamado', estadoDoChamado),
         },
+      });
+    },
+
+    async exigirQuemAceita(ctx, osId) {
+      const { os, chamado } = await osEChamado(ctx, osId);
+      const [ator, aceite] = await paraOAceite(ctx, chamado);
+      r.decidirNaOs('aceitar', {
+        ator,
+        chamado,
+        os: { estado: os.estado, responsavel: os.responsavel },
+        aceite,
+        agora: deps.relogio.agora(),
       });
     },
 

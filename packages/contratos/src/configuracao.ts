@@ -16,6 +16,10 @@ import { IDIOMAS_API } from './preferencias';
 const AceiteAutomatico = z.strictObject({ ligado: z.boolean(), dias: z.int().min(1).max(60) });
 /** Códigos obrigatórios no aceite (I6); desligado por padrão. */
 const CodigosObrigatorios = z.strictObject({ ligado: z.boolean() });
+/** Foto "depois" obrigatória na conclusão (I8); desligado por padrão. */
+const FotoDepoisObrigatoria = z.strictObject({ ligado: z.boolean() });
+/** Assinatura no aceite (I8); desligado por padrão. */
+const AssinaturaNoAceite = z.strictObject({ ligado: z.boolean() });
 const PrioridadePadraoPorCategoria = z.record(z.guid(), z.guid());
 
 /** Nome de cada nível da criticidade (1 a 5) por idioma, parcial (I1). */
@@ -29,6 +33,8 @@ export const NomesDeCriticidadeApi = z
 export const FORMATOS_DE_POLITICA_API = {
   'os.aceite_automatico': AceiteAutomatico,
   'os.codigos_obrigatorios': CodigosObrigatorios,
+  'os.foto_depois_obrigatoria': FotoDepoisObrigatoria,
+  'os.assinatura_no_aceite': AssinaturaNoAceite,
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria,
   'ativo.criticidade': NomesDeCriticidadeApi,
 } as const;
@@ -62,6 +68,16 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('os.codigos_obrigatorios'),
     escopo: EscopoDePolitica,
     valor: CodigosObrigatorios.nullable(),
+  }),
+  z.object({
+    chave: z.literal('os.foto_depois_obrigatoria'),
+    escopo: EscopoDePolitica,
+    valor: FotoDepoisObrigatoria.nullable(),
+  }),
+  z.object({
+    chave: z.literal('os.assinatura_no_aceite'),
+    escopo: EscopoDePolitica,
+    valor: AssinaturaNoAceite.nullable(),
   }),
   z.object({
     chave: z.literal('chamado.prioridade_padrao_por_categoria'),
@@ -147,6 +163,8 @@ export const RespostaDeConfiguracao = z
       z.discriminatedUnion('chave', [
         resolvida('os.aceite_automatico', AceiteAutomatico),
         resolvida('os.codigos_obrigatorios', CodigosObrigatorios),
+        resolvida('os.foto_depois_obrigatoria', FotoDepoisObrigatoria),
+        resolvida('os.assinatura_no_aceite', AssinaturaNoAceite),
         resolvida('chamado.prioridade_padrao_por_categoria', PrioridadePadraoPorCategoria),
         resolvida('ativo.criticidade', NomesDeCriticidadeApi),
       ]),
