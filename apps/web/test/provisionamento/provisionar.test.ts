@@ -84,18 +84,20 @@ describe.skipIf(!temAmbiente)('provisionamento de cliente', { timeout: 120_000 }
     await dono.end();
   });
 
-  it('grava o grupo, o contrato e o primeiro Admin, sem senha e ainda não confirmado', async () => {
+  it('grava o grupo, o contrato e o primeiro Admin, convidado e ainda não confirmado', async () => {
     expect(r.conviteNovo).toBe(true);
     expect(r.contrato).toEqual({ maxHoteis: 4, maxUhs: 600 });
+    // O Auth guarda um hash aleatório para quem nasce sem senha; o que importa
+    // é que ninguém conhece a senha: o Admin entra pelo convite (invited_at).
     const { rows } = await dono.query(
-      `select a.papel, a.escopo_tipo, u.encrypted_password, u.email_confirmed_at
+      `select a.papel, a.escopo_tipo, u.invited_at, u.email_confirmed_at
          from app.atribuicao_escopo a join auth.users u on u.id = a.usuario_id
         where a.tenant_id = $1`,
       [TENANT],
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ papel: 'admin_grupo', escopo_tipo: 'grupo' });
-    expect(rows[0].encrypted_password || null).toBeNull();
+    expect(rows[0].invited_at).not.toBeNull();
     expect(rows[0].email_confirmed_at).toBeNull();
   });
 
