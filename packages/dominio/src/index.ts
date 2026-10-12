@@ -132,6 +132,7 @@ export {
   PAPEIS_QUE_GERENCIAM_FORNECEDORES,
   cnpjDeFornecedorRepetido,
   cnpjValido,
+  exigirHotelParaGerirFornecedores,
   formatarCnpj,
   normalizarContatoDeFornecedor,
   normalizarNomeDeFornecedor,

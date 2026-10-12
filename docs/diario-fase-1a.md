@@ -1712,3 +1712,11 @@ Texto do Cesar (sem alteração):
 - O texto entrou no `docs/03-decisoes-tecnicas.md`, no fim do ADR-027, sem mudança além do status, que passou a "aprovado por Cesar em 10/10/2026". Vale quando a 1c começar; nada foi implementado.
 - O plano da 1c e a paridade com o mock deixaram de dizer que a decisão 2 depende do adendo.
 - O status do adendo da I7 ao ADR-026 mudou no `docs/03` pelo #180.
+
+### Código próprio para o Gestor CSC sem hotel (12/10/2026)
+
+Decisão 4 do Cesar de 09/10/2026. Ficou com o agente do núcleo quando o CNPJ alfanumérico saiu sozinho no #171 (a fonte era o commit `020a5a0`, branch `1b-cnpj-alfanumerico`). PR fora da zona protegida, sem migração.
+- **Antes:** o Gestor CSC de uma bandeira ainda sem hotel passava na regra de quem grava fornecedor, e o banco recusava com o 403 genérico (`sem_permissao`).
+- **Agora:** antes de gravar, a aplicação confere se o papel de Gestor CSC ou Gerente alcança algum hotel visível do grupo (`exigirHotelParaGerirFornecedores`, a mesma conta da policy) e devolve 403 `fornecedores_sem_hotel`, com mensagem nos quatro idiomas. O Admin do grupo grava mesmo sem hotel. A porta dos fornecedores ganhou a leitura dos hotéis visíveis.
+- **A policy não muda:** sem a checagem da aplicação, a RLS continua recusando (teste de integração).
+- **Verificação:** no local, lint, typecheck e os testes de todos os pacotes, verdes; na CI, o teste de integração `packages/db/test/fornecedores.test.ts` com o Gestor CSC numa bandeira sem hotel.
