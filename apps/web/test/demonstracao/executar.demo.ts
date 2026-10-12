@@ -1,4 +1,4 @@
-// Execução dos dados de demonstração no dev, chamada por `pnpm demo:dados`
+// Execução dos dados de demonstração no dev ou no staging, chamada por `pnpm demo:dados`
 // (scripts/ops/dados-demonstracao.ts), que confere o alvo e monta as
 // variáveis. Fora do `pnpm test`: o vitest do web só pega *.test.ts, e este
 // arquivo só roda pela config vitest.demonstracao.config.ts.
@@ -11,8 +11,11 @@ const exigir = (nome: string): string => {
   return v;
 };
 
-it('dados de demonstração no dev', { timeout: 600_000 }, async () => {
+it('dados de demonstração', { timeout: 600_000 }, async () => {
+  // A turma já foi conferida pelo script (1 a 99); vazia, é o grupo de sempre.
+  const turma = process.env['HK_DEMO_TURMA'] ? Number(process.env['HK_DEMO_TURMA']) : null;
   const r = await semearDemonstracao({
+    turma,
     urlDono: exigir('HK_DEMO_URL_DONO'),
     senha: exigir('HK_DEMO_SENHA'),
     site: process.env['HK_URL_SITE'] ?? 'http://localhost:3000',
@@ -21,6 +24,10 @@ it('dados de demonstração no dev', { timeout: 600_000 }, async () => {
   const contas = (Object.keys(PESSOAS) as Pessoa[]).map(
     (p) => `  ${PESSOAS[p].nome.padEnd(28)} ${r.usuarios[p].email}`,
   );
-  console.log(['', 'Contas (todas com a senha de HK_DEMO_SENHA):', ...contas, ''].join('\n'));
+  console.log(
+    ['', `Grupo ${r.tenantId}. Contas (todas com a senha de HK_DEMO_SENHA):`, ...contas, ''].join(
+      '\n',
+    ),
+  );
   expect(Object.keys(r.chamados)).toHaveLength(7);
 });

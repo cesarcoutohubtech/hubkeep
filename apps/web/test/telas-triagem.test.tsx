@@ -50,7 +50,7 @@ const candidatos: CandidatosAResponsavel = {
     { id: E, nome: 'Equipe Centro', ativa: true },
     { id: C, nome: 'Equipe Antiga', ativa: false },
   ],
-  disponiveis: [{ usuarioId: U, nome: 'Ana Técnica' }],
+  tecnicos: [{ usuarioId: U, nome: 'Ana Técnica' }],
 };
 
 const osDe = (estado: OsDoChamado['estado']): OsDoChamado => ({
@@ -261,7 +261,7 @@ describe('seletor de responsável', () => {
     expect(html).toContain(`value="tecnico:${U}"`);
     const vazio = renderizar(
       'pt-BR',
-      painel(detalheDe('em_triagem'), { equipes: [], disponiveis: [] }),
+      painel(detalheDe('em_triagem'), { equipes: [], tecnicos: [] }),
     );
     expect(vazio).toContain(mensagensDe('pt-BR')['corretiva.triagem.sem_candidatos']);
   });

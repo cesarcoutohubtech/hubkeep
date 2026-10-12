@@ -228,7 +228,7 @@ O painel **Triagem e atribuição** fica no detalhe do chamado, abaixo das OS. E
 1. **Abrir o chamado.** Em "Chamados", abrir "Chuveiro sem água quente" (aberto). O painel vem aberto, com **Triar**, **Gerar OS** e **Cancelar chamado**.
 2. **Triar.** Escolher a prioridade **Urgente** (ou "Manter a atual") e clicar em **Triar**. A situação vira "em triagem" com a prioridade nova, e a linha do tempo ganha "Chamado em triagem". Agora aparece **Ajustar prioridade** no lugar de Triar.
 3. **Ajustar prioridade.** Trocar para **Alta** e conferir "Prioridade alterada" na linha do tempo.
-4. **Tentar uma OS para quem não é Técnico.** Em **Gerar OS**, a lista traz as equipes ativas do hotel e as pessoas ativas do grupo. Escolher a **Solicitante** e gerar: tem de voltar recusado, com a mensagem de que a pessoa não é Técnico ativo neste hotel.
+4. **A lista só traz quem pode receber a OS.** Em **Gerar OS**, a lista traz as equipes ativas do hotel e só os Técnicos com papel vigente no hotel (no Centro, o **Técnico do Centro**). A Solicitante, o Gerente e o Técnico do Praia não aparecem. Se alguém mandar outra pessoa direto pela API, a recusa continua: "a pessoa não é Técnico ativo neste hotel".
 5. **Gerar a OS para a equipe.** Escolher **Equipe Centro** e gerar. O chamado vai para "em execução", a OS aparece como atribuída à Equipe Centro, e o painel passa a mostrar **Reatribuir** e **Cancelar OS** para ela.
 6. **Reatribuir.** Passar a OS para o **Técnico do Centro**. No PWA dele, a OS entra na fila do dia.
 7. **Cancelar a OS.** Com um motivo (por exemplo, "Aberto em duplicidade"). O chamado volta à triagem, a OS fica cancelada com o motivo, e **Gerar OS** volta a aparecer para uma OS nova.
@@ -269,15 +269,39 @@ O botão **Ver histórico** fica no detalhe do chamado (abaixo da linha do tempo
 
 ## 5. O que ainda não dá para testar pela tela
 
-- **Lista de responsáveis só com Técnicos:** o seletor de "Gerar OS" e "Reatribuir" traz as pessoas ativas do grupo, porque é a lista que a rota das equipes do hotel já devolve. Quem não é Técnico do hotel é recusado pela API (passo 4 acima). Filtrar a lista pede uma rota nova de leitura, fora desta tarefa.
 - **Linha do tempo e histórico do proprietário antes do `db push` da migração da D1:** até a migração 0028 chegar ao dev, o proprietário recebe a linha do tempo e o histórico vazios, sem erro. Os outros papéis já veem tudo.
 - **Histórico anterior à fase 1a:** o histórico mostra o que a auditoria gravou. Não há histórico do que foi feito antes de cada tela existir.
 - **SLA, escalonamento e notificações:** fase 1c. Os eventos ficam no outbox do dev, e nenhum e-mail sai, porque o cron só roda na Vercel.
 - **Políticas do Intelligence:** ainda não têm tela, e o grupo do kit não tem o módulo contratado. Para contratar no dev (até o backoffice existir), com a `DEV_SESSION_POOLER` da seção 2 e o id do grupo: `pnpm ops:modulo --ambiente dev --tenant <id> --modulo inteligencia --inicio 2026-10-10T00:00:00-03:00 --por "<seu nome>"`. Sem `--modulo`, o script lista; com `--dry-run`, mostra e desfaz.
 - **Outro tenant:** o kit cria um grupo só. O isolamento entre tenants está coberto pelos testes pgTAP e de integração na CI.
 
-## 6. Rodar de novo e recomeçar
+## 6. Rodar de novo, recomeçar e turmas
 
 - **Rodar de novo** não duplica nada: hotéis, pessoas, ativos e chamados são conferidos antes de gravar, e as operações offline têm chave fixa. A senha de todas as contas volta a ser a de `HK_DEMO_SENHA`.
 - **O que você mudou** nas telas (aceites, OS novas, chamados novos) fica. O script não desfaz o teste; ele só completa o que falta.
 - **Recomeçar do zero** exige apagar o grupo pelo dono do banco. Não há script para isso, porque o banco de dev é compartilhado. Peça quando precisar.
+- **Turma de treinamento:** `pnpm demo:dados --ambiente dev --turma 2` (ou `--ambiente staging`) cria outro grupo, "Grupo Demonstração — Turma 2", com as mesmas pessoas em e-mails `@turma2.demo.hubkeep.test`, sem apagar nada. Cada turma tem o próprio grupo; rodar de novo com a mesma turma só completa o que falta. O grupo sem `--turma` continua o de sempre.
+
+## 7. Staging do treinamento
+
+O kit e o provisionamento aceitam `--ambiente staging` só quando o `supabase/config.toml` tem o bloco `[remotes.staging]`, que entra com o projeto de staging (F0-12, PR de zona protegida). Até lá, os dois recusam o staging antes de conectar. Com o bloco:
+- as variáveis do web ficam em `apps/web/.env.staging.local` (as mesmas do `.env.local`, com os valores do staging);
+- a string do dono vem de `DATABASE_URL_OWNER`;
+- toda conexão (dono, papéis e URL do Supabase) é conferida contra o ref do `[remotes.staging]`, como no dev.
+
+A conta do kit continua sem rodar na Vercel e só com e-mail `.test` (adendo ao ADR-024).
+
+## 8. Provisionamento de cliente
+
+`pnpm ops:provisionar` cria um grupo de cliente: o grupo, o contrato de licença, o primeiro Admin e os padrões (categorias, situações e prioridades, códigos de falha, causa e solução e a prioridade por categoria). Roda no dev e no staging; a produção entra com o roteiro de operação dela.
+
+```bash
+pnpm ops:provisionar --ambiente staging --nome "Grupo Exemplo" --admin-email pessoa@cliente.com.br --admin-nome "Nome da Pessoa" --max-hoteis 4 --max-uhs 600 --por "Cesar" --dry-run
+```
+
+- **`--dry-run`** confere o alvo e o pedido e mostra o que faria, sem gravar. Sem ele, grava.
+- **O primeiro Admin** é uma pessoa de verdade: recebe o convite por e-mail, pelo mesmo caminho do convite pela tela (o worker envia depois que o acesso está gravado). Não há senha de teste, e o e-mail `.test` é recusado.
+- **Nome repetido:** sem `--tenant`, o script recusa se já existe grupo com o mesmo nome.
+- **Completar:** `--tenant <id>` completa um grupo que já existe. Rodar de novo não duplica nada, não muda a licença e não reenvia o convite.
+- **Auditoria:** o grupo, o contrato, o membro e o papel do primeiro Admin são do backoffice e ficam na auditoria como "Sistema". Os padrões vão pelos casos de uso, em nome do primeiro Admin.
+- **Depois:** o Admin entra pelo convite, cria a credencial do agente e importa os hotéis (`docs/piloto/guia-implantacao-hotel.md`).
