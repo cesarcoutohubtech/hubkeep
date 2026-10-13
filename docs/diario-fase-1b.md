@@ -505,3 +505,31 @@ Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
 **Como entra:** o `dependabot.yml` é zona protegida. Recomendo levar a mudança no PR da montagem, que é a próxima vez da 1b, para não gastar uma vez só com ela. A outra opção é um PR `adm:` próprio, que entraria na fila depois da montagem.
 
 **Esperando o Cesar:** aprovar a proposta (os cinco itens, com ou sem o teste do item 5) e dizer se ela vai no PR da montagem ou num PR próprio.
+
+## PV3a — geração da OS preventiva: regra e caso de uso (13/10/2026)
+
+**Aviso de área compartilhada com a 1c:** mexe em `packages/dominio` (o módulo novo `geracao-preventiva.ts` e o index). Não muda a OS nem o chamado. O Cesar mandou começar a PV3 pela parte fora da zona protegida ("Cesar aqui", 13/10/2026).
+
+Primeira parte da PV3 (ADR-041, decisões 9 a 13), na branch `claude/1b-pv3a`. É a regra e o caso de uso, testados sem banco. O repositório, a rota de cron e as telas dependem das colunas novas de `app.os` e entram com a migração ou depois dela.
+- **Domínio** (`geracao-preventiva.ts`, `planejarGeracao`): no dia do fuso do hotel, para um plano ativo,
+  - só a ocorrência mais recente até hoje, sem avalanche (decisão 10). A OS nasce no dia previsto (decisão 11);
+  - uma OS por ativo do alvo (decisão 9), no local atual do ativo, com o responsável padrão, o checklist do plano e a cópia do plano (nome, versão e periodicidade; ADR-026);
+  - pula, com o motivo:
+    - `ja_gerada`: a ocorrência já tem OS, mesmo cancelada;
+    - `os_anterior_aberta`: a OS anterior do mesmo plano e ativo ainda está atribuída, em execução ou pausada;
+    - `sem_responsavel`: o plano inteiro;
+    - `sem_ativo`: o plano inteiro;
+    - `ativo_posterior`.
+- **Aplicação** (`criarGeracaoDePreventivas`, porta `PortaGeracaoPreventiva`):
+  - os hotéis ativos do tenant, cada um na própria transação (decisão 13), com os planos travados;
+  - um hotel que falha não segura os outros: a falha volta no resultado;
+  - o resultado traz os hotéis, os planos, as geradas, as puladas por motivo e as falhas.
+- **Testes:** 10 do domínio; 6 da aplicação, com a porta em memória: o fuso por hotel, rodar duas vezes no mesmo dia, a corrida com outra execução e a falha de um hotel.
+
+**Dois detalhes que escolhi, para o Cesar confirmar ou mudar:**
+1. **A OS concluída, esperando o aceite, não prende a próxima.** O serviço já foi feito, e um aceite esquecido não pode parar o calendário (o PMOC, por exemplo). Só a atribuída, a em execução e a pausada prendem.
+2. **O ativo cadastrado depois da data prevista espera a próxima ocorrência** (`ativo_posterior`). Sem isso, o ativo novo de uma categoria com plano mensal nasceria com uma OS atrasada, de uma data em que ele nem existia.
+
+**Próximo:**
+- **PV3b, fora da zona:** a OS sem chamado na máquina de estados (decidirNaOs sem chamado; o aceite da preventiva pelo Gerente, ou pelo Gestor CSC ou pelo Admin sem Gerente, decisão 12) e o contrato da fila do dia do PWA (`?preventiva=1`). Mexe na OS, que é área compartilhada: aviso antes de começar.
+- **PV3 na zona protegida,** na vez dela (depois da montagem e da próxima da 1c): a migração de `app.os` e as permissões do worker, os tipos, o repositório da porta, a rota `/api/cron/preventiva` no `vercel.json` e o teste de integração.
