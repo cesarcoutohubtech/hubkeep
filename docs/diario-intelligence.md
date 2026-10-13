@@ -1725,3 +1725,42 @@ Os PRs 1 ([#253](https://github.com/cesarcoutohubtech/hubkeep/pull/253)) e 2 ([#
 - **Esperando:** o merge do Cesar.
 - **Decisão em aberto:** a janela de leitura e o mês a fechar no fuso do hotel só entram se Cesar e Kaio quiserem.
 - **Próximo:** a atividade 3, destravada pelo #244. Primeiro passo: ler a montagem do #244 e trazer a proposta de desenho da gravação em `historico-inteligencia.ts` antes de escrever código.
+
+## Atividade 3, proposta da gravação do histórico (13/10/2026)
+
+A montagem com o relógio do roteiro está na `main` ([#244](https://github.com/cesarcoutohubtech/hubkeep/pull/244)). Já estavam decididos: o lugar do gerador, o grupo próprio, os casos de uso com o relógio do roteiro e nenhum SQL direto. Ficam em aberto os pontos abaixo, cada um com a recomendação do agente. **O agente para aqui** até Cesar e Kaio decidirem.
+
+1. **Base do grupo.** O `semearDemonstracao` grava o contrato com 3 hotéis e 40 UHs (`on conflict do nothing`), e o roteiro precisa de 6 hotéis e 288 UHs, além dos 3 hotéis do kit. Recomendação:
+   - antes do kit, a gravação grava pelo dono o `licenca.contrato` do grupo, com 9 hotéis e 330 UHs, e o `licenca.modulo` `inteligencia`, com início no primeiro dia do aquecimento;
+   - é o mesmo passo 1 do kit (tenant, licença e primeiro Admin), que já usa o dono, e o kit não muda;
+   - os 3 hotéis do kit e os 7 chamados dele ficam no grupo. São criados na data da geração e não abrem insight: o teste confere.
+2. **Hotéis e UHs do roteiro.** Entram como no kit: pelo caminho do conector (lote de hotel e de UH), depois **Trazer para implantação** e **Ativar**, pelos casos de uso de hotéis. Os cadastros ficam com o relógio do banco, como a montagem já decidiu. O job lê o estado de agora, então isso não muda o cálculo.
+3. **Quem faz cada passo.**
+   - Abre o chamado: a Solicitante do kit.
+   - Faz a triagem e o aceite: a Admin do grupo.
+   - Executa: um técnico.
+   - Decide o insight: a Admin do grupo.
+   O técnico ganha uma atribuição de Técnico em cada hotel do roteiro, pelo caso de uso de membros. A atribuição não depende da data do roteiro, então vem da composição normal, sem entrar no pedido à 1b. Nenhum convite novo e nenhuma conta nova.
+4. **O job e as decisões.** O job do dia e as decisões do insight são do Intelligence e já recebem o relógio (`montarInteligencia().jobDoDia` e `.painel`). A gravação abre um acesso próprio:
+   - com o hk_worker, para o job;
+   - com o hk_app, para o painel.
+   Os dois passam pela mesma trava da montagem (`conferirAlvoDaMontagem`: Vercel, produção e alvo fora de `[remotes.dev]` e `[remotes.staging]`). Cada dia segue esta ordem: as operações do dia com o relógio andando; o job com o relógio às 23:59:59 local (São Paulo); as decisões que vencem naquele dia.
+5. **Rodar de novo.** Toda operação tem chave fixa, como no kit. Com o mesmo `--fim`, rodar de novo não duplica nada:
+   - o job não grava o dia já gravado;
+   - a decisão já tomada é pulada.
+   Com outro `--fim`, as datas mudariam por baixo das mesmas chaves. Por isso a gravação recusa antes de gravar, quando o grupo já tem histórico de outro fim. O fim sai do primeiro chamado do roteiro já gravado. O `--fim` padrão é ontem.
+6. **Comando.** `pnpm demo:historico --ambiente dev|staging [--fim AAAA-MM-DD]`, no molde do `demo:dados`:
+   - o ref é conferido antes de conectar;
+   - nada vai em argv;
+   - a `HK_DEMO_SENHA` vem só da variável de ambiente, porque o kit cria as contas.
+   O script chama o vitest com uma config própria, e o arquivo de execução fica fora do `pnpm test`.
+7. **Teste do banco na CI.** `historico-inteligencia.banco.test.ts`, no Supabase do runner, com o volume curto:
+   - grava o histórico;
+   - confere que cada cenário abriu o insight esperado e terminou no estado planejado, os mesmos números do teste em memória;
+   - roda de novo e confere que nada duplicou;
+   - confere que a montagem recusa produção.
+   Com limite de tempo próprio, a medir no primeiro run. Se passar de alguns minutos na CI, o teste usa menos dias.
+
+**Fora:** produção (nunca); mudança no motor, nas fórmulas e na montagem da 1b; e a linha do tempo dos chamados, que mostra a data da geração (decisão do Cesar).
+
+**Aguarda:** Cesar e Kaio, nos itens 1 a 7. Nenhum código da gravação foi escrito.
