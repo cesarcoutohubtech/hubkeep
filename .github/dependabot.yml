@@ -1,23 +1,55 @@
 # S1 (ADR-032): as actions estão fixadas por SHA; o Dependabot abre o PR quando
-# sai versão nova, com o SHA novo.
-# npm (decisão do Cesar de 13/10/2026; ADR-042): as atualizações de versão vêm
-# agrupadas num PR só por semana, com limite de PRs abertos. As de segurança
-# ficam sempre separadas, uma por PR, porque o grupo só vale para as de
-# versão. O `pnpm audit` da CI continua. A date-holidays, fixada, passa pelo
-# teste de regressão dos feriados (apps/web/test/feriados-oficiais.test.ts).
+# sai versão nova, com o SHA novo. Elas vêm num grupo só, um PR por mês. Esse PR
+# toca a zona protegida (os workflows) e é adotado na vez da 1b.
+# npm (decisões do Cesar de 13/10/2026; ADR-042 e regra do #234): as
+# atualizações de versão vêm em dois grupos semanais, só com versões menores e
+# correções.
+# - zona-protegida-da-semana: as dependências do packages/auth-admin, que é
+#   zona protegida. Um PR por semana, adotado na vez da 1b. O teste
+#   tests/dependabot-zona-protegida.test.ts confere que toda dependência do
+#   auth-admin está aqui.
+# - versoes-da-semana: todo o resto. O Dependabot põe cada dependência no
+#   primeiro grupo que casa, então esse PR não toca a zona.
+# Versão maior fica fora dos grupos e vem num PR próprio, para a falha de uma
+# não travar as outras. As de segurança ficam sempre separadas, uma por PR. O
+# `pnpm audit` da CI continua. A date-holidays, fixada, passa pelo teste de
+# regressão dos feriados (apps/web/test/feriados-oficiais.test.ts).
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      actions-do-mes:
+        patterns:
+          - '*'
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      zona-protegida-da-semana:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+        patterns:
+          - '@supabase/supabase-js'
+          - '@types/node'
+          - 'vitest'
       versoes-da-semana:
         applies-to: version-updates
+        update-types:
+          - minor
+          - patch
         patterns:
           - '*'
+    ignore:
+      # TypeScript 7: o typescript-eslint 8 não aceita o TS 7 e o lint para na
+      # largada (#231, 13/10/2026). Rever quando o typescript-eslint anunciar o
+      # suporte ao TS 7; aí sai este ignore.
+      - dependency-name: 'typescript'
+        update-types:
+          - 'version-update:semver-major'

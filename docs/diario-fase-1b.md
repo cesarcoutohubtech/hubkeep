@@ -580,3 +580,12 @@ Pedido 2 do Intelligence (atividade 3), com a proposta aprovada pelo Cesar ("Ces
   - no `docs/piloto/roteiro-treinamento.md`;
   - no `docs/10`.
 - **Para o agente do Kaio:** a gravação do gerador usa `montarComRelogio({ relogio })` e avança o relógio entre as operações. O relógio é lido no início de cada unit of work, então cada operação grava o instante em que o relógio estava quando ela começou.
+
+### Também no PR da montagem (decisões do Cesar de 13/10/2026)
+
+- **Regra do Dependabot** (proposta da seção "Decisões do Cesar: montagem, fila e Dependabot", aprovada com o teste de guarda):
+  - o `dependabot.yml` com o grupo mensal das actions, os dois grupos semanais do npm (`zona-protegida-da-semana` primeiro, `versoes-da-semana` depois, os dois só com versões menores e correções) e o `ignore` da versão maior do TypeScript até o `typescript-eslint` aceitar o TS 7;
+  - o teste de guarda `tests/dependabot-zona-protegida.test.ts`, que entra na regex da zona, no `CLAUDE.md` e no ADR-023. Conferi que ele reprova quando uma dependência do `auth-admin` sai do grupo;
+  - a regra registrada no ADR-032 (condição 3).
+- **ADR-041, decisão 10:** os dois detalhes da PV3a aprovados pelo Cesar (a OS concluída esperando o aceite não segura a próxima; o ativo cadastrado depois da data prevista espera a próxima ocorrência).
+- **Merge da `main` até o #239:** os avisos de SLA da 1c (#232) entraram nas fábricas, como os outros casos de uso que só usam o banco e o relógio. O `aceite.ts` novo da 1c (#237, aceite automático pelo worker) continua com o `now()` do banco: ele não roda no roteiro.
