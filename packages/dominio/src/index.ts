@@ -409,10 +409,13 @@ export {
 export type { EntidadeDaLinhaDoTempo, FiltroDaLista } from './consultas';
 export {
   ESTADOS_COM_IMPACTO_AJUSTAVEL,
+  ESTADOS_COM_CATEGORIA_AJUSTAVEL,
   ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
+  exigirCategoriaAtiva,
   exigirPrioridadeAtiva,
   ehTecnicoDoHotel,
   exigirResponsavelDoHotel,
+  podeAjustarCategoria,
   podeAjustarPrioridade,
   podeAjustarQuemExecuta,
   podeInformarImpacto,

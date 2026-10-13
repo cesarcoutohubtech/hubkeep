@@ -28,7 +28,9 @@
 // Na 1c (ADR-042): a troca de prioridade, na triagem ou no ajuste, refaz os
 // prazos de SLA a partir da abertura, com a linha nova tirada da cópia que o
 // chamado guarda, e não da política do momento. O prazo de atendimento só
-// muda enquanto o chamado nunca teve OS.
+// muda enquanto o chamado nunca teve OS. A categoria do chamado (decisão 2)
+// vem do ativo na abertura; quem tria escolhe, troca ou tira, nos estados da
+// prioridade, e a troca refaz os prazos do mesmo jeito.
 //
 // Quem pode e para onde vai são do domínio (corretiva.ts e triagem.ts); a
 // situação de cada estado é a ativa de menor ordem (situacaoPara). As
@@ -48,12 +50,14 @@ import {
   decidirNaOs,
   decidirNoChamado,
   decidirQuemExecuta,
+  exigirCategoriaAtiva,
   exigirPrioridadeAtiva,
   exigirAtivoNoChamado,
   exigirAssinaturaNoAceite,
   exigirCodigosNoAceite,
   exigirResponsavelDoHotel,
   normalizarCustoInformado,
+  podeAjustarCategoria,
   podeAjustarPrioridade,
   podeAjustarQuemExecuta,
   podeInformarImpacto,
@@ -66,6 +70,7 @@ import {
   validarParada,
 } from '@hubkeep/dominio';
 import type { FeriadosOficiais } from '../portas/calendario-sla';
+import type { PortaCategorias } from '../portas/categorias';
 import type { PortaCodigos } from '../portas/codigos-manutencao';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaPrioridades, PortaSituacoes, PrioridadeGravada } from '../portas/situacoes';
@@ -101,6 +106,12 @@ export interface CasosDeUsoDeTriagem {
     ctx: Contexto,
     chamadoId: string,
     p: { versao: number; prioridadeId: string },
+  ): Promise<{ versao: number }>;
+  /** Escolhe, troca ou tira (null) a categoria do chamado, com os prazos refeitos (1c, ADR-042). */
+  categorizar(
+    ctx: Contexto,
+    chamadoId: string,
+    p: { versao: number; categoriaId: string | null },
   ): Promise<{ versao: number }>;
   cancelarChamado(
     ctx: Contexto,
@@ -174,6 +185,7 @@ export interface RegrasDaTriagem {
   decidirNoChamado: typeof decidirNoChamado;
   decidirNaOs: typeof decidirNaOs;
   podeAjustarPrioridade: typeof podeAjustarPrioridade;
+  podeAjustarCategoria: typeof podeAjustarCategoria;
   exigirResponsavelDoHotel: typeof exigirResponsavelDoHotel;
   podeInformarImpacto: typeof podeInformarImpacto;
   podeAjustarQuemExecuta: typeof podeAjustarQuemExecuta;
@@ -189,6 +201,8 @@ export function criarCasosDeUsoDeTriagem(deps: {
   feriadosOficiais: FeriadosOficiais;
   /** Os códigos da OS no aceite (I6). Opcional só para os testes que não aceitam com código. */
   codigos?: Pick<PortaCodigos, 'listar' | 'categoriaDoAtivo'>;
+  /** As categorias de ativo, na troca da categoria do chamado (1c). Opcional só para os testes que não trocam. */
+  categorias?: Pick<PortaCategorias, 'listar'>;
   /** Padrão: as do domínio. Só o teste de aceite troca. */
   regras?: Partial<RegrasDaTriagem>;
 }): CasosDeUsoDeTriagem {
@@ -196,6 +210,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
     decidirNoChamado,
     decidirNaOs,
     podeAjustarPrioridade,
+    podeAjustarCategoria,
     exigirResponsavelDoHotel,
     podeInformarImpacto,
     podeAjustarQuemExecuta,
@@ -305,16 +320,17 @@ export function criarCasosDeUsoDeTriagem(deps: {
   }
 
   /**
-   * Os prazos refeitos com a prioridade nova (ADR-042), da cópia do chamado e
-   * no calendário do hotel de agora. Sem cópia (chamado de antes da 0043),
-   * nada muda.
+   * Os prazos refeitos com a prioridade e a categoria novas (ADR-042), da
+   * cópia do chamado e no calendário do hotel de agora. Sem cópia (chamado de
+   * antes da 0043), nada muda.
    */
-  async function prazosComAPrioridade(
+  async function prazosNaTroca(
     ctx: Contexto,
     chamado: ChamadoParaTriagem,
-    prioridadeId: string,
+    troca: { prioridadeId: string; categoriaId: string | null },
     prioridades: readonly PrioridadeGravada[],
   ): Promise<{ prazoAtendimento?: Date; prazoSolucao?: Date }> {
+    const { prioridadeId, categoriaId } = troca;
     const copia = slaDaCopia(chamado.sla.politicaAplicada);
     const prioridade = prioridades.find((x) => x.id === prioridadeId);
     if (!copia || !prioridade) return {};
@@ -326,7 +342,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
         sla: copia['chamado.sla'],
         prioridade,
         prioridades,
-        categoriaId: chamado.sla.categoriaId,
+        categoriaId,
       }),
       calendario: montarCalendarioDeSla(deps.feriadosOficiais, dados, copia, chamado.sla.abertoEm),
       pausadoSegundos: chamado.sla.pausadoSegundos,
@@ -347,7 +363,12 @@ export function criarCasosDeUsoDeTriagem(deps: {
         exigirPrioridadeAtiva(prioridades, prioridadeId);
         comPrioridade = {
           prioridadeId,
-          ...(await prazosComAPrioridade(ctx, chamado, prioridadeId, prioridades)),
+          ...(await prazosNaTroca(
+            ctx,
+            chamado,
+            { prioridadeId, categoriaId: chamado.sla.categoriaId },
+            prioridades,
+          )),
         };
       }
       return deps.triagem.alterarChamado(ctx, chamadoId, p.versao, {
@@ -366,7 +387,33 @@ export function criarCasosDeUsoDeTriagem(deps: {
       return deps.triagem.alterarChamado(ctx, chamadoId, p.versao, {
         acao: 'priorizar',
         prioridadeId: p.prioridadeId,
-        ...(await prazosComAPrioridade(ctx, chamado, p.prioridadeId, prioridades)),
+        ...(await prazosNaTroca(
+          ctx,
+          chamado,
+          { prioridadeId: p.prioridadeId, categoriaId: chamado.sla.categoriaId },
+          prioridades,
+        )),
+      });
+    },
+
+    async categorizar(ctx, chamadoId, p) {
+      const chamado = await chamadoNaVersao(ctx, chamadoId, p.versao);
+      r.podeAjustarCategoria(await ator(ctx), chamado, deps.relogio.agora());
+      if (!deps.categorias) throw new Error('Troca de categoria sem a porta das categorias.');
+      const [categorias, prioridades] = await Promise.all([
+        deps.categorias.listar(ctx),
+        deps.prioridades.listar(ctx),
+      ]);
+      exigirCategoriaAtiva(categorias, p.categoriaId);
+      return deps.triagem.alterarChamado(ctx, chamadoId, p.versao, {
+        acao: 'categorizar',
+        categoriaId: p.categoriaId,
+        ...(await prazosNaTroca(
+          ctx,
+          chamado,
+          { prioridadeId: chamado.prioridadeId, categoriaId: p.categoriaId },
+          prioridades,
+        )),
       });
     },
 

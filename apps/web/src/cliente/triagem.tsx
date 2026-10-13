@@ -11,13 +11,25 @@
 // Na I4: quem executa a OS (a equipe interna ou um fornecedor ativo do grupo),
 // escolhido ao gerar e corrigido até a conclusão, e o impacto no hóspede,
 // corrigido até o aceite.
+//
+// Na 1c (ADR-042): a categoria do chamado, que vem do ativo na abertura, é
+// escolhida, trocada ou tirada nos estados da prioridade; a troca refaz os
+// prazos de SLA no servidor.
 import {
+  ESTADOS_COM_CATEGORIA_AJUSTAVEL,
   ESTADOS_COM_EXECUTOR_AJUSTAVEL,
   ESTADOS_COM_IMPACTO_AJUSTAVEL,
   ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
   TRANSICOES_DA_OS,
   TRANSICOES_DO_CHAMADO,
 } from '@hubkeep/dominio';
+import {
+  CATALOGOS,
+  IDIOMAS,
+  type Idioma,
+  type IdiomaDeExibicao,
+  resolverNome,
+} from '@hubkeep/i18n';
 import { AreaDeTexto, Botao, Campo, Painel, Selecao } from '@hubkeep/ui';
 import { type FormEvent, useState } from 'react';
 import {
@@ -46,6 +58,42 @@ export interface FornecedorParaEscolha {
   ativo: boolean;
 }
 
+/** Categoria de ativo do grupo, como GET /api/v1/categorias-de-ativo devolve. */
+export interface CategoriaDoGrupo {
+  id: string;
+  chavePadrao: string | null;
+  nomes: Partial<Record<Idioma, string>>;
+  ativa: boolean;
+}
+
+/** Categoria para a escolha na triagem (1c), com o nome no idioma de quem vê. */
+export interface CategoriaParaEscolha {
+  id: string;
+  nome: string;
+  ativa: boolean;
+}
+
+/** As categorias com o nome resolvido: o do grupo no idioma, senão o do catálogo, senão o id. */
+export function categoriasParaEscolha(
+  r: { idiomaPadrao: Idioma; categorias: readonly CategoriaDoGrupo[] },
+  idioma: IdiomaDeExibicao,
+): CategoriaParaEscolha[] {
+  const doTexto: Idioma = (IDIOMAS as readonly string[]).includes(idioma)
+    ? (idioma as Idioma)
+    : r.idiomaPadrao;
+  return r.categorias.map((c) => ({
+    id: c.id,
+    ativa: c.ativa,
+    nome:
+      resolverNome(c.nomes, idioma, {
+        doCatalogo: c.chavePadrao
+          ? (CATALOGOS[doTexto][`categoria_ativo.padrao.${c.chavePadrao}`] ?? null)
+          : null,
+        idiomaPadrao: r.idiomaPadrao,
+      }) ?? c.id,
+  }));
+}
+
 /** Quem executa a OS (I4), como as rotas recebem. */
 export type Execucao =
   { executadoPor: 'equipe_interna' } | { executadoPor: 'fornecedor'; fornecedorId: string };
@@ -66,6 +114,8 @@ const valorDaExecucao = (o: OsDoChamado): string =>
 export interface AcoesDaTriagem {
   triar: (prioridadeId: string | null) => void;
   priorizar: (prioridadeId: string) => void;
+  /** null tira a categoria (1c, ADR-042). */
+  categorizar: (categoriaId: string | null) => void;
   gerarOs: (responsavel: Responsavel, execucao: Execucao) => void;
   cancelarChamado: (motivo: string) => void;
   /** Afeta hóspede? null: não sei (I4). */
@@ -93,6 +143,7 @@ export function acoesPossiveis(detalhe: DetalheDoChamado) {
     triar: vale(TRANSICOES_DO_CHAMADO.triar.de, estado),
     // No chamado aberto, a prioridade vai junto com a triagem (um formulário só).
     priorizar: vale(ESTADOS_COM_PRIORIDADE_AJUSTAVEL, estado) && estado !== 'aberto',
+    categorizar: vale(ESTADOS_COM_CATEGORIA_AJUSTAVEL, estado),
     gerarOs: vale(TRANSICOES_DA_OS.gerar.chamado?.de ?? [], estado),
     cancelarChamado: vale(TRANSICOES_DO_CHAMADO.cancelar.de, estado),
     osReatribuiveis: detalhe.os.filter((o) => vale(TRANSICOES_DA_OS.reatribuir.de, o.estado)),
@@ -366,12 +417,51 @@ function Priorizar(props: { refs: Referencias | null; aoEnviar: (p: string) => v
   );
 }
 
+function Categorizar(props: {
+  atual: string | null;
+  categorias: readonly CategoriaParaEscolha[];
+  aoEnviar: (categoriaId: string | null) => void;
+}) {
+  const t = useT();
+  const [categoria, setCategoria] = useState(props.atual ?? '');
+  // A atual aparece mesmo desativada, para a tela mostrar o que o chamado tem.
+  const opcoes = props.categorias.filter((c) => c.ativa || c.id === props.atual);
+  function enviar(ev: FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    props.aoEnviar(categoria || null);
+  }
+  return (
+    <form onSubmit={enviar}>
+      <Campo
+        rotulo={t('corretiva.triagem.categoria')}
+        ajuda={t('corretiva.triagem.dica_categoria')}
+      >
+        {(c) => (
+          <Selecao {...c} value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            <option value="">{t('corretiva.triagem.sem_categoria')}</option>
+            {opcoes.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.nome}
+              </option>
+            ))}
+          </Selecao>
+        )}
+      </Campo>
+      <Botao type="submit" disabled={categoria === (props.atual ?? '')}>
+        {t('corretiva.triagem.salvar_categoria')}
+      </Botao>
+    </form>
+  );
+}
+
 export function TriagemDoChamado(props: {
   detalhe: DetalheDoChamado;
   refs: Referencias | null;
   candidatos: CandidatosAResponsavel | null;
   /** Os fornecedores do grupo (I3), para quem executa; null enquanto carrega ou sem acesso. */
   fornecedores: FornecedorParaEscolha[] | null;
+  /** As categorias de ativo do grupo (1c); null enquanto carrega ou sem acesso: sem o bloco. */
+  categorias?: CategoriaParaEscolha[] | null;
   acoes: AcoesDaTriagem;
 }) {
   const t = useT();
@@ -385,8 +475,16 @@ export function TriagemDoChamado(props: {
       a.osCancelaveis.includes(o) ||
       a.osComExecutorAjustavel.includes(o),
   );
+  const categorias = props.categorias ?? null;
+  const categorizar = a.categorizar && categorias !== null;
   const algumaAcao =
-    a.triar || a.priorizar || a.gerarOs || a.cancelarChamado || a.impacto || osComAcao.length > 0;
+    a.triar ||
+    a.priorizar ||
+    categorizar ||
+    a.gerarOs ||
+    a.cancelarChamado ||
+    a.impacto ||
+    osComAcao.length > 0;
   const responsavel = (o: OsDoChamado) =>
     nomes.nome(
       o.responsavel.tipo === 'tecnico'
@@ -410,6 +508,17 @@ export function TriagemDoChamado(props: {
           <div className="hk-bloco">
             <p className="hk-bloco-titulo">{t('corretiva.triagem.ajustar_prioridade')}</p>
             <Priorizar key={`priorizar-${v}`} refs={props.refs} aoEnviar={acoes.priorizar} />
+          </div>
+        )}
+        {categorizar && (
+          <div className="hk-bloco" data-acao="categorizar">
+            <p className="hk-bloco-titulo">{t('corretiva.triagem.ajustar_categoria')}</p>
+            <Categorizar
+              key={`categorizar-${v}`}
+              atual={detalhe.chamado.categoriaId}
+              categorias={categorias}
+              aoEnviar={acoes.categorizar}
+            />
           </div>
         )}
         {a.gerarOs && (

@@ -107,6 +107,7 @@ export {
   ConsultaDaFilaDoDia,
   RespostaDeOsDoDia,
   PedidoDeAberturaDeChamado,
+  PedidoDeAjusteDeCategoria,
   PedidoDeAjusteDePrioridade,
   PedidoDeAtribuicaoDeOs,
   PedidoDeAceiteDeOs,

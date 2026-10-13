@@ -11,10 +11,12 @@ import {
   type Papel,
   decidirNaOs,
   ehTecnicoDoHotel,
+  exigirCategoriaAtiva,
   exigirChamadoSemOsEmAndamento,
   exigirPrioridadeAtiva,
   exigirResponsavelDoHotel,
   osOcupaOChamado,
+  podeAjustarCategoria,
   podeAjustarPrioridade,
 } from '../src';
 
@@ -218,6 +220,39 @@ describe('ajuste de prioridade', () => {
       equipes: [],
     };
     expect(codigo(() => podeAjustarPrioridade(tecnico, chamado('concluido'), agora))).toBe(
+      'triagem_fora_do_papel',
+    );
+  });
+});
+
+describe('ajuste de categoria (1c, ADR-042)', () => {
+  const categorias = [
+    { id: 'ar', ativa: true },
+    { id: 'antiga', ativa: false },
+  ];
+
+  it('só categoria ativa do grupo; null tira a categoria', () => {
+    expect(() => exigirCategoriaAtiva(categorias, 'ar')).not.toThrow();
+    expect(() => exigirCategoriaAtiva(categorias, null)).not.toThrow();
+    expect(codigo(() => exigirCategoriaAtiva(categorias, 'antiga'))).toBe('categoria_indisponivel');
+    expect(codigo(() => exigirCategoriaAtiva(categorias, 'outra'))).toBe('categoria_indisponivel');
+  });
+
+  it('nos mesmos estados da prioridade, pela triagem', () => {
+    for (const estado of ESTADOS_DO_CHAMADO) {
+      const f = () => podeAjustarCategoria(gerente, chamado(estado), agora);
+      if (['aberto', 'em_triagem', 'em_execucao'].includes(estado)) expect(f).not.toThrow();
+      else expect(codigo(f)).toBe('transicao_invalida');
+    }
+  });
+
+  it('fora da triagem, 403 antes do estado', () => {
+    const tecnico = {
+      usuarioId: 'tec-1',
+      atribuicoes: [atr('tec-1', 'tecnico', noHotel)],
+      equipes: [],
+    };
+    expect(codigo(() => podeAjustarCategoria(tecnico, chamado('concluido'), agora))).toBe(
       'triagem_fora_do_papel',
     );
   });

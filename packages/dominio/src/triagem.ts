@@ -100,6 +100,42 @@ export function podeAjustarPrioridade(
   }
 }
 
+/** A categoria do chamado (1c, ADR-042) se ajusta nos mesmos estados da prioridade. */
+export const ESTADOS_COM_CATEGORIA_AJUSTAVEL: readonly EstadoDoChamado[] =
+  ESTADOS_COM_PRIORIDADE_AJUSTAVEL;
+
+/**
+ * Escolher ou trocar a categoria do chamado (1c, ADR-042, decisão 2): papel
+ * da triagem no hotel (403) e chamado ainda em curso (409).
+ */
+export function podeAjustarCategoria(
+  ator: AtorDaCorretiva,
+  chamado: ChamadoParaRegra,
+  agora: Date,
+): void {
+  podeTriar(ator, chamado.hotel, agora);
+  if (!ESTADOS_COM_CATEGORIA_AJUSTAVEL.includes(chamado.estado)) {
+    throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
+      acao: 'categorizar',
+      estado: chamado.estado,
+    });
+  }
+}
+
+/** A triagem escolhe só categoria de ativo ativa do grupo; null tira a categoria. */
+export function exigirCategoriaAtiva(
+  categorias: readonly { id: string; ativa: boolean }[],
+  categoriaId: string | null,
+): void {
+  if (categoriaId === null) return;
+  if (!categorias.some((c) => c.id === categoriaId && c.ativa)) {
+    throw new RegraViolada(
+      'categoria_indisponivel',
+      'A categoria escolhida não existe ou está desativada.',
+    );
+  }
+}
+
 /** O impacto no hóspede (I4) se corrige com o chamado em curso, até o aceite. */
 export const ESTADOS_COM_IMPACTO_AJUSTAVEL: readonly EstadoDoChamado[] = [
   'aberto',

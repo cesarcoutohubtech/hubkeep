@@ -92,6 +92,7 @@ export async function alterarChamadoNaTriagem(
       'estado',
       'situacao_id',
       'prioridade_id',
+      'categoria_id',
       'impacto_hospede',
       'prazo_atendimento',
       'prazo_solucao',
@@ -105,6 +106,7 @@ export async function alterarChamadoNaTriagem(
       ...(m.estado !== undefined ? { estado: m.estado } : {}),
       ...(m.situacaoId !== undefined ? { situacao_id: m.situacaoId } : {}),
       ...(m.prioridadeId !== undefined ? { prioridade_id: m.prioridadeId } : {}),
+      ...(m.categoriaId !== undefined ? { categoria_id: m.categoriaId } : {}),
       ...(m.motivoCancelamento !== undefined ? { motivo_cancelamento: m.motivoCancelamento } : {}),
       ...(m.impactoHospede !== undefined ? { impacto_hospede: m.impactoHospede } : {}),
       ...(m.prazoAtendimento !== undefined ? { prazo_atendimento: m.prazoAtendimento } : {}),
@@ -136,6 +138,7 @@ export async function alterarChamadoNaTriagem(
   const tipo = {
     triar: 'chamado.triado',
     priorizar: 'chamado.prioridade_alterada',
+    categorizar: 'chamado.categoria_alterada',
     cancelar: 'chamado.cancelado',
     informar_impacto: 'chamado.impacto_informado',
   }[m.acao];
@@ -147,6 +150,7 @@ export async function alterarChamadoNaTriagem(
       hotelId: r.hotel_id,
       versao: r.versao,
       ...(m.prioridadeId !== undefined ? { prioridadeId: m.prioridadeId } : {}),
+      ...(m.categoriaId !== undefined ? { categoriaId: m.categoriaId } : {}),
       ...(m.impactoHospede !== undefined ? { impactoHospede: m.impactoHospede } : {}),
     },
   });

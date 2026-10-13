@@ -577,13 +577,23 @@ Desde as 20:15 UTC, o job do banco falha no `packages/db/test/sla-prazos.test.ts
 
 A correção é o #247, só no teste: o teste alinha a hora da geração com o relógio falso, pelo dono, como o `execucao.test.ts` já faz. O código não muda. O #246 recebeu o mesmo commit.
 
+## Telas do SLA: a troca de categoria na triagem (13/10/2026)
+
+Segundo PR das telas do SLA, depois da tela das políticas (#246). Segue o ADR-042, decisão 2: a categoria do chamado vem do ativo na abertura; quem tria escolhe, troca ou tira, e a troca refaz os prazos e fica na auditoria. Fica fora da zona protegida e sem migração, porque o GRANT de `categoria_id` existe desde a 0043. Branch `claude/1c-categoria-triagem`, a partir da `main`.
+
+**Aviso de área compartilhada com a 1b (chamado, triagem e `packages/dominio`):**
+- **Domínio** (`triagem.ts`): `podeAjustarCategoria` e `exigirCategoriaAtiva`, nos estados da prioridade, e o erro `categoria_indisponivel`.
+- **Aplicação:** `categorizar` no caso de uso da triagem. O recálculo da prioridade virou `prazosNaTroca`, com a prioridade e a categoria.
+- **Banco:** `alterarChamadoNaTriagem` passa a gravar a `categoria_id`, com o evento `chamado.categoria_alterada`.
+- **API e tela:** `POST /api/v1/chamados/{id}/categoria` e o bloco da categoria no painel da triagem.
+
 ### Ponto de retomada (13/10/2026, telas do SLA)
-- **`main`:** vermelha no job do banco desde as 20:15 UTC (o teste da pausa). A correção é o #247, que entra antes de qualquer outro merge. Já entraram o #242 e o #243 (código do M5).
+- **`main`:** o #247 corrigiu o teste da pausa, mas a `main` ficou vermelha no typecheck. O #245 (PV3b da 1b) e o #243 (M5) passavam sozinhos e quebram juntos: o `preventiva-na-maquina.test.ts` não tem a ação `aceitar_automatico`. A correção é o #250, só no teste, e entra antes de qualquer outro merge. Entrou também o #246 (tela das políticas do SLA).
 - **Dev:** com a 0046.
 - **PRs da 1c:**
-  - #247: a correção da `main`;
-  - #246: a tela das políticas do SLA (`/admin/sla`), com a `main` juntada e a correção do #247.
+  - #250: a correção da `main`;
+  - #248: a troca de categoria na triagem, com a `main` juntada e a correção do #250.
 - **Esperando:**
-  - o Cesar: o merge do #247, depois o do #246;
+  - o Cesar: o merge do #250, depois o do #248;
   - as aprovações do glossário (Cesar e Kaio). As divergências a, b, d e e já têm decisão (#242).
-- **Próxima tarefa:** a troca de categoria na triagem, com o recálculo dos prazos (ADR-042, decisão 2), numa branch nova a partir da `main`. Primeiro passo: `MudancaNoChamado` e o caso de uso da triagem ganham a categoria, com o recálculo pela cópia, como na troca de prioridade.
+- **Próxima tarefa:** conferir no `docs/13-plano-fase-1c.md` o que falta do item 4 (monitor) depois do M4 e do M5, e então o item 5 (comunicação: o e-mail e o push dos avisos de SLA). Primeiro passo: comparar a seção dos itens 4 e 5 do plano com o que já está na `main`.
