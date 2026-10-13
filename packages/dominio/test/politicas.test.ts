@@ -174,6 +174,34 @@ describe('registro de políticas (extensão de módulo, adendo ao ADR-026)', () 
     expect(r.resolver('os.aceite_automatico', { bandeira: aceite })).toEqual(aceite);
   });
 
+  it('níveis permitidos: o núcleo nos três; a chave com escopos só nos dela', () => {
+    const r = registroDePoliticas([
+      modulo({ escopos: (c) => (c === 'modulo.a' ? ['grupo'] : undefined) }),
+    ]);
+    expect(r.escopos('os.aceite_automatico')).toEqual(['hotel', 'bandeira', 'grupo']);
+    expect(r.escopos('modulo.b')).toEqual(['hotel', 'bandeira', 'grupo']);
+    expect(r.escopos('modulo.a')).toEqual(['grupo']);
+    expect(() => r.validarNivel('modulo.a', 'grupo')).not.toThrow();
+    for (const nivel of ['hotel', 'bandeira'] as const) {
+      expect(() => r.validarNivel('modulo.a', nivel)).toThrow(
+        expect.objectContaining({
+          codigo: 'politica_nivel_nao_permitido',
+          parametros: { chave: 'modulo.a', nivel, permitidos: 'grupo' },
+        }),
+      );
+      expect(() => r.validarNivel('modulo.b', nivel)).not.toThrow();
+      expect(() => r.validarNivel('os.aceite_automatico', nivel)).not.toThrow();
+    }
+    expect(() => r.validarNivel('modulo.c', 'grupo')).toThrow(
+      expect.objectContaining({ codigo: 'politica_desconhecida' }),
+    );
+    // O valor já gravado num nível que a chave não aceita não vale na resolução.
+    const [hotel, bandeira, grupo] = [{ n: 3 }, { n: 4 }, { n: 5 }];
+    expect(r.resolver('modulo.a', { hotel, bandeira, grupo })).toEqual(grupo);
+    expect(r.resolver('modulo.a', { hotel, bandeira })).toEqual({ n: 1 });
+    expect(r.resolver('modulo.b', { hotel, bandeira, grupo })).toEqual(hotel);
+  });
+
   it.each([
     ['prefixo sem ponto', [modulo({ prefixo: 'modulo' })]],
     ['prefixo do núcleo', [modulo({ prefixo: 'os.', chaves: ['os.x'] })]],
@@ -182,6 +210,9 @@ describe('registro de políticas (extensão de módulo, adendo ao ADR-026)', () 
     ['chave só com o prefixo', [modulo({ chaves: ['modulo.'] })]],
     ['chave repetida', [modulo({ chaves: ['modulo.a', 'modulo.a'] })]],
     ['padrão fora do formato', [modulo({ padrao: () => ({ n: 'x' }) })]],
+    ['níveis vazios', [modulo({ escopos: () => [] })]],
+    ['nível repetido', [modulo({ escopos: () => ['grupo', 'grupo'] })]],
+    ['nível que não existe', [modulo({ escopos: () => ['tenant' as 'grupo'] })]],
   ] as const)('extensão inválida lança na montagem: %s', (_caso, extensoes) => {
     expect(() => registroDePoliticas(extensoes)).toThrow(Error);
   });

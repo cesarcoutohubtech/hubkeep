@@ -515,6 +515,16 @@ export interface AppSituacao {
   tenant_id: string;
 }
 
+export interface AppSlaAlerta {
+  chamado_id: string;
+  emitido_em: Generated<Timestamp>;
+  hotel_id: string;
+  id: string;
+  prazo: Timestamp;
+  tenant_id: string;
+  tipo: string;
+}
+
 export interface AppTenant {
   criado_em: Generated<Timestamp>;
   id: string;
@@ -623,6 +633,7 @@ export interface DB {
   "app.prioridade": AppPrioridade;
   "app.proprietario": AppProprietario;
   "app.situacao": AppSituacao;
+  "app.sla_alerta": AppSlaAlerta;
   "app.tenant": AppTenant;
   "app.uh_indisponivel": AppUhIndisponivel;
   "licenca.contrato": LicencaContrato;

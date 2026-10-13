@@ -108,6 +108,7 @@ import {
   tlsDaConexao,
 } from '@hubkeep/db';
 import { registrosDePoliticasPorModulo } from '@hubkeep/dominio';
+import { criarFeriadosOficiais } from './feriados-oficiais';
 import { criarVerificadorJwks } from './identidade';
 import { registrarNoConsole } from './log';
 import { montarInteligencia } from './modulos/inteligencia';
@@ -417,6 +418,9 @@ export const casosDeUsoDeSituacoes = memo<CasosDeUsoDeSituacoes>(async () => {
   });
 });
 
+/** Feriados oficiais do calendário de SLA (1c, ADR-042): um por instância, com o cache dos anos. */
+const feriadosOficiais = criarFeriadosOficiais();
+
 /** Chamados (fase 1a, C2), pelo hk_app. */
 export const casosDeUsoDeChamados = memo<CasosDeUsoDeChamados>(async () => {
   const banco = await acessoBanco();
@@ -426,6 +430,7 @@ export const casosDeUsoDeChamados = memo<CasosDeUsoDeChamados>(async () => {
     prioridades: criarPortaPrioridades(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
+    feriadosOficiais,
   });
 });
 
@@ -439,6 +444,7 @@ export const casosDeUsoDeTriagem = memo<CasosDeUsoDeTriagem>(async () => {
     codigos: criarPortaCodigos(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
+    feriadosOficiais,
   });
 });
 
