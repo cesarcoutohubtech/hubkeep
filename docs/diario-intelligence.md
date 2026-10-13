@@ -1192,3 +1192,12 @@ Decisões do Cesar de 12/10/2026, no chat do agente do Intelligence ("Cesar aqui
   - Segunda rodada: 200, 1 tenant, 7 ativos, 7 métricas gravadas, nenhum insight (os chamados do kit não passam do limite da atenção) e nenhuma falha.
 - **A resposta da rota** soma só os números de cada tenant, então o `semModulo` não aparece nela; a primeira rodada só se explicou pelo kit. Fica registrado, sem mudança neste PR.
 - **Telas no navegador:** o detalhe do ativo já tem métrica para conferir; a página do insight só terá dados quando algum insight abrir no dev.
+
+## `int-carga-job`: o job diário na escala da rede, os números (13/10/2026)
+
+Atividade 2a do Kaio de 12/10/2026, depois do `int-visibilidade-telas`, que espera o merge do #203 para virar PR. O relatório completo, com o método e as tabelas, está em `docs/referencia/carga-job-inteligencia.md`.
+- **Onde:** um Postgres 16 descartável no contêiner do agente, com as migrações; não o dev compartilhado, porque a métrica só recebe INSERT.
+- **Números:** com 40 hotéis, 10 mil ativos e 73 mil chamados e OS no ano, uma rodada do tenant leva de 4 a 5 s. Com o dobro de chamados, de 7 a 11 s. Quase todo o tempo vai na leitura dos chamados do período e na gravação das 10 mil linhas da métrica; o cálculo fica abaixo de 1,3 s. O heap de uma rodada vai de 350 a 690 MB.
+- **Vercel:** pela busca na documentação (o vercel.com está bloqueado no contêiner), 300 s de padrão e 800 s de máximo no Pro, com o Fluid compute. Uma pessoa precisa conferir na página o limite da função chamada pelo cron.
+- **Otimizações:** nenhuma neste PR, como o Kaio pediu. Os números vão primeiro para ele.
+- **Arquivos:** o gerador `scripts/carga/inteligencia-sintetico.sql` e o executor `apps/web/test/carga-inteligencia.test.ts`, pulado sem `HK_CARGA_URL_WORKER`, também na CI.
