@@ -190,11 +190,15 @@ export async function executarDiaDoTenant(
     ...(sistemico ? { sistemico } : {}),
   });
 
-  const calculos = await fonte.calculosDoDia(resultado.dia);
+  // Cada linha leva o dia local do hotel dela (divergência a): os cálculos já
+  // gravados são lidos por dia.
+  const calculos = new Map<string, ReadonlyMap<string, number>>();
+  for (const d of new Set(resultado.metricas.map((m) => m.dia)))
+    calculos.set(d, await fonte.calculosDoDia(d));
   const linhas: LinhaDaMetricaDiaria[] = [];
   let jaGravadas = 0;
   for (const m of resultado.metricas) {
-    const anterior = calculos.get(m.ativoId);
+    const anterior = calculos.get(m.dia)?.get(m.ativoId);
     if (anterior !== undefined && !recalculo) {
       jaGravadas += 1;
       continue;
