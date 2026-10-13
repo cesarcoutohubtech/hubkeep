@@ -534,6 +534,14 @@ Cesar, no chat do agente da 1c: "Aprovo o ADR-044. Atualize o status." O status 
 
 **A `main` ficou vermelha.** O #231 do Dependabot foi mergeado (`bca63c1`) e subiu o TypeScript para a 7.0.2. O `typescript-eslint` 8.71 não suporta a 7.0, e o `pnpm lint` falha na `main`. A correção é o #236, fora da zona protegida: o TypeScript volta a `~6.0.3`, com o lockfile regenerado. Ela entra antes de qualquer outro merge. Até lá, o lint deste PR também falha, pelo mesmo motivo. Para o Dependabot não propor o TypeScript 7 de novo, falta um `ignore` no `.github/dependabot.yml`, que é zona protegida.
 
+## Telas do SLA: as políticas (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Merge e db push pronto. Continue", 13/10/2026). Esta é a parte de telas do item 3 (SLA) que ainda faltava. Vai em dois PRs fora da zona protegida, sem migração:
+1. **Este PR:** a tela `/admin/sla`, no menu de configuração. Ela edita as três políticas do SLA, que a API já aceita desde o #224: `chamado.sla`, `hotel.horario_atendimento` e `chamado.escalonamento`. Grava nos níveis grupo, bandeira e hotel, como a tela de configuração. Todos os papéis leem, e a API recusa a gravação de quem não é Admin do grupo.
+2. **O PR seguinte:** a troca de categoria na triagem, com o recálculo dos prazos (ADR-042, decisão 2). O GRANT da coluna existe desde a 0043.
+
+**Aviso de área compartilhada com a 1b (políticas):** a 1c acrescenta uma página e textos no catálogo. A tela de configuração (`admin/configuracao/page.tsx`) e o domínio das políticas não mudam. Branch `claude/1c-telas-sla`, a partir da `main`.
+
 ### Ponto de retomada (13/10/2026, M5)
 - **`main`:** verde de novo com o #236 (TypeScript de volta à 6.0). Depois dele entrou o #232 (painel dos avisos de SLA, M4). Já tinham entrado o #229, o #230 e o #233.
 - **PRs da 1c:**
