@@ -1,6 +1,6 @@
 # Proposta de desenho da comunicação (item 5 da 1c)
 
-**Situação:** proposta de 13/10/2026, do agente da 1c, para a aprovação do Cesar. É só documento: nada disto entra antes da aprovação. O item vem do `docs/13`: e-mail próprio com domínio de envio, notificações, push no celular e recuperação de senha. O mock não tem tela para ele (`paridade-mock-1c.md`, seção 9). A proposta termina com as decisões C1 a C9.
+**Situação:** proposta de 13/10/2026, do agente da 1c. As decisões C1 a C9 foram aprovadas pelo Cesar no mesmo dia, como recomendadas, com os registros da seção "Decisões aprovadas", no fim. O item vem do `docs/13`: e-mail próprio com domínio de envio, notificações, push no celular e recuperação de senha. O mock não tem tela para ele (`paridade-mock-1c.md`, seção 9). A proposta termina com as decisões C1 a C9.
 
 **Fatos do código** (`main` em `108d233`):
 - **Outbox:** existe, com o cron de minuto a minuto (ADR-007). Ele só pega os tipos que têm manipulador. Hoje o único manipulador é o `membro.convidado`, que manda o convite pelo Supabase Auth com o template gerado do catálogo (ADR-018 e ADR-022).
@@ -147,3 +147,18 @@ Um Gestor CSC com 40 hotéis pode receber dezenas de avisos num dia ruim.
 | C7 | Silenciar | Sem preferência por pessoa no MVP; o push se desliga no aparelho |
 | C8 | Volume | Um e-mail por aviso; a contagem é medida no piloto |
 | C9 | Ordem | A da seção 9 |
+
+## Decisões aprovadas (13/10/2026)
+
+O Cesar aprovou as recomendações de C1 a C9 no chat do agente da 1c ("Comunicação, C1 a C9: aprovo as suas recomendações, com dois registros"). Os registros e os detalhes dele:
+
+- **C1:** a infraestrutura é do Cesar: o domínio, a conta da AWS, a verificação no SES e a saída do sandbox. Até ele configurar, o envio fica desligado e só registrado (`sem_provedor`).
+- **C6:** muda a decisão de 25/09. Os avisos saem no idioma de quem recebe, e o convite e a recuperação de senha ficam em pt-BR.
+- **C8:** um e-mail por aviso, mas a contagem de envios por destinatário e por dia fica disponível desde o primeiro dia do piloto. Acima de 30 por pessoa e por dia, abre-se o resumo agrupado.
+- **C9:** a ordem é esta:
+  1. o ADR;
+  2. uma única migração com as duas tabelas, na fila de zona protegida depois da parte protegida da PV3;
+  3. o e-mail do SLA;
+  4. o push;
+  5. a recuperação de senha;
+  6. o e-mail ao locador.

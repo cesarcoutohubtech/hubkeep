@@ -1268,3 +1268,55 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - **sem aviso antes do aceite** (por exemplo, "a OS será aceita amanhã") até a comunicação (item 5 da 1c);
   - **sem custo:** a OS aceita automaticamente fica sem custo informado e baixa a cobertura do custo no glossário de métricas;
   - **riscos aceitos:** o worker pode mudar o estado de qualquer OS e chamado do tenant do job, e a regra do quando fica só no domínio, como no ADR-041.
+
+## ADR-045 — Responsável do arrendamento na OS
+
+**Status:** aguarda aprovação do Cesar. As decisões 5 a 8, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c (`docs/13-plano-fase-1c.md`, "Decisões do desenho da 1c"). A coluna da hora do aviso (`locador_avisado_em`) é um detalhe novo deste ADR.
+
+**Contexto:**
+- O hotel tem o modelo contratual desde a I2 (`app.hotel.modelo_contratual`, migração 0032), sem comportamento até a 1c.
+- O item 6 da 1c, o arrendado mínimo, pede quatro coisas:
+  - uma matriz que diga quem responde pela OS em cada categoria;
+  - a OS marcada com o responsável;
+  - o locador com acesso de leitura;
+  - um aviso ao locador, com a data registrada.
+- O locador é o proprietário do hotel inteiro (`app.hotel_proprietario`, ADR-031). Ele já lê a OS do hotel pela RLS de hoje.
+
+**Decisão:**
+- **Matriz:** a política `hotel.matriz_arrendamento` dá, por categoria de ativo, `arrendataria` ou `locador`.
+  - A herança é só grupo → hotel (decisão 5). A definição da chave do núcleo ganha `escopos`, como a das extensões, e a gravação na bandeira é recusada (`politica_nivel_nao_permitido`).
+  - O nível gravado substitui o de cima inteiro, como nas outras políticas.
+  - Ela entra no PR #254, fora da zona protegida.
+- **Quem responde** (`responsavelDoArrendamento`, no domínio):
+  - fora do hotel arrendado, e com o modelo não informado, a OS fica sem marca;
+  - no arrendado, vale a regra da categoria do próprio chamado (ADR-042; decisão 7, com o ajuste do Cesar);
+  - a categoria sem regra, e o chamado sem categoria, ficam com a arrendatária;
+  - na OS preventiva, vale a categoria do ativo.
+- **A marca na OS:** a coluna `app.os.responsavel_arrendamento` guarda a cópia da regra no momento da geração (como o ADR-026). Mudar a matriz não muda as OS que já existem.
+  - Quem tria pode ajustar a marca até o aceite, com motivo, e o ajuste fica na auditoria.
+  - As OS anteriores à migração ficam sem marca, sem preenchimento retroativo.
+- **Aviso ao locador** (decisão 8):
+  - sai uma vez por OS: quando ela nasce marcada como do locador, ou quando a marca muda para ele pela primeira vez;
+  - vai como o evento `os.locador_avisado` no outbox;
+  - a coluna `app.os.locador_avisado_em` guarda a hora e impede o segundo aviso. Ela fica gravada mesmo que a marca volte para a arrendatária;
+  - o envio do e-mail é da comunicação (item 5 da 1c). Até lá, o aviso aparece na linha do tempo da OS.
+- **Privilégios** (migração 0047):
+  - UPDATE de coluna em `responsavel_arrendamento` e `locador_avisado_em` para o `hk_app`. A policy de UPDATE da OS não muda;
+  - o INSERT da tabela já cobre as colunas novas. A preventiva entra com a marca pelo INSERT que a migração da PV3 (1b) dá ao `hk_worker`;
+  - o check da lista e um índice parcial para o filtro "do locador".
+
+**Consequências:**
+- **Migração 0047** (`20261013221500_arrendamento_os.sql`):
+  - as duas colunas, o check, o GRANT por coluna e o índice;
+  - o pgTAP `039`;
+  - os tipos do Kysely.
+
+  Os meta-testes não mudam: nenhum campo de escopo ganha UPDATE, e não há DELETE, função nem trigger.
+- **No PR seguinte, fora da zona protegida e sem migração:**
+  - a marca na geração da OS corretiva e o ajuste na triagem, com motivo;
+  - o evento `os.locador_avisado` e a hora do aviso;
+  - a marca e o aviso na ficha e na linha do tempo, e o filtro "do locador";
+  - o teste de paridade do check com o domínio e o catálogo.
+- **Riscos aceitos:**
+  - o GRANT por coluna vale para todos os papéis do `hk_app` que passam na policy de UPDATE da OS (como nas migrações 0023, 0026 e 0041). Quem ajusta a marca, e quando, é do domínio, e toda gravação fica na auditoria;
+  - sem o e-mail próprio, o locador só vê o aviso na OS, até a comunicação.
