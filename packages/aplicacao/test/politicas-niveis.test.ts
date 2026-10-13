@@ -82,3 +82,57 @@ describe('níveis permitidos da política (escopos da extensão)', () => {
     expect(pedidos).toHaveLength(2);
   });
 });
+
+describe('matriz do arrendado: só grupo → hotel (decisão 5 do Cesar)', () => {
+  const MATRIZ = 'hotel.matriz_arrendamento';
+  const AR = '01900000-0000-7000-8000-0000000000a1';
+
+  it('grava no grupo e no hotel e recusa a bandeira, sem gravar', async () => {
+    const { casos, pedidos } = configuracao();
+    await casos.gravarPolitica(ctx, MATRIZ, grupo, { [AR]: 'locador' });
+    await casos.gravarPolitica(ctx, MATRIZ, hotel, {});
+    await expect(
+      casos.gravarPolitica(ctx, MATRIZ, bandeira, { [AR]: 'locador' }),
+    ).rejects.toMatchObject({
+      codigo: 'politica_nivel_nao_permitido',
+      parametros: { chave: MATRIZ, nivel: 'bandeira', permitidos: 'hotel,grupo' },
+    });
+    expect(pedidos).toHaveLength(2);
+  });
+
+  it('a leitura ignora o valor que já esteja na bandeira: vale o do grupo', async () => {
+    const casos = criarCasosDeUsoDeConfiguracao({
+      configuracao: {
+        tenant: async () =>
+          ({
+            nome: 'G',
+            pais: 'BR',
+            subdivisao: null,
+            moeda: 'BRL',
+            idiomaPadrao: 'pt-BR',
+          }) as never,
+        hotel: async () => null,
+        politicas: async () => [
+          { chave: MATRIZ, escopo: grupo, valor: { [AR]: 'arrendataria' } },
+          { chave: MATRIZ, escopo: bandeira, valor: { [AR]: 'locador' } },
+        ],
+        configurarTenant: async () => undefined,
+        configurarHotel: async () => undefined,
+        gravarPolitica: async () => undefined,
+      },
+      atribuicoes: {
+        doUsuario: async () => [admin],
+        buscar: async () => null,
+        conceder: async () => ({ id: 'x' }),
+        revogar: async () => undefined,
+      },
+      relogio: { agora: () => new Date('2026-10-13T12:00:00Z') },
+    });
+    const { politicas } = await casos.lerConfiguracao(ctx);
+    expect(politicas.find((p) => p.chave === MATRIZ)).toMatchObject({
+      bandeira: null,
+      efetiva: { [AR]: 'arrendataria' },
+      origem: 'grupo',
+    });
+  });
+});

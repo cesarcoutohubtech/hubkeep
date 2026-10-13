@@ -622,3 +622,39 @@ A entrega do escalonamento à central por e-mail e push é o item 5. Até lá, o
   - as decisões C1 a C9 da comunicação;
   - as aprovações do glossário (Cesar e Kaio).
 - **Próxima tarefa:** com as decisões, o ADR da comunicação e a migração das duas tabelas (zona protegida, um PR por vez). Primeiro passo: conferir no GitHub se há PR de zona protegida aberto. Enquanto as decisões não chegam, o item 6 (arrendado mínimo, com as decisões 5 a 8 já aprovadas) pode andar na branch, sem o aviso por e-mail.
+
+## Arrendado mínimo (item 6): a matriz como política (13/10/2026)
+
+Começa o item 6, com as decisões 5 a 8 do Cesar (13/10/2026, `docs/13`). Branch `claude/1c-arrendado`, a partir da `main`. O Cesar mandou continuar ("Cesar aqui. Continue") sem responder às decisões C1 a C9 da comunicação, então o item 5 espera.
+
+**Aviso de área compartilhada com a 1b (políticas e `packages/dominio`):**
+- **Domínio:**
+  - `arrendamento.ts`, novo, com `responsavelDoArrendamento` e `matrizDeArrendamentoValida`;
+  - em `politicas.ts`, a chave `hotel.matriz_arrendamento`. A definição de uma chave do núcleo passa a aceitar `escopos`, como a das extensões, e a matriz fica só no grupo e no hotel (decisão 5). `resolverPolitica` e `lerConfiguracao` ignoram o valor gravado num nível que a chave não aceita.
+- **Contrato:** `MatrizDeArrendamentoApi`, no pedido e na resposta da configuração.
+- **Tela:** `/admin/arrendamento`, com a categoria e quem responde (arrendatária ou locador). Os botões gravam no grupo ou no hotel, nunca na bandeira.
+
+**PRs do item 6:**
+1. **Este:** a política e a tela, fora da zona protegida.
+2. **A migração** (zona protegida): a coluna `app.os.responsavel_arrendamento` (`arrendataria` ou `locador`, nula fora do arrendado), com o GRANT de UPDATE para o ajuste na triagem e o ADR. Só abre depois do #244 do Cesar, que é o PR de zona protegida aberto agora.
+3. **A marca na OS:**
+   - a geração da corretiva e da preventiva grava o responsável. A corretiva usa a categoria do chamado (decisão 7); a preventiva, a do ativo;
+   - o ajuste na triagem tem motivo e auditoria;
+   - o evento `os.locador_avisado` sai uma vez por OS (decisão 8);
+   - a linha do tempo e o filtro "do locador".
+
+   O e-mail ao locador espera o item 5.
+
+### Pedido ao agente da 1b: a marca do arrendado na OS preventiva (13/10/2026)
+
+A geração da OS preventiva é da PV3 (1b). Quando a migração 0047 e o código da marca estiverem na `main`, peço que a geração da preventiva grave `responsavel_arrendamento` com `responsavelDoArrendamento(modelo do hotel, matriz resolvida no hotel, categoria do ativo do plano)`. Se o plano não tiver ativo, fica com a arrendatária. O aviso ao locador (`os.locador_avisado`, uma vez por OS) segue a mesma regra da corretiva. A 1c entrega a função no domínio e o padrão no código da corretiva, para a 1b repetir.
+
+### Ponto de retomada (13/10/2026, arrendado)
+- **`main`:** verde, em `5196075`, com o #252 (a proposta da comunicação). O dev está com a 0046.
+- **PR da 1c:** o #254, com a matriz como política e a tela, fora da zona protegida.
+- **Na branch, sem PR:** `claude/1c-arrendado-migracao` (`397f5e5`), com a migração 0047 (`responsavel_arrendamento` e `locador_avisado_em` em `app.os`), o pgTAP 039, os tipos do Kysely e o ADR-045 ("aguarda aprovação"). Abre só depois que o #244 do Cesar entrar, porque ele é o PR de zona protegida aberto agora. Pela ordem do diário da 1b, ela é a próxima da 1c, e a PV3 vem depois. Antes de abrir: conferir a última migração da `main` e o número.
+- **Esperando o Cesar:**
+  - as decisões C1 a C9 da comunicação (#252, já na `main`);
+  - a aprovação do ADR-045, quando o PR dele abrir;
+  - as aprovações do glossário.
+- **Próxima tarefa:** o PR 3 do arrendado, na branch `claude/1c-arrendado-os`, a partir da `main` depois da 0047 e do `db push`. Primeiro passo: em `gerarOs`, na triagem, resolver a matriz e o modelo do hotel e gravar a marca, e depois o aviso.
