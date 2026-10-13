@@ -327,3 +327,82 @@ O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main
   5. atualizar o meta-teste 28 com as tabelas que a 1c acrescentar.
 - **Depois da PV2 (fora da zona):** domínio (periodicidade, `ocorrencias` e `proximaOcorrencia`), casos de uso, API e telas.
 - **Esperando o Cesar:** o merge do #214 e as três decisões da proposta do "conferir dev".
+
+## Pedidos do Intelligence (atividade 3): onde mora o gerador e a montagem com o relógio do roteiro (13/10/2026)
+
+Pedidos do agente do Kaio na seção "Atividade 3, proposta" do `docs/diario-intelligence.md` (branch `claude/vigilant-cray-l06ew1`), aprovados pelo Cesar no chat ("Cesar aqui", 13/10/2026).
+
+**Pedido 1, registrado:** o gerador do histórico do Intelligence mora em `apps/web/test/demonstracao/historico-inteligencia.ts`, ao lado do kit. Ele chama `semearDemonstracao` sem alterá-la. O `semear.ts` continua do núcleo. Se a assinatura dele mudar, o teste do histórico quebra na CI, e quem mudou avisa no próprio diário.
+
+**Pedido 2, proposta (nenhum código escrito):** uma montagem dos casos de uso com o relógio do roteiro, para o gerador gravar seis meses no passado pelo caminho normal (unit of work, auditoria e outbox).
+
+Condições do Cesar:
+- a montagem é separada e só serve ao gerador e aos testes;
+- o web em funcionamento continua com o relógio do sistema, sem parâmetro;
+- um teste de guarda impede o web de importá-la, e ela recusa rodar contra produção.
+
+### O que o levantamento mostrou
+
+- O relógio dos casos de uso não basta. O `criado_em` do chamado, da OS e do ativo vem do `default now()` da coluna, e o job do Intelligence lê essas colunas. A `os_transicao.quando` sem a hora do aparelho (geração, reatribuição) também vem do `now()`, e o `desativado_em` do ativo, de um `now()` no repositório.
+- O `hk_app` tem INSERT na tabela inteira do chamado, da OS, do ativo e da transição. Gravar o `criado_em` não pede migração nem GRANT novo.
+- O histórico do registro (aba "Histórico" do chamado, da OS e do ativo) e a auditoria geral leem `app.auditoria.em`.
+
+### A proposta
+
+1. **Uma fiação só.** A ligação de cada caso de uso às portas sai da `composicao.ts` para um módulo novo, `apps/web/src/servidor/fabricas.ts`: funções `(banco, relogio) => casos de uso`.
+   - A `composicao.ts` mantém as mesmas exportações, chamando as fábricas com o `relogioDoSistema`, e não ganha parâmetro.
+   - Assim o gerador roda a mesma fiação do web, sem uma cópia que se desencontre com o tempo.
+   - A alternativa é a montagem repetir a fiação dos 14 casos de uso que o gerador usa. É mais simples agora, mas pode divergir do web sem ninguém ver. Não recomendo.
+2. **A montagem fica fora do código do web:** `apps/web/test/demonstracao/montagem-com-relogio.ts`.
+   - `montarComRelogio({ relogio, ambiente })` devolve os casos de uso do pedido:
+     - os cadastros: bandeiras, hotéis, locais, categorias, códigos, fornecedores, ativos e configuração;
+     - chamados, triagem, execução, paradas, sincronização e checklists.
+   - Ela abre um acesso ao banco próprio, nunca o memoizado da `composicao.ts`.
+   - Recusa, antes de conectar:
+     - qualquer `VERCEL_ENV`, como a conta do kit;
+     - um alvo fora da lista de permissão. A lista tem o Postgres local da CI e o ref de `[remotes.dev]` (e o de `[remotes.staging]` quando o bloco existir, F0-12). Produção nunca está nela.
+     - a conexão com o ref de `HK_REF_PRODUCAO`, quando definido, como segunda trava.
+3. **O instante chega ao banco só pela montagem.** O `criarAcessoBanco` ganha a opção `relogioDoRoteiro`.
+   - Com ela, cada unit of work guarda `instante = relogio.agora()` no início da transação. Os repositórios gravam esse instante nas colunas da lista fechada abaixo.
+   - Sem ela, que é o caso do web, o SQL é o de hoje, com o `now()` do banco. Um teste do `packages/db` confere que o SQL sem a opção não traz essas colunas.
+
+### De onde vem cada data
+
+| Data | Hoje | Com a montagem |
+|---|---|---|
+| Parada e UH indisponível (`inicio`, `fim`), apontamento da OS, transição com a hora do aparelho | relógio da aplicação | relógio do roteiro (sem mudança de código) |
+| Prazos do SLA, o "hoje" no fuso do hotel, vigências checadas no domínio | relógio da aplicação, na leitura | relógio do roteiro |
+| Métrica e insight (abertura, encerramento) | relógio do job | relógio do dia do roteiro (já existe: `jobDoDia`) |
+| `criado_em` e `atualizado_em` do chamado, da OS e do ativo; `desativado_em` do ativo; `os_transicao.quando` sem hora do aparelho; `atualizado_em` da parada e da UH indisponível | banco (`now()`) | **relógio do roteiro** |
+| `app.auditoria.em`; `app.evento_dominio.criado_em` e `disponivel_em`; `operacao_offline.recebida_em` | banco | **banco** (o momento real da gravação) |
+| Cadastros (hotel, local, categoria, código, fornecedor, política, membro, atribuição, convite, licença) | banco | banco |
+| `valido_ate > now()` nas funções de autorização (RLS) | banco | banco |
+
+A auditoria e o outbox ficam com o banco de propósito. A auditoria diz quando o dado entrou de fato, e uma data de auditoria escolhida pela aplicação abriria a porta para forjá-la. O outbox com data real é processado na hora; os eventos do passado não ficam esperando.
+
+### Efeito num histórico gerado (vai para o `docs/10`, seção do histórico do Intelligence, e para o cabeçalho da montagem)
+
+1. **Ficha do chamado e da OS:** a abertura, as transições, as paradas e o SLA aparecem nas datas do roteiro. A aba "Histórico" lê a auditoria e mostra tudo no dia e na hora em que o gerador rodou, em poucos minutos.
+2. **Auditoria geral:** o filtro por período acha o histórico inteiro no dia da geração, e nada nos seis meses.
+3. **Outbox:** os eventos levam a data da geração e são processados na hora. Só o `membro.convidado` tem manipulador, então os eventos do passado não mandam e-mail nem push.
+4. **Cadastros:** hotéis, locais, categorias e a política têm `criado_em` do dia da geração. O job não lê essas datas; o `atualizado_em` da política entra só na versão que o job anota. Os ativos têm a data do roteiro, porque o job precisa.
+5. **Chamados não concluídos no roteiro** aparecem abertos há meses, com o SLA estourado. É o esperado num grupo com histórico.
+
+### Guarda (zona protegida)
+
+- **`tests/relogio-do-roteiro-fora-do-web.test.ts`,** na raiz, entra na regex do `zona-protegida.yml`. Ele confere quatro coisas:
+  1. nada em `apps/web/src`, `apps/tecnico` ou `packages/*` importa a `montagem-com-relogio`;
+  2. em `apps/web/src`, só a `composicao.ts` importa as `fabricas`, e ela passa sempre o `relogioDoSistema`;
+  3. a opção `relogioDoRoteiro` só aparece no `packages/db` (definição e teste) e na montagem;
+  4. controle: o teste enxerga o que procura (a montagem usa a opção).
+- **A recusa** tem um teste próprio no `apps/web/test`, sem rede. Ele confere que a montagem recusa a `VERCEL_ENV`, o ref de produção, um ref fora da lista e um host remoto que não é o dev.
+- **Área compartilhada:** a mudança mexe nos repositórios do chamado, da OS e do ativo, que são áreas compartilhadas com a 1c. Antes de começar, aviso neste diário e trago a `main` com frequência.
+
+### Fila
+
+O PR toca zona protegida (o teste novo e a regex), então espera a vez. O #212 do Kaio já está na `main`. Na fila, ficam a próxima migração da 1c e, depois dela, a PV2 e esta montagem; a ordem entre as duas é decisão do Cesar. Recomendação: a PV2 primeiro, porque já está pronta e tinha a vez marcada, e a montagem logo depois. Enquanto isso, o agente do Kaio segue com o roteiro, como já faz.
+
+**Esperando o Cesar:**
+1. A proposta: fábricas, montagem fora do código do web e o instante só pela opção.
+2. As datas: a auditoria e o outbox com o banco.
+3. A ordem entre a PV2 e a montagem.
