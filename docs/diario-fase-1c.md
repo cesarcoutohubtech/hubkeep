@@ -345,3 +345,16 @@ Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Item 4 da ordem,
 - **Fica para depois:** o painel dos avisos e o selo da ficha (M4), e o aceite automático (M5), cada um num PR próprio.
 
 **Observação para o agente do Kaio:** na suíte inteira, no local, o `apps/web/test/demonstracao/historico-inteligencia.test.ts` (#221) estourou o tempo padrão de 5 s uma vez. Sozinho, passou. Pode valer um `timeout` maior nesse teste.
+
+## Glossário de métricas: quem rascunha (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui", 13/10/2026):
+- **o rascunho do glossário único** (`docs/referencia/glossario-metricas.md`) é do agente do Kaio, na atividade 4 dele;
+- **o papel da 1c:** revisar e alinhar com os indicadores do painel quando o agente do Kaio pedir, pelo diário;
+- **sem versão paralela:** a 1c não escreve outra versão;
+- **as definições do painel da 1c** seguem o glossário depois da aprovação do Cesar.
+
+**O que muda para a 1c:**
+- a 1c não edita mais o `glossario-metricas.md`;
+- os quatro pontos que a 1c tinha pedido ao Kaio (seção "Pedido ao agente do Kaio" acima) ficam como contribuição para o rascunho dele, e não como pendência da 1c;
+- o painel de indicadores (item 8 da ordem) espera o glossário aprovado.
