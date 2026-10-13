@@ -6,7 +6,9 @@
 // modelo contratual do hotel (I2) fica na configuração do hotel; vazio é "não
 // informado". Os códigos obrigatórios no aceite (I6), a foto "depois" na
 // conclusão e a assinatura no aceite (I8) ligam por grupo ou hotel, no mesmo
-// bloco (BlocoLigado).
+// bloco (BlocoLigado). Com o hotel escolhido e com bandeira, cada política
+// também grava na bandeira dele (1c): o valor da bandeira vale para os hotéis
+// dela, abaixo do valor do hotel e acima do do grupo.
 import { MODELOS_CONTRATUAIS_API } from '@hubkeep/contratos';
 import { type Chave, IDIOMAS } from '@hubkeep/i18n';
 import {
@@ -41,6 +43,7 @@ type PoliticaSemCriticidade =
       chave: 'os.aceite_automatico';
       padrao: Aceite;
       grupo: Aceite | null;
+      bandeira: Aceite | null;
       hotel: Aceite | null;
       efetiva: Aceite;
       origem: Origem;
@@ -49,6 +52,7 @@ type PoliticaSemCriticidade =
       chave: ChaveLigada;
       padrao: { ligado: boolean };
       grupo: { ligado: boolean } | null;
+      bandeira: { ligado: boolean } | null;
       hotel: { ligado: boolean } | null;
       efetiva: { ligado: boolean };
       origem: Origem;
@@ -57,6 +61,7 @@ type PoliticaSemCriticidade =
       chave: 'chamado.prioridade_padrao_por_categoria';
       padrao: Record<string, string>;
       grupo: Record<string, string> | null;
+      bandeira: Record<string, string> | null;
       hotel: Record<string, string> | null;
       efetiva: Record<string, string>;
       origem: Origem;
@@ -68,11 +73,13 @@ type Politica =
       chave: 'ativo.criticidade';
       padrao: NomesDeCriticidade;
       grupo: NomesDeCriticidade | null;
+      bandeira: NomesDeCriticidade | null;
       hotel: NomesDeCriticidade | null;
       efetiva: NomesDeCriticidade;
       origem: Origem;
     };
-type Origem = 'hotel' | 'grupo' | 'padrao';
+type Origem = 'hotel' | 'bandeira' | 'grupo' | 'padrao';
+type EscopoDoBotao = 'grupo' | 'bandeira' | 'hotel';
 
 /** As políticas de ligar ou desligar (I6, I8 e PV1), com os textos de cada uma. */
 const POLITICAS_LIGADAS = [
@@ -115,12 +122,30 @@ const NIVEIS = [1, 2, 3, 4, 5] as const;
 interface Configuracao {
   tenant: Regiao & { nome: string };
   hotel:
-    (Regiao & { id: string; nome: string; fuso: string; modeloContratual: string | null }) | null;
+    | (Regiao & {
+        id: string;
+        nome: string;
+        fuso: string;
+        modeloContratual: string | null;
+        bandeira: { id: string; nome: string } | null;
+      })
+    | null;
   politicas: Politica[];
 }
 
-/** De onde vem o valor: do hotel e do grupo em azul, o padrão do sistema em cinza. */
-const TOM_DA_ORIGEM: Record<Origem, TomDeSelo> = { hotel: 'azul', grupo: 'azul', padrao: 'cinza' };
+/** De onde vem o valor: do hotel, da bandeira e do grupo em azul, o padrão do sistema em cinza. */
+const TOM_DA_ORIGEM: Record<Origem, TomDeSelo> = {
+  hotel: 'azul',
+  bandeira: 'azul',
+  grupo: 'azul',
+  padrao: 'cinza',
+};
+
+/** O escopo pelo botão que enviou o formulário (value="hotel", "bandeira" ou "grupo"). */
+const escopoDoEnvio = (ev: FormEvent<HTMLFormElement>): EscopoDoBotao => {
+  const v = (ev.nativeEvent as SubmitEvent).submitter?.getAttribute('value');
+  return v === 'hotel' || v === 'bandeira' ? v : 'grupo';
+};
 
 const texto = (f: FormData, campo: string) => {
   const v = String(f.get(campo) ?? '').trim();
@@ -178,12 +203,20 @@ export default function ConfiguracaoDoGrupo() {
     });
   }
 
-  const gravarPolitica = (chave: Politica['chave'], escopo: 'grupo' | 'hotel', valor: unknown) =>
-    gravar('/api/v1/politicas', {
+  const gravarPolitica = (chave: Politica['chave'], escopo: EscopoDoBotao, valor: unknown) => {
+    const bandeiraId = dados?.hotel?.bandeira?.id;
+    if (escopo === 'bandeira' && !bandeiraId) return;
+    void gravar(`/api/v1/politicas${hotelId ? `?hotelId=${hotelId}` : ''}`, {
       chave,
-      escopo: escopo === 'grupo' ? { tipo: 'grupo' } : { tipo: 'hotel', hotelId },
+      escopo:
+        escopo === 'hotel'
+          ? { tipo: 'hotel', hotelId }
+          : escopo === 'bandeira'
+            ? { tipo: 'bandeira', bandeiraId }
+            : { tipo: 'grupo' },
       valor,
     });
+  };
 
   const camposDeRegiao = (r: Regiao, herda: boolean) => (
     <>
@@ -258,6 +291,14 @@ export default function ConfiguracaoDoGrupo() {
               />
             </div>
             {dados.hotel && (
+              <p className="hk-suave">
+                {t('admin.configuracao.bandeira_do_hotel', {
+                  tem: dados.hotel.bandeira ? 'sim' : 'nao',
+                  nome: dados.hotel.bandeira?.nome ?? '',
+                })}
+              </p>
+            )}
+            {dados.hotel && (
               <form
                 key={JSON.stringify(dados.hotel)}
                 onSubmit={salvarHotel}
@@ -323,11 +364,8 @@ export default function ConfiguracaoDoGrupo() {
                 onSubmit={(ev) => {
                   ev.preventDefault();
                   const f = new FormData(ev.currentTarget);
-                  const escopo =
-                    (ev.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'hotel'
-                      ? 'hotel'
-                      : 'grupo';
-                  void gravarPolitica('os.aceite_automatico', escopo, {
+                  const escopo = escopoDoEnvio(ev);
+                  gravarPolitica('os.aceite_automatico', escopo, {
                     ligado: f.get('ligado') === 'on',
                     dias: Number(f.get('dias')),
                   });
@@ -357,13 +395,18 @@ export default function ConfiguracaoDoGrupo() {
                     {t('admin.configuracao.acao.gravar_hotel')}
                   </Botao>
                 )}
+                {dados.hotel?.bandeira && (
+                  <Botao type="submit" value="bandeira">
+                    {t('admin.configuracao.acao.gravar_bandeira')}
+                  </Botao>
+                )}
               </form>
-              {(aceite.grupo || aceite.hotel) && (
+              {(aceite.grupo || aceite.bandeira || aceite.hotel) && (
                 <div className="hk-linha-de-botoes">
                   {aceite.grupo && (
                     <Botao
                       tamanho="pequeno"
-                      onClick={() => void gravarPolitica('os.aceite_automatico', 'grupo', null)}
+                      onClick={() => gravarPolitica('os.aceite_automatico', 'grupo', null)}
                     >
                       {t('admin.configuracao.acao.herdar_grupo')}
                     </Botao>
@@ -371,9 +414,17 @@ export default function ConfiguracaoDoGrupo() {
                   {aceite.hotel && (
                     <Botao
                       tamanho="pequeno"
-                      onClick={() => void gravarPolitica('os.aceite_automatico', 'hotel', null)}
+                      onClick={() => gravarPolitica('os.aceite_automatico', 'hotel', null)}
                     >
                       {t('admin.configuracao.acao.herdar_hotel')}
+                    </Botao>
+                  )}
+                  {aceite.bandeira && (
+                    <Botao
+                      tamanho="pequeno"
+                      onClick={() => gravarPolitica('os.aceite_automatico', 'bandeira', null)}
+                    >
+                      {t('admin.configuracao.acao.herdar_bandeira')}
                     </Botao>
                   )}
                 </div>
@@ -397,11 +448,8 @@ export default function ConfiguracaoDoGrupo() {
                   onSubmit={(ev) => {
                     ev.preventDefault();
                     const f = new FormData(ev.currentTarget);
-                    const escopo =
-                      (ev.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'hotel'
-                        ? 'hotel'
-                        : 'grupo';
-                    void gravarPolitica(p.chave, escopo, { ligado: f.get('ligado') === 'on' });
+                    const escopo = escopoDoEnvio(ev);
+                    gravarPolitica(p.chave, escopo, { ligado: f.get('ligado') === 'on' });
                   }}
                 >
                   <label className="hk-marcar">
@@ -416,13 +464,18 @@ export default function ConfiguracaoDoGrupo() {
                       {t('admin.configuracao.acao.gravar_hotel')}
                     </Botao>
                   )}
+                  {dados.hotel?.bandeira && (
+                    <Botao type="submit" value="bandeira">
+                      {t('admin.configuracao.acao.gravar_bandeira')}
+                    </Botao>
+                  )}
                 </form>
-                {(p.grupo || p.hotel) && (
+                {(p.grupo || p.bandeira || p.hotel) && (
                   <div className="hk-linha-de-botoes">
                     {p.grupo && (
                       <Botao
                         tamanho="pequeno"
-                        onClick={() => void gravarPolitica(p.chave, 'grupo', null)}
+                        onClick={() => gravarPolitica(p.chave, 'grupo', null)}
                       >
                         {t('admin.configuracao.acao.herdar_grupo')}
                       </Botao>
@@ -430,9 +483,17 @@ export default function ConfiguracaoDoGrupo() {
                     {p.hotel && (
                       <Botao
                         tamanho="pequeno"
-                        onClick={() => void gravarPolitica(p.chave, 'hotel', null)}
+                        onClick={() => gravarPolitica(p.chave, 'hotel', null)}
                       >
                         {t('admin.configuracao.acao.herdar_hotel')}
+                      </Botao>
+                    )}
+                    {p.bandeira && (
+                      <Botao
+                        tamanho="pequeno"
+                        onClick={() => gravarPolitica(p.chave, 'bandeira', null)}
+                      >
+                        {t('admin.configuracao.acao.herdar_bandeira')}
                       </Botao>
                     )}
                   </div>
@@ -465,10 +526,7 @@ export default function ConfiguracaoDoGrupo() {
                 onSubmit={(ev) => {
                   ev.preventDefault();
                   const f = new FormData(ev.currentTarget);
-                  const escopo =
-                    (ev.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'hotel'
-                      ? 'hotel'
-                      : 'grupo';
+                  const escopo = escopoDoEnvio(ev);
                   const valor: NomesDeCriticidade = {};
                   for (const n of NIVEIS) {
                     const nomes: Partial<Record<string, string>> = {};
@@ -478,7 +536,7 @@ export default function ConfiguracaoDoGrupo() {
                     }
                     if (Object.keys(nomes).length > 0) valor[String(n)] = nomes;
                   }
-                  void gravarPolitica('ativo.criticidade', escopo, valor);
+                  gravarPolitica('ativo.criticidade', escopo, valor);
                 }}
               >
                 {NIVEIS.map((n) => (
@@ -510,10 +568,15 @@ export default function ConfiguracaoDoGrupo() {
                       {t('admin.configuracao.acao.gravar_hotel')}
                     </Botao>
                   )}
+                  {dados.hotel?.bandeira && (
+                    <Botao type="submit" value="bandeira">
+                      {t('admin.configuracao.acao.gravar_bandeira')}
+                    </Botao>
+                  )}
                   {criticidade.grupo && (
                     <Botao
                       tamanho="pequeno"
-                      onClick={() => void gravarPolitica('ativo.criticidade', 'grupo', null)}
+                      onClick={() => gravarPolitica('ativo.criticidade', 'grupo', null)}
                     >
                       {t('admin.configuracao.acao.herdar_grupo')}
                     </Botao>
@@ -521,9 +584,17 @@ export default function ConfiguracaoDoGrupo() {
                   {criticidade.hotel && (
                     <Botao
                       tamanho="pequeno"
-                      onClick={() => void gravarPolitica('ativo.criticidade', 'hotel', null)}
+                      onClick={() => gravarPolitica('ativo.criticidade', 'hotel', null)}
                     >
                       {t('admin.configuracao.acao.herdar_hotel')}
+                    </Botao>
+                  )}
+                  {criticidade.bandeira && (
+                    <Botao
+                      tamanho="pequeno"
+                      onClick={() => gravarPolitica('ativo.criticidade', 'bandeira', null)}
+                    >
+                      {t('admin.configuracao.acao.herdar_bandeira')}
                     </Botao>
                   )}
                 </div>

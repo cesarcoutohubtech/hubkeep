@@ -30,6 +30,38 @@ As sete decisões de `docs/referencia/paridade-mock-1c.md` ("Decididas antes de 
 | 6 | Gráficos do painel (abertos por dia, abertos × encerrados, onde mais quebra) e "chamados por 100 UHs" entram na 1c. | Painel; Painel de indicadores |
 | 7 | Separador do CSV pelo formato regional de quem exporta, mantendo o BOM. | Impressão e exportação; Auditoria geral |
 
+### Decisões do desenho da 1c (Cesar, 13/10/2026)
+
+O Cesar respondeu, no chat do agente da 1c, às 14 decisões de `docs/referencia/propostas-desenho-1c.md`. As 1 a 4, do calendário de SLA, estão no ADR-042. As 5 a 14 ficaram assim:
+
+| # | Decisão | Item |
+|---|---|---|
+| 5 | Aprovada: a matriz do arrendado é uma política, com herança grupo → hotel. | Arrendado mínimo |
+| 6 | Aprovada: o locador é o proprietário do hotel inteiro, sem papel novo. | Arrendado mínimo |
+| 7 | Aprovada com ajuste: a regra usa a categoria do próprio chamado (a do ADR-042), e não a do ativo. Sem regra para a categoria, fica com a arrendatária. | Arrendado mínimo |
+| 8 | Aprovada: um aviso por OS, com a hora na auditoria. | Arrendado mínimo |
+| 9 | Aprovada com condição: os indicadores são calculados na leitura, desde que o painel cumpra uma meta de tempo proposta pelo agente da 1c e medida com o volume do teste de carga do agente do Kaio. Se não cumprir, o agente propõe uma tabela de agregados. | Painel de indicadores |
+| 10 | Aprovada: as definições dos indicadores, com o % de SLA pelo prazo que vence no período e o MTTR com a mediana ao lado. Vão para o glossário único (`docs/referencia/glossario-metricas.md`). | Painel de indicadores |
+| 11 | Aprovada: a tolerância da preventiva em dia é política, com padrão 0. | Painel de indicadores |
+| 12 | Aprovada com definição: a tela de auditoria é da gestão, que quer dizer o Admin do grupo, o Gestor CSC e o Gerente do hotel, este só no escopo do hotel dele. | Auditoria geral |
+| 13 | Aprovada: até 92 dias por consulta e 50 mil linhas no CSV. | Auditoria geral |
+| 14 | Aprovada: o `docs/13` é corrigido, porque o Implantador não lê a auditoria sem hotel. A correção entra no PR da auditoria geral, com o texto do ADR-021 (decisão do Cesar de 13/10/2026). | Auditoria geral |
+
+### Monitor de SLA e meta do painel (Cesar, 13/10/2026)
+
+O Cesar aprovou, no chat do agente da 1c, as cinco decisões do monitor de SLA e a meta do painel, conforme as recomendações:
+
+| # | Decisão | Item |
+|---|---|---|
+| M1 | Quatro avisos por chamado: atendimento e solução perto de vencer e vencidos. "Perto de vencer" é quando o tempo de relógio que falta chega a 20% das horas da regra (padrão de 80%). | Monitor de SLA |
+| M2 | Tabela própria, `app.sla_alerta`, só de inserção, com chave única por chamado, tipo e prazo. O worker não ganha UPDATE no chamado. | Monitor de SLA |
+| M3 | Política `chamado.escalonamento` (hotel → bandeira → grupo): o percentual do aviso, de 50% a 95% (padrão de 80%), e quem recebe cada nível. Perto de vencer vai ao responsável da OS e ao Gerente do hotel; vencido vai também ao Gestor CSC. | Monitor de SLA |
+| M4 | Até o item de comunicação, os avisos ficam no painel (em risco e vencidos) e num selo na ficha do chamado. O e-mail e o push consomem o mesmo evento depois. | Monitor de SLA |
+| M5 | O job do aceite automático (`os.aceite_automatico`, desligado por padrão) entra na rota de cron do SLA, num PR próprio, depois do monitor. | Monitor de SLA |
+| 9 | Meta do painel de indicadores, no servidor, com o build de produção e o volume de referência: rede inteira em 30 dias até 1,0 s; rede inteira em 92 dias até 2,0 s; um hotel em 30 dias até 400 ms (p95). Sem cumprir, o agente propõe uma tabela de agregados diária. O volume aguarda a confirmação do Kaio. | Painel de indicadores |
+
+**Ordem:** o Cesar autorizou adiantar a auditoria geral (item 7) enquanto o monitor espera a migração.
+
 ### Auditoria geral (decisão do Cesar de 07/10/2026)
 
 | O quê | Aceite |
@@ -43,11 +75,33 @@ O piloto só começa depois da 1c, que traz o e-mail próprio e a recuperação 
 - **Segurança:** MFA obrigatório para Admin do grupo, Gestor CSC e Implantador; CSP de script no app do técnico; limite de requisições.
 - **Desempenho:** metas da P1 cumpridas no build de produção.
 - **Produção (F0-12):** domínio, Vercel Pro, Supabase de staging e produção, deploy, e-mail com DNS, PITR, SSL obrigatório.
-  - A parte de **staging** vem antes do treinamento dos hotéis, e não só antes do piloto: o treinamento acontece no staging, e não no dev (resposta 2 do Cesar, 08/10/2026).
+  - A parte de **staging** vem antes do treinamento dos hotéis, e não só antes do piloto: o treinamento acontece no staging, e não no dev (resposta 2 do Cesar, 08/10/2026). Quando, exatamente, está no portão do staging, abaixo.
 - **Provisionamento de cliente:** script do backoffice que cria o grupo, o contrato de licença, o primeiro Admin e os padrões (situações, prioridades, categorias e políticas). Reaproveita o primeiro passo do kit de teste (resposta 4 do Cesar, 08/10/2026).
 - **Kit de teste por turma:** opção que cria um grupo de demonstração novo por turma, com e-mails próprios, sem apagar nada (resposta 3 do Cesar, 08/10/2026).
   - O kit e o script de provisionamento aceitam o staging (pergunta 10 do `docs/piloto/README.md`, confirmada pelo Cesar em 08/10/2026). Hoje o script do kit recusa o que não é o dev, e o ADR-024 limita a secret key fora da Vercel: o ajuste entra com um adendo ao ADR-024.
 - **Implantação:** agente instalado na rede do cliente, carga dos ativos críticos, etiquetas, treinamento por papel (`docs/piloto/`).
 - **Ajustes do teste manual do Cesar:** lista de responsáveis só com técnicos do hotel. As prioridades realistas nos dados de demonstração já entraram (7bac32e).
 
-**Propostas de 12/10/2026, para a aprovação do Cesar:** o desenho do calendário de SLA, do arrendado mínimo, dos indicadores e da auditoria geral está em `docs/referencia/propostas-desenho-1c.md`; o plano do staging do treinamento, com os custos, em `docs/referencia/plano-staging-treinamento.md`.
+### Portão do staging (decisão do Cesar de 12/10/2026)
+
+O staging fica para o ponto do projeto em que não dá mais para avançar sem ele (Cesar, 12/10/2026). Esse ponto é **o fim da 1c no dev, antes de qualquer passo que precise de um endereço publicado**. Até lá, só existe o dev, e nada é criado na Vercel nem no Supabase além dele. Os custos do staging (cerca de US$ 45 a 55 por mês) também só começam no portão.
+
+**O que anda sem o staging:**
+- toda a 1b e toda a 1c, no dev, com o app rodando no notebook;
+- os scripts de provisionamento e do kit por turma (#196), que já aceitam o staging assim que o `[remotes.staging]` existir no `supabase/config.toml`, sem mudança de código.
+
+**O que para no portão, porque precisa do staging:**
+- o treinamento dos hotéis, que acontece no staging (resposta 2 do Cesar, 08/10/2026), com o kit por turma;
+- a instalação do PWA no Android e no iOS, que pede HTTPS fora do `localhost` (F0-11, ADR-025), e o push no celular conferido no aparelho;
+- os crons rodando sozinhos num ambiente publicado (outbox, promoção, Intelligence, preventiva da PV3 e monitor de SLA da 1c). No dev, eles são chamados à mão;
+- o e-mail com links para um endereço público (convite e recuperação de senha), com o domínio e o DNS.
+
+**Ordem a partir do fim da 1c:**
+1. portão do staging: os passos 1 a 15 de `docs/referencia/plano-staging-treinamento.md`, começando pela aprovação das cinco decisões do plano e do adendo ao ADR-024, e pelo PR de zona protegida com o `[remotes.staging]`;
+2. conferência do roteiro e do PWA no aparelho, no staging;
+3. treinamento das turmas;
+4. produção e piloto, com o mesmo roteiro.
+
+Se alguma tarefa antes do fim da 1c passar a depender de um endereço publicado, o agente para e avisa o Cesar, em vez de antecipar o staging.
+
+**Propostas de 12/10/2026, para a aprovação do Cesar:** o desenho do calendário de SLA, do arrendado mínimo, dos indicadores e da auditoria geral está em `docs/referencia/propostas-desenho-1c.md`; o plano do staging do treinamento, com os custos, em `docs/referencia/plano-staging-treinamento.md`, para o portão do staging.

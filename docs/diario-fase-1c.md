@@ -1,0 +1,183 @@
+# Diário da fase 1c
+
+Diário do agente da 1c, o terceiro agente do repositório (Cesar, 12/10/2026): o agente do Cesar fica com a 1b e a administração do projeto, o agente do Kaio com o Intelligence, e este com a fase 1c (`docs/13-plano-fase-1c.md`). A preparação do piloto e a F0-12 ficam fora deste diário.
+
+## Início e decisões do Cesar (13/10/2026)
+
+Primeira entrega, sem código: o que foi entendido, os conflitos vistos e a ordem proposta, mais a proposta do calendário de SLA, no chat. As respostas do Cesar, no chat, em 13/10/2026:
+
+- **Ambiente:** o agente da 1c fica na nuvem e usa as branches que o ambiente impõe (`claude/*`), e não `1c-*`. O título de cada PR começa por "1c:". O agente da 1b registra a exceção no `CLAUDE.md`.
+- **Banco:** os testes de banco rodam só na CI. Depois de cada `db push`, quem confere o dev é o agente da 1b.
+- **Fila de zona protegida:** depois do #203 (PV1), a vez alterna entre a 1c e a 1b: o PR do SLA, depois a PV2, e assim por diante. Em disputa, o Cesar decide.
+- **Auditoria sem hotel:** a RLS prevalece, e o Implantador não lê. O `docs/13` e o texto do ADR-021 são corrigidos no PR da auditoria geral.
+- **Calendário de SLA** (item 1 de `docs/referencia/propostas-desenho-1c.md`):
+  1. as quatro decisões da seção 1, aprovadas, com o ajuste C (a pausa conta pelo relógio do chamado, e não pelo relógio de parede);
+  2. a categoria própria do chamado, vinda do ativo e ajustável na triagem, com recálculo dos prazos e auditoria;
+  3. os feriados oficiais por uma porta na aplicação; o ADR confere a licença e a frequência de atualização da biblioteca;
+  4. a marca "repete todo ano" em `app.feriado_hotel`;
+  5. o ponto facultativo fora por padrão, com a opção por política;
+  6. no ADR: só param o relógio os motivos de uma lista configurável (por exemplo, aguardando peça, aguardando fornecedor e UH ocupada sem acesso); cada pausa é auditada, e o tempo pausado aparece no indicador de SLA.
+- **Glossário de métricas:** aprovado em `docs/referencia/glossario-metricas.md`, fechado com o agente do Kaio pelos diários.
+- **Ordem da 1c,** aprovada:
+  1. glossário;
+  2. nível bandeira nas políticas;
+  3. calendário de SLA;
+  4. monitor de SLA e escalonamento;
+  5. comunicação;
+  6. arrendado mínimo;
+  7. auditoria geral;
+  8. painel de indicadores;
+  9. impressão e CSV;
+  10. catálogo completo.
+- **Autorização:** escrever o ADR e preparar o PR, conferindo no GitHub, antes de abrir, que nenhum outro PR de zona protegida está aberto.
+
+## Registro antes de mexer no que é compartilhado (13/10/2026)
+
+O chamado, a OS, as políticas, os catálogos e o `packages/dominio` são compartilhados com o agente da 1b. O que a 1c muda, por PR:
+
+- **PR do SLA (zona protegida, este):** a migração 0043, com quatro colunas novas em `app.chamado` (`categoria_id`, `prazo_atendimento`, `prazo_solucao` e `pausado_segundos`), o motivo da pausa em `app.os_transicao` (`motivo_pausa`) e a tabela nova `app.feriado_hotel`. Nenhuma policy existente muda. Ficam o pgTAP 035, a tabela na lista do meta-teste 28, o `tipos-banco.ts`, o ADR-042 e a linha do `docs/02`.
+- **PR seguinte (fora da zona protegida):**
+  - no domínio: as políticas `chamado.sla` e `hotel.horario_atendimento` (o prefixo `hotel.` entra no registro do núcleo), `MOTIVOS_DE_PAUSA` e o cálculo (`calcularPrazo`, `horasDeRelogioEntre`);
+  - na aplicação: a porta `FeriadosOficiais` e o adaptador da `date-holidays`, e a gravação dos prazos na abertura, na triagem (troca de prioridade e de categoria) e na pausa e retomada da OS;
+  - o motivo na operação offline `os.pausar` (contrato e PWA);
+  - o catálogo dos motivos e dos erros novos nos quatro idiomas.
+
+  As telas do chamado, da triagem e da OS no PWA são as mesmas da 1b: antes de mexer nelas, leio o diário da 1b e atualizo a branch a partir da `main`.
+
+## Pedido ao agente da 1b (13/10/2026)
+
+1. Registrar no `CLAUDE.md` a exceção das branches do agente da 1c (`claude/*`, com o título do PR começando por "1c:"), como o Cesar decidiu.
+2. **Numeração das migrações:** com a vez alternada, a do SLA é a 0043, e a PV2 passa a ser a 0044 (a fila do diário da 1b, de 12/10, ainda dá a 0043 para a PV2). Os nomes dos arquivos são por data e hora, então nada colide; só os comentários "Migração 00NN" mudam.
+3. O PR do SLA, aberto depois do merge do #203, mexe nas mesmas linhas do #203 em quatro arquivos: o fim do `docs/03`, a lista do meta-teste 28, a lista do `docs/02` e o `tipos-banco.ts`. Eu resolvo o conflito do meu lado, trazendo a `main` depois do merge.
+4. Depois do `db push` da 0043, conferir o dev, como o Cesar decidiu.
+
+## Pedido ao agente do Kaio: glossário de métricas (13/10/2026)
+
+O Cesar aprovou um glossário único das métricas do núcleo e do Intelligence (`docs/referencia/glossario-metricas.md`), com a regra "um nome, um cálculo", e a função de cada termo no domínio. A primeira versão está no arquivo, e quatro pontos dependem do agente do Kaio (seção "Pontos para o agente do Kaio"):
+1. mover `conclusaoEReaberturas` para o domínio, como foi com `uhDiasPerdidos`;
+2. a "preventiva atrasada" da atenção ser o complemento da "preventiva em dia", com a mesma tolerância;
+3. o Intelligence sem MTTR, backlog ou % de SLA próprios;
+4. apontar os nomes do PRD que colidam com um termo do glossário.
+
+A resposta fica no diário do Intelligence, e eu atualizo o glossário a partir dela.
+
+## PR do SLA: migração 0043 e ADR-042 (13/10/2026)
+
+Branch `claude/gallant-clarke-fptpo9`, zona protegida.
+- **`supabase/migrations/20261013120000_calendario_sla.sql` (0043):**
+  - o chamado ganha:
+    - a categoria, com FK composta para as do grupo;
+    - os dois prazos e o tempo pausado (não negativo);
+    - o GRANT de UPDATE só nessas quatro colunas;
+    - dois índices parciais para o monitor;
+  - a transição ganha o motivo da pausa, na lista do domínio e só na ação `pausar`;
+  - a tabela `app.feriado_hotel`:
+    - um feriado ativo por data;
+    - sem UPDATE na data;
+    - exclusão lógica;
+    - leitura por quem lê o hotel, e gravação pela gestão e pelo Implantador, em nome próprio.
+- **`supabase/tests/database/035_isolamento_feriado_hotel.test.sql`:** 49 testes, com os seis casos mínimos do `docs/02`, o implantador vencido e as colunas novas, por papel.
+- **Meta-teste 28:** `app.feriado_hotel` na lista fechada.
+- **`packages/db/src/tipos-banco.ts`:** atualizado à mão, no formato do gerador. O `pnpm db:types` roda depois do `db push`.
+- **ADR-042** no `docs/03`, com as decisões de 13/10; a `date-holidays` conferida no npm (3.37.0: código ISC, dados CC BY 3.0, 12 versões de maio a setembro de 2026).
+- **`docs/02`:** a linha da tabela nova.
+- **Verificação:** no local, lint, typecheck e testes. O pgTAP só roda na CI, por decisão do Cesar; não rodei nada contra o dev.
+- **Situação:**
+  - a branch foi enviada sem PR enquanto o #203 (PV1, zona protegida) esteve aberto;
+  - depois do merge do #203, em 13/10/2026, a `main` entrou na branch, com os conflitos resolvidos (no `docs/02`, no `docs/03`, com o ADR-042 depois do ADR-040, no meta-teste 28 e no diário);
+  - conferido no GitHub que nenhum PR de zona protegida estava aberto, o PR foi aberto como "1c: calendário de SLA, migração 0043 (ADR-042) — zona protegida".
+
+## ADR-042 aprovado (13/10/2026)
+
+Mensagem do Cesar no chat, 13/10/2026: "aprovo adr 42. Siga". O texto completo do ADR-042 está aprovado, inclusive os cinco detalhes do agente que estavam pendentes:
+- a cópia da política inteira no chamado;
+- a lista dos motivos da pausa;
+- quem cadastra o feriado do hotel;
+- a reabertura contra o mesmo prazo;
+- os tipos de feriado que contam.
+
+O status no `docs/03` mudou para aprovado. O PR continua esperando o merge do #203.
+
+## Nível bandeira nas políticas (13/10/2026)
+
+Item 2 da ordem da 1c. PR fora da zona protegida, sem migração, na branch `claude/1c-politicas-bandeira`. A RLS de `app.politica` já aceitava o escopo bandeira (0010 e 0013): só o Admin do grupo grava, e a política da bandeira é lida por quem tem papel vigente em algum hotel, como a do grupo.
+- **Domínio:** `resolverPolitica` passou a resolver hotel → bandeira → grupo → padrão. O registro de políticas, que o Intelligence usa, já resolvia assim.
+- **Banco:**
+  - os níveis de um hotel passam a trazer a bandeira dele, por subconsulta em `app.hotel`. Valem tanto para a leitura das portas da abertura, da triagem, da execução e dos ativos (`niveisDaPolitica`) quanto para a leitura da configuração. Hotel sem bandeira não tem esse nível;
+  - a gravação leva o `bandeira_id`. A bandeira de outro tenant volta 404 `bandeira_nao_encontrada`, e a auditoria guarda o `bandeiraId`.
+- **Contrato:** o escopo `{ tipo: 'bandeira', bandeiraId }` entrou. A resposta traz o valor da bandeira, a origem `bandeira` e a bandeira do hotel.
+- **Tela da configuração:**
+  - com o hotel escolhido e com bandeira, cada política ganha "Gravar na bandeira" e "Voltar a herdar na bandeira", e o painel do hotel diz qual é a bandeira dele;
+  - o `PUT /api/v1/politicas` aceita `?hotelId=`, para a resposta continuar no hotel escolhido. Antes, gravar no grupo devolvia a configuração sem o hotel.
+- **Limite:** a bandeira se configura pelo hotel escolhido, e uma bandeira sem hotel não tem tela. As telas das políticas do Intelligence são do módulo; o motor dele já lê a bandeira (`fonte.ts`).
+- **Catálogo:** as chaves novas nos quatro idiomas, com os nomes que o catálogo já usa para a bandeira: marca em espanhol, enseigne em francês e brand em inglês.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos: a resolução com a bandeira no domínio, e a leitura e a gravação na aplicação, com as portas em memória;
+  - na CI, com o Supabase do runner: o caso novo de `packages/db/test/configuracao.test.ts` (bandeira acima do grupo e abaixo do hotel, o hotel sem bandeira, a porta da triagem, a auditoria, a bandeira de outro tenant e o gerente);
+  - a tela não foi vista no navegador.
+
+## Domínio do calendário de SLA (13/10/2026)
+
+O cálculo do ADR-042, só no domínio e no contrato. PR fora da zona protegida, sem migração e sem gravar nada ainda, na branch `claude/1c-sla-dominio`. A gravação dos prazos na abertura, na triagem e na retomada vem depois do merge da 0043, porque precisa das colunas novas.
+- **`packages/dominio/src/sla.ts`:**
+  - as políticas `chamado.sla` (`SLA_PADRAO`) e `hotel.horario_atendimento` (`HORARIO_PADRAO`), com o formato validado. As horas vão em quartos de hora, até 90 dias, com o atendimento até a solução. O horário vai por dia da semana, com até 4 intervalos em ordem e sem sobreposição, e ao menos um na semana;
+  - `regraDeSla`: a linha da prioridade pelo id, senão pela chave padrão, senão pelo peso mais próximo (no empate, a de peso maior). A categoria sobrepõe o que tem;
+  - `pausaParaORelogio`;
+  - `datasSemAtendimento`, com o feriado, o ponto facultativo só ligado, a observância nunca e o anual do hotel em cada ano;
+  - `calcularPrazo`, `tempoDeRelogioEntre` e `horasDeRelogioEntre`, no fuso do hotel pela `Intl`. Na hora que não existe, vale a depois do salto; na que existe duas vezes, a primeira;
+  - `prazoNaRetomada`: a pausa que começou com o prazo já vencido não muda nada;
+  - `MOTIVOS_DE_PAUSA` e `TIPOS_DE_FERIADO_OFICIAL`;
+  - o prefixo `hotel.` entrou nos do núcleo.
+- **Contrato:** os formatos das duas políticas e `MOTIVOS_DE_PAUSA_API`, com a paridade conferida em `tests/contratos-dominio.test.ts`, por amostras.
+- **Fica para o PR da 0043 ou o seguinte:** `MOTIVOS_DE_PAUSA` em `tests/valores-canonicos-banco.test.ts`, que lê o check da migração. O teste entra no PR que for mergeado por último, entre este e o da 0043.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Os 17 testes novos (`packages/dominio/test/sla.test.ts`) cobrem o fim de semana, o feriado de 12/10, o almoço, o prazo no fim do intervalo, Manaus e Noronha, o horário de verão real de São Paulo em 04/11/2018 (o dia de 23 h), a retomada nos dois relógios e a pausa com o prazo vencido;
+  - na CI: a lista de chaves de `packages/db/test/configuracao.test.ts`.
+
+## Decisões 5 a 14 do desenho da 1c (13/10/2026)
+
+O Cesar respondeu no chat às decisões 5 a 14 de `docs/referencia/propostas-desenho-1c.md`. A tabela está no `docs/13` ("Decisões do desenho da 1c"). O que muda no desenho:
+- **7 (ajuste):** a matriz do arrendado usa a categoria do próprio chamado (`app.chamado.categoria_id`, da 0043), e não a do ativo. A OS preventiva, que não tem chamado, continua com a categoria do ativo.
+- **9 (condição):** a meta de tempo do painel é do agente da 1c, medida com o volume do teste de carga do agente do Kaio. O repositório ainda não tem esse teste nem esse volume: a meta e o volume vão ao Cesar e ao Kaio (seção seguinte).
+- **10 e 11:** o glossário passou à segunda versão, com os indicadores fechados pelo Cesar. Continuam em proposta a conclusão do serviço e a preventiva atrasada, que esperam o Kaio, e o tempo até o aceite.
+- **12:** "gestão" é o Admin do grupo, o Gestor CSC e o Gerente do hotel, este só no escopo do hotel dele, como a RLS da auditoria já faz.
+- **14:** a correção do `docs/13` sobre o Implantador e o texto do ADR-021 entram no PR da auditoria geral.
+
+## Pedido ao agente do Kaio: volume do teste de carga (13/10/2026)
+
+A decisão 9 do Cesar mede a meta de tempo do painel de indicadores com o volume do teste de carga do agente do Kaio. Não achei esse teste no repositório. Pedido:
+1. Existe um teste de carga, ou um volume de referência, do Intelligence? Se existe, onde está, e com quantos hotéis, UHs, ativos, chamados, OS e transições, em quantos meses?
+2. Se não existe, proponho o volume abaixo, para os dois módulos medirem com o mesmo, e que o Kaio confirme ou ajuste:
+   - 40 hotéis, 6.000 UHs e 20.000 ativos;
+   - 24 meses de histórico, com 150 chamados por hotel por mês (144 mil chamados), uma OS por chamado e cerca de 5 transições por OS (720 mil transições);
+   - 10% dos chamados com UH indisponível e 5% com parada do ativo.
+
+## Monitor de SLA, meta do painel e auditoria adiantada (13/10/2026)
+
+O Cesar aprovou no chat, conforme as recomendações ("aprovado conforme recomendado"):
+- as cinco decisões do monitor de SLA, M1 a M5;
+- a meta de tempo do painel (decisão 9).
+
+A tabela está no `docs/13`. Ele também autorizou adiantar a auditoria geral ("Pode sim").
+
+**Plano:**
+- **Auditoria geral, primeiro, fora da zona protegida:** a tela, a API e o CSV. Funciona sem os índices novos, só mais devagar no volume grande.
+- **Um PR de zona protegida só, na vez da 1c depois da PV2:**
+  - a tabela `app.sla_alerta` e a política do escalonamento (ADR do monitor);
+  - os dois índices da auditoria;
+  - a correção do ADR-021 e do `docs/13` sobre o Implantador (decisão 14).
+
+## Ponto de retomada (13/10/2026)
+
+- **Feito:**
+  - o glossário em proposta;
+  - o PR do SLA (migração 0043, pgTAP 035 e ADR-042), mergeado no #206.
+- **Próximo:**
+  1. o PR do SLA (migração 0043 e ADR-042) foi mergeado pelo Cesar no #206, em 13/10/2026; o `db push` é dele, e a conferência do dev é do agente da 1b. A vez seguinte na fila de zona protegida é da PV2, da 1b;
+  2. o nível bandeira (item 2) foi mergeado pelo Cesar no #204, em 13/10/2026;
+  3. o domínio do calendário está no PR "1c: domínio do calendário de SLA" (#205), com `MOTIVOS_DE_PAUSA` em `tests/valores-canonicos-banco.test.ts`, à espera do merge do Cesar;
+  4. depois do `db push` da 0043: a porta `FeriadosOficiais` com a `date-holidays`, a gravação dos prazos (abertura, triagem e retomada) e o motivo da pausa no PWA, com o catálogo;
+  5. em seguida, o item 4 da ordem: o monitor de SLA e o escalonamento, quando o Cesar decidir as cinco decisões.
+- **Esperando:**
+  - o Kaio, nos quatro pontos do glossário e no volume do teste de carga;
+  - o Cesar, nas cinco decisões do monitor de SLA (item 4) e na meta de tempo do painel (decisão 9).

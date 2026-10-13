@@ -53,6 +53,7 @@ import {
   type EstadoDoChamado,
   type Escopo,
   type ExecutadoPor,
+  type NiveisDePolitica,
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
   ehMomentoDaFoto,
@@ -134,24 +135,41 @@ import { gravarPreferencias } from './repositorios/preferencias';
 import { sessaoDePromocao } from './repositorios/promocao';
 import { credenciaisAtivas, registrarLote } from './repositorios/staging';
 
-/** Valor gravado de uma política no hotel e no grupo, como está no banco (a resolução é do domínio). */
+/**
+ * As políticas ativas de um hotel: as do grupo, as da bandeira do hotel (1c) e
+ * as do próprio hotel. A bandeira sai de app.hotel na mesma consulta; hotel sem
+ * bandeira não tem esse nível.
+ */
+const politicasDoHotel = (tx: Tx, hotelId: string) =>
+  tx
+    .selectFrom('app.politica')
+    .where('ativa', '=', true)
+    .where((eb) =>
+      eb.or([
+        eb('escopo_tipo', '=', 'grupo'),
+        eb.and([
+          eb('escopo_tipo', '=', 'bandeira'),
+          eb(
+            'bandeira_id',
+            '=',
+            eb.selectFrom('app.hotel').select('bandeira_id').where('id', '=', hotelId),
+          ),
+        ]),
+        eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
+      ]),
+    );
+
+/** Valor gravado de uma política no hotel, na bandeira dele e no grupo, como está no banco (a resolução é do domínio). */
 const niveisDaPolitica = (banco: AcessoBanco, ctx: Contexto, hotelId: string, chave: string) =>
   banco.withContext(ctx, async (tx) => {
-    const linhas = await tx
-      .selectFrom('app.politica')
-      .select(['escopo_tipo', 'hotel_id', 'valor'])
-      .where('ativa', '=', true)
+    const linhas = await politicasDoHotel(tx, hotelId)
+      .select(['escopo_tipo', 'valor'])
       .where('chave', '=', chave)
-      .where((eb) =>
-        eb.or([
-          eb('escopo_tipo', '=', 'grupo'),
-          eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
-        ]),
-      )
       .execute();
-    const niveis: { hotel?: unknown; grupo?: unknown } = {};
+    const niveis: NiveisDePolitica = {};
     for (const l of linhas) {
       if (l.escopo_tipo === 'hotel') niveis.hotel = l.valor;
+      else if (l.escopo_tipo === 'bandeira') niveis.bandeira = l.valor;
       else if (l.escopo_tipo === 'grupo') niveis.grupo = l.valor;
     }
     return niveis;
@@ -602,18 +620,23 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
     hotel: (ctx, hotelId) =>
       banco.withContext(ctx, async (tx) => {
         const h = await tx
-          .selectFrom('app.hotel')
+          .selectFrom('app.hotel as h')
+          .leftJoin('app.bandeira as b', (j) =>
+            j.onRef('b.tenant_id', '=', 'h.tenant_id').onRef('b.id', '=', 'h.bandeira_id'),
+          )
           .select([
-            'id',
-            'nome',
-            'fuso',
-            'pais',
-            'subdivisao',
-            'moeda',
-            'idioma_padrao',
-            'modelo_contratual',
+            'h.id',
+            'h.nome',
+            'h.fuso',
+            'h.pais',
+            'h.subdivisao',
+            'h.moeda',
+            'h.idioma_padrao',
+            'h.modelo_contratual',
+            'b.id as bandeira_id',
+            'b.nome as bandeira_nome',
           ])
-          .where('id', '=', hotelId)
+          .where('h.id', '=', hotelId)
           .executeTakeFirst();
         return h
           ? {
@@ -627,29 +650,33 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
               modeloContratual: ehModeloContratual(h.modelo_contratual)
                 ? h.modelo_contratual
                 : null,
+              bandeira:
+                h.bandeira_id && h.bandeira_nome !== null
+                  ? { id: h.bandeira_id, nome: h.bandeira_nome }
+                  : null,
             }
           : null;
       }),
     politicas: (ctx, hotelId) =>
       banco.withContext(ctx, async (tx) => {
-        let q = tx
-          .selectFrom('app.politica')
-          .select(['chave', 'escopo_tipo', 'hotel_id', 'valor'])
-          .where('ativa', '=', true);
-        q = hotelId
-          ? q.where((eb) =>
-              eb.or([
-                eb('escopo_tipo', '=', 'grupo'),
-                eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
-              ]),
-            )
-          : q.where('escopo_tipo', '=', 'grupo');
-        return (await q.execute()).map((p) => ({
+        const linhas = await (
+          hotelId
+            ? politicasDoHotel(tx, hotelId)
+            : tx
+                .selectFrom('app.politica')
+                .where('ativa', '=', true)
+                .where('escopo_tipo', '=', 'grupo')
+        )
+          .select(['chave', 'escopo_tipo', 'bandeira_id', 'hotel_id', 'valor'])
+          .execute();
+        return linhas.map((p) => ({
           chave: p.chave,
           escopo:
             p.escopo_tipo === 'hotel' && p.hotel_id
               ? { tipo: 'hotel' as const, hotelId: p.hotel_id }
-              : { tipo: 'grupo' as const },
+              : p.escopo_tipo === 'bandeira' && p.bandeira_id
+                ? { tipo: 'bandeira' as const, bandeiraId: p.bandeira_id }
+                : { tipo: 'grupo' as const },
           valor: p.valor,
         }));
       }),

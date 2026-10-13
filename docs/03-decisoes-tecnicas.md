@@ -1058,3 +1058,55 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - Duas tabelas novas, com os seis casos de isolamento (pgTAP 034).
 - O GRANT de UPDATE da cópia vale para todos os papéis do `hk_app`, então o Técnico responsável também pode, no banco, alterar o modelo e os itens da cópia. A aplicação nunca grava essas colunas por ele, e toda gravação fica na auditoria (risco aceito, como na 0023).
 - A faixa numérica com alerta e a OS automática por não conformidade ficam para a fase 2 (inspeções com OS automática).
+
+## ADR-042 — Calendário de SLA: prazos calculados no domínio e gravados no chamado
+
+**Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c: as quatro decisões do item 1 de `docs/referencia/propostas-desenho-1c.md`, com o ajuste C, e as decisões 2 a 6 abaixo; o texto completo, com os detalhes do agente (a cópia da política inteira no chamado, a lista dos motivos da pausa, quem cadastra o feriado do hotel, a reabertura contra o mesmo prazo e os tipos de feriado que contam), aprovado em seguida, no mesmo dia ("aprovo adr 42").
+
+**Contexto:** o critério de aceite do piloto pede o relógio do SLA pelo calendário da categoria: elevador parado conta 24x7, pintura conta em horário comercial (`docs/referencia/documento-projeto.md`). Hoje não existe cálculo de SLA, e o chamado não tem categoria própria: ela vem do ativo, e pintura quase nunca tem ativo. O fuso, o país e a subdivisão do hotel já existem (`app.hotel`), e o ADR-022 já decidiu que os feriados nacionais e regionais vêm de biblioteca e só os do hotel ficam no banco.
+
+**Decisão:**
+- **Dois prazos por chamado** (decisão 1 da proposta):
+  - **atendimento:** da abertura até a OS gerada;
+  - **solução:** da abertura até o serviço concluído (OS `concluida`), o mesmo ponto final do MTTR (decisão 1 da paridade de 10/10/2026). O aceite não conta. Reaberto, o chamado volta a contar contra o mesmo prazo, e vale a última conclusão, como no MTTR.
+- **Categoria própria do chamado** (decisão 2): `app.chamado.categoria_id`, com FK composta para as categorias do grupo. Na abertura, vem do ativo; quem tria pode escolher ou trocar. A troca recalcula os prazos e fica na auditoria. Chamado sem categoria usa a linha da prioridade.
+- **Política `chamado.sla`,** com a herança hotel → bandeira → grupo → padrão (ADR-026; o nível bandeira entra no item anterior da 1c):
+  - **por prioridade:** as horas de atendimento e de solução e o relógio, `24x7` ou `atendimento`. A linha da prioridade se acha pelo id; sem linha, pela `chave_padrao` da prioridade; sem as duas, pela linha de peso mais próximo;
+  - **por categoria (opcional):** sobrepõe as horas e o relógio da linha da prioridade e liga a pausa do relógio para a categoria (decisão 2 da paridade; desligada por padrão);
+  - **motivos que param o relógio:** a lista configurável da decisão 6, com o padrão `aguardando_peca`, `aguardando_fornecedor` e `uh_ocupada_sem_acesso`;
+  - **ponto facultativo:** fora do calendário por padrão, com a opção de ligar (decisão 5);
+  - **meta do % de SLA:** padrão de 90% (decisão 4 da paridade);
+  - **padrão de fábrica** (decisão 2 da proposta), editável: urgente 1 h e 2 h, e alta 2 h e 8 h, em 24x7; média 8 h e 24 h, e baixa 24 h e 72 h, em horário de atendimento.
+- **Política `hotel.horario_atendimento`,** com a mesma herança: intervalos por dia da semana, na hora local do hotel, com o padrão de segunda a sexta, das 8h às 18h, e sábado, das 8h às 12h. O prefixo `hotel.` entra na lista de prefixos do núcleo no registro de políticas.
+- **Fuso:** sempre o do hotel (`app.hotel.fuso`, IANA). O domínio converte pela `Intl` do JavaScript, sem biblioteca, e a mudança de horário de verão, se voltar, sai da base de fusos do Node e do navegador.
+- **Feriados oficiais por uma porta na aplicação** (decisão 3): `FeriadosOficiais` em `packages/aplicacao`, de (país, subdivisão, ano) para a lista de datas com o tipo. O domínio só recebe as datas e não conhece biblioteca. A implementação fica no servidor do web, no ponto de composição, e a biblioteca nunca vai para o pacote do PWA.
+  - **Biblioteca:** `date-holidays`, conferida em 13/10/2026 na versão 3.37.0. Cobre os feriados nacionais do Brasil e os das 27 unidades da federação, e alguns municípios.
+  - **Licença:** o código é ISC, e os dados são CC BY 3.0, que pede atribuição. A atribuição entra no aviso de licenças de terceiros do produto. Das dependências, `date-holidays-parser`, `caldate` e as de calendário são ISC ou MIT, `moment-timezone` e `lodash` são MIT, `prepin` é Unlicense e `argparse` (de `js-yaml`) é PSF-2.0, todas permissivas.
+  - **Frequência de atualização:** 12 versões entre maio e setembro de 2026, uma a cada duas ou três semanas. A versão fica fixada no `package.json`, e o Dependabot propõe as novas. Cada atualização passa por um teste de regressão com os feriados do Brasil e de uma amostra de estados no ano corrente e no seguinte.
+  - **O que conta:** só o tipo `public` é feriado. `optional` e `bank` (Carnaval, Quarta-feira de Cinzas) são ponto facultativo, fora por padrão (decisão 5); `observance` nunca conta.
+  - **Feriado municipal:** fica no cadastro do hotel (decisão 3 da proposta), porque a cobertura por município da biblioteca é irregular.
+- **Feriados do hotel:** tabela `app.feriado_hotel`, com o nome, a data e a marca "repete todo ano" (`anual`; decisão 4), com RLS e o modelo do `docs/02`. Cadastram a gestão do hotel e o Implantador, como as equipes. Os feriados são lidos na hora do cálculo: cadastrar um feriado não muda prazo já gravado, só o próximo recálculo.
+- **Cálculo no domínio:** `calcularPrazo` e `horasDeRelogioEntre`, puras. No relógio `24x7`, as horas são corridas. No relógio `atendimento`, só contam as horas dentro dos intervalos do dia, e o feriado (dia inteiro, no fuso do hotel) não conta. O monitor, a ficha e o % de SLA usam as mesmas funções.
+- **Prazos gravados no chamado** (decisão 4 da proposta): `prazo_atendimento` e `prazo_solucao`, calculados na abertura. O monitor e o painel filtram por eles sem recalcular.
+- **Cópia da política** (ADR-026): na abertura, `politica_aplicada` guarda a `chamado.sla` resolvida para o hotel, com todas as linhas, e o horário de atendimento resolvido. O recálculo na triagem usa essa cópia, e não a política do momento: mudar a política não altera chamado aberto, e a cópia continua sem UPDATE.
+- **Recálculo:** a troca de prioridade ou de categoria na triagem refaz os prazos a partir da abertura, com a linha nova tirada da cópia. O prazo de atendimento só muda enquanto não há OS. A auditoria guarda os prazos de antes e de depois.
+- **Pausa do relógio da solução** (decisão 6 e ajuste C):
+  - **o motivo da pausa** é informado em cada pausa da OS. A lista é canônica no domínio (`MOTIVOS_DE_PAUSA`: `aguardando_peca`, `aguardando_fornecedor`, `uh_ocupada_sem_acesso`, `fim_de_turno` e `outro`), com os nomes nos quatro idiomas do catálogo, e o check do banco repete os valores. O motivo fica na transição (`app.os_transicao.motivo_pausa`). Motivo novo exige migração que amplia o check;
+  - **para o relógio só** a pausa de OS cuja categoria do chamado tem a pausa ligada e cujo motivo está na lista da política, as duas lidas da cópia. A pausa sem motivo (operação offline gravada antes do motivo existir) nunca para o relógio;
+  - **na retomada,** o prazo de solução é refeito com as horas que faltavam no momento da pausa, contadas a partir da retomada, no relógio do chamado. O tempo parado vai para `pausado_segundos`, que só serve para a ficha e o indicador mostrarem;
+  - **cada pausa é auditada:** a pausa leva o motivo e se parou o relógio, e a retomada leva o prazo de antes e o de depois;
+  - **o tempo pausado aparece no indicador de % de SLA,** com a definição em `docs/referencia/glossario-metricas.md`.
+- **Monitor de SLA:** é o item seguinte da 1c, e lê as colunas. Dois índices parciais servem a ele: o prazo de atendimento dos chamados ainda sem OS e o de solução dos que ainda não têm o serviço concluído.
+
+**Consequências:**
+- Migração 0043 (`20261013120000_calendario_sla.sql`): as quatro colunas do chamado, com GRANT de UPDATE só nelas; o motivo da pausa na transição; a tabela `app.feriado_hotel`; pgTAP 035 e a tabela na lista do meta-teste 28.
+- No PR seguinte, fora da zona protegida, sem migração:
+  - no domínio, as duas políticas, `MOTIVOS_DE_PAUSA` (no `tests/valores-canonicos-banco.test.ts`) e as funções do cálculo;
+  - na aplicação, a porta e o adaptador da biblioteca, a abertura, a triagem e a execução;
+  - o contrato e o OpenAPI, o catálogo nos quatro idiomas e as telas dos feriados, das políticas e do motivo da pausa no PWA.
+- O GRANT por coluna vale para todos os papéis do `hk_app`, então o Técnico responsável e quem abriu o chamado têm UPDATE, no banco, na categoria e nos prazos. A aplicação só grava a categoria e os prazos pela triagem, e os prazos e o tempo pausado pela retomada, e tudo fica na auditoria (risco aceito, como na 0023 e na 0026).
+- Os chamados abertos antes da 0043 ficam sem prazo e sem categoria, e o monitor os ignora: não há dado real antes do piloto.
+- **Limites:**
+  - o horário de atendimento é por hotel, e não por equipe;
+  - não existe feriado da bandeira; o pacote da bandeira (PB1) pode copiar os feriados para o hotel novo;
+  - o tenant não cria motivo de pausa: a lista é do domínio, como os estados (ADR-027).

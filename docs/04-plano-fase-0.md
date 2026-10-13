@@ -125,7 +125,7 @@ A instalação em aparelho pede HTTPS fora de `localhost`. A F0-11 prova no buil
 
 ## F0-12 — Deploy e ambientes
 
-**Suspensa (decisão do Cesar, 26/09/2026).** Até alguns dias antes do piloto só existe o ambiente dev. O piloto só será confirmado com o cliente depois de 01/10. Staging, produção, GitHub Environments, workflow de migração, conta de máquina e projetos na Vercel entram nesse momento. Nada é criado na Vercel antes disso.
+**Suspensa (decisão do Cesar, 26/09/2026).** Até alguns dias antes do piloto só existe o ambiente dev. O piloto só será confirmado com o cliente depois de 01/10. Staging, produção, GitHub Environments, workflow de migração, conta de máquina e projetos na Vercel entram nesse momento. Nada é criado na Vercel antes disso. Desde 12/10/2026, a parte de staging tem lugar marcado: o portão do staging, no fim da 1c e antes do treinamento (`docs/13`).
 
 Criar os projetos Vercel (`web`, `tecnico`) com funções em `gru1`, variáveis por ambiente e previews ligados só ao Supabase de staging. Workflow de migrações: automático para staging, aprovação manual para produção.
 

@@ -1841,6 +1841,20 @@ Pedido do Cesar no chat ("Cesar aqui", 12/10/2026), em seis itens. Situação ao
 - depois, na ordem do núcleo: a PV1 (0042), quando o ADR-040 for aprovado, e o PR do staging (`[remotes.staging]` e o adendo ao ADR-024), quando o Cesar quiser;
 - o PR de zona protegida do Intelligence que estiver pronto (por exemplo, as decisões de 10/10 no ADR-036) entra entre dois do núcleo. Basta registrar aqui ou no diário do Intelligence antes de abrir, conferindo no GitHub que nenhum outro está aberto.
 
+## ADR-040 e ADR-041 aprovados, e o staging no portão (12/10/2026)
+
+Mensagem do Cesar no chat ("Cesar aqui", 12/10/2026): aprova os ADR-040 e ADR-041, e pede para deixar o staging mais para frente no projeto, "em um ponto que não dê mais para avançar sem".
+
+- **ADRs:** o ADR-040 (checklist tipado, PV1) e o ADR-041 (preventiva por tempo, PV2 e PV3) estão aprovados. O texto de cada um entra no `docs/03` no PR de zona protegida da migração correspondente, já como aprovado: o ADR-040 com a 0042 e o ADR-041 com a 0043. As 21 decisões numeradas de `docs/referencia/propostas-desenho-pv-implantacao.md` foram aprovadas pelo Cesar em seguida, no mesmo dia, como propostas no documento ("Cesar aqui", 12/10/2026), com o pedido de seguir com a 1b e toda a 1c.
+- **Portão do staging** (`docs/13`): o staging fica para o fim da 1c no dev, antes de qualquer passo que precise de endereço publicado. Até lá, só o dev, sem custo novo. Param no portão:
+  - o treinamento;
+  - o PWA instalado no aparelho;
+  - os crons rodando sozinhos;
+  - o e-mail com links públicos.
+  O plano de `docs/referencia/plano-staging-treinamento.md` ficou como está, marcado como adiado; as cinco decisões dele e o adendo ao ADR-024 voltam ao Cesar no portão. Os scripts do #196 já aceitam o staging quando o `[remotes.staging]` existir.
+- **Fila de zona protegida do núcleo,** daqui em diante: PV1 (0042, com o texto do ADR-040 e a regra dos worktrees no `CLAUDE.md`), PV2 (0043, com o ADR-041), PV3 (0044), M1 (0045), M4 e M2 (0046), PB1 (0047) e M3 (0048). O PR do staging saiu desta fila. O PR de zona protegida do Intelligence que estiver pronto entra entre dois do núcleo, como antes.
+- **Worktrees** (regra do Cesar de 12/10/2026): os do #197, do #200 e o `d1-teste-proprietario` foram removidos. O commit 28b1785 continua na branch local `1a-d1-teste-proprietario`.
+
 ## PV1 — checklist tipado, migração 0042 (12/10/2026)
 
 ADR-040 e as 21 decisões aprovados pelo Cesar em 12/10/2026. PR de zona protegida com a estrutura; o domínio, os casos de uso, a API, as telas e o kit vão no PR seguinte, fora da zona protegida, depois do merge e do `db push` (modelo da I6).
@@ -1860,33 +1874,6 @@ ADR-040 e as 21 decisões aprovados pelo Cesar em 12/10/2026. PR de zona protegi
   - a linha do checklist no `docs/02`.
 - **Para o agente do Intelligence:** as tabelas novas são `app.checklist_modelo` (`id`, `tenant_id`, `categoria_id`, `nomes`, `itens`, `versao`, `ativa`) e `app.os_checklist` (`os_id`, `modelo_id`, `modelo_versao`, `nomes`, `itens`, `respostas`, `criado_por`). O worker já lê as duas.
 
-## PV1 — checklist na OS: domínio, API, telas e kit (12/10/2026)
+## O diário da 1b mudou de arquivo (12/10/2026)
 
-O resto da PV1 (ADR-040), fora da zona protegida, sobre a migração 0042 do PR anterior.
-
-- **Domínio** (`checklist.ts`):
-  - quem gere os modelos (só o Admin do grupo);
-  - os nomes e os itens do modelo, com as regras dos campos tipados; a versão sobe só quando os itens mudam;
-  - quando a OS aceita o checklist (atribuída, em execução ou pausada) e a troca do modelo, só enquanto não há resposta;
-  - as respostas: valor no tipo do item, mesclagem por item (null tira a resposta) e os obrigatórios sem resposta.
-- **Política nova** `os.checklist_completo_obrigatorio`, desligada por padrão. Ligada, a conclusão volta `checklist_incompleto` com os itens que faltam.
-- **Casos de uso:**
-  - modelos: listar, criar, alterar, desativar e reativar;
-  - na OS: aplicar ou trocar o modelo (com `podeTriar`) e ler o checklist.
-  - As respostas vão pela operação offline `os.responder_checklist`, na sincronização, como os códigos da OS. A conclusão confere a política, e a fila do dia leva o checklist e a política.
-- **API:**
-  - `GET/POST /api/v1/modelos-de-checklist`;
-  - `PUT /api/v1/modelos-de-checklist/{id}`, com `desativacao` e `reativacao`;
-  - `GET/PUT /api/v1/os/{id}/checklist`.
-  - As seis rotas estão no OpenAPI. Os erros são códigos com mensagem nos quatro catálogos.
-- **Telas:**
-  - no web, "Checklists" no menu (os modelos e os itens por tipo; só o Admin do grupo grava) e o checklist no detalhe da OS (aplicar, trocar, ver as respostas);
-  - a política em "Configuração";
-  - no PWA, o formulário por tipo de item, que manda só o que mudou, também sem rede, e o aviso dos itens que faltam na conclusão.
-- **Kit de teste:**
-  - o modelo "Inspeção de ar-condicionado", com um item de cada tipo, aplicado na OS do ar-condicionado parado (UH 102 do Centro);
-  - roteiro no `docs/10`.
-- **Testes:**
-  - domínio, casos de uso, sincronização, projeção e telas do PWA, telas do web;
-  - integração do repositório (aplicar, trocar, responder, auditoria e evento), que roda na CI.
-- **Eventos novos** no outbox: `os.checklist_aplicado` e `os.checklist_respondido`.
+A pedido do Cesar ("Cesar aqui", 12/10/2026), a 1b passa a ser registrada no `docs/diario-fase-1b.md`, que traz as regras vindas da memória local do agente, o ponto de retomada e as tarefas da passagem para a nuvem. Este diário fica com a 1a e com o começo da 1b, até a PV1 (#203).

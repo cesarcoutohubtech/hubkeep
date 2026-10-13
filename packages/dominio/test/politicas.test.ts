@@ -26,6 +26,18 @@ describe('políticas (ADR-026)', () => {
     expect(resolverPolitica('os.aceite_automatico', {})).toEqual({ ligado: false, dias: 7 });
   });
 
+  it('resolve hotel → bandeira → grupo → padrão (1c)', () => {
+    const hotel = { ligado: true, dias: 3 };
+    const bandeira = { ligado: true, dias: 5 };
+    const grupo = { ligado: true, dias: 10 };
+    expect(resolverPolitica('os.aceite_automatico', { hotel, bandeira, grupo })).toEqual(hotel);
+    expect(resolverPolitica('os.aceite_automatico', { bandeira, grupo })).toEqual(bandeira);
+    // A bandeira fora do formato cai para o grupo.
+    expect(
+      resolverPolitica('os.aceite_automatico', { bandeira: { ligado: 'sim' }, grupo }),
+    ).toEqual(grupo);
+  });
+
   it('valor gravado fora do formato não vale e cai para o nível seguinte', () => {
     expect(
       resolverPolitica('os.aceite_automatico', {
@@ -90,6 +102,11 @@ describe('políticas (ADR-026)', () => {
     ] as const) {
       expect(resolverPolitica(chave, {})).toEqual({ ligado: false });
       expect(resolverPolitica(chave, { hotel: { ligado: true } })).toEqual({ ligado: true });
+      // 1c: a bandeira liga para os hotéis dela, e o hotel ainda pode desligar.
+      expect(resolverPolitica(chave, { bandeira: { ligado: true } })).toEqual({ ligado: true });
+      expect(
+        resolverPolitica(chave, { hotel: { ligado: false }, bandeira: { ligado: true } }),
+      ).toEqual({ ligado: false });
     }
   });
 

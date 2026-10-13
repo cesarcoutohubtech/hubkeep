@@ -136,9 +136,12 @@ export {
 export {
   CHAVES_DE_POLITICA_API,
   FORMATOS_DE_POLITICA_API,
+  HorarioDeAtendimentoApi,
+  MOTIVOS_DE_PAUSA_API,
   PedidoDeConfiguracaoDoHotel,
   PedidoDeConfiguracaoDoTenant,
   PedidoDePolitica,
+  PoliticaDeSlaApi,
   PREFIXOS_DO_NUCLEO_API,
   RespostaDeConfiguracao,
 } from './configuracao';

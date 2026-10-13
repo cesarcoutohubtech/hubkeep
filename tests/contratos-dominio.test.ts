@@ -7,6 +7,7 @@ import {
   FORMATOS_DE_POLITICA_API,
   IDIOMAS_API,
   MOMENTOS_DA_FOTO_API,
+  MOTIVOS_DE_PAUSA_API,
   PAPEIS_API,
   CATEGORIAS_PADRAO_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
@@ -38,7 +39,10 @@ import {
   PENDENCIAS_DE_IMPLANTACAO,
   MODELOS_CONTRATUAIS,
   MOMENTOS_DA_FOTO,
+  MOTIVOS_DE_PAUSA,
+  HORARIO_PADRAO,
   POLITICAS,
+  SLA_PADRAO,
   ACOES_DA_OS,
   ACOES_DO_CHAMADO,
   ENTIDADES_COM_SITUACAO,
@@ -82,6 +86,12 @@ describe('contratos × domínio', () => {
   it('as políticas da API são as do domínio, com o mesmo formato (ADR-026)', () => {
     expect([...CHAVES_DE_POLITICA_API].sort()).toEqual([...CHAVES_DE_POLITICA].sort());
     const U = '0193a000-0000-4000-8000-000000000001';
+    const linha = (atendimentoHoras: number, solucaoHoras: number, relogio: string) => ({
+      atendimentoHoras,
+      solucaoHoras,
+      relogio,
+    });
+    const intervalo = (n: number) => ({ inicio: `0${n}:00`, fim: `0${n}:30` });
     const amostras: Record<(typeof CHAVES_DE_POLITICA)[number], unknown[]> = {
       'os.aceite_automatico': [
         { ligado: true, dias: 1 },
@@ -155,6 +165,74 @@ describe('contratos × domínio', () => {
         [],
         null,
       ],
+      'chamado.sla': [
+        SLA_PADRAO,
+        { ...SLA_PADRAO, porPrioridade: { [U]: linha(4, 4, '24x7') } },
+        { ...SLA_PADRAO, porPrioridade: {} },
+        { ...SLA_PADRAO, porPrioridade: { critica: linha(1, 2, '24x7') } },
+        { ...SLA_PADRAO, porPrioridade: { urgente: linha(3, 2, '24x7') } },
+        { ...SLA_PADRAO, porPrioridade: { urgente: linha(0.25, 2160, 'atendimento') } },
+        { ...SLA_PADRAO, porPrioridade: { urgente: linha(0.3, 2, '24x7') } },
+        { ...SLA_PADRAO, porPrioridade: { urgente: linha(1, 2161, '24x7') } },
+        { ...SLA_PADRAO, porPrioridade: { urgente: linha(0, 2, '24x7') } },
+        { ...SLA_PADRAO, porPrioridade: { urgente: linha(1, 2, 'comercial') } },
+        { ...SLA_PADRAO, porPrioridade: { urgente: { ...linha(1, 2, '24x7'), extra: 1 } } },
+        { ...SLA_PADRAO, porCategoria: { [U]: { pausa: true } } },
+        { ...SLA_PADRAO, porCategoria: { [U]: { relogio: '24x7', solucaoHoras: 4 } } },
+        { ...SLA_PADRAO, porCategoria: { [U]: {} } },
+        { ...SLA_PADRAO, porCategoria: { [U]: { atendimentoHoras: 5, solucaoHoras: 4 } } },
+        { ...SLA_PADRAO, porCategoria: { [U]: { pausa: 'sim' } } },
+        { ...SLA_PADRAO, porCategoria: { [U]: { cor: 'azul' } } },
+        { ...SLA_PADRAO, porCategoria: { x: { pausa: true } } },
+        { ...SLA_PADRAO, motivosQuePausam: [] },
+        { ...SLA_PADRAO, motivosQuePausam: ['aguardando_peca', 'aguardando_peca'] },
+        { ...SLA_PADRAO, motivosQuePausam: ['almoco'] },
+        { ...SLA_PADRAO, pontoFacultativo: 'nao' },
+        { ...SLA_PADRAO, metaPercentual: 0 },
+        { ...SLA_PADRAO, metaPercentual: 100 },
+        { ...SLA_PADRAO, metaPercentual: 90.5 },
+        { ...SLA_PADRAO, extra: 1 },
+        { porPrioridade: SLA_PADRAO.porPrioridade },
+        [],
+        null,
+      ],
+      'hotel.horario_atendimento': [
+        HORARIO_PADRAO,
+        { ...HORARIO_PADRAO, dom: [{ inicio: '00:00', fim: '24:00' }] },
+        {
+          ...HORARIO_PADRAO,
+          seg: [
+            { inicio: '08:00', fim: '12:00' },
+            { inicio: '12:00', fim: '18:00' },
+          ],
+        },
+        {
+          ...HORARIO_PADRAO,
+          seg: [
+            { inicio: '13:00', fim: '18:00' },
+            { inicio: '08:00', fim: '12:00' },
+          ],
+        },
+        {
+          ...HORARIO_PADRAO,
+          seg: [
+            { inicio: '08:00', fim: '12:30' },
+            { inicio: '12:00', fim: '18:00' },
+          ],
+        },
+        { ...HORARIO_PADRAO, seg: [{ inicio: '18:00', fim: '08:00' }] },
+        { ...HORARIO_PADRAO, seg: [{ inicio: '08:00', fim: '08:00' }] },
+        { ...HORARIO_PADRAO, seg: [{ inicio: '24:00', fim: '24:00' }] },
+        { ...HORARIO_PADRAO, seg: [{ inicio: '8:00', fim: '18:00' }] },
+        { ...HORARIO_PADRAO, seg: [{ inicio: '08:00', fim: '18:60' }] },
+        { ...HORARIO_PADRAO, seg: [{ inicio: '08:00', fim: '18:00', extra: 1 }] },
+        { ...HORARIO_PADRAO, seg: Array.from({ length: 5 }, (_, n) => intervalo(n)) },
+        { dom: [], seg: [], ter: [], qua: [], qui: [], sex: [], sab: [] },
+        { ...HORARIO_PADRAO, feriado: [] },
+        { seg: HORARIO_PADRAO.seg },
+        [],
+        null,
+      ],
     };
     for (const chave of CHAVES_DE_POLITICA) {
       expect(FORMATOS_DE_POLITICA_API[chave].safeParse(POLITICAS[chave].padrao).success).toBe(true);
@@ -166,6 +244,10 @@ describe('contratos × domínio', () => {
         ]);
       }
     }
+  });
+
+  it('os motivos da pausa da API são os do domínio (ADR-042)', () => {
+    expect([...MOTIVOS_DE_PAUSA_API]).toEqual([...MOTIVOS_DE_PAUSA]);
   });
 
   it('os momentos da foto da OS da API são os do domínio (I8)', () => {
