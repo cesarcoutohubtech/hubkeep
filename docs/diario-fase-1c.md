@@ -294,3 +294,28 @@ Na branch `claude/1c-monitor-sla`, enviada, ainda **sem PR**. Pela ordem do Cesa
   - calcular, em `prepararAcao` da execução, se a pausa para o relógio, pela cópia do SLA do chamado;
   - na retomada, refazer o prazo de solução e o tempo pausado com `prazoNaRetomada`;
   - acrescentar o seletor de motivo no PWA e os nomes dos motivos no catálogo, nos quatro idiomas.
+
+## Decisões do Cesar: licença, Dependabot e ADR-043 (13/10/2026)
+
+Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
+1. **Licença dos feriados:** aceita a `date-holidays`. O ADR-042 é corrigido no próximo PR de zona protegida da 1c, com quatro pontos:
+   - os dados são CC BY-SA 3.0, e o código tem a licença própria;
+   - a atribuição está no `AVISOS-DE-TERCEIROS.md`;
+   - o servidor só consulta as datas, sem redistribuir o conjunto de dados;
+   - antes de usar a biblioteca para outros países, a licença passa por revisão jurídica.
+
+   Ele também pediu uma issue no repositório da biblioteca sobre o 20 de novembro em SP e no RJ.
+2. **Dependabot:** o ecossistema npm entra no `dependabot.yml`, no mesmo PR de zona protegida, com três regras:
+   - as atualizações de versão vêm agrupadas num PR só por semana;
+   - há limite de PRs abertos;
+   - as de segurança ficam sempre separadas.
+3. **ADR-043:** "Aprovo o ADR-043". Ele também rodou o `db push` da 0044. O #219 ele mergeia quando a CI ficar verde.
+
+**Feito:** na branch `claude/1c-adr-licenca-dependabot`, com três mudanças:
+- a correção da licença no ADR-042;
+- o status do ADR-043 ("aprovado", com a data e onde foi escrito);
+- o npm no `dependabot.yml`, com o grupo semanal só para as atualizações de versão (`applies-to: version-updates`) e o limite de 5 PRs abertos. As de segurança ficam de fora do grupo e saem separadas.
+
+O PR abre na vez da 1c, depois da PV2.
+
+**Issue na `date-holidays`:** o GitHub desta sessão só alcança o `hubkeep`, então não dá para abrir issue no repositório da biblioteca (`commenthol/date-holidays`). O texto pronto, em inglês, foi entregue ao Cesar no chat. A causa está nos dados: no `data/countries/BR.yaml`, a entrada estadual do 20 de novembro de SP e a do RJ terminam em 21/12/2023 e se sobrepõem à nacional.

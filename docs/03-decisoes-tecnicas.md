@@ -1100,8 +1100,23 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Fuso:** sempre o do hotel (`app.hotel.fuso`, IANA). O domínio converte pela `Intl` do JavaScript, sem biblioteca, e a mudança de horário de verão, se voltar, sai da base de fusos do Node e do navegador.
 - **Feriados oficiais por uma porta na aplicação** (decisão 3): `FeriadosOficiais` em `packages/aplicacao`, de (país, subdivisão, ano) para a lista de datas com o tipo. O domínio só recebe as datas e não conhece biblioteca. A implementação fica no servidor do web, no ponto de composição, e a biblioteca nunca vai para o pacote do PWA.
   - **Biblioteca:** `date-holidays`, conferida em 13/10/2026 na versão 3.37.0. Cobre os feriados nacionais do Brasil e os das 27 unidades da federação, e alguns municípios.
-  - **Licença:** o código é ISC, e os dados são CC BY 3.0, que pede atribuição. A atribuição entra no aviso de licenças de terceiros do produto. Das dependências, `date-holidays-parser`, `caldate` e as de calendário são ISC ou MIT, `moment-timezone` e `lodash` são MIT, `prepin` é Unlicense e `argparse` (de `js-yaml`) é PSF-2.0, todas permissivas.
-  - **Frequência de atualização:** 12 versões entre maio e setembro de 2026, uma a cada duas ou três semanas. A versão fica fixada no `package.json`, e o Dependabot propõe as novas. Cada atualização passa por um teste de regressão com os feriados do Brasil e de uma amostra de estados no ano corrente e no seguinte.
+  - **Licença** (texto corrigido com a decisão do Cesar de 13/10/2026, no chat do agente da 1c):
+    - **o código** é ISC, a licença própria do pacote;
+    - **os dados** (`data/holidays.json` e `data/countries/*.yaml`) são **CC BY-SA 3.0**, como diz o arquivo `LICENSE` do pacote. O texto anterior dizia CC BY 3.0, que é o que está no campo de licença do npm;
+    - **a atribuição** está no `AVISOS-DE-TERCEIROS.md`, com as fontes dos feriados do Brasil;
+    - **o uso:** o servidor só consulta as datas para calcular os prazos e não redistribui o conjunto de dados, alterado ou não. O Cesar aceitou a biblioteca nessas condições;
+    - **outros países:** antes de usar a biblioteca para um país além do Brasil, a licença passa por revisão jurídica;
+    - **as dependências:**
+      - MIT: `date-holidays-parser`, `astronomia`, as de calendário, `moment`, `moment-timezone` e `lodash`;
+      - ISC: `caldate`;
+      - Unlicense: `prepin`;
+      - Python-2.0: o `js-yaml` 5 e a `argparse`, dependência dele.
+
+      Todas são permissivas.
+  - **Frequência de atualização:** 12 versões entre maio e setembro de 2026, uma a cada duas ou três semanas.
+    - A versão fica fixada no `package.json`, e o Dependabot propõe as novas (ecossistema npm, decisão do Cesar de 13/10/2026).
+    - Cada atualização passa por um teste de regressão (`apps/web/test/feriados-oficiais.test.ts`), com os feriados do Brasil e de uma amostra de estados no ano corrente e no seguinte.
+  - **Falha conhecida nos dados (3.37.0):** em São Paulo e no Rio de Janeiro, a entrada estadual do 20 de novembro tem vigência até 21/12/2023 e se sobrepõe à nacional, que vale desde então. A porta junta os feriados do país com os do estado, e o teste de regressão confere o dia nos dois estados.
   - **O que conta:** só o tipo `public` é feriado. `optional` e `bank` (Carnaval, Quarta-feira de Cinzas) são ponto facultativo, fora por padrão (decisão 5); `observance` nunca conta.
   - **Feriado municipal:** fica no cadastro do hotel (decisão 3 da proposta), porque a cobertura por município da biblioteca é irregular.
 - **Feriados do hotel:** tabela `app.feriado_hotel`, com o nome, a data e a marca "repete todo ano" (`anual`; decisão 4), com RLS e o modelo do `docs/02`. Cadastram a gestão do hotel e o Implantador, como as equipes. Os feriados são lidos na hora do cálculo: cadastrar um feriado não muda prazo já gravado, só o próximo recálculo.
@@ -1132,7 +1147,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-043 — Monitor de SLA: avisos só de inserção, emitidos pelo worker
 
-**Status:** aguarda aprovação do Cesar. As decisões M1 a M5 foram aprovadas por ele em 13/10/2026, no chat do agente da 1c ("aprovado conforme recomendado"), e estão no `docs/13-plano-fase-1c.md`. O texto deste ADR, com os detalhes do agente (os nomes dos tipos, quem lê, o evento, a pausa que congela o aviso e os índices da auditoria), aguarda o "aprovo".
+**Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c ("Aprovo o ADR-043"). Isso foi depois do merge do #217, que trouxe a migração 0044 e o texto. As decisões M1 a M5 já tinham sido aprovadas por ele no mesmo dia ("aprovado conforme recomendado") e estão no `docs/13-plano-fase-1c.md`.
 
 **Contexto:** o critério de aceite do piloto pede o alerta de prazo perto de vencer e o escalonamento à central. Os prazos já ficam gravados no chamado (ADR-042, migração 0043), com dois índices parciais para o monitor. A rota `/api/cron/sla`, o segredo e o laço por tenant existem desde a fase 0 (ADR-007), sem tarefa e fora do `vercel.json`. A comunicação (e-mail e push) é o item 5 da 1c e ainda não existe.
 
