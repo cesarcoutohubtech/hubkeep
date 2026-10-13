@@ -136,6 +136,8 @@ export {
 export {
   CHAVES_DE_POLITICA_API,
   FORMATOS_DE_POLITICA_API,
+  DESTINATARIOS_DO_AVISO_API,
+  EscalonamentoDeSlaApi,
   HorarioDeAtendimentoApi,
   MOTIVOS_DE_PAUSA_API,
   PedidoDeConfiguracaoDoHotel,

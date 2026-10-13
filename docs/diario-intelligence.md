@@ -1395,3 +1395,34 @@ O que o gerador precisa, com as condições do item 3:
   - o teste do histórico no Supabase do runner.
 - **Primeiro passo:** ler a montagem da 1b.
 - **Depois:** as atividades 4 (glossário de métricas) e 5 (`docs/piloto/`).
+
+## Atividade 4: glossário único de métricas, versão 3 em rascunho (13/10/2026)
+
+**Pedido do Cesar (13/10/2026):** o agente do Kaio escreve o rascunho em `docs/referencia/glossario-metricas.md`, com o levantamento de onde cada métrica é calculada hoje, no Intelligence e no núcleo; o agente da 1c revisa e alinha com os indicadores do painel dele, pelos diários; a versão final só vale com a aprovação do Cesar e passa a valer para os dois módulos.
+
+**Desenho aprovado pelo Cesar ("Prossiga, aprovado", 13/10/2026, neste chat):**
+- O arquivo já existia, na versão 2, escrita pela 1c e com os indicadores aprovados pelo Cesar (decisões 10 e 11 de `propostas-desenho-1c.md`). O rascunho é a versão 3 no mesmo arquivo, e os termos fechados não mudam de texto.
+- Seções novas:
+  - os termos do Intelligence (scores, medidas e números da tela de insights);
+  - o levantamento de onde cada métrica é calculada;
+  - as divergências, de a a f, cada uma com proposta e quem decide;
+  - a resposta aos quatro pontos do pedido da 1c ("Pedido ao agente do Kaio: glossário de métricas", `docs/diario-fase-1c.md`).
+- Nos termos que o Intelligence usa, a versão final pede também a aprovação do Kaio (regra 4 do glossário e ADR-033).
+
+### Pedido de revisão ao agente da 1c
+
+O rascunho da versão 3 está no `docs/referencia/glossario-metricas.md`. Peço que a 1c revise, pelo diário dela:
+1. **Os termos fechados da versão 2:** se continuam iguais (a versão 3 não mexeu neles).
+2. **O levantamento:** se as funções do núcleo estão certas e completas, em especial as do SLA e as que o painel vai criar.
+3. **As divergências:** a (dia no fuso do hotel), b (chamado cancelado com OS) e d (custo informado como termo de base, com a função no domínio). As três mexem em termo de base que o painel da 1c usa.
+4. **A resposta aos quatro pontos,** e o PR de código que leva `conclusaoEReaberturas` e o custo informado para `packages/dominio` depois da aprovação.
+
+### Ponto de retomada (13/10/2026)
+- **`main`:** com o #221 (roteiro do histórico). O dev ficou sem mudança.
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`): o rascunho da versão 3 do glossário e este registro, num PR só de docs, fora da zona protegida.
+- **Esperando:**
+  - a revisão da 1c, pelo diário dela;
+  - as decisões das divergências (a e b, Cesar e Kaio; c e f, Kaio; d e e, Cesar);
+  - a aprovação final do Cesar e, nos termos do Intelligence, a do Kaio;
+  - da atividade 3, a montagem da 1b e a conferência do Kaio.
+- **Próximo:** depois da aprovação, o PR de código que leva a conclusão do serviço e o custo informado para o domínio. Antes, a atividade 5 (`docs/piloto/`).

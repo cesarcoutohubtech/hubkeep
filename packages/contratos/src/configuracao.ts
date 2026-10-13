@@ -113,6 +113,26 @@ export const HorarioDeAtendimentoApi = z
   .refine((h) => Object.values(h).some((dia) => dia.length > 0))
   .meta({ id: 'HorarioDeAtendimentoApi' });
 
+/** Destinatários do aviso do monitor de SLA (dominio, DESTINATARIOS_DO_AVISO; ADR-043). */
+export const DESTINATARIOS_DO_AVISO_API = [
+  'responsavel_da_os',
+  'gerente_hotel',
+  'gestor_csc',
+  'admin_grupo',
+] as const;
+const DestinatariosDoAviso = z
+  .array(z.enum(DESTINATARIOS_DO_AVISO_API))
+  .min(1)
+  .refine((d) => new Set(d).size === d.length);
+/** Escalonamento do monitor de SLA (1c, ADR-043), como o dominio (escalonamentoValido). */
+export const EscalonamentoDeSlaApi = z
+  .strictObject({
+    percentualDoAviso: z.int().min(50).max(95),
+    emRisco: DestinatariosDoAviso,
+    vencido: DestinatariosDoAviso,
+  })
+  .meta({ id: 'EscalonamentoDeSlaApi' });
+
 export const FORMATOS_DE_POLITICA_API = {
   'os.aceite_automatico': AceiteAutomatico,
   'os.codigos_obrigatorios': CodigosObrigatorios,
@@ -123,6 +143,7 @@ export const FORMATOS_DE_POLITICA_API = {
   'ativo.criticidade': NomesDeCriticidadeApi,
   'chamado.sla': PoliticaDeSlaApi,
   'hotel.horario_atendimento': HorarioDeAtendimentoApi,
+  'chamado.escalonamento': EscalonamentoDeSlaApi,
 } as const;
 
 export const CHAVES_DE_POLITICA_API = Object.keys(
@@ -191,6 +212,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('hotel.horario_atendimento'),
     escopo: EscopoDePolitica,
     valor: HorarioDeAtendimentoApi.nullable(),
+  }),
+  z.object({
+    chave: z.literal('chamado.escalonamento'),
+    escopo: EscopoDePolitica,
+    valor: EscalonamentoDeSlaApi.nullable(),
   }),
 ]);
 
@@ -277,6 +303,7 @@ export const RespostaDeConfiguracao = z
         resolvida('ativo.criticidade', NomesDeCriticidadeApi),
         resolvida('chamado.sla', PoliticaDeSlaApi),
         resolvida('hotel.horario_atendimento', HorarioDeAtendimentoApi),
+        resolvida('chamado.escalonamento', EscalonamentoDeSlaApi),
       ]),
     ),
   })

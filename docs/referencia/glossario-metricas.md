@@ -2,6 +2,8 @@
 
 **Situação:** o Cesar aprovou o glossário único neste arquivo em 13/10/2026, no chat do agente da 1c, para ser fechado com o agente do Kaio pelos diários. Esta é a segunda versão, de 13/10/2026: as definições dos indicadores foram aprovadas pelo Cesar no mesmo dia (decisões 10 e 11 de `docs/referencia/propostas-desenho-1c.md`). Cada termo diz se está **fechado** (já no código, ou decidido pelo Cesar) ou **em proposta** (aguarda o Kaio, ou o Cesar).
 
+**Versão 3, rascunho (13/10/2026), do agente do Kaio (atividade 4).** Os termos fechados da versão 2 não mudaram de texto. A versão 3 acrescenta os termos do Intelligence, o levantamento de onde cada métrica é calculada hoje, as divergências achadas no levantamento, com uma proposta para cada uma, e a resposta aos quatro pontos para o agente do Kaio. Aguarda a revisão do agente da 1c, pelos diários, e a aprovação do Cesar; nos termos que o Intelligence usa, também a do Kaio (regra 4). Desenho aprovado pelo Cesar em 13/10/2026, no chat do agente do Kaio.
+
 ## Regras
 
 1. **Um nome, um cálculo.** O painel de indicadores da 1c e o Intelligence usam o mesmo nome só para o mesmo cálculo. Uma métrica parecida com outra definição ganha outro nome.
@@ -54,3 +56,84 @@
 2. Confirmar que o campo `preventivaAtrasada` da atenção vai usar a "preventiva atrasada" daqui, com a tolerância da política do núcleo, quando a PV3 trouxer o dado.
 3. Confirmar que o Intelligence não calcula MTTR, backlog nem % de SLA próprios. Se precisar, ele usa as funções do domínio, com estes nomes.
 4. Apontar qualquer nome do PRD (`docs/referencia/prd-hubkeep-intelligence-v1.md`) que colida com um termo daqui com outro cálculo.
+
+## Termos do Intelligence (versão 3, rascunho)
+
+São do módulo (regra 3): o painel da 1c não usa estes nomes. Cada score é determinístico, versionado e explicável (ADR-034), com pesos, limites e faixas pela política (ADR-035), e cada resultado diário grava a versão da fórmula (ADR-036). As fórmulas e os padrões abaixo já estão no código e foram aprovados antes desta versão; o glossário só os registra com o nome. Mudar um detalhe dentro da regra aprovada (limiar, peso, mínimo, rótulo) é do Kaio (ADR-033); o resto continua com o Cesar e o Kaio.
+
+### Scores
+
+| Termo | Definição | Função | Situação |
+|---|---|---|---|
+| **Faixa** | A classe do score de 0 a 100: normal (0), observar (30), atenção (50), alta atenção (70) e crítico (85), pelo limite inferior, inclusive. Sem nenhum componente com dado, "dados insuficientes". | `FAIXAS_PADRAO` (`score.ts`) | Fechado |
+| **Reincidência** | O score de 0 a 100 de quanto as falhas de um ativo voltam, na janela (padrão 90 dias), pelos componentes: corretivas na janela (30%), intervalo médio entre elas (15%), reaberturas (15%), mesma falha (15%), falha até 30 dias depois da conclusão da anterior (15%) e falha depois de preventiva (10%). Versão 1. | `reincidencia` (`reincidencia.ts`) | Fechado |
+| **Atenção do ativo** | O score de 0 a 100 da fila de ativos a investigar. Componentes (versão 2): reincidência 20%, tempo parado na janela 15%, impacto no hóspede 15%, criticidade 15%, custo informado em 12 meses 10%, preventiva atrasada 10%, medições fora da faixa 10%, garantia vencida 5% e UH-dias perdidos 0%. O componente sem dado tem o peso dividido entre os presentes. A partir de 70 (política), sugere insight. | `atencaoDoAtivo` (`atencao.ts`) | Fechado |
+| **Sinal sistêmico** | O possível problema que passa de um ativo, por cinco regras: mesmo modelo (ligada por padrão), mesmo andar, mesma área comum, mesmo fornecedor e crescimento da mesma falha. A falha é o código de falha da OS e, sem ele, a categoria do ativo. O resultado é sempre "possível": só uma pessoa confirma. Versão 2. | `detectarSistemicos` (`sistemico.ts`) | Fechado |
+| **Taxa do modelo** | Na regra do mesmo modelo: os chamados do modelo na janela (90 dias) por ativo instalado do modelo. A **base** é a mesma taxa dos outros modelos da categoria no tenant. Dispara com a taxa de pelo menos o dobro da base, e nunca menos de 0,3, além dos mínimos de 3 hotéis, 6 chamados e 5 ativos. | `detectarSistemicos` | Fechado |
+| **Taxa de retorno do fornecedor** | Na regra do mesmo fornecedor: das OS concluídas pelo fornecedor na janela (180 dias), cuja observação já terminou, as seguidas de corretiva nova no mesmo ativo até 30 dias depois da conclusão. Compara com a taxa da equipe interna; dispara a partir de 30%, com pelo menos 5 OS concluídas. | `detectarSistemicos` | Fechado na regra; o nome é desta versão (divergência f) |
+| **Crescimento da falha** | Na regra do crescimento: as corretivas da mesma falha no mesmo hotel na janela (30 dias) contra a janela anterior do mesmo tamanho. Dispara com +50% e pelo menos 5 na janela atual, e só com a anterior maior que zero. | `detectarSistemicos` | Fechado |
+| **Efetividade da intervenção** | A variação observada, nunca a causa, entre a janela antes e a depois da intervenção (padrão 90 dias), nos chamados, nas reaberturas, no tempo parado e, com dado, no custo informado. O resultado sai da variação dos chamados: redução observada (−60% ou mais), redução parcial (−25% a −60%), sem mudança relevante, aumento observado (+20% ou mais), sem base de comparação (menos de 3 chamados antes) ou janela incompleta. Versão 2. | `efetividadeAntesDepois` (`efetividade.ts`) | Fechado; ainda sem tela |
+| **Sinal de substituição** | Quantos critérios de substituição o ativo atinge (corretivas em 12 meses, tempo parado em 12 meses, idade, custo sobre reposição, impacto no hóspede, criticidade e reincidência), cada um com o valor e o limite. Nunca decide: sem sinal, observar (2 critérios), avaliar substituição (4) ou revisão necessária (na garantia). Versão 1. | `sinalDeSubstituicao` (`substituicao.ts`) | Fechado; ainda sem tela |
+
+### Medidas que entram nos scores
+
+| Termo | Definição | Função | Situação |
+|---|---|---|---|
+| **Corretivas na janela** | As corretivas do ativo abertas na janela do score, pela abertura. | `reincidencia` | Fechado; ver a divergência b |
+| **Intervalo médio entre corretivas** | A média, em dias, entre aberturas seguidas das corretivas na janela; sem duas corretivas, não existe. | `reincidencia` | Fechado |
+| **% de chamados com impacto no hóspede** | Dos chamados do ativo abertos na janela, os marcados como "afetou hóspede", de 0 a 100, com uma casa decimal. O sem marca conta como "não teve", e sem chamado o valor é 0. Fica até o Guest Impact Score da 1.5. | `impactoHospedeDosChamados` (`historico.ts`) | Fechado |
+| **Garantia vencida** | A data de garantia do ativo antes de agora. Sem a data, conta como não vencida. | `situacaoDaGarantia` (`historico.ts`) | Fechado |
+| **Cobertura do custo** | Das corretivas concluídas do tenant em 12 meses, as com o custo informado. Com menos de 50%, o custo fica sem dado na atenção, em todos os hotéis. | `custoDisponivelNoTenant` (`atencao.ts`) | Fechado |
+
+O tempo parado, a conclusão do serviço, as reaberturas, os UH-dias perdidos, a preventiva atrasada e o custo informado que entram nos scores são os termos de base daqui, com o mesmo cálculo (divergências c e d).
+
+### Números da tela de insights
+
+| Termo | Definição | Função | Situação |
+|---|---|---|---|
+| **Insights abertos** | Os insights nos estados novo, em revisão, aceito, em ação e monitorando, que o usuário lê. | `resumoDoPainel` (`painel.ts`) | Fechado |
+| **Em alta atenção ou crítico** | Dos abertos, os das faixas alta atenção e crítico. | `resumoDoPainel` | Fechado |
+| **Sistêmicos abertos** | Dos abertos, os do tipo sinal sistêmico. | `resumoDoPainel` | Fechado |
+| **Sem responsável** | Dos abertos, os sem responsável. | `resumoDoPainel` | Fechado |
+
+## Onde cada métrica é calculada hoje (levantamento de 13/10/2026)
+
+Levantamento na `main` de 13/10/2026. "Sem código" quer dizer que o termo está definido e a função ainda não existe.
+
+| Termo | Onde está o cálculo | Quem chama |
+|---|---|---|
+| Abertura | Coluna `app.chamado.criado_em`, com o `default now()` do banco | Os dois; o job do Intelligence lê como `abertaEm` |
+| Corretiva | `corretivasDosChamados` (`packages/inteligencia/src/fonte.ts`); o núcleo ainda não tem a função | Intelligence |
+| Conclusão do serviço, reabertura | `conclusaoEReaberturas` (`packages/inteligencia/src/historico.ts`) | Intelligence; o painel da 1c depois da mudança para o domínio (ponto 1) |
+| Tempo parado do ativo | `tempoParado`, `tempoParadoTotal` (`packages/dominio/src/paradas.ts`); `horasParadasNoTrecho` (`historico.ts`) corta no trecho e arredonda em horas | Núcleo (`casos-de-uso/paradas.ts`, telas de paradas) e Intelligence (atenção, efetividade) |
+| UH-dias perdidos | `uhDiasPerdidos` (`packages/dominio/src/uh-indisponivel.ts`) | Núcleo (`casos-de-uso/uh-indisponivel.ts`); no Intelligence, o componente tem peso 0 e ainda não lê a origem |
+| Prazo de atendimento, prazo de solução, tempo pausado | `calcularPrazo`, `prazosDoChamado`, `prazosNoRecalculo`, `slaDoChamado`, `pausaDoChamadoParaORelogio` (`packages/dominio/src/sla.ts`) | Núcleo |
+| Dentro do prazo, % de SLA, backlog, backlog por idade, MTTR, tempo até o aceite, razão preventiva/corretiva, chamados por 100 UHs, comparação na bandeira, produtividade | Sem código (painel da 1c) | — |
+| % de preventiva em dia, preventiva atrasada | Sem código (depende da PV3); na atenção, o campo `preventivaAtrasada` fica sem dado | — |
+| Custo informado | `custoNaJanela` (`historico.ts`), na atenção e na substituição; os custos da efetividade vêm de `app.os.custo_informado`; o valor é validado no aceite por `packages/dominio/src/executor-e-custo.ts` | Intelligence |
+| Reincidência | `reincidencia` (`packages/inteligencia/src/reincidencia.ts`) | Job do dia (`calcularDia`, `dia.ts`) |
+| Atenção do ativo, cobertura do custo | `atencaoDoAtivo`, `custoDisponivelNoTenant` (`atencao.ts`) | Job do dia |
+| % de chamados com impacto no hóspede, garantia vencida | `impactoHospedeDosChamados`, `situacaoDaGarantia` (`historico.ts`) | Job do dia |
+| Sinal sistêmico e as taxas das regras | `detectarSistemicos` (`sistemico.ts`) | Job do dia |
+| Efetividade da intervenção | `efetividadeAntesDepois` (`efetividade.ts`) | Só testes e o histórico de demonstração; sem tela |
+| Sinal de substituição | `sinalDeSubstituicao` (`substituicao.ts`) | Só testes e o histórico de demonstração; sem tela |
+| Números da tela de insights | `resumoDoPainel` (`painel.ts`) | `GET /api/v1/inteligencia/resumo` e a tela de insights |
+| Resumo mensal por ativo e por hotel | `agregarMesDosAtivos`, `agregarMesDosHoteis` (`agregacao.ts`): o valor e a faixa dos scores agregados no mês | Job do mês |
+
+## Divergências achadas no levantamento (versão 3, em proposta)
+
+| # | Divergência | Proposta | Quem decide | Situação |
+|---|---|---|---|---|
+| a | **O dia.** A regra 5 manda contar no fuso do hotel. O job do Intelligence conta o dia em UTC (`fimDoDia` e `MetricaDiaria.dia`, `dia.ts` e `agregacao.ts`), e a coluna de fuso no tenant, do núcleo, ainda não existe. | Manter a regra 5. O dia em UTC fica registrado como exceção temporária do Intelligence, até o núcleo trazer o fuso. Depois, a mudança é uma versão nova da fórmula, sem recalcular em silêncio o que já foi gravado (ADR-036). | Cesar e Kaio (ADR-036) | Em proposta |
+| b | **Corretiva.** O termo de base tira da conta todo chamado cancelado. O Intelligence só tira o cancelado sem OS: o chamado cancelado que teve OS entra, com a OS cancelada mais recente (`corretivasDosChamados`). | Alinhar o Intelligence ao termo de base: o chamado cancelado fica fora em qualquer caso. Isso muda as contagens dos scores, e a reincidência e a atenção ganham a versão seguinte da fórmula. | Cesar e Kaio | Em proposta |
+| c | **Horas paradas e tempo parado.** O Intelligence chama de "horas paradas" o tempo parado do ativo cortado na janela (`horasParadasNoTrecho`, sobre `tempoParadoTotal` do domínio). | Um nome só: "tempo parado do ativo", em horas com uma casa decimal na tela do Intelligence. "Horas paradas" deixa de ser termo; os nomes de campo no código podem ficar, porque não aparecem na tela. | Kaio (rótulo) | Em proposta |
+| d | **Custo.** Não há termo de custo, e o PRD do Intelligence cita custo acumulado, custo em 12 meses, custo por hotel e custo por UH. | Termo de base **custo informado**: a soma do `app.os.custo_informado` das corretivas com a conclusão do serviço no período. O custo vazio não conta como zero, e a cobertura (as corretivas com o custo sobre as concluídas) aparece ao lado. É o único custo até a fase 2 (módulo de custos). A função vai para o domínio junto com a conclusão do serviço. | Cesar | Em proposta |
+| e | **MTBF.** O PRD do Intelligence cita o MTBF "quando houver histórico suficiente", e nada o calcula. | Nome reservado, sem cálculo, até a fase 2. Ninguém usa o nome com outro cálculo nesse meio-tempo. | Cesar | Em proposta |
+| f | **"Reincidência" no PRD.** O PRD usa "reincidência após encerramento", "reincidência após reparo" e "taxa de reincidência do fornecedor" para cálculos que não são o score. | "Reincidência" é só o score. A volta depois de uma corretiva é um componente dele ("falha até 30 dias depois da conclusão"), e a taxa da regra do fornecedor se chama "taxa de retorno do fornecedor". O PRD fica como está, por ser o documento de origem, e as telas usam os nomes daqui. | Kaio (rótulo) | Em proposta |
+
+## Resposta do agente do Kaio aos quatro pontos (versão 3, rascunho)
+
+1. **Conclusão do serviço no domínio:** sim. `conclusaoEReaberturas` vai para `packages/dominio`, com o mesmo comportamento e os testes, e o Intelligence passa a importar de lá, como foi com `uhDiasPerdidos`. Vem num PR de código à parte, depois da aprovação desta versão; antes, o diário do Intelligence registra a mudança, porque `packages/dominio` é área compartilhada. O custo informado (divergência d) vai junto.
+2. **Preventiva atrasada:** sim. O campo `preventivaAtrasada` da atenção vai usar a "preventiva atrasada" daqui, com a tolerância da política do núcleo, quando a PV3 trouxer o dado. Sair do "sem dado" muda a atenção, que ganha a versão seguinte da fórmula.
+3. **MTTR, backlog e % de SLA:** confirmado. O Intelligence não calcula nenhum dos três, nem métrica com esses nomes. Se precisar, usa as funções do domínio.
+4. **Nomes do PRD que colidem:** as divergências c a f. Não achei outro nome da tela do Intelligence com cálculo diferente de um termo daqui.

@@ -195,6 +195,14 @@ export { montarCalendarioDeSla } from './casos-de-uso/calendario-sla';
 export type { FeriadoDoHotelGravado, PortaFeriadosDoHotel } from './portas/feriados-do-hotel';
 export { criarCasosDeUsoDeFeriados } from './casos-de-uso/feriados-do-hotel';
 export type { CasosDeUsoDeFeriados, PedidoDeFeriado } from './casos-de-uso/feriados-do-hotel';
+export type {
+  AvisoAEmitir,
+  ChamadoParaMonitor,
+  PortaMonitorDeSla,
+  SessaoDoMonitor,
+} from './portas/monitor-sla';
+export { criarMonitorDeSla } from './casos-de-uso/monitor-sla';
+export type { ResultadoDoMonitor } from './casos-de-uso/monitor-sla';
 export { criarCasosDeUsoDeChamados } from './casos-de-uso/chamados';
 export type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './casos-de-uso/chamados';
 export type {
