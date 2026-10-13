@@ -17,6 +17,7 @@ const TELAS = [
   'categorias',
   'configuracao',
   'equipes',
+  'feriados',
   'hoteis',
   'implantacao',
   'locais',
@@ -43,7 +44,7 @@ describe('telas de cadastro', () => {
     expect(html).toContain(pt['comum.carregando']);
   });
 
-  it.each(['ativos', 'equipes', 'implantacao', 'locais'] as const)(
+  it.each(['ativos', 'equipes', 'feriados', 'implantacao', 'locais'] as const)(
     '%s: a escolha do hotel tem rótulo visível',
     async (tela) => {
       const { default: Tela } = (await import(`../src/app/(painel)/admin/${tela}/page.tsx`)) as {

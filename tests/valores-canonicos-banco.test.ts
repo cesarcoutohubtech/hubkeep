@@ -20,6 +20,7 @@ import {
   MODULOS_CONTRATAVEIS,
   MOMENTOS_DA_FOTO,
   MOTIVOS_DE_PAUSA,
+  TIPOS_DE_ALERTA_DE_SLA,
   ORIGENS_DO_CHAMADO,
   SITUACOES_DO_PLANO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
@@ -84,6 +85,12 @@ describe('valores canônicos: banco × domínio (1c, ADR-042)', () => {
     expect(valoresDoCheck('os_transicao_motivo_pausa_lista', 'motivo_pausa')).toEqual([
       ...MOTIVOS_DE_PAUSA,
     ]);
+  });
+});
+
+describe('valores canônicos: banco × domínio (1c, ADR-043)', () => {
+  it('sla_alerta_tipo_lista aceita exatamente os TIPOS_DE_ALERTA_DE_SLA do domínio', () => {
+    expect(valoresDoCheck('sla_alerta_tipo_lista', 'tipo')).toEqual([...TIPOS_DE_ALERTA_DE_SLA]);
   });
 });
 

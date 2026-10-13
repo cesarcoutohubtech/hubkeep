@@ -21,6 +21,7 @@ import {
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
+  type CasosDeUsoDeFeriados,
   type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeFornecedores,
   type CasosDeUsoDeHoteis,
@@ -44,6 +45,7 @@ import {
   criarCasosDeUsoDeHistorico,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
+  criarMonitorDeSla,
   criarCasosDeUsoDeChecklists,
   criarCasosDeUsoDePlanosPreventivos,
   criarCasosDeUsoDeCodigos,
@@ -53,6 +55,7 @@ import {
   criarCasosDeUsoDeConfiguracao,
   criarPoliticasDoTenant,
   criarCasosDeUsoDeEquipes,
+  criarCasosDeUsoDeFeriados,
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeFornecedores,
   criarCasosDeUsoDeHoteis,
@@ -74,6 +77,7 @@ import {
   criarPortaAtivos,
   criarPortaCategorias,
   criarPortaChamados,
+  criarPortaMonitorDeSla,
   criarPortaChecklists,
   criarPortaCodigos,
   criarPortaPlanosPreventivos,
@@ -91,6 +95,7 @@ import {
   criarPortaConfiguracao,
   criarPortaModulos,
   criarPortaEquipes,
+  criarPortaFeriadosDoHotel,
   criarPortaBandeiras,
   criarPortaFornecedores,
   criarPortaAnexos,
@@ -217,6 +222,21 @@ export async function promoverUhsDoTenant(tenantId: string) {
   }).promoverUhs(tenantId);
 }
 
+/** Feriados oficiais do calendário de SLA (1c, ADR-042): um por instância, com o cache dos anos. */
+const feriadosOficiais = criarFeriadosOficiais();
+
+/**
+ * O monitor de SLA num tenant (hk_worker, 1c, ADR-043); a rota /api/cron/sla
+ * chama para todos, a cada 5 minutos.
+ */
+export async function monitorarSlaDoTenant(tenantId: string) {
+  return criarMonitorDeSla({
+    monitor: criarPortaMonitorDeSla(await acessoBancoDoWorker()),
+    feriadosOficiais,
+    relogio: relogioDoSistema,
+  })(tenantId);
+}
+
 /**
  * O job diário do Intelligence num tenant (hk_worker, ADR-036); a rota
  * /api/cron/inteligencia chama para todos. O tenant sem o módulo vigente volta
@@ -285,6 +305,16 @@ export const casosDeUsoDeEquipes = memo<CasosDeUsoDeEquipes>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeEquipes({
     equipes: criarPortaEquipes(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Feriados do hotel (1c, ADR-042), pelo hk_app. */
+export const casosDeUsoDeFeriados = memo<CasosDeUsoDeFeriados>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeFeriados({
+    feriados: criarPortaFeriadosDoHotel(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });
@@ -431,9 +461,6 @@ export const casosDeUsoDeSituacoes = memo<CasosDeUsoDeSituacoes>(async () => {
     relogio: relogioDoSistema,
   });
 });
-
-/** Feriados oficiais do calendário de SLA (1c, ADR-042): um por instância, com o cache dos anos. */
-const feriadosOficiais = criarFeriadosOficiais();
 
 /** Chamados (fase 1a, C2), pelo hk_app. */
 export const casosDeUsoDeChamados = memo<CasosDeUsoDeChamados>(async () => {

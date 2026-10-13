@@ -465,6 +465,32 @@ export type {
   TipoDeFeriadoOficial,
 } from './sla';
 export {
+  LIMITES_DO_FERIADO,
+  PAPEIS_QUE_CADASTRAM_FERIADOS,
+  normalizarNomeDoFeriado,
+  podeCadastrarFeriados,
+  validarDataDoFeriado,
+} from './feriados-do-hotel';
+export {
+  DESTINATARIOS_DO_AVISO,
+  ESCALONAMENTO_PADRAO,
+  LIMITES_DO_ESCALONAMENTO,
+  NIVEIS_DO_AVISO,
+  TIPOS_DE_ALERTA_DE_SLA,
+  avisosDeSla,
+  destinatariosDoAviso,
+  ehTipoDeAlertaDeSla,
+  escalonamentoValido,
+} from './monitor-sla';
+export type {
+  AvisoDeSla,
+  ChamadoNoMonitor,
+  DestinatarioDoAviso,
+  EscalonamentoDeSla,
+  NivelDoAviso,
+  TipoDeAlertaDeSla,
+} from './monitor-sla';
+export {
   ENTIDADES_DA_AUDITORIA,
   LIMITES_DA_AUDITORIA,
   PAPEIS_DA_AUDITORIA_GERAL,

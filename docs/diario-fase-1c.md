@@ -318,3 +318,92 @@ Segundo PR do aviso de área compartilhada, na branch `claude/1c-sla-pausa`, fei
 - **Verificação:**
   - no local, lint, typecheck e testes passaram;
   - o cenário novo do `packages/db/test/sla-prazos.test.ts` roda só na CI. Ele cobre a pausa com "aguardando peça", que estende a solução em 2 h e soma 7.200 s, com o motivo na transição e o antes e o depois na auditoria, e o "fim de turno", que não muda nada.
+
+## Decisões do Cesar: licença, Dependabot e ADR-043 (13/10/2026)
+
+Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
+1. **Licença dos feriados:** aceita a `date-holidays`. O ADR-042 é corrigido no próximo PR de zona protegida da 1c, com quatro pontos:
+   - os dados são CC BY-SA 3.0, e o código tem a licença própria;
+   - a atribuição está no `AVISOS-DE-TERCEIROS.md`;
+   - o servidor só consulta as datas, sem redistribuir o conjunto de dados;
+   - antes de usar a biblioteca para outros países, a licença passa por revisão jurídica.
+
+   Ele também pediu uma issue no repositório da biblioteca sobre o 20 de novembro em SP e no RJ.
+2. **Dependabot:** o ecossistema npm entra no `dependabot.yml`, no mesmo PR de zona protegida, com três regras:
+   - as atualizações de versão vêm agrupadas num PR só por semana;
+   - há limite de PRs abertos;
+   - as de segurança ficam sempre separadas.
+3. **ADR-043:** "Aprovo o ADR-043". Ele também rodou o `db push` da 0044. O #219 ele mergeia quando a CI ficar verde.
+
+**Feito:** na branch `claude/1c-adr-licenca-dependabot`, com três mudanças:
+- a correção da licença no ADR-042;
+- o status do ADR-043 ("aprovado", com a data e onde foi escrito);
+- o npm no `dependabot.yml`, com o grupo semanal só para as atualizações de versão (`applies-to: version-updates`) e o limite de 5 PRs abertos. As de segurança ficam de fora do grupo e saem separadas.
+
+O PR abre na vez da 1c, depois da PV2.
+
+**Issue na `date-holidays`:** o GitHub desta sessão só alcança o `hubkeep`, então não dá para abrir issue no repositório da biblioteca (`commenthol/date-holidays`). O texto pronto, em inglês, foi entregue ao Cesar no chat. A causa está nos dados: no `data/countries/BR.yaml`, a entrada estadual do 20 de novembro de SP e a do RJ terminam em 21/12/2023 e se sobrepõem à nacional.
+
+## Monitor de SLA: domínio, worker e cron (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Item 4 da ordem, depois da migração 0044 (#217, com o `db push` feito pelo Cesar). PR fora da zona protegida, sem migração, na branch `claude/1c-monitor-sla-cron`.
+
+**Aviso de área compartilhada com a 1b:** mexe em políticas (a chave nova `chamado.escalonamento` em `packages/dominio/src/politicas.ts` e no contrato), no `packages/dominio` (`monitor-sla.ts`) e no `packages/db/src/adaptadores.ts`. As leituras das políticas e do calendário do hotel saíram para `packages/db/src/leituras-do-hotel.ts`, para o repositório do worker usar as mesmas.
+
+- **Domínio** (`monitor-sla.ts`):
+  - os quatro tipos de aviso, conferidos com o check da 0044 em `tests/valores-canonicos-banco.test.ts`;
+  - a política `chamado.escalonamento`: o percentual de 50 a 95, com padrão de 80, e os destinatários de cada nível, da lista do domínio;
+  - `avisosDeSla`: o vencido no prazo e o em risco quando o tempo de relógio que falta chega ao complemento do percentual. O atendimento conta até a primeira OS, e a solução até o serviço concluído; o relógio parado pela pausa congela a solução.
+- **Aplicação:**
+  - a porta `PortaMonitorDeSla`;
+  - `criarMonitorDeSla`, por tenant. A regra sai da cópia do chamado, e o percentual e os destinatários, da política do hotel. O calendário vale por hotel e cópia, e o aviso já emitido para o prazo não sai de novo.
+- **Banco:**
+  - o repositório `repositorios/monitor-sla.ts`, na unit of work do `hk_worker`. Ele lê os chamados em curso com prazo, a OS que já existiu, a pausa em curso com o motivo e os avisos já emitidos;
+  - o aviso grava com `on conflict do nothing` e só publica o evento `chamado.sla_alerta` quando é novo. O aviso não vai para a auditoria.
+- **Web:** `monitorarSlaDoTenant` na composição, a rota `/api/cron/sla` com a tarefa e o cron de volta ao `vercel.json`, a cada 5 minutos (ADR-007).
+- **Contrato:** `EscalonamentoDeSlaApi` e `DESTINATARIOS_DO_AVISO_API`, com as amostras em `tests/contratos-dominio.test.ts`.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos:
+    - o domínio, nos relógios 24x7 e de atendimento;
+    - a aplicação, com as portas em memória;
+  - só na CI: `packages/db/test/monitor-sla.test.ts`. Ele cobre o aviso e o evento, a segunda rodada sem repetir, o prazo refeito, a pausa que congela e o outro tenant.
+- **Fica para depois:** o painel dos avisos e o selo da ficha (M4), e o aceite automático (M5), cada um num PR próprio.
+
+**Observação para o agente do Kaio:** na suíte inteira, no local, o `apps/web/test/demonstracao/historico-inteligencia.test.ts` (#221) estourou o tempo padrão de 5 s uma vez. Sozinho, passou. Pode valer um `timeout` maior nesse teste.
+
+## Glossário de métricas: quem rascunha (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui", 13/10/2026):
+- **o rascunho do glossário único** (`docs/referencia/glossario-metricas.md`) é do agente do Kaio, na atividade 4 dele;
+- **o papel da 1c:** revisar e alinhar com os indicadores do painel quando o agente do Kaio pedir, pelo diário;
+- **sem versão paralela:** a 1c não escreve outra versão;
+- **as definições do painel da 1c** seguem o glossário depois da aprovação do Cesar.
+
+**O que muda para a 1c:**
+- a 1c não edita mais o `glossario-metricas.md`;
+- os quatro pontos que a 1c tinha pedido ao Kaio (seção "Pedido ao agente do Kaio" acima) ficam como contribuição para o rascunho dele, e não como pendência da 1c;
+- o painel de indicadores (item 8 da ordem) espera o glossário aprovado.
+
+## Feriados do hotel: API e tela (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a parte de telas do item 3 (SLA) que não depende do #224. Fica fora da zona protegida, sem migração, na branch `claude/1c-feriados-hotel`. A tabela `app.feriado_hotel` está na `main` desde a 0043.
+
+**Aviso de área compartilhada com a 1b:** mexe no `packages/dominio` (`feriados-do-hotel.ts` e a lista de entidades da auditoria geral), no `packages/db/src/adaptadores.ts`, no OpenAPI e nos catálogos.
+
+- **Domínio:**
+  - `podeCadastrarFeriados`, com os papéis da policy da 0043: o Admin do grupo, o Gestor CSC, o Implantador e o Gerente do hotel, no escopo deles;
+  - o nome, de 1 a 120 caracteres;
+  - a data, um dia que existe, de 2000 a 2100.
+- **Aplicação:** listar (com `podeCadastrar`, para a tela), cadastrar, alterar o nome e a marca "repete todo ano", desativar e reativar. A data não muda: para trocar, desativa e cadastra outro.
+- **Banco:**
+  - o repositório, com auditoria (`feriado_hotel`, que também entra na auditoria geral);
+  - o 409 `feriado_data_repetida`, vindo do índice de um feriado ativo por data.
+- **API:** `GET` e `POST /api/v1/hoteis/{id}/feriados`, `PUT /api/v1/feriados/{id}` e `POST .../desativacao` e `.../reativacao`, no OpenAPI.
+- **Tela:** `/admin/feriados`, no menu de configuração:
+  - a escolha do hotel e a lista, com a data longa;
+  - os formulários, só para quem pode cadastrar;
+  - uma nota de que os feriados nacionais e estaduais já entram sozinhos e de que o prazo já calculado não muda.
+- **Catálogo:** os textos e os cinco erros, nos quatro idiomas.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos: o domínio, a aplicação com as portas em memória e a tela;
+  - só na CI: `packages/db/test/feriados-do-hotel.test.ts`, com a RLS (o Técnico e o Gerente de outro hotel), a data repetida e a auditoria.

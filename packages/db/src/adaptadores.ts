@@ -2,7 +2,8 @@
 // Leitura com withContext, escrita com executar (unit of work): o que cada
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
 import type {
-  DadosDoCalendario,
+  PortaFeriadosDoHotel,
+  PortaMonitorDeSla,
   AnexoGravado,
   AtivoGravado,
   ChecklistDaOsGravado,
@@ -56,7 +57,6 @@ import {
   type EstadoDoChamado,
   type Escopo,
   type ExecutadoPor,
-  type NiveisDePolitica,
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
   ehMomentoDaFoto,
@@ -65,6 +65,12 @@ import {
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
+import {
+  dadosDoCalendarioNaTransacao,
+  niveisDaPoliticaNaTransacao,
+  politicasDoHotel,
+} from './leituras-do-hotel';
+import { sessaoDoMonitorDeSla } from './repositorios/monitor-sla';
 import {
   ehMembro,
   escopoVisivel,
@@ -94,6 +100,7 @@ import {
 } from './repositorios/checklists';
 import { criarChamado } from './repositorios/chamados';
 import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
+import { alterarFeriadoDoHotel, criarFeriadoDoHotel } from './repositorios/feriados-do-hotel';
 import {
   alterarChamadoNaTriagem,
   cancelarOs,
@@ -140,83 +147,20 @@ import { gravarPreferencias } from './repositorios/preferencias';
 import { sessaoDePromocao } from './repositorios/promocao';
 import { credenciaisAtivas, registrarLote } from './repositorios/staging';
 
-/**
- * As políticas ativas de um hotel: as do grupo, as da bandeira do hotel (1c) e
- * as do próprio hotel. A bandeira sai de app.hotel na mesma consulta; hotel sem
- * bandeira não tem esse nível.
- */
-const politicasDoHotel = (tx: Tx, hotelId: string) =>
-  tx
-    .selectFrom('app.politica')
-    .where('ativa', '=', true)
-    .where((eb) =>
-      eb.or([
-        eb('escopo_tipo', '=', 'grupo'),
-        eb.and([
-          eb('escopo_tipo', '=', 'bandeira'),
-          eb(
-            'bandeira_id',
-            '=',
-            eb.selectFrom('app.hotel').select('bandeira_id').where('id', '=', hotelId),
-          ),
-        ]),
-        eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
-      ]),
-    );
-
 /** Valor gravado de uma política no hotel, na bandeira dele e no grupo, como está no banco (a resolução é do domínio). */
 const niveisDaPolitica = (banco: AcessoBanco, ctx: Contexto, hotelId: string, chave: string) =>
-  banco.withContext(ctx, async (tx) => {
-    const linhas = await politicasDoHotel(tx, hotelId)
-      .select(['escopo_tipo', 'valor'])
-      .where('chave', '=', chave)
-      .execute();
-    const niveis: NiveisDePolitica = {};
-    for (const l of linhas) {
-      if (l.escopo_tipo === 'hotel') niveis.hotel = l.valor;
-      else if (l.escopo_tipo === 'bandeira') niveis.bandeira = l.valor;
-      else if (l.escopo_tipo === 'grupo') niveis.grupo = l.valor;
-    }
-    return niveis;
-  });
+  banco.withContext(ctx, (tx) => niveisDaPoliticaNaTransacao(tx, hotelId, chave));
 
-/**
- * O que o calendário de SLA lê do hotel (1c, ADR-042): o fuso, a região do
- * hotel e a do tenant (a herança é do domínio) e os feriados ativos, com a
- * data como aaaa-mm-dd, sem passar por Date e fuso.
- */
-const dadosDoCalendario = (
-  banco: AcessoBanco,
-  ctx: Contexto,
-  hotelId: string,
-): Promise<DadosDoCalendario | null> =>
-  banco.withContext(ctx, async (tx) => {
-    const h = await tx
-      .selectFrom('app.hotel as h')
-      .innerJoin('app.tenant as t', 't.id', 'h.tenant_id')
-      .select([
-        'h.fuso',
-        'h.pais',
-        'h.subdivisao',
-        't.pais as tenant_pais',
-        't.subdivisao as tenant_subdivisao',
-      ])
-      .where('h.id', '=', hotelId)
-      .executeTakeFirst();
-    if (!h) return null;
-    const feriados = await tx
-      .selectFrom('app.feriado_hotel')
-      .select([sql<string>`data::text`.as('data'), 'anual'])
-      .where('hotel_id', '=', hotelId)
-      .where('ativo', '=', true)
-      .execute();
-    return {
-      fuso: h.fuso,
-      hotel: { pais: h.pais, subdivisao: h.subdivisao },
-      tenant: { pais: h.tenant_pais, subdivisao: h.tenant_subdivisao },
-      feriados,
-    };
-  });
+const dadosDoCalendario = (banco: AcessoBanco, ctx: Contexto, hotelId: string) =>
+  banco.withContext(ctx, (tx) => dadosDoCalendarioNaTransacao(tx, hotelId));
+
+/** Monitor de SLA (1c, ADR-043), pelo hk_worker, um tenant por transação. */
+export function criarPortaMonitorDeSla(banco: AcessoBanco): PortaMonitorDeSla {
+  return {
+    emSessao: (tenantId, fn) =>
+      banco.executarComoSistema({ tenantId }, (uow) => fn(sessaoDoMonitorDeSla(uow))),
+  };
+}
 
 interface LinhaAtribuicao {
   id: string;
@@ -567,6 +511,70 @@ export function criarPortaFornecedores(banco: AcessoBanco): PortaFornecedores {
 }
 
 /** Equipes do hotel (fase 1a, A6), pelo hk_app: o que cada um vê e grava é da RLS. */
+/** Feriados do hotel (1c, ADR-042), pelo hk_app; a data sai como aaaa-mm-dd, sem fuso. */
+export function criarPortaFeriadosDoHotel(banco: AcessoBanco): PortaFeriadosDoHotel {
+  const colunas = [
+    'f.id',
+    'f.hotel_id',
+    sql<string>`f.data::text`.as('data'),
+    'f.nome',
+    'f.anual',
+    'f.ativo',
+  ] as const;
+  const paraFeriado = (f: {
+    id: string;
+    hotel_id: string;
+    data: string;
+    nome: string;
+    anual: boolean;
+    ativo: boolean;
+  }) => ({
+    id: f.id,
+    hotelId: f.hotel_id,
+    data: f.data,
+    nome: f.nome,
+    anual: f.anual,
+    ativo: f.ativo,
+  });
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    feriado: (ctx, feriadoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const f = await tx
+          .selectFrom('app.feriado_hotel as f')
+          .innerJoin('app.hotel as h', 'h.id', 'f.hotel_id')
+          .select([...colunas, 'h.bandeira_id'])
+          .where('f.id', '=', feriadoId)
+          .executeTakeFirst();
+        return f ? { feriado: paraFeriado(f), bandeiraId: f.bandeira_id } : null;
+      }),
+    listar: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.feriado_hotel as f')
+            .select(colunas)
+            .where('f.hotel_id', '=', hotelId)
+            .orderBy('f.data')
+            .orderBy('f.ativo', 'desc')
+            .orderBy('f.id')
+            .execute()
+        ).map(paraFeriado),
+      ),
+    criar: (ctx, hotelId, f) => banco.executar(ctx, (uow) => criarFeriadoDoHotel(uow, hotelId, f)),
+    alterar: (ctx, feriadoId, mudanca) =>
+      banco.executar(ctx, (uow) => alterarFeriadoDoHotel(uow, feriadoId, mudanca)),
+  };
+}
+
 export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
   const hotelDe = (tx: Tx, hotelId: string) =>
     tx
