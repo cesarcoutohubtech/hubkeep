@@ -11,12 +11,14 @@
 // equipamento voltou a funcionar" encerra a parada do chamado junto, e a com
 // "UH liberada" (I4), o período da UH indisponível. As fotos "depois" na fila
 // somam às que a API contou (I8): com a política do hotel ligada, a tela só
-// conclui com ao menos uma.
+// conclui com ao menos uma. As respostas do checklist na fila (PV1) mesclam
+// por cima das que a API deu, item a item, como o servidor fará (null tira).
 import {
   ESTADOS_QUE_ACEITAM_FOTO,
   ESTADOS_QUE_ACEITAM_REGISTRO,
   type EstadoDaOs,
   TRANSICOES_DA_OS,
+  obrigatoriosSemResposta,
 } from '@hubkeep/dominio';
 import type { FotoNaFila, OperacaoNaFila } from '../fila/banco';
 import type { OsGuardada } from './banco';
@@ -24,13 +26,22 @@ import type { OsGuardada } from './banco';
 export const ACOES_DO_TECNICO = ['iniciar', 'pausar', 'retomar', 'concluir'] as const;
 export type AcaoDoTecnico = (typeof ACOES_DO_TECNICO)[number];
 
-export interface OsNoAparelho extends Omit<OsGuardada, 'fotosDepois' | 'fotoDepoisObrigatoria'> {
+type ChecklistGuardado = NonNullable<OsGuardada['checklist']>;
+
+export interface OsNoAparelho extends Omit<
+  OsGuardada,
+  'fotosDepois' | 'fotoDepoisObrigatoria' | 'checklist' | 'checklistCompletoObrigatorio'
+> {
   /** Operações desta OS ainda na fila: transições, horas, material e fotos. */
   pendentes: number;
   /** Fotos "depois" da OS: as que a API contou e as da fila (I8). */
   fotosDepois: number;
   /** A política da foto "depois" do hotel (I8); a guardada antes da I8 conta como desligada. */
   fotoDepoisObrigatoria: boolean;
+  /** O checklist da OS (PV1), com as respostas da fila por cima; null: sem checklist. */
+  checklist: ChecklistGuardado | null;
+  /** A política do checklist completo do hotel (PV1); a guardada antes da PV1, desligada. */
+  checklistCompletoObrigatorio: boolean;
 }
 
 const acaoDoTipo = (tipo: OperacaoNaFila['tipo']): AcaoDoTecnico | null => {
@@ -57,6 +68,8 @@ export function projetarOs(
         pendentes: 0,
         fotosDepois: o.fotosDepois ?? 0,
         fotoDepoisObrigatoria: o.fotoDepoisObrigatoria === true,
+        checklist: o.checklist ? { ...o.checklist, respostas: { ...o.checklist.respostas } } : null,
+        checklistCompletoObrigatorio: o.checklistCompletoObrigatorio === true,
       },
     ]),
   );
@@ -79,6 +92,25 @@ export function projetarOs(
     }
     if (op.tipo === 'os.encerrar_parada') {
       os.chamado = { ...os.chamado, paradoDesde: null, paradaDoChamado: false };
+      continue;
+    }
+    if (op.tipo === 'os.responder_checklist') {
+      if (!os.checklist) continue;
+      const d = op.dados as {
+        respostas: Record<string, string | number | boolean | null>;
+        feitaEm?: string;
+      };
+      const removidas = new Set(
+        Object.keys(d.respostas).filter((chave) => d.respostas[chave] === null),
+      );
+      const respostas = Object.fromEntries(
+        Object.entries(os.checklist.respostas).filter(([chave]) => !removidas.has(chave)),
+      );
+      for (const [chave, valor] of Object.entries(d.respostas)) {
+        if (valor !== null)
+          respostas[chave] = { valor, feitaEm: d.feitaEm ?? '', usuarioId: op.usuarioId };
+      }
+      os.checklist = { ...os.checklist, respostas };
       continue;
     }
     const acao = acaoDoTipo(op.tipo);
@@ -140,3 +172,11 @@ export const perguntaNaConclusao = (os: OsNoAparelho): boolean =>
  */
 export const perguntaDaUhNaConclusao = (os: OsNoAparelho): boolean =>
   os.chamado.uhIndisponivelDesde != null;
+
+/** Os itens obrigatórios do checklist ainda sem resposta (PV1); sem checklist, nenhum. */
+export const checklistFaltando = (os: OsNoAparelho): string[] =>
+  os.checklist ? obrigatoriosSemResposta(os.checklist.itens, os.checklist.respostas) : [];
+
+/** Com a política do hotel ligada, concluir pede os obrigatórios do checklist (PV1). */
+export const faltaChecklist = (os: OsNoAparelho): boolean =>
+  os.checklistCompletoObrigatorio && checklistFaltando(os).length > 0;

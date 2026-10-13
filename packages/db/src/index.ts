@@ -21,6 +21,7 @@ export {
   criarPortaFornecedores,
   criarPortaAtivos,
   criarPortaCategorias,
+  criarPortaChecklists,
   criarPortaCodigos,
   criarPortaModulos,
   criarPortaChamados,
@@ -44,6 +45,7 @@ export {
 } from './adaptadores';
 export { criarPortaConsultasDaCorretiva } from './consultas-da-corretiva';
 export { criarPortaHistorico } from './historico';
+export { criarPortaAuditoriaGeral } from './auditoria-geral';
 export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from './inteligencia';
 export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
 export type {

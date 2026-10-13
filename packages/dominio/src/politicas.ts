@@ -1,8 +1,8 @@
 // Políticas configuráveis (ADR-026, fase 1a A7). Cada chave tem o formato do
 // valor, validado aqui (o domínio não importa Zod; o contrato da API repete o
 // formato para o OpenAPI, e tests/politicas.test.ts compara os dois), e um
-// valor padrão do código. A resolução na 1a é hotel → grupo → padrão; a
-// estrutura (app.politica) já comporta a bandeira, que a 1c liga com o SLA.
+// valor padrão do código. A resolução é hotel → bandeira → grupo → padrão: a
+// 1a usava hotel → grupo, e a 1c ligou a bandeira (a do hotel).
 //
 // O registro que usa uma política guarda uma cópia do valor aplicado (o
 // chamado, na abertura; C2): mudar a política não altera o que já foi aberto.
@@ -20,6 +20,14 @@ import { IDIOMAS_DE_ROTULO, LIMITES_DE_CAMPO, type Rotulos } from './campos-tipa
 import { PermissaoNegada, RegraViolada } from './erros';
 import { MODULOS_CONTRATAVEIS, type ModuloContratavel } from './licenca';
 import { type Resultado, ehAdminGrupo } from './permissoes';
+import {
+  HORARIO_PADRAO,
+  type HorarioDeAtendimento,
+  type PoliticaDeSla,
+  SLA_PADRAO,
+  horarioDeAtendimentoValido,
+  politicaDeSlaValida,
+} from './sla';
 import type { Atribuicao } from './tipos';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -58,6 +66,15 @@ export interface AssinaturaNoAceite {
   ligado: boolean;
 }
 
+/**
+ * Checklist completo obrigatório na conclusão (PV1, ADR-040). Desligado por
+ * padrão. Ligado, a conclusão exige os itens obrigatórios do checklist da OS
+ * respondidos; desligado, o PWA só avisa.
+ */
+export interface ChecklistCompletoObrigatorio {
+  ligado: boolean;
+}
+
 /** Categoria de ativo (id) → prioridade padrão do chamado (id). As duas entram em B2 e C1. */
 export type PrioridadePadraoPorCategoria = Record<string, string>;
 
@@ -73,8 +90,13 @@ export interface ValoresDePolitica {
   'os.codigos_obrigatorios': CodigosObrigatorios;
   'os.foto_depois_obrigatoria': FotoDepoisObrigatoria;
   'os.assinatura_no_aceite': AssinaturaNoAceite;
+  'os.checklist_completo_obrigatorio': ChecklistCompletoObrigatorio;
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria;
   'ativo.criticidade': NomesDeCriticidade;
+  /** Calendário de SLA (1c, ADR-042): prazos por prioridade e categoria, pausa, ponto facultativo e meta. */
+  'chamado.sla': PoliticaDeSla;
+  /** Horário de atendimento do hotel (1c, ADR-042), na hora local dele. */
+  'hotel.horario_atendimento': HorarioDeAtendimento;
 }
 export type ChaveDePolitica = keyof ValoresDePolitica;
 
@@ -109,6 +131,11 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
     valido: (v): v is AssinaturaNoAceite =>
       objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
   },
+  'os.checklist_completo_obrigatorio': {
+    padrao: { ligado: false },
+    valido: (v): v is ChecklistCompletoObrigatorio =>
+      objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
+  },
   'chamado.prioridade_padrao_por_categoria': {
     padrao: {},
     valido: (v): v is PrioridadePadraoPorCategoria =>
@@ -134,6 +161,14 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
               texto.trim().length <= LIMITES_DE_CAMPO.rotulo,
           ),
       ),
+  },
+  'chamado.sla': {
+    padrao: SLA_PADRAO,
+    valido: (v): v is PoliticaDeSla => politicaDeSlaValida(v),
+  },
+  'hotel.horario_atendimento': {
+    padrao: HORARIO_PADRAO,
+    valido: (v): v is HorarioDeAtendimento => horarioDeAtendimentoValido(v),
   },
 };
 
@@ -161,22 +196,22 @@ export function validarPolitica(chave: string, valor: unknown): unknown {
 }
 
 /**
- * Valor efetivo: o do hotel, senão o do grupo, senão o padrão do código. Um
- * valor gravado fora do formato (política antiga, por exemplo) não vale e cai
+ * Valor efetivo: o do hotel, senão o da bandeira do hotel, senão o do grupo,
+ * senão o padrão do código. Um valor gravado fora do formato (política antiga, por exemplo) não vale e cai
  * para o nível seguinte.
  */
 export function resolverPolitica<C extends ChaveDePolitica>(
   chave: C,
-  niveis: { hotel?: unknown; grupo?: unknown },
+  niveis: NiveisDePolitica,
 ): ValoresDePolitica[C] {
   const definicao = POLITICAS[chave] as DefinicaoDePolitica<C>;
-  for (const v of [niveis.hotel, niveis.grupo])
+  for (const v of [niveis.hotel, niveis.bandeira, niveis.grupo])
     if (v !== undefined && definicao.valido(v)) return v;
   return definicao.padrao;
 }
 
 /** Prefixos das chaves do núcleo; extensão nenhuma usa um deles. */
-export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.'] as const;
+export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.', 'hotel.'] as const;
 
 const PREFIXO = /^[a-z][a-z_]*\.$/;
 

@@ -169,6 +169,20 @@ export type { CodigoGravado, PortaCodigos } from './portas/codigos-manutencao';
 export { criarCasosDeUsoDeCodigos } from './casos-de-uso/codigos-manutencao';
 export type { CasosDeUsoDeCodigos, CodigoDeManutencao } from './casos-de-uso/codigos-manutencao';
 export type {
+  AplicacaoDeChecklist,
+  ChecklistDaOs,
+  ChecklistDaOsGravado,
+  ModeloDeChecklistGravado,
+  PortaChecklists,
+  RespostasDoChecklistDecididas,
+} from './portas/checklists';
+export { criarCasosDeUsoDeChecklists } from './casos-de-uso/checklists';
+export type {
+  CasosDeUsoDeChecklists,
+  ModeloDeChecklist,
+  PedidoDeModeloDeChecklist,
+} from './casos-de-uso/checklists';
+export type {
   PortaPrioridades,
   PortaSituacoes,
   PrioridadeGravada,
@@ -247,6 +261,17 @@ export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membro
 export { termoDeBusca, textoDeBusca } from './busca';
 export type { LinhaDeAuditoria, PortaHistorico, ReferenciaDoHistorico } from './portas/historico';
 export { criarCasosDeUsoDeHistorico } from './casos-de-uso/historico';
+export type {
+  FiltroDaAuditoria,
+  LinhaDaAuditoriaGeral,
+  PortaAuditoriaGeral,
+} from './portas/auditoria-geral';
+export { criarCasosDeUsoDeAuditoriaGeral } from './casos-de-uso/auditoria-geral';
+export type {
+  CasosDeUsoDeAuditoriaGeral,
+  LinhaComMudancas,
+  PaginaDaAuditoria,
+} from './casos-de-uso/auditoria-geral';
 export type {
   CasosDeUsoDeHistorico,
   EventoDoHistorico,

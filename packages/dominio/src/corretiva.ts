@@ -501,6 +501,7 @@ export const REGISTROS_NA_OS = [
   'anexar_foto',
   'registrar_parada',
   'encerrar_parada',
+  'responder_checklist',
 ] as const;
 export type RegistroNaOs = (typeof REGISTROS_NA_OS)[number];
 
@@ -517,8 +518,8 @@ export const ESTADOS_QUE_ACEITAM_FOTO: readonly EstadoDaOs[] = [
 ];
 
 /**
- * Apontar horas, registrar material, anexar foto ou registrar e encerrar a
- * parada do ativo (C5): o Técnico do hotel
+ * Apontar horas, registrar material, anexar foto, registrar e encerrar a
+ * parada do ativo (C5) ou responder o checklist (PV1): o Técnico do hotel
  * responsável pela OS (403 fora do papel; 409 os_de_outro_responsavel), com a
  * OS em execução ou pausada (409 transicao_invalida). A foto vale também na
  * OS atribuída (I8).

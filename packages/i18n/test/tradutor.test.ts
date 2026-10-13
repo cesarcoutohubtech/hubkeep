@@ -8,6 +8,7 @@ import {
   PSEUDO_IDIOMA,
   QUEDA_DE_TRADUCAO,
   criarFormatador,
+  separadorDeCsv,
   criarTradutor,
   mensagensDe,
   mesclarPelaQueda,
@@ -121,5 +122,13 @@ describe('formatação por formato regional e fuso', () => {
     expect(br.moeda(1234.5, 'BRL').replace(/\s/g, ' ')).toBe('R$ 1.234,50');
     const us = criarFormatador({ formatoRegional: 'en-US', fuso: 'UTC' });
     expect(us.moeda(1234.5, 'USD')).toBe('$1,234.50');
+  });
+
+  it('separador do CSV: ponto e vírgula onde a vírgula é decimal', () => {
+    expect(separadorDeCsv('pt-BR')).toBe(';');
+    expect(separadorDeCsv('es-ES')).toBe(';');
+    expect(separadorDeCsv('fr-FR')).toBe(';');
+    expect(separadorDeCsv('en-US')).toBe(',');
+    expect(separadorDeCsv('en-GB')).toBe(',');
   });
 });

@@ -35,11 +35,13 @@ import {
   type ModeloContratual,
   type Papel,
 } from '@hubkeep/dominio';
+import { CATALOGOS, IDIOMAS } from '@hubkeep/i18n';
 import pg from 'pg';
 import {
   casosDeUsoDeBandeiras,
   casosDeUsoDeCategorias,
   casosDeUsoDeChamados,
+  casosDeUsoDeChecklists,
   casosDeUsoDeCodigos,
   casosDeUsoDeConfiguracao,
   casosDeUsoDeEquipes,
@@ -57,6 +59,45 @@ import {
 } from '../../src/servidor/composicao';
 import { convitesDeDemonstracao, identidadeDeDemonstracao } from '../../src/servidor/demonstracao';
 import { PRIORIDADE_POR_CATEGORIA } from '../provisionamento/padroes';
+
+/** Os rótulos de uma chave do catálogo nos quatro idiomas (o item de conformidade, PV1). */
+const doCatalogo = (chave: string) =>
+  Object.fromEntries(
+    IDIOMAS.flatMap((i) => (CATALOGOS[i][chave] ? [[i, CATALOGOS[i][chave]]] : [])),
+  );
+
+/** O checklist da inspeção do ar-condicionado (PV1), com um item de cada tipo e um de conformidade. */
+const ITENS_DO_CHECKLIST_DO_AR = [
+  {
+    chave: 'filtro_limpo',
+    tipo: 'sim_nao',
+    obrigatorio: true,
+    rotulos: { 'pt-BR': 'Filtro limpo', en: 'Clean filter' },
+  },
+  {
+    chave: 'pressao_do_gas',
+    tipo: 'numero',
+    obrigatorio: false,
+    rotulos: { 'pt-BR': 'Pressão do gás', en: 'Gas pressure' },
+    unidade: 'psi',
+  },
+  {
+    chave: 'dreno',
+    tipo: 'lista',
+    obrigatorio: true,
+    rotulos: { 'pt-BR': 'Dreno desobstruído', en: 'Drain unobstructed' },
+    opcoes: ['conforme', 'nao_conforme', 'nao_se_aplica'].map((chave) => ({
+      chave,
+      rotulos: doCatalogo(`checklist.conformidade.${chave}`),
+    })),
+  },
+  {
+    chave: 'observacao',
+    tipo: 'texto',
+    obrigatorio: false,
+    rotulos: { 'pt-BR': 'Observação', en: 'Note' },
+  },
+];
 
 /** Tenant fixo da demonstração no dev: rodar de novo cai no mesmo grupo. */
 export const TENANT_DA_DEMONSTRACAO = '0199a1f0-de30-7000-8000-00000000de30';
@@ -672,6 +713,23 @@ export async function semearDemonstracao(
   );
   const osParado = await gerarOs('gerenteCentro', chamados.emExecucaoParado, tecnico);
   await agir('emExecucaoParado', chamados.emExecucaoParado, osParado, 'iniciar');
+  // Checklist (PV1): o modelo de inspeção do ar-condicionado, do grupo, e a
+  // Gerente aplica na OS em execução do Centro. Fica sem resposta: o técnico
+  // responde no PWA (roteiro do docs/10).
+  const checklistsUc = await casosDeUsoDeChecklists();
+  const NOME_DO_CHECKLIST = 'Inspeção de ar-condicionado';
+  const modeloDoAr =
+    (await checklistsUc.listarModelos(ctxAdmin)).modelos.find(
+      (m) => m.nomes['pt-BR'] === NOME_DO_CHECKLIST,
+    ) ??
+    (await checklistsUc.criarModelo(ctxAdmin, {
+      nomes: { 'pt-BR': NOME_DO_CHECKLIST, en: 'Air conditioner inspection' },
+      categoriaId: categorias.find((c) => c.chavePadrao === 'refrigeracao')?.id ?? null,
+      itens: ITENS_DO_CHECKLIST_DO_AR,
+    }));
+  if (!(await checklistsUc.daOs(ctx('gerenteCentro'), osParado))) {
+    await checklistsUc.aplicarNaOs(ctx('gerenteCentro'), osParado, modeloDoAr.id);
+  }
 
   // Concluída pelo Técnico, esperando o aceite de quem abriu (a Solicitante) ou do Gerente.
   chamados.aguardandoAceite = await abrir(

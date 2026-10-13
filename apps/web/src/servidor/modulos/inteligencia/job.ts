@@ -22,6 +22,7 @@ import {
   ehEstadoDoInsight,
   ehMotivoDeDescarte,
   executarDiaDoTenant,
+  fimDoDia,
   hoteisDoDia,
   listaCanonicaDeHoteis,
   politicaSistemicaDoGrupo,
@@ -133,6 +134,28 @@ export function criarJobDoDia(deps: DepsDoJobDoDia): (tenantId: string) => Promi
     const agora = deps.relogio.agora();
     return deps.porta.noTenant(tenantId, (sessao) =>
       executarDiaDoTenant(portasDoJob(sessao, deps.registros, agora), { agora }),
+    );
+  };
+}
+
+/**
+ * O recálculo de um dia passado num tenant (ADR-036; atividade 2c): o `agora`
+ * é o fim do dia (fimDoDia), a vigência do módulo é a desse dia, e o motor
+ * grava outra linha por ativo com o número de cálculo seguinte, a marca de
+ * recálculo e as versões das fórmulas de hoje. Não abre nem atualiza insight.
+ * `disparadoPor` vai para o registro da execução, na auditoria.
+ */
+export function criarRecalculoDoDia(
+  deps: Omit<DepsDoJobDoDia, 'relogio'>,
+): (tenantId: string, dia: string, disparadoPor: string) => Promise<ResumoDoJob> {
+  return (tenantId, dia, disparadoPor) => {
+    const agora = fimDoDia(dia);
+    return deps.porta.noTenant(tenantId, (sessao) =>
+      executarDiaDoTenant(portasDoJob(sessao, deps.registros, agora), {
+        agora,
+        recalculo: true,
+        disparadoPor,
+      }),
     );
   };
 }

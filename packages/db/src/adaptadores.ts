@@ -4,12 +4,14 @@
 import type {
   AnexoGravado,
   AtivoGravado,
+  ChecklistDaOsGravado,
   EntidadeComAnexo,
   PortaAnexos,
   PortaAtivos,
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaCategorias,
+  PortaChecklists,
   PortaChamados,
   PortaCodigos,
   OsGravada,
@@ -51,6 +53,7 @@ import {
   type EstadoDoChamado,
   type Escopo,
   type ExecutadoPor,
+  type NiveisDePolitica,
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
   ehMomentoDaFoto,
@@ -79,6 +82,12 @@ import { registrarAnexo, removerAnexo } from './repositorios/anexos';
 import { alterarFornecedor, criarFornecedor } from './repositorios/fornecedores';
 import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
+import {
+  alterarModeloDeChecklist,
+  aplicarChecklist,
+  criarModeloDeChecklist,
+  responderChecklist,
+} from './repositorios/checklists';
 import { criarChamado } from './repositorios/chamados';
 import {
   alterarChamadoNaTriagem,
@@ -126,24 +135,41 @@ import { gravarPreferencias } from './repositorios/preferencias';
 import { sessaoDePromocao } from './repositorios/promocao';
 import { credenciaisAtivas, registrarLote } from './repositorios/staging';
 
-/** Valor gravado de uma política no hotel e no grupo, como está no banco (a resolução é do domínio). */
+/**
+ * As políticas ativas de um hotel: as do grupo, as da bandeira do hotel (1c) e
+ * as do próprio hotel. A bandeira sai de app.hotel na mesma consulta; hotel sem
+ * bandeira não tem esse nível.
+ */
+const politicasDoHotel = (tx: Tx, hotelId: string) =>
+  tx
+    .selectFrom('app.politica')
+    .where('ativa', '=', true)
+    .where((eb) =>
+      eb.or([
+        eb('escopo_tipo', '=', 'grupo'),
+        eb.and([
+          eb('escopo_tipo', '=', 'bandeira'),
+          eb(
+            'bandeira_id',
+            '=',
+            eb.selectFrom('app.hotel').select('bandeira_id').where('id', '=', hotelId),
+          ),
+        ]),
+        eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
+      ]),
+    );
+
+/** Valor gravado de uma política no hotel, na bandeira dele e no grupo, como está no banco (a resolução é do domínio). */
 const niveisDaPolitica = (banco: AcessoBanco, ctx: Contexto, hotelId: string, chave: string) =>
   banco.withContext(ctx, async (tx) => {
-    const linhas = await tx
-      .selectFrom('app.politica')
-      .select(['escopo_tipo', 'hotel_id', 'valor'])
-      .where('ativa', '=', true)
+    const linhas = await politicasDoHotel(tx, hotelId)
+      .select(['escopo_tipo', 'valor'])
       .where('chave', '=', chave)
-      .where((eb) =>
-        eb.or([
-          eb('escopo_tipo', '=', 'grupo'),
-          eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
-        ]),
-      )
       .execute();
-    const niveis: { hotel?: unknown; grupo?: unknown } = {};
+    const niveis: NiveisDePolitica = {};
     for (const l of linhas) {
       if (l.escopo_tipo === 'hotel') niveis.hotel = l.valor;
+      else if (l.escopo_tipo === 'bandeira') niveis.bandeira = l.valor;
       else if (l.escopo_tipo === 'grupo') niveis.grupo = l.valor;
     }
     return niveis;
@@ -594,18 +620,23 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
     hotel: (ctx, hotelId) =>
       banco.withContext(ctx, async (tx) => {
         const h = await tx
-          .selectFrom('app.hotel')
+          .selectFrom('app.hotel as h')
+          .leftJoin('app.bandeira as b', (j) =>
+            j.onRef('b.tenant_id', '=', 'h.tenant_id').onRef('b.id', '=', 'h.bandeira_id'),
+          )
           .select([
-            'id',
-            'nome',
-            'fuso',
-            'pais',
-            'subdivisao',
-            'moeda',
-            'idioma_padrao',
-            'modelo_contratual',
+            'h.id',
+            'h.nome',
+            'h.fuso',
+            'h.pais',
+            'h.subdivisao',
+            'h.moeda',
+            'h.idioma_padrao',
+            'h.modelo_contratual',
+            'b.id as bandeira_id',
+            'b.nome as bandeira_nome',
           ])
-          .where('id', '=', hotelId)
+          .where('h.id', '=', hotelId)
           .executeTakeFirst();
         return h
           ? {
@@ -619,29 +650,33 @@ export function criarPortaConfiguracao(banco: AcessoBanco): PortaConfiguracao {
               modeloContratual: ehModeloContratual(h.modelo_contratual)
                 ? h.modelo_contratual
                 : null,
+              bandeira:
+                h.bandeira_id && h.bandeira_nome !== null
+                  ? { id: h.bandeira_id, nome: h.bandeira_nome }
+                  : null,
             }
           : null;
       }),
     politicas: (ctx, hotelId) =>
       banco.withContext(ctx, async (tx) => {
-        let q = tx
-          .selectFrom('app.politica')
-          .select(['chave', 'escopo_tipo', 'hotel_id', 'valor'])
-          .where('ativa', '=', true);
-        q = hotelId
-          ? q.where((eb) =>
-              eb.or([
-                eb('escopo_tipo', '=', 'grupo'),
-                eb.and([eb('escopo_tipo', '=', 'hotel'), eb('hotel_id', '=', hotelId)]),
-              ]),
-            )
-          : q.where('escopo_tipo', '=', 'grupo');
-        return (await q.execute()).map((p) => ({
+        const linhas = await (
+          hotelId
+            ? politicasDoHotel(tx, hotelId)
+            : tx
+                .selectFrom('app.politica')
+                .where('ativa', '=', true)
+                .where('escopo_tipo', '=', 'grupo')
+        )
+          .select(['chave', 'escopo_tipo', 'bandeira_id', 'hotel_id', 'valor'])
+          .execute();
+        return linhas.map((p) => ({
           chave: p.chave,
           escopo:
             p.escopo_tipo === 'hotel' && p.hotel_id
               ? { tipo: 'hotel' as const, hotelId: p.hotel_id }
-              : { tipo: 'grupo' as const },
+              : p.escopo_tipo === 'bandeira' && p.bandeira_id
+                ? { tipo: 'bandeira' as const, bandeiraId: p.bandeira_id }
+                : { tipo: 'grupo' as const },
           valor: p.valor,
         }));
       }),
@@ -754,6 +789,81 @@ export function criarPortaCategorias(banco: AcessoBanco): PortaCategorias {
     alterar: (ctx, id, mudanca) => banco.executar(ctx, (uow) => alterarCategoria(uow, id, mudanca)),
   };
 }
+
+/** Checklist tipado (fase 1b, PV1; ADR-040), pelo hk_app. */
+export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
+  return {
+    idiomaPadrao: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const t = await tx.selectFrom('app.tenant').select('idioma_padrao').executeTakeFirst();
+        return (t?.idioma_padrao ?? 'pt-BR') as Awaited<
+          ReturnType<PortaChecklists['idiomaPadrao']>
+        >;
+      }),
+    listarModelos: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.checklist_modelo')
+            .select(['id', 'categoria_id', 'nomes', 'itens', 'versao', 'ativa'])
+            .orderBy('criado_em')
+            .orderBy('id')
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          categoriaId: m.categoria_id,
+          nomes: m.nomes,
+          itens: m.itens,
+          versao: m.versao,
+          ativa: m.ativa,
+        })),
+      ),
+    criarModelo: (ctx, m) => banco.executar(ctx, (uow) => criarModeloDeChecklist(uow, m)),
+    alterarModelo: (ctx, id, mudanca) =>
+      banco.executar(ctx, (uow) => alterarModeloDeChecklist(uow, id, mudanca)),
+    daOs: (ctx, osId) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.os_checklist')
+          .select(COLUNAS_DO_CHECKLIST_DA_OS)
+          .where('os_id', '=', osId)
+          .executeTakeFirst();
+        return c ? paraChecklistDaOs(c) : null;
+      }),
+    aplicar: (ctx, a) => banco.executar(ctx, (uow) => aplicarChecklist(uow, a)),
+  };
+}
+
+const COLUNAS_DO_CHECKLIST_DA_OS = [
+  'id',
+  'os_id',
+  'hotel_id',
+  'modelo_id',
+  'modelo_versao',
+  'nomes',
+  'itens',
+  'respostas',
+] as const;
+
+const paraChecklistDaOs = (c: {
+  id: string;
+  os_id: string;
+  hotel_id: string;
+  modelo_id: string;
+  modelo_versao: number;
+  nomes: unknown;
+  itens: unknown;
+  respostas: unknown;
+}): ChecklistDaOsGravado => ({
+  id: c.id,
+  osId: c.os_id,
+  hotelId: c.hotel_id,
+  modeloId: c.modelo_id,
+  modeloVersao: c.modelo_versao,
+  nomes: c.nomes,
+  itens: c.itens,
+  respostas: c.respostas,
+});
 
 /** Códigos de falha, causa e solução (fase 1b, I6), pelo hk_app. */
 /**
@@ -1186,6 +1296,17 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           .innerJoin('app.local as l', (j) =>
             j.onRef('l.hotel_id', '=', 'c.hotel_id').onRef('l.id', '=', 'c.local_id'),
           )
+          .leftJoin('app.os_checklist as k', (j) =>
+            j.onRef('k.hotel_id', '=', 'o.hotel_id').onRef('k.os_id', '=', 'o.id'),
+          )
+          .select([
+            'k.id as checklist_id',
+            'k.modelo_id as checklist_modelo_id',
+            'k.modelo_versao as checklist_modelo_versao',
+            'k.nomes as checklist_nomes',
+            'k.itens as checklist_itens',
+            'k.respostas as checklist_respostas',
+          ])
           .select([
             'o.id',
             'o.hotel_id',
@@ -1241,6 +1362,19 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           versao: o.versao,
           criadoEm: o.criado_em,
           fotosDepois: Number(o.fotos_depois ?? 0),
+          checklist:
+            o.checklist_id === null
+              ? null
+              : {
+                  id: o.checklist_id,
+                  osId: o.id,
+                  hotelId: o.hotel_id,
+                  modeloId: o.checklist_modelo_id ?? '',
+                  modeloVersao: o.checklist_modelo_versao ?? 1,
+                  nomes: o.checklist_nomes,
+                  itens: o.checklist_itens,
+                  respostas: o.checklist_respostas,
+                },
           chamado: {
             id: o.chamado_id,
             descricao: o.descricao,
@@ -1737,6 +1871,7 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
             registrarParada: (g) => registrarParada(uow, g),
             encerrarParada: (g) => encerrarParada(uow, g),
             liberarUh: (g) => liberarUh(uow, g),
+            responderChecklist: (g) => responderChecklist(uow, g),
           });
           await registrarOperacao(uow, operacao, resposta);
           return { repetida: false, resposta };

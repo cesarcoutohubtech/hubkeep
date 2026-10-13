@@ -367,6 +367,16 @@ function Casca(props: {
   const registrarMaterial = (osId: string, descricao: string) =>
     enfileirar({ tipo: 'os.registrar_material', dados: { osId, descricao } });
 
+  /** Respostas do checklist (PV1), item a item, na hora do aparelho; null tira a resposta. */
+  const responderChecklist = (
+    osId: string,
+    respostas: Record<string, string | number | boolean | null>,
+  ) =>
+    enfileirar({
+      tipo: 'os.responder_checklist',
+      dados: { osId, respostas, feitaEm: new Date().toISOString() },
+    });
+
   /** Parada do ativo do chamado (C5), na hora do aparelho; o servidor confere de novo. */
   const registrarParada = (osId: string) =>
     enfileirar({
@@ -471,6 +481,7 @@ function Casca(props: {
         aoAgir={agirNaOs}
         aoApontar={apontarHoras}
         aoRegistrarMaterial={registrarMaterial}
+        aoResponderChecklist={responderChecklist}
         aoFotografar={fotografarOs}
         aoRegistrarParada={registrarParada}
         aoEncerrarParada={encerrarParada}

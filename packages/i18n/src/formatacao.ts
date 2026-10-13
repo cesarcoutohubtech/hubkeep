@@ -37,3 +37,15 @@ export function criarFormatador(opcoes: {
       new Intl.NumberFormat(formatoRegional, { style: 'currency', currency: moeda }).format(valor),
   };
 }
+
+/**
+ * O separador do CSV pelo formato regional de quem exporta (decisão 7 da
+ * paridade da 1c): ponto e vírgula onde a vírgula é o separador decimal (pt-BR,
+ * es, fr), para a planilha abrir em colunas; vírgula nos outros.
+ */
+export function separadorDeCsv(formatoRegional: string): ';' | ',' {
+  const decimal = new Intl.NumberFormat(formatoRegional)
+    .formatToParts(1.5)
+    .find((p) => p.type === 'decimal')?.value;
+  return decimal === ',' ? ';' : ',';
+}

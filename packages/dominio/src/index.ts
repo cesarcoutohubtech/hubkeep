@@ -110,6 +110,7 @@ export {
 export type {
   AceiteAutomatico,
   AssinaturaNoAceite,
+  ChecklistCompletoObrigatorio,
   ChaveDePolitica,
   CodigosObrigatorios,
   FotoDepoisObrigatoria,
@@ -292,6 +293,21 @@ export {
   validarMomentoDoAnexo,
 } from './fotos-e-assinatura';
 export type { MomentoDaFoto } from './fotos-e-assinatura';
+export {
+  ESTADOS_QUE_ACEITAM_CHECKLIST,
+  OPCOES_DE_CONFORMIDADE,
+  decidirAplicacaoDoChecklist,
+  exigirChecklistCompletoNaConclusao,
+  horaDaResposta,
+  lerRespostas,
+  mesclarRespostas,
+  obrigatoriosSemResposta,
+  podeGerirChecklists,
+  validarItensDoChecklist,
+  validarNomesDoChecklist,
+  validarRespostasDoChecklist,
+} from './checklist';
+export type { OpcaoDeConformidade, RespostaDoChecklist } from './checklist';
 export type {
   CodigoPadrao,
   CodigoParaRegra,
@@ -370,3 +386,51 @@ export type {
   TipoDeReferencia,
   ValorAuditado,
 } from './auditoria';
+export {
+  DIAS_DA_SEMANA,
+  HORARIO_PADRAO,
+  LIMITES_DO_SLA,
+  MOTIVOS_DE_PAUSA,
+  RELOGIOS_DE_SLA,
+  SLA_PADRAO,
+  TIPOS_DE_FERIADO_OFICIAL,
+  calcularPrazo,
+  datasSemAtendimento,
+  ehMotivoDePausa,
+  horarioDeAtendimentoValido,
+  horasDeRelogioEntre,
+  horasDeSlaValidas,
+  pausaParaORelogio,
+  politicaDeSlaValida,
+  prazoNaRetomada,
+  regraDeSla,
+  tempoDeRelogioEntre,
+} from './sla';
+export type {
+  CalendarioDeSla,
+  DiaDaSemana,
+  FeriadoDoHotel,
+  FeriadoOficial,
+  HorarioDeAtendimento,
+  IntervaloDeAtendimento,
+  LinhaDeSla,
+  MotivoDePausa,
+  PoliticaDeSla,
+  PrioridadeParaSla,
+  RegraDeSla,
+  RelogioDeSla,
+  SlaDaCategoria,
+  TipoDeFeriadoOficial,
+} from './sla';
+export {
+  ENTIDADES_DA_AUDITORIA,
+  LIMITES_DA_AUDITORIA,
+  PAPEIS_DA_AUDITORIA_GERAL,
+  ehEntidadeDaAuditoria,
+  escreverCursorDaAuditoria,
+  lerCursorDaAuditoria,
+  mudancasDaLinhaDeAuditoria,
+  podeVerAuditoriaGeral,
+  validarPeriodoDaAuditoria,
+} from './auditoria-geral';
+export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';

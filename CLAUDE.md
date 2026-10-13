@@ -2,7 +2,7 @@
 
 Plataforma de manutenção preventiva e corretiva para redes hoteleiras multi-propriedade. Primeiro cliente: grupo Slaviero (40+ hotéis). Produto multi-tenant, não projeto sob medida.
 
-Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03-decisoes-tecnicas.md`. Contexto de produto em `docs/00-contexto-produto.md`; arquitetura em `docs/01-arquitetura.md`; plano atual em `docs/04-plano-fase-0.md`.
+Leia antes de qualquer tarefa: `docs/02-seguranca-multitenant-rls.md` e `docs/03-decisoes-tecnicas.md`. Contexto de produto em `docs/00-contexto-produto.md`; arquitetura em `docs/01-arquitetura.md`; planos atuais em `docs/12-plano-fase-1b.md` e `docs/13-plano-fase-1c.md`; visão consolidada em `docs/referencia/documento-projeto.md`. Ao retomar, leia também o ponto de retomada no diário do seu agente (seção "Três agentes, todos na nuvem").
 
 ## Regras inegociáveis
 
@@ -65,6 +65,9 @@ As máquinas da equipe não rodam `supabase start` nem outro banco em Docker (AD
 - Não rode `supabase db reset` contra staging ou produção. Contra o dev, só com aviso à equipe, porque o banco é compartilhado.
 - Migração nova vai para o dev por `supabase db push` só depois de passar na CI do PR.
 - Os testes pgTAP abrem transação e fazem rollback; rodar contra o dev não deixa dados.
+- Os agentes rodam na nuvem e não acessam o dev: o pgTAP e a integração do `packages/db` rodam só na CI.
+- DDL nunca no dev compartilhado. DML com desfazimento no fim, como fazem os testes pgTAP, é permitido.
+- Depois de cada `db push`, a migração nova precisa aparecer no `supabase migration list` do dev. Até existir o workflow "conferir dev", quem confere é o Cesar; nenhum agente roda `db push`.
 
 ## Comandos
 
@@ -93,23 +96,52 @@ Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `
 - Nenhum segredo no código ou no git; variáveis novas adicionadas ao `.env.example`.
 - Decisão técnica nova registrada em `docs/03-decisoes-tecnicas.md`.
 
-## Comandos na máquina (incidente 3)
+## Comandos (incidente 3)
 
-- Antes de qualquer `pnpm`, `npm` ou `npx`, confirme que o diretório atual é a raiz de um checkout do HubKeep (existe `pnpm-workspace.yaml` ali) e aborte se não for. Ex.: `test -f pnpm-workspace.yaml && pnpm ...`.
-- Nenhuma cadeia com `;` em comandos que alteram arquivos, fazem merge ou instalam pacotes: só `&&`, para um passo que falhou não deixar o seguinte rodar no lugar errado.
-- Worktrees em `C:\Cesar\HubKeep\Dev\wt\`, nunca na pasta temporária do Windows, que é limpa automaticamente e já apagou links de `node_modules` no meio de uma tarefa (etapa A da fase 1a).
-- PR de zona protegida um de cada vez: a tarefa seguinte pode andar no local, mas o próximo PR de zona protegida só abre depois do merge do anterior, para não criar ciclos de conflito.
+- Antes de qualquer `pnpm`, `npm` ou `npx`, confirme que o diretório atual é a raiz de um checkout do HubKeep (existe `pnpm-workspace.yaml` ali) e aborte se não for. Ex.: `test -f pnpm-workspace.yaml && pnpm ...`. No incidente 3, um `cd` falhou numa cadeia com `;` e o pnpm moveu pacotes fora do repositório.
+- Passos dependentes só com `&&`, nunca com `;`, para um passo que falhou não deixar o seguinte rodar no lugar errado. Vale para qualquer comando, inclusive leituras que dependem uma da outra.
+- Texto com crase nunca vai dentro de `node -e "..."` nem de string entre aspas duplas no bash: a crase vira substituição de comando. Corpo de PR e de commit vai por arquivo. Script com barra invertida (regex) também vai por arquivo, e a regex se confere com `grep` antes de usar.
 
-## Dois agentes no repositório
+## Três agentes, todos na nuvem
 
-Dois agentes do Claude Code trabalham neste repositório (decisão do Cesar de 30/09/2026):
+Três agentes do Claude Code trabalham neste repositório, todos na nuvem, sem agente nem worktree no notebook (decisão do Cesar de 12/10/2026):
 
-- **Agente do núcleo** (Cesar): tudo o que não é do Intelligence, inclusive as migrações das tabelas do núcleo (chamado, OS, ativo, licença) e a instrumentação que o Intelligence lê. Diário: `docs/diario-fase-*.md`.
-- **Agente do Intelligence** (Kaio): `packages/inteligencia`, as rotas e telas do Intelligence no `apps/web` e as tabelas do próprio módulo, em branches `int-*`. Diário: `docs/diario-intelligence.md`.
-- **Fronteira:** o Intelligence depende do núcleo, nunca o contrário (lint de fronteiras). Pedido de um agente ao outro fica registrado no diário de quem pede; o outro responde no próprio diário.
-- **Um PR de zona protegida aberto por vez no repositório inteiro.** Antes de abrir um, conferir no GitHub se já existe outro aberto, de qualquer dos dois agentes.
-- **ADR:** os do núcleo, com a aprovação do Cesar; os do Intelligence, com a aprovação escrita de Cesar **e** de Kaio. Merge não aprova ADR: até a aprovação, o status fica "aguarda aprovação".
-- `db push`, `config push` e o merge de zona protegida são só do Cesar.
+| Agente | Escopo | Título do PR | Diário |
+|---|---|---|---|
+| Fase 1b e administração (Cesar) | A fase 1b inteira; `CLAUDE.md`, planos, Registro de decisões, perguntas ao cliente, documento consolidado, preparação do piloto, F0-12 e segurança pré-piloto | `1b:` ou `adm:` | `docs/diario-fase-1b.md` |
+| Fase 1c | A fase 1c inteira | `1c:` | `docs/diario-fase-1c.md` |
+| Intelligence (Kaio) | `packages/inteligencia`, as rotas e telas do Intelligence no `apps/web` e as tabelas do próprio módulo | `int:` | `docs/diario-intelligence.md` |
+
+- **Branches:** no padrão que o ambiente da nuvem impõe (`claude/*`); o prefixo do título do PR diz de que agente ele é. As branches antigas (`int-*`, `1b-*`) seguem até o merge.
+- **Um diário por agente.** Pedido de um agente a outro fica registrado no diário de quem pede; o outro responde no próprio diário.
+- **Fronteira:** o Intelligence depende do núcleo, nunca o contrário (lint de fronteiras).
+- **Áreas compartilhadas entre a 1b e a 1c:** políticas, chamado, OS, catálogos de texto e `packages/dominio`. Quem for mexer registra no próprio diário antes de começar e atualiza a branch a partir da `main` com frequência.
+- **Numeração de migração:** antes de cada `supabase migration new`, conferir a última migração da `main`. O nome do arquivo é por data e hora; o comentário "Migração 00NN" segue a ordem da `main`.
+
+## PRs, zona protegida e CI
+
+- **Zona protegida é a regex do `.github/workflows/zona-protegida.yml`, não a memória.** Além de migrações, testes do banco, `CLAUDE.md`, `docs/03`, workflows e `.claude/`, ela pega o `eslint.config.mjs`, o `supabase/config.toml`, o `.gitleaks.toml`, o `dependabot.yml`, o `packages/auth-admin/` e três testes da raiz (secret-key, env-example e actions-fixadas). Na dúvida, conferir o arquivo.
+- **Um único PR de zona protegida aberto por vez no repositório inteiro.** Antes de abrir um, conferir no GitHub se já existe outro aberto, de qualquer dos três agentes. Quando dois agentes quiserem a vez, o Cesar decide a ordem. A tarefa seguinte pode andar na branch; o PR só abre depois do merge do anterior.
+- **PR sempre com base na `main`**, nunca empilhado sobre a branch de outro PR aberto: o PR empilhado que é mergeado depois do merge da base fica fora da `main` (#199, 12/10/2026).
+- **Antes do push, confirmar que o PR da branch está aberto.** PR mergeado não recebe commit: os commits vão para uma branch nova, com PR novo. Depois do push, confirmar que o head do PR é o commit novo antes de dizer que ele está no PR ou que os checks passaram.
+- **Conferir os checks** ao retomar e antes de dar um PR como pronto, uma vez, dizendo o que falhou e se a falha é esperada. O check "zona protegida" falha sempre no PR que toca a zona, por desenho (ADR-023). Uma consulta pontual não é polling; nenhum agente faz polling da CI nem liga auto-merge.
+- **A `main` vermelha se corrige antes de qualquer outro merge.** A correção abre primeiro, e o Cesar é avisado para não mergear outra coisa antes; enquanto os checks não ficam verdes, o aviso diz "não mergear ainda".
+- **Merges, `db push`, `config push` e o merge de zona protegida são só do Cesar.**
+
+## Aprovações e quem fala
+
+- **Toda mensagem diz quem fala:** "Cesar aqui" ou "Kaio aqui". Sem isso, o agente pergunta antes de agir. Texto colado e print de outro chat não contam como confirmação.
+- **Nunca escrever aprovação em nome de outra pessoa** (Cesar e Kaio, 10/10/2026, #170). O GitHub e o git usam a conta do Cesar, então tudo o que o agente posta aparece como dele: o agente não comenta aprovação nem fecha issue ou PR de aprovação. Só registra e cita quem aprovou, com o link do que essa pessoa escreveu.
+- **ADR:** os do núcleo (1b e 1c), com a aprovação do Cesar; os do Intelligence, com a aprovação escrita de Cesar **e** de Kaio.
+  - Merge não aprova ADR: até a aprovação, o status fica "aguarda aprovação". Quando o PR de um ADR em proposta entra na `main`, o agente pergunta antes de mudar o status no `docs/03`.
+  - Só um "aprovo" escrito muda o status; o agente registra a data e onde a aprovação foi escrita. Aprovação condicionada ("desde que X") exige confirmar X antes de marcar.
+- **Detalhe dentro de ADR aprovado do Intelligence é só do Kaio** (ADR-033): limiares, mínimos, desempates, padrões de política dentro de regra aprovada, textos, rótulos e ajustes no seed e no mock que não mudam regra. Continua com Cesar e Kaio: componente, estado ou fonte de dado novos; quem vê ou quem decide; e os princípios do módulo. Na dúvida entre detalhe e mudança, tratar como mudança.
+
+## Forma de trabalhar com o Cesar
+
+- **Testes só em resumo:** total, falhas e o nome do que falhou.
+- **Ponto de retomada no diário do agente** ao fim de cada etapa e quando o contexto passa de 60%. O agente para num ponto seguro (commit feito, nada pela metade, nenhum comando rodando) e registra um ponto curto e autossuficiente: o estado da `main` e do dev, os PRs abertos e o que espera o Cesar, o trabalho não enviado, as decisões pendentes e a próxima tarefa com o primeiro passo.
+- **Sem notificação push nas paradas:** o Cesar não usa o Remote Control. Volta só se ele disser que ligou.
 
 ## Nunca faça
 
@@ -120,6 +152,7 @@ Dois agentes do Claude Code trabalham neste repositório (decisão do Cesar de 3
 - Consultar o banco fora de `withContext`, ou abrir transação sem definir o contexto.
 - Deixar credencial de banco do HubKeep no agente conector.
 - Apontar deploy de preview para o banco de produção.
+- Pôr o segredo `DEV_SESSION_POOLER` em argumento de linha de comando ou em saída; ler o `HK_DEMO_SENHA`; entrar com senha em serviço externo.
 - Escrever texto de interface direto em componente, handler, e-mail ou push, ou devolver frase pronta na resposta de erro da API.
 
 ## Idioma

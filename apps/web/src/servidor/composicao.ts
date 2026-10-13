@@ -8,12 +8,14 @@ import {
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
+  type CasosDeUsoDeChecklists,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeTriagem,
   type CasosDeUsoDeExecucao,
   type CasosDeUsoDeParadas,
   type CasosDeUsoDeUhIndisponivel,
   type CasosDeUsoDeConsultas,
+  type CasosDeUsoDeAuditoriaGeral,
   type CasosDeUsoDeHistorico,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
@@ -37,9 +39,11 @@ import {
   criarCasosDeUsoDeParadas,
   criarCasosDeUsoDeUhIndisponivel,
   criarCasosDeUsoDeConsultas,
+  criarCasosDeUsoDeAuditoriaGeral,
   criarCasosDeUsoDeHistorico,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
+  criarCasosDeUsoDeChecklists,
   criarCasosDeUsoDeCodigos,
   criarCasosDeUsoDeTriagem,
   criarCasosDeUsoDeExecucao,
@@ -68,6 +72,7 @@ import {
   criarPortaAtivos,
   criarPortaCategorias,
   criarPortaChamados,
+  criarPortaChecklists,
   criarPortaCodigos,
   criarPortaTriagem,
   criarPortaExecucao,
@@ -76,6 +81,7 @@ import {
   criarPortaConsultasDaCorretiva,
   criarPortaDoJobDoIntelligence,
   criarPortaDoPainelDoIntelligence,
+  criarPortaAuditoriaGeral,
   criarPortaHistorico,
   criarPortaPrioridades,
   criarPortaSituacoes,
@@ -103,7 +109,9 @@ import {
 } from '@hubkeep/db';
 import { registrosDePoliticasPorModulo } from '@hubkeep/dominio';
 import { criarVerificadorJwks } from './identidade';
+import { registrarNoConsole } from './log';
 import { montarInteligencia } from './modulos/inteligencia';
+import { enviarCheckInAoSentry } from './sentry';
 
 function exigirEnv(nome: string): string {
   const v = process.env[nome];
@@ -217,6 +225,16 @@ export async function calcularDiaDoIntelligence(tenantId: string) {
     relogio: relogioDoSistema,
   })(tenantId);
 }
+
+/**
+ * A observabilidade do job do Intelligence: o log por tenant e por rodada e o
+ * check-in do monitor no Sentry (sem SENTRY_DSN, só o log). A rota
+ * /api/cron/inteligencia envolve o job e a rodada com ela.
+ */
+export const observacaoDoJobDoIntelligence = inteligencia.observarJob({
+  registrar: registrarNoConsole,
+  checkIn: enviarCheckInAoSentry,
+});
 
 /**
  * O painel do Intelligence (as telas do 1.0): a leitura e a decisão do insight
@@ -376,6 +394,18 @@ export const casosDeUsoDeCodigos = memo<CasosDeUsoDeCodigos>(async () => {
   });
 });
 
+/** Checklist tipado (fase 1b, PV1; ADR-040), pelo hk_app. */
+export const casosDeUsoDeChecklists = memo<CasosDeUsoDeChecklists>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeChecklists({
+    checklists: criarPortaChecklists(banco),
+    triagem: criarPortaTriagem(banco),
+    execucao: criarPortaExecucao(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
 /** Situações e prioridades do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
 export const casosDeUsoDeSituacoes = memo<CasosDeUsoDeSituacoes>(async () => {
   const banco = await acessoBanco();
@@ -424,6 +454,7 @@ export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
     paradas: criarPortaParadas(banco),
     uh: criarPortaUhIndisponivel(banco),
     codigos: criarPortaCodigos(banco),
+    checklists: criarPortaChecklists(banco),
   });
 });
 
@@ -436,6 +467,17 @@ export const casosDeUsoDeConsultas = memo<CasosDeUsoDeConsultas>(async () =>
 export const casosDeUsoDeHistorico = memo<CasosDeUsoDeHistorico>(async () =>
   criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(await acessoBanco()) }),
 );
+
+/** Auditoria geral (fase 1c), pelo hk_app: a gestão, no escopo da RLS de app.auditoria. */
+export const casosDeUsoDeAuditoriaGeral = memo<CasosDeUsoDeAuditoriaGeral>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeAuditoriaGeral({
+    auditoria: criarPortaAuditoriaGeral(banco),
+    historico: criarPortaHistorico(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
 
 /** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */
 export const casosDeUsoDeParadas = memo<CasosDeUsoDeParadas>(async () => {
@@ -483,6 +525,7 @@ export const casosDeUsoDeSincronizacao = memo<CasosDeUsoDeSincronizacao>(async (
     ativos: await casosDeUsoDeAtivos(),
     chamados: await casosDeUsoDeChamados(),
     execucao: await casosDeUsoDeExecucao(),
+    checklists: await casosDeUsoDeChecklists(),
   }),
 );
 

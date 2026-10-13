@@ -30,6 +30,13 @@ const ROTULO_DA_ACAO = {
   fornecedor: 'auditoria.acao.fornecedor',
 } as const satisfies Record<Entidade, Chave>;
 
+/**
+ * A chave do nome da ação de uma entidade da auditoria: a própria, nas
+ * entidades com histórico; nas outras, a das ações comuns (auditoria geral, 1c).
+ */
+export const chaveDaAcao = (entidade: string): Chave =>
+  entidade in ROTULO_DA_ACAO ? ROTULO_DA_ACAO[entidade as Entidade] : 'auditoria.acao.geral';
+
 /** Campos cujo valor é um código com nome no catálogo. */
 const VALOR_DO_CATALOGO: Record<string, Chave> = {
   estado: 'auditoria.valor.estado',
@@ -49,32 +56,61 @@ const PADRAO_NO_CATALOGO = {
 const DATA_E_HORA = { dateStyle: 'short', timeStyle: 'short' } as const;
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
-function useFormatarValor(historico: Historico) {
+type ComReferencias = Pick<Historico, 'referencias' | 'idiomaPadrao'>;
+
+/**
+ * A fábrica do texto de um valor do antes ou do depois, para quem formata fora
+ * da renderização (a exportação da auditoria geral, 1c, junta as referências
+ * de várias páginas).
+ */
+export function useCriarFormatadorDeValor() {
   const t = useT();
   const intl = useIntl();
   const { idioma } = useIdioma();
-  const idiomaPadrao = historico.idiomaPadrao as Idioma;
 
-  const nomeDaReferencia = (id: string): string => {
-    const r = historico.referencias[id];
-    if (!r) return t('auditoria.sem_acesso');
-    if ('nome' in r) return r.nome;
-    const chave = r.chavePadrao ? `${PADRAO_NO_CATALOGO[r.tipo]}.${r.chavePadrao}` : null;
-    const doCatalogo = chave && chave in intl.messages ? t(chave as Chave) : null;
-    return resolverNome(r.nomes, idioma, { doCatalogo, idiomaPadrao }) ?? t('auditoria.sem_acesso');
+  return (historico: ComReferencias) => {
+    const idiomaPadrao = historico.idiomaPadrao as Idioma;
+    const nomeDaReferencia = (id: string): string => {
+      const r = historico.referencias[id];
+      if (!r) return t('auditoria.sem_acesso');
+      if ('nome' in r) return r.nome;
+      const chave = r.chavePadrao ? `${PADRAO_NO_CATALOGO[r.tipo]}.${r.chavePadrao}` : null;
+      const doCatalogo = chave && chave in intl.messages ? t(chave as Chave) : null;
+      return (
+        resolverNome(r.nomes, idioma, { doCatalogo, idiomaPadrao }) ?? t('auditoria.sem_acesso')
+      );
+    };
+
+    return (m: Mudanca, v: Valor): string => {
+      if (v === null) return t('auditoria.sem_valor');
+      if (typeof v === 'boolean') return v ? t('auditoria.sim') : t('auditoria.nao');
+      if (typeof v === 'number') return intl.formatNumber(v);
+      if (m.chave === null) {
+        const doCatalogo = VALOR_DO_CATALOGO[m.campo];
+        if (doCatalogo) return t(doCatalogo, { valor: v });
+        if (m.campo in REFERENCIA_DO_CAMPO) return nomeDaReferencia(v);
+      }
+      if (DATA_ISO.test(v) && !Number.isNaN(Date.parse(v))) return intl.formatDate(v, DATA_E_HORA);
+      return v;
+    };
   };
+}
 
-  return (m: Mudanca, v: Valor): string => {
-    if (v === null) return t('auditoria.sem_valor');
-    if (typeof v === 'boolean') return v ? t('auditoria.sim') : t('auditoria.nao');
-    if (typeof v === 'number') return intl.formatNumber(v);
-    if (m.chave === null) {
-      const doCatalogo = VALOR_DO_CATALOGO[m.campo];
-      if (doCatalogo) return t(doCatalogo, { valor: v });
-      if (m.campo in REFERENCIA_DO_CAMPO) return nomeDaReferencia(v);
-    }
-    if (DATA_ISO.test(v) && !Number.isNaN(Date.parse(v))) return intl.formatDate(v, DATA_E_HORA);
-    return v;
+/** O texto de um valor do antes ou do depois; serve também à auditoria geral (1c). */
+export function useFormatarValor(historico: ComReferencias) {
+  return useCriarFormatadorDeValor()(historico);
+}
+
+/** "Campo: antes → depois" de uma mudança, com o nome do campo do catálogo. */
+export function useTextoDaMudanca() {
+  const t = useT();
+  return (m: Mudanca, formatar: (m: Mudanca, v: Valor) => string): string => {
+    const campo = t('auditoria.campo', { campo: m.campo });
+    return t('auditoria.mudanca', {
+      campo: m.chave === null ? campo : t('auditoria.campo_com_chave', { campo, chave: m.chave }),
+      antes: formatar(m, m.antes),
+      depois: formatar(m, m.depois),
+    });
   };
 }
 

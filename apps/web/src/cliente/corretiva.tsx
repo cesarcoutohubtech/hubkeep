@@ -13,6 +13,8 @@
 // Na I8, com a política os.assinatura_no_aceite ligada no hotel, o aceite traz
 // o quadro da assinatura (assinatura.tsx); a OS aceita com assinatura mostra o
 // botão para vê-la, e as fotos da OS aparecem com o momento (antes ou depois).
+// Na PV1, cada OS mostra o checklist aplicado, com as respostas do técnico, e
+// quem tria aplica ou troca o modelo (checklist-da-os.tsx).
 import type {
   ChamadoResumidoApi,
   EventoDaLinhaDoTempoApi,
@@ -41,6 +43,7 @@ import { useIntl } from 'react-intl';
 import { AnexosDoRegistro } from './AnexosDoRegistro';
 import { chamarApi } from './api';
 import { AssinaturaDoAceite, QuadroDeAssinatura, type Traco } from './assinatura';
+import { ChecklistDaOs } from './checklist-da-os';
 import {
   type CodigoNaTela,
   type CodigosDoTenant,
@@ -717,6 +720,11 @@ export function ChamadoEmDetalhe(props: {
                     </p>
                   )}
                   <CodigosDaOs os={o} codigos={props.codigos ?? null} />
+                  <ChecklistDaOs
+                    key={`checklist-${o.id}-${o.versao}`}
+                    osId={o.id}
+                    estado={o.estado}
+                  />
                   {o.assinaturaAceiteId && <AssinaturaDoAceite anexoId={o.assinaturaAceiteId} />}
                   {o.motivoReabertura && (
                     <p className="hk-suave">

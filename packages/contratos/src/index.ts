@@ -52,6 +52,17 @@ export {
   TIPOS_DE_CODIGO_DE_MANUTENCAO_API,
 } from './codigos-manutencao';
 export {
+  ChecklistDaOsApi,
+  ModeloDeChecklistApi,
+  PedidoDeChecklistNaOs,
+  PedidoDeModeloDeChecklist,
+  RespostaDeChecklistAplicado,
+  RespostaDeChecklistDaOs,
+  RespostaDeModeloDeChecklistAlterado,
+  RespostaDeModelosDeChecklist,
+  RespostaDoChecklistApi,
+} from './checklists';
+export {
   ACOES_DA_OS_API,
   ACOES_DO_CHAMADO_API,
   ENTIDADES_COM_SITUACAO_API,
@@ -125,9 +136,12 @@ export {
 export {
   CHAVES_DE_POLITICA_API,
   FORMATOS_DE_POLITICA_API,
+  HorarioDeAtendimentoApi,
+  MOTIVOS_DE_PAUSA_API,
   PedidoDeConfiguracaoDoHotel,
   PedidoDeConfiguracaoDoTenant,
   PedidoDePolitica,
+  PoliticaDeSlaApi,
   PREFIXOS_DO_NUCLEO_API,
   RespostaDeConfiguracao,
 } from './configuracao';
@@ -253,3 +267,9 @@ export {
   ReferenciaDoHistoricoApi,
   RespostaDoHistorico,
 } from './historico';
+export {
+  ConsultaDaAuditoriaGeral,
+  ENTIDADES_DA_AUDITORIA_API,
+  LinhaDaAuditoriaGeralApi,
+  RespostaDaAuditoriaGeral,
+} from './auditoria-geral';

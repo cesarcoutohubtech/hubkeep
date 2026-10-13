@@ -142,6 +142,7 @@ export interface AppChamado {
   ativo_id: string | null;
   atualizado_em: Generated<Timestamp>;
   busca: string;
+  categoria_id: string | null;
   criado_em: Generated<Timestamp>;
   descricao: string;
   estado: string;
@@ -151,9 +152,24 @@ export interface AppChamado {
   local_id: string;
   motivo_cancelamento: string | null;
   origem: Generated<string>;
+  pausado_segundos: Generated<number>;
   politica_aplicada: Json;
+  prazo_atendimento: Timestamp | null;
+  prazo_solucao: Timestamp | null;
   prioridade_id: string;
   situacao_id: string;
+  tenant_id: string;
+  versao: Generated<number>;
+}
+
+export interface AppChecklistModelo {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  categoria_id: string | null;
+  criado_em: Generated<Timestamp>;
+  id: string;
+  itens: Generated<Json>;
+  nomes: Json;
   tenant_id: string;
   versao: Generated<number>;
 }
@@ -202,6 +218,19 @@ export interface AppEventoDominio {
   tenant_id: string;
   tentativas: Generated<number>;
   tipo: string;
+}
+
+export interface AppFeriadoHotel {
+  anual: Generated<boolean>;
+  ativo: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  criado_em: Generated<Timestamp>;
+  criado_por: string;
+  data: Timestamp;
+  hotel_id: string;
+  id: string;
+  nome: string;
+  tenant_id: string;
 }
 
 export interface AppFornecedor {
@@ -375,6 +404,21 @@ export interface AppOsApontamento {
   usuario_id: string;
 }
 
+export interface AppOsChecklist {
+  atualizado_em: Generated<Timestamp>;
+  criado_em: Generated<Timestamp>;
+  criado_por: string;
+  hotel_id: string;
+  id: string;
+  itens: Json;
+  modelo_id: string;
+  modelo_versao: number;
+  nomes: Json;
+  os_id: string;
+  respostas: Generated<Json>;
+  tenant_id: string;
+}
+
 export interface AppOsMaterial {
   criado_em: Generated<Timestamp>;
   descricao: string;
@@ -390,6 +434,7 @@ export interface AppOsTransicao {
   de: string | null;
   hotel_id: string;
   id: string;
+  motivo_pausa: string | null;
   os_id: string;
   para: string;
   quando: Generated<Timestamp>;
@@ -552,10 +597,12 @@ export interface DB {
   "app.bandeira": AppBandeira;
   "app.categoria_ativo": AppCategoriaAtivo;
   "app.chamado": AppChamado;
+  "app.checklist_modelo": AppChecklistModelo;
   "app.codigo_manutencao": AppCodigoManutencao;
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;
+  "app.feriado_hotel": AppFeriadoHotel;
   "app.fornecedor": AppFornecedor;
   "app.hotel": AppHotel;
   "app.hotel_proprietario": AppHotelProprietario;
@@ -567,6 +614,7 @@ export interface DB {
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
   "app.os_apontamento": AppOsApontamento;
+  "app.os_checklist": AppOsChecklist;
   "app.os_material": AppOsMaterial;
   "app.os_transicao": AppOsTransicao;
   "app.parada_ativo": AppParadaAtivo;
