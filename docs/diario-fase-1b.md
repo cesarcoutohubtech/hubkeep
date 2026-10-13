@@ -298,3 +298,26 @@ Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
 4. **Enquanto espera a vez:** preparar a PV2 a partir da `main` atualizada e a proposta do workflow "conferir dev".
 
 **Proposta do "conferir dev":** está em `docs/referencia/proposta-conferir-dev.md`, para a aprovação do Cesar. Disparo manual na `main`, ambiente `dev` do GitHub com a aprovação do Cesar e um segredo só (`DEV_SESSION_POOLER`). O job compara as migrações do dev com as da `main`, lendo a tabela de migrações, e depois roda o pgTAP com rollback. São três decisões pendentes, listadas no fim da proposta.
+
+## Ponto de retomada (13/10/2026, fim da segunda parte)
+
+- **`main`:** a6b761b, vermelha no CI e no banco pelo cruzamento do #210 com o #211. A correção é o #213 ("1b: main vermelha"), e nada deve entrar antes dele. O dev tem as migrações até a 0043.
+- **PRs abertos da 1b:**
+  - #213, a correção da `main` (fora da zona protegida);
+  - #214, este diário e a proposta do "conferir dev" (fora da zona). Os dois acrescentam seção no fim deste diário: depois do merge do #213, juntar a `main` no #214 e resolver.
+- **Fila de zona protegida:** o #212 do Kaio (aberto), depois a migração da 1c (monitor de SLA), depois a PV2.
+- **PV2 preparada, sem PR:** branch `claude/1b-pv2` (4c2f4f7), a partir da a6b761b. Leva:
+  - a migração `app.plano_preventivo` e o pgTAP 036;
+  - a tabela nova no meta-teste 28;
+  - as listas do domínio, com a paridade dos checks;
+  - os tipos do Kysely, o `docs/02` e o ADR-041 no `docs/03`.
+
+  A sintaxe do SQL foi conferida só por análise, sem banco; o pgTAP roda na CI.
+- **Antes de abrir o PR da PV2,** na vez dela:
+  1. juntar a `main`;
+  2. renomear a migração para data e hora depois da última da `main`, porque o `db push` recusa migração anterior à última aplicada;
+  3. conferir o número ("Migração 0045" no cabeçalho, no `docs/02`, no ADR-041 e na paridade);
+  4. renomear o pgTAP 036 se a 1c tiver usado o número;
+  5. atualizar o meta-teste 28 com as tabelas que a 1c acrescentar.
+- **Depois da PV2 (fora da zona):** domínio (periodicidade, `ocorrencias` e `proximaOcorrencia`), casos de uso, API e telas.
+- **Esperando o Cesar:** o merge do #213 e as três decisões da proposta do "conferir dev".
