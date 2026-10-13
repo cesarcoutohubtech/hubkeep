@@ -309,12 +309,34 @@ export {
 } from './checklist';
 export type { OpcaoDeConformidade, RespostaDoChecklist } from './checklist';
 export {
+  ACOES_DO_PLANO,
+  MAXIMOS_DA_PERIODICIDADE,
+  PAPEIS_QUE_GEREM_PLANOS,
   SITUACOES_DO_PLANO,
   UNIDADES_DE_PERIODICIDADE,
+  dataDaOcorrencia,
+  decidirSituacaoDoPlano,
+  ehAcaoDoPlano,
   ehSituacaoDoPlano,
   ehUnidadeDePeriodicidade,
+  exigirPlanoNaoEncerrado,
+  exigirResponsavelParaAtivar,
+  normalizarNomeDoPlano,
+  ocorrenciaMaisRecenteAte,
+  ocorrencias,
+  podeGerirPlanos,
+  proximaOcorrencia,
+  validarAlvoDoPlano,
+  validarInicioDoPlano,
+  validarPeriodicidade,
+  validarResponsavelDoPlano,
 } from './plano-preventivo';
-export type { SituacaoDoPlano, UnidadeDePeriodicidade } from './plano-preventivo';
+export type {
+  AcaoDoPlano,
+  Periodicidade,
+  SituacaoDoPlano,
+  UnidadeDePeriodicidade,
+} from './plano-preventivo';
 export type {
   CodigoPadrao,
   CodigoParaRegra,
