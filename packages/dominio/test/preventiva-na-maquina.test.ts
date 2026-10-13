@@ -79,6 +79,8 @@ const PODE: Record<Exclude<AcaoDaOs, 'gerar'>, NomeDoAtor[]> = {
   retomar: EXECUCAO,
   concluir: EXECUCAO,
   aceitar: ['gerente'],
+  // Só o worker aceita sozinho (ADR-044), e só a corretiva: nenhum papel.
+  aceitar_automatico: [],
   reabrir: ['gerente'],
 };
 const ESPERADO: Record<Exclude<AcaoDaOs, 'gerar'>, Partial<Record<EstadoDaOs, EstadoDaOs>>> = {
@@ -88,6 +90,7 @@ const ESPERADO: Record<Exclude<AcaoDaOs, 'gerar'>, Partial<Record<EstadoDaOs, Es
   retomar: { pausada: 'em_execucao' },
   concluir: { em_execucao: 'concluida' },
   aceitar: { concluida: 'aceita' },
+  aceitar_automatico: { concluida: 'aceita' },
   reabrir: { concluida: 'em_execucao' },
   cancelar: { atribuida: 'cancelada', em_execucao: 'cancelada', pausada: 'cancelada' },
 };
