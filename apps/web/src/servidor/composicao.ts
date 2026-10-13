@@ -38,38 +38,9 @@ import {
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
   criarCasosDeUsoDeAnexos,
-  criarCasosDeUsoDeAtivos,
-  criarCasosDeUsoDeParadas,
-  criarCasosDeUsoDeUhIndisponivel,
-  criarCasosDeUsoDeConsultas,
-  criarCasosDeUsoDeAuditoriaGeral,
-  criarCasosDeUsoDeAvisosDeSla,
-  criarCasosDeUsoDeHistorico,
-  criarCasosDeUsoDeCategorias,
-  criarCasosDeUsoDeChamados,
   criarMonitorDeSla,
   criarAceiteAutomatico,
-  criarCasosDeUsoDeChecklists,
-  criarCasosDeUsoDePlanosPreventivos,
-  criarCasosDeUsoDeCodigos,
-  criarCasosDeUsoDeTriagem,
-  criarCasosDeUsoDeExecucao,
-  criarCasosDeUsoDeSituacoes,
-  criarCasosDeUsoDeConfiguracao,
-  criarPoliticasDoTenant,
-  criarCasosDeUsoDeEquipes,
-  criarCasosDeUsoDeFeriados,
-  criarCasosDeUsoDeBandeiras,
-  criarCasosDeUsoDeFornecedores,
-  criarCasosDeUsoDeHoteis,
-  criarCasosDeUsoDeImplantacao,
-  criarCasosDeUsoDeLocais,
-  criarCasosDeUsoDeMembros,
-  criarCasosDeUsoDeProprietarios,
   criarCasosDeUsoDeIngestao,
-  criarCasosDeUsoDePapeis,
-  criarCasosDeUsoDePreferencias,
-  criarCasosDeUsoDeSincronizacao,
   criarManipuladoresDeEventos,
   relogioDoSistema,
 } from '@hubkeep/aplicacao';
@@ -77,41 +48,14 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
-  criarPortaAtivos,
-  criarPortaCategorias,
-  criarPortaChamados,
   criarPortaMonitorDeSla,
   criarPortaAceiteAutomatico,
-  criarPortaChecklists,
-  criarPortaCodigos,
-  criarPortaPlanosPreventivos,
-  criarPortaTriagem,
-  criarPortaExecucao,
-  criarPortaParadas,
-  criarPortaUhIndisponivel,
-  criarPortaConsultasDaCorretiva,
   criarPortaDoJobDoIntelligence,
   criarPortaDoPainelDoIntelligence,
-  criarPortaAuditoriaGeral,
-  criarPortaAvisosDeSla,
-  criarPortaHistorico,
-  criarPortaPrioridades,
-  criarPortaSituacoes,
   criarPortaConfiguracao,
   criarPortaModulos,
-  criarPortaEquipes,
-  criarPortaFeriadosDoHotel,
-  criarPortaBandeiras,
-  criarPortaFornecedores,
   criarPortaAnexos,
   criarPortaEscopoDeAnexo,
-  criarPortaHoteisDoStaging,
-  criarPortaImplantacao,
-  criarPortaLocais,
-  criarPortaMembros,
-  criarPortaProprietarios,
-  criarPortaOperacoesOffline,
-  criarPortaPreferencias,
   criarPortasDeAplicacao,
   criarPortasDeIngestao,
   criptografiaDoServidor,
@@ -121,6 +65,7 @@ import {
   tlsDaConexao,
 } from '@hubkeep/db';
 import { registrosDePoliticasPorModulo } from '@hubkeep/dominio';
+import { criarFabricas } from './fabricas';
 import { criarFeriadosOficiais } from './feriados-oficiais';
 import { criarVerificadorJwks } from './identidade';
 import { registrarNoConsole } from './log';
@@ -181,15 +126,27 @@ const acessoBancoDaIngestao = memo<AcessoBanco>(() =>
   criarAcessoBanco({ ingestao: conexao('DATABASE_URL_INGESTAO') }),
 );
 
+/** Feriados oficiais do calendário de SLA (1c, ADR-042): um por instância, com o cache dos anos. */
+const feriadosOficiais = criarFeriadosOficiais();
+
+// A fiação dos casos de uso do hk_app (fabricas.ts), sempre com o relógio do
+// sistema: o web em funcionamento não tem como trocá-lo. O relógio do roteiro
+// fica só na montagem do gerador do histórico, fora de src
+// (tests/relogio-do-roteiro-fora-do-web.test.ts).
+const fabricas = memo(async () =>
+  criarFabricas({
+    banco: await acessoBanco(),
+    relogio: relogioDoSistema,
+    feriadosOficiais,
+    registrosDePoliticas,
+  }),
+);
+
 let auth: ReturnType<typeof criarAdministracaoDoAuth> | undefined;
 const administracaoDoAuth = () => (auth ??= criarAdministracaoDoAuth({ url: urlSupabase() }));
 
-export const casosDeUsoDePapeis = memo<CasosDeUsoDePapeis>(async () =>
-  criarCasosDeUsoDePapeis({
-    ...criarPortasDeAplicacao(await acessoBanco()),
-    relogio: relogioDoSistema,
-  }),
-);
+export const casosDeUsoDePapeis = async (): Promise<CasosDeUsoDePapeis> =>
+  (await fabricas()).papeis();
 
 export const casoDeUsoDeConvites = memo<CasoDeUsoDeConvites>(async () =>
   criarCasoDeUsoDeConvites({
@@ -226,9 +183,6 @@ export async function promoverUhsDoTenant(tenantId: string) {
     promocao: criarPortasDeIngestao(await acessoBancoDoWorker()).promocao,
   }).promoverUhs(tenantId);
 }
-
-/** Feriados oficiais do calendário de SLA (1c, ADR-042): um por instância, com o cache dos anos. */
-const feriadosOficiais = criarFeriadosOficiais();
 
 /**
  * O monitor de SLA num tenant (hk_worker, 1c, ADR-043); a rota /api/cron/sla
@@ -317,294 +271,112 @@ export const casosDeUsoDeAnexos = memo<CasosDeUsoDeAnexos>(async () => {
 });
 
 /** Equipes do hotel (fase 1a, A6), pelo hk_app. */
-export const casosDeUsoDeEquipes = memo<CasosDeUsoDeEquipes>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeEquipes({
-    equipes: criarPortaEquipes(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeEquipes = async (): Promise<CasosDeUsoDeEquipes> =>
+  (await fabricas()).equipes();
 
 /** Feriados do hotel (1c, ADR-042), pelo hk_app. */
-export const casosDeUsoDeFeriados = memo<CasosDeUsoDeFeriados>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeFeriados({
-    feriados: criarPortaFeriadosDoHotel(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeFeriados = async (): Promise<CasosDeUsoDeFeriados> =>
+  (await fabricas()).feriados();
 
 /** Hotéis a partir do staging (fase 1a, A1): listar, importar e ativar, pelo hk_app. */
-export const casosDeUsoDeHoteis = memo<CasosDeUsoDeHoteis>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeHoteis({
-    hoteis: criarPortaHoteisDoStaging(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeHoteis = async (): Promise<CasosDeUsoDeHoteis> =>
+  (await fabricas()).hoteis();
 
 /** Bandeiras (fase 1a, A2), pelo hk_app. */
-export const casosDeUsoDeBandeiras = memo<CasosDeUsoDeBandeiras>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeBandeiras({
-    bandeiras: criarPortaBandeiras(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeBandeiras = async (): Promise<CasosDeUsoDeBandeiras> =>
+  (await fabricas()).bandeiras();
 
 /** Fornecedores do grupo (fase 1b, I3), pelo hk_app. */
-export const casosDeUsoDeFornecedores = memo<CasosDeUsoDeFornecedores>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeFornecedores({
-    fornecedores: criarPortaFornecedores(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeFornecedores = async (): Promise<CasosDeUsoDeFornecedores> =>
+  (await fabricas()).fornecedores();
 
 /** Gestão de membros (fase 1a, A3): lista, desativação e validade, pelo hk_app. */
 /** Proprietários e vínculos (fase 1a, A4; ADR-031), pelo hk_app. */
-export const casosDeUsoDeProprietarios = memo<CasosDeUsoDeProprietarios>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeProprietarios({
-    proprietarios: criarPortaProprietarios(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeProprietarios = async (): Promise<CasosDeUsoDeProprietarios> =>
+  (await fabricas()).proprietarios();
 
-export const casosDeUsoDeMembros = memo<CasosDeUsoDeMembros>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeMembros({
-    membros: criarPortaMembros(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeMembros = async (): Promise<CasosDeUsoDeMembros> =>
+  (await fabricas()).membros();
 
 /** Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026), pelo hk_app. */
-export const casosDeUsoDeConfiguracao = memo<CasosDeUsoDeConfiguracao>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeConfiguracao({
-    configuracao: criarPortaConfiguracao(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-    politicas: criarPoliticasDoTenant({
-      registros: registrosDePoliticas,
-      modulos: criarPortaModulos(banco),
-      relogio: relogioDoSistema,
-    }),
-  });
-});
+export const casosDeUsoDeConfiguracao = async (): Promise<CasosDeUsoDeConfiguracao> =>
+  (await fabricas()).configuracao();
 
 /** Painel de implantação do hotel (fase 1a, A5), pelo hk_app. */
-export const casosDeUsoDeImplantacao = memo<CasosDeUsoDeImplantacao>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeImplantacao({
-    implantacao: criarPortaImplantacao(banco),
-    membros: criarPortaMembros(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeImplantacao = async (): Promise<CasosDeUsoDeImplantacao> =>
+  (await fabricas()).implantacao();
 
 /** Locais do hotel (fase 1a, B1), pelo hk_app. */
-export const casosDeUsoDeLocais = memo<CasosDeUsoDeLocais>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeLocais({
-    locais: criarPortaLocais(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeLocais = async (): Promise<CasosDeUsoDeLocais> =>
+  (await fabricas()).locais();
 
 /** Categorias de ativo (fase 1a, B2; ADR-028), pelo hk_app. */
-export const casosDeUsoDeCategorias = memo<CasosDeUsoDeCategorias>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeCategorias({
-    categorias: criarPortaCategorias(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeCategorias = async (): Promise<CasosDeUsoDeCategorias> =>
+  (await fabricas()).categorias();
 
 /** Códigos de falha, causa e solução (fase 1b, I6), pelo hk_app. */
-export const casosDeUsoDeCodigos = memo<CasosDeUsoDeCodigos>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeCodigos({
-    codigos: criarPortaCodigos(banco),
-    categorias: criarPortaCategorias(banco),
-    triagem: criarPortaTriagem(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeCodigos = async (): Promise<CasosDeUsoDeCodigos> =>
+  (await fabricas()).codigos();
 
 /** Checklist tipado (fase 1b, PV1; ADR-040), pelo hk_app. */
-export const casosDeUsoDeChecklists = memo<CasosDeUsoDeChecklists>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeChecklists({
-    checklists: criarPortaChecklists(banco),
-    triagem: criarPortaTriagem(banco),
-    execucao: criarPortaExecucao(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeChecklists = async (): Promise<CasosDeUsoDeChecklists> =>
+  (await fabricas()).checklists();
 
 /** Planos preventivos (fase 1b, PV2; ADR-041), pelo hk_app. */
-export const casosDeUsoDePlanosPreventivos = memo<CasosDeUsoDePlanosPreventivos>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDePlanosPreventivos({
-    planos: criarPortaPlanosPreventivos(banco),
-    triagem: criarPortaTriagem(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDePlanosPreventivos = async (): Promise<CasosDeUsoDePlanosPreventivos> =>
+  (await fabricas()).planosPreventivos();
 
 /** Situações e prioridades do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
-export const casosDeUsoDeSituacoes = memo<CasosDeUsoDeSituacoes>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeSituacoes({
-    situacoes: criarPortaSituacoes(banco),
-    prioridades: criarPortaPrioridades(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeSituacoes = async (): Promise<CasosDeUsoDeSituacoes> =>
+  (await fabricas()).situacoes();
 
 /** Chamados (fase 1a, C2), pelo hk_app. */
-export const casosDeUsoDeChamados = memo<CasosDeUsoDeChamados>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeChamados({
-    chamados: criarPortaChamados(banco),
-    situacoes: criarPortaSituacoes(banco),
-    prioridades: criarPortaPrioridades(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-    feriadosOficiais,
-  });
-});
+export const casosDeUsoDeChamados = async (): Promise<CasosDeUsoDeChamados> =>
+  (await fabricas()).chamados();
 
 /** Triagem e OS (fase 1a, C3; ADR-027, ADR-029), pelo hk_app. */
-export const casosDeUsoDeTriagem = memo<CasosDeUsoDeTriagem>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeTriagem({
-    triagem: criarPortaTriagem(banco),
-    situacoes: criarPortaSituacoes(banco),
-    prioridades: criarPortaPrioridades(banco),
-    codigos: criarPortaCodigos(banco),
-    categorias: criarPortaCategorias(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-    feriadosOficiais,
-  });
-});
+export const casosDeUsoDeTriagem = async (): Promise<CasosDeUsoDeTriagem> =>
+  (await fabricas()).triagem();
 
 /** Execução da OS pelo Técnico (fase 1a, C4; ADR-025), pelo hk_app. */
-export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeExecucao({
-    execucao: criarPortaExecucao(banco),
-    triagem: criarPortaTriagem(banco),
-    situacoes: criarPortaSituacoes(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-    paradas: criarPortaParadas(banco),
-    uh: criarPortaUhIndisponivel(banco),
-    codigos: criarPortaCodigos(banco),
-    checklists: criarPortaChecklists(banco),
-    prioridades: criarPortaPrioridades(banco),
-    feriadosOficiais,
-  });
-});
+export const casosDeUsoDeExecucao = async (): Promise<CasosDeUsoDeExecucao> =>
+  (await fabricas()).execucao();
 
 /** Listas de chamados e OS, nomes do detalhe e linha do tempo (fase 1a, C7), pelo hk_app. */
-export const casosDeUsoDeConsultas = memo<CasosDeUsoDeConsultas>(async () =>
-  criarCasosDeUsoDeConsultas({ consultas: criarPortaConsultasDaCorretiva(await acessoBanco()) }),
-);
+export const casosDeUsoDeConsultas = async (): Promise<CasosDeUsoDeConsultas> =>
+  (await fabricas()).consultas();
 
 /** Histórico de hotel, local, ativo, chamado e OS (fase 1a, D1), pelo hk_app. */
-export const casosDeUsoDeHistorico = memo<CasosDeUsoDeHistorico>(async () =>
-  criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(await acessoBanco()) }),
-);
+export const casosDeUsoDeHistorico = async (): Promise<CasosDeUsoDeHistorico> =>
+  (await fabricas()).historico();
 
 /** Auditoria geral (fase 1c), pelo hk_app: a gestão, no escopo da RLS de app.auditoria. */
-export const casosDeUsoDeAuditoriaGeral = memo<CasosDeUsoDeAuditoriaGeral>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeAuditoriaGeral({
-    auditoria: criarPortaAuditoriaGeral(banco),
-    historico: criarPortaHistorico(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeAuditoriaGeral = async (): Promise<CasosDeUsoDeAuditoriaGeral> =>
+  (await fabricas()).auditoriaGeral();
 
 /** Avisos de SLA em aberto (1c, ADR-043, M4), pelo hk_app: o painel do hotel e o selo da ficha. */
-export const casosDeUsoDeAvisosDeSla = memo<CasosDeUsoDeAvisosDeSla>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeAvisosDeSla({
-    avisos: criarPortaAvisosDeSla(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    prioridades: criarPortaPrioridades(banco),
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeAvisosDeSla = async (): Promise<CasosDeUsoDeAvisosDeSla> =>
+  (await fabricas()).avisosDeSla();
 
 /** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */
-export const casosDeUsoDeParadas = memo<CasosDeUsoDeParadas>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeParadas({
-    paradas: criarPortaParadas(banco),
-    ativos: criarPortaAtivos(banco),
-    triagem: criarPortaTriagem(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeParadas = async (): Promise<CasosDeUsoDeParadas> =>
+  (await fabricas()).paradas();
 
 /** UH indisponível pelo web (fase 1b, I4): os períodos do chamado, a marcação e a liberação. */
-export const casosDeUsoDeUhIndisponivel = memo<CasosDeUsoDeUhIndisponivel>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeUhIndisponivel({
-    uh: criarPortaUhIndisponivel(banco),
-    chamados: criarPortaChamados(banco),
-    triagem: criarPortaTriagem(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeUhIndisponivel = async (): Promise<CasosDeUsoDeUhIndisponivel> =>
+  (await fabricas()).uhIndisponivel();
 
 /** Ativos do hotel (fase 1a, B3; ADR-029), pelo hk_app. */
-export const casosDeUsoDeAtivos = memo<CasosDeUsoDeAtivos>(async () => {
-  const banco = await acessoBanco();
-  return criarCasosDeUsoDeAtivos({
-    ativos: criarPortaAtivos(banco),
-    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
-    relogio: relogioDoSistema,
-  });
-});
+export const casosDeUsoDeAtivos = async (): Promise<CasosDeUsoDeAtivos> =>
+  (await fabricas()).ativos();
 
 /** Idioma e região do próprio usuário (F0-10b), pelo hk_app. */
-export const casosDeUsoDePreferencias = memo<CasosDeUsoDePreferencias>(async () =>
-  criarCasosDeUsoDePreferencias({ preferencias: criarPortaPreferencias(await acessoBanco()) }),
-);
+export const casosDeUsoDePreferencias = async (): Promise<CasosDeUsoDePreferencias> =>
+  (await fabricas()).preferencias();
 
 /** Operações offline do PWA do técnico (F0-11, ADR-025), pelo hk_app. */
-export const casosDeUsoDeSincronizacao = memo<CasosDeUsoDeSincronizacao>(async () =>
-  criarCasosDeUsoDeSincronizacao({
-    operacoes: criarPortaOperacoesOffline(await acessoBanco()),
-    ativos: await casosDeUsoDeAtivos(),
-    chamados: await casosDeUsoDeChamados(),
-    execucao: await casosDeUsoDeExecucao(),
-    checklists: await casosDeUsoDeChecklists(),
-  }),
-);
+export const casosDeUsoDeSincronizacao = async (): Promise<CasosDeUsoDeSincronizacao> =>
+  (await fabricas()).sincronizacao();
 
 let manipuladores: Record<string, Manipulador> | undefined;
 /** Processa o outbox de um tenant (hk_worker); a rota /api/cron/outbox chama para todos. */

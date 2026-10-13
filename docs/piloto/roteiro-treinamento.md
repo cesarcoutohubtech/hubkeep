@@ -70,6 +70,8 @@ Por hotel, o dia presencial soma cerca de 4 h (B, C e o fechamento). A sessão A
 
 Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**, **Hotéis** (Trazer para implantação, Ativar), **Configuração e políticas** (modelo contratual, nomes da criticidade, códigos obrigatórios no aceite, foto de depois, assinatura no aceite, checklist completo, e o nível bandeira), **Códigos de manutenção** e **Checklists** (só o Admin), **Auditoria** com o CSV (exercício 19; o Gerente também usa). Se o grupo contratar o HubKeep Intelligence **[a confirmar]**, acrescentar o menu do módulo (lista de insights, "Por que estou vendo isso?" e a decisão). As telas só abrem na data da política de abertura (padrão: 60 dias depois da ativação), então o treino do módulo fica para perto dessa data, ou para o grupo de demonstração; antes dela, mostrar ao Admin só a página **Abertura das telas**.
 
+No **grupo de demonstração do Intelligence** (o histórico de seis meses gerado no dev ou no staging), a demonstração usa as telas do Intelligence e os indicadores. A linha do tempo dos chamados (a aba **Histórico** do chamado, da OS e do ativo) e a **Auditoria** mostram a data em que o histórico foi gerado, e não as datas do histórico: elas registram quando o dado entrou de fato (decisão do Cesar de 13/10/2026).
+
 ### Sessão B. Técnicos (2 h, mais 1 h de prática)
 
 | Tempo | Conteúdo |

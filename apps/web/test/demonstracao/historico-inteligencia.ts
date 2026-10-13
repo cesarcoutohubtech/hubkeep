@@ -19,9 +19,18 @@
 //
 // Ainda não grava nada. A gravação (pnpm demo:historico --ambiente
 // dev|staging, com a trava do kit contra produção) passa pelos casos de uso
-// com o relógio do roteiro, numa montagem separada que é do agente da 1b; ela
-// entra aqui depois que essa montagem estiver na main (Cesar e Kaio,
-// 13/10/2026). O grupo base sai do kit (semearDemonstracao), sem mudar o kit.
+// com o relógio do roteiro, na montagem separada do agente da 1b
+// (montagem-com-relogio.ts, montarComRelogio); ela entra aqui depois que essa
+// montagem estiver na main (Cesar e Kaio, 13/10/2026). O grupo base sai do kit
+// (semearDemonstracao), sem mudar o kit.
+//
+// O que o histórico gerado mostra (decisão do Cesar de 13/10/2026): as datas
+// do roteiro vão para o chamado, a OS, as transições, o ativo e as paradas, e
+// o job e os indicadores leem essas datas. A auditoria e o outbox ficam com o
+// relógio do banco, então a linha do tempo dos chamados (aba "Histórico" do
+// chamado, da OS e do ativo) e a auditoria geral mostram a data da geração.
+// A demonstração usa as telas do Intelligence e os indicadores, não a linha do
+// tempo dos chamados.
 import {
   type AcaoDaOs,
   type CategoriaPadrao,

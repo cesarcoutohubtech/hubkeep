@@ -604,3 +604,61 @@ Para a OS corretiva, nada muda. O Cesar deu o ok para seguir depois do PR da mon
 - **Esperando o Cesar:** o ponto do aceite acima.
 - **Nada sem enviar.**
 - **Próxima tarefa:** a parte protegida da PV3, na vez dela (depois da próxima da 1c): a migração de `app.os`, as permissões do worker, os tipos, o repositório, a rota `/api/cron/preventiva` no `vercel.json` e o teste de integração. Primeiro passo: conferir a última migração da `main` e reler a seção "PV3" da `docs/referencia/propostas-desenho-pv-implantacao.md`.
+
+## Montagem com o relógio do roteiro (13/10/2026)
+
+Pedido 2 do Intelligence (atividade 3), com a proposta aprovada pelo Cesar ("Cesar aqui", 13/10/2026): fábricas, montagem fora do código do web, o instante só pela opção, o teste de guarda e a recusa contra produção; a auditoria e o outbox com o relógio do banco. Branch `claude/1b-montagem-relogio`. O PR toca a zona protegida (o teste de guarda e a regex) e abre na vez da 1b, depois da 0046 da 1c.
+
+- **`packages/db`:**
+  - `criarAcessoBanco` ganhou a opção `relogioDoRoteiro`. Com ela, cada unit of work lê o instante uma vez, no início, e os repositórios o gravam pela lista fechada de `repositorios/instante-do-roteiro.ts`:
+    - o `criado_em` e o `atualizado_em` da OS, do ativo, da parada e da UH indisponível;
+    - o `atualizado_em` do chamado (o `criado_em` já era a hora da abertura, ADR-042);
+    - o `desativado_em` do ativo;
+    - a `os_transicao.quando` sem a hora do aparelho.
+  - A proposta listava só o `atualizado_em` da parada e da UH. O `criado_em` das duas foi junto, para a linha não nascer no dia da geração e mudar no passado.
+  - Sem a opção, que é o caso do web, o SQL é o de antes, com o `now()` e o default da coluna.
+  - Teste sem banco (`test/instante-do-roteiro.test.ts`), com o pool falso:
+    - sem a opção, o SQL não traz as colunas;
+    - com ela, o instante vai nos parâmetros e é lido uma vez por unidade;
+    - a auditoria fica com o default do banco nos dois casos.
+- **Web:**
+  - a fiação dos casos de uso do hk_app saiu da `composicao.ts` para `src/servidor/fabricas.ts` (`criarFabricas`);
+  - a composição chama as fábricas uma vez, com o `relogioDoSistema`, e mantém as mesmas exportações;
+  - ficam na composição os convites, os anexos, a ingestão, o worker e o Intelligence.
+- **Montagem** (`apps/web/test/demonstracao/montagem-com-relogio.ts`, `montarComRelogio({ relogio })`):
+  - devolve os casos de uso do pedido:
+    - cadastros: bandeiras, hotéis, locais, categorias, códigos, fornecedores, ativos e configuração;
+    - chamados, triagem, execução, paradas, sincronização e checklists;
+  - abre um acesso ao banco próprio, com o hk_app;
+  - recusa, antes de conectar:
+    - a Vercel (`VERCEL_ENV` ou `VERCEL`);
+    - o ref de `HK_REF_PRODUCAO`, mesmo que estivesse na lista;
+    - um projeto fora de `[remotes.dev]` e `[remotes.staging]`;
+    - um host remoto sem ref.
+  - O Postgres local da CI passa.
+- **Testes:**
+  - `montagem-com-relogio.test.ts`:
+    - a recusa, sem rede;
+    - na CI, o ativo cadastrado e desativado pela montagem tem as datas do roteiro, e a auditoria, a data real.
+  - **Guarda** (`tests/relogio-do-roteiro-fora-do-web.test.ts`, na regex da zona protegida, no ADR-023 e no `CLAUDE.md`). Ele confere quatro coisas:
+    1. nada do código em funcionamento importa a montagem;
+    2. no web, só a composição importa as fábricas, numa chamada só, com o relógio do sistema;
+    3. a opção só aparece no `packages/db` e na montagem;
+    4. controle: a montagem usa a opção e as fábricas.
+  - Conferi que a guarda reprova um arquivo de `apps/web/src` que importa a montagem e usa a opção.
+- **Textos (decisão do Cesar):** no histórico gerado, a linha do tempo dos chamados mostra a data da geração, e a demonstração usa as telas do Intelligence e os indicadores. Isso foi escrito:
+  - no cabeçalho do gerador (`historico-inteligencia.ts`, do agente do Kaio: só o comentário, por pedido do Cesar);
+  - no `docs/piloto/roteiro-treinamento.md`;
+  - no `docs/10`.
+- **Para o agente do Kaio:** a gravação do gerador usa `montarComRelogio({ relogio })` e avança o relógio entre as operações. O relógio é lido no início de cada unit of work, então cada operação grava o instante em que o relógio estava quando ela começou.
+
+### Também no PR da montagem (decisões do Cesar de 13/10/2026)
+
+- **Regra do Dependabot** (proposta da seção "Decisões do Cesar: montagem, fila e Dependabot", aprovada com o teste de guarda):
+  - o `dependabot.yml` com o grupo mensal das actions, os dois grupos semanais do npm (`zona-protegida-da-semana` primeiro, `versoes-da-semana` depois, os dois só com versões menores e correções) e o `ignore` da versão maior do TypeScript até o `typescript-eslint` aceitar o TS 7;
+  - o teste de guarda `tests/dependabot-zona-protegida.test.ts`, que entra na regex da zona, no `CLAUDE.md` e no ADR-023. Conferi que ele reprova quando uma dependência do `auth-admin` sai do grupo;
+  - a regra registrada no ADR-032 (condição 3).
+- **ADR-041, decisão 10:** os dois detalhes da PV3a aprovados pelo Cesar (a OS concluída esperando o aceite não segura a próxima; o ativo cadastrado depois da data prevista espera a próxima ocorrência).
+- **Merge da `main` até o #239:** os avisos de SLA da 1c (#232) entraram nas fábricas, como os outros casos de uso que só usam o banco e o relógio. O `aceite.ts` novo da 1c (#237, aceite automático pelo worker) continua com o `now()` do banco: ele não roda no roteiro.
+- **Build do PWA na CI:** aprovado pelo Cesar no chat (13/10/2026: "build do PWA Aprovado", confirmado depois com "Cesar aqui. Merge e db push pronto. Continue"). O passo "Build do PWA" (`pnpm --filter @hubkeep/tecnico build`) entra no job "lint, typecheck e testes" do `ci.yml`, depois do `pnpm test`, e a regra fica no ADR-032, junto com a do Dependabot.
+- **Vez da 1b:** o Cesar mergeou o #237 (0046) e fez o `db push` ("Cesar aqui", 13/10/2026). Nenhum outro PR aberto no repositório; o PR da montagem abre agora.
