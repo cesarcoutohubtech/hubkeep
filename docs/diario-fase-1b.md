@@ -565,3 +565,12 @@ Hoje a CI roda lint, typecheck e testes, mas nenhum build. Uma versão maior de 
 **Esperando o Cesar:**
 - aprovar ou não o build do PWA na CI;
 - o aviso do `db push` da 0046, para abrir o PR da montagem.
+
+## PV3b — a OS preventiva na máquina de estados e na fila do dia (13/10/2026)
+
+**Aviso de área compartilhada com a 1c:** a PV3b mexe na OS:
+- a máquina de estados em `packages/dominio/src/corretiva.ts`, onde `decidirNaOs` passa a aceitar a OS sem chamado;
+- o caso de uso da execução em `packages/aplicacao`;
+- o contrato da fila do dia em `packages/contratos`.
+
+Para a OS corretiva, nada muda. O Cesar deu o ok para seguir depois do PR da montagem ("Cesar aqui", 13/10/2026). Trabalho na branch `claude/1b-pv3b` e trago a `main` com frequência.
