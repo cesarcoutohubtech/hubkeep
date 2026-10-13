@@ -54,10 +54,12 @@ const ChaveDeExtensao = z
 
 const EscopoDePolitica = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('grupo') }),
+  /** A bandeira (1c): vale para os hotéis dela, abaixo do hotel e acima do grupo. */
+  z.object({ tipo: z.literal('bandeira'), bandeiraId: z.guid() }),
   z.object({ tipo: z.literal('hotel'), hotelId: z.guid() }),
 ]);
 
-/** Valor null: o escopo volta a herdar (grupo → padrão; hotel → grupo). */
+/** Valor null: o escopo volta a herdar (grupo → padrão; bandeira → grupo; hotel → bandeira do hotel ou grupo). */
 const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
   z.object({
     chave: z.literal('os.aceite_automatico'),
@@ -102,12 +104,14 @@ export const PedidoDePolitica = z
   ])
   .meta({ id: 'PedidoDePolitica' });
 
-const Origem = z.enum(['hotel', 'grupo', 'padrao']);
+const Origem = z.enum(['hotel', 'bandeira', 'grupo', 'padrao']);
 const resolvida = <C extends string, V extends z.ZodType>(chave: C, valor: V) =>
   z.object({
     chave: z.literal(chave),
     padrao: valor,
     grupo: valor.nullable(),
+    /** O valor da bandeira do hotel; nulo sem hotel, sem bandeira ou sem valor. */
+    bandeira: valor.nullable(),
     hotel: valor.nullable(),
     efetiva: valor,
     origem: Origem,
@@ -157,6 +161,8 @@ export const RespostaDeConfiguracao = z
         nome: z.string(),
         ...CamposDoHotel,
         modeloContratual: ModeloContratualApi,
+        /** A bandeira do hotel (1c), cujo nível de política vale para ele. */
+        bandeira: z.object({ id: z.guid(), nome: z.string() }).nullable(),
       })
       .nullable(),
     politicas: z.array(

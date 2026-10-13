@@ -1,6 +1,7 @@
 // Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026), na
 // unit of work, com auditoria. A RLS decide por último: só o Admin do grupo
-// altera app.tenant, app.hotel e app.politica.
+// altera app.tenant, app.hotel e app.politica. A política com escopo de
+// bandeira (1c) leva o bandeira_id; a bandeira precisa ser do tenant.
 import type {
   ConfiguracaoDoTenant,
   EscopoDePolitica,
@@ -81,12 +82,25 @@ export async function gravarPolitica(
   if (!uow.usuarioId) throw new Error('Política exige um usuário na sessão.');
   const tx = transacaoDe(uow);
   const hotelId = escopo.tipo === 'hotel' ? escopo.hotelId : null;
+  const bandeiraId = escopo.tipo === 'bandeira' ? escopo.bandeiraId : null;
+  if (bandeiraId) {
+    // A FK composta recusaria a bandeira de outro tenant com erro de banco; aqui vira 404.
+    const bandeira = await tx
+      .selectFrom('app.bandeira')
+      .select('id')
+      .where('id', '=', bandeiraId)
+      .executeTakeFirst();
+    if (!bandeira) throw new NaoEncontrado('bandeira_nao_encontrada', 'Bandeira não encontrada.');
+  }
   let busca = tx
     .selectFrom('app.politica')
     .select(['id', 'valor', 'ativa'])
     .where('chave', '=', chave)
     .where('escopo_tipo', '=', escopo.tipo);
   busca = hotelId ? busca.where('hotel_id', '=', hotelId) : busca.where('hotel_id', 'is', null);
+  busca = bandeiraId
+    ? busca.where('bandeira_id', '=', bandeiraId)
+    : busca.where('bandeira_id', 'is', null);
   const existente = await busca.executeTakeFirst();
   let id: string;
   if (existente) {
@@ -111,6 +125,7 @@ export async function gravarPolitica(
         id,
         tenant_id: uow.tenantId,
         escopo_tipo: escopo.tipo,
+        bandeira_id: bandeiraId,
         hotel_id: hotelId,
         chave,
         valor: JSON.stringify(valor),
@@ -124,6 +139,6 @@ export async function gravarPolitica(
     acao: valor === null ? 'voltar_a_herdar' : 'gravar',
     hotelId,
     antes: existente ? { valor: existente.valor, ativa: existente.ativa } : null,
-    depois: { chave, escopo: escopo.tipo, valor },
+    depois: { chave, escopo: escopo.tipo, ...(bandeiraId ? { bandeiraId } : {}), valor },
   });
 }
