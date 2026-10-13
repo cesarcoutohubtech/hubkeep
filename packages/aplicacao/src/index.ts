@@ -248,6 +248,17 @@ export { termoDeBusca, textoDeBusca } from './busca';
 export type { LinhaDeAuditoria, PortaHistorico, ReferenciaDoHistorico } from './portas/historico';
 export { criarCasosDeUsoDeHistorico } from './casos-de-uso/historico';
 export type {
+  FiltroDaAuditoria,
+  LinhaDaAuditoriaGeral,
+  PortaAuditoriaGeral,
+} from './portas/auditoria-geral';
+export { criarCasosDeUsoDeAuditoriaGeral } from './casos-de-uso/auditoria-geral';
+export type {
+  CasosDeUsoDeAuditoriaGeral,
+  LinhaComMudancas,
+  PaginaDaAuditoria,
+} from './casos-de-uso/auditoria-geral';
+export type {
   CasosDeUsoDeHistorico,
   EventoDoHistorico,
   HistoricoDoRegistro,

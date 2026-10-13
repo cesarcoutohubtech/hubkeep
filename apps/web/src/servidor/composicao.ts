@@ -14,6 +14,7 @@ import {
   type CasosDeUsoDeParadas,
   type CasosDeUsoDeUhIndisponivel,
   type CasosDeUsoDeConsultas,
+  type CasosDeUsoDeAuditoriaGeral,
   type CasosDeUsoDeHistorico,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
@@ -37,6 +38,7 @@ import {
   criarCasosDeUsoDeParadas,
   criarCasosDeUsoDeUhIndisponivel,
   criarCasosDeUsoDeConsultas,
+  criarCasosDeUsoDeAuditoriaGeral,
   criarCasosDeUsoDeHistorico,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
@@ -76,6 +78,7 @@ import {
   criarPortaConsultasDaCorretiva,
   criarPortaDoJobDoIntelligence,
   criarPortaDoPainelDoIntelligence,
+  criarPortaAuditoriaGeral,
   criarPortaHistorico,
   criarPortaPrioridades,
   criarPortaSituacoes,
@@ -435,6 +438,17 @@ export const casosDeUsoDeConsultas = memo<CasosDeUsoDeConsultas>(async () =>
 export const casosDeUsoDeHistorico = memo<CasosDeUsoDeHistorico>(async () =>
   criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(await acessoBanco()) }),
 );
+
+/** Auditoria geral (fase 1c), pelo hk_app: a gestão, no escopo da RLS de app.auditoria. */
+export const casosDeUsoDeAuditoriaGeral = memo<CasosDeUsoDeAuditoriaGeral>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeAuditoriaGeral({
+    auditoria: criarPortaAuditoriaGeral(banco),
+    historico: criarPortaHistorico(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
 
 /** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */
 export const casosDeUsoDeParadas = memo<CasosDeUsoDeParadas>(async () => {

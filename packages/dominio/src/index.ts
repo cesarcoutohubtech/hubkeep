@@ -370,3 +370,15 @@ export type {
   TipoDeReferencia,
   ValorAuditado,
 } from './auditoria';
+export {
+  ENTIDADES_DA_AUDITORIA,
+  LIMITES_DA_AUDITORIA,
+  PAPEIS_DA_AUDITORIA_GERAL,
+  ehEntidadeDaAuditoria,
+  escreverCursorDaAuditoria,
+  lerCursorDaAuditoria,
+  mudancasDaLinhaDeAuditoria,
+  podeVerAuditoriaGeral,
+  validarPeriodoDaAuditoria,
+} from './auditoria-geral';
+export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
