@@ -597,3 +597,28 @@ Segundo PR das telas do SLA, depois da tela das políticas (#246). Segue o ADR-0
   - o Cesar: o merge do #250, depois o do #248;
   - as aprovações do glossário (Cesar e Kaio). As divergências a, b, d e e já têm decisão (#242).
 - **Próxima tarefa:** conferir no `docs/13-plano-fase-1c.md` o que falta do item 4 (monitor) depois do M4 e do M5, e então o item 5 (comunicação: o e-mail e o push dos avisos de SLA). Primeiro passo: comparar a seção dos itens 4 e 5 do plano com o que já está na `main`.
+
+## Monitor e comunicação: o que falta (13/10/2026)
+
+**Item 4 (monitor de SLA):** completo na `main`, com as decisões M1 a M5:
+- o `app.sla_alerta` e o monitor no cron do SLA;
+- a política `chamado.escalonamento` e a tela dela (#246);
+- o painel dos avisos e o selo (M4);
+- o aceite automático (M5).
+
+A entrega do escalonamento à central por e-mail e push é o item 5. Até lá, o evento `chamado.sla_alerta` fica no outbox sem consumidor.
+
+**Item 5 (comunicação):** não existe nada além do convite pelo Supabase Auth. Não há provedor de e-mail, adaptador da `EnviadorDeEmail`, push nem recuperação de senha.
+- Escrevi a proposta `docs/referencia/propostas-comunicacao-1c.md`, com as decisões C1 a C9, para o Cesar.
+- Ela tem duas tabelas novas, `app.envio_notificacao` e `app.inscricao_push`. A migração delas é zona protegida e só abre depois da aprovação, na vez do Cesar.
+- A C6 (o idioma dos avisos) muda a decisão de 25/09, se o Cesar escolher a recomendação.
+- O provedor e o DNS do domínio de envio são da F0-12, com o Cesar.
+
+### Ponto de retomada (13/10/2026, comunicação)
+- **`main`:** com o #250 (a correção do typecheck) e o #248 (a troca de categoria na triagem). O #248 entrou com o job "pgTAP" (que roda a integração do `packages/db`) ainda em andamento, e ele terminou verde depois do merge.
+- **Dev:** com a 0046.
+- **PR da 1c:** o desta proposta, só de documento.
+- **Esperando o Cesar:**
+  - as decisões C1 a C9 da comunicação;
+  - as aprovações do glossário (Cesar e Kaio).
+- **Próxima tarefa:** com as decisões, o ADR da comunicação e a migração das duas tabelas (zona protegida, um PR por vez). Primeiro passo: conferir no GitHub se há PR de zona protegida aberto. Enquanto as decisões não chegam, o item 6 (arrendado mínimo, com as decisões 5 a 8 já aprovadas) pode andar na branch, sem o aviso por e-mail.
