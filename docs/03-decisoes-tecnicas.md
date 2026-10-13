@@ -1210,7 +1210,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-044 — Aceite automático da OS concluída, gravado pelo worker
 
-**Status:** aguarda aprovação. O desenho foi aprovado por Cesar em 13/10/2026, no chat do agente da 1c ("Aprovo o M5 conforme recomendado"), e está no `docs/diario-fase-1c.md` (seção "Aceite automático (M5): proposta para o Cesar"). O texto deste ADR veio depois dessa aprovação.
+**Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c ("Aprovo o ADR-044"). O desenho já tinha sido aprovado por ele no mesmo dia ("Aprovo o M5 conforme recomendado") e está no `docs/diario-fase-1c.md` (seção "Aceite automático (M5): proposta para o Cesar").
 
 **Contexto:**
 - A política `os.aceite_automatico` existe desde a 1a, desligada por padrão (7 dias, de 1 a 60), com a herança hotel → bandeira → grupo → padrão (ADR-026). O job que a executa ficou para a 1c, com o SLA (M5 do ADR-043).

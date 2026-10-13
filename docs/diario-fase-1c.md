@@ -507,17 +507,20 @@ O check `os_transicao_sem_autor_so_no_aceite_automatico` exige o usuário nulo n
 
 **Aviso ao Intelligence:** a transição do aceite automático tem a ação nova `aceitar_automatico`, de `concluida` para `aceita`, sem usuário. O evento continua `os.aceita`, com `automatico: true`. Quem conta aceites pela ação `aceitar` precisa contar as duas. A OS aceita automaticamente fica sem custo informado, o que pesa na cobertura do custo do glossário.
 
-### Ponto de retomada (13/10/2026, M5)
-- **`main`:** com o #227 (prazos na ficha), o #222 (PV2b da 1b) e o #228 (`setup-node` 7.1.0). A 0045 da 1b já está no dev.
-- **PRs da 1c esperando o merge do Cesar, verdes:**
-  - #230: revisão do glossário;
-  - #232: painel dos avisos de SLA (M4).
+### ADR-044 aprovado e a vez da zona protegida (13/10/2026)
 
-  Os dois mexem no fim deste diário. Depois de cada merge, a outra branch junta a `main`.
-- **Não enviado como PR:**
-  - `claude/1c-aceite-automatico`: o ADR-044, a 0046, os pgTAP e o tipo da transição. É zona protegida, e o PR só abre depois que o #231 do Dependabot sair (ele toca o `packages/auth-admin/package.json`), na vez que o Cesar der;
-  - `claude/1c-aceite-automatico-codigo`: o código do M5. O PR abre depois do merge da 0046 e do `db push`, com a branch refeita a partir da `main`.
+Cesar, no chat do agente da 1c: "Aprovo o ADR-044. Atualize o status." O status no `docs/03` passou a "aprovado". Na mesma mensagem, ele deu a vez da zona protegida à 1c para o PR da 0046.
+
+**A `main` ficou vermelha.** O #231 do Dependabot foi mergeado (`bca63c1`) e subiu o TypeScript para a 7.0.2. O `typescript-eslint` 8.71 não suporta a 7.0, e o `pnpm lint` falha na `main`. A correção é o #236, fora da zona protegida: o TypeScript volta a `~6.0.3`, com o lockfile regenerado. Ela entra antes de qualquer outro merge. Até lá, o lint deste PR também falha, pelo mesmo motivo. Para o Dependabot não propor o TypeScript 7 de novo, falta um `ignore` no `.github/dependabot.yml`, que é zona protegida.
+
+### Ponto de retomada (13/10/2026, M5)
+- **`main`:** vermelha desde o #231 (TypeScript 7.0.2 quebra o lint). A correção é o #236, que entra antes de qualquer outro merge. Já entraram o #229, o #230 e o #233.
+- **PRs da 1c:**
+  - #236: a correção da `main`;
+  - #232: painel dos avisos de SLA (M4), esperando o merge do Cesar depois do #236;
+  - o PR de zona protegida da 0046 e do ADR-044 (aprovado), aberto com a vez dada pelo Cesar.
+- **Não enviado como PR:** `claude/1c-aceite-automatico-codigo`, o código do M5. Abre depois do merge da 0046 e do `db push`, com a branch refeita a partir da `main`.
 - **Esperando:**
-  - o Cesar: a vez do PR de zona protegida da 0046 e a aprovação do texto do ADR-044;
-  - o agente do Kaio: a resposta à revisão do glossário.
-- **Próxima tarefa:** com a fila livre, abrir o PR da 0046 a partir de `claude/1c-aceite-automatico`, depois de juntar a `main`. Enquanto isso, as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
+  - o Cesar: o merge do #236, depois o do #232, o da 0046 e o `db push`;
+  - o agente do Kaio: a resposta à revisão do glossário (o #230 já está na `main`).
+- **Próxima tarefa:** as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
