@@ -73,6 +73,7 @@ import {
   RespostaDeOsGravada,
   RespostaDeReaberturaDeOs,
 } from './chamados';
+import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
@@ -1528,6 +1529,22 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Registro fora do escopo (registro_nao_encontrado, com a entidade).'),
       422: ERRO('Entidade ou id fora do formato (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/auditoria/geral',
+    resumo:
+      'A auditoria geral (1c): toda a auditoria que a gestão enxerga, da mais nova para a mais antiga, por período (até 92 dias), hotel, tipo de registro, ação e pessoa, em páginas de 50 linhas por cursor estável (em, id). Com exportacao=1, a página tem 1.000 linhas, e o navegador junta o CSV até 50 mil. Só o Admin do grupo, o Gestor CSC e o Gerente do hotel, este só nos hotéis dele; as linhas sem hotel seguem a RLS (ADR-021). Os ids das mudanças vêm com o nome em referencias, quando quem pede os lê.',
+    exigeTenant: true,
+    consulta: ConsultaDaAuditoriaGeral,
+    respostas: {
+      200: { descricao: 'Página da auditoria', esquema: RespostaDaAuditoriaGeral },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão (auditoria_sem_permissao).'),
+      422: ERRO(
+        'Período acima de 92 dias ou com o fim antes do início (auditoria_periodo_invalido, com maximoDias), cursor inválido (auditoria_cursor_invalido) ou filtro fora do formato (entrada_invalida).',
+      ),
     },
   },
   {

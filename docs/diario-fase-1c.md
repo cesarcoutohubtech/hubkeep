@@ -167,17 +167,56 @@ A tabela está no `docs/13`. Ele também autorizou adiantar a auditoria geral ("
   - os dois índices da auditoria;
   - a correção do ADR-021 e do `docs/13` sobre o Implantador (decisão 14).
 
+## Auditoria geral (13/10/2026)
+
+Item 7 da ordem, adiantado com a autorização do Cesar ("Pode sim"). PR fora da zona protegida, sem migração, na branch `claude/1c-auditoria-geral`. Segue o item 4 de `docs/referencia/propostas-desenho-1c.md`, com as decisões 12 a 14.
+- **Domínio** (`packages/dominio/src/auditoria-geral.ts`):
+  - **quem tem a tela:** `podeVerAuditoriaGeral`, com a gestão vigente: o Admin do grupo, o Gestor CSC e o Gerente do hotel;
+  - **o período:** até 92 dias, com o fim depois do início;
+  - **o cursor:** `em~id`, com o `em` exato em UTC e microssegundos. O `Date` do JavaScript perde os microssegundos, e o cursor pularia ou repetiria linhas do mesmo milissegundo;
+  - **as mudanças:** saem como no histórico por registro, sem o detalhe da ativação bloqueada;
+  - **`ENTIDADES_DA_AUDITORIA`:** as 28 entidades que a aplicação grava na auditoria.
+- **Aplicação:** a porta e o caso de uso, com uma linha a mais para saber se há página seguinte. A tela pede 50 por página e a exportação pede 1.000; as referências vêm pela porta do histórico.
+- **Banco** (`packages/db/src/auditoria-geral.ts`):
+  - a RLS de `app.auditoria` decide o que cada um lê, sem policy nova;
+  - a consulta fica com os hotéis da gestão, por `authz.hoteis_com_papel`, como em `consultas.ts` (ADR-017). Assim, o Gerente que também é Técnico de outro hotel não vê esse outro hotel aqui (decisão 12);
+  - as linhas sem hotel ficam só pela RLS.
+- **API:** `GET /api/v1/auditoria/geral`, no OpenAPI, com 403 `auditoria_sem_permissao`, 422 `auditoria_periodo_invalido` (com `maximoDias`) e 422 `auditoria_cursor_invalido`.
+- **Tela** (`/admin/auditoria`, no menu de configuração):
+  - os filtros, a tabela, o "carregar mais" e o detalhe do antes e depois na linha, com a tradução do histórico (o formatador de valores do `HistoricoDoRegistro` virou fábrica, para a exportação);
+  - a lista de ações e de pessoas do filtro é a das linhas já carregadas.
+- **CSV no navegador:**
+  - a resposta de uma função da Vercel tem limite de tamanho (4,5 MB), e 50 mil linhas passariam dele. Por isso, a exportação pede páginas de 1.000 e junta o arquivo no navegador, com o texto do mesmo catálogo da tela;
+  - o arquivo leva o BOM, o separador pelo formato regional de quem exporta (`separadorDeCsv`, em `@hubkeep/i18n`) e as linhas em CRLF;
+  - o texto que começa como fórmula ganha um apóstrofo;
+  - acima de 50 mil linhas, a exportação para e pede menos período ou mais filtros.
+- **Catálogo:** o nome das 28 entidades, as ações comuns das entidades sem histórico próprio, os textos da tela e os três erros, nos quatro idiomas.
+- **`docs/13`:** corrigido sobre o Implantador (decisão 14). O texto do ADR-021 entra no próximo PR de zona protegida da 1c, junto com a tabela do monitor e os índices da auditoria.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos:
+    - o domínio (`auditoria-geral.test.ts`);
+    - a aplicação, com as portas em memória;
+    - a paridade das entidades com os repositórios, a API e o catálogo (`tests/auditoria-entidades.test.ts`);
+    - a tela nos quatro idiomas e o CSV;
+    - o separador do CSV;
+  - na CI, com o Supabase do runner: `packages/db/test/auditoria-geral.test.ts`. Ele cobre o Gerente que também é Técnico, a auditoria sem hotel, o Técnico sem a tela, os filtros e o cursor no mesmo milissegundo;
+  - a tela não foi vista no navegador.
+
 ## Ponto de retomada (13/10/2026)
 
-- **Feito:**
-  - o glossário em proposta;
-  - o PR do SLA (migração 0043, pgTAP 035 e ADR-042), mergeado no #206.
+- **Feito e mergeado pelo Cesar:**
+  - o nível bandeira (#204);
+  - a migração 0043 e o ADR-042 (#206);
+  - o domínio do calendário de SLA e o glossário, na segunda versão (#205).
+- **Aberto:** a auditoria geral, no PR "1c: auditoria geral", fora da zona protegida.
 - **Próximo:**
-  1. o PR do SLA (migração 0043 e ADR-042) foi mergeado pelo Cesar no #206, em 13/10/2026; o `db push` é dele, e a conferência do dev é do agente da 1b. A vez seguinte na fila de zona protegida é da PV2, da 1b;
-  2. o nível bandeira (item 2) foi mergeado pelo Cesar no #204, em 13/10/2026;
-  3. o domínio do calendário está no PR "1c: domínio do calendário de SLA" (#205), com `MOTIVOS_DE_PAUSA` em `tests/valores-canonicos-banco.test.ts`, à espera do merge do Cesar;
-  4. depois do `db push` da 0043: a porta `FeriadosOficiais` com a `date-holidays`, a gravação dos prazos (abertura, triagem e retomada) e o motivo da pausa no PWA, com o catálogo;
-  5. em seguida, o item 4 da ordem: o monitor de SLA e o escalonamento, quando o Cesar decidir as cinco decisões.
-- **Esperando:**
-  - o Kaio, nos quatro pontos do glossário e no volume do teste de carga;
-  - o Cesar, nas cinco decisões do monitor de SLA (item 4) e na meta de tempo do painel (decisão 9).
+  1. depois do `db push` da 0043, que é do Cesar, com a conferência do dev pelo agente da 1b:
+     - a porta `FeriadosOficiais` com a `date-holidays`;
+     - a gravação dos prazos na abertura, na triagem e na retomada;
+     - o motivo da pausa no PWA, com o catálogo;
+  2. o monitor de SLA (M1 a M5), com o PR de zona protegida na vez da 1c, depois da PV2. O PR leva:
+     - a tabela `app.sla_alerta` e o ADR do monitor;
+     - os dois índices da auditoria;
+     - o texto do ADR-021 (decisão 14);
+  3. depois do monitor, o job do aceite automático (M5).
+- **Esperando:** o Kaio, nos quatro pontos do glossário e no volume do teste de carga.

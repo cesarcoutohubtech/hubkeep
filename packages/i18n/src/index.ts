@@ -27,7 +27,7 @@ export type { Chave, Mensagens } from './catalogos';
 export { EXPANSAO_PSEUDO, pseudoMensagem } from './pseudo';
 export { criarTradutor, localeDoMotor } from './tradutor';
 export type { Tradutor, ValoresDeMensagem } from './tradutor';
-export { criarFormatador } from './formatacao';
+export { criarFormatador, separadorDeCsv } from './formatacao';
 export type { Formatador } from './formatacao';
 export { emailDeConvite, escaparHtml } from './emails';
 export type { DadosDoConvite, Email } from './emails';

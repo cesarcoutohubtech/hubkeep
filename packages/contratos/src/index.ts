@@ -254,3 +254,9 @@ export {
   ReferenciaDoHistoricoApi,
   RespostaDoHistorico,
 } from './historico';
+export {
+  ConsultaDaAuditoriaGeral,
+  ENTIDADES_DA_AUDITORIA_API,
+  LinhaDaAuditoriaGeralApi,
+  RespostaDaAuditoriaGeral,
+} from './auditoria-geral';
