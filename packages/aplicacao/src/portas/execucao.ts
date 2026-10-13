@@ -33,6 +33,7 @@ export interface OsDoDia {
   checklist: ChecklistDaOs | null;
   /** A política os.checklist_completo_obrigatorio do hotel, resolvida (PV1). */
   checklistCompletoObrigatorio: boolean;
+  /** O chamado da corretiva; null na OS preventiva (PV3), que não tem chamado. */
   chamado: {
     id: string;
     descricao: string;
@@ -50,7 +51,24 @@ export interface OsDoDia {
     paradaDoChamado: boolean;
     /** Início do período aberto da UH do chamado (I4); null se a UH não está indisponível. */
     uhIndisponivelDesde: Date | null;
-  };
+  } | null;
+  /** A OS preventiva (PV3, ADR-041): o plano, a data prevista, o ativo e o local; null na corretiva. */
+  preventiva: PreventivaDoDia | null;
+}
+
+/** O que a fila do dia mostra da OS preventiva, que não tem chamado (PV3). */
+export interface PreventivaDoDia {
+  planoId: string;
+  /** O nome do plano na cópia gravada na OS (ADR-026). */
+  planoNome: string;
+  /** A data prevista da ocorrência (AAAA-MM-DD), no fuso do hotel. */
+  dataPrevista: string;
+  ativoId: string;
+  ativoNome: string;
+  localId: string;
+  localNome: string;
+  /** Edificação do local (I2); null: não informada. */
+  localEdificacao: string | null;
 }
 
 /** A OS do dia como sai do banco: sem as políticas, com o checklist cru. */

@@ -328,7 +328,7 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
     expect(await abertasDo(A2)).toBe(1);
     const naFila = (await execucao.osDoDia(ctx(U.tecnico))).find((o) => o.id === osId);
     expect(naFila?.chamado).toMatchObject({ ativoId: A2 });
-    expect(naFila?.chamado.paradoDesde).toBeInstanceOf(Date);
+    expect(naFila?.chamado?.paradoDesde).toBeInstanceOf(Date);
 
     await expect(registrar(osId)).rejects.toMatchObject({ codigo: 'parada_ja_aberta' });
 
@@ -421,7 +421,7 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
     const { osId } = await osEmExecucao(A4);
     await registrar(osId);
     const [daFila] = (await execucao.osDoDia(ctx(U.tecnico))).filter((o) => o.id === osId);
-    expect(daFila?.chamado.paradaDoChamado).toBe(true);
+    expect(daFila?.chamado?.paradaDoChamado).toBe(true);
     const chave = randomUUID();
     const primeira = await concluir(osId, true, chave);
     expect(primeira.resposta).toMatchObject({ estado: 'concluida', paradaEncerrada: true });

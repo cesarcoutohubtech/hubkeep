@@ -1602,6 +1602,8 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             paradaDoChamado: o.parada_do_chamado,
             uhIndisponivelDesde: o.uh_indisponivel_desde,
           },
+          // A OS preventiva entra com a migração da PV3 (app.os.plano_id).
+          preventiva: null,
         }));
       }),
   };

@@ -7,8 +7,12 @@
 // guardado só troca quando a API responde de novo.
 import type { OsDoDiaApi } from '@hubkeep/contratos';
 
-/** A guardada antes da I8 não tem as fotos "depois" nem a política da foto (opcionais). */
-export type OsGuardada = OsDoDiaApi;
+/**
+ * A guardada antes da I8 não tem as fotos "depois" nem a política da foto
+ * (opcionais). Por ora, o PWA guarda só a corretiva, com chamado: ele não pede
+ * a OS preventiva (preventiva=1) até a tela dela existir (PV3).
+ */
+export type OsGuardada = OsDoDiaApi & { chamado: NonNullable<OsDoDiaApi['chamado']> };
 
 export interface OsDoDiaGuardadas {
   usuarioId: string;
