@@ -319,6 +319,31 @@ Segundo PR do aviso de área compartilhada, na branch `claude/1c-sla-pausa`, fei
   - no local, lint, typecheck e testes passaram;
   - o cenário novo do `packages/db/test/sla-prazos.test.ts` roda só na CI. Ele cobre a pausa com "aguardando peça", que estende a solução em 2 h e soma 7.200 s, com o motivo na transição e o antes e o depois na auditoria, e o "fim de turno", que não muda nada.
 
+## Decisões do Cesar: licença, Dependabot e ADR-043 (13/10/2026)
+
+Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
+1. **Licença dos feriados:** aceita a `date-holidays`. O ADR-042 é corrigido no próximo PR de zona protegida da 1c, com quatro pontos:
+   - os dados são CC BY-SA 3.0, e o código tem a licença própria;
+   - a atribuição está no `AVISOS-DE-TERCEIROS.md`;
+   - o servidor só consulta as datas, sem redistribuir o conjunto de dados;
+   - antes de usar a biblioteca para outros países, a licença passa por revisão jurídica.
+
+   Ele também pediu uma issue no repositório da biblioteca sobre o 20 de novembro em SP e no RJ.
+2. **Dependabot:** o ecossistema npm entra no `dependabot.yml`, no mesmo PR de zona protegida, com três regras:
+   - as atualizações de versão vêm agrupadas num PR só por semana;
+   - há limite de PRs abertos;
+   - as de segurança ficam sempre separadas.
+3. **ADR-043:** "Aprovo o ADR-043". Ele também rodou o `db push` da 0044. O #219 ele mergeia quando a CI ficar verde.
+
+**Feito:** na branch `claude/1c-adr-licenca-dependabot`, com três mudanças:
+- a correção da licença no ADR-042;
+- o status do ADR-043 ("aprovado", com a data e onde foi escrito);
+- o npm no `dependabot.yml`, com o grupo semanal só para as atualizações de versão (`applies-to: version-updates`) e o limite de 5 PRs abertos. As de segurança ficam de fora do grupo e saem separadas.
+
+O PR abre na vez da 1c, depois da PV2.
+
+**Issue na `date-holidays`:** o GitHub desta sessão só alcança o `hubkeep`, então não dá para abrir issue no repositório da biblioteca (`commenthol/date-holidays`). O texto pronto, em inglês, foi entregue ao Cesar no chat. A causa está nos dados: no `data/countries/BR.yaml`, a entrada estadual do 20 de novembro de SP e a do RJ terminam em 21/12/2023 e se sobrepõem à nacional.
+
 ## Prazos de SLA na ficha do chamado (13/10/2026)
 
 **Aviso de área compartilhada (chamado):** a 1c vai mexer na ficha do chamado no web (`ChamadoEmDetalhe`, em `apps/web/src/cliente/corretiva.tsx`) e no catálogo. Só acrescenta linhas no painel do chamado; não muda contrato, caso de uso nem banco. Branch `claude/1c-prazos-na-ficha`, a partir da `main`.
