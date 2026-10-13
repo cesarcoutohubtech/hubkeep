@@ -68,7 +68,7 @@ Por hotel, o dia presencial soma cerca de 4 h (B, C e o fechamento). A sessão A
 | 1:50 a 2:10 | **Paradas a encerrar** e **UH indisponível** (exercícios 7 e 14) |
 | 2:10 a 2:30 | Cadastros do hotel: Locais (com edificação), Equipes, Ativos (com compra, garantia e criticidade), **Fornecedores**, **Ver QR**; dúvidas |
 
-Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**, **Hotéis** (Trazer para implantação, Ativar), **Configuração e políticas** (modelo contratual, nomes da criticidade, códigos obrigatórios no aceite), **Códigos de manutenção** (só o Admin). Se o grupo contratar o HubKeep Intelligence **[a confirmar]**, acrescentar o menu do módulo (lista de insights, "Por que estou vendo isso?" e a decisão).
+Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**, **Hotéis** (Trazer para implantação, Ativar), **Configuração e políticas** (modelo contratual, nomes da criticidade, códigos obrigatórios no aceite), **Códigos de manutenção** (só o Admin). Se o grupo contratar o HubKeep Intelligence **[a confirmar]**, acrescentar o menu do módulo (lista de insights, "Por que estou vendo isso?" e a decisão). As telas só abrem na data da política de abertura (padrão: 60 dias depois da ativação), então o treino do módulo fica para perto dessa data, ou para o grupo de demonstração; antes dela, mostrar ao Admin só a página **Abertura das telas**.
 
 ### Sessão B. Técnicos (2 h, mais 1 h de prática)
 

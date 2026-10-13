@@ -22,7 +22,7 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualiza
 - **Operação:** Início, Chamados, Ordens de serviço, Paradas a encerrar.
 - **Cadastros:** Hotéis, Locais, Categorias de ativo, Códigos de manutenção, Ativos, Equipes, Proprietários, Fornecedores, Bandeiras, Membros e papéis.
 - **Configuração:** Configuração e políticas, Painel de implantação.
-- **Módulo opcional:** **HubKeep Intelligence**, com a contagem dos insights abertos. Só aparece no grupo que contratou o módulo e para quem decide insight (Admin do grupo, Gestor CSC e Gerente do hotel); para os outros, o item não existe.
+- **Módulo opcional:** **HubKeep Intelligence**, com a contagem dos insights abertos. Só aparece no grupo que contratou o módulo, a partir da data de abertura das telas, e para os papéis da política de abertura (padrão: Admin do grupo e Gestor CSC; o Gerente do hotel só se o Admin incluir). Antes da abertura, só o Admin do grupo vê o item, que leva à página **Abertura das telas**.
 
 **Escopo.** Cada pessoa só enxerga os hotéis do seu papel (hotel, bandeira ou grupo inteiro). Fora do escopo, o registro aparece como "não encontrado".
 
@@ -51,7 +51,8 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualiza
 | Membros e papéis (convidar, conceder, revogar) | sim | não | não | não | não | sim, só no hotel dele, abaixo do papel dele |
 | Categorias, códigos de manutenção, bandeiras, proprietários, hotéis (importar, ativar), configuração e políticas (modelo contratual, nomes da criticidade, códigos obrigatórios) | sim | não | não | não | não | não |
 | Painel de implantação | sim | não | não | não | não | sim |
-| HubKeep Intelligence: ver e decidir insights (só com o módulo contratado) | sim | sim, nos hotéis do escopo; o de rede, se cobre todos os hotéis dele | sim, só o insight do hotel dele | não | não | não |
+| HubKeep Intelligence: ver e decidir insights (só com o módulo contratado e depois da abertura das telas) | sim | sim, nos hotéis do escopo; o de rede, se cobre todos os hotéis dele | só se o Admin incluir o Gerente na política de abertura; aí, só o insight do hotel dele | não | não | não |
+| HubKeep Intelligence: ver e mudar a abertura das telas | sim, também antes da abertura | não | não | não | não | não |
 
 Nota sobre o aceite: quem abriu o chamado e também executa a OS (ele ou a equipe dele) não decide o aceite. Se, além disso, não há outro Gerente ativo no hotel, decidem o Gestor CSC ou o Admin do grupo (caso especial, `corretiva.ts`).
 
@@ -159,7 +160,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - **Ativos:** **Cadastrar ativo**, **Salvar**, **Desativar**, **Mover**, **Ver movimentações**, **Ver QR**, **Anexar arquivo**.
 - **Ver histórico** em chamado, OS, local e ativo: mostra quem fez, quando e o antes e o depois.
 
-**HubKeep Intelligence** (só se o grupo contratou o módulo). Menu **HubKeep Intelligence**: a lista de insights do hotel, a página de cada insight com "Por que estou vendo isso?" e a decisão (resolver ou descartar, com nota), e o detalhe do ativo. O Gerente decide só o insight do hotel dele; o insight de rede é do Admin do grupo e do Gestor CSC, e na página aparece "Você não decide este insight. Pode acompanhar a evidência.".
+**HubKeep Intelligence** (só se o grupo contratou o módulo e o Admin do grupo incluiu o Gerente do hotel na política de abertura das telas; no padrão, o Gerente não vê o módulo). Menu **HubKeep Intelligence**: a lista de insights do hotel, a página de cada insight com "Por que estou vendo isso?" e a decisão (resolver ou descartar, com nota), e o detalhe do ativo. O Gerente decide só o insight do hotel dele; o insight de rede é do Admin do grupo e do Gestor CSC, e na página aparece "Você não decide este insight. Pode acompanhar a evidência.".
 
 **Não faz.** Ativar hotel, categorias, códigos de manutenção, políticas, membros e papéis, proprietários, bandeiras.
 
@@ -172,7 +173,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - **Paradas a encerrar:** acompanhar e **Encerrar parada**. **UH indisponível:** marcar e liberar pelo detalhe do chamado.
 - **Cadastros de hotel:** Locais (áreas comuns e edificação), Equipes e Ativos, nos hotéis do escopo.
 - **Fornecedores:** cadastra como o Gerente, desde que o papel alcance algum hotel do grupo. O Gestor CSC de uma bandeira ainda sem hotel recebe "Seu papel ainda não alcança nenhum hotel do grupo, então você não cadastra fornecedores..." e pede ao Admin do grupo.
-- **HubKeep Intelligence** (com o módulo): decide os insights dos hotéis do escopo e o insight de rede quando cobre todos os hotéis dele.
+- **HubKeep Intelligence** (com o módulo, a partir da data de abertura das telas): decide os insights dos hotéis do escopo e o insight de rede quando cobre todos os hotéis dele.
 - **Acompanhar** pelo menu Chamados e Ordens de serviço, com filtro por hotel, situação, prioridade e período; **Linha do tempo** e **Ver histórico**.
 
 **Aceite.** O Gestor CSC aceita ou reabre só nos chamados que ele mesmo abriu ou no caso especial: quem abriu o chamado também executou a OS e não há outro Gerente ativo no hotel. Com Gerente no hotel, quem decide é o Gerente.
@@ -210,6 +211,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
   - "Prioridade padrão por categoria de ativo" aparece só como resumo: a edição pela tela **[ainda não existe]**.
 - **Códigos de manutenção** (tela "Códigos de falha, causa e solução"): **Instalar códigos padrão** (37 códigos), **Criar código**, **Editar nomes**, **Salvar nomes**, **Desativar**, **Reativar**. Só o Admin do grupo.
 - **Painel de implantação:** "O que falta" por hotel (ver guia de implantação).
+- **HubKeep Intelligence → Abertura das telas** (só com o módulo contratado; também antes da abertura): "Abrem em", "De onde vem a data" (por padrão, "60 dias depois da primeira ativação do módulo") e "Quem vê as telas". Em **Mudar a abertura**: **Abrir a partir de** (em branco, conta os dias), **Dias depois da primeira ativação**, os papéis que veem (Admin do grupo, Gestor CSC, Gerente do hotel), **Salvar** e **Voltar ao padrão**. O dia começa à meia-noite de Brasília. Antes da abertura, nem o Admin vê a lista de insights; o cálculo já acontece todo dia.
 - Sem tela, só pela API ou script de operação: situações e prioridades padrão (instalação), credencial do agente conector (criar e revogar), gravar política de prioridade por categoria, e a contratação do HubKeep Intelligence (pelo backoffice; hoje, só no dev, `pnpm ops:modulo`).
 
 **Ainda por vir.** Foto "antes" ou "depois" e assinatura no aceite: **[vai mudar na 1b]** (I8). Importação de ativos por planilha, QR em lote, modelos por categoria, aprovação de ativos cadastrados pelo celular, planos preventivos e checklist: **[ainda não existe]** (M1 a M4, PV1 a PV3).
@@ -232,4 +234,5 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 | QR do ativo | Web ("Ver QR"); leitura pela câmera do celular |
 | Hotel, bandeiras, categorias, códigos de manutenção, membros, configuração | Web (Admin do grupo) |
 | Fornecedores | Web (Admin do grupo, Gestor CSC e Gerente) |
-| HubKeep Intelligence | Web, só com o módulo contratado (Admin do grupo, Gestor CSC e Gerente) |
+| HubKeep Intelligence | Web, só com o módulo contratado e depois da abertura das telas (no padrão, Admin do grupo e Gestor CSC) |
+| Abertura das telas do HubKeep Intelligence | Web (Admin do grupo), também antes da abertura |

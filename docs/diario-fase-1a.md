@@ -1854,3 +1854,10 @@ Mensagem do Cesar no chat ("Cesar aqui", 12/10/2026): aprova os ADR-040 e ADR-04
   O plano de `docs/referencia/plano-staging-treinamento.md` ficou como está, marcado como adiado; as cinco decisões dele e o adendo ao ADR-024 voltam ao Cesar no portão. Os scripts do #196 já aceitam o staging quando o `[remotes.staging]` existir.
 - **Fila de zona protegida do núcleo,** daqui em diante: PV1 (0042, com o texto do ADR-040 e a regra dos worktrees no `CLAUDE.md`), PV2 (0043, com o ADR-041), PV3 (0044), M1 (0045), M4 e M2 (0046), PB1 (0047) e M3 (0048). O PR do staging saiu desta fila. O PR de zona protegida do Intelligence que estiver pronto entra entre dois do núcleo, como antes.
 - **Worktrees** (regra do Cesar de 12/10/2026): os do #197, do #200 e o `d1-teste-proprietario` foram removidos. O commit 28b1785 continua na branch local `1a-d1-teste-proprietario`.
+
+## Abertura das telas do HubKeep Intelligence na moldura (pelo agente do Intelligence, 12/10/2026)
+
+Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/moldura.tsx`) é do núcleo. A mudança vem da decisão do Cesar de 12/10/2026 ("Cesar aqui"), e o detalhe está no `docs/diario-intelligence.md`, seção `int-visibilidade-telas`.
+- **O item:** com o resumo em 404, a moldura pergunta `GET /api/v1/inteligencia/abertura`. Se essa rota responde 200 (só o Admin do grupo, com o módulo vigente, antes da abertura das telas), o item "HubKeep Intelligence" aparece sem contagem e leva a `/inteligencia/abertura`. Fora isso, nada muda.
+- **Título da barra:** a rota `/inteligencia/abertura`. O teste da moldura ganhou o caso.
+- **Dois pedidos ao núcleo** estão no diário do Intelligence: `escopos` na `ExtensaoDePolitica` e a coluna `fuso` na `app.tenant`.

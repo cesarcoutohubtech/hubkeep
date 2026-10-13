@@ -19,7 +19,7 @@ import {
 const copia = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 describe('políticas do Intelligence (ADR-035)', () => {
-  it('as seis chaves do ADR, e todo padrão vale no próprio formato', () => {
+  it('as sete chaves do ADR, e todo padrão vale no próprio formato', () => {
     expect(CHAVES_DE_POLITICA_DO_INTELLIGENCE).toEqual([
       'inteligencia.reincidencia',
       'inteligencia.atencao_ativo',
@@ -27,6 +27,7 @@ describe('políticas do Intelligence (ADR-035)', () => {
       'inteligencia.sistemico',
       'inteligencia.substituicao',
       'inteligencia.metrica_janela_leitura',
+      'inteligencia.visibilidade_telas',
     ]);
     for (const c of CHAVES_DE_POLITICA_DO_INTELLIGENCE)
       expect(valorValidoDoIntelligence(c, copia(PADROES_DO_INTELLIGENCE[c]))).toBe(true);

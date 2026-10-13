@@ -229,6 +229,7 @@ export const casosDeUsoDoPainelDoIntelligence = memo(async () => {
     porta: criarPortaDoPainelDoIntelligence(banco),
     modulos: criarPortaModulos(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    configuracao: criarPortaConfiguracao(banco),
     relogio: relogioDoSistema,
   });
 });

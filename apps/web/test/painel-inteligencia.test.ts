@@ -7,6 +7,8 @@ import {
   FAIXAS_DO_INSIGHT_API,
   FILTROS_DE_ESTADO_DO_INSIGHT_API,
   MOTIVOS_DE_DESCARTE_API,
+  PAPEIS_QUE_VEEM_AS_TELAS_API,
+  RespostaDaAberturaDoIntelligence,
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   TIPOS_DE_INSIGHT_API,
@@ -16,6 +18,7 @@ import type {
   InsightComEvidenciaNoBanco,
   PortaDoPainelDoIntelligence,
 } from '@hubkeep/db';
+import type { EscopoDePolitica } from '@hubkeep/aplicacao';
 import type { Atribuicao } from '@hubkeep/dominio';
 import {
   ACOES_DO_INSIGHT,
@@ -23,6 +26,7 @@ import {
   FAIXAS_PADRAO,
   FILTROS_DE_ESTADO_DO_INSIGHT,
   MOTIVOS_DE_DESCARTE,
+  PAPEIS_DO_INSIGHT,
   TIPOS_DE_INSIGHT,
 } from '@hubkeep/inteligencia';
 import { describe, expect, it } from 'vitest';
@@ -117,7 +121,25 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
   return { porta, decisoes };
 }
 
-const painel = (insights: InsightComEvidenciaNoBanco[], modulos = true) => {
+/** As políticas gravadas no grupo: por padrão, a visibilidade com o Gerente, já aberta. */
+const COM_O_GERENTE = [
+  {
+    chave: 'inteligencia.visibilidade_telas',
+    escopo: { tipo: 'grupo' as const },
+    valor: {
+      aPartirDe: null,
+      diasAposAtivacao: 60,
+      papeis: ['admin_grupo', 'gestor_csc', 'gerente_hotel'],
+    },
+  },
+];
+
+const painel = (
+  insights: InsightComEvidenciaNoBanco[],
+  modulos = true,
+  politicas: { chave: string; escopo: EscopoDePolitica; valor: unknown }[] = COM_O_GERENTE,
+  atribuicoes: Atribuicao[] = [gerente],
+) => {
   const { porta, decisoes } = portaEmMemoria(insights);
   return {
     decisoes,
@@ -129,7 +151,8 @@ const painel = (insights: InsightComEvidenciaNoBanco[], modulos = true) => {
             ? [{ modulo: 'inteligencia', inicio: new Date('2026-01-01T00:00:00Z'), fim: null }]
             : [],
       },
-      atribuicoes: { doUsuario: async () => [gerente] },
+      atribuicoes: { doUsuario: async () => atribuicoes },
+      configuracao: { politicas: async () => politicas },
       relogio: { agora: () => agora },
     }),
   };
@@ -143,6 +166,54 @@ describe('as listas da API são as do motor', () => {
     expect([...ACOES_DO_INSIGHT_API]).toEqual([...ACOES_DO_INSIGHT]);
     expect([...MOTIVOS_DE_DESCARTE_API]).toEqual([...MOTIVOS_DE_DESCARTE]);
     expect([...FAIXAS_DO_INSIGHT_API]).toEqual(FAIXAS_PADRAO.map((f) => f.chave));
+  });
+});
+
+describe('a visibilidade das telas sobre as políticas do grupo', () => {
+  const admin: Atribuicao = {
+    ...gerente,
+    id: 'a9',
+    papel: 'admin_grupo',
+    escopo: { tipo: 'grupo' },
+  };
+
+  it('os papéis da API são os que decidem insight', () => {
+    expect([...PAPEIS_QUE_VEEM_AS_TELAS_API]).toEqual([...PAPEIS_DO_INSIGHT]);
+  });
+
+  it('sem política gravada vale o padrão: o Gerente não vê', async () => {
+    await expect(painel([], true, []).casos.resumo(ctx)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+  });
+
+  it('a política gravada num hotel não vale: só a do grupo', async () => {
+    const noHotel = COM_O_GERENTE.map((p) => ({
+      ...p,
+      escopo: { tipo: 'hotel' as const, hotelId: H1 },
+    }));
+    await expect(painel([], true, noHotel).casos.resumo(ctx)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+  });
+
+  it('a abertura para o Admin passa pelo contrato da API', async () => {
+    const r = await painel([], true, [], [admin]).casos.abertura(ctx);
+    const corpo = {
+      ...r,
+      abertura: r.abertura && {
+        ...r.abertura,
+        em: dataNaApi(r.abertura.em),
+        primeiraAtivacao: r.abertura.primeiraAtivacao && dataNaApi(r.abertura.primeiraAtivacao),
+      },
+    };
+    expect(RespostaDaAberturaDoIntelligence.parse(corpo)).toMatchObject({
+      abertas: true,
+      abertura: { dia: '2026-03-01', origem: 'ativacao' },
+    });
+    await expect(painel([]).casos.abertura(ctx)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
   });
 });
 

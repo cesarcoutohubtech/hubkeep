@@ -7,6 +7,12 @@
 // - Sem o módulo `inteligencia` vigente, ou sem papel que decide insight
 //   (PAPEIS_DO_INSIGHT), o painel não existe: 404 inteligencia_indisponivel,
 //   e o menu some (proposta das telas, decisão 3).
+// - Visibilidade (inteligencia.visibilidade_telas; adendo ao ADR-035 de
+//   12/10/2026): antes da abertura, ou para quem não tem um dos papéis da
+//   política, a mesma resposta. Quem tem também um papel fora da política
+//   decide só pelos papéis dela; a leitura continua a da RLS da app.insight.
+//   O Admin do grupo vê a data da abertura em aberturaDoPainel, também antes
+//   dela.
 // - Decidir só na página do insight (decisão 2): a transição é a de
 //   decidirNoInsight, com a trava de versão.
 // - Responsável (aprovado por Cesar em 10/10/2026, issue #166): quem toma a
@@ -23,8 +29,8 @@ import {
   type ModuloContratado,
   NaoEncontrado,
   conflitoDeVersao,
+  ehAdminGrupo,
   modulosVigentes,
-  vigente,
 } from '@hubkeep/dominio';
 import type { TipoDeInsight } from './dia';
 import {
@@ -42,6 +48,14 @@ import {
   substituidoPor,
 } from './insight';
 import { DIA_MS } from './score';
+import {
+  type AberturaDasTelas,
+  type ConfigVisibilidadeTelas,
+  aberturaDasTelas,
+  atribuicoesQueVeem,
+  telasAbertas,
+  visibilidadeEfetiva,
+} from './visibilidade';
 
 /** Os tipos de insight (`TipoDeInsight`), para conferir o que vem do banco e da API. */
 export const TIPOS_DE_INSIGHT = [
@@ -151,8 +165,13 @@ export interface DecisaoGravada {
 
 /** O que o painel lê e grava, no contexto de quem pede. */
 export interface PortasDoPainel {
+  /** Todos os contratos de módulo do tenant, vigentes ou não (a abertura conta do primeiro). */
   modulos(): Promise<readonly ModuloContratado[]>;
   atribuicoes(): Promise<readonly Atribuicao[]>;
+  /** O valor de inteligencia.visibilidade_telas gravado no grupo, se houver. */
+  visibilidade(): Promise<unknown>;
+  /** O fuso do grupo (IANA), que corta o dia da abertura. */
+  fuso(): Promise<string>;
   contagens(estados: readonly EstadoDoInsight[]): Promise<readonly ContagemDeInsights[]>;
   /** No máximo LIMITE_DA_LISTA, da última detecção mais recente para a mais antiga. */
   insights(filtro: FiltroDeInsights): Promise<readonly InsightDoPainel[]>;
@@ -279,14 +298,51 @@ const indisponivel = () =>
 
 const naoEncontrado = () => new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
 
-/** O módulo vigente e algum papel que decide insight; senão, o painel não existe. */
+/** A abertura das telas no tenant, com a política do grupo e o fuso. */
+async function abertura(
+  p: PortasDoPainel,
+  modulos: readonly ModuloContratado[],
+): Promise<{ config: ConfigVisibilidadeTelas; abertura: AberturaDasTelas | null }> {
+  const [doGrupo, fuso] = await Promise.all([p.visibilidade(), p.fuso()]);
+  const config = visibilidadeEfetiva(doGrupo);
+  return { config, abertura: aberturaDasTelas(modulos, config, fuso) };
+}
+
+/**
+ * O módulo vigente, a abertura das telas e algum papel da política que decide
+ * insight; senão, o painel não existe. Devolve só as atribuições dos papéis
+ * da política: é por elas que se decide.
+ */
 async function exigirPainel(p: PortasDoPainel, agora: Date): Promise<readonly Atribuicao[]> {
   const [modulos, atribuicoes] = await Promise.all([p.modulos(), p.atribuicoes()]);
-  const temPapel = atribuicoes.some(
-    (a) => vigente(a, agora) && PAPEIS_DO_INSIGHT.includes(a.papel),
+  if (!modulosVigentes(modulos, agora).has('inteligencia')) throw indisponivel();
+  const v = await abertura(p, modulos);
+  if (!telasAbertas(v.abertura, agora)) throw indisponivel();
+  const queVeem = atribuicoesQueVeem(atribuicoes, v.config, agora).filter((a) =>
+    PAPEIS_DO_INSIGHT.includes(a.papel),
   );
-  if (!modulosVigentes(modulos, agora).has('inteligencia') || !temPapel) throw indisponivel();
-  return atribuicoes;
+  if (!queVeem.length) throw indisponivel();
+  return queVeem;
+}
+
+export interface AberturaDoPainel {
+  config: ConfigVisibilidadeTelas;
+  /** Nulo: sem `aPartirDe` e sem contrato do módulo, não há de onde contar. */
+  abertura: AberturaDasTelas | null;
+  abertas: boolean;
+}
+
+/**
+ * Quando as telas abrem, para o Admin do grupo do tenant com o módulo vigente
+ * (decisão 2 do Cesar): ele vê a data antes da abertura e a muda pela
+ * política. Para os outros, inteligencia_indisponivel.
+ */
+export async function aberturaDoPainel(p: PortasDoPainel, agora: Date): Promise<AberturaDoPainel> {
+  const [modulos, atribuicoes] = await Promise.all([p.modulos(), p.atribuicoes()]);
+  if (!modulosVigentes(modulos, agora).has('inteligencia') || !ehAdminGrupo(atribuicoes, agora))
+    throw indisponivel();
+  const v = await abertura(p, modulos);
+  return { ...v, abertas: telasAbertas(v.abertura, agora) };
 }
 
 export function alcanceDoInsight(
