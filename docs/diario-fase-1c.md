@@ -407,3 +407,10 @@ Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a par
 - **Verificação:**
   - no local, lint, typecheck e testes passaram. Testes novos: o domínio, a aplicação com as portas em memória e a tela;
   - só na CI: `packages/db/test/feriados-do-hotel.test.ts`, com a RLS (o Técnico e o Gerente de outro hotel), a data repetida e a auditoria.
+
+## Prazos de SLA na ficha do chamado (13/10/2026)
+
+**Aviso de área compartilhada (chamado):** a 1c vai mexer na ficha do chamado no web (`ChamadoEmDetalhe`, em `apps/web/src/cliente/corretiva.tsx`) e no catálogo. Só acrescenta linhas no painel do chamado; não muda contrato, caso de uso nem banco. Branch `claude/1c-prazos-na-ficha`, a partir da `main`.
+- A ficha mostra o prazo de atendimento e o de solução, que a API já devolve desde o #215, e o tempo em que pausas pararam o relógio, quando houver.
+- O chamado aberto antes dos prazos (prazos nulos) não mostra as linhas.
+- O selo de "em risco" e "vencido" fica para o M4, depois do merge do #224, porque vem dos avisos do monitor.

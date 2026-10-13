@@ -111,9 +111,9 @@ const detalhe: DetalheDoChamado = {
     origem: 'interno',
     impactoHospede: null,
     categoriaId: null,
-    prazoAtendimento: null,
-    prazoSolucao: null,
-    pausadoSegundos: 0,
+    prazoAtendimento: '2026-09-30T16:00:00.000Z',
+    prazoSolucao: '2026-10-01T12:00:00.000Z',
+    pausadoSegundos: 5400,
     versao: 3,
     criadoEm: '2026-09-30T12:00:00.000Z',
   },
@@ -302,6 +302,34 @@ describe('telas da corretiva (C7) em cada idioma', () => {
     );
     expect(html).toContain('Reabrir');
     expect(html).not.toContain('O equipamento está parado');
+  });
+
+  it('os prazos de SLA e o relógio parado aparecem na ficha; sem prazo, nada', () => {
+    const ficha = (d: DetalheDoChamado) =>
+      renderizar(
+        'pt-BR',
+        <ChamadoEmDetalhe
+          detalhe={d}
+          refs={refs}
+          aoAceitar={() => undefined}
+          aoReabrir={() => undefined}
+        />,
+      );
+    const comPrazo = ficha(detalhe);
+    expect(comPrazo).toContain('data-prazo="atendimento"');
+    expect(comPrazo).toContain('Atender até');
+    expect(comPrazo).toContain('Resolver até');
+    expect(comPrazo).toContain('Pausas pararam o relógio do SLA por 90 minutos');
+    const semPrazo = ficha({
+      ...detalhe,
+      chamado: {
+        ...detalhe.chamado,
+        prazoAtendimento: null,
+        prazoSolucao: null,
+        pausadoSegundos: 0,
+      },
+    });
+    expect(semPrazo).not.toContain('data-prazo');
   });
 
   it('pseudo-idioma: todo texto visível vem do catálogo, fora os dados do banco', () => {
