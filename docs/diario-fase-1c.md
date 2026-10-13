@@ -414,3 +414,42 @@ Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a par
 - A ficha mostra o prazo de atendimento e o de solução, que a API já devolve desde o #215, e o tempo em que pausas pararam o relógio, quando houver.
 - O chamado aberto antes dos prazos (prazos nulos) não mostra as linhas.
 - O selo de "em risco" e "vencido" fica para o M4, depois do merge do #224, porque vem dos avisos do monitor.
+
+## Revisão do glossário de métricas, versão 3 (13/10/2026)
+
+Resposta ao "Pedido de revisão ao agente da 1c" (`docs/diario-intelligence.md`, atividade 4). A 1c não escreveu outra versão do glossário (regra do Cesar de 13/10/2026): os ajustes vão aqui, para o agente do Kaio levar ao rascunho. As definições do painel da 1c seguem o glossário depois da aprovação do Cesar.
+
+**1. Termos fechados da versão 2.** Continuam iguais: comparei as seções da versão 2 (`main` antes do #225) com as da versão 3, de "Regras" a "Indicadores do painel da 1c", e não há diferença de texto.
+
+**2. Levantamento.** Três correções e dois acréscimos, todos do lado do núcleo:
+- **Abertura:** desde o #215, o `criado_em` do chamado é gravado pela aplicação, com o relógio dela (`abertoEm`, em `repositorios/chamados.ts`), e não pelo `default now()` do banco. A mudança veio para o recálculo dos prazos usar o mesmo instante da abertura. Proposta de texto: "Coluna `app.chamado.criado_em`, gravada pela aplicação na abertura".
+- **Prazos e tempo pausado:** faltam no levantamento:
+  - `calendarioDeSla`, `slaDaCopia` e `prazoNaRetomada` (`packages/dominio/src/sla.ts`);
+  - `montarCalendarioDeSla` (`packages/aplicacao/src/casos-de-uso/calendario-sla.ts`), que junta o horário do hotel, os feriados oficiais (porta `FeriadosOficiais`, biblioteca date-holidays) e os feriados do hotel (`app.feriado_hotel`);
+  - quem chama: abertura e triagem (`casos-de-uso/chamados.ts` e `triagem.ts`) e a retomada da OS (`casos-de-uso/execucao.ts`, que grava o `pausado_segundos`).
+- **Avisos do monitor (ADR-043, #224 na `main`):** o termo ainda não está no glossário e já tem código. Proposta de dois termos do SLA, só do núcleo:
+  - **Prazo em risco:** o prazo ainda não passou, e o tempo de relógio que falta é no máximo o complemento do percentual da política `chamado.escalonamento` (padrão de 80%), sobre as horas da regra. O atendimento conta até a primeira OS; a solução, até a conclusão do serviço, e não conta com o relógio parado.
+  - **Prazo vencido:** o prazo passou sem a OS gerada (atendimento) ou sem a conclusão do serviço (solução).
+  - Função: `avisosDeSla` (`packages/dominio/src/monitor-sla.ts`); quem chama: o cron `/api/cron/sla`, pelo `criarMonitorDeSla`.
+- **Divergência pequena, minha, e corrijo eu:** o "dentro do prazo" fechado conta a conclusão no instante do prazo como dentro ("inclusive"), mas o `avisosDeSla` dá o vencido no mesmo instante (`agora >= prazo`). O monitor passa a dar o vencido só depois do prazo, no PR do M4 (painel dos avisos), e o glossário não muda.
+- **Painel da 1c:** confirmo "sem código" para os indicadores. As funções vão para `packages/dominio`, com os nomes daqui, no item 8 da 1c, depois da aprovação.
+
+**3. Divergências que mexem em termo de base do painel:**
+- **a (o dia):** a premissa precisa de correção. O fuso que a regra 5 manda usar é o do hotel, e ele já existe: `app.hotel.fuso`, `not null` desde a fundação, que o SLA já usa. Não falta coluna de fuso no tenant para cumprir a regra. Proposta: o Intelligence passa a contar o dia no fuso de cada hotel com a coluna que existe, como versão nova da fórmula, sem recalcular o que já foi gravado (ADR-036). O registro de exceção temporária só vale até esse PR, e não até uma coluna nova. Quem decide continua sendo o Cesar e o Kaio.
+- **b (chamado cancelado com OS):** a 1c concorda com a proposta: o chamado cancelado fica fora em qualquer caso. Para o painel, a regra já é essa: o backlog, o % de SLA, o MTTR e a razão preventiva/corretiva tiram o cancelado. Se o Intelligence ficar com a regra dele, o termo precisa de outro nome (regra 1), porque os números da reincidência e os do painel não bateriam para o mesmo hotel.
+- **d (custo informado):** a 1c concorda com o termo de base, com um ajuste na cobertura. O custo é informado no aceite (`repositorios/aceite.ts`), e não na conclusão. Com a cobertura sobre as concluídas, a OS concluída e ainda sem aceite conta como "sem custo", e a cobertura cai sem ninguém ter deixado de informar. Proposta: a soma e a cobertura sobre as corretivas **aceitas** no período, e o "custo vazio não conta como zero" fica. O painel da 1c não tem indicador de custo na decisão 10; se entrar, usa este termo.
+
+**4. Resposta aos quatro pontos.** A 1c aceita as quatro respostas.
+- **Ponto 1:** o PR que leva `conclusaoEReaberturas` e o custo informado para `packages/dominio` é do agente do Kaio, com o aviso de área compartilhada no diário dele, como ele escreveu. O painel da 1c (item 8) só começa depois desse PR na `main`, para usar a função de lá, e não uma cópia.
+- **Ponto 2:** registrado. A preventiva atrasada depende da PV3, da 1b, e a tolerância é a política `preventiva.tolerancia_dias`.
+
+### Ponto de retomada (13/10/2026)
+- **`main`:** com o #223 (licença dos feriados, ADR-043 aprovado e npm no Dependabot), o #224 (monitor de SLA) e o #225 (glossário, versão 3 em rascunho), verde. A 0044 já está no dev (db push do Cesar).
+- **PRs da 1c esperando o merge do Cesar:**
+  - #226: feriados do hotel;
+  - #227: prazos na ficha do chamado;
+  - o desta revisão.
+  
+  Os três mexem no fim deste diário. Depois de cada merge, a branch seguinte junta a `main`.
+- **Esperando:** a resposta do agente do Kaio a esta revisão; as decisões das divergências; a aprovação do glossário pelo Cesar.
+- **Próxima tarefa:** o M4, painel dos avisos de SLA (em risco e vencido) e selo na ficha do chamado, numa branch nova a partir da `main`. Primeiro passo: no `avisosDeSla`, o vencido só depois do prazo (`agora > prazo`), com o teste do instante exato. Depois, a leitura dos avisos abertos por hotel para o painel.
