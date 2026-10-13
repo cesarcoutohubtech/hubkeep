@@ -77,6 +77,8 @@ function chamadoNoDia(c: ChamadoDoRoteiro, agora: Date): ChamadoDaFonte {
 async function simular(r: RoteiroDoHistorico) {
   const insights: InsightSimulado[] = [];
   const metricas: LinhaDaMetricaDiaria[] = [];
+  // Por dia, para o calculosDoDia não varrer todas as linhas a cada dia.
+  const metricasPorDia = new Map<string, LinhaDaMetricaDiaria[]>();
   const hoteis = r.hoteis.map((h) => ({ hotelId: h.chave, bandeiraId: h.bandeira }));
   const locais = r.locais.map((l) => ({
     id: l.chave,
@@ -115,10 +117,14 @@ async function simular(r: RoteiroDoHistorico) {
           politicaSistemica: async () => r.politicaSistemica,
           insights: async () => insights,
           calculosDoDia: async (d) =>
-            new Map(metricas.filter((m) => m.dia === d).map((m) => [m.ativoId, m.calculo])),
+            new Map((metricasPorDia.get(d) ?? []).map((m) => [m.ativoId, m.calculo])),
         },
         gravacao: {
-          gravarMetricas: async (linhas) => void metricas.push(...linhas),
+          gravarMetricas: async (linhas) => {
+            metricas.push(...linhas);
+            for (const m of linhas)
+              metricasPorDia.set(m.dia, [...(metricasPorDia.get(m.dia) ?? []), m]);
+          },
           abrirInsight: async ({ deteccao: d, anteriorId }) => {
             const cenario = cenarioDoInsight(r, {
               tipo: d.tipo,
@@ -173,6 +179,18 @@ async function simular(r: RoteiroDoHistorico) {
   return { insights, metricas };
 }
 
+// Os dois testes que rodam o job leem a mesma simulação (183 dias do roteiro
+// curto), feita uma vez só. Ela custa cerca de 1,4 s sozinha e passou de 7 s
+// com o pnpm test completo na CI (#237), acima dos 5 s padrão do Vitest. Os
+// dois testes têm por isso um limite próprio, porque qualquer um pode ser o
+// primeiro a pedi-la (com -t, por exemplo).
+const LIMITE_DA_SIMULACAO_MS = 20_000;
+let simulacao: ReturnType<typeof simular> | undefined;
+function simulacaoDoRoteiroCurto() {
+  simulacao ??= simular(roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO }));
+  return simulacao;
+}
+
 describe('roteiro do histórico de demonstração do Intelligence', () => {
   it('é determinístico: a mesma semente e o mesmo fim dão o mesmo roteiro', () => {
     const a = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
@@ -220,86 +238,94 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
     }
   });
 
-  it('cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum', async () => {
-    const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
-    const { insights } = await simular(r);
-    const inesperados = insights.filter((i) => i.cenario?.startsWith('inesperado:'));
-    expect(inesperados.map((i) => `${i.cenario} em ${i.abertoNoDia}`)).toEqual([]);
-    for (const c of r.cenarios.filter((x) => x.alvo)) {
-      const doCenario = insights.filter((i) => i.cenario === c.chave);
-      expect(
-        doCenario.map((i) => i.abertoNoDia),
-        c.chave,
-      ).toHaveLength(1);
-      expect((doCenario[0] as InsightSimulado).estado, c.chave).toBe(c.estadoFinal);
-    }
-  });
+  it(
+    'cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum',
+    async () => {
+      const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
+      const { insights } = await simulacaoDoRoteiroCurto();
+      const inesperados = insights.filter((i) => i.cenario?.startsWith('inesperado:'));
+      expect(inesperados.map((i) => `${i.cenario} em ${i.abertoNoDia}`)).toEqual([]);
+      for (const c of r.cenarios.filter((x) => x.alvo)) {
+        const doCenario = insights.filter((i) => i.cenario === c.chave);
+        expect(
+          doCenario.map((i) => i.abertoNoDia),
+          c.chave,
+        ).toHaveLength(1);
+        expect((doCenario[0] as InsightSimulado).estado, c.chave).toBe(c.estadoFinal);
+      }
+    },
+    LIMITE_DA_SIMULACAO_MS,
+  );
 
-  it('a reincidência, a substituição e a efetividade aparecem nos ativos dos cenários', async () => {
-    const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
-    const { metricas } = await simular(r);
-    const agora = fimDoDia(FIM);
-    const cenario = (chave: string) => r.cenarios.find((c) => c.chave === chave);
+  it(
+    'a reincidência, a substituição e a efetividade aparecem nos ativos dos cenários',
+    async () => {
+      const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
+      const { metricas } = await simulacaoDoRoteiroCurto();
+      const agora = fimDoDia(FIM);
+      const cenario = (chave: string) => r.cenarios.find((c) => c.chave === chave);
 
-    const reincidente = cenario('reincidencia-ar')?.ativo as string;
-    const maior = Math.max(
-      ...metricas.filter((m) => m.ativoId === reincidente).map((m) => m.reincidencia ?? 0),
-    );
-    expect(maior).toBeGreaterThanOrEqual(70);
+      const reincidente = cenario('reincidencia-ar')?.ativo as string;
+      const maior = Math.max(
+        ...metricas.filter((m) => m.ativoId === reincidente).map((m) => m.reincidencia ?? 0),
+      );
+      expect(maior).toBeGreaterThanOrEqual(70);
 
-    const corretivasDe = (ativo: string) =>
-      r.chamados
-        .filter((c) => c.ativo === ativo)
-        .map((c) => ({
-          id: c.chave,
-          hotelId: c.hotel,
-          localId: c.local,
-          ativoId: c.ativo,
-          abertaEm: c.abertoEm,
-          codigoFalha: c.os.codigoFalha,
-          ...conclusaoEReaberturas(
-            c.os.passos.map((p) => ({
-              acao: p.acao,
-              para: estadoAposPasso(p.acao),
-              quando: p.quando,
-            })),
-            agora,
-          ),
-        }));
-    const paradasDe = (ativo: string) =>
-      r.chamados.flatMap((c) => (c.ativo === ativo && c.parada ? [c.parada] : []));
+      const corretivasDe = (ativo: string) =>
+        r.chamados
+          .filter((c) => c.ativo === ativo)
+          .map((c) => ({
+            id: c.chave,
+            hotelId: c.hotel,
+            localId: c.local,
+            ativoId: c.ativo,
+            abertaEm: c.abertoEm,
+            codigoFalha: c.os.codigoFalha,
+            ...conclusaoEReaberturas(
+              c.os.passos.map((p) => ({
+                acao: p.acao,
+                para: estadoAposPasso(p.acao),
+                quando: p.quando,
+              })),
+              agora,
+            ),
+          }));
+      const paradasDe = (ativo: string) =>
+        r.chamados.flatMap((c) => (c.ativo === ativo && c.parada ? [c.parada] : []));
 
-    const lavadora = cenario('substituicao-lavadora')?.ativo as string;
-    const dados = r.ativos.find((a) => a.chave === lavadora);
-    const horas = paradasDe(lavadora).reduce(
-      (s, p) => s + (p.fim.getTime() - p.inicio.getTime()) / HORA_MS,
-      0,
-    );
-    const substituicao = sinalDeSubstituicao({
-      corretivas12m: corretivasDe(lavadora).length,
-      horasParadas12m: horas,
-      idadeAnos: Math.floor(
-        (agora.getTime() - (dados?.dataCompra.getTime() ?? 0)) / (365 * DIA_MS),
-      ),
-      custo12m: null,
-      custoReposicao: null,
-      impactoHospede: null,
-      criticidade: dados?.criticidade ?? null,
-      reincidencia: null,
-      garantiaVigente: false,
-    });
-    expect(substituicao.sinal).toBe('avaliar_substituicao');
+      const lavadora = cenario('substituicao-lavadora')?.ativo as string;
+      const dados = r.ativos.find((a) => a.chave === lavadora);
+      const horas = paradasDe(lavadora).reduce(
+        (s, p) => s + (p.fim.getTime() - p.inicio.getTime()) / HORA_MS,
+        0,
+      );
+      const substituicao = sinalDeSubstituicao({
+        corretivas12m: corretivasDe(lavadora).length,
+        horasParadas12m: horas,
+        idadeAnos: Math.floor(
+          (agora.getTime() - (dados?.dataCompra.getTime() ?? 0)) / (365 * DIA_MS),
+        ),
+        custo12m: null,
+        custoReposicao: null,
+        impactoHospede: null,
+        criticidade: dados?.criticidade ?? null,
+        reincidencia: null,
+        garantiaVigente: false,
+      });
+      expect(substituicao.sinal).toBe('avaliar_substituicao');
 
-    const efetividade = cenario('efetividade-elevador');
-    const elevador = efetividade?.ativo as string;
-    const resultado = efetividadeAntesDepois(
-      {
-        intervencaoEm: efetividade?.intervencaoEm as Date,
-        corretivas: corretivasDe(elevador),
-        paradas: paradasDe(elevador),
-      },
-      agora,
-    );
-    expect(resultado.resultado).toBe('reducao_observada');
-  });
+      const efetividade = cenario('efetividade-elevador');
+      const elevador = efetividade?.ativo as string;
+      const resultado = efetividadeAntesDepois(
+        {
+          intervencaoEm: efetividade?.intervencaoEm as Date,
+          corretivas: corretivasDe(elevador),
+          paradas: paradasDe(elevador),
+        },
+        agora,
+      );
+      expect(resultado.resultado).toBe('reducao_observada');
+    },
+    LIMITE_DA_SIMULACAO_MS,
+  );
 });
