@@ -20,6 +20,7 @@ import {
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeEquipes,
+  type CasosDeUsoDeFeriados,
   type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeFornecedores,
   type CasosDeUsoDeHoteis,
@@ -52,6 +53,7 @@ import {
   criarCasosDeUsoDeConfiguracao,
   criarPoliticasDoTenant,
   criarCasosDeUsoDeEquipes,
+  criarCasosDeUsoDeFeriados,
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeFornecedores,
   criarCasosDeUsoDeHoteis,
@@ -90,6 +92,7 @@ import {
   criarPortaConfiguracao,
   criarPortaModulos,
   criarPortaEquipes,
+  criarPortaFeriadosDoHotel,
   criarPortaBandeiras,
   criarPortaFornecedores,
   criarPortaAnexos,
@@ -299,6 +302,16 @@ export const casosDeUsoDeEquipes = memo<CasosDeUsoDeEquipes>(async () => {
   const banco = await acessoBanco();
   return criarCasosDeUsoDeEquipes({
     equipes: criarPortaEquipes(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Feriados do hotel (1c, ADR-042), pelo hk_app. */
+export const casosDeUsoDeFeriados = memo<CasosDeUsoDeFeriados>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeFeriados({
+    feriados: criarPortaFeriadosDoHotel(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });

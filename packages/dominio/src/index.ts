@@ -442,6 +442,13 @@ export type {
   TipoDeFeriadoOficial,
 } from './sla';
 export {
+  LIMITES_DO_FERIADO,
+  PAPEIS_QUE_CADASTRAM_FERIADOS,
+  normalizarNomeDoFeriado,
+  podeCadastrarFeriados,
+  validarDataDoFeriado,
+} from './feriados-do-hotel';
+export {
   DESTINATARIOS_DO_AVISO,
   ESCALONAMENTO_PADRAO,
   LIMITES_DO_ESCALONAMENTO,
