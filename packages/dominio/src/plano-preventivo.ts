@@ -269,7 +269,10 @@ export function validarResponsavelDoPlano(r: {
 }
 
 /** Exatamente um alvo: o ativo ou a categoria (o check do banco repete). */
-export function validarAlvoDoPlano(a: { ativoId: string | null; categoriaId: string | null }): void {
+export function validarAlvoDoPlano(a: {
+  ativoId: string | null;
+  categoriaId: string | null;
+}): void {
   if ((a.ativoId === null) === (a.categoriaId === null)) {
     throw new RegraViolada('plano_alvo_invalido', 'O plano tem um alvo: o ativo ou a categoria.');
   }

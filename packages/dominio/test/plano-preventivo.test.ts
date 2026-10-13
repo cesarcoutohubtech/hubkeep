@@ -213,9 +213,9 @@ describe('situação do plano', () => {
 
   it('ativar vale do pausado, com responsável; pausar, do ativo; encerrar, dos dois', () => {
     expect(decidirSituacaoDoPlano('pausado', 'ativar', comTecnico)).toBe('ativo');
-    expect(
-      decidirSituacaoDoPlano('pausado', 'ativar', { tecnicoId: null, equipeId: 'e' }),
-    ).toBe('ativo');
+    expect(decidirSituacaoDoPlano('pausado', 'ativar', { tecnicoId: null, equipeId: 'e' })).toBe(
+      'ativo',
+    );
     expect(decidirSituacaoDoPlano('ativo', 'pausar', semNinguem)).toBe('pausado');
     expect(decidirSituacaoDoPlano('ativo', 'encerrar', semNinguem)).toBe('encerrado');
     expect(decidirSituacaoDoPlano('pausado', 'encerrar', semNinguem)).toBe('encerrado');
