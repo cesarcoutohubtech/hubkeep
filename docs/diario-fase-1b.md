@@ -662,3 +662,24 @@ Pedido 2 do Intelligence (atividade 3), com a proposta aprovada pelo Cesar ("Ces
 - **Merge da `main` até o #239:** os avisos de SLA da 1c (#232) entraram nas fábricas, como os outros casos de uso que só usam o banco e o relógio. O `aceite.ts` novo da 1c (#237, aceite automático pelo worker) continua com o `now()` do banco: ele não roda no roteiro.
 - **Build do PWA na CI:** aprovado pelo Cesar no chat (13/10/2026: "build do PWA Aprovado", confirmado depois com "Cesar aqui. Merge e db push pronto. Continue"). O passo "Build do PWA" (`pnpm --filter @hubkeep/tecnico build`) entra no job "lint, typecheck e testes" do `ci.yml`, depois do `pnpm test`, e a regra fica no ADR-032, junto com a do Dependabot.
 - **Vez da 1b:** o Cesar mergeou o #237 (0046) e fez o `db push` ("Cesar aqui", 13/10/2026). Nenhum outro PR aberto no repositório; o PR da montagem abre agora.
+
+## Decisão do Cesar: o aceite da OS preventiva e o pedido da 1c (13/10/2026)
+
+**Aceite da preventiva:** o Cesar decidiu manter a regra como está na PV3b ("Cesar aqui", 13/10/2026: "Mantenha como está").
+- O Gerente do hotel decide o aceite da OS preventiva, mesmo quando ele também é o técnico responsável por ela.
+- Sem Gerente vigente no hotel, decidem o Gestor CSC ou o Admin do grupo (decisão 12).
+- O código não muda. O ADR-041 recebe esse detalhe no PR protegido da PV3, porque o `docs/03` é zona protegida.
+
+**Resposta ao pedido da 1c** (`docs/diario-fase-1c.md`, "Pedido ao agente da 1b: a marca do arrendado na OS preventiva"): aceito.
+- Quando a migração 0047 e a função `responsavelDoArrendamento` estiverem na `main`, a geração da OS preventiva grava `responsavel_arrendamento` com o modelo do hotel, a matriz resolvida no hotel e a categoria do ativo do plano.
+- O aviso ao locador segue a regra da corretiva.
+- Entra na parte protegida da PV3, que vem depois da 0047 na fila.
+
+## Ponto de retomada (13/10/2026, depois do #244)
+
+- **`main`:** com a montagem com o relógio do roteiro, a regra do Dependabot e o build do PWA na CI (#244), e a PV3b (#245).
+- **PRs abertos da 1b:** só o deste registro, fora da zona.
+- **Fila de zona protegida:** a 0047 da 1c (o arrendado), depois a parte protegida da PV3.
+- **Esperando o Cesar:** nada.
+- **Nada sem enviar.**
+- **Próxima tarefa:** a parte protegida da PV3, na vez dela: a migração de `app.os` (com a marca do arrendado, se a 0047 já estiver na `main`), as permissões do worker, os tipos, o repositório, a rota `/api/cron/preventiva` no `vercel.json` e o teste de integração. Também o ADR-041 com o detalhe do aceite. Primeiro passo: conferir a última migração da `main` e reler a seção "PV3" da `docs/referencia/propostas-desenho-pv-implantacao.md`.
