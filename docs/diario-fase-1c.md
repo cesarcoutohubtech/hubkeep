@@ -152,6 +152,21 @@ A decisão 9 do Cesar mede a meta de tempo do painel de indicadores com o volume
    - 24 meses de histórico, com 150 chamados por hotel por mês (144 mil chamados), uma OS por chamado e cerca de 5 transições por OS (720 mil transições);
    - 10% dos chamados com UH indisponível e 5% com parada do ativo.
 
+## Monitor de SLA, meta do painel e auditoria adiantada (13/10/2026)
+
+O Cesar aprovou no chat, conforme as recomendações ("aprovado conforme recomendado"):
+- as cinco decisões do monitor de SLA, M1 a M5;
+- a meta de tempo do painel (decisão 9).
+
+A tabela está no `docs/13`. Ele também autorizou adiantar a auditoria geral ("Pode sim").
+
+**Plano:**
+- **Auditoria geral, primeiro, fora da zona protegida:** a tela, a API e o CSV. Funciona sem os índices novos, só mais devagar no volume grande.
+- **Um PR de zona protegida só, na vez da 1c depois da PV2:**
+  - a tabela `app.sla_alerta` e a política do escalonamento (ADR do monitor);
+  - os dois índices da auditoria;
+  - a correção do ADR-021 e do `docs/13` sobre o Implantador (decisão 14).
+
 ## Ponto de retomada (13/10/2026)
 
 - **Feito:**

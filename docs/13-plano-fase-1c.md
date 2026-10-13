@@ -47,6 +47,21 @@ O Cesar respondeu, no chat do agente da 1c, às 14 decisões de `docs/referencia
 | 13 | Aprovada: até 92 dias por consulta e 50 mil linhas no CSV. | Auditoria geral |
 | 14 | Aprovada: o `docs/13` é corrigido, porque o Implantador não lê a auditoria sem hotel. A correção entra no PR da auditoria geral, com o texto do ADR-021 (decisão do Cesar de 13/10/2026). | Auditoria geral |
 
+### Monitor de SLA e meta do painel (Cesar, 13/10/2026)
+
+O Cesar aprovou, no chat do agente da 1c, as cinco decisões do monitor de SLA e a meta do painel, conforme as recomendações:
+
+| # | Decisão | Item |
+|---|---|---|
+| M1 | Quatro avisos por chamado: atendimento e solução perto de vencer e vencidos. "Perto de vencer" é quando o tempo de relógio que falta chega a 20% das horas da regra (padrão de 80%). | Monitor de SLA |
+| M2 | Tabela própria, `app.sla_alerta`, só de inserção, com chave única por chamado, tipo e prazo. O worker não ganha UPDATE no chamado. | Monitor de SLA |
+| M3 | Política `chamado.escalonamento` (hotel → bandeira → grupo): o percentual do aviso, de 50% a 95% (padrão de 80%), e quem recebe cada nível. Perto de vencer vai ao responsável da OS e ao Gerente do hotel; vencido vai também ao Gestor CSC. | Monitor de SLA |
+| M4 | Até o item de comunicação, os avisos ficam no painel (em risco e vencidos) e num selo na ficha do chamado. O e-mail e o push consomem o mesmo evento depois. | Monitor de SLA |
+| M5 | O job do aceite automático (`os.aceite_automatico`, desligado por padrão) entra na rota de cron do SLA, num PR próprio, depois do monitor. | Monitor de SLA |
+| 9 | Meta do painel de indicadores, no servidor, com o build de produção e o volume de referência: rede inteira em 30 dias até 1,0 s; rede inteira em 92 dias até 2,0 s; um hotel em 30 dias até 400 ms (p95). Sem cumprir, o agente propõe uma tabela de agregados diária. O volume aguarda a confirmação do Kaio. | Painel de indicadores |
+
+**Ordem:** o Cesar autorizou adiantar a auditoria geral (item 7) enquanto o monitor espera a migração.
+
 ### Auditoria geral (decisão do Cesar de 07/10/2026)
 
 | O quê | Aceite |
