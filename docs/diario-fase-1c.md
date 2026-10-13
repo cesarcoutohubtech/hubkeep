@@ -220,3 +220,19 @@ Item 7 da ordem, adiantado com a autorização do Cesar ("Pode sim"). PR fora da
      - o texto do ADR-021 (decisão 14);
   3. depois do monitor, o job do aceite automático (M5).
 - **Esperando:** o Kaio, nos quatro pontos do glossário e no volume do teste de carga.
+
+## Ordem da fila e prazos de SLA: aviso de área compartilhada (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui", 13/10/2026), depois do merge do #211:
+- **Ordem da fila de zona protegida:**
+  1. o PR de visibilidade das telas do agente do Kaio;
+  2. a próxima migração da 1c (o monitor de SLA);
+  3. a PV2 da 1b.
+- **Agora:** seguir com o próximo item da 1c e conferir no GitHub, antes de abrir um PR de zona protegida, se já é a vez da 1c.
+- **Dev:** o diário da 1b registra que a 0042 e a 0043 já estão no dev, conferidas pelo Cesar.
+
+**Aviso de área compartilhada com a 1b:** a ligação dos prazos de SLA (item 3 da ordem, segunda parte do ADR-042) mexe no chamado (abertura e triagem), na OS (pausa e retomada), no `packages/dominio` (`sla.ts` e `chamados.ts`) e nos catálogos. Vai em dois PRs fora da zona protegida, na ordem abaixo, cada um com a `main` atualizada antes de abrir:
+1. **"1c: prazos de SLA na abertura e na triagem":** a porta `FeriadosOficiais`, com a `date-holidays` fixada no servidor do web; a categoria, os prazos e a cópia da `chamado.sla` e do horário na abertura (web e operação offline); o recálculo na triagem quando muda a prioridade;
+2. **"1c: motivo da pausa e prazo na retomada":** o motivo na pausa da OS (web e PWA), o prazo refeito e o tempo pausado na retomada, com o catálogo dos motivos.
+
+Depois, as telas: os feriados do hotel, a política de SLA, a troca da categoria na triagem e os prazos na ficha.
