@@ -1264,7 +1264,13 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-045 — Responsável do arrendamento na OS
 
-**Status:** aguarda aprovação do Cesar. As decisões 5 a 8, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c (`docs/13-plano-fase-1c.md`, "Decisões do desenho da 1c"). A coluna da hora do aviso (`locador_avisado_em`) é um detalhe novo deste ADR.
+**Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c ("ADR-045 (responsável do arrendamento na OS): aprovo, como descrito"), antes do merge do PR da migração 0047 (#257). A aprovação confirma:
+- a marca gravada na criação da OS, sem recálculo;
+- a categoria sem regra com a arrendatária;
+- o ajuste manual na triagem até o aceite, com motivo, auditoria e linha do tempo;
+- o aviso ao locador uma vez por OS, com a hora em `locador_avisado_em`.
+
+As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no mesmo dia (`docs/13-plano-fase-1c.md`, "Decisões do desenho da 1c").
 
 **Contexto:**
 - O hotel tem o modelo contratual desde a I2 (`app.hotel.modelo_contratual`, migração 0032), sem comportamento até a 1c.
