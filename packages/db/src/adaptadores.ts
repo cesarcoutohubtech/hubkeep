@@ -58,6 +58,7 @@ import {
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
   ehMomentoDaFoto,
+  ehMotivoDePausa,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
@@ -1188,6 +1189,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
             'c.criado_em',
             'c.politica_aplicada',
             'c.prazo_atendimento',
+            'c.prazo_solucao',
             'c.pausado_segundos',
             (eb) =>
               eb
@@ -1218,6 +1220,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
                 abertoEm: c.criado_em,
                 politicaAplicada: c.politica_aplicada,
                 prazoAtendimento: c.prazo_atendimento,
+                prazoSolucao: c.prazo_solucao,
                 pausadoSegundos: c.pausado_segundos,
                 jaTeveOs: Boolean(c.ja_teve_os),
               },
@@ -1342,6 +1345,24 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           .where('os_id', '=', osId)
           .executeTakeFirst();
         return r?.quando ? new Date(r.quando) : null;
+      }),
+    ultimaPausa: (ctx, osId) =>
+      banco.withContext(ctx, async (tx) => {
+        const r = await tx
+          .selectFrom('app.os_transicao')
+          .select(['quando', 'motivo_pausa'])
+          .where('os_id', '=', osId)
+          .where('acao', '=', 'pausar')
+          .orderBy('quando', 'desc')
+          .orderBy('id', 'desc')
+          .limit(1)
+          .executeTakeFirst();
+        return r
+          ? {
+              em: new Date(r.quando),
+              motivo: ehMotivoDePausa(r.motivo_pausa) ? r.motivo_pausa : null,
+            }
+          : null;
       }),
     fotosDepois: (ctx, osId) =>
       banco.withContext(ctx, async (tx) => {

@@ -1,5 +1,6 @@
 // Fila do dia com OS e tela da OS no PWA (C4b), nos quatro idiomas e no
 // pseudo-idioma, pelo catálogo (ADR-022). Renderiza com react-dom/server.
+import { MOTIVOS_DE_PAUSA } from '@hubkeep/dominio';
 import { IDIOMAS, type IdiomaDeExibicao, PSEUDO_IDIOMA, mensagensDe } from '@hubkeep/i18n';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -60,7 +61,7 @@ const fila = (lista: OsNoAparelho[] | null, antigaDesde: number | null = null) =
   />
 );
 
-const tela = (o: OsNoAparelho, perguntando: boolean | 'parada' | 'uh' = false) => (
+const tela = (o: OsNoAparelho, perguntando: boolean | 'parada' | 'uh' | 'motivo' = false) => (
   <Os
     os={o}
     perguntando={perguntando}
@@ -327,5 +328,20 @@ describe('checklist na OS (PV1)', () => {
     expect(html).toContain('Inicie a ordem de serviço para responder o checklist.');
     expect(html).not.toContain('Salvar respostas');
     expect(renderizar('pt-BR', tela(os('em_execucao')))).not.toContain('data-checklist=');
+  });
+});
+
+describe('motivo da pausa (1c, ADR-042)', () => {
+  it.each(IDIOMAS)('%s: a pausa pergunta o motivo, com a lista do domínio', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(idioma, tela(os('em_execucao'), 'motivo'));
+    expect(html).toContain('data-pergunta="motivo"');
+    expect(html).toContain(m['tecnico.os.pausar.pergunta_motivo']);
+    for (const valor of MOTIVOS_DE_PAUSA) {
+      // O ramo do select do catálogo para o motivo: "aguardando_peca {Aguardando peça}".
+      const nome = new RegExp(`${valor} \\{([^}]*)\\}`).exec(m['os.motivo_pausa'])?.[1];
+      expect(nome).toBeTruthy();
+      expect(html).toContain(nome);
+    }
   });
 });

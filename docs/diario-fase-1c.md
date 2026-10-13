@@ -294,3 +294,27 @@ Na branch `claude/1c-monitor-sla`, enviada, ainda **sem PR**. Pela ordem do Cesa
   - calcular, em `prepararAcao` da execução, se a pausa para o relógio, pela cópia do SLA do chamado;
   - na retomada, refazer o prazo de solução e o tempo pausado com `prazoNaRetomada`;
   - acrescentar o seletor de motivo no PWA e os nomes dos motivos no catálogo, nos quatro idiomas.
+
+## Motivo da pausa e prazo na retomada (13/10/2026)
+
+Segundo PR do aviso de área compartilhada, na branch `claude/1c-sla-pausa`, feita a partir da branch do #215 e ainda **sem PR**. O PR abre depois do merge do #215, com a `main` juntada e a base na `main`. Fora da zona protegida e sem migração: usa a coluna `motivo_pausa` da 0043.
+- **Domínio:**
+  - `slaDoChamado`: a regra de SLA do chamado, tirada da cópia;
+  - `pausaDoChamadoParaORelogio`: a pausa para o relógio só com cópia, prazo de solução, a categoria com a pausa ligada e o motivo na lista.
+- **Contrato:** o `os.pausar` da sincronização aceita `motivo` (opcional, da lista do domínio).
+- **Aplicação** (`execucao.ts`):
+  - a pausa leva o motivo e diz se parou o relógio;
+  - a retomada lê a última pausa da OS e, se ela parou o relógio, refaz o prazo de solução com `prazoNaRetomada`, no calendário do hotel. O tempo parado vai em segundos;
+  - as prioridades e os feriados entram como dependências opcionais, só lidas na pausa com motivo.
+- **Banco:**
+  - a transição grava o motivo;
+  - na retomada, a mesma operação grava no chamado o prazo novo e soma o tempo parado, com a versão do chamado conferida;
+  - a auditoria da OS leva o motivo, se a pausa parou o relógio, e o prazo de antes e o de depois.
+- **PWA:** "Pausar" abre a pergunta do motivo, com os cinco motivos do domínio, e o motivo vai na operação offline.
+- **Catálogo:**
+  - `os.motivo_pausa`, que o histórico do web também usa;
+  - a pergunta do PWA;
+  - os campos novos do histórico, nos quatro idiomas.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram;
+  - o cenário novo do `packages/db/test/sla-prazos.test.ts` roda só na CI. Ele cobre a pausa com "aguardando peça", que estende a solução em 2 h e soma 7.200 s, com o motivo na transição e o antes e o depois na auditoria, e o "fim de turno", que não muda nada.

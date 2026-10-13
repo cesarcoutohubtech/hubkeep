@@ -31,7 +31,9 @@ import {
   type CodigosSugeridos,
   ErroDeDominio,
   MOMENTOS_DA_FOTO,
+  MOTIVOS_DE_PAUSA,
   type MomentoDaFoto,
+  type MotivoDePausa,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
   type TipoDeCodigoDeManutencao,
   codigosQueServem,
@@ -77,6 +79,8 @@ export interface RespostasDaConclusao {
   uhLiberada?: boolean;
   /** Os códigos sugeridos pelo técnico (I6); só os escolhidos. */
   codigos?: CodigosSugeridos;
+  /** Na pausa, o motivo escolhido (1c, ADR-042). */
+  motivo?: MotivoDePausa;
 }
 
 /** Os códigos que a tela da OS oferece (I6), da referência guardada no aparelho. */
@@ -215,7 +219,30 @@ export function PerguntaDaUh(props: {
   );
 }
 
-type Pergunta = 'parada' | 'uh';
+/**
+ * O motivo da pausa (1c, ADR-042): a lista é do domínio. Conforme a política
+ * do hotel, alguns motivos param o relógio do SLA; o técnico só escolhe.
+ */
+export function PerguntaDoMotivo(props: {
+  aoResponder: (motivo: MotivoDePausa) => void;
+  aoDesistir: () => void;
+}) {
+  const t = useT();
+  return (
+    <Painel titulo={t('tecnico.os.pausar.pergunta_motivo')} nivel={3}>
+      <div role="group" data-pergunta="motivo" className="tc-acoes">
+        {MOTIVOS_DE_PAUSA.map((m) => (
+          <Botao key={m} onClick={() => props.aoResponder(m)}>
+            {t('os.motivo_pausa', { valor: m })}
+          </Botao>
+        ))}
+        <Botao onClick={props.aoDesistir}>{t('tecnico.os.concluir.desistir')}</Botao>
+      </div>
+    </Painel>
+  );
+}
+
+type Pergunta = 'parada' | 'uh' | 'motivo';
 
 export function Os(
   props: AcoesDaOs & {
@@ -277,6 +304,7 @@ export function Os(
     if (acao === 'concluir' && perguntaNaConclusao(os)) return setPergunta('parada');
     if (acao === 'concluir' && perguntaDaUhNaConclusao(os)) return setPergunta('uh');
     if (acao === 'concluir' && !confirmar(t('tecnico.os.concluir.confirmar'))) return;
+    if (acao === 'pausar') return setPergunta('motivo');
     const codigos = acao === 'concluir' ? escolhidos(sugestao) : undefined;
     await tentar(() => (codigos ? props.aoAgir(os, acao, { codigos }) : props.aoAgir(os, acao)));
   }
@@ -291,6 +319,11 @@ export function Os(
     setPergunta(null);
     setRespostas({});
     await tentar(() => props.aoAgir(os, 'concluir', comCodigos(todas)));
+  }
+
+  async function pausarComMotivo(motivo: MotivoDePausa) {
+    setPergunta(null);
+    await tentar(() => props.aoAgir(os, 'pausar', { motivo }));
   }
 
   const desistir = () => {
@@ -417,6 +450,9 @@ export function Os(
           aoResponder={(voltou) => void concluirRespondendo({ equipamentoVoltou: voltou })}
           aoDesistir={desistir}
         />
+      )}
+      {pergunta === 'motivo' && (
+        <PerguntaDoMotivo aoResponder={(m) => void pausarComMotivo(m)} aoDesistir={desistir} />
       )}
       {pergunta === 'uh' && perguntaDaUhNaConclusao(os) && (
         <PerguntaDaUh

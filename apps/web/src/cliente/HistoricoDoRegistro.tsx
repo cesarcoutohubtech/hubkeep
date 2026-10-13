@@ -44,6 +44,7 @@ const VALOR_DO_CATALOGO: Record<string, Chave> = {
   status: 'auditoria.valor.status',
   tipo: 'auditoria.valor.tipo',
   modeloContratual: 'auditoria.valor.modelo_contratual',
+  motivoPausa: 'os.motivo_pausa',
 };
 
 /** Prefixo do nome padrão no catálogo, para situação, prioridade e categoria (ADR-027). */

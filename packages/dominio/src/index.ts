@@ -402,6 +402,7 @@ export {
   horarioDeAtendimentoValido,
   horasDeRelogioEntre,
   horasDeSlaValidas,
+  pausaDoChamadoParaORelogio,
   pausaParaORelogio,
   politicaDeSlaValida,
   prazoNaRetomada,
@@ -410,6 +411,7 @@ export {
   regiaoDoHotel,
   regraDeSla,
   slaDaCopia,
+  slaDoChamado,
   tempoDeRelogioEntre,
 } from './sla';
 export type {

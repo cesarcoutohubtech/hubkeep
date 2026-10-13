@@ -7,6 +7,7 @@
 import { z } from 'zod';
 import { PedidoDeAlteracaoDeAtivo, PedidoDeCadastroDeAtivo } from './ativos';
 import { PedidoDeAberturaDeChamado } from './chamados';
+import { MOTIVOS_DE_PAUSA_API } from './configuracao';
 import { PedidoDePreferencias } from './preferencias';
 
 export const TIPOS_DE_OPERACAO_OFFLINE = [
@@ -62,9 +63,19 @@ export const PedidoDeOperacaoOffline = z
       /** O chamado é criado uma vez só, mesmo com reenvio (C2). */
       dados: PedidoDeAberturaDeChamado,
     }),
-    ...(['os.iniciar', 'os.pausar', 'os.retomar'] as const).map((tipo) =>
+    ...(['os.iniciar', 'os.retomar'] as const).map((tipo) =>
       z.object({ chave: z.guid(), tipo: z.literal(tipo), dados: TransicaoDaOs }),
     ),
+    z.object({
+      chave: z.guid(),
+      tipo: z.literal('os.pausar'),
+      /**
+       * O motivo da pausa (1c, ADR-042): com ele na lista da política e a
+       * categoria do chamado com a pausa ligada, a pausa para o relógio da
+       * solução. Sem motivo (operação gravada antes dele), nunca para.
+       */
+      dados: TransicaoDaOs.extend({ motivo: z.enum(MOTIVOS_DE_PAUSA_API).optional() }),
+    }),
     z.object({
       chave: z.guid(),
       tipo: z.literal('os.concluir'),

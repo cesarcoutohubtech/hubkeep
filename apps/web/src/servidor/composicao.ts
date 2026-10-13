@@ -460,6 +460,8 @@ export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
     uh: criarPortaUhIndisponivel(banco),
     codigos: criarPortaCodigos(banco),
     checklists: criarPortaChecklists(banco),
+    prioridades: criarPortaPrioridades(banco),
+    feriadosOficiais,
   });
 });
 
