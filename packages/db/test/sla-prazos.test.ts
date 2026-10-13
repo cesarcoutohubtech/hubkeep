@@ -109,7 +109,7 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
     );
     await dono.query(
       `insert into app.ativo (id, tenant_id, hotel_id, local_id, categoria_id, nome, busca, codigo_qr)
-       values ($1, $2, $3, $4, $5, 'Elevador social', 'elevador social', '0000SLA001')`,
+       values ($1, $2, $3, $4, $5, 'Elevador social', 'elevador social', '0000SA0001')`,
       [ELEVADOR, TENANT, H1, LOBBY, CAT],
     );
     for (const [nome, u] of Object.entries(U)) {
