@@ -16,6 +16,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  ACOES_DA_OS,
   EXECUTORES_DA_OS,
   MODULOS_CONTRATAVEIS,
   MOMENTOS_DA_FOTO,
@@ -91,6 +92,18 @@ describe('valores canônicos: banco × domínio (1c, ADR-042)', () => {
 describe('valores canônicos: banco × domínio (1c, ADR-043)', () => {
   it('sla_alerta_tipo_lista aceita exatamente os TIPOS_DE_ALERTA_DE_SLA do domínio', () => {
     expect(valoresDoCheck('sla_alerta_tipo_lista', 'tipo')).toEqual([...TIPOS_DE_ALERTA_DE_SLA]);
+  });
+});
+
+describe('valores canônicos: banco × domínio (1c, ADR-044)', () => {
+  it('a ação sem autor da transição (0046) é uma ação da OS do domínio', () => {
+    const sql = readFileSync('supabase/migrations/20261013210000_aceite_automatico.sql', 'utf8');
+    const m =
+      /os_transicao_sem_autor_so_no_aceite_automatico\s+check\s*\(\s*\(usuario_id is null\) = \(acao = '(\w+)'\)\s*\)/.exec(
+        sql,
+      );
+    expect(m?.[1]).toBe('aceitar_automatico');
+    expect(ACOES_DA_OS).toContain(m?.[1]);
   });
 });
 

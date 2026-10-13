@@ -467,3 +467,22 @@ Na branch `claude/1c-aceite-automatico`:
 O check `os_transicao_sem_autor_so_no_aceite_automatico` exige o usuário nulo na ação `aceitar_automatico` e só nela. A PV3 não precisa de GRANT nem de policy novos na transição. Basta trocar esse check por um que também aceite o nulo em `gerar`. Por exemplo: `case acao when 'aceitar_automatico' then usuario_id is null when 'gerar' then true else usuario_id is not null end`.
 
 **Aviso ao Intelligence:** a transição do aceite automático tem a ação nova `aceitar_automatico`, de `concluida` para `aceita`, sem usuário. O evento continua `os.aceita`, com `automatico: true`. Quem conta aceites pela ação `aceitar` precisa contar as duas. A OS aceita automaticamente fica sem custo informado, o que pesa na cobertura do custo do glossário.
+
+### Aceite automático: o código, pronto na branch (fora da zona protegida)
+
+Na branch `claude/1c-aceite-automatico-codigo`, que hoje parte da branch da migração. O PR só abre depois do merge da 0046 e do `db push`. Antes de abrir, a branch é refeita a partir da `main`, para não ficar empilhada.
+- **Domínio:**
+  - a ação `aceitar_automatico` na máquina da OS, sem papel que a faça, com o mesmo reflexo do aceite no chamado (aguardando aceite → concluído);
+  - `decidirAceiteAutomatico`, com os motivos de não aceitar: desligado, fora do estado, antes do prazo, quem abriu e executa, faltam códigos, assinatura no aceite;
+  - `aceiteAutomaticoEm` (N vezes 24 horas) e `quemAbriuExecuta`.
+- **Aplicação:** a porta e o caso de uso por tenant, com as três políticas por hotel e no máximo 200 aceites por rodada. A leitura não tem limite, para a OS que nunca é aceita não tomar a vez das outras.
+- **Banco:**
+  - a sessão do `hk_worker` lê as OS corretivas concluídas, com a última conclusão e as equipes ativas de quem abriu;
+  - o aceite trava a OS e o chamado na versão lida (`for update`) e grava a OS, a transição sem usuário, o reflexo no chamado, a auditoria e o evento `os.aceita` com `automatico: true`.
+- **Web:**
+  - a rota `/api/cron/sla` roda o aceite depois do monitor, numa transação própria;
+  - a linha do tempo mostra "OS aceita automaticamente", sem autor;
+  - a configuração mostra uma nota com as três exceções.
+- **Catálogo:** a nota e a linha do tempo, nos quatro idiomas.
+- **Contrato:** a ação nova em `ACOES_DA_OS_API`. O teste de valores canônicos confere a ação do check da 0046 contra o domínio.
+- **Verificação:** no local, lint, typecheck e testes passaram. Só na CI: `packages/db/test/aceite-automatico.test.ts` (aceite, transição, auditoria, evento, as exceções e o outro tenant) e o pgTAP `038`.
