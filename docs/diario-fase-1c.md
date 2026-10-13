@@ -563,11 +563,27 @@ O teste é do Intelligence e não muda com a 1c. Pedido: um `timeout` explícito
 
 **Atendido** no #241, a pedido do Cesar no chat do agente do Kaio: um limite próprio de 20 s nos dois testes do roteiro (`docs/diario-intelligence.md`). Nada mais a pedir.
 
-### Ponto de retomada (13/10/2026, M5)
-- **`main`:** verde, com o #236 (TypeScript de volta à 6.0), o #232 (M4), o #234, o #235, o #238, o #237 (a 0046 e o ADR-044), o #239 (PV3a da 1b), o #240 e o #241.
-- **Dev:** com a 0046. O Cesar fez o `db push` e avisou no chat da 1c em 13/10/2026.
-- **PRs da 1c:** o do código do M5 (`claude/1c-aceite-automatico-m5`), fora da zona protegida, esperando o merge do Cesar. A `claude/1c-aceite-automatico-codigo`, que partia da branch da 0046, fica abandonada.
+## Telas do SLA: as políticas (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Merge e db push pronto. Continue", 13/10/2026). Esta é a parte de telas do item 3 (SLA) que ainda faltava. Vai em dois PRs fora da zona protegida, sem migração:
+1. **Este PR:** a tela `/admin/sla`, no menu de configuração. Ela edita as três políticas do SLA, que a API já aceita desde o #224: `chamado.sla`, `hotel.horario_atendimento` e `chamado.escalonamento`. Grava nos níveis grupo, bandeira e hotel, como a tela de configuração. Todos os papéis leem, e a API recusa a gravação de quem não é Admin do grupo.
+2. **O PR seguinte:** a troca de categoria na triagem, com o recálculo dos prazos (ADR-042, decisão 2). O GRANT da coluna existe desde a 0043.
+
+**Aviso de área compartilhada com a 1b (políticas):** a 1c acrescenta uma página e textos no catálogo. A tela de configuração (`admin/configuracao/page.tsx`) e o domínio das políticas não mudam. Branch `claude/1c-telas-sla`, a partir da `main`.
+
+### A `main` vermelha pelo teste da pausa (13/10/2026)
+
+Desde as 20:15 UTC, o job do banco falha no `packages/db/test/sla-prazos.test.ts`, num teste da 1c ("a pausa com motivo da lista para o relógio"). O teste anda num relógio falso fixado nas 20:00 UTC de hoje, mas a geração da OS grava a transição com o `now()` do banco. Com a hora real depois do início do teste, o `horaDaTransicao` puxou o início e a pausa para a hora real, e a pausa ficou com menos de 2 horas. O #243 entrou com esse job vermelho, e a `main` ficou vermelha.
+
+A correção é o #247, só no teste: o teste alinha a hora da geração com o relógio falso, pelo dono, como o `execucao.test.ts` já faz. O código não muda. O #246 recebeu o mesmo commit.
+
+### Ponto de retomada (13/10/2026, telas do SLA)
+- **`main`:** vermelha no job do banco desde as 20:15 UTC (o teste da pausa). A correção é o #247, que entra antes de qualquer outro merge. Já entraram o #242 e o #243 (código do M5).
+- **Dev:** com a 0046.
+- **PRs da 1c:**
+  - #247: a correção da `main`;
+  - #246: a tela das políticas do SLA (`/admin/sla`), com a `main` juntada e a correção do #247.
 - **Esperando:**
-  - o Cesar: o merge do PR do código do M5;
-  - as decisões das divergências do glossário e as aprovações (Cesar e Kaio); o agente do Kaio já concordou com a revisão da 1c (#235).
-- **Próxima tarefa:** as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
+  - o Cesar: o merge do #247, depois o do #246;
+  - as aprovações do glossário (Cesar e Kaio). As divergências a, b, d e e já têm decisão (#242).
+- **Próxima tarefa:** a troca de categoria na triagem, com o recálculo dos prazos (ADR-042, decisão 2), numa branch nova a partir da `main`. Primeiro passo: `MudancaNoChamado` e o caso de uso da triagem ganham a categoria, com o recálculo pela cópia, como na troca de prioridade.
