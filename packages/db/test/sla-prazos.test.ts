@@ -303,6 +303,10 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
       versao: 2,
       responsavel: { tipo: 'tecnico', usuarioId: U.tecnico },
     });
+    // A geração grava a hora do banco (now()), e o teste anda no relógio falso.
+    // Sem alinhar, a hora real depois do AGORA puxa o início e a pausa para ela
+    // (horaDaTransicao não volta antes da transição anterior).
+    await dono.query(`update app.os_transicao set quando = $2 where os_id = $1`, [os.id, AGORA]);
     const operar = async (
       tipo: 'os.iniciar' | 'os.pausar' | 'os.retomar',
       versao: number,
