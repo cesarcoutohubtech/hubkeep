@@ -1258,3 +1258,55 @@ Atividades 2b e 2c do Kaio de 12/10/2026, com a proposta aprovada pelo Cesar nes
 - **2c, recálculo:** `pnpm ops:recalcular-inteligencia --ambiente dev|staging --tenant <uuid> --de AAAA-MM-DD --ate AAAA-MM-DD --por "<quem>" [--dry-run]`, no molde do `ops:provisionar`, que confere o alvo antes de conectar. Dia a dia, cada um numa transação do `hk_worker`, o comando roda o modo de recálculo do motor (ADR-036). Esse modo grava outra linha por ativo, com o número de cálculo seguinte, a marca de recálculo e as versões das fórmulas de hoje. Não abre nem atualiza insight. A auditoria registra `recalcular_dia`, com `disparadoPor` `ops:<quem>`. O comando aceita no máximo 366 dias e só dias que já terminaram (UTC). Produção fica fora, até o roteiro de operação dela (F0-12). O `--dry-run` roda cada dia inteiro e desfaz a transação.
 - **Conferido no Postgres da carga:** o `--dry-run` não gravou nada. A rodada real gravou o cálculo 2, com `recalculo = true`, nos 10 mil ativos de cada dia, e deixou intactas as linhas originais. A auditoria registrou `ops:Kaio`. Cada dia levou cerca de 6 s.
 - **`.env.example`:** entraram as variáveis do executor de carga e do recálculo, montadas pelos scripts.
+
+## Atividade 3, proposta: histórico de demonstração do Intelligence (13/10/2026)
+
+Terceira atividade do Kaio de 12/10/2026: um grupo com cerca de seis meses de histórico sintético, em que os insights aparecem. Só dev e staging, com a mesma trava do kit contra produção. Combinar com o agente do núcleo, por este diário, se o gerador mora junto do kit. Antes do código, **o agente para aqui** para Cesar e Kaio decidirem.
+
+**O que o agente encontrou:**
+- O kit (`apps/web/test/demonstracao/semear.ts`, do núcleo) grava tudo pelos casos de uso, com a unit of work. Ele já aceita outro tenant e outro domínio (`semearDemonstracao({ tenantId, dominio })`, o mesmo caminho das turmas).
+- **O passado não entra pelos casos de uso de hoje.** O chamado é aberto na hora do `relogio` da composição (`relogioDoSistema`). A transição da OS aceita a hora do aparelho (`feitaEm`), mas nunca depois de agora e nunca antes da transição anterior. Então seis meses atrás só entram com um relógio do roteiro.
+- O outbox só tem manipulador para `membro.convidado`. Os eventos do passado não mandam e-mail nem push.
+- O job do dia já recebe o relógio (`DepsDoJobDoDia.relogio`). Rodado dia a dia com o relógio no fim de cada dia, ele grava a métrica e abre os insights na data em que abririam de verdade. O recálculo não serve aqui, porque não abre insight.
+- As telas abrem 60 dias depois do primeiro contrato do módulo. Com o módulo contratado seis meses atrás, o grupo já nasce com as telas abertas.
+- Os agentes não acessam o dev. Quem roda no dev é o Cesar, e a CI roda o teste no Supabase do runner.
+
+**Decisões pedidas** (recomendação do agente em cada uma):
+
+1. **Onde mora o gerador.** Recomendação: um arquivo do Intelligence ao lado do kit, `apps/web/test/demonstracao/historico-inteligencia.ts`, com o comando `pnpm demo:historico --ambiente dev|staging`.
+   - O comando segue o molde do `demo:dados`: `AMBIENTES_PERMITIDOS = ['dev', 'staging']`, o ref conferido antes de conectar, nada em argv, e a `HK_DEMO_SENHA` pela variável de ambiente.
+   - A base do grupo sai do próprio kit, chamando `semearDemonstracao` como as turmas chamam, sem mudar o `semear.ts`. Os seis meses vêm por cima.
+   - A alternativa era pôr o histórico dentro do `semear.ts`: dois agentes mexeriam no mesmo arquivo, e o kit ficaria mais lento para quem só quer os chamados em cada estado.
+2. **Que grupo.** Recomendação: um tenant próprio, "Grupo Demonstração — Intelligence", com e-mails `@intelligence.demo.hubkeep.test`.
+   - O grupo do kit fica como está, com os chamados em cada estado para o teste manual e a métrica que o job grava desde 10/10.
+   - Seis meses de chamados enterrariam esses casos nas listas.
+3. **Como gravar o passado.** Recomendação (A): pelos casos de uso, com um relógio do roteiro que anda dia a dia. Auditoria, outbox, SLA e status saem iguais aos de verdade, só que com a data do roteiro.
+   - Isso pede à composição uma forma de montar os casos de uso de chamado, execução e sincronização com outro relógio. É arquivo do núcleo (pedido 2 abaixo).
+   - A alternativa (B) é SQL direto pelo dono, como o gerador da carga. É mais rápida, mas pula a unit of work (regra 6) e grava dado permanente no dev compartilhado fora dela. O agente não recomenda.
+4. **Métrica e insights.** Recomendação: depois da operação de cada dia, rodar o job normal daquele dia, com o relógio às 23:59:59 do dia, do primeiro ao de ontem.
+   - Algumas decisões das pessoas também entram no roteiro, pelos casos de uso do insight e com o relógio do dia: um insight reconhecido, um descartado como "não relevante" e um resolvido.
+   - Assim a página do insight mostra os três destinos.
+5. **Roteiro determinístico, não aleatório.** Semente fixa, e um cenário plantado para cada sinal do motor, com ruído normal em volta:
+   - um ativo de atenção alta, com o score subindo nas últimas semanas;
+   - reincidência no mesmo ativo;
+   - sinal sistêmico em quatro formas: mesmo modelo em vários hotéis, mesmo andar, mesma área comum e mesmo fornecedor;
+   - crescimento de chamados de uma categoria;
+   - um candidato a substituição, pelo custo acima do limite;
+   - efetividade de uma ação: chamados antes e depois de uma troca.
+   Rodar de novo não duplica nada, porque as operações offline têm chaves fixas, como no kit.
+6. **Volume.** Recomendação:
+   - 2 bandeiras, 6 hotéis e uns 60 ativos por hotel;
+   - cerca de 3 chamados por dia em cada hotel, uns 3.300 chamados em 183 dias;
+   - pela carga (cerca de 6 s por dia para 10 mil ativos), o job dos 183 dias cabe em poucos minutos, e a operação pelos casos de uso em uns 10 minutos.
+   O Kaio ajusta o volume e os cenários (detalhe, ADR-033).
+7. **Teste.** Um `historico-inteligencia.test.ts` na CI, no Supabase do runner, como o `semear.test.ts`.
+   - Ele roda um roteiro curto (cerca de 45 dias, com os cenários comprimidos) e confere que cada cenário plantado abriu o insight esperado.
+   - Também confere que produção é recusada.
+
+**Pedidos ao agente do núcleo** (resposta no `docs/diario-fase-1b.md`):
+1. Que o gerador do Intelligence more em `apps/web/test/demonstracao/`, ao lado do kit, chamando `semearDemonstracao` sem alterá-la. Se o kit mudar a assinatura, o teste do histórico quebra na CI e avisa.
+2. Na `composicao.ts`, uma montagem dos casos de uso de chamados, execução, sincronização e checklists que receba o relógio, por exemplo `casosDeUsoComRelogio(relogio)`. As exportações de hoje continuariam com o `relogioDoSistema`. Uso fora da Vercel, só pelo gerador, como a conta do kit (ADR-024). O agente do Intelligence pode fazer essa mudança no PR dele, se o núcleo preferir, registrada no diário da 1b.
+
+**Fora desta atividade:** produção (nunca) e o staging antes do `[remotes.staging]` (F0-12; o comando o recusa como o `demo:dados`). Também fica fora qualquer mudança no motor ou nas fórmulas.
+
+**Aguarda:** a decisão de Cesar e Kaio nos itens 1 a 7, e a resposta do agente do núcleo aos dois pedidos. Nenhum código foi escrito.
