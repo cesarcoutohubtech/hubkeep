@@ -1094,7 +1094,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-041 — Preventiva por tempo: calendário fixo e geração idempotente pelo worker
 
-**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3.
+**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3 (migração 0048). O adendo da PV3, no fim, aguarda aprovação do Cesar.
 
 **Contexto:** a PV2 e a PV3 da 1b (`docs/12`) trazem a manutenção preventiva: planos por ativo ou por categoria e a OS gerada sozinha na data prevista. Hoje a OS só nasce de chamado (`app.os.chamado_id` é `not null`), o `hk_worker` não grava OS, e a rota `/api/cron/preventiva` existe vazia, fora do `vercel.json` (B9 do `docs/11`). Rotinas legais, como o PMOC do ar-condicionado (Lei 13.589/2018), seguem datas fixas.
 
@@ -1115,9 +1115,21 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Consequências:**
 - PV2: uma tabela nova, com os seis casos de isolamento (pgTAP 036). O `hk_worker` já lê o plano, para a PV3.
-- PV3: `app.os.chamado_id` e `criado_por` passam a anuláveis, com um check que exige um tipo só (corretiva com chamado, preventiva com plano, ativo e data prevista); `app.os_transicao.usuario_id` passa a anulável só na ação `gerar`; o worker ganha INSERT em `app.os`, `app.os_transicao` e `app.os_checklist`. Os meta-testes 18, 21, 28 e 32 mudam junto, e o agente do Intelligence é avisado de que a transição de geração da preventiva vem sem usuário.
+- PV3 (migração 0048, pgTAP 040):
+  - `app.os.chamado_id` e `criado_por` passam a anuláveis, com o check `os_de_um_tipo`: a corretiva tem chamado e quem a gerou, e nenhuma coluna da preventiva; a preventiva não tem chamado nem "quem abriu", e tem o plano, o ativo, a data prevista e a cópia do plano;
+  - FK nova `(hotel_id, local_id)` para `app.local`, porque a FK do local pelo chamado não é conferida com o chamado nulo;
+  - `app.os_transicao.usuario_id` nulo vale nas ações `aceitar_automatico` (0046, ADR-044) e `gerar`, e o aceite automático segue sempre sem usuário;
+  - `app.os_checklist.criado_por` passa a anulável, para a cópia do checklist do plano;
+  - o worker ganha INSERT em `app.os` (só com plano e sem autor), em `app.os_transicao` (só `gerar` e `aceitar_automatico`, sem usuário) e em `app.os_checklist` (sem autor). O `hk_app` passa a gerar só a corretiva.
+  - Os meta-testes 18, 21, 28 e 32 não precisaram mudar: nenhuma tabela nova, nenhum UPDATE em campo de escopo, as FKs novas são compostas pelo hotel, e a transição segue só de inserção.
+  - A OS preventiva guarda a marca do arrendado (`responsavel_arrendamento`, ADR-045) pela categoria do ativo, a pedido da 1c (13/10/2026).
+  - O agente do Intelligence é avisado, no diário da 1b, de que a transição de geração da preventiva vem sem usuário.
 - O PWA antigo não quebra: a fila do dia só traz OS preventiva quando o pedido diz que entende (`?preventiva=1`).
 - Plano com responsável inválido (desativado ou sem papel de Técnico no hotel) não gera e aparece com a pendência na lista de planos.
+
+**Adendo da PV3 (13/10/2026, aguarda aprovação do Cesar):** dois detalhes de implementação, propostos no PR da migração 0048.
+- **Trava do hotel por advisory lock, e não por `for update skip locked`:** o `SELECT ... FOR UPDATE` nos planos pede UPDATE do `hk_worker` em `app.plano_preventivo`, que ele não tem e não precisa ter. Cada hotel abre a transação com `pg_try_advisory_xact_lock` (função do próprio Postgres, como a trava da licença), e a execução que não consegue a trava pula o hotel. O índice único continua segurando a mesma ocorrência.
+- **Modelo de checklist desativado:** a OS preventiva copia o checklist do plano só se o modelo ainda estiver ativo, a mesma regra da triagem (`checklist_modelo_inativo`). Desativado, a OS sai sem checklist, para o calendário do plano não parar.
 
 ## ADR-042 — Calendário de SLA: prazos calculados no domínio e gravados no chamado
 

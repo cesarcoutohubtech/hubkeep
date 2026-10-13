@@ -17,6 +17,7 @@ import {
   type FiltroDaLista,
   motivoDaAuditoria,
 } from '@hubkeep/dominio';
+import type { NotNull } from 'kysely';
 import type { AcessoBanco } from './acesso';
 
 export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsultasDaCorretiva {
@@ -110,6 +111,9 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
             'e.nome as equipe_nome',
             'o.criado_em',
           ])
+          // A lista da corretiva; a da preventiva (sem chamado) chega na PV3c.
+          .where('o.chamado_id', 'is not', null)
+          .$narrowType<{ chamado_id: NotNull }>()
           .$if(f.hotelId !== null, (q) => q.where('o.hotel_id', '=', f.hotelId ?? ''))
           .$if(f.situacaoId !== null, (q) => q.where('o.situacao_id', '=', f.situacaoId ?? ''))
           .$if(f.prioridadeId !== null, (q) =>

@@ -5,6 +5,7 @@ import type {
   PortaFeriadosDoHotel,
   PortaMonitorDeSla,
   PortaAceiteAutomatico,
+  PortaGeracaoPreventiva,
   AnexoGravado,
   AtivoGravado,
   ChecklistDaOsGravado,
@@ -51,19 +52,17 @@ import type {
   PortaUhIndisponivel,
 } from '@hubkeep/aplicacao';
 import {
-  type Atribuicao,
   Conflito,
   type Contexto,
   type EstadoDaOs,
   type EstadoDoChamado,
-  type Escopo,
   type ExecutadoPor,
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
   ehMomentoDaFoto,
   ehMotivoDePausa,
 } from '@hubkeep/dominio';
-import { sql } from 'kysely';
+import { type NotNull, sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
 import {
@@ -73,6 +72,8 @@ import {
 } from './leituras-do-hotel';
 import { sessaoDoMonitorDeSla } from './repositorios/monitor-sla';
 import { sessaoDoAceiteAutomatico } from './repositorios/aceite-automatico';
+import { hoteisParaGerar, sessaoDaGeracao } from './repositorios/geracao-preventiva';
+import { paraAtribuicao, selecionarAtribuicoes as selecionar } from './atribuicoes';
 import {
   ehMembro,
   escopoVisivel,
@@ -172,54 +173,19 @@ export function criarPortaAceiteAutomatico(banco: AcessoBanco): PortaAceiteAutom
   };
 }
 
-interface LinhaAtribuicao {
-  id: string;
-  usuario_id: string;
-  papel: Atribuicao['papel'];
-  escopo_tipo: Escopo['tipo'];
-  bandeira_id: string | null;
-  hotel_id: string | null;
-  proprietario_id: string | null;
-  valido_ate: Date | null;
-  revogado_em: Date | null;
+/**
+ * Geração da OS preventiva (hk_worker, 1b, PV3; ADR-041): a lista dos hotéis
+ * ativos numa leitura do tenant, e cada hotel na transação dele (decisão 13).
+ */
+export function criarPortaGeracaoPreventiva(banco: AcessoBanco): PortaGeracaoPreventiva {
+  return {
+    hoteisAtivos: (tenantId) => banco.withSistema({ tenantId }, hoteisParaGerar),
+    noHotel: (ctx, fn) =>
+      banco.executarComoSistema({ tenantId: ctx.tenantId }, (uow) =>
+        fn(sessaoDaGeracao(uow, ctx.hotelId)),
+      ),
+  };
 }
-
-function escopoDe(l: LinhaAtribuicao): Escopo {
-  // A constraint escopo_coerente garante que a coluna do tipo está preenchida.
-  switch (l.escopo_tipo) {
-    case 'grupo':
-      return { tipo: 'grupo' };
-    case 'bandeira':
-      return { tipo: 'bandeira', bandeiraId: l.bandeira_id ?? '' };
-    case 'hotel':
-      return { tipo: 'hotel', hotelId: l.hotel_id ?? '' };
-    case 'proprietario':
-      return { tipo: 'proprietario', proprietarioId: l.proprietario_id ?? '' };
-  }
-}
-
-const paraAtribuicao = (l: LinhaAtribuicao): Atribuicao => ({
-  id: l.id,
-  usuarioId: l.usuario_id,
-  papel: l.papel,
-  escopo: escopoDe(l),
-  validoAte: l.valido_ate,
-  revogadoEm: l.revogado_em,
-});
-
-const COLUNAS = [
-  'id',
-  'usuario_id',
-  'papel',
-  'escopo_tipo',
-  'bandeira_id',
-  'hotel_id',
-  'proprietario_id',
-  'valido_ate',
-  'revogado_em',
-] as const;
-
-const selecionar = (tx: Tx) => tx.selectFrom('app.atribuicao_escopo').select(COLUNAS);
 
 export function criarPortasDeAplicacao(banco: AcessoBanco): {
   hoteis: PortaHoteis;
@@ -1365,6 +1331,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
             .selectFrom('app.os')
             .select(COLUNAS_DA_OS)
             .where('chamado_id', '=', chamadoId)
+            .$narrowType<{ chamado_id: NotNull; criado_por: NotNull }>()
             .orderBy('criado_em')
             .orderBy('id')
             .execute()
@@ -1376,6 +1343,10 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           .selectFrom('app.os')
           .select(COLUNAS_DA_OS)
           .where('id', '=', osId)
+          // A OS preventiva (PV3, sem chamado) não passa pela triagem: as
+          // ações dela chegam na PV3c. Até lá, aqui ela é 404.
+          .where('chamado_id', 'is not', null)
+          .$narrowType<{ chamado_id: NotNull; criado_por: NotNull }>()
           .executeTakeFirst();
         return o ? paraOs(o) : null;
       }),

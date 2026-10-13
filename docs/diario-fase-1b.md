@@ -707,3 +707,74 @@ O Cesar aprovou os três adendos ("Cesar aqui", 13/10/2026), depois do resumo co
 - **Conferido nos dois sentidos:** uma página falsa com o `carregarNaPagina` reprova, e um `gerarOs` no `Pick` das fontes reprova.
 
 **Status do PR:** a branch anda agora, e o PR abre na vez da PV3 na fila de zona protegida, depois da 0047 da 1c.
+
+## PV3 — a parte protegida: a OS preventiva no banco e o cron (13/10/2026)
+
+A 0047 da 1c entrou na `main` (#257), e não havia PR de zona protegida aberto. A branch `claude/1b-pv3-protegida` recebeu a `main` e a parte protegida da PV3.
+
+**Migração 0048** (`20261013233000_os_preventiva.sql`) e **pgTAP 040**, com 32 casos:
+- **`app.os` ganha a preventiva:** plano, ativo, data prevista e a cópia do plano.
+  - O chamado e o autor passam a anuláveis. O check `os_de_um_tipo` exige um tipo só:
+    - a corretiva tem chamado e autor;
+    - a preventiva tem plano, ativo, data prevista e a cópia, e não tem chamado nem "quem abriu".
+  - FK nova `(hotel_id, local_id)`.
+  - Índice único `(hotel_id, plano_id, ativo_id, data_prevista)` na preventiva, que inclui a OS cancelada.
+- **Quem gera cada tipo:** o `hk_app` gera só a corretiva (a policy de INSERT passa a exigir o chamado). O `hk_worker` gera só a preventiva, sem autor, no tenant do job.
+- **Transição:** sem usuário só no `aceitar_automatico` (da 0046) e no `gerar`. O worker grava só essas duas.
+- **Checklist:** `criado_por` anulável. O worker grava a cópia sem autor.
+- **Meta-testes:** o 18, o 21, o 28 e o 32 não precisaram mudar. Entrou um caso em `tests/valores-canonicos-banco.test.ts`, que confere que as ações sem autor são ações do domínio.
+
+**Código:**
+- **Domínio:**
+  - `responsavelQueVale`: técnico ativo com papel de Técnico vigente no hotel, ou equipe ativa do hotel; é a regra da triagem;
+  - `modeloParaACopia`: copia só modelo ativo.
+- **Caso de uso:** resolve no hotel a situação da OS atribuída, o checklist e a marca do arrendado, pela categoria do ativo. Isso atende ao pedido da 1c.
+- **Repositório `geracao-preventiva.ts`:**
+  - grava a OS, a transição, o checklist, a auditoria `os/gerar` e o evento `os.atribuida`, com `chamadoId: null` e o plano;
+  - a trava do hotel é um advisory lock de transação;
+  - a mesma ocorrência não faz nada (`ON CONFLICT DO NOTHING`).
+- **Mapeamento das atribuições:** foi para `packages/db/src/atribuicoes.ts`, para servir ao hk_app e ao worker.
+- **Cron:**
+  - `/api/cron/preventiva` volta ao `vercel.json` às 08:00 UTC (`0 8 * * *`, 05:00 de Brasília);
+  - o hotel que falha vai para o log e para o Sentry, e a resposta soma só números;
+  - os testes ficam em `apps/web/test/cron-preventiva.test.ts`.
+- **Integração:** `packages/db/test/geracao-preventiva.test.ts`, só na CI.
+- **A preventiva fica fora, até a PV3c:**
+  - da lista de OS da corretiva;
+  - da leitura da OS na triagem, onde ela dá 404;
+  - da fila do dia, que já fazia o join com o chamado.
+- **Tipo do Kysely:** o `chamado_id` passou a anulável, e a leitura do Intelligence que busca as OS dos chamados do período (`packages/db/src/repositorios/inteligencia.ts`) ganhou só o `$narrowType`. A consulta não mudou.
+
+**Dois detalhes de implementação, no adendo do ADR-041, aguardando o Cesar:**
+- **Trava do hotel:** advisory lock, e não `for update skip locked`, porque o `FOR UPDATE` pediria UPDATE do worker no plano.
+- **Modelo de checklist desativado:** a OS sai sem checklist.
+
+### Aviso ao agente do Intelligence (13/10/2026)
+
+A partir da 0048, a OS pode não ter chamado (a preventiva), e a transição `gerar` da preventiva vem sem usuário. A leitura do Intelligence que busca as OS dos chamados do período segue igual. No `packages/db/src/repositorios/inteligencia.ts`, só o tipo mudou (`$narrowType` no `chamado_id`), sem mudar a consulta. Se o Intelligence for ler OS preventiva, ela vem com `chamado_id` nulo, `plano_id`, `ativo_id` e `data_prevista`.
+
+### Aviso ao agente da 1c (13/10/2026)
+
+- **Marca do arrendado:** a preventiva grava `responsavel_arrendamento` como a 1c pediu. O aviso ao locador (`os.locador_avisado`) fica para quando o padrão da corretiva estiver na `main`.
+- **Evento `os.atribuida` da preventiva:** vem com `chamadoId: null`, `planoId`, `ativoId`, `dataPrevista`, `acao: 'gerar'` e `responsavel`.
+- **Aceite automático:** a leitura do job faz join com o chamado, então a preventiva fica de fora. Ligar o `os.aceite_automatico` na preventiva fica para a PV3c, combinado com a 1c.
+
+## Ponto de retomada (13/10/2026, PV3 protegida)
+
+- **`main`:** em `b7e9870`, com a 0047 da 1c (#257). O dev está com a 0047, se o `db push` já foi feito.
+- **PR aberto da 1b:** o da PV3 protegida (`claude/1b-pv3-protegida`), de zona protegida. Leva:
+  - a migração 0048;
+  - os adendos dos ADR-021, ADR-024 e ADR-039 com o status;
+  - o teste de guarda da P1c.
+- **Esperando o Cesar:**
+  - a aprovação dos dois detalhes do adendo da PV3 no ADR-041;
+  - o merge e o `db push` da 0048.
+- **Nada sem enviar.**
+- **Próxima tarefa:** a PV3c, fora da zona, numa branch nova a partir da `main` depois do merge. Ela traz:
+  - as ações (execução, aceite, cancelamento) na OS sem chamado;
+  - a fila do dia com a preventiva;
+  - as telas do PWA e do web;
+  - a pendência do plano sem responsável na lista;
+  - o aceite automático da preventiva, com a 1c.
+
+  Primeiro passo: a leitura da OS por id com `OrigemDaOs` no repositório da triagem e da execução.
