@@ -97,6 +97,7 @@ export {
 export type { Vigencia } from './proprietarios';
 export {
   CHAVES_DE_POLITICA,
+  NIVEIS_DE_POLITICA,
   PREFIXOS_DO_NUCLEO,
   POLITICAS,
   ehChaveDePolitica,
@@ -117,6 +118,7 @@ export type {
   ExtensaoDeModulo,
   ExtensaoDePolitica,
   NiveisDePolitica,
+  NivelDePolitica,
   NomesDeCriticidade,
   PrioridadePadraoPorCategoria,
   RegistroDePoliticas,
