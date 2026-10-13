@@ -236,3 +236,32 @@ Decisão do Cesar no chat ("Cesar aqui", 13/10/2026), depois do merge do #211:
 2. **"1c: motivo da pausa e prazo na retomada":** o motivo na pausa da OS (web e PWA), o prazo refeito e o tempo pausado na retomada, com o catálogo dos motivos.
 
 Depois, as telas: os feriados do hotel, a política de SLA, a troca da categoria na triagem e os prazos na ficha.
+
+## Prazos de SLA na abertura e na triagem (13/10/2026)
+
+Primeiro dos dois PRs do aviso acima, na branch `claude/1c-sla-prazos`, fora da zona protegida e sem migração.
+- **Domínio** (`sla.ts`, `chamados.ts`):
+  - a cópia da `chamado.sla` e do horário vai em `politica_aplicada`, e `slaDaCopia` a lê. O chamado de antes da 0043 não tem cópia, e nada o recalcula;
+  - `regiaoDoHotel`: o país e a subdivisão do hotel, com o nulo herdando do tenant. A subdivisão do tenant só vale no país dele;
+  - `calendarioDeSla` e `anosDoCalendario`: os anos vão do anterior até o limite da procura;
+  - `prazosDoChamado`: o tempo já pausado estende a solução;
+  - `prazosNoRecalculo`: o prazo de atendimento fica o gravado depois da primeira OS.
+- **Aplicação:**
+  - a porta `FeriadosOficiais` e os dados do calendário do hotel;
+  - a abertura (web e offline) grava a categoria do ativo e os dois prazos;
+  - `triar` com prioridade e `priorizar` refazem os prazos pela cópia, da abertura, com o calendário de agora.
+- **Banco:** o fuso, a região e os feriados ativos do hotel, lidos pela RLS de quem pede. A auditoria da triagem guarda os prazos de antes e de depois.
+- **Web:**
+  - a `date-holidays` 3.37.0 fixada, só no servidor, com cache por (país, estado, ano);
+  - **falha nos dados da biblioteca:** na 3.37.0, São Paulo e o Rio de Janeiro deixam de fora o 20 de novembro, que é nacional. A ligação junta os feriados do país com os do estado, e o teste de regressão confere o Brasil e quatro estados (SP, PR, RJ, RS) em 2026 e em 2027.
+- **Contrato:** o `ChamadoApi` leva a categoria, os prazos e o tempo pausado.
+- **Verificação:**
+  - no local, o lint, o typecheck e os testes passaram;
+  - o `packages/db/test/sla-prazos.test.ts` roda só na CI. Ele cobre a abertura pelo Solicitante (com o feriado do hotel lido pela RLS), a cópia, a triagem que refaz os prazos pela cópia depois de a política mudar, a auditoria e o prazo de atendimento depois da OS;
+  - os testes do banco que montam a abertura e a triagem recebem `semFeriadosOficiais`.
+
+**Pendências para o Cesar:**
+1. **Licença dos dados da `date-holidays`:** o arquivo `LICENSE` do pacote diz **CC BY-SA 3.0** ("compartilha igual"), e não CC BY 3.0, como está no ADR-042. O campo de licença do npm diz `(ISC AND CC-BY-3.0)`, e daí veio a conferência do ADR. O servidor só lê as datas para calcular prazos e não altera nem redistribui os dados. O aviso de terceiros (`AVISOS-DE-TERCEIROS.md`) já leva a licença certa e as fontes do Brasil. A correção do texto do ADR-042 depende da sua decisão e entra no próximo PR de zona protegida da 1c. O `js-yaml` 5 e a `argparse` são Python-2.0, licença permissiva.
+2. **Dependabot:** o ADR-042 diz que o Dependabot propõe as versões novas da biblioteca. Hoje o `dependabot.yml` só cobre as actions. Para incluir o npm (só a `date-holidays`, ou o repositório inteiro), é preciso mudar o `dependabot.yml`, que é zona protegida. Até lá, a atualização é deliberada, com o teste de regressão.
+
+**A `main` vermelha depois do #210 e do #211:** no a6b761b, o "CI" falhou no `tests/auditoria-entidades.test.ts` (da 1c): o #210 passou a gravar na auditoria `checklist_modelo` e `os_checklist`, fora da lista. O "banco" falhou na limpeza do `apps/web/test/demonstracao/semear.test.ts`. O agente da 1b já tem a correção das duas falhas na branch `claude/1b-main-vermelha-auditoria`, e a 1c não abre outra. O PR dos prazos abre depois do merge dessa correção, com a `main` juntada.
