@@ -14,12 +14,16 @@
 //
 // Na 1c (ADR-042): a categoria do chamado, que vem do ativo na abertura, é
 // escolhida, trocada ou tirada nos estados da prioridade; a troca refaz os
-// prazos de SLA no servidor.
+// prazos de SLA no servidor. No arrendado (ADR-045), quem tria ajusta quem
+// responde pela OS marcada, com motivo, até o aceite.
 import {
+  ESTADOS_COM_ARRENDAMENTO_AJUSTAVEL,
   ESTADOS_COM_CATEGORIA_AJUSTAVEL,
   ESTADOS_COM_EXECUTOR_AJUSTAVEL,
   ESTADOS_COM_IMPACTO_AJUSTAVEL,
   ESTADOS_COM_PRIORIDADE_AJUSTAVEL,
+  RESPONSAVEIS_DO_ARRENDAMENTO,
+  type ResponsavelDoArrendamento,
   TRANSICOES_DA_OS,
   TRANSICOES_DO_CHAMADO,
 } from '@hubkeep/dominio';
@@ -123,6 +127,12 @@ export interface AcoesDaTriagem {
   definirExecutor: (os: OsDoChamado, execucao: Execucao) => void;
   reatribuirOs: (os: OsDoChamado, responsavel: Responsavel) => void;
   cancelarOs: (os: OsDoChamado, motivo: string) => void;
+  /** Quem responde pela OS do hotel arrendado, com motivo (1c, ADR-045). */
+  ajustarArrendamento: (
+    os: OsDoChamado,
+    responsavel: ResponsavelDoArrendamento,
+    motivo: string,
+  ) => void;
 }
 
 /** Valor da opção do seletor de responsável: `tecnico:<id>` ou `equipe:<id>`. */
@@ -151,6 +161,11 @@ export function acoesPossiveis(detalhe: DetalheDoChamado) {
     impacto: vale(ESTADOS_COM_IMPACTO_AJUSTAVEL, estado),
     osComExecutorAjustavel: detalhe.os.filter((o) =>
       vale(ESTADOS_COM_EXECUTOR_AJUSTAVEL, o.estado),
+    ),
+    // Só a OS com marca: fora do arrendado, e antes da 0047, não há o que ajustar.
+    osComArrendamentoAjustavel: detalhe.os.filter(
+      (o) =>
+        o.responsavelArrendamento !== null && vale(ESTADOS_COM_ARRENDAMENTO_AJUSTAVEL, o.estado),
     ),
   };
 }
@@ -331,6 +346,53 @@ function CorrecaoDoExecutor(props: {
   );
 }
 
+/** Quem responde pela OS do hotel arrendado (ADR-045), com motivo, até o aceite. */
+function AjusteDoArrendamento(props: {
+  atual: ResponsavelDoArrendamento;
+  aoEnviar: (responsavel: ResponsavelDoArrendamento, motivo: string) => void;
+}) {
+  const t = useT();
+  const [valor, setValor] = useState<ResponsavelDoArrendamento>(props.atual);
+  const [motivo, setMotivo] = useState('');
+  function enviar(ev: FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    props.aoEnviar(valor, motivo);
+  }
+  return (
+    <form onSubmit={enviar} data-acao="ajustar_arrendamento">
+      <Campo
+        rotulo={t('corretiva.triagem.arrendamento')}
+        ajuda={t('corretiva.triagem.dica_arrendamento')}
+      >
+        {(c) => (
+          <Selecao
+            {...c}
+            value={valor}
+            onChange={(e) => {
+              const v = RESPONSAVEIS_DO_ARRENDAMENTO.find((r) => r === e.target.value);
+              if (v) setValor(v);
+            }}
+          >
+            {RESPONSAVEIS_DO_ARRENDAMENTO.map((r) => (
+              <option key={r} value={r}>
+                {t('corretiva.arrendamento.responsavel', { responsavel: r })}
+              </option>
+            ))}
+          </Selecao>
+        )}
+      </Campo>
+      <Campo rotulo={t('corretiva.triagem.motivo')}>
+        {(c) => (
+          <AreaDeTexto {...c} value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={2} />
+        )}
+      </Campo>
+      <Botao type="submit" disabled={valor === props.atual || motivo.trim() === ''}>
+        {t('corretiva.triagem.salvar_arrendamento')}
+      </Botao>
+    </form>
+  );
+}
+
 /** Afeta hóspede? Sim, não ou não sei (I4), corrigido até o aceite. */
 function Impacto(props: { atual: boolean | null; aoEnviar: (impacto: boolean | null) => void }) {
   const t = useT();
@@ -473,7 +535,8 @@ export function TriagemDoChamado(props: {
     (o) =>
       a.osReatribuiveis.includes(o) ||
       a.osCancelaveis.includes(o) ||
-      a.osComExecutorAjustavel.includes(o),
+      a.osComExecutorAjustavel.includes(o) ||
+      a.osComArrendamentoAjustavel.includes(o),
   );
   const categorias = props.categorias ?? null;
   const categorizar = a.categorizar && categorias !== null;
@@ -562,6 +625,12 @@ export function TriagemDoChamado(props: {
                 os={o}
                 fornecedores={props.fornecedores}
                 aoEnviar={(e) => acoes.definirExecutor(o, e)}
+              />
+            )}
+            {a.osComArrendamentoAjustavel.includes(o) && o.responsavelArrendamento && (
+              <AjusteDoArrendamento
+                atual={o.responsavelArrendamento}
+                aoEnviar={(r, motivo) => acoes.ajustarArrendamento(o, r, motivo)}
               />
             )}
             {a.osCancelaveis.includes(o) && (

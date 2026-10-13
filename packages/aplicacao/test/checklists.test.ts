@@ -86,6 +86,8 @@ function montar(opcoes: {
     custoInformado: null,
     codigos: { falhaId: null, causaId: null, solucaoId: null },
     assinaturaAceiteId: null,
+    responsavelArrendamento: null,
+    locadorAvisadoEm: null,
     criadoPor: 'g',
     versao: 4,
     criadoEm: AGORA,
@@ -95,6 +97,7 @@ function montar(opcoes: {
     chamado: async () => ({
       id: 'c-1',
       hotel: HOTEL,
+      modeloContratual: null,
       localId: 'l',
       ativoId: null,
       estado: 'em_execucao' as const,

@@ -26,6 +26,8 @@ export interface FiltroDaLista {
   ate: Date | null;
   /** Continua a lista depois deste id (do mais novo para o mais antigo). */
   depoisDe: string | null;
+  /** Só as OS do locador no hotel arrendado (1c, ADR-045); a lista de chamados não usa. */
+  doLocador: boolean;
 }
 
 /** Datas válidas, e o início antes do fim; senão 422 periodo_invalido. */

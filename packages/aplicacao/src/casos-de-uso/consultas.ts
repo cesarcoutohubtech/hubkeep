@@ -28,6 +28,8 @@ export interface PedidoDeLista {
   ate?: string | null | undefined;
   /** O `proximo` da página anterior. */
   depoisDe?: string | null | undefined;
+  /** Só as OS do locador (1c, ADR-045); só a lista de OS usa. */
+  doLocador?: boolean | undefined;
 }
 
 export interface Pagina<T> {
@@ -54,6 +56,7 @@ function filtroDe(p: PedidoDeLista): FiltroDaLista {
     de: data(p.de),
     ate: data(p.ate),
     depoisDe: p.depoisDe ?? null,
+    doLocador: p.doLocador ?? false,
   };
   validarPeriodoDaLista(filtro.de, filtro.ate);
   return filtro;

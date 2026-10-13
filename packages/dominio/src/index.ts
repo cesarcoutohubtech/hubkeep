@@ -110,10 +110,13 @@ export {
   valeNoNivel,
 } from './politicas';
 export {
+  ESTADOS_COM_ARRENDAMENTO_AJUSTAVEL,
   LIMITE_DA_MATRIZ,
   RESPONSAVEIS_DO_ARRENDAMENTO,
+  avisaOLocador,
   ehResponsavelDoArrendamento,
   matrizDeArrendamentoValida,
+  podeAjustarArrendamento,
   responsavelDoArrendamento,
 } from './arrendamento';
 export type { MatrizDeArrendamento, ResponsavelDoArrendamento } from './arrendamento';

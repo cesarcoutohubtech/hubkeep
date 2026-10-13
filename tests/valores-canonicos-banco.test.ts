@@ -8,11 +8,13 @@
 // migração 0038), o momento da foto da OS (I8, MOMENTOS_DA_FOTO, migração
 // 0041), o motivo da pausa da OS (1c, MOTIVOS_DE_PAUSA, migração 0043) e a
 // unidade e a situação do plano preventivo (PV2, UNIDADES_DE_PERIODICIDADE e
-// SITUACOES_DO_PLANO, migração 0045). Este
+// SITUACOES_DO_PLANO, migração 0045) e o responsável do arrendamento na OS
+// (1c, RESPONSAVEIS_DO_ARRENDAMENTO, migração 0047). Este
 // teste lê as migrações e falha se um check e a lista do domínio divergirem:
 // valor novo exige migração que amplia o check. Os pgTAP 028, 029 e 030
 // provam, no banco, que o check recusa o que está fora (o 031, no insight; o
-// 033, no momento da foto; o 035, no motivo da pausa; o 036, no plano).
+// 033, no momento da foto; o 035, no motivo da pausa; o 036, no plano; o 039,
+// no arrendamento).
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
@@ -23,6 +25,7 @@ import {
   MOTIVOS_DE_PAUSA,
   TIPOS_DE_ALERTA_DE_SLA,
   ORIGENS_DO_CHAMADO,
+  RESPONSAVEIS_DO_ARRENDAMENTO,
   SITUACOES_DO_PLANO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
   UNIDADES_DE_PERIODICIDADE,
@@ -129,6 +132,14 @@ describe('valores canônicos: banco × domínio (PV2, ADR-041)', () => {
     expect(valoresDoCheck('plano_preventivo_situacao_lista', 'situacao')).toEqual([
       ...SITUACOES_DO_PLANO,
     ]);
+  });
+});
+
+describe('valores canônicos: banco × domínio (1c, ADR-045)', () => {
+  it('os_responsavel_arrendamento_lista aceita exatamente os RESPONSAVEIS_DO_ARRENDAMENTO do domínio', () => {
+    expect(valoresDoCheck('os_responsavel_arrendamento_lista', 'responsavel_arrendamento')).toEqual(
+      [...RESPONSAVEIS_DO_ARRENDAMENTO],
+    );
   });
 });
 

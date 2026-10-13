@@ -32,12 +32,18 @@
 // vem do ativo na abertura; quem tria escolhe, troca ou tira, nos estados da
 // prioridade, e a troca refaz os prazos do mesmo jeito.
 //
+// No arrendado (1c, ADR-045): a OS do hotel arrendado nasce com a marca de
+// quem responde por ela, pela matriz resolvida no hotel e pela categoria do
+// chamado; quem tria ajusta a marca até o aceite, com motivo. O aviso ao
+// locador sai uma vez por OS (avisaOLocador).
+//
 // Quem pode e para onde vai são do domínio (corretiva.ts e triagem.ts); a
 // situação de cada estado é a ativa de menor ordem (situacaoPara). As
 // checagens de papel são injetáveis, como o podeAbrir do chamado, para o
 // teste de aceite provar que a RLS recusa sozinha.
 import {
   type AtorDaCorretiva,
+  avisaOLocador,
   type CandidatoAResponsavel,
   type CodigosDaOs,
   type Contexto,
@@ -57,13 +63,16 @@ import {
   exigirCodigosNoAceite,
   exigirResponsavelDoHotel,
   normalizarCustoInformado,
+  podeAjustarArrendamento,
   podeAjustarCategoria,
   podeAjustarPrioridade,
   podeAjustarQuemExecuta,
   podeInformarImpacto,
   prazosNoRecalculo,
   regraDeSla,
+  type ResponsavelDoArrendamento,
   resolverPolitica,
+  responsavelDoArrendamento,
   slaDaCopia,
   situacaoPara,
   validarCodigosDaOs,
@@ -84,6 +93,7 @@ import type {
 
 const CODIGOS_OBRIGATORIOS = 'os.codigos_obrigatorios';
 const ASSINATURA_NO_ACEITE = 'os.assinatura_no_aceite';
+const MATRIZ_ARRENDAMENTO = 'hotel.matriz_arrendamento';
 const ARQUIVO_PNG = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.png$/;
 
 /** O responsável como a tela o escolhe. */
@@ -129,6 +139,12 @@ export interface CasosDeUsoDeTriagem {
     ctx: Contexto,
     osId: string,
     p: { versao: number } & ExecucaoPedida,
+  ): Promise<{ versao: number }>;
+  /** Ajusta quem responde pela OS do hotel arrendado, com motivo, até o aceite (1c, ADR-045). */
+  ajustarArrendamento(
+    ctx: Contexto,
+    osId: string,
+    p: { versao: number; responsavel: ResponsavelDoArrendamento; motivo: string },
   ): Promise<{ versao: number }>;
   /** Corrige o impacto no hóspede, até o aceite (I4); null: não informado. */
   informarImpacto(
@@ -189,6 +205,7 @@ export interface RegrasDaTriagem {
   exigirResponsavelDoHotel: typeof exigirResponsavelDoHotel;
   podeInformarImpacto: typeof podeInformarImpacto;
   podeAjustarQuemExecuta: typeof podeAjustarQuemExecuta;
+  podeAjustarArrendamento: typeof podeAjustarArrendamento;
 }
 
 export function criarCasosDeUsoDeTriagem(deps: {
@@ -214,6 +231,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
     exigirResponsavelDoHotel,
     podeInformarImpacto,
     podeAjustarQuemExecuta,
+    podeAjustarArrendamento,
     ...deps.regras,
   };
 
@@ -294,6 +312,19 @@ export function criarCasosDeUsoDeTriagem(deps: {
   }
 
   const situacoes = (ctx: Contexto) => deps.situacoes.listar(ctx);
+
+  /** A marca da OS nova (ADR-045): a matriz só é lida no hotel arrendado. */
+  async function arrendamentoDaOs(
+    ctx: Contexto,
+    chamado: ChamadoParaTriagem,
+  ): Promise<ResponsavelDoArrendamento | null> {
+    if (chamado.modeloContratual !== 'arrendado') return null;
+    const matriz = resolverPolitica(
+      MATRIZ_ARRENDAMENTO,
+      await deps.triagem.politica(ctx, chamado.hotel.id, MATRIZ_ARRENDAMENTO),
+    );
+    return responsavelDoArrendamento(chamado.modeloContratual, matriz, chamado.sla.categoriaId);
+  }
 
   /** Quem executa, com o fornecedor lido com o contexto de quem pede (RLS). */
   async function quemExecuta(ctx: Contexto, pedido: ExecucaoPedida): Promise<QuemExecuta> {
@@ -462,10 +493,13 @@ export function criarCasosDeUsoDeTriagem(deps: {
         agora,
       );
       const execucao = p.execucao ? await quemExecuta(ctx, p.execucao) : EXECUCAO_PADRAO;
+      const arrendamento = await arrendamentoDaOs(ctx, chamado);
       const lista = await situacoes(ctx);
       const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.gerarOs(ctx, {
         execucao,
+        arrendamento,
+        avisarLocador: avisaOLocador(arrendamento, null),
         hotelId: chamado.hotel.id,
         localId: chamado.localId,
         chamadoAbertoPor: chamado.abertoPor,
@@ -485,6 +519,26 @@ export function criarCasosDeUsoDeTriagem(deps: {
       r.podeAjustarQuemExecuta(await ator(ctx), chamado, os.estado, deps.relogio.agora());
       const execucao = await quemExecuta(ctx, p);
       return deps.triagem.definirQuemExecuta(ctx, { osId, versao: p.versao, execucao });
+    },
+
+    async ajustarArrendamento(ctx, osId, p) {
+      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      const motivo = r.podeAjustarArrendamento(
+        await ator(ctx),
+        chamado,
+        os,
+        p.motivo,
+        deps.relogio.agora(),
+      );
+      // A mesma marca não grava nada: nem auditoria, nem aviso.
+      if (os.responsavelArrendamento === p.responsavel) return { versao: os.versao };
+      return deps.triagem.ajustarArrendamento(ctx, {
+        osId,
+        versao: p.versao,
+        arrendamento: p.responsavel,
+        motivo,
+        avisarLocador: avisaOLocador(p.responsavel, os.locadorAvisadoEm),
+      });
     },
 
     async reatribuirOs(ctx, osId, p) {

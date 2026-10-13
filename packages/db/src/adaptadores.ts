@@ -59,6 +59,7 @@ import {
   type ExecutadoPor,
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
+  ehResponsavelDoArrendamento,
   ehMomentoDaFoto,
   ehMotivoDePausa,
 } from '@hubkeep/dominio';
@@ -105,6 +106,7 @@ import { criarChamado } from './repositorios/chamados';
 import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
 import { alterarFeriadoDoHotel, criarFeriadoDoHotel } from './repositorios/feriados-do-hotel';
 import {
+  ajustarArrendamento,
   alterarChamadoNaTriagem,
   cancelarOs,
   definirQuemExecuta,
@@ -1185,6 +1187,8 @@ const COLUNAS_DA_OS = [
   'codigo_causa_id',
   'codigo_solucao_id',
   'assinatura_aceite_id',
+  'responsavel_arrendamento',
+  'locador_avisado_em',
   'criado_por',
   'versao',
   'criado_em',
@@ -1207,6 +1211,8 @@ function paraOs(o: {
   codigo_causa_id: string | null;
   codigo_solucao_id: string | null;
   assinatura_aceite_id: string | null;
+  responsavel_arrendamento: string | null;
+  locador_avisado_em: Date | null;
   criado_por: string;
   versao: number;
   criado_em: Date;
@@ -1235,6 +1241,11 @@ function paraOs(o: {
       solucaoId: o.codigo_solucao_id,
     },
     assinaturaAceiteId: o.assinatura_aceite_id,
+    // O check os_responsavel_arrendamento_lista garante um dos RESPONSAVEIS_DO_ARRENDAMENTO.
+    responsavelArrendamento: ehResponsavelDoArrendamento(o.responsavel_arrendamento)
+      ? o.responsavel_arrendamento
+      : null,
+    locadorAvisadoEm: o.locador_avisado_em,
     criadoPor: o.criado_por,
     versao: o.versao,
     criadoEm: o.criado_em,
@@ -1275,6 +1286,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
             'c.id',
             'c.hotel_id',
             'h.bandeira_id',
+            'h.modelo_contratual',
             'c.local_id',
             'c.ativo_id',
             'c.estado',
@@ -1305,6 +1317,9 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           ? {
               id: c.id,
               hotel: { id: c.hotel_id, bandeiraId: c.bandeira_id },
+              modeloContratual: ehModeloContratual(c.modelo_contratual)
+                ? c.modelo_contratual
+                : null,
               localId: c.local_id,
               ativoId: c.ativo_id,
               estado: c.estado as EstadoDoChamado,
@@ -1417,6 +1432,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
       banco.executar(ctx, (uow) => alterarChamadoNaTriagem(uow, chamadoId, versao, mudanca)),
     gerarOs: (ctx, g) => banco.executar(ctx, (uow) => gerarOs(uow, g)),
     definirQuemExecuta: (ctx, g) => banco.executar(ctx, (uow) => definirQuemExecuta(uow, g)),
+    ajustarArrendamento: (ctx, g) => banco.executar(ctx, (uow) => ajustarArrendamento(uow, g)),
     reatribuirOs: (ctx, g) => banco.executar(ctx, (uow) => reatribuirOs(uow, g)),
     cancelarOs: (ctx, g) => banco.executar(ctx, (uow) => cancelarOs(uow, g)),
     aceitarOs: (ctx, g) => banco.executar(ctx, (uow) => aceitarOs(uow, g)),
