@@ -464,7 +464,7 @@ select is(
   array[
     'app.anexo', 'app.ativo', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
     'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.codigo_manutencao', 'app.equipe',
-    'app.equipe_membro', 'app.evento_dominio', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
+    'app.equipe_membro', 'app.evento_dominio', 'app.feriado_hotel', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
     'app.insight', 'app.local', 'app.local_proprietario', 'app.membro', 'app.metrica_ativo_diaria',
     'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_material', 'app.os_transicao', 'app.parada_ativo', 'app.politica',
