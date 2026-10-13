@@ -1595,3 +1595,50 @@ No chat do agente do Kaio, em 13/10/2026:
     - o cancelado fora em qualquer caso (b);
     - os rótulos da c e da f;
   - depois do #244, o restante da atividade 3.
+
+## Glossário versão 3 aprovado, e proposta do código (13/10/2026)
+
+**Aprovação:** o Cesar e o Kaio aprovaram a versão 3 do glossário, cada um com o próprio "Cesar aqui" e "Kaio aqui", no chat do agente do Kaio (13/10/2026).
+- **O que o glossário passou a registrar:**
+  - a aprovação, no cabeçalho;
+  - a conclusão do serviço no domínio e a preventiva atrasada como fechadas.
+- **O que continua em proposta:** o prazo em risco e o prazo vencido, porque dependem do ADR-043 (aprovar o glossário não aprova ADR), e o tempo até o aceite (decisão 1 da paridade).
+
+### Proposta de desenho do código das divergências (para o Cesar e o Kaio)
+
+O que achei no código:
+- **Custo e cobertura:**
+  - `custoNaJanela` (`historico.ts`) soma o custo das corretivas **concluídas** na janela;
+  - `custoDisponivelNoTenant` (`atencao.ts`) usa a mesma base;
+  - com a d, as duas passam às **aceitas**.
+- **Aceite:** existem duas ações, `aceitar` e a nova `aceitar_automatico` da 1c (M5, ADR-044). Proponho que as duas contem como aceite.
+- **Cancelado:** `corretivasDosChamados` (`fonte.ts`) alimenta a reincidência, a atenção e o sistêmico. Com a b, as três mudam.
+- **O dia:** o job grava o dia em UTC (`dia.ts:199`, `job.ts:150`, `fimDoDia`), e o cron roda às 06:00 UTC (`apps/web/vercel.json`).
+
+**Proposta: três PRs `int:`, nesta ordem, todos fora da zona protegida.**
+
+1. **Domínio, custo, cancelado e rótulos (d, b, c, f):**
+   - `conclusaoEReaberturas` e uma função nova, `aceiteDaOs` (o último aceite, manual ou automático, se depois dele a OS não foi reaberta), vão para `packages/dominio`, com os testes. O Intelligence passa a importar de lá;
+   - `custoNaJanela` e `custoDisponivelNoTenant` passam às corretivas aceitas na janela;
+   - `corretivasDosChamados` passa a tirar todo chamado cancelado;
+   - versões novas das fórmulas: reincidência 1 → 2, atenção 2 → 3 e sistêmico 2 → 3. O que já foi gravado não é recalculado (ADR-036);
+   - os rótulos da c e da f nos catálogos (pt-BR, en, es, fr), se alguma tela ainda usa "horas paradas" ou "reincidência" fora do score;
+   - aviso de área compartilhada no diário antes de começar, porque mexe em `packages/dominio`.
+2. **O dia no fuso de cada hotel (a).** Precisa de três decisões antes, que trago numa proposta própria:
+   - qual dia cada hotel calcula quando o cron roda às 06:00 UTC (03:00 em Brasília): o dia local que acabou de terminar ou o dia corrente;
+   - qual dia o sinal sistêmico, que junta hotéis, usa quando o grupo tem hotéis em fusos diferentes;
+   - como o painel e a agregação tratam a troca: as linhas antigas, em UTC, ficam com a versão antiga.
+3. **Testes e docs:** o glossário passa a citar o lugar novo das funções, e o `docs/piloto/` é atualizado, se algum texto muda.
+
+**Esperando:**
+- **Cesar e Kaio:** aprovar a proposta, ou mudar a ordem;
+- **Kaio:** confirmar que o `aceitar_automatico` conta como aceite no custo. É detalhe dentro da d, mas toca a fonte de dado.
+
+### Ponto de retomada (13/10/2026, glossário aprovado)
+
+- **`main`:** 108d233, verde no typecheck depois do #250.
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`, recriada a partir da `main`): a aprovação no glossário e esta proposta. Só docs.
+- **Esperando:**
+  - a aprovação da proposta acima;
+  - a montagem com relógio (#244, 1b), para a atividade 3.
+- **Próximo:** depois da aprovação, o PR 1 da proposta, começando pelo aviso de área compartilhada no diário.
