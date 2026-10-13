@@ -1,6 +1,6 @@
 # Guia de implantação de um hotel (piloto)
 
-Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que existem na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #223). Repetir o guia para cada hotel do piloto. O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (plano em `docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface (catálogo pt-BR).
+Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que existem na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228). Repetir o guia para cada hotel do piloto. O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (plano em `docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface (catálogo pt-BR).
 
 ## 1. Quem faz o quê
 
@@ -31,7 +31,7 @@ Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que ex
 9. **Ambientes:** staging e produção **[ainda não existem]** (F0-12 suspensa, `docs/04`). Hoje só existe o ambiente de dev. O staging precisa estar pronto antes do treinamento (que acontece nele), e não só antes do piloto.
 10. **Códigos de manutenção:** já instalados pelo provisionamento (item 4; na tela, **Códigos de manutenção**, **Instalar códigos padrão**, 37 códigos de falha, causa e solução); depois, **Criar código** ou **Editar nomes** para os códigos próprios do grupo. Só o Admin do grupo.
 11. **Fornecedores:** menu **Fornecedores**, **Cadastrar** os prestadores que executam OS (nome, CNPJ e contato). Valem para o grupo inteiro. Sem fornecedor ativo, a triagem só oferece "Equipe interna" em **Quem executa**.
-12. **Modelos de checklist:** menu **Checklists**, **Criar checklist** para cada serviço que o grupo quer padronizar (por exemplo, a corretiva do ar-condicionado), com os itens e a **Categoria sugerida**. Só o Admin do grupo. Mudar os itens depois cria uma versão nova, sem mudar as OS que já têm o checklist. O checklist da OS preventiva gerada pelo plano vem na PV2 e na PV3 **[vai mudar na 1b]**.
+12. **Modelos de checklist:** menu **Checklists**, **Criar checklist** para cada serviço que o grupo quer padronizar (por exemplo, a corretiva do ar-condicionado), com os itens e a **Categoria sugerida**. Só o Admin do grupo. Mudar os itens depois cria uma versão nova, sem mudar as OS que já têm o checklist. O plano preventivo já aponta o checklist (etapa 8); a OS preventiva gerada pelo plano vem na PV3 **[vai mudar na 1b]**.
 
 ## 3. Etapas por hotel
 
@@ -121,12 +121,13 @@ Em **Configuração e políticas**, painel **Políticas**:
 - **Aceite automático da OS concluída:** tem **Ligado** e **Dias depois da conclusão**, mas o job que aceita sozinho **[ainda não existe]** (fase 1c). Deixar desligado no piloto.
 - **Prioridade padrão por categoria de ativo:** a tela mostra só "N categorias mapeadas." A edição pela tela **[ainda não existe]**; a gravação é pela rota `PUT /api/v1/politicas` (Admin do grupo) ou pelo script de operação. No kit, elevadores e segurança ficam em Urgente; refrigeração, elétrica, hidráulica e cozinha em Alta; lavanderia, eletrônicos e piscina em Média; mobiliário em Baixa. É a sugestão de partida (`docs/10`).
 - **Nível da política:** cada política do núcleo pode ser gravada no grupo, na bandeira do hotel ou no próprio hotel (vale a do hotel, senão a da bandeira, senão a do grupo). Gravar na bandeira quando todos os hotéis dela seguem a mesma regra.
-- **SLA:** o prazo de atendimento e o de solução já são calculados na abertura e na triagem, no calendário do hotel (com os feriados oficiais), e o motivo da pausa pode parar o relógio. A política de SLA (prazos por prioridade, horário, motivos que param o relógio) (`chamado.sla`) não tem tela: sem gravação pela rota `PUT /api/v1/politicas` (Admin do grupo), vale o padrão do sistema. Conferir com o Cesar se o piloto usa o padrão. Tela do SLA, escalonamento, notificações e indicadores: **[ainda não existe]** (fase 1c). Confirmar o fuso do hotel (etapa 2), porque o prazo depende dele.
+- **SLA:** o prazo de atendimento e o de solução já são calculados na abertura e na triagem, no calendário do hotel (com os feriados nacionais e estaduais e os do hotel), e o motivo da pausa pode parar o relógio. A política de SLA (prazos por prioridade, horário, motivos que param o relógio) (`chamado.sla`) não tem tela: sem gravação pela rota `PUT /api/v1/politicas` (Admin do grupo), vale o padrão do sistema. Conferir com o Cesar se o piloto usa o padrão. O monitor já registra o prazo em risco (padrão: 80% do tempo gasto) e o vencido; a política de escalonamento (`chamado.escalonamento`) também não tem tela. Selo na ficha, painel dos avisos, notificações e indicadores: **[ainda não existe]** (fase 1c). Confirmar o fuso do hotel (etapa 2), porque o prazo depende dele.
+- **Feriados do hotel:** em **Configuração → Feriados do hotel**, cadastrar os feriados municipais e os do próprio hotel (**Repete todo ano** para os fixos), antes de ativar, porque o feriado só conta nos prazos calculados depois dele. Os nacionais e estaduais já entram sozinhos.
 - **Nomes dos níveis de criticidade do ativo:** existe (I1). Conferir se o grupo mantém os nomes padrão.
 - **Códigos obrigatórios no aceite** ("Exigir falha, causa e solução no aceite"): existe (I6), desligado por padrão. Ligar ou não no piloto: **[a definir]** com o Cesar; ligado, o aceite sem os três códigos é recusado.
 - **Foto de depois na conclusão** e **Assinatura no aceite:** existem (I8), desligadas por padrão. Ligar ou não no piloto: **[a definir]** com o Cesar. Ligadas, a conclusão sem foto de depois e o aceite sem assinatura são recusados.
 - **Checklist completo na conclusão:** existe (PV1), desligado por padrão; desligado, o PWA só avisa os itens obrigatórios que faltam. Ligar ou não no piloto: **[a definir]** com o Cesar.
-- Plano preventivo: **[vai mudar na 1b]** (PV2 e PV3). Modelos por categoria: **[ainda não existe]** (M1).
+- **Planos preventivos:** em **Preventivas**, cadastrar os planos do hotel (por ativo ou por categoria, com a periodicidade, a primeira data, o checklist e o responsável) e ativar. Quais planos o piloto começa: **[a definir]** com o Cesar e o hotel. O plano ainda não gera OS **[vai mudar na 1b]** (PV3). Modelos por categoria: **[ainda não existe]** (M1).
 
 ### Etapa 9. Ativar o hotel
 
@@ -142,7 +143,7 @@ Feito com o Gerente e um técnico do hotel, antes do treinamento (usar um ativo 
 2. Gerente (ou Gestor CSC) tria e gera a OS para o técnico; num dos chamados, **Quem executa** com um fornecedor.
 3. A OS aparece na fila do dia do técnico; ele tira uma foto **Antes do serviço**, inicia, responde o checklist (se o gerente aplicou um), pausa com um motivo e retoma, aponta uma hora, registra material, tira uma foto **Depois do serviço**, escolhe falha, causa e solução e conclui. Na OS da UH, responde **Sim, UH liberada**.
 4. Quem abriu aceita, informando o custo e assinando (ou o Gerente reabre com motivo).
-5. Conferir a **Linha do tempo** e **Ver histórico** do chamado (com o prazo de atendimento e o de solução) e as linhas do teste em **Auditoria**.
+5. Conferir na ficha do chamado "Atender até ..." e "Resolver até ...", a **Linha do tempo** e **Ver histórico** e as linhas do teste em **Auditoria**.
 6. Repetir o passo 3 com o celular em modo avião e conferir o envio depois.
 
 ## 4. Critérios de "hotel pronto"
@@ -174,5 +175,7 @@ Marcar todos antes de declarar o hotel pronto para o treinamento:
 - [ ] Códigos de manutenção instalados; decisão tomada sobre "Códigos obrigatórios no aceite".
 - [ ] Decisão tomada sobre "Foto de depois na conclusão", "Assinatura no aceite" e "Checklist completo na conclusão", e os modelos de checklist combinados criados.
 - [ ] Fornecedores que atendem o hotel cadastrados.
+- [ ] Feriados municipais e do hotel cadastrados em **Feriados do hotel**.
+- [ ] Planos preventivos combinados cadastrados e ativos (ainda sem gerar OS até a PV3).
 - [ ] Gerente sabe onde ver "Paradas a encerrar", como marcar e liberar a UH indisponível e como aplicar um checklist, como aceitar (com custo, códigos e assinatura) ou reabrir, e onde consultar a **Auditoria**.
 - [ ] Canal de suporte combinado com o hotel (ver `roteiro-treinamento.md`).

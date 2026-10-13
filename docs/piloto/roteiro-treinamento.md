@@ -1,6 +1,6 @@
 # Roteiro de treinamento do piloto
 
-Proposta de treinamento para os hotéis do piloto, escrita sobre o que existe na `main` (atualizada em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #223). Durações e agenda são **propostas** para o Cesar ajustar. O que ainda não existe ou vai mudar na 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (`docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface; o passo a passo por papel está em `manual-por-papel.md`.
+Proposta de treinamento para os hotéis do piloto, escrita sobre o que existe na `main` (atualizada em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228). Durações e agenda são **propostas** para o Cesar ajustar. O que ainda não existe ou vai mudar na 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (`docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface; o passo a passo por papel está em `manual-por-papel.md`.
 
 ## 1. Os hotéis do piloto
 
@@ -66,7 +66,7 @@ Por hotel, o dia presencial soma cerca de 4 h (B, C e o fechamento). A sessão A
 | 0:40 a 1:30 | **Triagem e atribuição** (exercícios 3, 4 e 5) |
 | 1:30 a 1:50 | **Aceite** (com falha, causa, solução, custo informado e assinatura) e **Reabrir** (exercícios 6, 15 e 18); **Aplicar checklist** na OS (exercício 17) |
 | 1:50 a 2:10 | **Paradas a encerrar** e **UH indisponível** (exercícios 7 e 14) |
-| 2:10 a 2:30 | Cadastros do hotel: Locais (com edificação), Equipes, Ativos (com compra, garantia e criticidade), **Fornecedores**, **Ver QR**; dúvidas |
+| 2:10 a 2:30 | Cadastros do hotel: Locais (com edificação), Equipes, Ativos (com compra, garantia e criticidade), **Fornecedores**, **Ver QR**, **Preventivas** e **Feriados do hotel** (exercícios 20 e 21); dúvidas |
 
 Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**, **Hotéis** (Trazer para implantação, Ativar), **Configuração e políticas** (modelo contratual, nomes da criticidade, códigos obrigatórios no aceite, foto de depois, assinatura no aceite, checklist completo, e o nível bandeira), **Códigos de manutenção** e **Checklists** (só o Admin), **Auditoria** com o CSV (exercício 19; o Gerente também usa). Se o grupo contratar o HubKeep Intelligence **[a confirmar]**, acrescentar o menu do módulo (lista de insights, "Por que estou vendo isso?" e a decisão). As telas só abrem na data da política de abertura (padrão: 60 dias depois da ativação), então o treino do módulo fica para perto dessa data, ou para o grupo de demonstração; antes dela, mostrar ao Admin só a página **Abertura das telas**.
 
@@ -118,10 +118,12 @@ Dados e contas do `docs/10`: Grupo Demonstração, Hotel Demonstração Centro (
 | 17 | Admin, Gerente e Técnico do Centro | Admin: **Checklists**, **Criar checklist** "Chuveiro", com um item sim/não obrigatório ("Água quente voltou?") e um de conformidade. Gerente: num chamado criado na hora, **Gerar OS** para o Técnico e **Aplicar checklist** "Chuveiro". Técnico: tentar responder com a OS Atribuída; **Iniciar**, responder e concluir | Com a OS Atribuída, "Inicie a ordem de serviço para responder o checklist."; depois, o checklist "Chuveiro (versão 1)" com as respostas no web |
 | 18 | Admin, Solicitante e Técnico do Centro | Admin: em **Configuração e políticas**, no hotel Centro, ligar "Foto de depois na conclusão" e "Assinatura no aceite". Técnico, numa OS criada na hora: **Tirar ou escolher foto** com **Antes do serviço** (já com a OS Atribuída), iniciar e tentar **Concluir**; depois tirar uma foto **Depois do serviço** e concluir. Solicitante (quem abriu): tentar **Aceitar** sem assinar; depois assinar e aceitar. **No fim, o Admin desliga as duas políticas**, para não mudar os outros exercícios | Recusa "Neste hotel, a conclusão exige ao menos uma foto de depois do serviço."; recusa "Neste hotel, o aceite exige a assinatura de quem aceita."; no web, as fotos com "Antes" e "Depois" e a OS com "Aceite com assinatura" e **Ver assinatura** |
 | 19 | Gestor CSC e Gerente do Centro | **Configuração → Auditoria**: **De** e **Até** no dia do treinamento, **Consultar**, filtrar por **Pessoa** (o Técnico do Centro), **Ver o antes e o depois** de uma linha, **Exportar CSV**. O Gerente repete e procura uma linha do Praia | As ações da turma aparecem com quem fez; o CSV baixa como `auditoria-<de>-a-<ate>.csv`; o Gerente do Centro não vê o Praia |
+| 20 | Gerente do Centro | **Preventivas**, **Hotel** Centro, **Novo plano** "Limpeza do filtro" com **Ativo ou categoria** na categoria Refrigeração e ar-condicionado, **A cada** 1 mês, **Primeira data prevista** no dia 31 de um mês, **Checklist** "Inspeção de ar-condicionado", sem responsável, **Cadastrar plano**. Tentar **Ativar**; em **Alterar**, escolher o **Responsável padrão** Equipe Centro, **Gravar alteração** e **Ativar**. Em **Ativos**, no "Ar-condicionado UH 102", **Ver planos preventivos** | A prévia mostra cinco datas e, no mês sem dia 31, o último dia do mês; sem responsável, a ativação é recusada ("Escolha o técnico ou a equipe responsável antes de ativar o plano."); ativo, a lista mostra "Próxima: data" e o plano aparece na ficha do ativo. Nenhuma OS é gerada (PV3) |
+| 21 | Gerente do Centro | **Configuração → Feriados do hotel**, **Escolha o hotel** Centro: **Cadastrar** o aniversário da cidade com **Repete todo ano**; tentar cadastrar outro feriado na mesma data; **Desativar** e **Reativar**. Depois, num chamado triado no exercício 3, conferir a ficha | Recusa "Já existe um feriado ativo nesta data neste hotel."; a ficha mostra "Atender até ..." e "Resolver até ..." |
 
-Os exercícios 14, 15, 17 e 18 usam chamados criados na hora: o kit ainda não tem dados de UH indisponível, fornecedor, custo, foto com momento ou assinatura. O 16 usa o checklist do kit e precisa vir antes do 5, que conclui a mesma OS. Fazer o 16 e o 18 com o celular em modo avião em parte do tempo mostra que o checklist e a foto também esperam a rede.
+Os exercícios 14, 15, 17 e 18 usam chamados criados na hora: o kit ainda não tem dados de UH indisponível, fornecedor, custo, foto com momento ou assinatura. O 20 e o 21 também: o kit ainda não tem plano preventivo nem feriado municipal. O plano do 20 fica ativo, mas não gera OS até a PV3. O 16 usa o checklist do kit e precisa vir antes do 5, que conclui a mesma OS. Fazer o 16 e o 18 com o celular em modo avião em parte do tempo mostra que o checklist e a foto também esperam a rede.
 
-Não incluir no treinamento, porque **[ainda não existe]**: importação de ativos e QR em lote (M2, M3), aprovação de ativo cadastrado pelo celular (M4), tela do SLA, notificações, indicadores e impressão da OS (fase 1c). Plano preventivo e OS preventiva: **[vai mudar na 1b]** (PV2 e PV3). O prazo do SLA já existe, mas só aparece em **Ver histórico** e na **Auditoria**: mostrar, sem exercício próprio.
+Não incluir no treinamento, porque **[ainda não existe]**: importação de ativos e QR em lote (M2, M3), aprovação de ativo cadastrado pelo celular (M4), selo e painel do SLA, notificações, indicadores e impressão da OS (fase 1c). OS preventiva gerada pelo plano: **[vai mudar na 1b]** (PV3). O prazo do SLA aparece na ficha do chamado (exercício 21).
 
 ## 6. Em caso de problema
 
@@ -142,6 +144,9 @@ Não incluir no treinamento, porque **[ainda não existe]**: importação de ati
 | "Inicie a ordem de serviço para responder o checklist." | **Iniciar** a OS; o checklist só recebe resposta com ela em execução ou pausada |
 | "O checklist desta ordem de serviço já tem respostas e não pode ser trocado." | Normal: o técnico respondeu antes da troca, e com resposta o checklist da OS fica. Se o modelo estava errado, anotar na planilha de observação |
 | "Neste hotel, o aceite exige a assinatura de quem aceita." | Assinar no quadro "Assinatura de quem aceita" e aceitar de novo |
+| "Escolha o técnico ou a equipe responsável antes de ativar o plano." | Em **Alterar**, escolher o **Responsável padrão** e **Ativar** de novo |
+| "Já existe um feriado ativo nesta data neste hotel." | Normal: um feriado ativo por data. Para mudar o nome, usar **Salvar** no que já existe |
+| Plano ativo e nenhuma OS preventiva na fila | Normal até a PV3: o plano ainda não gera OS |
 | "Escolha um período de até 92 dias, com o fim depois do início." (Auditoria) | Diminuir o período; para mais tempo, consultar em partes |
 | "Você não marca nem libera UH neste hotel." | Só Admin, Gestor CSC e Gerente marcam e liberam pelo web; o Técnico libera ao concluir a OS |
 | "Seu papel ainda não alcança nenhum hotel do grupo, então você não cadastra fornecedores..." | O Gestor CSC sem hotel no escopo pede ao Admin do grupo |
@@ -165,6 +170,7 @@ Por hotel, ao final dos dias de treinamento:
 - [ ] Aceitou e reabriu uma OS concluída (e, em chamado com ativo, usou "O equipamento está parado"), conferindo falha, causa, solução, o custo informado e as fotos de antes e depois, e assinou o aceite.
 - [ ] Aplicou um checklist numa OS e leu as respostas do técnico.
 - [ ] Consultou a **Auditoria** e exportou o CSV.
+- [ ] Cadastrou e ativou um plano preventivo e cadastrou um feriado do hotel.
 - [ ] Encerrou uma parada em **Paradas a encerrar**.
 - [ ] Corrigiu o impacto no hóspede e quem executa; marcou e liberou uma UH indisponível.
 - [ ] Sabe usar os filtros e **Ver histórico**.

@@ -1,6 +1,6 @@
 # Material do piloto
 
-Material de apoio ao piloto da Slaviero, escrito sobre o que existe na `main` em 08/10/2026 e atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as entregas da 1b e da 1c até o #223 (seções "O que a 1b já entregou" e "O que a 1c já entregou"). Convenção: **[ainda não existe]** é o que não está no código; **[vai mudar na 1b]** é o que o plano da fase 1b (`docs/12-plano-fase-1b.md`) altera; **[a definir]** e **[a confirmar]** são decisões em aberto.
+Material de apoio ao piloto da Slaviero, escrito sobre o que existe na `main` em 08/10/2026 e atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as entregas da 1b e da 1c até o #228 (seções "O que a 1b já entregou" e "O que a 1c já entregou"). Convenção: **[ainda não existe]** é o que não está no código; **[vai mudar na 1b]** é o que o plano da fase 1b (`docs/12-plano-fase-1b.md`) altera; **[a definir]** e **[a confirmar]** são decisões em aberto.
 
 1. `manual-por-papel.md`: manual curto de Técnico (PWA), Solicitante, Gerente do hotel, Gestor CSC e Admin do grupo, com a tabela de quem faz o quê.
 2. `guia-implantacao-hotel.md`: implantação de UM hotel, etapa por etapa, o que o CSC e o hotel fazem, e os critérios de "hotel pronto".
@@ -11,15 +11,15 @@ Material de apoio ao piloto da Slaviero, escrito sobre o que existe na `main` em
 ## O que ainda vai mudar
 
 **[vai mudar na 1b]**
-- Planos preventivos (PV2): a tabela está na `main` (#220), sem tela nem API. As telas do plano e a geração automática da OS preventiva (PV3) mudam a fila do técnico e a configuração; o manual será atualizado quando entrarem.
+- Geração automática da OS preventiva (PV3): os planos preventivos já se cadastram (PV2, #220 e #222), mas ainda não geram OS. Quando a PV3 entrar, a OS preventiva chega à fila do técnico; o manual será atualizado.
 
 **[a confirmar]**
 - **HubKeep Intelligence no piloto.** O módulo opcional só aparece para o grupo que o contratou, e a contratação não tem tela: até o backoffice existir, é gravada pelo script de operação `pnpm ops:modulo`, que hoje só roda no dev. Se o piloto contrata o módulo, e em que data, decide o Cesar. Sem o módulo, nada do Intelligence aparece para o usuário. Com o módulo, o job calcula desde o primeiro dia, mas as telas só abrem na data da política `inteligencia.visibilidade_telas`: por padrão, 60 dias depois da primeira ativação, e só para o Admin do grupo e o Gestor CSC (decisão do Cesar de 12/10/2026). O Admin vê e muda a data em **HubKeep Intelligence → Abertura das telas**.
 
 **[ainda não existe]**
 - Importação de ativos por planilha (M2), QR em lote e etiqueta de impressão (M3), modelos por categoria (M1), aprovação de ativos cadastrados pelo celular (M4).
-- Telas do plano preventivo e geração automática de OS (PV2 e PV3). O checklist já existe (PV1).
-- Tela do SLA: o prazo de atendimento e o de solução já são calculados na abertura e na triagem (1c), mas só aparecem em **Ver histórico** e na **Auditoria**. A política de SLA não tem tela, e o painel, os indicadores, as notificações, a impressão da OS e o aceite automático (job) vêm na fase 1c.
+- Geração automática da OS preventiva (PV3). O checklist (PV1) e o cadastro dos planos (PV2) já existem.
+- Painel do SLA: o prazo de atendimento e o de solução já são calculados (1c) e aparecem na ficha do chamado, e o monitor já registra o prazo em risco e o vencido, mas o selo na ficha, o painel dos avisos, as notificações, os indicadores, a impressão da OS e o aceite automático (job) ainda vêm na fase 1c. As políticas de SLA e de escalonamento não têm tela.
 - Recuperação de senha (1c, `docs/11`), segundo fator para Admin, Gestor CSC e Implantador (SP1, `docs/05`), e-mail de produção, staging e produção (F0-12).
 - Staging: o provisionamento de cliente e o kit por turma já aceitam `--ambiente staging` (#196), mas recusam até o staging existir (bloco `[remotes.staging]` do `supabase/config.toml`, F0-12).
 - Foto no chamado (a API existe; nenhuma tela usa), leitura do QR que preenche o chamado, edição da prioridade padrão por categoria pela tela, telas para instalar situações e prioridades padrão e para criar a credencial do agente.
@@ -47,19 +47,21 @@ Cada entrega que muda as telas atualiza este material. As marcas **[vai mudar na
 | Edificação no PWA | #200 | O PWA mostra o local como "nome · edificação" na fila do dia, na OS, nos ativos e na abertura do chamado. |
 | Responsáveis | #201 | Em **Gerar OS** e **Reatribuir**, o grupo "Pessoas" do **Responsável** mostra só os Técnicos do hotel. |
 | PV1 | #203, #210 | **Checklists** (menu Cadastros, só o Admin do grupo grava): modelos com itens de texto, número (com unidade), data, sim/não e lista, inclusive o item de conformidade (Conforme, Não conforme, Não se aplica); mudar os itens cria uma versão nova. Quem faz a triagem aplica o modelo na OS (**Aplicar checklist**, **Trocar checklist** enquanto não há resposta); o técnico responde no PWA, com a OS em execução ou pausada, também sem rede (**Salvar respostas**). Política nova, desligada por padrão: "Checklist completo na conclusão". |
-| PV2 | #220 | Sem tela: só a tabela dos planos preventivos. |
+| PV2 | #220, #222 | **Preventivas** (menu Cadastros; Admin do grupo, Gestor CSC, Gerente do hotel e Implantador): **Novo plano** com **Nome do plano**, **Ativo ou categoria** (a categoria vale para todos os ativos dela no hotel), **A cada** N dias, semanas ou meses, **Primeira data prevista** (com a prévia das **Próximas datas previstas**), **Checklist** e **Responsável padrão** (Técnico ou equipe); **Ativar já** precisa do responsável. Na lista, "Próxima: data", **Alterar**, **Ativar**, **Pausar** e **Encerrar** (sem volta; o alvo não muda: para trocar, encerrar e cadastrar outro). Na ficha do ativo, **Ver planos preventivos**. O plano ainda não gera OS (PV3). |
 
 **O kit de teste ainda não tem dados da I4 nem da I8** (UH indisponível, custo, fornecedor na OS, foto com momento, assinatura): os exercícios do roteiro usam o que a turma cria na hora. O checklist já está no kit: o "Ar-condicionado desligando sozinho" (OS em execução do Centro) tem o checklist do ar-condicionado, sem resposta.
 
 ## O que a 1c já entregou (até 13/10/2026)
 
-A 1c entra no treinamento porque o piloto só começa depois dela. Aqui só o que muda para o usuário até o #223.
+A 1c entra no treinamento porque o piloto só começa depois dela. Aqui só o que muda para o usuário até o #228.
 
 | Entrega | PR | O que muda para o usuário |
 |---|---|---|
 | Nível bandeira | #204 | Em **Configuração e políticas**, a política pode ser gravada também na bandeira do hotel (**Gravar na bandeira**, **Voltar a herdar na bandeira**). Vale o valor do hotel, senão o da bandeira, senão o do grupo, senão o padrão; a origem aparece como "definido na bandeira". |
 | Auditoria geral | #211 | Menu **Configuração → Auditoria** (Admin do grupo, Gestor CSC e Gerente do hotel, nos hotéis da gestão deles): filtros **De**, **Até** (até 92 dias por consulta), **Hotel**, **Tipo de registro**, **Ação** e **Pessoa**; **Consultar**, **Carregar mais**, **Ver o antes e o depois** e **Exportar CSV** (até 50.000 linhas). |
-| Prazos de SLA | #215 | Sem tela própria: o chamado ganha o prazo de atendimento e o de solução na abertura e na triagem, contados no calendário do hotel (com feriados). Aparecem em **Ver histórico** e na **Auditoria**. |
+| Prazos de SLA | #215, #227 | O chamado ganha o prazo de atendimento e o de solução na abertura e na triagem, contados no calendário do hotel (com feriados). A ficha do chamado mostra "Atender até ..." e "Resolver até ..." e, quando pausas pararam o relógio, "Pausas pararam o relógio do SLA por N minutos"; o chamado aberto antes dos prazos não mostra essas linhas. Também em **Ver histórico** e na **Auditoria**. |
+| Feriados do hotel | #226 | Menu **Configuração → Feriados do hotel** (Admin do grupo, Gestor CSC, Gerente do hotel e Implantador): **Escolha o hotel**, **Data**, **Nome do feriado**, **Repete todo ano**, **Cadastrar**, **Salvar**, **Desativar** e **Reativar**. Os feriados nacionais e estaduais já entram sozinhos; aqui vão o municipal e o do próprio hotel. A data não muda (para trocar, desativar e cadastrar outro), e o prazo já calculado também não. |
+| Monitor de SLA | #224 | Sem tela: a cada 5 minutos, o sistema registra o chamado com prazo em risco (por padrão, com 80% do tempo gasto) e o vencido. O selo na ficha e o painel dos avisos vêm no M4. A política de escalonamento (`chamado.escalonamento`, o percentual de 50 a 95 e quem recebe o aviso) não tem tela. |
 | Motivo da pausa | #219 | No PWA, **Pausar** pergunta "Por que a OS vai pausar?": Aguardando peça, Aguardando fornecedor, UH ocupada, sem acesso, Fim de turno ou Outro motivo. Conforme a política do hotel, alguns motivos param o relógio do SLA; na retomada, o prazo de solução é recalculado. |
 
 
@@ -97,9 +99,9 @@ Telas, rótulos e fluxos (caminhos a partir da raiz do repositório, na `main` d
 - Regras: `packages/dominio/src/triagem.ts` (impacto e quem executa), `corretiva.ts` (UH indisponível), `fornecedores.ts`, `locais.ts`, `codigos.ts`; `packages/inteligencia/src/insight.ts` (quem decide insight).
 - Também sem rodar o app: o detalhe pode mudar com a I8b e com a conferência no staging.
 
-**Atualização de 13/10/2026** (agente do Intelligence, atividade 5, pedido do Kaio e aprovação do Cesar), na `main` do #223:
+**Atualização de 13/10/2026** (agente do Intelligence, atividade 5, pedido do Kaio e aprovação do Cesar), na `main` do #228 (o #222, o #224, o #226 e o #227 entraram por decisão do Cesar, no mesmo PR):
 - Catálogo pt-BR para os rótulos da I8, da PV1, da auditoria geral, do nível bandeira e do motivo da pausa; menu em `apps/web/src/cliente/moldura.tsx`.
-- Telas: `apps/web/src/cliente/assinatura.tsx`, `AnexosDoRegistro.tsx`, `checklist-da-os.tsx`, `corretiva.tsx`, `triagem.tsx` e `apps/web/src/app/(painel)/admin/{auditoria,checklists,configuracao}`; PWA em `apps/tecnico/src/telas/{Os,ChecklistDaOs,FilaDoDia,Ativos,AbrirChamado}.tsx` e `apps/tecnico/src/locais.ts`.
-- Regras: `packages/dominio/src/checklist.ts`, `auditoria-geral.ts` (limites da consulta e do CSV), `politicas.ts` (hotel, bandeira, grupo), `sla.ts`.
+- Telas: `apps/web/src/cliente/planos-preventivos.tsx`, `apps/web/src/app/(painel)/admin/{preventivas,feriados}`, `apps/web/src/cliente/assinatura.tsx`, `AnexosDoRegistro.tsx`, `checklist-da-os.tsx`, `corretiva.tsx`, `triagem.tsx` e `apps/web/src/app/(painel)/admin/{auditoria,checklists,configuracao}`; PWA em `apps/tecnico/src/telas/{Os,ChecklistDaOs,FilaDoDia,Ativos,AbrirChamado}.tsx` e `apps/tecnico/src/locais.ts`.
+- Regras: `packages/dominio/src/checklist.ts`, `auditoria-geral.ts` (limites da consulta e do CSV), `politicas.ts` (hotel, bandeira, grupo; `chamado.escalonamento`), `sla.ts`, `plano-preventivo.ts` (quem gere, limites da periodicidade), `feriados-do-hotel.ts` e `monitor-sla.ts`.
 - Scripts: `scripts/ops/provisionar-cliente.ts`, `dados-demonstracao.ts`, `turma.ts`; padrões em `apps/web/test/provisionamento/padroes.ts`; kit em `apps/web/test/demonstracao/semear.test.ts`.
 - Também sem rodar o app.

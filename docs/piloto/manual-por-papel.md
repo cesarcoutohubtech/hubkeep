@@ -1,6 +1,6 @@
 # Manual por papel (piloto)
 
-Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #223; lista no `README.md`). Os nomes de botões, menus e mensagens são os do catálogo pt-BR (`packages/i18n/catalogos/pt-BR.json`). O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]**, com a referência ao plano (`docs/12-plano-fase-1b.md`) ou ao documento que define a tarefa.
+Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228; lista no `README.md`). Os nomes de botões, menus e mensagens são os do catálogo pt-BR (`packages/i18n/catalogos/pt-BR.json`). O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]**, com a referência ao plano (`docs/12-plano-fase-1b.md`) ou ao documento que define a tarefa.
 
 ## 1. O que vale para todos
 
@@ -20,7 +20,7 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualiza
 
 **Menu do web.** Os itens fixos são os mesmos para todos os papéis; quem decide o que cada um pode fazer é o servidor, e a recusa vem traduzida (por exemplo "Você não tem permissão para esta ação."). Itens:
 - **Operação:** Início, Chamados, Ordens de serviço, Paradas a encerrar.
-- **Cadastros:** Hotéis, Locais, Categorias de ativo, Códigos de manutenção, Checklists, Ativos, Equipes, Proprietários, Fornecedores, Bandeiras, Membros e papéis.
+- **Cadastros:** Hotéis, Locais, Categorias de ativo, Códigos de manutenção, Checklists, Preventivas, Ativos, Equipes, Proprietários, Fornecedores, Bandeiras, Membros e papéis.
 - **Configuração:** Configuração e políticas, Auditoria, Painel de implantação.
 - **Módulo opcional:** **HubKeep Intelligence**, com a contagem dos insights abertos. Só aparece no grupo que contratou o módulo, a partir da data de abertura das telas, e para os papéis da política de abertura (padrão: Admin do grupo e Gestor CSC; o Gerente do hotel só se o Admin incluir). Antes da abertura, só o Admin do grupo vê o item, que leva à página **Abertura das telas**.
 
@@ -30,7 +30,7 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualiza
 - Chamado: Aberto, Em triagem, Em execução, Aguardando aceite, Concluído, Cancelado.
 - OS: Atribuída, Em execução, Pausada, Concluída, Aceita, Cancelada.
 - Fluxo normal: o chamado é aberto (PWA), a triagem gera a OS para um técnico ou uma equipe, o técnico executa e conclui, quem abriu (ou o Gerente) aceita. No aceite, o chamado vai a Concluído; se reabrir, volta a Em execução, com motivo.
-- O chamado guarda também se **afeta hóspede**, em UH o período em que a **UH ficou indisponível**, e o **prazo de atendimento** e o **de solução** do SLA (calculados na abertura e na triagem; sem tela própria, aparecem em **Ver histórico** e na **Auditoria**). A OS guarda **quem executa** (a equipe interna ou um fornecedor), o **checklist** aplicado e as respostas, as fotos com o **momento** (antes ou depois), o **motivo de cada pausa**, os **códigos de falha, causa e solução** e, no aceite, o **custo informado** e a **assinatura** de quem aceita.
+- O chamado guarda também se **afeta hóspede**, em UH o período em que a **UH ficou indisponível**, e o **prazo de atendimento** e o **de solução** do SLA (calculados na abertura e na triagem; aparecem na ficha do chamado ("Atender até ...", "Resolver até ..." e, quando houver, "Pausas pararam o relógio do SLA por N minutos"), em **Ver histórico** e na **Auditoria**). A OS guarda **quem executa** (a equipe interna ou um fornecedor), o **checklist** aplicado e as respostas, as fotos com o **momento** (antes ou depois), o **motivo de cada pausa**, os **códigos de falha, causa e solução** e, no aceite, o **custo informado** e a **assinatura** de quem aceita.
 
 **Quem faz o quê** (conferido em `packages/dominio/src/corretiva.ts`, `ativos.ts`, `locais.ts`, `equipes.ts`, `permissoes.ts`):
 
@@ -100,7 +100,7 @@ Proprietário (UH ou hotel inteiro) só lê o que é dele; não grava nada, não
 - **Cadastrar ativo:** Local, Nome do ativo, Categoria, Fabricante, Modelo, Número de série e os campos da categoria ("(obrigatório)" quando for o caso) e, na parte recolhida **Compra, garantia e criticidade**, a data da compra, a garantia e a criticidade (1 a 5); botão **Cadastrar**. Sem rede, fica em "Aguardando envio".
 - Fotos do ativo ("Fotos de ..."): precisam de rede ("Por enquanto, as fotos precisam de rede").
 - O local aparece como "nome · edificação" quando o local tem edificação, aqui, na fila do dia, na OS e no novo chamado.
-- OS preventiva gerada pelo plano: **[ainda não existe]** (PV2 e PV3).
+- OS preventiva gerada pelo plano: **[vai mudar na 1b]** (PV3; o plano já se cadastra no web, mas ainda não gera OS).
 
 **Ler o QR do ativo.** O app não tem leitor próprio. Apontar a câmera do celular para a etiqueta: o QR leva a `/q/<código>` e abre o ativo no PWA (pelo aparelho, ou pela rede se ele não estiver guardado). Sem rede e sem o ativo no aparelho: "Este ativo não está guardado no aparelho. Abra o QR de novo quando houver conexão." Para abrir chamado a partir da etiqueta, o fluxo de hoje é abrir o ativo e voltar a **Abrir chamado**. Leitura que já preenche o chamado: **[ainda não existe]**.
 
@@ -164,6 +164,8 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - **Fornecedores:** valem para o grupo inteiro (o cadastrado por um hotel aparece para todos): **Nome do fornecedor**, **CNPJ** (14 caracteres, só números ou o CNPJ alfanumérico), **Nome do contato**, **Telefone do contato**, **E-mail do contato**; **Cadastrar**, **Salvar**, **Desativar**, **Reativar**.
 - **Equipes:** **Nova equipe**, **Criar**, **Renomear**, **Pôr na equipe**, **Tirar**, **Desativar**.
 - **Ativos:** **Cadastrar ativo**, **Salvar**, **Desativar**, **Mover**, **Ver movimentações**, **Ver QR**, **Anexar arquivo**.
+- **Preventivas** (tela "Planos preventivos"): escolher o **Hotel**, **Novo plano** (**Nome do plano**; **Ativo ou categoria**, sendo que a categoria vale para todos os ativos dela no hotel; **A cada** N dias, semanas ou meses, até 366 dias, 52 semanas ou 24 meses; **Primeira data prevista**, com as **Próximas datas previstas**; **Checklist**; **Responsável padrão**, Técnico ou equipe), **Cadastrar plano**. **Ativar já** e **Ativar** precisam do responsável. Na lista, "Próxima: data", **Alterar**, **Pausar** e **Encerrar** (sem volta). O alvo fica fixo: para trocar, encerrar e cadastrar outro. Na ficha do ativo, **Ver planos preventivos**. O plano ainda não gera OS **[vai mudar na 1b]** (PV3).
+- **Feriados do hotel** (menu **Configuração**): **Escolha o hotel**, **Data**, **Nome do feriado**, **Repete todo ano**, **Cadastrar**; na lista, **Salvar**, **Desativar** e **Reativar**. Os feriados nacionais e estaduais já entram sozinhos; cadastrar o municipal e o do próprio hotel. O feriado conta nos próximos prazos; o prazo já calculado não muda. A data não se altera: para trocar, desativar e cadastrar outro.
 - **Ver histórico** em chamado, OS, local e ativo: mostra quem fez, quando e o antes e o depois.
 
 **Auditoria** (menu **Configuração → Auditoria**, tela "Auditoria geral", só leitura): o que foi gravado no hotel dele. Filtros **De** e **Até** (até 92 dias por consulta), **Hotel**, **Tipo de registro**, **Ação** e **Pessoa**; **Consultar**, **Carregar mais**, **Ver o antes e o depois** e **Exportar CSV** (até 50.000 linhas; acima disso, diminuir o período). As ações e as pessoas dos filtros são as das linhas já carregadas. O que o sistema gravou sozinho aparece como "Sistema".
@@ -178,7 +180,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 
 **Faz.**
 - **Triagem e atribuição**, igual ao Gerente (seção 4): Triar, Ajustar prioridade, Gerar OS (com quem executa), Reatribuir, Cancelar OS, Cancelar chamado, Salvar impacto, Salvar quem executa, Aplicar e Trocar checklist.
-- **Auditoria**, como o Gerente (seção 4), nos hotéis do escopo.
+- **Auditoria**, **Preventivas** e **Feriados do hotel**, como o Gerente (seção 4), nos hotéis do escopo.
 - **Paradas a encerrar:** acompanhar e **Encerrar parada**. **UH indisponível:** marcar e liberar pelo detalhe do chamado.
 - **Cadastros de hotel:** Locais (áreas comuns e edificação), Equipes e Ativos, nos hotéis do escopo.
 - **Fornecedores:** cadastra como o Gerente, desde que o papel alcance algum hotel do grupo. O Gestor CSC de uma bandeira ainda sem hotel recebe "Seu papel ainda não alcança nenhum hotel do grupo, então você não cadastra fornecedores..." e pede ao Admin do grupo.
@@ -189,7 +191,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 
 **Não faz.** Ativar hotel, conceder papel, convidar pessoas, categorias, códigos de manutenção, modelos de checklist, políticas, bandeiras, proprietários.
 
-**SLA:** o chamado já tem o prazo de atendimento e o de solução (em **Ver histórico** e na **Auditoria**). Painel do SLA, indicadores e notificações: **[ainda não existe]** (fase 1c).
+**SLA:** o chamado já tem o prazo de atendimento e o de solução (na ficha do chamado, em **Ver histórico** e na **Auditoria**), e o monitor já registra o prazo em risco e o vencido, sem tela. Selo na ficha, painel dos avisos, indicadores e notificações: **[ainda não existe]** (fase 1c).
 
 ## 6. Admin do grupo
 
@@ -223,16 +225,17 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
   - "Checklist completo na conclusão" (**Exigir os itens obrigatórios do checklist para concluir**, desligado por padrão; desligado, o PWA só avisa o que falta);
   - "Prioridade padrão por categoria de ativo" aparece só como resumo: a edição pela tela **[ainda não existe]**.
 - **Códigos de manutenção** (tela "Códigos de falha, causa e solução"): **Instalar códigos padrão** (37 códigos), **Criar código**, **Editar nomes**, **Salvar nomes**, **Desativar**, **Reativar**. Só o Admin do grupo.
+- **Preventivas** e **Feriados do hotel:** como o Gerente (seção 4), em qualquer hotel do grupo.
 - **Auditoria:** como o Gerente (seção 4), no grupo inteiro; as linhas do grupo, sem hotel, aparecem como "Grupo".
 - **Painel de implantação:** "O que falta" por hotel (ver guia de implantação).
 - **HubKeep Intelligence → Abertura das telas** (só com o módulo contratado; também antes da abertura): "Abrem em", "De onde vem a data" (por padrão, "60 dias depois da primeira ativação do módulo") e "Quem vê as telas". Em **Mudar a abertura**: **Abrir a partir de** (em branco, conta os dias), **Dias depois da primeira ativação**, os papéis que veem (Admin do grupo, Gestor CSC, Gerente do hotel), **Salvar** e **Voltar ao padrão**. O dia começa à meia-noite de Brasília. Antes da abertura, nem o Admin vê a lista de insights; o cálculo já acontece todo dia.
-- Sem tela, só pela API ou script de operação: situações e prioridades padrão (no grupo do cliente, o provisionamento já instala, junto com as categorias, os códigos e a prioridade por categoria), credencial do agente conector (criar e revogar), gravar política de prioridade por categoria, política de SLA, e a contratação do HubKeep Intelligence (pelo backoffice; hoje, só no dev, `pnpm ops:modulo`).
+- Sem tela, só pela API ou script de operação: situações e prioridades padrão (no grupo do cliente, o provisionamento já instala, junto com as categorias, os códigos e a prioridade por categoria), credencial do agente conector (criar e revogar), gravar política de prioridade por categoria, política de SLA (`chamado.sla`) e de escalonamento (`chamado.escalonamento`), e a contratação do HubKeep Intelligence (pelo backoffice; hoje, só no dev, `pnpm ops:modulo`).
 
-**Ainda por vir.** Planos preventivos e a OS preventiva gerada pelo plano: **[vai mudar na 1b]** (PV2 e PV3; a tabela já existe, sem tela). Importação de ativos por planilha, QR em lote, modelos por categoria, aprovação de ativos cadastrados pelo celular: **[ainda não existe]** (M1 a M4).
+**Ainda por vir.** A OS preventiva gerada pelo plano: **[vai mudar na 1b]** (PV3; o cadastro dos planos já existe). Importação de ativos por planilha, QR em lote, modelos por categoria, aprovação de ativos cadastrados pelo celular: **[ainda não existe]** (M1 a M4).
 
 ## 7. Outros papéis (para consulta)
 
-**Implantador.** Papel temporário de um hotel, sempre com validade. Usa o **Painel de implantação**, **Membros e papéis** (só concede papéis abaixo do dele, só no hotel dele; não concede Admin do grupo, Implantador nem Proprietário), **Locais** (inclusive a edificação), **Equipes** e **Ativos** (com compra, garantia e criticidade). Lê os **Fornecedores** e os modelos de **Checklists**, sem gravar. Não ativa hotel nem libera licença. Não faz triagem.
+**Implantador.** Papel temporário de um hotel, sempre com validade. Usa o **Painel de implantação**, **Membros e papéis** (só concede papéis abaixo do dele, só no hotel dele; não concede Admin do grupo, Implantador nem Proprietário), **Locais** (inclusive a edificação), **Equipes**, **Ativos** (com compra, garantia e criticidade), **Preventivas** e **Feriados do hotel**, no hotel dele. Lê os **Fornecedores** e os modelos de **Checklists**, sem gravar. Não ativa hotel nem libera licença. Não faz triagem.
 
 **Proprietário.** Somente leitura. De UH: vê só os chamados e OS da UH vinculada, com a linha do tempo e o histórico (quem gravou aparece como "por outra pessoa"). Do hotel inteiro: vê os chamados do hotel. Da UH indisponível, vê só a UH, o estado e as datas. Não lê fornecedores nem o HubKeep Intelligence. Só vale dentro da vigência do vínculo.
 
@@ -248,6 +251,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 | QR do ativo | Web ("Ver QR"); leitura pela câmera do celular |
 | Hotel, bandeiras, categorias, códigos de manutenção, modelos de checklist, membros, configuração | Web (Admin do grupo) |
 | Auditoria geral | Web (Admin do grupo, Gestor CSC e Gerente) |
+| Planos preventivos e feriados do hotel | Web (Admin do grupo, Gestor CSC, Gerente e Implantador) |
 | Fornecedores | Web (Admin do grupo, Gestor CSC e Gerente) |
 | HubKeep Intelligence | Web, só com o módulo contratado e depois da abertura das telas (no padrão, Admin do grupo e Gestor CSC) |
 | Abertura das telas do HubKeep Intelligence | Web (Admin do grupo), também antes da abertura |
