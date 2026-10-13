@@ -4,6 +4,13 @@
 
 **Versão 3, rascunho (13/10/2026), do agente do Kaio (atividade 4).** Os termos fechados da versão 2 não mudaram de texto. A versão 3 acrescenta os termos do Intelligence, o levantamento de onde cada métrica é calculada hoje, as divergências achadas no levantamento, com uma proposta para cada uma, e a resposta aos quatro pontos para o agente do Kaio. Aguarda a revisão do agente da 1c, pelos diários, e a aprovação do Cesar; nos termos que o Intelligence usa, também a do Kaio (regra 4). Desenho aprovado pelo Cesar em 13/10/2026, no chat do agente do Kaio.
 
+**Revisão da 1c ([#230](https://github.com/cesarcoutohubtech/hubkeep/pull/230), `docs/diario-fase-1c.md`, "Revisão do glossário de métricas, versão 3"), levada a este rascunho pelo agente do Kaio em 13/10/2026.** Entraram:
+- as três correções do levantamento (a abertura, os prazos e o tempo pausado, e os avisos do monitor);
+- os termos "prazo em risco" e "prazo vencido", só do núcleo;
+- a premissa corrigida da divergência a e a cobertura do custo sobre as corretivas aceitas na divergência d.
+
+Os termos fechados da versão 2 continuam sem mudança de texto. Falta a decisão das divergências e a aprovação do Cesar e, nos termos do Intelligence, a do Kaio.
+
 ## Regras
 
 1. **Um nome, um cálculo.** O painel de indicadores da 1c e o Intelligence usam o mesmo nome só para o mesmo cálculo. Uma métrica parecida com outra definição ganha outro nome.
@@ -32,6 +39,8 @@
 | **Prazo de solução** | O limite para a conclusão do serviço, calculado da mesma forma e empurrado pela pausa que para o relógio. | `app.chamado.prazo_solucao` | Núcleo | Fechado |
 | **Tempo pausado** | O tempo em que o relógio da solução ficou parado pelas pausas da OS com motivo da lista da política, na categoria com a pausa ligada. | `app.chamado.pausado_segundos` | Núcleo | Fechado |
 | **Dentro do prazo** | A conclusão do serviço até o prazo de solução, inclusive. | Domínio | Núcleo | Fechado |
+| **Prazo em risco** | O prazo ainda não passou, e o tempo de relógio que falta é no máximo o complemento do percentual da política `chamado.escalonamento` (padrão de 80%) sobre as horas da regra. O atendimento conta até a primeira OS; a solução, até a conclusão do serviço, e não conta com o relógio parado. | `avisosDeSla` (domínio, `monitor-sla.ts`) | Núcleo | Em proposta (Cesar; revisão da 1c, ADR-043) |
+| **Prazo vencido** | O prazo passou sem a OS gerada (atendimento) ou sem a conclusão do serviço (solução). No instante exato do prazo ainda não está vencido, como no "dentro do prazo"; o monitor passa a seguir isso no PR do M4. | `avisosDeSla` | Núcleo | Em proposta (Cesar; revisão da 1c, ADR-043) |
 
 ## Indicadores do painel da 1c
 
@@ -83,7 +92,7 @@ São do módulo (regra 3): o painel da 1c não usa estes nomes. Cada score é de
 | **Intervalo médio entre corretivas** | A média, em dias, entre aberturas seguidas das corretivas na janela; sem duas corretivas, não existe. | `reincidencia` | Fechado |
 | **% de chamados com impacto no hóspede** | Dos chamados do ativo abertos na janela, os marcados como "afetou hóspede", de 0 a 100, com uma casa decimal. O sem marca conta como "não teve", e sem chamado o valor é 0. Fica até o Guest Impact Score da 1.5. | `impactoHospedeDosChamados` (`historico.ts`) | Fechado |
 | **Garantia vencida** | A data de garantia do ativo antes de agora. Sem a data, conta como não vencida. | `situacaoDaGarantia` (`historico.ts`) | Fechado |
-| **Cobertura do custo** | Das corretivas concluídas do tenant em 12 meses, as com o custo informado. Com menos de 50%, o custo fica sem dado na atenção, em todos os hotéis. | `custoDisponivelNoTenant` (`atencao.ts`) | Fechado |
+| **Cobertura do custo** | Das corretivas concluídas do tenant em 12 meses, as com o custo informado. Com menos de 50%, o custo fica sem dado na atenção, em todos os hotéis. | `custoDisponivelNoTenant` (`atencao.ts`) | Fechado; ver a divergência d (base nas aceitas) |
 
 O tempo parado, a conclusão do serviço, as reaberturas, os UH-dias perdidos, a preventiva atrasada e o custo informado que entram nos scores são os termos de base daqui, com o mesmo cálculo (divergências c e d).
 
@@ -102,12 +111,13 @@ Levantamento na `main` de 13/10/2026. "Sem código" quer dizer que o termo está
 
 | Termo | Onde está o cálculo | Quem chama |
 |---|---|---|
-| Abertura | Coluna `app.chamado.criado_em`, com o `default now()` do banco | Os dois; o job do Intelligence lê como `abertaEm` |
+| Abertura | Coluna `app.chamado.criado_em`, gravada pela aplicação na abertura (`abertoEm`, `packages/db/src/repositorios/chamados.ts`, desde o #215), para o cálculo dos prazos usar o mesmo instante | Os dois; o job do Intelligence lê como `abertaEm` |
 | Corretiva | `corretivasDosChamados` (`packages/inteligencia/src/fonte.ts`); o núcleo ainda não tem a função | Intelligence |
 | Conclusão do serviço, reabertura | `conclusaoEReaberturas` (`packages/inteligencia/src/historico.ts`) | Intelligence; o painel da 1c depois da mudança para o domínio (ponto 1) |
 | Tempo parado do ativo | `tempoParado`, `tempoParadoTotal` (`packages/dominio/src/paradas.ts`); `horasParadasNoTrecho` (`historico.ts`) corta no trecho e arredonda em horas | Núcleo (`casos-de-uso/paradas.ts`, telas de paradas) e Intelligence (atenção, efetividade) |
 | UH-dias perdidos | `uhDiasPerdidos` (`packages/dominio/src/uh-indisponivel.ts`) | Núcleo (`casos-de-uso/uh-indisponivel.ts`); no Intelligence, o componente tem peso 0 e ainda não lê a origem |
-| Prazo de atendimento, prazo de solução, tempo pausado | `calcularPrazo`, `prazosDoChamado`, `prazosNoRecalculo`, `slaDoChamado`, `pausaDoChamadoParaORelogio` (`packages/dominio/src/sla.ts`) | Núcleo |
+| Prazo de atendimento, prazo de solução, tempo pausado | `calcularPrazo`, `prazosDoChamado`, `prazosNoRecalculo`, `slaDoChamado`, `pausaDoChamadoParaORelogio`, `calendarioDeSla`, `slaDaCopia` e `prazoNaRetomada` (`packages/dominio/src/sla.ts`); `montarCalendarioDeSla` (`packages/aplicacao/src/casos-de-uso/calendario-sla.ts`) junta o horário do hotel, os feriados oficiais (porta `FeriadosOficiais`) e os do hotel (`app.feriado_hotel`) | Núcleo: abertura e triagem (`casos-de-uso/chamados.ts` e `triagem.ts`) e a retomada da OS (`casos-de-uso/execucao.ts`, que grava o `pausado_segundos`) |
+| Prazo em risco, prazo vencido | `avisosDeSla` (`packages/dominio/src/monitor-sla.ts`) | Núcleo: o cron `/api/cron/sla`, pelo `criarMonitorDeSla` |
 | Dentro do prazo, % de SLA, backlog, backlog por idade, MTTR, tempo até o aceite, razão preventiva/corretiva, chamados por 100 UHs, comparação na bandeira, produtividade | Sem código (painel da 1c) | — |
 | % de preventiva em dia, preventiva atrasada | Sem código (depende da PV3); na atenção, o campo `preventivaAtrasada` fica sem dado | — |
 | Custo informado | `custoNaJanela` (`historico.ts`), na atenção e na substituição; os custos da efetividade vêm de `app.os.custo_informado`; o valor é validado no aceite por `packages/dominio/src/executor-e-custo.ts` | Intelligence |
@@ -124,10 +134,10 @@ Levantamento na `main` de 13/10/2026. "Sem código" quer dizer que o termo está
 
 | # | Divergência | Proposta | Quem decide | Situação |
 |---|---|---|---|---|
-| a | **O dia.** A regra 5 manda contar no fuso do hotel. O job do Intelligence conta o dia em UTC (`fimDoDia` e `MetricaDiaria.dia`, `dia.ts` e `agregacao.ts`), e a coluna de fuso no tenant, do núcleo, ainda não existe. | Manter a regra 5. O dia em UTC fica registrado como exceção temporária do Intelligence, até o núcleo trazer o fuso. Depois, a mudança é uma versão nova da fórmula, sem recalcular em silêncio o que já foi gravado (ADR-036). | Cesar e Kaio (ADR-036) | Em proposta |
+| a | **O dia.** A regra 5 manda contar no fuso do hotel. O job do Intelligence conta o dia em UTC (`fimDoDia` e `MetricaDiaria.dia`, `dia.ts` e `agregacao.ts`). O fuso do hotel já existe (`app.hotel.fuso`, `not null` desde a fundação, que o SLA já usa); a premissa da primeira versão deste rascunho, de que faltava uma coluna de fuso no tenant, estava errada (revisão da 1c). | Manter a regra 5. O Intelligence passa a contar o dia no fuso de cada hotel, com a coluna que já existe, como versão nova da fórmula, sem recalcular o que já foi gravado (ADR-036). O dia em UTC fica registrado como exceção temporária só até esse PR. | Cesar e Kaio (ADR-036) | Em proposta |
 | b | **Corretiva.** O termo de base tira da conta todo chamado cancelado. O Intelligence só tira o cancelado sem OS: o chamado cancelado que teve OS entra, com a OS cancelada mais recente (`corretivasDosChamados`). | Alinhar o Intelligence ao termo de base: o chamado cancelado fica fora em qualquer caso. Isso muda as contagens dos scores, e a reincidência e a atenção ganham a versão seguinte da fórmula. | Cesar e Kaio | Em proposta |
 | c | **Horas paradas e tempo parado.** O Intelligence chama de "horas paradas" o tempo parado do ativo cortado na janela (`horasParadasNoTrecho`, sobre `tempoParadoTotal` do domínio). | Um nome só: "tempo parado do ativo", em horas com uma casa decimal na tela do Intelligence. "Horas paradas" deixa de ser termo; os nomes de campo no código podem ficar, porque não aparecem na tela. | Kaio (rótulo) | Em proposta |
-| d | **Custo.** Não há termo de custo, e o PRD do Intelligence cita custo acumulado, custo em 12 meses, custo por hotel e custo por UH. | Termo de base **custo informado**: a soma do `app.os.custo_informado` das corretivas com a conclusão do serviço no período. O custo vazio não conta como zero, e a cobertura (as corretivas com o custo sobre as concluídas) aparece ao lado. É o único custo até a fase 2 (módulo de custos). A função vai para o domínio junto com a conclusão do serviço. | Cesar | Em proposta |
+| d | **Custo.** Não há termo de custo, e o PRD do Intelligence cita custo acumulado, custo em 12 meses, custo por hotel e custo por UH. | Termo de base **custo informado**: a soma do `app.os.custo_informado` das corretivas **aceitas** no período, porque o custo é informado no aceite (`repositorios/aceite.ts`), e não na conclusão (revisão da 1c). O custo vazio não conta como zero, e a cobertura (as corretivas aceitas com o custo sobre as aceitas) aparece ao lado. É o único custo até a fase 2 (módulo de custos). A função vai para o domínio junto com a conclusão do serviço. A "cobertura do custo" da atenção (`custoDisponivelNoTenant`, hoje sobre as concluídas) passa à mesma base, como versão nova da fórmula. | Cesar | Em proposta |
 | e | **MTBF.** O PRD do Intelligence cita o MTBF "quando houver histórico suficiente", e nada o calcula. | Nome reservado, sem cálculo, até a fase 2. Ninguém usa o nome com outro cálculo nesse meio-tempo. | Cesar | Em proposta |
 | f | **"Reincidência" no PRD.** O PRD usa "reincidência após encerramento", "reincidência após reparo" e "taxa de reincidência do fornecedor" para cálculos que não são o score. | "Reincidência" é só o score. A volta depois de uma corretiva é um componente dele ("falha até 30 dias depois da conclusão"), e a taxa da regra do fornecedor se chama "taxa de retorno do fornecedor". O PRD fica como está, por ser o documento de origem, e as telas usam os nomes daqui. | Kaio (rótulo) | Em proposta |
 
