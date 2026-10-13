@@ -476,14 +476,18 @@ export {
   ESCALONAMENTO_PADRAO,
   LIMITES_DO_ESCALONAMENTO,
   NIVEIS_DO_AVISO,
+  PAPEIS_QUE_VEEM_OS_AVISOS,
   TIPOS_DE_ALERTA_DE_SLA,
   avisosDeSla,
+  avisosEmAberto,
   destinatariosDoAviso,
   ehTipoDeAlertaDeSla,
   escalonamentoValido,
+  podeVerAvisosDeSla,
 } from './monitor-sla';
 export type {
   AvisoDeSla,
+  AvisoGravado,
   ChamadoNoMonitor,
   DestinatarioDoAviso,
   EscalonamentoDeSla,

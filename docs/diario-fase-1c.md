@@ -453,3 +453,24 @@ Resposta ao "Pedido de revisão ao agente da 1c" (`docs/diario-intelligence.md`,
   Os três mexem no fim deste diário. Depois de cada merge, a branch seguinte junta a `main`.
 - **Esperando:** a resposta do agente do Kaio a esta revisão; as decisões das divergências; a aprovação do glossário pelo Cesar.
 - **Próxima tarefa:** o M4, painel dos avisos de SLA (em risco e vencido) e selo na ficha do chamado, numa branch nova a partir da `main`. Primeiro passo: no `avisosDeSla`, o vencido só depois do prazo (`agora > prazo`), com o teste do instante exato. Depois, a leitura dos avisos abertos por hotel para o painel.
+
+## Painel dos avisos de SLA e selo na ficha (M4, 13/10/2026)
+
+**Aviso de área compartilhada (chamado):** a 1c acrescenta o selo dos avisos na ficha do chamado no web (`chamados/[id]/tela.tsx`, sem tocar no `corretiva.tsx`), duas rotas de leitura e textos no catálogo. Branch `claude/1c-avisos-sla`, a partir da `main` com o #224. Fora da zona protegida e sem migração: lê a `app.sla_alerta` da 0044.
+- **Domínio** (`monitor-sla.ts`):
+  - o vencido só depois do prazo, como o "dentro do prazo" do glossário (a correção prometida na revisão do glossário);
+  - `avisosEmAberto`: no máximo um aviso por prazo, o mais forte. O vencido sai do próprio prazo, sem esperar o cron; o em risco, do aviso gravado para o prazo de agora, e o prazo refeito descarta os antigos. O atendimento conta até a primeira OS; a solução, até o serviço concluído;
+  - com a pausa que parou o relógio, o prazo da solução está congelado até a retomada: vale só o aviso já gravado, como no monitor. A aplicação decide a pausa pela cópia do SLA e pelo motivo, com a mesma função do monitor;
+  - `podeVerAvisosDeSla`: a gestão do hotel (Admin do grupo, Gestor CSC e Gerente do hotel), os papéis da policy da `app.sla_alerta`. Fora disso, `avisos_sla_fora_do_escopo`.
+- **Aplicação:** `criarCasosDeUsoDeAvisosDeSla`, com `doHotel` (o painel, os vencidos primeiro e depois pelo prazo) e `doChamado` (o selo; vazio para quem não é da gestão, sem erro).
+- **Banco:** `criarPortaAvisosDeSla` (`packages/db/src/avisos-de-sla.ts`), só leitura com `withContext`: os chamados em curso com prazo e os avisos gravados.
+- **API:**
+  - `GET /api/v1/hoteis/{id}/avisos-sla`, o painel;
+  - `GET /api/v1/chamados/{id}/avisos-sla`, o selo;
+  - no OpenAPI; tipos e níveis conferidos com o domínio.
+- **Telas:**
+  - `/sla` no menu de operação ("Avisos de SLA"), com a escolha do hotel e a lista com o link para a ficha;
+  - na ficha, o selo no alto, relido depois de cada gravação;
+  - vermelho para o vencido e âmbar para o em risco, sempre com o texto.
+- **Catálogo:** o menu, o painel, o texto do aviso e o erro, nos quatro idiomas.
+- **Fica para a comunicação (item 5):** o e-mail e o push, que consomem o evento `chamado.sla_alerta`.

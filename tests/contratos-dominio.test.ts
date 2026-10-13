@@ -9,6 +9,8 @@ import {
   MOMENTOS_DA_FOTO_API,
   MOTIVOS_DE_PAUSA_API,
   DESTINATARIOS_DO_AVISO_API,
+  NIVEIS_DO_AVISO_API,
+  TIPOS_DE_ALERTA_DE_SLA_API,
   PAPEIS_API,
   CATEGORIAS_PADRAO_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
@@ -45,6 +47,8 @@ import {
   MOMENTOS_DA_FOTO,
   MOTIVOS_DE_PAUSA,
   DESTINATARIOS_DO_AVISO,
+  NIVEIS_DO_AVISO,
+  TIPOS_DE_ALERTA_DE_SLA,
   ESCALONAMENTO_PADRAO,
   HORARIO_PADRAO,
   POLITICAS,
@@ -272,6 +276,11 @@ describe('contratos × domínio', () => {
 
   it('os destinatários do aviso do monitor de SLA da API são os do domínio (ADR-043)', () => {
     expect([...DESTINATARIOS_DO_AVISO_API]).toEqual([...DESTINATARIOS_DO_AVISO]);
+  });
+
+  it('os tipos e os níveis dos avisos de SLA da API são os do domínio (ADR-043, M4)', () => {
+    expect([...TIPOS_DE_ALERTA_DE_SLA_API]).toEqual([...TIPOS_DE_ALERTA_DE_SLA]);
+    expect([...NIVEIS_DO_AVISO_API]).toEqual([...NIVEIS_DO_AVISO]);
   });
 
   it('os motivos da pausa da API são os do domínio (ADR-042)', () => {

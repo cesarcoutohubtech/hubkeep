@@ -49,6 +49,7 @@ export {
 export { criarPortaConsultasDaCorretiva } from './consultas-da-corretiva';
 export { criarPortaHistorico } from './historico';
 export { criarPortaAuditoriaGeral } from './auditoria-geral';
+export { criarPortaAvisosDeSla } from './avisos-de-sla';
 export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from './inteligencia';
 export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
 export type {
