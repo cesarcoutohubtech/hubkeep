@@ -384,9 +384,11 @@ export interface AppOs {
   fornecedor_id: string | null;
   hotel_id: string;
   id: string;
+  locador_avisado_em: Timestamp | null;
   local_id: string;
   motivo_cancelamento: string | null;
   motivo_reabertura: string | null;
+  responsavel_arrendamento: string | null;
   situacao_id: string;
   tecnico_id: string | null;
   tenant_id: string;
