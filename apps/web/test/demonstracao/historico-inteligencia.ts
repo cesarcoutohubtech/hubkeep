@@ -49,6 +49,8 @@ import {
   type MotivoDeDescarte,
   PADRAO_SISTEMICO,
   type RegraSistemica,
+  fimDoDia,
+  fimDoDiaNoFuso,
 } from '@hubkeep/inteligencia';
 
 export const NOME_DO_GRUPO = 'Grupo Demonstração — Intelligence';
@@ -62,6 +64,31 @@ export const DIAS_DO_HISTORICO = 183;
  * HubKeep antes de contratar o módulo, como um cliente de verdade.
  */
 export const DIAS_DE_AQUECIMENTO = 60;
+
+/** O fuso dos seis hotéis do histórico, o mesmo do kit. */
+export const FUSO_DO_HISTORICO = 'America/Sao_Paulo';
+
+/**
+ * Quando o job de cada dia do histórico roda (ponto 4 da gravação, 13/10/2026):
+ * - `como_em_producao` (Cesar): às 06:00 UTC do dia seguinte, o instante do
+ *   cron; a linha da métrica leva a data local desse instante, o dia seguinte;
+ * - `fim_do_dia_local` (Kaio): no último instante do dia em São Paulo.
+ * Os dois ainda vão combinar; o teste sem banco roda os dois.
+ */
+export type MomentoDoJob = 'como_em_producao' | 'fim_do_dia_local';
+export const MOMENTO_DO_JOB: MomentoDoJob = 'como_em_producao';
+
+export function instanteDoJob(dia: string, momento: MomentoDoJob): Date {
+  if (momento === 'fim_do_dia_local') return fimDoDiaNoFuso(dia, FUSO_DO_HISTORICO);
+  return new Date(fimDoDia(dia).getTime() + 1 + 6 * HORA_MS);
+}
+
+/**
+ * Quem aceita a OS concluída (ponto 3 da gravação, 13/10/2026): o Gerente do
+ * hotel do kit (Cesar) ou a Admin do grupo (Kaio). Os dois ainda vão combinar.
+ */
+export type QuemAceita = 'gerente' | 'admin';
+export const QUEM_ACEITA: QuemAceita = 'gerente';
 
 /** O tamanho do grupo e do ruído; os cenários são os mesmos em qualquer volume. */
 export interface VolumeDoHistorico {
@@ -489,11 +516,10 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
     const t = p.abertoEm.getTime();
     const gerada = t + entre(0.5, 3) * HORA_MS;
     const iniciada = gerada + entre(0.5, 6) * HORA_MS;
+    // A parada nasce com o chamado ("o equipamento está parado"), como a
+    // abertura grava: o paradoDesde não pode ser depois da abertura.
     const parada = p.horasParadas
-      ? {
-          inicio: new Date(t + 0.25 * HORA_MS),
-          fim: new Date(t + (0.25 + p.horasParadas) * HORA_MS),
-        }
+      ? { inicio: new Date(t), fim: new Date(t + p.horasParadas * HORA_MS) }
       : null;
     let concluida = Math.max(iniciada + entre(1, 6) * HORA_MS, parada ? parada.fim.getTime() : 0);
     const passos: PassoDaOs[] = [
