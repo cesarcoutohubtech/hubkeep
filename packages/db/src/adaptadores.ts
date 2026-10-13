@@ -4,6 +4,7 @@
 import type {
   PortaFeriadosDoHotel,
   PortaMonitorDeSla,
+  PortaAceiteAutomatico,
   AnexoGravado,
   AtivoGravado,
   ChecklistDaOsGravado,
@@ -71,6 +72,7 @@ import {
   politicasDoHotel,
 } from './leituras-do-hotel';
 import { sessaoDoMonitorDeSla } from './repositorios/monitor-sla';
+import { sessaoDoAceiteAutomatico } from './repositorios/aceite-automatico';
 import {
   ehMembro,
   escopoVisivel,
@@ -159,6 +161,14 @@ export function criarPortaMonitorDeSla(banco: AcessoBanco): PortaMonitorDeSla {
   return {
     emSessao: (tenantId, fn) =>
       banco.executarComoSistema({ tenantId }, (uow) => fn(sessaoDoMonitorDeSla(uow))),
+  };
+}
+
+/** Aceite automático (hk_worker, 1c, M5; ADR-044): um tenant por transação. */
+export function criarPortaAceiteAutomatico(banco: AcessoBanco): PortaAceiteAutomatico {
+  return {
+    emSessao: (tenantId, fn) =>
+      banco.executarComoSistema({ tenantId }, (uow) => fn(sessaoDoAceiteAutomatico(uow))),
   };
 }
 

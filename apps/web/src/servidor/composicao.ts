@@ -48,6 +48,7 @@ import {
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
   criarMonitorDeSla,
+  criarAceiteAutomatico,
   criarCasosDeUsoDeChecklists,
   criarCasosDeUsoDePlanosPreventivos,
   criarCasosDeUsoDeCodigos,
@@ -80,6 +81,7 @@ import {
   criarPortaCategorias,
   criarPortaChamados,
   criarPortaMonitorDeSla,
+  criarPortaAceiteAutomatico,
   criarPortaChecklists,
   criarPortaCodigos,
   criarPortaPlanosPreventivos,
@@ -236,6 +238,17 @@ export async function monitorarSlaDoTenant(tenantId: string) {
   return criarMonitorDeSla({
     monitor: criarPortaMonitorDeSla(await acessoBancoDoWorker()),
     feriadosOficiais,
+    relogio: relogioDoSistema,
+  })(tenantId);
+}
+
+/**
+ * O aceite automático num tenant (hk_worker, 1c, M5; ADR-044); a rota
+ * /api/cron/sla chama depois do monitor, numa transação própria.
+ */
+export async function aceitarAutomaticamenteNoTenant(tenantId: string) {
+  return criarAceiteAutomatico({
+    aceite: criarPortaAceiteAutomatico(await acessoBancoDoWorker()),
     relogio: relogioDoSistema,
   })(tenantId);
 }

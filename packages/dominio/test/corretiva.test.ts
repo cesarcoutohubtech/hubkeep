@@ -112,6 +112,8 @@ const PODE_NA_OS: Record<AcaoDaOs, NomeDoAtor[]> = {
   retomar: EXECUCAO,
   concluir: EXECUCAO,
   aceitar: ACEITE,
+  // Só o worker, sem autor (ADR-044): nenhum ator humano.
+  aceitar_automatico: [],
   reabrir: ACEITE,
 };
 
@@ -133,6 +135,7 @@ const ESPERADO_NA_OS: Record<AcaoDaOs, Partial<Record<EstadoDaOs | 'nova', Passo
   retomar: { pausada: { os: 'em_execucao', chamado: null } },
   concluir: { em_execucao: { os: 'concluida', chamado: 'aguardando_aceite' } },
   aceitar: { concluida: { os: 'aceita', chamado: 'concluido' } },
+  aceitar_automatico: { concluida: { os: 'aceita', chamado: 'concluido' } },
   reabrir: { concluida: { os: 'em_execucao', chamado: 'em_execucao' } },
   // A OS cancelada devolve o chamado à triagem, para ganhar outra OS (Cesar, 29/09/2026).
   cancelar: {

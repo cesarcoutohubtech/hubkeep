@@ -209,6 +209,7 @@ export {
   decidirRegistroNaOs,
   exigirChamadoSemOsEmAndamento,
   normalizarMotivo,
+  quemAbriuExecuta,
   osOcupaOChamado,
   ESTADOS_DA_OS_CONCLUIDA,
   encerraParadaNoHotel,
@@ -509,6 +510,17 @@ export type {
   NivelDoAviso,
   TipoDeAlertaDeSla,
 } from './monitor-sla';
+export {
+  LIMITE_DO_ACEITE_AUTOMATICO_POR_RODADA,
+  MOTIVOS_SEM_ACEITE_AUTOMATICO,
+  aceiteAutomaticoEm,
+  decidirAceiteAutomatico,
+} from './aceite-automatico';
+export type {
+  DecisaoDoAceiteAutomatico,
+  MotivoSemAceiteAutomatico,
+  OsNoAceiteAutomatico,
+} from './aceite-automatico';
 export {
   ENTIDADES_DA_AUDITORIA,
   LIMITES_DA_AUDITORIA,
