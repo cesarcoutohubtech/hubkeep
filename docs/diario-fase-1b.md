@@ -683,3 +683,27 @@ Pedido 2 do Intelligence (atividade 3), com a proposta aprovada pelo Cesar ("Ces
 - **Esperando o Cesar:** nada.
 - **Nada sem enviar.**
 - **Próxima tarefa:** a parte protegida da PV3, na vez dela: a migração de `app.os` (com a marca do arrendado, se a 0047 já estiver na `main`), as permissões do worker, os tipos, o repositório, a rota `/api/cron/preventiva` no `vercel.json` e o teste de integração. Também o ADR-041 com o detalhe do aceite. Primeiro passo: conferir a última migração da `main` e reler a seção "PV3" da `docs/referencia/propostas-desenho-pv-implantacao.md`.
+
+## Decisões do Cesar: adendos dos ADR-021, ADR-024 e ADR-039 (13/10/2026)
+
+O Cesar aprovou os três adendos ("Cesar aqui", 13/10/2026), depois do resumo com o que muda e a recomendação:
+- **ADR-021, auditoria sem hotel do fornecedor:** "aprovo".
+- **ADR-024, conta do kit de teste:** "aprovo".
+- **ADR-039, página do servidor (P1c):** "aprovo com uma condição". O uso do `carregarNaPagina` fica numa lista fechada, hoje só o detalhe do chamado. Um teste de guarda reprova o uso fora da lista e a chamada a caso de uso que grava. A condição fica registrada no adendo.
+
+**Onde entra:** no PR protegido da PV3 (branch `claude/1b-pv3-protegida`), como o Cesar pediu. Ele leva:
+- a data e o status dos três adendos no `docs/03`, com a condição do ADR-039 como o último item do adendo;
+- o teste de guarda `tests/pagina-do-servidor-so-leitura.test.ts`, na regex da zona, no ADR-023 e no `CLAUDE.md` (seis testes da raiz);
+- o detalhe do aceite da preventiva no ADR-041 (decisão do Cesar, seção anterior).
+
+**O teste de guarda:**
+- **Duas listas fechadas:** a das páginas (só o detalhe do chamado) e a dos métodos de caso de uso que elas chamam (oito leituras).
+- **O que ele reprova:**
+  - o uso do `carregarNaPagina` fora da lista;
+  - a página que importa do servidor outro módulo além do `pagina.ts` e do módulo de leituras dela;
+  - o módulo de leituras que pega caso de uso fora das fontes, ou com um método fora da lista;
+  - o módulo de leituras que importa do `@hubkeep/db` algo além de tipos;
+  - um método da lista com nome de ação que grava.
+- **Conferido nos dois sentidos:** uma página falsa com o `carregarNaPagina` reprova, e um `gerarOs` no `Pick` das fontes reprova.
+
+**Status do PR:** a branch anda agora, e o PR abre na vez da PV3 na fila de zona protegida, depois da 0047 da 1c.
