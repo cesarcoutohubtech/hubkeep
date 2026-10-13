@@ -10,6 +10,11 @@
 // chamado em execução; concluir, em aguardando aceite; aceitar, em concluído;
 // cancelar a OS devolve o chamado à triagem, para ganhar outra OS).
 // A aplicação grava os dois na mesma unit of work.
+//
+// A OS preventiva (PV3, ADR-041) não tem chamado: segue as mesmas transições,
+// sem reflexo em chamado, e quem gera é o worker, não a triagem. O aceite é do
+// Gerente do hotel; sem Gerente vigente no hotel, do Gestor CSC ou do Admin do
+// grupo, como na C6 sem "quem abriu" (decisão 12 do ADR-041).
 import { Conflito, PermissaoNegada, RegraViolada } from './erros';
 import { escopoCobreHotel } from './equipes';
 import { vigente } from './permissoes';
@@ -208,6 +213,24 @@ export interface ChamadoParaRegra {
   abertoPor: string;
 }
 
+/**
+ * De onde a regra tira o hotel e quem abriu: o chamado, na corretiva, ou só o
+ * hotel, na OS preventiva, que não tem chamado (PV3, ADR-041).
+ */
+export type OrigemDaOs =
+  { chamado: ChamadoParaRegra } | { chamado: null; hotel: ChamadoParaRegra['hotel'] };
+
+/** O que os grupos de papel olham da origem: o hotel e quem abriu (nulo na preventiva). */
+interface AlvoDaRegra {
+  hotel: ChamadoParaRegra['hotel'];
+  abertoPor: string | null;
+}
+
+const alvoDa = (o: OrigemDaOs): AlvoDaRegra =>
+  o.chamado === null
+    ? { hotel: o.hotel, abertoPor: null }
+    : { hotel: o.chamado.hotel, abertoPor: o.chamado.abertoPor };
+
 export const LIMITE_MOTIVO = 500;
 
 /**
@@ -342,28 +365,29 @@ const ehResponsavel = (ator: AtorDaCorretiva, r: Responsavel | null): boolean =>
   (r.tipo === 'tecnico' ? r.usuarioId === ator.usuarioId : ator.equipes.includes(r.equipeId));
 
 /**
- * Quem abriu executa a OS e nenhum outro Gerente, vigente, cobre o hotel: o
- * aceite passa ao Gestor CSC e ao Admin do grupo. Sem os dados, falha fechada.
+ * Na corretiva, quem abriu executa a OS e nenhum outro Gerente, vigente, cobre
+ * o hotel; na preventiva, que não tem quem abriu, nenhum Gerente vigente cobre
+ * o hotel. Nos dois casos, o aceite passa ao Gestor CSC e ao Admin do grupo.
+ * Sem os dados, falha fechada.
  */
 function aceiteSemOutroGerente(
-  chamado: ChamadoParaRegra,
+  alvo: AlvoDaRegra,
   r: Responsavel | null,
   dados: DadosDoAceite | undefined,
   agora: Date,
 ): boolean {
   if (!dados || r === null) return false;
-  const quemAbriu = {
-    usuarioId: chamado.abertoPor,
-    atribuicoes: [],
-    equipes: dados.equipesDeQuemAbriu,
-  };
-  if (!ehResponsavel(quemAbriu, r)) return false;
+  const { abertoPor } = alvo;
+  if (abertoPor !== null) {
+    const quemAbriu = { usuarioId: abertoPor, atribuicoes: [], equipes: dados.equipesDeQuemAbriu };
+    if (!ehResponsavel(quemAbriu, r)) return false;
+  }
   return !dados.gerentes.some(
     (a) =>
-      a.usuarioId !== chamado.abertoPor &&
+      a.usuarioId !== abertoPor &&
       a.papel === 'gerente_hotel' &&
       vigente(a, agora) &&
-      escopoCobreHotel(a, chamado.hotel),
+      escopoCobreHotel(a, alvo.hotel),
   );
 }
 
@@ -372,26 +396,26 @@ type OsParaPapel = { responsavel: Responsavel; aceite?: DadosDoAceite | undefine
 function estaNoGrupo(
   grupo: Quem,
   ator: AtorDaCorretiva,
-  chamado: ChamadoParaRegra,
+  alvo: AlvoDaRegra,
   os: OsParaPapel,
   agora: Date,
 ): boolean {
   switch (grupo) {
     case 'administracao':
-      return temPapelNoHotel(ator, PAPEIS_DA_ADMINISTRACAO, chamado.hotel, agora);
+      return temPapelNoHotel(ator, PAPEIS_DA_ADMINISTRACAO, alvo.hotel, agora);
     case 'triagem':
-      return temPapelNoHotel(ator, PAPEIS_DA_TRIAGEM, chamado.hotel, agora);
+      return temPapelNoHotel(ator, PAPEIS_DA_TRIAGEM, alvo.hotel, agora);
     case 'responsavel':
-      return temPapelNoHotel(ator, ['tecnico'], chamado.hotel, agora);
+      return temPapelNoHotel(ator, ['tecnico'], alvo.hotel, agora);
     case 'aceite': {
-      const abriu = chamado.abertoPor === ator.usuarioId;
+      const abriu = alvo.abertoPor === ator.usuarioId;
       const r = os?.responsavel ?? null;
       if (abriu && ehResponsavel(ator, r)) return false;
-      if (temPapelNoHotel(ator, ['gerente_hotel'], chamado.hotel, agora)) return true;
-      if (abriu) return temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, chamado.hotel, agora);
+      if (temPapelNoHotel(ator, ['gerente_hotel'], alvo.hotel, agora)) return true;
+      if (abriu) return temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, alvo.hotel, agora);
       return (
-        aceiteSemOutroGerente(chamado, r, os?.aceite, agora) &&
-        temPapelNoHotel(ator, PAPEIS_DO_ACEITE_SEM_GERENTE, chamado.hotel, agora)
+        aceiteSemOutroGerente(alvo, r, os?.aceite, agora) &&
+        temPapelNoHotel(ator, PAPEIS_DO_ACEITE_SEM_GERENTE, alvo.hotel, agora)
       );
     }
   }
@@ -401,11 +425,11 @@ function exigirPapel(
   quem: readonly Quem[],
   acao: string,
   ator: AtorDaCorretiva,
-  chamado: ChamadoParaRegra,
+  alvo: AlvoDaRegra,
   os: OsParaPapel,
   agora: Date,
 ): void {
-  if (!quem.some((g) => estaNoGrupo(g, ator, chamado, os, agora))) {
+  if (!quem.some((g) => estaNoGrupo(g, ator, alvo, os, agora))) {
     throw new PermissaoNegada('acao_fora_do_papel', 'Você não pode fazer esta ação neste hotel.', {
       acao,
     });
@@ -436,7 +460,7 @@ export function decidirNoChamado(
   },
 ): { estado: EstadoDoChamado; motivo: string | null } {
   const t = TRANSICOES_DO_CHAMADO[acao];
-  exigirPapel(t.quem, acao, p.ator, p.chamado, null, p.agora);
+  exigirPapel(t.quem, acao, p.ator, alvoDa(p), null, p.agora);
   if (!t.de.includes(p.chamado.estado)) {
     throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
       acao,
@@ -454,12 +478,14 @@ export function decidirNoChamado(
  * responsável (409, os_de_outro_responsavel) e o motivo (422). Devolve o
  * estado novo da OS, o do chamado (nulo se não muda) e o motivo normalizado.
  * `aceite` só conta para aceitar e reabrir (DadosDoAceite).
+ *
+ * Na OS preventiva (`chamado: null`, com o hotel), nada se reflete em chamado,
+ * e gerar não passa por aqui: quem gera é o worker (geracao-preventiva.ts).
  */
 export function decidirNaOs(
   acao: AcaoDaOs,
-  p: {
+  p: OrigemDaOs & {
     ator: AtorDaCorretiva;
-    chamado: ChamadoParaRegra;
     os: { estado: EstadoDaOs; responsavel: Responsavel } | null;
     osDoChamado?: readonly EstadoDaOs[];
     motivo?: string | null | undefined;
@@ -467,6 +493,9 @@ export function decidirNaOs(
     agora: Date;
   },
 ): { estado: EstadoDaOs; chamado: EstadoDoChamado | null; motivo: string | null } {
+  if (acao === 'gerar' && p.chamado === null) {
+    throw new Error('A OS preventiva é gerada pelo worker, não por decidirNaOs.');
+  }
   const t = TRANSICOES_DA_OS[acao];
   const estadoDaOs = p.os?.estado ?? 'nova';
   const invalida = () =>
@@ -475,13 +504,14 @@ export function decidirNaOs(
       estado: estadoDaOs,
     });
   const os = p.os && { responsavel: p.os.responsavel, aceite: p.aceite };
-  exigirPapel(t.quem, acao, p.ator, p.chamado, os, p.agora);
+  exigirPapel(t.quem, acao, p.ator, alvoDa(p), os, p.agora);
   if (!t.de.includes(estadoDaOs)) throw invalida();
   if (acao === 'gerar') {
     if (!p.osDoChamado) throw new Error('decidirNaOs(gerar) precisa das OS do chamado.');
     exigirChamadoSemOsEmAndamento(p.osDoChamado);
   }
-  if (t.chamado && !t.chamado.de.includes(p.chamado.estado)) throw invalida();
+  const reflexo = p.chamado === null ? null : t.chamado;
+  if (reflexo && p.chamado && !reflexo.de.includes(p.chamado.estado)) throw invalida();
   // Técnico do hotel, mas a OS é de outro (ou foi reatribuída com a operação
   // offline na fila): conflito com o estado atual, visível no PWA (ADR-025).
   if (t.quem.includes('responsavel') && !ehResponsavel(p.ator, p.os?.responsavel ?? null)) {
@@ -489,7 +519,7 @@ export function decidirNaOs(
   }
   return {
     estado: t.para as EstadoDaOs,
-    chamado: t.chamado?.para ?? null,
+    chamado: reflexo?.para ?? null,
     motivo: t.exigeMotivo ? normalizarMotivo(p.motivo) : null,
   };
 }
@@ -522,18 +552,17 @@ export const ESTADOS_QUE_ACEITAM_FOTO: readonly EstadoDaOs[] = [
  * parada do ativo (C5) ou responder o checklist (PV1): o Técnico do hotel
  * responsável pela OS (403 fora do papel; 409 os_de_outro_responsavel), com a
  * OS em execução ou pausada (409 transicao_invalida). A foto vale também na
- * OS atribuída (I8).
+ * OS atribuída (I8). Vale igual na OS preventiva, sem chamado.
  */
 export function decidirRegistroNaOs(
   registro: RegistroNaOs,
-  p: {
+  p: OrigemDaOs & {
     ator: AtorDaCorretiva;
-    chamado: ChamadoParaRegra;
     os: { estado: EstadoDaOs; responsavel: Responsavel };
     agora: Date;
   },
 ): void {
-  exigirPapel(['responsavel'], registro, p.ator, p.chamado, p.os, p.agora);
+  exigirPapel(['responsavel'], registro, p.ator, alvoDa(p), p.os, p.agora);
   const estados =
     registro === 'anexar_foto' ? ESTADOS_QUE_ACEITAM_FOTO : ESTADOS_QUE_ACEITAM_REGISTRO;
   if (!estados.includes(p.os.estado)) {

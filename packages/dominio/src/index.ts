@@ -227,6 +227,7 @@ export type {
   DadosDoAceite,
   EstadoDaOs,
   EstadoDoChamado,
+  OrigemDaOs,
   RegistroNaOs,
   Responsavel,
 } from './corretiva';
