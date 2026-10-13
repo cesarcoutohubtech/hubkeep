@@ -131,6 +131,24 @@ O cálculo do ADR-042, só no domínio e no contrato. PR fora da zona protegida,
   - no local, lint, typecheck e testes passaram. Os 17 testes novos (`packages/dominio/test/sla.test.ts`) cobrem o fim de semana, o feriado de 12/10, o almoço, o prazo no fim do intervalo, Manaus e Noronha, o horário de verão real de São Paulo em 04/11/2018 (o dia de 23 h), a retomada nos dois relógios e a pausa com o prazo vencido;
   - na CI: a lista de chaves de `packages/db/test/configuracao.test.ts`.
 
+## Decisões 5 a 14 do desenho da 1c (13/10/2026)
+
+O Cesar respondeu no chat às decisões 5 a 14 de `docs/referencia/propostas-desenho-1c.md`. A tabela está no `docs/13` ("Decisões do desenho da 1c"). O que muda no desenho:
+- **7 (ajuste):** a matriz do arrendado usa a categoria do próprio chamado (`app.chamado.categoria_id`, da 0043), e não a do ativo. A OS preventiva, que não tem chamado, continua com a categoria do ativo.
+- **9 (condição):** a meta de tempo do painel é do agente da 1c, medida com o volume do teste de carga do agente do Kaio. O repositório ainda não tem esse teste nem esse volume: a meta e o volume vão ao Cesar e ao Kaio (seção seguinte).
+- **10 e 11:** o glossário passou à segunda versão, com os indicadores fechados pelo Cesar. Continuam em proposta a conclusão do serviço e a preventiva atrasada, que esperam o Kaio, e o tempo até o aceite.
+- **12:** "gestão" é o Admin do grupo, o Gestor CSC e o Gerente do hotel, este só no escopo do hotel dele, como a RLS da auditoria já faz.
+- **14:** a correção do `docs/13` sobre o Implantador e o texto do ADR-021 entram no PR da auditoria geral.
+
+## Pedido ao agente do Kaio: volume do teste de carga (13/10/2026)
+
+A decisão 9 do Cesar mede a meta de tempo do painel de indicadores com o volume do teste de carga do agente do Kaio. Não achei esse teste no repositório. Pedido:
+1. Existe um teste de carga, ou um volume de referência, do Intelligence? Se existe, onde está, e com quantos hotéis, UHs, ativos, chamados, OS e transições, em quantos meses?
+2. Se não existe, proponho o volume abaixo, para os dois módulos medirem com o mesmo, e que o Kaio confirme ou ajuste:
+   - 40 hotéis, 6.000 UHs e 20.000 ativos;
+   - 24 meses de histórico, com 150 chamados por hotel por mês (144 mil chamados), uma OS por chamado e cerca de 5 transições por OS (720 mil transições);
+   - 10% dos chamados com UH indisponível e 5% com parada do ativo.
+
 ## Ponto de retomada (13/10/2026)
 
 - **Feito:**
@@ -143,5 +161,5 @@ O cálculo do ADR-042, só no domínio e no contrato. PR fora da zona protegida,
   4. depois do merge da 0043: a porta `FeriadosOficiais` com a `date-holidays`, a gravação dos prazos (abertura, triagem e retomada) e o motivo da pausa no PWA, com o catálogo;
   5. em seguida, o item 4 da ordem: o monitor de SLA e o escalonamento.
 - **Esperando:**
-  - o Kaio, nos quatro pontos do glossário;
-  - o Cesar, nas decisões 5 a 14 de `docs/referencia/propostas-desenho-1c.md` (arrendado, indicadores e auditoria), quando chegar a vez de cada item.
+  - o Kaio, nos quatro pontos do glossário e no volume do teste de carga;
+  - o Cesar, nas cinco decisões do monitor de SLA (item 4) e na meta de tempo do painel (decisão 9).

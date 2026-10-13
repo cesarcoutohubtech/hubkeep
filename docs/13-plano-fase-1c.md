@@ -30,6 +30,23 @@ As sete decisões de `docs/referencia/paridade-mock-1c.md` ("Decididas antes de 
 | 6 | Gráficos do painel (abertos por dia, abertos × encerrados, onde mais quebra) e "chamados por 100 UHs" entram na 1c. | Painel; Painel de indicadores |
 | 7 | Separador do CSV pelo formato regional de quem exporta, mantendo o BOM. | Impressão e exportação; Auditoria geral |
 
+### Decisões do desenho da 1c (Cesar, 13/10/2026)
+
+O Cesar respondeu, no chat do agente da 1c, às 14 decisões de `docs/referencia/propostas-desenho-1c.md`. As 1 a 4, do calendário de SLA, estão no ADR-042. As 5 a 14 ficaram assim:
+
+| # | Decisão | Item |
+|---|---|---|
+| 5 | Aprovada: a matriz do arrendado é uma política, com herança grupo → hotel. | Arrendado mínimo |
+| 6 | Aprovada: o locador é o proprietário do hotel inteiro, sem papel novo. | Arrendado mínimo |
+| 7 | Aprovada com ajuste: a regra usa a categoria do próprio chamado (a do ADR-042), e não a do ativo. Sem regra para a categoria, fica com a arrendatária. | Arrendado mínimo |
+| 8 | Aprovada: um aviso por OS, com a hora na auditoria. | Arrendado mínimo |
+| 9 | Aprovada com condição: os indicadores são calculados na leitura, desde que o painel cumpra uma meta de tempo proposta pelo agente da 1c e medida com o volume do teste de carga do agente do Kaio. Se não cumprir, o agente propõe uma tabela de agregados. | Painel de indicadores |
+| 10 | Aprovada: as definições dos indicadores, com o % de SLA pelo prazo que vence no período e o MTTR com a mediana ao lado. Vão para o glossário único (`docs/referencia/glossario-metricas.md`). | Painel de indicadores |
+| 11 | Aprovada: a tolerância da preventiva em dia é política, com padrão 0. | Painel de indicadores |
+| 12 | Aprovada com definição: a tela de auditoria é da gestão, que quer dizer o Admin do grupo, o Gestor CSC e o Gerente do hotel, este só no escopo do hotel dele. | Auditoria geral |
+| 13 | Aprovada: até 92 dias por consulta e 50 mil linhas no CSV. | Auditoria geral |
+| 14 | Aprovada: o `docs/13` é corrigido, porque o Implantador não lê a auditoria sem hotel. A correção entra no PR da auditoria geral, com o texto do ADR-021 (decisão do Cesar de 13/10/2026). | Auditoria geral |
+
 ### Auditoria geral (decisão do Cesar de 07/10/2026)
 
 | O quê | Aceite |
