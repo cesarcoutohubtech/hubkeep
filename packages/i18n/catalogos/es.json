@@ -46,6 +46,7 @@
   "erro.inteligencia_indisponivel": "HubKeep Intelligence no está disponible para ti en este grupo.",
   "erro.politica_desconhecida": "Política desconocida.",
   "erro.politica_valor_invalido": "El valor no respeta el formato de la política.",
+  "erro.politica_nivel_nao_permitido": "Esta política no se puede guardar en este nivel.",
   "erro.politica_nao_encontrada": "Política no encontrada.",
   "erro.pais_invalido": "País no válido. Use el código ISO de dos letras (p. ej.: BR).",
   "erro.subdivisao_invalida": "Estado o provincia no válido para el país (p. ej.: BR-PR).",
