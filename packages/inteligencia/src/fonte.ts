@@ -143,6 +143,8 @@ export interface HotelDaFonte {
   id: string;
   bandeiraId: string | null;
   status: StatusDeHotel;
+  /** O fuso IANA do hotel (`app.hotel.fuso`), em que o dia da métrica é contado. */
+  fuso: string;
 }
 
 type ChaveDoHotel = 'inteligencia.reincidencia' | 'inteligencia.atencao_ativo';
@@ -197,6 +199,7 @@ export function hoteisDoDia(
       return {
         hotelId: h.id,
         bandeiraId: h.bandeiraId,
+        fuso: h.fuso,
         reincidencia: valores['inteligencia.reincidencia'] as ConfigReincidencia,
         atencao: valores['inteligencia.atencao_ativo'] as ConfigAtencao,
         versaoPolitica: versoes.length ? versoes.join(';') : VERSAO_DE_POLITICA_PADRAO,

@@ -1667,3 +1667,39 @@ O que achei no código:
 - **c:** no Intelligence, o rótulo vira "tempo parado do ativo", com uma casa decimal no motivo da atenção, nos quatro idiomas.
 - **f:** nenhuma tela usa "reincidência" fora do score. Também não há texto da taxa da regra do mesmo fornecedor; quando houver, o nome dele é "taxa de retorno do fornecedor".
 - **Não muda:** a efetividade (`efetividadeAntesDepois`) recebe os custos de quem chama, e nenhum chamador de produção a usa ainda. Fica para quando a tela do ativo ligar.
+
+## PR 2 do código das divergências: o dia no fuso de cada hotel (13/10/2026)
+
+**Decisões ("Cesar e Kaio aqui", chat do agente do Kaio, 13/10/2026):**
+1. **Opção A:** um instante por rodada, e cada hotel grava a data local desse instante, no fuso dele.
+2. **Sinal sistêmico:** fica como está, porque as janelas contam a partir do instante da rodada.
+3. **Recálculo e linhas antigas:** aprovado como proposto.
+   - O recálculo roda uma vez por fuso, com o fim do dia local.
+   - As linhas antigas, gravadas em UTC, ficam como estão.
+   - **Versão:** uma só com o PR 1, se o PR 2 entrar antes do próximo deploy do PR 1; senão, sobe de novo (reincidência 3, atenção 4).
+
+**O que o PR 2 faz:**
+- **Leitura dos hotéis:** `HotelDoJob` (`packages/db`) e `HotelDaFonte` trazem `app.hotel.fuso`, e o `hoteisDoDia` o passa ao `HotelDoDia`.
+- **`calcularDia`:**
+  - cada linha da métrica leva `diaNoFuso(agora, fuso do hotel)`;
+  - o `dia` do resultado é o menor dos dias locais.
+- **Job:** lê os cálculos já gravados por dia, para não duplicar a linha de nenhum hotel.
+- **Fim do dia local:** `fimDoDiaNoFuso`, nova, com testes do horário de verão.
+- **Recálculo** (`apps/web/src/servidor/modulos/inteligencia/job.ts`):
+  - antes de ler os hotéis, uma checagem folgada do contrato do módulo na janela do dia em todos os fusos, para o tenant sem o módulo continuar lendo só os módulos;
+  - depois, uma rodada por fuso, cada uma só com os hotéis daquele fuso e o `agora` no fim do dia local;
+  - cada rodada deixa o próprio registro na auditoria, e o resumo soma as rodadas.
+- **Seguem em UTC:** a janela de leitura das telas e o mês a fechar (`agregacao.ts`). A diferença é de no máximo um dia na borda; no Brasil, só entre 21:00 e 24:00 locais. Fica registrado no glossário.
+- **Versão:** o #253 (PR 1) foi mergeado às 22:09 UTC, antes do PR 2. Sem saber se já foi para o deploy, segui pelo lado seguro da regra: reincidência 2 → 3 e atenção 3 → 4. O sistêmico fica na 3, porque as janelas dele contam a partir do instante da rodada e não dependem do dia.
+
+### Ponto de retomada (13/10/2026, PR 2 aberto)
+
+- **`main`:** b4b0018, com o #253 (PR 1).
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`): o PR 2. Fora da zona protegida.
+- **Esperando:**
+  - o merge do Cesar;
+  - a montagem com relógio (#244, 1b), para a atividade 3.
+- **Próximo:**
+  - o PR 3: testes e docs, com o `docs/piloto/`, se algum texto mudar;
+  - a janela de leitura em UTC só entra se Cesar e Kaio quiserem;
+  - depois do #244, o restante da atividade 3.

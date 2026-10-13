@@ -35,8 +35,9 @@
 // testes, antes das tabelas do ADR-036, e a numeração continua. A versão 3
 // (glossário de métricas versão 3, 13/10/2026) conta o custo e a cobertura
 // pelas corretivas aceitas, e não pelas concluídas (divergência d), e tira da
-// conta todo chamado cancelado (divergência b). O que já foi gravado com a 2
-// não é recalculado (ADR-036).
+// conta todo chamado cancelado (divergência b). A versão 4 (divergência a)
+// grava o dia no fuso do hotel, e não em UTC. O que já foi gravado com as
+// versões anteriores não é recalculado (ADR-036).
 import {
   CRITICIDADE_MAXIMA,
   type Criticidade,
@@ -45,7 +46,7 @@ import {
 } from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
-export const VERSAO_ATENCAO = 3;
+export const VERSAO_ATENCAO = 4;
 
 /**
  * Medições do checklist tipado na janela (etapa PV1): quantas saíram da faixa
