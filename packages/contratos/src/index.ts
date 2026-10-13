@@ -201,6 +201,13 @@ export {
   RespostaDeEquipes,
   RespostaDeMembroDaEquipe,
 } from './equipes';
+export {
+  FeriadoDoHotelApi,
+  PedidoDeAlteracaoDeFeriado,
+  PedidoDeFeriado,
+  RespostaDeFeriadoAlterado,
+  RespostaDeFeriados,
+} from './feriados';
 export { IDIOMAS_API, PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 export {
   BandeiraApi,

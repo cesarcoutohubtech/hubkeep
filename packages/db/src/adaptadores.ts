@@ -3,6 +3,7 @@
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
 import type {
   DadosDoCalendario,
+  PortaFeriadosDoHotel,
   AnexoGravado,
   AtivoGravado,
   ChecklistDaOsGravado,
@@ -91,6 +92,7 @@ import {
   responderChecklist,
 } from './repositorios/checklists';
 import { criarChamado } from './repositorios/chamados';
+import { alterarFeriadoDoHotel, criarFeriadoDoHotel } from './repositorios/feriados-do-hotel';
 import {
   alterarChamadoNaTriagem,
   cancelarOs,
@@ -564,6 +566,70 @@ export function criarPortaFornecedores(banco: AcessoBanco): PortaFornecedores {
 }
 
 /** Equipes do hotel (fase 1a, A6), pelo hk_app: o que cada um vê e grava é da RLS. */
+/** Feriados do hotel (1c, ADR-042), pelo hk_app; a data sai como aaaa-mm-dd, sem fuso. */
+export function criarPortaFeriadosDoHotel(banco: AcessoBanco): PortaFeriadosDoHotel {
+  const colunas = [
+    'f.id',
+    'f.hotel_id',
+    sql<string>`f.data::text`.as('data'),
+    'f.nome',
+    'f.anual',
+    'f.ativo',
+  ] as const;
+  const paraFeriado = (f: {
+    id: string;
+    hotel_id: string;
+    data: string;
+    nome: string;
+    anual: boolean;
+    ativo: boolean;
+  }) => ({
+    id: f.id,
+    hotelId: f.hotel_id,
+    data: f.data,
+    nome: f.nome,
+    anual: f.anual,
+    ativo: f.ativo,
+  });
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    feriado: (ctx, feriadoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const f = await tx
+          .selectFrom('app.feriado_hotel as f')
+          .innerJoin('app.hotel as h', 'h.id', 'f.hotel_id')
+          .select([...colunas, 'h.bandeira_id'])
+          .where('f.id', '=', feriadoId)
+          .executeTakeFirst();
+        return f ? { feriado: paraFeriado(f), bandeiraId: f.bandeira_id } : null;
+      }),
+    listar: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.feriado_hotel as f')
+            .select(colunas)
+            .where('f.hotel_id', '=', hotelId)
+            .orderBy('f.data')
+            .orderBy('f.ativo', 'desc')
+            .orderBy('f.id')
+            .execute()
+        ).map(paraFeriado),
+      ),
+    criar: (ctx, hotelId, f) => banco.executar(ctx, (uow) => criarFeriadoDoHotel(uow, hotelId, f)),
+    alterar: (ctx, feriadoId, mudanca) =>
+      banco.executar(ctx, (uow) => alterarFeriadoDoHotel(uow, feriadoId, mudanca)),
+  };
+}
+
 export function criarPortaEquipes(banco: AcessoBanco): PortaEquipes {
   const hotelDe = (tx: Tx, hotelId: string) =>
     tx

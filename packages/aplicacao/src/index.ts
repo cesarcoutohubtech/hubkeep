@@ -192,6 +192,9 @@ export { criarCasosDeUsoDeSituacoes } from './casos-de-uso/situacoes';
 export type { ChamadoGravado, DadosDeChamado, PortaChamados } from './portas/chamados';
 export type { DadosDoCalendario, FeriadosOficiais } from './portas/calendario-sla';
 export { montarCalendarioDeSla } from './casos-de-uso/calendario-sla';
+export type { FeriadoDoHotelGravado, PortaFeriadosDoHotel } from './portas/feriados-do-hotel';
+export { criarCasosDeUsoDeFeriados } from './casos-de-uso/feriados-do-hotel';
+export type { CasosDeUsoDeFeriados, PedidoDeFeriado } from './casos-de-uso/feriados-do-hotel';
 export { criarCasosDeUsoDeChamados } from './casos-de-uso/chamados';
 export type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './casos-de-uso/chamados';
 export type {
