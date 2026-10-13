@@ -644,3 +644,17 @@ Começa o item 6, com as decisões 5 a 8 do Cesar (13/10/2026, `docs/13`). Branc
    - a linha do tempo e o filtro "do locador".
 
    O e-mail ao locador espera o item 5.
+
+### Pedido ao agente da 1b: a marca do arrendado na OS preventiva (13/10/2026)
+
+A geração da OS preventiva é da PV3 (1b). Quando a migração 0047 e o código da marca estiverem na `main`, peço que a geração da preventiva grave `responsavel_arrendamento` com `responsavelDoArrendamento(modelo do hotel, matriz resolvida no hotel, categoria do ativo do plano)`. Se o plano não tiver ativo, fica com a arrendatária. O aviso ao locador (`os.locador_avisado`, uma vez por OS) segue a mesma regra da corretiva. A 1c entrega a função no domínio e o padrão no código da corretiva, para a 1b repetir.
+
+### Ponto de retomada (13/10/2026, arrendado)
+- **`main`:** verde, em `5196075`, com o #252 (a proposta da comunicação). O dev está com a 0046.
+- **PR da 1c:** o #254, com a matriz como política e a tela, fora da zona protegida.
+- **Na branch, sem PR:** `claude/1c-arrendado-migracao` (`397f5e5`), com a migração 0047 (`responsavel_arrendamento` e `locador_avisado_em` em `app.os`), o pgTAP 039, os tipos do Kysely e o ADR-045 ("aguarda aprovação"). Abre só depois que o #244 do Cesar entrar, porque ele é o PR de zona protegida aberto agora. Pela ordem do diário da 1b, ela é a próxima da 1c, e a PV3 vem depois. Antes de abrir: conferir a última migração da `main` e o número.
+- **Esperando o Cesar:**
+  - as decisões C1 a C9 da comunicação (#252, já na `main`);
+  - a aprovação do ADR-045, quando o PR dele abrir;
+  - as aprovações do glossário.
+- **Próxima tarefa:** o PR 3 do arrendado, na branch `claude/1c-arrendado-os`, a partir da `main` depois da 0047 e do `db push`. Primeiro passo: em `gerarOs`, na triagem, resolver a matriz e o modelo do hotel e gravar a marca, e depois o aviso.
