@@ -439,7 +439,7 @@ export interface AppOsTransicao {
   para: string;
   quando: Generated<Timestamp>;
   tenant_id: string;
-  usuario_id: string;
+  usuario_id: string | null;
 }
 
 export interface AppParadaAtivo {
