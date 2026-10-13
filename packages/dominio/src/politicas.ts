@@ -1,8 +1,8 @@
 // Políticas configuráveis (ADR-026, fase 1a A7). Cada chave tem o formato do
 // valor, validado aqui (o domínio não importa Zod; o contrato da API repete o
 // formato para o OpenAPI, e tests/politicas.test.ts compara os dois), e um
-// valor padrão do código. A resolução na 1a é hotel → grupo → padrão; a
-// estrutura (app.politica) já comporta a bandeira, que a 1c liga com o SLA.
+// valor padrão do código. A resolução é hotel → bandeira → grupo → padrão: a
+// 1a usava hotel → grupo, e a 1c ligou a bandeira (a do hotel).
 //
 // O registro que usa uma política guarda uma cópia do valor aplicado (o
 // chamado, na abertura; C2): mudar a política não altera o que já foi aberto.
@@ -181,16 +181,16 @@ export function validarPolitica(chave: string, valor: unknown): unknown {
 }
 
 /**
- * Valor efetivo: o do hotel, senão o do grupo, senão o padrão do código. Um
- * valor gravado fora do formato (política antiga, por exemplo) não vale e cai
+ * Valor efetivo: o do hotel, senão o da bandeira do hotel, senão o do grupo,
+ * senão o padrão do código. Um valor gravado fora do formato (política antiga, por exemplo) não vale e cai
  * para o nível seguinte.
  */
 export function resolverPolitica<C extends ChaveDePolitica>(
   chave: C,
-  niveis: { hotel?: unknown; grupo?: unknown },
+  niveis: NiveisDePolitica,
 ): ValoresDePolitica[C] {
   const definicao = POLITICAS[chave] as DefinicaoDePolitica<C>;
-  for (const v of [niveis.hotel, niveis.grupo])
+  for (const v of [niveis.hotel, niveis.bandeira, niveis.grupo])
     if (v !== undefined && definicao.valido(v)) return v;
   return definicao.padrao;
 }

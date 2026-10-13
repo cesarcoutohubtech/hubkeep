@@ -138,7 +138,7 @@ O cálculo do ADR-042, só no domínio e no contrato. PR fora da zona protegida,
   - o PR do SLA preparado (migração 0043, pgTAP 035 e ADR-042), na branch e sem PR.
 - **Próximo:**
   1. quando o #203 for mergeado: trazer a `main`, resolver os quatro conflitos, rodar lint, typecheck e testes, conferir no GitHub que nenhum PR de zona protegida está aberto e abrir o PR "1c: calendário de SLA, migração 0043 (ADR-042) — zona protegida";
-  2. o nível bandeira (item 2) está no PR "1c: nível bandeira nas políticas", à espera da CI e do merge do Cesar;
+  2. o nível bandeira (item 2) foi mergeado pelo Cesar no #204, em 13/10/2026;
   3. o domínio do calendário está no PR "1c: domínio do calendário de SLA", à espera da CI e do merge do Cesar;
   4. depois do merge da 0043: a porta `FeriadosOficiais` com a `date-holidays`, a gravação dos prazos (abertura, triagem e retomada) e o motivo da pausa no PWA, com o catálogo;
   5. em seguida, o item 4 da ordem: o monitor de SLA e o escalonamento.

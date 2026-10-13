@@ -1,7 +1,8 @@
 // Configuração do tenant e do hotel e políticas (fase 1a, A7; ADR-026).
 //
 //   ler       qualquer membro: a configuração e as políticas, com o valor de
-//             cada nível e o efetivo (hotel → grupo → padrão);
+//             cada nível e o efetivo (hotel → bandeira → grupo → padrão; a
+//             bandeira é a do hotel, ligada na 1c);
 //   gravar    só o Admin do grupo (também o modelo contratual do hotel, I2);
 //             chave e formato conferidos pelo registro de
 //             políticas do tenant (o do núcleo e as extensões dos módulos que
@@ -44,9 +45,11 @@ export type PoliticaResolvida = {
     chave: C;
     padrao: ValoresDePolitica[C];
     grupo: ValoresDePolitica[C] | null;
+    /** O valor da bandeira do hotel; nulo sem hotel, sem bandeira ou sem valor. */
+    bandeira: ValoresDePolitica[C] | null;
     hotel: ValoresDePolitica[C] | null;
     efetiva: ValoresDePolitica[C];
-    origem: 'hotel' | 'grupo' | 'padrao';
+    origem: 'hotel' | 'bandeira' | 'grupo' | 'padrao';
   };
 }[ChaveDePolitica];
 
@@ -109,17 +112,27 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
           return v !== undefined && definicao.valido(v) ? (v as ValoresDePolitica[C]) : null;
         };
         const grupo = valorDe('grupo');
+        const daBandeira = valorDe('bandeira');
         const doHotel = valorDe('hotel');
         return {
           chave,
           padrao: definicao.padrao,
           grupo,
+          bandeira: daBandeira,
           hotel: doHotel,
           efetiva: resolverPolitica(chave, {
             hotel: doHotel ?? undefined,
+            bandeira: daBandeira ?? undefined,
             grupo: grupo ?? undefined,
           }),
-          origem: doHotel !== null ? 'hotel' : grupo !== null ? 'grupo' : 'padrao',
+          origem:
+            doHotel !== null
+              ? 'hotel'
+              : daBandeira !== null
+                ? 'bandeira'
+                : grupo !== null
+                  ? 'grupo'
+                  : 'padrao',
         } as PoliticaResolvida;
       };
       return { tenant, hotel, politicas: CHAVES_DE_POLITICA.map(resolver) };
