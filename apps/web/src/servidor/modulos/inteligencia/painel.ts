@@ -3,10 +3,17 @@
 // contexto de quem pede. Aqui só a tradução das linhas para o motor; as regras
 // (o módulo e o papel, a transição, o responsável, a substituição) são do
 // motor, e a RLS da app.insight é a última palavra sobre quem lê e decide.
-import type { PortaAtribuicoes, PortaModulos, Relogio } from '@hubkeep/aplicacao';
+import type {
+  PortaAtribuicoes,
+  PortaConfiguracao,
+  PortaModulos,
+  Relogio,
+} from '@hubkeep/aplicacao';
 import type { InsightDoPainelNoBanco, PortaDoPainelDoIntelligence } from '@hubkeep/db';
 import type { Contexto } from '@hubkeep/dominio';
 import {
+  type AberturaDoPainel,
+  FUSO_PADRAO_DO_GRUPO,
   type AcaoDoInsight,
   type FiltroDeEstadoDoInsight,
   type InsightDoPainel,
@@ -17,6 +24,7 @@ import {
   type PortasDoPainel,
   type ResumoDoPainel,
   type TipoDeInsight,
+  aberturaDoPainel,
   decidirInsight,
   ehEstadoDoInsight,
   ehMotivoDeDescarte,
@@ -31,8 +39,12 @@ export interface DepsDoPainel {
   porta: PortaDoPainelDoIntelligence;
   modulos: PortaModulos;
   atribuicoes: Pick<PortaAtribuicoes, 'doUsuario'>;
+  /** As políticas gravadas no grupo, para inteligencia.visibilidade_telas. */
+  configuracao: Pick<PortaConfiguracao, 'politicas'>;
   relogio: Relogio;
 }
+
+const CHAVE_DA_VISIBILIDADE = 'inteligencia.visibilidade_telas';
 
 export interface PedidoDeListaDoPainel {
   estado?: FiltroDeEstadoDoInsight | undefined;
@@ -49,6 +61,7 @@ export interface PedidoDeDecisaoDoPainel {
 }
 
 export interface CasosDeUsoDoPainel {
+  abertura(ctx: Contexto): Promise<AberturaDoPainel>;
   resumo(ctx: Contexto): Promise<ResumoDoPainel>;
   listar(ctx: Contexto, pedido: PedidoDeListaDoPainel): Promise<ListaDeInsights>;
   ver(ctx: Contexto, insightId: string): Promise<PaginaDoInsight>;
@@ -78,6 +91,13 @@ export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDoPaine
   return {
     modulos: () => deps.modulos.contratados(ctx),
     atribuicoes: () => deps.atribuicoes.doUsuario(ctx),
+    // Só o nível do grupo vale (adendo ao ADR-035 de 12/10/2026).
+    visibilidade: async () =>
+      (await deps.configuracao.politicas(ctx)).find(
+        (p) => p.chave === CHAVE_DA_VISIBILIDADE && p.escopo.tipo === 'grupo',
+      )?.valor,
+    // O grupo ainda não tem fuso gravado (pedido ao núcleo): Brasília.
+    fuso: async () => FUSO_PADRAO_DO_GRUPO,
     contagens: async (estados) =>
       (await porta.contagens(ctx, estados)).map((c) => {
         if (!ehTipoDeInsight(c.tipo)) throw new Error(`Tipo de insight desconhecido: ${c.tipo}`);
@@ -102,6 +122,7 @@ export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDoPaine
 export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
   const agora = () => deps.relogio.agora();
   return {
+    abertura: (ctx) => aberturaDoPainel(portasDoPainel(deps, ctx), agora()),
     resumo: (ctx) => resumoDoPainel(portasDoPainel(deps, ctx), agora()),
     listar: (ctx, pedido) => listarInsights(portasDoPainel(deps, ctx), pedido, agora()),
     ver: (ctx, insightId) => verInsight(portasDoPainel(deps, ctx), insightId, agora()),

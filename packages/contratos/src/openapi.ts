@@ -162,6 +162,7 @@ import {
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
+  RespostaDaAberturaDoIntelligence,
 } from './inteligencia';
 
 type Esquema = z.ZodType;
@@ -1957,6 +1958,21 @@ export const ROTAS: readonly Rota[] = [
   },
   // HubKeep Intelligence (módulo opcional): sem o módulo vigente no tenant, ou
   // sem papel que decide insight, toda rota devolve 404 inteligencia_indisponivel.
+  // Também antes da abertura das telas, ou para papel fora da política
+  // inteligencia.visibilidade_telas (adendo ao ADR-035, 12/10/2026); a rota da
+  // abertura é a exceção, para o Admin do grupo.
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/abertura',
+    resumo:
+      'Quando as telas do Intelligence abrem no grupo: a política inteligencia.visibilidade_telas efetiva (a data, ou os dias depois do início do primeiro contrato do módulo, e os papéis que veem), a abertura no fuso do grupo e se já abriram. Só o Admin do grupo, com o módulo vigente, também antes da abertura; ele a muda por PUT /api/v1/politicas, no escopo do grupo.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Abertura', esquema: RespostaDaAberturaDoIntelligence },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Sem o módulo ou sem ser Admin do grupo (inteligencia_indisponivel).'),
+    },
+  },
   {
     metodo: 'get',
     caminho: '/api/v1/inteligencia/resumo',
