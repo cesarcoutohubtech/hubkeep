@@ -480,6 +480,7 @@ Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
    - a auditoria e o outbox com o relógio do banco.
    - O gerador (`apps/web/test/demonstracao/historico-inteligencia.ts`) e o material do piloto (`docs/piloto`) passam a dizer que, no histórico gerado, a linha do tempo dos chamados mostra a data da geração, e que a demonstração usa as telas do Intelligence e os indicadores. Entra no PR da montagem, e aviso no próprio diário, porque o gerador é do agente do Kaio.
 2. **Fila de zona protegida:** a 0046 da 1c, depois a montagem, depois a próxima da 1c, depois a parte protegida da PV3.
+   - **Aviso de área compartilhada com a 1c (montagem):** a montagem mexe nos repositórios do chamado, da OS (triagem e execução), da transição, do ativo, da parada e da UH indisponível, no `packages/db`. Sem a opção do relógio do roteiro, o SQL continua o mesmo. Trabalho na branch `claude/1b-montagem-relogio` e trago a `main` com frequência.
 3. **PV3:** pode começar já, na parte fora da zona protegida, numa branch.
 4. **Dependabot:** o Cesar contou que fechou o #231, que tocava a zona protegida, falhava na CI e travava a fila. Pediu a proposta de regra abaixo. Um PR do Dependabot que toca a zona protegida não ocupa a vez: a 1b o adota na vez dela.
    - O #231 acabou mergeado (bca63c1), não fechado, e a `main` ficou vermelha no CI desde então (o lint para no TS 7). O agente da 1c abriu a correção, o [#236](https://github.com/cesarcoutohubtech/hubkeep/pull/236), que volta o TypeScript para a 6.0. Não mergear outra coisa antes dele.
