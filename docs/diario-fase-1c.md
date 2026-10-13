@@ -615,7 +615,7 @@ A entrega do escalonamento à central por e-mail e push é o item 5. Até lá, o
 - O provedor e o DNS do domínio de envio são da F0-12, com o Cesar.
 
 ### Ponto de retomada (13/10/2026, comunicação)
-- **`main`:** com o #250 (a correção do typecheck) e o #248 (a troca de categoria na triagem). O #248 entrou com o job "pgTAP", que roda a integração do `packages/db`, ainda em andamento, e a conferência dele está agendada.
+- **`main`:** com o #250 (a correção do typecheck) e o #248 (a troca de categoria na triagem). O #248 entrou com o job "pgTAP" (que roda a integração do `packages/db`) ainda em andamento, e ele terminou verde depois do merge.
 - **Dev:** com a 0046.
 - **PR da 1c:** o desta proposta, só de documento.
 - **Esperando o Cesar:**
