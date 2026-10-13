@@ -486,3 +486,17 @@ Na branch `claude/1c-aceite-automatico-codigo`, que hoje parte da branch da migr
 - **Catálogo:** a nota e a linha do tempo, nos quatro idiomas.
 - **Contrato:** a ação nova em `ACOES_DA_OS_API`. O teste de valores canônicos confere a ação do check da 0046 contra o domínio.
 - **Verificação:** no local, lint, typecheck e testes passaram. Só na CI: `packages/db/test/aceite-automatico.test.ts` (aceite, transição, auditoria, evento, as exceções e o outro tenant) e o pgTAP `038`.
+### Ponto de retomada (13/10/2026, M5)
+- **`main`:** com o #227 (prazos na ficha), o #222 (PV2b da 1b) e o #228 (`setup-node` 7.1.0). A 0045 da 1b já está no dev.
+- **PRs da 1c esperando o merge do Cesar, verdes:**
+  - #230: revisão do glossário;
+  - #232: painel dos avisos de SLA (M4).
+
+  Os dois mexem no fim deste diário. Depois de cada merge, a outra branch junta a `main`.
+- **Não enviado como PR:**
+  - `claude/1c-aceite-automatico`: o ADR-044, a 0046, os pgTAP e o tipo da transição. É zona protegida, e o PR só abre depois que o #231 do Dependabot sair (ele toca o `packages/auth-admin/package.json`), na vez que o Cesar der;
+  - `claude/1c-aceite-automatico-codigo`: o código do M5. O PR abre depois do merge da 0046 e do `db push`, com a branch refeita a partir da `main`.
+- **Esperando:**
+  - o Cesar: a vez do PR de zona protegida da 0046 e a aprovação do texto do ADR-044;
+  - o agente do Kaio: a resposta à revisão do glossário.
+- **Próxima tarefa:** com a fila livre, abrir o PR da 0046 a partir de `claude/1c-aceite-automatico`, depois de juntar a `main`. Enquanto isso, as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
