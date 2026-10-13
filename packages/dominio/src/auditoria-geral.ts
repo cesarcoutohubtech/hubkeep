@@ -38,6 +38,7 @@ export const ENTIDADES_DA_AUDITORIA = [
   'os_checklist',
   'os_material',
   'parada_ativo',
+  'plano_preventivo',
   'politica',
   'preferencia_membro',
   'prioridade',
