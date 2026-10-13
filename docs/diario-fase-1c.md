@@ -318,3 +318,10 @@ Segundo PR do aviso de área compartilhada, na branch `claude/1c-sla-pausa`, fei
 - **Verificação:**
   - no local, lint, typecheck e testes passaram;
   - o cenário novo do `packages/db/test/sla-prazos.test.ts` roda só na CI. Ele cobre a pausa com "aguardando peça", que estende a solução em 2 h e soma 7.200 s, com o motivo na transição e o antes e o depois na auditoria, e o "fim de turno", que não muda nada.
+
+## Prazos de SLA na ficha do chamado (13/10/2026)
+
+**Aviso de área compartilhada (chamado):** a 1c vai mexer na ficha do chamado no web (`ChamadoEmDetalhe`, em `apps/web/src/cliente/corretiva.tsx`) e no catálogo. Só acrescenta linhas no painel do chamado; não muda contrato, caso de uso nem banco. Branch `claude/1c-prazos-na-ficha`, a partir da `main`.
+- A ficha mostra o prazo de atendimento e o de solução, que a API já devolve desde o #215, e o tempo em que pausas pararam o relógio, quando houver.
+- O chamado aberto antes dos prazos (prazos nulos) não mostra as linhas.
+- O selo de "em risco" e "vencido" fica para o M4, depois do merge do #224, porque vem dos avisos do monitor.

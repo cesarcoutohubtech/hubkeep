@@ -672,6 +672,27 @@ export function ChamadoEmDetalhe(props: {
                 data: intl.formatDate(chamado.criadoEm, dataCurta),
               })}
             </p>
+            {chamado.prazoAtendimento && (
+              <p className="hk-suave" data-prazo="atendimento">
+                {t('corretiva.chamado.prazo_atendimento', {
+                  data: intl.formatDate(chamado.prazoAtendimento, dataCurta),
+                })}
+              </p>
+            )}
+            {chamado.prazoSolucao && (
+              <p className="hk-suave" data-prazo="solucao">
+                {t('corretiva.chamado.prazo_solucao', {
+                  data: intl.formatDate(chamado.prazoSolucao, dataCurta),
+                })}
+              </p>
+            )}
+            {chamado.pausadoSegundos > 0 && (
+              <p className="hk-suave" data-prazo="pausado">
+                {t('corretiva.chamado.relogio_parado', {
+                  minutos: Math.ceil(chamado.pausadoSegundos / 60),
+                })}
+              </p>
+            )}
             <p className="hk-suave" data-impacto={chaveDoImpacto(chamado.impactoHospede)}>
               {t('corretiva.chamado.impacto', { impacto: chaveDoImpacto(chamado.impactoHospede) })}
             </p>
