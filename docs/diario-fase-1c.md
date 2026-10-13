@@ -419,7 +419,7 @@ Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a par
 
 **Aviso de área compartilhada com a 1b (OS e chamado):** o M5 mexe no aceite da OS, no `packages/dominio` (`corretiva.ts`), no `packages/aplicacao` e no `packages/db`. Branch `claude/1c-aceite-automatico`, a partir da `main`.
 
-**Por que precisa de decisão:** o M5 foi aprovado como "o job entra na rota de cron do SLA, num PR próprio" (ADR-043). Mas o job precisa gravar na OS e no chamado, e o `hk_worker` hoje só lê os dois. O ADR-043 diz que "o worker não ganha UPDATE no chamado". E a transição da OS (`app.os_transicao`) exige um usuário (`usuario_id not null`), que o job não tem. Então o M5 pede um ADR novo (ADR-044) e uma migração (0045, zona protegida). Proponho:
+**Por que precisa de decisão:** o M5 foi aprovado como "o job entra na rota de cron do SLA, num PR próprio" (ADR-043). Mas o job precisa gravar na OS e no chamado, e o `hk_worker` hoje só lê os dois. O ADR-043 diz que "o worker não ganha UPDATE no chamado". E a transição da OS (`app.os_transicao`) exige um usuário (`usuario_id not null`), que o job não tem. Então o M5 pede um ADR novo (ADR-044) e uma migração (0046, zona protegida). Proponho:
 
 1. **Contagem dos dias:** N vezes 24 horas corridas desde a última conclusão da OS (a transição mais recente para `concluida`). Não usa o calendário de SLA: o hotel fechado no fim de semana não para a contagem. Cada reabertura recomeça a contagem na nova conclusão.
 2. **Política resolvida por hotel:** `os.aceite_automatico` com a herança hotel → bandeira → grupo → padrão (desligado, 7 dias), como já está.
@@ -432,7 +432,7 @@ Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a par
    - **Auditoria:** a auditoria já aceita usuário nulo para job.
    - **Evento:** o mesmo `os.aceita`, com `automatico: true`, para a comunicação e o Intelligence contarem a OS como aceita.
    - **Custo:** sem custo informado. No glossário, isso baixa a cobertura do custo; registro com o Kaio na revisão.
-5. **Privilégios do `hk_worker` (migração 0045):**
+5. **Privilégios do `hk_worker` (migração 0046):**
    - UPDATE só nas colunas `estado`, `situacao_id`, `versao` e `atualizado_em` de `app.os` e `app.chamado`;
    - INSERT em `app.os_transicao`;
    - policies `worker_update` e `worker_insert` no tenant do job (`authz.tenant_sistema()`), como no `app.local`. A policy não confere o estado: a regra fica no domínio (regra 2);
@@ -447,7 +447,7 @@ Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a par
    - a tela de configuração ganha a nota da assinatura;
    - catálogo nos quatro idiomas.
 
-**Ordem:** o ADR-044 e a 0045 vão num PR de zona protegida, quando for a vez da 1c (hoje nenhum PR de zona protegida está aberto). O código vai num PR seguinte, fora da zona. Enquanto espero a decisão, adianto na branch o domínio e a aplicação, com as portas em memória, sem abrir PR.
+**Ordem:** o ADR-044 e a 0046 vão num PR de zona protegida, quando for a vez da 1c (hoje nenhum PR de zona protegida está aberto). O código vai num PR seguinte, fora da zona. Enquanto espero a decisão, adianto na branch o domínio e a aplicação, com as portas em memória, sem abrir PR.
 
 **Decisão:** Cesar aprovou no chat do agente da 1c, em 13/10/2026: "Cesar aqui. Aprovo o M5 conforme recomendado". O ADR-044 entra com o status "aguarda aprovação", porque o texto veio depois.
 
