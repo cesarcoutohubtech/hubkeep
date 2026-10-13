@@ -5,7 +5,7 @@
 // gravou. Só INSERT: ninguém altera nem apaga uma transição (meta-teste 32).
 import type { AcaoDaOs, EstadoDaOs, MotivoDePausa } from '@hubkeep/dominio';
 import { novoId } from '../ids';
-import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { instanteDoRoteiro, transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 
 export interface TransicaoGravada {
   osId: string;
@@ -14,7 +14,10 @@ export interface TransicaoGravada {
   /** Nulo só na geração da OS. */
   de: EstadoDaOs | null;
   para: EstadoDaOs;
-  /** A hora do aparelho, já ajustada pelo domínio (I9); sem ela, now() da transação. */
+  /**
+   * A hora do aparelho, já ajustada pelo domínio (I9); sem ela, o instante do
+   * relógio do roteiro (só na montagem do gerador) ou o now() da transação.
+   */
   quando?: Date;
   /** Só na pausa: o motivo (1c, ADR-042); null quando o técnico não informou. */
   motivoPausa?: MotivoDePausa | null;
@@ -25,6 +28,7 @@ export async function registrarTransicao(
   t: TransicaoGravada,
 ): Promise<void> {
   if (!uow.usuarioId) throw new Error('Transição da OS exige usuário no contexto.');
+  const quando = t.quando ?? instanteDoRoteiro(uow);
   await transacaoDe(uow)
     .insertInto('app.os_transicao')
     .values({
@@ -35,7 +39,7 @@ export async function registrarTransicao(
       acao: t.acao,
       de: t.de,
       para: t.para,
-      ...(t.quando ? { quando: t.quando } : {}),
+      ...(quando ? { quando } : {}),
       ...(t.motivoPausa ? { motivo_pausa: t.motivoPausa } : {}),
       usuario_id: uow.usuarioId,
     })

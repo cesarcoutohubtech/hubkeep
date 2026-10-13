@@ -52,6 +52,14 @@ export interface ConfigAcessoBanco {
   app?: ConfigConexao;
   worker?: ConfigConexao;
   ingestao?: ConfigConexao;
+  /**
+   * Só a montagem com o relógio do roteiro (apps/web/test/demonstracao) passa
+   * esta opção; o web em funcionamento nunca (tests/relogio-do-roteiro-fora-do-web.test.ts).
+   * Com ela, cada unit of work lê o instante no início e os repositórios o
+   * gravam nas datas do chamado, da OS, da transição, do ativo, da parada e da
+   * UH indisponível. A auditoria e o outbox continuam com o now() do banco.
+   */
+  relogioDoRoteiro?: { agora(): Date };
 }
 
 /**
@@ -75,19 +83,23 @@ export async function criarAcessoBanco(cfg: ConfigAcessoBanco): Promise<AcessoBa
     throw e;
   }
 
-  return montarAcesso({ app, worker, ingestao });
+  return montarAcesso({ app, worker, ingestao }, cfg.relogioDoRoteiro);
 }
 
 /**
  * O AcessoBanco sobre os Kysely já conferidos. Separado da fábrica para os
  * testes de unidade, que montam o acesso sobre um pool falso.
  */
-export function montarAcesso(dbs: {
-  app: Kysely<DB> | null;
-  worker: Kysely<DB> | null;
-  ingestao: Kysely<DB> | null;
-}): AcessoBanco {
+export function montarAcesso(
+  dbs: {
+    app: Kysely<DB> | null;
+    worker: Kysely<DB> | null;
+    ingestao: Kysely<DB> | null;
+  },
+  relogioDoRoteiro?: ConfigAcessoBanco['relogioDoRoteiro'],
+): AcessoBanco {
   const { app, worker, ingestao } = dbs;
+  const instante = () => relogioDoRoteiro?.agora() ?? null;
   const exigir = <K>(db: K | null, papel: string): K => {
     if (!db) throw new Error(`Acesso ao banco criado sem conexão ${papel}.`);
     return db;
@@ -140,14 +152,14 @@ export function montarAcesso(dbs: {
     listarTenants,
     executar: (ctx, fn) =>
       transacaoPropria(ctx, async (tx) => {
-        const uow = criarUnidade(tx, ctx.tenantId, ctx.usuarioId);
+        const uow = criarUnidade(tx, ctx.tenantId, ctx.usuarioId, instante());
         const resultado = await fn(uow);
         await gravarAuditoriaEOutbox(uow);
         return resultado;
       }),
     executarComoSistema: (ctx, fn) =>
       withSistema(ctx, async (tx) => {
-        const uow = criarUnidade(tx, ctx.tenantId, null);
+        const uow = criarUnidade(tx, ctx.tenantId, null, instante());
         const resultado = await fn(uow);
         await gravarAuditoriaEOutbox(uow);
         return resultado;

@@ -9,6 +9,7 @@ import { NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoCodigoQr, novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { agoraNaGravacao, datasDaCriacao } from './instante-do-roteiro';
 import { colunasPesquisaveisDoAtivo } from './busca';
 
 const colunasDeDados = (d: DadosDeAtivo) => ({
@@ -37,6 +38,7 @@ export async function criarAtivo(
       local_id: localId,
       codigo_qr: codigoQr,
       ...colunasDeDados(dados),
+      ...datasDaCriacao(uow),
     })
     .execute();
   uow.auditar({
@@ -81,11 +83,11 @@ export async function alterarAtivo(
     .executeTakeFirst();
   const valores =
     'desativado' in mudanca
-      ? { desativado_em: mudanca.desativado ? sql<Date>`now()` : null }
+      ? { desativado_em: mudanca.desativado ? agoraNaGravacao(uow) : null }
       : colunasDeDados(mudanca);
   const r = await tx
     .updateTable('app.ativo')
-    .set({ ...valores, versao: sql<number>`versao + 1`, atualizado_em: sql`now()` })
+    .set({ ...valores, versao: sql<number>`versao + 1`, atualizado_em: agoraNaGravacao(uow) })
     .where('id', '=', id)
     .where('versao', '=', versaoEsperada)
     .returning(['hotel_id', 'versao'])
@@ -146,7 +148,7 @@ export async function moverAtivo(
     .set({
       local_id: localDestinoId,
       versao: sql<number>`versao + 1`,
-      atualizado_em: sql`now()`,
+      atualizado_em: agoraNaGravacao(uow),
     })
     .where('id', '=', id)
     .returning('versao')

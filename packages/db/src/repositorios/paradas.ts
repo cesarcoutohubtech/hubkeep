@@ -8,6 +8,7 @@ import { Conflito, NaoEncontrado } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { agoraNaGravacao, datasDaCriacao } from './instante-do-roteiro';
 
 /** O índice parada_ativo_uma_aberta recusou: o ativo já tem parada aberta. */
 function paradaJaAberta(e: unknown): never {
@@ -64,6 +65,7 @@ export async function registrarParada(
       fim: g.fim,
       aberta_por: uow.usuarioId,
       encerrada_por: g.fim === null ? null : uow.usuarioId,
+      ...datasDaCriacao(uow),
     })
     .execute()
     .catch(paradaJaAberta);
@@ -94,6 +96,7 @@ export async function pararNaAbertura(
       os_id: g.osId ?? null,
       inicio: g.inicio,
       aberta_por: uow.usuarioId,
+      ...datasDaCriacao(uow),
     })
     .onConflict((oc) => oc.columns(['hotel_id', 'ativo_id']).where('fim', 'is', null).doNothing())
     .returning('id')
@@ -112,7 +115,7 @@ export async function encerrarParada(
   const tx = transacaoDe(uow);
   const r = await tx
     .updateTable('app.parada_ativo')
-    .set({ fim: e.fim, encerrada_por: uow.usuarioId, atualizado_em: sql`now()` })
+    .set({ fim: e.fim, encerrada_por: uow.usuarioId, atualizado_em: agoraNaGravacao(uow) })
     .where('id', '=', e.id)
     .where('fim', 'is', null)
     .returning(['ativo_id', 'chamado_id', 'inicio'])
