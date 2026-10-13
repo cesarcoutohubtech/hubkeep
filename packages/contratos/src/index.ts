@@ -63,6 +63,17 @@ export {
   RespostaDoChecklistApi,
 } from './checklists';
 export {
+  ACOES_DO_PLANO_API,
+  PedidoDeAlteracaoDePlanoPreventivo,
+  PedidoDeNovoPlanoPreventivo,
+  PedidoDeSituacaoDoPlano,
+  PlanoPreventivoApi,
+  RespostaDePlanoAlterado,
+  RespostaDePlanosPreventivos,
+  SITUACOES_DO_PLANO_API,
+  UNIDADES_DE_PERIODICIDADE_API,
+} from './planos-preventivos';
+export {
   ACOES_DA_OS_API,
   ACOES_DO_CHAMADO_API,
   ENTIDADES_COM_SITUACAO_API,

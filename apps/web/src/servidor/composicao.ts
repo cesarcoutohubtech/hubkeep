@@ -9,6 +9,7 @@ import {
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
   type CasosDeUsoDeChecklists,
+  type CasosDeUsoDePlanosPreventivos,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeTriagem,
   type CasosDeUsoDeExecucao,
@@ -44,6 +45,7 @@ import {
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeChecklists,
+  criarCasosDeUsoDePlanosPreventivos,
   criarCasosDeUsoDeCodigos,
   criarCasosDeUsoDeTriagem,
   criarCasosDeUsoDeExecucao,
@@ -74,6 +76,7 @@ import {
   criarPortaChamados,
   criarPortaChecklists,
   criarPortaCodigos,
+  criarPortaPlanosPreventivos,
   criarPortaTriagem,
   criarPortaExecucao,
   criarPortaParadas,
@@ -400,6 +403,17 @@ export const casosDeUsoDeChecklists = memo<CasosDeUsoDeChecklists>(async () => {
     checklists: criarPortaChecklists(banco),
     triagem: criarPortaTriagem(banco),
     execucao: criarPortaExecucao(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Planos preventivos (fase 1b, PV2; ADR-041), pelo hk_app. */
+export const casosDeUsoDePlanosPreventivos = memo<CasosDeUsoDePlanosPreventivos>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDePlanosPreventivos({
+    planos: criarPortaPlanosPreventivos(banco),
+    triagem: criarPortaTriagem(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
   });

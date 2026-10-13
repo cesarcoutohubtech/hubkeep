@@ -4,6 +4,7 @@ import {
   type Periodicidade,
   dataDaOcorrencia,
   decidirSituacaoDoPlano,
+  diaNoFuso,
   normalizarNomeDoPlano,
   ocorrenciaMaisRecenteAte,
   ocorrencias,
@@ -245,5 +246,14 @@ describe('situação do plano', () => {
         expect.objectContaining({ codigo: 'plano_encerrado' }),
       );
     }
+  });
+});
+
+describe('o dia do plano no fuso do hotel', () => {
+  it('a meia-noite em UTC ainda é o dia anterior em Brasília', () => {
+    const instante = new Date('2026-10-14T02:30:00Z');
+    expect(diaNoFuso(instante, 'America/Sao_Paulo')).toBe('2026-10-13');
+    expect(diaNoFuso(instante, 'UTC')).toBe('2026-10-14');
+    expect(diaNoFuso(instante, 'Asia/Tokyo')).toBe('2026-10-14');
   });
 });

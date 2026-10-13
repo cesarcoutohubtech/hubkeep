@@ -316,6 +316,7 @@ export {
   UNIDADES_DE_PERIODICIDADE,
   dataDaOcorrencia,
   decidirSituacaoDoPlano,
+  diaNoFuso,
   ehAcaoDoPlano,
   ehSituacaoDoPlano,
   ehUnidadeDePeriodicidade,

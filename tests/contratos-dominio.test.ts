@@ -28,6 +28,9 @@ import {
   PREFIXOS_DO_NUCLEO_API,
   PedidoDePolitica,
   TIPOS_DE_CODIGO_DE_MANUTENCAO_API,
+  ACOES_DO_PLANO_API,
+  SITUACOES_DO_PLANO_API,
+  UNIDADES_DE_PERIODICIDADE_API,
 } from '../packages/contratos/src/index';
 import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
@@ -55,6 +58,9 @@ import {
   PRIORIDADES_PADRAO,
   PREFIXOS_DO_NUCLEO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
+  ACOES_DO_PLANO,
+  SITUACOES_DO_PLANO,
+  UNIDADES_DE_PERIODICIDADE,
 } from '../packages/dominio/src/index';
 import { IDIOMAS } from '../packages/i18n/src/index';
 
@@ -252,6 +258,12 @@ describe('contratos × domínio', () => {
 
   it('os momentos da foto da OS da API são os do domínio (I8)', () => {
     expect([...MOMENTOS_DA_FOTO_API]).toEqual([...MOMENTOS_DA_FOTO]);
+  });
+
+  it('a unidade, a situação e as ações do plano preventivo da API são as do domínio (PV2)', () => {
+    expect([...UNIDADES_DE_PERIODICIDADE_API]).toEqual([...UNIDADES_DE_PERIODICIDADE]);
+    expect([...SITUACOES_DO_PLANO_API]).toEqual([...SITUACOES_DO_PLANO]);
+    expect([...ACOES_DO_PLANO_API]).toEqual([...ACOES_DO_PLANO]);
   });
 
   it('as pendências do painel de implantação são as do domínio', () => {

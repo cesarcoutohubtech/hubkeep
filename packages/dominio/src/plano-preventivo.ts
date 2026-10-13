@@ -148,6 +148,25 @@ const mesesEntre = (inicio: string, data: string) => {
   return (b.ano - a.ano) * 12 + (b.mes - a.mes);
 };
 
+const formatadoresDeDia = new Map<string, Intl.DateTimeFormat>();
+
+/** O dia (aaaa-mm-dd) do instante no fuso IANA do hotel: o "hoje" do calendário do plano. */
+export function diaNoFuso(instante: Date, fuso: string): string {
+  let f = formatadoresDeDia.get(fuso);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-CA', {
+      timeZone: fuso,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    formatadoresDeDia.set(fuso, f);
+  }
+  const partes: Record<string, string> = {};
+  for (const p of f.formatToParts(instante)) partes[p.type] = p.value;
+  return `${partes['year']}-${partes['month']}-${partes['day']}`;
+}
+
 /** A data da ocorrência k do plano. */
 export function dataDaOcorrencia(inicio: string, p: Periodicidade, k: number): string {
   if (p.unidade === 'dia') return deDias(emDias(inicio) + k * p.intervalo);

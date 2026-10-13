@@ -183,6 +183,19 @@ export type {
   PedidoDeModeloDeChecklist,
 } from './casos-de-uso/checklists';
 export type {
+  DadosDoPlano,
+  NovoPlano,
+  PlanoGravado,
+  PortaPlanosPreventivos,
+} from './portas/planos-preventivos';
+export { criarCasosDeUsoDePlanosPreventivos } from './casos-de-uso/planos-preventivos';
+export type {
+  CasosDeUsoDePlanosPreventivos,
+  PedidoDeNovoPlano,
+  PedidoDePlano,
+  PlanoPreventivo,
+} from './casos-de-uso/planos-preventivos';
+export type {
   PortaPrioridades,
   PortaSituacoes,
   PrioridadeGravada,

@@ -13,6 +13,8 @@ import type {
   PortaCategorias,
   PortaChecklists,
   PortaChamados,
+  PlanoGravado,
+  PortaPlanosPreventivos,
   PortaCodigos,
   OsGravada,
   PortaTriagem,
@@ -89,6 +91,7 @@ import {
   responderChecklist,
 } from './repositorios/checklists';
 import { criarChamado } from './repositorios/chamados';
+import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
 import {
   alterarChamadoNaTriagem,
   cancelarOs,
@@ -831,6 +834,116 @@ export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
         return c ? paraChecklistDaOs(c) : null;
       }),
     aplicar: (ctx, a) => banco.executar(ctx, (uow) => aplicarChecklist(uow, a)),
+  };
+}
+
+/** Planos preventivos (fase 1b, PV2; ADR-041), pelo hk_app. */
+export function criarPortaPlanosPreventivos(banco: AcessoBanco): PortaPlanosPreventivos {
+  const selecionar = (tx: Tx) =>
+    tx
+      .selectFrom('app.plano_preventivo')
+      .select([
+        'id',
+        'hotel_id',
+        'ativo_id',
+        'categoria_id',
+        'nome',
+        'intervalo',
+        'unidade',
+        sql<string>`inicio::text`.as('inicio'),
+        'checklist_modelo_id',
+        'tecnico_id',
+        'equipe_id',
+        'situacao',
+        'versao',
+      ]);
+  type Linha = Awaited<ReturnType<ReturnType<typeof selecionar>['executeTakeFirstOrThrow']>>;
+  const paraPlano = (p: Linha): PlanoGravado => ({
+    id: p.id,
+    hotelId: p.hotel_id,
+    ativoId: p.ativo_id,
+    categoriaId: p.categoria_id,
+    nome: p.nome,
+    intervalo: p.intervalo,
+    unidade: p.unidade as PlanoGravado['unidade'],
+    inicio: p.inicio,
+    checklistModeloId: p.checklist_modelo_id,
+    tecnicoId: p.tecnico_id,
+    equipeId: p.equipe_id,
+    situacao: p.situacao as PlanoGravado['situacao'],
+    versao: p.versao,
+  });
+  // Ativos primeiro, depois pausados e encerrados; o nome desempata.
+  const ordem = sql<number>`case situacao when 'ativo' then 0 when 'pausado' then 1 else 2 end`;
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id', 'fuso'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id, fuso: h.fuso } : null;
+      }),
+    doHotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await selecionar(tx)
+            .where('hotel_id', '=', hotelId)
+            .orderBy(ordem)
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map(paraPlano),
+      ),
+    doAtivo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await selecionar(tx)
+            .where('ativo_id', '=', ativoId)
+            .orderBy(ordem)
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map(paraPlano),
+      ),
+    plano: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const p = await selecionar(tx).where('id', '=', id).executeTakeFirst();
+        return p ? paraPlano(p) : null;
+      }),
+    ativo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await tx
+          .selectFrom('app.ativo')
+          .select(['hotel_id', 'desativado_em'])
+          .where('id', '=', ativoId)
+          .executeTakeFirst();
+        return a ? { hotelId: a.hotel_id, ativo: a.desativado_em === null } : null;
+      }),
+    categoriaExiste: (ctx, categoriaId) =>
+      banco.withContext(
+        ctx,
+        async (tx) =>
+          (await tx
+            .selectFrom('app.categoria_ativo')
+            .select('id')
+            .where('id', '=', categoriaId)
+            .where('ativa', '=', true)
+            .executeTakeFirst()) !== undefined,
+      ),
+    modeloDeChecklist: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const m = await tx
+          .selectFrom('app.checklist_modelo')
+          .select('ativa')
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return m ? { ativa: m.ativa } : null;
+      }),
+    criar: (ctx, p) => banco.executar(ctx, (uow) => criarPlanoPreventivo(uow, p)),
+    alterar: (ctx, id, versao, mudanca) =>
+      banco.executar(ctx, (uow) => alterarPlanoPreventivo(uow, id, versao, mudanca)),
   };
 }
 
