@@ -1036,3 +1036,25 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - A resposta da página e a da API saem do mesmo módulo de leitura e passam pelo contrato da rota, para não divergirem.
 - O cookie `hk_tenant` é só preferência de qual grupo abrir: o banco só aceita tenant de que o usuário é membro (`authz`), como na API.
 - Só leitura. Escrita continua pela API e pela unit of work.
+
+## ADR-040 — Checklist tipado: modelo do grupo versionado e cópia na OS
+
+**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV1, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho.
+
+**Contexto:** a PV1 da 1b (`docs/12`) traz o checklist da manutenção. Ele precisa servir à corretiva já na PV1 e à preventiva na PV3, ser respondido no PWA sem rede e continuar legível quando o modelo mudar. O ADR-028 já define os campos tipados, e o ADR-026, a cópia no registro.
+
+**Decisão:**
+- **Modelo do grupo** (`app.checklist_modelo`), como as categorias e os códigos de manutenção. Só o Admin do grupo cadastra; leem a gestão e o Implantador.
+  - Os itens são definições de campo tipado (ADR-028: texto, número com unidade, data, lista e sim/não), com a marca de obrigatório e até 50 itens.
+  - A versão é um contador que sobe a cada gravação dos itens. Mudar o tipo de um item existente continua proibido (`campo_muda_de_tipo`); o item de outro tipo entra com chave nova.
+  - A categoria é opcional e só sugere e filtra o modelo.
+- **Cópia na OS** (`app.os_checklist`, uma por OS), com os nomes, os itens e a versão do modelo aplicado (ADR-026). Mudar o modelo não altera a OS que já tem checklist, e a OS fica completa sozinha para a impressão da 1c.
+- **Tabela à parte, e não colunas em `app.os`:** responder o checklist não sobe a versão da OS. Se subisse, a conclusão que vem depois na fila offline seria recusada por conflito (ADR-029).
+- **Quem aplica:** quem tria escolhe o modelo, na corretiva já na PV1; na PV3, a OS preventiva recebe o checklist do plano. Trocar o modelo só vale enquanto não há resposta.
+- **Respostas por item, mescladas, pela fila offline** (operação `os.responder_checklist`, ADR-025), sem a versão da OS. O domínio confere cada valor contra a cópia, e a última operação processada vence. Responde o Técnico responsável, com a OS em execução ou pausada. No MVP, o web só lê as respostas.
+- **Obrigatoriedade como política** por hotel, `os.checklist_completo_obrigatorio`, desligada por padrão (regra 7): ligada, a conclusão sem os itens obrigatórios é recusada com `checklist_incompleto`.
+
+**Consequências:**
+- Duas tabelas novas, com os seis casos de isolamento (pgTAP 034).
+- O GRANT de UPDATE da cópia vale para todos os papéis do `hk_app`, então o Técnico responsável também pode, no banco, alterar o modelo e os itens da cópia. A aplicação nunca grava essas colunas por ele, e toda gravação fica na auditoria (risco aceito, como na 0023).
+- A faixa numérica com alerta e a OS automática por não conformidade ficam para a fase 2 (inspeções com OS automática).
