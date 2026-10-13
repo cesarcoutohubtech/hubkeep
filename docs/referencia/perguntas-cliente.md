@@ -4,7 +4,7 @@ Perguntas ao grupo Slaviero reunidas dos docs e dos diários (29/09/2026), agrup
 
 Pergunta nova para o cliente entra aqui, e não espalhada pelos docs.
 
-Atualizado em 08/10/2026 com a revisão de escopo de 07/10 (`docs/referencia/documento-projeto.md`, seção "Pendências"). **A primeira pergunta da reunião é o acesso ao sistema hoteleiro (12),** porque é a pendência que mais pesa no calendário.
+Atualizado em 08/10/2026 com a revisão de escopo de 07/10 (`docs/referencia/documento-projeto.md`, seção "Pendências"). Em 13/10/2026, entraram as configurações do piloto (30 a 34). **A primeira pergunta da reunião é o acesso ao sistema hoteleiro (12),** porque é a pendência que mais pesa no calendário.
 
 ## Proprietários e condo-hotel
 
@@ -115,6 +115,34 @@ Atualizado em 08/10/2026 com a revisão de escopo de 07/10 (`docs/referencia/doc
     - Fonte: `docs/12-plano-fase-1b.md` (P3).
 24. **Etiqueta de QR.** Qual o tamanho da etiqueta, o que vai impresso nela e que impressora a equipe usa na implantação?
     - Fonte: `docs/12-plano-fase-1b.md` (M3).
+
+## Configuração do piloto (13/10/2026)
+
+Decisão do Cesar (13/10/2026, no chat do agente do Kaio): estas cinco configurações do piloto vão para a reunião com a Slaviero. Todas já existem no código e valem por hotel, bandeira ou grupo (`docs/piloto/guia-implantacao-hotel.md`, etapa 8). Até a resposta, o piloto fica com o padrão de cada uma.
+
+30. **Planos preventivos iniciais.** Quais planos preventivos cada hotel do piloto começa: que ativos ou categorias, com que periodicidade, que checklist e que responsável (técnico ou equipe)?
+    - Hoje: o plano se cadastra por ativo ou por categoria, a cada N dias, semanas ou meses (até 366 dias, 52 semanas ou 24 meses), com checklist e responsável opcionais (PV2, #222). O plano ainda não gera OS; a geração vem na PV3. Nenhum plano vem cadastrado.
+    - Ligada às perguntas 22 (periodicidade) e 23 (preventiva atrasada).
+    - Fontes: `docs/12-plano-fase-1b.md` (PV2 e PV3), `docs/piloto/guia-implantacao-hotel.md` (etapa 8).
+31. **Foto de depois na conclusão.** A OS só conclui com ao menos uma foto de depois do serviço?
+    - Hoje: a política "Foto de depois na conclusão" (`os.foto_depois_obrigatoria`) vem desligada; a foto com o momento (antes ou depois) é opcional (I8, #193 e #198).
+    - Fontes: `docs/12-plano-fase-1b.md` (I8), `docs/piloto/manual-por-papel.md` (Admin do grupo).
+32. **Assinatura no aceite.** O aceite da OS exige a assinatura de quem aceita?
+    - Hoje: a política "Assinatura no aceite" (`os.assinatura_no_aceite`) vem desligada; a assinatura é opcional no aceite pelo web (I8).
+    - Fontes: `docs/12-plano-fase-1b.md` (I8), `docs/piloto/manual-por-papel.md` (Admin do grupo).
+33. **Checklist completo na conclusão.** A OS só conclui com os itens obrigatórios do checklist respondidos?
+    - Hoje: a política "Checklist completo na conclusão" (`os.checklist_completo_obrigatorio`) vem desligada; o PWA só avisa o que falta (PV1, #203 e #210).
+    - Fontes: `docs/12-plano-fase-1b.md` (PV1), `docs/piloto/manual-por-papel.md` (Admin do grupo).
+34. **SLA padrão no piloto.** O piloto começa com o SLA padrão do sistema ou com os prazos do cliente? Detalha a pergunta 13 para o piloto.
+    - Hoje, sem gravação da política `chamado.sla` (ela não tem tela):
+      - Urgente: atender em 1 h e resolver em 2 h, em horas corridas;
+      - Alta: 2 h e 8 h, em horas corridas;
+      - Média: 8 h e 24 h, no horário de atendimento;
+      - Baixa: 24 h e 72 h, no horário de atendimento.
+    - O horário de atendimento padrão (`hotel.horario_atendimento`) é de segunda a sexta, das 8h às 18h, e sábado, das 8h às 12h, sem os feriados.
+    - Param o relógio as pausas por "Aguardando peça", "Aguardando fornecedor" e "UH ocupada, sem acesso". A meta do % de SLA é 90%.
+    - O aviso de prazo em risco sai com 80% do tempo gasto (`chamado.escalonamento`, sem tela).
+    - Fontes: `packages/dominio/src/sla.ts` (`SLA_PADRAO`, `HORARIO_PADRAO`), `docs/03-decisoes-tecnicas.md` (ADR-042 e ADR-043), `docs/piloto/guia-implantacao-hotel.md` (etapa 8).
 
 ## Fora da reunião
 
