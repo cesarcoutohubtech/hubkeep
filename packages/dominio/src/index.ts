@@ -340,6 +340,21 @@ export type {
   SituacaoDoPlano,
   UnidadeDePeriodicidade,
 } from './plano-preventivo';
+export {
+  ESTADOS_DA_PREVENTIVA_ABERTA,
+  MOTIVOS_DE_PULO,
+  copiaDoPlano,
+  planejarGeracao,
+} from './geracao-preventiva';
+export type {
+  AtivoParaGerar,
+  MotivoDePulo,
+  PlanejamentoDaGeracao,
+  PlanoAplicado,
+  PlanoParaGerar,
+  PreventivaAGerar,
+  PreventivaGerada,
+} from './geracao-preventiva';
 export type {
   CodigoPadrao,
   CodigoParaRegra,
