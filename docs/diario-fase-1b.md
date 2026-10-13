@@ -471,3 +471,50 @@ O resto da PV2 (ADR-041), fora da zona protegida, na branch `claude/1b-pv2b`, qu
 - **PRs abertos da 1b:** só o deste ponto de retomada. Nenhum trabalho sem enviar.
 - **Esperando o Cesar:** as três decisões da montagem com o relógio do roteiro (seção "Pedidos do Intelligence (atividade 3)"); as três decisões da proposta do "conferir dev".
 - **Próxima tarefa (PV3, depois do sinal do Cesar):** a geração da OS preventiva pelo worker, uma vez por dia (ADR-005), a rota de cron de volta ao `vercel.json`, o kit de teste com um plano e o roteiro no `docs/10`. A PV3 precisa de migração (`app.os.chamado_id` deixa de ser `not null` e passa a exigir o chamado ou o plano; `docs/12`, "Origem da OS"), então tem uma parte de zona protegida, que entra na fila depois da montagem com o relógio, se o Cesar não decidir outra ordem. Primeiro passo: ler a PV3 no `docs/12-plano-fase-1b.md` e na `docs/referencia/propostas-desenho-pv-implantacao.md` e separar o que é zona protegida do que não é.
+
+## Montagem com o relógio do roteiro (13/10/2026)
+
+Pedido 2 do Intelligence (atividade 3), com a proposta aprovada pelo Cesar ("Cesar aqui", 13/10/2026): fábricas, montagem fora do código do web, o instante só pela opção, o teste de guarda e a recusa contra produção; a auditoria e o outbox com o relógio do banco. Branch `claude/1b-montagem-relogio`. O PR toca a zona protegida (o teste de guarda e a regex) e abre na vez da 1b, depois da 0046 da 1c.
+
+- **`packages/db`:**
+  - `criarAcessoBanco` ganhou a opção `relogioDoRoteiro`. Com ela, cada unit of work lê o instante uma vez, no início, e os repositórios o gravam pela lista fechada de `repositorios/instante-do-roteiro.ts`:
+    - o `criado_em` e o `atualizado_em` da OS, do ativo, da parada e da UH indisponível;
+    - o `atualizado_em` do chamado (o `criado_em` já era a hora da abertura, ADR-042);
+    - o `desativado_em` do ativo;
+    - a `os_transicao.quando` sem a hora do aparelho.
+  - A proposta listava só o `atualizado_em` da parada e da UH. O `criado_em` das duas foi junto, para a linha não nascer no dia da geração e mudar no passado.
+  - Sem a opção, que é o caso do web, o SQL é o de antes, com o `now()` e o default da coluna.
+  - Teste sem banco (`test/instante-do-roteiro.test.ts`), com o pool falso:
+    - sem a opção, o SQL não traz as colunas;
+    - com ela, o instante vai nos parâmetros e é lido uma vez por unidade;
+    - a auditoria fica com o default do banco nos dois casos.
+- **Web:**
+  - a fiação dos casos de uso do hk_app saiu da `composicao.ts` para `src/servidor/fabricas.ts` (`criarFabricas`);
+  - a composição chama as fábricas uma vez, com o `relogioDoSistema`, e mantém as mesmas exportações;
+  - ficam na composição os convites, os anexos, a ingestão, o worker e o Intelligence.
+- **Montagem** (`apps/web/test/demonstracao/montagem-com-relogio.ts`, `montarComRelogio({ relogio })`):
+  - devolve os casos de uso do pedido:
+    - cadastros: bandeiras, hotéis, locais, categorias, códigos, fornecedores, ativos e configuração;
+    - chamados, triagem, execução, paradas, sincronização e checklists;
+  - abre um acesso ao banco próprio, com o hk_app;
+  - recusa, antes de conectar:
+    - a Vercel (`VERCEL_ENV` ou `VERCEL`);
+    - o ref de `HK_REF_PRODUCAO`, mesmo que estivesse na lista;
+    - um projeto fora de `[remotes.dev]` e `[remotes.staging]`;
+    - um host remoto sem ref.
+  - O Postgres local da CI passa.
+- **Testes:**
+  - `montagem-com-relogio.test.ts`:
+    - a recusa, sem rede;
+    - na CI, o ativo cadastrado e desativado pela montagem tem as datas do roteiro, e a auditoria, a data real.
+  - **Guarda** (`tests/relogio-do-roteiro-fora-do-web.test.ts`, na regex da zona protegida, no ADR-023 e no `CLAUDE.md`). Ele confere quatro coisas:
+    1. nada do código em funcionamento importa a montagem;
+    2. no web, só a composição importa as fábricas, numa chamada só, com o relógio do sistema;
+    3. a opção só aparece no `packages/db` e na montagem;
+    4. controle: a montagem usa a opção e as fábricas.
+  - Conferi que a guarda reprova um arquivo de `apps/web/src` que importa a montagem e usa a opção.
+- **Textos (decisão do Cesar):** no histórico gerado, a linha do tempo dos chamados mostra a data da geração, e a demonstração usa as telas do Intelligence e os indicadores. Isso foi escrito:
+  - no cabeçalho do gerador (`historico-inteligencia.ts`, do agente do Kaio: só o comentário, por pedido do Cesar);
+  - no `docs/piloto/roteiro-treinamento.md`;
+  - no `docs/10`.
+- **Para o agente do Kaio:** a gravação do gerador usa `montarComRelogio({ relogio })` e avança o relógio entre as operações. O relógio é lido no início de cada unit of work, então cada operação grava o instante em que o relógio estava quando ela começou.

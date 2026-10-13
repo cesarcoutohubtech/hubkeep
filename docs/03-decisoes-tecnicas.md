@@ -352,7 +352,8 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - `.github/workflows/`, `eslint.config.mjs` ou `CLAUDE.md`;
   - `docs/03-decisoes-tecnicas.md` ou `.claude/`;
   - `.gitleaks.toml` ou `.github/dependabot.yml` (ADR-032);
-  - `packages/auth-admin/`, o dono da secret key, e os testes que guardam a chave, o `.env.example` e as actions fixadas (`tests/secret-key-so-no-auth-admin.test.ts`, `tests/env-example.test.ts`, `tests/actions-fixadas.test.ts`), desde o B13 do `docs/11` (05/10/2026).
+  - `packages/auth-admin/`, o dono da secret key, e os testes que guardam a chave, o `.env.example` e as actions fixadas (`tests/secret-key-so-no-auth-admin.test.ts`, `tests/env-example.test.ts`, `tests/actions-fixadas.test.ts`), desde o B13 do `docs/11` (05/10/2026);
+  - o teste que guarda o relógio do roteiro fora do web em funcionamento (`tests/relogio-do-roteiro-fora-do-web.test.ts`), desde a montagem do gerador do histórico (Cesar, 13/10/2026).
 
   PR fora dessa lista passa.
 - **Ruleset do `main`**, que o Cesar configura no GitHub:

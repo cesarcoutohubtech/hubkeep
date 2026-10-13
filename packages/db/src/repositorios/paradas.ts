@@ -5,7 +5,6 @@
 // garante uma parada aberta por ativo.
 import type { EncerramentoDeParada, RegistroDeParada } from '@hubkeep/aplicacao';
 import { Conflito, NaoEncontrado } from '@hubkeep/dominio';
-import { sql } from 'kysely';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 import { agoraNaGravacao, datasDaCriacao } from './instante-do-roteiro';

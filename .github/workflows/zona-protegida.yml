@@ -32,7 +32,7 @@ jobs:
       # O SHA da base vem do evento do GitHub, não de quem abre o PR.
       - name: PR toca zona protegida?
         run: |
-          padrao='^(supabase/migrations/|supabase/tests/|supabase/config\.toml$|\.github/workflows/|eslint\.config\.mjs$|CLAUDE\.md$|docs/03-decisoes-tecnicas\.md$|\.claude/|\.gitleaks\.toml$|\.github/dependabot\.yml$|packages/auth-admin/|tests/secret-key-so-no-auth-admin\.test\.ts$|tests/env-example\.test\.ts$|tests/actions-fixadas\.test\.ts$)'
+          padrao='^(supabase/migrations/|supabase/tests/|supabase/config\.toml$|\.github/workflows/|eslint\.config\.mjs$|CLAUDE\.md$|docs/03-decisoes-tecnicas\.md$|\.claude/|\.gitleaks\.toml$|\.github/dependabot\.yml$|packages/auth-admin/|tests/secret-key-so-no-auth-admin\.test\.ts$|tests/env-example\.test\.ts$|tests/actions-fixadas\.test\.ts$|tests/relogio-do-roteiro-fora-do-web\.test\.ts$)'
           tocados="$(git diff --name-only "${{ github.event.pull_request.base.sha }}"...HEAD | grep -E "$padrao" || true)"
           if [ -n "$tocados" ]; then
             echo "::error::Este PR toca zona protegida (ADR-023). Merge só pelo Cesar, com bypass:"
