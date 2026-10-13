@@ -490,7 +490,7 @@ describe.skipIf(!temBanco)('I4 — chamado, OS e UH indisponível', { timeout: 6
   it('conclusão com "UH liberada": o período encerra na mesma operação, uma vez só', async () => {
     const { chamadoId, osId } = await osEmExecucao({ uhIndisponivelDesde: haHoras(2) });
     const daFila = (await execucao.osDoDia(ctx(U.tecnico))).find((o) => o.id === osId);
-    expect(daFila?.chamado.uhIndisponivelDesde).toBeInstanceOf(Date);
+    expect(daFila?.chamado?.uhIndisponivelDesde).toBeInstanceOf(Date);
 
     const chave = randomUUID();
     const primeira = await concluir(osId, true, chave);

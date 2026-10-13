@@ -224,10 +224,10 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       locais: await s.locais(),
     }));
     expect(lido.modulos.map((m) => m.modulo)).toEqual(['inteligencia']);
-    expect(lido.hoteis.map((h) => [h.id, h.status]).sort()).toEqual(
+    expect(lido.hoteis.map((h) => [h.id, h.status, h.fuso]).sort()).toEqual(
       [
-        [H1, 'ativo'],
-        [H2, 'em_implantacao'],
+        [H1, 'ativo', 'UTC'],
+        [H2, 'em_implantacao', 'UTC'],
       ].sort(),
     );
     expect(lido.politicas).toEqual([

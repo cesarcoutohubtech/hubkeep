@@ -27,15 +27,15 @@ const reinc = (valor: number | null): Score => ({
   configuracao: {},
 });
 
-/** Custo do ativo com o tenant acima do mínimo (30 de 40 encerradas com o dado). */
-const custoDe = (soma: number, informadas = 1, encerradas = 1): CustoDaAtencao => ({
-  ativo: { soma, informadas, encerradas },
-  tenant: { informadas: 30, encerradas: 40 },
+/** Custo do ativo com o tenant acima do mínimo (30 de 40 aceitas com o dado). */
+const custoDe = (soma: number, informadas = 1, aceitas = 1): CustoDaAtencao => ({
+  ativo: { soma, informadas, aceitas },
+  tenant: { informadas: 30, aceitas: 40 },
 });
 
-describe('atenção por ativo, versão 2', () => {
+describe('atenção por ativo, versão 4', () => {
   it('a versão, os pesos padrão e o mínimo de medições são os aprovados', () => {
-    expect(VERSAO_ATENCAO).toBe(2);
+    expect(VERSAO_ATENCAO).toBe(4);
     const p = PADRAO_ATENCAO.pesos;
     expect(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, Math.round(v * 100)]))).toEqual(
       {
@@ -63,7 +63,7 @@ describe('atenção por ativo, versão 2', () => {
     });
     // Impacto no hóspede e garantia valem 0 e têm peso:
     // (0,77 × 0,20 + 24/48 × 0,15 + 0 + 0,8 × 0,15 + 0) / 0,70 = 0,349 / 0,70 = 50.
-    expect([s.valor, s.faixa, s.versao]).toEqual([50, 'atencao', 2]);
+    expect([s.valor, s.faixa, s.versao]).toEqual([50, 'atencao', 4]);
     expect(s.ausentes).toEqual([
       'custo',
       'preventiva_atrasada',
@@ -101,7 +101,7 @@ describe('atenção por ativo, versão 2', () => {
       valor12m: 6000,
       limite: 10_000,
       informadas: 3,
-      encerradas: 4,
+      aceitas: 4,
       disponivelNoTenant: true,
       percentualNoTenant: 75,
       minimoNoTenant: 50,
@@ -243,25 +243,25 @@ describe('atenção por ativo, versão 2', () => {
     });
   });
 
-  describe('custo informado: a regra da metade das corretivas encerradas do tenant', () => {
+  describe('custo informado: a regra da metade das corretivas aceitas do tenant', () => {
     const base = { criticidade: null, reincidencia: reinc(null), horasParadas: 0 };
     const compDe = (custo?: CustoDaAtencao | null) =>
       atencaoDoAtivo(custo === undefined ? base : { ...base, custo }).componentes.find(
         (c) => c.chave === 'custo',
       );
 
-    it('disponível a partir de 50% das encerradas com o dado; abaixo, ou sem encerradas, não', () => {
+    it('disponível a partir de 50% das aceitas com o dado; abaixo, ou sem aceitas, não', () => {
       expect(MINIMO_DE_CUSTO_INFORMADO_NO_TENANT).toBe(0.5);
-      expect(custoDisponivelNoTenant({ informadas: 5, encerradas: 10 })).toBe(true);
-      expect(custoDisponivelNoTenant({ informadas: 10, encerradas: 10 })).toBe(true);
-      expect(custoDisponivelNoTenant({ informadas: 4, encerradas: 9 })).toBe(false);
-      expect(custoDisponivelNoTenant({ informadas: 0, encerradas: 0 })).toBe(false);
+      expect(custoDisponivelNoTenant({ informadas: 5, aceitas: 10 })).toBe(true);
+      expect(custoDisponivelNoTenant({ informadas: 10, aceitas: 10 })).toBe(true);
+      expect(custoDisponivelNoTenant({ informadas: 4, aceitas: 9 })).toBe(false);
+      expect(custoDisponivelNoTenant({ informadas: 0, aceitas: 0 })).toBe(false);
     });
 
     it('disponível, o ativo soma só as corretivas com o dado; sem nenhuma, vale 0', () => {
       expect(compDe(custoDe(2500, 2, 5))).toMatchObject({
         valor: 0.25,
-        evidencia: { valor12m: 2500, informadas: 2, encerradas: 5 },
+        evidencia: { valor12m: 2500, informadas: 2, aceitas: 5 },
       });
       expect(compDe(custoDe(0, 0, 3))).toMatchObject({ valor: 0, evidencia: { informadas: 0 } });
       expect(compDe(custoDe(25_000))?.valor).toBe(1);
@@ -269,8 +269,8 @@ describe('atenção por ativo, versão 2', () => {
 
     it('abaixo do mínimo no tenant, sem dado, por mais que o ativo tenha o custo', () => {
       const c = compDe({
-        ativo: { soma: 9000, informadas: 3, encerradas: 3 },
-        tenant: { informadas: 49, encerradas: 100 },
+        ativo: { soma: 9000, informadas: 3, aceitas: 3 },
+        tenant: { informadas: 49, aceitas: 100 },
       });
       expect(c).toMatchObject({
         valor: null,
@@ -354,19 +354,19 @@ describe('detalhamento: o componente sem dado e a redistribuição', () => {
         reincidencia: reinc(77),
         horasParadas: 24,
         custo: {
-          ativo: { soma: 4000, informadas: 3, encerradas: 4 },
-          tenant: { informadas: 9, encerradas: 20 },
+          ativo: { soma: 4000, informadas: 3, aceitas: 4 },
+          tenant: { informadas: 9, aceitas: 20 },
         },
       }),
     ).linhas.find((l) => l.componente === 'custo')?.nota;
 
     it('custo informado em X de Y corretivas; sem dado no tenant; medições abaixo do mínimo; garantia sem data', () => {
       expect(nota('custo')).toEqual({
-        chave: 'inteligencia.detalhamento.custo_informado_em',
-        valores: { informadas: 3, encerradas: 4 },
+        chave: 'inteligencia.detalhamento.custo_informado_nas_aceitas',
+        valores: { informadas: 3, aceitas: 4 },
       });
       expect(semNoTenant).toEqual({
-        chave: 'inteligencia.detalhamento.custo_sem_dado_no_tenant',
+        chave: 'inteligencia.detalhamento.custo_sem_dado_no_tenant_aceitas',
         valores: { percentual: 45, minimo: 50 },
       });
       expect(nota('medicoes_fora_da_faixa')).toEqual({
@@ -380,11 +380,32 @@ describe('detalhamento: o componente sem dado e a redistribuição', () => {
       expect(nota('reincidencia')).toBeNull();
     });
 
+    it('a atenção versão 2, já gravada, segue com a nota das corretivas encerradas', () => {
+      const v3 = atencaoDoAtivo({
+        criticidade: 4,
+        reincidencia: reinc(77),
+        horasParadas: 24,
+        custo: custoDe(4000, 3, 4),
+      });
+      const v2 = {
+        ...v3,
+        componentes: v3.componentes.map((c) => {
+          if (c.chave !== 'custo') return c;
+          const { aceitas, ...resto } = c.evidencia;
+          return { ...c, evidencia: { ...resto, encerradas: aceitas } as typeof c.evidencia };
+        }),
+      };
+      expect(detalhamentoDoScore(v2).linhas.find((l) => l.componente === 'custo')?.nota).toEqual({
+        chave: 'inteligencia.detalhamento.custo_informado_em',
+        valores: { informadas: 3, encerradas: 4 },
+      });
+    });
+
     it('pt-BR: o custo informado em X de Y corretivas', () => {
       const { t } = criarTradutor('pt-BR');
       const n = nota('custo');
       expect(t(n?.chave as never, n?.valores)).toBe(
-        'Custo informado em 3 de 4 corretivas encerradas nos últimos 12 meses.',
+        'Custo informado em 3 de 4 corretivas aceitas nos últimos 12 meses.',
       );
     });
 

@@ -30,6 +30,7 @@ export const ACOES_DA_OS_API = [
   'retomar',
   'concluir',
   'aceitar',
+  'aceitar_automatico',
   'reabrir',
   'cancelar',
 ] as const;

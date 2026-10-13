@@ -71,14 +71,16 @@ export interface OsGravada {
 
 /** O que muda no chamado, já decidido pelo domínio. */
 export interface MudancaNoChamado {
-  acao: 'triar' | 'priorizar' | 'cancelar' | 'informar_impacto';
+  acao: 'triar' | 'priorizar' | 'categorizar' | 'cancelar' | 'informar_impacto';
   estado?: EstadoDoChamado;
   situacaoId?: string;
   prioridadeId?: string;
+  /** A categoria do chamado (1c, ADR-042); null tira a categoria. */
+  categoriaId?: string | null;
   motivoCancelamento?: string;
   /** Afeta hóspede? (I4) null: não informado. */
   impactoHospede?: boolean | null;
-  /** Os prazos refeitos na troca de prioridade (1c, ADR-042); a auditoria guarda antes e depois. */
+  /** Os prazos refeitos na troca de prioridade ou de categoria (1c, ADR-042); a auditoria guarda antes e depois. */
   prazoAtendimento?: Date;
   prazoSolucao?: Date;
   /**

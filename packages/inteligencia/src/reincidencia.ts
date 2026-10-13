@@ -1,11 +1,15 @@
 // Recurring Failure Score (PRD, seção 12): o quanto as falhas de um ativo
-// voltam depois das intervenções. Versão 1, com os componentes do PRD:
-// corretivas na janela, intervalo entre falhas, reaberturas, mesma falha,
-// falha logo depois de corretiva e falha logo depois de preventiva.
+// voltam depois das intervenções, com os componentes do PRD: corretivas na
+// janela, intervalo entre falhas, reaberturas, mesma falha, falha logo depois
+// de corretiva e falha logo depois de preventiva. A versão 2 (glossário de
+// métricas versão 3, divergência b, 13/10/2026) tira da conta todo chamado
+// cancelado; na 1, o cancelado com OS entrava. A versão 3 (divergência a)
+// grava o dia no fuso do hotel, e não em UTC. O que já foi gravado com as
+// versões anteriores não é recalculado (ADR-036).
 import { type Corretiva, ordenarPorAbertura } from './historico';
 import { DIA_MS, FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
-export const VERSAO_REINCIDENCIA = 1;
+export const VERSAO_REINCIDENCIA = 3;
 
 export interface ConfigReincidencia {
   janelaDias: number;

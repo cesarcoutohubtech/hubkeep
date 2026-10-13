@@ -10,6 +10,7 @@ import {
   resolverPolitica,
   validarPolitica,
   validarRegiao,
+  valeNoNivel,
 } from '../src/politicas';
 import type { Atribuicao } from '../src/index';
 
@@ -122,6 +123,34 @@ describe('políticas (ADR-026)', () => {
     expect(podeGerirPoliticas([atr('admin_grupo')], AGORA).permitido).toBe(true);
     const r = podeGerirPoliticas([atr('gerente_hotel')], AGORA);
     expect(r.permitido ? 'ok' : r.erro.codigo).toBe('configuracao_so_admin');
+  });
+});
+
+describe('matriz do arrendado: só grupo → hotel (decisão 5 do Cesar)', () => {
+  const MATRIZ = 'hotel.matriz_arrendamento';
+  const [hotel, bandeira, grupo] = [
+    { [U1]: 'locador' },
+    { [U2]: 'locador' },
+    { [U1]: 'arrendataria' },
+  ];
+
+  it('a resolução pula a bandeira: hotel, senão grupo, senão a matriz vazia', () => {
+    expect(resolverPolitica(MATRIZ, { hotel, bandeira, grupo })).toEqual(hotel);
+    expect(resolverPolitica(MATRIZ, { bandeira, grupo })).toEqual(grupo);
+    expect(resolverPolitica(MATRIZ, { bandeira })).toEqual({});
+    expect(valeNoNivel(MATRIZ, 'bandeira')).toBe(false);
+    expect(valeNoNivel(MATRIZ, 'hotel')).toBe(true);
+    expect(valeNoNivel('chamado.sla', 'bandeira')).toBe(true);
+  });
+
+  it('o registro recusa gravar na bandeira e resolve como o domínio', () => {
+    const r = registroDePoliticas([]);
+    expect(r.escopos(MATRIZ)).toEqual(['hotel', 'grupo']);
+    expect(() => r.validarNivel(MATRIZ, 'bandeira')).toThrow(
+      expect.objectContaining({ codigo: 'politica_nivel_nao_permitido' }),
+    );
+    expect(() => r.validarNivel(MATRIZ, 'grupo')).not.toThrow();
+    expect(r.resolver(MATRIZ, { bandeira, grupo })).toEqual(grupo);
   });
 });
 

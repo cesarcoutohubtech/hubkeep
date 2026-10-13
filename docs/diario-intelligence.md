@@ -1531,3 +1531,175 @@ Pedido do Cesar no chat do agente do Kaio, em 13/10/2026: o teste do roteiro do 
   - depois da aprovação do glossário, o PR de código da conclusão do serviço e do custo informado no domínio;
   - depois da montagem, o restante da atividade 3;
   - a cada entrega da 1b e da 1c, o `docs/piloto/`.
+
+## Decisões das divergências do glossário (13/10/2026)
+
+No chat do agente do Kaio, em 13/10/2026:
+- **Kaio:** "Kaio aqui: ADR-036 aprovado". Entendi como a aprovação do Kaio à divergência a, que a tabela atribui a "Cesar e Kaio (ADR-036)". O ADR-036 já estava aprovado desde 07/10 e 10/10/2026 (`docs/03`). Se o Kaio quis dizer outra coisa, a linha volta para "Em proposta".
+- **Cesar:**
+  - aceitou a a e a d, como já tinha dito;
+  - aceitou a b e a e pela proposta ("Pode seguir conforme sugestão quando eu der o okay", seguido de "Merge e db push pronto. Continue").
+
+**Situação no glossário:**
+- **Decididas:** a a (Cesar e Kaio), a d (Cesar) e a e (Cesar).
+- **b:** o Cesar aceitou; falta o Kaio.
+- **c e f:** do Kaio, em proposta.
+- **A versão 3:** continua rascunho, sem aprovação. Decidir as divergências não aprova o glossário.
+
+**O que as decisões pedem de código, depois da aprovação da versão 3:**
+- **a:** o dia no fuso de cada hotel no job, como versão nova da fórmula (ADR-036), sem recalcular o que já foi gravado.
+- **d:** o custo informado e a cobertura sobre as corretivas aceitas, também como versão nova. Vai junto com a ida de `conclusaoEReaberturas` para o domínio.
+- **b, se o Kaio aceitar:** o chamado cancelado fica fora em qualquer caso, como versão seguinte da reincidência e da atenção.
+- **e:** nada, porque o MTBF fica só como nome reservado.
+
+**Nota sobre o #241:** ele entrou por merge comum, então a `main` ficou com o commit 2cca974 com a mensagem errada ("build: typescript de volta…"). O conteúdo está certo, e o título do PR registra o que ele faz.
+
+### Ponto de retomada (13/10/2026, depois do #241)
+
+- **`main`:** 3753af1, com o #241 (teste do histórico) e o #240 da 1b. O `db push` foi feito pelo Cesar ("Cesar aqui", 13/10/2026).
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`, recriada a partir da `main`): as decisões das divergências no glossário e este registro. Só docs, fora da zona protegida.
+- **Esperando:**
+  - **Kaio:** as divergências b, c e f;
+  - **Cesar e Kaio:** as aprovações da versão 3;
+  - **1b:** a montagem com relógio, que abre depois do aviso do `db push` da 0046, para a atividade 3.
+- **Próximo:**
+  - depois da aprovação da versão 3, o PR de código: a conclusão do serviço e o custo informado no domínio, e o dia no fuso do hotel;
+  - depois da montagem, o restante da atividade 3;
+  - a cada entrega da 1b e da 1c, o `docs/piloto/`.
+
+## Divergências b, c e f decididas pelo Kaio (13/10/2026)
+
+**Kaio, no chat do agente do Kaio (13/10/2026):** aprovou a b ("falta o Kaio. Aprovado") e a c e a f ("continuam com o Kaio. Aprovado").
+
+- **Divergências:** as seis estão decididas, todas pela proposta.
+  - a e b: Cesar e Kaio;
+  - d e e: Cesar;
+  - c e f: Kaio.
+- **Glossário:** a coluna "Situação" foi atualizada. A versão 3 continua rascunho, porque falta a aprovação dela pelo Cesar e, nos termos do Intelligence, pelo Kaio. Decidir as divergências não aprova o glossário.
+- **`main`:**
+  - o pgTAP segue vermelho por `packages/db/test/sla-prazos.test.ts:324`, um teste da 1c que depende da hora real e falha depois das 21:00 UTC de 13/10/2026 (comentário no #242);
+  - a correção espera a decisão do Cesar sobre quem a faz.
+
+### Ponto de retomada (13/10/2026, divergências decididas)
+
+- **`main`:** 5514dfe, com o #242. O pgTAP está vermelho pelo teste da 1c acima.
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`, recriada a partir da `main`): as decisões da b, da c e da f e este registro. Só docs.
+- **Esperando:**
+  - **Cesar:** quem corrige o teste da 1c;
+  - **Cesar e Kaio:** a aprovação da versão 3 do glossário;
+  - **1b:** a montagem com relógio (#244), para a atividade 3.
+- **Próximo:**
+  - depois da aprovação da versão 3, o PR de código, com aviso de área compartilhada antes:
+    - `conclusaoEReaberturas` e o custo informado no domínio (d);
+    - o dia no fuso do hotel (a);
+    - o cancelado fora em qualquer caso (b);
+    - os rótulos da c e da f;
+  - depois do #244, o restante da atividade 3.
+
+## Glossário versão 3 aprovado, e proposta do código (13/10/2026)
+
+**Aprovação:** o Cesar e o Kaio aprovaram a versão 3 do glossário, cada um com o próprio "Cesar aqui" e "Kaio aqui", no chat do agente do Kaio (13/10/2026).
+- **O que o glossário passou a registrar:**
+  - a aprovação, no cabeçalho;
+  - a conclusão do serviço no domínio e a preventiva atrasada como fechadas.
+- **O que continua em proposta:** o prazo em risco e o prazo vencido, porque dependem do ADR-043 (aprovar o glossário não aprova ADR), e o tempo até o aceite (decisão 1 da paridade).
+
+### Proposta de desenho do código das divergências (para o Cesar e o Kaio)
+
+O que achei no código:
+- **Custo e cobertura:**
+  - `custoNaJanela` (`historico.ts`) soma o custo das corretivas **concluídas** na janela;
+  - `custoDisponivelNoTenant` (`atencao.ts`) usa a mesma base;
+  - com a d, as duas passam às **aceitas**.
+- **Aceite:** existem duas ações, `aceitar` e a nova `aceitar_automatico` da 1c (M5, ADR-044). Proponho que as duas contem como aceite.
+- **Cancelado:** `corretivasDosChamados` (`fonte.ts`) alimenta a reincidência, a atenção e o sistêmico. Com a b, as três mudam.
+- **O dia:** o job grava o dia em UTC (`dia.ts:199`, `job.ts:150`, `fimDoDia`), e o cron roda às 06:00 UTC (`apps/web/vercel.json`).
+
+**Proposta: três PRs `int:`, nesta ordem, todos fora da zona protegida.**
+
+1. **Domínio, custo, cancelado e rótulos (d, b, c, f):**
+   - `conclusaoEReaberturas` e uma função nova, `aceiteDaOs` (o último aceite, manual ou automático, se depois dele a OS não foi reaberta), vão para `packages/dominio`, com os testes. O Intelligence passa a importar de lá;
+   - `custoNaJanela` e `custoDisponivelNoTenant` passam às corretivas aceitas na janela;
+   - `corretivasDosChamados` passa a tirar todo chamado cancelado;
+   - versões novas das fórmulas: reincidência 1 → 2, atenção 2 → 3 e sistêmico 2 → 3. O que já foi gravado não é recalculado (ADR-036);
+   - os rótulos da c e da f nos catálogos (pt-BR, en, es, fr), se alguma tela ainda usa "horas paradas" ou "reincidência" fora do score;
+   - aviso de área compartilhada no diário antes de começar, porque mexe em `packages/dominio`.
+2. **O dia no fuso de cada hotel (a).** Precisa de três decisões antes, que trago numa proposta própria:
+   - qual dia cada hotel calcula quando o cron roda às 06:00 UTC (03:00 em Brasília): o dia local que acabou de terminar ou o dia corrente;
+   - qual dia o sinal sistêmico, que junta hotéis, usa quando o grupo tem hotéis em fusos diferentes;
+   - como o painel e a agregação tratam a troca: as linhas antigas, em UTC, ficam com a versão antiga.
+3. **Testes e docs:** o glossário passa a citar o lugar novo das funções, e o `docs/piloto/` é atualizado, se algum texto muda.
+
+**Esperando:**
+- **Cesar e Kaio:** aprovar a proposta, ou mudar a ordem;
+- **Kaio:** confirmar que o `aceitar_automatico` conta como aceite no custo. É detalhe dentro da d, mas toca a fonte de dado.
+
+### Ponto de retomada (13/10/2026, glossário aprovado)
+
+- **`main`:** 108d233, verde no typecheck depois do #250.
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`, recriada a partir da `main`): a aprovação no glossário e esta proposta. Só docs.
+- **Esperando:**
+  - a aprovação da proposta acima;
+  - a montagem com relógio (#244, 1b), para a atividade 3.
+- **Próximo:** depois da aprovação, o PR 1 da proposta, começando pelo aviso de área compartilhada no diário.
+
+## PR 1 do código das divergências: aprovação e aviso de área compartilhada (13/10/2026)
+
+**Aprovações (chat do agente do Kaio, 13/10/2026):**
+- a divisão em três PRs e a ordem: "Kaio aqui. Sim, aprovo" e "Cesar aqui. Sim, aprovo";
+- o aceite automático (`aceitar_automatico`, M5 da 1c) conta como aceite no custo: "Kaio aqui. Sim".
+
+**Aviso de área compartilhada com a 1b e a 1c:** o PR 1 mexe em `packages/dominio`.
+- **Entram dois módulos novos:** a conclusão do serviço e o aceite da OS a partir das transições.
+- **Saem do Intelligence:** `conclusaoEReaberturas` passa a ser importada do domínio.
+- **O que não muda:** a OS, o chamado e as regras do núcleo.
+
+### O que o PR 1 faz
+
+- **Domínio** (`packages/dominio/src/servico-da-os.ts`, com testes):
+  - `conclusaoEReaberturas` mudou de pacote sem mudar o comportamento, e os casos de teste foram junto;
+  - `aceiteDaOs`, nova: o último aceite, do gestor ou automático, se depois dele a OS não foi reaberta nem cancelada.
+- **d:** `custoNaJanela` e `custoDisponivelNoTenant` passam às corretivas aceitas, e a `Corretiva` ganha `aceitaEm`.
+  - **Evidência:** a gravada passa a ter `aceitas` no lugar de `encerradas`.
+  - **Explicação:** a da versão 3 tem duas chaves novas no catálogo, nos quatro idiomas. A da versão 2, já gravada, segue com o texto das encerradas, e um teste confere isso.
+- **b:** `corretivasDosChamados` tira todo chamado cancelado.
+- **Versões:** reincidência 2, atenção 3 e sistêmico 3. Nada já gravado é recalculado (ADR-036).
+- **c:** no Intelligence, o rótulo vira "tempo parado do ativo", com uma casa decimal no motivo da atenção, nos quatro idiomas.
+- **f:** nenhuma tela usa "reincidência" fora do score. Também não há texto da taxa da regra do mesmo fornecedor; quando houver, o nome dele é "taxa de retorno do fornecedor".
+- **Não muda:** a efetividade (`efetividadeAntesDepois`) recebe os custos de quem chama, e nenhum chamador de produção a usa ainda. Fica para quando a tela do ativo ligar.
+
+## PR 2 do código das divergências: o dia no fuso de cada hotel (13/10/2026)
+
+**Decisões ("Cesar e Kaio aqui", chat do agente do Kaio, 13/10/2026):**
+1. **Opção A:** um instante por rodada, e cada hotel grava a data local desse instante, no fuso dele.
+2. **Sinal sistêmico:** fica como está, porque as janelas contam a partir do instante da rodada.
+3. **Recálculo e linhas antigas:** aprovado como proposto.
+   - O recálculo roda uma vez por fuso, com o fim do dia local.
+   - As linhas antigas, gravadas em UTC, ficam como estão.
+   - **Versão:** uma só com o PR 1, se o PR 2 entrar antes do próximo deploy do PR 1; senão, sobe de novo (reincidência 3, atenção 4).
+
+**O que o PR 2 faz:**
+- **Leitura dos hotéis:** `HotelDoJob` (`packages/db`) e `HotelDaFonte` trazem `app.hotel.fuso`, e o `hoteisDoDia` o passa ao `HotelDoDia`.
+- **`calcularDia`:**
+  - cada linha da métrica leva `diaNoFuso(agora, fuso do hotel)`;
+  - o `dia` do resultado é o menor dos dias locais.
+- **Job:** lê os cálculos já gravados por dia, para não duplicar a linha de nenhum hotel.
+- **Fim do dia local:** `fimDoDiaNoFuso`, nova, com testes do horário de verão.
+- **Recálculo** (`apps/web/src/servidor/modulos/inteligencia/job.ts`):
+  - antes de ler os hotéis, uma checagem folgada do contrato do módulo na janela do dia em todos os fusos, para o tenant sem o módulo continuar lendo só os módulos;
+  - depois, uma rodada por fuso, cada uma só com os hotéis daquele fuso e o `agora` no fim do dia local;
+  - cada rodada deixa o próprio registro na auditoria, e o resumo soma as rodadas.
+- **Seguem em UTC:** a janela de leitura das telas e o mês a fechar (`agregacao.ts`). A diferença é de no máximo um dia na borda; no Brasil, só entre 21:00 e 24:00 locais. Fica registrado no glossário.
+- **Versão:** o #253 (PR 1) foi mergeado às 22:09 UTC, antes do PR 2. Sem saber se já foi para o deploy, segui pelo lado seguro da regra: reincidência 2 → 3 e atenção 3 → 4. O sistêmico fica na 3, porque as janelas dele contam a partir do instante da rodada e não dependem do dia.
+
+### Ponto de retomada (13/10/2026, PR 2 aberto)
+
+- **`main`:** b4b0018, com o #253 (PR 1).
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`): o PR 2. Fora da zona protegida.
+- **Esperando:**
+  - o merge do Cesar;
+  - a montagem com relógio (#244, 1b), para a atividade 3.
+- **Próximo:**
+  - o PR 3: testes e docs, com o `docs/piloto/`, se algum texto mudar;
+  - a janela de leitura em UTC só entra se Cesar e Kaio quiserem;
+  - depois do #244, o restante da atividade 3.

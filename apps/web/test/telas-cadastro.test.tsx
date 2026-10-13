@@ -12,6 +12,7 @@ const { Aviso } = await import('../src/cliente/aviso');
 const { SeletorDeHotel } = await import('../src/cliente/cadastro');
 
 const TELAS = [
+  'arrendamento',
   'ativos',
   'bandeiras',
   'categorias',
@@ -23,6 +24,7 @@ const TELAS = [
   'locais',
   'membros',
   'proprietarios',
+  'sla',
 ] as const;
 
 const pt = mensagensDe('pt-BR');

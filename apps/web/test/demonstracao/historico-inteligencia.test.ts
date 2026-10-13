@@ -14,6 +14,7 @@ import {
   type InsightExistente,
   type LinhaDaMetricaDiaria,
   TRANSICOES_DO_INSIGHT,
+  aceiteDaOs,
   conclusaoEReaberturas,
   efetividadeAntesDepois,
   executarDiaDoTenant,
@@ -281,14 +282,8 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
             ativoId: c.ativo,
             abertaEm: c.abertoEm,
             codigoFalha: c.os.codigoFalha,
-            ...conclusaoEReaberturas(
-              c.os.passos.map((p) => ({
-                acao: p.acao,
-                para: estadoAposPasso(p.acao),
-                quando: p.quando,
-              })),
-              agora,
-            ),
+            ...conclusaoEReaberturas(c.os.passos, agora),
+            aceitaEm: aceiteDaOs(c.os.passos, agora),
           }));
       const paradasDe = (ativo: string) =>
         r.chamados.flatMap((c) => (c.ativo === ativo && c.parada ? [c.parada] : []));

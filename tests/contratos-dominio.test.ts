@@ -8,6 +8,7 @@ import {
   IDIOMAS_API,
   MOMENTOS_DA_FOTO_API,
   MOTIVOS_DE_PAUSA_API,
+  RESPONSAVEIS_DO_ARRENDAMENTO_API,
   DESTINATARIOS_DO_AVISO_API,
   NIVEIS_DO_AVISO_API,
   TIPOS_DE_ALERTA_DE_SLA_API,
@@ -46,6 +47,7 @@ import {
   MODELOS_CONTRATUAIS,
   MOMENTOS_DA_FOTO,
   MOTIVOS_DE_PAUSA,
+  RESPONSAVEIS_DO_ARRENDAMENTO,
   DESTINATARIOS_DO_AVISO,
   NIVEIS_DO_AVISO,
   TIPOS_DE_ALERTA_DE_SLA,
@@ -261,6 +263,23 @@ describe('contratos × domínio', () => {
         [],
         null,
       ],
+      'hotel.matriz_arrendamento': [
+        {},
+        { [U]: 'locador' },
+        { [U]: 'arrendataria' },
+        { [U]: 'proprietario' },
+        { [U]: null },
+        { x: 'locador' },
+        Object.fromEntries(
+          Array.from({ length: 201 }, (_, n) => [
+            `01900000-0000-7000-8000-${String(n).padStart(12, '0')}`,
+            'locador',
+          ]),
+        ),
+        [],
+        'locador',
+        null,
+      ],
     };
     for (const chave of CHAVES_DE_POLITICA) {
       expect(FORMATOS_DE_POLITICA_API[chave].safeParse(POLITICAS[chave].padrao).success).toBe(true);
@@ -281,6 +300,10 @@ describe('contratos × domínio', () => {
   it('os tipos e os níveis dos avisos de SLA da API são os do domínio (ADR-043, M4)', () => {
     expect([...TIPOS_DE_ALERTA_DE_SLA_API]).toEqual([...TIPOS_DE_ALERTA_DE_SLA]);
     expect([...NIVEIS_DO_AVISO_API]).toEqual([...NIVEIS_DO_AVISO]);
+  });
+
+  it('os responsáveis do arrendado da API são os do domínio (decisão 5)', () => {
+    expect([...RESPONSAVEIS_DO_ARRENDAMENTO_API]).toEqual([...RESPONSAVEIS_DO_ARRENDAMENTO]);
   });
 
   it('os motivos da pausa da API são os do domínio (ADR-042)', () => {

@@ -29,6 +29,7 @@ export {
   criarPortaTriagem,
   criarPortaFeriadosDoHotel,
   criarPortaMonitorDeSla,
+  criarPortaAceiteAutomatico,
   criarPortaExecucao,
   criarPortaParadas,
   criarPortaUhIndisponivel,

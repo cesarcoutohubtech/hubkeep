@@ -114,6 +114,7 @@ const nada = () => undefined;
 const acoes: AcoesDaTriagem = {
   triar: nada,
   priorizar: nada,
+  categorizar: nada,
   gerarOs: nada,
   cancelarChamado: nada,
   reatribuirOs: nada,
@@ -312,5 +313,71 @@ describe('painel da triagem em cada idioma', () => {
       .filter((t) => t !== '' && !DADOS.includes(t));
     expect(textos.length).toBeGreaterThan(20);
     for (const texto of textos) expect(texto, texto).toMatch(/^\[.*\]$/s);
+  });
+});
+
+describe('categoria do chamado na triagem (1c, ADR-042)', () => {
+  const CAT_AR = '0193a000-0000-7000-8000-0000000000c1';
+  const CAT_VELHA = '0193a000-0000-7000-8000-0000000000c2';
+  const CAT_OUTRA = '0193a000-0000-7000-8000-0000000000c3';
+  const categorias = [
+    { id: CAT_AR, nome: 'Ar-condicionado', ativa: true },
+    { id: CAT_VELHA, nome: 'Categoria velha', ativa: false },
+  ];
+  const comCategorias = (detalhe: DetalheDoChamado, lista: typeof categorias | null) => (
+    <TriagemDoChamado
+      detalhe={detalhe}
+      refs={refs}
+      candidatos={candidatos}
+      fornecedores={fornecedores}
+      categorias={lista}
+      acoes={acoes}
+    />
+  );
+  const comCategoria = (
+    estado: DetalheDoChamado['chamado']['estado'],
+    categoriaId: string | null,
+  ) => {
+    const d = detalheDe(estado);
+    return { ...d, chamado: { ...d.chamado, categoriaId } };
+  };
+
+  it('nos estados da prioridade, a escolha com "sem categoria" e as ativas; a atual marcada', () => {
+    for (const estado of ['aberto', 'em_triagem', 'em_execucao'] as const) {
+      const html = renderizar('pt-BR', comCategorias(comCategoria(estado, CAT_AR), categorias));
+      expect(html).toContain('data-acao="categorizar"');
+      expect(html).toContain('Sem categoria');
+      expect(html).toMatch(new RegExp(`<option value="${CAT_AR}" selected="">Ar-condicionado`));
+      expect(html).not.toContain('Categoria velha');
+    }
+    const concluido = renderizar(
+      'pt-BR',
+      comCategorias(comCategoria('concluido', null), categorias),
+    );
+    expect(concluido).not.toContain('data-acao="categorizar"');
+  });
+
+  it('a categoria atual desativada continua na lista; sem a lista, nada do bloco', () => {
+    const html = renderizar(
+      'pt-BR',
+      comCategorias(comCategoria('em_triagem', CAT_VELHA), categorias),
+    );
+    expect(html).toContain('Categoria velha');
+    expect(html).not.toContain(CAT_OUTRA);
+    expect(
+      renderizar('pt-BR', comCategorias(comCategoria('em_triagem', null), null)),
+    ).not.toContain('data-acao="categorizar"');
+  });
+
+  it.each(IDIOMAS)('%s: os textos do bloco vêm do catálogo', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(idioma, comCategorias(comCategoria('em_triagem', null), categorias));
+    for (const chave of [
+      'corretiva.triagem.ajustar_categoria',
+      'corretiva.triagem.categoria',
+      'corretiva.triagem.sem_categoria',
+      'corretiva.triagem.salvar_categoria',
+    ] as const)
+      expect(html).toContain(m[chave].replace(/'/g, '&#x27;'));
   });
 });

@@ -11,7 +11,11 @@
 import { createHash } from 'node:crypto';
 import type { Relogio } from '@hubkeep/aplicacao';
 import type { PortaDoJobDoIntelligence, SessaoDoJobDoIntelligence } from '@hubkeep/db';
-import { type RegistrosDePoliticas, modulosVigentes } from '@hubkeep/dominio';
+import {
+  type ModuloContratado,
+  type RegistrosDePoliticas,
+  modulosVigentes,
+} from '@hubkeep/dominio';
 import {
   CHAVES_DO_JOB,
   type InsightExistente,
@@ -23,6 +27,7 @@ import {
   ehMotivoDeDescarte,
   executarDiaDoTenant,
   fimDoDia,
+  fimDoDiaNoFuso,
   hoteisDoDia,
   listaCanonicaDeHoteis,
   politicaSistemicaDoGrupo,
@@ -138,24 +143,91 @@ export function criarJobDoDia(deps: DepsDoJobDoDia): (tenantId: string) => Promi
   };
 }
 
+/** De UTC-12 a UTC+14: o dia D local cabe entre D-1 10:00 UTC e D+1 12:00 UTC. */
+const HORA_MS = 3_600_000;
+
 /**
- * O recálculo de um dia passado num tenant (ADR-036; atividade 2c): o `agora`
- * é o fim do dia (fimDoDia), a vigência do módulo é a desse dia, e o motor
- * grava outra linha por ativo com o número de cálculo seguinte, a marca de
- * recálculo e as versões das fórmulas de hoje. Não abre nem atualiza insight.
- * `disparadoPor` vai para o registro da execução, na auditoria.
+ * O módulo pode estar vigente em algum momento do dia D em algum fuso: o
+ * contrato cruza a janela de D em todos os fusos. É só a porta de entrada,
+ * para o tenant sem o módulo não ler mais que os módulos; a vigência exata é a
+ * do fim do dia em cada fuso, conferida pelo job.
+ */
+function talvezVigenteNoDia(modulos: readonly ModuloContratado[], fimUtc: Date): boolean {
+  const ate = fimUtc.getTime() + 12 * HORA_MS;
+  const desde = fimUtc.getTime() - 38 * HORA_MS;
+  return modulos.some(
+    (m) =>
+      m.modulo === 'inteligencia' &&
+      m.inicio.getTime() <= ate &&
+      (m.fim === null || m.fim.getTime() >= desde),
+  );
+}
+
+/** A sessão com os módulos já lidos e, se dados, só estes hotéis. */
+function sessaoCom(
+  sessao: SessaoDoJobDoIntelligence,
+  modulos: ModuloContratado[],
+  hoteis?: Awaited<ReturnType<SessaoDoJobDoIntelligence['hoteis']>>,
+): SessaoDoJobDoIntelligence {
+  const s = Object.create(sessao) as SessaoDoJobDoIntelligence;
+  s.modulos = async () => modulos;
+  if (hoteis) s.hoteis = async () => hoteis;
+  return s;
+}
+
+const somar = (a: ResumoDoJob, b: ResumoDoJob): ResumoDoJob => ({
+  dia: a.dia,
+  recalculo: a.recalculo,
+  semModulo: a.semModulo && b.semModulo,
+  ativos: a.ativos + b.ativos,
+  metricasGravadas: a.metricasGravadas + b.metricasGravadas,
+  metricasJaGravadas: a.metricasJaGravadas + b.metricasJaGravadas,
+  insightsAbertos: a.insightsAbertos + b.insightsAbertos,
+  insightsAtualizados: a.insightsAtualizados + b.insightsAtualizados,
+  insightsIgnorados: a.insightsIgnorados + b.insightsIgnorados,
+});
+
+/**
+ * O recálculo de um dia passado num tenant (ADR-036; atividade 2c). O dia é o
+ * local de cada hotel (glossário de métricas, divergência a, decisão 3 de
+ * Cesar e Kaio de 13/10/2026): roda uma vez por fuso distinto entre os hotéis,
+ * cada vez só com os hotéis daquele fuso, com o `agora` no fim do dia local
+ * (fimDoDiaNoFuso) e a vigência do módulo nesse instante. O motor grava outra
+ * linha por ativo com o número de cálculo seguinte, a marca de recálculo e as
+ * versões das fórmulas de hoje, e não abre nem atualiza insight, então o sinal
+ * sistêmico não depende dos fusos. Cada rodada deixa o próprio registro na
+ * auditoria, com `disparadoPor`; o resumo devolvido soma as rodadas.
  */
 export function criarRecalculoDoDia(
   deps: Omit<DepsDoJobDoDia, 'relogio'>,
 ): (tenantId: string, dia: string, disparadoPor: string) => Promise<ResumoDoJob> {
   return (tenantId, dia, disparadoPor) => {
-    const agora = fimDoDia(dia);
-    return deps.porta.noTenant(tenantId, (sessao) =>
-      executarDiaDoTenant(portasDoJob(sessao, deps.registros, agora), {
-        agora,
-        recalculo: true,
-        disparadoPor,
-      }),
-    );
+    const fimUtc = fimDoDia(dia);
+    return deps.porta.noTenant(tenantId, async (sessao) => {
+      const modulos = await sessao.modulos();
+      const rodar = (s: SessaoDoJobDoIntelligence, agora: Date) =>
+        executarDiaDoTenant(portasDoJob(s, deps.registros, agora), {
+          agora,
+          recalculo: true,
+          disparadoPor,
+        });
+      if (!talvezVigenteNoDia(modulos, fimUtc)) return rodar(sessaoCom(sessao, modulos), fimUtc);
+      const hoteis = await sessao.hoteis();
+      const fusos = [...new Set(hoteis.map((h) => h.fuso))].sort();
+      if (!fusos.length) return rodar(sessaoCom(sessao, modulos, hoteis), fimUtc);
+      let resumo: ResumoDoJob | undefined;
+      for (const fuso of fusos) {
+        const r = await rodar(
+          sessaoCom(
+            sessao,
+            modulos,
+            hoteis.filter((h) => h.fuso === fuso),
+          ),
+          fimDoDiaNoFuso(dia, fuso),
+        );
+        resumo = resumo ? somar(resumo, r) : r;
+      }
+      return { ...(resumo as ResumoDoJob), dia };
+    });
   };
 }

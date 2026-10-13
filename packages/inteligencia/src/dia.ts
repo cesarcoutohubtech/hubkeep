@@ -22,7 +22,7 @@
 //   fica na tela do ativo;
 // - as horas paradas e o impacto no hóspede da atenção usam a janela da
 //   reincidência do hotel; o custo informado, 12 meses (365 dias);
-// - o custo informado vale quando pelo menos metade das corretivas encerradas
+// - o custo informado vale quando pelo menos metade das corretivas aceitas
 //   do tenant na janela tem o dado (Kaio e Cesar, 10/10/2026): a conta usa
 //   todas as corretivas da entrada, de todos os hotéis, e não só as dos hotéis
 //   do cálculo; as medições valem nos ativos das categorias com item de
@@ -56,6 +56,7 @@ import {
 } from './insight';
 import { type ConfigReincidencia, PADRAO_REINCIDENCIA, reincidencia } from './reincidencia';
 import { DIA_MS, type Score, sugereInsight } from './score';
+import { diaNoFuso, inicioDoDiaNoFuso } from './visibilidade';
 import {
   type ConfigSistemico,
   PADRAO_SISTEMICO,
@@ -73,6 +74,12 @@ export const FAIXA_DO_SISTEMICO = 'atencao';
 export interface HotelDoDia {
   hotelId: string;
   bandeiraId: string | null;
+  /**
+   * O fuso IANA do hotel (`app.hotel.fuso`): o dia da métrica é a data local de
+   * `agora` nele (regra 5 do glossário de métricas, divergência a). Ausente só
+   * nos testes antigos, que contam em UTC.
+   */
+  fuso?: string;
   /** Políticas do hotel, já resolvidas (hotel → bandeira → grupo → padrão). */
   reincidencia?: ConfigReincidencia;
   atencao?: ConfigAtencao;
@@ -152,7 +159,11 @@ export interface DeteccaoDoDia extends Deteccao {
 }
 
 export interface ResultadoDoDia {
-  /** O dia em UTC, `AAAA-MM-DD`. */
+  /**
+   * O dia da rodada, `AAAA-MM-DD`: o menor dos dias locais dos hotéis
+   * calculados (com todos no mesmo fuso, o dia deles); sem hotel, o dia em UTC.
+   * Cada linha da métrica leva o dia local do hotel dela.
+   */
   dia: string;
   recalculo: boolean;
   ativos: ResultadoDoAtivo[];
@@ -196,7 +207,10 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
     corretivas.filter((c) => c.ativoId !== null && idsDeAtivo.has(c.ativoId)),
     (c) => c.ativoId as string,
   );
-  const dia = e.agora.toISOString().slice(0, 10);
+  const diaDoHotel = new Map(
+    [...hoteis.values()].map((h) => [h.hotelId, diaNoFuso(e.agora, h.fuso ?? 'UTC')]),
+  );
+  const dia = [...diaDoHotel.values()].sort()[0] ?? e.agora.toISOString().slice(0, 10);
   const custoDoTenant = custoNaJanela(e.corretivas, e.agora, JANELA_CUSTO_DIAS);
   const comMedicao = new Set(e.categoriasComMedicao ?? []);
 
@@ -291,7 +305,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
     recalculo: e.recalculo ?? false,
     ativos: resultados,
     metricas: resultados.map((r) => ({
-      dia,
+      dia: diaDoHotel.get(r.hotelId) as string,
       ativoId: r.ativoId,
       hotelId: r.hotelId,
       reincidencia: r.reincidencia.valor,
@@ -307,6 +321,16 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
     sistemicos,
     deteccoes,
   };
+}
+
+/**
+ * O último instante de um dia `AAAA-MM-DD` no fuso IANA do hotel: o `agora`
+ * para recalcular esse dia nos hotéis daquele fuso (divergência a). O dia
+ * inválido falha como em `fimDoDia`.
+ */
+export function fimDoDiaNoFuso(dia: string, fuso: string): Date {
+  const seguinte = new Date(fimDoDia(dia).getTime() + 1).toISOString().slice(0, 10);
+  return new Date(inicioDoDiaNoFuso(seguinte, fuso).getTime() - 1);
 }
 
 /** O último instante (UTC) de um dia `AAAA-MM-DD`: o `agora` para recalcular esse dia. */

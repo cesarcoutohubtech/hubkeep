@@ -534,13 +534,127 @@ Cesar, no chat do agente da 1c: "Aprovo o ADR-044. Atualize o status." O status 
 
 **A `main` ficou vermelha.** O #231 do Dependabot foi mergeado (`bca63c1`) e subiu o TypeScript para a 7.0.2. O `typescript-eslint` 8.71 não suporta a 7.0, e o `pnpm lint` falha na `main`. A correção é o #236, fora da zona protegida: o TypeScript volta a `~6.0.3`, com o lockfile regenerado. Ela entra antes de qualquer outro merge. Até lá, o lint deste PR também falha, pelo mesmo motivo. Para o Dependabot não propor o TypeScript 7 de novo, falta um `ignore` no `.github/dependabot.yml`, que é zona protegida.
 
-### Ponto de retomada (13/10/2026, M5)
-- **`main`:** verde de novo com o #236 (TypeScript de volta à 6.0). Depois dele entrou o #232 (painel dos avisos de SLA, M4). Já tinham entrado o #229, o #230 e o #233.
+### Aceite automático: o código, pronto na branch (fora da zona protegida)
+
+Na branch `claude/1c-aceite-automatico-m5`, feita a partir da `main` depois do merge do #237 (a 0046), sem empilhar. O PR abriu depois do `db push` da 0046.
+- **Domínio:**
+  - a ação `aceitar_automatico` na máquina da OS, sem papel que a faça, com o mesmo reflexo do aceite no chamado (aguardando aceite → concluído);
+  - `decidirAceiteAutomatico`, com os motivos de não aceitar: desligado, fora do estado, antes do prazo, quem abriu e executa, faltam códigos, assinatura no aceite;
+  - `aceiteAutomaticoEm` (N vezes 24 horas) e `quemAbriuExecuta`.
+- **Aplicação:** a porta e o caso de uso por tenant, com as três políticas por hotel e no máximo 200 aceites por rodada. A leitura não tem limite, para a OS que nunca é aceita não tomar a vez das outras.
+- **Banco:**
+  - a sessão do `hk_worker` lê as OS corretivas concluídas, com a última conclusão e as equipes ativas de quem abriu;
+  - o aceite trava a OS e o chamado na versão lida (`for update`) e grava a OS, a transição sem usuário, o reflexo no chamado, a auditoria e o evento `os.aceita` com `automatico: true`.
+- **Web:**
+  - a rota `/api/cron/sla` roda o aceite depois do monitor, numa transação própria;
+  - a linha do tempo mostra "OS aceita automaticamente", sem autor;
+  - a configuração mostra uma nota com as três exceções.
+- **Catálogo:** a nota e a linha do tempo, nos quatro idiomas.
+- **Contrato:** a ação nova em `ACOES_DA_OS_API`. O teste de valores canônicos confere a ação do check da 0046 contra o domínio.
+- **Verificação:** no local, lint, typecheck e testes passaram. Só na CI: `packages/db/test/aceite-automatico.test.ts` (aceite, transição, auditoria, evento, as exceções e o outro tenant) e o pgTAP `038`.
+
+### Pedido ao agente do Kaio: o tempo do teste do histórico de demonstração (13/10/2026)
+
+O teste `cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum` (`apps/web/test/demonstracao/historico-inteligencia.test.ts`) passou do limite padrão de 5 segundos do Vitest duas vezes:
+- na CI do #237 (5,5 s), que passou depois de rodar o job de novo;
+- no `pnpm test` local da branch do código do M5 (8,0 s), com os pacotes rodando em paralelo. Sozinho, o arquivo passa em 3,8 s.
+
+O teste é do Intelligence e não muda com a 1c. Pedido: um `timeout` explícito nesse teste, ou um roteiro menor, para o tempo não depender da carga da máquina. A 1c não mexe no arquivo.
+
+**Atendido** no #241, a pedido do Cesar no chat do agente do Kaio: um limite próprio de 20 s nos dois testes do roteiro (`docs/diario-intelligence.md`). Nada mais a pedir.
+
+## Telas do SLA: as políticas (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Merge e db push pronto. Continue", 13/10/2026). Esta é a parte de telas do item 3 (SLA) que ainda faltava. Vai em dois PRs fora da zona protegida, sem migração:
+1. **Este PR:** a tela `/admin/sla`, no menu de configuração. Ela edita as três políticas do SLA, que a API já aceita desde o #224: `chamado.sla`, `hotel.horario_atendimento` e `chamado.escalonamento`. Grava nos níveis grupo, bandeira e hotel, como a tela de configuração. Todos os papéis leem, e a API recusa a gravação de quem não é Admin do grupo.
+2. **O PR seguinte:** a troca de categoria na triagem, com o recálculo dos prazos (ADR-042, decisão 2). O GRANT da coluna existe desde a 0043.
+
+**Aviso de área compartilhada com a 1b (políticas):** a 1c acrescenta uma página e textos no catálogo. A tela de configuração (`admin/configuracao/page.tsx`) e o domínio das políticas não mudam. Branch `claude/1c-telas-sla`, a partir da `main`.
+
+### A `main` vermelha pelo teste da pausa (13/10/2026)
+
+Desde as 20:15 UTC, o job do banco falha no `packages/db/test/sla-prazos.test.ts`, num teste da 1c ("a pausa com motivo da lista para o relógio"). O teste anda num relógio falso fixado nas 20:00 UTC de hoje, mas a geração da OS grava a transição com o `now()` do banco. Com a hora real depois do início do teste, o `horaDaTransicao` puxou o início e a pausa para a hora real, e a pausa ficou com menos de 2 horas. O #243 entrou com esse job vermelho, e a `main` ficou vermelha.
+
+A correção é o #247, só no teste: o teste alinha a hora da geração com o relógio falso, pelo dono, como o `execucao.test.ts` já faz. O código não muda. O #246 recebeu o mesmo commit.
+
+## Telas do SLA: a troca de categoria na triagem (13/10/2026)
+
+Segundo PR das telas do SLA, depois da tela das políticas (#246). Segue o ADR-042, decisão 2: a categoria do chamado vem do ativo na abertura; quem tria escolhe, troca ou tira, e a troca refaz os prazos e fica na auditoria. Fica fora da zona protegida e sem migração, porque o GRANT de `categoria_id` existe desde a 0043. Branch `claude/1c-categoria-triagem`, a partir da `main`.
+
+**Aviso de área compartilhada com a 1b (chamado, triagem e `packages/dominio`):**
+- **Domínio** (`triagem.ts`): `podeAjustarCategoria` e `exigirCategoriaAtiva`, nos estados da prioridade, e o erro `categoria_indisponivel`.
+- **Aplicação:** `categorizar` no caso de uso da triagem. O recálculo da prioridade virou `prazosNaTroca`, com a prioridade e a categoria.
+- **Banco:** `alterarChamadoNaTriagem` passa a gravar a `categoria_id`, com o evento `chamado.categoria_alterada`.
+- **API e tela:** `POST /api/v1/chamados/{id}/categoria` e o bloco da categoria no painel da triagem.
+
+### Ponto de retomada (13/10/2026, telas do SLA)
+- **`main`:** o #247 corrigiu o teste da pausa, mas a `main` ficou vermelha no typecheck. O #245 (PV3b da 1b) e o #243 (M5) passavam sozinhos e quebram juntos: o `preventiva-na-maquina.test.ts` não tem a ação `aceitar_automatico`. A correção é o #250, só no teste, e entra antes de qualquer outro merge. Entrou também o #246 (tela das políticas do SLA).
+- **Dev:** com a 0046.
 - **PRs da 1c:**
-  - #237: zona protegida, a 0046 e o ADR-044 (aprovado), com a `main` juntada depois do #232; esperando o merge do Cesar e o `db push`.
-- **Fora da 1c:** o #238, do agente do Kaio, faz a mesma correção do #236 e pode ser fechado.
-- **Não enviado como PR:** `claude/1c-aceite-automatico-codigo`, o código do M5. Abre depois do merge da 0046 e do `db push`, com a branch refeita a partir da `main`.
+  - #250: a correção da `main`;
+  - #248: a troca de categoria na triagem, com a `main` juntada e a correção do #250.
 - **Esperando:**
-  - o Cesar: o merge do #237 e o `db push` da 0046;
-  - o agente do Kaio: a resposta à revisão do glossário (o #230 já está na `main`).
-- **Próxima tarefa:** as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
+  - o Cesar: o merge do #250, depois o do #248;
+  - as aprovações do glossário (Cesar e Kaio). As divergências a, b, d e e já têm decisão (#242).
+- **Próxima tarefa:** conferir no `docs/13-plano-fase-1c.md` o que falta do item 4 (monitor) depois do M4 e do M5, e então o item 5 (comunicação: o e-mail e o push dos avisos de SLA). Primeiro passo: comparar a seção dos itens 4 e 5 do plano com o que já está na `main`.
+
+## Monitor e comunicação: o que falta (13/10/2026)
+
+**Item 4 (monitor de SLA):** completo na `main`, com as decisões M1 a M5:
+- o `app.sla_alerta` e o monitor no cron do SLA;
+- a política `chamado.escalonamento` e a tela dela (#246);
+- o painel dos avisos e o selo (M4);
+- o aceite automático (M5).
+
+A entrega do escalonamento à central por e-mail e push é o item 5. Até lá, o evento `chamado.sla_alerta` fica no outbox sem consumidor.
+
+**Item 5 (comunicação):** não existe nada além do convite pelo Supabase Auth. Não há provedor de e-mail, adaptador da `EnviadorDeEmail`, push nem recuperação de senha.
+- Escrevi a proposta `docs/referencia/propostas-comunicacao-1c.md`, com as decisões C1 a C9, para o Cesar.
+- Ela tem duas tabelas novas, `app.envio_notificacao` e `app.inscricao_push`. A migração delas é zona protegida e só abre depois da aprovação, na vez do Cesar.
+- A C6 (o idioma dos avisos) muda a decisão de 25/09, se o Cesar escolher a recomendação.
+- O provedor e o DNS do domínio de envio são da F0-12, com o Cesar.
+
+### Ponto de retomada (13/10/2026, comunicação)
+- **`main`:** com o #250 (a correção do typecheck) e o #248 (a troca de categoria na triagem). O #248 entrou com o job "pgTAP" (que roda a integração do `packages/db`) ainda em andamento, e ele terminou verde depois do merge.
+- **Dev:** com a 0046.
+- **PR da 1c:** o desta proposta, só de documento.
+- **Esperando o Cesar:**
+  - as decisões C1 a C9 da comunicação;
+  - as aprovações do glossário (Cesar e Kaio).
+- **Próxima tarefa:** com as decisões, o ADR da comunicação e a migração das duas tabelas (zona protegida, um PR por vez). Primeiro passo: conferir no GitHub se há PR de zona protegida aberto. Enquanto as decisões não chegam, o item 6 (arrendado mínimo, com as decisões 5 a 8 já aprovadas) pode andar na branch, sem o aviso por e-mail.
+
+## Arrendado mínimo (item 6): a matriz como política (13/10/2026)
+
+Começa o item 6, com as decisões 5 a 8 do Cesar (13/10/2026, `docs/13`). Branch `claude/1c-arrendado`, a partir da `main`. O Cesar mandou continuar ("Cesar aqui. Continue") sem responder às decisões C1 a C9 da comunicação, então o item 5 espera.
+
+**Aviso de área compartilhada com a 1b (políticas e `packages/dominio`):**
+- **Domínio:**
+  - `arrendamento.ts`, novo, com `responsavelDoArrendamento` e `matrizDeArrendamentoValida`;
+  - em `politicas.ts`, a chave `hotel.matriz_arrendamento`. A definição de uma chave do núcleo passa a aceitar `escopos`, como a das extensões, e a matriz fica só no grupo e no hotel (decisão 5). `resolverPolitica` e `lerConfiguracao` ignoram o valor gravado num nível que a chave não aceita.
+- **Contrato:** `MatrizDeArrendamentoApi`, no pedido e na resposta da configuração.
+- **Tela:** `/admin/arrendamento`, com a categoria e quem responde (arrendatária ou locador). Os botões gravam no grupo ou no hotel, nunca na bandeira.
+
+**PRs do item 6:**
+1. **Este:** a política e a tela, fora da zona protegida.
+2. **A migração** (zona protegida): a coluna `app.os.responsavel_arrendamento` (`arrendataria` ou `locador`, nula fora do arrendado), com o GRANT de UPDATE para o ajuste na triagem e o ADR. Só abre depois do #244 do Cesar, que é o PR de zona protegida aberto agora.
+3. **A marca na OS:**
+   - a geração da corretiva e da preventiva grava o responsável. A corretiva usa a categoria do chamado (decisão 7); a preventiva, a do ativo;
+   - o ajuste na triagem tem motivo e auditoria;
+   - o evento `os.locador_avisado` sai uma vez por OS (decisão 8);
+   - a linha do tempo e o filtro "do locador".
+
+   O e-mail ao locador espera o item 5.
+
+### Pedido ao agente da 1b: a marca do arrendado na OS preventiva (13/10/2026)
+
+A geração da OS preventiva é da PV3 (1b). Quando a migração 0047 e o código da marca estiverem na `main`, peço que a geração da preventiva grave `responsavel_arrendamento` com `responsavelDoArrendamento(modelo do hotel, matriz resolvida no hotel, categoria do ativo do plano)`. Se o plano não tiver ativo, fica com a arrendatária. O aviso ao locador (`os.locador_avisado`, uma vez por OS) segue a mesma regra da corretiva. A 1c entrega a função no domínio e o padrão no código da corretiva, para a 1b repetir.
+
+### Ponto de retomada (13/10/2026, arrendado)
+- **`main`:** verde, em `5196075`, com o #252 (a proposta da comunicação). O dev está com a 0046.
+- **PR da 1c:** o #254, com a matriz como política e a tela, fora da zona protegida.
+- **Na branch, sem PR:** `claude/1c-arrendado-migracao` (`397f5e5`), com a migração 0047 (`responsavel_arrendamento` e `locador_avisado_em` em `app.os`), o pgTAP 039, os tipos do Kysely e o ADR-045 ("aguarda aprovação"). Abre só depois que o #244 do Cesar entrar, porque ele é o PR de zona protegida aberto agora. Pela ordem do diário da 1b, ela é a próxima da 1c, e a PV3 vem depois. Antes de abrir: conferir a última migração da `main` e o número.
+- **Esperando o Cesar:**
+  - as decisões C1 a C9 da comunicação (#252, já na `main`);
+  - a aprovação do ADR-045, quando o PR dele abrir;
+  - as aprovações do glossário.
+- **Próxima tarefa:** o PR 3 do arrendado, na branch `claude/1c-arrendado-os`, a partir da `main` depois da 0047 e do `db push`. Primeiro passo: em `gerarOs`, na triagem, resolver a matriz e o modelo do hotel e gravar a marca, e depois o aviso.

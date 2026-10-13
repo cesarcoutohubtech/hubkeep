@@ -72,6 +72,7 @@ import {
   RespostaDeListaDeChamados,
   RespostaDeListaDeOs,
   PedidoDeAberturaDeChamado,
+  PedidoDeAjusteDeCategoria,
   PedidoDeAjusteDePrioridade,
   PedidoDeAtribuicaoDeOs,
   PedidoDeAceiteDeOs,
@@ -84,6 +85,7 @@ import {
   RespostaDeChamado,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
+  ConsultaDaFilaDoDia,
   RespostaDeOsDoDia,
   RespostaDeOsGravada,
   RespostaDeReaberturaDeOs,
@@ -1888,6 +1890,25 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'post',
+    caminho: '/api/v1/chamados/{id}/categoria',
+    resumo:
+      'Escolhe, troca ou tira (null) a categoria do chamado até a execução e refaz os prazos de SLA pela cópia da abertura (1c, ADR-042). Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeAjusteDeCategoria,
+    respostas: {
+      200: {
+        descricao: 'Categoria ajustada, com a versão nova',
+        esquema: RespostaDeChamadoAlterado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (triagem_fora_do_papel).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+      409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
+      422: ERRO('categoria_indisponivel ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
     caminho: '/api/v1/chamados/{id}/cancelamento',
     resumo:
       'Cancela o chamado antes da OS (aberto ou em triagem), com motivo. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista.',
@@ -2159,8 +2180,9 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/os/do-dia',
     resumo:
-      'A fila do dia do Técnico (C4): as OS atribuídas, em execução ou pausadas dele e das equipes de que é membro ativo, da mais antiga para a mais nova. O PWA guarda no aparelho e apaga ao sair (ADR-025).',
+      'A fila do dia do Técnico (C4): as OS atribuídas, em execução ou pausadas dele e das equipes de que é membro ativo, da mais antiga para a mais nova. O PWA guarda no aparelho e apaga ao sair (ADR-025). A OS preventiva (PV3), sem chamado, só vem com preventiva=1: o PWA antigo não a recebe.',
     exigeTenant: true,
+    consulta: ConsultaDaFilaDoDia,
     respostas: {
       200: { descricao: 'OS do dia', esquema: RespostaDeOsDoDia },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),

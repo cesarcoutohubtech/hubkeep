@@ -26,6 +26,7 @@
 //
 // M4 (1c, ADR-043): no alto, o selo dos avisos de SLA em aberto, só para a
 // gestão do hotel.
+import type { Idioma } from '@hubkeep/i18n';
 import { MensagemVazia, Nota, Painel } from '@hubkeep/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -49,13 +50,16 @@ import {
 } from '../../../../cliente/corretiva';
 import {
   type CandidatosAResponsavel,
+  type CategoriaDoGrupo,
+  type CategoriaParaEscolha,
   type Execucao,
   type FornecedorParaEscolha,
   type Responsavel,
   TriagemDoChamado,
+  categoriasParaEscolha,
 } from '../../../../cliente/triagem';
 import { type PeriodoDeUh, UhIndisponivelDoChamado } from '../../../../cliente/uh-indisponivel';
-import { useT } from '../../../../i18n/cliente';
+import { useIdioma, useT } from '../../../../i18n/cliente';
 import type { TelaDoChamado as DadosDaTela } from '../../../../servidor/leituras-do-chamado';
 
 type AvisoDaTela = { tipo: 'ok' } | { tipo: 'erro'; erro: ErroDaApi } | null;
@@ -87,6 +91,8 @@ export function TelaDoChamado({
   );
   const [periodos, setPeriodos] = useState<PeriodoDeUh[] | null>(null);
   const [fornecedores, setFornecedores] = useState<FornecedorParaEscolha[] | null>(null);
+  const { idioma } = useIdioma();
+  const [categorias, setCategorias] = useState<CategoriaParaEscolha[] | null>(null);
   // Com os dados (ou a recusa) do servidor, nada a pedir ao montar.
   const veioDoServidor = inicial !== null || erroInicial !== null;
 
@@ -117,6 +123,13 @@ export function TelaDoChamado({
       setFornecedores(r.ok ? r.dados.fornecedores : null),
     );
   }, [carregarPeriodos]);
+
+  // As categorias de ativo do grupo, para a categoria do chamado na triagem (1c).
+  useEffect(() => {
+    void chamarApi<{ idiomaPadrao: Idioma; categorias: CategoriaDoGrupo[] }>(
+      '/api/v1/categorias-de-ativo',
+    ).then((r) => setCategorias(r.ok ? categoriasParaEscolha(r.dados, idioma) : null));
+  }, [idioma]);
 
   useEffect(() => {
     if (veioDoServidor) return;
@@ -212,6 +225,7 @@ export function TelaDoChamado({
               refs={refs}
               candidatos={candidatos}
               fornecedores={fornecedores}
+              categorias={categorias}
               acoes={acoesDaTriagem(detalhe, enviar)}
             />
           </div>
@@ -244,6 +258,8 @@ function acoesDaTriagem(
       void enviar(`${chamado}/triagem`, { versao, prioridadeId }),
     priorizar: (prioridadeId: string) =>
       void enviar(`${chamado}/prioridade`, { versao, prioridadeId }),
+    categorizar: (categoriaId: string | null) =>
+      void enviar(`${chamado}/categoria`, { versao, categoriaId }),
     gerarOs: (responsavel: Responsavel, execucao: Execucao) =>
       void enviar(`${chamado}/os`, { versao, responsavel, ...execucao }),
     cancelarChamado: (motivo: string) => void enviar(`${chamado}/cancelamento`, { versao, motivo }),

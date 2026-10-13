@@ -126,9 +126,11 @@ export interface CasosDeUsoDeExecucao {
   ): Promise<EncerramentoDeParada>;
   /**
    * A fila do dia do Técnico: as OS dele e das equipes dele ainda em curso,
-   * com as fotos "depois" e a política da foto do hotel (I8).
+   * com as fotos "depois" e a política da foto do hotel (I8). A OS preventiva
+   * (PV3), que não tem chamado, só vem quando o PWA diz que a entende
+   * (`preventiva`): o PWA antigo, ainda no aparelho, não a recebe.
    */
-  osDoDia(ctx: Contexto): Promise<OsDoDia[]>;
+  osDoDia(ctx: Contexto, opcoes?: { preventiva?: boolean }): Promise<OsDoDia[]>;
 }
 
 export function criarCasosDeUsoDeExecucao(deps: {
@@ -423,8 +425,9 @@ export function criarCasosDeUsoDeExecucao(deps: {
       return { id: aberta.id, hotelId: os.hotelId, fim };
     },
 
-    async osDoDia(ctx) {
-      const lista = await deps.execucao.osDoDia(ctx);
+    async osDoDia(ctx, opcoes) {
+      const todas = await deps.execucao.osDoDia(ctx);
+      const lista = opcoes?.preventiva ? todas : todas.filter((o) => o.chamado !== null);
       // As políticas da foto "depois" (I8) e do checklist (PV1), uma leitura
       // de cada por hotel da fila.
       const hoteis = [...new Set(lista.map((o) => o.hotelId))];

@@ -13,6 +13,7 @@ import {
   VERSAO_REINCIDENCIA,
   calcularDia,
   fimDoDia,
+  fimDoDiaNoFuso,
 } from '../src';
 import { agora, corretiva, dia, hora } from './apoio';
 
@@ -74,8 +75,8 @@ describe('calcularDia: scores e métrica do dia', () => {
       atencao: a1?.atencao.valor,
       faixaAtencao: a1?.atencao.faixa,
       recalculo: false,
-      versaoFormulaReincidencia: 1,
-      versaoFormulaAtencao: 2,
+      versaoFormulaReincidencia: 3,
+      versaoFormulaAtencao: 4,
       versaoPolitica: 'padrao',
       detalheReincidencia: a1?.reincidencia,
       detalheAtencao: a1?.atencao,
@@ -90,7 +91,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixa: a1?.atencao.faixa,
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: a1?.atencao.valor,
-      versao: 2,
+      versao: 4,
       escopo: { ativoId: 'a1', hotelId: 'h1' },
     });
     expect(atencao[0]?.corretivaIds).toHaveLength(6);
@@ -215,9 +216,16 @@ describe('calcularDia: scores e métrica do dia', () => {
     expect(r.ativos[0]?.atencao.ausentes).toContain('medicoes_fora_da_faixa');
   });
 
-  it('o custo vale pela metade das corretivas encerradas do tenant, inclusive de hotel fora do cálculo', () => {
+  it('o custo vale pela metade das corretivas aceitas do tenant, inclusive de hotel fora do cálculo', () => {
     const com = (ativoId: string, hotelId: string, custoInformado: number | null) =>
-      corretiva({ ativoId, hotelId, abertaEm: dia(-30), concluidaEm: dia(-29), custoInformado });
+      corretiva({
+        ativoId,
+        hotelId,
+        abertaEm: dia(-30),
+        concluidaEm: dia(-29),
+        aceitaEm: dia(-28),
+        custoInformado,
+      });
     const entrada = (corretivas: Corretiva[]) =>
       calcularDia({
         agora,
@@ -229,7 +237,7 @@ describe('calcularDia: scores e métrica do dia', () => {
     const custo = (r: ReturnType<typeof calcularDia>, id: string) =>
       r.ativos.find((a) => a.ativoId === id)?.atencao.componentes.find((c) => c.chave === 'custo');
 
-    // 2 de 4 encerradas do tenant com custo (uma de outro hotel): disponível.
+    // 2 de 4 aceitas do tenant com custo (uma de outro hotel): disponível.
     const sim = entrada([
       com('a1', 'h1', 2000),
       com('a1', 'h1', null),
@@ -238,7 +246,7 @@ describe('calcularDia: scores e métrica do dia', () => {
     ]);
     expect(custo(sim, 'a1')).toMatchObject({
       valor: 0.2,
-      evidencia: { valor12m: 2000, informadas: 1, encerradas: 2, disponivelNoTenant: true },
+      evidencia: { valor12m: 2000, informadas: 1, aceitas: 2, disponivelNoTenant: true },
     });
     // O ativo sem nenhum custo informado soma 0, e não fica sem dado.
     expect(custo(sim, 'a2')).toMatchObject({ valor: 0, evidencia: { informadas: 0 } });
@@ -472,5 +480,53 @@ describe('calcularDia: versões e recálculo no resultado do dia (ADR-036, condi
   it('fimDoDia: o último instante do dia em UTC, e dia inválido é recusado', () => {
     expect(fimDoDia('2026-09-30').toISOString()).toBe('2026-09-30T23:59:59.999Z');
     for (const ruim of ['2026-9-30', '2026-02-30', 'ontem']) expect(() => fimDoDia(ruim)).toThrow();
+  });
+});
+
+describe('calcularDia: o dia no fuso de cada hotel (glossário, divergência a)', () => {
+  // 02:30 UTC de 01/10 ainda é 30/09 em São Paulo (UTC-3) e em Manaus (UTC-4),
+  // e já é 01/10 em Lisboa (UTC+1).
+  const instante = new Date('2026-10-01T02:30:00.000Z');
+  const entrada = (fusoDoH2: string) => ({
+    agora: instante,
+    hoteis: [
+      { hotelId: 'h1', bandeiraId: 'b1', fuso: 'America/Sao_Paulo' },
+      { hotelId: 'h2', bandeiraId: 'b1', fuso: fusoDoH2 },
+    ],
+    ativos: [ativo({ id: 'a1' }), ativo({ id: 'a2', hotelId: 'h2' })],
+    corretivas: [],
+    locais: [],
+  });
+
+  it('cada linha leva a data local do hotel dela', () => {
+    const r = calcularDia(entrada('Europe/Lisbon'));
+    expect(r.metricas.map((m) => [m.ativoId, m.dia])).toEqual([
+      ['a1', '2026-09-30'],
+      ['a2', '2026-10-01'],
+    ]);
+    // O dia da rodada é o menor dos dias locais.
+    expect(r.dia).toBe('2026-09-30');
+  });
+
+  it('no Brasil, às 06:00 UTC do cron, o dia local é o mesmo do calendário em todos os fusos', () => {
+    const cron = new Date('2026-10-01T06:00:00.000Z');
+    const r = calcularDia({ ...entrada('America/Rio_Branco'), agora: cron });
+    expect(r.metricas.map((m) => m.dia)).toEqual(['2026-10-01', '2026-10-01']);
+    expect(r.dia).toBe('2026-10-01');
+  });
+
+  it('fimDoDiaNoFuso: o último instante do dia local, e dia inválido é recusado', () => {
+    expect(fimDoDiaNoFuso('2026-09-30', 'America/Sao_Paulo').toISOString()).toBe(
+      '2026-10-01T02:59:59.999Z',
+    );
+    expect(fimDoDiaNoFuso('2026-09-30', 'America/Manaus').toISOString()).toBe(
+      '2026-10-01T03:59:59.999Z',
+    );
+    expect(fimDoDiaNoFuso('2026-09-30', 'UTC')).toEqual(fimDoDia('2026-09-30'));
+    // No dia em que Lisboa sai do horário de verão (25/10/2026), o dia tem 25 horas.
+    expect(fimDoDiaNoFuso('2026-10-25', 'Europe/Lisbon').toISOString()).toBe(
+      '2026-10-25T23:59:59.999Z',
+    );
+    expect(() => fimDoDiaNoFuso('2026-02-30', 'America/Sao_Paulo')).toThrow();
   });
 });

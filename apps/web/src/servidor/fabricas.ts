@@ -267,6 +267,7 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
         situacoes: criarPortaSituacoes(banco),
         prioridades: criarPortaPrioridades(banco),
         codigos: criarPortaCodigos(banco),
+        categorias: criarPortaCategorias(banco),
         atribuicoes,
         relogio,
         feriadosOficiais,

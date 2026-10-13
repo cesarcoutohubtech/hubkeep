@@ -27,6 +27,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   type AcessoBanco,
   criarAcessoBanco,
+  criarPortaCategorias,
   criarPortaChamados,
   criarPortaConfiguracao,
   criarPortaExecucao,
@@ -49,6 +50,9 @@ const TENANT = randomUUID();
 const H1 = randomUUID();
 const LOBBY = randomUUID();
 const CAT = randomUUID();
+/** Categoria que a triagem escolhe (1c, ADR-042), com exceção de prazo; e uma desativada. */
+const CAT_URGENTE = randomUUID();
+const CAT_DESATIVADA = randomUUID();
 const ELEVADOR = randomUUID();
 const U = {
   admin: randomUUID(),
@@ -119,6 +123,11 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
       [CAT, TENANT],
     );
     await dono.query(
+      `insert into app.categoria_ativo (id, tenant_id, nomes, ativa) values
+       ($1, $3, '{"pt-BR": "Gás"}', true), ($2, $3, '{"pt-BR": "Antiga"}', false)`,
+      [CAT_URGENTE, CAT_DESATIVADA, TENANT],
+    );
+    await dono.query(
       `insert into app.ativo (id, tenant_id, hotel_id, local_id, categoria_id, nome, busca, codigo_qr)
        values ($1, $2, $3, $4, $5, 'Elevador social', 'elevador social', '0000SA0001')`,
       [ELEVADOR, TENANT, H1, LOBBY, CAT],
@@ -167,6 +176,7 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
     triagem = criarCasosDeUsoDeTriagem({
       ...comuns,
       triagem: criarPortaTriagem(banco),
+      categorias: criarPortaCategorias(banco),
       feriadosOficiais: semFeriadosOficiais,
     });
     sincronizacao = criarCasosDeUsoDeSincronizacao({
@@ -303,6 +313,10 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
       versao: 2,
       responsavel: { tipo: 'tecnico', usuarioId: U.tecnico },
     });
+    // A geração grava a hora do banco (now()), e o teste anda no relógio falso.
+    // Sem alinhar, a hora real depois do AGORA puxa o início e a pausa para ela
+    // (horaDaTransicao não volta antes da transição anterior).
+    await dono.query(`update app.os_transicao set quando = $2 where os_id = $1`, [os.id, AGORA]);
     const operar = async (
       tipo: 'os.iniciar' | 'os.pausar' | 'os.retomar',
       versao: number,
@@ -356,5 +370,66 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
     c = await prazos();
     expect(c?.s.toISOString()).toBe('2026-10-14T06:00:00.000Z');
     expect(await pausado()).toBe(7200);
+  });
+
+  it('a troca de categoria na triagem refaz os prazos pela cópia, com antes e depois na auditoria', async () => {
+    await configuracao.gravarPolitica(
+      ctx(U.admin),
+      'chamado.sla',
+      { tipo: 'grupo' },
+      { ...SLA, porCategoria: { [CAT_URGENTE]: { solucaoHoras: 4, relogio: '24x7' } } },
+    );
+    agora = AGORA;
+    ({ id } = await chamados.abrir(ctx(U.gerente), {
+      localId: LOBBY,
+      ativoId: ELEVADOR,
+      descricao: 'Cheiro de gás perto do elevador',
+    }));
+    // Média pela categoria do ativo: 2 h e 10 h no horário de atendimento.
+    let c = await prazos();
+    expect(c?.s.toISOString()).toBe('2026-10-15T20:00:00.000Z');
+
+    // A categoria escolhida sobrepõe a solução (4 h) e o relógio (24x7).
+    let r = await triagem.categorizar(ctx(U.gerente), id, { versao: 1, categoriaId: CAT_URGENTE });
+    c = await prazos();
+    expect(c?.categoria_id).toBe(CAT_URGENTE);
+    expect(c?.a.toISOString()).toBe('2026-10-13T22:00:00.000Z');
+    expect(c?.s.toISOString()).toBe('2026-10-14T00:00:00.000Z');
+    const auditoria = await dono.query<{
+      antes: Record<string, unknown>;
+      depois: Record<string, unknown>;
+    }>(
+      `select antes, depois from app.auditoria
+       where tenant_id = $1 and registro_id = $2 and acao = 'categorizar'`,
+      [TENANT, id],
+    );
+    expect(auditoria.rows[0]?.antes).toMatchObject({
+      categoria_id: CAT,
+      prazo_solucao: '2026-10-15T20:00:00.000Z',
+    });
+    expect(auditoria.rows[0]?.depois).toMatchObject({
+      categoriaId: CAT_URGENTE,
+      prazoSolucao: '2026-10-14T00:00:00.000Z',
+    });
+    const evento = await dono.query(
+      `select 1 from app.evento_dominio
+       where tenant_id = $1 and registro_id = $2 and tipo = 'chamado.categoria_alterada'`,
+      [TENANT, id],
+    );
+    expect(evento.rowCount).toBe(1);
+
+    // Sem categoria, volta à linha da prioridade.
+    r = await triagem.categorizar(ctx(U.gerente), id, { versao: r.versao, categoriaId: null });
+    c = await prazos();
+    expect(c?.categoria_id).toBeNull();
+    expect(c?.a.toISOString()).toBe('2026-10-15T12:00:00.000Z');
+    expect(c?.s.toISOString()).toBe('2026-10-15T20:00:00.000Z');
+
+    await expect(
+      triagem.categorizar(ctx(U.gerente), id, { versao: r.versao, categoriaId: CAT_DESATIVADA }),
+    ).rejects.toMatchObject({ codigo: 'categoria_indisponivel' });
+    await expect(
+      triagem.categorizar(ctx(U.solicitante), id, { versao: r.versao, categoriaId: CAT }),
+    ).rejects.toMatchObject({ codigo: 'triagem_fora_do_papel' });
   });
 });
