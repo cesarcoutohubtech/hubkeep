@@ -38,6 +38,7 @@ export interface ChamadoParaTriagem {
     /** Como está no banco: a cópia da abertura, com a chamado.sla e o horário. */
     politicaAplicada: unknown;
     prazoAtendimento: Date | null;
+    prazoSolucao: Date | null;
     pausadoSegundos: number;
     /** O chamado já teve OS, de qualquer estado: o prazo de atendimento não muda mais. */
     jaTeveOs: boolean;

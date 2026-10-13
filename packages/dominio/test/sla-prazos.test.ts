@@ -6,10 +6,12 @@ import {
   SLA_PADRAO,
   anosDoCalendario,
   calendarioDeSla,
+  pausaDoChamadoParaORelogio,
   prazosDoChamado,
   prazosNoRecalculo,
   regiaoDoHotel,
   slaDaCopia,
+  slaDoChamado,
 } from '../src/index';
 
 const SP = 'America/Sao_Paulo';
@@ -119,5 +121,42 @@ describe('a região dos feriados do hotel', () => {
     expect(anos[0]).toBe(2025);
     expect(anos).toContain(2027);
     expect(anos.at(-1)).toBeGreaterThanOrEqual(2036);
+  });
+});
+
+describe('a pausa do chamado e o relógio', () => {
+  const CAT = '0193f0a0-0000-7000-8000-000000000001';
+  const P = '0193f0a0-0000-7000-8000-0000000000aa';
+  const prioridades = [{ id: P, chavePadrao: 'media', peso: 20 }];
+  const copia = (pausa: boolean) => ({
+    'chamado.sla': { ...SLA_PADRAO, porCategoria: { [CAT]: { pausa } } },
+    'hotel.horario_atendimento': HORARIO_PADRAO,
+  });
+  const prazo = new Date('2026-10-16T14:00:00Z');
+  const sla = (pausa: boolean, categoriaId: string | null = CAT) =>
+    slaDoChamado({ politicaAplicada: copia(pausa), prioridadeId: P, prioridades, categoriaId });
+
+  it('para com a categoria ligada e o motivo da lista', () => {
+    expect(sla(true)?.regra).toMatchObject({ relogio: 'atendimento', pausa: true });
+    expect(pausaDoChamadoParaORelogio(sla(true), prazo, 'aguardando_peca')).toBe(true);
+  });
+
+  it('não para: motivo fora da lista, sem motivo, categoria sem pausa, sem prazo ou sem cópia', () => {
+    expect(pausaDoChamadoParaORelogio(sla(true), prazo, 'fim_de_turno')).toBe(false);
+    expect(pausaDoChamadoParaORelogio(sla(true), prazo, null)).toBe(false);
+    expect(pausaDoChamadoParaORelogio(sla(false), prazo, 'aguardando_peca')).toBe(false);
+    expect(pausaDoChamadoParaORelogio(sla(true, null), prazo, 'aguardando_peca')).toBe(false);
+    expect(pausaDoChamadoParaORelogio(sla(true), null, 'aguardando_peca')).toBe(false);
+    expect(
+      slaDoChamado({ politicaAplicada: {}, prioridadeId: P, prioridades, categoriaId: CAT }),
+    ).toBeNull();
+    expect(
+      slaDoChamado({
+        politicaAplicada: copia(true),
+        prioridadeId: 'outra',
+        prioridades,
+        categoriaId: CAT,
+      }),
+    ).toBeNull();
   });
 });

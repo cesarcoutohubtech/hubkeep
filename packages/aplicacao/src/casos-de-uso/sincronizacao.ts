@@ -15,7 +15,7 @@
 // como 409 conflito_de_versao, sem guardar a chave (ADR-029). As respostas
 // do checklist (PV1, ADR-040) vão sem a versão da OS: o servidor mescla item a
 // item, e a última operação processada vence.
-import type { Contexto } from '@hubkeep/dominio';
+import type { Contexto, MotivoDePausa } from '@hubkeep/dominio';
 import type { PortaOperacoesOffline, RespostaDeOperacao } from '../portas/sincronizacao';
 import type { PreferenciasGravadas } from '../portas/preferencias';
 import type {
@@ -61,6 +61,8 @@ export type OperacaoOffline =
               solucaoId?: string | null | undefined;
             }
           | undefined;
+        /** Na pausa, o motivo (1c, ADR-042); sem ele, a pausa nunca para o relógio. */
+        motivo?: MotivoDePausa | undefined;
       };
     }
   | {
@@ -171,6 +173,7 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
             uhLiberada,
             concluidaEm: concluidaEm === undefined ? undefined : new Date(concluidaEm),
             codigos,
+            motivo: acao === 'pausar' ? (operacao.dados.motivo ?? null) : undefined,
           });
           // A parada e a UH encerram na mesma unit of work da conclusão: o
           // reenvio devolve a resposta guardada e não encerra de novo.

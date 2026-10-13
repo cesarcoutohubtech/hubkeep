@@ -5,13 +5,19 @@
 //     Solicitante lê pela RLS, e a cópia da chamado.sla e do horário;
 //   - mudar a política depois não muda o chamado: a triagem com outra
 //     prioridade refaz os prazos pela cópia, com antes e depois na auditoria;
-//   - depois da OS, a troca de prioridade só muda o prazo de solução.
+//   - depois da OS, a troca de prioridade só muda o prazo de solução;
+//   - a pausa com motivo da lista, na categoria com a pausa ligada, para o
+//     relógio: a retomada refaz o prazo de solução e soma o tempo parado; o
+//     motivo vai na transição, e a auditoria leva o antes e o depois. A
+//     pausa com motivo fora da lista não muda nada.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
 import {
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeConfiguracao,
+  criarCasosDeUsoDeExecucao,
+  criarCasosDeUsoDeSincronizacao,
   criarCasosDeUsoDeSituacoes,
   criarCasosDeUsoDeTriagem,
 } from '@hubkeep/aplicacao';
@@ -23,6 +29,8 @@ import {
   criarAcessoBanco,
   criarPortaChamados,
   criarPortaConfiguracao,
+  criarPortaExecucao,
+  criarPortaOperacoesOffline,
   criarPortaPrioridades,
   criarPortaSituacoes,
   criarPortaTriagem,
@@ -51,7 +59,9 @@ const U = {
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 // Terça, 13/10/2026, 17h em São Paulo; a quarta é feriado do hotel.
 const AGORA = new Date('2026-10-13T20:00:00Z');
-const relogio = { agora: () => AGORA };
+const H = 3_600_000;
+let agora = AGORA;
+const relogio = { agora: () => agora };
 
 const linha = (atendimentoHoras: number, solucaoHoras: number, r: '24x7' | 'atendimento') => ({
   atendimentoHoras,
@@ -77,6 +87,7 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
   let chamados: ReturnType<typeof criarCasosDeUsoDeChamados>;
   let triagem: ReturnType<typeof criarCasosDeUsoDeTriagem>;
   let configuracao: ReturnType<typeof criarCasosDeUsoDeConfiguracao>;
+  let sincronizacao: ReturnType<typeof criarCasosDeUsoDeSincronizacao>;
   const prioridade: Record<string, string> = {};
   let id = '';
 
@@ -158,6 +169,20 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
       triagem: criarPortaTriagem(banco),
       feriadosOficiais: semFeriadosOficiais,
     });
+    sincronizacao = criarCasosDeUsoDeSincronizacao({
+      operacoes: criarPortaOperacoesOffline(banco),
+      ativos: {
+        prepararCadastro: () => Promise.reject(new Error('fora do teste')),
+        prepararAlteracao: () => Promise.reject(new Error('fora do teste')),
+      },
+      chamados,
+      execucao: criarCasosDeUsoDeExecucao({
+        ...comuns,
+        execucao: criarPortaExecucao(banco),
+        triagem: criarPortaTriagem(banco),
+        feriadosOficiais: semFeriadosOficiais,
+      }),
+    });
     configuracao = criarCasosDeUsoDeConfiguracao({
       configuracao: criarPortaConfiguracao(banco),
       atribuicoes,
@@ -178,6 +203,7 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
     for (const t of [
       'app.evento_dominio',
       'app.auditoria',
+      'app.operacao_offline',
       'app.os_transicao',
       'app.os',
       'app.chamado',
@@ -256,5 +282,79 @@ describe.skipIf(!temBanco)('1c — prazos de SLA no chamado', { timeout: 60_000 
     const c = await prazos();
     expect(c?.a.toISOString()).toBe('2026-10-13T21:00:00.000Z');
     expect(c?.s.toISOString()).toBe('2026-10-15T20:00:00.000Z');
+  });
+
+  it('a pausa com motivo da lista para o relógio; a retomada refaz o prazo e soma o tempo parado', async () => {
+    await configuracao.gravarPolitica(
+      ctx(U.admin),
+      'chamado.sla',
+      { tipo: 'grupo' },
+      { ...SLA, porCategoria: { [CAT]: { pausa: true } } },
+    );
+    agora = AGORA;
+    ({ id } = await chamados.abrir(ctx(U.gerente), {
+      localId: LOBBY,
+      ativoId: ELEVADOR,
+      descricao: 'Elevador parado entre andares',
+    }));
+    // Alta, 2 h e 8 h em 24x7: a solução vence às 4h (UTC) de quarta.
+    await triagem.triar(ctx(U.gerente), id, { versao: 1, prioridadeId: prioridade['alta'] });
+    const os = await triagem.gerarOs(ctx(U.gerente), id, {
+      versao: 2,
+      responsavel: { tipo: 'tecnico', usuarioId: U.tecnico },
+    });
+    const operar = async (
+      tipo: 'os.iniciar' | 'os.pausar' | 'os.retomar',
+      versao: number,
+      em: number,
+      motivo?: 'aguardando_peca' | 'fim_de_turno',
+    ) => {
+      agora = new Date(AGORA.getTime() + em);
+      const r = await sincronizacao.receberOperacao(ctx(U.tecnico), {
+        chave: randomUUID(),
+        tipo,
+        dados: { osId: os.id, versao, ...(motivo ? { motivo } : {}) },
+      });
+      return Number(r.resposta['versao']);
+    };
+    let v = await operar('os.iniciar', os.versao, 0.25 * H);
+    v = await operar('os.pausar', v, 1 * H, 'aguardando_peca');
+    v = await operar('os.retomar', v, 3 * H);
+    let c = await prazos();
+    expect(c?.s.toISOString()).toBe('2026-10-14T06:00:00.000Z');
+    const pausado = async () =>
+      (
+        await dono.query<{ n: number }>(
+          `select pausado_segundos as n from app.chamado where id = $1`,
+          [id],
+        )
+      ).rows[0]?.n;
+    expect(await pausado()).toBe(7200);
+    const transicao = await dono.query<{ motivo_pausa: string | null }>(
+      `select motivo_pausa from app.os_transicao where os_id = $1 and acao = 'pausar'`,
+      [os.id],
+    );
+    expect(transicao.rows).toEqual([{ motivo_pausa: 'aguardando_peca' }]);
+    const auditoria = await dono.query<{ acao: string; depois: Record<string, unknown> }>(
+      `select acao, depois from app.auditoria
+       where tenant_id = $1 and registro_id = $2 and acao in ('pausar', 'retomar') order by em`,
+      [TENANT, os.id],
+    );
+    expect(auditoria.rows[0]?.depois).toMatchObject({
+      motivoPausa: 'aguardando_peca',
+      pausaParaORelogio: true,
+    });
+    expect(auditoria.rows[1]?.depois).toMatchObject({
+      prazoSolucaoAntes: '2026-10-14T04:00:00.000Z',
+      prazoSolucao: '2026-10-14T06:00:00.000Z',
+      pausadoSegundos: 7200,
+    });
+
+    // Fim de turno não está na lista: a pausa não para o relógio.
+    v = await operar('os.pausar', v, 4 * H, 'fim_de_turno');
+    await operar('os.retomar', v, 5 * H);
+    c = await prazos();
+    expect(c?.s.toISOString()).toBe('2026-10-14T06:00:00.000Z');
+    expect(await pausado()).toBe(7200);
   });
 });

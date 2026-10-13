@@ -612,3 +612,42 @@ export function prazosNoRecalculo(p: {
     ? { prazoAtendimento: p.prazoAtendimentoGravado, prazoSolucao: novos.prazoSolucao }
     : novos;
 }
+
+/**
+ * A regra do chamado lida da cópia (ADR-042), com a prioridade e a categoria
+ * dele. Sem cópia (chamado de antes da 0043) ou com a prioridade fora da
+ * lista do tenant, null: nada de SLA para ele.
+ */
+export function slaDoChamado(p: {
+  politicaAplicada: unknown;
+  prioridadeId: string;
+  prioridades: readonly PrioridadeParaSla[];
+  categoriaId: string | null;
+}): { copia: SlaAplicado; regra: RegraDeSla } | null {
+  const copia = slaDaCopia(p.politicaAplicada);
+  const prioridade = p.prioridades.find((x) => x.id === p.prioridadeId);
+  if (!copia || !prioridade) return null;
+  return {
+    copia,
+    regra: regraDeSla({
+      sla: copia['chamado.sla'],
+      prioridade,
+      prioridades: p.prioridades,
+      categoriaId: p.categoriaId,
+    }),
+  };
+}
+
+/**
+ * A pausa da OS para o relógio da solução (decisão 6 e ajuste C): o chamado
+ * tem SLA e prazo de solução, a categoria ligou a pausa e o motivo está na
+ * lista da cópia. Sem motivo, nunca.
+ */
+export const pausaDoChamadoParaORelogio = (
+  sla: { copia: SlaAplicado; regra: RegraDeSla } | null,
+  prazoSolucao: Date | null,
+  motivo: MotivoDePausa | null,
+): boolean =>
+  sla !== null &&
+  prazoSolucao !== null &&
+  pausaParaORelogio(sla.regra, sla.copia['chamado.sla'].motivosQuePausam, motivo);
