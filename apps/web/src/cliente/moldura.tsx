@@ -15,8 +15,12 @@
 // HubKeep Intelligence (módulo opcional; decisão do Cesar de 10/10/2026): o
 // item do menu aparece só quando GET /api/v1/inteligencia/resumo responde,
 // com a contagem dos insights abertos. Sem o módulo no grupo, ou sem papel
-// que decide insight, a rota responde 404 e o item não existe. A moldura não
-// importa o pacote do módulo: fala só com a API.
+// que decide insight, a rota responde 404 e o item não existe. Antes da
+// abertura das telas (inteligencia.visibilidade_telas; adendo ao ADR-035 de
+// 12/10/2026), o resumo também responde 404; aí, se GET
+// /api/v1/inteligencia/abertura responde (só o Admin do grupo), o item aparece
+// sem contagem e leva à página da abertura. A moldura não importa o pacote do
+// módulo: fala só com a API.
 import { type Chave, type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import {
   Botao,
@@ -95,6 +99,9 @@ export const ITEM_DO_INTELLIGENCE = {
   chave: 'menu.inteligencia',
 } as const satisfies { grupo: Chave; href: string; chave: Chave };
 
+/** Para o Admin do grupo, com as telas ainda fechadas: a página da abertura. */
+export const HREF_DA_ABERTURA = '/inteligencia/abertura';
+
 /** O item do Intelligence fica ativo em todas as telas do módulo. */
 export const intelligenceAtivo = (caminho: string) =>
   caminho === '/inteligencia' || caminho.startsWith('/inteligencia/');
@@ -127,6 +134,7 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/inteligencia\/insights$/, 'menu.inteligencia'],
   [/^\/inteligencia\/insights\/[^/]+$/, 'inteligencia.pagina.titulo'],
   [/^\/inteligencia\/ativos\/[^/]+$/, 'inteligencia.ativo.titulo'],
+  [/^\/inteligencia\/abertura$/, 'inteligencia.abertura.titulo'],
 ];
 
 export const tituloDaRota = (caminho: string): Chave | undefined =>
@@ -157,6 +165,8 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
   const [tema, setTema] = useState<Tema>(temaInicial);
   // Insights abertos, ou null: sem o Intelligence para quem vê, sem item.
   const [abertos, setAbertos] = useState<number | null>(null);
+  // Telas fechadas, mas quem vê é o Admin do grupo: o item leva à abertura.
+  const [soAbertura, setSoAbertura] = useState(false);
 
   useEffect(() => {
     const salvo = lerCookie(COOKIE_TENANT);
@@ -192,9 +202,10 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
 
   useEffect(() => {
     if (!grupoPronto) return;
-    void chamarApi<{ abertos: number }>('/api/v1/inteligencia/resumo').then((r) =>
-      setAbertos(r.ok ? r.dados.abertos : null),
-    );
+    void chamarApi<{ abertos: number }>('/api/v1/inteligencia/resumo').then(async (r) => {
+      setAbertos(r.ok ? r.dados.abertos : null);
+      setSoAbertura(!r.ok && (await chamarApi('/api/v1/inteligencia/abertura')).ok);
+    });
   }, [grupoPronto, caminho]);
 
   function trocarGrupo(tn: string) {
@@ -249,13 +260,13 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
               ))}
             </GrupoDeMenu>
           ))}
-          {abertos !== null && (
+          {(abertos !== null || soAbertura) && (
             <GrupoDeMenu rotulo={t(ITEM_DO_INTELLIGENCE.grupo)}>
               <ItemDeMenu
-                href={ITEM_DO_INTELLIGENCE.href}
+                href={abertos !== null ? ITEM_DO_INTELLIGENCE.href : HREF_DA_ABERTURA}
                 componente={Link}
                 ativo={intelligenceAtivo(caminho)}
-                contagem={abertos}
+                {...(abertos !== null ? { contagem: abertos } : {})}
               >
                 {t(ITEM_DO_INTELLIGENCE.chave)}
               </ItemDeMenu>

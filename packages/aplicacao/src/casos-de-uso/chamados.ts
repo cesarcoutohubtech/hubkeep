@@ -170,6 +170,7 @@ export function criarCasosDeUsoDeChamados(deps: {
         prioridadeId: prioridade.prioridadeId,
         politicaAplicada: politicaAplicadaNaAbertura({ categoriaId, prioridade, sla, horario }),
         categoriaId,
+        abertoEm,
         ...prazos,
         origem: ORIGEM_PADRAO_DO_CHAMADO,
         impactoHospede: pedido.impactoHospede ?? null,

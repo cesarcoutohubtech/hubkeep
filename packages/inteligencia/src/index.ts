@@ -15,3 +15,4 @@ export * from './reincidencia';
 export * from './score';
 export * from './sistemico';
 export * from './substituicao';
+export * from './visibilidade';

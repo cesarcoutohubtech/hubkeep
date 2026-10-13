@@ -44,6 +44,11 @@ export interface DadosDeChamado {
   politicaAplicada: object;
   /** A categoria do chamado, do ativo na abertura (1c, ADR-042). */
   categoriaId: string | null;
+  /**
+   * A hora da abertura, que vira o criado_em do chamado: os prazos de SLA
+   * contam dela, na abertura e no recálculo da triagem (ADR-042).
+   */
+  abertoEm: Date;
   /** Os prazos de SLA calculados da abertura (ADR-042). */
   prazoAtendimento: Date;
   prazoSolucao: Date;

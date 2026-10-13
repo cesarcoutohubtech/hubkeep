@@ -2,7 +2,8 @@
 // decide por último: abre quem tem escrita no hotel, em nome dele mesmo. Com o
 // equipamento parado (C5), a parada aberta do ativo vai na mesma unit of work;
 // com a UH indisponível (I4), o período aberto da UH também. Na 1c
-// (ADR-042), a categoria e os prazos de SLA vão na mesma linha.
+// (ADR-042), a categoria e os prazos de SLA vão na mesma linha, e o criado_em
+// é a hora da abertura de que os prazos contam.
 import type { DadosDeChamado } from '@hubkeep/aplicacao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
@@ -33,6 +34,7 @@ export async function criarChamado(
       categoria_id: d.categoriaId,
       prazo_atendimento: d.prazoAtendimento,
       prazo_solucao: d.prazoSolucao,
+      criado_em: d.abertoEm,
       origem: d.origem,
       impacto_hospede: d.impactoHospede,
       aberto_por: uow.usuarioId,

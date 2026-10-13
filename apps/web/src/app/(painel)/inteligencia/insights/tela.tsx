@@ -76,11 +76,14 @@ export function TelaDeInsights() {
   const [hoteis, setHoteis] = useState<Hoteis['hoteis']>([]);
   const [lista, setLista] = useState<Lista | null>(null);
   const [erro, setErro] = useState<ErroDaApi | null>(null);
+  // Só o Admin do grupo lê a abertura das telas: para ele, o link.
+  const [veAbertura, setVeAbertura] = useState(false);
 
   useEffect(() => {
     void chamarApi<Resumo>('/api/v1/inteligencia/resumo').then((r) =>
       r.ok ? setResumo(r.dados) : setErro(r.erro),
     );
+    void chamarApi('/api/v1/inteligencia/abertura').then((r) => setVeAbertura(r.ok));
     void chamarApi<Hoteis>('/api/v1/hoteis').then((r) => r.ok && setHoteis(r.dados.hoteis));
   }, []);
 
@@ -103,6 +106,11 @@ export function TelaDeInsights() {
   return (
     <div className="hk-pilha">
       <Nota tom="info">{t('inteligencia.lista.modulo')}</Nota>
+      {veAbertura && (
+        <p>
+          <Link href="/inteligencia/abertura">{t('inteligencia.abertura.link')}</Link>
+        </p>
+      )}
       <Aviso aviso={erro && { tipo: 'erro', erro }} />
       {resumo && (
         <Indicadores rotulo={t('inteligencia.indicadores.rotulo')}>
