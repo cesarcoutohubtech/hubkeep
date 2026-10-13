@@ -130,6 +130,7 @@ describe('manipulador do evento membro.convidado (etapa e)', () => {
     id: 'e1',
     tenantId: 't1',
     tipo: 'membro.convidado',
+    registroId: 'u1',
     payload: {
       usuarioId: 'u1',
       email: 'convidada@exemplo.com',

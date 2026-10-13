@@ -200,7 +200,7 @@ function escopoDe(l: LinhaAtribuicao): Escopo {
   }
 }
 
-const paraAtribuicao = (l: LinhaAtribuicao): Atribuicao => ({
+export const paraAtribuicao = (l: LinhaAtribuicao): Atribuicao => ({
   id: l.id,
   usuarioId: l.usuario_id,
   papel: l.papel,
@@ -221,7 +221,9 @@ const COLUNAS = [
   'revogado_em',
 ] as const;
 
-const selecionar = (tx: Tx) => tx.selectFrom('app.atribuicao_escopo').select(COLUNAS);
+export const selecionarAtribuicoes = (tx: Tx) =>
+  tx.selectFrom('app.atribuicao_escopo').select(COLUNAS);
+const selecionar = selecionarAtribuicoes;
 
 export function criarPortasDeAplicacao(banco: AcessoBanco): {
   hoteis: PortaHoteis;

@@ -94,6 +94,7 @@ import {
 } from './chamados';
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
 import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
+import { ConsultaDaContagemDeEnvios, RespostaDaContagemDeEnvios } from './comunicacao';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
@@ -1811,6 +1812,22 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Quem pede não é da gestão (auditoria_sem_permissao).'),
       422: ERRO(
         'Período acima de 92 dias ou com o fim antes do início (auditoria_periodo_invalido, com maximoDias), cursor inválido (auditoria_cursor_invalido) ou filtro fora do formato (entrada_invalida).',
+      ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/comunicacao/envios/contagem',
+    resumo:
+      'Contagem de envios por destinatário e por dia (1c, ADR-046, C8), para a gestão saber quem passa do limite por pessoa e por dia e abrir o resumo agrupado. O dia é a data UTC do envio, e as falhas não contam. Do dia mais recente; no mesmo dia, de quem recebeu mais. Só a gestão: Admin do grupo, Gestor CSC e Gerente do hotel, nos hotéis de cada um (RLS).',
+    exigeTenant: true,
+    consulta: ConsultaDaContagemDeEnvios,
+    respostas: {
+      200: { descricao: 'A contagem no período', esquema: RespostaDaContagemDeEnvios },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão (envios_fora_do_papel).'),
+      422: ERRO(
+        'Período acima de 31 dias ou com o fim antes do início (periodo_invalido, com maximoDias) ou filtro fora do formato (entrada_invalida).',
       ),
     },
   },

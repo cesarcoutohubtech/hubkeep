@@ -784,3 +784,37 @@ O PR é de zona protegida e só abre na vez dele, depois da parte protegida da P
 - **Próxima tarefa:** o PR do e-mail do SLA (fora da zona protegida), na branch, a partir desta.
   - **O que entra:** a porta `EnviadorDeEmail` com o adaptador "desligado", o manipulador do `chamado.sla_alerta`, o modelo do e-mail no catálogo, o registro dos envios, a contagem do C8 e o teste de paridade.
   - **Primeiro passo:** ler `packages/aplicacao/src/casos-de-uso/eventos.ts` e a porta `EnviadorDeEmail`.
+
+## Comunicação, PR do e-mail do SLA: na branch (13/10/2026)
+
+O #261 entrou na `main`. A branch `claude/1c-email-sla` foi feita a partir da `claude/1c-comunicacao-migracao`, com a `main` mesclada. O PR só abre depois que a migração da comunicação estiver na `main` e no dev, porque o código grava em `app.envio_notificacao`.
+
+**Aviso de área compartilhada com a 1b (`packages/dominio`, outbox e catálogos):**
+- **Domínio** (`comunicacao.ts`):
+  - `CANAIS_DE_ENVIO`, `SITUACOES_DE_ENVIO` e `LIMITE_DE_ENVIOS_POR_DIA` (30, C8);
+  - `pessoasDoAviso`: os papéis pelas atribuições vigentes que cobrem o hotel, mais o responsável da OS ativa, que é o Técnico ou os membros ativos da equipe;
+  - `situacaoAntesDoEnvio` (`sem_endereco` e `sem_provedor`), `podeVerContagemDeEnvios` e `validarPeriodoDaContagem` (até 31 dias).
+- **Aplicação:**
+  - o manipulador do `chamado.sla_alerta` em `criarManipuladoresDeEventos`, com a dependência opcional `comunicacao`;
+  - um e-mail por pessoa, no idioma dela e depois no do tenant (C6);
+  - o envio já registrado não sai de novo, e a falha de uma pessoa não para as outras;
+  - o `EventoPendente` ganha o `registroId`, o chamado do aviso;
+  - o caso de uso `contagemDeEnvios` (C8).
+- **Banco:**
+  - `criarPortaComunicacao`, que lê com o `hk_worker` e grava o registro pela unit of work (`repositorios/comunicacao.ts`);
+  - o outbox passa o `registro_id` ao manipulador.
+- **Web:**
+  - na composição, o manipulador com o e-mail desligado (`email: null`, C1): até o SES, cada envio fica como `sem_provedor`;
+  - a rota `GET /api/v1/comunicacao/envios/contagem`.
+- **Catálogos:** o modelo `email.sla.*`, com o texto puro e o HTML e o prazo no fuso do hotel, e o erro `envios_fora_do_papel`, nos 4 idiomas.
+- **Testes:**
+  - domínio, i18n e aplicação, com portas falsas;
+  - a paridade dos dois checks da 0048;
+  - a integração `packages/db/test/comunicacao.test.ts`, que roda só na CI.
+
+**Fica para depois:**
+- o adaptador do SES, quando o Cesar configurar a conta (C1);
+- a tela da contagem: a API já serve o piloto;
+- o push.
+
+**Validação local:** lint e typecheck passaram, e os testes também: 4.580 passaram e nenhum falhou. Os 296 de integração ficaram pulados, porque rodam só na CI.

@@ -1,0 +1,34 @@
+// Comunicação (1c, item 5; ADR-046): a contagem de envios por destinatário e
+// por dia (C8), para a gestão saber quem passa do limite e abrir o resumo
+// agrupado. O dia é a data UTC do envio; as falhas não contam.
+import { z } from 'zod';
+
+/** Período de até 31 dias, de (inclusive) até ate (exclusive); o hotel é opcional. */
+export const ConsultaDaContagemDeEnvios = z
+  .object({
+    de: z.iso.datetime({ offset: true }),
+    ate: z.iso.datetime({ offset: true }),
+    hotelId: z.guid().optional(),
+  })
+  .meta({ id: 'ConsultaDaContagemDeEnvios' });
+
+export const ContagemDeEnviosApi = z
+  .object({
+    usuarioId: z.guid(),
+    /** Null se quem pede não lê o membro. */
+    nome: z.string().nullable(),
+    /** AAAA-MM-DD, em UTC. */
+    dia: z.iso.date(),
+    envios: z.int(),
+    /** Passou do limite por pessoa e por dia (C8). */
+    acimaDoLimite: z.boolean(),
+  })
+  .meta({ id: 'ContagemDeEnviosApi' });
+
+export const RespostaDaContagemDeEnvios = z
+  .object({
+    limite: z.int(),
+    /** Do dia mais recente; no mesmo dia, de quem recebeu mais. */
+    dias: z.array(ContagemDeEnviosApi),
+  })
+  .meta({ id: 'RespostaDaContagemDeEnvios' });

@@ -462,6 +462,13 @@
   "email.convite.acao": "Accepter l’invitation",
   "email.convite.depois": "Après avoir accepté, vous définirez votre mot de passe.",
   "email.convite.ignorar": "Si vous n’attendiez pas cette invitation, ignorez cet e-mail.",
+  "email.sla.assunto": "{tipo, select, atendimento_em_risco {Prise en charge proche de l’échéance} atendimento_vencido {Prise en charge en retard} solucao_em_risco {Résolution proche de l’échéance} other {Résolution en retard}} — {hotel}",
+  "email.sla.titulo": "{tipo, select, atendimento_em_risco {Prise en charge proche de l’échéance} atendimento_vencido {Prise en charge en retard} solucao_em_risco {Résolution proche de l’échéance} other {Résolution en retard}}",
+  "email.sla.chamado": "Demande : {descricao}",
+  "email.sla.onde": "Hôtel : {hotel}",
+  "email.sla.prazo": "Échéance : {prazo}",
+  "email.sla.acao": "Ouvrir la demande",
+  "email.sla.motivo": "Vous recevez cette alerte en raison de la politique d’escalade de l’hôtel.",
 
   "menu.equipes": "Équipes",
   "admin.equipes.titulo": "Équipes de l’hôtel",
@@ -729,6 +736,7 @@
   "erro.chamado_ativo_desativado": "L'équipement est désactivé.",
   "erro.chamado_nao_encontrado": "Demande introuvable.",
   "erro.avisos_sla_fora_do_escopo": "Seule la direction de l’hôtel voit les alertes SLA.",
+  "erro.envios_fora_do_papel": "Seule la direction voit le décompte des envois.",
 
   "menu.chamados": "Demandes",
   "menu.os": "Ordres de travail",

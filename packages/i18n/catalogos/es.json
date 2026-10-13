@@ -462,6 +462,13 @@
   "email.convite.acao": "Aceptar la invitación",
   "email.convite.depois": "Después de aceptar, vas a definir tu contraseña.",
   "email.convite.ignorar": "Si no esperabas esta invitación, ignora este correo.",
+  "email.sla.assunto": "{tipo, select, atendimento_em_risco {Atención cerca de vencer} atendimento_vencido {Atención vencida} solucao_em_risco {Solución cerca de vencer} other {Solución vencida}} — {hotel}",
+  "email.sla.titulo": "{tipo, select, atendimento_em_risco {Atención cerca de vencer} atendimento_vencido {Atención vencida} solucao_em_risco {Solución cerca de vencer} other {Solución vencida}}",
+  "email.sla.chamado": "Solicitud: {descricao}",
+  "email.sla.onde": "Hotel: {hotel}",
+  "email.sla.prazo": "Plazo: {prazo}",
+  "email.sla.acao": "Abrir la solicitud",
+  "email.sla.motivo": "Recibe este aviso por la política de escalamiento del hotel.",
 
   "menu.equipes": "Equipos",
   "admin.equipes.titulo": "Equipos del hotel",
@@ -729,6 +736,7 @@
   "erro.chamado_ativo_desativado": "El activo está desactivado.",
   "erro.chamado_nao_encontrado": "Solicitud no encontrada.",
   "erro.avisos_sla_fora_do_escopo": "Solo la gestión del hotel ve los avisos de SLA.",
+  "erro.envios_fora_do_papel": "Solo la gestión ve el conteo de envíos.",
 
   "menu.chamados": "Solicitudes",
   "menu.os": "Órdenes de trabajo",

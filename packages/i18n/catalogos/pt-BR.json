@@ -462,6 +462,13 @@
   "email.convite.acao": "Aceitar o convite",
   "email.convite.depois": "Depois de aceitar, você vai definir sua senha.",
   "email.convite.ignorar": "Se você não esperava este convite, ignore este e-mail.",
+  "email.sla.assunto": "{tipo, select, atendimento_em_risco {Atendimento perto de vencer} atendimento_vencido {Atendimento vencido} solucao_em_risco {Solução perto de vencer} other {Solução vencida}} — {hotel}",
+  "email.sla.titulo": "{tipo, select, atendimento_em_risco {Atendimento perto de vencer} atendimento_vencido {Atendimento vencido} solucao_em_risco {Solução perto de vencer} other {Solução vencida}}",
+  "email.sla.chamado": "Chamado: {descricao}",
+  "email.sla.onde": "Hotel: {hotel}",
+  "email.sla.prazo": "Prazo: {prazo}",
+  "email.sla.acao": "Abrir o chamado",
+  "email.sla.motivo": "Você recebe este aviso pela política de escalonamento do hotel.",
 
   "menu.equipes": "Equipes",
   "admin.equipes.titulo": "Equipes do hotel",
@@ -729,6 +736,7 @@
   "erro.chamado_ativo_desativado": "O ativo está desativado.",
   "erro.chamado_nao_encontrado": "Chamado não encontrado.",
   "erro.avisos_sla_fora_do_escopo": "Só a gestão do hotel vê os avisos de SLA.",
+  "erro.envios_fora_do_papel": "Só a gestão vê a contagem de envios.",
 
   "menu.chamados": "Chamados",
   "menu.os": "Ordens de serviço",
