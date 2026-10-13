@@ -454,6 +454,27 @@ Resposta ao "Pedido de revisão ao agente da 1c" (`docs/diario-intelligence.md`,
 - **Esperando:** a resposta do agente do Kaio a esta revisão; as decisões das divergências; a aprovação do glossário pelo Cesar.
 - **Próxima tarefa:** o M4, painel dos avisos de SLA (em risco e vencido) e selo na ficha do chamado, numa branch nova a partir da `main`. Primeiro passo: no `avisosDeSla`, o vencido só depois do prazo (`agora > prazo`), com o teste do instante exato. Depois, a leitura dos avisos abertos por hotel para o painel.
 
+## Painel dos avisos de SLA e selo na ficha (M4, 13/10/2026)
+
+**Aviso de área compartilhada (chamado):** a 1c acrescenta o selo dos avisos na ficha do chamado no web (`chamados/[id]/tela.tsx`, sem tocar no `corretiva.tsx`), duas rotas de leitura e textos no catálogo. Branch `claude/1c-avisos-sla`, a partir da `main` com o #224. Fora da zona protegida e sem migração: lê a `app.sla_alerta` da 0044.
+- **Domínio** (`monitor-sla.ts`):
+  - o vencido só depois do prazo, como o "dentro do prazo" do glossário (a correção prometida na revisão do glossário);
+  - `avisosEmAberto`: no máximo um aviso por prazo, o mais forte. O vencido sai do próprio prazo, sem esperar o cron; o em risco, do aviso gravado para o prazo de agora, e o prazo refeito descarta os antigos. O atendimento conta até a primeira OS; a solução, até o serviço concluído;
+  - com a pausa que parou o relógio, o prazo da solução está congelado até a retomada: vale só o aviso já gravado, como no monitor. A aplicação decide a pausa pela cópia do SLA e pelo motivo, com a mesma função do monitor;
+  - `podeVerAvisosDeSla`: a gestão do hotel (Admin do grupo, Gestor CSC e Gerente do hotel), os papéis da policy da `app.sla_alerta`. Fora disso, `avisos_sla_fora_do_escopo`.
+- **Aplicação:** `criarCasosDeUsoDeAvisosDeSla`, com `doHotel` (o painel, os vencidos primeiro e depois pelo prazo) e `doChamado` (o selo; vazio para quem não é da gestão, sem erro).
+- **Banco:** `criarPortaAvisosDeSla` (`packages/db/src/avisos-de-sla.ts`), só leitura com `withContext`: os chamados em curso com prazo e os avisos gravados.
+- **API:**
+  - `GET /api/v1/hoteis/{id}/avisos-sla`, o painel;
+  - `GET /api/v1/chamados/{id}/avisos-sla`, o selo;
+  - no OpenAPI; tipos e níveis conferidos com o domínio.
+- **Telas:**
+  - `/sla` no menu de operação ("Avisos de SLA"), com a escolha do hotel e a lista com o link para a ficha;
+  - na ficha, o selo no alto, relido depois de cada gravação;
+  - vermelho para o vencido e âmbar para o em risco, sempre com o texto.
+- **Catálogo:** o menu, o painel, o texto do aviso e o erro, nos quatro idiomas.
+- **Fica para a comunicação (item 5):** o e-mail e o push, que consomem o evento `chamado.sla_alerta`.
+
 ## Aceite automático (M5): proposta para o Cesar (13/10/2026)
 
 **Aviso de área compartilhada com a 1b (OS e chamado):** o M5 mexe no aceite da OS, no `packages/dominio` (`corretiva.ts`), no `packages/aplicacao` e no `packages/db`. Branch `claude/1c-aceite-automatico`, a partir da `main`.
@@ -514,13 +535,12 @@ Cesar, no chat do agente da 1c: "Aprovo o ADR-044. Atualize o status." O status 
 **A `main` ficou vermelha.** O #231 do Dependabot foi mergeado (`bca63c1`) e subiu o TypeScript para a 7.0.2. O `typescript-eslint` 8.71 não suporta a 7.0, e o `pnpm lint` falha na `main`. A correção é o #236, fora da zona protegida: o TypeScript volta a `~6.0.3`, com o lockfile regenerado. Ela entra antes de qualquer outro merge. Até lá, o lint deste PR também falha, pelo mesmo motivo. Para o Dependabot não propor o TypeScript 7 de novo, falta um `ignore` no `.github/dependabot.yml`, que é zona protegida.
 
 ### Ponto de retomada (13/10/2026, M5)
-- **`main`:** vermelha desde o #231 (TypeScript 7.0.2 quebra o lint). A correção é o #236, que entra antes de qualquer outro merge. Já entraram o #229, o #230 e o #233.
+- **`main`:** verde de novo com o #236 (TypeScript de volta à 6.0). Depois dele entrou o #232 (painel dos avisos de SLA, M4). Já tinham entrado o #229, o #230 e o #233.
 - **PRs da 1c:**
-  - #236: a correção da `main`;
-  - #232: painel dos avisos de SLA (M4), esperando o merge do Cesar depois do #236;
-  - o PR de zona protegida da 0046 e do ADR-044 (aprovado), aberto com a vez dada pelo Cesar.
+  - #237: zona protegida, a 0046 e o ADR-044 (aprovado), com a `main` juntada depois do #232; esperando o merge do Cesar e o `db push`.
+- **Fora da 1c:** o #238, do agente do Kaio, faz a mesma correção do #236 e pode ser fechado.
 - **Não enviado como PR:** `claude/1c-aceite-automatico-codigo`, o código do M5. Abre depois do merge da 0046 e do `db push`, com a branch refeita a partir da `main`.
 - **Esperando:**
-  - o Cesar: o merge do #236, depois o do #232, o da 0046 e o `db push`;
+  - o Cesar: o merge do #237 e o `db push` da 0046;
   - o agente do Kaio: a resposta à revisão do glossário (o #230 já está na `main`).
 - **Próxima tarefa:** as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
