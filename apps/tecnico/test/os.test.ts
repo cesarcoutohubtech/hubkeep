@@ -280,6 +280,32 @@ describe('fila do dia no aparelho', () => {
     }) as typeof fetch;
     expect(await lerOsDoDia(credenciais, semRede)).toBeNull();
   });
+
+  it('não pede a OS preventiva (PV3) e descarta a OS sem chamado, até a tela dela existir', async () => {
+    const urls: string[] = [];
+    const preventiva = {
+      ...osGuardada(OS2, 'atribuida', 1),
+      chamado: null,
+      preventiva: {
+        planoId: B,
+        planoNome: 'PMOC mensal',
+        dataPrevista: '2026-10-13',
+        ativoId: B,
+        ativoNome: 'Split',
+        localId: B,
+        localNome: 'UH 101',
+        localEdificacao: null,
+      },
+    };
+    const requisitar = (async (entrada: RequestInfo | URL) => {
+      urls.push(String(entrada));
+      return new Response(JSON.stringify({ os: [osGuardada(OS1, 'atribuida', 1), preventiva] }));
+    }) as typeof fetch;
+    const lida = await lerOsDoDia(credenciais, requisitar);
+    expect(lida?.os.map((o) => o.id)).toEqual([OS1]);
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).not.toContain('preventiva');
+  });
 });
 
 /** API e Storage falsos para a foto da OS e as operações. */
