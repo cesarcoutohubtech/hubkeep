@@ -1203,7 +1203,7 @@ Primeira das cinco atividades pedidas pelo Kaio em 12/10/2026, nesta ordem: (1) 
 > 2. O Admin do grupo também não vê as telas antes da data; ele vê a data de abertura na configuração e pode antecipá-la pela política.
 > 3. Os 60 dias contam a partir do início do PRIMEIRO contrato do módulo no tenant, e não do contrato vigente. O aPartirDe continua sendo a forma de ajustar.
 > 4. O corte do dia usa o fuso configurado do grupo, com Brasília como padrão, para não depender da célula."
-- **Falta a aprovação do Kaio** ao adendo ao ADR-035 (ADR do Intelligence: Cesar e Kaio). Até ela, o status no `docs/03` é "aguarda a aprovação do Kaio".
+- **Aprovação do Kaio** ao adendo ao ADR-035, em 13/10/2026, nesta sessão: "Eu kaio, aprovo o adendo. Siga". Com as duas, o status no `docs/03` passou a "aprovado pelos dois".
 - **Duas lacunas, levantadas pelo agente antes de agir; o Cesar respondeu "Prossiga" e o agente seguiu as próprias recomendações:**
   - o grupo não tem fuso gravado (`app.tenant` não tem a coluna `fuso`): vale Brasília até o núcleo criar a coluna (pedido abaixo);
   - o adendo está no `docs/03`, que é zona protegida (`.github/workflows/zona-protegida.yml`): um PR só, de zona protegida, com o código e o adendo.
@@ -1237,3 +1237,5 @@ Primeira das cinco atividades pedidas pelo Kaio em 12/10/2026, nesta ordem: (1) 
 - No dev, o Grupo Demonstração do kit tem o módulo desde 10/10/2026. Sem política gravada, as telas lá fecham até 09/12/2026. Para conferir as telas no dev, o Admin do kit grava uma data na página da abertura.
 
 **Não conferido no navegador:** as telas foram testadas renderizadas no servidor, sem rodar o app.
+
+**PR:** não aberto em 12/10/2026, porque o #203 (PV1 do núcleo, zona protegida) estava aberto. A branch `int-visibilidade-telas` está no GitHub, e o PR abre depois do merge do #203.

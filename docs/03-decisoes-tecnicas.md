@@ -901,7 +901,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ### Adendo de 12/10/2026: a visibilidade das telas no piloto
 
-**Status:** aprovado por Cesar em 12/10/2026 ("Cesar aqui", na sessão do agente do Intelligence); aguarda a aprovação do Kaio.
+**Status:** aprovado por Cesar em 12/10/2026 ("Cesar aqui", na sessão do agente do Intelligence) e por Kaio em 13/10/2026 ("Eu kaio, aprovo o adendo", na mesma sessão). Aprovado pelos dois.
 
 **Contexto:** no piloto, o módulo fica vigente desde o primeiro dia, para o job diário acumular métrica e insight; as telas só aparecem depois, quando o histórico já sustenta o que elas mostram.
 
