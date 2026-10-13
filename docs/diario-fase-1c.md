@@ -82,7 +82,10 @@ Branch `claude/gallant-clarke-fptpo9`, zona protegida.
 - **ADR-042** no `docs/03`, com as decisões de 13/10; a `date-holidays` conferida no npm (3.37.0: código ISC, dados CC BY 3.0, 12 versões de maio a setembro de 2026).
 - **`docs/02`:** a linha da tabela nova.
 - **Verificação:** no local, lint, typecheck e testes. O pgTAP só roda na CI, por decisão do Cesar; não rodei nada contra o dev.
-- **Situação:** a branch foi enviada, mas o PR não foi aberto, porque o #203 (PV1, zona protegida) está aberto. O PR abre depois do merge do #203, com a `main` trazida para a branch.
+- **Situação:**
+  - a branch foi enviada sem PR enquanto o #203 (PV1, zona protegida) esteve aberto;
+  - depois do merge do #203, em 13/10/2026, a `main` entrou na branch, com os conflitos resolvidos (no `docs/02`, no `docs/03`, com o ADR-042 depois do ADR-040, no meta-teste 28 e no diário);
+  - conferido no GitHub que nenhum PR de zona protegida estava aberto, o PR foi aberto como "1c: calendário de SLA, migração 0043 (ADR-042) — zona protegida".
 
 ## ADR-042 aprovado (13/10/2026)
 
@@ -153,13 +156,13 @@ A decisão 9 do Cesar mede a meta de tempo do painel de indicadores com o volume
 
 - **Feito:**
   - o glossário em proposta;
-  - o PR do SLA preparado (migração 0043, pgTAP 035 e ADR-042), na branch e sem PR.
+  - o PR do SLA (migração 0043, pgTAP 035 e ADR-042), mergeado no #206.
 - **Próximo:**
-  1. quando o #203 for mergeado: trazer a `main`, resolver os quatro conflitos, rodar lint, typecheck e testes, conferir no GitHub que nenhum PR de zona protegida está aberto e abrir o PR "1c: calendário de SLA, migração 0043 (ADR-042) — zona protegida";
+  1. o PR do SLA (migração 0043 e ADR-042) foi mergeado pelo Cesar no #206, em 13/10/2026; o `db push` é dele, e a conferência do dev é do agente da 1b. A vez seguinte na fila de zona protegida é da PV2, da 1b;
   2. o nível bandeira (item 2) foi mergeado pelo Cesar no #204, em 13/10/2026;
-  3. o domínio do calendário está no PR "1c: domínio do calendário de SLA", à espera da CI e do merge do Cesar;
-  4. depois do merge da 0043: a porta `FeriadosOficiais` com a `date-holidays`, a gravação dos prazos (abertura, triagem e retomada) e o motivo da pausa no PWA, com o catálogo;
-  5. em seguida, o item 4 da ordem: o monitor de SLA e o escalonamento.
+  3. o domínio do calendário está no PR "1c: domínio do calendário de SLA" (#205), com `MOTIVOS_DE_PAUSA` em `tests/valores-canonicos-banco.test.ts`, à espera do merge do Cesar;
+  4. depois do `db push` da 0043: a porta `FeriadosOficiais` com a `date-holidays`, a gravação dos prazos (abertura, triagem e retomada) e o motivo da pausa no PWA, com o catálogo;
+  5. em seguida, o item 4 da ordem: o monitor de SLA e o escalonamento, quando o Cesar decidir as cinco decisões.
 - **Esperando:**
   - o Kaio, nos quatro pontos do glossário e no volume do teste de carga;
   - o Cesar, nas cinco decisões do monitor de SLA (item 4) e na meta de tempo do painel (decisão 9).

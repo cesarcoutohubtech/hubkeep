@@ -5,17 +5,19 @@
 // TIPOS_DE_CODIGO_DE_MANUTENCAO, migração 0036) e para o módulo contratado (I7,
 // MODULOS_CONTRATAVEIS, migração 0037) e, no Intelligence, para o estado e o
 // motivo do descarte do insight (ESTADOS_DO_INSIGHT e MOTIVOS_DE_DESCARTE,
-// migração 0038), e o momento da foto da OS (I8, MOMENTOS_DA_FOTO, migração
-// 0041). Este teste lê as migrações e
-// falha se um check e a lista do domínio divergirem: valor novo exige migração
-// que amplia o check. Os pgTAP 028, 029 e 030 provam, no banco, que o check
-// recusa o que está fora (o 031, no insight; o 033, no momento da foto).
+// migração 0038), o momento da foto da OS (I8, MOMENTOS_DA_FOTO, migração
+// 0041) e o motivo da pausa da OS (1c, MOTIVOS_DE_PAUSA, migração 0043). Este
+// teste lê as migrações e falha se um check e a lista do domínio divergirem:
+// valor novo exige migração que amplia o check. Os pgTAP 028, 029 e 030
+// provam, no banco, que o check recusa o que está fora (o 031, no insight; o
+// 033, no momento da foto; o 035, no motivo da pausa).
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   EXECUTORES_DA_OS,
   MODULOS_CONTRATAVEIS,
   MOMENTOS_DA_FOTO,
+  MOTIVOS_DE_PAUSA,
   ORIGENS_DO_CHAMADO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
 } from '../packages/dominio/src/index';
@@ -70,6 +72,14 @@ describe('valores canônicos: banco × domínio (I7)', () => {
 describe('valores canônicos: banco × domínio (I8)', () => {
   it('anexo_momento_lista aceita exatamente os MOMENTOS_DA_FOTO do domínio', () => {
     expect(valoresDoCheck('anexo_momento_lista', 'momento')).toEqual([...MOMENTOS_DA_FOTO]);
+  });
+});
+
+describe('valores canônicos: banco × domínio (1c, ADR-042)', () => {
+  it('os_transicao_motivo_pausa_lista aceita exatamente os MOTIVOS_DE_PAUSA do domínio', () => {
+    expect(valoresDoCheck('os_transicao_motivo_pausa_lista', 'motivo_pausa')).toEqual([
+      ...MOTIVOS_DE_PAUSA,
+    ]);
   });
 });
 
