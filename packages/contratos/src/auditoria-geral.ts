@@ -18,6 +18,7 @@ export const ENTIDADES_DA_AUDITORIA_API = [
   'codigo_manutencao',
   'credencial_agente',
   'equipe',
+  'feriado_hotel',
   'fornecedor',
   'hotel',
   'hotel_proprietario',
