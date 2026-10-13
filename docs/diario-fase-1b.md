@@ -299,12 +299,18 @@ Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
 
 **Proposta do "conferir dev":** está em `docs/referencia/proposta-conferir-dev.md`, para a aprovação do Cesar. Disparo manual na `main`, ambiente `dev` do GitHub com a aprovação do Cesar e um segredo só (`DEV_SESSION_POOLER`). O job compara as migrações do dev com as da `main`, lendo a tabela de migrações, e depois roda o pgTAP com rollback. São três decisões pendentes, listadas no fim da proposta.
 
+## `main` vermelha depois do #210 e do #211 (13/10/2026)
+
+O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main` (a6b761b) ficou vermelha em dois workflows:
+- **CI:** o `tests/auditoria-entidades.test.ts`, do #211, confere que toda entidade gravada na auditoria está em `ENTIDADES_DA_AUDITORIA`. A PV1 grava `checklist_modelo` e `os_checklist`, que o #211 não conhecia. Cada PR passou sozinho; o erro veio do cruzamento.
+- **banco:** o `apps/web/test/demonstracao/semear.test.ts` apaga o tenant do kit no fim, e a lista de tabelas não tinha `app.os_checklist` nem `app.checklist_modelo`. A chave estrangeira da OS recusou o delete. Essa falha já estava no "banco" do próprio #210, e eu não conferi os checks antes de dar o PR como pronto. Daqui em diante, confiro os checks de cada PR meu antes de dizer que está pronto, como manda o `CLAUDE.md`.
+
+**Aviso de área compartilhada com a 1c:** a correção mexe na lista do domínio (`packages/dominio/src/auditoria-geral.ts`), na da API (`packages/contratos/src/auditoria-geral.ts`) e no catálogo da auditoria, que são da 1c. Entraram as duas entidades, com nome nos quatro idiomas, e as ações `aplicar`, `trocar` e `responder` no rótulo geral das ações.
+
 ## Ponto de retomada (13/10/2026, fim da segunda parte)
 
-- **`main`:** a6b761b, vermelha no CI e no banco pelo cruzamento do #210 com o #211. A correção é o #213 ("1b: main vermelha"), e nada deve entrar antes dele. O dev tem as migrações até a 0043.
-- **PRs abertos da 1b:**
-  - #213, a correção da `main` (fora da zona protegida);
-  - #214, este diário e a proposta do "conferir dev" (fora da zona). Os dois acrescentam seção no fim deste diário: depois do merge do #213, juntar a `main` no #214 e resolver.
+- **`main`:** 38bf55f. O #213 consertou a `main`, que estava vermelha no CI e no banco pelo cruzamento do #210 com o #211. O dev tem as migrações até a 0043.
+- **PR aberto da 1b:** o #214, este diário e a proposta do "conferir dev" (fora da zona protegida), já com a `main` depois do #213.
 - **Fila de zona protegida:** o #212 do Kaio (aberto), depois a migração da 1c (monitor de SLA), depois a PV2.
 - **PV2 preparada, sem PR:** branch `claude/1b-pv2` (4c2f4f7), a partir da a6b761b. Leva:
   - a migração `app.plano_preventivo` e o pgTAP 036;
@@ -320,4 +326,4 @@ Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
   4. renomear o pgTAP 036 se a 1c tiver usado o número;
   5. atualizar o meta-teste 28 com as tabelas que a 1c acrescentar.
 - **Depois da PV2 (fora da zona):** domínio (periodicidade, `ocorrencias` e `proximaOcorrencia`), casos de uso, API e telas.
-- **Esperando o Cesar:** o merge do #213 e as três decisões da proposta do "conferir dev".
+- **Esperando o Cesar:** o merge do #214 e as três decisões da proposta do "conferir dev".
