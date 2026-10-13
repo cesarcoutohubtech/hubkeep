@@ -89,6 +89,7 @@ import {
   RespostaDeReaberturaDeOs,
 } from './chamados';
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
+import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
@@ -1807,6 +1808,31 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'Período acima de 92 dias ou com o fim antes do início (auditoria_periodo_invalido, com maximoDias), cursor inválido (auditoria_cursor_invalido) ou filtro fora do formato (entrada_invalida).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/avisos-sla',
+    resumo:
+      'O painel dos avisos de SLA do hotel (1c, ADR-043, M4): os chamados em curso com prazo em risco ou vencido, os vencidos primeiro e depois pelo prazo mais próximo, no máximo um aviso por prazo. O vencido sai do próprio prazo, sem esperar o monitor; o em risco, do aviso que o monitor gravou para o prazo de agora. Só a gestão do hotel: Admin do grupo, Gestor CSC e Gerente do hotel.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Chamados com aviso em aberto', esquema: RespostaDoPainelDeSla },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão do hotel (avisos_sla_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/chamados/{id}/avisos-sla',
+    resumo:
+      'Os avisos de SLA em aberto do chamado, para o selo da ficha (1c, ADR-043, M4). Para quem lê o chamado e não é da gestão do hotel, a lista vem vazia.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Avisos em aberto do chamado', esquema: RespostaDosAvisosDoChamado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
     },
   },
   {
