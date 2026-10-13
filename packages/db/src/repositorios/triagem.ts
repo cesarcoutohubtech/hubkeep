@@ -251,7 +251,8 @@ export async function gerarOs(
  */
 function avisarLocador(
   uow: UnidadeDeTrabalho,
-  a: { osId: string; hotelId: string; chamadoId: string },
+  // chamadoId nulo na OS preventiva (PV3, 0048), que não tem chamado.
+  a: { osId: string; hotelId: string; chamadoId: string | null },
 ): void {
   uow.auditar({
     entidade: 'os',

@@ -360,7 +360,9 @@ export {
   ESTADOS_DA_PREVENTIVA_ABERTA,
   MOTIVOS_DE_PULO,
   copiaDoPlano,
+  modeloParaACopia,
   planejarGeracao,
+  responsavelQueVale,
 } from './geracao-preventiva';
 export type {
   AtivoParaGerar,
@@ -370,6 +372,7 @@ export type {
   PlanoParaGerar,
   PreventivaAGerar,
   PreventivaGerada,
+  ResponsavelDoPlano,
 } from './geracao-preventiva';
 export type {
   CodigoPadrao,

@@ -31,7 +31,7 @@ import type {
   ModuloContratado,
   StatusDeHotel,
 } from '@hubkeep/dominio';
-import { sql } from 'kysely';
+import { type NotNull, sql } from 'kysely';
 import type { Tx } from '../conexao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
@@ -369,6 +369,7 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
             'custo_informado',
           ])
           .where('chamado_id', 'in', doPeriodo().select('c.id'))
+          .$narrowType<{ chamado_id: NotNull }>()
           .execute(),
         tx
           .selectFrom('app.os_transicao')
