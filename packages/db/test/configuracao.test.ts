@@ -207,6 +207,8 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
         'os.codigos_obrigatorios',
         'os.foto_depois_obrigatoria',
         'os.assinatura_no_aceite',
+        'chamado.sla',
+        'hotel.horario_atendimento',
       ].sort(),
     );
   });

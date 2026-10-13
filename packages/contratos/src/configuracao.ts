@@ -30,6 +30,87 @@ export const NomesDeCriticidadeApi = z
   )
   .meta({ id: 'NomesDeCriticidadeApi' });
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** As chaves padrão das prioridades (dominio, PRIORIDADES_PADRAO). */
+const CHAVES_PADRAO_DE_PRIORIDADE = ['urgente', 'alta', 'media', 'baixa'];
+/** Horas positivas, em quartos de hora, até 90 dias (dominio, horasDeSlaValidas). */
+const HorasDeSla = z
+  .number()
+  .positive()
+  .max(2160)
+  .refine((h) => Number.isInteger(h * 4));
+const RelogioDeSla = z.enum(['24x7', 'atendimento']);
+/** Motivos da pausa da OS (dominio, MOTIVOS_DE_PAUSA; ADR-042). */
+export const MOTIVOS_DE_PAUSA_API = [
+  'aguardando_peca',
+  'aguardando_fornecedor',
+  'uh_ocupada_sem_acesso',
+  'fim_de_turno',
+  'outro',
+] as const;
+const LinhaDeSla = z
+  .strictObject({ atendimentoHoras: HorasDeSla, solucaoHoras: HorasDeSla, relogio: RelogioDeSla })
+  .refine((l) => l.atendimentoHoras <= l.solucaoHoras);
+const SlaDaCategoria = z
+  .strictObject({
+    atendimentoHoras: HorasDeSla.optional(),
+    solucaoHoras: HorasDeSla.optional(),
+    relogio: RelogioDeSla.optional(),
+    pausa: z.boolean().optional(),
+  })
+  .refine((c) => Object.keys(c).length > 0)
+  .refine(
+    (c) =>
+      c.atendimentoHoras === undefined ||
+      c.solucaoHoras === undefined ||
+      c.atendimentoHoras <= c.solucaoHoras,
+  );
+/** Calendário de SLA (1c, ADR-042), como o dominio (politicaDeSlaValida). */
+export const PoliticaDeSlaApi = z
+  .strictObject({
+    porPrioridade: z
+      .record(
+        z.string().refine((k) => UUID.test(k) || CHAVES_PADRAO_DE_PRIORIDADE.includes(k)),
+        LinhaDeSla,
+      )
+      .refine((r) => Object.keys(r).length >= 1 && Object.keys(r).length <= 50),
+    porCategoria: z.record(z.guid(), SlaDaCategoria).refine((r) => Object.keys(r).length <= 200),
+    motivosQuePausam: z
+      .array(z.enum(MOTIVOS_DE_PAUSA_API))
+      .refine((m) => new Set(m).size === m.length),
+    pontoFacultativo: z.boolean(),
+    metaPercentual: z.int().min(1).max(100),
+  })
+  .meta({ id: 'PoliticaDeSlaApi' });
+
+const minutos = (hhmm: string) =>
+  hhmm === '24:00' ? 1440 : Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
+const IntervaloDeAtendimento = z
+  .strictObject({
+    inicio: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    fim: z.string().regex(/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/),
+  })
+  .refine((i) => minutos(i.inicio) < minutos(i.fim));
+const IntervalosDoDia = z
+  .array(IntervaloDeAtendimento)
+  .max(4)
+  .refine((lista) =>
+    lista.every((i, n) => n === 0 || minutos(i.inicio) >= minutos(lista[n - 1]?.fim ?? '00:00')),
+  );
+/** Horário de atendimento do hotel (1c, ADR-042), como o dominio (horarioDeAtendimentoValido). */
+export const HorarioDeAtendimentoApi = z
+  .strictObject({
+    dom: IntervalosDoDia,
+    seg: IntervalosDoDia,
+    ter: IntervalosDoDia,
+    qua: IntervalosDoDia,
+    qui: IntervalosDoDia,
+    sex: IntervalosDoDia,
+    sab: IntervalosDoDia,
+  })
+  .refine((h) => Object.values(h).some((dia) => dia.length > 0))
+  .meta({ id: 'HorarioDeAtendimentoApi' });
+
 export const FORMATOS_DE_POLITICA_API = {
   'os.aceite_automatico': AceiteAutomatico,
   'os.codigos_obrigatorios': CodigosObrigatorios,
@@ -37,6 +118,8 @@ export const FORMATOS_DE_POLITICA_API = {
   'os.assinatura_no_aceite': AssinaturaNoAceite,
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria,
   'ativo.criticidade': NomesDeCriticidadeApi,
+  'chamado.sla': PoliticaDeSlaApi,
+  'hotel.horario_atendimento': HorarioDeAtendimentoApi,
 } as const;
 
 export const CHAVES_DE_POLITICA_API = Object.keys(
@@ -44,7 +127,7 @@ export const CHAVES_DE_POLITICA_API = Object.keys(
 ) as (keyof typeof FORMATOS_DE_POLITICA_API)[];
 
 /** Os prefixos das chaves do núcleo, iguais aos do domínio (tests/contratos-dominio). */
-export const PREFIXOS_DO_NUCLEO_API = ['os.', 'chamado.', 'ativo.'] as const;
+export const PREFIXOS_DO_NUCLEO_API = ['os.', 'chamado.', 'ativo.', 'hotel.'] as const;
 
 const ChaveDeExtensao = z
   .string()
@@ -88,6 +171,16 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('ativo.criticidade'),
     escopo: EscopoDePolitica,
     valor: NomesDeCriticidadeApi.nullable(),
+  }),
+  z.object({
+    chave: z.literal('chamado.sla'),
+    escopo: EscopoDePolitica,
+    valor: PoliticaDeSlaApi.nullable(),
+  }),
+  z.object({
+    chave: z.literal('hotel.horario_atendimento'),
+    escopo: EscopoDePolitica,
+    valor: HorarioDeAtendimentoApi.nullable(),
   }),
 ]);
 
@@ -167,6 +260,8 @@ export const RespostaDeConfiguracao = z
         resolvida('os.assinatura_no_aceite', AssinaturaNoAceite),
         resolvida('chamado.prioridade_padrao_por_categoria', PrioridadePadraoPorCategoria),
         resolvida('ativo.criticidade', NomesDeCriticidadeApi),
+        resolvida('chamado.sla', PoliticaDeSlaApi),
+        resolvida('hotel.horario_atendimento', HorarioDeAtendimentoApi),
       ]),
     ),
   })
