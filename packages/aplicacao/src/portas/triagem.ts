@@ -6,7 +6,8 @@
 // a OS guarda quem executa (equipe interna ou fornecedor do grupo) e o custo
 // informado no aceite, e o chamado, o impacto no hóspede. Na I6, a OS guarda
 // os códigos de falha, causa e solução, sugeridos na conclusão e confirmados
-// no aceite.
+// no aceite. Na 1c (ADR-045), a OS do hotel arrendado guarda quem responde
+// por ela e a hora do aviso ao locador.
 import type {
   Atribuicao,
   CodigosDaOs,
@@ -15,14 +16,18 @@ import type {
   EstadoDaOs,
   EstadoDoChamado,
   ExecutadoPor,
+  ModeloContratual,
   QuemExecuta,
   Responsavel,
+  ResponsavelDoArrendamento,
 } from '@hubkeep/dominio';
 import type { DadosDoCalendario } from './calendario-sla';
 
 export interface ChamadoParaTriagem {
   id: string;
   hotel: { id: string; bandeiraId: string | null };
+  /** O modelo contratual do hotel (I2): no arrendado, a OS nasce com a marca (ADR-045). */
+  modeloContratual: ModeloContratual | null;
   localId: string;
   /** O ativo do chamado, se houver (a parada da C5 só existe com ele). */
   ativoId: string | null;
@@ -64,6 +69,10 @@ export interface OsGravada {
   codigos: CodigosDaOs;
   /** O anexo da assinatura do último aceite (I8); null: aceite sem assinatura. */
   assinaturaAceiteId: string | null;
+  /** Quem responde pela OS no hotel arrendado (ADR-045); null: sem marca. */
+  responsavelArrendamento: ResponsavelDoArrendamento | null;
+  /** A hora do aviso ao locador, que sai uma vez por OS (ADR-045). */
+  locadorAvisadoEm: Date | null;
   criadoPor: string;
   versao: number;
   criadoEm: Date;
@@ -153,8 +162,26 @@ export interface PortaTriagem {
       responsavel: Responsavel;
       /** Quem executa (I4); sem escolha na triagem, a equipe interna. */
       execucao: QuemExecuta;
+      /** A marca do arrendamento, já decidida pelo domínio (ADR-045); null: sem marca. */
+      arrendamento: ResponsavelDoArrendamento | null;
+      /** A OS nasce do locador: grava a hora do aviso e publica os.locador_avisado. */
+      avisarLocador: boolean;
     },
   ): Promise<{ id: string; versao: number; versaoDoChamado: number }>;
+  /**
+   * Ajusta a marca do arrendamento (ADR-045), com o motivo na auditoria. Com
+   * `avisarLocador`, grava a hora do aviso e publica os.locador_avisado.
+   */
+  ajustarArrendamento(
+    ctx: Contexto,
+    g: {
+      osId: string;
+      versao: number;
+      arrendamento: ResponsavelDoArrendamento;
+      motivo: string;
+      avisarLocador: boolean;
+    },
+  ): Promise<{ versao: number }>;
   /** Corrige quem executa a OS (I4), na unit of work, com auditoria e evento. */
   definirQuemExecuta(
     ctx: Contexto,

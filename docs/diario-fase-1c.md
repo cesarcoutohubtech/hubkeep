@@ -658,3 +658,52 @@ A geração da OS preventiva é da PV3 (1b). Quando a migração 0047 e o códig
   - a aprovação do ADR-045, quando o PR dele abrir;
   - as aprovações do glossário.
 - **Próxima tarefa:** o PR 3 do arrendado, na branch `claude/1c-arrendado-os`, a partir da `main` depois da 0047 e do `db push`. Primeiro passo: em `gerarOs`, na triagem, resolver a matriz e o modelo do hotel e gravar a marca, e depois o aviso.
+
+## Arrendado mínimo, PR 3: a marca na OS, o ajuste e o aviso ao locador (13/10/2026)
+
+O #244 entrou, e a 0047 abriu no #257, na vez da 1c na fila de zona protegida. O PR dela espera o merge, o `db push` e o "aprovo" do ADR-045. A 1b aceitou o pedido da marca na preventiva (`docs/diario-fase-1b.md`, "Decisão do Cesar: o aceite da OS preventiva e o pedido da 1c"). Este PR fica na branch `claude/1c-arrendado-os`, feita a partir da branch da 0047. Ele só abre depois que a 0047 estiver na `main`, com a branch atualizada a partir dela.
+
+**Aviso de área compartilhada com a 1b (OS, triagem, consultas da corretiva, catálogos e `packages/dominio`):**
+- **Domínio** (`arrendamento.ts`):
+  - `podeAjustarArrendamento`: exige o papel da triagem, a OS com marca (senão 409 `os_sem_arrendamento`), a OS antes do aceite e o motivo;
+  - `avisaOLocador`: o aviso sai uma vez por OS;
+  - `FiltroDaLista` ganha `doLocador`.
+- **Aplicação:**
+  - `gerarOs` lê a matriz só no hotel arrendado e grava a marca pela categoria do chamado;
+  - o caso de uso novo `ajustarArrendamento`. A mesma marca não grava nada.
+  - Na porta da triagem, o `ChamadoParaTriagem` ganha `modeloContratual`, e a `OsGravada`, a marca e a hora do aviso.
+- **Banco:**
+  - a geração grava as duas colunas;
+  - o ajuste é um UPDATE por coluna, com o motivo na auditoria e o evento `os.arrendamento_ajustado`;
+  - o aviso grava a auditoria `avisar_locador`, que vai para a linha do tempo, e o evento `os.locador_avisado`, para o e-mail do item 5;
+  - a hora do aviso é sempre o `now()` do banco, também na montagem com o relógio do roteiro, como a auditoria e o outbox;
+  - a lista de OS filtra as do locador.
+- **API:**
+  - `POST /api/v1/os/{id}/arrendamento`;
+  - `GET /api/v1/os?doLocador=1`;
+  - `OsApi` e `OsResumidaApi` com a marca.
+- **Telas:**
+  - a marca e a data do aviso na ficha da OS;
+  - o ajuste, com motivo, no painel da triagem;
+  - o filtro "Responde pela OS" e o selo "Do locador" na lista de OS;
+  - as duas ações novas na linha do tempo.
+  - Os catálogos estão nos 4 idiomas.
+- **Testes:**
+  - domínio;
+  - consultas;
+  - telas da triagem e da corretiva, nos 4 idiomas e no pseudo-idioma;
+  - paridade do check `os_responsavel_arrendamento_lista` com `RESPONSAVEIS_DO_ARRENDAMENTO`;
+  - a integração `packages/db/test/arrendamento-os.test.ts`, que roda só na CI.
+
+**Validação local:** lint e typecheck passaram, e os testes também: 4.557 passaram e nenhum falhou.
+
+### Ponto de retomada (13/10/2026, PR 3 do arrendado)
+- **`main`:** verde, em `569f9e2`, com o #244. O dev está com a 0046.
+- **PR da 1c:** o #257 (0047, zona protegida). O check "zona protegida" falha por desenho.
+- **Na branch, sem PR:** `claude/1c-arrendado-os`, com o código da marca, do ajuste, do aviso e do filtro, sobre a branch da 0047.
+- **Esperando o Cesar:**
+  - o merge do #257 e o `db push`;
+  - o "aprovo" do ADR-045 e a confirmação da coluna `locador_avisado_em`;
+  - as decisões C1 a C9 da comunicação;
+  - as aprovações do glossário.
+- **Próxima tarefa:** depois do merge da 0047, juntar a `main` na `claude/1c-arrendado-os`, rodar lint, typecheck e testes, e abrir o PR 3. Primeiro passo: conferir que a 0047 está na `main` e que o `db push` foi feito.

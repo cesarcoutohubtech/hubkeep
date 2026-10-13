@@ -100,6 +100,8 @@ export async function detalheDoChamado(
       custoInformado: o.custoInformado,
       codigos: o.codigos,
       assinaturaAceiteId: o.assinaturaAceiteId,
+      responsavelArrendamento: o.responsavelArrendamento,
+      locadorAvisadoEm: o.locadorAvisadoEm?.toISOString() ?? null,
       criadoPor: o.criadoPor,
       versao: o.versao,
       criadoEm: o.criadoEm.toISOString(),
