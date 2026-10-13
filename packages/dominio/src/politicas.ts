@@ -15,6 +15,7 @@
 // (adendo da I7, 10/10/2026): registrosDePoliticasPorModulo monta, na partida,
 // o registro de cada combinação de módulos, e o servidor escolhe um a cada
 // request (doTenant), pela vigência lida em licenca.modulo.
+import { type MatrizDeArrendamento, matrizDeArrendamentoValida } from './arrendamento';
 import { type Criticidade, NIVEIS_DE_CRITICIDADE } from './ativos';
 import { IDIOMAS_DE_ROTULO, LIMITES_DE_CAMPO, type Rotulos } from './campos-tipados';
 import { PermissaoNegada, RegraViolada } from './erros';
@@ -100,12 +101,16 @@ export interface ValoresDePolitica {
   'hotel.horario_atendimento': HorarioDeAtendimento;
   /** Monitor de SLA (1c, ADR-043): o percentual do aviso e quem recebe cada nível. */
   'chamado.escalonamento': EscalonamentoDeSla;
+  /** Matriz do arrendado (1c, decisão 5): por categoria, a arrendatária ou o locador. */
+  'hotel.matriz_arrendamento': MatrizDeArrendamento;
 }
 export type ChaveDePolitica = keyof ValoresDePolitica;
 
 interface DefinicaoDePolitica<C extends ChaveDePolitica> {
   padrao: ValoresDePolitica[C];
   valido(v: unknown): v is ValoresDePolitica[C];
+  /** Os níveis em que a chave pode ser gravada; sem o campo, os três. */
+  escopos?: readonly NivelDePolitica[];
 }
 
 export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
@@ -177,6 +182,12 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
     padrao: ESCALONAMENTO_PADRAO,
     valido: (v): v is EscalonamentoDeSla => escalonamentoValido(v),
   },
+  'hotel.matriz_arrendamento': {
+    padrao: {},
+    valido: (v): v is MatrizDeArrendamento => matrizDeArrendamentoValida(v),
+    // Herança só grupo → hotel (decisão 5 do Cesar, de 13/10/2026).
+    escopos: ['hotel', 'grupo'],
+  },
 };
 
 export const CHAVES_DE_POLITICA = Object.keys(POLITICAS) as ChaveDePolitica[];
@@ -202,18 +213,25 @@ export function validarPolitica(chave: string, valor: unknown): unknown {
   return valor;
 }
 
+/** A chave aceita valor no nível? As do núcleo, nos três, salvo a que restringe (escopos). */
+export const valeNoNivel = (chave: ChaveDePolitica, nivel: NivelDePolitica): boolean =>
+  (POLITICAS[chave] as DefinicaoDePolitica<ChaveDePolitica>).escopos?.includes(nivel) ?? true;
+
 /**
  * Valor efetivo: o do hotel, senão o da bandeira do hotel, senão o do grupo,
- * senão o padrão do código. Um valor gravado fora do formato (política antiga, por exemplo) não vale e cai
- * para o nível seguinte.
+ * senão o padrão do código. Um valor gravado fora do formato (política antiga,
+ * por exemplo), ou num nível que a chave não aceita, não vale e cai para o
+ * nível seguinte.
  */
 export function resolverPolitica<C extends ChaveDePolitica>(
   chave: C,
   niveis: NiveisDePolitica,
 ): ValoresDePolitica[C] {
   const definicao = POLITICAS[chave] as DefinicaoDePolitica<C>;
-  for (const v of [niveis.hotel, niveis.bandeira, niveis.grupo])
-    if (v !== undefined && definicao.valido(v)) return v;
+  for (const nivel of NIVEIS_DE_POLITICA) {
+    const v = niveis[nivel];
+    if (v !== undefined && valeNoNivel(chave, nivel) && definicao.valido(v)) return v;
+  }
   return definicao.padrao;
 }
 
@@ -257,7 +275,7 @@ export interface RegistroDePoliticas {
   valido(chave: string, valor: unknown): boolean;
   /** Confere a chave e o formato do valor; lança com código se não valer. */
   validar(chave: string, valor: unknown): unknown;
-  /** Os níveis em que a chave pode ser gravada; as do núcleo, nos três. */
+  /** Os níveis em que a chave pode ser gravada; as do núcleo, nos três, salvo a que restringe. */
   escopos(chave: string): readonly NivelDePolitica[];
   /** Confere se a chave pode ser gravada no nível; lança com código se não puder. */
   validarNivel(chave: string, nivel: NivelDePolitica): void;
@@ -288,8 +306,10 @@ export function registroDePoliticas(extensoes: readonly ExtensaoDePolitica[]): R
     string,
     { padrao: unknown; valido(v: unknown): boolean; escopos: readonly NivelDePolitica[] }
   >();
-  for (const chave of CHAVES_DE_POLITICA)
-    definicoes.set(chave, { ...POLITICAS[chave], escopos: NIVEIS_DE_POLITICA });
+  for (const chave of CHAVES_DE_POLITICA) {
+    const { padrao, valido, escopos } = POLITICAS[chave] as DefinicaoDePolitica<ChaveDePolitica>;
+    definicoes.set(chave, { padrao, valido, escopos: escopos ?? NIVEIS_DE_POLITICA });
+  }
   const prefixos = new Set<string>(PREFIXOS_DO_NUCLEO);
   for (const e of extensoes) {
     if (!PREFIXO.test(e.prefixo) || prefixos.has(e.prefixo)) {

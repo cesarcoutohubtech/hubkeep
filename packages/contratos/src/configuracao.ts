@@ -133,6 +133,18 @@ export const EscalonamentoDeSlaApi = z
   })
   .meta({ id: 'EscalonamentoDeSlaApi' });
 
+/** Quem responde pela OS no hotel arrendado (dominio, RESPONSAVEIS_DO_ARRENDAMENTO). */
+export const RESPONSAVEIS_DO_ARRENDAMENTO_API = ['arrendataria', 'locador'] as const;
+/**
+ * Matriz do arrendado (1c, decisão 5), como o dominio (matrizDeArrendamentoValida):
+ * por categoria, a arrendatária ou o locador. Gravada no grupo ou no hotel; a
+ * bandeira recusa (politica_nivel_nao_permitido).
+ */
+export const MatrizDeArrendamentoApi = z
+  .record(z.guid(), z.enum(RESPONSAVEIS_DO_ARRENDAMENTO_API))
+  .refine((r) => Object.keys(r).length <= 200)
+  .meta({ id: 'MatrizDeArrendamentoApi' });
+
 export const FORMATOS_DE_POLITICA_API = {
   'os.aceite_automatico': AceiteAutomatico,
   'os.codigos_obrigatorios': CodigosObrigatorios,
@@ -144,6 +156,7 @@ export const FORMATOS_DE_POLITICA_API = {
   'chamado.sla': PoliticaDeSlaApi,
   'hotel.horario_atendimento': HorarioDeAtendimentoApi,
   'chamado.escalonamento': EscalonamentoDeSlaApi,
+  'hotel.matriz_arrendamento': MatrizDeArrendamentoApi,
 } as const;
 
 export const CHAVES_DE_POLITICA_API = Object.keys(
@@ -217,6 +230,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('chamado.escalonamento'),
     escopo: EscopoDePolitica,
     valor: EscalonamentoDeSlaApi.nullable(),
+  }),
+  z.object({
+    chave: z.literal('hotel.matriz_arrendamento'),
+    escopo: EscopoDePolitica,
+    valor: MatrizDeArrendamentoApi.nullable(),
   }),
 ]);
 
@@ -304,6 +322,7 @@ export const RespostaDeConfiguracao = z
         resolvida('chamado.sla', PoliticaDeSlaApi),
         resolvida('hotel.horario_atendimento', HorarioDeAtendimentoApi),
         resolvida('chamado.escalonamento', EscalonamentoDeSlaApi),
+        resolvida('hotel.matriz_arrendamento', MatrizDeArrendamentoApi),
       ]),
     ),
   })

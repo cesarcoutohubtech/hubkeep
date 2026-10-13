@@ -107,7 +107,16 @@ export {
   resolverPolitica,
   validarPolitica,
   validarRegiao,
+  valeNoNivel,
 } from './politicas';
+export {
+  LIMITE_DA_MATRIZ,
+  RESPONSAVEIS_DO_ARRENDAMENTO,
+  ehResponsavelDoArrendamento,
+  matrizDeArrendamentoValida,
+  responsavelDoArrendamento,
+} from './arrendamento';
+export type { MatrizDeArrendamento, ResponsavelDoArrendamento } from './arrendamento';
 export type {
   AceiteAutomatico,
   AssinaturaNoAceite,

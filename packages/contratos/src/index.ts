@@ -152,12 +152,14 @@ export {
   DESTINATARIOS_DO_AVISO_API,
   EscalonamentoDeSlaApi,
   HorarioDeAtendimentoApi,
+  MatrizDeArrendamentoApi,
   MOTIVOS_DE_PAUSA_API,
   PedidoDeConfiguracaoDoHotel,
   PedidoDeConfiguracaoDoTenant,
   PedidoDePolitica,
   PoliticaDeSlaApi,
   PREFIXOS_DO_NUCLEO_API,
+  RESPONSAVEIS_DO_ARRENDAMENTO_API,
   RespostaDeConfiguracao,
 } from './configuracao';
 export {

@@ -12,6 +12,7 @@ const { Aviso } = await import('../src/cliente/aviso');
 const { SeletorDeHotel } = await import('../src/cliente/cadastro');
 
 const TELAS = [
+  'arrendamento',
   'ativos',
   'bandeiras',
   'categorias',
