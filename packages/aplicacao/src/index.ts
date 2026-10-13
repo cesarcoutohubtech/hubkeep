@@ -192,6 +192,14 @@ export { criarCasosDeUsoDeSituacoes } from './casos-de-uso/situacoes';
 export type { ChamadoGravado, DadosDeChamado, PortaChamados } from './portas/chamados';
 export type { DadosDoCalendario, FeriadosOficiais } from './portas/calendario-sla';
 export { montarCalendarioDeSla } from './casos-de-uso/calendario-sla';
+export type {
+  AvisoAEmitir,
+  ChamadoParaMonitor,
+  PortaMonitorDeSla,
+  SessaoDoMonitor,
+} from './portas/monitor-sla';
+export { criarMonitorDeSla } from './casos-de-uso/monitor-sla';
+export type { ResultadoDoMonitor } from './casos-de-uso/monitor-sla';
 export { criarCasosDeUsoDeChamados } from './casos-de-uso/chamados';
 export type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './casos-de-uso/chamados';
 export type {

@@ -26,6 +26,7 @@ export {
   criarPortaModulos,
   criarPortaChamados,
   criarPortaTriagem,
+  criarPortaMonitorDeSla,
   criarPortaExecucao,
   criarPortaParadas,
   criarPortaUhIndisponivel,
