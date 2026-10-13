@@ -1310,3 +1310,88 @@ Terceira atividade do Kaio de 12/10/2026: um grupo com cerca de seis meses de hi
 **Fora desta atividade:** produção (nunca) e o staging antes do `[remotes.staging]` (F0-12; o comando o recusa como o `demo:dados`). Também fica fora qualquer mudança no motor ou nas fórmulas.
 
 **Aguarda:** a decisão de Cesar e Kaio nos itens 1 a 7, e a resposta do agente do núcleo aos dois pedidos. Nenhum código foi escrito.
+
+## Atividade 3: decisões e o roteiro do histórico de demonstração (13/10/2026)
+
+**Decisões de Cesar e Kaio** (mensagem do Cesar nesta sessão, 13/10/2026, com as decisões dos dois):
+1. Aprovado: o gerador em `apps/web/test/demonstracao/historico-inteligencia.ts`, com `pnpm demo:historico --ambiente dev|staging` e a mesma trava do kit contra produção.
+2. Aprovado: um tenant próprio, "Grupo Demonstração — Intelligence".
+3. Aprovado o uso dos casos de uso com o relógio do roteiro, com condições:
+   - a montagem com relógio controlável é separada e só serve ao gerador e aos testes. O web em funcionamento continua com o relógio do sistema, sem parâmetro para trocá-lo;
+   - um teste de guarda impede o código do web em funcionamento de importar essa montagem, e ela recusa rodar contra produção;
+   - quem implementa a montagem é o agente da 1b; o PR do Intelligence só a usa. O pedido à 1b vai pelo Cesar.
+4. Sem SQL direto.
+
+Siga com o roteiro, o volume e o teste curto da CI, sem a parte que depende da montagem, até ela entrar na `main`. O PR da visibilidade das telas ([#212](https://github.com/cesarcoutohubtech/hubkeep/pull/212)), que vinha antes, já estava na `main` desde 13/10.
+
+### Pedido ao agente da 1b (pelo Cesar): a montagem com o relógio do roteiro
+
+O que o gerador precisa, com as condições do item 3:
+1. Uma montagem separada da `composicao.ts`, que recebe o relógio, com os casos de uso que o histórico usa:
+   - cadastros: bandeiras, hotéis, locais, categorias, códigos, fornecedores, ativos e configuração;
+   - chamados, triagem, execução da OS (com o executor e o custo) e paradas.
+   O web em funcionamento não a importa (teste de guarda), e ela recusa o alvo de produção.
+2. **O instante precisa chegar ao banco, não só ao caso de uso.** Hoje o `criado_em` de `app.chamado`, `app.os` e `app.ativo` vem do `default now()` da coluna, e os repositórios não o gravam. A leitura do job usa essas colunas: o chamado entra por `criado_em <= agora`, e o ativo só existe a partir do `criado_em`. Então, com o relógio só no caso de uso, o chamado de seis meses atrás nasceria com a data de hoje.
+   - A `app.os_transicao.quando` já vem de `feitaEm`, e a `app.parada_ativo.inicio` vem do domínio. Essas duas só precisam do relógio da montagem.
+   - Sugestão do agente: a auditoria e o outbox ficam com o instante real da gravação, porque registram quando o dado entrou de fato. A 1b decide.
+3. O módulo do Intelligence já recebe o relógio pelas dependências (`montarInteligencia().jobDoDia` e `.painel`). O job do dia e as decisões do insight não entram no pedido.
+
+### O que foi feito (branch `claude/vigilant-cray-l06ew1`, sem PR)
+
+- `apps/web/test/demonstracao/historico-inteligencia.ts`: o roteiro, uma função pura e determinística, `roteiroDoHistorico({ fim, volume?, semente? })`.
+  - Ela descreve o grupo, os chamados com a OS e a parada de cada um, e as decisões sobre cada insight.
+  - Também descreve a política `inteligencia.sistemico` do grupo, com as cinco regras ligadas e os valores padrão.
+  - As decisões contam em dias desde a abertura do insight, porque quem abre é o job. A gravação entra neste arquivo depois da montagem da 1b.
+- `apps/web/test/demonstracao/historico-inteligencia.test.ts` (CI, sem banco), com 5 testes:
+  - O job de cada dia (`executarDiaDoTenant`) roda sobre o roteiro, com portas em memória, e as decisões mudam o estado dos insights.
+  - Ele confere quatro coisas: o roteiro é determinístico; tem o volume da proposta; a OS segue as transições do domínio; cada cenário abre um só insight e termina no estado planejado.
+  - Também confere que o ruído não abre nenhum insight, e que a reincidência, a substituição e a efetividade aparecem nos ativos dos cenários.
+- **Volume completo** (o do dev e do staging):
+  - 2 bandeiras, 6 hotéis e 336 ativos (56 por hotel);
+  - 4.314 chamados: 3.272 nos 183 dias do histórico e o resto no aquecimento (abaixo).
+- **Os cenários** (fim em 12/10/2026, volume completo):
+
+| Cenário | Sinal | Abre em | Termina |
+|---|---|---|---|
+| Elevador social do hotel 5 | atenção; depois, efetividade (redução observada) | 01/05 | resolvido |
+| Exaustão na cozinha do hotel 4 | mesma área comum | 31/05 | descartado (não relevante) |
+| Câmaras frias da bandeira 1, mesmo fornecedor | mesmo fornecedor | 20/07 | em ação |
+| Caldeira do hotel 2 | atenção | 31/07 | em ação |
+| Infiltração no 3º andar do hotel 3 | mesmo andar | 07/08 | resolvido |
+| Ar Polar Inverter 18000 nos 6 hotéis | mesmo modelo | 29/08 | aceito |
+| Entupimento no hotel 4 | crescimento | 22/09 | em revisão |
+| Disjuntor da lavanderia do hotel 6 | mesma área comum | 08/10 | novo |
+| Ar de uma UH do hotel 1 | reincidência (sem insight, na tela do ativo) | — | — |
+| Lava-roupa de 12 anos do hotel 6 | substituição (avaliar substituição) | — | — |
+
+**Desvios da proposta, para o Kaio conferir (ADR-033):**
+- **Aquecimento de 60 dias.** O grupo tem chamados do núcleo nos 60 dias antes do contrato do Intelligence; o job roda só a partir do contrato. Sem isso, no segundo mês do histórico a janela anterior do crescimento (30 dias) fica quase vazia, e todo código parece crescer. É também o caminho de um cliente real, que usa o núcleo antes de contratar o módulo.
+- **O ruído é regular de propósito.** O número de chamados de cada dia segue a média, os códigos giram em ordem por hotel e os ativos recebem o ruído em rodízio, com os modelos intercalados. Com sorteio puro, o ruído sozinho abria os sinais de crescimento e de mesmo modelo.
+  - O ruído dos ativos de área comum é de 1 corretiva por ano, contra 3 nas UHs, porque essas categorias têm poucos ativos por modelo.
+  - Os ativos dos cenários têm modelo próprio e ficam fora do ruído.
+- **As rajadas dos cenários têm no máximo 5 chamados do mesmo código.** Com 6, a rajada que atravessa a borda da janela abre também o crescimento.
+- Conferido fora do teste: as mesmas checagens passam em 24 combinações de semente e fim, nos dois volumes.
+
+**Observações sobre o motor, para o Kaio (sem mudança nesta atividade):**
+1. **Crescimento no segundo mês de um tenant novo.** Do 31º ao 60º dia de histórico, a janela anterior cobre só parte do tempo, e a regra (`antes > 0` e +50%) dispara para quase todo código. No piloto, um cliente que entra com o núcleo e o Intelligence juntos veria isso. O Kaio decide se a regra precisa de histórico mínimo antes de valer.
+2. **Mesmo modelo em categorias com poucos ativos.** Com cerca de 6 ativos por modelo, a base fica pequena, e poucos chamados bastam para a taxa passar de duas vezes a base. É informação para os mínimos da política.
+3. A substituição e a efetividade ainda não têm tela no web. Os cenários delas ficam prontos para quando tiverem.
+
+**Testes:**
+- No web: 285 passaram e 53 foram pulados (os que pedem banco), em 38 arquivos. Os 5 do roteiro estão entre os que passaram.
+- Na raiz: 500 passaram.
+- Lint e typecheck verdes.
+
+### Ponto de retomada (13/10/2026)
+- **`main`:** com #212 e #214. O dev ficou sem mudança.
+- **PRs abertos** (de outros agentes): #215 (1c) e #216 (1b, zona protegida).
+- **Não enviado:** nada; o roteiro e o teste estão na branch `claude/vigilant-cray-l06ew1`, sem PR (fora da zona protegida).
+- **Esperando:**
+  - o Cesar levar o pedido da montagem à 1b;
+  - o Kaio conferir os desvios e as observações acima.
+- **Próximo, depois da montagem na `main`:**
+  - a gravação no `historico-inteligencia.ts`;
+  - o `scripts/ops/historico-demonstracao.ts` (`pnpm demo:historico`), no molde do `dados-demonstracao.ts`;
+  - o teste do histórico no Supabase do runner.
+- **Primeiro passo:** ler a montagem da 1b.
+- **Depois:** as atividades 4 (glossário de métricas) e 5 (`docs/piloto/`).
