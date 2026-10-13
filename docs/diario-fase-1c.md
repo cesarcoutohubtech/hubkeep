@@ -390,6 +390,7 @@ Decisão do Cesar no chat ("Cesar aqui", 13/10/2026):
 - **Domínio** (`monitor-sla.ts`):
   - o vencido só depois do prazo, como o "dentro do prazo" do glossário (a correção prometida na revisão do glossário);
   - `avisosEmAberto`: no máximo um aviso por prazo, o mais forte. O vencido sai do próprio prazo, sem esperar o cron; o em risco, do aviso gravado para o prazo de agora, e o prazo refeito descarta os antigos. O atendimento conta até a primeira OS; a solução, até o serviço concluído;
+  - com a pausa que parou o relógio, o prazo da solução está congelado até a retomada: vale só o aviso já gravado, como no monitor. A aplicação decide a pausa pela cópia do SLA e pelo motivo, com a mesma função do monitor;
   - `podeVerAvisosDeSla`: a gestão do hotel (Admin do grupo, Gestor CSC e Gerente do hotel), os papéis da policy da `app.sla_alerta`. Fora disso, `avisos_sla_fora_do_escopo`.
 - **Aplicação:** `criarCasosDeUsoDeAvisosDeSla`, com `doHotel` (o painel, os vencidos primeiro e depois pelo prazo) e `doChamado` (o selo; vazio para quem não é da gestão, sem erro).
 - **Banco:** `criarPortaAvisosDeSla` (`packages/db/src/avisos-de-sla.ts`), só leitura com `withContext`: os chamados em curso com prazo e os avisos gravados.
