@@ -1,6 +1,6 @@
 # Guia de implantação de um hotel (piloto)
 
-Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que existem na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194). Repetir o guia para cada hotel do piloto. O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (plano em `docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface (catálogo pt-BR).
+Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que existem na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #223). Repetir o guia para cada hotel do piloto. O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (plano em `docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface (catálogo pt-BR).
 
 ## 1. Quem faz o quê
 
@@ -10,7 +10,7 @@ Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que ex
 | Bandeira, fuso, idioma padrão, modelo contratual | Admin do grupo | confirma os dados |
 | Locais (UHs vêm do sistema; áreas comuns; edificação) | Admin, Gestor CSC ou Implantador cadastram | Gerente lista as áreas comuns e as torres ou blocos e confere as UHs |
 | Pessoas, papéis e equipes | Admin ou Implantador convidam; equipes por Admin, Gestor CSC, Implantador ou Gerente | Gerente indica quem é quem (nome, e-mail, papel) |
-| Categorias e campos, códigos de manutenção | Admin do grupo (uma vez para o grupo) | nada |
+| Categorias e campos, códigos de manutenção, modelos de checklist | Admin do grupo (uma vez para o grupo) | Gerente indica os checklists que o hotel já usa em papel |
 | Fornecedores | Admin do grupo ou Gestor CSC (valem para o grupo inteiro) | Gerente informa os prestadores que atendem o hotel e pode cadastrá-los |
 | Ativos | CSC e Implantador cadastram; no piloto, só os críticos | Gerente e técnicos informam os ativos, conferem e completam pelo celular |
 | Etiquetas QR | CSC gera e imprime | Hotel cola e testa a leitura |
@@ -20,17 +20,18 @@ Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que ex
 
 ## 2. Pré-requisitos do grupo (uma vez, antes do primeiro hotel)
 
-1. **Contrato de licença** com hotéis e UHs suficientes (gravado pela EasyGov; **sem tela**). Sem saldo, a ativação é recusada: "Não há licença de hotel disponível (X de Y em uso). A EasyGov foi avisada."
+1. **Contrato de licença** com hotéis e UHs suficientes (gravado pela EasyGov pelo provisionamento, item 4; **sem tela**). Sem saldo, a ativação é recusada: "Não há licença de hotel disponível (X de Y em uso). A EasyGov foi avisada."
 2. **Credencial do agente conector** criada pelo Admin do grupo (**sem tela**; rota `/api/v1/credenciais-agente`). O segredo aparece uma única vez.
 3. **Hotéis e UHs no staging:** pelo agente conector, que lê as views do TOTVS CM (somente leitura) **[ainda não existe]** (T1, depende das views do cliente), ou, até lá, pelo adaptador de planilha (CSV do cliente, ver seção 3).
-4. **Situações e prioridades padrão instaladas** (Aberto, Em triagem, ...; Urgente, Alta, Média, Baixa). **Sem tela:** rota `POST /api/v1/situacoes-e-prioridades/padrao`, só para o Admin do grupo. Quem instala no grupo do cliente é o **script de provisionamento de cliente**, rodado pelo backoffice (decisão do Cesar, 08/10/2026), que cria o grupo, o contrato de licença, o primeiro Admin e os padrões (situações, prioridades, categorias e políticas). O script **[ainda não existe]**: entra na preparação do piloto e é o mesmo primeiro passo do kit de teste. Sem os padrões, o chamado não abre ("Não há situação ativa para este estado. Peça ao Admin do grupo para configurar.").
-5. **Categorias de ativo:** menu **Categorias de ativo**, botão **Instalar categorias padrão** (Refrigeração e ar-condicionado, Elétrica, Hidráulica, Elevadores, Cozinha, Lavanderia, Mobiliário, Eletrônicos, Piscina, Segurança e incêndio). As padrão vêm sem campos estendidos. Se o grupo precisa de categoria própria (por exemplo "Caldeiras" ou "Geradores"), usar **Criar categoria** e **Acrescentar campo**. O modelo de planilha usa as padrão; ajustar os nomes se o grupo criar outras.
+4. **Situações e prioridades padrão instaladas** (Aberto, Em triagem, ...; Urgente, Alta, Média, Baixa). **Sem tela:** rota `POST /api/v1/situacoes-e-prioridades/padrao`, só para o Admin do grupo. Quem instala no grupo do cliente é o **script de provisionamento de cliente** (#196), rodado pelo backoffice (decisão do Cesar, 08/10/2026): `pnpm ops:provisionar --ambiente staging --nome "<grupo>" --admin-email <e-mail> --admin-nome "<nome>" --max-hoteis 4 --max-uhs <N> --por "<quem roda>"`, primeiro com `--dry-run`. Ele cria o grupo, o contrato de licença e o primeiro Admin, que recebe o convite por e-mail, e instala os padrões: as 10 categorias, as situações e prioridades, os 37 códigos de manutenção e a prioridade padrão por categoria. Rodar de novo com `--tenant <id>` só completa o que faltou, sem duplicar nem reenviar o convite. É o mesmo primeiro passo do kit de teste. Hoje roda no dev; no staging, recusa até o staging existir (F0-12), e a produção entra com o roteiro de operação dela. Sem os padrões, o chamado não abre ("Não há situação ativa para este estado. Peça ao Admin do grupo para configurar.").
+5. **Categorias de ativo:** já instaladas pelo provisionamento (item 4); na tela, o menu **Categorias de ativo** tem o botão **Instalar categorias padrão** (Refrigeração e ar-condicionado, Elétrica, Hidráulica, Elevadores, Cozinha, Lavanderia, Mobiliário, Eletrônicos, Piscina, Segurança e incêndio). As padrão vêm sem campos estendidos. Se o grupo precisa de categoria própria (por exemplo "Caldeiras" ou "Geradores"), usar **Criar categoria** e **Acrescentar campo**. O modelo de planilha usa as padrão; ajustar os nomes se o grupo criar outras.
 6. **Bandeiras:** menu **Bandeiras**, **Nova bandeira**, **Criar** (se o grupo usa bandeiras).
 7. **E-mail de produção** para o convite (provedor e domínio com SPF, DKIM e DMARC): **[ainda não existe]**, exigido antes do piloto (`docs/04`). Hoje o e-mail padrão do Supabase só entrega para a equipe do projeto.
 8. **Segundo fator (TOTP)** para Admin do grupo, Gestor CSC e Implantador: **[ainda não existe]** (SP1, `docs/05`), obrigatório antes do piloto.
 9. **Ambientes:** staging e produção **[ainda não existem]** (F0-12 suspensa, `docs/04`). Hoje só existe o ambiente de dev. O staging precisa estar pronto antes do treinamento (que acontece nele), e não só antes do piloto.
-10. **Códigos de manutenção:** menu **Códigos de manutenção**, **Instalar códigos padrão** (37 códigos de falha, causa e solução); depois, **Criar código** ou **Editar nomes** para os códigos próprios do grupo. Só o Admin do grupo.
+10. **Códigos de manutenção:** já instalados pelo provisionamento (item 4; na tela, **Códigos de manutenção**, **Instalar códigos padrão**, 37 códigos de falha, causa e solução); depois, **Criar código** ou **Editar nomes** para os códigos próprios do grupo. Só o Admin do grupo.
 11. **Fornecedores:** menu **Fornecedores**, **Cadastrar** os prestadores que executam OS (nome, CNPJ e contato). Valem para o grupo inteiro. Sem fornecedor ativo, a triagem só oferece "Equipe interna" em **Quem executa**.
+12. **Modelos de checklist:** menu **Checklists**, **Criar checklist** para cada serviço que o grupo quer padronizar (por exemplo, a corretiva do ar-condicionado), com os itens e a **Categoria sugerida**. Só o Admin do grupo. Mudar os itens depois cria uma versão nova, sem mudar as OS que já têm o checklist. O checklist da OS preventiva gerada pelo plano vem na PV2 e na PV3 **[vai mudar na 1b]**.
 
 ## 3. Etapas por hotel
 
@@ -63,6 +64,7 @@ Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que ex
 3. Papéis mínimos por hotel: **Gerente do hotel**, **Técnico** (um por turno, no mínimo) e **Solicitante** (recepção, governança, quem abre chamado). O **Implantador** é temporário, por hotel, com validade obrigatória.
 4. Menu **Equipes**: **Nova equipe**, **Criar**, **Pôr na equipe**. Equipe serve para atribuir a OS a um grupo de técnicos (por exemplo, "Manutenção diurna").
 5. Conferir no **Painel de implantação** o item "Pessoas no hotel": nenhum papel vencido ou revogado ("Há pessoas com papel vencido ou revogado no hotel.").
+6. Só quem tem o papel **Técnico** no hotel aparece em "Pessoas" no **Responsável** da triagem. Quem executa OS precisa desse papel, mesmo que tenha outro.
 
 ### Etapa 5. Categorias
 
@@ -118,11 +120,13 @@ Exemplo de lote: 12 ativos fictícios em `modelo-ativos-criticos.csv`, cobrindo 
 Em **Configuração e políticas**, painel **Políticas**:
 - **Aceite automático da OS concluída:** tem **Ligado** e **Dias depois da conclusão**, mas o job que aceita sozinho **[ainda não existe]** (fase 1c). Deixar desligado no piloto.
 - **Prioridade padrão por categoria de ativo:** a tela mostra só "N categorias mapeadas." A edição pela tela **[ainda não existe]**; a gravação é pela rota `PUT /api/v1/politicas` (Admin do grupo) ou pelo script de operação. No kit, elevadores e segurança ficam em Urgente; refrigeração, elétrica, hidráulica e cozinha em Alta; lavanderia, eletrônicos e piscina em Média; mobiliário em Baixa. É a sugestão de partida (`docs/10`).
-- **Políticas de SLA** (prazos por prioridade, horário, escalonamento), notificações e indicadores: **[ainda não existe]** (fase 1c).
+- **Nível da política:** cada política do núcleo pode ser gravada no grupo, na bandeira do hotel ou no próprio hotel (vale a do hotel, senão a da bandeira, senão a do grupo). Gravar na bandeira quando todos os hotéis dela seguem a mesma regra.
+- **SLA:** o prazo de atendimento e o de solução já são calculados na abertura e na triagem, no calendário do hotel (com os feriados oficiais), e o motivo da pausa pode parar o relógio. A política de SLA (prazos por prioridade, horário, motivos que param o relógio) (`chamado.sla`) não tem tela: sem gravação pela rota `PUT /api/v1/politicas` (Admin do grupo), vale o padrão do sistema. Conferir com o Cesar se o piloto usa o padrão. Tela do SLA, escalonamento, notificações e indicadores: **[ainda não existe]** (fase 1c). Confirmar o fuso do hotel (etapa 2), porque o prazo depende dele.
 - **Nomes dos níveis de criticidade do ativo:** existe (I1). Conferir se o grupo mantém os nomes padrão.
 - **Códigos obrigatórios no aceite** ("Exigir falha, causa e solução no aceite"): existe (I6), desligado por padrão. Ligar ou não no piloto: **[a definir]** com o Cesar; ligado, o aceite sem os três códigos é recusado.
-- **Foto depois obrigatória** e **assinatura no aceite:** **[vai mudar na 1b]** (I8).
-- Plano preventivo, checklist e modelos por categoria: **[ainda não existe]** (PV1 a PV3, M1).
+- **Foto de depois na conclusão** e **Assinatura no aceite:** existem (I8), desligadas por padrão. Ligar ou não no piloto: **[a definir]** com o Cesar. Ligadas, a conclusão sem foto de depois e o aceite sem assinatura são recusados.
+- **Checklist completo na conclusão:** existe (PV1), desligado por padrão; desligado, o PWA só avisa os itens obrigatórios que faltam. Ligar ou não no piloto: **[a definir]** com o Cesar.
+- Plano preventivo: **[vai mudar na 1b]** (PV2 e PV3). Modelos por categoria: **[ainda não existe]** (M1).
 
 ### Etapa 9. Ativar o hotel
 
@@ -136,9 +140,9 @@ Em **Configuração e políticas**, painel **Políticas**:
 Feito com o Gerente e um técnico do hotel, antes do treinamento (usar um ativo real e marcar o chamado como teste):
 1. Solicitante abre um chamado no PWA com local e ativo, respondendo **Afeta hóspede?**. Num segundo chamado, numa UH, marcar **A UH ficou indisponível**.
 2. Gerente (ou Gestor CSC) tria e gera a OS para o técnico; num dos chamados, **Quem executa** com um fornecedor.
-3. A OS aparece na fila do dia do técnico; ele inicia, aponta uma hora, registra material, tira uma foto, escolhe falha, causa e solução e conclui. Na OS da UH, responde **Sim, UH liberada**.
-4. Quem abriu aceita, informando o custo (ou o Gerente reabre com motivo).
-5. Conferir a **Linha do tempo** e **Ver histórico** do chamado.
+3. A OS aparece na fila do dia do técnico; ele tira uma foto **Antes do serviço**, inicia, responde o checklist (se o gerente aplicou um), pausa com um motivo e retoma, aponta uma hora, registra material, tira uma foto **Depois do serviço**, escolhe falha, causa e solução e conclui. Na OS da UH, responde **Sim, UH liberada**.
+4. Quem abriu aceita, informando o custo e assinando (ou o Gerente reabre com motivo).
+5. Conferir a **Linha do tempo** e **Ver histórico** do chamado (com o prazo de atendimento e o de solução) e as linhas do teste em **Auditoria**.
 6. Repetir o passo 3 com o celular em modo avião e conferir o envio depois.
 
 ## 4. Critérios de "hotel pronto"
@@ -168,6 +172,7 @@ Marcar todos antes de declarar o hotel pronto para o treinamento:
 - [ ] Situações, prioridades e prioridade padrão por categoria conferidas.
 - [ ] Aceite automático desligado.
 - [ ] Códigos de manutenção instalados; decisão tomada sobre "Códigos obrigatórios no aceite".
+- [ ] Decisão tomada sobre "Foto de depois na conclusão", "Assinatura no aceite" e "Checklist completo na conclusão", e os modelos de checklist combinados criados.
 - [ ] Fornecedores que atendem o hotel cadastrados.
-- [ ] Gerente sabe onde ver "Paradas a encerrar", como marcar e liberar a UH indisponível e como aceitar (com custo e códigos) ou reabrir.
+- [ ] Gerente sabe onde ver "Paradas a encerrar", como marcar e liberar a UH indisponível e como aplicar um checklist, como aceitar (com custo, códigos e assinatura) ou reabrir, e onde consultar a **Auditoria**.
 - [ ] Canal de suporte combinado com o hotel (ver `roteiro-treinamento.md`).

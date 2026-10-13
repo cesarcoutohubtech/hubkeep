@@ -1,6 +1,6 @@
 # Manual por papel (piloto)
 
-Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194; lista no `README.md`). Os nomes de botões, menus e mensagens são os do catálogo pt-BR (`packages/i18n/catalogos/pt-BR.json`). O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]**, com a referência ao plano (`docs/12-plano-fase-1b.md`) ou ao documento que define a tarefa.
+Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #223; lista no `README.md`). Os nomes de botões, menus e mensagens são os do catálogo pt-BR (`packages/i18n/catalogos/pt-BR.json`). O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]**, com a referência ao plano (`docs/12-plano-fase-1b.md`) ou ao documento que define a tarefa.
 
 ## 1. O que vale para todos
 
@@ -20,8 +20,8 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualiza
 
 **Menu do web.** Os itens fixos são os mesmos para todos os papéis; quem decide o que cada um pode fazer é o servidor, e a recusa vem traduzida (por exemplo "Você não tem permissão para esta ação."). Itens:
 - **Operação:** Início, Chamados, Ordens de serviço, Paradas a encerrar.
-- **Cadastros:** Hotéis, Locais, Categorias de ativo, Códigos de manutenção, Ativos, Equipes, Proprietários, Fornecedores, Bandeiras, Membros e papéis.
-- **Configuração:** Configuração e políticas, Painel de implantação.
+- **Cadastros:** Hotéis, Locais, Categorias de ativo, Códigos de manutenção, Checklists, Ativos, Equipes, Proprietários, Fornecedores, Bandeiras, Membros e papéis.
+- **Configuração:** Configuração e políticas, Auditoria, Painel de implantação.
 - **Módulo opcional:** **HubKeep Intelligence**, com a contagem dos insights abertos. Só aparece no grupo que contratou o módulo, a partir da data de abertura das telas, e para os papéis da política de abertura (padrão: Admin do grupo e Gestor CSC; o Gerente do hotel só se o Admin incluir). Antes da abertura, só o Admin do grupo vê o item, que leva à página **Abertura das telas**.
 
 **Escopo.** Cada pessoa só enxerga os hotéis do seu papel (hotel, bandeira ou grupo inteiro). Fora do escopo, o registro aparece como "não encontrado".
@@ -30,7 +30,7 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualiza
 - Chamado: Aberto, Em triagem, Em execução, Aguardando aceite, Concluído, Cancelado.
 - OS: Atribuída, Em execução, Pausada, Concluída, Aceita, Cancelada.
 - Fluxo normal: o chamado é aberto (PWA), a triagem gera a OS para um técnico ou uma equipe, o técnico executa e conclui, quem abriu (ou o Gerente) aceita. No aceite, o chamado vai a Concluído; se reabrir, volta a Em execução, com motivo.
-- O chamado guarda também se **afeta hóspede** e, em UH, o período em que a **UH ficou indisponível**. A OS guarda **quem executa** (a equipe interna ou um fornecedor), os **códigos de falha, causa e solução** e, no aceite, o **custo informado**.
+- O chamado guarda também se **afeta hóspede**, em UH o período em que a **UH ficou indisponível**, e o **prazo de atendimento** e o **de solução** do SLA (calculados na abertura e na triagem; sem tela própria, aparecem em **Ver histórico** e na **Auditoria**). A OS guarda **quem executa** (a equipe interna ou um fornecedor), o **checklist** aplicado e as respostas, as fotos com o **momento** (antes ou depois), o **motivo de cada pausa**, os **códigos de falha, causa e solução** e, no aceite, o **custo informado** e a **assinatura** de quem aceita.
 
 **Quem faz o quê** (conferido em `packages/dominio/src/corretiva.ts`, `ativos.ts`, `locais.ts`, `equipes.ts`, `permissoes.ts`):
 
@@ -39,17 +39,19 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualiza
 | Ver chamados e OS do escopo (web) | sim | sim | sim | sim | sim | sim |
 | Abrir chamado (PWA) | sim | sim | sim | sim | sim | sim |
 | Triar, ajustar prioridade, gerar OS, reatribuir, cancelar OS, cancelar chamado | sim | sim | sim | não | não | não |
-| Iniciar, pausar, retomar, concluir OS; horas, material, foto, parada (PWA) | não | não | não | sim, só na OS dele ou da equipe dele | não | não |
+| Aplicar ou trocar o checklist na OS (web) | sim | sim | sim | não | não | não |
+| Iniciar, pausar (com motivo), retomar, concluir OS; horas, material, foto com momento, checklist, parada (PWA) | não | não | não | sim, só na OS dele ou da equipe dele | não | não |
 | Responder "Afeta hóspede?" e marcar "A UH ficou indisponível" na abertura (PWA) | sim | sim | sim | sim | sim | sim |
 | Corrigir o impacto no hóspede e quem executa; marcar e liberar UH indisponível (web) | sim | sim | sim | não (libera a UH ao concluir a OS, no PWA) | não | não |
-| Aceitar ou reabrir a OS concluída, com custo informado e códigos | se abriu o chamado, ou no caso especial (nota abaixo) | se abriu o chamado, ou no caso especial | sim, em qualquer chamado do hotel (menos na OS que ele mesmo abriu e executou) | só se abriu o chamado e não executou a OS | só se abriu o chamado | só se abriu o chamado |
+| Aceitar ou reabrir a OS concluída, com custo informado, códigos e assinatura | se abriu o chamado, ou no caso especial (nota abaixo) | se abriu o chamado, ou no caso especial | sim, em qualquer chamado do hotel (menos na OS que ele mesmo abriu e executou) | só se abriu o chamado e não executou a OS | só se abriu o chamado | só se abriu o chamado |
 | Ver e encerrar paradas pelo web ("Paradas a encerrar") | sim | sim | sim | não | não | não |
 | Cadastrar, editar e desativar ativo | sim | sim | sim | sim | não | sim |
 | Mover ativo de local | sim | sim | sim | não | não | sim |
 | Cadastrar área comum, informar a edificação do local, gerir equipes do hotel | sim | sim | sim | não | não | sim |
 | Cadastrar, editar, desativar e reativar fornecedor | sim | sim, com algum hotel no escopo | sim | não (só lê) | não (só lê) | não (só lê) |
 | Membros e papéis (convidar, conceder, revogar) | sim | não | não | não | não | sim, só no hotel dele, abaixo do papel dele |
-| Categorias, códigos de manutenção, bandeiras, proprietários, hotéis (importar, ativar), configuração e políticas (modelo contratual, nomes da criticidade, códigos obrigatórios) | sim | não | não | não | não | não |
+| Categorias, códigos de manutenção, modelos de checklist, bandeiras, proprietários, hotéis (importar, ativar), configuração e políticas (no grupo, na bandeira ou no hotel) | sim | não | não | não | não | não |
+| Auditoria geral (só leitura, com CSV) | sim | sim, nos hotéis do escopo | sim, no hotel dele | não | não | não |
 | Painel de implantação | sim | não | não | não | não | sim |
 | HubKeep Intelligence: ver e decidir insights (só com o módulo contratado e depois da abertura das telas) | sim | sim, nos hotéis do escopo; o de rede, se cobre todos os hotéis dele | só se o Admin incluir o Gerente na política de abertura; aí, só o insight do hotel dele | não | não | não |
 | HubKeep Intelligence: ver e mudar a abertura das telas | sim, também antes da abertura | não | não | não | não | não |
@@ -78,11 +80,12 @@ Proprietário (UH ou hotel inteiro) só lê o que é dele; não grava nada, não
 
 **Executar uma OS.**
 1. Na fila, tocar na OS. Botão **Iniciar** (OS Atribuída).
-2. Com a OS em execução: **Pausar** (depois **Retomar**) e **Concluir**.
+2. Com a OS em execução: **Pausar** (depois **Retomar**) e **Concluir**. **Pausar** pergunta "Por que a OS vai pausar?": **Aguardando peça**, **Aguardando fornecedor**, **UH ocupada, sem acesso**, **Fim de turno** ou **Outro motivo**. O motivo vale para o SLA: conforme a política do hotel, alguns param o relógio.
 3. Com a OS em execução ou pausada, a tela libera:
    - **Horas trabalhadas:** campos **Início** e **Fim**, botão **Apontar horas**. O fim tem de ser depois do início, sem passar do máximo e sem estar no futuro.
    - **Material usado:** texto livre ("Descreva o material (ex.: 2 m de cabo 2,5 mm)"), botão **Registrar material**.
-   - **Fotos:** **Tirar ou escolher foto**. A foto é comprimida no aparelho e sobe quando houver rede.
+   - **Fotos:** **Tirar ou escolher foto**, escolhendo o **Momento da foto** (**Antes do serviço** ou **Depois do serviço**). A foto é comprimida no aparelho e sobe quando houver rede. A foto também entra com a OS ainda Atribuída (o "antes", na chegada). Se o hotel ligou "Foto de depois na conclusão", a OS só conclui com ao menos uma foto de depois, e a tela mostra quantas há.
+   - **Checklist** (se quem triou aplicou um): "Checklist: nome", um campo por item (texto, número com a unidade, data, sim/não ou lista; "*" marca o obrigatório) e **Salvar respostas**. Com a OS Atribuída, a tela pede "Inicie a ordem de serviço para responder o checklist.". Funciona sem rede. Se faltam itens obrigatórios, a tela avisa; com "Checklist completo na conclusão" ligado no hotel, a conclusão é recusada até respondê-los.
    - **Falha, causa e solução (opcional):** escolher a falha, a causa e a solução, se souber, ou "Não sei / em branco". É só sugestão para quem aceita: a conclusão nunca é recusada por falta de código.
 4. Se o chamado tem ativo: **Equipamento parado** registra a parada agora; **Equipamento voltou a funcionar** encerra.
 5. **Concluir:** o app pede confirmação ("Concluir a ordem de serviço? Depois disso, horas, material e fotos não entram mais nela."). Se a parada do chamado está aberta, pergunta "O equipamento voltou a funcionar?" com **Sim, voltou a funcionar**, **Não, continua parado** ou **Cancelar**. Com "Não", a parada continua aberta e aparece para o Gerente em "Paradas a encerrar".
@@ -96,13 +99,13 @@ Proprietário (UH ou hotel inteiro) só lê o que é dele; não grava nada, não
 - Escolher o hotel, buscar por nome ("Buscar por nome (sem acento vale)"), tocar em **Alterar** ou **Fotos**.
 - **Cadastrar ativo:** Local, Nome do ativo, Categoria, Fabricante, Modelo, Número de série e os campos da categoria ("(obrigatório)" quando for o caso) e, na parte recolhida **Compra, garantia e criticidade**, a data da compra, a garantia e a criticidade (1 a 5); botão **Cadastrar**. Sem rede, fica em "Aguardando envio".
 - Fotos do ativo ("Fotos de ..."): precisam de rede ("Por enquanto, as fotos precisam de rede").
-- Foto "antes" ou "depois" na OS e assinatura no aceite: **[vai mudar na 1b]** (I8).
-- Checklist da preventiva: **[ainda não existe]** (PV1 a PV3).
+- O local aparece como "nome · edificação" quando o local tem edificação, aqui, na fila do dia, na OS e no novo chamado.
+- OS preventiva gerada pelo plano: **[ainda não existe]** (PV2 e PV3).
 
 **Ler o QR do ativo.** O app não tem leitor próprio. Apontar a câmera do celular para a etiqueta: o QR leva a `/q/<código>` e abre o ativo no PWA (pelo aparelho, ou pela rede se ele não estiver guardado). Sem rede e sem o ativo no aparelho: "Este ativo não está guardado no aparelho. Abra o QR de novo quando houver conexão." Para abrir chamado a partir da etiqueta, o fluxo de hoje é abrir o ativo e voltar a **Abrir chamado**. Leitura que já preenche o chamado: **[ainda não existe]**.
 
 **Offline.**
-- Tudo que o técnico faz (ações da OS, horas, material, foto da OS, chamado, cadastro de ativo, idioma) entra numa fila no aparelho e sai na ordem, ao abrir o app, depois de cada operação, quando a rede volta e a cada 30 segundos.
+- Tudo que o técnico faz (ações da OS, horas, material, foto da OS, respostas do checklist, chamado, cadastro de ativo, idioma) entra numa fila no aparelho e sai na ordem, ao abrir o app, depois de cada operação, quando a rede volta e a cada 30 segundos.
 - Reenviar não duplica: cada operação tem chave própria.
 - Aviso de pendência antiga: "Há registros aguardando envio desde ...". Não deixar dias sem abrir o app com rede.
 - Foto sem espaço no aparelho: "Não há espaço livre neste aparelho para guardar a foto." Fotos demais na fila: "Há fotos demais aguardando envio neste aparelho. Conecte-se à rede para enviá-las antes de tirar outras."
@@ -124,6 +127,8 @@ Proprietário (UH ou hotel inteiro) só lê o que é dele; não grava nada, não
 2. Antes de aceitar, conferir os campos do aceite:
    - **Falha**, **Causa** e **Solução**, já com a sugestão do técnico (ou "Não informado"). Se o hotel exige os códigos no aceite, sem eles a recusa é "Neste hotel, o aceite exige falha, causa e solução. Faltam N códigos.".
    - **Custo informado (R$)**: "Opcional. Valor em reais, sem aprovação nem alçada." Vazio não grava nada; zero aparece como "Custo informado: R$ 0,00". Não há como corrigir o custo depois do aceite.
+   - **Assinatura de quem aceita**: desenhar no quadro com o dedo, a caneta ou o mouse (**Limpar assinatura** para refazer). É a evidência do aceite, não uma assinatura digital. Obrigatória só se o hotel ligou "Assinatura no aceite"; sem ela, a recusa é "Neste hotel, o aceite exige a assinatura de quem aceita.". Depois, a OS mostra "Aceite com assinatura" e **Ver assinatura**; a assinatura não pode ser removida.
+   - Na OS, as fotos aparecem com o momento (Antes, Depois) e, se houver, o checklist com as respostas do técnico.
 3. **Aceitar** conclui o chamado.
 4. Ou preencher **Motivo da reabertura** (obrigatório), marcar "O equipamento está parado" e **Parado desde** se houver ativo, e tocar em **Reabrir**. A reabertura não pede custo.
 
@@ -136,12 +141,13 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 **Triagem de um chamado (web).** Em **Chamados**, abrir o chamado "Aberto". O painel **Triagem e atribuição** mostra só o que o estado permite:
 1. **Triar:** escolher a prioridade (ou "Manter a atual") e tocar em **Triar**. O chamado vai a "Em triagem".
 2. **Ajustar prioridade:** trocar a prioridade a qualquer momento até a execução.
-3. **Gerar OS:** em **Responsável**, escolher uma equipe (grupo "Equipes") ou uma pessoa (grupo "Pessoas"); em **Quem executa**, **Equipe interna** (o padrão) ou um fornecedor ativo (grupo "Fornecedores"); e tocar em **Gerar OS**. O responsável é obrigatório mesmo quando quem executa é um fornecedor: é quem acompanha a OS no PWA. A pessoa tem de ser Técnico ativo no hotel; senão: "A pessoa escolhida não é Técnico ativo neste hotel." O chamado vai a "Em execução" e a OS aparece como "Atribuída", na fila do dia do técnico (ou de quem está na equipe).
+3. **Gerar OS:** em **Responsável**, escolher uma equipe (grupo "Equipes") ou uma pessoa (grupo "Pessoas"); em **Quem executa**, **Equipe interna** (o padrão) ou um fornecedor ativo (grupo "Fornecedores"); e tocar em **Gerar OS**. O responsável é obrigatório mesmo quando quem executa é um fornecedor: é quem acompanha a OS no PWA. O grupo "Pessoas" lista só os Técnicos do hotel; a API recusa qualquer outra pessoa ("A pessoa escolhida não é Técnico ativo neste hotel."). O chamado vai a "Em execução" e a OS aparece como "Atribuída", na fila do dia do técnico (ou de quem está na equipe).
 4. **Reatribuir:** passar a OS (atribuída, em execução ou pausada) para outro técnico ou equipe.
 5. **Cancelar OS:** exige **Motivo do cancelamento**; o chamado volta à triagem para receber outra OS. Só pode existir uma OS não cancelada por chamado.
 6. **Cancelar chamado:** só antes da OS (Aberto ou Em triagem), com motivo. Sem motivo: recusado. O cancelamento também encerra o período de UH indisponível do chamado.
 7. **Afeta hóspede?** com **Salvar impacto** corrige o que veio da abertura, de Aberto até Aguardando aceite. **Salvar quem executa** troca a equipe interna pelo fornecedor (ou o contrário) até a conclusão da OS. As duas correções aparecem na **Linha do tempo**.
-8. Se outra pessoa alterou o registro antes: "Outra pessoa alterou este registro depois que você o abriu. Recarregue e refaça a alteração."
+8. **Checklist** (no bloco da OS): escolher o **Modelo de checklist** e tocar em **Aplicar checklist**, com a OS Atribuída, Em execução ou Pausada. **Trocar checklist** só enquanto o técnico não respondeu ("O checklist desta ordem de serviço já tem respostas e não pode ser trocado."). A OS guarda a versão do modelo aplicada; mudar o modelo depois não muda a OS. As respostas do técnico aparecem no mesmo bloco, só para leitura.
+9. Se outra pessoa alterou o registro antes: "Outra pessoa alterou este registro depois que você o abriu. Recarregue e refaça a alteração."
 
 **UH indisponível.** No detalhe do chamado de uma UH, o painel **UH indisponível** mostra "Indisponível" ou "Liberada" e o período ("Desde ..., há N h" ou "De ... a ... (N h)").
 - **Marcar UH indisponível**, com **Indisponível desde** (padrão: agora), vale de Aberto até Aguardando aceite e sem outro período aberto.
@@ -149,7 +155,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - A conclusão da OS e o aceite **não** liberam a UH sozinhos; o cancelamento do chamado libera.
 - Não há lista de UHs indisponíveis como a de "Paradas a encerrar": o acompanhamento é pelo chamado.
 
-**Aceite.** Na OS "Concluída", o bloco **Aceite**: **Aceitar**, com os códigos de falha, causa e solução e o custo informado (seção 3), ou **Reabrir** com motivo (e, se houver ativo, "O equipamento está parado" e **Parado desde**). O Gerente decide o aceite de qualquer chamado do hotel, exceto quando ele mesmo abriu e executou a OS. Aceite automático depois de N dias: a política existe na tela, mas o job que aceita sozinho **[ainda não existe]** (fase 1c).
+**Aceite.** Na OS "Concluída", o bloco **Aceite**: **Aceitar**, com os códigos de falha, causa e solução, o custo informado e a assinatura (seção 3), ou **Reabrir** com motivo (e, se houver ativo, "O equipamento está parado" e **Parado desde**). O Gerente decide o aceite de qualquer chamado do hotel, exceto quando ele mesmo abriu e executou a OS. Aceite automático depois de N dias: a política existe na tela, mas o job que aceita sozinho **[ainda não existe]** (fase 1c).
 
 **Paradas.** Menu **Paradas a encerrar**: lista "ativo: parado desde ... (duração)" e o estado da OS. **Encerrar parada** quando o equipamento voltar. No cadastro do ativo, **Ver paradas** mostra o histórico e o tempo parado total.
 
@@ -160,16 +166,19 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - **Ativos:** **Cadastrar ativo**, **Salvar**, **Desativar**, **Mover**, **Ver movimentações**, **Ver QR**, **Anexar arquivo**.
 - **Ver histórico** em chamado, OS, local e ativo: mostra quem fez, quando e o antes e o depois.
 
+**Auditoria** (menu **Configuração → Auditoria**, tela "Auditoria geral", só leitura): o que foi gravado no hotel dele. Filtros **De** e **Até** (até 92 dias por consulta), **Hotel**, **Tipo de registro**, **Ação** e **Pessoa**; **Consultar**, **Carregar mais**, **Ver o antes e o depois** e **Exportar CSV** (até 50.000 linhas; acima disso, diminuir o período). As ações e as pessoas dos filtros são as das linhas já carregadas. O que o sistema gravou sozinho aparece como "Sistema".
+
 **HubKeep Intelligence** (só se o grupo contratou o módulo e o Admin do grupo incluiu o Gerente do hotel na política de abertura das telas; no padrão, o Gerente não vê o módulo). Menu **HubKeep Intelligence**: a lista de insights do hotel, a página de cada insight com "Por que estou vendo isso?" e a decisão (resolver ou descartar, com nota), e o detalhe do ativo. O Gerente decide só o insight do hotel dele; o insight de rede é do Admin do grupo e do Gestor CSC, e na página aparece "Você não decide este insight. Pode acompanhar a evidência.".
 
-**Não faz.** Ativar hotel, categorias, códigos de manutenção, políticas, membros e papéis, proprietários, bandeiras.
+**Não faz.** Ativar hotel, categorias, códigos de manutenção, modelos de checklist, políticas, membros e papéis, proprietários, bandeiras.
 
 ## 5. Gestor CSC
 
 **Escopo.** Grupo inteiro ou uma bandeira. **O que vê.** Chamados, OS, ativos e locais dos hotéis do escopo.
 
 **Faz.**
-- **Triagem e atribuição**, igual ao Gerente (seção 4): Triar, Ajustar prioridade, Gerar OS (com quem executa), Reatribuir, Cancelar OS, Cancelar chamado, Salvar impacto, Salvar quem executa.
+- **Triagem e atribuição**, igual ao Gerente (seção 4): Triar, Ajustar prioridade, Gerar OS (com quem executa), Reatribuir, Cancelar OS, Cancelar chamado, Salvar impacto, Salvar quem executa, Aplicar e Trocar checklist.
+- **Auditoria**, como o Gerente (seção 4), nos hotéis do escopo.
 - **Paradas a encerrar:** acompanhar e **Encerrar parada**. **UH indisponível:** marcar e liberar pelo detalhe do chamado.
 - **Cadastros de hotel:** Locais (áreas comuns e edificação), Equipes e Ativos, nos hotéis do escopo.
 - **Fornecedores:** cadastra como o Gerente, desde que o papel alcance algum hotel do grupo. O Gestor CSC de uma bandeira ainda sem hotel recebe "Seu papel ainda não alcança nenhum hotel do grupo, então você não cadastra fornecedores..." e pede ao Admin do grupo.
@@ -178,9 +187,9 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 
 **Aceite.** O Gestor CSC aceita ou reabre só nos chamados que ele mesmo abriu ou no caso especial: quem abriu o chamado também executou a OS e não há outro Gerente ativo no hotel. Com Gerente no hotel, quem decide é o Gerente.
 
-**Não faz.** Ativar hotel, conceder papel, convidar pessoas, categorias, códigos de manutenção, políticas, bandeiras, proprietários.
+**Não faz.** Ativar hotel, conceder papel, convidar pessoas, categorias, códigos de manutenção, modelos de checklist, políticas, bandeiras, proprietários.
 
-**Indicadores, SLA, notificações:** **[ainda não existe]** (fase 1c).
+**SLA:** o chamado já tem o prazo de atendimento e o de solução (em **Ver histórico** e na **Auditoria**). Painel do SLA, indicadores e notificações: **[ainda não existe]** (fase 1c).
 
 ## 6. Admin do grupo
 
@@ -204,21 +213,26 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - **Bandeiras:** **Nova bandeira**, **Criar**, **Renomear**, **Desativar**; "Bandeira de cada hotel".
 - **Categorias de ativo:** **Instalar categorias padrão** (10 padrão), **Criar categoria**, **Salvar nomes** (por idioma), **Acrescentar campo** (Chave, Rótulo, Tipo, Unidade, Opções, Obrigatório), **Tirar campo**, **Desativar**.
 - **Proprietários:** **Novo proprietário**, **Vincular a uma UH ou ao hotel inteiro**, **Dar acesso** ou **Convidar como proprietário** (somente leitura).
-- **Configuração e políticas:** dados do grupo e do hotel (País, Estado ou província, Moeda, Idioma padrão, Fuso horário e, no hotel, **Modelo contratual**: Próprio, Administrado, Arrendado, Afiliado ou Não informado) e as políticas:
+- **Checklists** (tela "Modelos de checklist"): **Criar checklist** (**Nome do checklist**, **Categoria sugerida** ou "Todas as categorias", o nome em cada idioma), **Acrescentar item** e **Acrescentar item de conformidade** (Conforme, Não conforme, Não se aplica), **Tirar item**, **Salvar**, **Desativar** e **Reativar**. Mudar os itens cria uma versão nova; as OS que já têm o checklist ficam com a versão delas. Só o Admin do grupo grava; a gestão e o Implantador leem.
+- **Configuração e políticas:** dados do grupo e do hotel (País, Estado ou província, Moeda, Idioma padrão, Fuso horário e, no hotel, **Modelo contratual**: Próprio, Administrado, Arrendado, Afiliado ou Não informado) e as políticas. Cada política do núcleo pode ser gravada no grupo, na bandeira do hotel (**Gravar na bandeira**, **Voltar a herdar na bandeira**) ou no hotel; vale a do hotel, senão a da bandeira, senão a do grupo, senão o padrão, e a tela diz a origem ("definido no hotel", "definido na bandeira", "definido no grupo" ou "padrão do sistema"). As políticas:
   - "Aceite automático da OS concluída" (**Ligado**, **Dias depois da conclusão**, **Gravar no grupo** ou **Gravar no hotel**, **Voltar ao padrão no grupo**, **Voltar a herdar no hotel**);
   - "Nomes dos níveis de criticidade do ativo" (padrão: 1 Muito baixa, 2 Baixa, 3 Média, 4 Alta, 5 Crítica), no grupo ou no hotel;
   - "Códigos obrigatórios no aceite" (**Exigir falha, causa e solução no aceite**, desligado por padrão);
+  - "Foto de depois na conclusão" (**Exigir ao menos uma foto de depois para concluir**, desligado por padrão);
+  - "Assinatura no aceite" (**Exigir a assinatura de quem aceita**, desligado por padrão);
+  - "Checklist completo na conclusão" (**Exigir os itens obrigatórios do checklist para concluir**, desligado por padrão; desligado, o PWA só avisa o que falta);
   - "Prioridade padrão por categoria de ativo" aparece só como resumo: a edição pela tela **[ainda não existe]**.
 - **Códigos de manutenção** (tela "Códigos de falha, causa e solução"): **Instalar códigos padrão** (37 códigos), **Criar código**, **Editar nomes**, **Salvar nomes**, **Desativar**, **Reativar**. Só o Admin do grupo.
+- **Auditoria:** como o Gerente (seção 4), no grupo inteiro; as linhas do grupo, sem hotel, aparecem como "Grupo".
 - **Painel de implantação:** "O que falta" por hotel (ver guia de implantação).
 - **HubKeep Intelligence → Abertura das telas** (só com o módulo contratado; também antes da abertura): "Abrem em", "De onde vem a data" (por padrão, "60 dias depois da primeira ativação do módulo") e "Quem vê as telas". Em **Mudar a abertura**: **Abrir a partir de** (em branco, conta os dias), **Dias depois da primeira ativação**, os papéis que veem (Admin do grupo, Gestor CSC, Gerente do hotel), **Salvar** e **Voltar ao padrão**. O dia começa à meia-noite de Brasília. Antes da abertura, nem o Admin vê a lista de insights; o cálculo já acontece todo dia.
-- Sem tela, só pela API ou script de operação: situações e prioridades padrão (instalação), credencial do agente conector (criar e revogar), gravar política de prioridade por categoria, e a contratação do HubKeep Intelligence (pelo backoffice; hoje, só no dev, `pnpm ops:modulo`).
+- Sem tela, só pela API ou script de operação: situações e prioridades padrão (no grupo do cliente, o provisionamento já instala, junto com as categorias, os códigos e a prioridade por categoria), credencial do agente conector (criar e revogar), gravar política de prioridade por categoria, política de SLA, e a contratação do HubKeep Intelligence (pelo backoffice; hoje, só no dev, `pnpm ops:modulo`).
 
-**Ainda por vir.** Foto "antes" ou "depois" e assinatura no aceite: **[vai mudar na 1b]** (I8). Importação de ativos por planilha, QR em lote, modelos por categoria, aprovação de ativos cadastrados pelo celular, planos preventivos e checklist: **[ainda não existe]** (M1 a M4, PV1 a PV3).
+**Ainda por vir.** Planos preventivos e a OS preventiva gerada pelo plano: **[vai mudar na 1b]** (PV2 e PV3; a tabela já existe, sem tela). Importação de ativos por planilha, QR em lote, modelos por categoria, aprovação de ativos cadastrados pelo celular: **[ainda não existe]** (M1 a M4).
 
 ## 7. Outros papéis (para consulta)
 
-**Implantador.** Papel temporário de um hotel, sempre com validade. Usa o **Painel de implantação**, **Membros e papéis** (só concede papéis abaixo do dele, só no hotel dele; não concede Admin do grupo, Implantador nem Proprietário), **Locais** (inclusive a edificação), **Equipes** e **Ativos** (com compra, garantia e criticidade). Lê os **Fornecedores**, sem gravar. Não ativa hotel nem libera licença. Não faz triagem.
+**Implantador.** Papel temporário de um hotel, sempre com validade. Usa o **Painel de implantação**, **Membros e papéis** (só concede papéis abaixo do dele, só no hotel dele; não concede Admin do grupo, Implantador nem Proprietário), **Locais** (inclusive a edificação), **Equipes** e **Ativos** (com compra, garantia e criticidade). Lê os **Fornecedores** e os modelos de **Checklists**, sem gravar. Não ativa hotel nem libera licença. Não faz triagem.
 
 **Proprietário.** Somente leitura. De UH: vê só os chamados e OS da UH vinculada, com a linha do tempo e o histórico (quem gravou aparece como "por outra pessoa"). Do hotel inteiro: vê os chamados do hotel. Da UH indisponível, vê só a UH, o estado e as datas. Não lê fornecedores nem o HubKeep Intelligence. Só vale dentro da vigência do vínculo.
 
@@ -227,12 +241,13 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 | Tarefa | Onde |
 |---|---|
 | Abrir chamado | PWA (não existe tela de abertura no web) |
-| Triagem, atribuição (com quem executa), impacto no hóspede, aceite (com custo e códigos), paradas | Web |
+| Triagem, atribuição (com quem executa), checklist na OS, impacto no hóspede, aceite (com custo, códigos e assinatura), paradas | Web |
 | UH indisponível | PWA (marcar na abertura, liberar na conclusão) e web (marcar e liberar) |
-| Iniciar, pausar, retomar, concluir, horas, material, foto da OS, sugestão de falha, causa e solução | PWA |
+| Iniciar, pausar (com motivo), retomar, concluir, horas, material, foto da OS (antes ou depois), respostas do checklist, sugestão de falha, causa e solução | PWA |
 | Cadastrar ativo | Web e PWA |
 | QR do ativo | Web ("Ver QR"); leitura pela câmera do celular |
-| Hotel, bandeiras, categorias, códigos de manutenção, membros, configuração | Web (Admin do grupo) |
+| Hotel, bandeiras, categorias, códigos de manutenção, modelos de checklist, membros, configuração | Web (Admin do grupo) |
+| Auditoria geral | Web (Admin do grupo, Gestor CSC e Gerente) |
 | Fornecedores | Web (Admin do grupo, Gestor CSC e Gerente) |
 | HubKeep Intelligence | Web, só com o módulo contratado e depois da abertura das telas (no padrão, Admin do grupo e Gestor CSC) |
 | Abertura das telas do HubKeep Intelligence | Web (Admin do grupo), também antes da abertura |

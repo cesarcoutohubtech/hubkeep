@@ -1395,3 +1395,18 @@ O que o gerador precisa, com as condições do item 3:
   - o teste do histórico no Supabase do runner.
 - **Primeiro passo:** ler a montagem da 1b.
 - **Depois:** as atividades 4 (glossário de métricas) e 5 (`docs/piloto/`).
+
+## Atividade 5: `docs/piloto/` com as entregas até o #223 (13/10/2026)
+
+Quinta atividade do Kaio (12/10/2026). Proposta de desenho levada ao Cesar e aprovada em 13/10/2026 ("Cesar aqui. Sim, pode seguir com opção A"): um PR só de docs, a partir da `main`, na branch `claude/int-piloto-1b-1c`, separado do PR do glossário (#225), que espera a revisão da 1c.
+
+- **README:** tabela da 1b estendida (I8, provisionamento e kit por turma, edificação no PWA, responsáveis só Técnicos, PV1, PV2) e tabela nova "O que a 1c já entregou" (nível bandeira, auditoria geral, prazos de SLA, motivo da pausa), porque o piloto só começa depois da 1c. Listas "[vai mudar na 1b]" e "[ainda não existe]" limpas; pergunta 10 respondida pelo #196.
+- **Manual, roteiro e guia:** checklist (Admin grava os modelos, quem tria aplica, o técnico responde no PWA), foto com momento, assinatura no aceite, as três políticas novas, nível bandeira, auditoria geral com CSV, motivo da pausa, prazos de SLA só em "Ver histórico" e na auditoria, provisionamento por script. Exercícios 16 a 19 novos no roteiro; o 4 mudou, porque a Solicitante não aparece mais na lista de responsáveis (#201).
+- Conferido pelo código e pelo catálogo pt-BR, sem rodar o app.
+
+### Ponto de retomada (13/10/2026, atividade 5)
+
+- **`main`:** no #223. **PRs do Intelligence abertos:** #225 (glossário v3, rascunho, espera a revisão da 1c) e o PR desta atividade. Os dois acrescentam seção no fim deste diário: quem entrar depois recebe a `main` e resolve o conflito mantendo as duas seções.
+- **Espera o Cesar:** o merge dos dois PRs; as decisões do piloto sobre "Foto de depois na conclusão", "Assinatura no aceite", "Checklist completo na conclusão" e a política de SLA padrão.
+- **Pendências de antes:** as da atividade 4 (revisão da 1c, divergências a–f, aprovações) e da atividade 3 (montagem da 1b com relógio controlável e a conferência do Kaio).
+- **Próximo:** atualizar o `docs/piloto/` de novo a cada entrega da 1b (PV2 com telas, PV3, M1 a M4); depois da aprovação do glossário, o PR de código da conclusão do serviço e do custo informado no domínio.
