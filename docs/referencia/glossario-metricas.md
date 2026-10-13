@@ -2,7 +2,7 @@
 
 **Situação:** o Cesar aprovou o glossário único neste arquivo em 13/10/2026, no chat do agente da 1c, para ser fechado com o agente do Kaio pelos diários. Esta é a segunda versão, de 13/10/2026: as definições dos indicadores foram aprovadas pelo Cesar no mesmo dia (decisões 10 e 11 de `docs/referencia/propostas-desenho-1c.md`). Cada termo diz se está **fechado** (já no código, ou decidido pelo Cesar) ou **em proposta** (aguarda o Kaio, ou o Cesar).
 
-**Versão 3, rascunho (13/10/2026), do agente do Kaio (atividade 4).** Os termos fechados da versão 2 não mudaram de texto. A versão 3 acrescenta os termos do Intelligence, o levantamento de onde cada métrica é calculada hoje, as divergências achadas no levantamento, com uma proposta para cada uma, e a resposta aos quatro pontos para o agente do Kaio. Aguarda a revisão do agente da 1c, pelos diários, e a aprovação do Cesar; nos termos que o Intelligence usa, também a do Kaio (regra 4). Desenho aprovado pelo Cesar em 13/10/2026, no chat do agente do Kaio.
+**Versão 3, aprovada em 13/10/2026 pelo Cesar e pelo Kaio ("Aprovado", cada um com o próprio "Cesar aqui" e "Kaio aqui", no chat do agente do Kaio), do agente do Kaio (atividade 4).** Os termos fechados da versão 2 não mudaram de texto. A versão 3 acrescenta os termos do Intelligence, o levantamento de onde cada métrica é calculada hoje, as divergências achadas no levantamento, com uma proposta para cada uma, e a resposta aos quatro pontos para o agente do Kaio. Aguarda a revisão do agente da 1c, pelos diários, e a aprovação do Cesar; nos termos que o Intelligence usa, também a do Kaio (regra 4). Desenho aprovado pelo Cesar em 13/10/2026, no chat do agente do Kaio.
 
 **Revisão da 1c ([#230](https://github.com/cesarcoutohubtech/hubkeep/pull/230), `docs/diario-fase-1c.md`, "Revisão do glossário de métricas, versão 3"), levada a este rascunho pelo agente do Kaio em 13/10/2026.** Entraram:
 - as três correções do levantamento (a abertura, os prazos e o tempo pausado, e os avisos do monitor);
@@ -11,7 +11,7 @@
 
 Os termos fechados da versão 2 continuam sem mudança de texto.
 
-**Decisões das divergências (13/10/2026, chat do agente do Kaio).** As seis (a a f) estão decididas, todas pela proposta: a a e a b pelo Cesar e pelo Kaio, a d e a e pelo Cesar, e a c e a f pelo Kaio. Decidir as divergências não aprova esta versão: o rascunho entrou na `main` sem valer como aprovação (Cesar, 13/10/2026), e falta a aprovação do Cesar e, nos termos do Intelligence, a do Kaio.
+**Decisões das divergências (13/10/2026, chat do agente do Kaio).** As seis (a a f) estão decididas, todas pela proposta: a a e a b pelo Cesar e pelo Kaio, a d e a e pelo Cesar, e a c e a f pelo Kaio. A versão 3 foi aprovada depois, no mesmo dia. Com ela, a conclusão do serviço no domínio e a preventiva atrasada, que eram propostas do Kaio, ficam fechadas. Os termos ligados a um ADR em proposta, como o prazo em risco e o prazo vencido (ADR-043), continuam esperando a aprovação do ADR, porque aprovar o glossário não aprova o ADR.
 
 ## Regras
 
@@ -28,7 +28,7 @@ Os termos fechados da versão 2 continuam sem mudança de texto.
 |---|---|---|---|---|
 | **Abertura** | A criação do chamado (`app.chamado.criado_em`). | Coluna | Os dois | Fechado |
 | **Corretiva** | O chamado e a OS dele. O chamado cancelado fica fora de toda métrica, salvo onde o termo diz outra coisa. | `Corretiva` (Intelligence) | Os dois | Fechado |
-| **Conclusão do serviço** | A última transição `concluir` da OS (`app.os_transicao`), se depois dela a OS não foi reaberta nem cancelada. O aceite não muda a conclusão. | `conclusaoEReaberturas`, hoje em `packages/inteligencia/src/historico.ts`; **proposta: mover para o domínio**, com o mesmo comportamento, para o painel usar | Os dois | Em proposta (Kaio) |
+| **Conclusão do serviço** | A última transição `concluir` da OS (`app.os_transicao`), se depois dela a OS não foi reaberta nem cancelada. O aceite não muda a conclusão. | `conclusaoEReaberturas`, hoje em `packages/inteligencia/src/historico.ts`; **decidido: mover para o domínio**, com o mesmo comportamento, para o painel usar | Os dois | Fechado (versão 3, Kaio e Cesar, 13/10/2026); a mudança vem no PR de código |
 | **Reabertura** | A transição `reabrir` da OS, no aceite recusado. | A mesma função | Os dois | Fechado |
 | **Tempo parado do ativo** | Do início ao fim de cada parada do ativo, ou até agora, se aberta, com o trecho sobreposto contado uma vez. | `tempoParado`, `tempoParadoTotal` (domínio) | Os dois | Fechado |
 | **UH-dias perdidos** | As horas de UH indisponível dentro do intervalo, divididas por 24, com uma casa decimal. O período sobreposto na mesma UH conta uma vez, o aberto conta até agora, e o do chamado cancelado fica fora. | `uhDiasPerdidos` (domínio) | Os dois | Fechado |
@@ -55,7 +55,7 @@ Os termos fechados da versão 2 continuam sem mudança de texto.
 | **MTTR** | A média, em horas corridas, da abertura até a conclusão do serviço, dos chamados com a conclusão no período, sem preventiva. A mediana aparece ao lado. Reaberto e concluído de novo, vale a última conclusão. | Domínio, sobre a conclusão do serviço | Os dois (o PRD do Intelligence cita MTTR) | Fechado (decisão 1 da paridade; a mediana ao lado, decisão 10 de 13/10/2026) |
 | **Tempo até o aceite** | Da conclusão do serviço até o aceite. Não entra no MTTR. | Domínio | Núcleo, se entrar | Em proposta (decisão 1 da paridade, "pode virar indicador à parte") |
 | **% de preventiva em dia** | Das OS preventivas com data prevista no período e não canceladas, as concluídas até o fim do dia previsto mais a tolerância, sobre o total. | Domínio; tolerância pela política `preventiva.tolerancia_dias`, padrão 0 | Núcleo | Fechado (decisão 11, 13/10/2026); depende da PV3 |
-| **Preventiva atrasada** | A preventiva vencida: passou do fim do dia previsto mais a tolerância e não foi concluída nem cancelada. É o complemento da "preventiva em dia", com a mesma tolerância. | Domínio; hoje é o campo `preventivaAtrasada` da atenção do ativo, ainda sem dado | Os dois | Em proposta (Kaio) |
+| **Preventiva atrasada** | A preventiva vencida: passou do fim do dia previsto mais a tolerância e não foi concluída nem cancelada. É o complemento da "preventiva em dia", com a mesma tolerância. | Domínio; hoje é o campo `preventivaAtrasada` da atenção do ativo, ainda sem dado | Os dois | Fechado (versão 3, Kaio e Cesar, 13/10/2026) |
 | **Razão preventiva/corretiva** | As OS preventivas concluídas no período sobre as corretivas com a conclusão do serviço no período. | Domínio | Núcleo | Fechado (decisão 10) |
 | **Chamados por 100 UHs** | Os chamados abertos no período, divididos pelas UHs ativas do hotel, vezes 100. | Domínio | Núcleo | Fechado (decisão 6 da paridade) |
 | **Comparação na bandeira** | Os indicadores por hotel, lado a lado, com a média da bandeira, e as contagens normalizadas por 100 UHs. Só os hotéis que o usuário lê. | Domínio | Núcleo | Fechado (decisão 10) |
@@ -68,7 +68,7 @@ Os termos fechados da versão 2 continuam sem mudança de texto.
 3. Confirmar que o Intelligence não calcula MTTR, backlog nem % de SLA próprios. Se precisar, ele usa as funções do domínio, com estes nomes.
 4. Apontar qualquer nome do PRD (`docs/referencia/prd-hubkeep-intelligence-v1.md`) que colida com um termo daqui com outro cálculo.
 
-## Termos do Intelligence (versão 3, rascunho)
+## Termos do Intelligence (versão 3)
 
 São do módulo (regra 3): o painel da 1c não usa estes nomes. Cada score é determinístico, versionado e explicável (ADR-034), com pesos, limites e faixas pela política (ADR-035), e cada resultado diário grava a versão da fórmula (ADR-036). As fórmulas e os padrões abaixo já estão no código e foram aprovados antes desta versão; o glossário só os registra com o nome. Mudar um detalhe dentro da regra aprovada (limiar, peso, mínimo, rótulo) é do Kaio (ADR-033); o resto continua com o Cesar e o Kaio.
 
@@ -132,7 +132,7 @@ Levantamento na `main` de 13/10/2026. "Sem código" quer dizer que o termo está
 | Números da tela de insights | `resumoDoPainel` (`painel.ts`) | `GET /api/v1/inteligencia/resumo` e a tela de insights |
 | Resumo mensal por ativo e por hotel | `agregarMesDosAtivos`, `agregarMesDosHoteis` (`agregacao.ts`): o valor e a faixa dos scores agregados no mês | Job do mês |
 
-## Divergências achadas no levantamento (versão 3, em proposta)
+## Divergências achadas no levantamento (versão 3, decididas)
 
 | # | Divergência | Proposta | Quem decide | Situação |
 |---|---|---|---|---|
@@ -143,7 +143,7 @@ Levantamento na `main` de 13/10/2026. "Sem código" quer dizer que o termo está
 | e | **MTBF.** O PRD do Intelligence cita o MTBF "quando houver histórico suficiente", e nada o calcula. | Nome reservado, sem cálculo, até a fase 2. Ninguém usa o nome com outro cálculo nesse meio-tempo. | Cesar | Decidida: o Cesar aceitou a proposta (chat do agente do Kaio, 13/10/2026) |
 | f | **"Reincidência" no PRD.** O PRD usa "reincidência após encerramento", "reincidência após reparo" e "taxa de reincidência do fornecedor" para cálculos que não são o score. | "Reincidência" é só o score. A volta depois de uma corretiva é um componente dele ("falha até 30 dias depois da conclusão"), e a taxa da regra do fornecedor se chama "taxa de retorno do fornecedor". O PRD fica como está, por ser o documento de origem, e as telas usam os nomes daqui. | Kaio (rótulo) | Decidida: o Kaio aceitou a proposta (chat do agente do Kaio, 13/10/2026) |
 
-## Resposta do agente do Kaio aos quatro pontos (versão 3, rascunho)
+## Resposta do agente do Kaio aos quatro pontos (versão 3)
 
 1. **Conclusão do serviço no domínio:** sim. `conclusaoEReaberturas` vai para `packages/dominio`, com o mesmo comportamento e os testes, e o Intelligence passa a importar de lá, como foi com `uhDiasPerdidos`. Vem num PR de código à parte, depois da aprovação desta versão; antes, o diário do Intelligence registra a mudança, porque `packages/dominio` é área compartilhada. O custo informado (divergência d) vai junto.
 2. **Preventiva atrasada:** sim. O campo `preventivaAtrasada` da atenção vai usar a "preventiva atrasada" daqui, com a tolerância da política do núcleo, quando a PV3 trouxer o dado. Sair do "sem dado" muda a atenção, que ganha a versão seguinte da fórmula.
