@@ -1039,7 +1039,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-042 — Calendário de SLA: prazos calculados no domínio e gravados no chamado
 
-**Status:** decisões aprovadas por Cesar em 13/10/2026, no chat do agente da 1c: as quatro do item 1 de `docs/referencia/propostas-desenho-1c.md`, com o ajuste C, e as decisões 2 a 6 abaixo. O texto completo aguarda a aprovação do Cesar nos detalhes que são do agente: a cópia da política inteira no chamado, a lista dos motivos da pausa, quem cadastra o feriado do hotel, a reabertura contra o mesmo prazo e os tipos de feriado que contam. Substitui o "Limite" do adendo ao ADR-027 (pausa pelo estado da OS), que deixava o motivo da pausa para decisão própria.
+**Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c: as quatro decisões do item 1 de `docs/referencia/propostas-desenho-1c.md`, com o ajuste C, e as decisões 2 a 6 abaixo; o texto completo, com os detalhes do agente (a cópia da política inteira no chamado, a lista dos motivos da pausa, quem cadastra o feriado do hotel, a reabertura contra o mesmo prazo e os tipos de feriado que contam), aprovado em seguida, no mesmo dia ("aprovo adr 42").
 
 **Contexto:** o critério de aceite do piloto pede o relógio do SLA pelo calendário da categoria: elevador parado conta 24x7, pintura conta em horário comercial (`docs/referencia/documento-projeto.md`). Hoje não existe cálculo de SLA, e o chamado não tem categoria própria: ela vem do ativo, e pintura quase nunca tem ativo. O fuso, o país e a subdivisão do hotel já existem (`app.hotel`), e o ADR-022 já decidiu que os feriados nacionais e regionais vêm de biblioteca e só os do hotel ficam no banco.
 

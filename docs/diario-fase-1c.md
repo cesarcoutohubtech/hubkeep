@@ -84,6 +84,17 @@ Branch `claude/gallant-clarke-fptpo9`, zona protegida.
 - **Verificação:** no local, lint, typecheck e testes. O pgTAP só roda na CI, por decisão do Cesar; não rodei nada contra o dev.
 - **Situação:** a branch foi enviada, mas o PR não foi aberto, porque o #203 (PV1, zona protegida) está aberto. O PR abre depois do merge do #203, com a `main` trazida para a branch.
 
+## ADR-042 aprovado (13/10/2026)
+
+Mensagem do Cesar no chat, 13/10/2026: "aprovo adr 42. Siga". O texto completo do ADR-042 está aprovado, inclusive os cinco detalhes do agente que estavam pendentes:
+- a cópia da política inteira no chamado;
+- a lista dos motivos da pausa;
+- quem cadastra o feriado do hotel;
+- a reabertura contra o mesmo prazo;
+- os tipos de feriado que contam.
+
+O status no `docs/03` mudou para aprovado. O PR continua esperando o merge do #203.
+
 ## Ponto de retomada (13/10/2026)
 
 - **Feito:**
