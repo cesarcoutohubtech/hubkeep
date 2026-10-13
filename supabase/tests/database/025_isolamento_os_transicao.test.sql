@@ -12,7 +12,8 @@
 --      do tenant.
 -- E o implantador vencido do Hotel 1, que não vê nem grava (B2 do docs/11).
 -- Mais: formato de acao, de e para; sem UPDATE e sem DELETE para ninguém;
--- worker vê só o tenant do job.
+-- worker vê só o tenant do job (o que ele grava, no aceite automático, está
+-- no 038).
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -133,8 +134,8 @@ select throws_ok(
 select ok(not has_any_column_privilege('hk_app', 'app.os_transicao', 'UPDATE')
           and not has_any_column_privilege('hk_worker', 'app.os_transicao', 'UPDATE'),
   'sem UPDATE em transição para o hk_app e o hk_worker');
-select ok(not has_table_privilege('hk_worker', 'app.os_transicao', 'INSERT'),
-  'worker não grava transição');
+select ok(has_table_privilege('hk_worker', 'app.os_transicao', 'INSERT'),
+  'worker grava só a transição do aceite automático (0046; o escopo está no 038)');
 
 set local role hk_app;
 

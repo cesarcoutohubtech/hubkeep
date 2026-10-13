@@ -448,3 +448,22 @@ Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a par
    - catálogo nos quatro idiomas.
 
 **Ordem:** o ADR-044 e a 0045 vão num PR de zona protegida, quando for a vez da 1c (hoje nenhum PR de zona protegida está aberto). O código vai num PR seguinte, fora da zona. Enquanto espero a decisão, adianto na branch o domínio e a aplicação, com as portas em memória, sem abrir PR.
+
+**Decisão:** Cesar aprovou no chat do agente da 1c, em 13/10/2026: "Cesar aqui. Aprovo o M5 conforme recomendado". O ADR-044 entra com o status "aguarda aprovação", porque o texto veio depois.
+
+### Aceite automático: PR de zona protegida (ADR-044 e migração 0046)
+
+Na branch `claude/1c-aceite-automatico`:
+- o ADR-044 no `docs/03`;
+- a migração 0046 (`20261013210000_aceite_automatico.sql`). A 0045 é a dos planos preventivos da 1b;
+- o pgTAP `038`, com os testes `025` e `037` ajustados: antes, eles afirmavam que o worker não grava transição e não altera o chamado.
+
+**Fila de zona protegida (13/10/2026):** o #231 do Dependabot está aberto e toca o `packages/auth-admin/package.json`, que é zona protegida. O PR da 0046 só abre depois que o #231 sair, e na vez que o Cesar der. A PV3 da 1b também quer a vez.
+
+**Aviso à 1b (PV3, ADR-041):** a 0046 já faz parte do que a PV3 previa para `app.os_transicao`:
+- dá ao `hk_worker` o INSERT e a policy `worker_insert`, no tenant do job e com o usuário nulo;
+- deixa o `usuario_id` anulável.
+
+O check `os_transicao_sem_autor_so_no_aceite_automatico` exige o usuário nulo na ação `aceitar_automatico` e só nela. A PV3 não precisa de GRANT nem de policy novos na transição. Basta trocar esse check por um que também aceite o nulo em `gerar`. Por exemplo: `case acao when 'aceitar_automatico' then usuario_id is null when 'gerar' then true else usuario_id is not null end`.
+
+**Aviso ao Intelligence:** a transição do aceite automático tem a ação nova `aceitar_automatico`, de `concluida` para `aceita`, sem usuário. O evento continua `os.aceita`, com `automatico: true`. Quem conta aceites pela ação `aceitar` precisa contar as duas. A OS aceita automaticamente fica sem custo informado, o que pesa na cobertura do custo do glossário.
