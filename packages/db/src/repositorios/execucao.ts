@@ -1,7 +1,10 @@
 // Execução da OS pelo Técnico (fase 1a, C4), na unit of work da operação
 // offline, com auditoria e evento. A RLS decide por último (migração 0023): só
 // o responsável anda com a OS e com o chamado dela e insere horas e material,
-// em nome dele mesmo. A transição confere a versão (ADR-029).
+// em nome dele mesmo. A transição confere a versão (ADR-029). Na 1c
+// (ADR-042), a pausa grava o motivo na transição, e a retomada da pausa que
+// parou o relógio grava no chamado o prazo de solução refeito e soma o tempo
+// parado, com a versão lida dele.
 import type { AcaoNaOsDecidida } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
@@ -48,8 +51,25 @@ export async function andarComOs(
     de: g.de,
     para: g.estado,
     quando: g.quando,
+    ...(g.pausa ? { motivoPausa: g.pausa.motivo } : {}),
   });
   if (g.chamado) await refletirNoChamado(uow, g.chamado);
+  if (g.slaNaRetomada) {
+    const c = g.slaNaRetomada;
+    const atualizado = await tx
+      .updateTable('app.chamado')
+      .set({
+        prazo_solucao: c.prazoSolucao,
+        pausado_segundos: sql<number>`pausado_segundos + ${c.pausadoSegundos}`,
+        versao: sql<number>`versao + 1`,
+        atualizado_em: sql`now()`,
+      })
+      .where('id', '=', c.chamadoId)
+      .where('versao', '=', c.versaoDoChamado)
+      .returning('id')
+      .executeTakeFirst();
+    if (!atualizado) await semLinha(tx, 'app.chamado', c.chamadoId, c.versaoDoChamado);
+  }
   uow.auditar({
     entidade: 'os',
     registroId: g.osId,
@@ -62,6 +82,14 @@ export async function andarComOs(
       ...(g.chamado ? { estadoDoChamado: g.chamado.estado } : {}),
       ...(g.codigos
         ? { codigos: g.codigos.codigos, codigosDescartados: g.codigos.descartados }
+        : {}),
+      ...(g.pausa ? { motivoPausa: g.pausa.motivo, pausaParaORelogio: g.pausa.paraORelogio } : {}),
+      ...(g.slaNaRetomada
+        ? {
+            prazoSolucaoAntes: g.slaNaRetomada.prazoSolucaoAntes,
+            prazoSolucao: g.slaNaRetomada.prazoSolucao,
+            pausadoSegundos: g.slaNaRetomada.pausadoSegundos,
+          }
         : {}),
     },
   });

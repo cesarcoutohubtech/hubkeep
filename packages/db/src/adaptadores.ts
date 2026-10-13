@@ -2,6 +2,7 @@
 // Leitura com withContext, escrita com executar (unit of work): o que cada
 // método vê ou grava é o que a RLS permite ao usuário do contexto.
 import type {
+  DadosDoCalendario,
   AnexoGravado,
   AtivoGravado,
   ChecklistDaOsGravado,
@@ -59,6 +60,7 @@ import {
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
   ehMomentoDaFoto,
+  ehMotivoDePausa,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
@@ -176,6 +178,44 @@ const niveisDaPolitica = (banco: AcessoBanco, ctx: Contexto, hotelId: string, ch
       else if (l.escopo_tipo === 'grupo') niveis.grupo = l.valor;
     }
     return niveis;
+  });
+
+/**
+ * O que o calendário de SLA lê do hotel (1c, ADR-042): o fuso, a região do
+ * hotel e a do tenant (a herança é do domínio) e os feriados ativos, com a
+ * data como aaaa-mm-dd, sem passar por Date e fuso.
+ */
+const dadosDoCalendario = (
+  banco: AcessoBanco,
+  ctx: Contexto,
+  hotelId: string,
+): Promise<DadosDoCalendario | null> =>
+  banco.withContext(ctx, async (tx) => {
+    const h = await tx
+      .selectFrom('app.hotel as h')
+      .innerJoin('app.tenant as t', 't.id', 'h.tenant_id')
+      .select([
+        'h.fuso',
+        'h.pais',
+        'h.subdivisao',
+        't.pais as tenant_pais',
+        't.subdivisao as tenant_subdivisao',
+      ])
+      .where('h.id', '=', hotelId)
+      .executeTakeFirst();
+    if (!h) return null;
+    const feriados = await tx
+      .selectFrom('app.feriado_hotel')
+      .select([sql<string>`data::text`.as('data'), 'anual'])
+      .where('hotel_id', '=', hotelId)
+      .where('ativo', '=', true)
+      .execute();
+    return {
+      fuso: h.fuso,
+      hotel: { pais: h.pais, subdivisao: h.subdivisao },
+      tenant: { pais: h.tenant_pais, subdivisao: h.tenant_subdivisao },
+      feriados,
+    };
   });
 
 interface LinhaAtribuicao {
@@ -1088,6 +1128,7 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
           : null;
       }),
     politica: (ctx, hotelId, chave) => niveisDaPolitica(banco, ctx, hotelId, chave),
+    calendario: (ctx, hotelId) => dadosDoCalendario(banco, ctx, hotelId),
     criar: (ctx, hotelId, dados) => banco.executar(ctx, (uow) => criarChamado(uow, hotelId, dados)),
     chamado: (ctx, chamadoId) =>
       banco.withContext(ctx, async (tx) => {
@@ -1107,6 +1148,10 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
             'motivo_cancelamento',
             'origem',
             'impacto_hospede',
+            'categoria_id',
+            'prazo_atendimento',
+            'prazo_solucao',
+            'pausado_segundos',
             'versao',
             'criado_em',
           ])
@@ -1127,6 +1172,10 @@ export function criarPortaChamados(banco: AcessoBanco): PortaChamados {
               motivoCancelamento: c.motivo_cancelamento,
               origem: c.origem,
               impactoHospede: c.impacto_hospede,
+              categoriaId: c.categoria_id,
+              prazoAtendimento: c.prazo_atendimento,
+              prazoSolucao: c.prazo_solucao,
+              pausadoSegundos: c.pausado_segundos,
               versao: c.versao,
               criadoEm: c.criado_em,
             }
@@ -1249,6 +1298,22 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
             'c.prioridade_id',
             'c.aberto_por',
             'c.versao',
+            'c.categoria_id',
+            'c.criado_em',
+            'c.politica_aplicada',
+            'c.prazo_atendimento',
+            'c.prazo_solucao',
+            'c.pausado_segundos',
+            (eb) =>
+              eb
+                .exists(
+                  eb
+                    .selectFrom('app.os as o')
+                    .select('o.id')
+                    .whereRef('o.hotel_id', '=', 'c.hotel_id')
+                    .whereRef('o.chamado_id', '=', 'c.id'),
+                )
+                .as('ja_teve_os'),
           ])
           .where('c.id', '=', chamadoId)
           .executeTakeFirst();
@@ -1263,6 +1328,15 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
               prioridadeId: c.prioridade_id,
               abertoPor: c.aberto_por,
               versao: c.versao,
+              sla: {
+                categoriaId: c.categoria_id,
+                abertoEm: c.criado_em,
+                politicaAplicada: c.politica_aplicada,
+                prazoAtendimento: c.prazo_atendimento,
+                prazoSolucao: c.prazo_solucao,
+                pausadoSegundos: c.pausado_segundos,
+                jaTeveOs: Boolean(c.ja_teve_os),
+              },
             }
           : null;
       }),
@@ -1310,6 +1384,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
         return f ? { ativo: f.desativado_em === null } : null;
       }),
     politica: (ctx, hotelId, chave) => niveisDaPolitica(banco, ctx, hotelId, chave),
+    calendario: (ctx, hotelId) => dadosDoCalendario(banco, ctx, hotelId),
     equipesDoUsuario: (ctx) =>
       banco.withContext(ctx, async (tx) =>
         (await equipesDoUsuario(tx, ctx.usuarioId).execute()).map((e) => e.equipe_id),
@@ -1383,6 +1458,24 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           .where('os_id', '=', osId)
           .executeTakeFirst();
         return r?.quando ? new Date(r.quando) : null;
+      }),
+    ultimaPausa: (ctx, osId) =>
+      banco.withContext(ctx, async (tx) => {
+        const r = await tx
+          .selectFrom('app.os_transicao')
+          .select(['quando', 'motivo_pausa'])
+          .where('os_id', '=', osId)
+          .where('acao', '=', 'pausar')
+          .orderBy('quando', 'desc')
+          .orderBy('id', 'desc')
+          .limit(1)
+          .executeTakeFirst();
+        return r
+          ? {
+              em: new Date(r.quando),
+              motivo: ehMotivoDePausa(r.motivo_pausa) ? r.motivo_pausa : null,
+            }
+          : null;
       }),
     fotosDepois: (ctx, osId) =>
       banco.withContext(ctx, async (tx) => {

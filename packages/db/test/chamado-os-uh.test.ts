@@ -43,6 +43,7 @@ import {
   criarPortaUhIndisponivel,
   criarPortasDeAplicacao,
 } from '../src/index';
+import { semFeriadosOficiais } from './feriados-de-teste';
 
 const URL_APP = process.env.HK_TESTE_URL_APP;
 const URL_DONO = process.env.HK_TESTE_URL_DONO;
@@ -187,6 +188,7 @@ describe.skipIf(!temBanco)('I4 — chamado, OS e UH indisponível', { timeout: 6
       prioridades,
       atribuicoes,
       relogio: relogioDoSistema,
+      feriadosOficiais: semFeriadosOficiais,
     });
     const portaTriagem = criarPortaTriagem(banco);
     const depsDaTriagem = {
@@ -195,6 +197,7 @@ describe.skipIf(!temBanco)('I4 — chamado, OS e UH indisponível', { timeout: 6
       prioridades,
       atribuicoes,
       relogio: relogioDoSistema,
+      feriadosOficiais: semFeriadosOficiais,
     };
     triagem = criarCasosDeUsoDeTriagem(depsDaTriagem);
     // Sem a regra do domínio: só a RLS decide.

@@ -30,10 +30,16 @@
 // Checklist (PV1, ADR-040): com a política os.checklist_completo_obrigatorio
 // ligada no hotel, a conclusão exige os itens obrigatórios do checklist da OS
 // respondidos. Sem rede, as respostas saem da fila antes da conclusão.
+//
+// Pausa e retomada no SLA (1c, ADR-042): a pausa leva o motivo, e a cópia do
+// SLA do chamado diz se ela para o relógio da solução. Na retomada da pausa
+// que parou o relógio, o prazo de solução é refeito com o que faltava, a
+// partir da retomada, e o tempo parado soma no chamado, na mesma operação.
 import {
   type AtorDaCorretiva,
   type CodigosSugeridos,
   type Contexto,
+  type MotivoDePausa,
   Conflito,
   NaoEncontrado,
   type RegistroNaOs,
@@ -48,22 +54,27 @@ import {
   horaDaTransicao,
   normalizarMaterial,
   paradaAEncerrarNaConclusao,
+  pausaDoChamadoParaORelogio,
   periodoALiberarNaConclusao,
+  prazoNaRetomada,
   resolverPolitica,
   situacaoPara,
+  slaDoChamado,
   sugestaoDosCodigos,
   validarApontamento,
   validarFimDaIndisponibilidade,
   validarFimDaParada,
   validarParada,
 } from '@hubkeep/dominio';
+import type { FeriadosOficiais } from '../portas/calendario-sla';
 import type { PortaChecklists } from '../portas/checklists';
 import type { PortaCodigos } from '../portas/codigos-manutencao';
 import { paraChecklistDaOs } from './checklists';
 import type { AcaoNaOsDecidida, OsDoDia, PortaExecucao } from '../portas/execucao';
 import type { EncerramentoDeParada, PortaParadas, RegistroDeParada } from '../portas/paradas';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
-import type { PortaSituacoes } from '../portas/situacoes';
+import type { PortaPrioridades, PortaSituacoes } from '../portas/situacoes';
+import { montarCalendarioDeSla } from './calendario-sla';
 import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/triagem';
 import type { LiberacaoDeUh, PortaUhIndisponivel } from '../portas/uh-indisponivel';
 
@@ -89,6 +100,8 @@ export interface CasosDeUsoDeExecucao {
       concluidaEm?: Date | undefined;
       /** Só na conclusão: os códigos sugeridos pelo técnico (I6); nunca recusam. */
       codigos?: CodigosSugeridos | undefined;
+      /** Só na pausa: o motivo (1c, ADR-042); sem ele, a pausa nunca para o relógio. */
+      motivo?: MotivoDePausa | null | undefined;
     },
   ): Promise<AcaoNaOsDecidida>;
   prepararApontamento(
@@ -120,7 +133,7 @@ export interface CasosDeUsoDeExecucao {
 
 export function criarCasosDeUsoDeExecucao(deps: {
   execucao: PortaExecucao;
-  triagem: Pick<PortaTriagem, 'chamado' | 'os' | 'politica'>;
+  triagem: Pick<PortaTriagem, 'chamado' | 'os' | 'politica' | 'calendario'>;
   situacoes: Pick<PortaSituacoes, 'listar'>;
   atribuicoes: Pick<PortaAtribuicoes, 'doUsuario'>;
   relogio: Relogio;
@@ -132,6 +145,12 @@ export function criarCasosDeUsoDeExecucao(deps: {
   codigos?: Pick<PortaCodigos, 'listar' | 'categoriaDoAtivo'>;
   /** Opcional só para os testes sem checklist; a composição sempre passa. */
   checklists?: Pick<PortaChecklists, 'daOs'>;
+  /**
+   * O SLA na pausa com motivo e na retomada (1c, ADR-042). Opcionais só para
+   * os testes que não pausam com motivo; a composição sempre passa.
+   */
+  prioridades?: Pick<PortaPrioridades, 'listar'>;
+  feriadosOficiais?: FeriadosOficiais;
   /** Padrão: as do domínio. Só o teste de aceite troca, para provar a RLS sozinha. */
   regras?: {
     decidirNaOs?: typeof decidirNaOs;
@@ -250,6 +269,58 @@ export function criarCasosDeUsoDeExecucao(deps: {
     return sugestaoDosCodigos(pedido, lista, categoria);
   }
 
+  /** A regra de SLA do chamado, da cópia (ADR-042); só lê as prioridades quando há motivo. */
+  async function slaDaPausa(
+    ctx: Contexto,
+    chamado: ChamadoParaTriagem,
+    motivo: MotivoDePausa | null,
+  ) {
+    if (motivo === null || chamado.sla.prazoSolucao === null) return null;
+    if (!deps.prioridades) throw new Error('Pausa com motivo sem a porta de prioridades.');
+    return slaDoChamado({
+      politicaAplicada: chamado.sla.politicaAplicada,
+      prioridadeId: chamado.prioridadeId,
+      prioridades: await deps.prioridades.listar(ctx),
+      categoriaId: chamado.sla.categoriaId,
+    });
+  }
+
+  /**
+   * Na retomada (ajuste C): se a última pausa parou o relógio, o prazo de
+   * solução refeito e o tempo parado, no calendário do hotel de agora.
+   */
+  async function slaNaRetomada(
+    ctx: Contexto,
+    os: OsGravada,
+    chamado: ChamadoParaTriagem,
+    retomadaEm: Date,
+  ): Promise<NonNullable<AcaoNaOsDecidida['slaNaRetomada']> | null> {
+    const prazoSolucao = chamado.sla.prazoSolucao;
+    const pausa = await deps.execucao.ultimaPausa(ctx, os.id);
+    if (!pausa || prazoSolucao === null) return null;
+    const sla = await slaDaPausa(ctx, chamado, pausa.motivo);
+    if (!sla || !pausaDoChamadoParaORelogio(sla, prazoSolucao, pausa.motivo)) return null;
+    if (!deps.feriadosOficiais) throw new Error('Retomada com SLA sem os feriados oficiais.');
+    const dados = await deps.triagem.calendario(ctx, chamado.hotel.id);
+    if (!dados) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
+    const r = prazoNaRetomada({
+      prazoSolucao,
+      pausadaEm: pausa.em,
+      retomadaEm,
+      relogio: sla.regra.relogio,
+      calendario: montarCalendarioDeSla(deps.feriadosOficiais, dados, sla.copia, pausa.em),
+    });
+    const pausadoSegundos = Math.round(r.pausadoMs / 1000);
+    if (pausadoSegundos === 0 && r.prazoSolucao.getTime() === prazoSolucao.getTime()) return null;
+    return {
+      chamadoId: chamado.id,
+      versaoDoChamado: chamado.versao,
+      prazoSolucaoAntes: prazoSolucao,
+      prazoSolucao: r.prazoSolucao,
+      pausadoSegundos,
+    };
+  }
+
   return {
     async prepararAcao(ctx, acao, p) {
       const { os, chamado } = await osEChamado(ctx, p.osId);
@@ -277,8 +348,23 @@ export function criarCasosDeUsoDeExecucao(deps: {
       const liberarUh = acao === 'concluir' ? await uhDaConclusao(ctx, os, chamado, p) : null;
       const codigos =
         acao === 'concluir' ? await codigosDaConclusao(ctx, chamado, p.codigos) : null;
+      const motivo = acao === 'pausar' ? (p.motivo ?? null) : null;
+      const pausa =
+        acao === 'pausar'
+          ? {
+              motivo,
+              paraORelogio: pausaDoChamadoParaORelogio(
+                await slaDaPausa(ctx, chamado, motivo),
+                chamado.sla.prazoSolucao,
+                motivo,
+              ),
+            }
+          : null;
+      const sla = acao === 'retomar' ? await slaNaRetomada(ctx, os, chamado, quando) : null;
       const situacoes = await deps.situacoes.listar(ctx);
       return {
+        pausa,
+        slaNaRetomada: sla,
         codigos,
         encerrarParada,
         liberarUh,

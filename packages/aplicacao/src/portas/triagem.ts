@@ -18,6 +18,7 @@ import type {
   QuemExecuta,
   Responsavel,
 } from '@hubkeep/dominio';
+import type { DadosDoCalendario } from './calendario-sla';
 
 export interface ChamadoParaTriagem {
   id: string;
@@ -30,6 +31,18 @@ export interface ChamadoParaTriagem {
   prioridadeId: string;
   abertoPor: string;
   versao: number;
+  /** O que o recálculo dos prazos lê (1c, ADR-042). */
+  sla: {
+    categoriaId: string | null;
+    abertoEm: Date;
+    /** Como está no banco: a cópia da abertura, com a chamado.sla e o horário. */
+    politicaAplicada: unknown;
+    prazoAtendimento: Date | null;
+    prazoSolucao: Date | null;
+    pausadoSegundos: number;
+    /** O chamado já teve OS, de qualquer estado: o prazo de atendimento não muda mais. */
+    jaTeveOs: boolean;
+  };
 }
 
 export interface OsGravada {
@@ -65,6 +78,9 @@ export interface MudancaNoChamado {
   motivoCancelamento?: string;
   /** Afeta hóspede? (I4) null: não informado. */
   impactoHospede?: boolean | null;
+  /** Os prazos refeitos na troca de prioridade (1c, ADR-042); a auditoria guarda antes e depois. */
+  prazoAtendimento?: Date;
+  prazoSolucao?: Date;
   /**
    * No cancelamento (I4): encerra nesta hora o período aberto da UH do
    * chamado, se houver, na mesma unit of work.
@@ -102,6 +118,8 @@ export interface PortaTriagem {
     hotelId: string,
     chave: string,
   ): Promise<{ hotel?: unknown; grupo?: unknown }>;
+  /** O fuso, a região e os feriados do hotel, para o calendário de SLA (1c); hotel invisível: null. */
+  calendario(ctx: Contexto, hotelId: string): Promise<DadosDoCalendario | null>;
   /** Equipes ativas de que quem pede é membro ativo (o aceite confere se ele executa a OS). */
   equipesDoUsuario(ctx: Contexto): Promise<string[]>;
   /**

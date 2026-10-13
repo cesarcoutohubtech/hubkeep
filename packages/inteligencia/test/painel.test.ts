@@ -1,6 +1,8 @@
 import type { Atribuicao, Escopo, ModuloContratado, Papel } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import {
+  PADRAO_VISIBILIDADE_TELAS,
+  aberturaDoPainel,
   type DecisaoGravada,
   type InsightComEvidencia,
   type AtivoDoPainel,
@@ -63,6 +65,8 @@ const insight = (extra: Partial<InsightComEvidencia> = {}): InsightComEvidencia 
 
 interface Memoria {
   modulos: ModuloContratado[];
+  /** O valor gravado no grupo; nos testes antigos, os três papéis e já aberto. */
+  visibilidade: unknown;
   atribuicoes: Atribuicao[];
   insights: InsightComEvidencia[];
   chamados: { id: string; hotelId: string; abertoEm: Date }[];
@@ -76,6 +80,11 @@ interface Memoria {
 function emMemoria(m: Partial<Memoria> = {}): PortasDoPainel & { m: Memoria } {
   const mem: Memoria = {
     modulos: [MODULO],
+    visibilidade: {
+      aPartirDe: null,
+      diasAposAtivacao: 60,
+      papeis: ['admin_grupo', 'gestor_csc', 'gerente_hotel'],
+    },
     atribuicoes: [atribuicao('gerente_hotel', { tipo: 'hotel', hotelId: 'h1' })],
     insights: [insight()],
     chamados: [],
@@ -99,6 +108,8 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDoPainel & { m: Memoria } {
     m: mem,
     modulos: async () => mem.modulos,
     atribuicoes: async () => mem.atribuicoes,
+    visibilidade: async () => mem.visibilidade,
+    fuso: async () => 'America/Sao_Paulo',
     contagens: async (estados) => {
       const abertos = mem.insights.filter((i) => estados.includes(i.estado));
       return abertos.map((i) => ({
@@ -190,6 +201,87 @@ describe('o painel só existe com o módulo e com papel que decide', () => {
     await expect(verInsight(p, 'i1', agora)).rejects.toMatchObject({
       codigo: 'inteligencia_indisponivel',
     });
+  });
+});
+
+describe('visibilidade das telas (adendo ao ADR-035, 12/10/2026)', () => {
+  const gestor = atribuicao('gestor_csc', { tipo: 'grupo' });
+  const admin = atribuicao('admin_grupo', { tipo: 'grupo' });
+  const gerente = atribuicao('gerente_hotel', { tipo: 'hotel', hotelId: 'h1' });
+  const indisponivel = { codigo: 'inteligencia_indisponivel' };
+
+  it('com o padrão, antes dos 60 dias: ninguém vê, nem o Admin do grupo', async () => {
+    const recente: ModuloContratado = { modulo: 'inteligencia', inicio: antes(59), fim: null };
+    for (const a of [admin, gestor, gerente]) {
+      const p = emMemoria({ modulos: [recente], atribuicoes: [a], visibilidade: undefined });
+      await expect(resumoDoPainel(p, agora)).rejects.toMatchObject(indisponivel);
+      await expect(listarInsights(p, {}, agora)).rejects.toMatchObject(indisponivel);
+      await expect(verInsight(p, 'i1', agora)).rejects.toMatchObject(indisponivel);
+      await expect(verAtivo(p, 'a1', agora)).rejects.toMatchObject(indisponivel);
+    }
+  });
+
+  it('com o padrão, depois dos 60 dias: o Admin e o Gestor veem; o Gerente não', async () => {
+    for (const a of [admin, gestor]) {
+      const p = emMemoria({ atribuicoes: [a], visibilidade: undefined });
+      expect((await resumoDoPainel(p, agora)).abertos).toBe(1);
+    }
+    const p = emMemoria({ atribuicoes: [gerente], visibilidade: undefined });
+    await expect(resumoDoPainel(p, agora)).rejects.toMatchObject(indisponivel);
+  });
+
+  it('conta do primeiro contrato, mesmo encerrado, e não do vigente', async () => {
+    const p = emMemoria({
+      atribuicoes: [gestor],
+      visibilidade: undefined,
+      modulos: [
+        { modulo: 'inteligencia', inicio: antes(200), fim: antes(150) },
+        { modulo: 'inteligencia', inicio: antes(10), fim: null },
+      ],
+    });
+    expect((await resumoDoPainel(p, agora)).abertos).toBe(1);
+  });
+
+  it('o Admin antecipa pela data; o Gerente entra só pela política', async () => {
+    const recente: ModuloContratado = { modulo: 'inteligencia', inicio: antes(5), fim: null };
+    const visibilidade = {
+      ...PADRAO_VISIBILIDADE_TELAS,
+      aPartirDe: '2026-10-10',
+      papeis: ['admin_grupo', 'gestor_csc', 'gerente_hotel'],
+    };
+    const p = emMemoria({ modulos: [recente], atribuicoes: [gerente], visibilidade });
+    expect((await listarInsights(p, {}, agora)).insights.map((i) => i.id)).toEqual(['i1']);
+    // A data ainda não chegou no fuso: 10/10 às 02:59 UTC é 09/10 em Brasília.
+    await expect(resumoDoPainel(p, new Date('2026-10-10T02:59:00Z'))).rejects.toMatchObject(
+      indisponivel,
+    );
+  });
+
+  it('quem tem também um papel fora da política decide só pelos papéis dela', async () => {
+    const gestorDaOutraBandeira = atribuicao('gestor_csc', { tipo: 'bandeira', bandeiraId: 'b9' });
+    const p = emMemoria({ atribuicoes: [gestorDaOutraBandeira, gerente], visibilidade: undefined });
+    const pagina = await verInsight(p, 'i1', agora);
+    expect([pagina.insight.podeDecidir, pagina.insight.acoes]).toEqual([false, []]);
+    await expect(
+      decidirInsight(p, { insightId: 'i1', acao: 'revisar', versao: 1, usuarioId: 'u1' }, agora),
+    ).rejects.toMatchObject({ codigo: 'insight_fora_do_escopo' });
+  });
+
+  it('aberturaDoPainel: só o Admin do grupo, também antes da abertura', async () => {
+    const recente: ModuloContratado = { modulo: 'inteligencia', inicio: antes(5), fim: null };
+    const p = emMemoria({ modulos: [recente], atribuicoes: [admin], visibilidade: undefined });
+    const r = await aberturaDoPainel(p, agora);
+    expect(r.abertas).toBe(false);
+    expect(r.config).toBe(PADRAO_VISIBILIDADE_TELAS);
+    expect(r.abertura?.origem).toBe('ativacao');
+    // Ativado em 05/10/2026 (Brasília): abre 60 dias depois, em 04/12.
+    expect(r.abertura?.dia).toBe('2026-12-04');
+    for (const m of [
+      { atribuicoes: [gestor] },
+      { atribuicoes: [admin], modulos: [] },
+    ] as Partial<Memoria>[]) {
+      await expect(aberturaDoPainel(emMemoria(m), agora)).rejects.toMatchObject(indisponivel);
+    }
   });
 });
 

@@ -53,6 +53,10 @@ function fontes(sobrescrever: Partial<Record<string, unknown>> = {}) {
         motivoCancelamento: null,
         origem: 'interno',
         impactoHospede: null,
+        categoriaId: null,
+        prazoAtendimento: EM,
+        prazoSolucao: null,
+        pausadoSegundos: 0,
         versao: 2,
         criadoEm: EM,
       }) as never,
@@ -130,6 +134,8 @@ describe('telaDoChamado: montagem pelos casos de uso da API', () => {
     expect(tela.detalhe.chamado).toMatchObject({
       id: C,
       politicaAplicada: {},
+      prazoAtendimento: EM.toISOString(),
+      prazoSolucao: null,
       criadoEm: EM.toISOString(),
     });
     expect(tela.detalhe.os[0]?.criadoEm).toBe(EM.toISOString());

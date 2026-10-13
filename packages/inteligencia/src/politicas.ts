@@ -18,6 +18,10 @@
 // métrica diária (ADR-036). Ela precisa ser pelo menos o dobro da janela da
 // efetividade, para caber o antes e o depois: conferido ao gravar qualquer das
 // duas (validarJanelaDeLeitura) e pelo job na leitura (janelaDeLeituraEfetiva).
+//
+// A sétima, inteligencia.visibilidade_telas (adendo de 12/10/2026, aprovado
+// por Cesar; aguarda o Kaio), é quando e para quem as telas aparecem
+// (visibilidade.ts). Vale só no nível do grupo.
 import { type ExtensaoDePolitica, RegraViolada } from '@hubkeep/dominio';
 import { PADRAO_ATENCAO, type ConfigAtencao, configAtencaoValida } from './atencao';
 import {
@@ -29,6 +33,11 @@ import { PADRAO_REINCIDENCIA, type ConfigReincidencia } from './reincidencia';
 import { FAIXAS_PADRAO } from './score';
 import { PADRAO_SISTEMICO, type ConfigSistemico, configSistemicoValida } from './sistemico';
 import { PADRAO_SUBSTITUICAO, type ConfigSubstituicao } from './substituicao';
+import {
+  type ConfigVisibilidadeTelas,
+  PADRAO_VISIBILIDADE_TELAS,
+  configVisibilidadeValida,
+} from './visibilidade';
 
 /** Janela de leitura da métrica diária, em dias (ADR-036). */
 export interface ConfigJanelaDeLeitura {
@@ -47,6 +56,7 @@ export interface ValoresDePoliticaDoIntelligence {
   'inteligencia.sistemico': ConfigSistemico;
   'inteligencia.substituicao': ConfigSubstituicao;
   'inteligencia.metrica_janela_leitura': ConfigJanelaDeLeitura;
+  'inteligencia.visibilidade_telas': ConfigVisibilidadeTelas;
 }
 export type ChaveDePoliticaDoIntelligence = keyof ValoresDePoliticaDoIntelligence;
 
@@ -59,6 +69,7 @@ export const PADROES_DO_INTELLIGENCE: {
   'inteligencia.sistemico': PADRAO_SISTEMICO,
   'inteligencia.substituicao': PADRAO_SUBSTITUICAO,
   'inteligencia.metrica_janela_leitura': PADRAO_JANELA_DE_LEITURA,
+  'inteligencia.visibilidade_telas': PADRAO_VISIBILIDADE_TELAS,
 };
 
 export const CHAVES_DE_POLITICA_DO_INTELLIGENCE = Object.keys(
@@ -121,6 +132,7 @@ export function valorValidoDoIntelligence<C extends ChaveDePoliticaDoIntelligenc
       (valor['dias'] as number) <= MAXIMO_DA_JANELA_DE_LEITURA_DIAS
     );
   }
+  if (chave === 'inteligencia.visibilidade_telas') return configVisibilidadeValida(valor);
   if (!mesmoFormato(valor, PADROES_DO_INTELLIGENCE[chave], '')) return false;
   // Atenção: o mínimo de medições é inteiro e de pelo menos 1.
   if (chave === 'inteligencia.atencao_ativo') return configAtencaoValida(valor as ConfigAtencao);

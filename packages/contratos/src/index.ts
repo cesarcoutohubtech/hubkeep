@@ -259,6 +259,8 @@ export {
   MetricaDoAtivoApi,
   NomesDoPainelApi,
   PedidoDeDecisaoDoInsight,
+  PAPEIS_QUE_VEEM_AS_TELAS_API,
+  RespostaDaAberturaDoIntelligence,
   RespostaDaDecisaoDoInsight,
   RespostaDeInsights,
   RespostaDoAtivoNoIntelligence,

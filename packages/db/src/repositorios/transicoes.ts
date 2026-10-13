@@ -3,7 +3,7 @@
 // O estado de antes vem do caso de uso, que leu a OS na versão conferida; o
 // UPDATE da OS confere a mesma versão, então o par (de, para) é o que o banco
 // gravou. Só INSERT: ninguém altera nem apaga uma transição (meta-teste 32).
-import type { AcaoDaOs, EstadoDaOs } from '@hubkeep/dominio';
+import type { AcaoDaOs, EstadoDaOs, MotivoDePausa } from '@hubkeep/dominio';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 
@@ -16,6 +16,8 @@ export interface TransicaoGravada {
   para: EstadoDaOs;
   /** A hora do aparelho, já ajustada pelo domínio (I9); sem ela, now() da transação. */
   quando?: Date;
+  /** Só na pausa: o motivo (1c, ADR-042); null quando o técnico não informou. */
+  motivoPausa?: MotivoDePausa | null;
 }
 
 export async function registrarTransicao(
@@ -34,6 +36,7 @@ export async function registrarTransicao(
       de: t.de,
       para: t.para,
       ...(t.quando ? { quando: t.quando } : {}),
+      ...(t.motivoPausa ? { motivo_pausa: t.motivoPausa } : {}),
       usuario_id: uow.usuarioId,
     })
     .execute();

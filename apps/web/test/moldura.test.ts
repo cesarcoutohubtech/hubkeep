@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({}));
 vi.mock('../src/cliente/sessao', () => ({ sair: vi.fn() }));
 
-const { ITEM_DO_INTELLIGENCE, MENU, intelligenceAtivo, itemAtivo, tituloDaRota } =
+const { HREF_DA_ABERTURA, ITEM_DO_INTELLIGENCE, MENU, intelligenceAtivo, itemAtivo, tituloDaRota } =
   await import('../src/cliente/moldura');
 
 describe('menu da moldura', () => {
@@ -58,6 +58,12 @@ describe('o item do HubKeep Intelligence', () => {
     expect(tituloDaRota('/inteligencia/insights')).toBe('menu.inteligencia');
     expect(tituloDaRota('/inteligencia/insights/0190a')).toBe('inteligencia.pagina.titulo');
     expect(tituloDaRota('/inteligencia/ativos/0190a')).toBe('inteligencia.ativo.titulo');
+  });
+
+  it('antes da abertura, o Admin do grupo vai à página da abertura', () => {
+    expect(existsSync(`src/app/(painel)${HREF_DA_ABERTURA}/page.tsx`)).toBe(true);
+    expect(tituloDaRota(HREF_DA_ABERTURA)).toBe('inteligencia.abertura.titulo');
+    expect(intelligenceAtivo(HREF_DA_ABERTURA)).toBe(true);
   });
 
   it('fica ativo em todas as telas do módulo', () => {

@@ -283,6 +283,22 @@ O resto da PV1 (ADR-040), fora da zona protegida, sobre a migração 0042 do PR 
   - integração do repositório (aplicar, trocar, responder, auditoria e evento), que roda na CI.
 - **Eventos novos** no outbox: `os.checklist_aplicado` e `os.checklist_respondido`.
 
+## Decisões do Cesar e fila de zona protegida (13/10/2026, segunda parte)
+
+O #209 (`CLAUDE.md`), o #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram na `main` (a6b761b). O Cesar apagou do GitHub as branches antigas já mergeadas, preservando as dos últimos 3 dias; a `1a-d1-teste-proprietario` saiu junto. Nenhuma branch da 1b com trabalho fora da `main` sumiu.
+
+Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
+1. **PRs da 1b:** o agente acompanha os próprios PRs pelos eventos do GitHub (CI e revisões) e corrige o que quebrar. Merges continuam só do Cesar.
+2. **Tipos do banco, aprovado:** quando a verificação do `banco.yml` falhar, a CI gera o `tipos-banco.ts` a partir do banco do runner e o publica como artefato do run. O `db:types` passa a buscar esse artefato, em vez de ler o dev. Entra numa próxima vez da 1b na fila, depois da PV2.
+3. **Ordem da fila de zona protegida a partir de agora:**
+   1. o PR de visibilidade das telas, do agente do Kaio (`int-visibilidade-telas`; mexe no `docs/03`, sem migração);
+   2. a próxima migração da 1c (o monitor de SLA, com `app.sla_alerta`, os índices da auditoria e o texto do ADR-021);
+   3. a PV2 da 1b. A migração dela passa a ser, provavelmente, a 0045; conferir a última da `main` antes de abrir;
+   4. a mudança dos tipos, numa próxima vez da 1b.
+4. **Enquanto espera a vez:** preparar a PV2 a partir da `main` atualizada e a proposta do workflow "conferir dev".
+
+**Proposta do "conferir dev":** está em `docs/referencia/proposta-conferir-dev.md`, para a aprovação do Cesar. Disparo manual na `main`, ambiente `dev` do GitHub com a aprovação do Cesar e um segredo só (`DEV_SESSION_POOLER`). O job compara as migrações do dev com as da `main`, lendo a tabela de migrações, e depois roda o pgTAP com rollback. São três decisões pendentes, listadas no fim da proposta.
+
 ## `main` vermelha depois do #210 e do #211 (13/10/2026)
 
 O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main` (a6b761b) ficou vermelha em dois workflows:
@@ -291,11 +307,128 @@ O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main
 
 **Aviso de área compartilhada com a 1c:** a correção mexe na lista do domínio (`packages/dominio/src/auditoria-geral.ts`), na da API (`packages/contratos/src/auditoria-geral.ts`) e no catálogo da auditoria, que são da 1c. Entraram as duas entidades, com nome nos quatro idiomas, e as ações `aplicar`, `trocar` e `responder` no rótulo geral das ações.
 
+## Ponto de retomada (13/10/2026, fim da segunda parte)
+
+- **`main`:** 38bf55f. O #213 consertou a `main`, que estava vermelha no CI e no banco pelo cruzamento do #210 com o #211. O dev tem as migrações até a 0043.
+- **PR aberto da 1b:** o #214, este diário e a proposta do "conferir dev" (fora da zona protegida), já com a `main` depois do #213.
+- **Fila de zona protegida:** o #212 do Kaio (aberto), depois a migração da 1c (monitor de SLA), depois a PV2.
+- **PV2 preparada, sem PR:** branch `claude/1b-pv2` (4c2f4f7), a partir da a6b761b. Leva:
+  - a migração `app.plano_preventivo` e o pgTAP 036;
+  - a tabela nova no meta-teste 28;
+  - as listas do domínio, com a paridade dos checks;
+  - os tipos do Kysely, o `docs/02` e o ADR-041 no `docs/03`.
+
+  A sintaxe do SQL foi conferida só por análise, sem banco; o pgTAP roda na CI.
+- **Antes de abrir o PR da PV2,** na vez dela:
+  1. juntar a `main`;
+  2. renomear a migração para data e hora depois da última da `main`, porque o `db push` recusa migração anterior à última aplicada;
+  3. conferir o número ("Migração 0045" no cabeçalho, no `docs/02`, no ADR-041 e na paridade);
+  4. renomear o pgTAP 036 se a 1c tiver usado o número;
+  5. atualizar o meta-teste 28 com as tabelas que a 1c acrescentar.
+- **Depois da PV2 (fora da zona):** domínio (periodicidade, `ocorrencias` e `proximaOcorrencia`), casos de uso, API e telas.
+- **Esperando o Cesar:** o merge do #214 e as três decisões da proposta do "conferir dev".
+
+## Tarefa 5: níveis permitidos na `ExtensaoDePolitica` (13/10/2026)
+
+**Aviso de área compartilhada com a 1c:** mexe em políticas (`packages/dominio/src/politicas.ts` e o `gravarPolitica` de `packages/aplicacao/src/casos-de-uso/configuracao.ts`). O Cesar mandou seguir ("Cesar aqui. Prossiga", 13/10/2026).
+
+Atende ao pedido 1 do agente do Kaio (`docs/diario-intelligence.md`, "`int-visibilidade-telas`", pedidos ao núcleo), aprovado pelo Cesar em 12/10/2026. PR fora da zona protegida, na branch `claude/1b-escopos-politica`.
+- **Domínio:**
+  - `NIVEIS_DE_POLITICA` (`hotel`, `bandeira`, `grupo`) e o tipo `NivelDePolitica`;
+  - na `ExtensaoDePolitica`, a função opcional `escopos(chave)`, por chave, como `padrao` e `valido`: devolve os níveis em que a chave pode ser gravada, por exemplo `['grupo']`. Sem a função, ou com `undefined` para a chave, valem os três. Foi por chave, e não `escopos: ['grupo']` na extensão inteira, porque só a `inteligencia.visibilidade_telas` precisa da restrição;
+  - lista vazia, repetida ou com nível que não existe lança `Error` na montagem do registro, na partida do servidor, como as outras extensões inválidas;
+  - o registro ganhou `escopos(chave)`, com os três níveis para as chaves do núcleo, e `validarNivel(chave, nivel)`, que lança `politica_nivel_nao_permitido` (422) com `chave`, `nivel` e `permitidos` (os níveis separados por vírgula);
+  - na resolução, o valor gravado num nível que a chave não aceita é ignorado e cai para o nível seguinte, como o valor fora do formato.
+- **Aplicação:** o `gravarPolitica` confere o nível depois do formato. Voltar a herdar (valor `null`) continua valendo em qualquer nível, para limpar o valor gravado antes da restrição.
+- **Catálogo:** `erro.politica_nivel_nao_permitido` nos quatro idiomas.
+- **Testes:** os do domínio (níveis, recusa, resolução e extensão inválida) e os da aplicação, com as portas em memória (`packages/aplicacao/test/politicas-niveis.test.ts`).
+
+**Resposta ao agente do Kaio:** a opção existe a partir deste PR. Para ligar, a `EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE` (`packages/inteligencia/src/politicas.ts`) passa a ter `escopos: (chave) => (chave === 'inteligencia.visibilidade_telas' ? ['grupo'] : undefined)`. Isso fica com o agente do Kaio, porque o pacote é dele. A tela da configuração do módulo pode usar `registro.escopos(chave)` para não oferecer o hotel e a bandeira. O valor que já estiver gravado no hotel passa a ser ignorado na resolução do registro, e o Admin pode limpá-lo com "voltar a herdar".
+
+## Pedidos do Intelligence (atividade 3): onde mora o gerador e a montagem com o relógio do roteiro (13/10/2026)
+
+Pedidos do agente do Kaio na seção "Atividade 3, proposta" do `docs/diario-intelligence.md` (branch `claude/vigilant-cray-l06ew1`), aprovados pelo Cesar no chat ("Cesar aqui", 13/10/2026).
+
+**Pedido 1, registrado:** o gerador do histórico do Intelligence mora em `apps/web/test/demonstracao/historico-inteligencia.ts`, ao lado do kit. Ele chama `semearDemonstracao` sem alterá-la. O `semear.ts` continua do núcleo. Se a assinatura dele mudar, o teste do histórico quebra na CI, e quem mudou avisa no próprio diário.
+
+**Pedido 2, proposta (nenhum código escrito):** uma montagem dos casos de uso com o relógio do roteiro, para o gerador gravar seis meses no passado pelo caminho normal (unit of work, auditoria e outbox).
+
+Condições do Cesar:
+- a montagem é separada e só serve ao gerador e aos testes;
+- o web em funcionamento continua com o relógio do sistema, sem parâmetro;
+- um teste de guarda impede o web de importá-la, e ela recusa rodar contra produção.
+
+### O que o levantamento mostrou
+
+- O relógio dos casos de uso não basta. O `criado_em` do chamado, da OS e do ativo vem do `default now()` da coluna, e o job do Intelligence lê essas colunas. A `os_transicao.quando` sem a hora do aparelho (geração, reatribuição) também vem do `now()`, e o `desativado_em` do ativo, de um `now()` no repositório.
+- O `hk_app` tem INSERT na tabela inteira do chamado, da OS, do ativo e da transição. Gravar o `criado_em` não pede migração nem GRANT novo.
+- O histórico do registro (aba "Histórico" do chamado, da OS e do ativo) e a auditoria geral leem `app.auditoria.em`.
+
+### A proposta
+
+1. **Uma fiação só.** A ligação de cada caso de uso às portas sai da `composicao.ts` para um módulo novo, `apps/web/src/servidor/fabricas.ts`: funções `(banco, relogio) => casos de uso`.
+   - A `composicao.ts` mantém as mesmas exportações, chamando as fábricas com o `relogioDoSistema`, e não ganha parâmetro.
+   - Assim o gerador roda a mesma fiação do web, sem uma cópia que se desencontre com o tempo.
+   - A alternativa é a montagem repetir a fiação dos 14 casos de uso que o gerador usa. É mais simples agora, mas pode divergir do web sem ninguém ver. Não recomendo.
+2. **A montagem fica fora do código do web:** `apps/web/test/demonstracao/montagem-com-relogio.ts`.
+   - `montarComRelogio({ relogio, ambiente })` devolve os casos de uso do pedido:
+     - os cadastros: bandeiras, hotéis, locais, categorias, códigos, fornecedores, ativos e configuração;
+     - chamados, triagem, execução, paradas, sincronização e checklists.
+   - Ela abre um acesso ao banco próprio, nunca o memoizado da `composicao.ts`.
+   - Recusa, antes de conectar:
+     - qualquer `VERCEL_ENV`, como a conta do kit;
+     - um alvo fora da lista de permissão. A lista tem o Postgres local da CI e o ref de `[remotes.dev]` (e o de `[remotes.staging]` quando o bloco existir, F0-12). Produção nunca está nela.
+     - a conexão com o ref de `HK_REF_PRODUCAO`, quando definido, como segunda trava.
+3. **O instante chega ao banco só pela montagem.** O `criarAcessoBanco` ganha a opção `relogioDoRoteiro`.
+   - Com ela, cada unit of work guarda `instante = relogio.agora()` no início da transação. Os repositórios gravam esse instante nas colunas da lista fechada abaixo.
+   - Sem ela, que é o caso do web, o SQL é o de hoje, com o `now()` do banco. Um teste do `packages/db` confere que o SQL sem a opção não traz essas colunas.
+
+### De onde vem cada data
+
+| Data | Hoje | Com a montagem |
+|---|---|---|
+| Parada e UH indisponível (`inicio`, `fim`), apontamento da OS, transição com a hora do aparelho | relógio da aplicação | relógio do roteiro (sem mudança de código) |
+| Prazos do SLA, o "hoje" no fuso do hotel, vigências checadas no domínio | relógio da aplicação, na leitura | relógio do roteiro |
+| Métrica e insight (abertura, encerramento) | relógio do job | relógio do dia do roteiro (já existe: `jobDoDia`) |
+| `criado_em` e `atualizado_em` do chamado, da OS e do ativo; `desativado_em` do ativo; `os_transicao.quando` sem hora do aparelho; `atualizado_em` da parada e da UH indisponível | banco (`now()`) | **relógio do roteiro** |
+| `app.auditoria.em`; `app.evento_dominio.criado_em` e `disponivel_em`; `operacao_offline.recebida_em` | banco | **banco** (o momento real da gravação) |
+| Cadastros (hotel, local, categoria, código, fornecedor, política, membro, atribuição, convite, licença) | banco | banco |
+| `valido_ate > now()` nas funções de autorização (RLS) | banco | banco |
+
+A auditoria e o outbox ficam com o banco de propósito. A auditoria diz quando o dado entrou de fato, e uma data de auditoria escolhida pela aplicação abriria a porta para forjá-la. O outbox com data real é processado na hora; os eventos do passado não ficam esperando.
+
+### Efeito num histórico gerado (vai para o `docs/10`, seção do histórico do Intelligence, e para o cabeçalho da montagem)
+
+1. **Ficha do chamado e da OS:** a abertura, as transições, as paradas e o SLA aparecem nas datas do roteiro. A aba "Histórico" lê a auditoria e mostra tudo no dia e na hora em que o gerador rodou, em poucos minutos.
+2. **Auditoria geral:** o filtro por período acha o histórico inteiro no dia da geração, e nada nos seis meses.
+3. **Outbox:** os eventos levam a data da geração e são processados na hora. Só o `membro.convidado` tem manipulador, então os eventos do passado não mandam e-mail nem push.
+4. **Cadastros:** hotéis, locais, categorias e a política têm `criado_em` do dia da geração. O job não lê essas datas; o `atualizado_em` da política entra só na versão que o job anota. Os ativos têm a data do roteiro, porque o job precisa.
+5. **Chamados não concluídos no roteiro** aparecem abertos há meses, com o SLA estourado. É o esperado num grupo com histórico.
+
+### Guarda (zona protegida)
+
+- **`tests/relogio-do-roteiro-fora-do-web.test.ts`,** na raiz, entra na regex do `zona-protegida.yml`. Ele confere quatro coisas:
+  1. nada em `apps/web/src`, `apps/tecnico` ou `packages/*` importa a `montagem-com-relogio`;
+  2. em `apps/web/src`, só a `composicao.ts` importa as `fabricas`, e ela passa sempre o `relogioDoSistema`;
+  3. a opção `relogioDoRoteiro` só aparece no `packages/db` (definição e teste) e na montagem;
+  4. controle: o teste enxerga o que procura (a montagem usa a opção).
+- **A recusa** tem um teste próprio no `apps/web/test`, sem rede. Ele confere que a montagem recusa a `VERCEL_ENV`, o ref de produção, um ref fora da lista e um host remoto que não é o dev.
+- **Área compartilhada:** a mudança mexe nos repositórios do chamado, da OS e do ativo, que são áreas compartilhadas com a 1c. Antes de começar, aviso neste diário e trago a `main` com frequência.
+
+### Fila
+
+O PR toca zona protegida (o teste novo e a regex), então espera a vez. O #212 do Kaio já está na `main`. Na fila, ficam a próxima migração da 1c e, depois dela, a PV2 e esta montagem; a ordem entre as duas é decisão do Cesar. Recomendação: a PV2 primeiro, porque já está pronta e tinha a vez marcada, e a montagem logo depois. Enquanto isso, o agente do Kaio segue com o roteiro, como já faz.
+
+**Esperando o Cesar:**
+1. A proposta: fábricas, montagem fora do código do web e o instante só pela opção.
+2. As datas: a auditoria e o outbox com o banco.
+3. A ordem entre a PV2 e a montagem.
+
 ## PV2b — planos preventivos: domínio, API e telas (13/10/2026)
 
 **Aviso de área compartilhada com a 1c:** mexe em `packages/dominio` (o módulo novo `plano-preventivo.ts` e a lista de entidades da auditoria geral) e nos catálogos de texto. O Cesar mandou seguir ("Cesar aqui. Prossiga", 13/10/2026).
 
-O resto da PV2 (ADR-041), fora da zona protegida, na branch `claude/1b-pv2b`, que sai da `claude/1b-pv2`. O PR só abre depois do merge da migração da PV2, para não ficar empilhado.
+O resto da PV2 (ADR-041), fora da zona protegida, na branch `claude/1b-pv2b`, que sai da `claude/1b-pv2`. A migração da PV2 (0045) entrou na `main` com o [#220](https://github.com/cesarcoutohubtech/hubkeep/pull/220), e o PR desta parte abriu depois, com base na `main`. O dev só tem a tabela depois do `db push` do Cesar; até lá, a tela de preventivas no dev dá erro de banco.
 - **Domínio** (`plano-preventivo.ts`):
   - quem gere: a gestão do hotel e o Implantador (decisão 8);
   - o nome, o início, e a periodicidade com os limites (366 dias, 52 semanas, 24 meses; `periodicidade_invalida`);
@@ -324,3 +457,8 @@ O resto da PV2 (ADR-041), fora da zona protegida, na branch `claude/1b-pv2b`, qu
   - domínio, aplicação com as portas em memória, tela nos quatro idiomas e paridade dos contratos;
   - integração do repositório, só na CI: `packages/db/test/planos-preventivos.test.ts`.
 - **Fica para a PV3:** o kit de teste com um plano e o roteiro no `docs/10`, porque o plano só faz diferença no kit quando gera OS.
+
+## Fila depois do #220 e um erro de push (13/10/2026)
+
+- **Fila de zona protegida:** o #212 do Kaio, a migração 0044 da 1c (monitor de SLA) e a PV2 ([#220](https://github.com/cesarcoutohubtech/hubkeep/pull/220)) já estão na `main`. A montagem com o relógio do roteiro é a próxima da 1b, se o Cesar aprovar a proposta e não decidir outra ordem. Ela continua esperando as três decisões da seção "Pedidos do Intelligence (atividade 3)".
+- **Erro meu:** depois do merge do #218, fiz push de um commit na branch `claude/adm-relogio-do-roteiro`, o que recriou a branch no GitHub. Quebrei a regra "Antes do push, confirmar que o PR da branch está aberto". O commit só atualizava o parágrafo da fila, e o conteúdo dele está neste item. A branch recriada pode ser apagada pelo Cesar; o agente não tem permissão para apagar branch remota.
