@@ -3,6 +3,7 @@
 // das UHs e do hotel inteiro do proprietário) e só deixa abrir quem tem
 // escrita no hotel, em nome dele mesmo.
 import type { Contexto, OrigemDoChamado, StatusDeLocal, TipoDeLocal } from '@hubkeep/dominio';
+import type { DadosDoCalendario } from './calendario-sla';
 
 export interface ChamadoGravado {
   id: string;
@@ -21,6 +22,13 @@ export interface ChamadoGravado {
   origem: string;
   /** Afeta hóspede? null: não informado (I4). */
   impactoHospede: boolean | null;
+  /** A categoria do chamado (1c, ADR-042): do ativo na abertura, ajustável na triagem. */
+  categoriaId: string | null;
+  /** Os prazos de SLA (ADR-042); nulos no chamado de antes da 0043. */
+  prazoAtendimento: Date | null;
+  prazoSolucao: Date | null;
+  /** O tempo de relógio parado por pausas, em segundos (ADR-042). */
+  pausadoSegundos: number;
   versao: number;
   criadoEm: Date;
 }
@@ -34,6 +42,16 @@ export interface DadosDeChamado {
   situacaoId: string;
   prioridadeId: string;
   politicaAplicada: object;
+  /** A categoria do chamado, do ativo na abertura (1c, ADR-042). */
+  categoriaId: string | null;
+  /**
+   * A hora da abertura, que vira o criado_em do chamado: os prazos de SLA
+   * contam dela, na abertura e no recálculo da triagem (ADR-042).
+   */
+  abertoEm: Date;
+  /** Os prazos de SLA calculados da abertura (ADR-042). */
+  prazoAtendimento: Date;
+  prazoSolucao: Date;
   /** De onde veio o trabalho (I4): na abertura pelo web e pelo PWA, sempre interno. */
   origem: OrigemDoChamado;
   /** Afeta hóspede? null: não informado (I4). */
@@ -73,6 +91,8 @@ export interface PortaChamados {
     hotelId: string,
     chave: string,
   ): Promise<{ hotel?: unknown; grupo?: unknown }>;
+  /** O fuso, a região e os feriados do hotel, para o calendário de SLA (1c); hotel invisível: null. */
+  calendario(ctx: Contexto, hotelId: string): Promise<DadosDoCalendario | null>;
   /** Na unit of work, com auditoria e evento; `aberto_por` é o usuário do contexto. */
   criar(
     ctx: Contexto,

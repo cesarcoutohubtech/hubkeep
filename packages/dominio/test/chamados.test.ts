@@ -1,6 +1,8 @@
 // Abertura do chamado (C2; ADR-026): pedido e cópia da política aplicada.
 import { describe, expect, it } from 'vitest';
 import {
+  HORARIO_PADRAO,
+  SLA_PADRAO,
   exigirAtivoDoChamado,
   exigirLocalParaChamado,
   normalizarDescricaoDoChamado,
@@ -44,11 +46,13 @@ describe('abertura do chamado', () => {
     ).toBe('chamado_ativo_desativado');
   });
 
-  it('a cópia da política guarda a categoria, a prioridade e a origem', () => {
+  it('a cópia da política guarda a categoria, a prioridade, a origem e o SLA inteiro', () => {
     expect(
       politicaAplicadaNaAbertura({
         categoriaId: 'cat-1',
         prioridade: { prioridadeId: 'p-1', origem: 'categoria' },
+        sla: SLA_PADRAO,
+        horario: HORARIO_PADRAO,
       }),
     ).toEqual({
       'chamado.prioridade_padrao_por_categoria': {
@@ -56,6 +60,8 @@ describe('abertura do chamado', () => {
         prioridadeId: 'p-1',
         origem: 'categoria',
       },
+      'chamado.sla': SLA_PADRAO,
+      'hotel.horario_atendimento': HORARIO_PADRAO,
     });
   });
 });

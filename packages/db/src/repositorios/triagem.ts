@@ -3,7 +3,9 @@
 // 0022): fora dos papéis da triagem, o INSERT é recusado (42501) e o UPDATE
 // não acha linha. Toda gravação confere a versão (ADR-029). Na I4, a OS
 // guarda quem executa (equipe interna ou fornecedor do grupo), o chamado, o
-// impacto no hóspede, e o cancelamento do chamado libera a UH.
+// impacto no hóspede, e o cancelamento do chamado libera a UH. Na 1c
+// (ADR-042), a troca de prioridade grava os prazos refeitos, com os de antes
+// na auditoria.
 import type { MudancaNoChamado, ReflexoNoChamado } from '@hubkeep/aplicacao';
 import {
   Conflito,
@@ -86,7 +88,15 @@ export async function alterarChamadoNaTriagem(
   const tx = transacaoDe(uow);
   const antes = await tx
     .selectFrom('app.chamado')
-    .select(['estado', 'situacao_id', 'prioridade_id', 'impacto_hospede', 'versao'])
+    .select([
+      'estado',
+      'situacao_id',
+      'prioridade_id',
+      'impacto_hospede',
+      'prazo_atendimento',
+      'prazo_solucao',
+      'versao',
+    ])
     .where('id', '=', chamadoId)
     .executeTakeFirst();
   const r = await tx
@@ -97,6 +107,8 @@ export async function alterarChamadoNaTriagem(
       ...(m.prioridadeId !== undefined ? { prioridade_id: m.prioridadeId } : {}),
       ...(m.motivoCancelamento !== undefined ? { motivo_cancelamento: m.motivoCancelamento } : {}),
       ...(m.impactoHospede !== undefined ? { impacto_hospede: m.impactoHospede } : {}),
+      ...(m.prazoAtendimento !== undefined ? { prazo_atendimento: m.prazoAtendimento } : {}),
+      ...(m.prazoSolucao !== undefined ? { prazo_solucao: m.prazoSolucao } : {}),
       versao: sql<number>`versao + 1`,
       atualizado_em: sql`now()`,
     })

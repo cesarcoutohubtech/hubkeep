@@ -470,7 +470,7 @@ select is(
     'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_checklist', 'app.os_material', 'app.os_transicao', 'app.parada_ativo',
     'app.plano_preventivo', 'app.politica',
-    'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.situacao',
+    'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.situacao', 'app.sla_alerta',
     'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'licenca.modulo', 'staging.carga', 'staging.credencial_agente',
     'staging.registro_externo'
   ]::text[],
@@ -525,9 +525,10 @@ select is_empty($$
   select r.papel || ' ' || t.tabela
   from (values ('hk_app'), ('hk_worker'), ('hk_ingestao'), ('hk_backoffice')) r(papel)
   cross join (values ('app.auditoria'), ('app.ativo_movimentacao'), ('app.metrica_ativo_diaria'),
-                     ('app.os_apontamento'), ('app.os_material'), ('app.os_transicao')) t(tabela)
+                     ('app.os_apontamento'), ('app.os_material'), ('app.os_transicao'),
+                     ('app.sla_alerta')) t(tabela)
   where has_any_column_privilege(r.papel, t.tabela, 'UPDATE')
-$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição)');
+$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA)');
 
 select * from finish();
 rollback;

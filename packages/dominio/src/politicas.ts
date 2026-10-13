@@ -215,6 +215,10 @@ export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.', 'hotel.'] as con
 
 const PREFIXO = /^[a-z][a-z_]*\.$/;
 
+/** Os níveis em que uma política pode ser gravada, do mais específico ao mais geral. */
+export const NIVEIS_DE_POLITICA = ['hotel', 'bandeira', 'grupo'] as const;
+export type NivelDePolitica = (typeof NIVEIS_DE_POLITICA)[number];
+
 /** O que um módulo registra: as chaves dele, todas com o prefixo, o padrão e o formato de cada uma. */
 export interface ExtensaoDePolitica {
   /** Prefixo reservado ao módulo, com o ponto: 'inteligencia.'. */
@@ -222,6 +226,13 @@ export interface ExtensaoDePolitica {
   chaves: readonly string[];
   padrao(chave: string): unknown;
   valido(chave: string, valor: unknown): boolean;
+  /**
+   * Os níveis em que a chave pode ser gravada, por exemplo ['grupo']. Sem a
+   * função, ou com undefined para a chave, valem os três. O registro recusa a
+   * gravação nos outros níveis (politica_nivel_nao_permitido) e ignora, na
+   * resolução, o valor que já esteja gravado neles.
+   */
+  escopos?(chave: string): readonly NivelDePolitica[] | undefined;
 }
 
 export interface NiveisDePolitica {
@@ -239,19 +250,39 @@ export interface RegistroDePoliticas {
   valido(chave: string, valor: unknown): boolean;
   /** Confere a chave e o formato do valor; lança com código se não valer. */
   validar(chave: string, valor: unknown): unknown;
-  /** Hotel, senão bandeira, senão grupo, senão o padrão; valor fora do formato cai para o nível seguinte. */
+  /** Os níveis em que a chave pode ser gravada; as do núcleo, nos três. */
+  escopos(chave: string): readonly NivelDePolitica[];
+  /** Confere se a chave pode ser gravada no nível; lança com código se não puder. */
+  validarNivel(chave: string, nivel: NivelDePolitica): void;
+  /**
+   * Hotel, senão bandeira, senão grupo, senão o padrão; valor fora do formato
+   * ou num nível que a chave não aceita cai para o nível seguinte.
+   */
   resolver(chave: string, niveis: NiveisDePolitica): unknown;
+}
+
+/** Lista de níveis válida: não vazia, sem repetição e só com os três níveis. */
+function niveisValidos(niveis: readonly unknown[]): niveis is readonly NivelDePolitica[] {
+  return (
+    niveis.length > 0 &&
+    new Set(niveis).size === niveis.length &&
+    niveis.every((n) => (NIVEIS_DE_POLITICA as readonly unknown[]).includes(n))
+  );
 }
 
 /**
  * Monta o registro. Extensão inválida (prefixo fora do formato, de outra
  * extensão ou do núcleo, chave fora do prefixo ou repetida, padrão fora do
- * próprio formato) lança Error: acontece na partida do servidor, nunca num
- * request.
+ * próprio formato, lista de níveis vazia, repetida ou com nível que não
+ * existe) lança Error: acontece na partida do servidor, nunca num request.
  */
 export function registroDePoliticas(extensoes: readonly ExtensaoDePolitica[]): RegistroDePoliticas {
-  const definicoes = new Map<string, { padrao: unknown; valido(v: unknown): boolean }>();
-  for (const chave of CHAVES_DE_POLITICA) definicoes.set(chave, POLITICAS[chave]);
+  const definicoes = new Map<
+    string,
+    { padrao: unknown; valido(v: unknown): boolean; escopos: readonly NivelDePolitica[] }
+  >();
+  for (const chave of CHAVES_DE_POLITICA)
+    definicoes.set(chave, { ...POLITICAS[chave], escopos: NIVEIS_DE_POLITICA });
   const prefixos = new Set<string>(PREFIXOS_DO_NUCLEO);
   for (const e of extensoes) {
     if (!PREFIXO.test(e.prefixo) || prefixos.has(e.prefixo)) {
@@ -270,7 +301,15 @@ export function registroDePoliticas(extensoes: readonly ExtensaoDePolitica[]): R
       if (!e.valido(chave, padrao)) {
         throw new Error(`O padrão da política ${chave} está fora do próprio formato.`);
       }
-      definicoes.set(chave, { padrao, valido: (v) => e.valido(chave, v) });
+      const escopos = e.escopos?.(chave) ?? NIVEIS_DE_POLITICA;
+      if (!niveisValidos(escopos)) {
+        throw new Error(`Níveis da política ${chave} inválidos: ${String(escopos)}`);
+      }
+      definicoes.set(chave, {
+        padrao,
+        valido: (v) => e.valido(chave, v),
+        escopos: Object.freeze([...escopos]),
+      });
     }
   }
   const chaves = Object.freeze([...definicoes.keys()]);
@@ -294,10 +333,23 @@ export function registroDePoliticas(extensoes: readonly ExtensaoDePolitica[]): R
       }
       return valor;
     },
+    escopos: (chave) => definicao(chave).escopos,
+    validarNivel(chave, nivel) {
+      const { escopos } = definicao(chave);
+      if (!escopos.includes(nivel)) {
+        throw new RegraViolada(
+          'politica_nivel_nao_permitido',
+          'A política não pode ser gravada neste nível.',
+          { chave, nivel, permitidos: escopos.join(',') },
+        );
+      }
+    },
     resolver(chave, niveis) {
       const d = definicao(chave);
-      for (const v of [niveis.hotel, niveis.bandeira, niveis.grupo])
-        if (v !== undefined && d.valido(v)) return v;
+      for (const nivel of NIVEIS_DE_POLITICA) {
+        const v = niveis[nivel];
+        if (v !== undefined && d.escopos.includes(nivel) && d.valido(v)) return v;
+      }
       return d.padrao;
     },
   };

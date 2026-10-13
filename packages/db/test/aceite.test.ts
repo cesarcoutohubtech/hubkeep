@@ -34,6 +34,7 @@ import {
   criarPortaTriagem,
   criarPortasDeAplicacao,
 } from '../src/index';
+import { semFeriadosOficiais } from './feriados-de-teste';
 
 const URL_APP = process.env.HK_TESTE_URL_APP;
 const URL_DONO = process.env.HK_TESTE_URL_DONO;
@@ -185,6 +186,7 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
       prioridades,
       atribuicoes,
       relogio: relogioDoSistema,
+      feriadosOficiais: semFeriadosOficiais,
     });
     const deps = {
       triagem: criarPortaTriagem(banco),
@@ -192,6 +194,7 @@ describe.skipIf(!temBanco)('C6 — aceite da OS', { timeout: 60_000 }, () => {
       prioridades,
       atribuicoes,
       relogio: relogioDoSistema,
+      feriadosOficiais: semFeriadosOficiais,
     };
     triagem = criarCasosDeUsoDeTriagem(deps);
     // Sem as regras do domínio: só a RLS decide quem grava.

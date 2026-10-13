@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Insight, Nomes } from '../src/app/(painel)/inteligencia/comum';
+import { type Abertura, ConteudoDaAbertura } from '../src/app/(painel)/inteligencia/abertura/tela';
 import { ConteudoDoAtivo } from '../src/app/(painel)/inteligencia/ativos/[id]/tela';
 import { ConteudoDoInsight } from '../src/app/(painel)/inteligencia/insights/[id]/tela';
 import { TabelaDeInsights, caminhoDaLista } from '../src/app/(painel)/inteligencia/insights/tela';
@@ -185,6 +186,17 @@ const ativo: PaginaDoAtivo = {
   nomes,
 };
 
+const fechada: Abertura = {
+  config: { aPartirDe: null, diasAposAtivacao: 60, papeis: ['admin_grupo', 'gestor_csc'] },
+  abertura: {
+    em: '2026-12-09T03:00:00.000Z',
+    dia: '2026-12-09',
+    origem: 'ativacao',
+    primeiraAtivacao: '2026-10-10T03:00:00.000Z',
+  },
+  abertas: false,
+};
+
 describe('telas do Intelligence em todos os idiomas, sem chave crua', () => {
   it.each(IDIOMAS_DO_TESTE)('%s', (idioma) => {
     const html = [
@@ -192,6 +204,7 @@ describe('telas do Intelligence em todos os idiomas, sem chave crua', () => {
       renderizar(idioma, <ConteudoDoInsight pagina={insightDeAtencao()} aoDecidir={nada} />),
       renderizar(idioma, <ConteudoDoInsight pagina={sistemico} aoDecidir={nada} />),
       renderizar(idioma, <ConteudoDoAtivo pagina={ativo} />),
+      renderizar(idioma, <ConteudoDaAbertura abertura={fechada} aoGravar={nada} />),
     ].join('');
     expect(html).not.toMatch(/inteligencia\.[a-z_]+\.[a-z_]/);
     expect(html).toContain('Elevador social 2');
@@ -276,5 +289,31 @@ describe('o detalhe do ativo', () => {
       <ConteudoDoAtivo pagina={{ ...ativo, atual: null, serie: [] }} />,
     );
     expect(html).toContain('Ainda não há resultado gravado para Elevador social 2');
+  });
+});
+
+describe('a abertura das telas', () => {
+  it('fechada: a data, de onde vem e os papéis marcados', () => {
+    const html = renderizar('pt-BR', <ConteudoDaAbertura abertura={fechada} aoGravar={nada} />);
+    expect(html).toContain('Telas ainda fechadas');
+    expect(html).toContain('60 dias depois da primeira ativação do módulo');
+    expect(html).toContain('Admin do grupo, Gestor CSC');
+    expect(html.match(/type="checkbox"[^>]*checked/g)?.length).toBe(2);
+  });
+
+  it('pela data e sem contrato para contar', () => {
+    const html = renderizar(
+      'pt-BR',
+      <ConteudoDaAbertura
+        abertura={{
+          ...fechada,
+          config: { ...fechada.config, aPartirDe: '2026-11-01' },
+          abertura: null,
+        }}
+        aoGravar={nada}
+      />,
+    );
+    expect(html).toContain('Sem data');
+    expect(html).toContain('value="2026-11-01"');
   });
 });

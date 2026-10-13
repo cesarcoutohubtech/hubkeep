@@ -255,6 +255,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 **Decisão:**
 - **Evento no outbox:** publicar em `app.evento_dominio` exige Admin do grupo (`authz.eh_admin_grupo()`) ou papel de escrita vigente em algum hotel (`authz.hoteis_escrita()`).
 - **Auditoria sem hotel** (nível do grupo): só o Admin do grupo ou o Implantador vigente, que são quem escreve no nível do grupo (membro, papel). Auditoria com hotel continua restrita aos hotéis em que o usuário escreve. A autoauditoria de quem edita o próprio perfil ganha regra própria quando essa edição existir (fase 1a).
+  - **Correção do texto (decisão 14 do Cesar, 13/10/2026):** a regra acima vale para gravar. Na leitura, a auditoria sem hotel é só do Admin do grupo, além dos casos dos adendos (o fornecedor). O Implantador grava e não lê; a RLS sempre foi assim, e é ela que vale.
 - **Contrato de licença:** `licenca.contrato` pelo `hk_app`, só o Admin do grupo lê: é ele quem ativa hotel e consome licença.
 - **Tenant e bandeiras:** a linha de `app.tenant` e as bandeiras do tenant continuam visíveis a qualquer membro ativo, mesmo sem papel vigente. É decisão tomada: nome do grupo e das bandeiras não são dado sensível e aparecem na navegação de qualquer membro.
 - O `hk_worker` e o `hk_backoffice` seguem com as policies próprias.
@@ -899,6 +900,24 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Criticidade fixa de 1 a 5** (Cesar, 06/10/2026). O motor divide o nível por 5. A política `ativo.criticidade` do núcleo só troca o nome de cada nível.
 - **O resultado guarda a configuração usada:** mudar o peso não muda o score já gravado.
 
+### Adendo de 12/10/2026: a visibilidade das telas no piloto
+
+**Status:** aprovado por Cesar em 12/10/2026 ("Cesar aqui", na sessão do agente do Intelligence) e por Kaio em 13/10/2026 ("Eu kaio, aprovo o adendo", na mesma sessão). Aprovado pelos dois.
+
+**Contexto:** no piloto, o módulo fica vigente desde o primeiro dia, para o job diário acumular métrica e insight; as telas só aparecem depois, quando o histórico já sustenta o que elas mostram.
+
+**Decisão:**
+- **Uma sétima chave,** `inteligencia.visibilidade_telas`, com `{ aPartirDe, diasAposAtivacao, papeis }`. O padrão é `{ aPartirDe: null, diasAposAtivacao: 60, papeis: ['admin_grupo', 'gestor_csc'] }`.
+  - **`aPartirDe`** (AAAA-MM-DD ou nulo): preenchido, as telas abrem nesse dia. É a forma de antecipar ou adiar.
+  - **`diasAposAtivacao`** (inteiro de 0 a 365): sem `aPartirDe`, as telas abrem tantos dias depois do dia do início do **primeiro** contrato do módulo no tenant, em `licenca.modulo`, e não do contrato vigente (decisão 3 do Cesar).
+  - **`papeis`** (ao menos um, sem repetir, dentre os que decidem insight): só eles veem as telas. O Gerente do hotel fica fora no padrão e entra só por configuração (decisão 1).
+- **O corte do dia** é 00:00 no fuso do grupo, com Brasília como padrão (decisão 4). Enquanto o grupo não tiver fuso gravado (a `app.tenant` não tem a coluna), vale Brasília; o pedido ao núcleo está no diário do Intelligence.
+- **Só no nível do grupo:** a leitura ignora valor gravado no hotel ou na bandeira. O pedido para o registro recusar esses níveis (`escopos: ['grupo']` na `ExtensaoDePolitica`) está no diário do Intelligence.
+- **Antes da abertura, ou para papel fora da política,** o painel responde como sem o módulo: `404 inteligencia_indisponivel` nas rotas, nas telas e no item do menu. O job, a métrica e o insight não mudam; o insight detectado espera, sem responsável. O Intelligence não manda notificação.
+- **O Admin do grupo também não vê o painel antes da abertura** (decisão 2). Ele vê a data, de onde ela vem e os papéis em `GET /api/v1/inteligencia/abertura` e na página `/inteligencia/abertura`, também antes da abertura, e muda a política por `PUT /api/v1/politicas`, no escopo do grupo.
+- **Quem tem também um papel fora da política** decide só pelos papéis dela. A leitura continua a da RLS da `app.insight`.
+- **Sem mudança no banco:** quem vê a tela é permissão de ação, na aplicação (regra 2). Nenhuma migração, policy ou função.
+
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar foi aceita por Kaio em 07/10/2026 e está aplicada no motor.
@@ -1134,3 +1153,42 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - o horário de atendimento é por hotel, e não por equipe;
   - não existe feriado da bandeira; o pacote da bandeira (PB1) pode copiar os feriados para o hotel novo;
   - o tenant não cria motivo de pausa: a lista é do domínio, como os estados (ADR-027).
+
+## ADR-043 — Monitor de SLA: avisos só de inserção, emitidos pelo worker
+
+**Status:** aguarda aprovação do Cesar. As decisões M1 a M5 foram aprovadas por ele em 13/10/2026, no chat do agente da 1c ("aprovado conforme recomendado"), e estão no `docs/13-plano-fase-1c.md`. O texto deste ADR, com os detalhes do agente (os nomes dos tipos, quem lê, o evento, a pausa que congela o aviso e os índices da auditoria), aguarda o "aprovo".
+
+**Contexto:** o critério de aceite do piloto pede o alerta de prazo perto de vencer e o escalonamento à central. Os prazos já ficam gravados no chamado (ADR-042, migração 0043), com dois índices parciais para o monitor. A rota `/api/cron/sla`, o segredo e o laço por tenant existem desde a fase 0 (ADR-007), sem tarefa e fora do `vercel.json`. A comunicação (e-mail e push) é o item 5 da 1c e ainda não existe.
+
+**Decisão:**
+- **Quatro avisos por chamado** (M1): `atendimento_em_risco`, `atendimento_vencido`, `solucao_em_risco` e `solucao_vencida`. O aviso "em risco" sai quando o tempo de relógio que falta chega ao complemento do percentual da política (padrão de 80%: faltam 20% das horas da regra). O tempo de relógio é o do ADR-042 (`horasDeRelogioEntre`), no calendário do hotel e com a cópia do chamado.
+  - **atendimento:** do chamado ainda sem OS (estado `aberto` ou `em_triagem` e nenhuma OS gerada);
+  - **solução:** do chamado com o serviço não concluído (sem OS `concluida` depois da última reabertura);
+  - **a pausa que parou o relógio** (ADR-042) congela o aviso da solução: com a OS pausada e a pausa valendo para o relógio, o monitor não emite. Na retomada, o prazo refeito é outro prazo e pode ter os avisos dele;
+  - o chamado sem prazo (aberto antes da 0043) fica fora.
+- **Tabela `app.sla_alerta`, só de inserção** (M2): o tenant, o hotel, o chamado, o tipo, o prazo a que o aviso se refere e quando foi emitido. A chave única é (chamado, tipo, prazo): o cron roda de novo sem repetir o aviso, e o prazo refeito na triagem ou na retomada ganha o dele. A lista dos tipos é canônica no domínio, e o check do banco repete os valores (`tests/valores-canonicos-banco.test.ts`). O worker não ganha UPDATE no chamado.
+- **Quem grava e quem lê:**
+  - grava só o `hk_worker`, no tenant do job (`authz.tenant_sistema()`), pelo cron do SLA;
+  - lê, pelo `hk_app`, a gestão, como o painel (decisão 12 de 13/10/2026): o Admin do grupo, o Gestor CSC e o Gerente com o hotel;
+  - o Técnico, o Solicitante, o Implantador e o proprietário não leem. O selo da ficha sai dos prazos gravados no chamado, que eles já leem;
+  - nenhum papel altera nem apaga (meta-testes 9 e 32).
+- **Evento no outbox:** cada aviso grava, na mesma transação, o evento `chamado.sla_alerta`, com o tipo, o prazo e o nível. A comunicação (item 5 da 1c) consome o evento para o e-mail e o push. Até lá, os avisos aparecem no painel (em risco e vencidos) e no selo da ficha (M4). O aviso não vai para a auditoria: a própria tabela, só de inserção, é o registro.
+- **Política `chamado.escalonamento`** (M3), com a herança hotel → bandeira → grupo → padrão (ADR-026):
+  - **o percentual do aviso "em risco":** de 50% a 95%, com padrão de 80%;
+  - **quem recebe cada nível:** em risco vai ao responsável da OS (o Técnico ou os membros da equipe) e ao Gerente do hotel; vencido vai também ao Gestor CSC. O chamado sem OS vai ao Gerente do hotel e, vencido, também ao Gestor CSC;
+  - o valor fica no domínio, com o formato validado e o contrato da API, como as outras políticas. Não há coluna nova no banco.
+- **Cron:** a tarefa por tenant entra na rota `/api/cron/sla`, que volta ao `vercel.json`, a cada 5 minutos (ADR-007). Cada tenant roda numa transação do `hk_worker`; os índices parciais da 0043 limitam a leitura aos chamados em curso.
+- **Aceite automático** (M5): o job do `os.aceite_automatico`, desligado por padrão, entra na mesma rota, num PR próprio, depois do monitor.
+- **Índices da auditoria geral** (decisões 12 e 13; #211): `(tenant_id, em desc, id desc)` e `(tenant_id, hotel_id, em desc, id desc)`, na ordem do cursor da tela.
+
+**Consequências:**
+- Migração 0044 (`20261013150000_monitor_sla.sql`): a tabela, as policies, os dois índices da auditoria, o pgTAP 037 e a tabela nas listas dos meta-testes 28 e 32.
+- No PR seguinte, fora da zona protegida e sem migração:
+  - no domínio, os tipos do aviso (no teste de valores canônicos), a política `chamado.escalonamento` e a regra do aviso;
+  - na aplicação, o caso de uso do monitor por tenant;
+  - no banco, a porta do monitor pelo `hk_worker`;
+  - a rota do cron no `vercel.json`, o painel dos avisos, o selo da ficha e o catálogo nos quatro idiomas.
+- **Limites:**
+  - escalonar é avisar, e não reatribuir: a OS continua com quem está;
+  - sem e-mail e sem push até o item 5 da 1c;
+  - um aviso por prazo: o aviso não se repete enquanto o prazo não muda.

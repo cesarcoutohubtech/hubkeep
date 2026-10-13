@@ -1874,6 +1874,13 @@ ADR-040 e as 21 decisões aprovados pelo Cesar em 12/10/2026. PR de zona protegi
   - a linha do checklist no `docs/02`.
 - **Para o agente do Intelligence:** as tabelas novas são `app.checklist_modelo` (`id`, `tenant_id`, `categoria_id`, `nomes`, `itens`, `versao`, `ativa`) e `app.os_checklist` (`os_id`, `modelo_id`, `modelo_versao`, `nomes`, `itens`, `respostas`, `criado_por`). O worker já lê as duas.
 
+## Abertura das telas do HubKeep Intelligence na moldura (pelo agente do Intelligence, 12/10/2026)
+
+Registro do agente do Intelligence, porque a moldura (`apps/web/src/cliente/moldura.tsx`) é do núcleo. A mudança vem da decisão do Cesar de 12/10/2026 ("Cesar aqui"), e o detalhe está no `docs/diario-intelligence.md`, seção `int-visibilidade-telas`.
+- **O item:** com o resumo em 404, a moldura pergunta `GET /api/v1/inteligencia/abertura`. Se essa rota responde 200 (só o Admin do grupo, com o módulo vigente, antes da abertura das telas), o item "HubKeep Intelligence" aparece sem contagem e leva a `/inteligencia/abertura`. Fora isso, nada muda.
+- **Título da barra:** a rota `/inteligencia/abertura`. O teste da moldura ganhou o caso.
+- **Dois pedidos ao núcleo** estão no diário do Intelligence: `escopos` na `ExtensaoDePolitica` e a coluna `fuso` na `app.tenant`.
+
 ## O diário da 1b mudou de arquivo (12/10/2026)
 
 A pedido do Cesar ("Cesar aqui", 12/10/2026), a 1b passa a ser registrada no `docs/diario-fase-1b.md`, que traz as regras vindas da memória local do agente, o ponto de retomada e as tarefas da passagem para a nuvem. Este diário fica com a 1a e com o começo da 1b, até a PV1 (#203).
