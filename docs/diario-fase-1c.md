@@ -265,3 +265,32 @@ Primeiro dos dois PRs do aviso acima, na branch `claude/1c-sla-prazos`, fora da 
 2. **Dependabot:** o ADR-042 diz que o Dependabot propõe as versões novas da biblioteca. Hoje o `dependabot.yml` só cobre as actions. Para incluir o npm (só a `date-holidays`, ou o repositório inteiro), é preciso mudar o `dependabot.yml`, que é zona protegida. Até lá, a atualização é deliberada, com o teste de regressão.
 
 **A `main` vermelha depois do #210 e do #211:** no a6b761b, o "CI" falhou no `tests/auditoria-entidades.test.ts` (da 1c): o #210 passou a gravar na auditoria `checklist_modelo` e `os_checklist`, fora da lista. O "banco" falhou na limpeza do `apps/web/test/demonstracao/semear.test.ts`. O agente da 1b já tem a correção das duas falhas na branch `claude/1b-main-vermelha-auditoria`, e a 1c não abre outra. O PR dos prazos abre depois do merge dessa correção, com a `main` juntada.
+
+## Migração do monitor de SLA, pronta na branch (13/10/2026)
+
+Na branch `claude/1c-monitor-sla`, enviada, ainda **sem PR**. Pela ordem do Cesar, ela espera o merge do #212 (o PR de visibilidade das telas do Kaio, aberto); depois, a PV2 da 1b.
+- **Migração 0044** (`20261013150000_monitor_sla.sql`):
+  - a tabela `app.sla_alerta`, só de inserção, gravada pelo `hk_worker` no tenant do job e lida pela gestão;
+  - um aviso por chamado, tipo e prazo, com FK composta para o hotel e o chamado;
+  - os dois índices da auditoria geral, na ordem do cursor.
+- **Numeração:** a PV2 da 1b já se numerou 0045, com o pgTAP 036. Por isso a 1c fica com a 0044 e o pgTAP 037. O horário do arquivo (15h) vem antes do da PV2 (20h), para a ordem de aplicação bater com a do merge.
+- **pgTAP 037:** os seis casos mínimos, os privilégios, o worker e os índices. A tabela entrou nos meta-testes 28 e 32, e os tipos do Kysely, à mão.
+- **ADR-043** (aguarda o "aprovo" do Cesar) e a correção do texto do ADR-021: o Implantador grava e não lê a auditoria sem hotel (decisão 14).
+- **Antes de abrir:** juntar a `main`, conferir no GitHub que não há outro PR de zona protegida aberto e que o #212 já entrou.
+
+## Ponto de retomada (13/10/2026)
+
+- **`main`:** em 38bf55f, com a correção da `main` vermelha (#213, da 1b). **Dev:** a 0042 e a 0043 conferidas pelo Cesar (diário da 1b).
+- **PRs abertos da 1c:**
+  - o [#215](https://github.com/cesarcoutohubtech/hubkeep/pull/215), dos prazos de SLA na abertura e na triagem, fora da zona protegida. Na primeira rodada, o pgTAP passou, e a integração do `packages/db` falhou no teste novo, com um código QR fora do formato do banco. A correção já está no PR (23bfc0c). Quando ficar verde, espera o merge do Cesar.
+- **Trabalho enviado sem PR:** a branch `claude/1c-monitor-sla`, com a migração 0044 e o ADR-043. Espera o merge do #212.
+- **Decisões pendentes do Cesar:**
+  1. a licença dos dados da `date-holidays` (CC BY-SA 3.0, e não CC BY 3.0) e a correção do texto do ADR-042;
+  2. o Dependabot para o npm (o `dependabot.yml` é zona protegida);
+  3. o "aprovo" do texto do ADR-043.
+- **Esperando o Kaio:** os quatro pontos do glossário e o volume do teste de carga.
+- **Próxima tarefa:** o motivo da pausa e o prazo na retomada (o segundo PR do aviso de área compartilhada), numa branch nova a partir da `main` depois do merge do #215. Primeiro passo:
+  - acrescentar `motivo` opcional ao `os.pausar` no contrato da sincronização;
+  - calcular, em `prepararAcao` da execução, se a pausa para o relógio, pela cópia do SLA do chamado;
+  - na retomada, refazer o prazo de solução e o tempo pausado com `prazoNaRetomada`;
+  - acrescentar o seletor de motivo no PWA e os nomes dos motivos no catálogo, nos quatro idiomas.
