@@ -116,15 +116,68 @@ Item 2 da ordem da 1c. PR fora da zona protegida, sem migração, na branch `cla
   - na CI, com o Supabase do runner: o caso novo de `packages/db/test/configuracao.test.ts` (bandeira acima do grupo e abaixo do hotel, o hotel sem bandeira, a porta da triagem, a auditoria, a bandeira de outro tenant e o gerente);
   - a tela não foi vista no navegador.
 
+## Domínio do calendário de SLA (13/10/2026)
+
+O cálculo do ADR-042, só no domínio e no contrato. PR fora da zona protegida, sem migração e sem gravar nada ainda, na branch `claude/1c-sla-dominio`. A gravação dos prazos na abertura, na triagem e na retomada vem depois do merge da 0043, porque precisa das colunas novas.
+- **`packages/dominio/src/sla.ts`:**
+  - as políticas `chamado.sla` (`SLA_PADRAO`) e `hotel.horario_atendimento` (`HORARIO_PADRAO`), com o formato validado. As horas vão em quartos de hora, até 90 dias, com o atendimento até a solução. O horário vai por dia da semana, com até 4 intervalos em ordem e sem sobreposição, e ao menos um na semana;
+  - `regraDeSla`: a linha da prioridade pelo id, senão pela chave padrão, senão pelo peso mais próximo (no empate, a de peso maior). A categoria sobrepõe o que tem;
+  - `pausaParaORelogio`;
+  - `datasSemAtendimento`, com o feriado, o ponto facultativo só ligado, a observância nunca e o anual do hotel em cada ano;
+  - `calcularPrazo`, `tempoDeRelogioEntre` e `horasDeRelogioEntre`, no fuso do hotel pela `Intl`. Na hora que não existe, vale a depois do salto; na que existe duas vezes, a primeira;
+  - `prazoNaRetomada`: a pausa que começou com o prazo já vencido não muda nada;
+  - `MOTIVOS_DE_PAUSA` e `TIPOS_DE_FERIADO_OFICIAL`;
+  - o prefixo `hotel.` entrou nos do núcleo.
+- **Contrato:** os formatos das duas políticas e `MOTIVOS_DE_PAUSA_API`, com a paridade conferida em `tests/contratos-dominio.test.ts`, por amostras.
+- **Fica para o PR da 0043 ou o seguinte:** `MOTIVOS_DE_PAUSA` em `tests/valores-canonicos-banco.test.ts`, que lê o check da migração. O teste entra no PR que for mergeado por último, entre este e o da 0043.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Os 17 testes novos (`packages/dominio/test/sla.test.ts`) cobrem o fim de semana, o feriado de 12/10, o almoço, o prazo no fim do intervalo, Manaus e Noronha, o horário de verão real de São Paulo em 04/11/2018 (o dia de 23 h), a retomada nos dois relógios e a pausa com o prazo vencido;
+  - na CI: a lista de chaves de `packages/db/test/configuracao.test.ts`.
+
+## Decisões 5 a 14 do desenho da 1c (13/10/2026)
+
+O Cesar respondeu no chat às decisões 5 a 14 de `docs/referencia/propostas-desenho-1c.md`. A tabela está no `docs/13` ("Decisões do desenho da 1c"). O que muda no desenho:
+- **7 (ajuste):** a matriz do arrendado usa a categoria do próprio chamado (`app.chamado.categoria_id`, da 0043), e não a do ativo. A OS preventiva, que não tem chamado, continua com a categoria do ativo.
+- **9 (condição):** a meta de tempo do painel é do agente da 1c, medida com o volume do teste de carga do agente do Kaio. O repositório ainda não tem esse teste nem esse volume: a meta e o volume vão ao Cesar e ao Kaio (seção seguinte).
+- **10 e 11:** o glossário passou à segunda versão, com os indicadores fechados pelo Cesar. Continuam em proposta a conclusão do serviço e a preventiva atrasada, que esperam o Kaio, e o tempo até o aceite.
+- **12:** "gestão" é o Admin do grupo, o Gestor CSC e o Gerente do hotel, este só no escopo do hotel dele, como a RLS da auditoria já faz.
+- **14:** a correção do `docs/13` sobre o Implantador e o texto do ADR-021 entram no PR da auditoria geral.
+
+## Pedido ao agente do Kaio: volume do teste de carga (13/10/2026)
+
+A decisão 9 do Cesar mede a meta de tempo do painel de indicadores com o volume do teste de carga do agente do Kaio. Não achei esse teste no repositório. Pedido:
+1. Existe um teste de carga, ou um volume de referência, do Intelligence? Se existe, onde está, e com quantos hotéis, UHs, ativos, chamados, OS e transições, em quantos meses?
+2. Se não existe, proponho o volume abaixo, para os dois módulos medirem com o mesmo, e que o Kaio confirme ou ajuste:
+   - 40 hotéis, 6.000 UHs e 20.000 ativos;
+   - 24 meses de histórico, com 150 chamados por hotel por mês (144 mil chamados), uma OS por chamado e cerca de 5 transições por OS (720 mil transições);
+   - 10% dos chamados com UH indisponível e 5% com parada do ativo.
+
+## Monitor de SLA, meta do painel e auditoria adiantada (13/10/2026)
+
+O Cesar aprovou no chat, conforme as recomendações ("aprovado conforme recomendado"):
+- as cinco decisões do monitor de SLA, M1 a M5;
+- a meta de tempo do painel (decisão 9).
+
+A tabela está no `docs/13`. Ele também autorizou adiantar a auditoria geral ("Pode sim").
+
+**Plano:**
+- **Auditoria geral, primeiro, fora da zona protegida:** a tela, a API e o CSV. Funciona sem os índices novos, só mais devagar no volume grande.
+- **Um PR de zona protegida só, na vez da 1c depois da PV2:**
+  - a tabela `app.sla_alerta` e a política do escalonamento (ADR do monitor);
+  - os dois índices da auditoria;
+  - a correção do ADR-021 e do `docs/13` sobre o Implantador (decisão 14).
+
 ## Ponto de retomada (13/10/2026)
 
 - **Feito:**
   - o glossário em proposta;
-  - o PR do SLA aberto (migração 0043, pgTAP 035 e ADR-042), à espera da CI e do merge e do `db push` do Cesar.
+  - o PR do SLA (migração 0043, pgTAP 035 e ADR-042), mergeado no #206.
 - **Próximo:**
-  1. o PR do SLA está aberto. A vez seguinte na fila de zona protegida é da PV2, da 1b, depois do merge dele;
-  2. o nível bandeira (item 2) está no PR "1c: nível bandeira nas políticas", à espera da CI e do merge do Cesar;
-  3. em seguida, fora da zona protegida: o domínio do calendário (`calcularPrazo`, `horasDeRelogioEntre`, as políticas `chamado.sla` e `hotel.horario_atendimento` e `MOTIVOS_DE_PAUSA`), que não depende da migração.
+  1. o PR do SLA (migração 0043 e ADR-042) foi mergeado pelo Cesar no #206, em 13/10/2026; o `db push` é dele, e a conferência do dev é do agente da 1b. A vez seguinte na fila de zona protegida é da PV2, da 1b;
+  2. o nível bandeira (item 2) foi mergeado pelo Cesar no #204, em 13/10/2026;
+  3. o domínio do calendário está no PR "1c: domínio do calendário de SLA" (#205), com `MOTIVOS_DE_PAUSA` em `tests/valores-canonicos-banco.test.ts`, à espera do merge do Cesar;
+  4. depois do `db push` da 0043: a porta `FeriadosOficiais` com a `date-holidays`, a gravação dos prazos (abertura, triagem e retomada) e o motivo da pausa no PWA, com o catálogo;
+  5. em seguida, o item 4 da ordem: o monitor de SLA e o escalonamento, quando o Cesar decidir as cinco decisões.
 - **Esperando:**
-  - o Kaio, nos quatro pontos do glossário;
-  - o Cesar, nas decisões 5 a 14 de `docs/referencia/propostas-desenho-1c.md` (arrendado, indicadores e auditoria), quando chegar a vez de cada item.
+  - o Kaio, nos quatro pontos do glossário e no volume do teste de carga;
+  - o Cesar, nas cinco decisões do monitor de SLA (item 4) e na meta de tempo do painel (decisão 9).

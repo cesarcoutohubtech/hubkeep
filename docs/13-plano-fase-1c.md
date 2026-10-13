@@ -30,6 +30,38 @@ As sete decisões de `docs/referencia/paridade-mock-1c.md` ("Decididas antes de 
 | 6 | Gráficos do painel (abertos por dia, abertos × encerrados, onde mais quebra) e "chamados por 100 UHs" entram na 1c. | Painel; Painel de indicadores |
 | 7 | Separador do CSV pelo formato regional de quem exporta, mantendo o BOM. | Impressão e exportação; Auditoria geral |
 
+### Decisões do desenho da 1c (Cesar, 13/10/2026)
+
+O Cesar respondeu, no chat do agente da 1c, às 14 decisões de `docs/referencia/propostas-desenho-1c.md`. As 1 a 4, do calendário de SLA, estão no ADR-042. As 5 a 14 ficaram assim:
+
+| # | Decisão | Item |
+|---|---|---|
+| 5 | Aprovada: a matriz do arrendado é uma política, com herança grupo → hotel. | Arrendado mínimo |
+| 6 | Aprovada: o locador é o proprietário do hotel inteiro, sem papel novo. | Arrendado mínimo |
+| 7 | Aprovada com ajuste: a regra usa a categoria do próprio chamado (a do ADR-042), e não a do ativo. Sem regra para a categoria, fica com a arrendatária. | Arrendado mínimo |
+| 8 | Aprovada: um aviso por OS, com a hora na auditoria. | Arrendado mínimo |
+| 9 | Aprovada com condição: os indicadores são calculados na leitura, desde que o painel cumpra uma meta de tempo proposta pelo agente da 1c e medida com o volume do teste de carga do agente do Kaio. Se não cumprir, o agente propõe uma tabela de agregados. | Painel de indicadores |
+| 10 | Aprovada: as definições dos indicadores, com o % de SLA pelo prazo que vence no período e o MTTR com a mediana ao lado. Vão para o glossário único (`docs/referencia/glossario-metricas.md`). | Painel de indicadores |
+| 11 | Aprovada: a tolerância da preventiva em dia é política, com padrão 0. | Painel de indicadores |
+| 12 | Aprovada com definição: a tela de auditoria é da gestão, que quer dizer o Admin do grupo, o Gestor CSC e o Gerente do hotel, este só no escopo do hotel dele. | Auditoria geral |
+| 13 | Aprovada: até 92 dias por consulta e 50 mil linhas no CSV. | Auditoria geral |
+| 14 | Aprovada: o `docs/13` é corrigido, porque o Implantador não lê a auditoria sem hotel. A correção entra no PR da auditoria geral, com o texto do ADR-021 (decisão do Cesar de 13/10/2026). | Auditoria geral |
+
+### Monitor de SLA e meta do painel (Cesar, 13/10/2026)
+
+O Cesar aprovou, no chat do agente da 1c, as cinco decisões do monitor de SLA e a meta do painel, conforme as recomendações:
+
+| # | Decisão | Item |
+|---|---|---|
+| M1 | Quatro avisos por chamado: atendimento e solução perto de vencer e vencidos. "Perto de vencer" é quando o tempo de relógio que falta chega a 20% das horas da regra (padrão de 80%). | Monitor de SLA |
+| M2 | Tabela própria, `app.sla_alerta`, só de inserção, com chave única por chamado, tipo e prazo. O worker não ganha UPDATE no chamado. | Monitor de SLA |
+| M3 | Política `chamado.escalonamento` (hotel → bandeira → grupo): o percentual do aviso, de 50% a 95% (padrão de 80%), e quem recebe cada nível. Perto de vencer vai ao responsável da OS e ao Gerente do hotel; vencido vai também ao Gestor CSC. | Monitor de SLA |
+| M4 | Até o item de comunicação, os avisos ficam no painel (em risco e vencidos) e num selo na ficha do chamado. O e-mail e o push consomem o mesmo evento depois. | Monitor de SLA |
+| M5 | O job do aceite automático (`os.aceite_automatico`, desligado por padrão) entra na rota de cron do SLA, num PR próprio, depois do monitor. | Monitor de SLA |
+| 9 | Meta do painel de indicadores, no servidor, com o build de produção e o volume de referência: rede inteira em 30 dias até 1,0 s; rede inteira em 92 dias até 2,0 s; um hotel em 30 dias até 400 ms (p95). Sem cumprir, o agente propõe uma tabela de agregados diária. O volume aguarda a confirmação do Kaio. | Painel de indicadores |
+
+**Ordem:** o Cesar autorizou adiantar a auditoria geral (item 7) enquanto o monitor espera a migração.
+
 ### Auditoria geral (decisão do Cesar de 07/10/2026)
 
 | O quê | Aceite |
