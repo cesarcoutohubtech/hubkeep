@@ -19,6 +19,7 @@ import { type Criticidade, NIVEIS_DE_CRITICIDADE } from './ativos';
 import { IDIOMAS_DE_ROTULO, LIMITES_DE_CAMPO, type Rotulos } from './campos-tipados';
 import { PermissaoNegada, RegraViolada } from './erros';
 import { MODULOS_CONTRATAVEIS, type ModuloContratavel } from './licenca';
+import { ESCALONAMENTO_PADRAO, type EscalonamentoDeSla, escalonamentoValido } from './monitor-sla';
 import { type Resultado, ehAdminGrupo } from './permissoes';
 import {
   HORARIO_PADRAO,
@@ -97,6 +98,8 @@ export interface ValoresDePolitica {
   'chamado.sla': PoliticaDeSla;
   /** Horário de atendimento do hotel (1c, ADR-042), na hora local dele. */
   'hotel.horario_atendimento': HorarioDeAtendimento;
+  /** Monitor de SLA (1c, ADR-043): o percentual do aviso e quem recebe cada nível. */
+  'chamado.escalonamento': EscalonamentoDeSla;
 }
 export type ChaveDePolitica = keyof ValoresDePolitica;
 
@@ -169,6 +172,10 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
   'hotel.horario_atendimento': {
     padrao: HORARIO_PADRAO,
     valido: (v): v is HorarioDeAtendimento => horarioDeAtendimentoValido(v),
+  },
+  'chamado.escalonamento': {
+    padrao: ESCALONAMENTO_PADRAO,
+    valido: (v): v is EscalonamentoDeSla => escalonamentoValido(v),
   },
 };
 

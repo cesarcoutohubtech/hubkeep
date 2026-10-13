@@ -318,3 +318,30 @@ Segundo PR do aviso de área compartilhada, na branch `claude/1c-sla-pausa`, fei
 - **Verificação:**
   - no local, lint, typecheck e testes passaram;
   - o cenário novo do `packages/db/test/sla-prazos.test.ts` roda só na CI. Ele cobre a pausa com "aguardando peça", que estende a solução em 2 h e soma 7.200 s, com o motivo na transição e o antes e o depois na auditoria, e o "fim de turno", que não muda nada.
+
+## Monitor de SLA: domínio, worker e cron (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Item 4 da ordem, depois da migração 0044 (#217, com o `db push` feito pelo Cesar). PR fora da zona protegida, sem migração, na branch `claude/1c-monitor-sla-cron`.
+
+**Aviso de área compartilhada com a 1b:** mexe em políticas (a chave nova `chamado.escalonamento` em `packages/dominio/src/politicas.ts` e no contrato), no `packages/dominio` (`monitor-sla.ts`) e no `packages/db/src/adaptadores.ts`. As leituras das políticas e do calendário do hotel saíram para `packages/db/src/leituras-do-hotel.ts`, para o repositório do worker usar as mesmas.
+
+- **Domínio** (`monitor-sla.ts`):
+  - os quatro tipos de aviso, conferidos com o check da 0044 em `tests/valores-canonicos-banco.test.ts`;
+  - a política `chamado.escalonamento`: o percentual de 50 a 95, com padrão de 80, e os destinatários de cada nível, da lista do domínio;
+  - `avisosDeSla`: o vencido no prazo e o em risco quando o tempo de relógio que falta chega ao complemento do percentual. O atendimento conta até a primeira OS, e a solução até o serviço concluído; o relógio parado pela pausa congela a solução.
+- **Aplicação:**
+  - a porta `PortaMonitorDeSla`;
+  - `criarMonitorDeSla`, por tenant. A regra sai da cópia do chamado, e o percentual e os destinatários, da política do hotel. O calendário vale por hotel e cópia, e o aviso já emitido para o prazo não sai de novo.
+- **Banco:**
+  - o repositório `repositorios/monitor-sla.ts`, na unit of work do `hk_worker`. Ele lê os chamados em curso com prazo, a OS que já existiu, a pausa em curso com o motivo e os avisos já emitidos;
+  - o aviso grava com `on conflict do nothing` e só publica o evento `chamado.sla_alerta` quando é novo. O aviso não vai para a auditoria.
+- **Web:** `monitorarSlaDoTenant` na composição, a rota `/api/cron/sla` com a tarefa e o cron de volta ao `vercel.json`, a cada 5 minutos (ADR-007).
+- **Contrato:** `EscalonamentoDeSlaApi` e `DESTINATARIOS_DO_AVISO_API`, com as amostras em `tests/contratos-dominio.test.ts`.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos:
+    - o domínio, nos relógios 24x7 e de atendimento;
+    - a aplicação, com as portas em memória;
+  - só na CI: `packages/db/test/monitor-sla.test.ts`. Ele cobre o aviso e o evento, a segunda rodada sem repetir, o prazo refeito, a pausa que congela e o outro tenant.
+- **Fica para depois:** o painel dos avisos e o selo da ficha (M4), e o aceite automático (M5), cada um num PR próprio.
+
+**Observação para o agente do Kaio:** na suíte inteira, no local, o `apps/web/test/demonstracao/historico-inteligencia.test.ts` (#221) estourou o tempo padrão de 5 s uma vez. Sozinho, passou. Pode valer um `timeout` maior nesse teste.
