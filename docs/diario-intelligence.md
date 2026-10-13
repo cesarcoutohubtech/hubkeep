@@ -1566,3 +1566,32 @@ No chat do agente do Kaio, em 13/10/2026:
   - depois da aprovação da versão 3, o PR de código: a conclusão do serviço e o custo informado no domínio, e o dia no fuso do hotel;
   - depois da montagem, o restante da atividade 3;
   - a cada entrega da 1b e da 1c, o `docs/piloto/`.
+
+## Divergências b, c e f decididas pelo Kaio (13/10/2026)
+
+**Kaio, no chat do agente do Kaio (13/10/2026):** aprovou a b ("falta o Kaio. Aprovado") e a c e a f ("continuam com o Kaio. Aprovado").
+
+- **Divergências:** as seis estão decididas, todas pela proposta.
+  - a e b: Cesar e Kaio;
+  - d e e: Cesar;
+  - c e f: Kaio.
+- **Glossário:** a coluna "Situação" foi atualizada. A versão 3 continua rascunho, porque falta a aprovação dela pelo Cesar e, nos termos do Intelligence, pelo Kaio. Decidir as divergências não aprova o glossário.
+- **`main`:**
+  - o pgTAP segue vermelho por `packages/db/test/sla-prazos.test.ts:324`, um teste da 1c que depende da hora real e falha depois das 21:00 UTC de 13/10/2026 (comentário no #242);
+  - a correção espera a decisão do Cesar sobre quem a faz.
+
+### Ponto de retomada (13/10/2026, divergências decididas)
+
+- **`main`:** 5514dfe, com o #242. O pgTAP está vermelho pelo teste da 1c acima.
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`, recriada a partir da `main`): as decisões da b, da c e da f e este registro. Só docs.
+- **Esperando:**
+  - **Cesar:** quem corrige o teste da 1c;
+  - **Cesar e Kaio:** a aprovação da versão 3 do glossário;
+  - **1b:** a montagem com relógio (#244), para a atividade 3.
+- **Próximo:**
+  - depois da aprovação da versão 3, o PR de código, com aviso de área compartilhada antes:
+    - `conclusaoEReaberturas` e o custo informado no domínio (d);
+    - o dia no fuso do hotel (a);
+    - o cancelado fora em qualquer caso (b);
+    - os rótulos da c e da f;
+  - depois do #244, o restante da atividade 3.
