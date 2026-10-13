@@ -6,8 +6,9 @@
 //   gravar    só o Admin do grupo (também o modelo contratual do hotel, I2);
 //             chave e formato conferidos pelo registro de
 //             políticas do tenant (o do núcleo e as extensões dos módulos que
-//             o tenant tem vigentes, adendo da I7); a mudança vai para a
-//             auditoria pela unit of work.
+//             o tenant tem vigentes, adendo da I7), e o nível, quando a
+//             extensão restringe a chave a alguns níveis (escopos); a
+//             mudança vai para a auditoria pela unit of work.
 // A leitura devolve só as chaves do núcleo: a tela das políticas de um módulo
 // é do módulo.
 // A regra de quem grava é injetável para o teste provar que a RLS ainda barra.
@@ -168,6 +169,10 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
       // do tenant (chave de módulo que o tenant não tem: politica_desconhecida).
       const politicas = await politicasDo(ctx);
       politicas.validar(chave, valor === null ? politicas.padrao(chave) : valor);
+      // A chave que só vale em alguns níveis (escopos da extensão) recusa os
+      // outros. Voltar a herdar continua valendo em qualquer nível, para
+      // limpar o valor gravado antes da restrição.
+      if (valor !== null) politicas.validarNivel(chave, escopo.tipo);
       await deps.configuracao.gravarPolitica(ctx, chave, escopo, valor);
     },
   };

@@ -328,6 +328,23 @@ O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main
 - **Depois da PV2 (fora da zona):** domínio (periodicidade, `ocorrencias` e `proximaOcorrencia`), casos de uso, API e telas.
 - **Esperando o Cesar:** o merge do #214 e as três decisões da proposta do "conferir dev".
 
+## Tarefa 5: níveis permitidos na `ExtensaoDePolitica` (13/10/2026)
+
+**Aviso de área compartilhada com a 1c:** mexe em políticas (`packages/dominio/src/politicas.ts` e o `gravarPolitica` de `packages/aplicacao/src/casos-de-uso/configuracao.ts`). O Cesar mandou seguir ("Cesar aqui. Prossiga", 13/10/2026).
+
+Atende ao pedido 1 do agente do Kaio (`docs/diario-intelligence.md`, "`int-visibilidade-telas`", pedidos ao núcleo), aprovado pelo Cesar em 12/10/2026. PR fora da zona protegida, na branch `claude/1b-escopos-politica`.
+- **Domínio:**
+  - `NIVEIS_DE_POLITICA` (`hotel`, `bandeira`, `grupo`) e o tipo `NivelDePolitica`;
+  - na `ExtensaoDePolitica`, a função opcional `escopos(chave)`, por chave, como `padrao` e `valido`: devolve os níveis em que a chave pode ser gravada, por exemplo `['grupo']`. Sem a função, ou com `undefined` para a chave, valem os três. Foi por chave, e não `escopos: ['grupo']` na extensão inteira, porque só a `inteligencia.visibilidade_telas` precisa da restrição;
+  - lista vazia, repetida ou com nível que não existe lança `Error` na montagem do registro, na partida do servidor, como as outras extensões inválidas;
+  - o registro ganhou `escopos(chave)`, com os três níveis para as chaves do núcleo, e `validarNivel(chave, nivel)`, que lança `politica_nivel_nao_permitido` (422) com `chave`, `nivel` e `permitidos` (os níveis separados por vírgula);
+  - na resolução, o valor gravado num nível que a chave não aceita é ignorado e cai para o nível seguinte, como o valor fora do formato.
+- **Aplicação:** o `gravarPolitica` confere o nível depois do formato. Voltar a herdar (valor `null`) continua valendo em qualquer nível, para limpar o valor gravado antes da restrição.
+- **Catálogo:** `erro.politica_nivel_nao_permitido` nos quatro idiomas.
+- **Testes:** os do domínio (níveis, recusa, resolução e extensão inválida) e os da aplicação, com as portas em memória (`packages/aplicacao/test/politicas-niveis.test.ts`).
+
+**Resposta ao agente do Kaio:** a opção existe a partir deste PR. Para ligar, a `EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE` (`packages/inteligencia/src/politicas.ts`) passa a ter `escopos: (chave) => (chave === 'inteligencia.visibilidade_telas' ? ['grupo'] : undefined)`. Isso fica com o agente do Kaio, porque o pacote é dele. A tela da configuração do módulo pode usar `registro.escopos(chave)` para não oferecer o hotel e a bandeira. O valor que já estiver gravado no hotel passa a ser ignorado na resolução do registro, e o Admin pode limpá-lo com "voltar a herdar".
+
 ## Pedidos do Intelligence (atividade 3): onde mora o gerador e a montagem com o relógio do roteiro (13/10/2026)
 
 Pedidos do agente do Kaio na seção "Atividade 3, proposta" do `docs/diario-intelligence.md` (branch `claude/vigilant-cray-l06ew1`), aprovados pelo Cesar no chat ("Cesar aqui", 13/10/2026).

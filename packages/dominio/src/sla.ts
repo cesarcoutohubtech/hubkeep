@@ -507,3 +507,108 @@ export function prazoNaRetomada(p: {
     pausadoMs: tempoDeRelogioEntre(pausadaEm, retomadaEm, relogio, calendario),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Prazos do chamado
+
+/** Os anos de feriados que um cálculo a partir de `inicio` pode cruzar: o anterior (o dia local pode ser o último do ano) até o limite de dias da procura. */
+export function anosDoCalendario(inicio: Date): number[] {
+  const ano = inicio.getUTCFullYear();
+  const ultimo = new Date(inicio.getTime() + DIAS_MAXIMOS * DIA_MS).getUTCFullYear();
+  const anos: number[] = [];
+  for (let a = ano - 1; a <= ultimo; a++) anos.push(a);
+  return anos;
+}
+
+/**
+ * A região dos feriados oficiais do hotel (ADR-022): o país e a subdivisão do
+ * hotel, com nulo herdando do tenant. A subdivisão do tenant só vale se o
+ * hotel fica no país dele.
+ */
+export function regiaoDoHotel(
+  hotel: { pais: string | null; subdivisao: string | null },
+  tenant: { pais: string; subdivisao: string | null },
+): { pais: string; subdivisao: string | null } {
+  const pais = hotel.pais ?? tenant.pais;
+  const subdivisao = hotel.subdivisao ?? (pais === tenant.pais ? tenant.subdivisao : null);
+  return { pais, subdivisao };
+}
+
+/** O calendário do hotel: o fuso, o horário (da cópia) e as datas sem atendimento nos anos pedidos. */
+export function calendarioDeSla(p: {
+  fuso: string;
+  horario: HorarioDeAtendimento;
+  oficiais: readonly FeriadoOficial[];
+  doHotel: readonly FeriadoDoHotel[];
+  pontoFacultativo: boolean;
+  anos: readonly number[];
+}): CalendarioDeSla {
+  return {
+    fuso: p.fuso,
+    horario: p.horario,
+    semAtendimento: datasSemAtendimento(p),
+  };
+}
+
+/** A cópia do SLA que o chamado guarda na abertura (ADR-042), dentro de `politica_aplicada`. */
+export interface SlaAplicado {
+  'chamado.sla': PoliticaDeSla;
+  'hotel.horario_atendimento': HorarioDeAtendimento;
+}
+
+/**
+ * A cópia do SLA lida do chamado. O chamado aberto antes da 0043, ou com a
+ * cópia fora do formato, não tem: fica sem prazo, e nada o recalcula.
+ */
+export function slaDaCopia(politicaAplicada: unknown): SlaAplicado | null {
+  if (!objeto(politicaAplicada)) return null;
+  const sla = politicaAplicada['chamado.sla'];
+  const horario = politicaAplicada['hotel.horario_atendimento'];
+  return politicaDeSlaValida(sla) && horarioDeAtendimentoValido(horario)
+    ? { 'chamado.sla': sla, 'hotel.horario_atendimento': horario }
+    : null;
+}
+
+export interface PrazosDoChamado {
+  prazoAtendimento: Date;
+  prazoSolucao: Date;
+}
+
+/**
+ * Os prazos a partir da abertura (ADR-042): as horas da regra no relógio
+ * dela. O tempo já parado por pausas (em segundos de relógio) estende o prazo
+ * de solução.
+ */
+export function prazosDoChamado(p: {
+  abertoEm: Date;
+  regra: Pick<RegraDeSla, 'atendimentoHoras' | 'solucaoHoras' | 'relogio'>;
+  calendario: CalendarioDeSla;
+  pausadoSegundos?: number;
+}): PrazosDoChamado {
+  const { abertoEm, regra, calendario } = p;
+  const pausadas = (p.pausadoSegundos ?? 0) / 3600;
+  return {
+    prazoAtendimento: calcularPrazo(abertoEm, regra.atendimentoHoras, regra.relogio, calendario),
+    prazoSolucao: calcularPrazo(abertoEm, regra.solucaoHoras + pausadas, regra.relogio, calendario),
+  };
+}
+
+/**
+ * O recálculo na triagem (troca de prioridade ou de categoria): os prazos
+ * refeitos da abertura com a regra nova, com o tempo já pausado. O prazo de
+ * atendimento só muda enquanto o chamado nunca teve OS; depois dela, fica o
+ * gravado.
+ */
+export function prazosNoRecalculo(p: {
+  abertoEm: Date;
+  regra: Pick<RegraDeSla, 'atendimentoHoras' | 'solucaoHoras' | 'relogio'>;
+  calendario: CalendarioDeSla;
+  pausadoSegundos: number;
+  jaTeveOs: boolean;
+  prazoAtendimentoGravado: Date | null;
+}): PrazosDoChamado {
+  const novos = prazosDoChamado(p);
+  return p.jaTeveOs && p.prazoAtendimentoGravado !== null
+    ? { prazoAtendimento: p.prazoAtendimentoGravado, prazoSolucao: novos.prazoSolucao }
+    : novos;
+}

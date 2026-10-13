@@ -97,6 +97,7 @@ export {
 export type { Vigencia } from './proprietarios';
 export {
   CHAVES_DE_POLITICA,
+  NIVEIS_DE_POLITICA,
   PREFIXOS_DO_NUCLEO,
   POLITICAS,
   ehChaveDePolitica,
@@ -117,6 +118,7 @@ export type {
   ExtensaoDeModulo,
   ExtensaoDePolitica,
   NiveisDePolitica,
+  NivelDePolitica,
   NomesDeCriticidade,
   PrioridadePadraoPorCategoria,
   RegistroDePoliticas,
@@ -394,7 +396,9 @@ export {
   RELOGIOS_DE_SLA,
   SLA_PADRAO,
   TIPOS_DE_FERIADO_OFICIAL,
+  anosDoCalendario,
   calcularPrazo,
+  calendarioDeSla,
   datasSemAtendimento,
   ehMotivoDePausa,
   horarioDeAtendimentoValido,
@@ -403,7 +407,11 @@ export {
   pausaParaORelogio,
   politicaDeSlaValida,
   prazoNaRetomada,
+  prazosDoChamado,
+  prazosNoRecalculo,
+  regiaoDoHotel,
   regraDeSla,
+  slaDaCopia,
   tempoDeRelogioEntre,
 } from './sla';
 export type {
@@ -416,9 +424,11 @@ export type {
   LinhaDeSla,
   MotivoDePausa,
   PoliticaDeSla,
+  PrazosDoChamado,
   PrioridadeParaSla,
   RegraDeSla,
   RelogioDeSla,
+  SlaAplicado,
   SlaDaCategoria,
   TipoDeFeriadoOficial,
 } from './sla';
