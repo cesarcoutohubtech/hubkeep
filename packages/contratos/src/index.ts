@@ -104,6 +104,7 @@ export {
   RespostaDeListaDeOs,
   OsApi,
   OsDoDiaApi,
+  ConsultaDaFilaDoDia,
   RespostaDeOsDoDia,
   PedidoDeAberturaDeChamado,
   PedidoDeAjusteDeCategoria,

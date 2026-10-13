@@ -85,6 +85,7 @@ import {
   RespostaDeChamado,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
+  ConsultaDaFilaDoDia,
   RespostaDeOsDoDia,
   RespostaDeOsGravada,
   RespostaDeReaberturaDeOs,
@@ -2179,8 +2180,9 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/os/do-dia',
     resumo:
-      'A fila do dia do Técnico (C4): as OS atribuídas, em execução ou pausadas dele e das equipes de que é membro ativo, da mais antiga para a mais nova. O PWA guarda no aparelho e apaga ao sair (ADR-025).',
+      'A fila do dia do Técnico (C4): as OS atribuídas, em execução ou pausadas dele e das equipes de que é membro ativo, da mais antiga para a mais nova. O PWA guarda no aparelho e apaga ao sair (ADR-025). A OS preventiva (PV3), sem chamado, só vem com preventiva=1: o PWA antigo não a recebe.',
     exigeTenant: true,
+    consulta: ConsultaDaFilaDoDia,
     respostas: {
       200: { descricao: 'OS do dia', esquema: RespostaDeOsDoDia },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),

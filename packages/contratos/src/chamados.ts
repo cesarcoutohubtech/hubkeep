@@ -345,27 +345,59 @@ export const OsDoDiaApi = z
     checklist: ChecklistDaOsApi.nullable().optional(),
     /** A política os.checklist_completo_obrigatorio do hotel (PV1); sem ele, desligada. */
     checklistCompletoObrigatorio: z.boolean().optional(),
-    chamado: z.object({
-      id: z.guid(),
-      descricao: z.string(),
-      localId: z.guid(),
-      localNome: z.string(),
-      /** Edificação do local (I2). Opcional: o PWA lê a API anterior sem ela. */
-      localEdificacao: z.string().nullable().optional(),
-      prioridadeId: z.guid(),
-      estado: z.enum(ESTADOS_DO_CHAMADO_API),
-      /** O ativo do chamado (C5); sem ele, não há parada. */
-      ativoId: z.guid().nullable(),
-      /** Início da parada aberta do ativo (C5); null se não está parado. */
-      paradoDesde: z.iso.datetime().nullable(),
-      /** A parada aberta é deste chamado: a OS encerra, e a conclusão pergunta se voltou. */
-      paradaDoChamado: z.boolean(),
-      /** Início do período aberto da UH do chamado (I4): a conclusão pergunta se foi liberada. */
-      uhIndisponivelDesde: z.iso.datetime().nullable(),
-    }),
+    chamado: z
+      .object({
+        id: z.guid(),
+        descricao: z.string(),
+        localId: z.guid(),
+        localNome: z.string(),
+        /** Edificação do local (I2). Opcional: o PWA lê a API anterior sem ela. */
+        localEdificacao: z.string().nullable().optional(),
+        prioridadeId: z.guid(),
+        estado: z.enum(ESTADOS_DO_CHAMADO_API),
+        /** O ativo do chamado (C5); sem ele, não há parada. */
+        ativoId: z.guid().nullable(),
+        /** Início da parada aberta do ativo (C5); null se não está parado. */
+        paradoDesde: z.iso.datetime().nullable(),
+        /** A parada aberta é deste chamado: a OS encerra, e a conclusão pergunta se voltou. */
+        paradaDoChamado: z.boolean(),
+        /** Início do período aberto da UH do chamado (I4): a conclusão pergunta se foi liberada. */
+        uhIndisponivelDesde: z.iso.datetime().nullable(),
+      })
+      /** null na OS preventiva (PV3), que só vem com `preventiva=1` na consulta. */
+      .nullable(),
+    /**
+     * A OS preventiva (PV3, ADR-041), que não tem chamado: o plano, a data
+     * prevista, o ativo e o local. null na corretiva. Opcional para o PWA ler a
+     * API anterior à PV3.
+     */
+    preventiva: z
+      .object({
+        planoId: z.guid(),
+        /** O nome do plano na cópia gravada na OS (ADR-026). */
+        planoNome: z.string(),
+        /** A data prevista da ocorrência, no fuso do hotel. */
+        dataPrevista: z.iso.date(),
+        ativoId: z.guid(),
+        ativoNome: z.string(),
+        localId: z.guid(),
+        localNome: z.string(),
+        localEdificacao: z.string().nullable(),
+      })
+      .nullable()
+      .optional(),
   })
   .meta({ id: 'OsDoDiaApi' });
 export type OsDoDiaApi = z.infer<typeof OsDoDiaApi>;
+
+/**
+ * A consulta da fila do dia: `preventiva=1` diz que o PWA entende a OS
+ * preventiva, sem chamado (PV3). Sem ela, a fila traz só as corretivas: o PWA
+ * antigo, ainda no aparelho, segue lendo a lista até atualizar.
+ */
+export const ConsultaDaFilaDoDia = z
+  .object({ preventiva: z.enum(['1']).optional() })
+  .meta({ id: 'ConsultaDaFilaDoDia' });
 
 export const RespostaDeOsDoDia = z
   .object({ os: z.array(OsDoDiaApi) })

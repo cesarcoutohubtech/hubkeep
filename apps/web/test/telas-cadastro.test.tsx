@@ -23,6 +23,7 @@ const TELAS = [
   'locais',
   'membros',
   'proprietarios',
+  'sla',
 ] as const;
 
 const pt = mensagensDe('pt-BR');

@@ -12,7 +12,7 @@ import {
   RespostaDeOsDoDia,
 } from '@hubkeep/contratos';
 import type { OperacaoNaFila } from './fila/banco';
-import type { OsDoDiaGuardadas } from './os/banco';
+import type { OsDoDiaGuardadas, OsGuardada } from './os/banco';
 import type { Referencia } from './referencia/banco';
 import { type Envio, type ResultadoDoEnvio, vaiTentarDeNovo } from './fila/sincronizar';
 
@@ -117,7 +117,9 @@ export async function lerOsDoDia(
     const r = await requisitar(`${baseDaApi()}/api/v1/os/do-dia`, { headers: h });
     if (!r.ok) return null;
     const { os } = RespostaDeOsDoDia.parse(await r.json());
-    return { usuarioId, tenantId, os, lidaEm: Date.now() };
+    // Sem preventiva=1, o servidor não manda OS sem chamado; o filtro só garante o tipo.
+    const corretivas = os.filter((o): o is OsGuardada => o.chamado !== null);
+    return { usuarioId, tenantId, os: corretivas, lidaEm: Date.now() };
   } catch {
     return null;
   }
