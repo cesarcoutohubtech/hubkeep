@@ -464,9 +464,9 @@ select is(
   array[
     'app.anexo', 'app.ativo', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
     'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.checklist_modelo',
-    'app.codigo_manutencao', 'app.equipe',
+    'app.codigo_manutencao', 'app.envio_notificacao', 'app.equipe',
     'app.equipe_membro', 'app.evento_dominio', 'app.feriado_hotel', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
-    'app.insight', 'app.local', 'app.local_proprietario', 'app.membro', 'app.metrica_ativo_diaria',
+    'app.inscricao_push', 'app.insight', 'app.local', 'app.local_proprietario', 'app.membro', 'app.metrica_ativo_diaria',
     'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_checklist', 'app.os_material', 'app.os_transicao', 'app.parada_ativo',
     'app.plano_preventivo', 'app.politica',
@@ -526,9 +526,9 @@ select is_empty($$
   from (values ('hk_app'), ('hk_worker'), ('hk_ingestao'), ('hk_backoffice')) r(papel)
   cross join (values ('app.auditoria'), ('app.ativo_movimentacao'), ('app.metrica_ativo_diaria'),
                      ('app.os_apontamento'), ('app.os_material'), ('app.os_transicao'),
-                     ('app.sla_alerta')) t(tabela)
+                     ('app.sla_alerta'), ('app.envio_notificacao')) t(tabela)
   where has_any_column_privilege(r.papel, t.tabela, 'UPDATE')
-$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA)');
+$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA, envio de notificação)');
 
 select * from finish();
 rollback;

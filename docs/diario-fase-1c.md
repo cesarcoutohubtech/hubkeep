@@ -701,3 +701,37 @@ A aprovação está no chat do agente da 1c, em 13/10/2026.
   - o que fazer com a branch `claude/1c-arrendado-migracao`, recriada por engano;
   - as aprovações do glossário.
 - **Próxima tarefa:** com o aviso do `db push`, juntar a `main` na `claude/1c-arrendado-os`, validar e abrir o PR 3. Enquanto isso, na branch: o ADR da comunicação e a migração das duas tabelas, para abrir na vez dela, depois da PV3.
+
+## Comunicação: o ADR-046 e a migração das duas tabelas, na branch (13/10/2026)
+
+O Cesar mandou prosseguir ("Cesar aqui. Prossiga"). O PR 3 do arrendado abriu no #261, que não deve ser mergeado antes do `db push` da 0047.
+
+A branch `claude/1c-comunicacao-migracao`, a partir da `main`, traz:
+- **A migração** `20261013233000_comunicacao.sql` (0048, provisória), com `app.envio_notificacao` e `app.inscricao_push`.
+- **O pgTAP** `040_isolamento_comunicacao.test.sql`, com 45 asserções.
+- **O meta-teste 001:** as duas tabelas entram na lista fechada, e o registro dos envios, na lista das tabelas só de inserção.
+- **Os tipos do Kysely.**
+- **O `docs/03`:**
+  - o ADR-046, com o status "aguarda aprovação do Cesar";
+  - o status aprovado do ADR-045, que não pôde entrar no #257.
+
+O PR é de zona protegida e só abre na vez dele, depois da parte protegida da PV3 (C9).
+
+**Antes de abrir:**
+- conferir a última migração da `main`;
+- renomear o arquivo com data e hora depois da migração da PV3, para o `db push` não recusar a ordem;
+- refazer o número no comentário e no ADR-046.
+
+### Ponto de retomada (13/10/2026, comunicação na branch)
+- **`main`:** em `b7e9870`. O dev espera o `db push` da 0047.
+- **PRs da 1c:** o #261 (PR 3 do arrendado), fora da zona protegida. Não mergear antes do `db push` da 0047.
+- **Na branch, sem PR:** `claude/1c-comunicacao-migracao`, com a migração, o pgTAP, o meta-teste, os tipos, o ADR-046 e o status do ADR-045.
+- **Esperando o Cesar:**
+  - o `db push` da 0047;
+  - a vez da migração da comunicação, depois da PV3;
+  - o que fazer com a branch `claude/1c-arrendado-migracao`;
+  - a conta e o DNS do SES (F0-12);
+  - as aprovações do glossário.
+- **Próxima tarefa:** o PR do e-mail do SLA (fora da zona protegida), na branch, a partir desta.
+  - **O que entra:** a porta `EnviadorDeEmail` com o adaptador "desligado", o manipulador do `chamado.sla_alerta`, o modelo do e-mail no catálogo, o registro dos envios, a contagem do C8 e o teste de paridade.
+  - **Primeiro passo:** ler `packages/aplicacao/src/casos-de-uso/eventos.ts` e a porta `EnviadorDeEmail`.

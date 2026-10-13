@@ -1264,7 +1264,13 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-045 — Responsável do arrendamento na OS
 
-**Status:** aguarda aprovação do Cesar. As decisões 5 a 8, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c (`docs/13-plano-fase-1c.md`, "Decisões do desenho da 1c"). A coluna da hora do aviso (`locador_avisado_em`) é um detalhe novo deste ADR.
+**Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c ("ADR-045 (responsável do arrendamento na OS): aprovo, como descrito"). A aprovação veio depois do merge do #257 (0047) e cobre:
+- a marca gravada na criação da OS, sem recálculo;
+- a categoria sem regra com a arrendatária;
+- o ajuste manual na triagem até o aceite, com motivo, auditoria e linha do tempo;
+- o aviso ao locador uma vez por OS, com a hora em `locador_avisado_em`.
+
+As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no mesmo dia (`docs/13-plano-fase-1c.md`, "Decisões do desenho da 1c").
 
 **Contexto:**
 - O hotel tem o modelo contratual desde a I2 (`app.hotel.modelo_contratual`, migração 0032), sem comportamento até a 1c.
@@ -1313,3 +1319,56 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Riscos aceitos:**
   - o GRANT por coluna vale para todos os papéis do `hk_app` que passam na policy de UPDATE da OS (como nas migrações 0023, 0026 e 0041). Quem ajusta a marca, e quando, é do domínio, e toda gravação fica na auditoria;
   - sem o e-mail próprio, o locador só vê o aviso na OS, até a comunicação.
+
+## ADR-046 — Comunicação: e-mail e push pelo outbox, com o registro dos envios
+
+**Status:** aguarda aprovação do Cesar. As decisões C1 a C9, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c ("Comunicação, C1 a C9: aprovo as suas recomendações, com dois registros"), e estão em `docs/referencia/propostas-comunicacao-1c.md`, "Decisões aprovadas".
+
+**Contexto:**
+- O outbox (ADR-007) já entrega os eventos de domínio pelo cron, mas só o `membro.convidado` tem manipulador.
+- O monitor de SLA publica o `chamado.sla_alerta` (ADR-043), e o arrendado publica o `os.locador_avisado` (ADR-045). Os avisos de hoje aparecem só no painel e na ficha.
+- Não há e-mail próprio, nem push, nem recuperação de senha.
+
+**Decisão:**
+- **Provedor (C1):** a porta `EnviadorDeEmail`, com um adaptador por API HTTP do Amazon SES em `sa-east-1`.
+  - A conta, o domínio, a verificação e a saída do sandbox são do Cesar (F0-12).
+  - Sem provedor configurado (dev, preview, CI e até o Cesar configurar), o adaptador é o "desligado": o manipulador grava o envio como `sem_provedor` e não manda nada. Assim o evento não fica pendente esperando o provedor nem dispara de uma vez, com data antiga, quando ele entrar.
+- **Eventos do MVP (C2):**
+  - os dois avisos de SLA vão por e-mail e push, para os destinatários do nível na política `chamado.escalonamento`;
+  - a OS atribuída vai só por push, ao técnico ou à equipe;
+  - o aviso ao locador vai por e-mail, ao proprietário do hotel;
+  - o convite e a recuperação de senha seguem pelo Supabase Auth.
+  - O papel vira pessoa na hora do envio, pelas atribuições vigentes no hotel. O membro sem e-mail ou inativo fica fora, com o registro.
+- **Registro dos envios (C3):** a tabela `app.envio_notificacao`, só de inserção, com uma linha por tentativa.
+  - Um índice único parcial (evento, destinatário e canal, fora a falha) impede o segundo envio quando o outbox entrega o evento de novo.
+  - O texto não fica gravado.
+  - Lê a gestão do hotel, e grava só o `hk_worker`.
+- **Push (C4):** Web Push com chaves VAPID, só no PWA do técnico.
+  - A tabela `app.inscricao_push` tem uma inscrição ativa por pessoa e aparelho; cada pessoa lê, cria e revoga só as próprias.
+  - O worker envia com a biblioteca `web-push`, só no servidor, e revoga a inscrição que o serviço recusa (404 ou 410).
+  - O push leva só o título e o código do chamado.
+- **Recuperação de senha (C5):** pelo Supabase Auth, com SMTP próprio e template gerado do catálogo, sem uso novo da secret key. O bloco SMTP do `config.toml` vai num PR de zona protegida, com o `config push` do Cesar.
+- **Idioma (C6):** muda a decisão de 25/09 (ADR-022) para os avisos.
+  - O aviso sai no idioma de quem recebe: a preferência do membro, depois o padrão do tenant.
+  - O convite e a recuperação ficam em pt-BR, porque o template do Supabase Auth é único.
+- **Silenciar (C7):** sem preferência de canal por pessoa no MVP. O push se desliga no aparelho.
+- **Volume (C8):** um e-mail por aviso, na hora.
+  - A contagem de envios por destinatário e por dia fica disponível desde o primeiro dia do piloto, pelo índice da tabela.
+  - Acima de 30 por pessoa e por dia, abre-se o resumo agrupado.
+
+**Consequências:**
+- **Migração 0048** (`20261013233000_comunicacao.sql`; o nome e o número são refeitos na vez do PR, depois da migração da PV3):
+  - as duas tabelas, com RLS forçada, as policies, os índices e os GRANTs;
+  - o pgTAP `040`, com os casos de isolamento;
+  - o meta-teste 001, com as duas tabelas na lista fechada e o registro dos envios na lista das tabelas só de inserção;
+  - os tipos do Kysely.
+- **A ordem dos PRs (C9), fora da zona, salvo o SMTP:**
+  1. o e-mail do SLA: o adaptador "desligado" e o do SES, o manipulador do `chamado.sla_alerta`, o modelo do e-mail no catálogo, o registro dos envios, a contagem do C8 e o teste de paridade dos checks com o domínio;
+  2. o push;
+  3. a recuperação de senha;
+  4. o e-mail ao locador.
+- **Variáveis novas** entram no `.env.example` só pelo nome: a chave do provedor e as chaves VAPID.
+- **Riscos aceitos:**
+  - até o Cesar configurar o SES, nenhum e-mail sai; o registro mostra `sem_provedor`;
+  - no iPhone, o push só funciona com o PWA instalado na tela inicial (iOS 16.4 ou mais novo);
+  - sem silenciar no MVP, um Gestor CSC de muitos hotéis pode receber muitos avisos num dia ruim. A contagem do C8 mede isso no piloto.

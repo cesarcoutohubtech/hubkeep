@@ -186,6 +186,18 @@ export interface AppCodigoManutencao {
   tipo: string;
 }
 
+export interface AppEnvioNotificacao {
+  canal: string;
+  criado_em: Generated<Timestamp>;
+  evento_id: string;
+  hotel_id: string;
+  id: string;
+  situacao: string;
+  tenant_id: string;
+  tipo_evento: string;
+  usuario_id: string;
+}
+
 export interface AppEquipe {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -274,6 +286,17 @@ export interface AppHotelProprietario {
   tenant_id: string;
   vigencia_fim: Timestamp | null;
   vigencia_inicio: Timestamp;
+}
+
+export interface AppInscricaoPush {
+  chave_auth: string;
+  chave_p256dh: string;
+  criado_em: Generated<Timestamp>;
+  endpoint: string;
+  id: string;
+  revogada_em: Timestamp | null;
+  tenant_id: string;
+  usuario_id: string;
 }
 
 export interface AppInsight {
@@ -631,6 +654,7 @@ export interface DB {
   "app.chamado": AppChamado;
   "app.checklist_modelo": AppChecklistModelo;
   "app.codigo_manutencao": AppCodigoManutencao;
+  "app.envio_notificacao": AppEnvioNotificacao;
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;
@@ -638,6 +662,7 @@ export interface DB {
   "app.fornecedor": AppFornecedor;
   "app.hotel": AppHotel;
   "app.hotel_proprietario": AppHotelProprietario;
+  "app.inscricao_push": AppInscricaoPush;
   "app.insight": AppInsight;
   "app.local": AppLocal;
   "app.local_proprietario": AppLocalProprietario;
