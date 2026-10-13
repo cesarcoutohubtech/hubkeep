@@ -225,6 +225,14 @@ export type {
 } from './portas/geracao-preventiva';
 export { criarGeracaoDePreventivas } from './casos-de-uso/geracao-preventiva';
 export type { ResultadoDaGeracao } from './casos-de-uso/geracao-preventiva';
+export type {
+  AceiteAutomaticoAGravar,
+  OsParaOAceiteAutomatico,
+  PortaAceiteAutomatico,
+  SessaoDoAceiteAutomatico,
+} from './portas/aceite-automatico';
+export { criarAceiteAutomatico } from './casos-de-uso/aceite-automatico';
+export type { ResultadoDoAceiteAutomatico } from './casos-de-uso/aceite-automatico';
 export { criarCasosDeUsoDeChamados } from './casos-de-uso/chamados';
 export type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './casos-de-uso/chamados';
 export type {

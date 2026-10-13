@@ -359,6 +359,9 @@ export default function ConfiguracaoDoGrupo() {
                 </span>
                 {origem(aceite.origem)}
               </div>
+              <p className="hk-suave" data-nota="aceite_automatico">
+                {t('admin.configuracao.aceite.nota')}
+              </p>
               <form
                 className="hk-em-linha"
                 onSubmit={(ev) => {

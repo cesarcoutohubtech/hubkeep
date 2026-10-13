@@ -271,6 +271,29 @@ describe('telas da corretiva (C7) em cada idioma', () => {
     expect(html).not.toContain('acao_futura');
   });
 
+  it('o aceite automático aparece na linha do tempo, sem autor (ADR-044)', () => {
+    const automatico: EventoDaLinhaDoTempo = {
+      id: '99999999-9999-4999-8999-999999999998',
+      em: '2026-10-08T15:00:00.000Z',
+      entidade: 'os',
+      registroId: C,
+      acao: 'aceitar_automatico',
+      usuarioId: null,
+      usuarioNome: null,
+      motivo: null,
+    };
+    for (const [idioma, texto] of [
+      ['pt-BR', 'OS aceita automaticamente'],
+      ['en', 'Work order accepted automatically'],
+      ['es', 'Orden de trabajo aceptada automáticamente'],
+      ['fr', 'Ordre de travail validé automatiquement'],
+    ] as const) {
+      const html = renderizar(idioma, <LinhaDoTempo eventos={[automatico]} />);
+      expect(html).toContain(texto);
+      expect(html).not.toContain('Ana Técnica');
+    }
+  });
+
   it('o aceite e a reabertura só aparecem na OS concluída', () => {
     const emExecucao = {
       ...detalhe,
