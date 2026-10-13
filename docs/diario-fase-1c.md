@@ -82,7 +82,10 @@ Branch `claude/gallant-clarke-fptpo9`, zona protegida.
 - **ADR-042** no `docs/03`, com as decisões de 13/10; a `date-holidays` conferida no npm (3.37.0: código ISC, dados CC BY 3.0, 12 versões de maio a setembro de 2026).
 - **`docs/02`:** a linha da tabela nova.
 - **Verificação:** no local, lint, typecheck e testes. O pgTAP só roda na CI, por decisão do Cesar; não rodei nada contra o dev.
-- **Situação:** a branch foi enviada, mas o PR não foi aberto, porque o #203 (PV1, zona protegida) está aberto. O PR abre depois do merge do #203, com a `main` trazida para a branch.
+- **Situação:**
+  - a branch foi enviada sem PR enquanto o #203 (PV1, zona protegida) esteve aberto;
+  - depois do merge do #203, em 13/10/2026, a `main` entrou na branch, com os conflitos resolvidos (no `docs/02`, no `docs/03`, com o ADR-042 depois do ADR-040, no meta-teste 28 e no diário);
+  - conferido no GitHub que nenhum PR de zona protegida estava aberto, o PR foi aberto como "1c: calendário de SLA, migração 0043 (ADR-042) — zona protegida".
 
 ## ADR-042 aprovado (13/10/2026)
 
@@ -117,9 +120,9 @@ Item 2 da ordem da 1c. PR fora da zona protegida, sem migração, na branch `cla
 
 - **Feito:**
   - o glossário em proposta;
-  - o PR do SLA preparado (migração 0043, pgTAP 035 e ADR-042), na branch e sem PR.
+  - o PR do SLA aberto (migração 0043, pgTAP 035 e ADR-042), à espera da CI e do merge e do `db push` do Cesar.
 - **Próximo:**
-  1. quando o #203 for mergeado: trazer a `main`, resolver os quatro conflitos, rodar lint, typecheck e testes, conferir no GitHub que nenhum PR de zona protegida está aberto e abrir o PR "1c: calendário de SLA, migração 0043 (ADR-042) — zona protegida";
+  1. o PR do SLA está aberto. A vez seguinte na fila de zona protegida é da PV2, da 1b, depois do merge dele;
   2. o nível bandeira (item 2) está no PR "1c: nível bandeira nas políticas", à espera da CI e do merge do Cesar;
   3. em seguida, fora da zona protegida: o domínio do calendário (`calcularPrazo`, `horasDeRelogioEntre`, as políticas `chamado.sla` e `hotel.horario_atendimento` e `MOTIVOS_DE_PAUSA`), que não depende da migração.
 - **Esperando:**

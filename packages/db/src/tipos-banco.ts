@@ -142,6 +142,7 @@ export interface AppChamado {
   ativo_id: string | null;
   atualizado_em: Generated<Timestamp>;
   busca: string;
+  categoria_id: string | null;
   criado_em: Generated<Timestamp>;
   descricao: string;
   estado: string;
@@ -151,7 +152,10 @@ export interface AppChamado {
   local_id: string;
   motivo_cancelamento: string | null;
   origem: Generated<string>;
+  pausado_segundos: Generated<number>;
   politica_aplicada: Json;
+  prazo_atendimento: Timestamp | null;
+  prazo_solucao: Timestamp | null;
   prioridade_id: string;
   situacao_id: string;
   tenant_id: string;
@@ -214,6 +218,19 @@ export interface AppEventoDominio {
   tenant_id: string;
   tentativas: Generated<number>;
   tipo: string;
+}
+
+export interface AppFeriadoHotel {
+  anual: Generated<boolean>;
+  ativo: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  criado_em: Generated<Timestamp>;
+  criado_por: string;
+  data: Timestamp;
+  hotel_id: string;
+  id: string;
+  nome: string;
+  tenant_id: string;
 }
 
 export interface AppFornecedor {
@@ -417,6 +434,7 @@ export interface AppOsTransicao {
   de: string | null;
   hotel_id: string;
   id: string;
+  motivo_pausa: string | null;
   os_id: string;
   para: string;
   quando: Generated<Timestamp>;
@@ -584,6 +602,7 @@ export interface DB {
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;
+  "app.feriado_hotel": AppFeriadoHotel;
   "app.fornecedor": AppFornecedor;
   "app.hotel": AppHotel;
   "app.hotel_proprietario": AppHotelProprietario;
