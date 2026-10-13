@@ -9,6 +9,7 @@ import type {
   Responsavel,
   TipoDeCodigoDeManutencao,
 } from '@hubkeep/dominio';
+import type { ChecklistDaOs, ChecklistDaOsGravado } from './checklists';
 import type { EncerramentoDeParada } from './paradas';
 import type { LiberacaoDeUh } from './uh-indisponivel';
 
@@ -27,6 +28,10 @@ export interface OsDoDia {
   fotosDepois: number;
   /** A política os.foto_depois_obrigatoria do hotel, resolvida (I8). */
   fotoDepoisObrigatoria: boolean;
+  /** O checklist da OS (PV1), lido pelo caso de uso; null: a OS não tem checklist. */
+  checklist: ChecklistDaOs | null;
+  /** A política os.checklist_completo_obrigatorio do hotel, resolvida (PV1). */
+  checklistCompletoObrigatorio: boolean;
   chamado: {
     id: string;
     descricao: string;
@@ -47,14 +52,21 @@ export interface OsDoDia {
   };
 }
 
+/** A OS do dia como sai do banco: sem as políticas, com o checklist cru. */
+export type OsDoDiaGravada = Omit<
+  OsDoDia,
+  'fotoDepoisObrigatoria' | 'checklistCompletoObrigatorio' | 'checklist'
+> & { checklist: ChecklistDaOsGravado | null };
+
 export interface PortaExecucao {
   /** Equipes ativas de que o usuário do contexto é membro ativo. */
   equipesDoUsuario(ctx: Contexto): Promise<string[]>;
   /**
-   * OS atribuídas, em execução ou pausadas do usuário e das equipes dele. A
-   * política da foto "depois" é resolvida pelo caso de uso.
+   * OS atribuídas, em execução ou pausadas do usuário e das equipes dele. As
+   * políticas da foto "depois" e do checklist são resolvidas pelo caso de uso,
+   * que também lê o checklist como está no banco.
    */
-  osDoDia(ctx: Contexto): Promise<Omit<OsDoDia, 'fotoDepoisObrigatoria'>[]>;
+  osDoDia(ctx: Contexto): Promise<OsDoDiaGravada[]>;
   /** A hora da última transição da OS (I5); null se ela não tem nenhuma. */
   ultimaTransicaoEm(ctx: Contexto, osId: string): Promise<Date | null>;
   /** Fotos "depois" registradas na OS e não removidas (I8). */

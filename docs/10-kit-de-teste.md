@@ -102,6 +102,7 @@ Um grupo fictício, **Grupo Demonstração**, no dev. Tudo passa pelos casos de 
   - edificação (I2): no Centro, as UHs 101 a 104 ficam na Torre A, as 201 e 202 na Torre B, e a Piscina na "Área externa". A busca de locais acha por "torre b". O script só grava no hotel sem modelo e no local sem edificação: o que foi mudado pela tela fica.
 - **Categorias, situações e prioridades** padrão.
 - **Códigos de falha, causa e solução** padrão (I6): as falhas gerais, uma ou duas por categoria padrão, e as causas e soluções gerais. A política `os.codigos_obrigatorios` fica **desligada**; o roteiro liga no Centro para testar a cobrança no aceite.
+- **Checklist** (PV1): o modelo "Inspeção de ar-condicionado", do grupo, sugerido para Refrigeração. Tem um item de cada tipo: filtro limpo (sim/não, obrigatório), pressão do gás (número, em psi), dreno desobstruído (item de conformidade, obrigatório) e observação (texto). A Gerente do Centro aplica o modelo na OS em execução do ar-condicionado UH 102, que fica sem resposta. A política `os.checklist_completo_obrigatorio` fica **desligada**.
 - **Prioridade padrão por categoria**, como política do grupo: elevadores e segurança, Urgente; refrigeração, elétrica, hidráulica e cozinha, Alta; lavanderia, eletrônicos e piscina, Média; mobiliário, Baixa. Os chamados abrem com a prioridade da categoria do ativo; o do chuveiro, sem ativo, fica em Alta, ajustada pelo Gerente. Num grupo criado antes disto, rodar o script de novo ajusta os chamados ainda em curso; os concluídos e o cancelado guardam a prioridade da abertura.
 - **Ativos**:
   - no Centro: Frigobar UH 101, Ar-condicionado UH 102, TV UH 103, Aquecedor da piscina e Forno combinado;
@@ -133,7 +134,7 @@ Os e-mails são do domínio `.test`, que não existe: nenhum e-mail sai, e as co
 |---|---|---|---|
 | Chuveiro sem água quente | Centro, UH 104 | Aberto (pela Solicitante) | Triagem pelo web (passo a passo na seção 4) |
 | Frigobar não gela | Centro, UH 101, com ativo | OS atribuída ao Técnico, não iniciada | Fila do dia no PWA; o proprietário da UH vê |
-| Ar-condicionado desligando sozinho | Centro, UH 102, com ativo | OS em execução, equipamento parado desde 2 h antes | Conclusão com "o equipamento voltou?"; paradas |
+| Ar-condicionado desligando sozinho | Centro, UH 102, com ativo | OS em execução, equipamento parado desde 2 h antes, com o checklist "Inspeção de ar-condicionado" sem resposta | Conclusão com "o equipamento voltou?"; paradas; checklist no PWA (PV1) |
 | Aquecedor da piscina com ruído | Centro, Piscina, com ativo | OS concluída, aguardando aceite (aberto pela Solicitante); o Técnico sugeriu a falha "Ruído ou vibração anormal" e a causa "Desgaste natural", sem solução | Aceite e reabertura com motivo; os códigos no aceite (I6) |
 | TV sem sinal | Centro, UH 103 | Cancelado, com o motivo | Motivo no detalhe e na linha do tempo |
 | Forno não chega à temperatura | Centro, Cozinha | Concluído (OS da Equipe Centro, aceita pelo Gerente com falha "Não aquece", causa "Desgaste natural" e solução "Troca de peça") | Linha do tempo completa; os códigos no detalhe da OS |
@@ -152,6 +153,8 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - "Chamados": os 7, com os filtros de hotel, situação, prioridade e período; "Ordens de serviço": as 4;
   - em "Códigos de manutenção" (I6): ver as três listas (falhas, causas e soluções), criar um código do grupo para uma categoria (ex.: falha "Vedação da porta solta", em Refrigeração), renomear em outro idioma, desativar e reativar; o tipo e a categoria não mudam depois de criado;
   - em "Configuração", na política "Códigos obrigatórios no aceite", ligar **só no Hotel Centro** (gravar no hotel) para o passo do Gerente abaixo, e desligar no fim (voltar a herdar);
+  - em "Checklists" (PV1): ver o modelo "Inspeção de ar-condicionado" na versão 1; mudar só o nome não muda a versão; acrescentar um item (ex.: "Ruído anormal", sim/não) passa à versão 2, e a OS do ar-condicionado UH 102 continua com a versão 1; acrescentar um item de conformidade e conferir as três opções trocando o idioma; desativar e reativar o modelo;
+  - em "Configuração", ligar "Checklist completo na conclusão" **só no Hotel Centro** para o passo do Técnico abaixo, e desligar no fim;
   - no detalhe, a linha do tempo com quem fez, quando e o motivo;
   - o **histórico** de cada registro (passo a passo abaixo).
 - **Deve ser barrado:** nada dentro do grupo. Para testar outro tenant, é preciso um segundo grupo (não faz parte do kit).
@@ -177,6 +180,7 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - **aceitar** a OS do aquecedor, ou **reabrir** com motivo (e, por ter ativo, marcar "o equipamento está parado" com data e hora);
   - no aceite do aquecedor (I6), ver a falha e a causa sugeridas pelo Técnico já escolhidas e a solução em branco; as listas trazem primeiro os códigos da categoria do ativo (Piscina) e depois os gerais, sem os de outras categorias;
   - no detalhe do forno, ver a falha, a causa e a solução da OS aceita;
+  - no detalhe do ar-condicionado UH 102 (PV1), ver o checklist aplicado, com a versão e os itens sem resposta; enquanto não há resposta, trocar o modelo; depois que o Técnico responder, ver as respostas, só para leitura, e o botão de trocar some. Na OS atribuída do frigobar, aplicar o checklist;
   - equipes do Centro;
   - a tela de paradas abertas com OS concluída;
   - em "Fornecedores", ver os três do grupo, cadastrar um novo e alterar o contato de um deles; o histórico do fornecedor mostra quem cadastrou e o que mudou, inclusive o contato.
@@ -184,6 +188,7 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - o Praia não aparece;
   - com a política "Códigos obrigatórios no aceite" ligada no Centro pelo Admin, aceitar o aquecedor sem escolher a solução volta "Neste hotel, o aceite exige falha, causa e solução. Falta 1 código."; escolhida a solução, o aceite passa. Com a política desligada, o aceite passa sem código nenhum;
   - em "Códigos de manutenção", criar ou desativar um código volta "Só o Admin do grupo gere os códigos de manutenção.";
+  - em "Checklists", a lista aparece, mas criar ou alterar um modelo volta "Só o Admin do grupo gere os modelos de checklist.";
   - em "Fornecedores", o CNPJ com dígito errado (ex.: 98.765.432/0001-99) volta "CNPJ inválido", e o CNPJ de outro fornecedor do grupo (ex.: 13.579.246/0001-01) volta "Já existe um fornecedor com este CNPJ no grupo".
 
 ### Gerente do Praia (web)
@@ -197,6 +202,7 @@ Em cada papel: entrar, conferir o que aparece e tentar o que deveria ser barrado
   - fila do dia com o Frigobar (atribuída) e o Ar-condicionado UH 102 (em execução);
   - no Frigobar: iniciar, pausar, retomar, apontar horas, registrar material, tirar foto e concluir;
   - antes de concluir o Frigobar (I6), no painel "Falha, causa e solução (opcional)", ver primeiro as falhas de Refrigeração e depois as gerais; escolher uma falha e deixar o resto em branco, ou deixar tudo em branco: a conclusão passa nos dois casos, inclusive sem rede e com a política ligada no hotel;
+  - no Ar-condicionado, o checklist (PV1): responder os itens, um de cada tipo, e salvar, também sem rede; esvaziar um item e salvar tira a resposta. Com a política "Checklist completo na conclusão" desligada, a tela avisa quantos obrigatórios faltam e deixa concluir; ligada no Centro pelo Admin, concluir sem os obrigatórios avisa "Neste hotel, a conclusão exige o checklist completo" e não manda a conclusão;
   - no Ar-condicionado: concluir e responder "o equipamento voltou a funcionar?". Com "não", a parada continua aberta e aparece para o Gerente na tela de paradas;
   - abrir chamado;
   - ativos, pelo QR impresso no web ou pelo endereço `/q/<código>`.

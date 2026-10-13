@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   casosDeUsoDeConsultas,
   casosDeUsoDeChamados,
+  casosDeUsoDeChecklists,
   casosDeUsoDeCodigos,
   casosDeUsoDeEquipes,
   casosDeUsoDeHistorico,
@@ -204,6 +205,24 @@ describe.skipIf(!temAmbiente)('dados de demonstração do kit de teste', { timeo
       'causa_desgaste_natural',
       'solucao_troca_de_peca',
     ]);
+  });
+
+  it('o checklist do ar-condicionado na OS em execução do Centro, sem resposta (PV1)', async () => {
+    const triagem = await casosDeUsoDeTriagem();
+    const [os] = await triagem.osDoChamado(ctx('admin'), r.chamados.emExecucaoParado);
+    const checklist = await (await casosDeUsoDeChecklists()).daOs(ctx('admin'), os?.id ?? '');
+    expect(checklist).toMatchObject({ modeloVersao: 1, respostas: {} });
+    expect(checklist?.itens.map((i) => [i.chave, i.tipo, i.obrigatorio])).toEqual([
+      ['filtro_limpo', 'sim_nao', true],
+      ['pressao_do_gas', 'numero', false],
+      ['dreno', 'lista', true],
+      ['observacao', 'texto', false],
+    ]);
+    // O item de conformidade com os rótulos dos quatro catálogos.
+    expect(checklist?.itens[2]?.opcoes[1]?.rotulos).toMatchObject({
+      'pt-BR': 'Não conforme',
+      en: 'Non-compliant',
+    });
   });
 
   it('cada chamado com a prioridade do roteiro, pela política da categoria', async () => {

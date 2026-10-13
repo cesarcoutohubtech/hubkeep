@@ -110,6 +110,7 @@ export {
 export type {
   AceiteAutomatico,
   AssinaturaNoAceite,
+  ChecklistCompletoObrigatorio,
   ChaveDePolitica,
   CodigosObrigatorios,
   FotoDepoisObrigatoria,
@@ -292,6 +293,21 @@ export {
   validarMomentoDoAnexo,
 } from './fotos-e-assinatura';
 export type { MomentoDaFoto } from './fotos-e-assinatura';
+export {
+  ESTADOS_QUE_ACEITAM_CHECKLIST,
+  OPCOES_DE_CONFORMIDADE,
+  decidirAplicacaoDoChecklist,
+  exigirChecklistCompletoNaConclusao,
+  horaDaResposta,
+  lerRespostas,
+  mesclarRespostas,
+  obrigatoriosSemResposta,
+  podeGerirChecklists,
+  validarItensDoChecklist,
+  validarNomesDoChecklist,
+  validarRespostasDoChecklist,
+} from './checklist';
+export type { OpcaoDeConformidade, RespostaDoChecklist } from './checklist';
 export type {
   CodigoPadrao,
   CodigoParaRegra,

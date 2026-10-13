@@ -66,6 +66,15 @@ export interface AssinaturaNoAceite {
   ligado: boolean;
 }
 
+/**
+ * Checklist completo obrigatório na conclusão (PV1, ADR-040). Desligado por
+ * padrão. Ligado, a conclusão exige os itens obrigatórios do checklist da OS
+ * respondidos; desligado, o PWA só avisa.
+ */
+export interface ChecklistCompletoObrigatorio {
+  ligado: boolean;
+}
+
 /** Categoria de ativo (id) → prioridade padrão do chamado (id). As duas entram em B2 e C1. */
 export type PrioridadePadraoPorCategoria = Record<string, string>;
 
@@ -81,6 +90,7 @@ export interface ValoresDePolitica {
   'os.codigos_obrigatorios': CodigosObrigatorios;
   'os.foto_depois_obrigatoria': FotoDepoisObrigatoria;
   'os.assinatura_no_aceite': AssinaturaNoAceite;
+  'os.checklist_completo_obrigatorio': ChecklistCompletoObrigatorio;
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria;
   'ativo.criticidade': NomesDeCriticidade;
   /** Calendário de SLA (1c, ADR-042): prazos por prioridade e categoria, pausa, ponto facultativo e meta. */
@@ -119,6 +129,11 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
   'os.assinatura_no_aceite': {
     padrao: { ligado: false },
     valido: (v): v is AssinaturaNoAceite =>
+      objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
+  },
+  'os.checklist_completo_obrigatorio': {
+    padrao: { ligado: false },
+    valido: (v): v is ChecklistCompletoObrigatorio =>
       objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
   },
   'chamado.prioridade_padrao_por_categoria': {

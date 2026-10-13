@@ -2,7 +2,8 @@
 // a chave de idempotência gerada no aparelho; o reenvio da mesma chave devolve
 // a resposta guardada, sem aplicar de novo. As da OS (C4) são do Técnico
 // responsável; as transições levam a versão que o aparelho calculou. A parada
-// do ativo do chamado (C5) também: registrar e encerrar, na OS.
+// do ativo do chamado (C5) também: registrar e encerrar, na OS. As respostas
+// do checklist (PV1, ADR-040) vão sem a versão da OS e mesclam item a item.
 import { z } from 'zod';
 import { PedidoDeAlteracaoDeAtivo, PedidoDeCadastroDeAtivo } from './ativos';
 import { PedidoDeAberturaDeChamado } from './chamados';
@@ -21,6 +22,7 @@ export const TIPOS_DE_OPERACAO_OFFLINE = [
   'os.registrar_material',
   'os.registrar_parada',
   'os.encerrar_parada',
+  'os.responder_checklist',
 ] as const;
 
 /** Transição da OS pelo Técnico, com a versão esperada (ADR-029). */
@@ -116,6 +118,23 @@ export const PedidoDeOperacaoOffline = z
       tipo: z.literal('os.encerrar_parada'),
       /** Encerra a parada aberta do ativo do chamado da OS. */
       dados: z.object({ osId: z.guid(), fim: z.iso.datetime() }),
+    }),
+    z.object({
+      chave: z.guid(),
+      tipo: z.literal('os.responder_checklist'),
+      /**
+       * Por item do checklist da OS, o valor no tipo do item ou null (limpa);
+       * o domínio confere contra a cópia. A hora do aparelho é limitada à do
+       * servidor.
+       */
+      dados: z.object({
+        osId: z.guid(),
+        respostas: z.record(
+          z.string().max(64),
+          z.union([z.string().max(2000), z.number(), z.boolean(), z.null()]),
+        ),
+        feitaEm: z.iso.datetime().optional(),
+      }),
     }),
   ])
   .meta({ id: 'PedidoDeOperacaoOffline' });

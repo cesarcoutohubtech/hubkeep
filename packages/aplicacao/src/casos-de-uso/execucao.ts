@@ -26,6 +26,10 @@
 // Foto "depois" (I8): com a política os.foto_depois_obrigatoria ligada no
 // hotel, a conclusão exige ao menos uma foto "depois" registrada na OS. Sem
 // rede, a foto sai da fila antes da conclusão, que vem depois dela.
+//
+// Checklist (PV1, ADR-040): com a política os.checklist_completo_obrigatorio
+// ligada no hotel, a conclusão exige os itens obrigatórios do checklist da OS
+// respondidos. Sem rede, as respostas saem da fila antes da conclusão.
 import {
   type AtorDaCorretiva,
   type CodigosSugeridos,
@@ -37,6 +41,7 @@ import {
   decidirNaOs,
   decidirRegistroNaOs,
   exigirAtivoNoChamado,
+  exigirChecklistCompletoNaConclusao,
   exigirFotoDepoisNaConclusao,
   exigirParadaAberta,
   exigirSemParadaAberta,
@@ -52,7 +57,9 @@ import {
   validarFimDaParada,
   validarParada,
 } from '@hubkeep/dominio';
+import type { PortaChecklists } from '../portas/checklists';
 import type { PortaCodigos } from '../portas/codigos-manutencao';
+import { paraChecklistDaOs } from './checklists';
 import type { AcaoNaOsDecidida, OsDoDia, PortaExecucao } from '../portas/execucao';
 import type { EncerramentoDeParada, PortaParadas, RegistroDeParada } from '../portas/paradas';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
@@ -63,6 +70,7 @@ import type { LiberacaoDeUh, PortaUhIndisponivel } from '../portas/uh-indisponiv
 export type AcaoDoTecnico = AcaoNaOsDecidida['acao'];
 
 const FOTO_DEPOIS_OBRIGATORIA = 'os.foto_depois_obrigatoria';
+const CHECKLIST_COMPLETO_OBRIGATORIO = 'os.checklist_completo_obrigatorio';
 
 export interface CasosDeUsoDeExecucao {
   prepararAcao(
@@ -122,6 +130,8 @@ export function criarCasosDeUsoDeExecucao(deps: {
   uh?: Pick<PortaUhIndisponivel, 'abertoDoChamado'>;
   /** Opcional só para os testes que não sugerem código; a composição sempre passa. */
   codigos?: Pick<PortaCodigos, 'listar' | 'categoriaDoAtivo'>;
+  /** Opcional só para os testes sem checklist; a composição sempre passa. */
+  checklists?: Pick<PortaChecklists, 'daOs'>;
   /** Padrão: as do domínio. Só o teste de aceite troca, para provar a RLS sozinha. */
   regras?: {
     decidirNaOs?: typeof decidirNaOs;
@@ -211,6 +221,22 @@ export function criarCasosDeUsoDeExecucao(deps: {
     exigirFotoDepoisNaConclusao(true, await deps.execucao.fotosDepois(ctx, os.id));
   }
 
+  /** O checklist completo na conclusão, com a política ligada no hotel (PV1). */
+  async function exigirChecklistCompleto(
+    ctx: Contexto,
+    os: OsGravada,
+    chamado: ChamadoParaTriagem,
+  ) {
+    if (!deps.checklists) return;
+    const politica = await deps.triagem.politica(
+      ctx,
+      chamado.hotel.id,
+      CHECKLIST_COMPLETO_OBRIGATORIO,
+    );
+    if (!resolverPolitica(CHECKLIST_COMPLETO_OBRIGATORIO, politica).ligado) return;
+    exigirChecklistCompletoNaConclusao(true, await deps.checklists.daOs(ctx, os.id));
+  }
+
   async function codigosDaConclusao(
     ctx: Contexto,
     chamado: ChamadoParaTriagem,
@@ -242,7 +268,10 @@ export function criarCasosDeUsoDeExecucao(deps: {
         await deps.execucao.ultimaTransicaoEm(ctx, os.id),
         deps.relogio.agora(),
       );
-      if (acao === 'concluir') await exigirFotoDepois(ctx, os, chamado);
+      if (acao === 'concluir') {
+        await exigirFotoDepois(ctx, os, chamado);
+        await exigirChecklistCompleto(ctx, os, chamado);
+      }
       const encerrarParada =
         acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
       const liberarUh = acao === 'concluir' ? await uhDaConclusao(ctx, os, chamado, p) : null;
@@ -310,7 +339,8 @@ export function criarCasosDeUsoDeExecucao(deps: {
 
     async osDoDia(ctx) {
       const lista = await deps.execucao.osDoDia(ctx);
-      // A política da foto "depois" (I8), uma leitura por hotel da fila.
+      // As políticas da foto "depois" (I8) e do checklist (PV1), uma leitura
+      // de cada por hotel da fila.
       const hoteis = [...new Set(lista.map((o) => o.hotelId))];
       const ligada = new Map(
         await Promise.all(
@@ -326,7 +356,26 @@ export function criarCasosDeUsoDeExecucao(deps: {
           ),
         ),
       );
-      return lista.map((o) => ({ ...o, fotoDepoisObrigatoria: ligada.get(o.hotelId) ?? false }));
+      const checklistObrigatorio = new Map(
+        await Promise.all(
+          hoteis.map(
+            async (h) =>
+              [
+                h,
+                resolverPolitica(
+                  CHECKLIST_COMPLETO_OBRIGATORIO,
+                  await deps.triagem.politica(ctx, h, CHECKLIST_COMPLETO_OBRIGATORIO),
+                ).ligado,
+              ] as const,
+          ),
+        ),
+      );
+      return lista.map((o) => ({
+        ...o,
+        fotoDepoisObrigatoria: ligada.get(o.hotelId) ?? false,
+        checklist: o.checklist ? paraChecklistDaOs(o.checklist) : null,
+        checklistCompletoObrigatorio: checklistObrigatorio.get(o.hotelId) ?? false,
+      }));
     },
   };
 }

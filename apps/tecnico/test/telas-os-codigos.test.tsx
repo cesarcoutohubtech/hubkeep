@@ -57,6 +57,8 @@ const os = (estado: OsNoAparelho['estado']): OsNoAparelho => ({
   criadoEm: '2026-10-10T08:00:00.000Z',
   fotosDepois: 0,
   fotoDepoisObrigatoria: false,
+  checklist: null,
+  checklistCompletoObrigatorio: false,
   chamado: {
     id: 'c1000000-0000-4000-8000-000000000001',
     descricao: 'Frigobar quente',
@@ -78,6 +80,7 @@ const tela = (o: OsNoAparelho, idioma: IdiomaDeExibicao, lista = LISTA) => (
     codigos={{ lista, categoriaDoAtivo: REFRIGERACAO, idiomaPadrao: 'pt-BR', idioma }}
     aoAgir={async () => undefined}
     aoApontar={async () => undefined}
+    aoResponderChecklist={async () => undefined}
     aoRegistrarMaterial={async () => undefined}
     aoFotografar={async () => undefined}
     aoRegistrarParada={async () => undefined}

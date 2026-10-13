@@ -6,7 +6,9 @@
 //     depois), e o reenvio não duplica, com o Storage recusando o arquivo
 //     repetido na URL ou no PUT e a API recusando o registro repetido;
 //   - a foto antes ou depois (I8): o momento vai no registro, as fotos "depois"
-//     da fila contam na projeção, e a foto vale com a OS atribuída.
+//     da fila contam na projeção, e a foto vale com a OS atribuída;
+//   - o checklist (PV1): as respostas da fila mesclam por cima das da API, e a
+//     política do hotel pede os obrigatórios para concluir.
 // O servidor falso faz o papel da API e do Storage; o envio é o de verdade.
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
@@ -20,6 +22,9 @@ import {
   aceitaFoto,
   aceitaRegistro,
   acoesPossiveis,
+  type OsNoAparelho,
+  checklistFaltando,
+  faltaChecklist,
   faltaFotoDepois,
   paradaPossivel,
   perguntaDaUhNaConclusao,
@@ -545,5 +550,68 @@ describe('foto antes ou depois (I8)', () => {
   it('a foto preparada para a fila leva o momento escolhido', async () => {
     const dados = await fotoParaFila(OS1, new Blob(['x']), null, 'antes', { preparar, novoId });
     expect(dados.momento).toBe('antes');
+  });
+});
+
+describe('checklist na OS (PV1)', () => {
+  const comChecklist = (obrigatorio: boolean): OsGuardada => ({
+    ...osGuardada(OS1, 'em_execucao', 2),
+    checklistCompletoObrigatorio: obrigatorio,
+    checklist: {
+      id: 'ac100000-0000-4000-8000-000000000001',
+      modeloId: 'cc100000-0000-4000-8000-000000000001',
+      modeloVersao: 2,
+      nomes: { 'pt-BR': 'Inspeção do ar' },
+      itens: [
+        {
+          chave: 'filtro_limpo',
+          tipo: 'sim_nao',
+          obrigatorio: true,
+          rotulos: { 'pt-BR': 'Filtro limpo' },
+          unidade: null,
+          opcoes: [],
+        },
+        {
+          chave: 'pressao',
+          tipo: 'numero',
+          obrigatorio: true,
+          rotulos: { 'pt-BR': 'Pressão' },
+          unidade: 'psi',
+          opcoes: [],
+        },
+      ],
+      respostas: { pressao: { valor: 30, feitaEm: '2026-10-12T08:00:00Z', usuarioId: A } },
+    },
+  });
+
+  it('as respostas da fila mesclam por cima das da API; null tira; a recusada não conta', () => {
+    const [os] = projetarOs(
+      [comChecklist(false)],
+      [
+        naFila('os.responder_checklist', { osId: OS1, respostas: { filtro_limpo: true } }),
+        naFila('os.responder_checklist', { osId: OS1, respostas: { pressao: null } }),
+        naFila('os.responder_checklist', { osId: OS1, respostas: { pressao: 99 } }, 'rejeitada'),
+      ],
+    );
+    expect(os?.checklist?.respostas).toEqual({
+      filtro_limpo: { valor: true, feitaEm: '', usuarioId: A },
+    });
+    expect(os?.pendentes).toBe(2);
+    expect(checklistFaltando(os as OsNoAparelho)).toEqual(['pressao']);
+  });
+
+  it('com a política ligada, falta checklist até os obrigatórios; desligada ou sem checklist, nunca', () => {
+    const fila = [
+      naFila('os.responder_checklist', { osId: OS1, respostas: { filtro_limpo: false } }),
+    ];
+    const [ligada] = projetarOs([comChecklist(true)], []);
+    const [completa] = projetarOs([comChecklist(true)], fila);
+    const [desligada] = projetarOs([comChecklist(false)], []);
+    const [semChecklist] = projetarOs([osGuardada(OS2, 'em_execucao', 2)], []);
+    expect(faltaChecklist(ligada as OsNoAparelho)).toBe(true);
+    expect(faltaChecklist(completa as OsNoAparelho)).toBe(false);
+    expect(faltaChecklist(desligada as OsNoAparelho)).toBe(false);
+    expect(semChecklist).toMatchObject({ checklist: null, checklistCompletoObrigatorio: false });
+    expect(faltaChecklist(semChecklist as OsNoAparelho)).toBe(false);
   });
 });

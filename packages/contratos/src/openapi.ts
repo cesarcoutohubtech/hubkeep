@@ -15,6 +15,14 @@ import {
   RespostaDeUrlDeUpload,
 } from './anexos';
 import {
+  PedidoDeChecklistNaOs,
+  PedidoDeModeloDeChecklist,
+  RespostaDeChecklistAplicado,
+  RespostaDeChecklistDaOs,
+  RespostaDeModeloDeChecklistAlterado,
+  RespostaDeModelosDeChecklist,
+} from './checklists';
+import {
   PedidoDeBandeira,
   PedidoDeBandeiraDoHotel,
   RespostaDeBandeiraAlterada,
@@ -1332,6 +1340,75 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/modelos-de-checklist',
+    resumo:
+      'Modelos de checklist do grupo, inclusive os desativados, com o idioma padrão para a volta dos nomes (PV1, ADR-040). Leem a gestão (Admin do grupo, Gestor CSC e Gerente do hotel) e o Implantador; para os outros, a lista vem vazia.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Modelos', esquema: RespostaDeModelosDeChecklist },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-checklist',
+    resumo:
+      'Cria um modelo de checklist: nomes, categoria sugerida (nula: todas) e itens tipados (ADR-028), até 50, com a marca de obrigatório. Começa na versão 1. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeModeloDeChecklist,
+    respostas: {
+      201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeChecklistAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
+      422: ERRO('checklist_nome_invalido, definicao_de_campo_invalida ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/modelos-de-checklist/{id}',
+    resumo:
+      'Altera nomes, categoria e itens do modelo. A versão sobe só quando os itens mudam; o tipo de um item existente não muda. As OS que já têm o checklist ficam com a cópia delas (ADR-026).',
+    exigeTenant: true,
+    corpo: PedidoDeModeloDeChecklist,
+    respostas: {
+      200: {
+        descricao: 'Modelo alterado, com a versão',
+        esquema: RespostaDeModeloDeChecklistAlterado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
+      404: ERRO('Modelo não encontrado (checklist_nao_encontrado).'),
+      422: ERRO(
+        'checklist_nome_invalido, definicao_de_campo_invalida, campo_muda_de_tipo ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-checklist/{id}/desativacao',
+    resumo: 'Desativa o modelo (exclusão lógica). As OS que já o têm continuam com a cópia.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Modelo desativado', esquema: RespostaDeModeloDeChecklistAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
+      404: ERRO('Modelo não encontrado (checklist_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-checklist/{id}/reativacao',
+    resumo: 'Reativa o modelo.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Modelo reativado', esquema: RespostaDeModeloDeChecklistAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
+      404: ERRO('Modelo não encontrado (checklist_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/situacoes-e-prioridades',
     resumo:
       'Situações (ligadas aos estados canônicos do chamado e da OS) e prioridades do tenant, na ordem da tela, com o idioma padrão para a volta dos nomes (ADR-027).',
@@ -1776,6 +1853,36 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Ids por tipo', esquema: RespostaDeCodigosDaOs },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/os/{id}/checklist',
+    resumo:
+      'O checklist da OS (PV1, ADR-040): a cópia do modelo aplicado, com a versão, e as respostas por item, com a hora no aparelho e quem respondeu. null: a OS não tem checklist. Lê quem lê a OS.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Checklist da OS', esquema: RespostaDeChecklistDaOs },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('OS fora do escopo (os_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/os/{id}/checklist',
+    resumo:
+      'Aplica o modelo ativo na OS atribuída, em execução ou pausada, com a cópia dos itens e da versão (ADR-026); troca o modelo enquanto o checklist não tem resposta. Quem tria: o Admin do grupo, o Gestor CSC e o Gerente do hotel. Não mexe na versão da OS. As respostas vêm do Técnico, pela operação offline os.responder_checklist.',
+    exigeTenant: true,
+    corpo: PedidoDeChecklistNaOs,
+    respostas: {
+      200: { descricao: 'Checklist aplicado', esquema: RespostaDeChecklistAplicado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (triagem_fora_do_papel).'),
+      404: ERRO(
+        'OS fora do escopo (os_nao_encontrada) ou modelo não encontrado (checklist_nao_encontrado).',
+      ),
+      409: ERRO('transicao_invalida ou checklist_ja_respondido.'),
+      422: ERRO('checklist_modelo_inativo ou entrada_invalida.'),
     },
   },
   {

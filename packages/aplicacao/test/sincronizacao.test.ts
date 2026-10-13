@@ -21,6 +21,8 @@ function montar() {
   const os = { concluida: false };
   // A parada aberta do ativo do chamado (C5), como o banco a guardaria.
   const parada = { aberta: false, registradas: 0 };
+  // As respostas do checklist (PV1) que chegaram à unit of work.
+  const respondidas: Record<string, unknown>[] = [];
   const operacoes: PortaOperacoesOffline = {
     respostaGuardada: async (_c, chave) => guardadas.get(chave) ?? null,
     async aplicarUmaVez(_c, op, efeito) {
@@ -54,6 +56,7 @@ function montar() {
           parada.aberta = false;
         },
         liberarUh: async () => {},
+        responderChecklist: async (g) => void respondidas.push(g.respostas),
       });
       guardadas.set(op.chave, resposta);
       return { repetida: false, resposta };
@@ -106,8 +109,24 @@ function montar() {
         return { id: `parada-${parada.registradas}`, hotelId: 'h1', fim: p.fim };
       },
     },
+    // Como o de verdade: valida contra a cópia e devolve as respostas decididas.
+    checklists: {
+      prepararRespostas: async (_c, p) => {
+        const respostas = p.respostas as Record<string, unknown>;
+        if ('fora' in respostas) {
+          throw new RegraViolada('checklist_resposta_invalida', 'Item fora do checklist.');
+        }
+        return {
+          checklistId: 'k1',
+          osId: p.osId,
+          hotelId: 'h1',
+          respostas: respostas as Record<string, boolean | null>,
+          feitaEm: p.feitaEm ?? new Date('2026-10-12T12:00:00Z'),
+        };
+      },
+    },
   });
-  return { casos, gravadas, guardadas, ativos, os, parada };
+  return { casos, gravadas, guardadas, ativos, os, parada, respondidas };
 }
 
 const pedidoDeAtivo = {
@@ -225,5 +244,28 @@ describe('receber operação offline', () => {
     // Reenvio com a parada já encerrada: a resposta guardada, não parada_nao_aberta.
     expect(await encerrar()).toMatchObject({ repetida: true, resposta: { id: 'parada-1' } });
     expect(parada).toEqual({ aberta: false, registradas: 1 });
+  });
+
+  it('checklist (PV1): as respostas entram uma vez só; inválida não guarda a chave', async () => {
+    const { casos, guardadas, respondidas } = montar();
+    const resposta = {
+      chave: '0193a000-0000-4000-8000-0000000000c1',
+      tipo: 'os.responder_checklist' as const,
+      dados: { osId: 'os-1', respostas: { filtro_limpo: true }, feitaEm: '2026-10-12T09:00:00Z' },
+    };
+    const primeira = await casos.receberOperacao(ctx, resposta);
+    const reenvio = await casos.receberOperacao(ctx, resposta);
+    expect(primeira.resposta).toEqual({ id: 'k1', itens: 1 });
+    expect(reenvio.repetida).toBe(true);
+    expect(respondidas).toEqual([{ filtro_limpo: true }]);
+    const invalida = {
+      ...resposta,
+      chave: '0193a000-0000-4000-8000-0000000000c2',
+      dados: { osId: 'os-1', respostas: { fora: true } },
+    };
+    await expect(casos.receberOperacao(ctx, invalida)).rejects.toMatchObject({
+      codigo: 'checklist_resposta_invalida',
+    });
+    expect(guardadas.has(invalida.chave)).toBe(false);
   });
 });

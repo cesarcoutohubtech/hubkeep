@@ -225,3 +225,60 @@ Pedido do Cesar ("Cesar aqui", 12/10/2026). Começar pelo `CLAUDE.md` e por este
 7. **Seguir com a fila da 1b:**
    - depois do merge do #203 (feito) e do `db push` da 0042, abrir o PR da PV1b a partir da branch enviada, pelos passos do ponto de retomada;
    - depois, a PV2.
+
+## Primeira sessão na nuvem (13/10/2026)
+
+Leitura feita: o `CLAUDE.md`, o documento consolidado, este diário inteiro e o fim dos diários da 1c e do Intelligence. Quando a sessão começou, a `main` estava em e491aa7. O 21bd04f (#206) estava verde nos três workflows; no e491aa7 (#207), a "segurança" já tinha passado e "CI" e "banco" ainda rodavam. Depois entrou o #205, da 1c (66769f2).
+
+Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
+- **0042 e 0043:** já estão no dev, conferidas pelo Cesar.
+- **(a) Branch `1a-d1-teste-proprietario` (28b1785):** pode apagar. O conteúdo já entrou na `main` pelo 855e0cd ("main vermelha — linha do tempo do proprietário depois da 0028"), que ainda confere o nome vazio de quem gravou. A tentativa de apagar daqui voltou 403: o proxy da nuvem só deixa empurrar para branches `claude/*`. Quem apaga é o Cesar, pela interface do GitHub.
+- **(b) PV1b:** esperar o merge do #205, juntar a `main` uma vez, conferir as listas, as amostras e o nível bandeira, e abrir o PR. Em paralelo, o PR do `CLAUDE.md`, com título "adm:" e sozinho na fila de zona protegida.
+- **(c) Tipos do banco:** primeiro, confirmar se a CI pega uma divergência entre o `tipos-banco.ts` e as migrações. Se pegar, mudar o `db:types` para gerar os tipos a partir do banco local da CI, num PR próprio. Se não pegar, avisar antes de mudar qualquer coisa.
+- **(d) Workflow "conferir dev":** fica para depois do `CLAUDE.md`. Até lá, o Cesar confere o `migration list` depois de cada `db push`.
+
+Feito:
+- **PR do `CLAUDE.md`:** é o #209, "adm: CLAUDE.md com os três agentes na nuvem e as regras da memória local — zona protegida", na branch `claude/adm-claude-md-tres-agentes`. Antes de abrir, conferi no GitHub: o único outro PR aberto era o #208 (int), que não toca a zona protegida.
+- **(c):** o passo "Tipos do Kysely em dia com as migrações" do `banco.yml` roda o `kysely-codegen --verify` contra o banco do runner, em todo PR e em todo push na `main`. Ele quebra a CI se o arquivo divergir do que o gerador produziria a partir das migrações. O #203 e o #206, com os tipos escritos à mão, passaram por esse passo. A mudança do `db:types` mexe no `banco.yml`, que é zona protegida. Por isso ela espera a vez da fila, depois do #209.
+
+## PV1b: aviso de área compartilhada e merge da `main` (13/10/2026)
+
+**Aviso de área compartilhada com a 1c:** a PV1b mexe em políticas, OS, catálogos de texto e `packages/dominio`.
+
+A branch `1b-pv1b-checklist-telas` (1cba18f) virou a `claude/1b-pv1b-checklist-telas`, porque daqui só se empurra para `claude/*`. Depois do merge do #205, a `main` (66769f2) entrou nela uma vez:
+- **Conflitos de texto:**
+  - na lista de chaves do `packages/db/test/configuracao.test.ts`, ficaram a política da PV1 e as duas da 1c (`chamado.sla` e `hotel.horario_atendimento`);
+  - no `docs/diario-fase-1a.md`, ficou o lado da `main`, e a seção da PV1 veio para cá (abaixo).
+- **Conferido sem conflito de texto:** as listas de `politicas.ts`, `contratos/src/configuracao.ts` e dos dois `index.ts` têm as entradas das duas fases. A amostra da política nova está no `tests/contratos-dominio.test.ts`, e o caso desligado por padrão no `packages/dominio/test/politicas.test.ts`.
+- **Nível bandeira:** a conclusão e a fila do dia leem a política por `deps.triagem.politica`, que usa o `niveisDaPolitica`. Desde o #204, ele já traz a bandeira, então a política nova herda da bandeira sem mudar código. Entrou no teste do domínio o caso da bandeira, que liga a política, e o do hotel, que desliga por cima dela.
+
+## PV1 — checklist na OS: domínio, API, telas e kit (12/10/2026)
+
+O resto da PV1 (ADR-040), fora da zona protegida, sobre a migração 0042 do PR anterior.
+
+- **Domínio** (`checklist.ts`):
+  - quem gere os modelos (só o Admin do grupo);
+  - os nomes e os itens do modelo, com as regras dos campos tipados; a versão sobe só quando os itens mudam;
+  - quando a OS aceita o checklist (atribuída, em execução ou pausada) e a troca do modelo, só enquanto não há resposta;
+  - as respostas: valor no tipo do item, mesclagem por item (null tira a resposta) e os obrigatórios sem resposta.
+- **Política nova** `os.checklist_completo_obrigatorio`, desligada por padrão. Ligada, a conclusão volta `checklist_incompleto` com os itens que faltam.
+- **Casos de uso:**
+  - modelos: listar, criar, alterar, desativar e reativar;
+  - na OS: aplicar ou trocar o modelo (com `podeTriar`) e ler o checklist.
+  - As respostas vão pela operação offline `os.responder_checklist`, na sincronização, como os códigos da OS. A conclusão confere a política, e a fila do dia leva o checklist e a política.
+- **API:**
+  - `GET/POST /api/v1/modelos-de-checklist`;
+  - `PUT /api/v1/modelos-de-checklist/{id}`, com `desativacao` e `reativacao`;
+  - `GET/PUT /api/v1/os/{id}/checklist`.
+  - As seis rotas estão no OpenAPI. Os erros são códigos com mensagem nos quatro catálogos.
+- **Telas:**
+  - no web, "Checklists" no menu (os modelos e os itens por tipo; só o Admin do grupo grava) e o checklist no detalhe da OS (aplicar, trocar, ver as respostas);
+  - a política em "Configuração";
+  - no PWA, o formulário por tipo de item, que manda só o que mudou, também sem rede, e o aviso dos itens que faltam na conclusão.
+- **Kit de teste:**
+  - o modelo "Inspeção de ar-condicionado", com um item de cada tipo, aplicado na OS do ar-condicionado parado (UH 102 do Centro);
+  - roteiro no `docs/10`.
+- **Testes:**
+  - domínio, casos de uso, sincronização, projeção e telas do PWA, telas do web;
+  - integração do repositório (aplicar, trocar, responder, auditoria e evento), que roda na CI.
+- **Eventos novos** no outbox: `os.checklist_aplicado` e `os.checklist_respondido`.

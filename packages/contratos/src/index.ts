@@ -52,6 +52,17 @@ export {
   TIPOS_DE_CODIGO_DE_MANUTENCAO_API,
 } from './codigos-manutencao';
 export {
+  ChecklistDaOsApi,
+  ModeloDeChecklistApi,
+  PedidoDeChecklistNaOs,
+  PedidoDeModeloDeChecklist,
+  RespostaDeChecklistAplicado,
+  RespostaDeChecklistDaOs,
+  RespostaDeModeloDeChecklistAlterado,
+  RespostaDeModelosDeChecklist,
+  RespostaDoChecklistApi,
+} from './checklists';
+export {
   ACOES_DA_OS_API,
   ACOES_DO_CHAMADO_API,
   ENTIDADES_COM_SITUACAO_API,
