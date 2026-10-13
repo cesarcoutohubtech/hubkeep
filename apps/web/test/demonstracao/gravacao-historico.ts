@@ -471,19 +471,23 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
     // do histórico: as decisões do roteiro vêm antes dos 60 dias do padrão.
     // As chaves do Intelligence só valem com o módulo vigente: o relógio fica
     // no instante real, como quem grava a política pela tela.
+    // Com o histórico já gravado, ficam como estão: regravar mudaria a versão
+    // da política que o job registra a cada dia.
     agora = agoraReal;
-    await casos.configuracao.gravarPolitica(
-      admin,
-      'inteligencia.sistemico',
-      { tipo: 'grupo' },
-      r.politicaSistemica,
-    );
-    await casos.configuracao.gravarPolitica(
-      admin,
-      'inteligencia.visibilidade_telas',
-      { tipo: 'grupo' },
-      { aPartirDe: r.dias[0], diasAposAtivacao: 60, papeis: ['admin_grupo', 'gestor_csc'] },
-    );
+    if (ultimoDiaGravado === null) {
+      await casos.configuracao.gravarPolitica(
+        admin,
+        'inteligencia.sistemico',
+        { tipo: 'grupo' },
+        r.politicaSistemica,
+      );
+      await casos.configuracao.gravarPolitica(
+        admin,
+        'inteligencia.visibilidade_telas',
+        { tipo: 'grupo' },
+        { aPartirDe: r.dias[0], diasAposAtivacao: 60, papeis: ['admin_grupo', 'gestor_csc'] },
+      );
+    }
     log(
       `Cadastros prontos: ${r.codigosDeFalha.length} códigos, ${r.fornecedores.length} fornecedores.`,
     );

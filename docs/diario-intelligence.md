@@ -1845,3 +1845,22 @@ O Cesar mandou prosseguir ("Cesar aqui. Prossiga") com os pontos 3 e 4 ainda em 
 **Primeira rodada local:** volume curto, num Postgres 16 descartável do contêiner (nunca o dev), com uma base gravada pelo dono no lugar do kit, porque o Auth não roda aqui.
 - **Volume e tempo:** 1.767 chamados, cerca de 8.850 operações e 183 dias calculados, em 5 min 20 s.
 - **Insights:** os 8 esperados, nenhum do ruído, e cada um no estado do roteiro, com 18 decisões.
+
+**Segunda e terceira rodadas locais:**
+- **De novo no mesmo grupo, em 18 s:** nada mudou nos chamados (1.767), nas transições (7.066), nas métricas (28.548) e nos insights (8), e nenhuma decisão foi tomada.
+  - A auditoria ganhou só a credencial do conector, criada e revogada.
+  - As políticas deixaram de ser regravadas quando o grupo já tem histórico, porque regravar mudaria a versão que o job registra.
+- **Com outro fim:** recusa antes de gravar.
+- **Num grupo novo, com o job no fim do dia local (a versão do Kaio no ponto 4):** os mesmos 8 insights, nos mesmos estados finais, em 6 min.
+- **Testes:** lint e typecheck verdes. `pnpm test`: todos verdes, depois de a `HK_HISTORICO_FIM` entrar no `.env.example`. Ela é montada pelo script, como a `HK_DEMO_TURMA`.
+- **`docs/piloto/`:** o README e o roteiro de treinamento citam o grupo do histórico para treinar o módulo.
+
+### Ponto de retomada (13/10/2026, gravação do histórico pronta)
+
+- **`main`:** com o #260.
+- **Nesta branch:** a gravação, o comando e o teste do banco, fora da zona protegida. O PR abre agora.
+- **Esperando:**
+  - **Cesar e Kaio, no ponto 4:** o padrão é `como_em_producao`; trocar é uma linha (`MOMENTO_DO_JOB`).
+  - **Kaio, no ponto 3:** a Admin não pode aceitar pela regra do aceite, então a gravação usa o Gerente.
+  - **Cesar:** depois do merge, rodar `pnpm demo:historico --ambiente dev`, com a `HK_DEMO_SENHA` e a `DEV_SESSION_POOLER` no ambiente. O tempo esperado é de 15 a 30 minutos no dev, a medir.
+- **Próximo:** o volume comum do teste de carga no script (`scripts/carga/inteligencia-sintetico.sql`), decidido pelo Kaio, num PR à parte.
