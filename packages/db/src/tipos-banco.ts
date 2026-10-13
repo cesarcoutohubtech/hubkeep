@@ -457,6 +457,26 @@ export interface AppParadaAtivo {
   tenant_id: string;
 }
 
+export interface AppPlanoPreventivo {
+  ativo_id: string | null;
+  atualizado_em: Generated<Timestamp>;
+  categoria_id: string | null;
+  checklist_modelo_id: string | null;
+  criado_em: Generated<Timestamp>;
+  criado_por: string;
+  equipe_id: string | null;
+  hotel_id: string;
+  id: string;
+  inicio: Timestamp;
+  intervalo: number;
+  nome: string;
+  situacao: string;
+  tecnico_id: string | null;
+  tenant_id: string;
+  unidade: string;
+  versao: Generated<number>;
+}
+
 export interface AppPolitica {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -618,6 +638,7 @@ export interface DB {
   "app.os_material": AppOsMaterial;
   "app.os_transicao": AppOsTransicao;
   "app.parada_ativo": AppParadaAtivo;
+  "app.plano_preventivo": AppPlanoPreventivo;
   "app.politica": AppPolitica;
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.prioridade": AppPrioridade;
