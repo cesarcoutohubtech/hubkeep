@@ -98,6 +98,8 @@ Na CI (`.github/workflows/banco.yml`): `supabase start`, `supabase db reset` e `
 - Antes de qualquer `pnpm`, `npm` ou `npx`, confirme que o diretório atual é a raiz de um checkout do HubKeep (existe `pnpm-workspace.yaml` ali) e aborte se não for. Ex.: `test -f pnpm-workspace.yaml && pnpm ...`.
 - Nenhuma cadeia com `;` em comandos que alteram arquivos, fazem merge ou instalam pacotes: só `&&`, para um passo que falhou não deixar o seguinte rodar no lugar errado.
 - Worktrees em `C:\Cesar\HubKeep\Dev\wt\`, nunca na pasta temporária do Windows, que é limpa automaticamente e já apagou links de `node_modules` no meio de uma tarefa (etapa A da fase 1a).
+- Worktree removido logo depois do merge da sua branch (`git worktree remove`; se o Windows travar a pasta, `cmd /c rmdir /s /q`), e no máximo 3 worktrees ativos por agente (Cesar, 12/10/2026). Antes de remover, confirmar que o conteúdo está na `main`. Nenhum agente mexe nos worktrees do outro.
+- PR sempre com base na `main`, nunca empilhado sobre a branch de outro PR aberto: o PR empilhado que é mergeado depois do merge da base fica fora da `main` (#199, 12/10/2026).
 - PR de zona protegida um de cada vez: a tarefa seguinte pode andar no local, mas o próximo PR de zona protegida só abre depois do merge do anterior, para não criar ciclos de conflito.
 
 ## Dois agentes no repositório
