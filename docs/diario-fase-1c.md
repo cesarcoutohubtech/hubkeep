@@ -536,7 +536,7 @@ Cesar, no chat do agente da 1c: "Aprovo o ADR-044. Atualize o status." O status 
 
 ### Aceite automático: o código, pronto na branch (fora da zona protegida)
 
-Na branch `claude/1c-aceite-automatico-m5`, feita a partir da `main` depois do merge do #237 (a 0046), sem empilhar. O PR abre depois do `db push` da 0046, quando o Cesar avisar.
+Na branch `claude/1c-aceite-automatico-m5`, feita a partir da `main` depois do merge do #237 (a 0046), sem empilhar. O PR abriu depois do `db push` da 0046.
 - **Domínio:**
   - a ação `aceitar_automatico` na máquina da OS, sem papel que a faça, com o mesmo reflexo do aceite no chamado (aguardando aceite → concluído);
   - `decidirAceiteAutomatico`, com os motivos de não aceitar: desligado, fora do estado, antes do prazo, quem abriu e executa, faltam códigos, assinatura no aceite;
@@ -561,12 +561,13 @@ O teste `cada cenário abre o insight esperado e termina no estado do roteiro; o
 
 O teste é do Intelligence e não muda com a 1c. Pedido: um `timeout` explícito nesse teste, ou um roteiro menor, para o tempo não depender da carga da máquina. A 1c não mexe no arquivo.
 
+**Atendido** no #241, a pedido do Cesar no chat do agente do Kaio: um limite próprio de 20 s nos dois testes do roteiro (`docs/diario-intelligence.md`). Nada mais a pedir.
+
 ### Ponto de retomada (13/10/2026, M5)
-- **`main`:** verde, com o #236 (TypeScript de volta à 6.0), o #232 (M4), o #234, o #235, o #238, o #237 (a 0046 e o ADR-044) e o #239 (PV3a da 1b).
-- **Dev:** esperando o `db push` da 0046 pelo Cesar.
-- **PRs da 1c:** nenhum aberto. Por ordem do Cesar, nenhum PR de zona protegida até ele avisar do `db push`.
-- **Não enviado como PR:** `claude/1c-aceite-automatico-m5`, o código do M5, feito a partir da `main` (a `claude/1c-aceite-automatico-codigo`, que partia da branch da 0046, fica abandonada). O PR abre quando o Cesar avisar do `db push`.
+- **`main`:** verde, com o #236 (TypeScript de volta à 6.0), o #232 (M4), o #234, o #235, o #238, o #237 (a 0046 e o ADR-044), o #239 (PV3a da 1b), o #240 e o #241.
+- **Dev:** com a 0046. O Cesar fez o `db push` e avisou no chat da 1c em 13/10/2026.
+- **PRs da 1c:** o do código do M5 (`claude/1c-aceite-automatico-m5`), fora da zona protegida, esperando o merge do Cesar. A `claude/1c-aceite-automatico-codigo`, que partia da branch da 0046, fica abandonada.
 - **Esperando:**
-  - o Cesar: o `db push` da 0046 e o aviso;
+  - o Cesar: o merge do PR do código do M5;
   - as decisões das divergências do glossário e as aprovações (Cesar e Kaio); o agente do Kaio já concordou com a revisão da 1c (#235).
-- **Próxima tarefa:** abrir o PR do código do M5 depois do aviso. Em seguida, as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
+- **Próxima tarefa:** as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
