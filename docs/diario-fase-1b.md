@@ -574,3 +574,33 @@ Hoje a CI roda lint, typecheck e testes, mas nenhum build. Uma versão maior de 
 - o contrato da fila do dia em `packages/contratos`.
 
 Para a OS corretiva, nada muda. O Cesar deu o ok para seguir depois do PR da montagem ("Cesar aqui", 13/10/2026). Trabalho na branch `claude/1b-pv3b` e trago a `main` com frequência.
+
+**O que a PV3b entrega** (branch `claude/1b-pv3b`, PR fora da zona protegida):
+- **Domínio** (`corretiva.ts`): `decidirNaOs` e `decidirRegistroNaOs` aceitam a OS sem chamado (`OrigemDaOs`: o chamado, ou só o hotel).
+  - Na preventiva, as transições são as da corretiva, sem reflexo em chamado; gerar fica com o worker.
+  - O aceite é do Gerente do hotel; sem Gerente vigente no hotel, do Gestor CSC ou do Admin do grupo (decisão 12). Sem os dados do aceite, falha fechada, como na C6.
+  - Para a corretiva, nada muda: os 2.017 testes anteriores do domínio passam sem mudança.
+  - Testes novos (`preventiva-na-maquina.test.ts`): toda ação × estado × papel na preventiva, o aceite sem Gerente e os registros na OS.
+- **Fila do dia:**
+  - No contrato (`OsDoDiaApi`), o chamado passa a anulável e entra a `preventiva`: o plano, o nome do plano na cópia, a data prevista, o ativo e o local.
+  - A consulta `ConsultaDaFilaDoDia` (`preventiva=1`) diz que o PWA entende a OS sem chamado; sem ela, o caso de uso devolve só as corretivas.
+  - O repositório manda `preventiva: null` até a migração.
+  - O PWA não pede `preventiva=1` e guarda só a OS com chamado, até a tela da preventiva existir.
+
+**Um ponto para o Cesar confirmar:** o desenho diz "como na C6, sem quem abriu". Segui ao pé da letra: na preventiva, o Gerente do hotel decide o aceite mesmo quando ele também é o técnico responsável pela OS. Na corretiva, quem abriu e executa não decide. Se o Cesar quiser, a regra passa a ser: o responsável pela OS (ele, ou membro da equipe responsável) não decide o aceite da própria OS preventiva, e, sem outro Gerente, decidem o Gestor CSC ou o Admin.
+
+**Fica para depois da migração** (PV3 na zona protegida e a PV3c, fora dela):
+- os casos de uso da execução e do aceite com a OS sem chamado. A porta da OS (`OsGravada`) ganha o plano e o ativo, e o hotel vem da OS. Hoje esses casos de uso leem o chamado para o SLA, a parada e a UH;
+- o repositório da geração e a fila do dia com a preventiva;
+- a tela da preventiva no PWA (com `preventiva=1`) e no web (`/os/{id}` e a lista de preventivas do hotel).
+- **A política `os.aceite_automatico` (1c, #237) na preventiva:** o desenho diz que vale igual. O aceite automático da 1c parte do chamado aguardando aceite, então a preventiva precisa de um caminho próprio. Combino com a 1c antes de mexer.
+
+## Ponto de retomada (13/10/2026, PV3b)
+
+- **`main`:** com a 0046 da 1c (`db push` feito pelo Cesar) e o #240 (`agentGuidance`).
+- **PRs abertos da 1b:**
+  - [#244](https://github.com/cesarcoutohubtech/hubkeep/pull/244), de zona protegida: a montagem com o relógio do roteiro, a regra do Dependabot e o build do PWA na CI. Espera o merge do Cesar;
+  - o da PV3b, fora da zona.
+- **Esperando o Cesar:** o ponto do aceite acima.
+- **Nada sem enviar.**
+- **Próxima tarefa:** a parte protegida da PV3, na vez dela (depois da próxima da 1c): a migração de `app.os`, as permissões do worker, os tipos, o repositório, a rota `/api/cron/preventiva` no `vercel.json` e o teste de integração. Primeiro passo: conferir a última migração da `main` e reler a seção "PV3" da `docs/referencia/propostas-desenho-pv-implantacao.md`.
