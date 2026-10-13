@@ -72,6 +72,7 @@ import {
   RespostaDeListaDeChamados,
   RespostaDeListaDeOs,
   PedidoDeAberturaDeChamado,
+  PedidoDeAjusteDeCategoria,
   PedidoDeAjusteDePrioridade,
   PedidoDeAtribuicaoDeOs,
   PedidoDeAceiteDeOs,
@@ -1884,6 +1885,25 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
       422: ERRO('prioridade_indisponivel ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/chamados/{id}/categoria',
+    resumo:
+      'Escolhe, troca ou tira (null) a categoria do chamado até a execução e refaz os prazos de SLA pela cópia da abertura (1c, ADR-042). Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeAjusteDeCategoria,
+    respostas: {
+      200: {
+        descricao: 'Categoria ajustada, com a versão nova',
+        esquema: RespostaDeChamadoAlterado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (triagem_fora_do_papel).'),
+      404: ERRO('Chamado fora do escopo (chamado_nao_encontrado).'),
+      409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
+      422: ERRO('categoria_indisponivel ou entrada_invalida.'),
     },
   },
   {

@@ -106,6 +106,7 @@ export {
   OsDoDiaApi,
   RespostaDeOsDoDia,
   PedidoDeAberturaDeChamado,
+  PedidoDeAjusteDeCategoria,
   PedidoDeAjusteDePrioridade,
   PedidoDeAtribuicaoDeOs,
   PedidoDeAceiteDeOs,

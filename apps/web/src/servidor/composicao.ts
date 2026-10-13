@@ -499,6 +499,7 @@ export const casosDeUsoDeTriagem = memo<CasosDeUsoDeTriagem>(async () => {
     situacoes: criarPortaSituacoes(banco),
     prioridades: criarPortaPrioridades(banco),
     codigos: criarPortaCodigos(banco),
+    categorias: criarPortaCategorias(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     relogio: relogioDoSistema,
     feriadosOficiais,

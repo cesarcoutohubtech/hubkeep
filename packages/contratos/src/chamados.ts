@@ -238,6 +238,11 @@ export const PedidoDeAjusteDePrioridade = z
   .object({ versao, prioridadeId: z.guid() })
   .meta({ id: 'PedidoDeAjusteDePrioridade' });
 
+/** A categoria do chamado (1c, ADR-042): a categoria de ativo do grupo, ou null para tirar. */
+export const PedidoDeAjusteDeCategoria = z
+  .object({ versao, categoriaId: z.guid().nullable() })
+  .meta({ id: 'PedidoDeAjusteDeCategoria' });
+
 /** Cancelar o chamado ou a OS: o motivo é normalizado no domínio (até 500). */
 export const PedidoDeCancelamento = z
   .object({ versao, motivo: z.string().max(2000) })

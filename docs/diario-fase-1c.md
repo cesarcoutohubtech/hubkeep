@@ -563,6 +563,16 @@ O teste é do Intelligence e não muda com a 1c. Pedido: um `timeout` explícito
 
 **Atendido** no #241, a pedido do Cesar no chat do agente do Kaio: um limite próprio de 20 s nos dois testes do roteiro (`docs/diario-intelligence.md`). Nada mais a pedir.
 
+## Telas do SLA: a troca de categoria na triagem (13/10/2026)
+
+Segundo PR das telas do SLA, depois da tela das políticas (#246). Segue o ADR-042, decisão 2: a categoria do chamado vem do ativo na abertura; quem tria escolhe, troca ou tira, e a troca refaz os prazos e fica na auditoria. Fica fora da zona protegida e sem migração, porque o GRANT de `categoria_id` existe desde a 0043. Branch `claude/1c-categoria-triagem`, a partir da `main`.
+
+**Aviso de área compartilhada com a 1b (chamado, triagem e `packages/dominio`):**
+- **Domínio** (`triagem.ts`): `podeAjustarCategoria` e `exigirCategoriaAtiva`, nos estados da prioridade, e o erro `categoria_indisponivel`.
+- **Aplicação:** `categorizar` no caso de uso da triagem. O recálculo da prioridade virou `prazosNaTroca`, com a prioridade e a categoria.
+- **Banco:** `alterarChamadoNaTriagem` passa a gravar a `categoria_id`, com o evento `chamado.categoria_alterada`.
+- **API e tela:** `POST /api/v1/chamados/{id}/categoria` e o bloco da categoria no painel da triagem.
+
 ### Ponto de retomada (13/10/2026, M5)
 - **`main`:** verde, com o #236 (TypeScript de volta à 6.0), o #232 (M4), o #234, o #235, o #238, o #237 (a 0046 e o ADR-044), o #239 (PV3a da 1b), o #240 e o #241.
 - **Dev:** com a 0046. O Cesar fez o `db push` e avisou no chat da 1c em 13/10/2026.
