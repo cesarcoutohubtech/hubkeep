@@ -20,6 +20,14 @@ import { IDIOMAS_DE_ROTULO, LIMITES_DE_CAMPO, type Rotulos } from './campos-tipa
 import { PermissaoNegada, RegraViolada } from './erros';
 import { MODULOS_CONTRATAVEIS, type ModuloContratavel } from './licenca';
 import { type Resultado, ehAdminGrupo } from './permissoes';
+import {
+  HORARIO_PADRAO,
+  type HorarioDeAtendimento,
+  type PoliticaDeSla,
+  SLA_PADRAO,
+  horarioDeAtendimentoValido,
+  politicaDeSlaValida,
+} from './sla';
 import type { Atribuicao } from './tipos';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -75,6 +83,10 @@ export interface ValoresDePolitica {
   'os.assinatura_no_aceite': AssinaturaNoAceite;
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria;
   'ativo.criticidade': NomesDeCriticidade;
+  /** Calendário de SLA (1c, ADR-042): prazos por prioridade e categoria, pausa, ponto facultativo e meta. */
+  'chamado.sla': PoliticaDeSla;
+  /** Horário de atendimento do hotel (1c, ADR-042), na hora local dele. */
+  'hotel.horario_atendimento': HorarioDeAtendimento;
 }
 export type ChaveDePolitica = keyof ValoresDePolitica;
 
@@ -135,6 +147,14 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
           ),
       ),
   },
+  'chamado.sla': {
+    padrao: SLA_PADRAO,
+    valido: (v): v is PoliticaDeSla => politicaDeSlaValida(v),
+  },
+  'hotel.horario_atendimento': {
+    padrao: HORARIO_PADRAO,
+    valido: (v): v is HorarioDeAtendimento => horarioDeAtendimentoValido(v),
+  },
 };
 
 export const CHAVES_DE_POLITICA = Object.keys(POLITICAS) as ChaveDePolitica[];
@@ -176,7 +196,7 @@ export function resolverPolitica<C extends ChaveDePolitica>(
 }
 
 /** Prefixos das chaves do núcleo; extensão nenhuma usa um deles. */
-export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.'] as const;
+export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.', 'hotel.'] as const;
 
 const PREFIXO = /^[a-z][a-z_]*\.$/;
 

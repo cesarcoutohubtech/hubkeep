@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import {
   chaveDoInsight,
   criarJobDoDia,
+  criarRecalculoDoDia,
   portasDoJob,
 } from '../src/servidor/modulos/inteligencia/job';
 
@@ -227,5 +228,31 @@ describe('criarJobDoDia', () => {
         versoesDePolitica: { [H1]: 'inteligencia.atencao_ativo=p1@2026-09-01T00:00:00.000Z' },
       },
     ]);
+  });
+});
+
+describe('criarRecalculoDoDia', () => {
+  it('grava o cálculo seguinte com a marca de recálculo, no fim do dia, sem tocar nos insights', async () => {
+    const sessao = new SessaoEmMemoria();
+    sessao.calculosDoDia = () => Promise.resolve(new Map([['a1', 1]]));
+    const porta: PortaDoJobDoIntelligence = { noTenant: (_t, fn) => fn(sessao) };
+    const recalcular = criarRecalculoDoDia({ porta, registros });
+    const r = await recalcular('22200000-0000-0000-0000-000000000001', '2026-09-29', 'ops:Cesar');
+    expect(r).toMatchObject({ dia: '2026-09-29', recalculo: true, metricasGravadas: 1 });
+    expect(sessao.metricas).toMatchObject([{ ativoId: 'a1', calculo: 2, recalculo: true }]);
+    expect(sessao.abertos).toEqual([]);
+    expect(sessao.atualizados).toEqual([]);
+    expect(sessao.execucoes).toMatchObject([
+      { disparadoPor: 'ops:Cesar', dia: '2026-09-29', recalculo: true },
+    ]);
+  });
+
+  it('o dia antes do início do módulo: nada é lido além dos módulos, nada é gravado', async () => {
+    const sessao = new SessaoEmMemoria();
+    const porta: PortaDoJobDoIntelligence = { noTenant: (_t, fn) => fn(sessao) };
+    const r = await criarRecalculoDoDia({ porta, registros })('t', '2026-01-01', 'ops:Cesar');
+    expect(r.semModulo).toBe(true);
+    expect(sessao.lidas).toEqual(['modulos']);
+    expect(sessao.metricas).toEqual([]);
   });
 });

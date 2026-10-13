@@ -1192,3 +1192,22 @@ Decisões do Cesar de 12/10/2026, no chat do agente do Intelligence ("Cesar aqui
   - Segunda rodada: 200, 1 tenant, 7 ativos, 7 métricas gravadas, nenhum insight (os chamados do kit não passam do limite da atenção) e nenhuma falha.
 - **A resposta da rota** soma só os números de cada tenant, então o `semModulo` não aparece nela; a primeira rodada só se explicou pelo kit. Fica registrado, sem mudança neste PR.
 - **Telas no navegador:** o detalhe do ativo já tem métrica para conferir; a página do insight só terá dados quando algum insight abrir no dev.
+
+## `int-carga-job`: o job diário na escala da rede, os números (13/10/2026)
+
+Atividade 2a do Kaio de 12/10/2026, depois do `int-visibilidade-telas`, que espera o merge do #203 para virar PR. O relatório completo, com o método e as tabelas, está em `docs/referencia/carga-job-inteligencia.md`.
+- **Onde:** um Postgres 16 descartável no contêiner do agente, com as migrações; não o dev compartilhado, porque a métrica só recebe INSERT.
+- **Números:** com 40 hotéis, 10 mil ativos e 73 mil chamados e OS no ano, uma rodada do tenant leva de 4 a 5 s. Com o dobro de chamados, de 7 a 11 s. Quase todo o tempo vai na leitura dos chamados do período e na gravação das 10 mil linhas da métrica; o cálculo fica abaixo de 1,3 s. O heap de uma rodada vai de 350 a 690 MB.
+- **Vercel:** pela busca na documentação (o vercel.com está bloqueado no contêiner), 300 s de padrão e 800 s de máximo no Pro, com o Fluid compute. Uma pessoa precisa conferir na página o limite da função chamada pelo cron.
+- **Otimizações:** nenhuma neste PR, como o Kaio pediu. Os números vão primeiro para ele.
+- **Arquivos:** o gerador `scripts/carga/inteligencia-sintetico.sql` e o executor `apps/web/test/carga-inteligencia.test.ts`, pulado sem `HK_CARGA_URL_WORKER`, também na CI.
+
+## `int-carga-job` (continuação): observabilidade do job e recálculo de um período (13/10/2026)
+
+Atividades 2b e 2c do Kaio de 12/10/2026, com a proposta aprovada pelo Cesar nesta sessão ("Cesar aqui. Prossiga", 13/10/2026). Ficam na mesma branch da carga, num PR só para o job na escala da rede. A referência de operação é `docs/referencia/observabilidade-job-inteligencia.md`.
+- **2b, observabilidade:** a rota `/api/cron/inteligencia` passa a gravar uma linha de log por tenant (`inteligencia.job.tenant`: duração, resultado `ok`, `sem_modulo` ou `falha`, e os números do resumo) e uma por rodada (`inteligencia.job.rodada`). Ao fim de cada rodada, manda um check-in ao monitor `inteligencia-job-diario` do Sentry. O check-in é `ok` quando todos os tenants rodaram e `error` quando um falhou ou a rota não rodou (503 ou 500). O monitor tem o horário do `vercel.json`, e um teste confere que os dois são iguais; sem check-in no horário, o Sentry marca a rodada como perdida. O 401 não manda check-in. Sem `SENTRY_DSN`, fica só o log.
+- **Núcleo:** o `rotaDeCron` (`servidor/cron.ts`) não mudou: a observação envolve a rota e o job só do Intelligence. No `servidor/sentry.ts`, que é do núcleo, entrou a função `enviarCheckInAoSentry`. Ela é genérica e serve a outro cron que queira monitor. Avisar o agente do núcleo.
+- **Alerta:** o monitor abre um problema no Sentry na primeira falha ou falta. Para isso virar aviso a uma pessoa, falta configurar no projeto do Sentry a regra de alerta e quem a recebe. Esse passo é do Cesar, depois de o `SENTRY_DSN` entrar na Vercel; o passo a passo está na referência.
+- **2c, recálculo:** `pnpm ops:recalcular-inteligencia --ambiente dev|staging --tenant <uuid> --de AAAA-MM-DD --ate AAAA-MM-DD --por "<quem>" [--dry-run]`, no molde do `ops:provisionar`, que confere o alvo antes de conectar. Dia a dia, cada um numa transação do `hk_worker`, o comando roda o modo de recálculo do motor (ADR-036). Esse modo grava outra linha por ativo, com o número de cálculo seguinte, a marca de recálculo e as versões das fórmulas de hoje. Não abre nem atualiza insight. A auditoria registra `recalcular_dia`, com `disparadoPor` `ops:<quem>`. O comando aceita no máximo 366 dias e só dias que já terminaram (UTC). Produção fica fora, até o roteiro de operação dela (F0-12). O `--dry-run` roda cada dia inteiro e desfaz a transação.
+- **Conferido no Postgres da carga:** o `--dry-run` não gravou nada. A rodada real gravou o cálculo 2, com `recalculo = true`, nos 10 mil ativos de cada dia, e deixou intactas as linhas originais. A auditoria registrou `ops:Kaio`. Cada dia levou cerca de 6 s.
+- **`.env.example`:** entraram as variáveis do executor de carga e do recálculo, montadas pelos scripts.

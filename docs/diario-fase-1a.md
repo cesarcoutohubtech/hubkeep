@@ -1873,3 +1873,7 @@ ADR-040 e as 21 decisões aprovados pelo Cesar em 12/10/2026. PR de zona protegi
   - no `CLAUDE.md`, a regra dos worktrees (removido logo depois do merge, no máximo 3 por agente) e a do PR sempre com base na `main`, pedidas pelo Cesar em 12/10/2026;
   - a linha do checklist no `docs/02`.
 - **Para o agente do Intelligence:** as tabelas novas são `app.checklist_modelo` (`id`, `tenant_id`, `categoria_id`, `nomes`, `itens`, `versao`, `ativa`) e `app.os_checklist` (`os_id`, `modelo_id`, `modelo_versao`, `nomes`, `itens`, `respostas`, `criado_por`). O worker já lê as duas.
+
+## O diário da 1b mudou de arquivo (12/10/2026)
+
+A pedido do Cesar ("Cesar aqui", 12/10/2026), a 1b passa a ser registrada no `docs/diario-fase-1b.md`, que traz as regras vindas da memória local do agente, o ponto de retomada e as tarefas da passagem para a nuvem. Este diário fica com a 1a e com o começo da 1b, até a PV1 (#203).

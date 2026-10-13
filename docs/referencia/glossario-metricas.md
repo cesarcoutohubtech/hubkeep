@@ -1,6 +1,6 @@
 # Glossário único de métricas do núcleo e do Intelligence
 
-**Situação:** o Cesar aprovou o glossário único neste arquivo em 13/10/2026, no chat do agente da 1c, para ser fechado com o agente do Kaio pelos diários. Esta é a primeira versão, escrita pelo agente da 1c em 13/10/2026. Cada termo diz se está **fechado** (já decidido e no código, ou decidido pelo Cesar) ou **em proposta** (aguarda o Kaio, ou a aprovação do Cesar do desenho dos indicadores, itens 9 a 11 de `docs/referencia/propostas-desenho-1c.md`).
+**Situação:** o Cesar aprovou o glossário único neste arquivo em 13/10/2026, no chat do agente da 1c, para ser fechado com o agente do Kaio pelos diários. Esta é a segunda versão, de 13/10/2026: as definições dos indicadores foram aprovadas pelo Cesar no mesmo dia (decisões 10 e 11 de `docs/referencia/propostas-desenho-1c.md`). Cada termo diz se está **fechado** (já no código, ou decidido pelo Cesar) ou **em proposta** (aguarda o Kaio, ou o Cesar).
 
 ## Regras
 
@@ -35,18 +35,18 @@
 
 | Termo | Definição | Função ou fonte | Quem usa | Situação |
 |---|---|---|---|---|
-| **Backlog** | Os chamados não cancelados ainda sem conclusão do serviço, num instante (hoje, ou o fim de cada dia). | Domínio | Núcleo; o Intelligence pode ler | Em proposta (item 10) |
-| **Backlog por idade** | O backlog em cinco faixas pela idade desde a abertura: até 2 dias, 3 a 7, 8 a 15, 16 a 30 e mais de 30. | Domínio | Núcleo | Em proposta (item 10) |
-| **% de SLA** | Dos chamados com prazo de solução vencendo no período, os concluídos dentro do prazo sobre o total. O vencido e ainda aberto conta como fora. O tempo pausado dos mesmos chamados aparece ao lado, em soma e em média. | Domínio | Núcleo | Em proposta (item 10); o tempo pausado ao lado é decisão 6 do Cesar (13/10/2026) |
+| **Backlog** | Os chamados não cancelados ainda sem conclusão do serviço, num instante (hoje, ou o fim de cada dia). | Domínio | Núcleo; o Intelligence pode ler | Fechado (decisão 10, 13/10/2026) |
+| **Backlog por idade** | O backlog em cinco faixas pela idade desde a abertura: até 2 dias, 3 a 7, 8 a 15, 16 a 30 e mais de 30. | Domínio | Núcleo | Fechado (decisão 10) |
+| **% de SLA** | Dos chamados com prazo de solução vencendo no período, os concluídos dentro do prazo sobre o total. O vencido e ainda aberto conta como fora. O tempo pausado dos mesmos chamados aparece ao lado, em soma e em média. | Domínio | Núcleo | Fechado (decisão 10, 13/10/2026; o tempo pausado ao lado, decisão 6) |
 | **Meta de SLA** | O alvo do % de SLA, padrão de 90%. | Política `chamado.sla` | Núcleo | Fechado (decisão 4 da paridade) |
-| **MTTR** | A média, em horas corridas, da abertura até a conclusão do serviço, dos chamados com a conclusão no período, sem preventiva. A mediana aparece ao lado. Reaberto e concluído de novo, vale a última conclusão. | Domínio, sobre a conclusão do serviço | Os dois (o PRD do Intelligence cita MTTR) | Fechado (decisão 1 da paridade); a mediana, em proposta (item 10) |
+| **MTTR** | A média, em horas corridas, da abertura até a conclusão do serviço, dos chamados com a conclusão no período, sem preventiva. A mediana aparece ao lado. Reaberto e concluído de novo, vale a última conclusão. | Domínio, sobre a conclusão do serviço | Os dois (o PRD do Intelligence cita MTTR) | Fechado (decisão 1 da paridade; a mediana ao lado, decisão 10 de 13/10/2026) |
 | **Tempo até o aceite** | Da conclusão do serviço até o aceite. Não entra no MTTR. | Domínio | Núcleo, se entrar | Em proposta (decisão 1 da paridade, "pode virar indicador à parte") |
-| **% de preventiva em dia** | Das OS preventivas com data prevista no período e não canceladas, as concluídas até o fim do dia previsto mais a tolerância, sobre o total. | Domínio; tolerância pela política `preventiva.tolerancia_dias`, padrão 0 | Núcleo | Em proposta (item 11); depende da PV3 |
+| **% de preventiva em dia** | Das OS preventivas com data prevista no período e não canceladas, as concluídas até o fim do dia previsto mais a tolerância, sobre o total. | Domínio; tolerância pela política `preventiva.tolerancia_dias`, padrão 0 | Núcleo | Fechado (decisão 11, 13/10/2026); depende da PV3 |
 | **Preventiva atrasada** | A preventiva vencida: passou do fim do dia previsto mais a tolerância e não foi concluída nem cancelada. É o complemento da "preventiva em dia", com a mesma tolerância. | Domínio; hoje é o campo `preventivaAtrasada` da atenção do ativo, ainda sem dado | Os dois | Em proposta (Kaio) |
-| **Razão preventiva/corretiva** | As OS preventivas concluídas no período sobre as corretivas com a conclusão do serviço no período. | Domínio | Núcleo | Em proposta (item 10) |
+| **Razão preventiva/corretiva** | As OS preventivas concluídas no período sobre as corretivas com a conclusão do serviço no período. | Domínio | Núcleo | Fechado (decisão 10) |
 | **Chamados por 100 UHs** | Os chamados abertos no período, divididos pelas UHs ativas do hotel, vezes 100. | Domínio | Núcleo | Fechado (decisão 6 da paridade) |
-| **Comparação na bandeira** | Os indicadores por hotel, lado a lado, com a média da bandeira, e as contagens normalizadas por 100 UHs. Só os hotéis que o usuário lê. | Domínio | Núcleo | Em proposta (item 10) |
-| **Produtividade por equipe e hotel** | As OS concluídas e as horas apontadas (`app.os_apontamento`), por equipe e por hotel, no período. A visão por técnico fica desligada por política. | Domínio | Núcleo | Em proposta (item 10) |
+| **Comparação na bandeira** | Os indicadores por hotel, lado a lado, com a média da bandeira, e as contagens normalizadas por 100 UHs. Só os hotéis que o usuário lê. | Domínio | Núcleo | Fechado (decisão 10) |
+| **Produtividade por equipe e hotel** | As OS concluídas e as horas apontadas (`app.os_apontamento`), por equipe e por hotel, no período. A visão por técnico fica desligada por política. | Domínio | Núcleo | Fechado (decisão 10) |
 
 ## Pontos para o agente do Kaio
 
