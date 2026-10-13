@@ -103,7 +103,9 @@ import {
 } from '@hubkeep/db';
 import { registrosDePoliticasPorModulo } from '@hubkeep/dominio';
 import { criarVerificadorJwks } from './identidade';
+import { registrarNoConsole } from './log';
 import { montarInteligencia } from './modulos/inteligencia';
+import { enviarCheckInAoSentry } from './sentry';
 
 function exigirEnv(nome: string): string {
   const v = process.env[nome];
@@ -217,6 +219,16 @@ export async function calcularDiaDoIntelligence(tenantId: string) {
     relogio: relogioDoSistema,
   })(tenantId);
 }
+
+/**
+ * A observabilidade do job do Intelligence: o log por tenant e por rodada e o
+ * check-in do monitor no Sentry (sem SENTRY_DSN, só o log). A rota
+ * /api/cron/inteligencia envolve o job e a rodada com ela.
+ */
+export const observacaoDoJobDoIntelligence = inteligencia.observarJob({
+  registrar: registrarNoConsole,
+  checkIn: enviarCheckInAoSentry,
+});
 
 /**
  * O painel do Intelligence (as telas do 1.0): a leitura e a decisão do insight
