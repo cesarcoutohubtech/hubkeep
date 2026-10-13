@@ -162,6 +162,18 @@ export interface AppChamado {
   versao: Generated<number>;
 }
 
+export interface AppChecklistModelo {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  categoria_id: string | null;
+  criado_em: Generated<Timestamp>;
+  id: string;
+  itens: Generated<Json>;
+  nomes: Json;
+  tenant_id: string;
+  versao: Generated<number>;
+}
+
 export interface AppCodigoManutencao {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -392,6 +404,21 @@ export interface AppOsApontamento {
   usuario_id: string;
 }
 
+export interface AppOsChecklist {
+  atualizado_em: Generated<Timestamp>;
+  criado_em: Generated<Timestamp>;
+  criado_por: string;
+  hotel_id: string;
+  id: string;
+  itens: Json;
+  modelo_id: string;
+  modelo_versao: number;
+  nomes: Json;
+  os_id: string;
+  respostas: Generated<Json>;
+  tenant_id: string;
+}
+
 export interface AppOsMaterial {
   criado_em: Generated<Timestamp>;
   descricao: string;
@@ -570,6 +597,7 @@ export interface DB {
   "app.bandeira": AppBandeira;
   "app.categoria_ativo": AppCategoriaAtivo;
   "app.chamado": AppChamado;
+  "app.checklist_modelo": AppChecklistModelo;
   "app.codigo_manutencao": AppCodigoManutencao;
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
@@ -586,6 +614,7 @@ export interface DB {
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
   "app.os_apontamento": AppOsApontamento;
+  "app.os_checklist": AppOsChecklist;
   "app.os_material": AppOsMaterial;
   "app.os_transicao": AppOsTransicao;
   "app.parada_ativo": AppParadaAtivo;

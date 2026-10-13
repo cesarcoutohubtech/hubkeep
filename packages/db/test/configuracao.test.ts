@@ -6,7 +6,11 @@
 //   - o gerente não configura (403) e, com a checagem removida, a RLS ainda barra;
 //   - modelo contratual do hotel (I2): nulo no começo, só o Admin grava,
 //     ausente fica o gravado, null volta a "não informado";
-//   - cada gravação vai para a auditoria.
+//   - cada gravação vai para a auditoria;
+//   - nível bandeira (1c): a política da bandeira vale para os hotéis dela,
+//     abaixo do hotel e acima do grupo, na leitura da configuração e na das
+//     portas dos casos de uso; o hotel sem bandeira não a vê; bandeira de
+//     outro tenant é 404.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -18,6 +22,7 @@ import {
   type AcessoBanco,
   criarAcessoBanco,
   criarPortaConfiguracao,
+  criarPortaTriagem,
   criarPortasDeAplicacao,
 } from '../src/index';
 
@@ -29,7 +34,13 @@ if (!temBanco && process.env.HK_EXIGIR_BANCO === '1') {
 }
 
 const TENANT = randomUUID();
+const OUTRO_TENANT = randomUUID();
 const H1 = randomUUID();
+/** H2 está na mesma bandeira de H1; H3 não tem bandeira. */
+const H2 = randomUUID();
+const H3 = randomUUID();
+const BANDEIRA = randomUUID();
+const BANDEIRA_DE_OUTRO = randomUUID();
 const U = { admin: randomUUID(), gerente: randomUUID(), tecnico: randomUUID() };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 const ACEITE = 'os.aceite_automatico';
@@ -45,10 +56,20 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
   beforeAll(async () => {
     dono = new pg.Client({ connectionString: URL_DONO });
     await dono.connect();
-    await dono.query(`insert into app.tenant (id, nome) values ($1, 'Grupo A7')`, [TENANT]);
+    await dono.query(`insert into app.tenant (id, nome) values ($1, 'Grupo A7'), ($2, 'Outro')`, [
+      TENANT,
+      OUTRO_TENANT,
+    ]);
     await dono.query(
-      `insert into app.hotel (id, tenant_id, nome, fuso, status) values ($1, $2, 'Hotel 1', 'UTC', 'ativo')`,
-      [H1, TENANT],
+      `insert into app.bandeira (id, tenant_id, nome) values ($1, $2, 'Bandeira A7'), ($3, $4, 'De outro')`,
+      [BANDEIRA, TENANT, BANDEIRA_DE_OUTRO, OUTRO_TENANT],
+    );
+    await dono.query(
+      `insert into app.hotel (id, tenant_id, bandeira_id, nome, fuso, status) values
+         ($1, $4, $5, 'Hotel 1', 'UTC', 'ativo'),
+         ($2, $4, $5, 'Hotel 2', 'UTC', 'ativo'),
+         ($3, $4, null, 'Hotel 3', 'UTC', 'ativo')`,
+      [H1, H2, H3, TENANT, BANDEIRA],
     );
     for (const [nome, id] of Object.entries(U)) {
       await dono.query(`insert into auth.users (id, email) values ($1, $2)`, [
@@ -69,6 +90,7 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
     await atribuir(U.admin, 'admin_grupo', 'grupo', null);
     await atribuir(U.gerente, 'gerente_hotel', 'hotel', H1);
     await atribuir(U.tecnico, 'tecnico', 'hotel', H1);
+    await atribuir(U.tecnico, 'tecnico', 'hotel', H3);
     banco = await criarAcessoBanco({ app: { url: URL_APP ?? '', max: 2 } });
     const deps = {
       configuracao: criarPortaConfiguracao(banco),
@@ -108,11 +130,14 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
       'app.politica',
       'app.atribuicao_escopo',
       'app.hotel',
+      'app.bandeira',
       'app.membro',
     ]) {
-      await dono.query(`delete from ${t} where tenant_id = $1`, [TENANT]);
+      await dono.query(`delete from ${t} where tenant_id = any($1::uuid[])`, [
+        [TENANT, OUTRO_TENANT],
+      ]);
     }
-    await dono.query(`delete from app.tenant where id = $1`, [TENANT]);
+    await dono.query(`delete from app.tenant where id = any($1::uuid[])`, [[TENANT, OUTRO_TENANT]]);
     await dono.query(`delete from auth.users where id = any($1::uuid[])`, [Object.values(U)]);
   });
 
@@ -333,5 +358,80 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
       { antes: null, depois: 'arrendado' },
       { antes: 'arrendado', depois: null },
     ]);
+  });
+
+  it('nível bandeira (1c): vale para os hotéis dela, abaixo do hotel; sem bandeira, não vale', async () => {
+    const FOTO = 'os.foto_depois_obrigatoria';
+    const fotoDe = async (usuario: string, hotel: string) => {
+      const c = await casos.lerConfiguracao(ctx(usuario), hotel);
+      return { hotel: c.hotel, politica: c.politicas.find((p) => p.chave === FOTO) };
+    };
+    const escopo = { tipo: 'bandeira' as const, bandeiraId: BANDEIRA };
+
+    await casos.gravarPolitica(ctx(U.admin), FOTO, escopo, { ligado: true });
+    const h1 = await fotoDe(U.tecnico, H1);
+    expect(h1.hotel?.bandeira).toEqual({ id: BANDEIRA, nome: 'Bandeira A7' });
+    expect(h1.politica).toMatchObject({
+      bandeira: { ligado: true },
+      hotel: null,
+      efetiva: { ligado: true },
+      origem: 'bandeira',
+    });
+    expect((await fotoDe(U.admin, H2)).politica).toMatchObject({ origem: 'bandeira' });
+    const h3 = await fotoDe(U.tecnico, H3);
+    expect(h3.hotel?.bandeira).toBeNull();
+    expect(h3.politica).toMatchObject({ bandeira: null, origem: 'padrao' });
+
+    // As portas que os casos de uso leem (triagem, execução) resolvem igual.
+    const triagem = criarPortaTriagem(banco);
+    expect(await triagem.politica(ctx(U.tecnico), H1, FOTO)).toEqual({
+      bandeira: { ligado: true },
+    });
+    expect(await triagem.politica(ctx(U.tecnico), H3, FOTO)).toEqual({});
+
+    // O hotel vence a bandeira; voltar a herdar na bandeira cai para o padrão.
+    await casos.gravarPolitica(
+      ctx(U.admin),
+      FOTO,
+      { tipo: 'hotel', hotelId: H1 },
+      { ligado: false },
+    );
+    expect((await fotoDe(U.tecnico, H1)).politica).toMatchObject({
+      efetiva: { ligado: false },
+      origem: 'hotel',
+    });
+    await casos.gravarPolitica(ctx(U.admin), FOTO, escopo, null);
+    expect((await fotoDe(U.admin, H2)).politica).toMatchObject({
+      bandeira: null,
+      origem: 'padrao',
+    });
+    const { rows } = await dono.query(
+      `select acao, depois->>'bandeiraId' as bandeira from app.auditoria
+        where tenant_id = $1 and entidade = 'politica' and depois->>'chave' = $2 order by em`,
+      [TENANT, FOTO],
+    );
+    expect(rows).toEqual([
+      { acao: 'gravar', bandeira: BANDEIRA },
+      { acao: 'gravar', bandeira: null },
+      { acao: 'voltar_a_herdar', bandeira: BANDEIRA },
+    ]);
+
+    // Bandeira de outro tenant (ou que não existe) e quem não é Admin. Com a
+    // checagem removida, a RLS não deixa o gerente alterar a linha da bandeira
+    // (o UPDATE não a encontra).
+    await expect(
+      casos.gravarPolitica(
+        ctx(U.admin),
+        FOTO,
+        { tipo: 'bandeira', bandeiraId: BANDEIRA_DE_OUTRO },
+        { ligado: true },
+      ),
+    ).rejects.toMatchObject({ codigo: 'bandeira_nao_encontrada' });
+    await expect(
+      casos.gravarPolitica(ctx(U.gerente), FOTO, escopo, { ligado: true }),
+    ).rejects.toMatchObject({ codigo: 'configuracao_so_admin' });
+    await expect(
+      semChecagem.gravarPolitica(ctx(U.gerente), FOTO, escopo, { ligado: true }),
+    ).rejects.toMatchObject({ codigo: 'politica_nao_encontrada' });
   });
 });
