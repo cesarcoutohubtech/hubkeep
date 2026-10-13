@@ -1207,3 +1207,47 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - escalonar é avisar, e não reatribuir: a OS continua com quem está;
   - sem e-mail e sem push até o item 5 da 1c;
   - um aviso por prazo: o aviso não se repete enquanto o prazo não muda.
+
+## ADR-044 — Aceite automático da OS concluída, gravado pelo worker
+
+**Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c ("Aprovo o ADR-044"). O desenho já tinha sido aprovado por ele no mesmo dia ("Aprovo o M5 conforme recomendado") e está no `docs/diario-fase-1c.md` (seção "Aceite automático (M5): proposta para o Cesar").
+
+**Contexto:**
+- A política `os.aceite_automatico` existe desde a 1a, desligada por padrão (7 dias, de 1 a 60), com a herança hotel → bandeira → grupo → padrão (ADR-026). O job que a executa ficou para a 1c, com o SLA (M5 do ADR-043).
+- O aceite grava na OS e no chamado e registra a transição da OS (`app.os_transicao`, migração 0031), que exige um usuário.
+- O `hk_worker` só lê a OS, o chamado e a transição. O ADR-043 fixou que "o worker não ganha UPDATE no chamado", pensando no monitor.
+
+**Decisão:**
+- **Quando:** a OS `concluida` há N vezes 24 horas corridas, contadas da transição mais recente para `concluida`. N vem da política resolvida no hotel. A contagem não usa o calendário de SLA (ADR-042), e cada reabertura a recomeça na nova conclusão.
+- **Quando não:** a OS segue aguardando aceite, sem erro, em três casos:
+  - **quem abriu o chamado também executa a OS** (o Técnico responsável, ou membro ativo da equipe responsável). A exceção vale até a resposta do cliente à pergunta 16 (`docs/referencia/perguntas-cliente.md`);
+  - **`os.codigos_obrigatorios` está ligada** e a OS não tem os três códigos;
+  - **`os.assinatura_no_aceite` está ligada:** não há quem assine, então o hotel não tem aceite automático. A configuração aceita a combinação, e a tela avisa com uma nota.
+- **Sem autor:**
+  - **Transição:** ação `aceitar_automatico`, com `usuario_id` nulo. O check da tabela amarra o usuário nulo a essa ação e só a ela.
+  - **Auditoria:** a ação `aceitar_automatico`, sem usuário, como os outros jobs.
+  - **Evento:** `os.aceita` com `automatico: true`, na mesma unit of work, para a comunicação (item 5 da 1c) e o Intelligence contarem a OS como aceita.
+  - **O que não se grava:** o custo informado, os códigos e a assinatura.
+- **O chamado** vai para o estado e a situação que teria no aceite manual, pela mesma regra do domínio.
+- **Privilégios do `hk_worker`** (migração 0046):
+  - UPDATE só em `estado`, `situacao_id`, `versao` e `atualizado_em` de `app.os` e `app.chamado`;
+  - INSERT em `app.os_transicao`;
+  - policies `worker_update` e `worker_insert` no tenant do job (`authz.tenant_sistema()`). A de inserção exige o usuário nulo;
+  - a policy não confere o estado: a transição é do domínio (regra 2). A versão conferida no UPDATE (ADR-029) evita sobrescrever quem mexeu ao mesmo tempo, e essa OS fica para a rodada seguinte.
+- **Revoga, no ADR-043,** o trecho "o worker não ganha UPDATE no chamado". Os prazos, a categoria e a prioridade seguem fora do alcance do worker.
+- **Cron:** na rota `/api/cron/sla`, depois do monitor, a cada 5 minutos (ADR-007). Cada tenant roda numa transação do `hk_worker`, com no máximo 200 OS por rodada.
+
+**Consequências:**
+- **Migração 0046** (`20261013210000_aceite_automatico.sql`):
+  - o `usuario_id` da transição passa a aceitar nulo, com o check novo;
+  - os GRANTs de coluna e as três policies;
+  - o pgTAP `038`, com os testes `025` e `037` ajustados ao privilégio novo. Os meta-testes não mudam: nenhum campo de escopo ganha UPDATE, e a transição segue só de inserção.
+- **No PR seguinte, fora da zona protegida e sem migração:**
+  - no domínio, a ação nova e a regra de quando aceitar;
+  - na aplicação, o caso de uso por tenant;
+  - no banco, a porta pelo `hk_worker` e os tipos com o `usuario_id` nulo;
+  - a tarefa na rota do cron, a linha "aceita automaticamente" na linha do tempo da OS, a nota na tela de configuração e o catálogo nos quatro idiomas.
+- **Limites:**
+  - **sem aviso antes do aceite** (por exemplo, "a OS será aceita amanhã") até a comunicação (item 5 da 1c);
+  - **sem custo:** a OS aceita automaticamente fica sem custo informado e baixa a cobertura do custo no glossário de métricas;
+  - **riscos aceitos:** o worker pode mudar o estado de qualquer OS e chamado do tenant do job, e a regra do quando fica só no domínio, como no ADR-041.

@@ -122,8 +122,10 @@ select ok(
   and not has_table_privilege('hk_worker', 'app.sla_alerta', 'DELETE'),
   'o hk_app só lê; o worker só lê e grava; ninguém altera nem apaga');
 select ok(
-  not has_any_column_privilege('hk_worker', 'app.chamado', 'UPDATE'),
-  'o worker não ganha UPDATE no chamado (M2)');
+  not has_column_privilege('hk_worker', 'app.chamado', 'prazo_atendimento', 'UPDATE')
+  and not has_column_privilege('hk_worker', 'app.chamado', 'prazo_solucao', 'UPDATE')
+  and not has_column_privilege('hk_worker', 'app.chamado', 'pausado_segundos', 'UPDATE'),
+  'o worker não altera os prazos do chamado (M2; o aceite automático da 0046 só muda estado e situação)');
 select is(
   (select pg_get_indexdef(i.indexrelid) from pg_index i
    where i.indexrelid = 'app.auditoria_tenant_em_idx'::regclass),
