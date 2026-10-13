@@ -383,3 +383,23 @@ Decisão do Cesar no chat ("Cesar aqui", 13/10/2026):
 - a 1c não edita mais o `glossario-metricas.md`;
 - os quatro pontos que a 1c tinha pedido ao Kaio (seção "Pedido ao agente do Kaio" acima) ficam como contribuição para o rascunho dele, e não como pendência da 1c;
 - o painel de indicadores (item 8 da ordem) espera o glossário aprovado.
+
+## Painel dos avisos de SLA e selo na ficha (M4, 13/10/2026)
+
+**Aviso de área compartilhada (chamado):** a 1c acrescenta o selo dos avisos na ficha do chamado no web (`chamados/[id]/tela.tsx`, sem tocar no `corretiva.tsx`), duas rotas de leitura e textos no catálogo. Branch `claude/1c-avisos-sla`, a partir da `main` com o #224. Fora da zona protegida e sem migração: lê a `app.sla_alerta` da 0044.
+- **Domínio** (`monitor-sla.ts`):
+  - o vencido só depois do prazo, como o "dentro do prazo" do glossário (a correção prometida na revisão do glossário);
+  - `avisosEmAberto`: no máximo um aviso por prazo, o mais forte. O vencido sai do próprio prazo, sem esperar o cron; o em risco, do aviso gravado para o prazo de agora, e o prazo refeito descarta os antigos. O atendimento conta até a primeira OS; a solução, até o serviço concluído;
+  - `podeVerAvisosDeSla`: a gestão do hotel (Admin do grupo, Gestor CSC e Gerente do hotel), os papéis da policy da `app.sla_alerta`. Fora disso, `avisos_sla_fora_do_escopo`.
+- **Aplicação:** `criarCasosDeUsoDeAvisosDeSla`, com `doHotel` (o painel, os vencidos primeiro e depois pelo prazo) e `doChamado` (o selo; vazio para quem não é da gestão, sem erro).
+- **Banco:** `criarPortaAvisosDeSla` (`packages/db/src/avisos-de-sla.ts`), só leitura com `withContext`: os chamados em curso com prazo e os avisos gravados.
+- **API:**
+  - `GET /api/v1/hoteis/{id}/avisos-sla`, o painel;
+  - `GET /api/v1/chamados/{id}/avisos-sla`, o selo;
+  - no OpenAPI; tipos e níveis conferidos com o domínio.
+- **Telas:**
+  - `/sla` no menu de operação ("Avisos de SLA"), com a escolha do hotel e a lista com o link para a ficha;
+  - na ficha, o selo no alto, relido depois de cada gravação;
+  - vermelho para o vencido e âmbar para o em risco, sempre com o texto.
+- **Catálogo:** o menu, o painel, o texto do aviso e o erro, nos quatro idiomas.
+- **Fica para a comunicação (item 5):** o e-mail e o push, que consomem o evento `chamado.sla_alerta`.

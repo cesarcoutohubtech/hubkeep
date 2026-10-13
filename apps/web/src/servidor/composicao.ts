@@ -16,6 +16,7 @@ import {
   type CasosDeUsoDeUhIndisponivel,
   type CasosDeUsoDeConsultas,
   type CasosDeUsoDeAuditoriaGeral,
+  type CasosDeUsoDeAvisosDeSla,
   type CasosDeUsoDeHistorico,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
@@ -40,6 +41,7 @@ import {
   criarCasosDeUsoDeUhIndisponivel,
   criarCasosDeUsoDeConsultas,
   criarCasosDeUsoDeAuditoriaGeral,
+  criarCasosDeUsoDeAvisosDeSla,
   criarCasosDeUsoDeHistorico,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
@@ -84,6 +86,7 @@ import {
   criarPortaDoJobDoIntelligence,
   criarPortaDoPainelDoIntelligence,
   criarPortaAuditoriaGeral,
+  criarPortaAvisosDeSla,
   criarPortaHistorico,
   criarPortaPrioridades,
   criarPortaSituacoes,
@@ -497,6 +500,17 @@ export const casosDeUsoDeAuditoriaGeral = memo<CasosDeUsoDeAuditoriaGeral>(async
     auditoria: criarPortaAuditoriaGeral(banco),
     historico: criarPortaHistorico(banco),
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
+/** Avisos de SLA em aberto (1c, ADR-043, M4), pelo hk_app: o painel do hotel e o selo da ficha. */
+export const casosDeUsoDeAvisosDeSla = memo<CasosDeUsoDeAvisosDeSla>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeAvisosDeSla({
+    avisos: criarPortaAvisosDeSla(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    prioridades: criarPortaPrioridades(banco),
     relogio: relogioDoSistema,
   });
 });

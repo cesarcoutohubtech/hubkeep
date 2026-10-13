@@ -23,11 +23,15 @@
 // I8: com a assinatura desenhada, o PNG vai antes ao Storage pela URL da
 // assinatura, e o aceite leva o caminho; a falha do envio aparece traduzida e
 // o aceite não sai.
+//
+// M4 (1c, ADR-043): no alto, o selo dos avisos de SLA em aberto, só para a
+// gestão do hotel.
 import { MensagemVazia, Nota, Painel } from '@hubkeep/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { HistoricoDoRegistro } from '../../../../cliente/HistoricoDoRegistro';
+import { AvisosDoChamado } from '../../../../cliente/avisos-sla';
 import { type Traco, enviarAssinatura, pngDaAssinatura } from '../../../../cliente/assinatura';
 import { useCodigosDoTenant } from '../../../../cliente/codigos-manutencao';
 import {
@@ -186,6 +190,8 @@ export function TelaDoChamado({
       ) : (
         <div className="hk-grade" data-colunas="2-1">
           <div className="hk-pilha">
+            {/* M4: o selo dos avisos de SLA, relido depois de cada gravação. */}
+            <AvisosDoChamado key={`${id}-${detalhe.chamado.versao}`} chamadoId={id} />
             <ChamadoEmDetalhe
               detalhe={detalhe}
               refs={refs}

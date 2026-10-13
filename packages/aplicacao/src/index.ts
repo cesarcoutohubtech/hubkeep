@@ -282,6 +282,9 @@ export type {
   LinhaComMudancas,
   PaginaDaAuditoria,
 } from './casos-de-uso/auditoria-geral';
+export type { ChamadoComAvisos, PortaAvisosDeSla } from './portas/avisos-de-sla';
+export { criarCasosDeUsoDeAvisosDeSla } from './casos-de-uso/avisos-de-sla';
+export type { CasosDeUsoDeAvisosDeSla, ChamadoNoPainelDeSla } from './casos-de-uso/avisos-de-sla';
 export type {
   CasosDeUsoDeHistorico,
   EventoDoHistorico,

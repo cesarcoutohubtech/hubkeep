@@ -275,3 +275,11 @@ export {
   LinhaDaAuditoriaGeralApi,
   RespostaDaAuditoriaGeral,
 } from './auditoria-geral';
+export {
+  AvisoDeSlaApi,
+  ChamadoNoPainelDeSlaApi,
+  NIVEIS_DO_AVISO_API,
+  RespostaDoPainelDeSla,
+  RespostaDosAvisosDoChamado,
+  TIPOS_DE_ALERTA_DE_SLA_API,
+} from './avisos-de-sla';
