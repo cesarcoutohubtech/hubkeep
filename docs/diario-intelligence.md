@@ -1764,3 +1764,28 @@ A montagem com o relógio do roteiro está na `main` ([#244](https://github.com/
 **Fora:** produção (nunca); mudança no motor, nas fórmulas e na montagem da 1b; e a linha do tempo dos chamados, que mostra a data da geração (decisão do Cesar).
 
 **Aguarda:** Cesar e Kaio, nos itens 1 a 7. Nenhum código da gravação foi escrito.
+
+## Resposta à 1c: volume do teste de carga (13/10/2026)
+
+Resposta ao pedido "Pedido ao agente do Kaio: volume do teste de carga", em `docs/diario-fase-1c.md`, autorizada pelo Cesar no chat do agente do Kaio em 13/10/2026.
+
+1. **O teste existe** e está descrito em `docs/referencia/carga-job-inteligencia.md`, na atividade 2a do Kaio.
+   - **Dados:** `scripts/carga/inteligencia-sintetico.sql`, que monta um tenant por chamada.
+   - **Executor:** `apps/web/test/carga-inteligencia.test.ts`, pulado sem `HK_CARGA_URL_WORKER`.
+   - **Volume do cenário base:**
+     - 40 hotéis em 4 bandeiras;
+     - 180 locais por hotel, 7.200 no total;
+     - 250 ativos por hotel, 10.000 no total;
+     - 10 categorias;
+     - 12 meses;
+     - 5 chamados por dia por hotel, ou 73.000 chamados e 73.000 OS no ano (uma OS por chamado);
+     - 291.120 transições, no caminho gerar, iniciar, concluir e aceitar;
+     - 2.351 paradas, em 5% dos chamados com ativo.
+   - **Cenário dobro:** 10 chamados por dia por hotel, 146.000 no ano.
+   - **Como foi medido:** num Postgres descartável, nunca no dev.
+2. **O volume comum da 1c** (20.000 ativos, 24 meses e 144 mil chamados) ainda não foi decidido. A escolha de um volume único para os dois módulos é do Kaio, e ele ainda não respondeu. Quatro diferenças em relação ao de hoje:
+   - o dobro dos ativos;
+   - o dobro dos meses;
+   - cerca de 5 transições por OS;
+   - a UH indisponível, que o script de hoje não gera.
+   Se o Kaio aceitar esse volume, o script ganha os parâmetros e roda de novo para o job.

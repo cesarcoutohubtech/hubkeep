@@ -11,7 +11,7 @@
 
 Os termos fechados da versão 2 continuam sem mudança de texto.
 
-**Decisões das divergências (13/10/2026, chat do agente do Kaio).** As seis (a a f) estão decididas, todas pela proposta: a a e a b pelo Cesar e pelo Kaio, a d e a e pelo Cesar, e a c e a f pelo Kaio. A versão 3 foi aprovada depois, no mesmo dia. Com ela, a conclusão do serviço no domínio e a preventiva atrasada, que eram propostas do Kaio, ficam fechadas. Os termos ligados a um ADR em proposta, como o prazo em risco e o prazo vencido (ADR-043), continuam esperando a aprovação do ADR, porque aprovar o glossário não aprova o ADR.
+**Decisões das divergências (13/10/2026, chat do agente do Kaio).** As seis (a a f) estão decididas, todas pela proposta: a a e a b pelo Cesar e pelo Kaio, a d e a e pelo Cesar, e a c e a f pelo Kaio. A versão 3 foi aprovada depois, no mesmo dia. Com ela, a conclusão do serviço no domínio e a preventiva atrasada, que eram propostas do Kaio, ficam fechadas. Os termos ligados a um ADR em proposta esperavam a aprovação do ADR, porque aprovar o glossário não aprova o ADR. O prazo em risco e o prazo vencido (ADR-043) foram fechados pelo Cesar em 13/10/2026, no chat do agente do Kaio, porque o ADR-043 já estava aprovado.
 
 **No código (13/10/2026).** As divergências b, c, d e f entraram no [#253](https://github.com/cesarcoutohubtech/hubkeep/pull/253) (PR 1), e a a, no [#255](https://github.com/cesarcoutohubtech/hubkeep/pull/255) (PR 2). O PR 3 acerta o texto deste arquivo e o do `docs/piloto/`. Cada mudança de cálculo é uma versão nova da fórmula, e nada do que já foi gravado foi recalculado (ADR-036).
 
@@ -43,8 +43,8 @@ Os termos fechados da versão 2 continuam sem mudança de texto.
 | **Prazo de solução** | O limite para a conclusão do serviço, calculado da mesma forma e empurrado pela pausa que para o relógio. | `app.chamado.prazo_solucao` | Núcleo | Fechado |
 | **Tempo pausado** | O tempo em que o relógio da solução ficou parado pelas pausas da OS com motivo da lista da política, na categoria com a pausa ligada. | `app.chamado.pausado_segundos` | Núcleo | Fechado |
 | **Dentro do prazo** | A conclusão do serviço até o prazo de solução, inclusive. | Domínio | Núcleo | Fechado |
-| **Prazo em risco** | O prazo ainda não passou, e o tempo de relógio que falta é no máximo o complemento do percentual da política `chamado.escalonamento` (padrão de 80%) sobre as horas da regra. O atendimento conta até a primeira OS; a solução, até a conclusão do serviço, e não conta com o relógio parado. | `avisosDeSla` (domínio, `monitor-sla.ts`) | Núcleo | Em proposta (Cesar; revisão da 1c, ADR-043) |
-| **Prazo vencido** | O prazo passou sem a OS gerada (atendimento) ou sem a conclusão do serviço (solução). No instante exato do prazo ainda não está vencido, como no "dentro do prazo"; o monitor passa a seguir isso no PR do M4. | `avisosDeSla` | Núcleo | Em proposta (Cesar; revisão da 1c, ADR-043) |
+| **Prazo em risco** | O prazo ainda não passou, e o tempo de relógio que falta é no máximo o complemento do percentual da política `chamado.escalonamento` (padrão de 80%) sobre as horas da regra. O atendimento conta até a primeira OS; a solução, até a conclusão do serviço, e não conta com o relógio parado. | `avisosDeSla` (domínio, `monitor-sla.ts`) | Núcleo | Fechado (ADR-043 aprovado pelo Cesar em 13/10/2026; fechado por ele no chat do agente do Kaio, 13/10/2026) |
+| **Prazo vencido** | O prazo passou sem a OS gerada (atendimento) ou sem a conclusão do serviço (solução). No instante exato do prazo ainda não está vencido, como no "dentro do prazo"; o monitor segue isso desde o M4. | `avisosDeSla` | Núcleo | Fechado (ADR-043 aprovado pelo Cesar em 13/10/2026; fechado por ele no chat do agente do Kaio, 13/10/2026) |
 
 ## Indicadores do painel da 1c
 
