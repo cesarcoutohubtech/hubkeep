@@ -13,13 +13,23 @@
 // porta do banco do worker, os registros de políticas e o relógio, e a rota
 // /api/cron/inteligencia o roda por tenant.
 //
+// O recálculo de um período (ADR-036, atividade 2c) chega como recalculoDoDia,
+// para o pnpm ops:recalcular-inteligencia; e a observabilidade do job
+// (atividade 2b), como observarJob: o log por tenant e por rodada e o
+// check-in do monitor no Sentry, que a rota /api/cron/inteligencia envolve.
+//
 // O painel (as telas do 1.0) chega como painel: a composição dá a porta do
 // banco com o hk_app, os módulos contratados, as atribuições e o relógio, e as
 // rotas /api/v1/inteligencia/... chamam os casos de uso com o contexto de quem
 // pede.
 import type { ExtensaoDeModulo } from '@hubkeep/dominio';
 import { EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE, type ResumoDoJob } from '@hubkeep/inteligencia';
-import { type DepsDoJobDoDia, criarJobDoDia } from './job';
+import { type DepsDoJobDoDia, criarJobDoDia, criarRecalculoDoDia } from './job';
+import {
+  type DepsDaObservacao,
+  type ObservacaoDoJob,
+  criarObservacaoDoJob,
+} from './observabilidade';
 import { type CasosDeUsoDoPainel, type DepsDoPainel, criarPainel } from './painel';
 
 export type { CasosDeUsoDoPainel, PedidoDeDecisaoDoPainel, PedidoDeListaDoPainel } from './painel';
@@ -29,6 +39,12 @@ export interface MontagemDoIntelligence {
   extensoesDePolitica: readonly ExtensaoDeModulo[];
   /** O job do dia de um tenant (hk_worker, uma transação por tenant). */
   jobDoDia(deps: DepsDoJobDoDia): (tenantId: string) => Promise<ResumoDoJob>;
+  /** O recálculo de um dia passado de um tenant (hk_worker), sem tocar nos insights. */
+  recalculoDoDia(
+    deps: Omit<DepsDoJobDoDia, 'relogio'>,
+  ): (tenantId: string, dia: string, disparadoPor: string) => Promise<ResumoDoJob>;
+  /** O log por tenant e por rodada e o check-in do monitor do job. */
+  observarJob(deps: DepsDaObservacao): ObservacaoDoJob;
   /** A leitura e a decisão do insight, com o hk_app e o contexto de quem pede. */
   painel(deps: DepsDoPainel): CasosDeUsoDoPainel;
 }
@@ -39,6 +55,8 @@ export function montarInteligencia(): MontagemDoIntelligence {
       { modulo: 'inteligencia', extensao: EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE },
     ],
     jobDoDia: criarJobDoDia,
+    recalculoDoDia: criarRecalculoDoDia,
+    observarJob: criarObservacaoDoJob,
     painel: criarPainel,
   };
 }
