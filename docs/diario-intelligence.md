@@ -1642,3 +1642,28 @@ O que achei no código:
   - a aprovação da proposta acima;
   - a montagem com relógio (#244, 1b), para a atividade 3.
 - **Próximo:** depois da aprovação, o PR 1 da proposta, começando pelo aviso de área compartilhada no diário.
+
+## PR 1 do código das divergências: aprovação e aviso de área compartilhada (13/10/2026)
+
+**Aprovações (chat do agente do Kaio, 13/10/2026):**
+- a divisão em três PRs e a ordem: "Kaio aqui. Sim, aprovo" e "Cesar aqui. Sim, aprovo";
+- o aceite automático (`aceitar_automatico`, M5 da 1c) conta como aceite no custo: "Kaio aqui. Sim".
+
+**Aviso de área compartilhada com a 1b e a 1c:** o PR 1 mexe em `packages/dominio`.
+- **Entram dois módulos novos:** a conclusão do serviço e o aceite da OS a partir das transições.
+- **Saem do Intelligence:** `conclusaoEReaberturas` passa a ser importada do domínio.
+- **O que não muda:** a OS, o chamado e as regras do núcleo.
+
+### O que o PR 1 faz
+
+- **Domínio** (`packages/dominio/src/servico-da-os.ts`, com testes):
+  - `conclusaoEReaberturas` mudou de pacote sem mudar o comportamento, e os casos de teste foram junto;
+  - `aceiteDaOs`, nova: o último aceite, do gestor ou automático, se depois dele a OS não foi reaberta nem cancelada.
+- **d:** `custoNaJanela` e `custoDisponivelNoTenant` passam às corretivas aceitas, e a `Corretiva` ganha `aceitaEm`.
+  - **Evidência:** a gravada passa a ter `aceitas` no lugar de `encerradas`.
+  - **Explicação:** a da versão 3 tem duas chaves novas no catálogo, nos quatro idiomas. A da versão 2, já gravada, segue com o texto das encerradas, e um teste confere isso.
+- **b:** `corretivasDosChamados` tira todo chamado cancelado.
+- **Versões:** reincidência 2, atenção 3 e sistêmico 3. Nada já gravado é recalculado (ADR-036).
+- **c:** no Intelligence, o rótulo vira "tempo parado do ativo", com uma casa decimal no motivo da atenção, nos quatro idiomas.
+- **f:** nenhuma tela usa "reincidência" fora do score. Também não há texto da taxa da regra do mesmo fornecedor; quando houver, o nome dele é "taxa de retorno do fornecedor".
+- **Não muda:** a efetividade (`efetividadeAntesDepois`) recebe os custos de quem chama, e nenhum chamador de produção a usa ainda. Fica para quando a tela do ativo ligar.

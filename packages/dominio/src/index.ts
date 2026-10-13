@@ -251,6 +251,8 @@ export {
   validarParada,
 } from './paradas';
 export type { Parada } from './paradas';
+export { aceiteDaOs, conclusaoEReaberturas } from './servico-da-os';
+export type { TransicaoDoServico } from './servico-da-os';
 export {
   ESTADOS_QUE_ACEITAM_UH_INDISPONIVEL,
   exigirChamadoQueAceitaUhIndisponivel,

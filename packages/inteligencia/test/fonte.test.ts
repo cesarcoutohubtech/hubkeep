@@ -65,11 +65,12 @@ describe('corretivasDosChamados', () => {
     ]);
   });
 
-  it('o chamado cancelado depois de ter OS continua corretiva', () => {
+  it('o chamado cancelado fica fora mesmo depois de ter OS (glossário, divergência b)', () => {
     const r = corretivasDosChamados([
       chamado({ id: 'c1', estado: 'cancelado', os: [os({ estado: 'cancelada' })] }),
+      chamado({ id: 'c2', estado: 'cancelado', os: [os({ estado: 'concluida' })] }),
     ]);
-    expect(r.map((c) => c.id)).toEqual(['c1']);
+    expect(r).toEqual([]);
   });
 
   it('com mais de uma OS, vale a que não foi cancelada', () => {

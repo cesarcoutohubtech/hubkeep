@@ -30,8 +30,8 @@ function scoresCheios(): [Score, Score] {
     reincidencia: r,
     horasParadas: 30.5,
     custo: {
-      ativo: { soma: 4_250.75, informadas: 3, encerradas: 4 },
-      tenant: { informadas: 30, encerradas: 40 },
+      ativo: { soma: 4_250.75, informadas: 3, aceitas: 4 },
+      tenant: { informadas: 30, aceitas: 40 },
     },
     impactoHospede: 50,
     preventivaAtrasada: true,
