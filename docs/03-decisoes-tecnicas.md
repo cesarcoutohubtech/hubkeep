@@ -900,6 +900,24 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Criticidade fixa de 1 a 5** (Cesar, 06/10/2026). O motor divide o nível por 5. A política `ativo.criticidade` do núcleo só troca o nome de cada nível.
 - **O resultado guarda a configuração usada:** mudar o peso não muda o score já gravado.
 
+### Adendo de 12/10/2026: a visibilidade das telas no piloto
+
+**Status:** aprovado por Cesar em 12/10/2026 ("Cesar aqui", na sessão do agente do Intelligence) e por Kaio em 13/10/2026 ("Eu kaio, aprovo o adendo", na mesma sessão). Aprovado pelos dois.
+
+**Contexto:** no piloto, o módulo fica vigente desde o primeiro dia, para o job diário acumular métrica e insight; as telas só aparecem depois, quando o histórico já sustenta o que elas mostram.
+
+**Decisão:**
+- **Uma sétima chave,** `inteligencia.visibilidade_telas`, com `{ aPartirDe, diasAposAtivacao, papeis }`. O padrão é `{ aPartirDe: null, diasAposAtivacao: 60, papeis: ['admin_grupo', 'gestor_csc'] }`.
+  - **`aPartirDe`** (AAAA-MM-DD ou nulo): preenchido, as telas abrem nesse dia. É a forma de antecipar ou adiar.
+  - **`diasAposAtivacao`** (inteiro de 0 a 365): sem `aPartirDe`, as telas abrem tantos dias depois do dia do início do **primeiro** contrato do módulo no tenant, em `licenca.modulo`, e não do contrato vigente (decisão 3 do Cesar).
+  - **`papeis`** (ao menos um, sem repetir, dentre os que decidem insight): só eles veem as telas. O Gerente do hotel fica fora no padrão e entra só por configuração (decisão 1).
+- **O corte do dia** é 00:00 no fuso do grupo, com Brasília como padrão (decisão 4). Enquanto o grupo não tiver fuso gravado (a `app.tenant` não tem a coluna), vale Brasília; o pedido ao núcleo está no diário do Intelligence.
+- **Só no nível do grupo:** a leitura ignora valor gravado no hotel ou na bandeira. O pedido para o registro recusar esses níveis (`escopos: ['grupo']` na `ExtensaoDePolitica`) está no diário do Intelligence.
+- **Antes da abertura, ou para papel fora da política,** o painel responde como sem o módulo: `404 inteligencia_indisponivel` nas rotas, nas telas e no item do menu. O job, a métrica e o insight não mudam; o insight detectado espera, sem responsável. O Intelligence não manda notificação.
+- **O Admin do grupo também não vê o painel antes da abertura** (decisão 2). Ele vê a data, de onde ela vem e os papéis em `GET /api/v1/inteligencia/abertura` e na página `/inteligencia/abertura`, também antes da abertura, e muda a política por `PUT /api/v1/politicas`, no escopo do grupo.
+- **Quem tem também um papel fora da política** decide só pelos papéis dela. A leitura continua a da RLS da `app.insight`.
+- **Sem mudança no banco:** quem vê a tela é permissão de ação, na aplicação (regra 2). Nenhuma migração, policy ou função.
+
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar foi aceita por Kaio em 07/10/2026 e está aplicada no motor.

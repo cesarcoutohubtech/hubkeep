@@ -49,6 +49,34 @@ export const RespostaDoResumoDoIntelligence = z
   })
   .meta({ id: 'RespostaDoResumoDoIntelligence' });
 
+/** Os papéis que podem ver as telas: os que decidem insight (PAPEIS_DO_INSIGHT). */
+export const PAPEIS_QUE_VEEM_AS_TELAS_API = ['admin_grupo', 'gestor_csc', 'gerente_hotel'] as const;
+
+/**
+ * Quando as telas abrem (inteligencia.visibilidade_telas; adendo ao ADR-035 de
+ * 12/10/2026), para o Admin do grupo, também antes da abertura.
+ */
+export const RespostaDaAberturaDoIntelligence = z
+  .object({
+    config: z.object({
+      aPartirDe: z.iso.date().nullable(),
+      diasAposAtivacao: z.int().min(0),
+      papeis: z.array(z.enum(PAPEIS_QUE_VEEM_AS_TELAS_API)).min(1),
+    }),
+    /** Nulo: sem data e sem contrato do módulo, não há de onde contar. */
+    abertura: z
+      .object({
+        em: Data,
+        /** O dia da abertura no fuso do grupo. */
+        dia: z.iso.date(),
+        origem: z.enum(['data', 'ativacao']),
+        primeiraAtivacao: Data.nullable(),
+      })
+      .nullable(),
+    abertas: z.boolean(),
+  })
+  .meta({ id: 'RespostaDaAberturaDoIntelligence' });
+
 export const ConsultaDeInsights = z
   .object({
     /** Os abertos, sem o campo. */

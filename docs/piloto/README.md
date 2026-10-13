@@ -14,7 +14,7 @@ Material de apoio ao piloto da Slaviero, escrito sobre o que existe na `main` em
 - Foto "antes" ou "depois" na OS (também na OS Atribuída), assinatura no aceite e as políticas `os.foto_depois_obrigatoria` e `os.assinatura_no_aceite` (I8). O banco e a API estão no #193, ainda aberto; as telas vêm na I8b. O manual será atualizado quando as telas entrarem.
 
 **[a confirmar]**
-- **HubKeep Intelligence no piloto.** O módulo opcional só aparece para o grupo que o contratou, e a contratação não tem tela: até o backoffice existir, é gravada pelo script de operação `pnpm ops:modulo`, que hoje só roda no dev. Se o piloto contrata o módulo, e em que data, decide o Cesar. Sem o módulo, nada do Intelligence aparece para o usuário.
+- **HubKeep Intelligence no piloto.** O módulo opcional só aparece para o grupo que o contratou, e a contratação não tem tela: até o backoffice existir, é gravada pelo script de operação `pnpm ops:modulo`, que hoje só roda no dev. Se o piloto contrata o módulo, e em que data, decide o Cesar. Sem o módulo, nada do Intelligence aparece para o usuário. Com o módulo, o job calcula desde o primeiro dia, mas as telas só abrem na data da política `inteligencia.visibilidade_telas`: por padrão, 60 dias depois da primeira ativação, e só para o Admin do grupo e o Gestor CSC (decisão do Cesar de 12/10/2026). O Admin vê e muda a data em **HubKeep Intelligence → Abertura das telas**.
 
 **[ainda não existe]**
 - Importação de ativos por planilha (M2), QR em lote e etiqueta de impressão (M3), modelos por categoria (M1), aprovação de ativos cadastrados pelo celular (M4).
@@ -41,6 +41,7 @@ Cada entrega que muda as telas atualiza este material. As marcas **[vai mudar na
 | I6 | #173, #174 | **Códigos de manutenção** (falha, causa e solução): cadastro pelo Admin, sugestão do técnico na OS, os três campos no aceite e a política "Códigos obrigatórios no aceite" (desligada por padrão). |
 | I7 | #175, #176 | Módulos contratados do grupo (`licenca.modulo`), sem tela. Sem o módulo, as políticas do Intelligence não aparecem. |
 | Intelligence | #182 a #194 | Item **HubKeep Intelligence** no menu, no grupo "Módulo opcional", só com o módulo contratado e para quem decide insight (Admin do grupo, Gestor CSC e Gerente do hotel): lista de insights, página do insight com "Por que estou vendo isso?" e a decisão, e detalhe do ativo. O job diário roda às 03:00 de Brasília. |
+| Intelligence | `int-visibilidade-telas` | As telas só abrem na data da política `inteligencia.visibilidade_telas` (padrão: 60 dias depois da primeira ativação do módulo, à meia-noite de Brasília) e só para os papéis dela (padrão: Admin do grupo e Gestor CSC; o Gerente entra só por configuração). Antes, o item do menu só aparece para o Admin do grupo e leva à página **Abertura das telas**, onde ele vê a data e a muda. |
 
 **O kit de teste ainda não tem dados da I4** (UH indisponível, custo, fornecedor na OS): os exercícios novos do roteiro usam o que a turma cria na hora.
 

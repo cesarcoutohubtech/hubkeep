@@ -1193,6 +1193,53 @@ Decisões do Cesar de 12/10/2026, no chat do agente do Intelligence ("Cesar aqui
 - **A resposta da rota** soma só os números de cada tenant, então o `semModulo` não aparece nela; a primeira rodada só se explicou pelo kit. Fica registrado, sem mudança neste PR.
 - **Telas no navegador:** o detalhe do ativo já tem métrica para conferir; a página do insight só terá dados quando algum insight abrir no dev.
 
+## `int-visibilidade-telas`: as telas só a partir da abertura (12/10/2026)
+
+Primeira das cinco atividades pedidas pelo Kaio em 12/10/2026, nesta ordem: (1) visibilidade das telas no piloto; (2) o job na escala da rede (teste de carga, observabilidade e recálculo de um período); (3) histórico de demonstração; (4) glossário único de métricas; (5) o `docs/piloto/` atualizado a cada entrega. O agente para a cada proposta de desenho e a cada PR de zona protegida.
+
+**Decisão do Cesar** ("Cesar aqui", 12/10/2026, nesta sessão do agente do Intelligence, operada com a conta do Kaio). Texto que ele mandou:
+> "Eu, Cesar, aprovo a proposta inteligencia.visibilidade_telas e o adendo ao ADR-035, com estas decisões:
+> 1. Papéis na política, padrão Admin do grupo e Gestor CSC; o Gerente do hotel pode ser incluído depois só por configuração.
+> 2. O Admin do grupo também não vê as telas antes da data; ele vê a data de abertura na configuração e pode antecipá-la pela política.
+> 3. Os 60 dias contam a partir do início do PRIMEIRO contrato do módulo no tenant, e não do contrato vigente. O aPartirDe continua sendo a forma de ajustar.
+> 4. O corte do dia usa o fuso configurado do grupo, com Brasília como padrão, para não depender da célula."
+- **Aprovação do Kaio** ao adendo ao ADR-035, em 13/10/2026, nesta sessão: "Eu kaio, aprovo o adendo. Siga". Com as duas, o status no `docs/03` passou a "aprovado pelos dois".
+- **Duas lacunas, levantadas pelo agente antes de agir; o Cesar respondeu "Prossiga" e o agente seguiu as próprias recomendações:**
+  - o grupo não tem fuso gravado (`app.tenant` não tem a coluna `fuso`): vale Brasília até o núcleo criar a coluna (pedido abaixo);
+  - o adendo está no `docs/03`, que é zona protegida (`.github/workflows/zona-protegida.yml`): um PR só, de zona protegida, com o código e o adendo.
+
+**Pedidos ao núcleo** (registrados aqui, no diário de quem pede; o Cesar avisa o agente do núcleo):
+1. **`escopos` na `ExtensaoDePolitica`** (`packages/dominio/src/politicas.ts`): uma lista opcional dos níveis em que a chave pode ser gravada, por exemplo `escopos: ['grupo']`, e o `gravarPolitica` recusando os outros níveis com código. Hoje o registro aceita `inteligencia.visibilidade_telas` gravada no hotel; o motor só ignora esse valor na leitura.
+2. **Fuso do grupo:** uma coluna `fuso` na `app.tenant`, com padrão `America/Sao_Paulo`, validada na aplicação como a do hotel (ADR-005), e a leitura na `PortaConfiguracao`. É migração de tabela do núcleo e zona protegida. Quando existir, só a ligação do painel no web muda (`fuso` em `apps/web/src/servidor/modulos/inteligencia/painel.ts`).
+
+**O que o PR faz.**
+- **Motor (`packages/inteligencia/src/visibilidade.ts`):**
+  - a chave `inteligencia.visibilidade_telas` (a sétima do ADR-035), com o formato `{ aPartirDe, diasAposAtivacao, papeis }` e o padrão `{ null, 60, ['admin_grupo', 'gestor_csc'] }`;
+  - `aberturaDasTelas`: a data, ou o dia do início do primeiro contrato do módulo mais os dias, às 00:00 no fuso; o dia da ativação também é o do fuso;
+  - `diaNoFuso` e `inicioDoDiaNoFuso`, só com `Intl`, sem pacote novo;
+  - `atribuicoesQueVeem` e `telasAbertas`.
+- **Painel (`painel.ts`):**
+  - o portão `exigirPainel` passa a exigir a abertura e um papel da política; quem não passa recebe o mesmo 404 `inteligencia_indisponivel` de antes, nas rotas, nas telas e no item do menu;
+  - quem tem também um papel fora da política decide só pelos papéis dela; a leitura continua a da RLS;
+  - `aberturaDoPainel`: a data, a origem, a configuração efetiva e se já abriu, só para o Admin do grupo com o módulo vigente, também antes da abertura.
+- **Web:**
+  - a ligação lê a política só no nível do grupo, pela `PortaConfiguracao`, e passa Brasília como fuso;
+  - `GET /api/v1/inteligencia/abertura`, com o contrato `RespostaDaAberturaDoIntelligence` e a entrada no OpenAPI;
+  - a página `/inteligencia/abertura`, para o Admin: a data, de onde vem, quem vê, e o formulário que grava a política no grupo por `PUT /api/v1/politicas` (e "Voltar ao padrão");
+  - a moldura: com o resumo em 404 e a abertura em 200 (o Admin antes da abertura), o item aparece sem contagem e leva à página da abertura; a lista de insights ganha o link para o Admin;
+  - 17 chaves novas nos quatro idiomas.
+- **Testes:** o formato da chave, o corte do dia em Brasília e num fuso com horário de verão, o primeiro contrato contra o vigente, a data antes e depois, o portão por papel e por data no motor, a política do hotel ignorada e o contrato da API no web, e a página da abertura nos quatro idiomas e no pseudo-idioma.
+- **Docs:** o adendo ao ADR-035 no `docs/03`; `docs/piloto/` (README, manual por papel e roteiro de treinamento).
+- **Sem banco:** nenhuma migração, policy ou função.
+
+**Limites conhecidos:**
+- O resumo do menu conta pela RLS. Quem tem um papel fora da política, além de um dentro dela, pode ver na contagem e na lista algum insight que só o outro papel lê; ele não o decide.
+- No dev, o Grupo Demonstração do kit tem o módulo desde 10/10/2026. Sem política gravada, as telas lá fecham até 09/12/2026. Para conferir as telas no dev, o Admin do kit grava uma data na página da abertura.
+
+**Não conferido no navegador:** as telas foram testadas renderizadas no servidor, sem rodar o app.
+
+**PR:** não aberto em 12/10/2026, porque o #203 (PV1 do núcleo, zona protegida) estava aberto, e depois o #206 e o #209. Aberto em 13/10/2026, quando o Cesar avisou que a fila de zona protegida estava livre ("Cesar aqui", 13/10/2026), com a `main` mesclada na branch.
+
 ## `int-carga-job`: o job diário na escala da rede, os números (13/10/2026)
 
 Atividade 2a do Kaio de 12/10/2026, depois do `int-visibilidade-telas`, que espera o merge do #203 para virar PR. O relatório completo, com o método e as tabelas, está em `docs/referencia/carga-job-inteligencia.md`.
