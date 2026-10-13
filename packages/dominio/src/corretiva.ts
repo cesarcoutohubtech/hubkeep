@@ -46,6 +46,8 @@ export const ACOES_DA_OS = [
   'retomar',
   'concluir',
   'aceitar',
+  /** Só o worker, sem autor (1c, M5; ADR-044): nenhum papel faz esta ação. */
+  'aceitar_automatico',
   'reabrir',
   'cancelar',
 ] as const;
@@ -155,6 +157,13 @@ export const TRANSICOES_DA_OS: { [A in AcaoDaOs]: TransicaoDaOs } = {
     de: ['concluida'],
     para: 'aceita',
     quem: ['aceite'],
+    exigeMotivo: false,
+    chamado: { de: ['aguardando_aceite'], para: 'concluido' },
+  },
+  aceitar_automatico: {
+    de: ['concluida'],
+    para: 'aceita',
+    quem: [],
     exigeMotivo: false,
     chamado: { de: ['aguardando_aceite'], para: 'concluido' },
   },
@@ -340,6 +349,18 @@ export function podeTriar(
 const ehResponsavel = (ator: AtorDaCorretiva, r: Responsavel | null): boolean =>
   r !== null &&
   (r.tipo === 'tecnico' ? r.usuarioId === ator.usuarioId : ator.equipes.includes(r.equipeId));
+
+/** Quem abriu o chamado executa a OS: é o Técnico responsável ou membro ativo da equipe responsável. */
+export function quemAbriuExecuta(
+  abertoPor: string,
+  equipesDeQuemAbriu: readonly string[],
+  responsavel: Responsavel,
+): boolean {
+  return ehResponsavel(
+    { usuarioId: abertoPor, atribuicoes: [], equipes: equipesDeQuemAbriu },
+    responsavel,
+  );
+}
 
 /**
  * Quem abriu executa a OS e nenhum outro Gerente, vigente, cobre o hotel: o

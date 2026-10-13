@@ -534,13 +534,40 @@ Cesar, no chat do agente da 1c: "Aprovo o ADR-044. Atualize o status." O status 
 
 **A `main` ficou vermelha.** O #231 do Dependabot foi mergeado (`bca63c1`) e subiu o TypeScript para a 7.0.2. O `typescript-eslint` 8.71 não suporta a 7.0, e o `pnpm lint` falha na `main`. A correção é o #236, fora da zona protegida: o TypeScript volta a `~6.0.3`, com o lockfile regenerado. Ela entra antes de qualquer outro merge. Até lá, o lint deste PR também falha, pelo mesmo motivo. Para o Dependabot não propor o TypeScript 7 de novo, falta um `ignore` no `.github/dependabot.yml`, que é zona protegida.
 
+### Aceite automático: o código, pronto na branch (fora da zona protegida)
+
+Na branch `claude/1c-aceite-automatico-m5`, feita a partir da `main` depois do merge do #237 (a 0046), sem empilhar. O PR abriu depois do `db push` da 0046.
+- **Domínio:**
+  - a ação `aceitar_automatico` na máquina da OS, sem papel que a faça, com o mesmo reflexo do aceite no chamado (aguardando aceite → concluído);
+  - `decidirAceiteAutomatico`, com os motivos de não aceitar: desligado, fora do estado, antes do prazo, quem abriu e executa, faltam códigos, assinatura no aceite;
+  - `aceiteAutomaticoEm` (N vezes 24 horas) e `quemAbriuExecuta`.
+- **Aplicação:** a porta e o caso de uso por tenant, com as três políticas por hotel e no máximo 200 aceites por rodada. A leitura não tem limite, para a OS que nunca é aceita não tomar a vez das outras.
+- **Banco:**
+  - a sessão do `hk_worker` lê as OS corretivas concluídas, com a última conclusão e as equipes ativas de quem abriu;
+  - o aceite trava a OS e o chamado na versão lida (`for update`) e grava a OS, a transição sem usuário, o reflexo no chamado, a auditoria e o evento `os.aceita` com `automatico: true`.
+- **Web:**
+  - a rota `/api/cron/sla` roda o aceite depois do monitor, numa transação própria;
+  - a linha do tempo mostra "OS aceita automaticamente", sem autor;
+  - a configuração mostra uma nota com as três exceções.
+- **Catálogo:** a nota e a linha do tempo, nos quatro idiomas.
+- **Contrato:** a ação nova em `ACOES_DA_OS_API`. O teste de valores canônicos confere a ação do check da 0046 contra o domínio.
+- **Verificação:** no local, lint, typecheck e testes passaram. Só na CI: `packages/db/test/aceite-automatico.test.ts` (aceite, transição, auditoria, evento, as exceções e o outro tenant) e o pgTAP `038`.
+
+### Pedido ao agente do Kaio: o tempo do teste do histórico de demonstração (13/10/2026)
+
+O teste `cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum` (`apps/web/test/demonstracao/historico-inteligencia.test.ts`) passou do limite padrão de 5 segundos do Vitest duas vezes:
+- na CI do #237 (5,5 s), que passou depois de rodar o job de novo;
+- no `pnpm test` local da branch do código do M5 (8,0 s), com os pacotes rodando em paralelo. Sozinho, o arquivo passa em 3,8 s.
+
+O teste é do Intelligence e não muda com a 1c. Pedido: um `timeout` explícito nesse teste, ou um roteiro menor, para o tempo não depender da carga da máquina. A 1c não mexe no arquivo.
+
+**Atendido** no #241, a pedido do Cesar no chat do agente do Kaio: um limite próprio de 20 s nos dois testes do roteiro (`docs/diario-intelligence.md`). Nada mais a pedir.
+
 ### Ponto de retomada (13/10/2026, M5)
-- **`main`:** verde de novo com o #236 (TypeScript de volta à 6.0). Depois dele entrou o #232 (painel dos avisos de SLA, M4). Já tinham entrado o #229, o #230 e o #233.
-- **PRs da 1c:**
-  - #237: zona protegida, a 0046 e o ADR-044 (aprovado), com a `main` juntada depois do #232; esperando o merge do Cesar e o `db push`.
-- **Fora da 1c:** o #238, do agente do Kaio, faz a mesma correção do #236 e pode ser fechado.
-- **Não enviado como PR:** `claude/1c-aceite-automatico-codigo`, o código do M5. Abre depois do merge da 0046 e do `db push`, com a branch refeita a partir da `main`.
+- **`main`:** verde, com o #236 (TypeScript de volta à 6.0), o #232 (M4), o #234, o #235, o #238, o #237 (a 0046 e o ADR-044), o #239 (PV3a da 1b), o #240 e o #241.
+- **Dev:** com a 0046. O Cesar fez o `db push` e avisou no chat da 1c em 13/10/2026.
+- **PRs da 1c:** o do código do M5 (`claude/1c-aceite-automatico-m5`), fora da zona protegida, esperando o merge do Cesar. A `claude/1c-aceite-automatico-codigo`, que partia da branch da 0046, fica abandonada.
 - **Esperando:**
-  - o Cesar: o merge do #237 e o `db push` da 0046;
-  - o agente do Kaio: a resposta à revisão do glossário (o #230 já está na `main`).
+  - o Cesar: o merge do PR do código do M5;
+  - as decisões das divergências do glossário e as aprovações (Cesar e Kaio); o agente do Kaio já concordou com a revisão da 1c (#235).
 - **Próxima tarefa:** as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.
