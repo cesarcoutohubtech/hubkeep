@@ -1426,3 +1426,19 @@ O rascunho da versão 3 está no `docs/referencia/glossario-metricas.md`. Peço 
   - a aprovação final do Cesar e, nos termos do Intelligence, a do Kaio;
   - da atividade 3, a montagem da 1b e a conferência do Kaio.
 - **Próximo:** depois da aprovação, o PR de código que leva a conclusão do serviço e o custo informado para o domínio. Antes, a atividade 5 (`docs/piloto/`).
+
+## Atividade 5: `docs/piloto/` com as entregas até o #223 (13/10/2026)
+
+Quinta atividade do Kaio (12/10/2026). Proposta de desenho levada ao Cesar e aprovada em 13/10/2026 ("Cesar aqui. Sim, pode seguir com opção A"): um PR só de docs, a partir da `main`, na branch `claude/int-piloto-1b-1c`, separado do PR do glossário (#225), que espera a revisão da 1c.
+
+- **README:** tabela da 1b estendida (I8, provisionamento e kit por turma, edificação no PWA, responsáveis só Técnicos, PV1, PV2) e tabela nova "O que a 1c já entregou" (nível bandeira, auditoria geral, prazos de SLA, motivo da pausa), porque o piloto só começa depois da 1c. Listas "[vai mudar na 1b]" e "[ainda não existe]" limpas; pergunta 10 respondida pelo #196.
+- **Manual, roteiro e guia:** checklist (Admin grava os modelos, quem tria aplica, o técnico responde no PWA), foto com momento, assinatura no aceite, as três políticas novas, nível bandeira, auditoria geral com CSV, motivo da pausa, prazos de SLA só em "Ver histórico" e na auditoria, provisionamento por script. Exercícios 16 a 19 novos no roteiro; o 4 mudou, porque a Solicitante não aparece mais na lista de responsáveis (#201).
+- Conferido pelo código e pelo catálogo pt-BR, sem rodar o app.
+- **Acréscimo até o #228** (decisão do Cesar, 13/10/2026, neste chat: "Cesar aqui. Pode incluir no mesmo PR"): telas dos planos preventivos (#222), monitor de SLA (#224), feriados do hotel (#226) e prazos na ficha do chamado (#227). Exercícios 20 (plano preventivo) e 21 (feriado e prazos na ficha) novos no roteiro; a decisão de quais planos o piloto começa fica "[a definir]" no guia.
+
+### Ponto de retomada (13/10/2026, atividade 5)
+
+- **`main`:** no #228, com o #225 (glossário v3 em rascunho) já mergeado; a `main` foi trazida para esta branch, com as duas seções deste diário mantidas. **PR do Intelligence aberto:** o #229, desta atividade. O texto do `docs/piloto/` vai até o #228.
+- **Espera o Cesar:** o merge dos dois PRs; as decisões do piloto sobre "Foto de depois na conclusão", "Assinatura no aceite", "Checklist completo na conclusão", a política de SLA padrão e quais planos preventivos o piloto começa.
+- **Pendências de antes:** as da atividade 4 (revisão da 1c, divergências a–f, aprovações) e da atividade 3 (montagem da 1b com relógio controlável e a conferência do Kaio).
+- **Próximo:** atualizar o `docs/piloto/` de novo a cada entrega da 1b (PV2 com telas, PV3, M1 a M4); depois da aprovação do glossário, o PR de código da conclusão do serviço e do custo informado no domínio.

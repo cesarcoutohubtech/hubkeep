@@ -462,3 +462,12 @@ O resto da PV2 (ADR-041), fora da zona protegida, na branch `claude/1b-pv2b`, qu
 
 - **Fila de zona protegida:** o #212 do Kaio, a migração 0044 da 1c (monitor de SLA) e a PV2 ([#220](https://github.com/cesarcoutohubtech/hubkeep/pull/220)) já estão na `main`. A montagem com o relógio do roteiro é a próxima da 1b, se o Cesar aprovar a proposta e não decidir outra ordem. Ela continua esperando as três decisões da seção "Pedidos do Intelligence (atividade 3)".
 - **Erro meu:** depois do merge do #218, fiz push de um commit na branch `claude/adm-relogio-do-roteiro`, o que recriou a branch no GitHub. Quebrei a regra "Antes do push, confirmar que o PR da branch está aberto". O commit só atualizava o parágrafo da fila, e o conteúdo dele está neste item. A branch recriada pode ser apagada pelo Cesar; o agente não tem permissão para apagar branch remota.
+
+## Ponto de retomada (13/10/2026, fim da PV2b)
+
+- **`main`:** f5be50e. A PV2b entrou com o [#222](https://github.com/cesarcoutohubtech/hubkeep/pull/222): domínio, casos de uso, API e telas dos planos preventivos. Os cinco checks passaram no head 3d51726. Antes disso, o pgTAP tinha caído num teste meu, que dava ao Implantador um papel sem validade (a constraint `implantador_por_hotel_com_validade` recusa).
+- **Dev:** o Cesar fez o `db push` da 0045 (`app.plano_preventivo`) ("Cesar aqui", 13/10/2026). A tela de preventivas passa a funcionar no dev.
+- **Branch recriada:** o Cesar apagou a `claude/adm-relogio-do-roteiro` (o erro de push da seção anterior).
+- **PRs abertos da 1b:** só o deste ponto de retomada. Nenhum trabalho sem enviar.
+- **Esperando o Cesar:** as três decisões da montagem com o relógio do roteiro (seção "Pedidos do Intelligence (atividade 3)"); as três decisões da proposta do "conferir dev".
+- **Próxima tarefa (PV3, depois do sinal do Cesar):** a geração da OS preventiva pelo worker, uma vez por dia (ADR-005), a rota de cron de volta ao `vercel.json`, o kit de teste com um plano e o roteiro no `docs/10`. A PV3 precisa de migração (`app.os.chamado_id` deixa de ser `not null` e passa a exigir o chamado ou o plano; `docs/12`, "Origem da OS"), então tem uma parte de zona protegida, que entra na fila depois da montagem com o relógio, se o Cesar não decidir outra ordem. Primeiro passo: ler a PV3 no `docs/12-plano-fase-1b.md` e na `docs/referencia/propostas-desenho-pv-implantacao.md` e separar o que é zona protegida do que não é.
