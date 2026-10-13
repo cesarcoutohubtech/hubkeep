@@ -140,7 +140,7 @@ describe('mesmo modelo (versão 2: mínimos da política e taxa contra a base)',
     );
 
   it('o padrão é o aprovado: 3 hotéis, 6 chamados em 90 dias, 5 ativos, dobro da base e mínimo 0,3', () => {
-    expect(VERSAO_SISTEMICO).toBe(2);
+    expect(VERSAO_SISTEMICO).toBe(3);
     expect(PADRAO_SISTEMICO.mesmoModelo).toEqual({
       ativa: true,
       minHoteis: 3,
@@ -158,7 +158,7 @@ describe('mesmo modelo (versão 2: mínimos da política e taxa contra a base)',
     expect(sinais).toHaveLength(1);
     expect(sinais[0]).toMatchObject({
       situacao: 'possivel',
-      versao: 2,
+      versao: 3,
       chave: { categoriaId: 'hvac', modelo: 'carrier|xpower 12' },
       evidencia: {
         quantidade: 6,

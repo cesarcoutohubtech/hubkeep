@@ -8,6 +8,8 @@ import {
   type EstadoDaOs,
   type ExecutadoPor,
   type Parada,
+  aceiteDaOs,
+  conclusaoEReaberturas,
   tempoParadoTotal,
 } from '@hubkeep/dominio';
 import { DIA_MS, HORA_MS } from './score';
@@ -30,6 +32,11 @@ export interface Corretiva {
   concluidaEm: Date | null;
   /** Vezes que a OS foi reaberta até a data do cálculo (`conclusaoEReaberturas`). */
   reaberturas: number;
+  /**
+   * Aceite da OS, pelo gestor ou automático; null sem aceite (`aceiteDaOs`).
+   * O custo informado é gravado no aceite, então o custo conta por ele.
+   */
+  aceitaEm: Date | null;
   /**
    * Código de falha (`app.os.codigo_falha_id`, I6, migração 0036): o id de um
    * código de `app.codigo_manutencao` com tipo `falha`. null sem dado (a OS
@@ -137,29 +144,11 @@ export interface TransicaoDaOs {
 }
 
 /**
- * A conclusão e as reaberturas da OS como estavam em `agora`, a partir das
- * transições (decisão do Cesar de 06/10/2026: o job lê as transições, sem
- * abrir a auditoria ao worker). Só contam as transições até `agora`, então o
- * recálculo de um dia passado vê a OS como ela estava naquele dia.
- * - `concluidaEm`: a última conclusão, se depois dela a OS não foi reaberta
- *   nem cancelada; null senão. O aceite não muda a conclusão.
- * - `reaberturas`: as reaberturas até `agora`.
+ * A conclusão do serviço e as reaberturas da OS, a partir das transições. Moram
+ * no domínio desde o glossário de métricas versão 3 (13/10/2026), junto com o
+ * aceite (`aceiteDaOs`), para o núcleo e o Intelligence contarem igual.
  */
-export function conclusaoEReaberturas(
-  transicoes: readonly TransicaoDaOs[],
-  agora: Date,
-): Pick<Corretiva, 'concluidaEm' | 'reaberturas'> {
-  let concluidaEm: Date | null = null;
-  let reaberturas = 0;
-  for (const t of [...transicoes]
-    .filter((t) => t.quando.getTime() <= agora.getTime())
-    .sort((a, b) => a.quando.getTime() - b.quando.getTime())) {
-    if (t.acao === 'concluir') concluidaEm = t.quando;
-    else if (t.acao === 'reabrir' || t.acao === 'cancelar') concluidaEm = null;
-    if (t.acao === 'reabrir') reaberturas += 1;
-  }
-  return { concluidaEm, reaberturas };
-}
+export { aceiteDaOs, conclusaoEReaberturas };
 
 export const ordenarPorAbertura = <T extends { abertaEm: Date }>(xs: readonly T[]): T[] =>
   [...xs].sort((a, b) => a.abertaEm.getTime() - b.abertaEm.getTime());
@@ -188,20 +177,21 @@ export const fornecedorDaOs = (
   c: Pick<Corretiva, 'executadoPor' | 'fornecedorId'>,
 ): string | null => (c.executadoPor === 'fornecedor' ? (c.fornecedorId ?? null) : null);
 
-/** O custo informado das corretivas encerradas (concluídas) numa janela. */
+/** O custo informado das corretivas aceitas numa janela. */
 export interface CustoNaJanela {
   /** Soma do custo das corretivas que têm o dado; 0 quando nenhuma tem. */
   soma: number;
-  /** Corretivas encerradas na janela com o custo preenchido. */
+  /** Corretivas aceitas na janela com o custo preenchido. */
   informadas: number;
-  /** Corretivas encerradas na janela. */
-  encerradas: number;
+  /** Corretivas aceitas na janela. */
+  aceitas: number;
 }
 
 /**
- * O custo informado das corretivas encerradas (concluídas) na janela. O custo
- * vazio (null, ou a OS sem a coluna) não conta como zero: entra em
- * `encerradas` e fica fora de `informadas` e da soma.
+ * O custo informado das corretivas aceitas na janela (glossário de métricas,
+ * divergência d: o custo é informado no aceite, e não na conclusão). O custo
+ * vazio (null, ou a OS sem a coluna) não conta como zero: entra em `aceitas` e
+ * fica fora de `informadas` e da soma.
  */
 export function custoNaJanela(
   corretivas: readonly Corretiva[],
@@ -209,19 +199,19 @@ export function custoNaJanela(
   janelaDias: number,
 ): CustoNaJanela {
   const inicio = agora.getTime() - janelaDias * DIA_MS;
-  const encerradas = corretivas.filter(
+  const aceitas = corretivas.filter(
     (c) =>
-      c.concluidaEm !== null &&
-      c.concluidaEm.getTime() > inicio &&
-      c.concluidaEm.getTime() <= agora.getTime(),
+      c.aceitaEm !== null &&
+      c.aceitaEm.getTime() > inicio &&
+      c.aceitaEm.getTime() <= agora.getTime(),
   );
-  const comCusto = encerradas.filter(
+  const comCusto = aceitas.filter(
     (c) => c.custoInformado !== undefined && c.custoInformado !== null,
   );
   return {
     soma: comCusto.reduce((s, c) => s + (c.custoInformado as number), 0),
     informadas: comCusto.length,
-    encerradas: encerradas.length,
+    aceitas: aceitas.length,
   };
 }
 

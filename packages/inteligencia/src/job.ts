@@ -36,7 +36,12 @@ import {
   calcularDia,
 } from './dia';
 import { type ChamadoDaFonte, corretivasDosChamados, inicioDaLeitura } from './fonte';
-import { type Corretiva, type LocalAnalisado, conclusaoEReaberturas } from './historico';
+import {
+  type Corretiva,
+  type LocalAnalisado,
+  aceiteDaOs,
+  conclusaoEReaberturas,
+} from './historico';
 import { type InsightExistente, decidirDeteccao } from './insight';
 import { VERSAO_ATENCAO } from './atencao';
 import { VERSAO_REINCIDENCIA } from './reincidencia';
@@ -173,6 +178,7 @@ export async function executarDiaDoTenant(
   const corretivas: Corretiva[] = corretivasDosChamados(chamados).map(({ transicoes, ...c }) => ({
     ...c,
     ...conclusaoEReaberturas(transicoes, p.agora),
+    aceitaEm: aceiteDaOs(transicoes, p.agora),
   }));
   const resultado = calcularDia({
     agora: p.agora,
@@ -184,11 +190,15 @@ export async function executarDiaDoTenant(
     ...(sistemico ? { sistemico } : {}),
   });
 
-  const calculos = await fonte.calculosDoDia(resultado.dia);
+  // Cada linha leva o dia local do hotel dela (divergência a): os cálculos já
+  // gravados são lidos por dia.
+  const calculos = new Map<string, ReadonlyMap<string, number>>();
+  for (const d of new Set(resultado.metricas.map((m) => m.dia)))
+    calculos.set(d, await fonte.calculosDoDia(d));
   const linhas: LinhaDaMetricaDiaria[] = [];
   let jaGravadas = 0;
   for (const m of resultado.metricas) {
-    const anterior = calculos.get(m.ativoId);
+    const anterior = calculos.get(m.dia)?.get(m.ativoId);
     if (anterior !== undefined && !recalculo) {
       jaGravadas += 1;
       continue;

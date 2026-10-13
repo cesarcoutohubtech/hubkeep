@@ -65,11 +65,12 @@ describe('corretivasDosChamados', () => {
     ]);
   });
 
-  it('o chamado cancelado depois de ter OS continua corretiva', () => {
+  it('o chamado cancelado fica fora mesmo depois de ter OS (glossário, divergência b)', () => {
     const r = corretivasDosChamados([
       chamado({ id: 'c1', estado: 'cancelado', os: [os({ estado: 'cancelada' })] }),
+      chamado({ id: 'c2', estado: 'cancelado', os: [os({ estado: 'concluida' })] }),
     ]);
-    expect(r.map((c) => c.id)).toEqual(['c1']);
+    expect(r).toEqual([]);
   });
 
   it('com mais de uma OS, vale a que não foi cancelada', () => {
@@ -134,11 +135,11 @@ describe('inicioDaLeitura', () => {
 
 describe('hoteisDoDia', () => {
   const hoteis: HotelDaFonte[] = [
-    { id: 'h1', bandeiraId: 'b1', status: 'ativo' },
-    { id: 'h2', bandeiraId: 'b1', status: 'ativo' },
-    { id: 'h3', bandeiraId: null, status: 'ativo' },
-    { id: 'h4', bandeiraId: null, status: 'em_implantacao' },
-    { id: 'h5', bandeiraId: null, status: 'desativado' },
+    { id: 'h1', bandeiraId: 'b1', status: 'ativo', fuso: 'America/Sao_Paulo' },
+    { id: 'h2', bandeiraId: 'b1', status: 'ativo', fuso: 'America/Sao_Paulo' },
+    { id: 'h3', bandeiraId: null, status: 'ativo', fuso: 'America/Manaus' },
+    { id: 'h4', bandeiraId: null, status: 'em_implantacao', fuso: 'America/Sao_Paulo' },
+    { id: 'h5', bandeiraId: null, status: 'desativado', fuso: 'America/Sao_Paulo' },
   ];
   const em = new Date('2026-09-01T10:00:00.000Z');
   const linha = (p: Partial<LinhaDePolitica> & Pick<LinhaDePolitica, 'id'>): LinhaDePolitica => ({
@@ -156,6 +157,7 @@ describe('hoteisDoDia', () => {
       ['h1', 'h2', 'h3'].map((id) => ({
         hotelId: id,
         bandeiraId: id === 'h3' ? null : 'b1',
+        fuso: id === 'h3' ? 'America/Manaus' : 'America/Sao_Paulo',
         reincidencia: PADRAO_REINCIDENCIA,
         atencao: PADRAO_ATENCAO,
         versaoPolitica: 'padrao',

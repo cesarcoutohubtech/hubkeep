@@ -19,6 +19,7 @@ import { sql } from 'kysely';
 import { novoId } from '../ids';
 import type { Tx } from '../conexao';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { agoraNaGravacao, datasDaCriacao } from './instante-do-roteiro';
 import { registrarTransicao } from './transicoes';
 import { liberarUhDoChamadoCancelado } from './uh-indisponivel';
 
@@ -69,7 +70,7 @@ export async function refletirNoChamado(
       estado: c.estado,
       situacao_id: c.situacaoId,
       versao: sql<number>`versao + 1`,
-      atualizado_em: sql`now()`,
+      atualizado_em: agoraNaGravacao(uow),
     })
     .where('id', '=', c.id)
     .where('versao', '=', c.versao)
@@ -112,7 +113,7 @@ export async function alterarChamadoNaTriagem(
       ...(m.prazoAtendimento !== undefined ? { prazo_atendimento: m.prazoAtendimento } : {}),
       ...(m.prazoSolucao !== undefined ? { prazo_solucao: m.prazoSolucao } : {}),
       versao: sql<number>`versao + 1`,
-      atualizado_em: sql`now()`,
+      atualizado_em: agoraNaGravacao(uow),
     })
     .where('id', '=', chamadoId)
     .where('versao', '=', versaoEsperada)
@@ -188,6 +189,7 @@ export async function gerarOs(
       executado_por: g.execucao.executadoPor,
       fornecedor_id: g.execucao.fornecedorId,
       criado_por: uow.usuarioId,
+      ...datasDaCriacao(uow),
     })
     .execute()
     .catch(osEmAndamento);
@@ -243,7 +245,7 @@ export async function definirQuemExecuta(
       executado_por: g.execucao.executadoPor,
       fornecedor_id: g.execucao.fornecedorId,
       versao: sql<number>`versao + 1`,
-      atualizado_em: sql`now()`,
+      atualizado_em: agoraNaGravacao(uow),
     })
     .where('id', '=', g.osId)
     .where('versao', '=', g.versao)
@@ -290,7 +292,7 @@ export async function reatribuirOs(
       situacao_id: g.situacaoId,
       ...colunasDoResponsavel(g.responsavel),
       versao: sql<number>`versao + 1`,
-      atualizado_em: sql`now()`,
+      atualizado_em: agoraNaGravacao(uow),
     })
     .where('id', '=', g.osId)
     .where('versao', '=', g.versao)
@@ -345,7 +347,7 @@ export async function cancelarOs(
       situacao_id: g.situacaoId,
       motivo_cancelamento: g.motivo,
       versao: sql<number>`versao + 1`,
-      atualizado_em: sql`now()`,
+      atualizado_em: agoraNaGravacao(uow),
     })
     .where('id', '=', g.osId)
     .where('versao', '=', g.versao)

@@ -352,7 +352,9 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - `.github/workflows/`, `eslint.config.mjs` ou `CLAUDE.md`;
   - `docs/03-decisoes-tecnicas.md` ou `.claude/`;
   - `.gitleaks.toml` ou `.github/dependabot.yml` (ADR-032);
-  - `packages/auth-admin/`, o dono da secret key, e os testes que guardam a chave, o `.env.example` e as actions fixadas (`tests/secret-key-so-no-auth-admin.test.ts`, `tests/env-example.test.ts`, `tests/actions-fixadas.test.ts`), desde o B13 do `docs/11` (05/10/2026).
+  - `packages/auth-admin/`, o dono da secret key, e os testes que guardam a chave, o `.env.example` e as actions fixadas (`tests/secret-key-so-no-auth-admin.test.ts`, `tests/env-example.test.ts`, `tests/actions-fixadas.test.ts`), desde o B13 do `docs/11` (05/10/2026);
+  - o teste que guarda o relógio do roteiro fora do web em funcionamento (`tests/relogio-do-roteiro-fora-do-web.test.ts`), desde a montagem do gerador do histórico (Cesar, 13/10/2026);
+  - o teste que guarda as dependências do `packages/auth-admin` no grupo do Dependabot da zona protegida (`tests/dependabot-zona-protegida.test.ts`), desde a regra dos grupos do Dependabot (Cesar, 13/10/2026).
 
   PR fora dessa lista passa.
 - **Ruleset do `main`**, que o Cesar configura no GitHub:
@@ -709,6 +711,12 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
    - A `rota()` aplica `LIMITE_BYTES_PADRAO` (256 KiB) a toda rota que não declara outro, e a leitura para ao passar do limite.
    - O `proxy.ts` recusa com 413 o `content-length` acima de `LIMITE_BYTES_MAXIMO`, que é o do lote.
 3. **Actions da CI fixadas pelo SHA do commit, com a versão em comentário**, atualizadas pelo Dependabot. Um teste (`tests/actions-fixadas.test.ts`) reprova `uses:` sem SHA e imagem sem digest.
+   - **Grupos do Dependabot** (decisão do Cesar de 13/10/2026, depois do #231, que tocou a zona protegida e quebrou o lint com o TypeScript 7; proposta no `docs/diario-fase-1b.md`):
+     - as actions vêm num grupo mensal só;
+     - no npm, dois grupos semanais, só com versões menores e correções: `zona-protegida-da-semana`, com as dependências do `packages/auth-admin`, e `versoes-da-semana`, com o resto. O PR que toca a zona não ocupa a vez: a 1b o adota na vez dela;
+     - versão maior vem num PR próprio. A que falha por falta de suporte no ecossistema ganha um `ignore` com o motivo; o primeiro é o TypeScript 7, até o `typescript-eslint` aceitar a versão;
+     - um teste (`tests/dependabot-zona-protegida.test.ts`) confere que toda dependência do `auth-admin` está no grupo da zona, antes do grupo geral;
+     - a CI roda o build do PWA (`ci.yml`), para uma versão maior de plugin de build não entrar sem ser executada. O build do web fica com o preview da Vercel.
 4. **Tarefas antes do piloto:**
    - MFA obrigatório para Admin do grupo, Gestor CSC e Implantador;
    - CSP de script no PWA;
@@ -1094,6 +1102,8 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Uma transação por hotel** (decisão 13), e não por tenant como os outros crons: num grupo de 40 hotéis, o dia 1º do mês pode gerar milhares de OS, e o `hk_worker` tem `statement_timeout` de 30 s. O plano é travado com `for update skip locked`.
 - **Idempotência pelo índice único** (plano, ativo, data prevista) na OS preventiva, que inclui a OS cancelada: rodar duas vezes não duplica, e a ocorrência cancelada não volta.
 - **Sem acúmulo** (decisão 10, até a resposta do cliente à pergunta 23): enquanto a OS da ocorrência anterior do mesmo plano e ativo estiver aberta, a nova não é gerada e conta como pulada; com várias ocorrências vencidas, só a mais recente é gerada.
+  - Aberta é a OS atribuída, em execução ou pausada. A concluída, esperando o aceite, não segura a próxima: o serviço já foi feito, e um aceite esquecido não pode parar o calendário (Cesar, 13/10/2026, PV3a).
+  - O ativo cadastrado depois da data prevista espera a próxima ocorrência, para não nascer com uma OS atrasada de uma data em que ele não existia (Cesar, 13/10/2026, PV3a).
 - **A OS preventiva não tem chamado:** guarda o plano, o ativo, a data prevista e a cópia do plano (ADR-026) e do checklist (ADR-040). Segue a mesma máquina de estados da corretiva, sem refletir em chamado. O aceite é do Gerente do hotel, ou, sem Gerente, do Gestor CSC ou do Admin, como na C6 (decisão 12). O worker cria só OS com plano.
 
 **Consequências:**

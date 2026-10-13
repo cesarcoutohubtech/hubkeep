@@ -39,3 +39,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # Build do PWA (decisão do Cesar de 13/10/2026): uma versão maior de
+      # plugin de build, como a do vite-plugin-pwa no #231, não entra sem ser
+      # executada. Não usa variável nem segredo. O build do web fica com o
+      # preview da Vercel, porque pede as variáveis do ambiente.
+      - name: Build do PWA
+        run: pnpm --filter @hubkeep/tecnico build

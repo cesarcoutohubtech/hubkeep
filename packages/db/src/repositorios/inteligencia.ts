@@ -40,6 +40,8 @@ export interface HotelDoJob {
   id: string;
   bandeiraId: string | null;
   status: StatusDeHotel;
+  /** `app.hotel.fuso` (IANA): o dia da métrica é contado nele. */
+  fuso: string;
 }
 
 export interface PoliticaDoJob {
@@ -266,10 +268,15 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
     async hoteis() {
       const linhas = await tx
         .selectFrom('app.hotel')
-        .select(['id', 'bandeira_id', 'status'])
+        .select(['id', 'bandeira_id', 'status', 'fuso'])
         .orderBy('id')
         .execute();
-      return linhas.map((h) => ({ id: h.id, bandeiraId: h.bandeira_id, status: h.status }));
+      return linhas.map((h) => ({
+        id: h.id,
+        bandeiraId: h.bandeira_id,
+        status: h.status,
+        fuso: h.fuso,
+      }));
     },
 
     async politicas(chaves) {

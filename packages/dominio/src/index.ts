@@ -107,7 +107,16 @@ export {
   resolverPolitica,
   validarPolitica,
   validarRegiao,
+  valeNoNivel,
 } from './politicas';
+export {
+  LIMITE_DA_MATRIZ,
+  RESPONSAVEIS_DO_ARRENDAMENTO,
+  ehResponsavelDoArrendamento,
+  matrizDeArrendamentoValida,
+  responsavelDoArrendamento,
+} from './arrendamento';
+export type { MatrizDeArrendamento, ResponsavelDoArrendamento } from './arrendamento';
 export type {
   AceiteAutomatico,
   AssinaturaNoAceite,
@@ -251,6 +260,8 @@ export {
   validarParada,
 } from './paradas';
 export type { Parada } from './paradas';
+export { aceiteDaOs, conclusaoEReaberturas } from './servico-da-os';
+export type { TransicaoDoServico } from './servico-da-os';
 export {
   ESTADOS_QUE_ACEITAM_UH_INDISPONIVEL,
   exigirChamadoQueAceitaUhIndisponivel,

@@ -8,6 +8,7 @@ import { Conflito, NaoEncontrado } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { agoraNaGravacao, datasDaCriacao } from './instante-do-roteiro';
 
 /** O índice recusou: o chamado já tem a UH indisponível em aberto. */
 function periodoJaAberto(e: unknown): never {
@@ -38,6 +39,7 @@ export async function marcarUhIndisponivel(
       chamado_id: m.chamadoId,
       inicio: m.inicio,
       aberta_por: uow.usuarioId,
+      ...datasDaCriacao(uow),
     })
     .execute()
     .catch(periodoJaAberto);
@@ -63,7 +65,7 @@ export async function liberarUh(uow: UnidadeDeTrabalho, l: LiberacaoDeUh): Promi
   const tx = transacaoDe(uow);
   const r = await tx
     .updateTable('app.uh_indisponivel')
-    .set({ fim: l.fim, encerrada_por: uow.usuarioId, atualizado_em: sql`now()` })
+    .set({ fim: l.fim, encerrada_por: uow.usuarioId, atualizado_em: agoraNaGravacao(uow) })
     .where('id', '=', l.id)
     .where('fim', 'is', null)
     .returning(['local_id', 'chamado_id'])
@@ -121,7 +123,7 @@ export async function liberarUhDoChamadoCancelado(
     .set({
       fim: sql<Date>`greatest(${g.fim}::timestamptz, inicio + interval '1 millisecond')`,
       encerrada_por: uow.usuarioId,
-      atualizado_em: sql`now()`,
+      atualizado_em: agoraNaGravacao(uow),
     })
     .where('chamado_id', '=', g.chamadoId)
     .where('fim', 'is', null)

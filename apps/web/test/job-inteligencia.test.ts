@@ -92,8 +92,8 @@ class SessaoEmMemoria implements SessaoDoJobDoIntelligence {
     );
   hoteis = () =>
     this.ler('hoteis', [
-      { id: H1, bandeiraId: null, status: 'ativo' as const },
-      { id: H2, bandeiraId: null, status: 'em_implantacao' as const },
+      { id: H1, bandeiraId: null, status: 'ativo' as const, fuso: 'UTC' },
+      { id: H2, bandeiraId: null, status: 'em_implantacao' as const, fuso: 'UTC' },
     ]);
   politicas = () =>
     this.ler('politicas', [
@@ -245,6 +245,32 @@ describe('criarRecalculoDoDia', () => {
     expect(sessao.execucoes).toMatchObject([
       { disparadoPor: 'ops:Cesar', dia: '2026-09-29', recalculo: true },
     ]);
+  });
+
+  it('uma rodada por fuso, cada uma com os hotéis dele e o fim do dia local', async () => {
+    const sessao = new SessaoEmMemoria();
+    sessao.hoteis = () =>
+      Promise.resolve([
+        { id: H1, bandeiraId: null, status: 'ativo' as const, fuso: 'America/Sao_Paulo' },
+        { id: H2, bandeiraId: null, status: 'ativo' as const, fuso: 'America/Manaus' },
+      ]);
+    const ates: string[] = [];
+    const ativos = sessao.ativos;
+    // O motor pede os ativos até o `agora` da rodada: é por ele que se vê o fim do dia local.
+    sessao.ativos = ((ate: Date) => {
+      ates.push(ate.toISOString());
+      return ativos();
+    }) as unknown as typeof sessao.ativos;
+    const porta: PortaDoJobDoIntelligence = { noTenant: (_t, fn) => fn(sessao) };
+    const r = await criarRecalculoDoDia({ porta, registros })('t', '2026-09-29', 'ops:Cesar');
+    // Manaus vem antes de São Paulo na ordem dos fusos.
+    expect(ates).toEqual(['2026-09-30T03:59:59.999Z', '2026-09-30T02:59:59.999Z']);
+    expect(sessao.metricas.map((m) => [m.ativoId, m.hotelId, m.dia])).toEqual([
+      ['a2', H2, '2026-09-29'],
+      ['a1', H1, '2026-09-29'],
+    ]);
+    expect(r).toMatchObject({ dia: '2026-09-29', recalculo: true, metricasGravadas: 2 });
+    expect(sessao.execucoes).toHaveLength(2);
   });
 
   it('o dia antes do início do módulo: nada é lido além dos módulos, nada é gravado', async () => {

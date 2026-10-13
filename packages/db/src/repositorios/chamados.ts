@@ -7,6 +7,7 @@
 import type { DadosDeChamado } from '@hubkeep/aplicacao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { datasDaCriacao } from './instante-do-roteiro';
 import { colunasPesquisaveisDoChamado } from './busca';
 import { pararNaAbertura } from './paradas';
 import { marcarUhIndisponivel } from './uh-indisponivel';
@@ -34,6 +35,8 @@ export async function criarChamado(
       categoria_id: d.categoriaId,
       prazo_atendimento: d.prazoAtendimento,
       prazo_solucao: d.prazoSolucao,
+      // Com o relógio do roteiro, o atualizado_em também é do roteiro.
+      ...datasDaCriacao(uow),
       criado_em: d.abertoEm,
       origem: d.origem,
       impacto_hospede: d.impactoHospede,

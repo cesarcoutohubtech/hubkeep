@@ -9,6 +9,7 @@ import type { AcaoNaOsDecidida } from '@hubkeep/aplicacao';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
+import { agoraNaGravacao } from './instante-do-roteiro';
 import { registrarTransicao } from './transicoes';
 import { refletirNoChamado, semLinha } from './triagem';
 
@@ -37,7 +38,7 @@ export async function andarComOs(
           }
         : {}),
       versao: sql<number>`versao + 1`,
-      atualizado_em: sql`now()`,
+      atualizado_em: agoraNaGravacao(uow),
     })
     .where('id', '=', g.osId)
     .where('versao', '=', g.versao)
@@ -62,7 +63,7 @@ export async function andarComOs(
         prazo_solucao: c.prazoSolucao,
         pausado_segundos: sql<number>`pausado_segundos + ${c.pausadoSegundos}`,
         versao: sql<number>`versao + 1`,
-        atualizado_em: sql`now()`,
+        atualizado_em: agoraNaGravacao(uow),
       })
       .where('id', '=', c.chamadoId)
       .where('versao', '=', c.versaoDoChamado)

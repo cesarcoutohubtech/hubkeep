@@ -149,6 +149,27 @@ describe('executarDiaDoTenant: o dia normal', () => {
     expect(banco.insights).toHaveLength(1);
   });
 
+  it('hotéis em fusos diferentes: cada linha no dia local do hotel, sem duplicar na segunda rodada', async () => {
+    // 02:30 UTC: ainda 30/09 em São Paulo, já 01/10 em Lisboa.
+    const instante = new Date('2026-10-01T02:30:00.000Z');
+    const { banco, portas } = cenario({
+      hoteis: [
+        { hotelId: 'h1', bandeiraId: 'b1', fuso: 'America/Sao_Paulo' },
+        { hotelId: 'h2', bandeiraId: 'b1', fuso: 'Europe/Lisbon' },
+      ],
+    });
+    const primeira = await executarDiaDoTenant(portas, { agora: instante });
+    expect(primeira).toMatchObject({ dia: '2026-09-30', metricasGravadas: 2 });
+    expect(banco.metricas.map((m) => [m.ativoId, m.dia])).toEqual([
+      ['a1', '2026-09-30'],
+      ['a2', '2026-10-01'],
+    ]);
+    const segunda = await executarDiaDoTenant(portas, {
+      agora: new Date(instante.getTime() + 600_000),
+    });
+    expect(segunda).toMatchObject({ metricasGravadas: 0, metricasJaGravadas: 2 });
+  });
+
   it('o job nunca muda o estado de um insight que uma pessoa já tocou', async () => {
     const { banco, portas } = cenario();
     await executarDiaDoTenant(portas, { agora });
@@ -217,7 +238,7 @@ describe('executarDiaDoTenant: o registro de cada execução', () => {
       {
         ...r,
         disparadoPor: 'cron',
-        versoesDeFormula: { reincidencia: 1, atencao: 2, sistemico: 2 },
+        versoesDeFormula: { reincidencia: 3, atencao: 4, sistemico: 3 },
         versoesDePolitica: { h1: 'hotel:p1@2026-09-01', h2: 'padrao', h3: 'padrao' },
       },
     ]);

@@ -25,6 +25,7 @@ import {
   podeGerirPoliticas,
   registroDePoliticas,
   resolverPolitica,
+  valeNoNivel,
   validarModeloContratual,
   validarRegiao,
   type ValoresDePolitica,
@@ -107,10 +108,13 @@ export function criarCasosDeUsoDeConfiguracao(deps: {
       const gravadas = await deps.configuracao.politicas(ctx, hotelId);
       const resolver = <C extends ChaveDePolitica>(chave: C): PoliticaResolvida => {
         const definicao = POLITICAS[chave];
-        // Valor fora do formato não vale: fica nulo e cai para o nível seguinte.
+        // Valor fora do formato, ou num nível que a chave não aceita, não
+        // vale: fica nulo e cai para o nível seguinte.
         const valorDe = (tipo: EscopoDePolitica['tipo']) => {
           const v = gravadas.find((p) => p.chave === chave && p.escopo.tipo === tipo)?.valor;
-          return v !== undefined && definicao.valido(v) ? (v as ValoresDePolitica[C]) : null;
+          return v !== undefined && valeNoNivel(chave, tipo) && definicao.valido(v)
+            ? (v as ValoresDePolitica[C])
+            : null;
         };
         const grupo = valorDe('grupo');
         const daBandeira = valorDe('bandeira');

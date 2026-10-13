@@ -24,6 +24,7 @@ export function corretiva(p: Partial<Corretiva> & { abertaEm: Date }): Corretiva
     ativoId: 'a1',
     concluidaEm: null,
     reaberturas: 0,
+    aceitaEm: null,
     codigoFalha: null,
     ...p,
   };
