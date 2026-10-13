@@ -461,6 +461,75 @@ function ParadasDoAtivo({
   );
 }
 
+interface PlanoDoAtivo {
+  id: string;
+  nome: string;
+  intervalo: number;
+  unidade: string;
+  situacao: 'ativo' | 'pausado' | 'encerrado';
+  proximaData: string | null;
+}
+
+/** Os planos preventivos do ativo (PV2), sob demanda; quem não gere o hotel recebe a lista vazia. */
+function PlanosDoAtivo({ ativo }: { ativo: Ativo }) {
+  const t = useT();
+  const intl = useIntl();
+  const mensagemDeErro = useMensagemDeErro();
+  const [planos, setPlanos] = useState<PlanoDoAtivo[] | null>(null);
+  const [erro, setErro] = useState<ErroDaApi | null>(null);
+  const data = (d: string) =>
+    intl.formatDate(new Date(`${d}T12:00:00Z`), { dateStyle: 'short', timeZone: 'UTC' });
+
+  async function ver() {
+    const r = await chamarApi<{ planos: PlanoDoAtivo[] }>(
+      `/api/v1/ativos/${ativo.id}/planos-preventivos`,
+    );
+    if (r.ok) setPlanos(r.dados.planos);
+    else setErro(r.erro);
+  }
+
+  return (
+    <div className="hk-bloco">
+      <div className="hk-linha-de-botoes">
+        <Botao tamanho="pequeno" onClick={() => void ver()}>
+          {t('admin.ativos.acao.ver_planos')}
+        </Botao>
+      </div>
+      {erro && <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>}
+      {planos &&
+        (planos.length === 0 ? (
+          <p className="hk-suave">{t('admin.preventivas.do_ativo_vazio')}</p>
+        ) : (
+          <ul className="hk-sublista" aria-label={t('admin.preventivas.do_ativo')}>
+            {planos.map((p) => (
+              <li key={p.id} className="hk-em-linha">
+                <span>{p.nome}</span>
+                <span>
+                  {t('admin.preventivas.periodicidade', {
+                    intervalo: p.intervalo,
+                    unidade: p.unidade,
+                  })}
+                </span>
+                <span>
+                  {p.proximaData
+                    ? t('admin.preventivas.proxima', { data: data(p.proximaData) })
+                    : t('admin.preventivas.sem_proxima')}
+                </span>
+                <Selo
+                  tom={
+                    p.situacao === 'ativo' ? 'verde' : p.situacao === 'pausado' ? 'ambar' : 'cinza'
+                  }
+                >
+                  {t('admin.preventivas.situacao', { situacao: p.situacao })}
+                </Selo>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </div>
+  );
+}
+
 export default function AtivosDoHotel() {
   const t = useT();
   const intl = useIntl();
@@ -606,6 +675,7 @@ export default function AtivosDoHotel() {
                       executar={executar}
                     />
                     <ParadasDoAtivo ativo={a} executar={executar} />
+                    <PlanosDoAtivo ativo={a} />
                     <MoverAtivo ativo={a} locais={locais} executar={executar} />
                     <div className="hk-grade" data-colunas="2">
                       <QrDoAtivo ativo={a} />
