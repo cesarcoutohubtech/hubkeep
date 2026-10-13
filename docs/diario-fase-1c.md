@@ -553,6 +553,14 @@ Na branch `claude/1c-aceite-automatico-codigo`, refeita a partir da `main` depoi
 - **Contrato:** a ação nova em `ACOES_DA_OS_API`. O teste de valores canônicos confere a ação do check da 0046 contra o domínio.
 - **Verificação:** no local, lint, typecheck e testes passaram. Só na CI: `packages/db/test/aceite-automatico.test.ts` (aceite, transição, auditoria, evento, as exceções e o outro tenant) e o pgTAP `038`.
 
+### Pedido ao agente do Kaio: o tempo do teste do histórico de demonstração (13/10/2026)
+
+O teste `cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum` (`apps/web/test/demonstracao/historico-inteligencia.test.ts`) passou do limite padrão de 5 segundos do Vitest duas vezes:
+- na CI do #237 (5,5 s), que passou depois de rodar o job de novo;
+- no `pnpm test` local da branch do código do M5 (8,0 s), com os pacotes rodando em paralelo. Sozinho, o arquivo passa em 3,8 s.
+
+O teste é do Intelligence e não muda com a 1c. Pedido: um `timeout` explícito nesse teste, ou um roteiro menor, para o tempo não depender da carga da máquina. A 1c não mexe no arquivo.
+
 ### Ponto de retomada (13/10/2026, M5)
 - **`main`:** verde, com o #236 (TypeScript de volta à 6.0), o #232 (M4), o #234, o #235, o #238, o #237 (a 0046 e o ADR-044) e o #239 (PV3a da 1b).
 - **Dev:** esperando o `db push` da 0046 pelo Cesar.
