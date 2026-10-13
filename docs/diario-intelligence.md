@@ -1493,3 +1493,41 @@ O guia de implantação (etapa 8) aponta para elas no lugar de "[a definir] com 
   - depois da aprovação do glossário, o PR de código da conclusão do serviço e do custo informado no domínio;
   - depois da montagem, o restante da atividade 3;
   - a cada entrega da 1b e da 1c, o `docs/piloto/`.
+
+## Limite do teste do histórico e posição do Cesar no glossário (13/10/2026)
+
+Pedido do Cesar no chat do agente do Kaio, em 13/10/2026: o teste do roteiro do histórico (`apps/web/test/demonstracao/historico-inteligencia.test.ts`) passava dos 5 s padrão do Vitest no `pnpm test` completo (7,4 s) e causou uma nova rodada no #237.
+
+- **Causa:**
+  - os dois testes que rodam o job faziam cada um a própria simulação dos 183 dias do roteiro curto;
+  - o `calculosDoDia` em memória varria todas as linhas de métrica já gravadas a cada dia.
+- **Correção, só no teste:**
+  - uma simulação compartilhada pelos dois testes;
+  - as métricas indexadas por dia;
+  - um limite próprio de 20 s nos dois testes, justificado no comentário, porque no runner da CI o tempo chega a quase triplicar.
+- **Resultado:** no local, os dois testes caíram de 4,6 s para 1,4 s, e o arquivo inteiro levou 2,1 s no `pnpm test` completo. O que o teste confere não mudou.
+
+**Glossário:**
+- **Posição do Cesar (chat, 13/10/2026):** aceitar a divergência a (o dia no fuso de cada hotel, como versão nova da fórmula) e a d (o custo e a cobertura pelas corretivas aceitas, também como versão nova).
+- **O que isso fecha:**
+  - a d é só do Cesar;
+  - a a também é do Kaio (ADR-036) e continua esperando a posição dele.
+- **Ainda pendentes:**
+  - a b, do Cesar e do Kaio, com resumo mandado ao Cesar;
+  - a e, do Cesar;
+  - a c e a f, do Kaio.
+- **Quando atualizar a tabela:** a coluna "Situação" do glossário muda junto com a aprovação da versão 3, e não antes.
+
+### Ponto de retomada (13/10/2026, depois do #238)
+
+- **`main`:** no #238 (sem efeito, porque o #236 da 1c já tinha voltado o TypeScript para 6), com o #235 (perguntas 30 a 34 e a revisão da 1c no glossário).
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`): o limite do teste do histórico e este registro. Fora da zona protegida.
+- **Esperando:**
+  - o merge do Cesar;
+  - as decisões das divergências b, c, e e f e a posição do Kaio na a;
+  - as aprovações do glossário;
+  - a montagem com relógio da 1b (depois da 0046 da 1c), para a atividade 3.
+- **Próximo:**
+  - depois da aprovação do glossário, o PR de código da conclusão do serviço e do custo informado no domínio;
+  - depois da montagem, o restante da atividade 3;
+  - a cada entrega da 1b e da 1c, o `docs/piloto/`.
