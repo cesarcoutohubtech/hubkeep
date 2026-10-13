@@ -19,6 +19,8 @@ import {
   type UnidadeDePeriodicidade,
   ocorrenciaMaisRecenteAte,
 } from './plano-preventivo';
+import type { Atribuicao } from './tipos';
+import { ehTecnicoDoHotel } from './triagem';
 
 /**
  * A OS preventiva que ainda prende o plano: a que não foi concluída. A
@@ -161,4 +163,44 @@ export function planejarGeracao(p: {
     });
   }
   return { dataPrevista: data, geradas, puladas };
+}
+
+/** O responsável padrão do plano como a regra precisa enxergá-lo, no dia da geração. */
+export type ResponsavelDoPlano =
+  | {
+      tipo: 'tecnico';
+      usuarioId: string;
+      /** O membro segue ativo no tenant (o desativado mantém as atribuições). */
+      membroAtivo: boolean;
+      atribuicoes: readonly Atribuicao[];
+    }
+  | { tipo: 'equipe'; equipeId: string; hotelId: string; ativa: boolean };
+
+/**
+ * O responsável que ainda vale para receber a OS do plano: o técnico ativo com
+ * papel de Técnico vigente que cobre o hotel, ou a equipe ativa do próprio
+ * hotel (a mesma regra da triagem, A6). Null quando não vale: o plano não gera
+ * e conta como pulado (sem_responsavel).
+ */
+export function responsavelQueVale(
+  r: ResponsavelDoPlano | null,
+  hotel: { id: string; bandeiraId: string | null },
+  agora: Date,
+): Responsavel | null {
+  if (r === null) return null;
+  if (r.tipo === 'tecnico') {
+    return r.membroAtivo && ehTecnicoDoHotel(r.atribuicoes, r.usuarioId, hotel, agora)
+      ? { tipo: 'tecnico', usuarioId: r.usuarioId }
+      : null;
+  }
+  return r.ativa && r.hotelId === hotel.id ? { tipo: 'equipe', equipeId: r.equipeId } : null;
+}
+
+/**
+ * O modelo de checklist que a OS preventiva copia (ADR-040): o do plano, se
+ * ainda estiver ativo, a mesma regra da triagem (checklist_modelo_inativo).
+ * Desativado, a OS sai sem checklist: o calendário do plano não para.
+ */
+export function modeloParaACopia<M extends { ativa: boolean }>(modelo: M | null): M | null {
+  return modelo?.ativa ? modelo : null;
 }
