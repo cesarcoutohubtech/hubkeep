@@ -27,8 +27,9 @@
 // - os 3 hotéis são hotéis distintos com pelo menos um chamado contado na
 //   janela em ativos do modelo; ter o modelo instalado não basta.
 //
-// A versão continua a 2: nenhum sinal foi gravado ainda, e ela é a primeira
-// que um sinal gravado vai levar.
+// A versão 3 (glossário de métricas versão 3, divergência b, 13/10/2026) tira
+// da conta todo chamado cancelado; na 2, o cancelado com OS entrava.
+// O que já foi gravado com a 2 não é recalculado (ADR-036).
 import {
   type AtivoAnalisado,
   type Corretiva,
@@ -38,7 +39,7 @@ import {
 } from './historico';
 import { DIA_MS } from './score';
 
-export const VERSAO_SISTEMICO = 2;
+export const VERSAO_SISTEMICO = 3;
 
 export interface ConfigSistemico {
   mesmoModelo: {

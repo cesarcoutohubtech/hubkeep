@@ -74,8 +74,8 @@ describe('calcularDia: scores e métrica do dia', () => {
       atencao: a1?.atencao.valor,
       faixaAtencao: a1?.atencao.faixa,
       recalculo: false,
-      versaoFormulaReincidencia: 1,
-      versaoFormulaAtencao: 2,
+      versaoFormulaReincidencia: 2,
+      versaoFormulaAtencao: 3,
       versaoPolitica: 'padrao',
       detalheReincidencia: a1?.reincidencia,
       detalheAtencao: a1?.atencao,
@@ -90,7 +90,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixa: a1?.atencao.faixa,
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: a1?.atencao.valor,
-      versao: 2,
+      versao: 3,
       escopo: { ativoId: 'a1', hotelId: 'h1' },
     });
     expect(atencao[0]?.corretivaIds).toHaveLength(6);
@@ -215,9 +215,16 @@ describe('calcularDia: scores e métrica do dia', () => {
     expect(r.ativos[0]?.atencao.ausentes).toContain('medicoes_fora_da_faixa');
   });
 
-  it('o custo vale pela metade das corretivas encerradas do tenant, inclusive de hotel fora do cálculo', () => {
+  it('o custo vale pela metade das corretivas aceitas do tenant, inclusive de hotel fora do cálculo', () => {
     const com = (ativoId: string, hotelId: string, custoInformado: number | null) =>
-      corretiva({ ativoId, hotelId, abertaEm: dia(-30), concluidaEm: dia(-29), custoInformado });
+      corretiva({
+        ativoId,
+        hotelId,
+        abertaEm: dia(-30),
+        concluidaEm: dia(-29),
+        aceitaEm: dia(-28),
+        custoInformado,
+      });
     const entrada = (corretivas: Corretiva[]) =>
       calcularDia({
         agora,
@@ -229,7 +236,7 @@ describe('calcularDia: scores e métrica do dia', () => {
     const custo = (r: ReturnType<typeof calcularDia>, id: string) =>
       r.ativos.find((a) => a.ativoId === id)?.atencao.componentes.find((c) => c.chave === 'custo');
 
-    // 2 de 4 encerradas do tenant com custo (uma de outro hotel): disponível.
+    // 2 de 4 aceitas do tenant com custo (uma de outro hotel): disponível.
     const sim = entrada([
       com('a1', 'h1', 2000),
       com('a1', 'h1', null),
@@ -238,7 +245,7 @@ describe('calcularDia: scores e métrica do dia', () => {
     ]);
     expect(custo(sim, 'a1')).toMatchObject({
       valor: 0.2,
-      evidencia: { valor12m: 2000, informadas: 1, encerradas: 2, disponivelNoTenant: true },
+      evidencia: { valor12m: 2000, informadas: 1, aceitas: 2, disponivelNoTenant: true },
     });
     // O ativo sem nenhum custo informado soma 0, e não fica sem dado.
     expect(custo(sim, 'a2')).toMatchObject({ valor: 0, evidencia: { informadas: 0 } });

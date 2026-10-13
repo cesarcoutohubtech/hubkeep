@@ -22,7 +22,7 @@
 //   fica na tela do ativo;
 // - as horas paradas e o impacto no hóspede da atenção usam a janela da
 //   reincidência do hotel; o custo informado, 12 meses (365 dias);
-// - o custo informado vale quando pelo menos metade das corretivas encerradas
+// - o custo informado vale quando pelo menos metade das corretivas aceitas
 //   do tenant na janela tem o dado (Kaio e Cesar, 10/10/2026): a conta usa
 //   todas as corretivas da entrada, de todos os hotéis, e não só as dos hotéis
 //   do cálculo; as medições valem nos ativos das categorias com item de

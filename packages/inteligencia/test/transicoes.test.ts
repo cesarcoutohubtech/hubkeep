@@ -1,60 +1,13 @@
-// Conclusão e reaberturas pelas transições da OS (app.os_transicao, etapa I5
-// da 1b) e a criticidade fixa de 1 a 5 (etapa I1).
+// A criticidade fixa de 1 a 5 (etapa I1) e a conclusão do serviço, que mora no
+// domínio desde o glossário de métricas versão 3 (os casos estão em
+// packages/dominio/test/servico-da-os.test.ts): o Intelligence só a reexporta.
+import * as dominio from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
-import {
-  CRITICIDADE_MAXIMA,
-  type TransicaoDaOs,
-  conclusaoEReaberturas,
-  ehCriticidade,
-} from '../src';
-import { agora, dia } from './apoio';
+import { CRITICIDADE_MAXIMA, conclusaoEReaberturas, ehCriticidade } from '../src';
 
-const t = (acao: TransicaoDaOs['acao'], para: TransicaoDaOs['para'], d: number): TransicaoDaOs => ({
-  acao,
-  para,
-  quando: dia(d),
-});
-
-describe('conclusaoEReaberturas', () => {
-  const historia = [
-    t('gerar', 'atribuida', -20),
-    t('iniciar', 'em_execucao', -19),
-    t('concluir', 'concluida', -15),
-    t('reabrir', 'em_execucao', -10),
-    t('concluir', 'concluida', -8),
-    t('aceitar', 'aceita', -5),
-  ];
-
-  it('hoje: a última conclusão vale e o aceite não muda; uma reabertura', () => {
-    expect(conclusaoEReaberturas(historia, agora)).toEqual({
-      concluidaEm: dia(-8),
-      reaberturas: 1,
-    });
-  });
-
-  it('num dia passado, vê a OS como ela estava: nada depois da data conta', () => {
-    expect(conclusaoEReaberturas(historia, dia(-12))).toEqual({
-      concluidaEm: dia(-15),
-      reaberturas: 0,
-    });
-    expect(conclusaoEReaberturas(historia, dia(-9))).toEqual({ concluidaEm: null, reaberturas: 1 });
-    expect(conclusaoEReaberturas(historia, dia(-30))).toEqual({
-      concluidaEm: null,
-      reaberturas: 0,
-    });
-  });
-
-  it('a ordem da lista não importa, e o cancelamento desfaz a conclusão', () => {
-    expect(conclusaoEReaberturas([...historia].reverse(), agora)).toEqual({
-      concluidaEm: dia(-8),
-      reaberturas: 1,
-    });
-    expect(
-      conclusaoEReaberturas(
-        [t('concluir', 'concluida', -3), t('cancelar', 'cancelada', -1)],
-        agora,
-      ),
-    ).toEqual({ concluidaEm: null, reaberturas: 0 });
+describe('conclusão do serviço', () => {
+  it('é a do domínio', () => {
+    expect(conclusaoEReaberturas).toBe(dominio.conclusaoEReaberturas);
   });
 });
 

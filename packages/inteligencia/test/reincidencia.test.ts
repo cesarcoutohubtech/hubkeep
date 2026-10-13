@@ -24,7 +24,7 @@ describe('reincidência', () => {
     expect(s.valor).toBe(77);
     expect(s.faixa).toBe('alta_atencao');
     expect(sugereInsight(s)).toBe(true);
-    expect(s.versao).toBe(1);
+    expect(s.versao).toBe(2);
     expect(s.ausentes).toEqual(['mesma_falha', 'apos_preventiva']);
     const por = Object.fromEntries(s.componentes.map((c) => [c.chave, c]));
     expect(por.corretivas?.evidencia).toEqual({ quantidade: 5, janelaDias: 90, limite: 5 });

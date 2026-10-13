@@ -18,7 +18,7 @@
 // - garantia sem a data conta como não vencida (0): o peso é pequeno, e não se
 //   pune o dado que falta;
 // - custo informado é o único em que "não informado" difere de "zero": ele
-//   está disponível quando pelo menos 50% das corretivas encerradas do tenant,
+//   está disponível quando pelo menos 50% das corretivas aceitas do tenant,
 //   na janela, têm o custo (`custoDisponivelNoTenant`); abaixo disso, fica sem
 //   dado em todos os hotéis. Disponível, o ativo soma só as corretivas que têm
 //   o dado;
@@ -32,7 +32,11 @@
 //   for lida e o peso passar de 0, a atenção ganha a versão seguinte.
 //
 // A versão 2 é a primeira gravada: a versão 1 existiu só no código e nos
-// testes, antes das tabelas do ADR-036, e a numeração continua.
+// testes, antes das tabelas do ADR-036, e a numeração continua. A versão 3
+// (glossário de métricas versão 3, 13/10/2026) conta o custo e a cobertura
+// pelas corretivas aceitas, e não pelas concluídas (divergência d), e tira da
+// conta todo chamado cancelado (divergência b). O que já foi gravado com a 2
+// não é recalculado (ADR-036).
 import {
   CRITICIDADE_MAXIMA,
   type Criticidade,
@@ -41,7 +45,7 @@ import {
 } from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
-export const VERSAO_ATENCAO = 2;
+export const VERSAO_ATENCAO = 3;
 
 /**
  * Medições do checklist tipado na janela (etapa PV1): quantas saíram da faixa
@@ -54,22 +58,25 @@ export interface MedicoesDoAtivo {
 }
 
 /**
- * Parte mínima das corretivas encerradas do tenant, na janela, com o custo
+ * Parte mínima das corretivas aceitas do tenant, na janela, com o custo
  * informado, para o componente valer (Kaio e Cesar, 10/10/2026). Fica na
  * fórmula, e não na política: a política da atenção se resolve por hotel, e a
  * regra precisa ser a mesma em todos os hotéis do tenant.
  */
 export const MINIMO_DE_CUSTO_INFORMADO_NO_TENANT = 0.5;
 
-/** As corretivas encerradas do tenant na janela, com e sem o custo. */
+/**
+ * As corretivas aceitas do tenant na janela, com e sem o custo (divergência d
+ * do glossário de métricas; até a versão 2, a base eram as concluídas).
+ */
 export interface CustoNoTenant {
   informadas: number;
-  encerradas: number;
+  aceitas: number;
 }
 
-/** O custo vale no tenant quando pelo menos metade das encerradas tem o dado. */
+/** O custo vale no tenant quando pelo menos metade das aceitas tem o dado. */
 export const custoDisponivelNoTenant = (t: CustoNoTenant): boolean =>
-  t.encerradas > 0 && t.informadas / t.encerradas >= MINIMO_DE_CUSTO_INFORMADO_NO_TENANT;
+  t.aceitas > 0 && t.informadas / t.aceitas >= MINIMO_DE_CUSTO_INFORMADO_NO_TENANT;
 
 /** O custo que a atenção usa: o do ativo e o do tenant, na mesma janela. */
 export interface CustoDaAtencao {
@@ -213,11 +220,11 @@ export function atencaoDoAtivo(
           valor12m: comCusto ? custo.ativo.soma : null,
           limite: config.limiteCusto12m,
           informadas: custo?.ativo.informadas ?? null,
-          encerradas: custo?.ativo.encerradas ?? null,
+          aceitas: custo?.ativo.aceitas ?? null,
           disponivelNoTenant: comCusto,
           percentualNoTenant:
-            custo && custo.tenant.encerradas > 0
-              ? Math.round((custo.tenant.informadas / custo.tenant.encerradas) * 1000) / 10
+            custo && custo.tenant.aceitas > 0
+              ? Math.round((custo.tenant.informadas / custo.tenant.aceitas) * 1000) / 10
               : null,
           minimoNoTenant: MINIMO_DE_CUSTO_INFORMADO_NO_TENANT * 100,
         },

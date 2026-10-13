@@ -73,27 +73,62 @@ describe('fornecedor da OS', () => {
   });
 });
 describe('custo informado na janela', () => {
-  it('soma o custo das corretivas encerradas na janela que têm o dado, e conta as duas', () => {
+  it('soma o custo das corretivas aceitas na janela que têm o dado, e conta as duas', () => {
     const cs = [
-      corretiva({ abertaEm: dia(-40), concluidaEm: dia(-38), custoInformado: 1200.5 }),
-      corretiva({ abertaEm: dia(-20), concluidaEm: dia(-19), custoInformado: 300 }),
-      // Encerrada sem o custo: conta em encerradas, não em informadas.
-      corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9), custoInformado: null }),
-      corretiva({ abertaEm: dia(-12), concluidaEm: dia(-11) }),
-      // Fora da janela e sem conclusão: não contam.
-      corretiva({ abertaEm: dia(-400), concluidaEm: dia(-399), custoInformado: 9000 }),
+      corretiva({
+        abertaEm: dia(-40),
+        concluidaEm: dia(-38),
+        aceitaEm: dia(-37),
+        custoInformado: 1200.5,
+      }),
+      corretiva({
+        abertaEm: dia(-20),
+        concluidaEm: dia(-19),
+        aceitaEm: dia(-19),
+        custoInformado: 300,
+      }),
+      // Aceita sem o custo: conta em aceitas, não em informadas.
+      corretiva({
+        abertaEm: dia(-10),
+        concluidaEm: dia(-9),
+        aceitaEm: dia(-8),
+        custoInformado: null,
+      }),
+      corretiva({ abertaEm: dia(-12), concluidaEm: dia(-11), aceitaEm: dia(-10) }),
+      // Fora da janela, só concluída (ainda sem aceite) e sem conclusão: não contam.
+      corretiva({
+        abertaEm: dia(-400),
+        concluidaEm: dia(-399),
+        aceitaEm: dia(-398),
+        custoInformado: 9000,
+      }),
+      corretiva({ abertaEm: dia(-6), concluidaEm: dia(-5), custoInformado: 700 }),
       corretiva({ abertaEm: dia(-5), concluidaEm: null, custoInformado: 500 }),
     ];
-    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 1500.5, informadas: 2, encerradas: 4 });
+    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 1500.5, informadas: 2, aceitas: 4 });
+  });
+
+  it('a corretiva concluída na janela e aceita depois dela conta pelo aceite', () => {
+    const cs = [
+      corretiva({
+        abertaEm: dia(-370),
+        concluidaEm: dia(-366),
+        aceitaEm: dia(-360),
+        custoInformado: 80,
+      }),
+    ];
+    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 80, informadas: 1, aceitas: 1 });
   });
 
   it('ninguém informou custo: soma 0, com 0 informadas', () => {
-    const cs = [corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9) })];
-    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 0, informadas: 0, encerradas: 1 });
+    const cs = [corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9), aceitaEm: dia(-9) })];
+    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 0, informadas: 0, aceitas: 1 });
   });
 
   it('custo zero informado conta como informado', () => {
-    const cs = [corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9), custoInformado: 0 })];
-    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 0, informadas: 1, encerradas: 1 });
+    const cs = [
+      corretiva({ abertaEm: dia(-10), concluidaEm: dia(-9), aceitaEm: dia(-9), custoInformado: 0 }),
+    ];
+    expect(custoNaJanela(cs, agora, 365)).toEqual({ soma: 0, informadas: 1, aceitas: 1 });
   });
 });

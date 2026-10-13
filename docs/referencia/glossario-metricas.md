@@ -28,7 +28,7 @@ Os termos fechados da versão 2 continuam sem mudança de texto.
 |---|---|---|---|---|
 | **Abertura** | A criação do chamado (`app.chamado.criado_em`). | Coluna | Os dois | Fechado |
 | **Corretiva** | O chamado e a OS dele. O chamado cancelado fica fora de toda métrica, salvo onde o termo diz outra coisa. | `Corretiva` (Intelligence) | Os dois | Fechado |
-| **Conclusão do serviço** | A última transição `concluir` da OS (`app.os_transicao`), se depois dela a OS não foi reaberta nem cancelada. O aceite não muda a conclusão. | `conclusaoEReaberturas`, hoje em `packages/inteligencia/src/historico.ts`; **decidido: mover para o domínio**, com o mesmo comportamento, para o painel usar | Os dois | Fechado (versão 3, Kaio e Cesar, 13/10/2026); a mudança vem no PR de código |
+| **Conclusão do serviço** | A última transição `concluir` da OS (`app.os_transicao`), se depois dela a OS não foi reaberta nem cancelada. O aceite não muda a conclusão. | `conclusaoEReaberturas` (`packages/dominio/src/servico-da-os.ts`), movida do Intelligence com o mesmo comportamento, para o painel usar | Os dois | Fechado (versão 3, Kaio e Cesar, 13/10/2026) |
 | **Reabertura** | A transição `reabrir` da OS, no aceite recusado. | A mesma função | Os dois | Fechado |
 | **Tempo parado do ativo** | Do início ao fim de cada parada do ativo, ou até agora, se aberta, com o trecho sobreposto contado uma vez. | `tempoParado`, `tempoParadoTotal` (domínio) | Os dois | Fechado |
 | **UH-dias perdidos** | As horas de UH indisponível dentro do intervalo, divididas por 24, com uma casa decimal. O período sobreposto na mesma UH conta uma vez, o aberto conta até agora, e o do chamado cancelado fica fora. | `uhDiasPerdidos` (domínio) | Os dois | Fechado |
@@ -94,7 +94,7 @@ São do módulo (regra 3): o painel da 1c não usa estes nomes. Cada score é de
 | **Intervalo médio entre corretivas** | A média, em dias, entre aberturas seguidas das corretivas na janela; sem duas corretivas, não existe. | `reincidencia` | Fechado |
 | **% de chamados com impacto no hóspede** | Dos chamados do ativo abertos na janela, os marcados como "afetou hóspede", de 0 a 100, com uma casa decimal. O sem marca conta como "não teve", e sem chamado o valor é 0. Fica até o Guest Impact Score da 1.5. | `impactoHospedeDosChamados` (`historico.ts`) | Fechado |
 | **Garantia vencida** | A data de garantia do ativo antes de agora. Sem a data, conta como não vencida. | `situacaoDaGarantia` (`historico.ts`) | Fechado |
-| **Cobertura do custo** | Das corretivas concluídas do tenant em 12 meses, as com o custo informado. Com menos de 50%, o custo fica sem dado na atenção, em todos os hotéis. | `custoDisponivelNoTenant` (`atencao.ts`) | Fechado; ver a divergência d (base nas aceitas) |
+| **Cobertura do custo** | Das corretivas aceitas do tenant em 12 meses, as com o custo informado. Com menos de 50%, o custo fica sem dado na atenção, em todos os hotéis. Até a versão 2 da atenção, a base eram as concluídas. | `custoDisponivelNoTenant` (`atencao.ts`) | Fechado (divergência d, atenção versão 3) |
 
 O tempo parado, a conclusão do serviço, as reaberturas, os UH-dias perdidos, a preventiva atrasada e o custo informado que entram nos scores são os termos de base daqui, com o mesmo cálculo (divergências c e d).
 
@@ -114,15 +114,15 @@ Levantamento na `main` de 13/10/2026. "Sem código" quer dizer que o termo está
 | Termo | Onde está o cálculo | Quem chama |
 |---|---|---|
 | Abertura | Coluna `app.chamado.criado_em`, gravada pela aplicação na abertura (`abertoEm`, `packages/db/src/repositorios/chamados.ts`, desde o #215), para o cálculo dos prazos usar o mesmo instante | Os dois; o job do Intelligence lê como `abertaEm` |
-| Corretiva | `corretivasDosChamados` (`packages/inteligencia/src/fonte.ts`); o núcleo ainda não tem a função | Intelligence |
-| Conclusão do serviço, reabertura | `conclusaoEReaberturas` (`packages/inteligencia/src/historico.ts`) | Intelligence; o painel da 1c depois da mudança para o domínio (ponto 1) |
+| Corretiva | `corretivasDosChamados` (`packages/inteligencia/src/fonte.ts`), sem o chamado cancelado desde a reincidência versão 2, a atenção versão 3 e o sistêmico versão 3 (divergência b); o núcleo ainda não tem a função | Intelligence |
+| Conclusão do serviço, reabertura, aceite | `conclusaoEReaberturas` e `aceiteDaOs` (`packages/dominio/src/servico-da-os.ts`); o aceite automático conta como aceite (Kaio, 13/10/2026) | Intelligence; o painel da 1c pode usar |
 | Tempo parado do ativo | `tempoParado`, `tempoParadoTotal` (`packages/dominio/src/paradas.ts`); `horasParadasNoTrecho` (`historico.ts`) corta no trecho e arredonda em horas | Núcleo (`casos-de-uso/paradas.ts`, telas de paradas) e Intelligence (atenção, efetividade) |
 | UH-dias perdidos | `uhDiasPerdidos` (`packages/dominio/src/uh-indisponivel.ts`) | Núcleo (`casos-de-uso/uh-indisponivel.ts`); no Intelligence, o componente tem peso 0 e ainda não lê a origem |
 | Prazo de atendimento, prazo de solução, tempo pausado | `calcularPrazo`, `prazosDoChamado`, `prazosNoRecalculo`, `slaDoChamado`, `pausaDoChamadoParaORelogio`, `calendarioDeSla`, `slaDaCopia` e `prazoNaRetomada` (`packages/dominio/src/sla.ts`); `montarCalendarioDeSla` (`packages/aplicacao/src/casos-de-uso/calendario-sla.ts`) junta o horário do hotel, os feriados oficiais (porta `FeriadosOficiais`) e os do hotel (`app.feriado_hotel`) | Núcleo: abertura e triagem (`casos-de-uso/chamados.ts` e `triagem.ts`) e a retomada da OS (`casos-de-uso/execucao.ts`, que grava o `pausado_segundos`) |
 | Prazo em risco, prazo vencido | `avisosDeSla` (`packages/dominio/src/monitor-sla.ts`) | Núcleo: o cron `/api/cron/sla`, pelo `criarMonitorDeSla` |
 | Dentro do prazo, % de SLA, backlog, backlog por idade, MTTR, tempo até o aceite, razão preventiva/corretiva, chamados por 100 UHs, comparação na bandeira, produtividade | Sem código (painel da 1c) | — |
 | % de preventiva em dia, preventiva atrasada | Sem código (depende da PV3); na atenção, o campo `preventivaAtrasada` fica sem dado | — |
-| Custo informado | `custoNaJanela` (`historico.ts`), na atenção e na substituição; os custos da efetividade vêm de `app.os.custo_informado`; o valor é validado no aceite por `packages/dominio/src/executor-e-custo.ts` | Intelligence |
+| Custo informado | `custoNaJanela` (`historico.ts`), pelas corretivas aceitas desde a atenção versão 3 (divergência d); os custos da efetividade vêm de `app.os.custo_informado`; o valor é validado no aceite por `packages/dominio/src/executor-e-custo.ts` | Intelligence |
 | Reincidência | `reincidencia` (`packages/inteligencia/src/reincidencia.ts`) | Job do dia (`calcularDia`, `dia.ts`) |
 | Atenção do ativo, cobertura do custo | `atencaoDoAtivo`, `custoDisponivelNoTenant` (`atencao.ts`) | Job do dia |
 | % de chamados com impacto no hóspede, garantia vencida | `impactoHospedeDosChamados`, `situacaoDaGarantia` (`historico.ts`) | Job do dia |

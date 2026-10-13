@@ -49,8 +49,8 @@ export interface ChamadoDaFonte {
   os: readonly OsDaFonte[];
 }
 
-/** A corretiva como o job a recebe: com as transições da OS, de onde saem a conclusão e as reaberturas. */
-export type CorretivaDaFonte = Omit<Corretiva, 'concluidaEm' | 'reaberturas'> & {
+/** A corretiva como o job a recebe: com as transições da OS, de onde saem a conclusão, as reaberturas e o aceite. */
+export type CorretivaDaFonte = Omit<Corretiva, 'concluidaEm' | 'reaberturas' | 'aceitaEm'> & {
   transicoes: readonly TransicaoDaOs[];
 };
 
@@ -63,13 +63,16 @@ function osDoChamado(os: readonly OsDaFonte[]): OsDaFonte | undefined {
 
 /**
  * Os chamados que contam como corretiva, cada um com a OS que vale. O chamado
- * cancelado sem OS fica fora; o chamado ainda sem OS entra sem os campos dela.
+ * cancelado fica fora, com ou sem OS (termo de base "corretiva" do glossário de
+ * métricas, divergência b; até a versão 1 da reincidência e a 2 da atenção e do
+ * sistêmico, o cancelado com OS entrava). O chamado ainda sem OS entra sem os
+ * campos dela.
  */
 export function corretivasDosChamados(chamados: readonly ChamadoDaFonte[]): CorretivaDaFonte[] {
   const corretivas: CorretivaDaFonte[] = [];
   for (const c of chamados) {
+    if (c.estado === 'cancelado') continue;
     const os = osDoChamado(c.os);
-    if (!os && c.estado === 'cancelado') continue;
     corretivas.push({
       id: c.id,
       hotelId: c.hotelId,

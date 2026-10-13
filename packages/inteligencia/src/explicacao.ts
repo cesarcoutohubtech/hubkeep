@@ -77,6 +77,20 @@ function notaDaLinha(score: Pick<Score, 'chave'>, c: Componente): Explicacao | n
   if (score.chave !== 'atencao_ativo') return null;
   const ev = c.evidencia;
   const n = (k: string): number => (typeof ev[k] === 'number' ? (ev[k] as number) : 0);
+  // Da versão 3 da atenção em diante, a base do custo são as corretivas
+  // aceitas (`aceitas`); a versão 2, já gravada, contava as concluídas
+  // (`encerradas`) e segue com o texto dela.
+  if (c.chave === 'custo' && typeof ev['aceitas'] === 'number') {
+    return ev['disponivelNoTenant'] === true
+      ? {
+          chave: 'inteligencia.detalhamento.custo_informado_nas_aceitas',
+          valores: { informadas: n('informadas'), aceitas: n('aceitas') },
+        }
+      : {
+          chave: 'inteligencia.detalhamento.custo_sem_dado_no_tenant_aceitas',
+          valores: { percentual: n('percentualNoTenant'), minimo: n('minimoNoTenant') },
+        };
+  }
   if (c.chave === 'custo' && typeof ev['encerradas'] === 'number') {
     return ev['disponivelNoTenant'] === true
       ? {

@@ -36,7 +36,12 @@ import {
   calcularDia,
 } from './dia';
 import { type ChamadoDaFonte, corretivasDosChamados, inicioDaLeitura } from './fonte';
-import { type Corretiva, type LocalAnalisado, conclusaoEReaberturas } from './historico';
+import {
+  type Corretiva,
+  type LocalAnalisado,
+  aceiteDaOs,
+  conclusaoEReaberturas,
+} from './historico';
 import { type InsightExistente, decidirDeteccao } from './insight';
 import { VERSAO_ATENCAO } from './atencao';
 import { VERSAO_REINCIDENCIA } from './reincidencia';
@@ -173,6 +178,7 @@ export async function executarDiaDoTenant(
   const corretivas: Corretiva[] = corretivasDosChamados(chamados).map(({ transicoes, ...c }) => ({
     ...c,
     ...conclusaoEReaberturas(transicoes, p.agora),
+    aceitaEm: aceiteDaOs(transicoes, p.agora),
   }));
   const resultado = calcularDia({
     agora: p.agora,
