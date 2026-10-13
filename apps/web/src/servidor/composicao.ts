@@ -17,6 +17,7 @@ import {
   type CasosDeUsoDeUhIndisponivel,
   type CasosDeUsoDeConsultas,
   type CasosDeUsoDeAuditoriaGeral,
+  type CasosDeUsoDeAvisosDeSla,
   type CasosDeUsoDeHistorico,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
@@ -339,6 +340,10 @@ export const casosDeUsoDeHistorico = async (): Promise<CasosDeUsoDeHistorico> =>
 /** Auditoria geral (fase 1c), pelo hk_app: a gestão, no escopo da RLS de app.auditoria. */
 export const casosDeUsoDeAuditoriaGeral = async (): Promise<CasosDeUsoDeAuditoriaGeral> =>
   (await fabricas()).auditoriaGeral();
+
+/** Avisos de SLA em aberto (1c, ADR-043, M4), pelo hk_app: o painel do hotel e o selo da ficha. */
+export const casosDeUsoDeAvisosDeSla = async (): Promise<CasosDeUsoDeAvisosDeSla> =>
+  (await fabricas()).avisosDeSla();
 
 /** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */
 export const casosDeUsoDeParadas = async (): Promise<CasosDeUsoDeParadas> =>

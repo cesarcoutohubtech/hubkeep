@@ -340,6 +340,21 @@ export type {
   SituacaoDoPlano,
   UnidadeDePeriodicidade,
 } from './plano-preventivo';
+export {
+  ESTADOS_DA_PREVENTIVA_ABERTA,
+  MOTIVOS_DE_PULO,
+  copiaDoPlano,
+  planejarGeracao,
+} from './geracao-preventiva';
+export type {
+  AtivoParaGerar,
+  MotivoDePulo,
+  PlanejamentoDaGeracao,
+  PlanoAplicado,
+  PlanoParaGerar,
+  PreventivaAGerar,
+  PreventivaGerada,
+} from './geracao-preventiva';
 export type {
   CodigoPadrao,
   CodigoParaRegra,
@@ -476,14 +491,18 @@ export {
   ESCALONAMENTO_PADRAO,
   LIMITES_DO_ESCALONAMENTO,
   NIVEIS_DO_AVISO,
+  PAPEIS_QUE_VEEM_OS_AVISOS,
   TIPOS_DE_ALERTA_DE_SLA,
   avisosDeSla,
+  avisosEmAberto,
   destinatariosDoAviso,
   ehTipoDeAlertaDeSla,
   escalonamentoValido,
+  podeVerAvisosDeSla,
 } from './monitor-sla';
 export type {
   AvisoDeSla,
+  AvisoGravado,
   ChamadoNoMonitor,
   DestinatarioDoAviso,
   EscalonamentoDeSla,

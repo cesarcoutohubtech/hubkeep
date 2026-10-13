@@ -1442,3 +1442,54 @@ Quinta atividade do Kaio (12/10/2026). Proposta de desenho levada ao Cesar e apr
 - **Espera o Cesar:** o merge dos dois PRs; as decisões do piloto sobre "Foto de depois na conclusão", "Assinatura no aceite", "Checklist completo na conclusão", a política de SLA padrão e quais planos preventivos o piloto começa.
 - **Pendências de antes:** as da atividade 4 (revisão da 1c, divergências a–f, aprovações) e da atividade 3 (montagem da 1b com relógio controlável e a conferência do Kaio).
 - **Próximo:** atualizar o `docs/piloto/` de novo a cada entrega da 1b (PV2 com telas, PV3, M1 a M4); depois da aprovação do glossário, o PR de código da conclusão do serviço e do custo informado no domínio.
+
+## Revisão da 1c ao glossário (#230) e perguntas do piloto ao cliente (13/10/2026)
+
+**Pedido do Cesar (13/10/2026, neste chat):**
+- registrar as decisões de configuração do piloto em `docs/referencia/perguntas-cliente.md`, para a reunião com a Slaviero, num PR só de documentação;
+- confirmar neste diário se o agente concorda com a versão 3 do glossário revisada pela 1c ([#230](https://github.com/cesarcoutohubtech/hubkeep/pull/230)).
+
+A atividade 3 segue esperando a montagem com relógio, que vem na fila logo depois da migração 0046 da 1c.
+
+### Glossário: o agente do Kaio concorda com a revisão da 1c
+
+A concordância é do agente, conferida no código. Não é a aprovação do Kaio nem a do Cesar (regra 4 do glossário).
+1. **Termos fechados da versão 2:** sem mudança, como a 1c conferiu.
+2. **Levantamento:** as três correções conferem no código:
+   - o `criado_em` é gravado pela aplicação (`abertoEm`, `repositorios/chamados.ts`);
+   - `calendarioDeSla`, `slaDaCopia`, `prazoNaRetomada` e `montarCalendarioDeSla` existem, e quem chama é a abertura, a triagem e a retomada;
+   - os avisos saem do `avisosDeSla`.
+   Os dois termos novos ("prazo em risco" e "prazo vencido") são só do núcleo, e o Intelligence não usa nenhum dos dois. A correção do instante exato (`agora > prazo`) fica com a 1c, no PR do M4.
+3. **Divergência a:** a 1c está certa, e a premissa do rascunho estava errada. O `app.hotel.fuso` existe, é `not null` desde a fundação e o SLA já o usa. Não falta coluna no tenant. Concordo com a proposta: o Intelligence passa a contar o dia no fuso de cada hotel, como versão nova da fórmula, sem recalcular o gravado (ADR-036). Isso também tira da lista o item antigo "a coluna `fuso` no `app.tenant`".
+4. **Divergência b:** a 1c concorda com a proposta do rascunho (o cancelado fica fora em qualquer caso). Mantenho a proposta.
+5. **Divergência d:** concordo com o ajuste, que confere no código (o custo grava no `repositorios/aceite.ts`). A soma e a cobertura passam a usar as corretivas aceitas no período. Consequência no Intelligence: a "cobertura do custo" da atenção (`custoDisponivelNoTenant`, hoje sobre as concluídas) passa à mesma base, como versão nova da fórmula. É mudança de fonte de dado do módulo, então é do Cesar e do Kaio.
+6. **Quatro pontos:** a 1c aceitou as quatro respostas. O PR de código que leva a conclusão do serviço e o custo informado para `packages/dominio` é deste agente, com o aviso de área compartilhada aqui antes de começar. O painel da 1c espera esse PR.
+
+O rascunho em `docs/referencia/glossario-metricas.md` já recebeu esses ajustes neste PR: a nota da revisão, os dois termos do SLA, as linhas do levantamento e as divergências a e d. Ainda faltam:
+- as decisões das divergências a e b (Cesar e Kaio), c e f (Kaio), d e e (Cesar);
+- a aprovação do Cesar e, nos termos do Intelligence, a do Kaio.
+
+### Perguntas do piloto ao cliente
+
+As perguntas 30 a 34 entraram em `docs/referencia/perguntas-cliente.md`, numa seção nova, "Configuração do piloto":
+- 30: os planos preventivos iniciais;
+- 31: a foto de depois na conclusão;
+- 32: a assinatura no aceite;
+- 33: o checklist completo na conclusão;
+- 34: o SLA padrão, com os valores de `SLA_PADRAO` e `HORARIO_PADRAO`.
+
+O guia de implantação (etapa 8) aponta para elas no lugar de "[a definir] com o Cesar". O arquivo de perguntas ao cliente é da área do agente da 1b e administração. Este registro foi feito a pedido do Cesar, e o agente da 1b fica avisado por este diário.
+
+### Ponto de retomada (13/10/2026, depois do #233)
+
+- **`main`:** no #233, com o #229 (piloto até o #228) e o #230 (revisão da 1c ao glossário).
+- **Nesta branch** (`claude/int-perguntas-glossario`): as perguntas 30 a 34, o guia apontando para elas, os ajustes da revisão da 1c no glossário e este registro. É um PR só de docs, fora da zona protegida.
+- **Esperando:**
+  - o merge do Cesar;
+  - as decisões das divergências a a f e as aprovações do glossário (Cesar e Kaio);
+  - a montagem com relógio da 1b (depois da 0046 da 1c), para a atividade 3;
+  - a conferência do Kaio dos desvios da atividade 3.
+- **Próximo:**
+  - depois da aprovação do glossário, o PR de código da conclusão do serviço e do custo informado no domínio;
+  - depois da montagem, o restante da atividade 3;
+  - a cada entrega da 1b e da 1c, o `docs/piloto/`.

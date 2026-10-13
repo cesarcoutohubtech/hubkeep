@@ -472,6 +472,68 @@ O resto da PV2 (ADR-041), fora da zona protegida, na branch `claude/1b-pv2b`, qu
 - **Esperando o Cesar:** as três decisões da montagem com o relógio do roteiro (seção "Pedidos do Intelligence (atividade 3)"); as três decisões da proposta do "conferir dev".
 - **Próxima tarefa (PV3, depois do sinal do Cesar):** a geração da OS preventiva pelo worker, uma vez por dia (ADR-005), a rota de cron de volta ao `vercel.json`, o kit de teste com um plano e o roteiro no `docs/10`. A PV3 precisa de migração (`app.os.chamado_id` deixa de ser `not null` e passa a exigir o chamado ou o plano; `docs/12`, "Origem da OS"), então tem uma parte de zona protegida, que entra na fila depois da montagem com o relógio, se o Cesar não decidir outra ordem. Primeiro passo: ler a PV3 no `docs/12-plano-fase-1b.md` e na `docs/referencia/propostas-desenho-pv-implantacao.md` e separar o que é zona protegida do que não é.
 
+## Decisões do Cesar: montagem, fila e Dependabot (13/10/2026)
+
+Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
+1. **Montagem com o relógio do roteiro, aprovada:**
+   - a proposta (fábricas, montagem fora do código do web, o instante passado só como opção), desde que inclua o teste de guarda e a recusa contra produção. As duas já estão na proposta, na seção "Guarda (zona protegida)";
+   - a auditoria e o outbox com o relógio do banco.
+   - O gerador (`apps/web/test/demonstracao/historico-inteligencia.ts`) e o material do piloto (`docs/piloto`) passam a dizer que, no histórico gerado, a linha do tempo dos chamados mostra a data da geração, e que a demonstração usa as telas do Intelligence e os indicadores. Entra no PR da montagem, e aviso no próprio diário, porque o gerador é do agente do Kaio.
+2. **Fila de zona protegida:** a 0046 da 1c, depois a montagem, depois a próxima da 1c, depois a parte protegida da PV3.
+   - **Aviso de área compartilhada com a 1c (montagem):** a montagem mexe nos repositórios do chamado, da OS (triagem e execução), da transição, do ativo, da parada e da UH indisponível, no `packages/db`. Sem a opção do relógio do roteiro, o SQL continua o mesmo. Trabalho na branch `claude/1b-montagem-relogio` e trago a `main` com frequência.
+3. **PV3:** pode começar já, na parte fora da zona protegida, numa branch.
+4. **Dependabot:** o Cesar contou que fechou o #231, que tocava a zona protegida, falhava na CI e travava a fila. Pediu a proposta de regra abaixo. Um PR do Dependabot que toca a zona protegida não ocupa a vez: a 1b o adota na vez dela.
+   - O #231 acabou mergeado (bca63c1), não fechado, e a `main` ficou vermelha no CI desde então (o lint para no TS 7). O agente da 1c abriu a correção, o [#236](https://github.com/cesarcoutohubtech/hubkeep/pull/236), que volta o TypeScript para a 6.0. Não mergear outra coisa antes dele.
+
+### Por que o #231 falhou
+
+- **"lint, typecheck e testes":** o grupo semanal levou o `typescript` de `~6.0.3` para `~7.0.2`, uma versão maior. O `typescript-eslint` 8.71 não aceita o TS 7 e o ESLint parou na largada ("typescript-eslint does not support TS 7.0"). O mesmo grupo levou o `vite-plugin-pwa` de 1 para 2, outra versão maior, que não chegou a ser testada.
+- **"zona protegida":** o grupo mexeu no `packages/auth-admin/package.json` (`@supabase/supabase-js`, `@types/node` e `vitest`). Esse check falha por desenho em PR que toca a zona.
+- Os outros três checks (pgTAP, Semgrep e gitleaks) passaram.
+
+### Proposta de regra (para aprovação do Cesar)
+
+1. **Dois grupos semanais no npm, só com versões menores e correções** (`update-types: [minor, patch]`):
+   - `zona-protegida-da-semana`, primeiro na lista, com as dependências do `packages/auth-admin` (`@supabase/supabase-js`, `@types/node`, `vitest`). Um PR por semana, que toca a zona e é adotado na vez da 1b;
+   - `versoes-da-semana`, com todo o resto (`patterns: ['*']`). Como o Dependabot põe cada dependência no primeiro grupo que casa, esse PR não toca a zona e entra como qualquer PR.
+2. **Versões maiores fora dos grupos:** cada uma vem num PR próprio, para a falha de uma não travar as outras.
+   - A versão maior que falha por falta de suporte no ecossistema ganha um `ignore` de `semver-major` com o motivo e a data de rever, no comentário do `dependabot.yml`. O primeiro caso é o `typescript` 7, até o `typescript-eslint` aceitar o TS 7 (issue 10940 do `typescript-eslint`).
+3. **As actions** (ecossistema `github-actions`, mensal) tocam sempre a zona, porque mudam os workflows. Proposta: um grupo só, para vir um PR por mês, adotado na vez da 1b.
+4. **Quando um PR do Dependabot falha:** o agente da 1b vê o motivo uma vez, registra no diário e propõe ao Cesar corrigir, adiar com `ignore` ou fechar. Não corrige no PR do Dependabot sem a vez, se ele tocar a zona.
+5. **Guarda opcional:** um teste da raiz que confere que toda dependência do `packages/auth-admin` está no grupo `zona-protegida-da-semana`. Sem ele, uma dependência nova no `auth-admin` volta a cair no grupo geral. O teste é zona protegida.
+
+**Como entra:** o `dependabot.yml` é zona protegida. Recomendo levar a mudança no PR da montagem, que é a próxima vez da 1b, para não gastar uma vez só com ela. A outra opção é um PR `adm:` próprio, que entraria na fila depois da montagem.
+
+**Esperando o Cesar:** aprovar a proposta (os cinco itens, com ou sem o teste do item 5) e dizer se ela vai no PR da montagem ou num PR próprio.
+
+## PV3a — geração da OS preventiva: regra e caso de uso (13/10/2026)
+
+**Aviso de área compartilhada com a 1c:** mexe em `packages/dominio` (o módulo novo `geracao-preventiva.ts` e o index). Não muda a OS nem o chamado. O Cesar mandou começar a PV3 pela parte fora da zona protegida ("Cesar aqui", 13/10/2026).
+
+Primeira parte da PV3 (ADR-041, decisões 9 a 13), na branch `claude/1b-pv3a`. É a regra e o caso de uso, testados sem banco. O repositório, a rota de cron e as telas dependem das colunas novas de `app.os` e entram com a migração ou depois dela.
+- **Domínio** (`geracao-preventiva.ts`, `planejarGeracao`): no dia do fuso do hotel, para um plano ativo,
+  - só a ocorrência mais recente até hoje, sem avalanche (decisão 10). A OS nasce no dia previsto (decisão 11);
+  - uma OS por ativo do alvo (decisão 9), no local atual do ativo, com o responsável padrão, o checklist do plano e a cópia do plano (nome, versão e periodicidade; ADR-026);
+  - pula, com o motivo:
+    - `ja_gerada`: a ocorrência já tem OS, mesmo cancelada;
+    - `os_anterior_aberta`: a OS anterior do mesmo plano e ativo ainda está atribuída, em execução ou pausada;
+    - `sem_responsavel`: o plano inteiro;
+    - `sem_ativo`: o plano inteiro;
+    - `ativo_posterior`.
+- **Aplicação** (`criarGeracaoDePreventivas`, porta `PortaGeracaoPreventiva`):
+  - os hotéis ativos do tenant, cada um na própria transação (decisão 13), com os planos travados;
+  - um hotel que falha não segura os outros: a falha volta no resultado;
+  - o resultado traz os hotéis, os planos, as geradas, as puladas por motivo e as falhas.
+- **Testes:** 10 do domínio; 6 da aplicação, com a porta em memória: o fuso por hotel, rodar duas vezes no mesmo dia, a corrida com outra execução e a falha de um hotel.
+
+**Dois detalhes que escolhi, para o Cesar confirmar ou mudar:**
+1. **A OS concluída, esperando o aceite, não prende a próxima.** O serviço já foi feito, e um aceite esquecido não pode parar o calendário (o PMOC, por exemplo). Só a atribuída, a em execução e a pausada prendem.
+2. **O ativo cadastrado depois da data prevista espera a próxima ocorrência** (`ativo_posterior`). Sem isso, o ativo novo de uma categoria com plano mensal nasceria com uma OS atrasada, de uma data em que ele nem existia.
+
+**Próximo:**
+- **PV3b, fora da zona:** a OS sem chamado na máquina de estados (decidirNaOs sem chamado; o aceite da preventiva pelo Gerente, ou pelo Gestor CSC ou pelo Admin sem Gerente, decisão 12) e o contrato da fila do dia do PWA (`?preventiva=1`). Mexe na OS, que é área compartilhada: aviso antes de começar.
+- **PV3 na zona protegida,** na vez dela (depois da montagem e da próxima da 1c): a migração de `app.os` e as permissões do worker, os tipos, o repositório da porta, a rota `/api/cron/preventiva` no `vercel.json` e o teste de integração.
+
 ## Montagem com o relógio do roteiro (13/10/2026)
 
 Pedido 2 do Intelligence (atividade 3), com a proposta aprovada pelo Cesar ("Cesar aqui", 13/10/2026): fábricas, montagem fora do código do web, o instante só pela opção, o teste de guarda e a recusa contra produção; a auditoria e o outbox com o relógio do banco. Branch `claude/1b-montagem-relogio`. O PR toca a zona protegida (o teste de guarda e a regex) e abre na vez da 1b, depois da 0046 da 1c.

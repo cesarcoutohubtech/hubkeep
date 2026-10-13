@@ -453,3 +453,94 @@ Resposta ao "Pedido de revisão ao agente da 1c" (`docs/diario-intelligence.md`,
   Os três mexem no fim deste diário. Depois de cada merge, a branch seguinte junta a `main`.
 - **Esperando:** a resposta do agente do Kaio a esta revisão; as decisões das divergências; a aprovação do glossário pelo Cesar.
 - **Próxima tarefa:** o M4, painel dos avisos de SLA (em risco e vencido) e selo na ficha do chamado, numa branch nova a partir da `main`. Primeiro passo: no `avisosDeSla`, o vencido só depois do prazo (`agora > prazo`), com o teste do instante exato. Depois, a leitura dos avisos abertos por hotel para o painel.
+
+## Painel dos avisos de SLA e selo na ficha (M4, 13/10/2026)
+
+**Aviso de área compartilhada (chamado):** a 1c acrescenta o selo dos avisos na ficha do chamado no web (`chamados/[id]/tela.tsx`, sem tocar no `corretiva.tsx`), duas rotas de leitura e textos no catálogo. Branch `claude/1c-avisos-sla`, a partir da `main` com o #224. Fora da zona protegida e sem migração: lê a `app.sla_alerta` da 0044.
+- **Domínio** (`monitor-sla.ts`):
+  - o vencido só depois do prazo, como o "dentro do prazo" do glossário (a correção prometida na revisão do glossário);
+  - `avisosEmAberto`: no máximo um aviso por prazo, o mais forte. O vencido sai do próprio prazo, sem esperar o cron; o em risco, do aviso gravado para o prazo de agora, e o prazo refeito descarta os antigos. O atendimento conta até a primeira OS; a solução, até o serviço concluído;
+  - com a pausa que parou o relógio, o prazo da solução está congelado até a retomada: vale só o aviso já gravado, como no monitor. A aplicação decide a pausa pela cópia do SLA e pelo motivo, com a mesma função do monitor;
+  - `podeVerAvisosDeSla`: a gestão do hotel (Admin do grupo, Gestor CSC e Gerente do hotel), os papéis da policy da `app.sla_alerta`. Fora disso, `avisos_sla_fora_do_escopo`.
+- **Aplicação:** `criarCasosDeUsoDeAvisosDeSla`, com `doHotel` (o painel, os vencidos primeiro e depois pelo prazo) e `doChamado` (o selo; vazio para quem não é da gestão, sem erro).
+- **Banco:** `criarPortaAvisosDeSla` (`packages/db/src/avisos-de-sla.ts`), só leitura com `withContext`: os chamados em curso com prazo e os avisos gravados.
+- **API:**
+  - `GET /api/v1/hoteis/{id}/avisos-sla`, o painel;
+  - `GET /api/v1/chamados/{id}/avisos-sla`, o selo;
+  - no OpenAPI; tipos e níveis conferidos com o domínio.
+- **Telas:**
+  - `/sla` no menu de operação ("Avisos de SLA"), com a escolha do hotel e a lista com o link para a ficha;
+  - na ficha, o selo no alto, relido depois de cada gravação;
+  - vermelho para o vencido e âmbar para o em risco, sempre com o texto.
+- **Catálogo:** o menu, o painel, o texto do aviso e o erro, nos quatro idiomas.
+- **Fica para a comunicação (item 5):** o e-mail e o push, que consomem o evento `chamado.sla_alerta`.
+
+## Aceite automático (M5): proposta para o Cesar (13/10/2026)
+
+**Aviso de área compartilhada com a 1b (OS e chamado):** o M5 mexe no aceite da OS, no `packages/dominio` (`corretiva.ts`), no `packages/aplicacao` e no `packages/db`. Branch `claude/1c-aceite-automatico`, a partir da `main`.
+
+**Por que precisa de decisão:** o M5 foi aprovado como "o job entra na rota de cron do SLA, num PR próprio" (ADR-043). Mas o job precisa gravar na OS e no chamado, e o `hk_worker` hoje só lê os dois. O ADR-043 diz que "o worker não ganha UPDATE no chamado". E a transição da OS (`app.os_transicao`) exige um usuário (`usuario_id not null`), que o job não tem. Então o M5 pede um ADR novo (ADR-044) e uma migração (0046, zona protegida). Proponho:
+
+1. **Contagem dos dias:** N vezes 24 horas corridas desde a última conclusão da OS (a transição mais recente para `concluida`). Não usa o calendário de SLA: o hotel fechado no fim de semana não para a contagem. Cada reabertura recomeça a contagem na nova conclusão.
+2. **Política resolvida por hotel:** `os.aceite_automatico` com a herança hotel → bandeira → grupo → padrão (desligado, 7 dias), como já está.
+3. **Quando o job não aceita:** a OS segue aguardando aceite.
+   - **Quem abriu também executa:** fica de fora até a resposta do cliente à pergunta 16 (`docs/referencia/perguntas-cliente.md`). Senão o técnico que acha e resolve o problema se aceita só esperando.
+   - **Códigos obrigatórios** (`os.codigos_obrigatorios` ligada) e a OS sem os três códigos: fica de fora.
+   - **Assinatura no aceite** (`os.assinatura_no_aceite` ligada): o hotel nunca tem aceite automático, porque não há quem assine. Proponho não barrar a combinação na configuração e mostrar uma nota na tela.
+4. **Quem aparece como autor:** ninguém.
+   - **Transição:** ação nova `aceitar_automatico`, com o usuário nulo. O check da tabela passa a exigir o usuário nulo nessa ação e só nela.
+   - **Auditoria:** a auditoria já aceita usuário nulo para job.
+   - **Evento:** o mesmo `os.aceita`, com `automatico: true`, para a comunicação e o Intelligence contarem a OS como aceita.
+   - **Custo:** sem custo informado. No glossário, isso baixa a cobertura do custo; registro com o Kaio na revisão.
+5. **Privilégios do `hk_worker` (migração 0046):**
+   - UPDATE só nas colunas `estado`, `situacao_id`, `versao` e `atualizado_em` de `app.os` e `app.chamado`;
+   - INSERT em `app.os_transicao`;
+   - policies `worker_update` e `worker_insert` no tenant do job (`authz.tenant_sistema()`), como no `app.local`. A policy não confere o estado: a regra fica no domínio (regra 2);
+   - pgTAP novo e as listas dos meta-testes.
+6. **No cron:**
+   - roda na mesma rota `/api/cron/sla`, a cada 5 minutos, depois do monitor;
+   - cada tenant numa transação do `hk_worker`, com no máximo 200 OS por rodada;
+   - a versão da OS é conferida: se alguém mexeu ao mesmo tempo, a OS fica para a rodada seguinte;
+   - o chamado vai para o mesmo estado que teria num aceite manual (a mesma regra do domínio).
+7. **Sem tela nova:**
+   - a ficha da OS mostra "aceita automaticamente" na linha do tempo, pela ação da transição;
+   - a tela de configuração ganha a nota da assinatura;
+   - catálogo nos quatro idiomas.
+
+**Ordem:** o ADR-044 e a 0046 vão num PR de zona protegida, quando for a vez da 1c (hoje nenhum PR de zona protegida está aberto). O código vai num PR seguinte, fora da zona. Enquanto espero a decisão, adianto na branch o domínio e a aplicação, com as portas em memória, sem abrir PR.
+
+**Decisão:** Cesar aprovou no chat do agente da 1c, em 13/10/2026: "Cesar aqui. Aprovo o M5 conforme recomendado". O ADR-044 entra com o status "aguarda aprovação", porque o texto veio depois.
+
+### Aceite automático: PR de zona protegida (ADR-044 e migração 0046)
+
+Na branch `claude/1c-aceite-automatico`:
+- o ADR-044 no `docs/03`;
+- a migração 0046 (`20261013210000_aceite_automatico.sql`). A 0045 é a dos planos preventivos da 1b;
+- o pgTAP `038`, com os testes `025` e `037` ajustados: antes, eles afirmavam que o worker não grava transição e não altera o chamado.
+
+**Fila de zona protegida (13/10/2026):** o #231 do Dependabot está aberto e toca o `packages/auth-admin/package.json`, que é zona protegida. O PR da 0046 só abre depois que o #231 sair, e na vez que o Cesar der. A PV3 da 1b também quer a vez.
+
+**Aviso à 1b (PV3, ADR-041):** a 0046 já faz parte do que a PV3 previa para `app.os_transicao`:
+- dá ao `hk_worker` o INSERT e a policy `worker_insert`, no tenant do job e com o usuário nulo;
+- deixa o `usuario_id` anulável.
+
+O check `os_transicao_sem_autor_so_no_aceite_automatico` exige o usuário nulo na ação `aceitar_automatico` e só nela. A PV3 não precisa de GRANT nem de policy novos na transição. Basta trocar esse check por um que também aceite o nulo em `gerar`. Por exemplo: `case acao when 'aceitar_automatico' then usuario_id is null when 'gerar' then true else usuario_id is not null end`.
+
+**Aviso ao Intelligence:** a transição do aceite automático tem a ação nova `aceitar_automatico`, de `concluida` para `aceita`, sem usuário. O evento continua `os.aceita`, com `automatico: true`. Quem conta aceites pela ação `aceitar` precisa contar as duas. A OS aceita automaticamente fica sem custo informado, o que pesa na cobertura do custo do glossário.
+
+### ADR-044 aprovado e a vez da zona protegida (13/10/2026)
+
+Cesar, no chat do agente da 1c: "Aprovo o ADR-044. Atualize o status." O status no `docs/03` passou a "aprovado". Na mesma mensagem, ele deu a vez da zona protegida à 1c para o PR da 0046.
+
+**A `main` ficou vermelha.** O #231 do Dependabot foi mergeado (`bca63c1`) e subiu o TypeScript para a 7.0.2. O `typescript-eslint` 8.71 não suporta a 7.0, e o `pnpm lint` falha na `main`. A correção é o #236, fora da zona protegida: o TypeScript volta a `~6.0.3`, com o lockfile regenerado. Ela entra antes de qualquer outro merge. Até lá, o lint deste PR também falha, pelo mesmo motivo. Para o Dependabot não propor o TypeScript 7 de novo, falta um `ignore` no `.github/dependabot.yml`, que é zona protegida.
+
+### Ponto de retomada (13/10/2026, M5)
+- **`main`:** verde de novo com o #236 (TypeScript de volta à 6.0). Depois dele entrou o #232 (painel dos avisos de SLA, M4). Já tinham entrado o #229, o #230 e o #233.
+- **PRs da 1c:**
+  - #237: zona protegida, a 0046 e o ADR-044 (aprovado), com a `main` juntada depois do #232; esperando o merge do Cesar e o `db push`.
+- **Fora da 1c:** o #238, do agente do Kaio, faz a mesma correção do #236 e pode ser fechado.
+- **Não enviado como PR:** `claude/1c-aceite-automatico-codigo`, o código do M5. Abre depois do merge da 0046 e do `db push`, com a branch refeita a partir da `main`.
+- **Esperando:**
+  - o Cesar: o merge do #237 e o `db push` da 0046;
+  - o agente do Kaio: a resposta à revisão do glossário (o #230 já está na `main`).
+- **Próxima tarefa:** as telas que faltam do SLA: a edição da política de SLA e do escalonamento e a troca de categoria na triagem. Primeiro passo: ler a tela de configuração e o contrato de `chamado.sla` e `chamado.escalonamento`.

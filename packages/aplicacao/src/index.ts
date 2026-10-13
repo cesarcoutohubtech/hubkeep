@@ -216,6 +216,15 @@ export type {
 } from './portas/monitor-sla';
 export { criarMonitorDeSla } from './casos-de-uso/monitor-sla';
 export type { ResultadoDoMonitor } from './casos-de-uso/monitor-sla';
+export type {
+  AtivoDoAlvo,
+  HotelParaGerar,
+  PlanoDoHotel,
+  PortaGeracaoPreventiva,
+  SessaoDaGeracao,
+} from './portas/geracao-preventiva';
+export { criarGeracaoDePreventivas } from './casos-de-uso/geracao-preventiva';
+export type { ResultadoDaGeracao } from './casos-de-uso/geracao-preventiva';
 export { criarCasosDeUsoDeChamados } from './casos-de-uso/chamados';
 export type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './casos-de-uso/chamados';
 export type {
@@ -298,6 +307,9 @@ export type {
   LinhaComMudancas,
   PaginaDaAuditoria,
 } from './casos-de-uso/auditoria-geral';
+export type { ChamadoComAvisos, PortaAvisosDeSla } from './portas/avisos-de-sla';
+export { criarCasosDeUsoDeAvisosDeSla } from './casos-de-uso/avisos-de-sla';
+export type { CasosDeUsoDeAvisosDeSla, ChamadoNoPainelDeSla } from './casos-de-uso/avisos-de-sla';
 export type {
   CasosDeUsoDeHistorico,
   EventoDoHistorico,
