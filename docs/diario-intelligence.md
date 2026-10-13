@@ -1815,3 +1815,33 @@ Mensagem do Kaio no chat do agente do Kaio ("Kaio aqui"), 13/10/2026: aprova a g
   - **Ponto 4, quando o job roda:** o Cesar quer as 06:00 UTC do dia seguinte, como em produção; o Kaio, as 23:59:59 de São Paulo de cada dia (sugestão original).
 
 **Aguarda:** Cesar e Kaio combinarem os pontos 3 e 4. A gravação usa os dois, então o código espera.
+
+## Atividade 3: a gravação do histórico (13/10/2026)
+
+O Cesar mandou prosseguir ("Cesar aqui. Prossiga") com os pontos 3 e 4 ainda em divergência. A gravação foi escrita com esses dois pontos em constantes, para a escolha final mudar uma linha.
+
+**O que foi feito** (branch `claude/vigilant-cray-l06ew1`, ainda sem PR):
+- `apps/web/test/demonstracao/gravacao-historico.ts`: `gravarHistorico`, pelos casos de uso:
+  - o relógio do roteiro vem da montagem da 1b;
+  - o job do dia e as decisões do insight vêm do módulo, com acessos próprios do hk_worker e do hk_app, que passam pela mesma trava da montagem;
+  - a base do grupo é o kit (`baseDoKit`), que o teste pode trocar.
+- O comando `pnpm demo:historico --ambiente dev|staging [--fim AAAA-MM-DD]`, em `scripts/ops/historico-demonstracao.ts`, com a config `vitest.historico.config.ts`. A conferência do `--fim` tem teste próprio, `tests/historico-inteligencia-ops.test.ts`.
+- `gravacao-historico.test.ts`:
+  - **sem rede:** recusa a Vercel, a produção e o job que ainda não rodou, e calcula o fim padrão;
+  - **na CI:** grava o roteiro curto pela base do kit, confere o estado de cada cenário e roda de novo sem gravar nada; com outro fim, recusa.
+- **No roteiro:**
+  - a parada nasce com o chamado, porque a abertura não aceita `paradoDesde` depois dela;
+  - o teste sem banco usa o fuso de São Paulo e roda os dois momentos do job, e os dois passam.
+
+**Pontos 3 e 4:**
+- **Ponto 3 (quem aceita).** A sugestão original do agente, a Admin aceitar, não passa na regra do aceite. A Admin só aceita quando quem abriu também executou a OS e o hotel não tem outro Gerente (`packages/dominio/src/corretiva.ts`, grupo `aceite`). No roteiro, a Solicitante abre e o Técnico executa, então o aceite da Admin seria recusado. Por isso a gravação usa o Gerente do kit, como o Cesar pediu. O Kaio confirma, ou propõe outra forma, por exemplo a Admin abrir os chamados.
+- **Ponto 4 (quando o job roda).** O padrão é `como_em_producao`, a versão do Cesar. Trocar para `fim_do_dia_local` muda uma constante, e o teste sem banco já cobre as duas.
+
+**Detalhes da gravação, para o Kaio conferir (ADR-033):**
+- **Início do módulo.** O módulo começa em `roteiro.inicio`, o primeiro dia do histórico, e não no primeiro dia do aquecimento, como a proposta dizia: o aquecimento é só do núcleo, antes do contrato do Intelligence.
+- **Abertura das telas.** A política `inteligencia.visibilidade_telas` do grupo abre as telas no primeiro dia do histórico, porque o roteiro decide insights antes dos 60 dias do padrão.
+- **Data das políticas.** As duas políticas do Intelligence são gravadas com o relógio real, porque as chaves do módulo só valem com o módulo vigente.
+
+**Primeira rodada local:** volume curto, num Postgres 16 descartável do contêiner (nunca o dev), com uma base gravada pelo dono no lugar do kit, porque o Auth não roda aqui.
+- **Volume e tempo:** 1.767 chamados, cerca de 8.850 operações e 183 dias calculados, em 5 min 20 s.
+- **Insights:** os 8 esperados, nenhum do ruído, e cada um no estado do roteiro, com 18 decisões.
