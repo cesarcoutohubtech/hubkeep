@@ -707,3 +707,46 @@ O #244 entrou, e a 0047 abriu no #257, na vez da 1c na fila de zona protegida. O
   - as decisões C1 a C9 da comunicação;
   - as aprovações do glossário.
 - **Próxima tarefa:** depois do merge da 0047, juntar a `main` na `claude/1c-arrendado-os`, rodar lint, typecheck e testes, e abrir o PR 3. Primeiro passo: conferir que a 0047 está na `main` e que o `db push` foi feito.
+
+## Decisões do Cesar: ADR-045 e comunicação (13/10/2026)
+
+**ADR-045** (responsável do arrendamento na OS): aprovado pelo Cesar no chat do agente da 1c ("ADR-045 (responsável do arrendamento na OS): aprovo, como descrito"). A aprovação cobre:
+- a marca gravada na criação da OS, sem recálculo;
+- a categoria sem regra com a arrendatária;
+- o ajuste manual na triagem até o aceite, com motivo, auditoria e linha do tempo;
+- o aviso ao locador uma vez por OS.
+
+**Status no `docs/03`:**
+- O #257 (0047) foi mergeado antes de o status mudar. O ADR-045 continua "aguarda aprovação" na `main`.
+- O commit com o status (`5cf260a`) foi enviado por engano para a branch do #257 depois do merge, sem conferir antes se o PR estava aberto, e recriou a branch `claude/1c-arrendado-migracao` no GitHub. Ele não está em PR nenhum.
+- O status entra num PR de zona protegida, na vez que o Cesar der.
+
+**Comunicação (C1 a C9):** aprovadas como recomendadas, com os registros do Cesar no fim de `docs/referencia/propostas-comunicacao-1c.md`:
+- **C1:** o envio fica desligado e só registrado até o Cesar configurar a infraestrutura dele (domínio, AWS, SES e saída do sandbox).
+- **C6:** muda a decisão de 25/09 (ADR-022). Os avisos saem no idioma de quem recebe; o convite e a recuperação, em pt-BR.
+- **C8:** um e-mail por aviso, com a contagem por destinatário e por dia disponível desde o primeiro dia do piloto. Acima de 30 por pessoa e por dia, abre-se o resumo agrupado.
+- **C9:**
+  - a ordem é ADR, uma migração com as duas tabelas, e-mail do SLA, push, recuperação de senha e e-mail ao locador;
+  - a migração entra na fila de zona protegida depois da parte protegida da PV3;
+  - o ADR da comunicação vai no mesmo PR da migração, porque o `docs/03` é zona protegida.
+
+### Pedido ao agente da 1b e administração: o Registro de decisões (13/10/2026)
+
+O C6 muda a decisão de 25/09 (e-mail, push e PDF em pt-BR no MVP). Peço que o Registro de decisões anote a mudança:
+- os avisos saem no idioma de quem recebe, com a preferência do membro e depois o padrão do tenant;
+- o convite e a recuperação de senha seguem em pt-BR, porque o template do Supabase Auth é único;
+- o PDF não foi tratado nesta decisão.
+
+A aprovação está no chat do agente da 1c, em 13/10/2026.
+
+### Ponto de retomada (13/10/2026, decisões)
+- **`main`:** em `aeb3c47`, com a 0047 (#257).
+- **Dev:** o `db push` da 0047 espera o Cesar, que avisa quando fizer.
+- **PRs da 1c:** o deste registro, fora da zona protegida.
+- **Na branch, sem PR:** `claude/1c-arrendado-os` (PR 3 do arrendado). Ela abre depois do aviso do `db push`, com a `main` mesclada nela.
+- **Esperando o Cesar:**
+  - o aviso do `db push` da 0047;
+  - a vez de um PR de zona protegida para o status do ADR-045;
+  - o que fazer com a branch `claude/1c-arrendado-migracao`, recriada por engano;
+  - as aprovações do glossário.
+- **Próxima tarefa:** com o aviso do `db push`, juntar a `main` na `claude/1c-arrendado-os`, validar e abrir o PR 3. Enquanto isso, na branch: o ADR da comunicação e a migração das duas tabelas, para abrir na vez dela, depois da PV3.
