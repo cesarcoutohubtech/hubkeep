@@ -98,6 +98,8 @@ export interface FiltroDaTela {
   prioridadeId: string;
   de: string;
   ate: string;
+  /** '1': só as OS do locador no hotel arrendado (1c, ADR-045); só a lista de OS tem. */
+  doLocador: string;
 }
 
 export const FILTRO_VAZIO: FiltroDaTela = {
@@ -106,6 +108,7 @@ export const FILTRO_VAZIO: FiltroDaTela = {
   prioridadeId: '',
   de: '',
   ate: '',
+  doLocador: '',
 };
 
 /** Meia-noite local da data do calendário, em ISO 8601. */
@@ -130,6 +133,7 @@ export function caminhoDaLista(
   if (filtro.prioridadeId) q.set('prioridadeId', filtro.prioridadeId);
   if (filtro.de) q.set('de', inicioDoDia(filtro.de));
   if (filtro.ate) q.set('ate', inicioDoDia(filtro.ate, 1));
+  if (filtro.doLocador) q.set('doLocador', '1');
   if (depoisDe) q.set('depoisDe', depoisDe);
   const texto = q.toString();
   return texto ? `${caminho}?${texto}` : caminho;
@@ -302,6 +306,20 @@ export function FiltrosDaLista(props: {
           />
         )}
       </Campo>
+      {props.entidade === 'os' && (
+        <Campo rotulo={t('corretiva.filtros.arrendamento')}>
+          {(p) => (
+            <Selecao
+              {...p}
+              value={f.doLocador}
+              onChange={(e) => mudar('doLocador')(e.target.value)}
+            >
+              <option value="">{t('corretiva.filtros.todas')}</option>
+              <option value="1">{t('corretiva.filtros.do_locador')}</option>
+            </Selecao>
+          )}
+        </Campo>
+      )}
       <div className="hk-linha-de-botoes">
         <Botao type="submit" variante="primario">
           {t('corretiva.filtros.aplicar')}
@@ -403,7 +421,15 @@ export function LinhaDeOs({ o, refs }: { o: OsResumida; refs: Referencias | null
           {nomes.prioridade(o.prioridadeId)}
         </SeloDePrioridade>
       </td>
-      <td>{nomes.nome(o.responsavelNome)}</td>
+      <td>
+        {nomes.nome(o.responsavelNome)}
+        {o.responsavelArrendamento === 'locador' && (
+          <>
+            {' '}
+            <Selo tom="ambar">{t('corretiva.os.do_locador')}</Selo>
+          </>
+        )}
+      </td>
       <td className="hk-tnum">
         {t('comum.data_hora', { data: intl.formatDate(o.criadoEm, dataCurta) })}
       </td>
@@ -730,6 +756,20 @@ export function ChamadoEmDetalhe(props: {
                         })
                       : t('corretiva.os.executado_pela_equipe')}
                   </p>
+                  {o.responsavelArrendamento && (
+                    <p className="hk-suave" data-arrendamento={o.responsavelArrendamento}>
+                      {t('corretiva.os.arrendamento', {
+                        responsavel: o.responsavelArrendamento,
+                      })}
+                    </p>
+                  )}
+                  {o.locadorAvisadoEm && (
+                    <p className="hk-suave" data-locador-avisado={o.locadorAvisadoEm}>
+                      {t('corretiva.os.locador_avisado', {
+                        data: intl.formatDate(o.locadorAvisadoEm, dataCurta),
+                      })}
+                    </p>
+                  )}
                   {o.custoInformado !== null && (
                     <p className="hk-suave" data-custo={o.custoInformado}>
                       {t('corretiva.os.custo', {

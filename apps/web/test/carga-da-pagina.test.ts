@@ -78,6 +78,8 @@ function fontes(sobrescrever: Partial<Record<string, unknown>> = {}) {
           custoInformado: null,
           codigos: { falhaId: null, causaId: null, solucaoId: null },
           assinaturaAceiteId: null,
+          responsavelArrendamento: null,
+          locadorAvisadoEm: null,
           criadoPor: USUARIO,
           versao: 1,
           criadoEm: EM,

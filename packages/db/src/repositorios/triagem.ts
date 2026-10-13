@@ -5,7 +5,9 @@
 // guarda quem executa (equipe interna ou fornecedor do grupo), o chamado, o
 // impacto no hóspede, e o cancelamento do chamado libera a UH. Na 1c
 // (ADR-042), a troca de prioridade grava os prazos refeitos, com os de antes
-// na auditoria.
+// na auditoria. No arrendado (ADR-045), a OS guarda a marca de quem responde
+// por ela; o aviso ao locador grava a hora, entra na auditoria (a linha do
+// tempo) e publica os.locador_avisado, uma vez por OS.
 import type { MudancaNoChamado, ReflexoNoChamado } from '@hubkeep/aplicacao';
 import {
   Conflito,
@@ -13,6 +15,7 @@ import {
   NaoEncontrado,
   type QuemExecuta,
   type Responsavel,
+  type ResponsavelDoArrendamento,
   conflitoDeVersao,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
@@ -31,6 +34,12 @@ function osEmAndamento(e: unknown): never {
   }
   throw e;
 }
+
+/**
+ * A hora do aviso é sempre a do banco, como a da auditoria e a do outbox: diz
+ * quando o aviso saiu de fato, também na montagem com o relógio do roteiro.
+ */
+const avisadoAgora = sql<Date>`now()`;
 
 const colunasDoResponsavel = (r: Responsavel) =>
   r.tipo === 'tecnico'
@@ -168,6 +177,8 @@ export async function gerarOs(
     situacaoId: string;
     responsavel: Responsavel;
     execucao: QuemExecuta;
+    arrendamento: ResponsavelDoArrendamento | null;
+    avisarLocador: boolean;
   },
 ): Promise<{ id: string; versao: number; versaoDoChamado: number }> {
   if (!uow.usuarioId) throw new Error('Geração de OS exige usuário no contexto.');
@@ -188,6 +199,8 @@ export async function gerarOs(
       ...colunasDoResponsavel(g.responsavel),
       executado_por: g.execucao.executadoPor,
       fornecedor_id: g.execucao.fornecedorId,
+      responsavel_arrendamento: g.arrendamento,
+      locador_avisado_em: g.avisarLocador ? avisadoAgora : null,
       criado_por: uow.usuarioId,
       ...datasDaCriacao(uow),
     })
@@ -211,8 +224,11 @@ export async function gerarOs(
       responsavel: g.responsavel,
       situacaoId: g.situacaoId,
       ...g.execucao,
+      ...(g.arrendamento === null ? {} : { responsavelArrendamento: g.arrendamento }),
     },
   });
+  if (g.avisarLocador)
+    avisarLocador(uow, { osId: id, hotelId: g.hotelId, chamadoId: g.chamado.id });
   uow.publicar({
     tipo: 'os.atribuida',
     entidade: 'os',
@@ -226,6 +242,90 @@ export async function gerarOs(
     },
   });
   return { id, versao: 1, versaoDoChamado: chamado.versao };
+}
+
+/**
+ * O aviso ao locador (ADR-045, decisão 8): a auditoria leva à linha do tempo
+ * da OS, e o evento, ao e-mail do proprietário, quando a comunicação (item 5
+ * da 1c) tiver o manipulador. Quem chama já gravou locador_avisado_em.
+ */
+function avisarLocador(
+  uow: UnidadeDeTrabalho,
+  a: { osId: string; hotelId: string; chamadoId: string },
+): void {
+  uow.auditar({
+    entidade: 'os',
+    registroId: a.osId,
+    acao: 'avisar_locador',
+    hotelId: a.hotelId,
+    depois: { chamadoId: a.chamadoId },
+  });
+  uow.publicar({
+    tipo: 'os.locador_avisado',
+    entidade: 'os',
+    registroId: a.osId,
+    payload: { hotelId: a.hotelId, chamadoId: a.chamadoId },
+  });
+}
+
+/**
+ * Ajusta a marca do arrendamento (ADR-045), com a versão conferida e o motivo
+ * na auditoria. Com o aviso, a hora fica gravada mesmo que a marca volte.
+ */
+export async function ajustarArrendamento(
+  uow: UnidadeDeTrabalho,
+  g: {
+    osId: string;
+    versao: number;
+    arrendamento: ResponsavelDoArrendamento;
+    motivo: string;
+    avisarLocador: boolean;
+  },
+): Promise<{ versao: number }> {
+  const tx = transacaoDe(uow);
+  const antes = await tx
+    .selectFrom('app.os')
+    .select(['responsavel_arrendamento', 'versao'])
+    .where('id', '=', g.osId)
+    .executeTakeFirst();
+  const r = await tx
+    .updateTable('app.os')
+    .set({
+      responsavel_arrendamento: g.arrendamento,
+      ...(g.avisarLocador ? { locador_avisado_em: avisadoAgora } : {}),
+      versao: sql<number>`versao + 1`,
+      atualizado_em: agoraNaGravacao(uow),
+    })
+    .where('id', '=', g.osId)
+    .where('versao', '=', g.versao)
+    .returning(['hotel_id', 'chamado_id', 'versao'])
+    .executeTakeFirst();
+  if (!r) return semLinha(tx, 'app.os', g.osId, g.versao);
+  uow.auditar({
+    entidade: 'os',
+    registroId: g.osId,
+    acao: 'ajustar_arrendamento',
+    hotelId: r.hotel_id,
+    antes: antes && {
+      responsavelArrendamento: antes.responsavel_arrendamento,
+      versao: antes.versao,
+    },
+    depois: { responsavelArrendamento: g.arrendamento, motivo: g.motivo, versao: r.versao },
+  });
+  uow.publicar({
+    tipo: 'os.arrendamento_ajustado',
+    entidade: 'os',
+    registroId: g.osId,
+    payload: {
+      hotelId: r.hotel_id,
+      chamadoId: r.chamado_id,
+      responsavelArrendamento: g.arrendamento,
+    },
+  });
+  if (g.avisarLocador) {
+    avisarLocador(uow, { osId: g.osId, hotelId: r.hotel_id, chamadoId: r.chamado_id });
+  }
+  return { versao: r.versao };
 }
 
 /** Corrige quem executa a OS (I4), com a versão conferida. */

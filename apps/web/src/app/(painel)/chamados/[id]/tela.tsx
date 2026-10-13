@@ -26,6 +26,7 @@
 //
 // M4 (1c, ADR-043): no alto, o selo dos avisos de SLA em aberto, só para a
 // gestão do hotel.
+import type { ResponsavelDoArrendamento } from '@hubkeep/dominio';
 import type { Idioma } from '@hubkeep/i18n';
 import { MensagemVazia, Nota, Painel } from '@hubkeep/ui';
 import Link from 'next/link';
@@ -271,5 +272,11 @@ function acoesDaTriagem(
       void enviar(`/api/v1/os/${os.id}/reatribuicao`, { versao: os.versao, responsavel }),
     cancelarOs: (os: OsDoChamado, motivo: string) =>
       void enviar(`/api/v1/os/${os.id}/cancelamento`, { versao: os.versao, motivo }),
+    ajustarArrendamento: (
+      os: OsDoChamado,
+      responsavel: ResponsavelDoArrendamento,
+      motivo: string,
+    ) =>
+      void enviar(`/api/v1/os/${os.id}/arrendamento`, { versao: os.versao, responsavel, motivo }),
   };
 }

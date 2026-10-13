@@ -64,11 +64,23 @@ describe('consultas da corretiva (C7)', () => {
         de: new Date('2026-09-01T03:00:00.000Z'),
         ate: new Date('2026-10-01T03:00:00.000Z'),
         depoisDe: null,
+        doLocador: false,
       },
       TAMANHO_DA_PAGINA + 1,
     );
     expect(r).toEqual({ itens: expect.any(Array), proximo: null });
     expect(r.itens).toHaveLength(3);
+  });
+
+  it('a lista de OS passa o filtro "do locador" à porta (1c, ADR-045)', async () => {
+    const p = porta(1);
+    const uc = criarCasosDeUsoDeConsultas({ consultas: p });
+    await uc.listarOs(ctx, { doLocador: true });
+    expect(p.os).toHaveBeenCalledWith(
+      ctx,
+      expect.objectContaining({ doLocador: true }),
+      TAMANHO_DA_PAGINA + 1,
+    );
   });
 
   it('com mais que a página: devolve a página e o id do último como próximo', async () => {

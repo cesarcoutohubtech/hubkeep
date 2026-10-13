@@ -10,6 +10,18 @@
 //   - a regra usa a categoria do próprio chamado (ADR-042), e não a do ativo
 //     (decisão 7, com o ajuste do Cesar). A categoria sem regra, e o chamado
 //     sem categoria, ficam com a arrendatária.
+//
+// Na OS (ADR-045): a marca é a cópia da regra na geração; quem tria ajusta a
+// marca até o aceite, com motivo. O aviso ao locador sai uma vez por OS: na
+// geração já marcada como dele, ou no primeiro ajuste para ele.
+import {
+  type AtorDaCorretiva,
+  type ChamadoParaRegra,
+  type EstadoDaOs,
+  normalizarMotivo,
+  podeTriar,
+} from './corretiva';
+import { Conflito } from './erros';
 import type { ModeloContratual } from './hoteis';
 
 export const RESPONSAVEIS_DO_ARRENDAMENTO = ['arrendataria', 'locador'] as const;
@@ -52,3 +64,43 @@ export function responsavelDoArrendamento(
   const regra = Object.hasOwn(matriz, categoriaId) ? matriz[categoriaId] : undefined;
   return regra ?? 'arrendataria';
 }
+
+/** Até o aceite: a OS aceita ou cancelada não muda de responsável. */
+export const ESTADOS_COM_ARRENDAMENTO_AJUSTAVEL: readonly EstadoDaOs[] = [
+  'atribuida',
+  'em_execucao',
+  'pausada',
+  'concluida',
+];
+
+/**
+ * Ajustar a marca do arrendamento: papel da triagem no hotel (403), a OS com
+ * marca (409: fora do hotel arrendado e nas OS anteriores à 0047 não há o que
+ * ajustar), ainda antes do aceite (409) e o motivo (422). Devolve o motivo
+ * normalizado.
+ */
+export function podeAjustarArrendamento(
+  ator: AtorDaCorretiva,
+  chamado: ChamadoParaRegra,
+  os: { estado: EstadoDaOs; responsavelArrendamento: ResponsavelDoArrendamento | null },
+  motivo: string | null | undefined,
+  agora: Date,
+): string {
+  podeTriar(ator, chamado.hotel, agora);
+  if (os.responsavelArrendamento === null) {
+    throw new Conflito('os_sem_arrendamento', 'A OS não tem responsável de arrendamento.', {});
+  }
+  if (!ESTADOS_COM_ARRENDAMENTO_AJUSTAVEL.includes(os.estado)) {
+    throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
+      acao: 'ajustar_arrendamento',
+      estado: os.estado,
+    });
+  }
+  return normalizarMotivo(motivo);
+}
+
+/** O aviso ao locador sai uma vez por OS: marcada como dele e ainda sem aviso. */
+export const avisaOLocador = (
+  responsavel: ResponsavelDoArrendamento | null,
+  avisadoEm: Date | null,
+): boolean => responsavel === 'locador' && avisadoEm === null;
