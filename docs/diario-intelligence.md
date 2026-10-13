@@ -1789,3 +1789,17 @@ Resposta ao pedido "Pedido ao agente do Kaio: volume do teste de carga", em `doc
    - cerca de 5 transições por OS;
    - a UH indisponível, que o script de hoje não gera.
    Se o Kaio aceitar esse volume, o script ganha os parâmetros e roda de novo para o job.
+
+### Decisão do Cesar sobre os sete pontos (13/10/2026)
+
+Mensagem do Cesar no chat do agente do Kaio ("Cesar aqui"), 13/10/2026:
+- **Aprovados:** os pontos 1, 2, 5, 6 e 7.
+- **Ponto 3, aprovado com ajuste:** quem aceita é a conta do Gerente do hotel do kit, não a Admin. A Admin faz a triagem e decide os insights, a Solicitante abre e o técnico executa.
+- **Ponto 4, aprovado com ajuste:** o job roda no mesmo instante que em produção, às 06:00 UTC do dia seguinte. As decisões dos insights que vencem no dia vêm depois desse job.
+- **Volume comum do teste de carga** (20 mil ativos, 24 meses): a decisão é do Kaio, e o Cesar recomenda aceitar.
+
+**O que os ajustes pedem na gravação** (sem mudar o motor):
+- **Ponto 3:** o Gerente do kit tem escopo só no hotel dele. Ele ganha, como o técnico, uma atribuição de Gerente do hotel em cada hotel do roteiro, pelo caso de uso de membros. A regra do aceite deixa o Gerente aceitar qualquer chamado do hotel, exceto a OS que ele mesmo abriu e executou, o que não acontece no roteiro.
+- **Ponto 4:** a gravação chama o job com o relógio às 06:00 UTC do dia seguinte. A linha da métrica leva a data local do hotel nesse instante (opção A da divergência a): em São Paulo, 03:00 do dia seguinte. É o que produção grava. Rodar às 06:00 UTC reproduz a produção, mas a linha não leva o dia anterior: leva o dia seguinte, e a leitura vai até as 03:00 locais desse dia. Gravar o dia anterior seria mudança no job, fora desta atividade.
+
+**Aguarda:** o "aprovo" do Kaio, com o próprio "Kaio aqui", nos sete pontos com os dois ajustes, e a resposta dele sobre o volume comum.
