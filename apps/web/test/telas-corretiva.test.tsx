@@ -92,6 +92,7 @@ const os: OsResumida = {
   situacaoId: S_OS,
   responsavel: { tipo: 'tecnico', usuarioId: U },
   responsavelNome: 'Ana Técnica',
+  responsavelArrendamento: null,
   criadoEm: '2026-09-30T13:00:00.000Z',
 };
 
@@ -132,6 +133,8 @@ const detalhe: DetalheDoChamado = {
       custoInformado: null,
       codigos: { falhaId: null, causaId: null, solucaoId: null },
       assinaturaAceiteId: null,
+      responsavelArrendamento: null,
+      locadorAvisadoEm: null,
       criadoPor: T,
       versao: 4,
       criadoEm: '2026-09-30T13:00:00.000Z',
@@ -218,7 +221,14 @@ describe('caminho da lista (C7)', () => {
     const url = new URL(
       caminhoDaLista(
         '/api/v1/os',
-        { hotelId: H, situacaoId: S_OS, prioridadeId: P, de: '2026-09-01', ate: '2026-09-30' },
+        {
+          hotelId: H,
+          situacaoId: S_OS,
+          prioridadeId: P,
+          de: '2026-09-01',
+          ate: '2026-09-30',
+          doLocador: '1',
+        },
         OS,
       ),
       'http://x',
@@ -230,6 +240,7 @@ describe('caminho da lista (C7)', () => {
       prioridadeId: P,
       de: new Date(2026, 8, 1).toISOString(),
       ate: new Date(2026, 9, 1).toISOString(),
+      doLocador: '1',
       depoisDe: OS,
     });
   });
@@ -390,5 +401,116 @@ describe('nível visual da prioridade', () => {
       'baixa',
     ]);
     expect(nivelDaPrioridade(lista, 'desconhecida')).toBe('baixa');
+  });
+});
+
+describe('arrendado na corretiva (1c, ADR-045)', () => {
+  const ficha = (idioma: IdiomaDeExibicao, d: DetalheDoChamado) =>
+    renderizar(
+      idioma,
+      <ChamadoEmDetalhe
+        detalhe={d}
+        refs={refs}
+        aoAceitar={() => undefined}
+        aoReabrir={() => undefined}
+      />,
+    );
+  const comMarca = (
+    responsavelArrendamento: 'arrendataria' | 'locador' | null,
+    locadorAvisadoEm: string | null,
+  ): DetalheDoChamado => ({
+    ...detalhe,
+    os: detalhe.os.map((o) => ({ ...o, responsavelArrendamento, locadorAvisadoEm })),
+  });
+
+  it.each([
+    ['pt-BR', 'Responde pela OS: o locador', 'Locador avisado em'],
+    ['en', 'Responsible: the landlord', 'Landlord notified on'],
+    ['es', 'Responde por la orden: el arrendador', 'Arrendador avisado el'],
+    ['fr', 'Responsable de l’ordre : le bailleur', 'Bailleur prévenu le'],
+  ] as const)('%s: a marca e o aviso ao locador na ficha da OS', (idioma, marca, aviso) => {
+    const html = ficha(idioma, comMarca('locador', '2026-10-13T15:00:00.000Z'));
+    expect(html).toContain('data-arrendamento="locador"');
+    expect(html).toContain(marca);
+    expect(html).toContain(aviso);
+  });
+
+  it('a arrendatária sem aviso; sem marca, nada', () => {
+    const arrendataria = ficha('pt-BR', comMarca('arrendataria', null));
+    expect(arrendataria).toContain('Responde pela OS: a arrendatária');
+    expect(arrendataria).not.toContain('data-locador-avisado');
+    // O aviso fica mesmo que a marca volte para a arrendatária (decisão 8).
+    expect(ficha('pt-BR', comMarca('arrendataria', '2026-10-13T15:00:00.000Z'))).toContain(
+      'data-locador-avisado',
+    );
+    expect(ficha('pt-BR', comMarca(null, null))).not.toContain('data-arrendamento');
+  });
+
+  it('o filtro "do locador" só na lista de OS; a OS do locador leva o selo', () => {
+    const daOs = renderizar(
+      'pt-BR',
+      <FiltrosDaLista entidade="os" refs={refs} aoFiltrar={() => undefined} />,
+    );
+    expect(daOs).toContain('Só as do locador');
+    const doChamado = renderizar(
+      'pt-BR',
+      <FiltrosDaLista entidade="chamado" refs={refs} aoFiltrar={() => undefined} />,
+    );
+    expect(doChamado).not.toContain('Só as do locador');
+    const linha = (o: OsResumida) =>
+      renderizar(
+        'pt-BR',
+        <table>
+          <tbody>
+            <LinhaDeOs o={o} refs={refs} />
+          </tbody>
+        </table>,
+      );
+    expect(linha({ ...os, responsavelArrendamento: 'locador' })).toContain('Do locador');
+    expect(linha({ ...os, responsavelArrendamento: 'arrendataria' })).not.toContain('Do locador');
+  });
+
+  it('o ajuste, com motivo, e o aviso ao locador na linha do tempo', () => {
+    const evento = (acao: string, motivo: string | null): EventoDaLinhaDoTempo => ({
+      id: '99999999-9999-4999-8999-99999999999a',
+      em: '2026-10-13T15:00:00.000Z',
+      entidade: 'os',
+      registroId: C,
+      acao,
+      usuarioId: U,
+      usuarioNome: 'Ana Técnica',
+      motivo,
+    });
+    const html = renderizar(
+      'pt-BR',
+      <LinhaDoTempo
+        eventos={[
+          evento('ajustar_arrendamento', 'Cláusula 7 do contrato'),
+          { ...evento('avisar_locador', null), id: '99999999-9999-4999-8999-99999999999b' },
+        ]}
+      />,
+    );
+    expect(html).toContain('Responsável do arrendamento ajustado');
+    expect(html).toContain('Motivo: Cláusula 7 do contrato');
+    expect(html).toContain('Locador avisado');
+  });
+
+  it('pseudo-idioma: a marca, o aviso e o filtro vêm do catálogo', () => {
+    const html = renderizar(
+      PSEUDO_IDIOMA,
+      <>
+        <FiltrosDaLista entidade="os" refs={refs} aoFiltrar={() => undefined} />
+        <ChamadoEmDetalhe
+          detalhe={comMarca('locador', '2026-10-13T15:00:00.000Z')}
+          refs={refs}
+          aoAceitar={() => undefined}
+          aoReabrir={() => undefined}
+        />
+      </>,
+    );
+    const textos = [...html.matchAll(/>([^<>]+)</g)]
+      .map((m) => (m[1] ?? '').trim())
+      .filter((t) => t !== '' && !DADOS.includes(t));
+    for (const texto of textos) expect(texto, texto).toMatch(/^\[.*\]$/s);
   });
 });

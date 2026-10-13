@@ -48,6 +48,8 @@ const osDe = (o: Partial<OsDoChamado>, i: number): OsDoChamado => ({
   custoInformado: null,
   codigos: { falhaId: null, causaId: null, solucaoId: null },
   assinaturaAceiteId: null,
+  responsavelArrendamento: null,
+  locadorAvisadoEm: null,
   criadoPor: U,
   versao: 3,
   criadoEm: '2026-10-09T12:00:00.000Z',

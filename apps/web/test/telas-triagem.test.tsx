@@ -67,6 +67,8 @@ const osDe = (estado: OsDoChamado['estado']): OsDoChamado => ({
   custoInformado: null,
   codigos: { falhaId: null, causaId: null, solucaoId: null },
   assinaturaAceiteId: null,
+  responsavelArrendamento: null,
+  locadorAvisadoEm: null,
   criadoPor: U,
   versao: 2,
   criadoEm: '2026-09-30T13:00:00.000Z',
@@ -121,6 +123,7 @@ const acoes: AcoesDaTriagem = {
   cancelarOs: nada,
   informarImpacto: nada,
   definirExecutor: nada,
+  ajustarArrendamento: nada,
 };
 
 const F_ATIVO = '0193a000-0000-7000-8000-0000000000f1';
@@ -379,5 +382,59 @@ describe('categoria do chamado na triagem (1c, ADR-042)', () => {
       'corretiva.triagem.salvar_categoria',
     ] as const)
       expect(html).toContain(m[chave].replace(/'/g, '&#x27;'));
+  });
+});
+
+describe('quem responde pela OS do hotel arrendado (1c, ADR-045)', () => {
+  const marcada = (
+    estado: OsDoChamado['estado'],
+    responsavelArrendamento: OsDoChamado['responsavelArrendamento'] = 'locador',
+  ): OsDoChamado => ({ ...osDe(estado), responsavelArrendamento });
+
+  it('só a OS com marca, até o aceite', () => {
+    const ajustaveis = (os: OsDoChamado) =>
+      acoesPossiveis(detalheDe('em_execucao', [os])).osComArrendamentoAjustavel.length;
+    for (const estado of ['atribuida', 'em_execucao', 'pausada', 'concluida'] as const)
+      expect(ajustaveis(marcada(estado))).toBe(1);
+    expect(ajustaveis(marcada('aceita'))).toBe(0);
+    expect(ajustaveis(marcada('cancelada'))).toBe(0);
+    expect(ajustaveis(osDe('atribuida'))).toBe(0);
+  });
+
+  it('a escolha começa na marca atual; sem marca, nada do bloco', () => {
+    const html = renderizar(
+      'pt-BR',
+      painel(detalheDe('em_execucao', [marcada('atribuida', 'arrendataria')])),
+    );
+    expect(html).toContain('data-acao="ajustar_arrendamento"');
+    expect(html).toMatch(/<option value="arrendataria" selected="">/);
+    expect(html).toContain('value="locador"');
+    expect(
+      renderizar('pt-BR', painel(detalheDe('em_execucao', [osDe('atribuida')]))),
+    ).not.toContain('data-acao="ajustar_arrendamento"');
+  });
+
+  it.each(IDIOMAS)('%s: os textos do bloco vêm do catálogo', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(idioma, painel(detalheDe('em_execucao', [marcada('atribuida')])));
+    for (const chave of [
+      'corretiva.triagem.arrendamento',
+      'corretiva.triagem.dica_arrendamento',
+      'corretiva.triagem.salvar_arrendamento',
+      'corretiva.triagem.motivo',
+    ] as const)
+      expect(html).toContain(m[chave].replace(/'/g, '&#x27;'));
+  });
+
+  it('pseudo-idioma: o bloco inteiro vem do catálogo', () => {
+    const html = renderizar(
+      PSEUDO_IDIOMA,
+      painel(detalheDe('em_execucao', [marcada('atribuida')])),
+    );
+    const textos = [...html.matchAll(/>([^<>]+)</g)]
+      .map((x) => (x[1] ?? '').trim())
+      .filter((t) => t !== '' && !DADOS.includes(t));
+    expect(textos.length).toBeGreaterThan(5);
+    for (const texto of textos) expect(texto, texto).toMatch(/^\[.*\]$/s);
   });
 });

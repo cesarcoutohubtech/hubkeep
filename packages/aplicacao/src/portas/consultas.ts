@@ -9,6 +9,7 @@ import type {
   EstadoDoChamado,
   FiltroDaLista,
   Responsavel,
+  ResponsavelDoArrendamento,
 } from '@hubkeep/dominio';
 
 export interface ChamadoResumido {
@@ -40,6 +41,8 @@ export interface OsResumida {
   responsavel: Responsavel;
   /** Nome do Técnico ou da equipe responsável. */
   responsavelNome: string | null;
+  /** Quem responde pela OS no hotel arrendado (1c, ADR-045); null: sem marca. */
+  responsavelArrendamento: ResponsavelDoArrendamento | null;
   criadoEm: Date;
 }
 
