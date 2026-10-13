@@ -1531,3 +1531,38 @@ Pedido do Cesar no chat do agente do Kaio, em 13/10/2026: o teste do roteiro do 
   - depois da aprovação do glossário, o PR de código da conclusão do serviço e do custo informado no domínio;
   - depois da montagem, o restante da atividade 3;
   - a cada entrega da 1b e da 1c, o `docs/piloto/`.
+
+## Decisões das divergências do glossário (13/10/2026)
+
+No chat do agente do Kaio, em 13/10/2026:
+- **Kaio:** "Kaio aqui: ADR-036 aprovado". Entendi como a aprovação do Kaio à divergência a, que a tabela atribui a "Cesar e Kaio (ADR-036)". O ADR-036 já estava aprovado desde 07/10 e 10/10/2026 (`docs/03`). Se o Kaio quis dizer outra coisa, a linha volta para "Em proposta".
+- **Cesar:**
+  - aceitou a a e a d, como já tinha dito;
+  - aceitou a b e a e pela proposta ("Pode seguir conforme sugestão quando eu der o okay", seguido de "Merge e db push pronto. Continue").
+
+**Situação no glossário:**
+- **Decididas:** a a (Cesar e Kaio), a d (Cesar) e a e (Cesar).
+- **b:** o Cesar aceitou; falta o Kaio.
+- **c e f:** do Kaio, em proposta.
+- **A versão 3:** continua rascunho, sem aprovação. Decidir as divergências não aprova o glossário.
+
+**O que as decisões pedem de código, depois da aprovação da versão 3:**
+- **a:** o dia no fuso de cada hotel no job, como versão nova da fórmula (ADR-036), sem recalcular o que já foi gravado.
+- **d:** o custo informado e a cobertura sobre as corretivas aceitas, também como versão nova. Vai junto com a ida de `conclusaoEReaberturas` para o domínio.
+- **b, se o Kaio aceitar:** o chamado cancelado fica fora em qualquer caso, como versão seguinte da reincidência e da atenção.
+- **e:** nada, porque o MTBF fica só como nome reservado.
+
+**Nota sobre o #241:** ele entrou por merge comum, então a `main` ficou com o commit 2cca974 com a mensagem errada ("build: typescript de volta…"). O conteúdo está certo, e o título do PR registra o que ele faz.
+
+### Ponto de retomada (13/10/2026, depois do #241)
+
+- **`main`:** 3753af1, com o #241 (teste do histórico) e o #240 da 1b. O `db push` foi feito pelo Cesar ("Cesar aqui", 13/10/2026).
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`, recriada a partir da `main`): as decisões das divergências no glossário e este registro. Só docs, fora da zona protegida.
+- **Esperando:**
+  - **Kaio:** as divergências b, c e f;
+  - **Cesar e Kaio:** as aprovações da versão 3;
+  - **1b:** a montagem com relógio, que abre depois do aviso do `db push` da 0046, para a atividade 3.
+- **Próximo:**
+  - depois da aprovação da versão 3, o PR de código: a conclusão do serviço e o custo informado no domínio, e o dia no fuso do hotel;
+  - depois da montagem, o restante da atividade 3;
+  - a cada entrega da 1b e da 1c, o `docs/piloto/`.
