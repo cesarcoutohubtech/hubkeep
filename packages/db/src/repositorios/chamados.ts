@@ -1,7 +1,8 @@
 // Chamados (fase 1a, C2), na unit of work, com auditoria e evento. A RLS
 // decide por último: abre quem tem escrita no hotel, em nome dele mesmo. Com o
 // equipamento parado (C5), a parada aberta do ativo vai na mesma unit of work;
-// com a UH indisponível (I4), o período aberto da UH também.
+// com a UH indisponível (I4), o período aberto da UH também. Na 1c
+// (ADR-042), a categoria e os prazos de SLA vão na mesma linha.
 import type { DadosDeChamado } from '@hubkeep/aplicacao';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
@@ -29,6 +30,9 @@ export async function criarChamado(
       situacao_id: d.situacaoId,
       prioridade_id: d.prioridadeId,
       politica_aplicada: JSON.stringify(d.politicaAplicada),
+      categoria_id: d.categoriaId,
+      prazo_atendimento: d.prazoAtendimento,
+      prazo_solucao: d.prazoSolucao,
       origem: d.origem,
       impacto_hospede: d.impactoHospede,
       aberto_por: uow.usuarioId,

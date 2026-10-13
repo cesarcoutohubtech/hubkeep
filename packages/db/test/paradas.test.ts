@@ -41,6 +41,7 @@ import {
   criarPortaTriagem,
   criarPortasDeAplicacao,
 } from '../src/index';
+import { semFeriadosOficiais } from './feriados-de-teste';
 
 const URL_APP = process.env.HK_TESTE_URL_APP;
 const URL_DONO = process.env.HK_TESTE_URL_DONO;
@@ -195,6 +196,7 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
       prioridades,
       atribuicoes,
       relogio: relogioDoSistema,
+      feriadosOficiais: semFeriadosOficiais,
     });
     const portaTriagem = criarPortaTriagem(banco);
     triagem = criarCasosDeUsoDeTriagem({
@@ -203,6 +205,7 @@ describe.skipIf(!temBanco)('C5 — parada do equipamento', { timeout: 60_000 }, 
       prioridades,
       atribuicoes,
       relogio: relogioDoSistema,
+      feriadosOficiais: semFeriadosOficiais,
     });
     const portaParadas = criarPortaParadas(banco);
     execucao = criarCasosDeUsoDeExecucao({

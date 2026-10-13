@@ -13,6 +13,11 @@
 // responde se afeta hóspede (sim, não ou não sei) e se a UH ficou
 // indisponível: o período aberto da UH nasce na mesma unit of work. A origem
 // é gravada pelo servidor, sempre interna.
+//
+// Na 1c (ADR-042): a categoria do chamado vem do ativo, e os prazos de
+// atendimento e de solução saem da chamado.sla e do horário de atendimento
+// resolvidos para o hotel, no calendário dele; a cópia das duas políticas vai
+// em politica_aplicada.
 import {
   type AtorDaCorretiva,
   type Contexto,
@@ -25,13 +30,17 @@ import {
   normalizarDescricaoDoChamado,
   podeAbrirChamado,
   politicaAplicadaNaAbertura,
+  prazosDoChamado,
   prioridadePadraoDoChamado,
+  regraDeSla,
   resolverPolitica,
   situacaoPara,
   validarInicioDaIndisponibilidade,
   validarParada,
 } from '@hubkeep/dominio';
+import type { FeriadosOficiais } from '../portas/calendario-sla';
 import type { ChamadoGravado, DadosDeChamado, PortaChamados } from '../portas/chamados';
+import { montarCalendarioDeSla } from './calendario-sla';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaPrioridades, PortaSituacoes } from '../portas/situacoes';
 
@@ -66,6 +75,8 @@ export function criarCasosDeUsoDeChamados(deps: {
   prioridades: Pick<PortaPrioridades, 'listar'>;
   atribuicoes: PortaAtribuicoes;
   relogio: Relogio;
+  /** Os feriados oficiais do calendário de SLA (1c, ADR-042). */
+  feriadosOficiais: FeriadosOficiais;
   /** Padrão: podeAbrirChamado do domínio. Só o teste de aceite troca. */
   podeAbrir?: typeof podeAbrirChamado;
 }): CasosDeUsoDeChamados {
@@ -115,15 +126,38 @@ export function criarCasosDeUsoDeChamados(deps: {
       );
     }
 
-    const [niveis, situacoes, prioridades] = await Promise.all([
-      deps.chamados.politica(ctx, local.hotelId, CHAVE),
-      deps.situacoes.listar(ctx),
-      deps.prioridades.listar(ctx),
-    ]);
+    const [niveis, situacoes, prioridades, niveisDoSla, niveisDoHorario, dadosDoCalendario] =
+      await Promise.all([
+        deps.chamados.politica(ctx, local.hotelId, CHAVE),
+        deps.situacoes.listar(ctx),
+        deps.prioridades.listar(ctx),
+        deps.chamados.politica(ctx, local.hotelId, 'chamado.sla'),
+        deps.chamados.politica(ctx, local.hotelId, 'hotel.horario_atendimento'),
+        deps.chamados.calendario(ctx, local.hotelId),
+      ]);
+    if (!dadosDoCalendario)
+      throw new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
     const prioridade = prioridadePadraoDoChamado({
       porCategoria: resolverPolitica(CHAVE, niveis),
       categoriaId,
       prioridades,
+    });
+
+    // Os prazos de SLA (ADR-042), da abertura, com a cópia das duas políticas.
+    const sla = resolverPolitica('chamado.sla', niveisDoSla);
+    const horario = resolverPolitica('hotel.horario_atendimento', niveisDoHorario);
+    const daPrioridade = prioridades.find((p) => p.id === prioridade.prioridadeId);
+    if (!daPrioridade) throw new Error('Prioridade resolvida fora da lista do tenant.');
+    const abertoEm = deps.relogio.agora();
+    const prazos = prazosDoChamado({
+      abertoEm,
+      regra: regraDeSla({ sla, prioridade: daPrioridade, prioridades, categoriaId }),
+      calendario: montarCalendarioDeSla(
+        deps.feriadosOficiais,
+        dadosDoCalendario,
+        { 'chamado.sla': sla, 'hotel.horario_atendimento': horario },
+        abertoEm,
+      ),
     });
     return {
       hotelId: local.hotelId,
@@ -134,7 +168,9 @@ export function criarCasosDeUsoDeChamados(deps: {
         estado: 'aberto' as const,
         situacaoId: situacaoPara(situacoes, 'chamado', 'aberto'),
         prioridadeId: prioridade.prioridadeId,
-        politicaAplicada: politicaAplicadaNaAbertura({ categoriaId, prioridade }),
+        politicaAplicada: politicaAplicadaNaAbertura({ categoriaId, prioridade, sla, horario }),
+        categoriaId,
+        ...prazos,
         origem: ORIGEM_PADRAO_DO_CHAMADO,
         impactoHospede: pedido.impactoHospede ?? null,
         uhIndisponivelDesde,

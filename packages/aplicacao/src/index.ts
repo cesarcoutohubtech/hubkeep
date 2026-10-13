@@ -190,6 +190,8 @@ export type {
 } from './portas/situacoes';
 export { criarCasosDeUsoDeSituacoes } from './casos-de-uso/situacoes';
 export type { ChamadoGravado, DadosDeChamado, PortaChamados } from './portas/chamados';
+export type { DadosDoCalendario, FeriadosOficiais } from './portas/calendario-sla';
+export { montarCalendarioDeSla } from './casos-de-uso/calendario-sla';
 export { criarCasosDeUsoDeChamados } from './casos-de-uso/chamados';
 export type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './casos-de-uso/chamados';
 export type {

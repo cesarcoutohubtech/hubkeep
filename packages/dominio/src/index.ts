@@ -394,7 +394,9 @@ export {
   RELOGIOS_DE_SLA,
   SLA_PADRAO,
   TIPOS_DE_FERIADO_OFICIAL,
+  anosDoCalendario,
   calcularPrazo,
+  calendarioDeSla,
   datasSemAtendimento,
   ehMotivoDePausa,
   horarioDeAtendimentoValido,
@@ -403,7 +405,11 @@ export {
   pausaParaORelogio,
   politicaDeSlaValida,
   prazoNaRetomada,
+  prazosDoChamado,
+  prazosNoRecalculo,
+  regiaoDoHotel,
   regraDeSla,
+  slaDaCopia,
   tempoDeRelogioEntre,
 } from './sla';
 export type {
@@ -416,9 +422,11 @@ export type {
   LinhaDeSla,
   MotivoDePausa,
   PoliticaDeSla,
+  PrazosDoChamado,
   PrioridadeParaSla,
   RegraDeSla,
   RelogioDeSla,
+  SlaAplicado,
   SlaDaCategoria,
   TipoDeFeriadoOficial,
 } from './sla';

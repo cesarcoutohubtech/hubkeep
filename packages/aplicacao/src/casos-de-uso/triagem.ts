@@ -25,6 +25,11 @@
 // são gravados na mesma unit of work. Com a política os.assinatura_no_aceite
 // ligada no hotel, o aceite exige a assinatura.
 //
+// Na 1c (ADR-042): a troca de prioridade, na triagem ou no ajuste, refaz os
+// prazos de SLA a partir da abertura, com a linha nova tirada da cópia que o
+// chamado guarda, e não da política do momento. O prazo de atendimento só
+// muda enquanto o chamado nunca teve OS.
+//
 // Quem pode e para onde vai são do domínio (corretiva.ts e triagem.ts); a
 // situação de cada estado é a ativa de menor ordem (situacaoPara). As
 // checagens de papel são injetáveis, como o podeAbrir do chamado, para o
@@ -52,14 +57,19 @@ import {
   podeAjustarPrioridade,
   podeAjustarQuemExecuta,
   podeInformarImpacto,
+  prazosNoRecalculo,
+  regraDeSla,
   resolverPolitica,
+  slaDaCopia,
   situacaoPara,
   validarCodigosDaOs,
   validarParada,
 } from '@hubkeep/dominio';
+import type { FeriadosOficiais } from '../portas/calendario-sla';
 import type { PortaCodigos } from '../portas/codigos-manutencao';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
-import type { PortaPrioridades, PortaSituacoes } from '../portas/situacoes';
+import type { PortaPrioridades, PortaSituacoes, PrioridadeGravada } from '../portas/situacoes';
+import { montarCalendarioDeSla } from './calendario-sla';
 import type {
   AssinaturaDoAceite,
   ChamadoParaTriagem,
@@ -175,6 +185,8 @@ export function criarCasosDeUsoDeTriagem(deps: {
   prioridades: Pick<PortaPrioridades, 'listar'>;
   atribuicoes: Pick<PortaAtribuicoes, 'doUsuario'>;
   relogio: Relogio;
+  /** Os feriados oficiais do calendário de SLA (1c, ADR-042). */
+  feriadosOficiais: FeriadosOficiais;
   /** Os códigos da OS no aceite (I6). Opcional só para os testes que não aceitam com código. */
   codigos?: Pick<PortaCodigos, 'listar' | 'categoriaDoAtivo'>;
   /** Padrão: as do domínio. Só o teste de aceite troca. */
@@ -292,29 +304,69 @@ export function criarCasosDeUsoDeTriagem(deps: {
     return validarCodigosDaOs(pedido, lista, categoria);
   }
 
+  /**
+   * Os prazos refeitos com a prioridade nova (ADR-042), da cópia do chamado e
+   * no calendário do hotel de agora. Sem cópia (chamado de antes da 0043),
+   * nada muda.
+   */
+  async function prazosComAPrioridade(
+    ctx: Contexto,
+    chamado: ChamadoParaTriagem,
+    prioridadeId: string,
+    prioridades: readonly PrioridadeGravada[],
+  ): Promise<{ prazoAtendimento?: Date; prazoSolucao?: Date }> {
+    const copia = slaDaCopia(chamado.sla.politicaAplicada);
+    const prioridade = prioridades.find((x) => x.id === prioridadeId);
+    if (!copia || !prioridade) return {};
+    const dados = await deps.triagem.calendario(ctx, chamado.hotel.id);
+    if (!dados) throw new NaoEncontrado('chamado_nao_encontrado', 'Chamado não encontrado.');
+    return prazosNoRecalculo({
+      abertoEm: chamado.sla.abertoEm,
+      regra: regraDeSla({
+        sla: copia['chamado.sla'],
+        prioridade,
+        prioridades,
+        categoriaId: chamado.sla.categoriaId,
+      }),
+      calendario: montarCalendarioDeSla(deps.feriadosOficiais, dados, copia, chamado.sla.abertoEm),
+      pausadoSegundos: chamado.sla.pausadoSegundos,
+      jaTeveOs: chamado.sla.jaTeveOs,
+      prazoAtendimentoGravado: chamado.sla.prazoAtendimento,
+    });
+  }
+
   return {
     async triar(ctx, chamadoId, p) {
       const chamado = await chamadoNaVersao(ctx, chamadoId, p.versao);
       const agora = deps.relogio.agora();
       const d = r.decidirNoChamado('triar', { ator: await ator(ctx), chamado, agora });
       const prioridadeId = p.prioridadeId ?? null;
-      if (prioridadeId !== null)
-        exigirPrioridadeAtiva(await deps.prioridades.listar(ctx), prioridadeId);
+      let comPrioridade = {};
+      if (prioridadeId !== null) {
+        const prioridades = await deps.prioridades.listar(ctx);
+        exigirPrioridadeAtiva(prioridades, prioridadeId);
+        comPrioridade = {
+          prioridadeId,
+          ...(await prazosComAPrioridade(ctx, chamado, prioridadeId, prioridades)),
+        };
+      }
       return deps.triagem.alterarChamado(ctx, chamadoId, p.versao, {
         acao: 'triar',
         estado: d.estado,
         situacaoId: situacaoPara(await situacoes(ctx), 'chamado', d.estado),
-        ...(prioridadeId !== null ? { prioridadeId } : {}),
+        ...comPrioridade,
       });
     },
 
     async priorizar(ctx, chamadoId, p) {
       const chamado = await chamadoNaVersao(ctx, chamadoId, p.versao);
       r.podeAjustarPrioridade(await ator(ctx), chamado, deps.relogio.agora());
-      exigirPrioridadeAtiva(await deps.prioridades.listar(ctx), p.prioridadeId);
+      const prioridades = await deps.prioridades.listar(ctx);
+      exigirPrioridadeAtiva(prioridades, p.prioridadeId);
       return deps.triagem.alterarChamado(ctx, chamadoId, p.versao, {
         acao: 'priorizar',
         prioridadeId: p.prioridadeId,
+        ...(await prazosComAPrioridade(ctx, chamado, p.prioridadeId, prioridades)),
       });
     },
 

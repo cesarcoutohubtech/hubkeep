@@ -102,6 +102,14 @@ function montar(opcoes: {
       prioridadeId: 'p',
       abertoPor: 'g',
       versao: 1,
+      sla: {
+        categoriaId: null,
+        abertoEm: new Date('2026-10-13T12:00:00Z'),
+        politicaAplicada: {},
+        prazoAtendimento: null,
+        pausadoSegundos: 0,
+        jaTeveOs: true,
+      },
     }),
   };
   const checklists = {
