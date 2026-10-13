@@ -74,11 +74,12 @@ type Politica =
     };
 type Origem = 'hotel' | 'grupo' | 'padrao';
 
-/** As políticas de ligar ou desligar (I6 e I8), com os textos de cada uma. */
+/** As políticas de ligar ou desligar (I6, I8 e PV1), com os textos de cada uma. */
 const POLITICAS_LIGADAS = [
   'os.codigos_obrigatorios',
   'os.foto_depois_obrigatoria',
   'os.assinatura_no_aceite',
+  'os.checklist_completo_obrigatorio',
 ] as const;
 type ChaveLigada = (typeof POLITICAS_LIGADAS)[number];
 const TEXTOS_LIGADOS: Record<
@@ -102,6 +103,12 @@ const TEXTOS_LIGADOS: Record<
     resumo: 'admin.configuracao.assinatura.resumo',
     dica: 'admin.configuracao.assinatura.dica',
     ligado: 'admin.configuracao.assinatura.ligado',
+  },
+  'os.checklist_completo_obrigatorio': {
+    titulo: 'admin.configuracao.checklist.titulo',
+    resumo: 'admin.configuracao.checklist.resumo',
+    dica: 'admin.configuracao.checklist.dica',
+    ligado: 'admin.configuracao.checklist.ligado',
   },
 };
 const NIVEIS = [1, 2, 3, 4, 5] as const;

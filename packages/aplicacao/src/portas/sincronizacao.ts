@@ -4,6 +4,7 @@
 // reenvio (resposta perdida) ou dois envios simultâneos.
 import type { Contexto } from '@hubkeep/dominio';
 import type { DadosDeAtivo, MudancaDeAtivo } from './ativos';
+import type { RespostasDoChecklistDecididas } from './checklists';
 import type { DadosDeChamado } from './chamados';
 import type { AcaoNaOsDecidida } from './execucao';
 import type { EncerramentoDeParada, RegistroDeParada } from './paradas';
@@ -50,6 +51,8 @@ export interface SessaoDeOperacao {
   encerrarParada(g: EncerramentoDeParada): Promise<void>;
   /** Libera a UH na conclusão da OS (I4); já liberada: Conflito uh_indisponivel_nao_aberta. */
   liberarUh(g: LiberacaoDeUh): Promise<void>;
+  /** Mescla as respostas no checklist da OS (PV1), sem mexer na versão da OS. */
+  responderChecklist(g: RespostasDoChecklistDecididas): Promise<void>;
 }
 
 export interface PortaOperacoesOffline {

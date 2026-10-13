@@ -207,6 +207,7 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
         'os.codigos_obrigatorios',
         'os.foto_depois_obrigatoria',
         'os.assinatura_no_aceite',
+        'os.checklist_completo_obrigatorio',
       ].sort(),
     );
   });

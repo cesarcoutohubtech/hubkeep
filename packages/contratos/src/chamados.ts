@@ -8,6 +8,7 @@
 // interna ou fornecedor do grupo) e o custo informado no aceite. Na I6, a OS
 // guarda os códigos de falha, causa e solução, e o aceite pode corrigi-los.
 import { z } from 'zod';
+import { ChecklistDaOsApi } from './checklists';
 import { CodigosDaOsApi } from './codigos-manutencao';
 import { ESTADOS_DA_OS_API, ESTADOS_DO_CHAMADO_API } from './situacoes';
 
@@ -325,6 +326,13 @@ export const OsDoDiaApi = z
      * "depois". O servidor sempre manda; sem ele, desligada.
      */
     fotoDepoisObrigatoria: z.boolean().optional(),
+    /**
+     * O checklist da OS (PV1), com as respostas; null: sem checklist.
+     * Opcional para o PWA ler a API anterior à PV1.
+     */
+    checklist: ChecklistDaOsApi.nullable().optional(),
+    /** A política os.checklist_completo_obrigatorio do hotel (PV1); sem ele, desligada. */
+    checklistCompletoObrigatorio: z.boolean().optional(),
     chamado: z.object({
       id: z.guid(),
       descricao: z.string(),

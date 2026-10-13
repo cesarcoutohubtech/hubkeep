@@ -8,6 +8,7 @@ import {
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
+  type CasosDeUsoDeChecklists,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeTriagem,
   type CasosDeUsoDeExecucao,
@@ -40,6 +41,7 @@ import {
   criarCasosDeUsoDeHistorico,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeChamados,
+  criarCasosDeUsoDeChecklists,
   criarCasosDeUsoDeCodigos,
   criarCasosDeUsoDeTriagem,
   criarCasosDeUsoDeExecucao,
@@ -68,6 +70,7 @@ import {
   criarPortaAtivos,
   criarPortaCategorias,
   criarPortaChamados,
+  criarPortaChecklists,
   criarPortaCodigos,
   criarPortaTriagem,
   criarPortaExecucao,
@@ -375,6 +378,18 @@ export const casosDeUsoDeCodigos = memo<CasosDeUsoDeCodigos>(async () => {
   });
 });
 
+/** Checklist tipado (fase 1b, PV1; ADR-040), pelo hk_app. */
+export const casosDeUsoDeChecklists = memo<CasosDeUsoDeChecklists>(async () => {
+  const banco = await acessoBanco();
+  return criarCasosDeUsoDeChecklists({
+    checklists: criarPortaChecklists(banco),
+    triagem: criarPortaTriagem(banco),
+    execucao: criarPortaExecucao(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    relogio: relogioDoSistema,
+  });
+});
+
 /** Situações e prioridades do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
 export const casosDeUsoDeSituacoes = memo<CasosDeUsoDeSituacoes>(async () => {
   const banco = await acessoBanco();
@@ -423,6 +438,7 @@ export const casosDeUsoDeExecucao = memo<CasosDeUsoDeExecucao>(async () => {
     paradas: criarPortaParadas(banco),
     uh: criarPortaUhIndisponivel(banco),
     codigos: criarPortaCodigos(banco),
+    checklists: criarPortaChecklists(banco),
   });
 });
 
@@ -482,6 +498,7 @@ export const casosDeUsoDeSincronizacao = memo<CasosDeUsoDeSincronizacao>(async (
     ativos: await casosDeUsoDeAtivos(),
     chamados: await casosDeUsoDeChamados(),
     execucao: await casosDeUsoDeExecucao(),
+    checklists: await casosDeUsoDeChecklists(),
   }),
 );
 

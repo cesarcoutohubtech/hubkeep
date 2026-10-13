@@ -26,6 +26,8 @@ const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsNoAparelho => ({
   criadoEm: '2026-09-29T08:00:00.000Z',
   fotosDepois: 0,
   fotoDepoisObrigatoria: false,
+  checklist: null,
+  checklistCompletoObrigatorio: false,
   chamado: {
     id: 'c1000000-0000-4000-8000-000000000001',
     descricao: 'Chuveiro frio',
@@ -64,6 +66,7 @@ const tela = (o: OsNoAparelho, perguntando: boolean | 'parada' | 'uh' = false) =
     perguntando={perguntando}
     aoAgir={async () => undefined}
     aoApontar={async () => undefined}
+    aoResponderChecklist={async () => undefined}
     aoRegistrarMaterial={async () => undefined}
     aoFotografar={async () => undefined}
     aoRegistrarParada={async () => undefined}
@@ -271,5 +274,58 @@ describe('tela da OS', () => {
       .filter((t) => t !== 'Chuveiro frio');
     expect(textos.length).toBeGreaterThan(8);
     for (const texto of textos) expect(texto, texto).toMatch(/^\[.*\]$/s);
+  });
+});
+
+describe('checklist na OS (PV1)', () => {
+  const comChecklist = (estado: OsNoAparelho['estado'], obrigatorio: boolean): OsNoAparelho => ({
+    ...os(estado),
+    checklistCompletoObrigatorio: obrigatorio,
+    checklist: {
+      id: 'ac100000-0000-4000-8000-000000000001',
+      modeloId: 'cc100000-0000-4000-8000-000000000001',
+      modeloVersao: 2,
+      nomes: { 'pt-BR': 'Inspeção do ar', en: 'AC inspection' },
+      itens: [
+        {
+          chave: 'filtro_limpo',
+          tipo: 'sim_nao',
+          obrigatorio: true,
+          rotulos: { 'pt-BR': 'Filtro limpo', en: 'Clean filter' },
+          unidade: null,
+          opcoes: [],
+        },
+        {
+          chave: 'pressao',
+          tipo: 'numero',
+          obrigatorio: false,
+          rotulos: { 'pt-BR': 'Pressão', en: 'Pressure' },
+          unidade: 'psi',
+          opcoes: [],
+        },
+      ],
+      respostas: { pressao: { valor: 30, feitaEm: '', usuarioId: 'u' } },
+    },
+  });
+
+  it.each(IDIOMAS)('%s: os itens no tipo deles, com o que falta e a política', (idioma) => {
+    const m = mensagensDe(idioma);
+    const ligada = renderizar(idioma, tela(comChecklist('em_execucao', true)));
+    expect(ligada).toContain('data-checklist=');
+    expect(ligada).toContain('data-checklist-faltam="1"');
+    expect(ligada).toContain(idioma === 'en' ? 'Clean filter' : 'Filtro limpo');
+    expect(ligada).toContain('type="number"');
+    expect(ligada).toContain('value="30"');
+    expect(ligada).toContain(m['tecnico.os.checklist.salvar']);
+    const desligada = renderizar(idioma, tela(comChecklist('em_execucao', false)));
+    expect(desligada).toContain('data-checklist-faltam="1"');
+    expect(desligada).not.toBe(ligada);
+  });
+
+  it('com a OS atribuída, só leitura e sem salvar; sem checklist, nada', () => {
+    const html = renderizar('pt-BR', tela(comChecklist('atribuida', false)));
+    expect(html).toContain('Inicie a ordem de serviço para responder o checklist.');
+    expect(html).not.toContain('Salvar respostas');
+    expect(renderizar('pt-BR', tela(os('em_execucao')))).not.toContain('data-checklist=');
   });
 });

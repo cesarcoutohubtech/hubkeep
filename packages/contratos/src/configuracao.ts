@@ -20,6 +20,8 @@ const CodigosObrigatorios = z.strictObject({ ligado: z.boolean() });
 const FotoDepoisObrigatoria = z.strictObject({ ligado: z.boolean() });
 /** Assinatura no aceite (I8); desligado por padrão. */
 const AssinaturaNoAceite = z.strictObject({ ligado: z.boolean() });
+/** Checklist completo obrigatório na conclusão (PV1); desligado por padrão. */
+const ChecklistCompletoObrigatorio = z.strictObject({ ligado: z.boolean() });
 const PrioridadePadraoPorCategoria = z.record(z.guid(), z.guid());
 
 /** Nome de cada nível da criticidade (1 a 5) por idioma, parcial (I1). */
@@ -35,6 +37,7 @@ export const FORMATOS_DE_POLITICA_API = {
   'os.codigos_obrigatorios': CodigosObrigatorios,
   'os.foto_depois_obrigatoria': FotoDepoisObrigatoria,
   'os.assinatura_no_aceite': AssinaturaNoAceite,
+  'os.checklist_completo_obrigatorio': ChecklistCompletoObrigatorio,
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria,
   'ativo.criticidade': NomesDeCriticidadeApi,
 } as const;
@@ -78,6 +81,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('os.assinatura_no_aceite'),
     escopo: EscopoDePolitica,
     valor: AssinaturaNoAceite.nullable(),
+  }),
+  z.object({
+    chave: z.literal('os.checklist_completo_obrigatorio'),
+    escopo: EscopoDePolitica,
+    valor: ChecklistCompletoObrigatorio.nullable(),
   }),
   z.object({
     chave: z.literal('chamado.prioridade_padrao_por_categoria'),
@@ -165,6 +173,7 @@ export const RespostaDeConfiguracao = z
         resolvida('os.codigos_obrigatorios', CodigosObrigatorios),
         resolvida('os.foto_depois_obrigatoria', FotoDepoisObrigatoria),
         resolvida('os.assinatura_no_aceite', AssinaturaNoAceite),
+        resolvida('os.checklist_completo_obrigatorio', ChecklistCompletoObrigatorio),
         resolvida('chamado.prioridade_padrao_por_categoria', PrioridadePadraoPorCategoria),
         resolvida('ativo.criticidade', NomesDeCriticidadeApi),
       ]),

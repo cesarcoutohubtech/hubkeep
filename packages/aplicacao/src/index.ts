@@ -169,6 +169,20 @@ export type { CodigoGravado, PortaCodigos } from './portas/codigos-manutencao';
 export { criarCasosDeUsoDeCodigos } from './casos-de-uso/codigos-manutencao';
 export type { CasosDeUsoDeCodigos, CodigoDeManutencao } from './casos-de-uso/codigos-manutencao';
 export type {
+  AplicacaoDeChecklist,
+  ChecklistDaOs,
+  ChecklistDaOsGravado,
+  ModeloDeChecklistGravado,
+  PortaChecklists,
+  RespostasDoChecklistDecididas,
+} from './portas/checklists';
+export { criarCasosDeUsoDeChecklists } from './casos-de-uso/checklists';
+export type {
+  CasosDeUsoDeChecklists,
+  ModeloDeChecklist,
+  PedidoDeModeloDeChecklist,
+} from './casos-de-uso/checklists';
+export type {
   PortaPrioridades,
   PortaSituacoes,
   PrioridadeGravada,

@@ -50,6 +50,8 @@ describe('políticas (ADR-026)', () => {
     ['os.foto_depois_obrigatoria', { ligado: true, extra: 1 }, 'politica_valor_invalido'],
     ['os.assinatura_no_aceite', { ligado: 'sim' }, 'politica_valor_invalido'],
     ['os.assinatura_no_aceite', false, 'politica_valor_invalido'],
+    ['os.checklist_completo_obrigatorio', { ligado: 0 }, 'politica_valor_invalido'],
+    ['os.checklist_completo_obrigatorio', { ligado: true, extra: 1 }, 'politica_valor_invalido'],
     ['chamado.prioridade_padrao_por_categoria', { nao_uuid: U1 }, 'politica_valor_invalido'],
     ['chamado.nao_existe', {}, 'politica_desconhecida'],
     ['ativo.criticidade', { 6: { 'pt-BR': 'Seis' } }, 'politica_valor_invalido'],
@@ -80,8 +82,12 @@ describe('políticas (ADR-026)', () => {
         grupo: { ligado: false },
       }),
     ).toEqual({ ligado: true });
-    // I8: as duas desligadas por padrão; o hotel liga.
-    for (const chave of ['os.foto_depois_obrigatoria', 'os.assinatura_no_aceite'] as const) {
+    // I8 e PV1: desligadas por padrão; o hotel liga.
+    for (const chave of [
+      'os.foto_depois_obrigatoria',
+      'os.assinatura_no_aceite',
+      'os.checklist_completo_obrigatorio',
+    ] as const) {
       expect(resolverPolitica(chave, {})).toEqual({ ligado: false });
       expect(resolverPolitica(chave, { hotel: { ligado: true } })).toEqual({ ligado: true });
     }

@@ -12,7 +12,9 @@
 // registrar e encerrar a parada do ativo do chamado). No
 // ativo, a validação que lê o banco (local, categoria, permissão) é a mesma
 // do web (preparar*); a versão é conferida na gravação, e o conflito volta
-// como 409 conflito_de_versao, sem guardar a chave (ADR-029).
+// como 409 conflito_de_versao, sem guardar a chave (ADR-029). As respostas
+// do checklist (PV1, ADR-040) vão sem a versão da OS: o servidor mescla item a
+// item, e a última operação processada vence.
 import type { Contexto } from '@hubkeep/dominio';
 import type { PortaOperacoesOffline, RespostaDeOperacao } from '../portas/sincronizacao';
 import type { PreferenciasGravadas } from '../portas/preferencias';
@@ -22,6 +24,7 @@ import type {
   PedidoDeCadastroDeAtivo,
 } from './ativos';
 import type { CasosDeUsoDeChamados, PedidoDeAberturaDeChamado } from './chamados';
+import type { CasosDeUsoDeChecklists } from './checklists';
 import type { AcaoDoTecnico, CasosDeUsoDeExecucao } from './execucao';
 import { validarPreferencias } from './preferencias';
 
@@ -73,7 +76,13 @@ export type OperacaoOffline =
       /** Instantes em ISO 8601; sem fim, a parada fica aberta. */
       dados: { osId: string; inicio: string; fim: string | null };
     }
-  | { chave: string; tipo: 'os.encerrar_parada'; dados: { osId: string; fim: string } };
+  | { chave: string; tipo: 'os.encerrar_parada'; dados: { osId: string; fim: string } }
+  | {
+      chave: string;
+      tipo: 'os.responder_checklist';
+      /** Por item, o valor ou null (limpa); a hora do aparelho em ISO 8601 (PV1). */
+      dados: { osId: string; respostas: Record<string, unknown>; feitaEm?: string | undefined };
+    };
 
 export interface ResultadoDaOperacao {
   chave: string;
@@ -100,6 +109,8 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
     | 'prepararParada'
     | 'prepararEncerramentoDeParada'
   >;
+  /** Opcional só para os testes sem checklist; a composição sempre passa. */
+  checklists?: Pick<CasosDeUsoDeChecklists, 'prepararRespostas'>;
 }): CasosDeUsoDeSincronizacao {
   const execucao = () => {
     if (!deps.execucao) throw new Error('Operação da OS sem os casos de uso de execução.');
@@ -222,6 +233,20 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
           const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
             await s.encerrarParada(g);
             return { id: g.id };
+          });
+          return { chave: operacao.chave, ...r };
+        }
+        case 'os.responder_checklist': {
+          if (!deps.checklists) throw new Error('os.responder_checklist sem os casos de uso.');
+          const { osId, respostas, feitaEm } = operacao.dados;
+          const g = await deps.checklists.prepararRespostas(ctx, {
+            osId,
+            respostas,
+            feitaEm: feitaEm === undefined ? undefined : new Date(feitaEm),
+          });
+          const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
+            await s.responderChecklist(g);
+            return { id: g.checklistId, itens: Object.keys(g.respostas).length };
           });
           return { chave: operacao.chave, ...r };
         }

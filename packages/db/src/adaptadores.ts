@@ -4,12 +4,14 @@
 import type {
   AnexoGravado,
   AtivoGravado,
+  ChecklistDaOsGravado,
   EntidadeComAnexo,
   PortaAnexos,
   PortaAtivos,
   PortaEscopoDeAnexo,
   PortaAtribuicoes,
   PortaCategorias,
+  PortaChecklists,
   PortaChamados,
   PortaCodigos,
   OsGravada,
@@ -79,6 +81,12 @@ import { registrarAnexo, removerAnexo } from './repositorios/anexos';
 import { alterarFornecedor, criarFornecedor } from './repositorios/fornecedores';
 import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
+import {
+  alterarModeloDeChecklist,
+  aplicarChecklist,
+  criarModeloDeChecklist,
+  responderChecklist,
+} from './repositorios/checklists';
 import { criarChamado } from './repositorios/chamados';
 import {
   alterarChamadoNaTriagem,
@@ -755,6 +763,81 @@ export function criarPortaCategorias(banco: AcessoBanco): PortaCategorias {
   };
 }
 
+/** Checklist tipado (fase 1b, PV1; ADR-040), pelo hk_app. */
+export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
+  return {
+    idiomaPadrao: (ctx) =>
+      banco.withContext(ctx, async (tx) => {
+        const t = await tx.selectFrom('app.tenant').select('idioma_padrao').executeTakeFirst();
+        return (t?.idioma_padrao ?? 'pt-BR') as Awaited<
+          ReturnType<PortaChecklists['idiomaPadrao']>
+        >;
+      }),
+    listarModelos: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.checklist_modelo')
+            .select(['id', 'categoria_id', 'nomes', 'itens', 'versao', 'ativa'])
+            .orderBy('criado_em')
+            .orderBy('id')
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          categoriaId: m.categoria_id,
+          nomes: m.nomes,
+          itens: m.itens,
+          versao: m.versao,
+          ativa: m.ativa,
+        })),
+      ),
+    criarModelo: (ctx, m) => banco.executar(ctx, (uow) => criarModeloDeChecklist(uow, m)),
+    alterarModelo: (ctx, id, mudanca) =>
+      banco.executar(ctx, (uow) => alterarModeloDeChecklist(uow, id, mudanca)),
+    daOs: (ctx, osId) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.os_checklist')
+          .select(COLUNAS_DO_CHECKLIST_DA_OS)
+          .where('os_id', '=', osId)
+          .executeTakeFirst();
+        return c ? paraChecklistDaOs(c) : null;
+      }),
+    aplicar: (ctx, a) => banco.executar(ctx, (uow) => aplicarChecklist(uow, a)),
+  };
+}
+
+const COLUNAS_DO_CHECKLIST_DA_OS = [
+  'id',
+  'os_id',
+  'hotel_id',
+  'modelo_id',
+  'modelo_versao',
+  'nomes',
+  'itens',
+  'respostas',
+] as const;
+
+const paraChecklistDaOs = (c: {
+  id: string;
+  os_id: string;
+  hotel_id: string;
+  modelo_id: string;
+  modelo_versao: number;
+  nomes: unknown;
+  itens: unknown;
+  respostas: unknown;
+}): ChecklistDaOsGravado => ({
+  id: c.id,
+  osId: c.os_id,
+  hotelId: c.hotel_id,
+  modeloId: c.modelo_id,
+  modeloVersao: c.modelo_versao,
+  nomes: c.nomes,
+  itens: c.itens,
+  respostas: c.respostas,
+});
+
 /** Códigos de falha, causa e solução (fase 1b, I6), pelo hk_app. */
 /**
  * Módulos contratados do tenant (I7), pelo hk_app com o contexto de quem pede.
@@ -1186,6 +1269,17 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           .innerJoin('app.local as l', (j) =>
             j.onRef('l.hotel_id', '=', 'c.hotel_id').onRef('l.id', '=', 'c.local_id'),
           )
+          .leftJoin('app.os_checklist as k', (j) =>
+            j.onRef('k.hotel_id', '=', 'o.hotel_id').onRef('k.os_id', '=', 'o.id'),
+          )
+          .select([
+            'k.id as checklist_id',
+            'k.modelo_id as checklist_modelo_id',
+            'k.modelo_versao as checklist_modelo_versao',
+            'k.nomes as checklist_nomes',
+            'k.itens as checklist_itens',
+            'k.respostas as checklist_respostas',
+          ])
           .select([
             'o.id',
             'o.hotel_id',
@@ -1241,6 +1335,19 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
           versao: o.versao,
           criadoEm: o.criado_em,
           fotosDepois: Number(o.fotos_depois ?? 0),
+          checklist:
+            o.checklist_id === null
+              ? null
+              : {
+                  id: o.checklist_id,
+                  osId: o.id,
+                  hotelId: o.hotel_id,
+                  modeloId: o.checklist_modelo_id ?? '',
+                  modeloVersao: o.checklist_modelo_versao ?? 1,
+                  nomes: o.checklist_nomes,
+                  itens: o.checklist_itens,
+                  respostas: o.checklist_respostas,
+                },
           chamado: {
             id: o.chamado_id,
             descricao: o.descricao,
@@ -1737,6 +1844,7 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
             registrarParada: (g) => registrarParada(uow, g),
             encerrarParada: (g) => encerrarParada(uow, g),
             liberarUh: (g) => liberarUh(uow, g),
+            responderChecklist: (g) => responderChecklist(uow, g),
           });
           await registrarOperacao(uow, operacao, resposta);
           return { repetida: false, resposta };

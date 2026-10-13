@@ -122,6 +122,15 @@ describe('contratos × domínio', () => {
         [],
         null,
       ],
+      'os.checklist_completo_obrigatorio': [
+        { ligado: true },
+        { ligado: false },
+        { ligado: 0 },
+        { ligado: true, extra: 1 },
+        {},
+        'sim',
+        null,
+      ],
       'chamado.prioridade_padrao_por_categoria': [
         {},
         { [U]: U },

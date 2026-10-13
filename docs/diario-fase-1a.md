@@ -1859,3 +1859,34 @@ ADR-040 e as 21 decisões aprovados pelo Cesar em 12/10/2026. PR de zona protegi
   - no `CLAUDE.md`, a regra dos worktrees (removido logo depois do merge, no máximo 3 por agente) e a do PR sempre com base na `main`, pedidas pelo Cesar em 12/10/2026;
   - a linha do checklist no `docs/02`.
 - **Para o agente do Intelligence:** as tabelas novas são `app.checklist_modelo` (`id`, `tenant_id`, `categoria_id`, `nomes`, `itens`, `versao`, `ativa`) e `app.os_checklist` (`os_id`, `modelo_id`, `modelo_versao`, `nomes`, `itens`, `respostas`, `criado_por`). O worker já lê as duas.
+
+## PV1 — checklist na OS: domínio, API, telas e kit (12/10/2026)
+
+O resto da PV1 (ADR-040), fora da zona protegida, sobre a migração 0042 do PR anterior.
+
+- **Domínio** (`checklist.ts`):
+  - quem gere os modelos (só o Admin do grupo);
+  - os nomes e os itens do modelo, com as regras dos campos tipados; a versão sobe só quando os itens mudam;
+  - quando a OS aceita o checklist (atribuída, em execução ou pausada) e a troca do modelo, só enquanto não há resposta;
+  - as respostas: valor no tipo do item, mesclagem por item (null tira a resposta) e os obrigatórios sem resposta.
+- **Política nova** `os.checklist_completo_obrigatorio`, desligada por padrão. Ligada, a conclusão volta `checklist_incompleto` com os itens que faltam.
+- **Casos de uso:**
+  - modelos: listar, criar, alterar, desativar e reativar;
+  - na OS: aplicar ou trocar o modelo (com `podeTriar`) e ler o checklist.
+  - As respostas vão pela operação offline `os.responder_checklist`, na sincronização, como os códigos da OS. A conclusão confere a política, e a fila do dia leva o checklist e a política.
+- **API:**
+  - `GET/POST /api/v1/modelos-de-checklist`;
+  - `PUT /api/v1/modelos-de-checklist/{id}`, com `desativacao` e `reativacao`;
+  - `GET/PUT /api/v1/os/{id}/checklist`.
+  - As seis rotas estão no OpenAPI. Os erros são códigos com mensagem nos quatro catálogos.
+- **Telas:**
+  - no web, "Checklists" no menu (os modelos e os itens por tipo; só o Admin do grupo grava) e o checklist no detalhe da OS (aplicar, trocar, ver as respostas);
+  - a política em "Configuração";
+  - no PWA, o formulário por tipo de item, que manda só o que mudou, também sem rede, e o aviso dos itens que faltam na conclusão.
+- **Kit de teste:**
+  - o modelo "Inspeção de ar-condicionado", com um item de cada tipo, aplicado na OS do ar-condicionado parado (UH 102 do Centro);
+  - roteiro no `docs/10`.
+- **Testes:**
+  - domínio, casos de uso, sincronização, projeção e telas do PWA, telas do web;
+  - integração do repositório (aplicar, trocar, responder, auditoria e evento), que roda na CI.
+- **Eventos novos** no outbox: `os.checklist_aplicado` e `os.checklist_respondido`.

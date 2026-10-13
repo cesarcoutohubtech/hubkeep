@@ -22,6 +22,10 @@
 // sugere o momento pelo estado (antes, com a OS atribuída; depois, no resto),
 // e o técnico pode trocar. Com a política do hotel ligada, concluir sem foto
 // "depois" (na API ou na fila) avisa e não enfileira; o servidor confere de novo.
+//
+// Checklist (PV1, ADR-040): a OS com checklist mostra os itens
+// (ChecklistDaOs.tsx), respondidos pela fila. Com a política do hotel ligada,
+// concluir sem os obrigatórios avisa e não enfileira; desligada, só avisa.
 import {
   CODIGOS_PADRAO,
   type CodigosSugeridos,
@@ -55,12 +59,14 @@ import {
   aceitaFoto,
   aceitaRegistro,
   acoesPossiveis,
+  faltaChecklist,
   faltaFotoDepois,
   paradaPossivel,
   perguntaDaUhNaConclusao,
   perguntaNaConclusao,
 } from '../os/projecao';
 import type { CodigoGuardado } from '../referencia/banco';
+import { ChecklistDaOs } from './ChecklistDaOs';
 import { TOM_DO_ESTADO, rotuloDoEstado, useMotivo } from './FilaDoDia';
 import { TelaDoTecnico } from './TelaDoTecnico';
 import { nomeDoLocal } from '../locais';
@@ -148,6 +154,11 @@ export interface AcoesDaOs {
   aoAgir: (os: OsNoAparelho, acao: AcaoDoTecnico, resposta?: RespostasDaConclusao) => Promise<void>;
   aoApontar: (osId: string, inicio: Date, fim: Date) => Promise<void>;
   aoRegistrarMaterial: (osId: string, descricao: string) => Promise<void>;
+  /** As respostas do checklist (PV1), só os itens que mudaram; null tira a resposta. */
+  aoResponderChecklist: (
+    osId: string,
+    respostas: Record<string, string | number | boolean | null>,
+  ) => Promise<void>;
   aoFotografar: (osId: string, arquivo: File, momento: MomentoDaFoto) => Promise<void>;
   /** Equipamento parado agora (C5). */
   aoRegistrarParada: (osId: string) => Promise<void>;
@@ -258,6 +269,9 @@ export function Os(
   async function agir(acao: AcaoDoTecnico) {
     if (acao === 'concluir' && faltaFotoDepois(os)) {
       return setAviso({ tipo: 'erro', codigo: 'foto_depois_obrigatoria' });
+    }
+    if (acao === 'concluir' && faltaChecklist(os)) {
+      return setAviso({ tipo: 'erro', codigo: 'checklist_incompleto' });
     }
     // Com a parada ou a UH do chamado em aberto, a resposta à pergunta é a confirmação.
     if (acao === 'concluir' && perguntaNaConclusao(os)) return setPergunta('parada');
@@ -410,6 +424,14 @@ export function Os(
           aoDesistir={desistir}
         />
       )}
+
+      <ChecklistDaOs
+        os={os}
+        idioma={intl.locale}
+        idiomaPadrao={props.codigos?.idiomaPadrao ?? 'pt-BR'}
+        aoSalvar={(r) => tentar(() => props.aoResponderChecklist(os.id, r))}
+        aoRecusar={(codigo) => setAviso({ tipo: 'erro', codigo })}
+      />
 
       {aceitaRegistro(os.estado) ? (
         <>
