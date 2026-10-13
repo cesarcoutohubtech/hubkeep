@@ -4,6 +4,7 @@
 // política depois não altera o chamado já aberto.
 import { RegraViolada } from './erros';
 import type { StatusDeLocal } from './licenca';
+import type { HorarioDeAtendimento, PoliticaDeSla, SlaAplicado } from './sla';
 
 export const LIMITE_DESCRICAO_DO_CHAMADO = 2000;
 
@@ -56,8 +57,13 @@ export function exigirAtivoDoChamado(
   }
 }
 
-/** Cópia do que foi aplicado na abertura (ADR-026), por chave de política. */
-export interface PoliticaAplicadaNaAbertura {
+/**
+ * Cópia do que foi aplicado na abertura (ADR-026), por chave de política. Na
+ * 1c (ADR-042), a chamado.sla inteira e o horário de atendimento resolvidos
+ * para o hotel: o recálculo na triagem e a retomada usam a cópia, e não a
+ * política do momento.
+ */
+export interface PoliticaAplicadaNaAbertura extends SlaAplicado {
   'chamado.prioridade_padrao_por_categoria': {
     categoriaId: string | null;
     prioridadeId: string;
@@ -68,6 +74,8 @@ export interface PoliticaAplicadaNaAbertura {
 export function politicaAplicadaNaAbertura(p: {
   categoriaId: string | null;
   prioridade: { prioridadeId: string; origem: 'categoria' | 'menor_peso' };
+  sla: PoliticaDeSla;
+  horario: HorarioDeAtendimento;
 }): PoliticaAplicadaNaAbertura {
   return {
     'chamado.prioridade_padrao_por_categoria': {
@@ -75,5 +83,7 @@ export function politicaAplicadaNaAbertura(p: {
       prioridadeId: p.prioridade.prioridadeId,
       origem: p.prioridade.origem,
     },
+    'chamado.sla': p.sla,
+    'hotel.horario_atendimento': p.horario,
   };
 }

@@ -56,6 +56,13 @@ export const ChamadoApi = z
     origem: z.enum(ORIGENS_DO_CHAMADO_API),
     /** Afeta hóspede? null: não informado (I4). */
     impactoHospede: z.boolean().nullable(),
+    /** A categoria do chamado (1c, ADR-042): do ativo na abertura, ajustável na triagem. */
+    categoriaId: z.guid().nullable(),
+    /** Os prazos de SLA (ADR-042); nulos no chamado aberto antes deles. */
+    prazoAtendimento: z.iso.datetime().nullable(),
+    prazoSolucao: z.iso.datetime().nullable(),
+    /** O tempo de relógio parado por pausas da OS, em segundos (ADR-042). */
+    pausadoSegundos: z.int().nonnegative(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
   })

@@ -45,6 +45,7 @@ import {
   criarPortasDeAplicacao,
   novoId,
 } from '../src/index';
+import { semFeriadosOficiais } from './feriados-de-teste';
 
 const URL_APP = process.env.HK_TESTE_URL_APP;
 const URL_DONO = process.env.HK_TESTE_URL_DONO;
@@ -182,6 +183,7 @@ describe.skipIf(!temBanco)(
         prioridades,
         atribuicoes,
         relogio: relogioDoSistema,
+        feriadosOficiais: semFeriadosOficiais,
       });
       triagem = criarCasosDeUsoDeTriagem({
         triagem: portaTriagem,
@@ -189,6 +191,7 @@ describe.skipIf(!temBanco)(
         prioridades,
         atribuicoes,
         relogio: relogioDoSistema,
+        feriadosOficiais: semFeriadosOficiais,
       });
       execucao = criarCasosDeUsoDeExecucao({
         execucao: criarPortaExecucao(banco),
