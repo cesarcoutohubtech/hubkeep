@@ -384,6 +384,30 @@ Decisão do Cesar no chat ("Cesar aqui", 13/10/2026):
 - os quatro pontos que a 1c tinha pedido ao Kaio (seção "Pedido ao agente do Kaio" acima) ficam como contribuição para o rascunho dele, e não como pendência da 1c;
 - o painel de indicadores (item 8 da ordem) espera o glossário aprovado.
 
+## Feriados do hotel: API e tela (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a parte de telas do item 3 (SLA) que não depende do #224. Fica fora da zona protegida, sem migração, na branch `claude/1c-feriados-hotel`. A tabela `app.feriado_hotel` está na `main` desde a 0043.
+
+**Aviso de área compartilhada com a 1b:** mexe no `packages/dominio` (`feriados-do-hotel.ts` e a lista de entidades da auditoria geral), no `packages/db/src/adaptadores.ts`, no OpenAPI e nos catálogos.
+
+- **Domínio:**
+  - `podeCadastrarFeriados`, com os papéis da policy da 0043: o Admin do grupo, o Gestor CSC, o Implantador e o Gerente do hotel, no escopo deles;
+  - o nome, de 1 a 120 caracteres;
+  - a data, um dia que existe, de 2000 a 2100.
+- **Aplicação:** listar (com `podeCadastrar`, para a tela), cadastrar, alterar o nome e a marca "repete todo ano", desativar e reativar. A data não muda: para trocar, desativa e cadastra outro.
+- **Banco:**
+  - o repositório, com auditoria (`feriado_hotel`, que também entra na auditoria geral);
+  - o 409 `feriado_data_repetida`, vindo do índice de um feriado ativo por data.
+- **API:** `GET` e `POST /api/v1/hoteis/{id}/feriados`, `PUT /api/v1/feriados/{id}` e `POST .../desativacao` e `.../reativacao`, no OpenAPI.
+- **Tela:** `/admin/feriados`, no menu de configuração:
+  - a escolha do hotel e a lista, com a data longa;
+  - os formulários, só para quem pode cadastrar;
+  - uma nota de que os feriados nacionais e estaduais já entram sozinhos e de que o prazo já calculado não muda.
+- **Catálogo:** os textos e os cinco erros, nos quatro idiomas.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos: o domínio, a aplicação com as portas em memória e a tela;
+  - só na CI: `packages/db/test/feriados-do-hotel.test.ts`, com a RLS (o Técnico e o Gerente de outro hotel), a data repetida e a auditoria.
+
 ## Painel dos avisos de SLA e selo na ficha (M4, 13/10/2026)
 
 **Aviso de área compartilhada (chamado):** a 1c acrescenta o selo dos avisos na ficha do chamado no web (`chamados/[id]/tela.tsx`, sem tocar no `corretiva.tsx`), duas rotas de leitura e textos no catálogo. Branch `claude/1c-avisos-sla`, a partir da `main` com o #224. Fora da zona protegida e sem migração: lê a `app.sla_alerta` da 0044.

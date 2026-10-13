@@ -108,6 +108,12 @@ import {
   RespostaDeEquipes,
   RespostaDeMembroDaEquipe,
 } from './equipes';
+import {
+  PedidoDeAlteracaoDeFeriado,
+  PedidoDeFeriado,
+  RespostaDeFeriadoAlterado,
+  RespostaDeFeriados,
+} from './feriados';
 import { RespostaDeImplantacao } from './implantacao';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
 import {
@@ -701,6 +707,73 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
       409: ERRO('Nome repetido no hotel (equipe_nome_repetido).'),
       422: ERRO('Nome inválido (equipe_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/feriados',
+    resumo:
+      'Feriados do hotel (1c, ADR-042), ativos e desativados, e se quem pede pode cadastrar. Lê quem lê o hotel, menos o proprietário.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Feriados do hotel', esquema: RespostaDeFeriados },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/feriados',
+    resumo:
+      'Cadastra um feriado do hotel (Admin, Gestor CSC, Implantador ou Gerente do hotel). Conta nos próximos cálculos de prazo; não muda prazo já gravado.',
+    exigeTenant: true,
+    corpo: PedidoDeFeriado,
+    respostas: {
+      201: { descricao: 'Feriado cadastrado', esquema: RespostaDeFeriadoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (feriados_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      409: ERRO('Outro feriado ativo na data (feriado_data_repetida).'),
+      422: ERRO('Data ou nome inválidos (feriado_data_invalida, feriado_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/feriados/{id}',
+    resumo: 'Altera o nome e a marca "repete todo ano" do feriado; a data não muda.',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDeFeriado,
+    respostas: {
+      200: { descricao: 'Feriado alterado', esquema: RespostaDeFeriadoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (feriados_fora_do_escopo).'),
+      404: ERRO('Feriado não encontrado (feriado_nao_encontrado).'),
+      422: ERRO('Nome inválido (feriado_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/feriados/{id}/desativacao',
+    resumo: 'Desativa o feriado: deixa de contar nos próximos cálculos de prazo.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Feriado desativado', esquema: RespostaDeFeriadoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (feriados_fora_do_escopo).'),
+      404: ERRO('Feriado não encontrado (feriado_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/feriados/{id}/reativacao',
+    resumo: 'Reativa o feriado.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Feriado reativado', esquema: RespostaDeFeriadoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (feriados_fora_do_escopo).'),
+      404: ERRO('Feriado não encontrado (feriado_nao_encontrado).'),
+      409: ERRO('Outro feriado ativo na data (feriado_data_repetida).'),
     },
   },
   {

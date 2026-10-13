@@ -87,6 +87,7 @@ export const MENU: readonly { grupo: Chave; itens: readonly { href: string; chav
     grupo: 'menu.grupo.configuracao',
     itens: [
       { href: '/admin/configuracao', chave: 'menu.configuracao' },
+      { href: '/admin/feriados', chave: 'menu.feriados' },
       { href: '/admin/auditoria', chave: 'menu.auditoria' },
       { href: '/admin/implantacao', chave: 'menu.implantacao' },
     ],
@@ -131,6 +132,7 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/admin\/bandeiras$/, 'admin.bandeiras.titulo'],
   [/^\/admin\/membros$/, 'admin.membros.titulo'],
   [/^\/admin\/configuracao$/, 'admin.configuracao.titulo'],
+  [/^\/admin\/feriados$/, 'admin.feriados.titulo'],
   [/^\/admin\/auditoria$/, 'admin.auditoria.titulo'],
   [/^\/admin\/implantacao$/, 'admin.implantacao.titulo'],
   [/^\/inteligencia\/insights$/, 'menu.inteligencia'],
