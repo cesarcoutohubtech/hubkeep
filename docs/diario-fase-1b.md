@@ -290,3 +290,37 @@ O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main
 - **banco:** o `apps/web/test/demonstracao/semear.test.ts` apaga o tenant do kit no fim, e a lista de tabelas não tinha `app.os_checklist` nem `app.checklist_modelo`. A chave estrangeira da OS recusou o delete. Essa falha já estava no "banco" do próprio #210, e eu não conferi os checks antes de dar o PR como pronto. Daqui em diante, confiro os checks de cada PR meu antes de dizer que está pronto, como manda o `CLAUDE.md`.
 
 **Aviso de área compartilhada com a 1c:** a correção mexe na lista do domínio (`packages/dominio/src/auditoria-geral.ts`), na da API (`packages/contratos/src/auditoria-geral.ts`) e no catálogo da auditoria, que são da 1c. Entraram as duas entidades, com nome nos quatro idiomas, e as ações `aplicar`, `trocar` e `responder` no rótulo geral das ações.
+
+## PV2b — planos preventivos: domínio, API e telas (13/10/2026)
+
+**Aviso de área compartilhada com a 1c:** mexe em `packages/dominio` (o módulo novo `plano-preventivo.ts` e a lista de entidades da auditoria geral) e nos catálogos de texto. O Cesar mandou seguir ("Cesar aqui. Prossiga", 13/10/2026).
+
+O resto da PV2 (ADR-041), fora da zona protegida, na branch `claude/1b-pv2b`, que sai da `claude/1b-pv2`. O PR só abre depois do merge da migração da PV2, para não ficar empilhado.
+- **Domínio** (`plano-preventivo.ts`):
+  - quem gere: a gestão do hotel e o Implantador (decisão 8);
+  - o nome, o início, e a periodicidade com os limites (366 dias, 52 semanas, 24 meses; `periodicidade_invalida`);
+  - o calendário fixo, ancorado no início (decisão 6): o dia que não existe no mês cai no último dia, sem deslizar;
+  - `ocorrencias`, `proximaOcorrencia` e `ocorrenciaMaisRecenteAte` (a única que a PV3 gera com várias vencidas, decisão 10);
+  - o dia no fuso do hotel (`diaNoFuso`);
+  - ativar (só do pausado e com o responsável), pausar (só do ativo) e encerrar (sem volta).
+- **Aplicação:**
+  - listar os planos do hotel e os do ativo, com a próxima data no fuso do hotel;
+  - cadastrar, pausado ou já ativo;
+  - alterar pela versão (ADR-029), com o alvo fixo;
+  - ativar, pausar e encerrar.
+  - O ativo, a categoria e o checklist são conferidos antes de gravar; o Técnico e a equipe, no hotel, pela porta da triagem.
+- **Banco:** o repositório na unit of work, com auditoria (entidade `plano_preventivo`) e os eventos `plano_preventivo.criado` e `plano_preventivo.alterado`. O adaptador lê as datas como texto.
+- **API:**
+  - `GET/POST /api/v1/hoteis/{id}/planos-preventivos`;
+  - `PUT /api/v1/planos-preventivos/{id}`;
+  - `POST .../ativacao`, `.../pausa` e `.../encerramento`, com a versão;
+  - `GET /api/v1/ativos/{id}/planos-preventivos`.
+  - As rotas estão no OpenAPI, com os contratos e a paridade das listas com o domínio.
+- **Telas:**
+  - "Preventivas" no menu de cadastros: a lista do hotel com a próxima data, o formulário com a prévia das próximas cinco datas, alterar, ativar, pausar e encerrar;
+  - na ficha do ativo, "Ver planos preventivos".
+- **Catálogo:** os códigos de erro, o nome da entidade na auditoria, as ações `ativar` e `pausar` e os textos das telas, nos quatro idiomas.
+- **Testes:**
+  - domínio, aplicação com as portas em memória, tela nos quatro idiomas e paridade dos contratos;
+  - integração do repositório, só na CI: `packages/db/test/planos-preventivos.test.ts`.
+- **Fica para a PV3:** o kit de teste com um plano e o roteiro no `docs/10`, porque o plano só faz diferença no kit quando gera OS.
