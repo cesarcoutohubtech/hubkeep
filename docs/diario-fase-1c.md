@@ -588,10 +588,12 @@ Segundo PR das telas do SLA, depois da tela das políticas (#246). Segue o ADR-0
 - **API e tela:** `POST /api/v1/chamados/{id}/categoria` e o bloco da categoria no painel da triagem.
 
 ### Ponto de retomada (13/10/2026, telas do SLA)
-- **`main`:** verde de novo com o #247 (o teste da pausa). Entraram também o #245 (PV3b da 1b) e o #246 (tela das políticas do SLA).
+- **`main`:** o #247 corrigiu o teste da pausa, mas a `main` ficou vermelha no typecheck. O #245 (PV3b da 1b) e o #243 (M5) passavam sozinhos e quebram juntos: o `preventiva-na-maquina.test.ts` não tem a ação `aceitar_automatico`. A correção é o #250, só no teste, e entra antes de qualquer outro merge. Entrou também o #246 (tela das políticas do SLA).
 - **Dev:** com a 0046.
-- **PRs da 1c:** o #248, a troca de categoria na triagem, com a `main` juntada.
+- **PRs da 1c:**
+  - #250: a correção da `main`;
+  - #248: a troca de categoria na triagem, com a `main` juntada e a correção do #250.
 - **Esperando:**
-  - o Cesar: o merge do #248;
+  - o Cesar: o merge do #250, depois o do #248;
   - as aprovações do glossário (Cesar e Kaio). As divergências a, b, d e e já têm decisão (#242).
 - **Próxima tarefa:** conferir no `docs/13-plano-fase-1c.md` o que falta do item 4 (monitor) depois do M4 e do M5, e então o item 5 (comunicação: o e-mail e o push dos avisos de SLA). Primeiro passo: comparar a seção dos itens 4 e 5 do plano com o que já está na `main`.
