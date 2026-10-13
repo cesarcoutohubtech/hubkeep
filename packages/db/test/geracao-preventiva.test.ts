@@ -12,7 +12,7 @@
 // As datas do ativo são fixas: o teste não depende do relógio do runner.
 //
 //   HK_TESTE_URL_WORKER, HK_TESTE_URL_DONO
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { type ResultadoDaGeracao, criarGeracaoDePreventivas } from '@hubkeep/aplicacao';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -48,6 +48,10 @@ const PLANO = {
   b: randomUUID(),
 };
 const SITUACAO = { [T]: randomUUID(), [TB]: randomUUID() };
+
+/** Código de QR no formato do check ativo_codigo_qr_formato (Crockford, 10 caracteres). */
+const codigoQr = () =>
+  Array.from({ length: 10 }, () => '0123456789ABCDEFGHJKMNPQRSTVWXYZ'[randomInt(32)]).join('');
 
 const vazio = (): ResultadoDaGeracao['puladas'] => ({
   ja_gerada: 0,
@@ -145,7 +149,7 @@ describe.skipIf(!temBanco)('geração da OS preventiva (hk_worker)', { timeout: 
       await q(
         `insert into app.ativo (id, tenant_id, hotel_id, local_id, categoria_id, codigo_qr, nome, busca, criado_em)
          values ($1, $2, $3, $4, $5, $6, 'Split', 'split', '2026-01-01T12:00:00Z')`,
-        [id, t, h, L[h], cat, `Q${id.slice(0, 8)}`],
+        [id, t, h, L[h], cat, codigoQr()],
       );
     }
     await q(
