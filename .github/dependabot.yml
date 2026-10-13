@@ -1,9 +1,23 @@
 # S1 (ADR-032): as actions estão fixadas por SHA; o Dependabot abre o PR quando
-# sai versão nova, com o SHA novo. Dependências do pnpm seguem pelo `pnpm audit`
-# da CI e por atualização deliberada.
+# sai versão nova, com o SHA novo.
+# npm (decisão do Cesar de 13/10/2026; ADR-042): as atualizações de versão vêm
+# agrupadas num PR só por semana, com limite de PRs abertos. As de segurança
+# ficam sempre separadas, uma por PR, porque o grupo só vale para as de
+# versão. O `pnpm audit` da CI continua. A date-holidays, fixada, passa pelo
+# teste de regressão dos feriados (apps/web/test/feriados-oficiais.test.ts).
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      versoes-da-semana:
+        applies-to: version-updates
+        patterns:
+          - '*'
