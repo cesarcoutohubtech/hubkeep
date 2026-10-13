@@ -116,6 +116,41 @@ Item 2 da ordem da 1c. PR fora da zona protegida, sem migração, na branch `cla
   - na CI, com o Supabase do runner: o caso novo de `packages/db/test/configuracao.test.ts` (bandeira acima do grupo e abaixo do hotel, o hotel sem bandeira, a porta da triagem, a auditoria, a bandeira de outro tenant e o gerente);
   - a tela não foi vista no navegador.
 
+## Auditoria geral (13/10/2026)
+
+Item 7 da ordem, adiantado com a autorização do Cesar ("Pode sim"). PR fora da zona protegida, sem migração, na branch `claude/1c-auditoria-geral`. Segue o item 4 de `docs/referencia/propostas-desenho-1c.md`, com as decisões 12 a 14.
+- **Domínio** (`packages/dominio/src/auditoria-geral.ts`):
+  - **quem tem a tela:** `podeVerAuditoriaGeral`, com a gestão vigente: o Admin do grupo, o Gestor CSC e o Gerente do hotel;
+  - **o período:** até 92 dias, com o fim depois do início;
+  - **o cursor:** `em~id`, com o `em` exato em UTC e microssegundos. O `Date` do JavaScript perde os microssegundos, e o cursor pularia ou repetiria linhas do mesmo milissegundo;
+  - **as mudanças:** saem como no histórico por registro, sem o detalhe da ativação bloqueada;
+  - **`ENTIDADES_DA_AUDITORIA`:** as 28 entidades que a aplicação grava na auditoria.
+- **Aplicação:** a porta e o caso de uso, com uma linha a mais para saber se há página seguinte. A tela pede 50 por página e a exportação pede 1.000; as referências vêm pela porta do histórico.
+- **Banco** (`packages/db/src/auditoria-geral.ts`):
+  - a RLS de `app.auditoria` decide o que cada um lê, sem policy nova;
+  - a consulta fica com os hotéis da gestão, por `authz.hoteis_com_papel`, como em `consultas.ts` (ADR-017). Assim, o Gerente que também é Técnico de outro hotel não vê esse outro hotel aqui (decisão 12);
+  - as linhas sem hotel ficam só pela RLS.
+- **API:** `GET /api/v1/auditoria/geral`, no OpenAPI, com 403 `auditoria_sem_permissao`, 422 `auditoria_periodo_invalido` (com `maximoDias`) e 422 `auditoria_cursor_invalido`.
+- **Tela** (`/admin/auditoria`, no menu de configuração):
+  - os filtros, a tabela, o "carregar mais" e o detalhe do antes e depois na linha, com a tradução do histórico (o formatador de valores do `HistoricoDoRegistro` virou fábrica, para a exportação);
+  - a lista de ações e de pessoas do filtro é a das linhas já carregadas.
+- **CSV no navegador:**
+  - a resposta de uma função da Vercel tem limite de tamanho (4,5 MB), e 50 mil linhas passariam dele. Por isso, a exportação pede páginas de 1.000 e junta o arquivo no navegador, com o texto do mesmo catálogo da tela;
+  - o arquivo leva o BOM, o separador pelo formato regional de quem exporta (`separadorDeCsv`, em `@hubkeep/i18n`) e as linhas em CRLF;
+  - o texto que começa como fórmula ganha um apóstrofo;
+  - acima de 50 mil linhas, a exportação para e pede menos período ou mais filtros.
+- **Catálogo:** o nome das 28 entidades, as ações comuns das entidades sem histórico próprio, os textos da tela e os três erros, nos quatro idiomas.
+- **`docs/13`:** corrigido sobre o Implantador (decisão 14). O texto do ADR-021 entra no próximo PR de zona protegida da 1c, junto com a tabela do monitor e os índices da auditoria.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos:
+    - o domínio (`auditoria-geral.test.ts`);
+    - a aplicação, com as portas em memória;
+    - a paridade das entidades com os repositórios, a API e o catálogo (`tests/auditoria-entidades.test.ts`);
+    - a tela nos quatro idiomas e o CSV;
+    - o separador do CSV;
+  - na CI, com o Supabase do runner: `packages/db/test/auditoria-geral.test.ts`. Ele cobre o Gerente que também é Técnico, a auditoria sem hotel, o Técnico sem a tela, os filtros e o cursor no mesmo milissegundo;
+  - a tela não foi vista no navegador.
+
 ## Ponto de retomada (13/10/2026)
 
 - **Feito:**

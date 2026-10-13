@@ -34,7 +34,7 @@ As sete decisões de `docs/referencia/paridade-mock-1c.md` ("Decididas antes de 
 
 | O quê | Aceite |
 |---|---|
-| Tela só de leitura com toda a auditoria que o usuário enxerga. Filtros por período, hotel, tipo de registro, ação e pessoa, com paginação e exportação CSV. Reaproveita a tradução de ações e campos do histórico por registro (D1, `packages/dominio/src/auditoria.ts`). | O escopo de cada papel continua vindo da RLS: auditoria com hotel, só dos hotéis do usuário; auditoria sem hotel, só para o Admin do grupo e o Implantador, como no ADR-021. O CSV traz o mesmo que a tela, nos mesmos filtros. Paginação estável por cursor. Ações e campos traduzidos nos quatro idiomas. |
+| Tela só de leitura com toda a auditoria que o usuário enxerga. Filtros por período, hotel, tipo de registro, ação e pessoa, com paginação e exportação CSV. Reaproveita a tradução de ações e campos do histórico por registro (D1, `packages/dominio/src/auditoria.ts`). | O escopo de cada papel continua vindo da RLS: auditoria com hotel, só dos hotéis do usuário; auditoria sem hotel, só para o Admin do grupo, mais a do fornecedor para o Gestor CSC e o Gerente do hotel. O Implantador grava a auditoria sem hotel, mas não a lê (corrigido pela decisão 14 do Cesar, de 13/10/2026; o texto do ADR-021 é corrigido no PR de zona protegida seguinte da 1c). A tela é da gestão: o Admin do grupo, o Gestor CSC e o Gerente do hotel, este só nos hotéis dele (decisão 12). O CSV traz o mesmo que a tela, nos mesmos filtros. Paginação estável por cursor. Ações e campos traduzidos nos quatro idiomas. |
 
 ## Preparação do piloto
 
