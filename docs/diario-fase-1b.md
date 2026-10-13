@@ -283,6 +283,22 @@ O resto da PV1 (ADR-040), fora da zona protegida, sobre a migração 0042 do PR 
   - integração do repositório (aplicar, trocar, responder, auditoria e evento), que roda na CI.
 - **Eventos novos** no outbox: `os.checklist_aplicado` e `os.checklist_respondido`.
 
+## Decisões do Cesar e fila de zona protegida (13/10/2026, segunda parte)
+
+O #209 (`CLAUDE.md`), o #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram na `main` (a6b761b). O Cesar apagou do GitHub as branches antigas já mergeadas, preservando as dos últimos 3 dias; a `1a-d1-teste-proprietario` saiu junto. Nenhuma branch da 1b com trabalho fora da `main` sumiu.
+
+Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
+1. **PRs da 1b:** o agente acompanha os próprios PRs pelos eventos do GitHub (CI e revisões) e corrige o que quebrar. Merges continuam só do Cesar.
+2. **Tipos do banco, aprovado:** quando a verificação do `banco.yml` falhar, a CI gera o `tipos-banco.ts` a partir do banco do runner e o publica como artefato do run. O `db:types` passa a buscar esse artefato, em vez de ler o dev. Entra numa próxima vez da 1b na fila, depois da PV2.
+3. **Ordem da fila de zona protegida a partir de agora:**
+   1. o PR de visibilidade das telas, do agente do Kaio (`int-visibilidade-telas`; mexe no `docs/03`, sem migração);
+   2. a próxima migração da 1c (o monitor de SLA, com `app.sla_alerta`, os índices da auditoria e o texto do ADR-021);
+   3. a PV2 da 1b. A migração dela passa a ser, provavelmente, a 0045; conferir a última da `main` antes de abrir;
+   4. a mudança dos tipos, numa próxima vez da 1b.
+4. **Enquanto espera a vez:** preparar a PV2 a partir da `main` atualizada e a proposta do workflow "conferir dev".
+
+**Proposta do "conferir dev":** está em `docs/referencia/proposta-conferir-dev.md`, para a aprovação do Cesar. Disparo manual na `main`, ambiente `dev` do GitHub com a aprovação do Cesar e um segredo só (`DEV_SESSION_POOLER`). O job compara as migrações do dev com as da `main`, lendo a tabela de migrações, e depois roda o pgTAP com rollback. São três decisões pendentes, listadas no fim da proposta.
+
 ## `main` vermelha depois do #210 e do #211 (13/10/2026)
 
 O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main` (a6b761b) ficou vermelha em dois workflows:
@@ -290,3 +306,24 @@ O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main
 - **banco:** o `apps/web/test/demonstracao/semear.test.ts` apaga o tenant do kit no fim, e a lista de tabelas não tinha `app.os_checklist` nem `app.checklist_modelo`. A chave estrangeira da OS recusou o delete. Essa falha já estava no "banco" do próprio #210, e eu não conferi os checks antes de dar o PR como pronto. Daqui em diante, confiro os checks de cada PR meu antes de dizer que está pronto, como manda o `CLAUDE.md`.
 
 **Aviso de área compartilhada com a 1c:** a correção mexe na lista do domínio (`packages/dominio/src/auditoria-geral.ts`), na da API (`packages/contratos/src/auditoria-geral.ts`) e no catálogo da auditoria, que são da 1c. Entraram as duas entidades, com nome nos quatro idiomas, e as ações `aplicar`, `trocar` e `responder` no rótulo geral das ações.
+
+## Ponto de retomada (13/10/2026, fim da segunda parte)
+
+- **`main`:** 38bf55f. O #213 consertou a `main`, que estava vermelha no CI e no banco pelo cruzamento do #210 com o #211. O dev tem as migrações até a 0043.
+- **PR aberto da 1b:** o #214, este diário e a proposta do "conferir dev" (fora da zona protegida), já com a `main` depois do #213.
+- **Fila de zona protegida:** o #212 do Kaio (aberto), depois a migração da 1c (monitor de SLA), depois a PV2.
+- **PV2 preparada, sem PR:** branch `claude/1b-pv2` (4c2f4f7), a partir da a6b761b. Leva:
+  - a migração `app.plano_preventivo` e o pgTAP 036;
+  - a tabela nova no meta-teste 28;
+  - as listas do domínio, com a paridade dos checks;
+  - os tipos do Kysely, o `docs/02` e o ADR-041 no `docs/03`.
+
+  A sintaxe do SQL foi conferida só por análise, sem banco; o pgTAP roda na CI.
+- **Antes de abrir o PR da PV2,** na vez dela:
+  1. juntar a `main`;
+  2. renomear a migração para data e hora depois da última da `main`, porque o `db push` recusa migração anterior à última aplicada;
+  3. conferir o número ("Migração 0045" no cabeçalho, no `docs/02`, no ADR-041 e na paridade);
+  4. renomear o pgTAP 036 se a 1c tiver usado o número;
+  5. atualizar o meta-teste 28 com as tabelas que a 1c acrescentar.
+- **Depois da PV2 (fora da zona):** domínio (periodicidade, `ocorrencias` e `proximaOcorrencia`), casos de uso, API e telas.
+- **Esperando o Cesar:** o merge do #214 e as três decisões da proposta do "conferir dev".
