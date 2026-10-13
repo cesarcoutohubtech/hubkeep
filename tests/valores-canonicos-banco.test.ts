@@ -6,11 +6,13 @@
 // MODULOS_CONTRATAVEIS, migração 0037) e, no Intelligence, para o estado e o
 // motivo do descarte do insight (ESTADOS_DO_INSIGHT e MOTIVOS_DE_DESCARTE,
 // migração 0038), o momento da foto da OS (I8, MOMENTOS_DA_FOTO, migração
-// 0041) e o motivo da pausa da OS (1c, MOTIVOS_DE_PAUSA, migração 0043). Este
+// 0041), o motivo da pausa da OS (1c, MOTIVOS_DE_PAUSA, migração 0043) e a
+// unidade e a situação do plano preventivo (PV2, UNIDADES_DE_PERIODICIDADE e
+// SITUACOES_DO_PLANO, migração 0045). Este
 // teste lê as migrações e falha se um check e a lista do domínio divergirem:
 // valor novo exige migração que amplia o check. Os pgTAP 028, 029 e 030
 // provam, no banco, que o check recusa o que está fora (o 031, no insight; o
-// 033, no momento da foto; o 035, no motivo da pausa).
+// 033, no momento da foto; o 035, no motivo da pausa; o 036, no plano).
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
@@ -19,7 +21,9 @@ import {
   MOMENTOS_DA_FOTO,
   MOTIVOS_DE_PAUSA,
   ORIGENS_DO_CHAMADO,
+  SITUACOES_DO_PLANO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
+  UNIDADES_DE_PERIODICIDADE,
 } from '../packages/dominio/src/index';
 import { ESTADOS_DO_INSIGHT, MOTIVOS_DE_DESCARTE } from '../packages/inteligencia/src/index';
 
@@ -79,6 +83,20 @@ describe('valores canônicos: banco × domínio (1c, ADR-042)', () => {
   it('os_transicao_motivo_pausa_lista aceita exatamente os MOTIVOS_DE_PAUSA do domínio', () => {
     expect(valoresDoCheck('os_transicao_motivo_pausa_lista', 'motivo_pausa')).toEqual([
       ...MOTIVOS_DE_PAUSA,
+    ]);
+  });
+});
+
+describe('valores canônicos: banco × domínio (PV2, ADR-041)', () => {
+  it('plano_preventivo_unidade_lista aceita exatamente as UNIDADES_DE_PERIODICIDADE do domínio', () => {
+    expect(valoresDoCheck('plano_preventivo_unidade_lista', 'unidade')).toEqual([
+      ...UNIDADES_DE_PERIODICIDADE,
+    ]);
+  });
+
+  it('plano_preventivo_situacao_lista aceita exatamente as SITUACOES_DO_PLANO do domínio', () => {
+    expect(valoresDoCheck('plano_preventivo_situacao_lista', 'situacao')).toEqual([
+      ...SITUACOES_DO_PLANO,
     ]);
   });
 });

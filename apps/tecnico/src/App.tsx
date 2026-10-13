@@ -355,6 +355,7 @@ function Casca(props: {
               concluidaEm: new Date().toISOString(),
             }
           : {}),
+        ...(acao === 'pausar' && resposta?.motivo ? { motivo: resposta.motivo } : {}),
       },
     });
 

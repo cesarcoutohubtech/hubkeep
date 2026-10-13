@@ -1078,6 +1078,30 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - O GRANT de UPDATE da cópia vale para todos os papéis do `hk_app`, então o Técnico responsável também pode, no banco, alterar o modelo e os itens da cópia. A aplicação nunca grava essas colunas por ele, e toda gravação fica na auditoria (risco aceito, como na 0023).
 - A faixa numérica com alerta e a OS automática por não conformidade ficam para a fase 2 (inspeções com OS automática).
 
+## ADR-041 — Preventiva por tempo: calendário fixo e geração idempotente pelo worker
+
+**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3.
+
+**Contexto:** a PV2 e a PV3 da 1b (`docs/12`) trazem a manutenção preventiva: planos por ativo ou por categoria e a OS gerada sozinha na data prevista. Hoje a OS só nasce de chamado (`app.os.chamado_id` é `not null`), o `hk_worker` não grava OS, e a rota `/api/cron/preventiva` existe vazia, fora do `vercel.json` (B9 do `docs/11`). Rotinas legais, como o PMOC do ar-condicionado (Lei 13.589/2018), seguem datas fixas.
+
+**Decisão:**
+- **Plano do hotel** (`app.plano_preventivo`), com um alvo: o ativo ou a categoria, exatamente um. O plano por categoria gera uma OS por ativo da categoria no hotel, resolvidos no dia da geração (decisão 9): o histórico por ativo alimenta os indicadores e o Intelligence. A "rota" com vários ativos numa OS fica para depois do MVP.
+- **Periodicidade só por tempo** (decisão 7): intervalo em dias, semanas ou meses, com limites no domínio (até 366 dias, 52 semanas e 24 meses; fora disso, 422 `periodicidade_invalida`). Por uso fica para depois do MVP (pergunta 22 ao cliente).
+- **Calendário fixo, ancorado no início** (decisão 6): a ocorrência k é `inicio + k × intervalo`, e não a partir da última conclusão. No mês, o dia que não existe cai no último dia do mês, sem deslizar (31/01, 28/02 ou 29/02, 31/03). O atraso numa OS não empurra as seguintes. As funções ficam no domínio, testadas sem banco.
+- **Situação:** ativo, pausado ou encerrado. Só o ativo gera. Pausar não apaga nada; encerrar é a desativação lógica e não volta. Ativar exige o responsável padrão (técnico ou equipe).
+- **Quem cadastra:** a gestão do hotel (Admin do grupo, Gestor CSC no escopo dele e Gerente) e o Implantador no hotel dele (decisão 8), porque é ele quem implanta e o pacote da bandeira (PB1) usa esse caminho.
+- **Geração diária pelo worker** (PV3): a rota volta ao `vercel.json` uma vez por dia, às 05:00 de Brasília, com teste. O dia é o do fuso do hotel, e só os hotéis com status `ativo` geram. A OS nasce no dia previsto, sem antecedência (decisão 11).
+- **Uma transação por hotel** (decisão 13), e não por tenant como os outros crons: num grupo de 40 hotéis, o dia 1º do mês pode gerar milhares de OS, e o `hk_worker` tem `statement_timeout` de 30 s. O plano é travado com `for update skip locked`.
+- **Idempotência pelo índice único** (plano, ativo, data prevista) na OS preventiva, que inclui a OS cancelada: rodar duas vezes não duplica, e a ocorrência cancelada não volta.
+- **Sem acúmulo** (decisão 10, até a resposta do cliente à pergunta 23): enquanto a OS da ocorrência anterior do mesmo plano e ativo estiver aberta, a nova não é gerada e conta como pulada; com várias ocorrências vencidas, só a mais recente é gerada.
+- **A OS preventiva não tem chamado:** guarda o plano, o ativo, a data prevista e a cópia do plano (ADR-026) e do checklist (ADR-040). Segue a mesma máquina de estados da corretiva, sem refletir em chamado. O aceite é do Gerente do hotel, ou, sem Gerente, do Gestor CSC ou do Admin, como na C6 (decisão 12). O worker cria só OS com plano.
+
+**Consequências:**
+- PV2: uma tabela nova, com os seis casos de isolamento (pgTAP 036). O `hk_worker` já lê o plano, para a PV3.
+- PV3: `app.os.chamado_id` e `criado_por` passam a anuláveis, com um check que exige um tipo só (corretiva com chamado, preventiva com plano, ativo e data prevista); `app.os_transicao.usuario_id` passa a anulável só na ação `gerar`; o worker ganha INSERT em `app.os`, `app.os_transicao` e `app.os_checklist`. Os meta-testes 18, 21, 28 e 32 mudam junto, e o agente do Intelligence é avisado de que a transição de geração da preventiva vem sem usuário.
+- O PWA antigo não quebra: a fila do dia só traz OS preventiva quando o pedido diz que entende (`?preventiva=1`).
+- Plano com responsável inválido (desativado ou sem papel de Técnico no hotel) não gera e aparece com a pendência na lista de planos.
+
 ## ADR-042 — Calendário de SLA: prazos calculados no domínio e gravados no chamado
 
 **Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c: as quatro decisões do item 1 de `docs/referencia/propostas-desenho-1c.md`, com o ajuste C, e as decisões 2 a 6 abaixo; o texto completo, com os detalhes do agente (a cópia da política inteira no chamado, a lista dos motivos da pausa, quem cadastra o feriado do hotel, a reabertura contra o mesmo prazo e os tipos de feriado que contam), aprovado em seguida, no mesmo dia ("aprovo adr 42").

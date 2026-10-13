@@ -6,6 +6,7 @@ import type {
   Contexto,
   EstadoDaOs,
   EstadoDoChamado,
+  MotivoDePausa,
   Responsavel,
   TipoDeCodigoDeManutencao,
 } from '@hubkeep/dominio';
@@ -71,6 +72,11 @@ export interface PortaExecucao {
   ultimaTransicaoEm(ctx: Contexto, osId: string): Promise<Date | null>;
   /** Fotos "depois" registradas na OS e não removidas (I8). */
   fotosDepois(ctx: Contexto, osId: string): Promise<number>;
+  /** A última pausa da OS (1c, ADR-042): a hora e o motivo; null se ela nunca pausou. */
+  ultimaPausa(
+    ctx: Contexto,
+    osId: string,
+  ): Promise<{ em: Date; motivo: MotivoDePausa | null } | null>;
 }
 
 /** Ação do Técnico sobre a OS, já decidida pelo domínio. */
@@ -98,5 +104,22 @@ export interface AcaoNaOsDecidida {
   codigos?: {
     codigos: CodigosDaOs;
     descartados: { tipo: TipoDeCodigoDeManutencao; motivo: string }[];
+  } | null;
+  /**
+   * Pausar (1c, ADR-042): o motivo, que vai na transição, e se a pausa para o
+   * relógio da solução, que vai na auditoria. Ausente nas outras ações.
+   */
+  pausa?: { motivo: MotivoDePausa | null; paraORelogio: boolean } | null;
+  /**
+   * Retomar depois da pausa que parou o relógio (ADR-042): o prazo de solução
+   * refeito e o tempo parado, em segundos, a somar no chamado, com a versão
+   * lida dele. null ou ausente: o chamado não muda.
+   */
+  slaNaRetomada?: {
+    chamadoId: string;
+    versaoDoChamado: number;
+    prazoSolucaoAntes: Date;
+    prazoSolucao: Date;
+    pausadoSegundos: number;
   } | null;
 }

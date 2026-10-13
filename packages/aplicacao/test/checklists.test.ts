@@ -107,6 +107,7 @@ function montar(opcoes: {
         abertoEm: new Date('2026-10-13T12:00:00Z'),
         politicaAplicada: {},
         prazoAtendimento: null,
+        prazoSolucao: null,
         pausadoSegundos: 0,
         jaTeveOs: true,
       },
@@ -332,9 +333,11 @@ describe('conclusão com a política do checklist', () => {
         osDoDia: async () => [],
         ultimaTransicaoEm: async () => null,
         fotosDepois: async () => 0,
+        ultimaPausa: async () => null,
       },
       triagem: {
         ...m.triagem,
+        calendario: async () => null,
         politica: async (_c, _h, chave) =>
           chave === 'os.checklist_completo_obrigatorio' ? { hotel: { ligado: ligada } } : {},
       },

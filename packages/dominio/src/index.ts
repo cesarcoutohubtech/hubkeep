@@ -310,6 +310,13 @@ export {
   validarRespostasDoChecklist,
 } from './checklist';
 export type { OpcaoDeConformidade, RespostaDoChecklist } from './checklist';
+export {
+  SITUACOES_DO_PLANO,
+  UNIDADES_DE_PERIODICIDADE,
+  ehSituacaoDoPlano,
+  ehUnidadeDePeriodicidade,
+} from './plano-preventivo';
+export type { SituacaoDoPlano, UnidadeDePeriodicidade } from './plano-preventivo';
 export type {
   CodigoPadrao,
   CodigoParaRegra,
@@ -404,6 +411,7 @@ export {
   horarioDeAtendimentoValido,
   horasDeRelogioEntre,
   horasDeSlaValidas,
+  pausaDoChamadoParaORelogio,
   pausaParaORelogio,
   politicaDeSlaValida,
   prazoNaRetomada,
@@ -412,6 +420,7 @@ export {
   regiaoDoHotel,
   regraDeSla,
   slaDaCopia,
+  slaDoChamado,
   tempoDeRelogioEntre,
 } from './sla';
 export type {
