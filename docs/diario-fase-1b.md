@@ -282,3 +282,11 @@ O resto da PV1 (ADR-040), fora da zona protegida, sobre a migração 0042 do PR 
   - domínio, casos de uso, sincronização, projeção e telas do PWA, telas do web;
   - integração do repositório (aplicar, trocar, responder, auditoria e evento), que roda na CI.
 - **Eventos novos** no outbox: `os.checklist_aplicado` e `os.checklist_respondido`.
+
+## `main` vermelha depois do #210 e do #211 (13/10/2026)
+
+O #210 (PV1b) e o #211 (auditoria geral, da 1c) entraram quase juntos, e a `main` (a6b761b) ficou vermelha em dois workflows:
+- **CI:** o `tests/auditoria-entidades.test.ts`, do #211, confere que toda entidade gravada na auditoria está em `ENTIDADES_DA_AUDITORIA`. A PV1 grava `checklist_modelo` e `os_checklist`, que o #211 não conhecia. Cada PR passou sozinho; o erro veio do cruzamento.
+- **banco:** o `apps/web/test/demonstracao/semear.test.ts` apaga o tenant do kit no fim, e a lista de tabelas não tinha `app.os_checklist` nem `app.checklist_modelo`. A chave estrangeira da OS recusou o delete. Essa falha já estava no "banco" do próprio #210, e eu não conferi os checks antes de dar o PR como pronto. Daqui em diante, confiro os checks de cada PR meu antes de dizer que está pronto, como manda o `CLAUDE.md`.
+
+**Aviso de área compartilhada com a 1c:** a correção mexe na lista do domínio (`packages/dominio/src/auditoria-geral.ts`), na da API (`packages/contratos/src/auditoria-geral.ts`) e no catálogo da auditoria, que são da 1c. Entraram as duas entidades, com nome nos quatro idiomas, e as ações `aplicar`, `trocar` e `responder` no rótulo geral das ações.
