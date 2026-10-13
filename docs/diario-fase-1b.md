@@ -534,6 +534,38 @@ Primeira parte da PV3 (ADR-041, decisões 9 a 13), na branch `claude/1b-pv3a`. �
 - **PV3b, fora da zona:** a OS sem chamado na máquina de estados (decidirNaOs sem chamado; o aceite da preventiva pelo Gerente, ou pelo Gestor CSC ou pelo Admin sem Gerente, decisão 12) e o contrato da fila do dia do PWA (`?preventiva=1`). Mexe na OS, que é área compartilhada: aviso antes de começar.
 - **PV3 na zona protegida,** na vez dela (depois da montagem e da próxima da 1c): a migração de `app.os` e as permissões do worker, os tipos, o repositório da porta, a rota `/api/cron/preventiva` no `vercel.json` e o teste de integração.
 
+## Decisões do Cesar: PV3a, Dependabot, montagem e PWA (13/10/2026)
+
+Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
+1. **PV3a:** aprovou os dois detalhes da seção acima.
+   - A OS concluída, esperando o aceite, não segura a próxima ocorrência.
+   - O ativo cadastrado depois da data prevista espera a próxima ocorrência.
+   - O ADR-041 (decisão 10) recebe os dois no PR da montagem, porque o `docs/03` é zona protegida.
+2. **Dependabot:** aprovou a proposta, com os cinco itens e o teste de guarda, mais o `ignore` da versão maior do TypeScript até o `typescript-eslint` aceitar o TS 7. Vai tudo no PR da montagem.
+3. **PR da montagem:** abre só depois que o Cesar mergear o #237 (0046) e fizer o `db push`. Ele avisa. O #237 já está na `main`; falta o aviso do `db push`.
+4. **`"agentGuidance": false` no `turbo.json`,** no próximo PR fora da zona: é este.
+   - O `turbo` 2.11.7 grava um `AGENTS.md` na raiz quando detecta um agente. Conferi nos dois sentidos: sem a opção o arquivo aparece, com ela não.
+5. **vite-plugin-pwa 2:** o Cesar pediu o build do PWA na branch atual e uma proposta de levar o build à CI.
+6. **Ordem de merge de hoje:** #236, #232, #234, #239, #235, #237. Já estão todos na `main`.
+
+### Build do PWA com o vite-plugin-pwa 2
+
+Na `main` (4fcf2e7, com o `vite-plugin-pwa` 2.0.0 do #231), `pnpm --filter @hubkeep/tecnico build` passou.
+- Gerou o `sw.js` (modo `generateSW`, 26 entradas no precache), o `manifest.webmanifest` e a rota de navegação para o `index.html`, como antes.
+- O único aviso é o de pedaço acima de 500 kB (o `index` tem 840 kB, 233 kB com gzip). Não é erro, e não é do plugin.
+- O typecheck e os testes do técnico passaram (162 de 162).
+
+### Proposta: build do PWA na CI (para aprovação do Cesar)
+
+Hoje a CI roda lint, typecheck e testes, mas nenhum build. Uma versão maior de plugin de build, como a do `vite-plugin-pwa` no #231, entra sem que nada a execute.
+- **Proposta:** um passo `pnpm --filter @hubkeep/tecnico build` no job "lint, typecheck e testes" do `ci.yml`, depois do `pnpm test`. Leva poucos segundos e não precisa de variável nem de segredo.
+- **O web fica de fora por ora:** o build do Next.js pede as variáveis do ambiente, e o preview da Vercel já faz esse build em todo PR.
+- **Como entra:** o `ci.yml` é zona protegida. Se o Cesar aprovar, o passo vai no PR da montagem, junto com o Dependabot.
+
+**Esperando o Cesar:**
+- aprovar ou não o build do PWA na CI;
+- o aviso do `db push` da 0046, para abrir o PR da montagem.
+
 ## Montagem com o relógio do roteiro (13/10/2026)
 
 Pedido 2 do Intelligence (atividade 3), com a proposta aprovada pelo Cesar ("Cesar aqui", 13/10/2026): fábricas, montagem fora do código do web, o instante só pela opção, o teste de guarda e a recusa contra produção; a auditoria e o outbox com o relógio do banco. Branch `claude/1b-montagem-relogio`. O PR toca a zona protegida (o teste de guarda e a regex) e abre na vez da 1b, depois da 0046 da 1c.
@@ -589,3 +621,5 @@ Pedido 2 do Intelligence (atividade 3), com a proposta aprovada pelo Cesar ("Ces
   - a regra registrada no ADR-032 (condição 3).
 - **ADR-041, decisão 10:** os dois detalhes da PV3a aprovados pelo Cesar (a OS concluída esperando o aceite não segura a próxima; o ativo cadastrado depois da data prevista espera a próxima ocorrência).
 - **Merge da `main` até o #239:** os avisos de SLA da 1c (#232) entraram nas fábricas, como os outros casos de uso que só usam o banco e o relógio. O `aceite.ts` novo da 1c (#237, aceite automático pelo worker) continua com o `now()` do banco: ele não roda no roteiro.
+- **Build do PWA na CI:** aprovado pelo Cesar no chat (13/10/2026: "build do PWA Aprovado", confirmado depois com "Cesar aqui. Merge e db push pronto. Continue"). O passo "Build do PWA" (`pnpm --filter @hubkeep/tecnico build`) entra no job "lint, typecheck e testes" do `ci.yml`, depois do `pnpm test`, e a regra fica no ADR-032, junto com a do Dependabot.
+- **Vez da 1b:** o Cesar mergeou o #237 (0046) e fez o `db push` ("Cesar aqui", 13/10/2026). Nenhum outro PR aberto no repositório; o PR da montagem abre agora.

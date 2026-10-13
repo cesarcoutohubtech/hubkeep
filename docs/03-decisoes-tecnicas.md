@@ -715,7 +715,8 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
      - as actions vêm num grupo mensal só;
      - no npm, dois grupos semanais, só com versões menores e correções: `zona-protegida-da-semana`, com as dependências do `packages/auth-admin`, e `versoes-da-semana`, com o resto. O PR que toca a zona não ocupa a vez: a 1b o adota na vez dela;
      - versão maior vem num PR próprio. A que falha por falta de suporte no ecossistema ganha um `ignore` com o motivo; o primeiro é o TypeScript 7, até o `typescript-eslint` aceitar a versão;
-     - um teste (`tests/dependabot-zona-protegida.test.ts`) confere que toda dependência do `auth-admin` está no grupo da zona, antes do grupo geral.
+     - um teste (`tests/dependabot-zona-protegida.test.ts`) confere que toda dependência do `auth-admin` está no grupo da zona, antes do grupo geral;
+     - a CI roda o build do PWA (`ci.yml`), para uma versão maior de plugin de build não entrar sem ser executada. O build do web fica com o preview da Vercel.
 4. **Tarefas antes do piloto:**
    - MFA obrigatório para Admin do grupo, Gestor CSC e Implantador;
    - CSP de script no PWA;
