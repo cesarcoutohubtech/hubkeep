@@ -1703,3 +1703,25 @@ O que achei no código:
   - o PR 3: testes e docs, com o `docs/piloto/`, se algum texto mudar;
   - a janela de leitura em UTC só entra se Cesar e Kaio quiserem;
   - depois do #244, o restante da atividade 3.
+
+## PR 3 do glossário: o texto (13/10/2026)
+
+Os PRs 1 ([#253](https://github.com/cesarcoutohubtech/hubkeep/pull/253)) e 2 ([#255](https://github.com/cesarcoutohubtech/hubkeep/pull/255)) estão na `main`, verdes na CI, no banco e na segurança. O PR 3 só muda texto:
+- **Glossário:**
+  - um parágrafo "No código", com os dois PRs;
+  - as versões atuais nos termos dos scores: reincidência 3, atenção 4 e sistêmico 3;
+  - a exceção da regra 5: a janela de leitura das telas e o mês a fechar ainda em UTC;
+  - o PR de cada divergência na coluna "Situação".
+- **`docs/piloto/README.md`:**
+  - uma linha nova na tabela das entregas, com o que os números do módulo contam agora;
+  - a linha em branco que partia a tabela saiu.
+  O manual e o roteiro não citam nenhum rótulo que mudou, então ficam como estão.
+- **Testes:** os da mudança de cálculo entraram nos PRs 1 e 2, e o PR 3 não muda código.
+
+### Ponto de retomada (13/10/2026, PR 3 aberto)
+
+- **`main`:** 569f9e2, com o #255 e a montagem do 1b com relógio (#244).
+- **Nesta branch** (`claude/vigilant-cray-l06ew1`): o PR 3, só docs, fora da zona protegida.
+- **Esperando:** o merge do Cesar.
+- **Decisão em aberto:** a janela de leitura e o mês a fechar no fuso do hotel só entram se Cesar e Kaio quiserem.
+- **Próximo:** a atividade 3, destravada pelo #244. Primeiro passo: ler a montagem do #244 e trazer a proposta de desenho da gravação em `historico-inteligencia.ts` antes de escrever código.
