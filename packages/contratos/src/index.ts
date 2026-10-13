@@ -63,6 +63,17 @@ export {
   RespostaDoChecklistApi,
 } from './checklists';
 export {
+  ACOES_DO_PLANO_API,
+  PedidoDeAlteracaoDePlanoPreventivo,
+  PedidoDeNovoPlanoPreventivo,
+  PedidoDeSituacaoDoPlano,
+  PlanoPreventivoApi,
+  RespostaDePlanoAlterado,
+  RespostaDePlanosPreventivos,
+  SITUACOES_DO_PLANO_API,
+  UNIDADES_DE_PERIODICIDADE_API,
+} from './planos-preventivos';
+export {
   ACOES_DA_OS_API,
   ACOES_DO_CHAMADO_API,
   ENTIDADES_COM_SITUACAO_API,
@@ -136,6 +147,8 @@ export {
 export {
   CHAVES_DE_POLITICA_API,
   FORMATOS_DE_POLITICA_API,
+  DESTINATARIOS_DO_AVISO_API,
+  EscalonamentoDeSlaApi,
   HorarioDeAtendimentoApi,
   MOTIVOS_DE_PAUSA_API,
   PedidoDeConfiguracaoDoHotel,
@@ -201,6 +214,13 @@ export {
   RespostaDeEquipes,
   RespostaDeMembroDaEquipe,
 } from './equipes';
+export {
+  FeriadoDoHotelApi,
+  PedidoDeAlteracaoDeFeriado,
+  PedidoDeFeriado,
+  RespostaDeFeriadoAlterado,
+  RespostaDeFeriados,
+} from './feriados';
 export { IDIOMAS_API, PedidoDePreferencias, RespostaDePreferencias } from './preferencias';
 export {
   BandeiraApi,

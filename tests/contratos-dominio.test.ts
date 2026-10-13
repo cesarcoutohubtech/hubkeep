@@ -8,6 +8,7 @@ import {
   IDIOMAS_API,
   MOMENTOS_DA_FOTO_API,
   MOTIVOS_DE_PAUSA_API,
+  DESTINATARIOS_DO_AVISO_API,
   PAPEIS_API,
   CATEGORIAS_PADRAO_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
@@ -28,6 +29,9 @@ import {
   PREFIXOS_DO_NUCLEO_API,
   PedidoDePolitica,
   TIPOS_DE_CODIGO_DE_MANUTENCAO_API,
+  ACOES_DO_PLANO_API,
+  SITUACOES_DO_PLANO_API,
+  UNIDADES_DE_PERIODICIDADE_API,
 } from '../packages/contratos/src/index';
 import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
@@ -40,6 +44,8 @@ import {
   MODELOS_CONTRATUAIS,
   MOMENTOS_DA_FOTO,
   MOTIVOS_DE_PAUSA,
+  DESTINATARIOS_DO_AVISO,
+  ESCALONAMENTO_PADRAO,
   HORARIO_PADRAO,
   POLITICAS,
   SLA_PADRAO,
@@ -55,6 +61,9 @@ import {
   PRIORIDADES_PADRAO,
   PREFIXOS_DO_NUCLEO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
+  ACOES_DO_PLANO,
+  SITUACOES_DO_PLANO,
+  UNIDADES_DE_PERIODICIDADE,
 } from '../packages/dominio/src/index';
 import { IDIOMAS } from '../packages/i18n/src/index';
 
@@ -233,6 +242,21 @@ describe('contratos × domínio', () => {
         [],
         null,
       ],
+      'chamado.escalonamento': [
+        ESCALONAMENTO_PADRAO,
+        { ...ESCALONAMENTO_PADRAO, percentualDoAviso: 50 },
+        { ...ESCALONAMENTO_PADRAO, percentualDoAviso: 95, vencido: ['admin_grupo'] },
+        { ...ESCALONAMENTO_PADRAO, percentualDoAviso: 49 },
+        { ...ESCALONAMENTO_PADRAO, percentualDoAviso: 96 },
+        { ...ESCALONAMENTO_PADRAO, percentualDoAviso: 80.5 },
+        { ...ESCALONAMENTO_PADRAO, emRisco: [] },
+        { ...ESCALONAMENTO_PADRAO, emRisco: ['gerente_hotel', 'gerente_hotel'] },
+        { ...ESCALONAMENTO_PADRAO, vencido: ['tecnico'] },
+        { ...ESCALONAMENTO_PADRAO, extra: 1 },
+        { percentualDoAviso: 80, emRisco: ['gerente_hotel'] },
+        [],
+        null,
+      ],
     };
     for (const chave of CHAVES_DE_POLITICA) {
       expect(FORMATOS_DE_POLITICA_API[chave].safeParse(POLITICAS[chave].padrao).success).toBe(true);
@@ -246,12 +270,22 @@ describe('contratos × domínio', () => {
     }
   });
 
+  it('os destinatários do aviso do monitor de SLA da API são os do domínio (ADR-043)', () => {
+    expect([...DESTINATARIOS_DO_AVISO_API]).toEqual([...DESTINATARIOS_DO_AVISO]);
+  });
+
   it('os motivos da pausa da API são os do domínio (ADR-042)', () => {
     expect([...MOTIVOS_DE_PAUSA_API]).toEqual([...MOTIVOS_DE_PAUSA]);
   });
 
   it('os momentos da foto da OS da API são os do domínio (I8)', () => {
     expect([...MOMENTOS_DA_FOTO_API]).toEqual([...MOMENTOS_DA_FOTO]);
+  });
+
+  it('a unidade, a situação e as ações do plano preventivo da API são as do domínio (PV2)', () => {
+    expect([...UNIDADES_DE_PERIODICIDADE_API]).toEqual([...UNIDADES_DE_PERIODICIDADE]);
+    expect([...SITUACOES_DO_PLANO_API]).toEqual([...SITUACOES_DO_PLANO]);
+    expect([...ACOES_DO_PLANO_API]).toEqual([...ACOES_DO_PLANO]);
   });
 
   it('as pendências do painel de implantação são as do domínio', () => {

@@ -343,3 +343,74 @@ Decisões do Cesar no chat ("Cesar aqui", 13/10/2026):
 O PR abre na vez da 1c, depois da PV2.
 
 **Issue na `date-holidays`:** o GitHub desta sessão só alcança o `hubkeep`, então não dá para abrir issue no repositório da biblioteca (`commenthol/date-holidays`). O texto pronto, em inglês, foi entregue ao Cesar no chat. A causa está nos dados: no `data/countries/BR.yaml`, a entrada estadual do 20 de novembro de SP e a do RJ terminam em 21/12/2023 e se sobrepõem à nacional.
+
+## Monitor de SLA: domínio, worker e cron (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Item 4 da ordem, depois da migração 0044 (#217, com o `db push` feito pelo Cesar). PR fora da zona protegida, sem migração, na branch `claude/1c-monitor-sla-cron`.
+
+**Aviso de área compartilhada com a 1b:** mexe em políticas (a chave nova `chamado.escalonamento` em `packages/dominio/src/politicas.ts` e no contrato), no `packages/dominio` (`monitor-sla.ts`) e no `packages/db/src/adaptadores.ts`. As leituras das políticas e do calendário do hotel saíram para `packages/db/src/leituras-do-hotel.ts`, para o repositório do worker usar as mesmas.
+
+- **Domínio** (`monitor-sla.ts`):
+  - os quatro tipos de aviso, conferidos com o check da 0044 em `tests/valores-canonicos-banco.test.ts`;
+  - a política `chamado.escalonamento`: o percentual de 50 a 95, com padrão de 80, e os destinatários de cada nível, da lista do domínio;
+  - `avisosDeSla`: o vencido no prazo e o em risco quando o tempo de relógio que falta chega ao complemento do percentual. O atendimento conta até a primeira OS, e a solução até o serviço concluído; o relógio parado pela pausa congela a solução.
+- **Aplicação:**
+  - a porta `PortaMonitorDeSla`;
+  - `criarMonitorDeSla`, por tenant. A regra sai da cópia do chamado, e o percentual e os destinatários, da política do hotel. O calendário vale por hotel e cópia, e o aviso já emitido para o prazo não sai de novo.
+- **Banco:**
+  - o repositório `repositorios/monitor-sla.ts`, na unit of work do `hk_worker`. Ele lê os chamados em curso com prazo, a OS que já existiu, a pausa em curso com o motivo e os avisos já emitidos;
+  - o aviso grava com `on conflict do nothing` e só publica o evento `chamado.sla_alerta` quando é novo. O aviso não vai para a auditoria.
+- **Web:** `monitorarSlaDoTenant` na composição, a rota `/api/cron/sla` com a tarefa e o cron de volta ao `vercel.json`, a cada 5 minutos (ADR-007).
+- **Contrato:** `EscalonamentoDeSlaApi` e `DESTINATARIOS_DO_AVISO_API`, com as amostras em `tests/contratos-dominio.test.ts`.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos:
+    - o domínio, nos relógios 24x7 e de atendimento;
+    - a aplicação, com as portas em memória;
+  - só na CI: `packages/db/test/monitor-sla.test.ts`. Ele cobre o aviso e o evento, a segunda rodada sem repetir, o prazo refeito, a pausa que congela e o outro tenant.
+- **Fica para depois:** o painel dos avisos e o selo da ficha (M4), e o aceite automático (M5), cada um num PR próprio.
+
+**Observação para o agente do Kaio:** na suíte inteira, no local, o `apps/web/test/demonstracao/historico-inteligencia.test.ts` (#221) estourou o tempo padrão de 5 s uma vez. Sozinho, passou. Pode valer um `timeout` maior nesse teste.
+
+## Glossário de métricas: quem rascunha (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui", 13/10/2026):
+- **o rascunho do glossário único** (`docs/referencia/glossario-metricas.md`) é do agente do Kaio, na atividade 4 dele;
+- **o papel da 1c:** revisar e alinhar com os indicadores do painel quando o agente do Kaio pedir, pelo diário;
+- **sem versão paralela:** a 1c não escreve outra versão;
+- **as definições do painel da 1c** seguem o glossário depois da aprovação do Cesar.
+
+**O que muda para a 1c:**
+- a 1c não edita mais o `glossario-metricas.md`;
+- os quatro pontos que a 1c tinha pedido ao Kaio (seção "Pedido ao agente do Kaio" acima) ficam como contribuição para o rascunho dele, e não como pendência da 1c;
+- o painel de indicadores (item 8 da ordem) espera o glossário aprovado.
+
+## Feriados do hotel: API e tela (13/10/2026)
+
+Decisão do Cesar no chat ("Cesar aqui. Prossiga", 13/10/2026). Este PR é a parte de telas do item 3 (SLA) que não depende do #224. Fica fora da zona protegida, sem migração, na branch `claude/1c-feriados-hotel`. A tabela `app.feriado_hotel` está na `main` desde a 0043.
+
+**Aviso de área compartilhada com a 1b:** mexe no `packages/dominio` (`feriados-do-hotel.ts` e a lista de entidades da auditoria geral), no `packages/db/src/adaptadores.ts`, no OpenAPI e nos catálogos.
+
+- **Domínio:**
+  - `podeCadastrarFeriados`, com os papéis da policy da 0043: o Admin do grupo, o Gestor CSC, o Implantador e o Gerente do hotel, no escopo deles;
+  - o nome, de 1 a 120 caracteres;
+  - a data, um dia que existe, de 2000 a 2100.
+- **Aplicação:** listar (com `podeCadastrar`, para a tela), cadastrar, alterar o nome e a marca "repete todo ano", desativar e reativar. A data não muda: para trocar, desativa e cadastra outro.
+- **Banco:**
+  - o repositório, com auditoria (`feriado_hotel`, que também entra na auditoria geral);
+  - o 409 `feriado_data_repetida`, vindo do índice de um feriado ativo por data.
+- **API:** `GET` e `POST /api/v1/hoteis/{id}/feriados`, `PUT /api/v1/feriados/{id}` e `POST .../desativacao` e `.../reativacao`, no OpenAPI.
+- **Tela:** `/admin/feriados`, no menu de configuração:
+  - a escolha do hotel e a lista, com a data longa;
+  - os formulários, só para quem pode cadastrar;
+  - uma nota de que os feriados nacionais e estaduais já entram sozinhos e de que o prazo já calculado não muda.
+- **Catálogo:** os textos e os cinco erros, nos quatro idiomas.
+- **Verificação:**
+  - no local, lint, typecheck e testes passaram. Testes novos: o domínio, a aplicação com as portas em memória e a tela;
+  - só na CI: `packages/db/test/feriados-do-hotel.test.ts`, com a RLS (o Técnico e o Gerente de outro hotel), a data repetida e a auditoria.
+
+## Prazos de SLA na ficha do chamado (13/10/2026)
+
+**Aviso de área compartilhada (chamado):** a 1c vai mexer na ficha do chamado no web (`ChamadoEmDetalhe`, em `apps/web/src/cliente/corretiva.tsx`) e no catálogo. Só acrescenta linhas no painel do chamado; não muda contrato, caso de uso nem banco. Branch `claude/1c-prazos-na-ficha`, a partir da `main`.
+- A ficha mostra o prazo de atendimento e o de solução, que a API já devolve desde o #215, e o tempo em que pausas pararam o relógio, quando houver.
+- O chamado aberto antes dos prazos (prazos nulos) não mostra as linhas.
+- O selo de "em risco" e "vencido" fica para o M4, depois do merge do #224, porque vem dos avisos do monitor.

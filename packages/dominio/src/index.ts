@@ -311,12 +311,35 @@ export {
 } from './checklist';
 export type { OpcaoDeConformidade, RespostaDoChecklist } from './checklist';
 export {
+  ACOES_DO_PLANO,
+  MAXIMOS_DA_PERIODICIDADE,
+  PAPEIS_QUE_GEREM_PLANOS,
   SITUACOES_DO_PLANO,
   UNIDADES_DE_PERIODICIDADE,
+  dataDaOcorrencia,
+  decidirSituacaoDoPlano,
+  diaNoFuso,
+  ehAcaoDoPlano,
   ehSituacaoDoPlano,
   ehUnidadeDePeriodicidade,
+  exigirPlanoNaoEncerrado,
+  exigirResponsavelParaAtivar,
+  normalizarNomeDoPlano,
+  ocorrenciaMaisRecenteAte,
+  ocorrencias,
+  podeGerirPlanos,
+  proximaOcorrencia,
+  validarAlvoDoPlano,
+  validarInicioDoPlano,
+  validarPeriodicidade,
+  validarResponsavelDoPlano,
 } from './plano-preventivo';
-export type { SituacaoDoPlano, UnidadeDePeriodicidade } from './plano-preventivo';
+export type {
+  AcaoDoPlano,
+  Periodicidade,
+  SituacaoDoPlano,
+  UnidadeDePeriodicidade,
+} from './plano-preventivo';
 export type {
   CodigoPadrao,
   CodigoParaRegra,
@@ -441,6 +464,32 @@ export type {
   SlaDaCategoria,
   TipoDeFeriadoOficial,
 } from './sla';
+export {
+  LIMITES_DO_FERIADO,
+  PAPEIS_QUE_CADASTRAM_FERIADOS,
+  normalizarNomeDoFeriado,
+  podeCadastrarFeriados,
+  validarDataDoFeriado,
+} from './feriados-do-hotel';
+export {
+  DESTINATARIOS_DO_AVISO,
+  ESCALONAMENTO_PADRAO,
+  LIMITES_DO_ESCALONAMENTO,
+  NIVEIS_DO_AVISO,
+  TIPOS_DE_ALERTA_DE_SLA,
+  avisosDeSla,
+  destinatariosDoAviso,
+  ehTipoDeAlertaDeSla,
+  escalonamentoValido,
+} from './monitor-sla';
+export type {
+  AvisoDeSla,
+  ChamadoNoMonitor,
+  DestinatarioDoAviso,
+  EscalonamentoDeSla,
+  NivelDoAviso,
+  TipoDeAlertaDeSla,
+} from './monitor-sla';
 export {
   ENTIDADES_DA_AUDITORIA,
   LIMITES_DA_AUDITORIA,

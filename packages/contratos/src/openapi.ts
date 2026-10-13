@@ -23,6 +23,13 @@ import {
   RespostaDeModelosDeChecklist,
 } from './checklists';
 import {
+  PedidoDeAlteracaoDePlanoPreventivo,
+  PedidoDeNovoPlanoPreventivo,
+  PedidoDeSituacaoDoPlano,
+  RespostaDePlanoAlterado,
+  RespostaDePlanosPreventivos,
+} from './planos-preventivos';
+import {
   PedidoDeBandeira,
   PedidoDeBandeiraDoHotel,
   RespostaDeBandeiraAlterada,
@@ -107,6 +114,12 @@ import {
   RespostaDeEquipes,
   RespostaDeMembroDaEquipe,
 } from './equipes';
+import {
+  PedidoDeAlteracaoDeFeriado,
+  PedidoDeFeriado,
+  RespostaDeFeriadoAlterado,
+  RespostaDeFeriados,
+} from './feriados';
 import { RespostaDeImplantacao } from './implantacao';
 import { LoteDeIngestao, RespostaDeLote } from './ingestao';
 import {
@@ -700,6 +713,73 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
       409: ERRO('Nome repetido no hotel (equipe_nome_repetido).'),
       422: ERRO('Nome inválido (equipe_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/feriados',
+    resumo:
+      'Feriados do hotel (1c, ADR-042), ativos e desativados, e se quem pede pode cadastrar. Lê quem lê o hotel, menos o proprietário.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Feriados do hotel', esquema: RespostaDeFeriados },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/feriados',
+    resumo:
+      'Cadastra um feriado do hotel (Admin, Gestor CSC, Implantador ou Gerente do hotel). Conta nos próximos cálculos de prazo; não muda prazo já gravado.',
+    exigeTenant: true,
+    corpo: PedidoDeFeriado,
+    respostas: {
+      201: { descricao: 'Feriado cadastrado', esquema: RespostaDeFeriadoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (feriados_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      409: ERRO('Outro feriado ativo na data (feriado_data_repetida).'),
+      422: ERRO('Data ou nome inválidos (feriado_data_invalida, feriado_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/feriados/{id}',
+    resumo: 'Altera o nome e a marca "repete todo ano" do feriado; a data não muda.',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDeFeriado,
+    respostas: {
+      200: { descricao: 'Feriado alterado', esquema: RespostaDeFeriadoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (feriados_fora_do_escopo).'),
+      404: ERRO('Feriado não encontrado (feriado_nao_encontrado).'),
+      422: ERRO('Nome inválido (feriado_nome_invalido).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/feriados/{id}/desativacao',
+    resumo: 'Desativa o feriado: deixa de contar nos próximos cálculos de prazo.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Feriado desativado', esquema: RespostaDeFeriadoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (feriados_fora_do_escopo).'),
+      404: ERRO('Feriado não encontrado (feriado_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/feriados/{id}/reativacao',
+    resumo: 'Reativa o feriado.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Feriado reativado', esquema: RespostaDeFeriadoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (feriados_fora_do_escopo).'),
+      404: ERRO('Feriado não encontrado (feriado_nao_encontrado).'),
+      409: ERRO('Outro feriado ativo na data (feriado_data_repetida).'),
     },
   },
   {
@@ -1406,6 +1486,110 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
       404: ERRO('Modelo não encontrado (checklist_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/planos-preventivos',
+    resumo:
+      'Planos preventivos do hotel, com a próxima data no fuso do hotel (gestão do hotel e Implantador; os outros recebem a lista vazia).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Planos do hotel', esquema: RespostaDePlanosPreventivos },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/planos-preventivos',
+    resumo:
+      'Cadastra um plano preventivo do ativo ou da categoria no hotel, pausado ou já ativo (Admin, Gestor CSC, Gerente do hotel ou Implantador).',
+    exigeTenant: true,
+    corpo: PedidoDeNovoPlanoPreventivo,
+    respostas: {
+      201: { descricao: 'Plano cadastrado', esquema: RespostaDePlanoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      422: ERRO(
+        'Dados inválidos: plano_alvo_invalido, plano_ativo_invalido, plano_categoria_invalida, plano_checklist_invalido, plano_tecnico_invalido, plano_equipe_invalida, plano_responsavel_duplo, plano_sem_responsavel, periodicidade_invalida, plano_inicio_invalido ou plano_nome_invalido.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/planos-preventivos/{id}',
+    resumo: 'Altera o plano, pela versão; o alvo não muda.',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDePlanoPreventivo,
+    respostas: {
+      200: { descricao: 'Plano alterado', esquema: RespostaDePlanoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Plano não encontrado (plano_nao_encontrado).'),
+      409: ERRO('Versão desatualizada (conflito_de_versao).'),
+      422: ERRO(
+        'Dados inválidos (os mesmos do cadastro), plano encerrado (plano_encerrado) ou plano ativo sem responsável (plano_sem_responsavel).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-preventivos/{id}/ativacao',
+    resumo: 'Ativa o plano pausado; exige o responsável padrão.',
+    exigeTenant: true,
+    corpo: PedidoDeSituacaoDoPlano,
+    respostas: {
+      200: { descricao: 'Plano ativado', esquema: RespostaDePlanoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Plano não encontrado (plano_nao_encontrado).'),
+      409: ERRO('Versão desatualizada (conflito_de_versao).'),
+      422: ERRO(
+        'Plano encerrado (plano_encerrado), já ativo (plano_transicao_invalida) ou sem responsável (plano_sem_responsavel).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-preventivos/{id}/pausa',
+    resumo: 'Pausa o plano ativo; não apaga nada.',
+    exigeTenant: true,
+    corpo: PedidoDeSituacaoDoPlano,
+    respostas: {
+      200: { descricao: 'Plano pausado', esquema: RespostaDePlanoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Plano não encontrado (plano_nao_encontrado).'),
+      409: ERRO('Versão desatualizada (conflito_de_versao).'),
+      422: ERRO('Plano encerrado (plano_encerrado) ou já pausado (plano_transicao_invalida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-preventivos/{id}/encerramento',
+    resumo: 'Encerra o plano; não volta.',
+    exigeTenant: true,
+    corpo: PedidoDeSituacaoDoPlano,
+    respostas: {
+      200: { descricao: 'Plano encerrado', esquema: RespostaDePlanoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Plano não encontrado (plano_nao_encontrado).'),
+      409: ERRO('Versão desatualizada (conflito_de_versao).'),
+      422: ERRO('Plano já encerrado (plano_encerrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/ativos/{id}/planos-preventivos',
+    resumo: 'Planos preventivos do ativo, para a ficha dele.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Planos do ativo', esquema: RespostaDePlanosPreventivos },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
     },
   },
   {
