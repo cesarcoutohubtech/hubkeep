@@ -1284,6 +1284,7 @@
   "admin.preventivas.sem_checklist": "Sin lista de verificación",
   "admin.preventivas.campo.responsavel": "Responsable predeterminado",
   "admin.preventivas.sem_responsavel": "Sin responsable",
+  "admin.preventivas.pendencia": "{pendencia, select, checklist_inativo {Modelo de checklist inactivo: las OS del plan salen sin checklist hasta que elija otro modelo.} responsavel_invalido {El responsable ya no atiende este hotel: el plan no genera OS hasta que elija otro responsable.} other {{pendencia}}}",
   "admin.preventivas.grupo_tecnicos": "Técnicos",
   "admin.preventivas.grupo_equipes": "Equipos",
   "admin.preventivas.campo.ativar": "Activar ahora (necesita un responsable)",

@@ -468,6 +468,8 @@ interface PlanoDoAtivo {
   unidade: string;
   situacao: 'ativo' | 'pausado' | 'encerrado';
   proximaData: string | null;
+  /** O que a tela avisa (PV3c): o modelo de checklist desativado e o responsável que deixou de valer. */
+  pendencias: ('checklist_inativo' | 'responsavel_invalido')[];
 }
 
 /** Os planos preventivos do ativo (PV2), sob demanda; quem não gere o hotel recebe a lista vazia. */
@@ -522,6 +524,11 @@ function PlanosDoAtivo({ ativo }: { ativo: Ativo }) {
                 >
                   {t('admin.preventivas.situacao', { situacao: p.situacao })}
                 </Selo>
+                {p.pendencias.map((pendencia) => (
+                  <Selo key={pendencia} tom="ambar">
+                    {t('admin.preventivas.pendencia', { pendencia })}
+                  </Selo>
+                ))}
               </li>
             ))}
           </ul>

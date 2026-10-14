@@ -360,14 +360,17 @@ export type {
 export {
   ESTADOS_DA_PREVENTIVA_ABERTA,
   MOTIVOS_DE_PULO,
+  PENDENCIAS_DO_PLANO,
   copiaDoPlano,
   modeloParaACopia,
+  pendenciasDoPlano,
   planejarGeracao,
   responsavelQueVale,
 } from './geracao-preventiva';
 export type {
   AtivoParaGerar,
   MotivoDePulo,
+  PendenciaDoPlano,
   PlanejamentoDaGeracao,
   PlanoAplicado,
   PlanoParaGerar,

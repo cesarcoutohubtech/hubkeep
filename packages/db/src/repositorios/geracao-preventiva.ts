@@ -23,14 +23,13 @@ import type {
 import {
   type EstadoDaOs,
   type Responsavel,
-  type ResponsavelDoPlano,
   type UnidadeDePeriodicidade,
   ehModeloContratual,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
-import { paraAtribuicao, selecionarAtribuicoes } from '../atribuicoes';
 import type { Tx } from '../conexao';
 import { novoId } from '../ids';
+import { responsaveisDosPlanos } from '../responsaveis-do-plano';
 import { niveisDaPoliticaNaTransacao } from '../leituras-do-hotel';
 import { instanteDoRoteiro, transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 import { datasDaCriacao } from './instante-do-roteiro';
@@ -84,43 +83,7 @@ export function sessaoDaGeracao(uow: UnidadeDeTrabalho, hotelId: string): Sessao
         .where('situacao', '=', 'ativo')
         .orderBy('id')
         .execute();
-      const tecnicos = [...new Set(planos.flatMap((p) => (p.tecnico_id ? [p.tecnico_id] : [])))];
-      const equipes = [...new Set(planos.flatMap((p) => (p.equipe_id ? [p.equipe_id] : [])))];
-      const membros =
-        tecnicos.length === 0
-          ? []
-          : await tx
-              .selectFrom('app.membro')
-              .select(['usuario_id', 'ativo'])
-              .where('usuario_id', 'in', tecnicos)
-              .execute();
-      const atribuicoes =
-        tecnicos.length === 0
-          ? []
-          : (await selecionarAtribuicoes(tx).where('usuario_id', 'in', tecnicos).execute()).map(
-              paraAtribuicao,
-            );
-      const equipesLidas =
-        equipes.length === 0
-          ? []
-          : await tx
-              .selectFrom('app.equipe')
-              .select(['id', 'hotel_id', 'ativa'])
-              .where('id', 'in', equipes)
-              .execute();
-      const responsavel = (p: (typeof planos)[number]): ResponsavelDoPlano | null => {
-        if (p.tecnico_id !== null) {
-          const usuarioId = p.tecnico_id;
-          return {
-            tipo: 'tecnico',
-            usuarioId,
-            membroAtivo: membros.some((m) => m.usuario_id === usuarioId && m.ativo),
-            atribuicoes: atribuicoes.filter((a) => a.usuarioId === usuarioId),
-          };
-        }
-        const e = equipesLidas.find((x) => x.id === p.equipe_id);
-        return e ? { tipo: 'equipe', equipeId: e.id, hotelId: e.hotel_id, ativa: e.ativa } : null;
-      };
+      const responsaveis = await responsaveisDosPlanos(tx, planos);
       return planos.map((p): PlanoDoHotel => ({
         id: p.id,
         nome: p.nome,
@@ -130,7 +93,7 @@ export function sessaoDaGeracao(uow: UnidadeDeTrabalho, hotelId: string): Sessao
         // O check plano_preventivo_unidade_lista repete os valores do domínio.
         unidade: p.unidade as UnidadeDePeriodicidade,
         checklistModeloId: p.checklist_modelo_id,
-        responsavel: responsavel(p),
+        responsavel: responsaveis.get(p.id) ?? null,
       }));
     },
 
