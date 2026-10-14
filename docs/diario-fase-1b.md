@@ -778,3 +778,40 @@ A partir da 0048, a OS pode não ter chamado (a preventiva), e a transição `ge
   - o aceite automático da preventiva, com a 1c.
 
   Primeiro passo: a leitura da OS por id com `OrigemDaOs` no repositório da triagem e da execução.
+
+## Decisões do Cesar: o adendo da PV3 ao ADR-041 (14/10/2026)
+
+O Cesar aprovou no chat do agente da 1b, em 14/10/2026, os dois detalhes do adendo:
+- **Trava do hotel por advisory lock:** aprovada.
+- **OS sem checklist quando o modelo foi desativado:** aprovada com condição. A falha não pode ser silenciosa:
+  - a geração registra um aviso no log com o plano, o ativo e o modelo;
+  - a tela do plano, na PV3c, mostra "modelo de checklist inativo".
+
+O registro vai num PR de zona protegida (`claude/1b-adendo-pv3`), com o aviso no log: o resultado da geração traz `semChecklist`, e a rota do cron registra `cron.preventiva.checklist_modelo_inativo` em `warn`. A tela fica na PV3c.
+
+O #262 já estava mergeado (13/10/2026, 23:46Z) quando o Cesar escreveu. No último commit (`4540af2`), o pgTAP rodou os 40 arquivos, com o 040, e passou (1324 testes), nas duas passagens. Os outros checks passaram, menos o "zona protegida", por desenho.
+
+## Aviso de área compartilhada com a 1c: PV3c (14/10/2026)
+
+A PV3c mexe na OS e no chamado, áreas compartilhadas com a 1c:
+- os casos de uso da execução, da triagem sobre a OS e do aceite, que passam a aceitar a OS preventiva, sem chamado;
+- os repositórios da OS em `packages/db`;
+- a fila do dia, no contrato e no PWA;
+- o aviso ao locador na preventiva, no padrão do #261.
+
+Para a OS corretiva, nada muda. O aceite automático da preventiva (`os.aceite_automatico`) só entra depois de combinar com a 1c, neste diário. O trabalho fica na branch `claude/1b-pv3c`, a partir da `main`, trazendo a `main` com frequência.
+
+## Ponto de retomada (14/10/2026, adendo da PV3)
+
+- **`main`:** em `a263f1a`, com a 0048 (#262). O `db push` da 0048 é do Cesar, que deixou para 14/10/2026.
+- **PR aberto da 1b:** o do adendo (`claude/1b-adendo-pv3`), de zona protegida (só o `docs/03`); o resto do PR fica fora da zona.
+- **Esperando o Cesar:** o merge do PR do adendo e o `db push` da 0048. O cron da preventiva roda a partir do próximo deploy do web; sem a 0048 no banco, os hotéis com plano ativo falham e vão para o log e o Sentry.
+- **Próxima tarefa:** a PV3c, fora da zona, numa branch nova a partir da `main`. Ela traz:
+  - as ações (execução, aceite, cancelamento) na OS sem chamado;
+  - a fila do dia com a preventiva;
+  - as telas do PWA e do web, com "modelo de checklist inativo" na tela do plano (condição do adendo);
+  - a pendência do plano sem responsável na lista;
+  - o aviso ao locador na preventiva, no padrão da corretiva (#261);
+  - o aceite automático da preventiva, com a 1c.
+
+  Primeiro passo: a leitura da OS por id com `OrigemDaOs` no repositório da triagem e da execução.
