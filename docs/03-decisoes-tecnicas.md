@@ -1341,7 +1341,7 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 
 ## ADR-046 — Comunicação: e-mail e push pelo outbox, com o registro dos envios
 
-**Status:** aguarda aprovação do Cesar. As decisões C1 a C9, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c ("Comunicação, C1 a C9: aprovo as suas recomendações, com dois registros"), e estão em `docs/referencia/propostas-comunicacao-1c.md`, "Decisões aprovadas".
+**Status:** aprovado por Cesar em 14/10/2026, no chat do agente da 1c ("ADR-046 aprovado"), antes de o PR da migração 0049 abrir. A aprovação cobre o texto da branch `claude/1c-comunicacao-migracao`, com os detalhes do push (o que ele leva, a inscrição fora da auditoria e a revogação na saída do PWA) e a contagem por canal. As decisões C1 a C9, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c ("Comunicação, C1 a C9: aprovo as suas recomendações, com dois registros"), e estão em `docs/referencia/propostas-comunicacao-1c.md`, "Decisões aprovadas".
 
 **Contexto:**
 - O outbox (ADR-007) já entrega os eventos de domínio pelo cron, mas só o `membro.convidado` tem manipulador.

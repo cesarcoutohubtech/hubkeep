@@ -795,3 +795,7 @@ O Cesar respondeu ("Cesar aqui. Respostas:"):
 - **A branch `claude/1c-arrendado-migracao`** pode ser apagada. O proxy da sessão recusou a exclusão (`git push --delete`); fica para o Cesar apagar no GitHub.
 - **Glossário:** a versão 3 está aprovada por ele e pelo Kaio, e os termos "prazo em risco" e "prazo vencido" foram fechados no #258. O painel da 1c segue a versão 3.
 - **Enquanto a vez não chega,** seguir com o que não depende da migração: o PR 3 do arrendado ou o push. O PR 3 do arrendado já entrou (#261); o push anda numa branch que já tem a migração, porque grava em `app.inscricao_push`, e o PR abre depois do merge e do `db push` da 0049.
+
+## ADR-046 aprovado (14/10/2026)
+
+O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no `docs/03` foi trocado na branch `claude/1c-comunicacao-migracao` e entra na `main` com o PR da migração 0049. A aprovação cobre os detalhes do push registrados no ADR.
