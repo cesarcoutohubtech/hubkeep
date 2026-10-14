@@ -7,6 +7,7 @@ import {
   type ResponsavelDoPlano,
   modeloParaACopia,
   planejarGeracao,
+  pendenciasDoPlano,
   responsavelQueVale,
 } from '../src/geracao-preventiva';
 import type { Atribuicao } from '../src/tipos';
@@ -222,5 +223,72 @@ describe('modeloParaACopia: a OS copia o checklist do plano só de modelo ativo'
     expect(modeloParaACopia(modelo)).toBe(modelo);
     expect(modeloParaACopia({ ...modelo, ativa: false })).toBeNull();
     expect(modeloParaACopia(null)).toBeNull();
+  });
+});
+
+describe('pendenciasDoPlano: o que a tela do plano avisa (PV3c)', () => {
+  const AGORA = new Date('2026-03-01T12:00:00Z');
+  const HOTEL = { id: 'h1', bandeiraId: null };
+  const valido: ResponsavelDoPlano = {
+    tipo: 'tecnico',
+    usuarioId: 'u1',
+    membroAtivo: true,
+    atribuicoes: [
+      {
+        id: 'a1',
+        usuarioId: 'u1',
+        papel: 'tecnico',
+        escopo: { tipo: 'hotel', hotelId: 'h1' },
+        validoAte: null,
+        revogadoEm: null,
+      },
+    ],
+  };
+  const desativado: ResponsavelDoPlano = { ...valido, membroAtivo: false };
+  const equipeInativa: ResponsavelDoPlano = {
+    tipo: 'equipe',
+    equipeId: 'e1',
+    hotelId: 'h1',
+    ativa: false,
+  };
+
+  it('sem pendência: responsável que vale e modelo ativo (ou sem modelo)', () => {
+    for (const modeloAtivo of [true, null]) {
+      expect(
+        pendenciasDoPlano({ situacao: 'ativo', responsavel: valido, modeloAtivo }, HOTEL, AGORA),
+      ).toEqual([]);
+    }
+  });
+
+  it('o modelo desativado e o responsável que deixou de valer aparecem, no ativo e no pausado', () => {
+    for (const situacao of ['ativo', 'pausado'] as const) {
+      expect(
+        pendenciasDoPlano({ situacao, responsavel: desativado, modeloAtivo: false }, HOTEL, AGORA),
+      ).toEqual(['checklist_inativo', 'responsavel_invalido']);
+      expect(
+        pendenciasDoPlano(
+          { situacao, responsavel: equipeInativa, modeloAtivo: true },
+          HOTEL,
+          AGORA,
+        ),
+      ).toEqual(['responsavel_invalido']);
+    }
+  });
+
+  it('o plano sem responsável não é pendência aqui; o encerrado não tem pendência', () => {
+    expect(
+      pendenciasDoPlano(
+        { situacao: 'pausado', responsavel: null, modeloAtivo: null },
+        HOTEL,
+        AGORA,
+      ),
+    ).toEqual([]);
+    expect(
+      pendenciasDoPlano(
+        { situacao: 'encerrado', responsavel: desativado, modeloAtivo: false },
+        HOTEL,
+        AGORA,
+      ),
+    ).toEqual([]);
   });
 });

@@ -1278,6 +1278,7 @@
   "admin.preventivas.sem_checklist": "Sem checklist",
   "admin.preventivas.campo.responsavel": "Responsável padrão",
   "admin.preventivas.sem_responsavel": "Sem responsável",
+  "admin.preventivas.pendencia": "{pendencia, select, checklist_inativo {Modelo de checklist inativo: as OS do plano saem sem checklist até você escolher outro modelo.} responsavel_invalido {O responsável não atende mais este hotel: o plano não gera OS até você escolher outro responsável.} other {{pendencia}}}",
   "admin.preventivas.grupo_tecnicos": "Técnicos",
   "admin.preventivas.grupo_equipes": "Equipes",
   "admin.preventivas.campo.ativar": "Ativar já (precisa do responsável)",
