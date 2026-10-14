@@ -7,7 +7,7 @@
 //     com o mesmo fim não grava nada; com outro fim, recusa antes de gravar.
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import {
   FimDiferente,
   type ResumoDaGravacao,
@@ -100,6 +100,53 @@ if (!temAmbiente && process.env['HK_EXIGIR_BANCO'] === '1') {
   throw new Error('HK_EXIGIR_BANCO=1, mas falta o ambiente do Supabase local (URL, chave, banco).');
 }
 
+/**
+ * As tabelas do grupo, na ordem em que a limpeza apaga (filhas antes das mães):
+ * as do kit (semear.test.ts) e as do Intelligence. O banco do runner volta ao
+ * que era, porque o pgTAP roda de novo depois e conta linhas de todos os
+ * tenants (o modelo contratual dos hotéis do kit, por exemplo).
+ */
+const TABELAS = [
+  'app.auditoria',
+  'app.evento_dominio',
+  'app.operacao_offline',
+  'app.metrica_ativo_diaria',
+  'app.insight',
+  'app.anexo',
+  'app.os_material',
+  'app.os_apontamento',
+  'app.parada_ativo',
+  'app.os_checklist',
+  'app.os_transicao',
+  'app.os',
+  'app.chamado',
+  'app.codigo_manutencao',
+  'app.ativo_movimentacao',
+  'app.ativo',
+  'app.equipe_membro',
+  'app.equipe',
+  'app.local_proprietario',
+  'app.hotel_proprietario',
+  'app.atribuicao_escopo',
+  'app.proprietario',
+  'app.preferencia_membro',
+  'app.local',
+  'app.checklist_modelo',
+  'app.categoria_ativo',
+  'app.fornecedor',
+  'app.situacao',
+  'app.prioridade',
+  'app.politica',
+  'app.hotel',
+  'app.bandeira',
+  'app.membro',
+  'staging.registro_externo',
+  'staging.carga',
+  'staging.credencial_agente',
+  'licenca.modulo',
+  'licenca.contrato',
+];
+
 // O roteiro curto passa por cerca de 9 mil operações e 183 rodadas do job,
 // duas vezes: alguns minutos no runner. O limite é próprio, com folga.
 const LIMITE_MS = 30 * 60_000;
@@ -138,6 +185,19 @@ describe.skipIf(!temAmbiente)('a gravação no Supabase do runner', () => {
     }
   };
   let primeira: ResumoDaGravacao;
+
+  afterAll(async () => {
+    const dono = new pg.Client({ connectionString: URL_DONO });
+    await dono.connect();
+    try {
+      for (const t of TABELAS)
+        await dono.query(`delete from ${t} where tenant_id = $1`, [tenantId]);
+      await dono.query(`delete from app.tenant where id = $1`, [tenantId]);
+      await dono.query(`delete from auth.users where email like $1`, [`%@${opcoes.dominio}`]);
+    } finally {
+      await dono.end();
+    }
+  });
 
   it(
     'cada cenário abre o insight esperado e termina no estado do roteiro',
