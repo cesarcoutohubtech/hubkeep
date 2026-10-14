@@ -467,6 +467,7 @@ select is(
     'app.codigo_manutencao', 'app.envio_notificacao', 'app.equipe',
     'app.equipe_membro', 'app.evento_dominio', 'app.feriado_hotel', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
     'app.inscricao_push', 'app.insight', 'app.local', 'app.local_proprietario', 'app.membro', 'app.metrica_ativo_diaria',
+    'app.modelo_ativo',
     'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_checklist', 'app.os_material', 'app.os_transicao', 'app.parada_ativo',
     'app.plano_preventivo', 'app.politica',
