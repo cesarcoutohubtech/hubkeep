@@ -48,8 +48,10 @@ import {
   type CodigosDaOs,
   type Contexto,
   EXECUCAO_PADRAO,
+  type EstadoDoChamado,
   type ExecutadoPor,
   NaoEncontrado,
+  type OrigemDaOs,
   type QuemExecuta,
   RegraViolada,
   conflitoDeVersao,
@@ -59,6 +61,7 @@ import {
   exigirCategoriaAtiva,
   exigirPrioridadeAtiva,
   exigirAtivoNoChamado,
+  exigirChamadoParaParada,
   exigirAssinaturaNoAceite,
   exigirCodigosNoAceite,
   exigirResponsavelDoHotel,
@@ -71,6 +74,7 @@ import {
   prazosNoRecalculo,
   regraDeSla,
   type ResponsavelDoArrendamento,
+  type SituacaoParaRegra,
   resolverPolitica,
   responsavelDoArrendamento,
   slaDaCopia,
@@ -87,9 +91,12 @@ import { montarCalendarioDeSla } from './calendario-sla';
 import type {
   AssinaturaDoAceite,
   ChamadoParaTriagem,
+  OsDaCorretiva,
   OsGravada,
   PortaTriagem,
+  ReflexoNoChamado,
 } from '../portas/triagem';
+import { lerOsComOrigem } from './origem-da-os';
 
 const CODIGOS_OBRIGATORIOS = 'os.codigos_obrigatorios';
 const ASSINATURA_NO_ACEITE = 'os.assinatura_no_aceite';
@@ -161,7 +168,7 @@ export interface CasosDeUsoDeTriagem {
     ctx: Contexto,
     osId: string,
     p: { versao: number; motivo: string },
-  ): Promise<{ versao: number; versaoDoChamado: number }>;
+  ): Promise<{ versao: number; versaoDoChamado: number | null }>;
   /**
    * Aceite da OS concluída: o chamado fica concluído (C6), com o custo
    * informado, opcional (I4). Com `codigos` (I6), os três substituem os da OS;
@@ -177,7 +184,7 @@ export interface CasosDeUsoDeTriagem {
       codigos?: CodigosDaOs | undefined;
       assinaturaCaminho?: string | null | undefined;
     },
-  ): Promise<{ versao: number; versaoDoChamado: number }>;
+  ): Promise<{ versao: number; versaoDoChamado: number | null }>;
   /** Quem pede pode aceitar a OS agora (I8: a URL da assinatura)? Senão, o erro do aceite. */
   exigirQuemAceita(ctx: Contexto, osId: string): Promise<void>;
   /** A política os.assinatura_no_aceite do hotel, resolvida (I8: a tela do aceite pede a assinatura). */
@@ -191,9 +198,9 @@ export interface CasosDeUsoDeTriagem {
     ctx: Contexto,
     osId: string,
     p: { versao: number; motivo: string; paradoDesde?: string | null | undefined },
-  ): Promise<{ versao: number; versaoDoChamado: number; paradaId: string | null }>;
+  ): Promise<{ versao: number; versaoDoChamado: number | null; paradaId: string | null }>;
   /** As OS do chamado visíveis a quem pede (RLS), da mais antiga para a mais nova. */
-  osDoChamado(ctx: Contexto, chamadoId: string): Promise<OsGravada[]>;
+  osDoChamado(ctx: Contexto, chamadoId: string): Promise<OsDaCorretiva[]>;
 }
 
 /** As regras que o teste de aceite troca para provar a RLS sozinha. */
@@ -253,11 +260,32 @@ export function criarCasosDeUsoDeTriagem(deps: {
   }
 
   /** O ator e o que a regra do aceite lê além dele (Gerente único; Cesar, 30/09/2026). */
-  const paraOAceite = (ctx: Contexto, chamado: ChamadoParaTriagem) =>
+  const paraOAceite = (ctx: Contexto, origem: OrigemDaOs) =>
     Promise.all([
       atorComEquipes(ctx),
-      deps.triagem.dadosDoAceite(ctx, { hotel: chamado.hotel, abertoPor: chamado.abertoPor }),
+      deps.triagem.dadosDoAceite(
+        ctx,
+        origem.chamado === null
+          ? { hotel: origem.hotel, abertoPor: null }
+          : { hotel: origem.chamado.hotel, abertoPor: origem.chamado.abertoPor },
+      ),
     ]);
+
+  /** O reflexo no chamado, na corretiva; a preventiva não tem chamado (null). */
+  function reflexo(
+    chamado: ChamadoParaTriagem | null,
+    decidido: EstadoDoChamado | null,
+    lista: readonly SituacaoParaRegra[],
+  ): ReflexoNoChamado | null {
+    if (chamado === null) return null;
+    const estado = decidido ?? chamado.estado;
+    return {
+      id: chamado.id,
+      versao: chamado.versao,
+      estado,
+      situacaoId: situacaoPara(lista, 'chamado', estado),
+    };
+  }
 
   async function chamadoNaVersao(
     ctx: Contexto,
@@ -270,16 +298,14 @@ export function criarCasosDeUsoDeTriagem(deps: {
     return c;
   }
 
-  async function osEChamado(ctx: Contexto, osId: string, versao?: number) {
-    const os = await deps.triagem.os(ctx, osId);
-    if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-    if (versao !== undefined && os.versao !== versao) throw conflitoDeVersao(os.versao);
-    const chamado = await deps.triagem.chamado(ctx, os.chamadoId);
-    if (!chamado) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-    return { os, chamado };
-  }
+  /** O hotel da OS, no formato da regra de papel (a corretiva e a preventiva). */
+  const hotelDa = (os: OsGravada) => ({ hotel: { id: os.hotelId, bandeiraId: os.bandeiraId } });
 
-  const osNaVersao = (ctx: Contexto, osId: string, versao: number) => osEChamado(ctx, osId, versao);
+  async function osNaVersao(ctx: Contexto, osId: string, versao: number) {
+    const lida = await lerOsComOrigem(deps.triagem, ctx, osId);
+    if (lida.os.versao !== versao) throw conflitoDeVersao(lida.os.versao);
+    return lida;
+  }
 
   /** O caminho da assinatura (I8): um PNG da pasta da OS, no tenant e no hotel dela. */
   function assinaturaDoAceite(
@@ -336,16 +362,16 @@ export function criarCasosDeUsoDeTriagem(deps: {
     return decidirQuemExecuta(pedido, fornecedor);
   }
 
-  /** Os códigos pedidos no aceite, conferidos contra a categoria do ativo do chamado (I6). */
+  /** Os códigos pedidos no aceite, conferidos contra a categoria do ativo da OS (I6). */
   async function codigosDoAceite(
     ctx: Contexto,
-    chamado: ChamadoParaTriagem,
+    ativoId: string | null,
     pedido: CodigosDaOs,
   ): Promise<CodigosDaOs> {
     if (!deps.codigos) throw new Error('Aceite com códigos sem a porta de códigos.');
     const [lista, categoria] = await Promise.all([
       deps.codigos.listar(ctx),
-      chamado.ativoId === null ? null : deps.codigos.categoriaDoAtivo(ctx, chamado.ativoId),
+      ativoId === null ? null : deps.codigos.categoriaDoAtivo(ctx, ativoId),
     ]);
     return validarCodigosDaOs(pedido, lista, categoria);
   }
@@ -515,17 +541,17 @@ export function criarCasosDeUsoDeTriagem(deps: {
     },
 
     async definirQuemExecuta(ctx, osId, p) {
-      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
-      r.podeAjustarQuemExecuta(await ator(ctx), chamado, os.estado, deps.relogio.agora());
+      const { os } = await osNaVersao(ctx, osId, p.versao);
+      r.podeAjustarQuemExecuta(await ator(ctx), hotelDa(os), os.estado, deps.relogio.agora());
       const execucao = await quemExecuta(ctx, p);
       return deps.triagem.definirQuemExecuta(ctx, { osId, versao: p.versao, execucao });
     },
 
     async ajustarArrendamento(ctx, osId, p) {
-      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      const { os } = await osNaVersao(ctx, osId, p.versao);
       const motivo = r.podeAjustarArrendamento(
         await ator(ctx),
-        chamado,
+        hotelDa(os),
         os,
         p.motivo,
         deps.relogio.agora(),
@@ -542,17 +568,17 @@ export function criarCasosDeUsoDeTriagem(deps: {
     },
 
     async reatribuirOs(ctx, osId, p) {
-      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      const { os, origem } = await osNaVersao(ctx, osId, p.versao);
       const agora = deps.relogio.agora();
       const d = r.decidirNaOs('reatribuir', {
         ator: await ator(ctx),
-        chamado,
+        ...origem,
         os: { estado: os.estado, responsavel: os.responsavel },
         agora,
       });
       const responsavel = r.exigirResponsavelDoHotel(
         await candidato(ctx, p.responsavel),
-        chamado.hotel,
+        hotelDa(os).hotel,
         agora,
       );
       return deps.triagem.reatribuirOs(ctx, {
@@ -565,54 +591,48 @@ export function criarCasosDeUsoDeTriagem(deps: {
     },
 
     async cancelarOs(ctx, osId, p) {
-      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      const { os, chamado, origem } = await osNaVersao(ctx, osId, p.versao);
       const d = r.decidirNaOs('cancelar', {
         ator: await ator(ctx),
-        chamado,
+        ...origem,
         os: { estado: os.estado, responsavel: os.responsavel },
         motivo: p.motivo,
         agora: deps.relogio.agora(),
       });
       const lista = await situacoes(ctx);
-      const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.cancelarOs(ctx, {
         osId,
         versao: p.versao,
         de: os.estado,
         situacaoId: situacaoPara(lista, 'os', d.estado),
         motivo: d.motivo ?? '',
-        chamado: {
-          id: chamado.id,
-          versao: chamado.versao,
-          estado: estadoDoChamado,
-          situacaoId: situacaoPara(lista, 'chamado', estadoDoChamado),
-        },
+        chamado: reflexo(chamado, d.chamado, lista),
       });
     },
 
     async aceitarOs(ctx, osId, p) {
-      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
-      const [ator, aceite] = await paraOAceite(ctx, chamado);
+      const { os, chamado, origem, ativoId } = await osNaVersao(ctx, osId, p.versao);
+      const [ator, aceite] = await paraOAceite(ctx, origem);
       const d = r.decidirNaOs('aceitar', {
         ator,
-        chamado,
+        ...origem,
         os: { estado: os.estado, responsavel: os.responsavel },
         aceite,
         agora: deps.relogio.agora(),
       });
       const custoInformado = normalizarCustoInformado(p.custoInformado);
-      const codigos = p.codigos ? await codigosDoAceite(ctx, chamado, p.codigos) : null;
-      const politica = await deps.triagem.politica(ctx, chamado.hotel.id, CODIGOS_OBRIGATORIOS);
+      const codigos = p.codigos ? await codigosDoAceite(ctx, ativoId, p.codigos) : null;
+      const politica = await deps.triagem.politica(ctx, os.hotelId, CODIGOS_OBRIGATORIOS);
       exigirCodigosNoAceite(
         resolverPolitica(CODIGOS_OBRIGATORIOS, politica).ligado,
         codigos ?? os.codigos,
       );
       const assinatura = p.assinaturaCaminho
-        ? assinaturaDoAceite(ctx, chamado.hotel.id, osId, p.assinaturaCaminho)
+        ? assinaturaDoAceite(ctx, os.hotelId, osId, p.assinaturaCaminho)
         : null;
       const politicaDaAssinatura = await deps.triagem.politica(
         ctx,
-        chamado.hotel.id,
+        os.hotelId,
         ASSINATURA_NO_ACEITE,
       );
       exigirAssinaturaNoAceite(
@@ -620,7 +640,6 @@ export function criarCasosDeUsoDeTriagem(deps: {
         assinatura !== null,
       );
       const lista = await situacoes(ctx);
-      const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.aceitarOs(ctx, {
         codigos,
         custoInformado,
@@ -629,21 +648,16 @@ export function criarCasosDeUsoDeTriagem(deps: {
         versao: p.versao,
         de: os.estado,
         situacaoId: situacaoPara(lista, 'os', d.estado),
-        chamado: {
-          id: chamado.id,
-          versao: chamado.versao,
-          estado: estadoDoChamado,
-          situacaoId: situacaoPara(lista, 'chamado', estadoDoChamado),
-        },
+        chamado: reflexo(chamado, d.chamado, lista),
       });
     },
 
     async exigirQuemAceita(ctx, osId) {
-      const { os, chamado } = await osEChamado(ctx, osId);
-      const [ator, aceite] = await paraOAceite(ctx, chamado);
+      const { os, origem } = await lerOsComOrigem(deps.triagem, ctx, osId);
+      const [ator, aceite] = await paraOAceite(ctx, origem);
       r.decidirNaOs('aceitar', {
         ator,
-        chamado,
+        ...origem,
         os: { estado: os.estado, responsavel: os.responsavel },
         aceite,
         agora: deps.relogio.agora(),
@@ -656,12 +670,12 @@ export function criarCasosDeUsoDeTriagem(deps: {
     },
 
     async reabrirOs(ctx, osId, p) {
-      const { os, chamado } = await osNaVersao(ctx, osId, p.versao);
+      const { os, chamado, origem } = await osNaVersao(ctx, osId, p.versao);
       const agora = deps.relogio.agora();
-      const [ator, aceite] = await paraOAceite(ctx, chamado);
+      const [ator, aceite] = await paraOAceite(ctx, origem);
       const d = r.decidirNaOs('reabrir', {
         ator,
-        chamado,
+        ...origem,
         os: { estado: os.estado, responsavel: os.responsavel },
         aceite,
         motivo: p.motivo,
@@ -671,24 +685,18 @@ export function criarCasosDeUsoDeTriagem(deps: {
         p.paradoDesde == null
           ? null
           : {
-              hotelId: chamado.hotel.id,
-              ativoId: exigirAtivoNoChamado(chamado.ativoId),
+              hotelId: os.hotelId,
+              ativoId: exigirAtivoNoChamado(exigirChamadoParaParada(chamado).ativoId),
               inicio: validarParada({ inicio: new Date(p.paradoDesde), fim: null }, agora).inicio,
             };
       const lista = await situacoes(ctx);
-      const estadoDoChamado = d.chamado ?? chamado.estado;
       return deps.triagem.reabrirOs(ctx, {
         osId,
         versao: p.versao,
         de: os.estado,
         situacaoId: situacaoPara(lista, 'os', d.estado),
         motivo: d.motivo ?? '',
-        chamado: {
-          id: chamado.id,
-          versao: chamado.versao,
-          estado: estadoDoChamado,
-          situacaoId: situacaoPara(lista, 'chamado', estadoDoChamado),
-        },
+        chamado: reflexo(chamado, d.chamado, lista),
         parada,
       });
     },

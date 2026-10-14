@@ -3,7 +3,8 @@
 //   - o plano por categoria gera uma OS por ativo, atribuída, sem autor, na
 //     situação do estado atribuida, com a cópia do plano e do checklist, a
 //     transição gerar sem usuário, a auditoria e o evento os.atribuida; no
-//     hotel arrendado, com a marca de quem responde pela categoria do ativo;
+//     hotel arrendado, com a marca de quem responde pela categoria do ativo e,
+//     na do locador, com o aviso ao locador (hora, auditoria e evento);
 //   - o plano com técnico desativado não gera; o hotel em implantação e o
 //     outro tenant não são tocados;
 //   - a segunda rodada no mesmo dia não duplica;
@@ -80,10 +81,11 @@ describe.skipIf(!temBanco)('geração da OS preventiva (hk_worker)', { timeout: 
         tecnico_id: string | null;
         situacao_id: string;
         responsavel_arrendamento: string | null;
+        locador_avisado: boolean;
         plano_aplicado: Record<string, unknown>;
       }>(
         `select ativo_id, estado, criado_por, local_id, tecnico_id, situacao_id, responsavel_arrendamento,
-                plano_aplicado
+                locador_avisado_em is not null as locador_avisado, plano_aplicado
          from app.os where plano_id = $1 and data_prevista = $2 order by ativo_id`,
         [PLANO.categoria, data],
       )
@@ -217,6 +219,7 @@ describe.skipIf(!temBanco)('geração da OS preventiva (hk_worker)', { timeout: 
       geradas: 2,
       puladas: { ...vazio(), sem_responsavel: 1 },
       falhas: [],
+      semChecklist: [],
     });
     const geradas = await daOcorrencia('2026-10-13');
     expect(geradas.map((o) => o.ativo_id)).toEqual([ATIVO.a1, ATIVO.a2].sort());
@@ -228,6 +231,7 @@ describe.skipIf(!temBanco)('geração da OS preventiva (hk_worker)', { timeout: 
         tecnico_id: TECNICO,
         situacao_id: SITUACAO[T],
         responsavel_arrendamento: 'locador',
+        locador_avisado: true,
         plano_aplicado: {
           planoId: PLANO.categoria,
           nome: 'Limpeza do filtro',
@@ -248,9 +252,9 @@ describe.skipIf(!temBanco)('geração da OS preventiva (hk_worker)', { timeout: 
             from app.os_transicao t where t.os_id = o.id) as transicoes,
          (select k.modelo_id || ':' || k.modelo_versao || ':' || coalesce(k.criado_por::text, '-')
             from app.os_checklist k where k.os_id = o.id) as checklist,
-         (select string_agg(a.acao || ':' || coalesce(a.usuario_id::text, '-'), ',')
+         (select string_agg(a.acao || ':' || coalesce(a.usuario_id::text, '-'), ',' order by a.acao)
             from app.auditoria a where a.tenant_id = o.tenant_id and a.registro_id = o.id) as auditoria,
-         (select string_agg(e.tipo || ':' || (e.payload ->> 'planoId'), ',')
+         (select string_agg(e.tipo || ':' || coalesce(e.payload ->> 'planoId', '-'), ',' order by e.tipo)
             from app.evento_dominio e where e.tenant_id = o.tenant_id and e.registro_id = o.id) as eventos
        from app.os o where o.plano_id = $1`,
       [PLANO.categoria],
@@ -260,8 +264,9 @@ describe.skipIf(!temBanco)('geração da OS preventiva (hk_worker)', { timeout: 
       expect(r).toEqual({
         transicoes: 'gerar:-',
         checklist: `${MODELO}:2:-`,
-        auditoria: 'gerar:-',
-        eventos: `os.atribuida:${PLANO.categoria}`,
+        // A OS do locador sai com o aviso (ADR-045), como a corretiva.
+        auditoria: 'avisar_locador:-,gerar:-',
+        eventos: `os.atribuida:${PLANO.categoria},os.locador_avisado:-`,
       });
     }
   });

@@ -28,7 +28,8 @@ async function decidirAceite(
     de: EstadoDaOs;
     situacaoId: string;
     motivo: string | null;
-    chamado: ReflexoNoChamado;
+    /** null na preventiva, que não tem chamado (PV3c). */
+    chamado: ReflexoNoChamado | null;
     /** Só no aceite (I4); null: não informado. */
     custoInformado?: number | null;
     /** Só no aceite (I6); null: ficam os da OS. */
@@ -36,7 +37,7 @@ async function decidirAceite(
     /** Só no aceite (I8): o anexo da assinatura; null: sem assinatura. */
     assinaturaId?: string | null;
   },
-): Promise<{ versao: number; versaoDoChamado: number }> {
+): Promise<{ versao: number; versaoDoChamado: number | null }> {
   const tx = transacaoDe(uow);
   const custo = g.custoInformado ?? null;
   const codigos = g.codigos ?? null;
@@ -81,7 +82,7 @@ async function decidirAceite(
     .executeTakeFirst();
   if (!r) return semLinha(tx, 'app.os', g.osId, g.versao);
   await registrarTransicao(uow, { osId: g.osId, hotelId: r.hotel_id, acao, de: g.de, para });
-  const chamado = await refletirNoChamado(uow, g.chamado);
+  const chamado = g.chamado ? await refletirNoChamado(uow, g.chamado) : null;
   uow.auditar({
     entidade: 'os',
     registroId: g.osId,
@@ -95,7 +96,7 @@ async function decidirAceite(
       ...(assinaturaId !== null ? { assinaturaId } : {}),
       situacaoId: g.situacaoId,
       versao: r.versao,
-      estadoDoChamado: g.chamado.estado,
+      estadoDoChamado: g.chamado?.estado ?? null,
     },
   });
   uow.publicar({
@@ -110,7 +111,7 @@ async function decidirAceite(
       ...(assinaturaId !== null ? { assinaturaId } : {}),
     },
   });
-  return { versao: r.versao, versaoDoChamado: chamado.versao };
+  return { versao: r.versao, versaoDoChamado: chamado?.versao ?? null };
 }
 
 export async function aceitarOs(
@@ -120,12 +121,13 @@ export async function aceitarOs(
     versao: number;
     de: EstadoDaOs;
     situacaoId: string;
-    chamado: ReflexoNoChamado;
+    /** null na preventiva, que não tem chamado (PV3c). */
+    chamado: ReflexoNoChamado | null;
     custoInformado: number | null;
     codigos: CodigosDaOs | null;
     assinatura: AssinaturaDoAceite | null;
   },
-): Promise<{ versao: number; versaoDoChamado: number }> {
+): Promise<{ versao: number; versaoDoChamado: number | null }> {
   const { assinatura, ...resto } = g;
   const anexo = assinatura
     ? await registrarAnexo(
@@ -154,14 +156,17 @@ export async function reabrirOs(
     de: EstadoDaOs;
     situacaoId: string;
     motivo: string;
-    chamado: ReflexoNoChamado;
+    /** null na preventiva, que não tem chamado (PV3c). */
+    chamado: ReflexoNoChamado | null;
     parada: { hotelId: string; ativoId: string; inicio: Date } | null;
   },
-): Promise<{ versao: number; versaoDoChamado: number; paradaId: string | null }> {
+): Promise<{ versao: number; versaoDoChamado: number | null; paradaId: string | null }> {
   const r = await decidirAceite(uow, 'reabrir', g);
   // A parada encerrada não reabre: nasce outra, no mesmo chamado e na OS reaberta.
-  const parada = g.parada
-    ? await pararNaAbertura(uow, { ...g.parada, chamadoId: g.chamado.id, osId: g.osId })
-    : null;
+  // A preventiva não tem chamado nem parada (o caso de uso recusa antes).
+  const parada =
+    g.parada && g.chamado
+      ? await pararNaAbertura(uow, { ...g.parada, chamadoId: g.chamado.id, osId: g.osId })
+      : null;
   return { ...r, paradaId: parada?.id ?? null };
 }

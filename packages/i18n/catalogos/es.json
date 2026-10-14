@@ -613,6 +613,7 @@
   "erro.os_de_outro_responsavel": "La orden de servicio está asignada a otra persona.",
   "erro.parada_invalida": "Inicio o fin de la parada no válido: nada en el futuro (con hasta {folgaMinutos} min de margen en el reloj) y el fin después del inicio.",
   "erro.parada_sem_ativo": "Para registrar el equipo parado, la solicitud debe tener el activo.",
+  "erro.parada_na_preventiva": "La OS preventiva no registra parada del equipo: la parada queda en la solicitud del activo.",
   "erro.parada_ja_aberta": "Este activo ya está registrado como parado.",
   "erro.parada_nao_aberta": "Este activo no está registrado como parado.",
   "erro.parada_de_outro_chamado": "La parada abierta de este activo es de otra solicitud.",
