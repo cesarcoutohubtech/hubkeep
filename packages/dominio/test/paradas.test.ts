@@ -8,6 +8,7 @@ import {
   type Papel,
   encerraParadaNoHotel,
   exigirAtivoNoChamado,
+  exigirChamadoParaParada,
   exigirParadaAberta,
   exigirSemParadaAberta,
   paradaAEncerrarNaConclusao,
@@ -67,6 +68,12 @@ describe('ativo e parada aberta', () => {
   it('parada só em chamado com ativo', () => {
     expect(exigirAtivoNoChamado('ativo-1')).toBe('ativo-1');
     expect(codigo(() => exigirAtivoNoChamado(null))).toBe('parada_sem_ativo');
+  });
+
+  it('parada só na OS com chamado: a preventiva recusa (PV3c)', () => {
+    const chamado = { id: 'c-1' };
+    expect(exigirChamadoParaParada(chamado)).toBe(chamado);
+    expect(codigo(() => exigirChamadoParaParada(null))).toBe('parada_na_preventiva');
   });
 
   it('uma parada aberta por ativo', () => {

@@ -613,6 +613,7 @@
   "erro.os_de_outro_responsavel": "L'ordre de travail est attribué à quelqu'un d'autre.",
   "erro.parada_invalida": "Début ou fin de l'arrêt non valide : rien dans le futur (avec jusqu'à {folgaMinutos} min de tolérance d'horloge) et la fin après le début.",
   "erro.parada_sem_ativo": "Pour enregistrer l'équipement à l'arrêt, la demande doit avoir l'équipement.",
+  "erro.parada_na_preventiva": "L'OS préventive n'enregistre pas l'arrêt de l'équipement : l'arrêt relève de la demande de l'équipement.",
   "erro.parada_ja_aberta": "Cet équipement est déjà enregistré à l'arrêt.",
   "erro.parada_nao_aberta": "Cet équipement n'est pas enregistré à l'arrêt.",
   "erro.parada_de_outro_chamado": "L'arrêt en cours de cet équipement appartient à une autre demande.",

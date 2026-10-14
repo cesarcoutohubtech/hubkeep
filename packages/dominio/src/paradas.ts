@@ -41,6 +41,17 @@ export function validarFimDaParada(inicio: Date, fim: Date, agora: Date): Date {
   return fim;
 }
 
+/**
+ * Parada só na OS com chamado (PV3c): a parada guarda o chamado do ativo
+ * (C5), e a OS preventiva não tem chamado. Devolve o chamado.
+ */
+export function exigirChamadoParaParada<C>(chamado: C | null): C {
+  if (chamado === null) {
+    throw new RegraViolada('parada_na_preventiva', 'A OS preventiva não registra parada.');
+  }
+  return chamado;
+}
+
 /** Parada só em chamado com ativo: é o ativo que fica parado. */
 export function exigirAtivoNoChamado(ativoId: string | null): string {
   if (ativoId === null) {

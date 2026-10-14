@@ -9,9 +9,11 @@
 // responsável padrão ainda vale (responsavelQueVale), a situação da OS
 // atribuída (situacaoPara), o checklist que a OS copia (modeloParaACopia) e,
 // no hotel arrendado, quem responde pela OS, pela categoria do ativo
-// (responsavelDoArrendamento, pedido da 1c de 13/10/2026).
+// (responsavelDoArrendamento, pedido da 1c de 13/10/2026). A OS do locador
+// sai com o aviso ao locador (avisaOLocador), como a corretiva (#261).
 import {
   MOTIVOS_DE_PULO,
+  avisaOLocador,
   type MatrizDeArrendamento,
   type MotivoDePulo,
   diaNoFuso,
@@ -75,14 +77,17 @@ async function gerarNoHotel(s: SessaoDaGeracao, hotel: HotelParaGerar, agora: Da
     );
     const categoria = new Map(ativos.map((a) => [a.id, a.categoriaId]));
     for (const os of plan.geradas) {
+      const responsavelArrendamento = responsavelDoArrendamento(
+        hotel.modeloContratual,
+        await matriz(),
+        categoria.get(os.ativoId) ?? null,
+      );
       const gravou = await s.gerar({
         ...os,
         situacaoId: await situacaoId(),
-        responsavelArrendamento: responsavelDoArrendamento(
-          hotel.modeloContratual,
-          await matriz(),
-          categoria.get(os.ativoId) ?? null,
-        ),
+        responsavelArrendamento,
+        // A OS nova ainda não teve aviso: o do locador sai já na geração, como na corretiva.
+        avisarLocador: avisaOLocador(responsavelArrendamento, null),
         checklist: modelo && {
           id: modelo.id,
           versao: modelo.versao,

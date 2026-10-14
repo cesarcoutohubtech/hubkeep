@@ -57,6 +57,8 @@ function montar(opcoes: {
   responsavel?: Responsavel;
   modelos?: ModeloDeChecklistGravado[];
   copia?: ChecklistDaOsGravado | null;
+  /** A OS preventiva (PV3c): sem chamado, com o hotel da própria OS. */
+  preventiva?: boolean;
 }) {
   const modelos: ModeloDeChecklistGravado[] = opcoes.modelos ?? [
     { id: 'm1', categoriaId: null, nomes: { 'pt-BR': 'Ar' }, itens: ITENS, versao: 2, ativa: true },
@@ -75,7 +77,11 @@ function montar(opcoes: {
   const os: OsGravada = {
     id: 'os-1',
     hotelId: HOTEL.id,
-    chamadoId: 'c-1',
+    bandeiraId: HOTEL.bandeiraId,
+    chamadoId: opcoes.preventiva ? null : 'c-1',
+    preventiva: opcoes.preventiva
+      ? { planoId: 'p-1', ativoId: 'a-1', dataPrevista: '2026-10-14' }
+      : null,
     estado: opcoes.estado ?? 'em_execucao',
     situacaoId: 's',
     responsavel: opcoes.responsavel ?? { tipo: 'tecnico', usuarioId: 'tec-1' },
@@ -88,7 +94,7 @@ function montar(opcoes: {
     assinaturaAceiteId: null,
     responsavelArrendamento: null,
     locadorAvisadoEm: null,
-    criadoPor: 'g',
+    criadoPor: opcoes.preventiva ? null : 'g',
     versao: 4,
     criadoEm: AGORA,
   };
@@ -241,6 +247,19 @@ describe('aplicar o checklist na OS', () => {
     );
   });
 
+  it('na OS preventiva, sem chamado, quem tria no hotel da OS aplica (PV3c)', async () => {
+    const gerente = montar({
+      minhas: [atr('gerente_hotel')],
+      estado: 'atribuida',
+      preventiva: true,
+    });
+    await expect(gerente.casos.aplicarNaOs(ctx, 'os-1', 'm1')).resolves.toEqual({ id: 'k1' });
+    const tecnico = montar({ minhas: [atr('tecnico', 'tec-1')], preventiva: true });
+    expect(await codigoDe(tecnico.casos.aplicarNaOs(ctx, 'os-1', 'm1'))).toBe(
+      'triagem_fora_do_papel',
+    );
+  });
+
   it('a OS que quem pede não vê é 404', async () => {
     const { casos } = montar({ minhas: [atr('gerente_hotel')] });
     expect(await codigoDe(casos.aplicarNaOs(ctx, 'outra', 'm1'))).toBe('os_nao_encontrada');
@@ -275,6 +294,17 @@ describe('responder o checklist', () => {
       respostas: { filtro_limpo: true, pressao: null },
       feitaEm: AGORA,
     });
+  });
+
+  it('na OS preventiva, o responsável responde (PV3c)', async () => {
+    const { casos } = montar({ minhas: [atr('tecnico', 'tec-1')], copia, preventiva: true });
+    await expect(
+      casos.prepararRespostas(ctx, {
+        osId: 'os-1',
+        respostas: { filtro_limpo: true, pressao: null },
+        feitaEm: AGORA,
+      }),
+    ).resolves.toMatchObject({ checklistId: 'k1', osId: 'os-1', hotelId: HOTEL.id });
   });
 
   it('fora do tipo: 422; OS atribuída: transicao_invalida; outro responsável: 409; sem checklist: 404', async () => {

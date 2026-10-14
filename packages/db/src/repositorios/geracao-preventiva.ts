@@ -4,6 +4,8 @@
 // plano já gerou, as situações, a política e o modelo de checklist) e grava,
 // sem autor (migração 0048): a OS atribuída, a transição gerar, a cópia do
 // checklist, a auditoria os/gerar e o evento os.atribuida, na mesma transação.
+// A OS do locador (ADR-045) nasce com a hora do aviso e o os.locador_avisado,
+// como a corretiva (#261).
 //
 // Duas execuções ao mesmo tempo: a primeira trava o hotel com um advisory lock
 // de transação (função do próprio Postgres, sem função nova no projeto), e a
@@ -32,6 +34,7 @@ import { novoId } from '../ids';
 import { niveisDaPoliticaNaTransacao } from '../leituras-do-hotel';
 import { instanteDoRoteiro, transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 import { datasDaCriacao } from './instante-do-roteiro';
+import { avisarLocador } from './triagem';
 
 const colunasDoResponsavel = (r: Responsavel) =>
   r.tipo === 'tecnico'
@@ -228,6 +231,7 @@ export function sessaoDaGeracao(uow: UnidadeDeTrabalho, hotelId: string): Sessao
           situacao_id: os.situacaoId,
           ...colunasDoResponsavel(os.responsavel),
           responsavel_arrendamento: os.responsavelArrendamento,
+          locador_avisado_em: os.avisarLocador ? sql<Date>`now()` : null,
           ...datasDaCriacao(uow),
         })
         .onConflict((oc) =>
@@ -287,6 +291,7 @@ export function sessaoDaGeracao(uow: UnidadeDeTrabalho, hotelId: string): Sessao
           responsavelArrendamento: os.responsavelArrendamento,
         },
       });
+      if (os.avisarLocador) avisarLocador(uow, { osId: id, hotelId, chamadoId: null });
       uow.publicar({
         tipo: 'os.atribuida',
         entidade: 'os',

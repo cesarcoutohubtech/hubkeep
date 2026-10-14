@@ -81,12 +81,12 @@ export const ESTADOS_COM_ARRENDAMENTO_AJUSTAVEL: readonly EstadoDaOs[] = [
  */
 export function podeAjustarArrendamento(
   ator: AtorDaCorretiva,
-  chamado: ChamadoParaRegra,
+  origem: Pick<ChamadoParaRegra, 'hotel'>,
   os: { estado: EstadoDaOs; responsavelArrendamento: ResponsavelDoArrendamento | null },
   motivo: string | null | undefined,
   agora: Date,
 ): string {
-  podeTriar(ator, chamado.hotel, agora);
+  podeTriar(ator, origem.hotel, agora);
   if (os.responsavelArrendamento === null) {
     throw new Conflito('os_sem_arrendamento', 'A OS não tem responsável de arrendamento.', {});
   }

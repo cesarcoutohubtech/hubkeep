@@ -17,5 +17,10 @@ export const POST = rota('os.reabrir', async (r) => {
   if (!id) throw new ErroHttp(404, 'os_nao_encontrada');
   const pedido = await r.corpo(PedidoDeReaberturaDeOs);
   const gravado = await (await casosDeUsoDeTriagem()).reabrirOs(ctx, id, pedido);
-  return r.responder(200, RespostaDeReaberturaDeOs, { id, ...gravado });
+  return r.responder(200, RespostaDeReaberturaDeOs, {
+    id,
+    ...gravado,
+    // A preventiva não tem chamado (PV3c): a versão do chamado fica de fora.
+    versaoDoChamado: gravado.versaoDoChamado ?? undefined,
+  });
 });
