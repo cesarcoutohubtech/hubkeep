@@ -219,6 +219,7 @@ describe.skipIf(!temBanco)('geração da OS preventiva (hk_worker)', { timeout: 
       geradas: 2,
       puladas: { ...vazio(), sem_responsavel: 1 },
       falhas: [],
+      semChecklist: [],
     });
     const geradas = await daOcorrencia('2026-10-13');
     expect(geradas.map((o) => o.ativo_id)).toEqual([ATIVO.a1, ATIVO.a2].sort());

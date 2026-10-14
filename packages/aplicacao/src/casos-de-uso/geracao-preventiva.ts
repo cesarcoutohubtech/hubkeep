@@ -11,6 +11,11 @@
 // no hotel arrendado, quem responde pela OS, pela categoria do ativo
 // (responsavelDoArrendamento, pedido da 1c de 13/10/2026). A OS do locador
 // sai com o aviso ao locador (avisaOLocador), como a corretiva (#261).
+//
+// Modelo de checklist desativado depois de entrar no plano: a OS sai sem
+// checklist, e a falha não fica silenciosa (adendo da PV3 ao ADR-041, aprovado
+// pelo Cesar com essa condição): cada OS assim volta em semChecklist, com o
+// plano, o ativo e o modelo, e a rota do cron registra um aviso no log.
 import {
   MOTIVOS_DE_PULO,
   avisaOLocador,
@@ -40,6 +45,15 @@ export interface ResultadoDaGeracao {
   puladas: Record<MotivoDePulo, number>;
   /** Os hotéis em que a transação falhou, com a mensagem do erro. */
   falhas: { hotelId: string; erro: string }[];
+  /** As OS gravadas sem checklist porque o modelo do plano está desativado ou não existe mais. */
+  semChecklist: OsSemChecklist[];
+}
+
+export interface OsSemChecklist {
+  hotelId: string;
+  planoId: string;
+  ativoId: string;
+  modeloId: string;
 }
 
 /** Lê uma vez por hotel, e só se houver o que gerar. */
@@ -50,7 +64,12 @@ function umaVez<T>(f: () => Promise<T>): () => Promise<T> {
 
 async function gerarNoHotel(s: SessaoDaGeracao, hotel: HotelParaGerar, agora: Date) {
   const hoje = diaNoFuso(agora, hotel.fuso);
-  const parcial = { planos: 0, geradas: 0, puladas: [] as MotivoDePulo[] };
+  const parcial = {
+    planos: 0,
+    geradas: 0,
+    puladas: [] as MotivoDePulo[],
+    semChecklist: [] as OsSemChecklist[],
+  };
   const situacaoId = umaVez(async () => situacaoPara(await s.situacoes(), 'os', 'atribuida'));
   const matriz = umaVez(async (): Promise<MatrizDeArrendamento> =>
     hotel.modeloContratual === 'arrendado'
@@ -95,8 +114,18 @@ async function gerarNoHotel(s: SessaoDaGeracao, hotel: HotelParaGerar, agora: Da
           itens: modelo.itens,
         },
       });
-      if (gravou) parcial.geradas++;
-      else parcial.puladas.push('ja_gerada');
+      if (!gravou) {
+        parcial.puladas.push('ja_gerada');
+        continue;
+      }
+      parcial.geradas++;
+      if (plano.checklistModeloId !== null && modelo === null)
+        parcial.semChecklist.push({
+          hotelId: hotel.id,
+          planoId: plano.id,
+          ativoId: os.ativoId,
+          modeloId: plano.checklistModeloId,
+        });
     }
   }
   return parcial;
@@ -117,6 +146,7 @@ export function criarGeracaoDePreventivas(deps: {
         number
       >,
       falhas: [],
+      semChecklist: [],
     };
     for (const hotel of await deps.geracao.hoteisAtivos(tenantId)) {
       r.hoteis++;
@@ -127,6 +157,7 @@ export function criarGeracaoDePreventivas(deps: {
         r.planos += doHotel.planos;
         r.geradas += doHotel.geradas;
         for (const m of doHotel.puladas) r.puladas[m]++;
+        r.semChecklist.push(...doHotel.semChecklist);
       } catch (e) {
         r.falhas.push({ hotelId: hotel.id, erro: e instanceof Error ? e.message : String(e) });
       }

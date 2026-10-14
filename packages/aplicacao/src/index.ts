@@ -226,7 +226,7 @@ export type {
   SessaoDaGeracao,
 } from './portas/geracao-preventiva';
 export { criarGeracaoDePreventivas } from './casos-de-uso/geracao-preventiva';
-export type { ResultadoDaGeracao } from './casos-de-uso/geracao-preventiva';
+export type { OsSemChecklist, ResultadoDaGeracao } from './casos-de-uso/geracao-preventiva';
 export type {
   AceiteAutomaticoAGravar,
   OsParaOAceiteAutomatico,

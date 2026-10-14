@@ -17,7 +17,7 @@ describe('cron da preventiva', () => {
     ]);
   });
 
-  it('o hotel que falhou vai para o log e o Sentry; a resposta soma só números', () => {
+  it('o hotel que falhou vai para o log e o Sentry, a OS sem checklist vai para o log como aviso; a resposta soma só números', () => {
     const logs: unknown[] = [];
     const relatados: unknown[] = [];
     const r: ResultadoDaGeracao = {
@@ -32,6 +32,7 @@ describe('cron da preventiva', () => {
         ativo_posterior: 0,
       },
       falhas: [{ hotelId: 'h-2', erro: 'canceling statement due to statement timeout' }],
+      semChecklist: [{ hotelId: 'h-1', planoId: 'p-1', ativoId: 'a-1', modeloId: 'm-1' }],
     };
     const resumo = resumirGeracao('t-1', r, {
       registrar: (nivel, evento, campos) => void logs.push({ nivel, evento, campos }),
@@ -42,6 +43,7 @@ describe('cron da preventiva', () => {
       planos: 5,
       geradas: 4,
       hoteisComFalha: 1,
+      semChecklist: 1,
       puladas_ja_gerada: 1,
       puladas_os_anterior_aberta: 2,
       puladas_sem_responsavel: 0,
@@ -56,6 +58,17 @@ describe('cron da preventiva', () => {
           tenant_id: 't-1',
           hotel_id: 'h-2',
           erro: 'canceling statement due to statement timeout',
+        },
+      },
+      {
+        nivel: 'warn',
+        evento: 'cron.preventiva.checklist_modelo_inativo',
+        campos: {
+          tenant_id: 't-1',
+          hotel_id: 'h-1',
+          plano_id: 'p-1',
+          ativo_id: 'a-1',
+          modelo_id: 'm-1',
         },
       },
     ]);
