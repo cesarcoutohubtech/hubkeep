@@ -137,6 +137,34 @@ export const RespostaDeChamado = z
   .meta({ id: 'RespostaDeChamado' });
 
 /**
+ * A OS por id (PV3c): a corretiva ou a preventiva. Na preventiva, gerada pelo
+ * worker, não há chamado nem autor, e vem o plano (o nome da cópia), o ativo e
+ * a data prevista da ocorrência.
+ */
+export const OsDaPaginaApi = OsApi.extend({
+  chamadoId: z.guid().nullable(),
+  criadoPor: z.guid().nullable(),
+  preventiva: z
+    .object({
+      planoId: z.guid(),
+      planoNome: z.string(),
+      ativoId: z.guid(),
+      dataPrevista: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    })
+    .nullable(),
+}).meta({ id: 'OsDaPaginaApi' });
+
+export const RespostaDeOs = z
+  .object({
+    os: OsDaPaginaApi,
+    /** Os nomes do hotel, do local, do ativo, do responsável e do fornecedor da OS. */
+    nomes: NomesDoChamadoApi,
+    /** A política os.assinatura_no_aceite do hotel (I8): o aceite pede a assinatura. */
+    assinaturaNoAceite: z.boolean(),
+  })
+  .meta({ id: 'RespostaDeOs' });
+
+/**
  * Filtros das listas de chamados e de OS (C7), na query string. O período é
  * pela data de criação: de (inclusive) até ate (exclusive), em ISO 8601. A
  * prioridade da OS é a do chamado. depoisDe é o `proximo` da página anterior.
@@ -188,7 +216,16 @@ export const OsResumidaApi = z
     id: z.guid(),
     hotelId: z.guid(),
     hotelNome: z.string().nullable(),
-    chamadoId: z.guid(),
+    /** O chamado da corretiva; null na preventiva (PV3c). */
+    chamadoId: z.guid().nullable(),
+    /** A preventiva: o plano (nome da cópia), a data prevista e o ativo; null na corretiva. */
+    preventiva: z
+      .object({
+        planoNome: z.string(),
+        dataPrevista: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        ativoNome: z.string().nullable(),
+      })
+      .nullable(),
     localNome: z.string().nullable(),
     /** Do chamado; null se quem pede lê a OS e não o chamado. */
     descricao: z.string().nullable(),

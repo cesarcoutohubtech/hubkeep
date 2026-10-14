@@ -64,7 +64,7 @@ const preventiva = (estado: OsGravada['estado']): OsGravada => ({
   hotelId: HOTEL.id,
   bandeiraId: HOTEL.bandeiraId,
   chamadoId: null,
-  preventiva: { planoId: 'p-1', ativoId: 'a-1', dataPrevista: '2026-10-14' },
+  preventiva: { planoId: 'p-1', planoNome: 'PMOC', ativoId: 'a-1', dataPrevista: '2026-10-14' },
   estado,
   situacaoId: `s-os-${estado}`,
   responsavel: { tipo: 'tecnico', usuarioId: 'tec-1' },
@@ -301,6 +301,17 @@ describe('triagem e aceite da OS preventiva', () => {
         }),
       ),
     ).toBe('parada_na_preventiva');
+  });
+
+  it('a leitura da OS por id traz a preventiva; a invisível é 404', async () => {
+    const { triagem } = montar('atribuida');
+    await expect(triagem.os(gerente, 'os-1')).resolves.toMatchObject({
+      chamadoId: null,
+      preventiva: { planoNome: 'PMOC', ativoId: 'a-1' },
+    });
+    await expect(triagem.os(gerente, 'outra')).rejects.toMatchObject({
+      codigo: 'os_nao_encontrada',
+    });
   });
 
   it('versão velha: 409 antes de qualquer gravação', async () => {

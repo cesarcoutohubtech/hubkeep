@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
+  BlocoDaOs,
   ChamadoEmDetalhe,
   type ChamadoResumido,
   type DetalheDoChamado,
@@ -18,12 +19,14 @@ import {
   LinhaDeChamado,
   LinhaDeOs,
   LinhaDoTempo,
+  type OsDaPagina,
   type OsResumida,
   type Referencias,
   agoraNoCampo,
   nivelDaPrioridade,
   caminhoDaLista,
 } from '../src/cliente/corretiva';
+import { AcoesDaOs } from '../src/cliente/triagem';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
 const H = '11111111-1111-4111-8111-111111111111';
@@ -85,6 +88,7 @@ const os: OsResumida = {
   hotelId: H,
   hotelNome: 'Hotel Um',
   chamadoId: C,
+  preventiva: null,
   localNome: 'UH 101',
   descricao: 'Frigobar não gela',
   prioridadeId: P,
@@ -470,6 +474,28 @@ describe('arrendado na corretiva (1c, ADR-045)', () => {
     expect(linha({ ...os, responsavelArrendamento: 'arrendataria' })).not.toContain('Do locador');
   });
 
+  it('a OS preventiva na lista: abre a página da OS, com o plano, o ativo e a data, e o selo no lugar da prioridade (PV3c)', () => {
+    const preventiva: OsResumida = {
+      ...os,
+      chamadoId: null,
+      descricao: null,
+      prioridadeId: null,
+      preventiva: { planoNome: 'PMOC mensal', dataPrevista: '2026-10-14', ativoNome: 'Chiller 1' },
+    };
+    const html = renderizar(
+      'pt-BR',
+      <table>
+        <tbody>
+          <LinhaDeOs o={preventiva} refs={refs} />
+        </tbody>
+      </table>,
+    );
+    expect(html).toContain(`href="/os/${OS}"`);
+    expect(html).not.toContain('/chamados/');
+    expect(html).toContain('PMOC mensal: Chiller 1, prevista para 14/10/2026');
+    expect(html).toContain('Preventiva');
+  });
+
   it('o ajuste, com motivo, e o aviso ao locador na linha do tempo', () => {
     const evento = (acao: string, motivo: string | null): EventoDaLinhaDoTempo => ({
       id: '99999999-9999-4999-8999-99999999999a',
@@ -512,5 +538,68 @@ describe('arrendado na corretiva (1c, ADR-045)', () => {
       .map((m) => (m[1] ?? '').trim())
       .filter((t) => t !== '' && !DADOS.includes(t));
     for (const texto of textos) expect(texto, texto).toMatch(/^\[.*\]$/s);
+  });
+});
+
+describe('a OS preventiva na página da OS (PV3c)', () => {
+  const osDoChamado = detalhe.os[0];
+  if (!osDoChamado) throw new Error('fixture sem OS');
+  const preventiva: OsDaPagina = {
+    ...osDoChamado,
+    chamadoId: null,
+    criadoPor: null,
+    preventiva: {
+      planoId: '77777777-7777-4777-8777-777777777777',
+      planoNome: 'PMOC mensal',
+      ativoId: '88888888-8888-4888-8888-888888888888',
+      dataPrevista: '2026-10-14',
+    },
+  };
+  const bloco = (idioma: IdiomaDeExibicao, os: OsDaPagina, temAtivo: boolean) =>
+    renderizar(
+      idioma,
+      <BlocoDaOs
+        os={os}
+        nomes={detalhe.nomes}
+        refs={refs}
+        codigos={null}
+        assinaturaNoAceite={false}
+        temAtivo={temAtivo}
+        aoAceitar={() => undefined}
+        aoReabrir={() => undefined}
+      />,
+    );
+
+  it.each(IDIOMAS)(
+    '%s: o bloco da preventiva concluída traz o aceite e a reabertura, sem o equipamento parado',
+    (idioma) => {
+      const m = mensagensDe(idioma);
+      const html = bloco(idioma, preventiva, false);
+      expect(html).toContain(m['corretiva.aceite.titulo']);
+      expect(html).toContain(m['corretiva.reabertura.reabrir']);
+      expect(html).not.toContain(m['corretiva.reabertura.parado']);
+      expect(html).toContain('Ana Técnica');
+    },
+  );
+
+  it('as ações de triagem da preventiva atribuída: reatribuir e cancelar; na concluída, nada', () => {
+    const acoes = (os: OsDaPagina) =>
+      renderizar(
+        'pt-BR',
+        <AcoesDaOs
+          os={os}
+          titulo="OS"
+          candidatos={null}
+          fornecedores={null}
+          aoReatribuir={() => undefined}
+          aoDefinirExecutor={() => undefined}
+          aoAjustarArrendamento={() => undefined}
+          aoCancelar={() => undefined}
+        />,
+      );
+    const atribuida = acoes({ ...preventiva, estado: 'atribuida' });
+    expect(atribuida).toContain(mensagensDe('pt-BR')['corretiva.triagem.cancelar_os']);
+    expect(atribuida).toContain(mensagensDe('pt-BR')['corretiva.triagem.reatribuir']);
+    expect(acoes({ ...preventiva, estado: 'aceita' })).toBe('');
   });
 });

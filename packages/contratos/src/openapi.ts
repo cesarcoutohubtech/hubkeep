@@ -85,6 +85,7 @@ import {
   PedidoDeReaberturaDeOs,
   PedidoDeTriagem,
   RespostaDeChamado,
+  RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
   ConsultaDaFilaDoDia,
@@ -1745,6 +1746,18 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'chamado_uh_pendente_licenca, chamado_local_inativo, chamado_descricao_invalida, chamado_ativo_fora_do_local, chamado_ativo_desativado, parada_sem_ativo, parada_invalida, uh_indisponivel_fora_de_uh, uh_indisponivel_periodo_invalido, sem_prioridade_ativa, sem_situacao_para_estado ou entrada_invalida.',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/os/{id}',
+    resumo:
+      'A OS por id, se visível a quem pede: a corretiva ou a preventiva (PV3c), que não tem chamado e traz o plano, o ativo e a data prevista. Com os nomes do hotel, do local, do ativo, do responsável e do fornecedor, e a política da assinatura no aceite.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A OS, com os nomes', esquema: RespostaDeOs },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('OS fora do escopo (os_nao_encontrada).'),
     },
   },
   {

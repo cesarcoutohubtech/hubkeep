@@ -40,6 +40,19 @@ function porta(total: number) {
           }
         : null,
     ),
+    nomesDaOs: vi.fn(async (_c, id: string) =>
+      id === 'os-visivel'
+        ? {
+            hotel: 'Hotel',
+            local: 'Casa de máquinas',
+            localTipo: 'area_comum' as const,
+            ativo: 'Chiller',
+            pessoas: {},
+            equipes: {},
+            fornecedores: {},
+          }
+        : null,
+    ),
     linhaDoTempo: vi.fn(async () => []),
   };
   return p;
@@ -112,5 +125,18 @@ describe('consultas da corretiva (C7)', () => {
     });
     expect(p.linhaDoTempo).not.toHaveBeenCalled();
     await expect(uc.linhaDoTempo(ctx, 'visivel')).resolves.toEqual([]);
+  });
+});
+
+describe('nomes da página da OS (PV3c)', () => {
+  it('os nomes da OS visível; a invisível é 404 os_nao_encontrada', async () => {
+    const uc = criarCasosDeUsoDeConsultas({ consultas: porta(0) });
+    await expect(uc.nomesDaOs(ctx, 'os-visivel')).resolves.toMatchObject({
+      local: 'Casa de máquinas',
+      ativo: 'Chiller',
+    });
+    await expect(uc.nomesDaOs(ctx, 'outra')).rejects.toMatchObject({
+      codigo: 'os_nao_encontrada',
+    });
   });
 });

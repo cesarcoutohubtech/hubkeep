@@ -18,7 +18,7 @@ import {
   ehResponsavelDoArrendamento,
   motivoDaAuditoria,
 } from '@hubkeep/dominio';
-import type { NotNull } from 'kysely';
+import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
 
 export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsultasDaCorretiva {
@@ -96,11 +96,18 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
           .leftJoin('app.equipe as e', (j) =>
             j.onRef('e.tenant_id', '=', 'o.tenant_id').onRef('e.id', '=', 'o.equipe_id'),
           )
+          .leftJoin('app.ativo as a', (j) =>
+            j.onRef('a.tenant_id', '=', 'o.tenant_id').onRef('a.id', '=', 'o.ativo_id'),
+          )
           .select([
             'o.id',
             'o.hotel_id',
             'h.nome as hotel_nome',
             'o.chamado_id',
+            'o.plano_id',
+            sql<string | null>`o.plano_aplicado->>'nome'`.as('plano_nome'),
+            sql<string | null>`o.data_prevista::text`.as('data_prevista'),
+            'a.nome as ativo_nome',
             'l.nome as local_nome',
             'c.descricao',
             'c.prioridade_id',
@@ -113,9 +120,8 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
             'o.responsavel_arrendamento',
             'o.criado_em',
           ])
-          // A lista da corretiva; a da preventiva (sem chamado) chega na PV3c.
-          .where('o.chamado_id', 'is not', null)
-          .$narrowType<{ chamado_id: NotNull }>()
+          // A corretiva e a preventiva (PV3c); com o filtro de prioridade, só
+          // a corretiva, porque a preventiva não tem chamado.
           .$if(f.hotelId !== null, (q) => q.where('o.hotel_id', '=', f.hotelId ?? ''))
           .$if(f.situacaoId !== null, (q) => q.where('o.situacao_id', '=', f.situacaoId ?? ''))
           .$if(f.prioridadeId !== null, (q) =>
@@ -133,6 +139,15 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
           hotelId: o.hotel_id,
           hotelNome: o.hotel_nome,
           chamadoId: o.chamado_id,
+          // O check os_de_um_tipo (0048) garante a cópia e a data na preventiva.
+          preventiva:
+            o.plano_id === null
+              ? null
+              : {
+                  planoNome: o.plano_nome ?? '',
+                  dataPrevista: o.data_prevista ?? '',
+                  ativoNome: o.ativo_nome,
+                },
           localNome: o.local_nome,
           descricao: o.descricao,
           prioridadeId: o.prioridade_id,
@@ -220,6 +235,68 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
           pessoas,
           equipes,
           fornecedores,
+        };
+      }),
+
+    nomesDaOs: (ctx, osId) =>
+      banco.withContext(ctx, async (tx): Promise<NomesDoChamado | null> => {
+        const o = await tx
+          .selectFrom('app.os as o')
+          .leftJoin('app.hotel as h', (j) =>
+            j.onRef('h.tenant_id', '=', 'o.tenant_id').onRef('h.id', '=', 'o.hotel_id'),
+          )
+          .leftJoin('app.local as l', (j) =>
+            j.onRef('l.tenant_id', '=', 'o.tenant_id').onRef('l.id', '=', 'o.local_id'),
+          )
+          // O ativo da ocorrência, na preventiva; na corretiva, o do chamado.
+          .leftJoin('app.chamado as c', (j) =>
+            j.onRef('c.tenant_id', '=', 'o.tenant_id').onRef('c.id', '=', 'o.chamado_id'),
+          )
+          .leftJoin('app.ativo as a', (j) =>
+            j
+              .onRef('a.tenant_id', '=', 'o.tenant_id')
+              .on((eb) => eb('a.id', '=', eb.fn.coalesce('o.ativo_id', 'c.ativo_id'))),
+          )
+          .leftJoin('app.membro as m', (j) =>
+            j.onRef('m.tenant_id', '=', 'o.tenant_id').onRef('m.usuario_id', '=', 'o.tecnico_id'),
+          )
+          .leftJoin('app.equipe as e', (j) =>
+            j.onRef('e.tenant_id', '=', 'o.tenant_id').onRef('e.id', '=', 'o.equipe_id'),
+          )
+          // Quem não lê o fornecedor (o proprietário) fica sem o nome.
+          .leftJoin('app.fornecedor as f', (j) =>
+            j.onRef('f.tenant_id', '=', 'o.tenant_id').onRef('f.id', '=', 'o.fornecedor_id'),
+          )
+          .select([
+            'h.nome as hotel',
+            'l.nome as local',
+            'l.tipo as local_tipo',
+            'a.nome as ativo',
+            'o.tecnico_id',
+            'm.nome as tecnico_nome',
+            'o.equipe_id',
+            'e.nome as equipe_nome',
+            'o.fornecedor_id',
+            'f.nome as fornecedor_nome',
+          ])
+          .where('o.id', '=', osId)
+          .executeTakeFirst();
+        if (!o) return null;
+        return {
+          hotel: o.hotel,
+          local: o.local,
+          localTipo: o.local_tipo,
+          ativo: o.ativo,
+          pessoas:
+            o.tecnico_id !== null && o.tecnico_nome !== null
+              ? { [o.tecnico_id]: o.tecnico_nome }
+              : {},
+          equipes:
+            o.equipe_id !== null && o.equipe_nome !== null ? { [o.equipe_id]: o.equipe_nome } : {},
+          fornecedores:
+            o.fornecedor_id !== null && o.fornecedor_nome !== null
+              ? { [o.fornecedor_id]: o.fornecedor_nome }
+              : {},
         };
       }),
 

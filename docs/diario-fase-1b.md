@@ -860,3 +860,23 @@ O aviso de área compartilhada com a 1c está no PR do adendo da PV3 (`claude/1b
    - ou abrir a parada no ativo sem chamado. Isso pede migração na `app.parada_ativo` (zona protegida).
 2. **Gerente que é o técnico da preventiva:** hoje ele aceita a própria OS. Na corretiva, quem abriu e executa não decide (dúvida já registrada na PV3b).
 3. **Fila do dia:** mostrar se o ativo da preventiva está parado (`paradoDesde`)? Hoje não mostra.
+
+## PV3c-2b — a OS preventiva no web: a lista e a página da OS (14/10/2026)
+
+Na branch `claude/1b-pv3c2b`, PR fora da zona protegida:
+- **Lista de OS:**
+  - a preventiva entra na lista. A coluna "Chamado" vira "OS";
+  - a linha da preventiva mostra o plano, o ativo e a data prevista, e abre `/os/{id}`;
+  - no lugar da prioridade, o selo "Preventiva". Com o filtro de prioridade, a preventiva sai, porque não tem chamado.
+- **`GET /api/v1/os/{id}`** (contrato `RespostaDeOs`, `OsDaPaginaApi`): a OS por id, corretiva ou preventiva. Traz os nomes do hotel, do local, do ativo, do responsável e do fornecedor (`nomesDaOs`) e a política da assinatura no aceite.
+- **Página `/os/{id}`:** carrega pela API no navegador. Não usa o `carregarNaPagina`, cuja lista fechada é zona protegida (ADR-039, adendo da P1c).
+  - No alto, o plano, o ativo e a data prevista; na corretiva, o caminho para o chamado.
+  - O bloco da OS é o mesmo do detalhe do chamado: checklist, códigos, aceite, reabertura sem o equipamento parado, fotos e histórico.
+  - As ações de triagem também são as mesmas: reatribuir, quem executa, arrendamento e cancelar.
+- **Refatoração sem mudar o detalhe do chamado:** `BlocoDaOs` sai de `ChamadoEmDetalhe` e `AcoesDaOs` sai de `TriagemDoChamado`. Os testes das telas do chamado continuam iguais.
+- **Testes:**
+  - aplicação: a leitura por id e os nomes;
+  - web: a linha da preventiva, o bloco, as ações e a página (`pagina-da-os.test.tsx`);
+  - db, só na CI: a lista, a leitura por id e os nomes, em `os-preventiva.test.ts`.
+
+**Próximo:** a PV3c-2c, o PWA. O técnico passa a receber a preventiva na fila (`preventiva=1`), agora que o gestor consegue aceitá-la pelo web.
