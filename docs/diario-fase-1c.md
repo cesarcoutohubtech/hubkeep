@@ -833,3 +833,12 @@ O Cesar respondeu ("Cesar aqui. Respostas:"):
 ## ADR-046 aprovado (14/10/2026)
 
 O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no `docs/03` foi trocado na branch `claude/1c-comunicacao-migracao` e entra na `main` com o PR da migração 0049. A aprovação cobre os detalhes do push registrados no ADR.
+
+### Ponto de retomada (14/10/2026, depois do merge do #272)
+- **`main`:** em `b1f70f8`, com o #272 (migração 0049, pgTAP 041, ADR-046 e ADR-045 aprovados). O dev espera o `db push` da 0049 pelo Cesar.
+- **PRs abertos da 1c:** nenhum. Nenhum PR de zona protegida da 1c na fila.
+- **Nas branches, já com a `main` e validadas (lint, typecheck e testes):**
+  1. `claude/1c-email-sla`: o PR abre quando o Cesar confirmar o `db push` da 0049.
+  2. `claude/1c-push`: o PR abre depois do merge do PR do e-mail.
+- **Esperando o Cesar:** o `db push` da 0049; apagar a branch `claude/1c-arrendado-migracao`; a conta e o DNS do SES (F0-12); as chaves VAPID, depois do deploy do push.
+- **Próxima tarefa:** o painel de indicadores (item 8), pela versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
