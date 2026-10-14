@@ -1365,14 +1365,16 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 - **Push (C4):** Web Push com chaves VAPID, só no PWA do técnico.
   - A tabela `app.inscricao_push` tem uma inscrição ativa por pessoa e aparelho; cada pessoa lê, cria e revoga só as próprias.
   - O worker envia com a biblioteca `web-push`, só no servidor, e revoga a inscrição que o serviço recusa (404 ou 410).
-  - O push leva só o título e o código do chamado.
+  - O push leva o título, o nome do hotel e o caminho da OS no PWA (`/os/<id>`), sem a descrição do chamado. O chamado não tem código curto; o caminho leva o id.
+  - A inscrição não vai para a auditoria: a própria tabela guarda a criação e a revogação.
+  - Ao sair do PWA, a inscrição do aparelho é revogada, para o próximo usuário do aparelho não receber os avisos de quem saiu.
 - **Recuperação de senha (C5):** pelo Supabase Auth, com SMTP próprio e template gerado do catálogo, sem uso novo da secret key. O bloco SMTP do `config.toml` vai num PR de zona protegida, com o `config push` do Cesar.
 - **Idioma (C6):** muda a decisão de 25/09 (ADR-022) para os avisos.
   - O aviso sai no idioma de quem recebe: a preferência do membro, depois o padrão do tenant.
   - O convite e a recuperação ficam em pt-BR, porque o template do Supabase Auth é único.
 - **Silenciar (C7):** sem preferência de canal por pessoa no MVP. O push se desliga no aparelho.
 - **Volume (C8):** um e-mail por aviso, na hora.
-  - A contagem de envios por destinatário e por dia fica disponível desde o primeiro dia do piloto, pelo índice da tabela.
+  - A contagem de envios por destinatário e por dia fica disponível desde o primeiro dia do piloto, pelo índice da tabela, uma linha por canal.
   - Acima de 30 por pessoa e por dia, abre-se o resumo agrupado.
 
 **Consequências:**
