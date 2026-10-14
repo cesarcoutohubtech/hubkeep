@@ -1,7 +1,8 @@
 // Fila do dia (F0-11; OS na C4b): as OS do técnico e das equipes dele, como
 // estão no aparelho (a última leitura da API, com o que ele fez sem rede por
 // cima; os/projecao.ts). A tela mostra o estado da rede e da fila offline, e
-// o seletor de idioma, que funciona sem rede e sincroniza quando ela volta.
+// o seletor de idioma, que funciona sem rede e sincroniza quando ela volta,
+// e os avisos neste aparelho (o push, 1c).
 // Operação recusada pelo servidor aparece aqui, com o motivo pelo código de
 // erro da API, até o técnico dispensar (ADR-025, ajuste (c)).
 import type { EstadoDaOs } from '@hubkeep/dominio';
@@ -15,6 +16,7 @@ import {
   Selo,
   type TomDeSelo,
 } from '@hubkeep/ui';
+import type { ReactNode } from 'react';
 import { useIntl } from 'react-intl';
 import type { OperacaoNaFila } from '../fila/banco';
 import { nomeDoIdioma, opcoesDeIdioma, useT } from '../i18n';
@@ -91,6 +93,8 @@ export function FilaDoDia(props: {
   aoAbrirAtivos: () => void;
   aoAbrirChamado: () => void;
   aoSair: () => void;
+  /** Os avisos neste aparelho (AvisosNoAparelho), acima do idioma. */
+  avisos?: ReactNode;
 }) {
   const t = useT();
   const intl = useIntl();
@@ -196,6 +200,7 @@ export function FilaDoDia(props: {
         </p>
       )}
 
+      {props.avisos}
       <SeletorDeIdioma idioma={props.idioma} aoTrocar={props.aoTrocarIdioma} />
     </TelaDoTecnico>
   );

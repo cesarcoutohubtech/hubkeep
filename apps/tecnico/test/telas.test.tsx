@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ProvedorDeIdioma, aplicarIdiomaNaPagina } from '../src/i18n';
+import { AvisosNoAparelho } from '../src/telas/AvisosNoAparelho';
 import { FilaDoDia } from '../src/telas/FilaDoDia';
 import { Login } from '../src/telas/Login';
 
@@ -97,5 +98,45 @@ describe('o idioma da página acompanha o idioma escolhido', () => {
     const raiz = { lang: 'pt-BR' };
     aplicarIdiomaNaPagina(PSEUDO_IDIOMA, raiz);
     expect(raiz.lang).toBe('en');
+  });
+});
+
+describe('avisos neste aparelho (1c, C4)', () => {
+  const avisos = (estado: Parameters<typeof AvisosNoAparelho>[0]['estado'], inscrito = false) => (
+    <AvisosNoAparelho
+      estado={estado}
+      inscrito={inscrito}
+      ocupado={false}
+      aoAtivar={() => undefined}
+      aoDesativar={() => undefined}
+    />
+  );
+
+  it.each(IDIOMAS)('%s: o estado e o botão saem do catálogo', (idioma) => {
+    const m = mensagensDe(idioma);
+    const inativo = renderizar(idioma, avisos('inativo'));
+    expect(inativo).toContain(m['tecnico.push.titulo']);
+    expect(inativo).toContain(m['tecnico.push.inativo']);
+    expect(inativo).toContain(m['tecnico.push.ativar']);
+    const ativo = renderizar(idioma, avisos('ativo', true));
+    expect(ativo).toContain(m['tecnico.push.ativo']);
+    expect(ativo).toContain(m['tecnico.push.desativar']);
+  });
+
+  it('sem suporte, sem push no servidor ou negado: só a explicação, sem botão', () => {
+    const m = mensagensDe('pt-BR');
+    for (const [estado, chave] of [
+      ['sem_suporte', 'tecnico.push.sem_suporte'],
+      ['indisponivel', 'tecnico.push.indisponivel'],
+      ['negado', 'tecnico.push.negado'],
+    ] as const) {
+      const html = renderizar('pt-BR', avisos(estado));
+      expect(html).toContain(m[chave]);
+      expect(html).not.toContain(m['tecnico.push.ativar']);
+    }
+    // Sem rede, o botão continua, com o aviso de que precisa de rede.
+    const semRede = renderizar('pt-BR', avisos('sem_rede', true));
+    expect(semRede).toContain(m['tecnico.push.precisa_de_rede']);
+    expect(semRede).toContain(m['tecnico.push.desativar']);
   });
 });
