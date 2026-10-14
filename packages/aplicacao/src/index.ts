@@ -34,12 +34,19 @@ export type {
 } from './casos-de-uso/eventos';
 export { criarCasosDeUsoDeComunicacao } from './casos-de-uso/comunicacao';
 export type { CasosDeUsoDeComunicacao, ContagemNoPeriodo } from './casos-de-uso/comunicacao';
+export { criarCasosDeUsoDePush } from './casos-de-uso/push';
+export type { CasosDeUsoDePush } from './casos-de-uso/push';
 export type {
   ChamadoDoAviso,
   ContagemDeEnvios,
+  EnviadorDePush,
   EnvioRegistrado,
+  InscricaoAtiva,
+  MensagemDePush,
+  OsDoAviso,
   PessoaDoEnvio,
   PortaComunicacao,
+  PortaInscricoesPush,
 } from './portas/comunicacao';
 export { CredencialInvalida, formatarCredencial, lerCredencial } from './credencial-agente';
 export type {

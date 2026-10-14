@@ -31,4 +31,6 @@ export { criarFormatador, separadorDeCsv } from './formatacao';
 export type { Formatador } from './formatacao';
 export { emailDeAvisoDeSla, emailDeConvite, escaparHtml } from './emails';
 export type { DadosDoAvisoDeSla, DadosDoConvite, Email, EmailComTexto } from './emails';
+export { pushDeAvisoDeSla, pushDeOsAtribuida } from './push';
+export type { Push } from './push';
 export { TAMANHO_MINIMO_DA_BUSCA, textoDeBusca } from './busca';
