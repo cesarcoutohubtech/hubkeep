@@ -1094,7 +1094,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-041 — Preventiva por tempo: calendário fixo e geração idempotente pelo worker
 
-**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3 (migração 0048). O adendo da PV3, no fim, aguarda aprovação do Cesar.
+**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3 (migração 0048). O adendo da PV3, no fim, aprovado pelo Cesar em 14/10/2026, no chat do agente da 1b, o segundo item com condição.
 
 **Contexto:** a PV2 e a PV3 da 1b (`docs/12`) trazem a manutenção preventiva: planos por ativo ou por categoria e a OS gerada sozinha na data prevista. Hoje a OS só nasce de chamado (`app.os.chamado_id` é `not null`), o `hk_worker` não grava OS, e a rota `/api/cron/preventiva` existe vazia, fora do `vercel.json` (B9 do `docs/11`). Rotinas legais, como o PMOC do ar-condicionado (Lei 13.589/2018), seguem datas fixas.
 
@@ -1127,9 +1127,12 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - O PWA antigo não quebra: a fila do dia só traz OS preventiva quando o pedido diz que entende (`?preventiva=1`).
 - Plano com responsável inválido (desativado ou sem papel de Técnico no hotel) não gera e aparece com a pendência na lista de planos.
 
-**Adendo da PV3 (13/10/2026, aguarda aprovação do Cesar):** dois detalhes de implementação, propostos no PR da migração 0048.
-- **Trava do hotel por advisory lock, e não por `for update skip locked`:** o `SELECT ... FOR UPDATE` nos planos pede UPDATE do `hk_worker` em `app.plano_preventivo`, que ele não tem e não precisa ter. Cada hotel abre a transação com `pg_try_advisory_xact_lock` (função do próprio Postgres, como a trava da licença), e a execução que não consegue a trava pula o hotel. O índice único continua segurando a mesma ocorrência.
+**Adendo da PV3 (13/10/2026; aprovado pelo Cesar em 14/10/2026, no chat do agente da 1b, o segundo item com condição):** dois detalhes de implementação, propostos no PR da migração 0048 (#262).
+- **Trava do hotel por advisory lock, e não por `for update skip locked`** (aprovado sem condição): o `SELECT ... FOR UPDATE` nos planos pede UPDATE do `hk_worker` em `app.plano_preventivo`, que ele não tem e não precisa ter. Cada hotel abre a transação com `pg_try_advisory_xact_lock` (função do próprio Postgres, como a trava da licença), e a execução que não consegue a trava pula o hotel. O índice único continua segurando a mesma ocorrência.
 - **Modelo de checklist desativado:** a OS preventiva copia o checklist do plano só se o modelo ainda estiver ativo, a mesma regra da triagem (`checklist_modelo_inativo`). Desativado, a OS sai sem checklist, para o calendário do plano não parar.
+  - **Condição do Cesar: a falha não pode ser silenciosa.**
+    - **Log:** a geração registra um aviso no log para cada OS que sai sem checklist, com o plano, o ativo e o modelo (`cron.preventiva.checklist_modelo_inativo`, nível `warn`), e a resposta do cron conta essas OS (`semChecklist`). Entrou no PR deste registro.
+    - **Tela:** a tela do plano mostra "modelo de checklist inativo" quando o modelo do plano está desativado. Entra na PV3c.
 
 ## ADR-042 — Calendário de SLA: prazos calculados no domínio e gravados no chamado
 
@@ -1341,7 +1344,7 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 
 ## ADR-046 — Comunicação: e-mail e push pelo outbox, com o registro dos envios
 
-**Status:** aguarda aprovação do Cesar. As decisões C1 a C9, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c ("Comunicação, C1 a C9: aprovo as suas recomendações, com dois registros"), e estão em `docs/referencia/propostas-comunicacao-1c.md`, "Decisões aprovadas".
+**Status:** aprovado por Cesar em 14/10/2026, no chat do agente da 1c ("ADR-046 aprovado"), antes de o PR da migração 0049 abrir. A aprovação cobre o texto da branch `claude/1c-comunicacao-migracao`, com os detalhes do push (o que ele leva, a inscrição fora da auditoria e a revogação na saída do PWA) e a contagem por canal. As decisões C1 a C9, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c ("Comunicação, C1 a C9: aprovo as suas recomendações, com dois registros"), e estão em `docs/referencia/propostas-comunicacao-1c.md`, "Decisões aprovadas".
 
 **Contexto:**
 - O outbox (ADR-007) já entrega os eventos de domínio pelo cron, mas só o `membro.convidado` tem manipulador.

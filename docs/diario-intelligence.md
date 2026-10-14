@@ -1864,3 +1864,24 @@ O Cesar mandou prosseguir ("Cesar aqui. Prossiga") com os pontos 3 e 4 ainda em 
   - **Kaio, no ponto 3:** a Admin não pode aceitar pela regra do aceite, então a gravação usa o Gerente.
   - **Cesar:** depois do merge, rodar `pnpm demo:historico --ambiente dev`, com a `HK_DEMO_SENHA` e a `DEV_SESSION_POOLER` no ambiente. O tempo esperado é de 15 a 30 minutos no dev, a medir.
 - **Próximo:** o volume comum do teste de carga no script (`scripts/carga/inteligencia-sintetico.sql`), decidido pelo Kaio, num PR à parte.
+
+## Volume comum no script de carga (14/10/2026)
+
+Mensagem do Cesar no chat do agente do Kaio ("Cesar aqui"), 14/10/2026:
+- aprova, da parte dele, a gravação do histórico com o aceite pelo Gerente e o job às 06:00 UTC do dia seguinte como padrão. A gravação já está na `main` (#264 e a correção #265); os pontos 3 e 4 ficam como estão no código até o "aprovo" do Kaio;
+- manda seguir com o volume comum num PR à parte, se o Kaio concordar com 20 mil ativos e 24 meses. O Kaio já concordou em 13/10 (seção "Resposta do Kaio").
+
+**O que foi feito** (PR `int:` fora da zona protegida):
+- `scripts/carga/inteligencia-sintetico.sql` ganhou cinco parâmetros opcionais: `meses`, `pausa`, `reabertura`, `uh_indisponivel` e `paradas`. Sem eles, gera o cenário base de antes, conferido de novo com os mesmos números.
+- O volume comum gerou 144.000 chamados, 718.864 transições (4,99 por OS), 20.000 ativos, 6.000 UHs, 7.200 paradas e 14.400 UHs indisponíveis.
+- O job leva de 9 a 19 s por rodada nesse volume, num Postgres descartável do contêiner (nunca o dev). Números e leitura em `docs/referencia/carga-job-inteligencia.md`, seção "Volume comum com a 1c".
+- **Para a 1c:** o comando do volume comum está no cabeçalho do script e na referência. A 1c mede o painel com ele.
+
+### Ponto de retomada (14/10/2026, volume comum)
+
+- **`main`:** com o #265, verde.
+- **Nesta branch:** o volume comum no script de carga e a medição do job. O PR abre agora.
+- **Esperando:**
+  - **Kaio, nos pontos 3 e 4:** confirmar o Gerente no aceite (a Admin não pode aceitar pela regra do aceite) e o job às 06:00 UTC (`MOMENTO_DO_JOB`).
+  - **Cesar:** rodar `pnpm demo:historico --ambiente dev`, com a `HK_DEMO_SENHA` e a `DEV_SESSION_POOLER` no ambiente; e o merge do PR do volume comum.
+- **Próximo:** a proposta de otimização do job (leitura dos chamados e gravação da métrica), só depois de o Cesar e o Kaio lerem os números.

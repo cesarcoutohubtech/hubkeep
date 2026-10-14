@@ -35,7 +35,8 @@ import type {
 } from '../portas/checklists';
 import type { PortaExecucao } from '../portas/execucao';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
-import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/triagem';
+import type { PortaTriagem } from '../portas/triagem';
+import { lerOsComOrigem } from './origem-da-os';
 
 export interface ModeloDeChecklist {
   id: string;
@@ -128,18 +129,6 @@ export function criarCasosDeUsoDeChecklists(deps: {
     ]);
     return { usuarioId: ctx.usuarioId, atribuicoes, equipes };
   };
-  const osEChamado = async (
-    ctx: Contexto,
-    osId: string,
-  ): Promise<{ os: OsGravada; chamado: ChamadoParaTriagem }> => {
-    const os = await deps.triagem.os(ctx, osId);
-    const chamado = os ? await deps.triagem.chamado(ctx, os.chamadoId) : null;
-    if (!os || !chamado) {
-      throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-    }
-    return { os, chamado };
-  };
-
   return {
     async listarModelos(ctx) {
       const [idiomaPadrao, modelos] = await Promise.all([
@@ -185,8 +174,8 @@ export function criarCasosDeUsoDeChecklists(deps: {
     },
 
     async aplicarNaOs(ctx, osId, modeloId) {
-      const { os, chamado } = await osEChamado(ctx, osId);
-      triar(await ator(ctx), chamado.hotel, deps.relogio.agora());
+      const { os } = await lerOsComOrigem(deps.triagem, ctx, osId);
+      triar(await ator(ctx), { id: os.hotelId, bandeiraId: os.bandeiraId }, deps.relogio.agora());
       const [modelos, atual] = await Promise.all([
         deps.checklists.listarModelos(ctx),
         deps.checklists.daOs(ctx, osId),
@@ -216,17 +205,17 @@ export function criarCasosDeUsoDeChecklists(deps: {
 
     async daOs(ctx, osId) {
       // A OS que quem pede não vê é 404, e não "sem checklist".
-      await osEChamado(ctx, osId);
+      await lerOsComOrigem(deps.triagem, ctx, osId);
       const c = await deps.checklists.daOs(ctx, osId);
       return c ? paraChecklistDaOs(c) : null;
     },
 
     async prepararRespostas(ctx, p) {
-      const { os, chamado } = await osEChamado(ctx, p.osId);
+      const { os, origem } = await lerOsComOrigem(deps.triagem, ctx, p.osId);
       const agora = deps.relogio.agora();
       decidirRegistro('responder_checklist', {
         ator: await ator(ctx),
-        chamado,
+        ...origem,
         os: { estado: os.estado, responsavel: os.responsavel },
         agora,
       });

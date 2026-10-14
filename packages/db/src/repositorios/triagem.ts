@@ -249,7 +249,7 @@ export async function gerarOs(
  * da OS, e o evento, ao e-mail do proprietário, quando a comunicação (item 5
  * da 1c) tiver o manipulador. Quem chama já gravou locador_avisado_em.
  */
-function avisarLocador(
+export function avisarLocador(
   uow: UnidadeDeTrabalho,
   // chamadoId nulo na OS preventiva (PV3, 0048), que não tem chamado.
   a: { osId: string; hotelId: string; chamadoId: string | null },
@@ -437,9 +437,10 @@ export async function cancelarOs(
     de: EstadoDaOs;
     situacaoId: string;
     motivo: string;
-    chamado: ReflexoNoChamado;
+    /** null na preventiva, que não tem chamado (PV3c). */
+    chamado: ReflexoNoChamado | null;
   },
-): Promise<{ versao: number; versaoDoChamado: number }> {
+): Promise<{ versao: number; versaoDoChamado: number | null }> {
   const tx = transacaoDe(uow);
   const r = await tx
     .updateTable('app.os')
@@ -462,13 +463,13 @@ export async function cancelarOs(
     de: g.de,
     para: 'cancelada',
   });
-  const chamado = await refletirNoChamado(uow, g.chamado);
+  const chamado = g.chamado ? await refletirNoChamado(uow, g.chamado) : null;
   uow.auditar({
     entidade: 'os',
     registroId: g.osId,
     acao: 'cancelar',
     hotelId: r.hotel_id,
-    depois: { motivo: g.motivo, versao: r.versao, estadoDoChamado: g.chamado.estado },
+    depois: { motivo: g.motivo, versao: r.versao, estadoDoChamado: g.chamado?.estado ?? null },
   });
   uow.publicar({
     tipo: 'os.cancelada',
@@ -476,5 +477,5 @@ export async function cancelarOs(
     registroId: g.osId,
     payload: { hotelId: r.hotel_id, chamadoId: r.chamado_id },
   });
-  return { versao: r.versao, versaoDoChamado: chamado.versao };
+  return { versao: r.versao, versaoDoChamado: chamado?.versao ?? null };
 }

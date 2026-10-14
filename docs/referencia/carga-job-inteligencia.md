@@ -62,6 +62,45 @@ O acesso ao vercel.com está bloqueado pela rede do contêiner do agente, então
 - **A memória da função:** o heap de 350 a 690 MB por rodada e o RSS que cresce entre rodadas pedem conferência na Vercel, contra a memória configurada da função.
 - **Dados reais:** a distribuição dos chamados por ativo, o número de transições por OS (reaberturas, pausas) e as paradas são sintéticos.
 
+## Volume comum com a 1c (14/10/2026)
+
+O Kaio aceitou em 13/10/2026 o volume proposto pela 1c ("Kaio aqui; aprovo [...] a decisão do volume comum"), para os dois módulos medirem com o mesmo. Registro em `docs/diario-intelligence.md`, "Resposta do Kaio (13/10/2026)". O script ganhou cinco parâmetros opcionais; sem eles, gera o cenário base de antes, conferido de novo: 73.000 chamados, 291.120 transições e 2.351 paradas.
+
+| Parâmetro | O que faz | Volume comum |
+|---|---|---|
+| `meses` | meses de histórico (o mês tem 365/12 dias); padrão 12 | 24 |
+| `pausa` | fração das OS com pausar e retomar; padrão 0 | 0,25 |
+| `reabertura` | fração das OS concluídas que são reabertas e concluídas de novo; padrão 0 | 0,25 |
+| `uh_indisponivel` | fração dos chamados com UH indisponível, sorteada entre os abertos numa UH; padrão 0 | 0,10 |
+| `paradas` | fração dos chamados com parada, sorteada entre os que citam ativo; sem ela, 5% dos que citam ativo | 0,05 |
+
+Com 500 ativos por hotel e 4,9315 chamados por dia por hotel (150 por mês), o script gerou:
+- 40 hotéis, 6.000 UHs, 20.000 ativos;
+- 144.000 chamados e OS, de 13/10/2024 a 13/10/2026;
+- 718.864 transições, 4,99 por OS;
+- 7.200 paradas (5%) e 14.400 UHs indisponíveis (10%);
+- 35.316 chamados nos últimos 180 dias, quase o mesmo do cenário base: a leitura do job é de 180 dias, então os 24 meses pesam mais no tamanho das tabelas do que nos chamados lidos.
+
+A geração levou 6 min 40 s no mesmo Postgres descartável do contêiner (agora com as 48 migrações), no mesmo banco que o cenário base.
+
+**Uma rodada do job, em ms:**
+
+| Dia | Total | Leitura dos chamados | Gravação da métrica | Cálculo | Métricas gravadas | Insights abertos / atualizados |
+|---|---:|---:|---:|---:|---:|---:|
+| 13/10 (1ª) | 18.751 | 8.845 | 7.340 | 1.900 | 20.000 | 41 / 0 |
+| 13/10 (2ª) | 8.940 | 7.428 | 0 | 1.137 | 0 | 0 / 41 |
+| 14/10 | 14.376 | 6.433 | 6.718 | 907 | 20.000 | 1 / 35 |
+| 15/10 | 17.725 | 8.066 | 8.311 | 990 | 20.000 | 2 / 31 |
+
+**Leitura:**
+- Uma rodada leva de 9 a 19 s. Com o padrão de 300 s da Vercel, fica abaixo de 7% do limite.
+- **A leitura dos chamados** levou de 6,4 a 8,8 s, de 3 a 4 vezes a do cenário base, com quase o mesmo número de chamados no período. Muda o tamanho das tabelas (o dobro dos chamados e das transições no banco, mais 5 transições por OS em vez de 4) e o banco tem os dois tenants. A causa não foi investigada.
+- **A gravação da métrica** levou de 6,7 a 8,3 s para 20 mil linhas, cerca de 4 vezes a de 10 mil linhas no cenário base. O custo não é linear, e também fica para a proposta de otimização.
+- **Os limites do `hk_worker`** ainda ficam longe: a gravação é em lotes de 500, a consulta mais lenta foi a leitura dos chamados (abaixo de 9 s, contra 30 s de `statement_timeout`), e o maior intervalo entre consultas foi o cálculo (1,9 s, contra 15 s de `idle_in_transaction_session_timeout`).
+- **Memória:** o heap usado numa rodada fica entre 400 e 490 MB, e o RSS do processo em cerca de 650 MB.
+
+A ressalva de "O que esta medição não mostra" vale aqui também: a medida que vale é no staging.
+
 ## Como repetir
 
 ```bash
@@ -72,6 +111,8 @@ pg_ctl -D /tmp/hk-carga/dados -o '-p 55432 -c listen_addresses=127.0.0.1' start
 psql -h 127.0.0.1 -p 55432 -U postgres -v tenant=0199b000-0000-7000-8000-000000000040 \
   -v hoteis=40 -v ativos_por_hotel=250 -v chamados_por_dia=5 \
   -v agora='2026-10-13 06:00:00+00' -f scripts/carga/inteligencia-sintetico.sql
+# volume comum: -v ativos_por_hotel=500 -v chamados_por_dia=4.9315 -v meses=24 \
+#   -v pausa=0.25 -v reabertura=0.25 -v uh_indisponivel=0.10 -v paradas=0.05
 psql -h 127.0.0.1 -p 55432 -U postgres -c "alter role hk_worker login password 'carga'"
 cd apps/web && HK_CARGA_URL_WORKER='postgresql://hk_worker:carga@127.0.0.1:55432/postgres' \
   HK_CARGA_TENANT=0199b000-0000-7000-8000-000000000040 HK_CARGA_DIAS=5 \

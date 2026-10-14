@@ -1208,7 +1208,7 @@ export const ROTAS: readonly Rota[] = [
         'O registro mudou desde que o aparelho o leu (conflito_de_versao, transicao_invalida, os_de_outro_responsavel, parada_ja_aberta, parada_nao_aberta, parada_de_outro_chamado); a chave não é guardada.',
       ),
       422: ERRO(
-        'Operação inválida (entrada_invalida ou o código da regra); a chave não é guardada.',
+        'Operação inválida (entrada_invalida ou o código da regra, ex.: parada_na_preventiva); a chave não é guardada.',
       ),
     },
   },
@@ -2212,7 +2212,7 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
       422: ERRO(
-        'motivo_obrigatorio, parada_sem_ativo, parada_invalida, sem_situacao_para_estado ou entrada_invalida.',
+        'motivo_obrigatorio, parada_sem_ativo, parada_na_preventiva, parada_invalida, sem_situacao_para_estado ou entrada_invalida.',
       ),
     },
   },

@@ -239,7 +239,7 @@ export type {
   SessaoDaGeracao,
 } from './portas/geracao-preventiva';
 export { criarGeracaoDePreventivas } from './casos-de-uso/geracao-preventiva';
-export type { ResultadoDaGeracao } from './casos-de-uso/geracao-preventiva';
+export type { OsSemChecklist, ResultadoDaGeracao } from './casos-de-uso/geracao-preventiva';
 export type {
   AceiteAutomaticoAGravar,
   OsParaOAceiteAutomatico,
@@ -254,8 +254,10 @@ export type {
   AssinaturaDoAceite,
   ChamadoParaTriagem,
   MudancaNoChamado,
+  OsDaCorretiva,
   OsGravada,
   PortaTriagem,
+  PreventivaDaOs,
   ReflexoNoChamado,
 } from './portas/triagem';
 export { criarCasosDeUsoDeTriagem } from './casos-de-uso/triagem';

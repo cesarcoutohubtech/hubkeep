@@ -6,6 +6,7 @@
 // PV3.
 import {
   type AcaoDoPlano,
+  type PendenciaDoPlano,
   type Atribuicao,
   type Contexto,
   NaoEncontrado,
@@ -19,6 +20,7 @@ import {
   exigirPlanoNaoEncerrado,
   exigirResponsavelParaAtivar,
   normalizarNomeDoPlano,
+  pendenciasDoPlano,
   podeGerirPlanos,
   proximaOcorrencia,
   validarAlvoDoPlano,
@@ -37,6 +39,11 @@ import type { PortaTriagem } from '../portas/triagem';
 export interface PlanoPreventivo extends PlanoGravado {
   /** A próxima data prevista a partir de hoje no fuso do hotel; null no plano encerrado. */
   proximaData: string | null;
+  /**
+   * O que a tela avisa (PV3c; adendo da PV3 ao ADR-041): o modelo de
+   * checklist desativado e o responsável que deixou de valer.
+   */
+  pendencias: PendenciaDoPlano[];
 }
 
 /** Os dados que quem cadastra manda, ainda sem validar. */
@@ -107,10 +114,29 @@ export function criarCasosDeUsoDePlanosPreventivos(deps: {
     await exigirNoHotel(ctx, hotel);
     return { plano, hotel };
   };
-  const comProxima = (hoje: string, p: PlanoGravado): PlanoPreventivo => ({
-    ...p,
-    proximaData: p.situacao === 'encerrado' ? null : proximaOcorrencia(p, hoje),
-  });
+  /** Os planos com a próxima data e as pendências, conferidas no hotel de cada um. */
+  const paraTela = async (
+    ctx: Contexto,
+    hotel: Hotel,
+    hoje: string,
+    planos: PlanoGravado[],
+  ): Promise<PlanoPreventivo[]> => {
+    const conferencia = await deps.planos.conferencia(ctx, planos);
+    const agora = deps.relogio.agora();
+    return planos.map((p) => ({
+      ...p,
+      proximaData: p.situacao === 'encerrado' ? null : proximaOcorrencia(p, hoje),
+      pendencias: pendenciasDoPlano(
+        {
+          situacao: p.situacao,
+          responsavel: conferencia.get(p.id)?.responsavel ?? null,
+          modeloAtivo: conferencia.get(p.id)?.modeloAtivo ?? null,
+        },
+        hotel,
+        agora,
+      ),
+    }));
+  };
   const hojeNo = (hotel: Hotel) => diaNoFuso(deps.relogio.agora(), hotel.fuso);
 
   /** Os dados validados, com o checklist e o responsável conferidos no hotel. */
@@ -150,15 +176,16 @@ export function criarCasosDeUsoDePlanosPreventivos(deps: {
       const hotel = await hotelVisivel(ctx, hotelId);
       const hoje = hojeNo(hotel);
       const planos = await deps.planos.doHotel(ctx, hotelId);
-      return { hoje, planos: planos.map((p) => comProxima(hoje, p)) };
+      return { hoje, planos: await paraTela(ctx, hotel, hoje, planos) };
     },
 
     async doAtivo(ctx, ativoId) {
       const ativo = await deps.planos.ativo(ctx, ativoId);
       if (!ativo) throw new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
-      const hoje = hojeNo(await hotelVisivel(ctx, ativo.hotelId));
+      const hotel = await hotelVisivel(ctx, ativo.hotelId);
+      const hoje = hojeNo(hotel);
       const planos = await deps.planos.doAtivo(ctx, ativoId);
-      return { hoje, planos: planos.map((p) => comProxima(hoje, p)) };
+      return { hoje, planos: await paraTela(ctx, hotel, hoje, planos) };
     },
 
     async criar(ctx, hotelId, p) {
