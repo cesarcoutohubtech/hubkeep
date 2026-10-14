@@ -241,8 +241,10 @@ export type {
   AssinaturaDoAceite,
   ChamadoParaTriagem,
   MudancaNoChamado,
+  OsDaCorretiva,
   OsGravada,
   PortaTriagem,
+  PreventivaDaOs,
   ReflexoNoChamado,
 } from './portas/triagem';
 export { criarCasosDeUsoDeTriagem } from './casos-de-uso/triagem';

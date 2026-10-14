@@ -254,6 +254,7 @@ export {
 } from './execucao';
 export {
   exigirAtivoNoChamado,
+  exigirChamadoParaParada,
   exigirParadaAberta,
   exigirSemParadaAberta,
   paradaAEncerrarNaConclusao,
