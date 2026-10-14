@@ -1230,6 +1230,7 @@ const extrasDaOs = [
   'plano_id',
   'ativo_id',
   sql<string | null>`data_prevista::text`.as('data_prevista'),
+  sql<string | null>`plano_aplicado->>'nome'`.as('plano_nome'),
   sql<string | null>`(select h.bandeira_id from app.hotel h where h.id = app.os.hotel_id)`.as(
     'bandeira_id',
   ),
@@ -1243,6 +1244,7 @@ function paraOs<C extends string | null, A extends string | null>(o: {
   plano_id: string | null;
   ativo_id: string | null;
   data_prevista: string | null;
+  plano_nome: string | null;
   estado: string;
   situacao_id: string;
   tecnico_id: string | null;
@@ -1270,7 +1272,12 @@ function paraOs<C extends string | null, A extends string | null>(o: {
     // O check os_de_um_tipo (0048) garante plano, ativo e data juntos na preventiva.
     preventiva:
       o.plano_id !== null && o.ativo_id !== null && o.data_prevista !== null
-        ? { planoId: o.plano_id, ativoId: o.ativo_id, dataPrevista: o.data_prevista }
+        ? {
+            planoId: o.plano_id,
+            planoNome: o.plano_nome ?? '',
+            ativoId: o.ativo_id,
+            dataPrevista: o.data_prevista,
+          }
         : null,
     estado: o.estado as EstadoDaOs,
     situacaoId: o.situacao_id,
