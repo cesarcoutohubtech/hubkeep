@@ -267,7 +267,7 @@ describe('criarGeracaoDePreventivas', () => {
       geradas: [],
       modelos: { 'm-ativo': modelo('m-ativo', true), 'm-inativo': modelo('m-inativo', false) },
     });
-    await rodar();
+    const r = await rodar();
     expect(gravadas.map((g) => [g.planoId, g.checklist])).toEqual([
       [
         'p-ativo',
@@ -275,6 +275,11 @@ describe('criarGeracaoDePreventivas', () => {
       ],
       ['p-inativo', null],
       ['p-sumiu', null],
+    ]);
+    // A OS sem checklist não é silenciosa: volta no resultado, para o aviso no log.
+    expect(r.semChecklist).toEqual([
+      { hotelId: 'sp', planoId: 'p-inativo', ativoId: 'a2', modeloId: 'm-inativo' },
+      { hotelId: 'sp', planoId: 'p-sumiu', ativoId: 'a3', modeloId: 'm-sumiu' },
     ]);
   });
 
