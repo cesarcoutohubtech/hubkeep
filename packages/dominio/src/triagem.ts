@@ -165,11 +165,11 @@ export function podeInformarImpacto(
  */
 export function podeAjustarQuemExecuta(
   ator: AtorDaCorretiva,
-  chamado: ChamadoParaRegra,
+  origem: Pick<ChamadoParaRegra, 'hotel'>,
   estadoDaOs: EstadoDaOs,
   agora: Date,
 ): void {
-  podeTriar(ator, chamado.hotel, agora);
+  podeTriar(ator, origem.hotel, agora);
   if (!ESTADOS_COM_EXECUTOR_AJUSTAVEL.includes(estadoDaOs)) {
     throw new Conflito('transicao_invalida', 'A ação não vale no estado atual.', {
       acao: 'definir_executor',

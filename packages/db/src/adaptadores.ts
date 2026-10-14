@@ -74,6 +74,7 @@ import {
 import { sessaoDoMonitorDeSla } from './repositorios/monitor-sla';
 import { sessaoDoAceiteAutomatico } from './repositorios/aceite-automatico';
 import { hoteisParaGerar, sessaoDaGeracao } from './repositorios/geracao-preventiva';
+import { responsaveisDosPlanos } from './responsaveis-do-plano';
 import { paraAtribuicao, selecionarAtribuicoes as selecionar } from './atribuicoes';
 import {
   ehMembro,
@@ -958,6 +959,33 @@ export function criarPortaPlanosPreventivos(banco: AcessoBanco): PortaPlanosPrev
             .where('ativa', '=', true)
             .executeTakeFirst()) !== undefined,
       ),
+    conferencia: (ctx, planos) =>
+      banco.withContext(ctx, async (tx) => {
+        const responsaveis = await responsaveisDosPlanos(
+          tx,
+          planos.map((p) => ({ id: p.id, tecnico_id: p.tecnicoId, equipe_id: p.equipeId })),
+        );
+        const ids = [
+          ...new Set(planos.flatMap((p) => (p.checklistModeloId ? [p.checklistModeloId] : []))),
+        ];
+        const modelos =
+          ids.length === 0
+            ? []
+            : await tx
+                .selectFrom('app.checklist_modelo')
+                .select(['id', 'ativa'])
+                .where('id', 'in', ids)
+                .execute();
+        return new Map(
+          planos.map((p) => [
+            p.id,
+            {
+              responsavel: responsaveis.get(p.id) ?? null,
+              modeloAtivo: modelos.find((m) => m.id === p.checklistModeloId)?.ativa ?? null,
+            },
+          ]),
+        );
+      }),
     modeloDeChecklist: (ctx, id) =>
       banco.withContext(ctx, async (tx) => {
         const m = await tx
@@ -1194,10 +1222,27 @@ const COLUNAS_DA_OS = [
   'criado_em',
 ] as const;
 
-function paraOs(o: {
+/**
+ * O que a leitura da OS junta às COLUNAS_DA_OS: a bandeira do hotel (a regra
+ * de papel olha) e a preventiva (PV3), com a data prevista em texto.
+ */
+const extrasDaOs = [
+  'plano_id',
+  'ativo_id',
+  sql<string | null>`data_prevista::text`.as('data_prevista'),
+  sql<string | null>`(select h.bandeira_id from app.hotel h where h.id = app.os.hotel_id)`.as(
+    'bandeira_id',
+  ),
+] as const;
+
+function paraOs<C extends string | null, A extends string | null>(o: {
   id: string;
   hotel_id: string;
-  chamado_id: string;
+  bandeira_id: string | null;
+  chamado_id: C;
+  plano_id: string | null;
+  ativo_id: string | null;
+  data_prevista: string | null;
   estado: string;
   situacao_id: string;
   tecnico_id: string | null;
@@ -1213,14 +1258,20 @@ function paraOs(o: {
   assinatura_aceite_id: string | null;
   responsavel_arrendamento: string | null;
   locador_avisado_em: Date | null;
-  criado_por: string;
+  criado_por: A;
   versao: number;
   criado_em: Date;
-}): OsGravada {
+}): OsGravada & { chamadoId: C; criadoPor: A } {
   return {
     id: o.id,
     hotelId: o.hotel_id,
+    bandeiraId: o.bandeira_id,
     chamadoId: o.chamado_id,
+    // O check os_de_um_tipo (0048) garante plano, ativo e data juntos na preventiva.
+    preventiva:
+      o.plano_id !== null && o.ativo_id !== null && o.data_prevista !== null
+        ? { planoId: o.plano_id, ativoId: o.ativo_id, dataPrevista: o.data_prevista }
+        : null,
     estado: o.estado as EstadoDaOs,
     situacaoId: o.situacao_id,
     // O check os_um_responsavel garante exatamente um dos dois.
@@ -1345,6 +1396,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           await tx
             .selectFrom('app.os')
             .select(COLUNAS_DA_OS)
+            .select(extrasDaOs)
             .where('chamado_id', '=', chamadoId)
             .$narrowType<{ chamado_id: NotNull; criado_por: NotNull }>()
             .orderBy('criado_em')
@@ -1357,11 +1409,8 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
         const o = await tx
           .selectFrom('app.os')
           .select(COLUNAS_DA_OS)
+          .select(extrasDaOs)
           .where('id', '=', osId)
-          // A OS preventiva (PV3, sem chamado) não passa pela triagem: as
-          // ações dela chegam na PV3c. Até lá, aqui ela é 404.
-          .where('chamado_id', 'is not', null)
-          .$narrowType<{ chamado_id: NotNull; criado_por: NotNull }>()
           .executeTakeFirst();
         return o ? paraOs(o) : null;
       }),
@@ -1395,7 +1444,9 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
       ),
     dadosDoAceite: (ctx, g) =>
       banco.withContext(ctx, async (tx) => {
-        const equipes = await equipesDoUsuario(tx, g.abertoPor).execute();
+        // Na preventiva não há quem abriu: sem equipes, sem consulta.
+        const equipes =
+          g.abertoPor === null ? [] : await equipesDoUsuario(tx, g.abertoPor).execute();
         const gerentes = await tx
           .selectFrom('app.atribuicao_escopo as a')
           .innerJoin('app.membro as m', (j) =>
@@ -1501,11 +1552,19 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
       banco.withContext(ctx, async (tx) => {
         const linhas = await tx
           .selectFrom('app.os as o')
-          .innerJoin('app.chamado as c', (j) =>
+          // A corretiva traz o chamado e o local dele; a preventiva (PV3c), sem
+          // chamado, traz o local da OS e o ativo da ocorrência.
+          .leftJoin('app.chamado as c', (j) =>
             j.onRef('c.hotel_id', '=', 'o.hotel_id').onRef('c.id', '=', 'o.chamado_id'),
           )
-          .innerJoin('app.local as l', (j) =>
+          .leftJoin('app.local as l', (j) =>
             j.onRef('l.hotel_id', '=', 'c.hotel_id').onRef('l.id', '=', 'c.local_id'),
+          )
+          .leftJoin('app.local as lo', (j) =>
+            j.onRef('lo.hotel_id', '=', 'o.hotel_id').onRef('lo.id', '=', 'o.local_id'),
+          )
+          .leftJoin('app.ativo as ao', (j) =>
+            j.onRef('ao.hotel_id', '=', 'o.hotel_id').onRef('ao.id', '=', 'o.ativo_id'),
           )
           .leftJoin('app.os_checklist as k', (j) =>
             j.onRef('k.hotel_id', '=', 'o.hotel_id').onRef('k.os_id', '=', 'o.id'),
@@ -1536,6 +1595,14 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             'c.prioridade_id',
             'c.estado as chamado_estado',
             'c.ativo_id',
+            'o.plano_id',
+            sql<string | null>`o.plano_aplicado->>'nome'`.as('plano_nome'),
+            sql<string | null>`o.data_prevista::text`.as('data_prevista'),
+            'o.ativo_id as preventiva_ativo_id',
+            'ao.nome as preventiva_ativo_nome',
+            'o.local_id as os_local_id',
+            'lo.nome as os_local_nome',
+            'lo.edificacao as os_local_edificacao',
           ])
           .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
           .select(paradaDoChamado('c.hotel_id', 'c.id'))
@@ -1586,21 +1653,36 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
                   itens: o.checklist_itens,
                   respostas: o.checklist_respostas,
                 },
-          chamado: {
-            id: o.chamado_id,
-            descricao: o.descricao,
-            localId: o.local_id,
-            localNome: o.local_nome,
-            localEdificacao: o.local_edificacao,
-            prioridadeId: o.prioridade_id,
-            estado: o.chamado_estado as EstadoDoChamado,
-            ativoId: o.ativo_id,
-            paradoDesde: o.parado_desde,
-            paradaDoChamado: o.parada_do_chamado,
-            uhIndisponivelDesde: o.uh_indisponivel_desde,
-          },
-          // A OS preventiva entra com a migração da PV3 (app.os.plano_id).
-          preventiva: null,
+          chamado:
+            o.chamado_id === null
+              ? null
+              : {
+                  id: o.chamado_id,
+                  descricao: o.descricao ?? '',
+                  localId: o.local_id ?? '',
+                  localNome: o.local_nome ?? '',
+                  localEdificacao: o.local_edificacao,
+                  prioridadeId: o.prioridade_id ?? '',
+                  estado: o.chamado_estado as EstadoDoChamado,
+                  ativoId: o.ativo_id,
+                  paradoDesde: o.parado_desde,
+                  paradaDoChamado: o.parada_do_chamado,
+                  uhIndisponivelDesde: o.uh_indisponivel_desde,
+                },
+          // O check os_de_um_tipo (0048) garante plano, ativo, data e cópia na preventiva.
+          preventiva:
+            o.plano_id === null
+              ? null
+              : {
+                  planoId: o.plano_id,
+                  planoNome: o.plano_nome ?? '',
+                  dataPrevista: o.data_prevista ?? '',
+                  ativoId: o.preventiva_ativo_id ?? '',
+                  ativoNome: o.preventiva_ativo_nome ?? '',
+                  localId: o.os_local_id,
+                  localNome: o.os_local_nome ?? '',
+                  localEdificacao: o.os_local_edificacao,
+                },
         }));
       }),
   };

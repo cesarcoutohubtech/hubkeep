@@ -7,7 +7,9 @@
 // informado no aceite, e o chamado, o impacto no hóspede. Na I6, a OS guarda
 // os códigos de falha, causa e solução, sugeridos na conclusão e confirmados
 // no aceite. Na 1c (ADR-045), a OS do hotel arrendado guarda quem responde
-// por ela e a hora do aviso ao locador.
+// por ela e a hora do aviso ao locador. Na PV3c (ADR-041), a OS preventiva,
+// sem chamado, passa pelas mesmas ações: o hotel vem da OS, e o reflexo no
+// chamado e a versão do chamado ficam nulos.
 import type {
   Atribuicao,
   CodigosDaOs,
@@ -50,10 +52,23 @@ export interface ChamadoParaTriagem {
   };
 }
 
+/** A OS preventiva (PV3, ADR-041): o plano, o ativo e a data prevista da ocorrência. */
+export interface PreventivaDaOs {
+  planoId: string;
+  ativoId: string;
+  /** AAAA-MM-DD, no fuso do hotel. */
+  dataPrevista: string;
+}
+
 export interface OsGravada {
   id: string;
   hotelId: string;
-  chamadoId: string;
+  /** A bandeira do hotel da OS, que a regra de papel olha (OrigemDaOs). */
+  bandeiraId: string | null;
+  /** O chamado da corretiva; null na preventiva. */
+  chamadoId: string | null;
+  /** A preventiva; null na corretiva. */
+  preventiva: PreventivaDaOs | null;
   estado: EstadoDaOs;
   situacaoId: string;
   responsavel: Responsavel;
@@ -73,10 +88,14 @@ export interface OsGravada {
   responsavelArrendamento: ResponsavelDoArrendamento | null;
   /** A hora do aviso ao locador, que sai uma vez por OS (ADR-045). */
   locadorAvisadoEm: Date | null;
-  criadoPor: string;
+  /** Quem gerou a OS; null na preventiva, que o worker gera. */
+  criadoPor: string | null;
   versao: number;
   criadoEm: Date;
 }
+
+/** A OS da corretiva: sempre com chamado e autor (check os_de_um_tipo, 0048). */
+export type OsDaCorretiva = OsGravada & { chamadoId: string; criadoPor: string };
 
 /** O que muda no chamado, já decidido pelo domínio. */
 export interface MudancaNoChamado {
@@ -116,7 +135,7 @@ export interface AssinaturaDoAceite {
 export interface PortaTriagem {
   chamado(ctx: Contexto, chamadoId: string): Promise<ChamadoParaTriagem | null>;
   /** Todas as OS do chamado, da mais antiga para a mais nova. */
-  osDoChamado(ctx: Contexto, chamadoId: string): Promise<OsGravada[]>;
+  osDoChamado(ctx: Contexto, chamadoId: string): Promise<OsDaCorretiva[]>;
   os(ctx: Contexto, osId: string): Promise<OsGravada | null>;
   /** Atribuições da pessoa visíveis a quem pergunta (a triagem lê as de Técnico nos hotéis dela). */
   atribuicoesDe(ctx: Contexto, usuarioId: string): Promise<Atribuicao[]>;
@@ -137,10 +156,11 @@ export interface PortaTriagem {
    * Para o aceite (DadosDoAceite): as equipes ativas de quem abriu o chamado e
    * as atribuições de Gerente não revogadas, de membro ativo, que podem cobrir
    * o hotel (grupo, bandeira do hotel ou o hotel), visíveis a quem pede (0027).
+   * Na preventiva, sem quem abriu, as equipes vêm vazias.
    */
   dadosDoAceite(
     ctx: Contexto,
-    g: { hotel: { id: string; bandeiraId: string | null }; abertoPor: string },
+    g: { hotel: { id: string; bandeiraId: string | null }; abertoPor: string | null },
   ): Promise<DadosDoAceite>;
   alterarChamado(
     ctx: Contexto,
@@ -206,9 +226,10 @@ export interface PortaTriagem {
       de: EstadoDaOs;
       situacaoId: string;
       motivo: string;
-      chamado: ReflexoNoChamado;
+      /** null na preventiva, que não tem chamado. */
+      chamado: ReflexoNoChamado | null;
     },
-  ): Promise<{ versao: number; versaoDoChamado: number }>;
+  ): Promise<{ versao: number; versaoDoChamado: number | null }>;
   /**
    * Aceite (C6): a OS concluída fica aceita, e o chamado, concluído. Com o
    * custo informado (I4), a OS o guarda. Com os códigos (I6), a OS grava os
@@ -222,12 +243,13 @@ export interface PortaTriagem {
       versao: number;
       de: EstadoDaOs;
       situacaoId: string;
-      chamado: ReflexoNoChamado;
+      /** null na preventiva, que não tem chamado. */
+      chamado: ReflexoNoChamado | null;
       custoInformado: number | null;
       codigos: CodigosDaOs | null;
       assinatura: AssinaturaDoAceite | null;
     },
-  ): Promise<{ versao: number; versaoDoChamado: number }>;
+  ): Promise<{ versao: number; versaoDoChamado: number | null }>;
   /**
    * Reabertura (C6): a mesma OS volta à execução, com o motivo na OS (o
    * último) e na auditoria. Com `parada`, abre a parada do ativo no mesmo
@@ -241,8 +263,9 @@ export interface PortaTriagem {
       de: EstadoDaOs;
       situacaoId: string;
       motivo: string;
-      chamado: ReflexoNoChamado;
+      /** null na preventiva, que não tem chamado (nem parada). */
+      chamado: ReflexoNoChamado | null;
       parada: { hotelId: string; ativoId: string; inicio: Date } | null;
     },
-  ): Promise<{ versao: number; versaoDoChamado: number; paradaId: string | null }>;
+  ): Promise<{ versao: number; versaoDoChamado: number | null; paradaId: string | null }>;
 }

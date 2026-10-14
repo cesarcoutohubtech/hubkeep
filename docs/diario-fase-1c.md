@@ -883,3 +883,7 @@ Convém ligar só depois do deploy deste PR. As `os.atribuida` antigas, sem mani
 - **Próxima tarefa:**
   - na vez, abrir o PR da migração: conferir a última migração da `main`, fazer o merge da `main`, abrir o PR e assinar os eventos;
   - enquanto isso, o painel de indicadores (item 8), que segue a versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
+
+## ADR-046 aprovado (14/10/2026)
+
+O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no `docs/03` foi trocado na branch `claude/1c-comunicacao-migracao` e entra na `main` com o PR da migração 0049. A aprovação cobre os detalhes do push registrados no ADR.

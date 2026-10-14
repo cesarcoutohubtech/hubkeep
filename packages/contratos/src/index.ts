@@ -70,6 +70,7 @@ export {
   PlanoPreventivoApi,
   RespostaDePlanoAlterado,
   RespostaDePlanosPreventivos,
+  PENDENCIAS_DO_PLANO_API,
   SITUACOES_DO_PLANO_API,
   UNIDADES_DE_PERIODICIDADE_API,
 } from './planos-preventivos';

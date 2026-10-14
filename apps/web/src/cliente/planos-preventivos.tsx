@@ -36,6 +36,8 @@ export interface Plano {
   situacao: Situacao;
   versao: number;
   proximaData: string | null;
+  /** O que a tela avisa (PV3c): o modelo de checklist desativado e o responsável que deixou de valer. */
+  pendencias: ('checklist_inativo' | 'responsavel_invalido')[];
 }
 export interface Apoio {
   ativos: { id: string; nome: string; ativo: boolean }[];
@@ -395,6 +397,11 @@ export function PlanosPreventivos({
                 </span>
                 <span>{responsavel(p)}</span>
               </p>
+              {p.pendencias.map((pendencia) => (
+                <p key={pendencia} className="hk-em-linha" role="status">
+                  <Selo tom="ambar">{t('admin.preventivas.pendencia', { pendencia })}</Selo>
+                </p>
+              ))}
               {p.situacao === 'encerrado' ? null : (
                 <div className="hk-linha-de-botoes">
                   <Botao tamanho="pequeno" onClick={() => editar(p)}>

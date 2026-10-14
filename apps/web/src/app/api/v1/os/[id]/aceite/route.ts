@@ -16,5 +16,10 @@ export const POST = rota('os.aceitar', async (r) => {
   if (!id) throw new ErroHttp(404, 'os_nao_encontrada');
   const pedido = await r.corpo(PedidoDeAceiteDeOs);
   const gravado = await (await casosDeUsoDeTriagem()).aceitarOs(ctx, id, pedido);
-  return r.responder(200, RespostaDeOsGravada, { id, ...gravado });
+  return r.responder(200, RespostaDeOsGravada, {
+    id,
+    ...gravado,
+    // A preventiva não tem chamado (PV3c): a versão do chamado fica de fora.
+    versaoDoChamado: gravado.versaoDoChamado ?? undefined,
+  });
 });
