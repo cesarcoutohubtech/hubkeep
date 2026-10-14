@@ -860,3 +860,15 @@ O aviso de área compartilhada com a 1c está no PR do adendo da PV3 (`claude/1b
    - ou abrir a parada no ativo sem chamado. Isso pede migração na `app.parada_ativo` (zona protegida).
 2. **Gerente que é o técnico da preventiva:** hoje ele aceita a própria OS. Na corretiva, quem abriu e executa não decide (dúvida já registrada na PV3b).
 3. **Fila do dia:** mostrar se o ativo da preventiva está parado (`paradoDesde`)? Hoje não mostra.
+
+## PV3c-2c — a OS preventiva no PWA do técnico (14/10/2026)
+
+Na branch `claude/1b-pv3c2c`, PR fora da zona protegida. **Mergear depois do #270**, para o técnico só receber a preventiva quando o gestor já conseguir aceitá-la no web.
+- **Fila:** o PWA pede `GET /api/v1/os/do-dia?preventiva=1` e guarda a OS sem chamado (`OsGuardada = OsDoDiaApi`). O IndexedDB não muda de versão: a guardada antes da PV3c não tem o campo `preventiva` e continua sendo lida como corretiva. O PWA antigo, ainda no aparelho, não pede `preventiva=1` e não recebe a preventiva.
+- **Telas:**
+  - **Cartão da fila:** o local, o plano e o ativo (`tecnico.fila.item_preventiva`).
+  - **Tela da OS:** o local da OS, e o plano, o ativo e a data prevista (`tecnico.os.preventiva`), sem a nota da parada nem a da UH.
+- **Projeção:** na preventiva, a parada, a pergunta da parada e a da UH não existem (`paradaPossivel` devolve null), coerente com `parada_na_preventiva`. A sugestão de códigos usa o ativo da ocorrência (`ativoDaOs`).
+- **Testes:** a fila pede `preventiva=1` e guarda a preventiva; a projeção, o local e o cache antigo; a fila e a tela da OS nas quatro línguas.
+
+Com isso, a PV3c fecha, exceto o aceite automático da preventiva, que espera o acordo com a 1c.

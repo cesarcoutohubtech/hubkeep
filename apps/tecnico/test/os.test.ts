@@ -26,6 +26,7 @@ import {
   checklistFaltando,
   faltaChecklist,
   faltaFotoDepois,
+  localDaOs,
   paradaPossivel,
   perguntaDaUhNaConclusao,
   perguntaNaConclusao,
@@ -43,7 +44,10 @@ const credenciais: Credenciais = {
   tenant: () => 't1',
 };
 
-const osGuardada = (id: string, estado: OsGuardada['estado'], versao: number): OsGuardada => ({
+/** A corretiva, com chamado: os casos da parada e da UH mexem nele. */
+type OsCorretiva = OsGuardada & { chamado: NonNullable<OsGuardada['chamado']> };
+
+const osGuardada = (id: string, estado: OsGuardada['estado'], versao: number): OsCorretiva => ({
   id,
   hotelId: 'b1000000-0000-4000-8000-000000000001',
   estado,
@@ -90,7 +94,7 @@ describe('parada do ativo na projeção (C5)', () => {
       [guardada],
       [naFila('os.registrar_parada', { osId: OS1, inicio: '2026-09-29T09:00:00.000Z', fim: null })],
     );
-    expect(parada?.chamado.paradoDesde).toBe('2026-09-29T09:00:00.000Z');
+    expect(parada?.chamado?.paradoDesde).toBe('2026-09-29T09:00:00.000Z');
     expect(parada).toMatchObject({ versao: 2, pendentes: 1 });
     expect(parada && paradaPossivel(parada)).toBe('encerrar');
     const [voltou] = projetarOs(
@@ -100,7 +104,7 @@ describe('parada do ativo na projeção (C5)', () => {
         naFila('os.encerrar_parada', { osId: OS1, fim: '2026-09-29T10:00:00.000Z' }),
       ],
     );
-    expect(voltou?.chamado.paradoDesde).toBeNull();
+    expect(voltou?.chamado?.paradoDesde).toBeNull();
     expect(voltou && paradaPossivel(voltou)).toBe('registrar');
   });
 
@@ -110,7 +114,7 @@ describe('parada do ativo na projeção (C5)', () => {
       [{ ...guardada, chamado: { ...guardada.chamado, paradoDesde: '2026-09-29T07:00:00.000Z' } }],
       [],
     );
-    expect(os?.chamado.paradoDesde).toBe('2026-09-29T07:00:00.000Z');
+    expect(os?.chamado?.paradoDesde).toBe('2026-09-29T07:00:00.000Z');
     expect(os && paradaPossivel(os)).toBeNull();
     expect(os && perguntaNaConclusao(os)).toBe(false);
   });
@@ -136,10 +140,10 @@ describe('parada do ativo na projeção (C5)', () => {
       });
     const [voltou] = projetarOs([parada], [concluir(true)]);
     expect(voltou).toMatchObject({ estado: 'concluida', versao: 3 });
-    expect(voltou?.chamado.paradoDesde).toBeNull();
+    expect(voltou?.chamado?.paradoDesde).toBeNull();
     const [naoVoltou] = projetarOs([parada], [concluir(false)]);
     expect(naoVoltou?.estado).toBe('concluida');
-    expect(naoVoltou?.chamado.paradoDesde).toBe('2026-09-29T07:00:00.000Z');
+    expect(naoVoltou?.chamado?.paradoDesde).toBe('2026-09-29T07:00:00.000Z');
   });
 
   it('concluir com a UH indisponível (I4): liberada encerra junto, não liberada mantém', () => {
@@ -159,9 +163,9 @@ describe('parada do ativo na projeção (C5)', () => {
       });
     const [liberada] = projetarOs([indisponivel], [concluir(true)]);
     expect(liberada).toMatchObject({ estado: 'concluida', versao: 3 });
-    expect(liberada?.chamado.uhIndisponivelDesde).toBeNull();
+    expect(liberada?.chamado?.uhIndisponivelDesde).toBeNull();
     const [naoLiberada] = projetarOs([indisponivel], [concluir(false)]);
-    expect(naoLiberada?.chamado.uhIndisponivelDesde).toBe('2026-09-29T07:00:00.000Z');
+    expect(naoLiberada?.chamado?.uhIndisponivelDesde).toBe('2026-09-29T07:00:00.000Z');
     // A OS guardada antes da I4 não tem o campo e não pergunta.
     const semCampo: Partial<OsGuardada['chamado']> = { ...guardada.chamado };
     delete semCampo.uhIndisponivelDesde;
@@ -180,7 +184,7 @@ describe('parada do ativo na projeção (C5)', () => {
         }),
       ],
     );
-    expect(os?.chamado.paradoDesde).toBeNull();
+    expect(os?.chamado?.paradoDesde).toBeNull();
   });
 
   it('sem ativo no chamado, ou fora de execução e pausa, nada a oferecer', () => {
@@ -281,7 +285,7 @@ describe('fila do dia no aparelho', () => {
     expect(await lerOsDoDia(credenciais, semRede)).toBeNull();
   });
 
-  it('não pede a OS preventiva (PV3) e descarta a OS sem chamado, até a tela dela existir', async () => {
+  it('pede a OS preventiva (preventiva=1) e guarda a OS sem chamado (PV3c)', async () => {
     const urls: string[] = [];
     const preventiva = {
       ...osGuardada(OS2, 'atribuida', 1),
@@ -302,9 +306,49 @@ describe('fila do dia no aparelho', () => {
       return new Response(JSON.stringify({ os: [osGuardada(OS1, 'atribuida', 1), preventiva] }));
     }) as typeof fetch;
     const lida = await lerOsDoDia(credenciais, requisitar);
-    expect(lida?.os.map((o) => o.id)).toEqual([OS1]);
+    expect(lida?.os.map((o) => o.id)).toEqual([OS1, OS2]);
+    expect(lida?.os[1]).toMatchObject({ chamado: null, preventiva: { planoNome: 'PMOC mensal' } });
     expect(urls).toHaveLength(1);
-    expect(urls[0]).not.toContain('preventiva');
+    expect(urls[0]).toContain('/api/v1/os/do-dia?preventiva=1');
+  });
+});
+
+describe('a OS preventiva no aparelho (PV3c)', () => {
+  const preventiva: OsGuardada = {
+    ...osGuardada(OS2, 'em_execucao', 3),
+    chamado: null,
+    preventiva: {
+      planoId: B,
+      planoNome: 'PMOC mensal',
+      dataPrevista: '2026-10-13',
+      ativoId: B,
+      ativoNome: 'Split',
+      localId: B,
+      localNome: 'Casa de máquinas',
+      localEdificacao: null,
+    },
+  };
+
+  it('sem parada nem UH: a projeção ignora a parada da fila, e nada pergunta na conclusão', () => {
+    const [os] = projetarOs(
+      [preventiva],
+      [
+        naFila('os.registrar_parada', { osId: OS2, inicio: '2026-10-13T09:00:00.000Z', fim: null }),
+        naFila('os.concluir', { osId: OS2, versao: 3, equipamentoVoltou: true, uhLiberada: true }),
+      ],
+    );
+    expect(os).toMatchObject({ chamado: null, estado: 'concluida', versao: 4 });
+    const naExecucao = projetarOs([preventiva], [])[0];
+    expect(naExecucao && paradaPossivel(naExecucao)).toBeNull();
+    expect(naExecucao && perguntaNaConclusao(naExecucao)).toBe(false);
+    expect(naExecucao && perguntaDaUhNaConclusao(naExecucao)).toBe(false);
+  });
+
+  it('o local: o do chamado na corretiva, o da OS na preventiva; a guardada antes da PV3c, sem o campo, é corretiva', () => {
+    expect(localDaOs(preventiva)).toEqual({ nome: 'Casa de máquinas', edificacao: null });
+    const antiga = osGuardada(OS1, 'atribuida', 1);
+    expect('preventiva' in antiga).toBe(false);
+    expect(localDaOs(antiga)).toEqual({ nome: 'UH 101', edificacao: null });
   });
 });
 
