@@ -794,4 +794,4 @@ O Cesar respondeu ("Cesar aqui. Respostas:"):
 - **O status do ADR-045** vai junto com a migração da comunicação.
 - **A branch `claude/1c-arrendado-migracao`** pode ser apagada. O proxy da sessão recusou a exclusão (`git push --delete`); fica para o Cesar apagar no GitHub.
 - **Glossário:** a versão 3 está aprovada por ele e pelo Kaio, e os termos "prazo em risco" e "prazo vencido" foram fechados no #258. O painel da 1c segue a versão 3.
-- **Enquanto a vez não chega,** seguir com o que não depende da migração: o PR 3 do arrendado ou o push. O PR 3 do arrendado já entrou (#261); o push anda numa branch a partir da branch da migração, porque grava em `app.inscricao_push`, e o PR abre depois do merge e do `db push` da 0049.
+- **Enquanto a vez não chega,** seguir com o que não depende da migração: o PR 3 do arrendado ou o push. O PR 3 do arrendado já entrou (#261); o push anda numa branch que já tem a migração, porque grava em `app.inscricao_push`, e o PR abre depois do merge e do `db push` da 0049.
