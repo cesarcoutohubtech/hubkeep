@@ -28,6 +28,16 @@ const AGORA = new Date('2026-10-14T02:30:00Z');
 function cenario(minhas: Atribuicao[] = [gerente]) {
   const planos = new Map<string, PlanoGravado>();
   const criados: NovoPlano[] = [];
+  // O que muda fora do plano depois de cadastrado: o modelo, o membro e a equipe.
+  const mundo = {
+    modeloAtivo: { m1: true, antigo: false } as Record<string, boolean>,
+    membroAtivo: { tec: true } as Record<string, boolean>,
+    equipes: {
+      e1: { hotelId: 'h1', ativa: true },
+      e2: { hotelId: 'h2', ativa: true },
+      parada: { hotelId: 'h1', ativa: false },
+    } as Record<string, { hotelId: string; ativa: boolean }>,
+  };
   let seq = 0;
   const casos = criarCasosDeUsoDePlanosPreventivos({
     planos: {
@@ -44,7 +54,29 @@ function cenario(minhas: Atribuicao[] = [gerente]) {
         })[id] ?? null,
       categoriaExiste: async (_c, id) => id === 'cat',
       modeloDeChecklist: async (_c, id) =>
-        ({ m1: { ativa: true }, antigo: { ativa: false } })[id] ?? null,
+        id in mundo.modeloAtivo ? { ativa: mundo.modeloAtivo[id] ?? false } : null,
+      conferencia: async (_c, lista) =>
+        new Map(
+          lista.map((p) => {
+            const e = p.equipeId === null ? undefined : mundo.equipes[p.equipeId];
+            const responsavel =
+              p.tecnicoId !== null
+                ? {
+                    tipo: 'tecnico' as const,
+                    usuarioId: p.tecnicoId,
+                    membroAtivo: mundo.membroAtivo[p.tecnicoId] ?? false,
+                    atribuicoes: p.tecnicoId === 'tec' ? [tecnicoDoH1] : [],
+                  }
+                : e && p.equipeId !== null
+                  ? { tipo: 'equipe' as const, equipeId: p.equipeId, ...e }
+                  : null;
+            const modeloAtivo =
+              p.checklistModeloId === null
+                ? null
+                : (mundo.modeloAtivo[p.checklistModeloId] ?? null);
+            return [p.id, { responsavel, modeloAtivo }];
+          }),
+        ),
       criar: async (_c, p) => {
         criados.push(p);
         const id = `p${++seq}`;
@@ -62,17 +94,12 @@ function cenario(minhas: Atribuicao[] = [gerente]) {
     },
     triagem: {
       atribuicoesDe: async (_c, usuarioId) => (usuarioId === 'tec' ? [tecnicoDoH1] : []),
-      equipe: async (_c, id) =>
-        ({
-          e1: { hotelId: 'h1', ativa: true },
-          e2: { hotelId: 'h2', ativa: true },
-          parada: { hotelId: 'h1', ativa: false },
-        })[id] ?? null,
+      equipe: async (_c, id) => mundo.equipes[id] ?? null,
     },
     atribuicoes: { doUsuario: async () => minhas },
     relogio: { agora: () => AGORA },
   });
-  return { casos, planos, criados };
+  return { casos, planos, criados, mundo };
 }
 
 const pedido = (p: Partial<PedidoDeNovoPlano> = {}): PedidoDeNovoPlano => ({
@@ -229,5 +256,32 @@ describe('planos preventivos: alteração e situação', () => {
     await expect(doOutro.casos.mudarSituacao(ctx, id, 1, 'encerrar')).rejects.toMatchObject({
       codigo: 'planos_fora_do_escopo',
     });
+  });
+});
+
+describe('planos preventivos: pendências na tela (PV3c)', () => {
+  it('o modelo desativado e o responsável que deixou de valer aparecem no plano, no hotel e no ativo', async () => {
+    const { casos, mundo } = cenario();
+    const comTecnico = await casos.criar(
+      ctx,
+      'h1',
+      pedido({ ativar: true, tecnicoId: 'tec', checklistModeloId: 'm1' }),
+    );
+    const comEquipe = await casos.criar(ctx, 'h1', pedido({ ativar: true, equipeId: 'e1' }));
+    const pendencias = async () =>
+      Object.fromEntries((await casos.doHotel(ctx, 'h1')).planos.map((p) => [p.id, p.pendencias]));
+    expect(await pendencias()).toEqual({ [comTecnico.id]: [], [comEquipe.id]: [] });
+
+    mundo.modeloAtivo.m1 = false;
+    mundo.membroAtivo.tec = false;
+    mundo.equipes.e1 = { hotelId: 'h1', ativa: false };
+    expect(await pendencias()).toEqual({
+      [comTecnico.id]: ['checklist_inativo', 'responsavel_invalido'],
+      [comEquipe.id]: ['responsavel_invalido'],
+    });
+    expect((await casos.doAtivo(ctx, 'a1')).planos.map((p) => p.pendencias)).toEqual([
+      ['checklist_inativo', 'responsavel_invalido'],
+      ['responsavel_invalido'],
+    ]);
   });
 });

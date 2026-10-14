@@ -861,6 +861,58 @@ O aviso de área compartilhada com a 1c está no PR do adendo da PV3 (`claude/1b
 2. **Gerente que é o técnico da preventiva:** hoje ele aceita a própria OS. Na corretiva, quem abriu e executa não decide (dúvida já registrada na PV3b).
 3. **Fila do dia:** mostrar se o ativo da preventiva está parado (`paradoDesde`)? Hoje não mostra.
 
+## PV3c-2a — as pendências do plano preventivo na tela (14/10/2026)
+
+A condição do Cesar no adendo da PV3 ao ADR-041 pede que a falha não seja silenciosa. O aviso no log entrou no #266. Este PR traz a tela, na branch `claude/1b-pv3c2`:
+- **Domínio:** `pendenciasDoPlano`, com dois avisos.
+  - `checklist_inativo`: o modelo do plano foi desativado, e a OS sai sem checklist.
+  - `responsavel_invalido`: o responsável padrão deixou de valer, pela mesma regra da geração (`responsavelQueVale`), e o plano não gera OS.
+  - O plano encerrado não tem pendência. O plano sem responsável já aparece como "Sem responsável".
+- **Leitura:** `responsaveisDosPlanos` (`packages/db/src/responsaveis-do-plano.ts`) lê em lote o membro ativo, as atribuições e a equipe. Serve à geração (hk_worker) e à tela (hk_app), cada um com a RLS do seu papel. A porta dos planos ganha `conferencia` (o responsável e se o modelo está ativo).
+- **Contrato:** `PlanoPreventivoApi.pendencias` (`PENDENCIAS_DO_PLANO_API`, conferida contra o domínio).
+- **Telas:** um selo âmbar por pendência na lista de planos (Preventivas) e na ficha do ativo, com o texto nas quatro línguas (`admin.preventivas.pendencia`).
+- **Testes:**
+  - domínio: `pendenciasDoPlano`;
+  - aplicação: as pendências no hotel e no ativo;
+  - web: `telas-pv2`, nas quatro línguas;
+  - db, só na CI: o modelo e o técnico desativados aparecem para o Gerente.
+
+**Próximos PRs da PV3c-2:**
+- **(b) web:** a lista de OS com a preventiva e a página `/os/{id}`, com as ações.
+- **(c) PWA:** a preventiva na fila e na tela da OS. O PWA passa a pedir `preventiva=1` só depois do (b), para o gestor conseguir aceitar pelo web o que o técnico concluir.
+
+### Pedido ao agente do Intelligence (14/10/2026)
+
+O `apps/web/test/demonstracao/gravacao-historico.test.ts` (#264, #265) passou a levar cerca de 11 minutos na integração do web.
+- **Onde:** 659 s na execução de `9719ee7` da `main`.
+- **Efeito:** o job `pgTAP (meta e isolamento)` encosta no limite, e às vezes estoura. Foram cancelados:
+  - a `main` em `a263f1a` (#265);
+  - o #268 em `2e13a14`;
+  - possivelmente a `main` em `726a4f0`.
+- **Antes:** a integração do web inteira levava menos de um minuto.
+
+O pedido é reduzir o volume da gravação nesse teste, ou levá-lo para um job próprio. Peço que a correção abra antes de outros merges, se a `main` ficar vermelha por isso.
+
+## PV3c-2b — a OS preventiva no web: a lista e a página da OS (14/10/2026)
+
+Na branch `claude/1b-pv3c2b`, PR fora da zona protegida:
+- **Lista de OS:**
+  - a preventiva entra na lista. A coluna "Chamado" vira "OS";
+  - a linha da preventiva mostra o plano, o ativo e a data prevista, e abre `/os/{id}`;
+  - no lugar da prioridade, o selo "Preventiva". Com o filtro de prioridade, a preventiva sai, porque não tem chamado.
+- **`GET /api/v1/os/{id}`** (contrato `RespostaDeOs`, `OsDaPaginaApi`): a OS por id, corretiva ou preventiva. Traz os nomes do hotel, do local, do ativo, do responsável e do fornecedor (`nomesDaOs`) e a política da assinatura no aceite.
+- **Página `/os/{id}`:** carrega pela API no navegador. Não usa o `carregarNaPagina`, cuja lista fechada é zona protegida (ADR-039, adendo da P1c).
+  - No alto, o plano, o ativo e a data prevista; na corretiva, o caminho para o chamado.
+  - O bloco da OS é o mesmo do detalhe do chamado: checklist, códigos, aceite, reabertura sem o equipamento parado, fotos e histórico.
+  - As ações de triagem também são as mesmas: reatribuir, quem executa, arrendamento e cancelar.
+- **Refatoração sem mudar o detalhe do chamado:** `BlocoDaOs` sai de `ChamadoEmDetalhe` e `AcoesDaOs` sai de `TriagemDoChamado`. Os testes das telas do chamado continuam iguais.
+- **Testes:**
+  - aplicação: a leitura por id e os nomes;
+  - web: a linha da preventiva, o bloco, as ações e a página (`pagina-da-os.test.tsx`);
+  - db, só na CI: a lista, a leitura por id e os nomes, em `os-preventiva.test.ts`.
+
+**Próximo:** a PV3c-2c, o PWA. O técnico passa a receber a preventiva na fila (`preventiva=1`), agora que o gestor consegue aceitá-la pelo web.
+
 ## PV3c-2c — a OS preventiva no PWA do técnico (14/10/2026)
 
 Na branch `claude/1b-pv3c2c`, PR fora da zona protegida. **Mergear depois do #270**, para o técnico só receber a preventiva quando o gestor já conseguir aceitá-la no web.

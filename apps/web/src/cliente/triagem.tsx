@@ -39,6 +39,7 @@ import { type FormEvent, useState } from 'react';
 import {
   type DetalheDoChamado,
   type OsDoChamado,
+  type OsNoBloco,
   type Referencias,
   chaveDoImpacto,
   useNomes,
@@ -109,7 +110,7 @@ export function execucaoDoValor(valor: string): Execucao | null {
   return tipo === 'fornecedor' && id ? { executadoPor: 'fornecedor', fornecedorId: id } : null;
 }
 
-const valorDaExecucao = (o: OsDoChamado): string =>
+const valorDaExecucao = (o: OsNoBloco): string =>
   o.executadoPor === 'fornecedor' && o.fornecedorId
     ? `fornecedor:${o.fornecedorId}`
     : 'equipe_interna';
@@ -145,6 +146,18 @@ export function responsavelDoValor(valor: string): Responsavel | null {
 }
 
 const vale = (estados: readonly string[], estado: string) => estados.includes(estado);
+
+/** As ações de triagem que o estado da OS permite (o chamado e a preventiva, PV3c); o papel é da API. */
+export function acoesPossiveisNaOs(o: OsNoBloco) {
+  return {
+    reatribuir: vale(TRANSICOES_DA_OS.reatribuir.de, o.estado),
+    cancelar: vale(TRANSICOES_DA_OS.cancelar.de, o.estado),
+    executor: vale(ESTADOS_COM_EXECUTOR_AJUSTAVEL, o.estado),
+    // Só a OS com marca: fora do arrendado, e antes da 0047, não há o que ajustar.
+    arrendamento:
+      o.responsavelArrendamento !== null && vale(ESTADOS_COM_ARRENDAMENTO_AJUSTAVEL, o.estado),
+  };
+}
 
 /** As ações que o estado permite; o papel é conferido pela API. */
 export function acoesPossiveis(detalhe: DetalheDoChamado) {
@@ -324,7 +337,7 @@ function Geracao(props: {
 
 /** Corrigir quem executa a OS até a conclusão (I4). */
 function CorrecaoDoExecutor(props: {
-  os: OsDoChamado;
+  os: OsNoBloco;
   fornecedores: FornecedorParaEscolha[] | null;
   aoEnviar: (e: Execucao) => void;
 }) {
@@ -606,43 +619,20 @@ export function TriagemDoChamado(props: {
           </div>
         )}
         {osComAcao.map((o) => (
-          <div key={`${o.id}-${o.versao}`} className="hk-bloco">
-            <p className="hk-bloco-titulo">
-              {t('corretiva.triagem.os', {
-                situacao: nomes.situacao(o.situacaoId),
-                nome: responsavel(o),
-              })}
-            </p>
-            {a.osReatribuiveis.includes(o) && (
-              <Atribuicao
-                candidatos={props.candidatos}
-                rotulo={t('corretiva.triagem.reatribuir')}
-                aoEnviar={(r) => acoes.reatribuirOs(o, r)}
-              />
-            )}
-            {a.osComExecutorAjustavel.includes(o) && (
-              <CorrecaoDoExecutor
-                os={o}
-                fornecedores={props.fornecedores}
-                aoEnviar={(e) => acoes.definirExecutor(o, e)}
-              />
-            )}
-            {a.osComArrendamentoAjustavel.includes(o) && o.responsavelArrendamento && (
-              <AjusteDoArrendamento
-                atual={o.responsavelArrendamento}
-                aoEnviar={(r, motivo) => acoes.ajustarArrendamento(o, r, motivo)}
-              />
-            )}
-            {a.osCancelaveis.includes(o) && (
-              <>
-                <p className="hk-suave">{t('corretiva.triagem.cancelar_os_descricao')}</p>
-                <Cancelamento
-                  rotulo={t('corretiva.triagem.cancelar_os')}
-                  aoEnviar={(motivo) => acoes.cancelarOs(o, motivo)}
-                />
-              </>
-            )}
-          </div>
+          <AcoesDaOs
+            key={`${o.id}-${o.versao}`}
+            os={o}
+            titulo={t('corretiva.triagem.os', {
+              situacao: nomes.situacao(o.situacaoId),
+              nome: responsavel(o),
+            })}
+            candidatos={props.candidatos}
+            fornecedores={props.fornecedores}
+            aoReatribuir={(r) => acoes.reatribuirOs(o, r)}
+            aoDefinirExecutor={(e) => acoes.definirExecutor(o, e)}
+            aoAjustarArrendamento={(r, motivo) => acoes.ajustarArrendamento(o, r, motivo)}
+            aoCancelar={(motivo) => acoes.cancelarOs(o, motivo)}
+          />
         ))}
         {a.cancelarChamado && (
           <div className="hk-bloco">
@@ -656,5 +646,57 @@ export function TriagemDoChamado(props: {
         )}
       </div>
     </Painel>
+  );
+}
+
+/**
+ * As ações de triagem numa OS, pelo estado dela: reatribuir, corrigir quem
+ * executa, ajustar o arrendamento e cancelar. O detalhe do chamado mostra uma
+ * por OS; a página da OS (PV3c), a da OS preventiva. Nada a fazer: nada.
+ */
+export function AcoesDaOs(props: {
+  os: OsNoBloco;
+  titulo: string;
+  candidatos: CandidatosAResponsavel | null;
+  fornecedores: FornecedorParaEscolha[] | null;
+  aoReatribuir: (r: Responsavel) => void;
+  aoDefinirExecutor: (e: Execucao) => void;
+  aoAjustarArrendamento: (r: ResponsavelDoArrendamento, motivo: string) => void;
+  aoCancelar: (motivo: string) => void;
+}) {
+  const t = useT();
+  const o = props.os;
+  const a = acoesPossiveisNaOs(o);
+  if (!a.reatribuir && !a.cancelar && !a.executor && !a.arrendamento) return null;
+  return (
+    <div className="hk-bloco">
+      <p className="hk-bloco-titulo">{props.titulo}</p>
+      {a.reatribuir && (
+        <Atribuicao
+          candidatos={props.candidatos}
+          rotulo={t('corretiva.triagem.reatribuir')}
+          aoEnviar={props.aoReatribuir}
+        />
+      )}
+      {a.executor && (
+        <CorrecaoDoExecutor
+          os={o}
+          fornecedores={props.fornecedores}
+          aoEnviar={props.aoDefinirExecutor}
+        />
+      )}
+      {a.arrendamento && o.responsavelArrendamento && (
+        <AjusteDoArrendamento
+          atual={o.responsavelArrendamento}
+          aoEnviar={props.aoAjustarArrendamento}
+        />
+      )}
+      {a.cancelar && (
+        <>
+          <p className="hk-suave">{t('corretiva.triagem.cancelar_os_descricao')}</p>
+          <Cancelamento rotulo={t('corretiva.triagem.cancelar_os')} aoEnviar={props.aoCancelar} />
+        </>
+      )}
+    </div>
   );
 }

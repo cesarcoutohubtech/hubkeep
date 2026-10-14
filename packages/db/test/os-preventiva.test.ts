@@ -7,13 +7,15 @@
 //   - o Gerente aceita a concluída, com a versão do chamado nula, e cancela
 //     outra; a auditoria guarda o estado do chamado nulo;
 //   - a parada é recusada (parada_na_preventiva);
-//   - a OS preventiva fica fora da lista de OS de um chamado.
+//   - a lista de OS traz a preventiva, com o plano, a data e o ativo, e a
+//     leitura por id e os nomes da página da OS também (PV3c-2b).
 // A OS preventiva é gravada pelo dono (o worker é testado em
 // geracao-preventiva.test.ts), no formato do check os_de_um_tipo (0048).
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomInt, randomUUID } from 'node:crypto';
 import {
+  criarCasosDeUsoDeConsultas,
   criarCasosDeUsoDeExecucao,
   criarCasosDeUsoDeSincronizacao,
   criarCasosDeUsoDeSituacoes,
@@ -25,6 +27,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   type AcessoBanco,
   criarAcessoBanco,
+  criarPortaConsultasDaCorretiva,
   criarPortaExecucao,
   criarPortaOperacoesOffline,
   criarPortaParadas,
@@ -61,6 +64,7 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
   let triagem: ReturnType<typeof criarCasosDeUsoDeTriagem>;
   let execucao: ReturnType<typeof criarCasosDeUsoDeExecucao>;
   let sincronizacao: ReturnType<typeof criarCasosDeUsoDeSincronizacao>;
+  let consultas: ReturnType<typeof criarCasosDeUsoDeConsultas>;
   let datas = 0;
 
   /** Grava uma preventiva atribuída ao técnico, como o worker gravaria, e devolve o id. */
@@ -186,6 +190,7 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       prioridades,
       feriadosOficiais: semFeriadosOficiais,
     });
+    consultas = criarCasosDeUsoDeConsultas({ consultas: criarPortaConsultasDaCorretiva(banco) });
     sincronizacao = criarCasosDeUsoDeSincronizacao({
       operacoes: criarPortaOperacoesOffline(banco),
       ativos: {
@@ -297,5 +302,25 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
     await expect(
       execucao.prepararParada(ctx(U.tecnico), { osId, inicio: new Date(), fim: null }),
     ).rejects.toMatchObject({ codigo: 'parada_na_preventiva' });
+  });
+
+  it('a lista de OS, a leitura por id e os nomes da página trazem a preventiva', async () => {
+    const osId = await preventiva();
+    const lista = await consultas.listarOs(ctx(U.gerente), { hotelId: H1 });
+    expect(lista.itens.find((o) => o.id === osId)).toMatchObject({
+      chamadoId: null,
+      descricao: null,
+      localNome: 'Casa de máquinas',
+      preventiva: { planoNome: 'PMOC mensal', ativoNome: 'Chiller 1' },
+    });
+    await expect(triagem.os(ctx(U.gerente), osId)).resolves.toMatchObject({
+      chamadoId: null,
+      preventiva: { planoId: PLANO, planoNome: 'PMOC mensal', ativoId: ATIVO },
+    });
+    await expect(consultas.nomesDaOs(ctx(U.gerente), osId)).resolves.toMatchObject({
+      local: 'Casa de máquinas',
+      ativo: 'Chiller 1',
+      pessoas: { [U.tecnico]: 'tecnico' },
+    });
   });
 });

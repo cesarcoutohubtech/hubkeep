@@ -2,7 +2,12 @@
 // packages/db, com o contexto do usuário: a RLS mostra os planos dos hotéis
 // em que ele é da gestão ou Implantador, e só deixa gravar esses mesmos. O
 // responsável (Técnico e equipe) é conferido pela porta da triagem.
-import type { Contexto, SituacaoDoPlano, UnidadeDePeriodicidade } from '@hubkeep/dominio';
+import type {
+  Contexto,
+  ResponsavelDoPlano,
+  SituacaoDoPlano,
+  UnidadeDePeriodicidade,
+} from '@hubkeep/dominio';
 
 export interface PlanoGravado {
   id: string;
@@ -54,6 +59,15 @@ export interface PortaPlanosPreventivos {
   ativo(ctx: Contexto, ativoId: string): Promise<{ hotelId: string; ativo: boolean } | null>;
   /** A categoria do grupo existe e está ativa. */
   categoriaExiste(ctx: Contexto, categoriaId: string): Promise<boolean>;
+  /**
+   * O que as pendências da tela do plano leem (PV3c), em lote: o responsável
+   * padrão como a regra o enxerga e se o modelo de checklist está ativo (null:
+   * sem modelo, ou quem lê não o vê).
+   */
+  conferencia(
+    ctx: Contexto,
+    planos: readonly PlanoGravado[],
+  ): Promise<Map<string, { responsavel: ResponsavelDoPlano | null; modeloAtivo: boolean | null }>>;
   /** O modelo de checklist visível, e se está ativo. */
   modeloDeChecklist(ctx: Contexto, id: string): Promise<{ ativa: boolean } | null>;
   /** Na unit of work, com auditoria e evento. */

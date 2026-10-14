@@ -74,6 +74,7 @@ import {
 import { sessaoDoMonitorDeSla } from './repositorios/monitor-sla';
 import { sessaoDoAceiteAutomatico } from './repositorios/aceite-automatico';
 import { hoteisParaGerar, sessaoDaGeracao } from './repositorios/geracao-preventiva';
+import { responsaveisDosPlanos } from './responsaveis-do-plano';
 import { paraAtribuicao, selecionarAtribuicoes as selecionar } from './atribuicoes';
 import {
   ehMembro,
@@ -958,6 +959,33 @@ export function criarPortaPlanosPreventivos(banco: AcessoBanco): PortaPlanosPrev
             .where('ativa', '=', true)
             .executeTakeFirst()) !== undefined,
       ),
+    conferencia: (ctx, planos) =>
+      banco.withContext(ctx, async (tx) => {
+        const responsaveis = await responsaveisDosPlanos(
+          tx,
+          planos.map((p) => ({ id: p.id, tecnico_id: p.tecnicoId, equipe_id: p.equipeId })),
+        );
+        const ids = [
+          ...new Set(planos.flatMap((p) => (p.checklistModeloId ? [p.checklistModeloId] : []))),
+        ];
+        const modelos =
+          ids.length === 0
+            ? []
+            : await tx
+                .selectFrom('app.checklist_modelo')
+                .select(['id', 'ativa'])
+                .where('id', 'in', ids)
+                .execute();
+        return new Map(
+          planos.map((p) => [
+            p.id,
+            {
+              responsavel: responsaveis.get(p.id) ?? null,
+              modeloAtivo: modelos.find((m) => m.id === p.checklistModeloId)?.ativa ?? null,
+            },
+          ]),
+        );
+      }),
     modeloDeChecklist: (ctx, id) =>
       banco.withContext(ctx, async (tx) => {
         const m = await tx
@@ -1202,6 +1230,7 @@ const extrasDaOs = [
   'plano_id',
   'ativo_id',
   sql<string | null>`data_prevista::text`.as('data_prevista'),
+  sql<string | null>`plano_aplicado->>'nome'`.as('plano_nome'),
   sql<string | null>`(select h.bandeira_id from app.hotel h where h.id = app.os.hotel_id)`.as(
     'bandeira_id',
   ),
@@ -1215,6 +1244,7 @@ function paraOs<C extends string | null, A extends string | null>(o: {
   plano_id: string | null;
   ativo_id: string | null;
   data_prevista: string | null;
+  plano_nome: string | null;
   estado: string;
   situacao_id: string;
   tecnico_id: string | null;
@@ -1242,7 +1272,12 @@ function paraOs<C extends string | null, A extends string | null>(o: {
     // O check os_de_um_tipo (0048) garante plano, ativo e data juntos na preventiva.
     preventiva:
       o.plano_id !== null && o.ativo_id !== null && o.data_prevista !== null
-        ? { planoId: o.plano_id, ativoId: o.ativo_id, dataPrevista: o.data_prevista }
+        ? {
+            planoId: o.plano_id,
+            planoNome: o.plano_nome ?? '',
+            ativoId: o.ativo_id,
+            dataPrevista: o.data_prevista,
+          }
         : null,
     estado: o.estado as EstadoDaOs,
     situacaoId: o.situacao_id,
