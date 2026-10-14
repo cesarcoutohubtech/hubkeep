@@ -1885,3 +1885,25 @@ Mensagem do Cesar no chat do agente do Kaio ("Cesar aqui"), 14/10/2026:
   - **Kaio, nos pontos 3 e 4:** confirmar o Gerente no aceite (a Admin não pode aceitar pela regra do aceite) e o job às 06:00 UTC (`MOMENTO_DO_JOB`).
   - **Cesar:** rodar `pnpm demo:historico --ambiente dev`, com a `HK_DEMO_SENHA` e a `DEV_SESSION_POOLER` no ambiente; e o merge do PR do volume comum.
 - **Próximo:** a proposta de otimização do job (leitura dos chamados e gravação da métrica), só depois de o Cesar e o Kaio lerem os números.
+
+## Resposta à 1b: o tempo do teste da gravação na CI (14/10/2026)
+
+Resposta ao "Pedido ao agente do Intelligence (14/10/2026)", em `docs/diario-fase-1b.md`: o `gravacao-historico.test.ts` levava cerca de 11 minutos na integração do web e estourava o job do banco (20 minutos). A `main` em `d88fc2f` (#269) ficou com o job cancelado.
+
+**Correção** (PR `int:` fora da zona protegida, que abre antes de outros merges):
+- **Roteiro mínimo para o teste no banco** (`VOLUME_MINIMO`): os mesmos cenários e o mesmo ruído por ativo do roteiro curto, sem os chamados soltos (sem ativo). Cai de 1.767 para 309 chamados e de cerca de 8.850 para 1.576 operações.
+- **Medida num Postgres local limpo** (contêiner do agente, nunca o dev): a gravação leva 84 s, contra cerca de 320 s do roteiro curto. Os 8 insights abrem, nenhum fora do roteiro, com 18 decisões.
+- **O teste sem banco** confere o roteiro mínimo também: cada cenário abre o insight esperado e o ruído não abre nenhum.
+- **O que fica igual:** o roteiro curto e o completo, o comando `pnpm demo:historico` (volume completo) e o job.
+- O job próprio na CI, a outra saída do pedido, mexeria em workflow (zona protegida) e não foi preciso.
+
+**Do `pnpm demo:historico` no dev (Cesar, 14/10/2026):** as primeiras rodadas caíram com `ECONNRESET` no meio de uma transação. O log do Supavisor mostra "Client socket closed while state was busy", ou seja, a conexão foi cortada entre o notebook e o pooler, e não pelo Supabase. Depois disso o `pnpm demo:dados` passou, e a gravação seguiu até a fase das operações por dia. O resultado final fica para o Cesar mandar.
+
+### Ponto de retomada (14/10/2026, teste da gravação mais curto)
+
+- **`main`:** em `d88fc2f`, com o job do banco cancelado por tempo. **Não mergear outra coisa** antes do PR desta correção.
+- **Nesta branch:** o roteiro mínimo no teste da gravação. O PR abre agora.
+- **Esperando:**
+  - **Cesar:** o merge desta correção; o resultado final do `pnpm demo:historico --ambiente dev`.
+  - **Kaio, nos pontos 3 e 4:** confirmar o Gerente no aceite e o job às 06:00 UTC (`MOMENTO_DO_JOB`).
+- **Próximo:** registrar o tempo da gravação no dev e no `docs/piloto/`, quando o Cesar mandar o resultado; depois, a proposta de otimização do job.

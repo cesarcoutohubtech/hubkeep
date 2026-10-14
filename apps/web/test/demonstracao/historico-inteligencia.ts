@@ -127,6 +127,21 @@ export const VOLUME_CURTO: VolumeDoHistorico = {
   corretivasPorAtivoDeAreaPorAno: 1,
 };
 
+/**
+ * O volume do teste da gravação no banco da CI: os mesmos cenários, sem os
+ * chamados soltos e com pouco ruído. A gravação passa pelos casos de uso, e o
+ * roteiro curto levava cerca de 11 minutos no job do banco (pedido da 1b,
+ * 14/10/2026). O teste sem banco confere que os cenários abrem com ele.
+ */
+export const VOLUME_MINIMO: VolumeDoHistorico = {
+  hoteisPorBandeira: 3,
+  andares: 3,
+  uhsPorAndar: 6,
+  chamadosSemAtivoPorDia: 0,
+  corretivasPorAtivoPorAno: 3,
+  corretivasPorAtivoDeAreaPorAno: 1,
+};
+
 export interface OpcoesDoRoteiro {
   /** O último dia do histórico, `AAAA-MM-DD` (UTC). */
   fim: string;
