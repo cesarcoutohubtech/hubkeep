@@ -7,7 +7,9 @@
 //   - o Implantador do hotel cadastra o plano por categoria, já ativo, com a
 //     equipe (decisão 8);
 //   - o Técnico não lê nem grava plano: a regra recusa e, sem ela, a RLS
-//     também; o Gerente de outro hotel não vê o plano.
+//     também; o Gerente de outro hotel não vê o plano;
+//   - as pendências (PV3c): o modelo de checklist desativado e o técnico
+//     desativado aparecem na lista do Gerente e na do ativo.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -38,6 +40,7 @@ const ATIVO1 = randomUUID();
 const ATIVO2 = randomUUID();
 const CATEGORIA = randomUUID();
 const EQUIPE = randomUUID();
+const MODELO = randomUUID();
 const U = {
   admin: randomUUID(),
   gerente: randomUUID(),
@@ -95,6 +98,11 @@ describe.skipIf(!temBanco)('PV2 — planos preventivos', { timeout: 60_000 }, ()
       `insert into app.equipe (id, tenant_id, hotel_id, nome) values ($1, $2, $3, 'Manutenção')`,
       [EQUIPE, TENANT, H1],
     );
+    await dono.query(
+      `insert into app.checklist_modelo (id, tenant_id, categoria_id, nomes, itens, versao, ativa)
+       values ($1, $2, $3, '{"pt-BR": "Inspeção"}', '[]', 1, true)`,
+      [MODELO, TENANT, CATEGORIA],
+    );
     for (const [nome, id] of Object.entries(U)) {
       await dono.query(`insert into auth.users (id, email) values ($1, $2)`, [
         id,
@@ -140,6 +148,7 @@ describe.skipIf(!temBanco)('PV2 — planos preventivos', { timeout: 60_000 }, ()
       'app.evento_dominio',
       'app.auditoria',
       'app.plano_preventivo',
+      'app.checklist_modelo',
       'app.equipe',
       'app.ativo',
       'app.categoria_ativo',
@@ -272,5 +281,30 @@ describe.skipIf(!temBanco)('PV2 — planos preventivos', { timeout: 60_000 }, ()
     await expect(
       planos.criar(ctx(U.gerente), H1, { ...novo, ativoId: ATIVO2 }),
     ).rejects.toMatchObject({ codigo: 'plano_ativo_invalido' });
+  });
+
+  it('pendências: o modelo desativado e o técnico desativado aparecem para o Gerente (PV3c)', async () => {
+    const { id } = await planos.criar(ctx(U.gerente), H1, {
+      ...pedido,
+      nome: 'Inspeção mensal',
+      checklistModeloId: MODELO,
+      tecnicoId: U.tecnico,
+      ativoId: ATIVO1,
+      categoriaId: null,
+      ativar: true,
+    });
+    const pendencias = async () =>
+      (await planos.doHotel(ctx(U.gerente), H1)).planos.find((p) => p.id === id)?.pendencias;
+    expect(await pendencias()).toEqual([]);
+
+    await dono.query(`update app.checklist_modelo set ativa = false where id = $1`, [MODELO]);
+    await dono.query(
+      `update app.membro set ativo = false where tenant_id = $1 and usuario_id = $2`,
+      [TENANT, U.tecnico],
+    );
+    expect(await pendencias()).toEqual(['checklist_inativo', 'responsavel_invalido']);
+    expect(
+      (await planos.doAtivo(ctx(U.gerente), ATIVO1)).planos.find((p) => p.id === id)?.pendencias,
+    ).toEqual(['checklist_inativo', 'responsavel_invalido']);
   });
 });

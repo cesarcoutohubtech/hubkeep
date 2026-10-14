@@ -44,6 +44,7 @@ const plano = (p: Partial<Plano>): Plano => ({
   situacao: 'ativo',
   versao: 3,
   proximaData: '2026-10-31',
+  pendencias: [],
   ...p,
 });
 
@@ -96,6 +97,31 @@ describe('planos preventivos no web (PV2)', () => {
     expect(html).toContain('Ativar');
     expect(html.match(/Encerrar/g)?.length).toBe(2);
     expect(html).toContain('Categoria: Elevador');
+  });
+
+  it.each(IDIOMAS)(
+    '%s: as pendências do plano aparecem traduzidas (PV3c; adendo da PV3 ao ADR-041)',
+    (idioma) => {
+      const lista = {
+        hoje: '2026-10-13',
+        planos: [plano({ pendencias: ['checklist_inativo', 'responsavel_invalido'] })],
+      };
+      const html = renderizar(idioma, <PlanosPreventivos inicial={{ lista, apoio: APOIO }} />);
+      expect(html.match(/role="status"/g)?.length).toBe(2);
+      expect(html).not.toContain('admin.preventivas.');
+      expect(html).not.toContain('checklist_inativo');
+      expect(html).not.toContain('responsavel_invalido');
+    },
+  );
+
+  it('pt-BR: o texto de cada pendência', () => {
+    const lista = {
+      hoje: '2026-10-13',
+      planos: [plano({ pendencias: ['checklist_inativo', 'responsavel_invalido'] })],
+    };
+    const html = renderizar('pt-BR', <PlanosPreventivos inicial={{ lista, apoio: APOIO }} />);
+    expect(html).toContain('Modelo de checklist inativo');
+    expect(html).toContain('O responsável não atende mais este hotel');
   });
 
   it('sem planos: a mensagem de lista vazia', () => {

@@ -860,3 +860,35 @@ O aviso de área compartilhada com a 1c está no PR do adendo da PV3 (`claude/1b
    - ou abrir a parada no ativo sem chamado. Isso pede migração na `app.parada_ativo` (zona protegida).
 2. **Gerente que é o técnico da preventiva:** hoje ele aceita a própria OS. Na corretiva, quem abriu e executa não decide (dúvida já registrada na PV3b).
 3. **Fila do dia:** mostrar se o ativo da preventiva está parado (`paradoDesde`)? Hoje não mostra.
+
+## PV3c-2a — as pendências do plano preventivo na tela (14/10/2026)
+
+A condição do Cesar no adendo da PV3 ao ADR-041 pede que a falha não seja silenciosa. O aviso no log entrou no #266. Este PR traz a tela, na branch `claude/1b-pv3c2`:
+- **Domínio:** `pendenciasDoPlano`, com dois avisos.
+  - `checklist_inativo`: o modelo do plano foi desativado, e a OS sai sem checklist.
+  - `responsavel_invalido`: o responsável padrão deixou de valer, pela mesma regra da geração (`responsavelQueVale`), e o plano não gera OS.
+  - O plano encerrado não tem pendência. O plano sem responsável já aparece como "Sem responsável".
+- **Leitura:** `responsaveisDosPlanos` (`packages/db/src/responsaveis-do-plano.ts`) lê em lote o membro ativo, as atribuições e a equipe. Serve à geração (hk_worker) e à tela (hk_app), cada um com a RLS do seu papel. A porta dos planos ganha `conferencia` (o responsável e se o modelo está ativo).
+- **Contrato:** `PlanoPreventivoApi.pendencias` (`PENDENCIAS_DO_PLANO_API`, conferida contra o domínio).
+- **Telas:** um selo âmbar por pendência na lista de planos (Preventivas) e na ficha do ativo, com o texto nas quatro línguas (`admin.preventivas.pendencia`).
+- **Testes:**
+  - domínio: `pendenciasDoPlano`;
+  - aplicação: as pendências no hotel e no ativo;
+  - web: `telas-pv2`, nas quatro línguas;
+  - db, só na CI: o modelo e o técnico desativados aparecem para o Gerente.
+
+**Próximos PRs da PV3c-2:**
+- **(b) web:** a lista de OS com a preventiva e a página `/os/{id}`, com as ações.
+- **(c) PWA:** a preventiva na fila e na tela da OS. O PWA passa a pedir `preventiva=1` só depois do (b), para o gestor conseguir aceitar pelo web o que o técnico concluir.
+
+### Pedido ao agente do Intelligence (14/10/2026)
+
+O `apps/web/test/demonstracao/gravacao-historico.test.ts` (#264, #265) passou a levar cerca de 11 minutos na integração do web.
+- **Onde:** 659 s na execução de `9719ee7` da `main`.
+- **Efeito:** o job `pgTAP (meta e isolamento)` encosta no limite, e às vezes estoura. Foram cancelados:
+  - a `main` em `a263f1a` (#265);
+  - o #268 em `2e13a14`;
+  - possivelmente a `main` em `726a4f0`.
+- **Antes:** a integração do web inteira levava menos de um minuto.
+
+O pedido é reduzir o volume da gravação nesse teste, ou levá-lo para um job próprio. Peço que a correção abra antes de outros merges, se a `main` ficar vermelha por isso.

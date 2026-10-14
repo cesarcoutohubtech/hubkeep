@@ -16,6 +16,7 @@
 import type { EstadoDaOs, Responsavel } from './corretiva';
 import {
   type Periodicidade,
+  type SituacaoDoPlano,
   type UnidadeDePeriodicidade,
   ocorrenciaMaisRecenteAte,
 } from './plano-preventivo';
@@ -203,4 +204,37 @@ export function responsavelQueVale(
  */
 export function modeloParaACopia<M extends { ativa: boolean }>(modelo: M | null): M | null {
   return modelo?.ativa ? modelo : null;
+}
+
+/**
+ * O que a tela do plano avisa (PV3c; adendo da PV3 ao ADR-041), para a
+ * falha não ficar silenciosa:
+ *   - checklist_inativo: o modelo de checklist do plano foi desativado, e a
+ *     OS sai sem checklist (o calendário não para);
+ *   - responsavel_invalido: o responsável padrão não vale mais (técnico
+ *     desativado ou sem papel vigente no hotel, equipe inativa ou de outro
+ *     hotel), e o plano não gera OS (sem_responsavel).
+ * O plano encerrado não gera nada: sem pendência. O plano sem responsável já
+ * aparece como tal na tela; aqui só entra o responsável que deixou de valer.
+ */
+export const PENDENCIAS_DO_PLANO = ['checklist_inativo', 'responsavel_invalido'] as const;
+export type PendenciaDoPlano = (typeof PENDENCIAS_DO_PLANO)[number];
+
+export function pendenciasDoPlano(
+  p: {
+    situacao: SituacaoDoPlano;
+    responsavel: ResponsavelDoPlano | null;
+    /** null: o plano não tem modelo, ou quem lê não o vê (não é pendência). */
+    modeloAtivo: boolean | null;
+  },
+  hotel: { id: string; bandeiraId: string | null },
+  agora: Date,
+): PendenciaDoPlano[] {
+  if (p.situacao === 'encerrado') return [];
+  const pendencias: PendenciaDoPlano[] = [];
+  if (p.modeloAtivo === false) pendencias.push('checklist_inativo');
+  if (p.responsavel !== null && responsavelQueVale(p.responsavel, hotel, agora) === null) {
+    pendencias.push('responsavel_invalido');
+  }
+  return pendencias;
 }

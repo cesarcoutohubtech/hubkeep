@@ -7,6 +7,8 @@ import { z } from 'zod';
 export const UNIDADES_DE_PERIODICIDADE_API = ['dia', 'semana', 'mes'] as const;
 export const SITUACOES_DO_PLANO_API = ['ativo', 'pausado', 'encerrado'] as const;
 export const ACOES_DO_PLANO_API = ['ativar', 'pausar', 'encerrar'] as const;
+/** O que a tela do plano avisa (PV3c; adendo da PV3 ao ADR-041). */
+export const PENDENCIAS_DO_PLANO_API = ['checklist_inativo', 'responsavel_invalido'] as const;
 
 const Data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -30,6 +32,11 @@ export const PlanoPreventivoApi = z
     versao: z.int(),
     /** A próxima data prevista a partir de hoje no fuso do hotel; null no encerrado. */
     proximaData: Data.nullable(),
+    /**
+     * O que a tela avisa (PV3c): o modelo de checklist desativado (a OS sai
+     * sem checklist) e o responsável que deixou de valer (o plano não gera OS).
+     */
+    pendencias: z.array(z.enum(PENDENCIAS_DO_PLANO_API)),
   })
   .meta({ id: 'PlanoPreventivoApi' });
 
