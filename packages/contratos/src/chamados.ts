@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { ChecklistDaOsApi } from './checklists';
 import { CodigosDaOsApi } from './codigos-manutencao';
+import { RESPONSAVEIS_DO_ARRENDAMENTO_API } from './configuracao';
 import { ESTADOS_DA_OS_API, ESTADOS_DO_CHAMADO_API } from './situacoes';
 
 const versao = z.number().int().min(1);
@@ -97,6 +98,10 @@ export const OsApi = z
     codigos: CodigosDaOsApi,
     /** O anexo da assinatura do último aceite (I8); null: aceite sem assinatura. */
     assinaturaAceiteId: z.guid().nullable(),
+    /** Quem responde pela OS no hotel arrendado (1c, ADR-045); null: sem marca. */
+    responsavelArrendamento: z.enum(RESPONSAVEIS_DO_ARRENDAMENTO_API).nullable(),
+    /** Quando o aviso ao locador saiu, uma vez por OS (ADR-045); null: não saiu. */
+    locadorAvisadoEm: z.iso.datetime().nullable(),
     criadoPor: z.guid(),
     versao: z.int(),
     criadoEm: z.iso.datetime(),
@@ -147,6 +152,11 @@ export const ConsultaDaLista = z
   })
   .meta({ id: 'ConsultaDaLista' });
 
+/** A lista de OS tem também o filtro "do locador" (1c, ADR-045): doLocador=1. */
+export const ConsultaDaListaDeOs = ConsultaDaLista.extend({
+  doLocador: z.enum(['1']).optional(),
+}).meta({ id: 'ConsultaDaListaDeOs' });
+
 export const ChamadoResumidoApi = z
   .object({
     id: z.guid(),
@@ -187,6 +197,8 @@ export const OsResumidaApi = z
     situacaoId: z.guid(),
     responsavel: ResponsavelApi,
     responsavelNome: z.string().nullable(),
+    /** Quem responde pela OS no hotel arrendado (1c, ADR-045); null: sem marca. */
+    responsavelArrendamento: z.enum(RESPONSAVEIS_DO_ARRENDAMENTO_API).nullable(),
     criadoEm: z.iso.datetime(),
   })
   .meta({ id: 'OsResumidaApi' });
@@ -269,6 +281,15 @@ export const PedidoDeExecutorDaOs = z
     fornecedorId: z.guid().nullish(),
   })
   .meta({ id: 'PedidoDeExecutorDaOs' });
+
+/** Ajustar quem responde pela OS do hotel arrendado, com motivo, até o aceite (1c, ADR-045). */
+export const PedidoDeArrendamentoDaOs = z
+  .object({
+    versao,
+    responsavel: z.enum(RESPONSAVEIS_DO_ARRENDAMENTO_API),
+    motivo: z.string().max(2000),
+  })
+  .meta({ id: 'PedidoDeArrendamentoDaOs' });
 
 /** Corrigir o impacto no hóspede, até o aceite (I4); null: não sei. */
 export const PedidoDeImpactoNoHospede = z

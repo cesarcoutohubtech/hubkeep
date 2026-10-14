@@ -67,6 +67,8 @@ const os = (c: OsDoChamado['codigos']): OsDoChamado => ({
   custoInformado: null,
   codigos: c,
   assinaturaAceiteId: null,
+  responsavelArrendamento: null,
+  locadorAvisadoEm: null,
   criadoPor: U,
   versao: 4,
   criadoEm: '2026-10-10T12:00:00.000Z',

@@ -21,7 +21,8 @@
     "ops:config-remota": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/ler-config-remota.ts",
     "ops:provisionar": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/provisionar-cliente.ts",
     "ops:recalcular-inteligencia": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/recalcular-inteligencia.ts",
-    "demo:dados": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/dados-demonstracao.ts"
+    "demo:dados": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/dados-demonstracao.ts",
+    "demo:historico": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/historico-demonstracao.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

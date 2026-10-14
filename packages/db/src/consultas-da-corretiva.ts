@@ -15,8 +15,10 @@ import {
   type EstadoDaOs,
   type EstadoDoChamado,
   type FiltroDaLista,
+  ehResponsavelDoArrendamento,
   motivoDaAuditoria,
 } from '@hubkeep/dominio';
+import type { NotNull } from 'kysely';
 import type { AcessoBanco } from './acesso';
 
 export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsultasDaCorretiva {
@@ -108,8 +110,12 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
             'o.equipe_id',
             'm.nome as tecnico_nome',
             'e.nome as equipe_nome',
+            'o.responsavel_arrendamento',
             'o.criado_em',
           ])
+          // A lista da corretiva; a da preventiva (sem chamado) chega na PV3c.
+          .where('o.chamado_id', 'is not', null)
+          .$narrowType<{ chamado_id: NotNull }>()
           .$if(f.hotelId !== null, (q) => q.where('o.hotel_id', '=', f.hotelId ?? ''))
           .$if(f.situacaoId !== null, (q) => q.where('o.situacao_id', '=', f.situacaoId ?? ''))
           .$if(f.prioridadeId !== null, (q) =>
@@ -118,6 +124,7 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
           .$if(f.de !== null, (q) => q.where('o.criado_em', '>=', f.de ?? new Date(0)))
           .$if(f.ate !== null, (q) => q.where('o.criado_em', '<', f.ate ?? new Date(0)))
           .$if(f.depoisDe !== null, (q) => q.where('o.id', '<', f.depoisDe ?? ''))
+          .$if(f.doLocador, (q) => q.where('o.responsavel_arrendamento', '=', 'locador'))
           .orderBy('o.id', 'desc')
           .limit(limite)
           .execute();
@@ -137,6 +144,10 @@ export function criarPortaConsultasDaCorretiva(banco: AcessoBanco): PortaConsult
               ? { tipo: 'tecnico', usuarioId: o.tecnico_id }
               : { tipo: 'equipe', equipeId: o.equipe_id ?? '' },
           responsavelNome: o.tecnico_id !== null ? o.tecnico_nome : o.equipe_nome,
+          // O check os_responsavel_arrendamento_lista garante um dos dois.
+          responsavelArrendamento: ehResponsavelDoArrendamento(o.responsavel_arrendamento)
+            ? o.responsavel_arrendamento
+            : null,
           criadoEm: o.criado_em,
         }));
       }),

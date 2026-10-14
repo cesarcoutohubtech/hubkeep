@@ -110,10 +110,13 @@ export {
   valeNoNivel,
 } from './politicas';
 export {
+  ESTADOS_COM_ARRENDAMENTO_AJUSTAVEL,
   LIMITE_DA_MATRIZ,
   RESPONSAVEIS_DO_ARRENDAMENTO,
+  avisaOLocador,
   ehResponsavelDoArrendamento,
   matrizDeArrendamentoValida,
+  podeAjustarArrendamento,
   responsavelDoArrendamento,
 } from './arrendamento';
 export type { MatrizDeArrendamento, ResponsavelDoArrendamento } from './arrendamento';
@@ -357,7 +360,9 @@ export {
   ESTADOS_DA_PREVENTIVA_ABERTA,
   MOTIVOS_DE_PULO,
   copiaDoPlano,
+  modeloParaACopia,
   planejarGeracao,
+  responsavelQueVale,
 } from './geracao-preventiva';
 export type {
   AtivoParaGerar,
@@ -367,6 +372,7 @@ export type {
   PlanoParaGerar,
   PreventivaAGerar,
   PreventivaGerada,
+  ResponsavelDoPlano,
 } from './geracao-preventiva';
 export type {
   CodigoPadrao,

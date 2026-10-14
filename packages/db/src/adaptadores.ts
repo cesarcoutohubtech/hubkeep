@@ -5,6 +5,7 @@ import type {
   PortaFeriadosDoHotel,
   PortaMonitorDeSla,
   PortaAceiteAutomatico,
+  PortaGeracaoPreventiva,
   AnexoGravado,
   AtivoGravado,
   ChecklistDaOsGravado,
@@ -51,19 +52,18 @@ import type {
   PortaUhIndisponivel,
 } from '@hubkeep/aplicacao';
 import {
-  type Atribuicao,
   Conflito,
   type Contexto,
   type EstadoDaOs,
   type EstadoDoChamado,
-  type Escopo,
   type ExecutadoPor,
   type TipoDeCodigoDeManutencao,
   ehModeloContratual,
+  ehResponsavelDoArrendamento,
   ehMomentoDaFoto,
   ehMotivoDePausa,
 } from '@hubkeep/dominio';
-import { sql } from 'kysely';
+import { type NotNull, sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
 import type { Tx } from './conexao';
 import {
@@ -73,6 +73,8 @@ import {
 } from './leituras-do-hotel';
 import { sessaoDoMonitorDeSla } from './repositorios/monitor-sla';
 import { sessaoDoAceiteAutomatico } from './repositorios/aceite-automatico';
+import { hoteisParaGerar, sessaoDaGeracao } from './repositorios/geracao-preventiva';
+import { paraAtribuicao, selecionarAtribuicoes as selecionar } from './atribuicoes';
 import {
   ehMembro,
   escopoVisivel,
@@ -104,6 +106,7 @@ import { criarChamado } from './repositorios/chamados';
 import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
 import { alterarFeriadoDoHotel, criarFeriadoDoHotel } from './repositorios/feriados-do-hotel';
 import {
+  ajustarArrendamento,
   alterarChamadoNaTriagem,
   cancelarOs,
   definirQuemExecuta,
@@ -172,54 +175,19 @@ export function criarPortaAceiteAutomatico(banco: AcessoBanco): PortaAceiteAutom
   };
 }
 
-interface LinhaAtribuicao {
-  id: string;
-  usuario_id: string;
-  papel: Atribuicao['papel'];
-  escopo_tipo: Escopo['tipo'];
-  bandeira_id: string | null;
-  hotel_id: string | null;
-  proprietario_id: string | null;
-  valido_ate: Date | null;
-  revogado_em: Date | null;
+/**
+ * Geração da OS preventiva (hk_worker, 1b, PV3; ADR-041): a lista dos hotéis
+ * ativos numa leitura do tenant, e cada hotel na transação dele (decisão 13).
+ */
+export function criarPortaGeracaoPreventiva(banco: AcessoBanco): PortaGeracaoPreventiva {
+  return {
+    hoteisAtivos: (tenantId) => banco.withSistema({ tenantId }, hoteisParaGerar),
+    noHotel: (ctx, fn) =>
+      banco.executarComoSistema({ tenantId: ctx.tenantId }, (uow) =>
+        fn(sessaoDaGeracao(uow, ctx.hotelId)),
+      ),
+  };
 }
-
-function escopoDe(l: LinhaAtribuicao): Escopo {
-  // A constraint escopo_coerente garante que a coluna do tipo está preenchida.
-  switch (l.escopo_tipo) {
-    case 'grupo':
-      return { tipo: 'grupo' };
-    case 'bandeira':
-      return { tipo: 'bandeira', bandeiraId: l.bandeira_id ?? '' };
-    case 'hotel':
-      return { tipo: 'hotel', hotelId: l.hotel_id ?? '' };
-    case 'proprietario':
-      return { tipo: 'proprietario', proprietarioId: l.proprietario_id ?? '' };
-  }
-}
-
-const paraAtribuicao = (l: LinhaAtribuicao): Atribuicao => ({
-  id: l.id,
-  usuarioId: l.usuario_id,
-  papel: l.papel,
-  escopo: escopoDe(l),
-  validoAte: l.valido_ate,
-  revogadoEm: l.revogado_em,
-});
-
-const COLUNAS = [
-  'id',
-  'usuario_id',
-  'papel',
-  'escopo_tipo',
-  'bandeira_id',
-  'hotel_id',
-  'proprietario_id',
-  'valido_ate',
-  'revogado_em',
-] as const;
-
-const selecionar = (tx: Tx) => tx.selectFrom('app.atribuicao_escopo').select(COLUNAS);
 
 export function criarPortasDeAplicacao(banco: AcessoBanco): {
   hoteis: PortaHoteis;
@@ -1219,6 +1187,8 @@ const COLUNAS_DA_OS = [
   'codigo_causa_id',
   'codigo_solucao_id',
   'assinatura_aceite_id',
+  'responsavel_arrendamento',
+  'locador_avisado_em',
   'criado_por',
   'versao',
   'criado_em',
@@ -1241,6 +1211,8 @@ function paraOs(o: {
   codigo_causa_id: string | null;
   codigo_solucao_id: string | null;
   assinatura_aceite_id: string | null;
+  responsavel_arrendamento: string | null;
+  locador_avisado_em: Date | null;
   criado_por: string;
   versao: number;
   criado_em: Date;
@@ -1269,6 +1241,11 @@ function paraOs(o: {
       solucaoId: o.codigo_solucao_id,
     },
     assinaturaAceiteId: o.assinatura_aceite_id,
+    // O check os_responsavel_arrendamento_lista garante um dos RESPONSAVEIS_DO_ARRENDAMENTO.
+    responsavelArrendamento: ehResponsavelDoArrendamento(o.responsavel_arrendamento)
+      ? o.responsavel_arrendamento
+      : null,
+    locadorAvisadoEm: o.locador_avisado_em,
     criadoPor: o.criado_por,
     versao: o.versao,
     criadoEm: o.criado_em,
@@ -1309,6 +1286,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
             'c.id',
             'c.hotel_id',
             'h.bandeira_id',
+            'h.modelo_contratual',
             'c.local_id',
             'c.ativo_id',
             'c.estado',
@@ -1339,6 +1317,9 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           ? {
               id: c.id,
               hotel: { id: c.hotel_id, bandeiraId: c.bandeira_id },
+              modeloContratual: ehModeloContratual(c.modelo_contratual)
+                ? c.modelo_contratual
+                : null,
               localId: c.local_id,
               ativoId: c.ativo_id,
               estado: c.estado as EstadoDoChamado,
@@ -1365,6 +1346,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
             .selectFrom('app.os')
             .select(COLUNAS_DA_OS)
             .where('chamado_id', '=', chamadoId)
+            .$narrowType<{ chamado_id: NotNull; criado_por: NotNull }>()
             .orderBy('criado_em')
             .orderBy('id')
             .execute()
@@ -1376,6 +1358,10 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
           .selectFrom('app.os')
           .select(COLUNAS_DA_OS)
           .where('id', '=', osId)
+          // A OS preventiva (PV3, sem chamado) não passa pela triagem: as
+          // ações dela chegam na PV3c. Até lá, aqui ela é 404.
+          .where('chamado_id', 'is not', null)
+          .$narrowType<{ chamado_id: NotNull; criado_por: NotNull }>()
           .executeTakeFirst();
         return o ? paraOs(o) : null;
       }),
@@ -1446,6 +1432,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
       banco.executar(ctx, (uow) => alterarChamadoNaTriagem(uow, chamadoId, versao, mudanca)),
     gerarOs: (ctx, g) => banco.executar(ctx, (uow) => gerarOs(uow, g)),
     definirQuemExecuta: (ctx, g) => banco.executar(ctx, (uow) => definirQuemExecuta(uow, g)),
+    ajustarArrendamento: (ctx, g) => banco.executar(ctx, (uow) => ajustarArrendamento(uow, g)),
     reatribuirOs: (ctx, g) => banco.executar(ctx, (uow) => reatribuirOs(uow, g)),
     cancelarOs: (ctx, g) => banco.executar(ctx, (uow) => cancelarOs(uow, g)),
     aceitarOs: (ctx, g) => banco.executar(ctx, (uow) => aceitarOs(uow, g)),

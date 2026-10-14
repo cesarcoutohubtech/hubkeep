@@ -68,6 +68,7 @@ import {
 } from './situacoes';
 import {
   ConsultaDaLista,
+  ConsultaDaListaDeOs,
   RespostaDeLinhaDoTempo,
   RespostaDeListaDeChamados,
   RespostaDeListaDeOs,
@@ -77,6 +78,7 @@ import {
   PedidoDeAtribuicaoDeOs,
   PedidoDeAceiteDeOs,
   PedidoDeCancelamento,
+  PedidoDeArrendamentoDaOs,
   PedidoDeExecutorDaOs,
   PedidoDeGeracaoDeOs,
   PedidoDeImpactoNoHospede,
@@ -1841,9 +1843,9 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/os',
     resumo:
-      'Lista as OS no escopo de quem pede (C7), com os mesmos filtros da lista de chamados; a prioridade é a do chamado, e o período, pela data de criação da OS. Da mais nova para a mais antiga, 50 por página; a seguinte com depoisDe = proximo.',
+      'Lista as OS no escopo de quem pede (C7), com os mesmos filtros da lista de chamados; a prioridade é a do chamado, e o período, pela data de criação da OS. Com doLocador=1, só as OS marcadas como do locador no hotel arrendado (1c, ADR-045). Da mais nova para a mais antiga, 50 por página; a seguinte com depoisDe = proximo.',
     exigeTenant: true,
-    consulta: ConsultaDaLista,
+    consulta: ConsultaDaListaDeOs,
     respostas: {
       200: { descricao: 'Uma página de OS', esquema: RespostaDeListaDeOs },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
@@ -1965,6 +1967,27 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'os_fornecedor_obrigatorio, os_fornecedor_indevido, os_fornecedor_desativado ou entrada_invalida.',
       ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/os/{id}/arrendamento',
+    resumo:
+      'Ajusta quem responde pela OS do hotel arrendado (1c, ADR-045), a arrendatária ou o locador, com motivo, até o aceite. Admin do grupo, Gestor CSC ou Gerente do hotel. Leva a versão vista da OS, grava o motivo na auditoria e o evento os.arrendamento_ajustado; o primeiro ajuste para o locador grava a hora do aviso e o evento os.locador_avisado, uma vez por OS. A mesma marca não grava nada.',
+    exigeTenant: true,
+    corpo: PedidoDeArrendamentoDaOs,
+    respostas: {
+      200: {
+        descricao: 'Marca ajustada, com a versão nova da OS',
+        esquema: RespostaDeOsGravada,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora dos papéis da triagem (triagem_fora_do_papel).'),
+      404: ERRO('os_nao_encontrada.'),
+      409: ERRO(
+        'conflito_de_versao (com versaoAtual), os_sem_arrendamento (OS sem marca) ou transicao_invalida (OS aceita ou cancelada).',
+      ),
+      422: ERRO('motivo_obrigatorio ou entrada_invalida.'),
     },
   },
   {
