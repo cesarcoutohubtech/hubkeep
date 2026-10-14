@@ -63,6 +63,7 @@ import {
   acoesPossiveis,
   faltaChecklist,
   faltaFotoDepois,
+  localDaOs,
   paradaPossivel,
   perguntaDaUhNaConclusao,
   perguntaNaConclusao,
@@ -363,12 +364,7 @@ export function Os(
   return (
     <TelaDoTecnico
       titulo={t('tecnico.os.titulo')}
-      subtitulo={t('tecnico.os.local', {
-        local: nomeDoLocal(t, {
-          nome: os.chamado.localNome,
-          edificacao: os.chamado.localEdificacao,
-        }),
-      })}
+      subtitulo={t('tecnico.os.local', { local: nomeDoLocal(t, localDaOs(os)) })}
       acao={
         <Botao tamanho="pequeno" onClick={props.aoVoltar}>
           {t('comum.voltar')}
@@ -376,7 +372,20 @@ export function Os(
       }
     >
       <Painel>
-        <p className="tc-cartao-titulo">{os.chamado.descricao}</p>
+        <p className="tc-cartao-titulo">
+          {os.chamado
+            ? os.chamado.descricao
+            : t('tecnico.os.preventiva', {
+                plano: os.preventiva?.planoNome ?? '',
+                ativo: os.preventiva?.ativoNome ?? '',
+                data: os.preventiva
+                  ? intl.formatDate(new Date(`${os.preventiva.dataPrevista}T12:00:00Z`), {
+                      dateStyle: 'short',
+                      timeZone: 'UTC',
+                    })
+                  : '',
+              })}
+        </p>
         <div className="tc-cartao-rodape">
           <span data-estado={os.estado}>
             <Selo tom={TOM_DO_ESTADO[os.estado]}>{t(rotuloDoEstado(os.estado))}</Selo>
@@ -388,7 +397,7 @@ export function Os(
             {t('tecnico.os.reaberta', { motivo: os.motivoReabertura })}
           </p>
         )}
-        {os.chamado.paradoDesde && (
+        {os.chamado?.paradoDesde && (
           <p className="tc-nota" data-parado-desde={os.chamado.paradoDesde}>
             {t('tecnico.os.parada.desde', {
               quando: intl.formatDate(os.chamado.paradoDesde, {
@@ -398,7 +407,7 @@ export function Os(
             })}
           </p>
         )}
-        {os.chamado.uhIndisponivelDesde && (
+        {os.chamado?.uhIndisponivelDesde && (
           <p className="tc-nota" data-uh-indisponivel-desde={os.chamado.uhIndisponivelDesde}>
             {t('tecnico.os.uh.desde', {
               quando: intl.formatDate(os.chamado.uhIndisponivelDesde, {

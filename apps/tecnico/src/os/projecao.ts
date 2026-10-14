@@ -85,13 +85,14 @@ export function projetarOs(
     }
     if (op.tipo === 'os.registrar_parada') {
       const d = op.dados as { inicio: string; fim: string | null };
-      if (d.fim === null) {
+      // A preventiva não tem parada (parada_na_preventiva): nada a projetar.
+      if (d.fim === null && os.chamado) {
         os.chamado = { ...os.chamado, paradoDesde: d.inicio, paradaDoChamado: true };
       }
       continue;
     }
     if (op.tipo === 'os.encerrar_parada') {
-      os.chamado = { ...os.chamado, paradoDesde: null, paradaDoChamado: false };
+      if (os.chamado) os.chamado = { ...os.chamado, paradoDesde: null, paradaDoChamado: false };
       continue;
     }
     if (op.tipo === 'os.responder_checklist') {
@@ -124,10 +125,10 @@ export function projetarOs(
     if (versao === os.versao && (t.de as readonly string[]).includes(os.estado)) {
       os.estado = t.para as EstadoDaOs;
       os.versao += 1;
-      if (acao === 'concluir' && equipamentoVoltou === true && os.chamado.paradaDoChamado) {
+      if (acao === 'concluir' && equipamentoVoltou === true && os.chamado?.paradaDoChamado) {
         os.chamado = { ...os.chamado, paradoDesde: null, paradaDoChamado: false };
       }
-      if (acao === 'concluir' && uhLiberada === true) {
+      if (acao === 'concluir' && uhLiberada === true && os.chamado) {
         os.chamado = { ...os.chamado, uhIndisponivelDesde: null };
       }
     }
@@ -157,21 +158,39 @@ export const faltaFotoDepois = (os: OsNoAparelho): boolean =>
  * botão (o servidor recusaria com parada_de_outro_chamado).
  */
 export function paradaPossivel(os: OsNoAparelho): 'registrar' | 'encerrar' | null {
-  if (!aceitaRegistro(os.estado) || os.chamado.ativoId === null) return null;
+  // A preventiva não tem chamado nem parada (parada_na_preventiva, PV3c).
+  if (!os.chamado || !aceitaRegistro(os.estado) || os.chamado.ativoId === null) return null;
   if (os.chamado.paradoDesde == null) return 'registrar';
   return os.chamado.paradaDoChamado ? 'encerrar' : null;
 }
 
 /** Concluir com a parada do chamado aberta pede a resposta: o equipamento voltou? */
 export const perguntaNaConclusao = (os: OsNoAparelho): boolean =>
-  os.chamado.paradoDesde != null && os.chamado.paradaDoChamado === true;
+  os.chamado?.paradoDesde != null && os.chamado.paradaDoChamado === true;
 
 /**
  * Concluir com a UH do chamado indisponível pede a resposta: a UH foi liberada?
  * (I4). A OS guardada antes da I4 não tem o campo e não pergunta.
  */
 export const perguntaDaUhNaConclusao = (os: OsNoAparelho): boolean =>
-  os.chamado.uhIndisponivelDesde != null;
+  os.chamado?.uhIndisponivelDesde != null;
+
+/** O local da OS: o do chamado, na corretiva, ou o da OS, na preventiva (PV3c). */
+export function localDaOs(os: Pick<OsGuardada, 'chamado' | 'preventiva'>): {
+  nome: string;
+  edificacao: string | null;
+} {
+  if (os.chamado)
+    return { nome: os.chamado.localNome, edificacao: os.chamado.localEdificacao ?? null };
+  return {
+    nome: os.preventiva?.localNome ?? '',
+    edificacao: os.preventiva?.localEdificacao ?? null,
+  };
+}
+
+/** O ativo da OS: o do chamado, na corretiva, ou o da ocorrência, na preventiva (PV3c). */
+export const ativoDaOs = (os: Pick<OsGuardada, 'chamado' | 'preventiva'>): string | null =>
+  os.chamado ? os.chamado.ativoId : (os.preventiva?.ativoId ?? null);
 
 /** Os itens obrigatórios do checklist ainda sem resposta (PV1); sem checklist, nenhum. */
 export const checklistFaltando = (os: OsNoAparelho): string[] =>

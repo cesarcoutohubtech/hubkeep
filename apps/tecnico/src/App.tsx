@@ -22,7 +22,7 @@ import { useIntl } from 'react-intl';
 import { type Credenciais, criarEnvio, lerOsDoDia, lerPreferencias, lerReferencia } from './api';
 import { type FilaDeOperacoes, type OperacaoNaFila, abrirFila } from './fila/banco';
 import { type OsDoDiaDoAparelho, type OsDoDiaGuardadas, abrirOsDoDia } from './os/banco';
-import { type AcaoDoTecnico, type OsNoAparelho, projetarOs } from './os/projecao';
+import { type AcaoDoTecnico, type OsNoAparelho, ativoDaOs, projetarOs } from './os/projecao';
 import {
   type AtivoGuardado,
   type Referencia,
@@ -464,9 +464,8 @@ function Casca(props: {
   /** Os códigos da referência e a categoria do ativo do chamado, para a sugestão na conclusão (I6). */
   const codigosParaSugerir = (o: OsNoAparelho): CodigosParaSugerir | undefined => {
     if (!referencia?.codigos) return undefined;
-    const ativo = o.chamado.ativoId
-      ? referencia.ativos[o.hotelId]?.find((a) => a.id === o.chamado.ativoId)
-      : undefined;
+    const ativoId = ativoDaOs(o);
+    const ativo = ativoId ? referencia.ativos[o.hotelId]?.find((a) => a.id === ativoId) : undefined;
     return {
       lista: referencia.codigos,
       categoriaDoAtivo: ativo?.categoriaId ?? null,
