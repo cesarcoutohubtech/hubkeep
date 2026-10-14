@@ -1,5 +1,5 @@
 -- ============================================================================
--- Isolamento do registro dos envios e das inscrições de push (migração 0048,
+-- Isolamento do registro dos envios e das inscrições de push (migração 0049,
 -- fase 1c, item 5; ADR-046). Os seis casos mínimos do doc 02:
 --   app.envio_notificacao
 --     1. admin de outro tenant não vê nem grava;

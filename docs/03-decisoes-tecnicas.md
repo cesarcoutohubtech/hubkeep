@@ -1376,9 +1376,9 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
   - Acima de 30 por pessoa e por dia, abre-se o resumo agrupado.
 
 **Consequências:**
-- **Migração 0048** (`20261013233000_comunicacao.sql`; o nome e o número são refeitos na vez do PR, depois da migração da PV3):
+- **Migração 0049** (`20261014120000_comunicacao.sql`, depois da 0048 da PV3):
   - as duas tabelas, com RLS forçada, as policies, os índices e os GRANTs;
-  - o pgTAP `040`, com os casos de isolamento;
+  - o pgTAP `041`, com os casos de isolamento;
   - o meta-teste 001, com as duas tabelas na lista fechada e o registro dos envios na lista das tabelas só de inserção;
   - os tipos do Kysely.
 - **A ordem dos PRs (C9), fora da zona, salvo o SMTP:**

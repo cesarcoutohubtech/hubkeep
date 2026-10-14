@@ -1,5 +1,5 @@
 -- ============================================================================
--- HubKeep — Migração 0048: registro dos envios e inscrições de push (fase 1c,
+-- HubKeep — Migração 0049: registro dos envios e inscrições de push (fase 1c,
 -- item 5, a comunicação; ADR-046)
 -- ----------------------------------------------------------------------------
 -- Decisões C1 a C9 do Cesar, de 13/10/2026
