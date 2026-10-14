@@ -756,8 +756,8 @@ A aprovação está no chat do agente da 1c, em 13/10/2026.
 O Cesar mandou prosseguir ("Cesar aqui. Prossiga"). O PR 3 do arrendado abriu no #261, que não deve ser mergeado antes do `db push` da 0047.
 
 A branch `claude/1c-comunicacao-migracao`, a partir da `main`, traz:
-- **A migração** `20261013233000_comunicacao.sql` (0048, provisória), com `app.envio_notificacao` e `app.inscricao_push`.
-- **O pgTAP** `040_isolamento_comunicacao.test.sql`, com 45 asserções.
+- **A migração** `20261014120000_comunicacao.sql` (0049, depois da 0048 da PV3; renomeada em 14/10/2026), com `app.envio_notificacao` e `app.inscricao_push`.
+- **O pgTAP** `041_isolamento_comunicacao.test.sql`, com 45 asserções.
 - **O meta-teste 001:** as duas tabelas entram na lista fechada, e o registro dos envios, na lista das tabelas só de inserção.
 - **Os tipos do Kysely.**
 - **O `docs/03`:**
@@ -770,6 +770,8 @@ O PR é de zona protegida e só abre na vez dele, depois da parte protegida da P
 - conferir a última migração da `main`;
 - renomear o arquivo com data e hora depois da migração da PV3, para o `db push` não recusar a ordem;
 - refazer o número no comentário e no ADR-046.
+
+Feito em 14/10/2026, depois do merge do #262 (PV3, 0048): a migração virou 0049 (`20261014120000`), o pgTAP virou 041 e a `main` entrou na branch.
 
 ### Ponto de retomada (13/10/2026, comunicação na branch)
 - **`main`:** em `b7e9870`. O dev espera o `db push` da 0047.
@@ -809,7 +811,7 @@ O #261 entrou na `main`. A branch `claude/1c-email-sla` foi feita a partir da `c
 - **Catálogos:** o modelo `email.sla.*`, com o texto puro e o HTML e o prazo no fuso do hotel, e o erro `envios_fora_do_papel`, nos 4 idiomas.
 - **Testes:**
   - domínio, i18n e aplicação, com portas falsas;
-  - a paridade dos dois checks da 0048;
+  - a paridade dos dois checks da 0049;
   - a integração `packages/db/test/comunicacao.test.ts`, que roda só na CI.
 
 **Fica para depois:**
@@ -818,3 +820,12 @@ O #261 entrou na `main`. A branch `claude/1c-email-sla` foi feita a partir da `c
 - o push.
 
 **Validação local:** lint e typecheck passaram, e os testes também: 4.580 passaram e nenhum falhou. Os 296 de integração ficaram pulados, porque rodam só na CI.
+
+## Respostas do Cesar de 14/10/2026
+
+O Cesar respondeu ("Cesar aqui. Respostas:"):
+- **A vez da migração da comunicação** é a próxima, depois do merge do #262 e do `db push` da 0048. Ele avisa quando a vez estiver livre.
+- **O status do ADR-045** vai junto com a migração da comunicação.
+- **A branch `claude/1c-arrendado-migracao`** pode ser apagada. O proxy da sessão recusou a exclusão (`git push --delete`); fica para o Cesar apagar no GitHub.
+- **Glossário:** a versão 3 está aprovada por ele e pelo Kaio, e os termos "prazo em risco" e "prazo vencido" foram fechados no #258. O painel da 1c segue a versão 3.
+- **Enquanto a vez não chega,** seguir com o que não depende da migração: o PR 3 do arrendado ou o push. O PR 3 do arrendado já entrou (#261); o push anda numa branch que já tem a migração, porque grava em `app.inscricao_push`, e o PR abre depois do merge e do `db push` da 0049.

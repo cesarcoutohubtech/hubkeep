@@ -392,15 +392,17 @@ export interface AppOperacaoOffline {
 
 export interface AppOs {
   assinatura_aceite_id: string | null;
+  ativo_id: string | null;
   atualizado_em: Generated<Timestamp>;
   chamado_aberto_por: string | null;
-  chamado_id: string;
+  chamado_id: string | null;
   codigo_causa_id: string | null;
   codigo_falha_id: string | null;
   codigo_solucao_id: string | null;
   criado_em: Generated<Timestamp>;
-  criado_por: string;
+  criado_por: string | null;
   custo_informado: Numeric | null;
+  data_prevista: Timestamp | null;
   equipe_id: string | null;
   estado: string;
   executado_por: Generated<string>;
@@ -411,6 +413,8 @@ export interface AppOs {
   local_id: string;
   motivo_cancelamento: string | null;
   motivo_reabertura: string | null;
+  plano_aplicado: Json | null;
+  plano_id: string | null;
   responsavel_arrendamento: string | null;
   situacao_id: string;
   tecnico_id: string | null;
@@ -432,7 +436,7 @@ export interface AppOsApontamento {
 export interface AppOsChecklist {
   atualizado_em: Generated<Timestamp>;
   criado_em: Generated<Timestamp>;
-  criado_por: string;
+  criado_por: string | null;
   hotel_id: string;
   id: string;
   itens: Json;

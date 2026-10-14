@@ -4,8 +4,12 @@ import {
   type AtivoParaGerar,
   type PlanoParaGerar,
   type PreventivaGerada,
+  type ResponsavelDoPlano,
+  modeloParaACopia,
   planejarGeracao,
+  responsavelQueVale,
 } from '../src/geracao-preventiva';
+import type { Atribuicao } from '../src/tipos';
 
 const TECNICO = { tipo: 'tecnico', usuarioId: 'u-tecnico' } as const;
 
@@ -141,5 +145,82 @@ describe('planejarGeracao', () => {
     expect(
       gerar('2026-02-02', [ativo('a1')], [], { unidade: 'dia', intervalo: 1 }).dataPrevista,
     ).toBe('2026-02-02');
+  });
+});
+
+describe('responsavelQueVale: quem recebe a OS do plano, no dia da geração', () => {
+  const AGORA = new Date('2026-03-01T12:00:00Z');
+  const HOTEL = { id: 'h1', bandeiraId: 'b1' };
+  const tecnico = (escopo: Atribuicao['escopo'], extra: Partial<Atribuicao> = {}): Atribuicao => ({
+    id: 'a1',
+    usuarioId: 'u1',
+    papel: 'tecnico',
+    escopo,
+    validoAte: null,
+    revogadoEm: null,
+    ...extra,
+  });
+  const doTecnico = (atribuicoes: Atribuicao[], membroAtivo = true): ResponsavelDoPlano => ({
+    tipo: 'tecnico',
+    usuarioId: 'u1',
+    membroAtivo,
+    atribuicoes,
+  });
+  const daEquipe = (p: Partial<{ hotelId: string; ativa: boolean }> = {}): ResponsavelDoPlano => ({
+    tipo: 'equipe',
+    equipeId: 'e1',
+    hotelId: 'h1',
+    ativa: true,
+    ...p,
+  });
+
+  it('o técnico ativo com papel vigente no hotel, na bandeira ou no grupo vale', () => {
+    for (const escopo of [
+      { tipo: 'hotel', hotelId: 'h1' },
+      { tipo: 'bandeira', bandeiraId: 'b1' },
+      { tipo: 'grupo' },
+    ] as const) {
+      expect(responsavelQueVale(doTecnico([tecnico(escopo)]), HOTEL, AGORA)).toEqual({
+        tipo: 'tecnico',
+        usuarioId: 'u1',
+      });
+    }
+  });
+
+  it('o técnico desativado, vencido, revogado, de outro hotel ou sem o papel não vale', () => {
+    const noHotel = { tipo: 'hotel', hotelId: 'h1' } as const;
+    for (const r of [
+      doTecnico([tecnico(noHotel)], false),
+      doTecnico([tecnico(noHotel, { validoAte: new Date('2026-02-01') })]),
+      doTecnico([tecnico(noHotel, { revogadoEm: new Date('2026-02-01') })]),
+      doTecnico([tecnico({ tipo: 'hotel', hotelId: 'h2' })]),
+      doTecnico([tecnico(noHotel, { papel: 'solicitante' })]),
+      doTecnico([tecnico(noHotel, { usuarioId: 'outro' })]),
+      doTecnico([]),
+    ]) {
+      expect(responsavelQueVale(r, HOTEL, AGORA)).toBeNull();
+    }
+  });
+
+  it('a equipe ativa do hotel vale; a desativada ou de outro hotel, não', () => {
+    expect(responsavelQueVale(daEquipe(), HOTEL, AGORA)).toEqual({
+      tipo: 'equipe',
+      equipeId: 'e1',
+    });
+    expect(responsavelQueVale(daEquipe({ ativa: false }), HOTEL, AGORA)).toBeNull();
+    expect(responsavelQueVale(daEquipe({ hotelId: 'h2' }), HOTEL, AGORA)).toBeNull();
+  });
+
+  it('o plano sem responsável não tem quem receba', () => {
+    expect(responsavelQueVale(null, HOTEL, AGORA)).toBeNull();
+  });
+});
+
+describe('modeloParaACopia: a OS copia o checklist do plano só de modelo ativo', () => {
+  it('ativo, copia; desativado ou sem modelo, a OS sai sem checklist', () => {
+    const modelo = { id: 'm1', ativa: true };
+    expect(modeloParaACopia(modelo)).toBe(modelo);
+    expect(modeloParaACopia({ ...modelo, ativa: false })).toBeNull();
+    expect(modeloParaACopia(null)).toBeNull();
   });
 });

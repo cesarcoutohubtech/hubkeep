@@ -2,13 +2,13 @@
 // (withSistema), e a contagem do C8 pelo hk_app, com o contexto de quem pede.
 // O worker lê o chamado do aviso, as atribuições dos papéis do nível, o
 // responsável da OS ativa e as pessoas (membro e preferência de idioma), e
-// grava o registro dos envios (app.envio_notificacao, só de inserção, 0048).
+// grava o registro dos envios (app.envio_notificacao, só de inserção, 0049).
 // A gravação é do repositório, na unit of work do worker (ADR-006).
 import type { ContagemDeEnvios, PortaComunicacao } from '@hubkeep/aplicacao';
 import type { ResponsavelDaOsAtiva } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
-import { paraAtribuicao, selecionarAtribuicoes } from './adaptadores';
+import { paraAtribuicao, selecionarAtribuicoes } from './atribuicoes';
 import { registrarEnvio } from './repositorios/comunicacao';
 
 export function criarPortaComunicacao(banco: AcessoBanco): PortaComunicacao {

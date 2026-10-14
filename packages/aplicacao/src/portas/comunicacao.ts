@@ -64,7 +64,7 @@ export interface PortaComunicacao {
     tenantId: string,
     g: { eventoId: string; usuarioId: string; canal: CanalDeEnvio },
   ): Promise<boolean>;
-  /** Grava o envio; o mesmo envio já gravado (o índice da 0048) não grava de novo. */
+  /** Grava o envio; o mesmo envio já gravado (o índice da 0049) não grava de novo. */
   registrarEnvio(tenantId: string, e: EnvioRegistrado): Promise<void>;
   /** A contagem por destinatário e por dia, no período, com a RLS de quem pede (C8). */
   contagemPorDia(

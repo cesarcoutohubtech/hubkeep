@@ -1,7 +1,7 @@
 // Registro dos envios da comunicação (1c, ADR-046), na unit of work do
 // hk_worker. Como o aviso de SLA (0044), o envio não vai para a auditoria: a
 // própria tabela, só de inserção, é o registro. O índice único parcial da
-// 0048 recusa o segundo envio do mesmo evento à mesma pessoa no mesmo canal,
+// 0049 recusa o segundo envio do mesmo evento à mesma pessoa no mesmo canal,
 // fora a falha; a gravação repetida não faz nada.
 import type { EnvioRegistrado } from '@hubkeep/aplicacao';
 import { novoId } from '../ids';

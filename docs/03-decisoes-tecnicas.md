@@ -262,7 +262,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 **Consequência:** um evento publicado por quem não pode escrever já não chega ao worker (ex.: um `membro.convidado` forjado dispararia e-mail).
 
-**Adendo — auditoria sem hotel do fornecedor (I3 da fase 1b, migração 0033).** Status: forma (adendo) decidida pelo Cesar em 09/10/2026; texto aguarda a aprovação dele.
+**Adendo — auditoria sem hotel do fornecedor (I3 da fase 1b, migração 0033).** Status: forma (adendo) decidida pelo Cesar em 09/10/2026; texto aprovado pelo Cesar em 13/10/2026, no chat do agente da 1b ("Cesar aqui", 13/10/2026: "ADR-021 (auditoria sem hotel do fornecedor): aprovo").
 - **O que mudou:** as policies de INSERT e SELECT de `app.auditoria` ganharam um caso a mais na auditoria sem hotel: a entidade `fornecedor`, para o Gestor CSC e o Gerente do hotel (`authz.hoteis_com_papel(['gestor_csc', 'gerente_hotel'])` não vazio), além do Admin do grupo e do Implantador vigente.
 - **Por quê:** o fornecedor é do grupo (sem `hotel_id`), e quem o cadastra no dia a dia é o Gestor CSC ou o Gerente. Sem o caso novo, a unit of work deles não conseguiria gravar a auditoria na mesma transação (ADR-006).
 - **Limite:** o INSERT exige que `registro_id` seja um fornecedor do próprio tenant, então o caso não abre a auditoria sem hotel para outras entidades. O resto da regra do ADR-021 não muda.
@@ -354,7 +354,8 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - `.gitleaks.toml` ou `.github/dependabot.yml` (ADR-032);
   - `packages/auth-admin/`, o dono da secret key, e os testes que guardam a chave, o `.env.example` e as actions fixadas (`tests/secret-key-so-no-auth-admin.test.ts`, `tests/env-example.test.ts`, `tests/actions-fixadas.test.ts`), desde o B13 do `docs/11` (05/10/2026);
   - o teste que guarda o relógio do roteiro fora do web em funcionamento (`tests/relogio-do-roteiro-fora-do-web.test.ts`), desde a montagem do gerador do histórico (Cesar, 13/10/2026);
-  - o teste que guarda as dependências do `packages/auth-admin` no grupo do Dependabot da zona protegida (`tests/dependabot-zona-protegida.test.ts`), desde a regra dos grupos do Dependabot (Cesar, 13/10/2026).
+  - o teste que guarda as dependências do `packages/auth-admin` no grupo do Dependabot da zona protegida (`tests/dependabot-zona-protegida.test.ts`), desde a regra dos grupos do Dependabot (Cesar, 13/10/2026);
+  - o teste que guarda a lista fechada das páginas do servidor e das leituras que elas chamam (`tests/pagina-do-servidor-so-leitura.test.ts`), desde a condição do Cesar no adendo P1c do ADR-039 (13/10/2026).
 
   PR fora dessa lista passa.
 - **Ruleset do `main`**, que o Cesar configura no GitHub:
@@ -418,7 +419,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Miniatura:** a imagem é comprimida (JPEG, lado maior de 1600 px) e ganha a miniatura (320 px) no navegador, antes do envio, pelo mesmo código no PWA e no web (`packages/imagem`, canvas, sem pacote externo nem módulo do Node, liberado pelas fronteiras só para as telas do web e o PWA). Assim a foto enviada pelo computador também aparece em miniatura no celular. PDF vai como está. A foto sem rede, na fila offline, entra com a C4.
 - **Verificação:** pgTAP 015 (30 casos de isolamento, checks de caminho e remoção); `packages/db/test/anexos.test.ts`, com banco real (anexo de outro hotel dá 404, o proprietário da UH baixa a miniatura, auditoria e evento, e o banco barra sem as regras da aplicação); testes da aplicação, do PWA e do envio pelo web (`apps/web/test/enviar-anexo.test.ts`).
 
-**Adendo — conta do kit de teste (M1 do `docs/11`).** Status: proposto em 05/10/2026, depois da conferência de conformidade da fase 1a; aguarda a aprovação do Cesar.
+**Adendo — conta do kit de teste (M1 do `docs/11`).** Status: proposto em 05/10/2026, depois da conferência de conformidade da fase 1a; aprovado pelo Cesar em 13/10/2026, no chat do agente da 1b ("Cesar aqui", 13/10/2026: "ADR-024 (conta do kit de teste): aprovo").
 - **Contexto:** o kit de teste (#77, `docs/10`) cria uma conta por papel, já confirmada e com a senha de teste, para cada papel entrar direto pela tela de login, sem e-mail. Isso usa a secret key (`auth.admin.createUser` e `updateUserById`) em `criarIdentidadeDeDemonstracao`, no `packages/auth-admin`. O uso estava só no diário; a regra 5 e este ADR autorizavam a chave só para o convite e a URL assinada.
 - **Decisão:** a secret key também cria e atualiza a conta de demonstração, com quatro travas:
   - **fora da Vercel:** com `VERCEL_ENV` definida (preview ou produção), a função recusa antes de criar o cliente, no `auth-admin` e de novo em `apps/web/src/servidor/demonstracao.ts`;
@@ -1057,12 +1058,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - As páginas do servidor que chamam casos de uso fora do `rota()` ainda não usam o escopo. Podem passar a usar na P1c.
 - A confirmação pelo Supavisor (`pnpm db:fumaca --ambiente dev`, que já liga o `HK_TESTE_VIA_POOLER=1`) e a medida do `Server-Timing` antes e depois ficam registradas no diário.
 
-**Adendo — página do servidor que chama os casos de uso (P1c, 08/10/2026).** Status: forma (adendo curto) decidida pelo Cesar em 09/10/2026; texto aguarda a aprovação dele.
+**Adendo — página do servidor que chama os casos de uso (P1c, 08/10/2026).** Status: forma (adendo curto) decidida pelo Cesar em 09/10/2026; texto aprovado pelo Cesar em 13/10/2026, no chat do agente da 1b ("Cesar aqui", 13/10/2026), com a condição do último item abaixo, cumprida no mesmo PR que registra a aprovação.
 - Uma página do App Router pode montar os dados no servidor chamando os mesmos casos de uso da API, sem passar pela `/api/v1`. Hoje isso vale para o detalhe do chamado (`chamados/[id]/page.tsx`).
 - A página usa `carregarNaPagina` (`apps/web/src/servidor/pagina.ts`), que faz o papel do `rota()`: contexto pelo `resolverContexto` (token verificado pelo JWKS e tenant do `hk_tenant`), leituras num `emEscopoDeLeitura` (uma transação, como este ADR), erro classificado pelo `falhaDe`, Sentry e linha de log `pagina`.
 - A resposta da página e a da API saem do mesmo módulo de leitura e passam pelo contrato da rota, para não divergirem.
 - O cookie `hk_tenant` é só preferência de qual grupo abrir: o banco só aceita tenant de que o usuário é membro (`authz`), como na API.
 - Só leitura. Escrita continua pela API e pela unit of work.
+- **Lista fechada (condição do Cesar, 13/10/2026):** o `carregarNaPagina` só vale nas páginas de uma lista fechada, hoje só o detalhe do chamado, e cada página só chama casos de uso que leem.
+  - O teste `tests/pagina-do-servidor-so-leitura.test.ts` (zona protegida, ADR-023) guarda as duas listas: a das páginas e a dos métodos de caso de uso que elas podem chamar.
+  - Ele reprova o uso fora da lista de páginas, a página que importa do servidor outro módulo além do `pagina.ts` e do módulo de leituras dela, e o módulo de leituras que pega caso de uso fora das fontes, ou com um método fora da lista.
+  - Nenhum método da lista pode ter nome de ação que grava.
+  - Página nova, ou leitura nova numa página da lista, muda o teste, e o Cesar vê a mudança antes do merge.
 
 ## ADR-040 — Checklist tipado: modelo do grupo versionado e cópia na OS
 
@@ -1088,7 +1094,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-041 — Preventiva por tempo: calendário fixo e geração idempotente pelo worker
 
-**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3.
+**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3 (migração 0048). O adendo da PV3, no fim, aguarda aprovação do Cesar.
 
 **Contexto:** a PV2 e a PV3 da 1b (`docs/12`) trazem a manutenção preventiva: planos por ativo ou por categoria e a OS gerada sozinha na data prevista. Hoje a OS só nasce de chamado (`app.os.chamado_id` é `not null`), o `hk_worker` não grava OS, e a rota `/api/cron/preventiva` existe vazia, fora do `vercel.json` (B9 do `docs/11`). Rotinas legais, como o PMOC do ar-condicionado (Lei 13.589/2018), seguem datas fixas.
 
@@ -1105,12 +1111,25 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - Aberta é a OS atribuída, em execução ou pausada. A concluída, esperando o aceite, não segura a próxima: o serviço já foi feito, e um aceite esquecido não pode parar o calendário (Cesar, 13/10/2026, PV3a).
   - O ativo cadastrado depois da data prevista espera a próxima ocorrência, para não nascer com uma OS atrasada de uma data em que ele não existia (Cesar, 13/10/2026, PV3a).
 - **A OS preventiva não tem chamado:** guarda o plano, o ativo, a data prevista e a cópia do plano (ADR-026) e do checklist (ADR-040). Segue a mesma máquina de estados da corretiva, sem refletir em chamado. O aceite é do Gerente do hotel, ou, sem Gerente, do Gestor CSC ou do Admin, como na C6 (decisão 12). O worker cria só OS com plano.
+  - Sem "quem abriu", o Gerente do hotel decide o aceite mesmo quando também é o técnico responsável pela OS. Decisão do Cesar de 13/10/2026 ("Cesar aqui": "Mantenha como está"), na PV3b.
 
 **Consequências:**
 - PV2: uma tabela nova, com os seis casos de isolamento (pgTAP 036). O `hk_worker` já lê o plano, para a PV3.
-- PV3: `app.os.chamado_id` e `criado_por` passam a anuláveis, com um check que exige um tipo só (corretiva com chamado, preventiva com plano, ativo e data prevista); `app.os_transicao.usuario_id` passa a anulável só na ação `gerar`; o worker ganha INSERT em `app.os`, `app.os_transicao` e `app.os_checklist`. Os meta-testes 18, 21, 28 e 32 mudam junto, e o agente do Intelligence é avisado de que a transição de geração da preventiva vem sem usuário.
+- PV3 (migração 0048, pgTAP 040):
+  - `app.os.chamado_id` e `criado_por` passam a anuláveis, com o check `os_de_um_tipo`: a corretiva tem chamado e quem a gerou, e nenhuma coluna da preventiva; a preventiva não tem chamado nem "quem abriu", e tem o plano, o ativo, a data prevista e a cópia do plano;
+  - FK nova `(hotel_id, local_id)` para `app.local`, porque a FK do local pelo chamado não é conferida com o chamado nulo;
+  - `app.os_transicao.usuario_id` nulo vale nas ações `aceitar_automatico` (0046, ADR-044) e `gerar`, e o aceite automático segue sempre sem usuário;
+  - `app.os_checklist.criado_por` passa a anulável, para a cópia do checklist do plano;
+  - o worker ganha INSERT em `app.os` (só com plano e sem autor), em `app.os_transicao` (só `gerar` e `aceitar_automatico`, sem usuário) e em `app.os_checklist` (sem autor). O `hk_app` passa a gerar só a corretiva.
+  - Os meta-testes 18, 21, 28 e 32 não precisaram mudar: nenhuma tabela nova, nenhum UPDATE em campo de escopo, as FKs novas são compostas pelo hotel, e a transição segue só de inserção.
+  - A OS preventiva guarda a marca do arrendado (`responsavel_arrendamento`, ADR-045) pela categoria do ativo, a pedido da 1c (13/10/2026).
+  - O agente do Intelligence é avisado, no diário da 1b, de que a transição de geração da preventiva vem sem usuário.
 - O PWA antigo não quebra: a fila do dia só traz OS preventiva quando o pedido diz que entende (`?preventiva=1`).
 - Plano com responsável inválido (desativado ou sem papel de Técnico no hotel) não gera e aparece com a pendência na lista de planos.
+
+**Adendo da PV3 (13/10/2026, aguarda aprovação do Cesar):** dois detalhes de implementação, propostos no PR da migração 0048.
+- **Trava do hotel por advisory lock, e não por `for update skip locked`:** o `SELECT ... FOR UPDATE` nos planos pede UPDATE do `hk_worker` em `app.plano_preventivo`, que ele não tem e não precisa ter. Cada hotel abre a transação com `pg_try_advisory_xact_lock` (função do próprio Postgres, como a trava da licença), e a execução que não consegue a trava pula o hotel. O índice único continua segurando a mesma ocorrência.
+- **Modelo de checklist desativado:** a OS preventiva copia o checklist do plano só se o modelo ainda estiver ativo, a mesma regra da triagem (`checklist_modelo_inativo`). Desativado, a OS sai sem checklist, para o calendário do plano não parar.
 
 ## ADR-042 — Calendário de SLA: prazos calculados no domínio e gravados no chamado
 
@@ -1357,9 +1376,9 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
   - Acima de 30 por pessoa e por dia, abre-se o resumo agrupado.
 
 **Consequências:**
-- **Migração 0048** (`20261013233000_comunicacao.sql`; o nome e o número são refeitos na vez do PR, depois da migração da PV3):
+- **Migração 0049** (`20261014120000_comunicacao.sql`, depois da 0048 da PV3):
   - as duas tabelas, com RLS forçada, as policies, os índices e os GRANTs;
-  - o pgTAP `040`, com os casos de isolamento;
+  - o pgTAP `041`, com os casos de isolamento;
   - o meta-teste 001, com as duas tabelas na lista fechada e o registro dos envios na lista das tabelas só de inserção;
   - os tipos do Kysely.
 - **A ordem dos PRs (C9), fora da zona, salvo o SMTP:**

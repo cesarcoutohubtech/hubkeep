@@ -232,8 +232,10 @@ export type { ResultadoDoMonitor } from './casos-de-uso/monitor-sla';
 export type {
   AtivoDoAlvo,
   HotelParaGerar,
+  ModeloParaACopia,
   PlanoDoHotel,
   PortaGeracaoPreventiva,
+  PreventivaAGravar,
   SessaoDaGeracao,
 } from './portas/geracao-preventiva';
 export { criarGeracaoDePreventivas } from './casos-de-uso/geracao-preventiva';

@@ -9,7 +9,7 @@
 //     registro (sem_endereco);
 //   - sem provedor configurado (C1), nada sai, e o envio é registrado como
 //     sem_provedor;
-//   - um envio por evento, destinatário e canal: o índice da 0048 recusa o
+//   - um envio por evento, destinatário e canal: o índice da 0049 recusa o
 //     segundo, e a falha não conta (a nova tentativa grava outra linha).
 import { escopoCobreHotel } from './equipes';
 import { PermissaoNegada, RegraViolada } from './erros';

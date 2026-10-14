@@ -110,6 +110,17 @@ describe('valores canônicos: banco × domínio (1c, ADR-044)', () => {
     expect(m?.[1]).toBe('aceitar_automatico');
     expect(ACOES_DA_OS).toContain(m?.[1]);
   });
+
+  it('as ações sem autor da transição (0048: o aceite automático e a geração da preventiva) são ações da OS do domínio', () => {
+    const sql = readFileSync('supabase/migrations/20261013233000_os_preventiva.sql', 'utf8');
+    const m =
+      /os_transicao_sem_autor_so_nos_jobs\s+check\s*\(\s*usuario_id is not null or acao in \(([^)]*)\)\s*\)/.exec(
+        sql,
+      );
+    const acoes = [...(m?.[1] ?? '').matchAll(/'([^']+)'/g)].map((v) => v[1]);
+    expect(acoes).toEqual(['aceitar_automatico', 'gerar']);
+    for (const acao of acoes) expect(ACOES_DA_OS).toContain(acao);
+  });
 });
 
 describe('valores canônicos: banco × domínio (PV2, ADR-041)', () => {

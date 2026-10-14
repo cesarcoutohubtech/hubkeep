@@ -41,6 +41,7 @@ import {
   criarCasosDeUsoDeAnexos,
   criarMonitorDeSla,
   criarAceiteAutomatico,
+  criarGeracaoDePreventivas,
   criarCasosDeUsoDeIngestao,
   criarManipuladoresDeEventos,
   relogioDoSistema,
@@ -52,6 +53,7 @@ import {
   criarPortaComunicacao,
   criarPortaMonitorDeSla,
   criarPortaAceiteAutomatico,
+  criarPortaGeracaoPreventiva,
   criarPortaDoJobDoIntelligence,
   criarPortaDoPainelDoIntelligence,
   criarPortaConfiguracao,
@@ -72,7 +74,8 @@ import { criarFeriadosOficiais } from './feriados-oficiais';
 import { criarVerificadorJwks } from './identidade';
 import { registrarNoConsole } from './log';
 import { montarInteligencia } from './modulos/inteligencia';
-import { enviarCheckInAoSentry } from './sentry';
+import { resumirGeracao } from './resumo-da-geracao';
+import { enviarCheckInAoSentry, relatarAoSentry } from './sentry';
 
 function exigirEnv(nome: string): string {
   const v = process.env[nome];
@@ -207,6 +210,20 @@ export async function aceitarAutomaticamenteNoTenant(tenantId: string) {
     aceite: criarPortaAceiteAutomatico(await acessoBancoDoWorker()),
     relogio: relogioDoSistema,
   })(tenantId);
+}
+
+/**
+ * A geração da OS preventiva num tenant (hk_worker, 1b, PV3; ADR-041); a rota
+ * /api/cron/preventiva chama para todos, uma vez por dia. Cada hotel ativo
+ * gera na transação dele, no dia do fuso do hotel; o hotel que falha vai para
+ * o log e para o Sentry, e a rota soma os números.
+ */
+export async function gerarPreventivasDoTenant(tenantId: string) {
+  const r = await criarGeracaoDePreventivas({
+    geracao: criarPortaGeracaoPreventiva(await acessoBancoDoWorker()),
+    relogio: relogioDoSistema,
+  })(tenantId);
+  return resumirGeracao(tenantId, r, { registrar: registrarNoConsole, relatar: relatarAoSentry });
 }
 
 /**

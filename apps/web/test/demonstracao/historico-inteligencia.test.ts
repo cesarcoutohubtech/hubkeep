@@ -27,12 +27,15 @@ import { TRANSICOES_DA_OS } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import {
   type ChamadoDoRoteiro,
+  FUSO_DO_HISTORICO,
+  type MomentoDoJob,
   type RoteiroDoHistorico,
   VOLUME_COMPLETO,
   VOLUME_CURTO,
   cenarioDoInsight,
   decisoesDoDia,
   estadoAposPasso,
+  instanteDoJob,
   roteiroDoHistorico,
 } from './historico-inteligencia';
 
@@ -75,12 +78,16 @@ function chamadoNoDia(c: ChamadoDoRoteiro, agora: Date): ChamadoDaFonte {
 }
 
 /** Roda o job em cada dia do roteiro e aplica as decisões, como o gerador fará no banco. */
-async function simular(r: RoteiroDoHistorico) {
+async function simular(r: RoteiroDoHistorico, momento: MomentoDoJob) {
   const insights: InsightSimulado[] = [];
   const metricas: LinhaDaMetricaDiaria[] = [];
   // Por dia, para o calculosDoDia não varrer todas as linhas a cada dia.
   const metricasPorDia = new Map<string, LinhaDaMetricaDiaria[]>();
-  const hoteis = r.hoteis.map((h) => ({ hotelId: h.chave, bandeiraId: h.bandeira }));
+  const hoteis = r.hoteis.map((h) => ({
+    hotelId: h.chave,
+    bandeiraId: h.bandeira,
+    fuso: FUSO_DO_HISTORICO,
+  }));
   const locais = r.locais.map((l) => ({
     id: l.chave,
     hotelId: l.hotel,
@@ -92,7 +99,7 @@ async function simular(r: RoteiroDoHistorico) {
     if (c.ativo && c.parada) paradas.set(c.ativo, [...(paradas.get(c.ativo) ?? []), c.parada]);
 
   for (const dia of r.dias) {
-    const agora = fimDoDia(dia);
+    const agora = instanteDoJob(dia, momento);
     await executarDiaDoTenant(
       {
         fonte: {
@@ -159,7 +166,7 @@ async function simular(r: RoteiroDoHistorico) {
       { agora },
     );
 
-    // As decisões do dia, depois do job, como as pessoas fariam no fim do dia.
+    // As decisões do dia, depois do job.
     for (const i of insights) {
       const cenario = r.cenarios.find((c) => c.chave === i.cenario);
       if (!cenario) continue;
@@ -181,16 +188,22 @@ async function simular(r: RoteiroDoHistorico) {
 }
 
 // Os dois testes que rodam o job leem a mesma simulação (183 dias do roteiro
-// curto), feita uma vez só. Ela custa cerca de 1,4 s sozinha e passou de 7 s
+// curto), feita uma vez por momento do job (os dois do ponto 4, até Cesar e
+// Kaio combinarem). Ela custa cerca de 1,4 s sozinha e passou de 7 s
 // com o pnpm test completo na CI (#237), acima dos 5 s padrão do Vitest. Os
 // dois testes têm por isso um limite próprio, porque qualquer um pode ser o
 // primeiro a pedi-la (com -t, por exemplo).
 const LIMITE_DA_SIMULACAO_MS = 20_000;
-let simulacao: ReturnType<typeof simular> | undefined;
-function simulacaoDoRoteiroCurto() {
-  simulacao ??= simular(roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO }));
-  return simulacao;
+const simulacoes = new Map<MomentoDoJob, ReturnType<typeof simular>>();
+function simulacaoDoRoteiroCurto(momento: MomentoDoJob) {
+  let s = simulacoes.get(momento);
+  if (!s) {
+    s = simular(roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO }), momento);
+    simulacoes.set(momento, s);
+  }
+  return s;
 }
+const MOMENTOS: readonly MomentoDoJob[] = ['como_em_producao', 'fim_do_dia_local'];
 
 describe('roteiro do histórico de demonstração do Intelligence', () => {
   it('é determinístico: a mesma semente e o mesmo fim dão o mesmo roteiro', () => {
@@ -239,11 +252,11 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
     }
   });
 
-  it(
-    'cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum',
-    async () => {
+  it.each(MOMENTOS)(
+    'cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum (job: %s)',
+    async (momento) => {
       const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
-      const { insights } = await simulacaoDoRoteiroCurto();
+      const { insights } = await simulacaoDoRoteiroCurto(momento);
       const inesperados = insights.filter((i) => i.cenario?.startsWith('inesperado:'));
       expect(inesperados.map((i) => `${i.cenario} em ${i.abertoNoDia}`)).toEqual([]);
       for (const c of r.cenarios.filter((x) => x.alvo)) {
@@ -258,11 +271,11 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
     LIMITE_DA_SIMULACAO_MS,
   );
 
-  it(
-    'a reincidência, a substituição e a efetividade aparecem nos ativos dos cenários',
-    async () => {
+  it.each(MOMENTOS)(
+    'a reincidência, a substituição e a efetividade aparecem nos ativos dos cenários (job: %s)',
+    async (momento) => {
       const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
-      const { metricas } = await simulacaoDoRoteiroCurto();
+      const { metricas } = await simulacaoDoRoteiroCurto(momento);
       const agora = fimDoDia(FIM);
       const cenario = (chave: string) => r.cenarios.find((c) => c.chave === chave);
 
