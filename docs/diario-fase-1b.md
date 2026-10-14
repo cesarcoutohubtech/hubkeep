@@ -791,6 +791,16 @@ O registro vai num PR de zona protegida (`claude/1b-adendo-pv3`), com o aviso no
 
 O #262 já estava mergeado (13/10/2026, 23:46Z) quando o Cesar escreveu. No último commit (`4540af2`), o pgTAP rodou os 40 arquivos, com o 040, e passou (1324 testes), nas duas passagens. Os outros checks passaram, menos o "zona protegida", por desenho.
 
+## Aviso de área compartilhada com a 1c: PV3c (14/10/2026)
+
+A PV3c mexe na OS e no chamado, áreas compartilhadas com a 1c:
+- os casos de uso da execução, da triagem sobre a OS e do aceite, que passam a aceitar a OS preventiva, sem chamado;
+- os repositórios da OS em `packages/db`;
+- a fila do dia, no contrato e no PWA;
+- o aviso ao locador na preventiva, no padrão do #261.
+
+Para a OS corretiva, nada muda. O aceite automático da preventiva (`os.aceite_automatico`) só entra depois de combinar com a 1c, neste diário. O trabalho fica na branch `claude/1b-pv3c`, a partir da `main`, trazendo a `main` com frequência.
+
 ## Ponto de retomada (14/10/2026, adendo da PV3)
 
 - **`main`:** em `a263f1a`, com a 0048 (#262). O `db push` da 0048 é do Cesar, que deixou para 14/10/2026.
