@@ -1,5 +1,6 @@
 /** Normalização POC sem qualquer persistência, criação de OS ou escrita no PMS. */
-const str = (s) => typeof s === 'string' && s.trim().length > 0 ? s.trim() : null;
+const str = (s) =>
+  typeof s === 'string' && s.trim().length > 0 ? s.trim() : null;
 
 export function chaveMews(enterpriseId, remoteId) {
   const e = str(enterpriseId);
@@ -17,10 +18,12 @@ export function chaveMews(enterpriseId, remoteId) {
  * @param {{tenantId:string, vinculos:Array<{enterpriseId:string, hotelId:string}>}} entrada
  */
 export function criarEscopo(entrada) {
-  if (!str(entrada?.tenantId) || !Array.isArray(entrada?.vinculos)) throw new Error('escopo_invalido');
+  if (!str(entrada?.tenantId) || !Array.isArray(entrada?.vinculos))
+    throw new Error('escopo_invalido');
   const mapa = new Map();
   for (const v of entrada.vinculos) {
-    if (!str(v.enterpriseId) || !str(v.hotelId) || mapa.has(v.enterpriseId)) throw new Error('vinculo_invalido');
+    if (!str(v.enterpriseId) || !str(v.hotelId) || mapa.has(v.enterpriseId))
+      throw new Error('vinculo_invalido');
     mapa.set(v.enterpriseId, v.hotelId);
   }
   return Object.freeze({ tenantId: entrada.tenantId, hoteis: mapa });
@@ -28,7 +31,8 @@ export function criarEscopo(entrada) {
 
 export function normalizarEspaco(escopo, recurso) {
   if (!recurso || recurso.Data?.Discriminator !== 'Space') return null;
-  if (!str(recurso.Id) || !str(recurso.EnterpriseId) || !str(recurso.Name)) return null;
+  if (!str(recurso.Id) || !str(recurso.EnterpriseId) || !str(recurso.Name))
+    return null;
   const hotelId = escopo.hoteis.get(recurso.EnterpriseId);
   if (!hotelId) return null;
   const estado = str(recurso.State);
@@ -52,8 +56,14 @@ export function normalizarEspaco(escopo, recurso) {
 }
 
 export function normalizarBloqueio(escopo, bloco, idsValidos = null) {
-  if (!bloco || !['OutOfOrder', 'InternalUse'].includes(bloco.Type)) return null;
-  if (!str(bloco.Id) || !str(bloco.EnterpriseId) || !str(bloco.AssignedResourceId)) return null;
+  if (!bloco || !['OutOfOrder', 'InternalUse'].includes(bloco.Type))
+    return null;
+  if (
+    !str(bloco.Id) ||
+    !str(bloco.EnterpriseId) ||
+    !str(bloco.AssignedResourceId)
+  )
+    return null;
   const hotelId = escopo.hoteis.get(bloco.EnterpriseId);
   if (!hotelId) return null;
   const codigoRecurso = chaveMews(bloco.EnterpriseId, bloco.AssignedResourceId);
@@ -82,18 +92,29 @@ export function normalizarBloqueio(escopo, bloco, idsValidos = null) {
  * Devolve itens vinculados a hotéis conhecidos, sem dados de hóspedes.
  */
 export function montarProjecao(escopo, recursos, bloqueios) {
-  if (!Array.isArray(recursos) || !Array.isArray(bloqueios)) throw new Error('resposta_invalida');
-  const espacos = recursos.map((r) => normalizarEspaco(escopo, r)).filter(Boolean);
+  if (!Array.isArray(recursos) || !Array.isArray(bloqueios))
+    throw new Error('resposta_invalida');
+  const espacos = recursos
+    .map((r) => normalizarEspaco(escopo, r))
+    .filter(Boolean);
   const ids = new Set(espacos.map((e) => e.codigoExterno));
-  const blocos = bloqueios.map((b) => normalizarBloqueio(escopo, b, ids)).filter(Boolean);
+  const blocos = bloqueios
+    .map((b) => normalizarBloqueio(escopo, b, ids))
+    .filter(Boolean);
   // Dedupe determinista por chave+updatedUtc, sem deixar um evento velho sobrescrever o novo.
   const recentes = (lista) => {
     const m = new Map();
     for (const item of lista) {
       const anterior = m.get(item.codigoExterno);
-      if (!anterior || String(item.atualizadoEm ?? '') > String(anterior.atualizadoEm ?? '')) m.set(item.codigoExterno, item);
+      if (
+        !anterior ||
+        String(item.atualizadoEm ?? '') > String(anterior.atualizadoEm ?? '')
+      )
+        m.set(item.codigoExterno, item);
     }
-    return [...m.values()].sort((a, b) => a.codigoExterno.localeCompare(b.codigoExterno));
+    return [...m.values()].sort((a, b) =>
+      a.codigoExterno.localeCompare(b.codigoExterno),
+    );
   };
   return Object.freeze({
     tenantId: escopo.tenantId,
