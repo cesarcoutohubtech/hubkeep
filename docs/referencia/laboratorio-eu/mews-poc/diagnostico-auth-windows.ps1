@@ -111,6 +111,13 @@ function Estado([hashtable]$resultado) {
     $est = [ordered]@{ Http = $resultado.Http }
     if ($resultado.RequestId) { $est['RequestId'] = $resultado.RequestId }
     if ($resultado.Message) { $est['Mensagem'] = $resultado.Message }
+    if ($resultado.Http -eq 429) {
+        $est['LimiteTemporario'] = $true
+        if ($null -ne $resultado.RetryAfterSegundos) {
+            $est['RetryAfterSegundos'] = $resultado.RetryAfterSegundos
+        }
+        $est['Acao'] = 'aguardar_antes_de_nova_execucao'
+    }
     return $est
 }
 
@@ -145,7 +152,11 @@ try {
         if ($r.Http -ne 401 -and $r.Http -ne 403) { break }
     }
 
-    if ($null -eq $escolhido) {
+    if ($null -eq $escolhido -and $r.Http -eq 429) {
+        $relatorio['Resultado'] = 'limite_temporario_429'
+        $relatorio['AutenticacaoNestaExecucao'] = 'nao_avaliada'
+    }
+    elseif ($null -eq $escolhido) {
         $relatorio['Resultado'] = 'autenticacao_nao_confirmada'
     }
     else {
