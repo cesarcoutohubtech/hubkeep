@@ -462,6 +462,13 @@
   "email.convite.acao": "Accept the invitation",
   "email.convite.depois": "After accepting, you will set your password.",
   "email.convite.ignorar": "If you were not expecting this invitation, ignore this email.",
+  "email.sla.assunto": "{tipo, select, atendimento_em_risco {Response close to the deadline} atendimento_vencido {Response overdue} solucao_em_risco {Resolution close to the deadline} other {Resolution overdue}} — {hotel}",
+  "email.sla.titulo": "{tipo, select, atendimento_em_risco {Response close to the deadline} atendimento_vencido {Response overdue} solucao_em_risco {Resolution close to the deadline} other {Resolution overdue}}",
+  "email.sla.chamado": "Ticket: {descricao}",
+  "email.sla.onde": "Hotel: {hotel}",
+  "email.sla.prazo": "Deadline: {prazo}",
+  "email.sla.acao": "Open the ticket",
+  "email.sla.motivo": "You receive this alert because of the hotel’s escalation policy.",
 
   "menu.equipes": "Teams",
   "admin.equipes.titulo": "Hotel teams",
@@ -732,6 +739,7 @@
   "erro.chamado_ativo_desativado": "The asset is deactivated.",
   "erro.chamado_nao_encontrado": "Request not found.",
   "erro.avisos_sla_fora_do_escopo": "Only the hotel's management sees SLA alerts.",
+  "erro.envios_fora_do_papel": "Only management sees the delivery count.",
 
   "menu.chamados": "Service requests",
   "menu.os": "Work orders",

@@ -29,6 +29,6 @@ export { criarTradutor, localeDoMotor } from './tradutor';
 export type { Tradutor, ValoresDeMensagem } from './tradutor';
 export { criarFormatador, separadorDeCsv } from './formatacao';
 export type { Formatador } from './formatacao';
-export { emailDeConvite, escaparHtml } from './emails';
-export type { DadosDoConvite, Email } from './emails';
+export { emailDeAvisoDeSla, emailDeConvite, escaparHtml } from './emails';
+export type { DadosDoAvisoDeSla, DadosDoConvite, Email, EmailComTexto } from './emails';
 export { TAMANHO_MINIMO_DA_BUSCA, textoDeBusca } from './busca';
