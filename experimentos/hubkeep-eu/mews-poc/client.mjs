@@ -54,9 +54,17 @@ export function criarClienteMews({
   }
   // Bloqueio intencional de produção e de URL arbitrária na PoC.
   if (baseUrl !== BASE_DEMO) throw new ErroMews('somente_ambiente_demo');
-  if (![pageSize, maxPages, maxRetries, timeoutMs, minIntervalMs].every(Number.isInteger)
-      || pageSize < 1 || pageSize > 1000 || maxPages < 1 || maxPages > 1000
-      || maxRetries < 0 || maxRetries > 6 || timeoutMs < 100 || minIntervalMs < 0) {
+  if (
+    ![pageSize, maxPages, maxRetries, timeoutMs, minIntervalMs].every(Number.isInteger) ||
+    pageSize < 1 ||
+    pageSize > 1000 ||
+    maxPages < 1 ||
+    maxPages > 1000 ||
+    maxRetries < 0 ||
+    maxRetries > 6 ||
+    timeoutMs < 100 ||
+    minIntervalMs < 0
+  ) {
     throw new ErroMews('configuracao_invalida');
   }
   let ultimaRequisicao = Number.NEGATIVE_INFINITY;
@@ -65,26 +73,34 @@ export function criarClienteMews({
     const rota = OPERACOES[operacao]?.[0];
     if (!rota) throw new ErroMews('operacao_nao_permitida');
     const url = `${BASE_DEMO}/api/connector/v1/${rota}`;
-    const corpo = JSON.stringify({ ClientToken: clientToken, AccessToken: accessToken,
-      Client: clientName, ...filtros });
+    const corpo = JSON.stringify({
+      ClientToken: clientToken,
+      AccessToken: accessToken,
+      Client: clientName,
+      ...filtros,
+    });
     for (let tentativa = 0; tentativa <= maxRetries; tentativa++) {
       const espera = Math.max(0, minIntervalMs - (now() - ultimaRequisicao));
       if (espera > 0) await sleep(espera);
       ultimaRequisicao = now();
       let resposta;
       try {
-        resposta = await fetchImpl(url, { method: 'POST', headers: { 'content-type': 'application/json' },
-          body: corpo, signal: globalThis.AbortSignal.timeout(timeoutMs) });
+        resposta = await fetchImpl(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: corpo,
+          signal: globalThis.AbortSignal.timeout(timeoutMs),
+        });
       } catch {
         // O erro bruto do transportador poderia revelar corpo/tokens.
         if (tentativa === maxRetries) throw new ErroMews('rede_indisponivel');
-        await sleep(Math.min(30000, 250 * (2 ** tentativa)));
+        await sleep(Math.min(30000, 250 * 2 ** tentativa));
         continue;
       }
       if (resposta.status === 429 || resposta.status === 408 || resposta.status >= 500) {
         if (tentativa === maxRetries) throw new ErroMews('temporariamente_indisponivel', resposta.status);
         const retryAfter = intervaloRetryAfter(resposta.headers?.get?.('retry-after'), now);
-        const atraso = retryAfter ?? Math.min(30000, 500 * (2 ** tentativa));
+        const atraso = retryAfter ?? Math.min(30000, 500 * 2 ** tentativa);
         if (atraso > 120000) throw new ErroMews('retry_after_excessivo', resposta.status);
         await sleep(atraso);
         continue;
@@ -131,15 +147,21 @@ export function criarClienteMews({
       if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
         throw new ErroMews('enterprise_ids_obrigatorios');
       }
-      return listar('resources', { ...filtros, EnterpriseIds: enterpriseIds,
-        Extent: { Resources: true, Inactive: true } });
+      return listar('resources', {
+        ...filtros,
+        EnterpriseIds: enterpriseIds,
+        Extent: { Resources: true, Inactive: true },
+      });
     },
     listarBloqueios: (enterpriseIds, filtros = {}) => {
       if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
         throw new ErroMews('enterprise_ids_obrigatorios');
       }
-      return listar('resourceBlocks', { ...filtros, EnterpriseIds: enterpriseIds,
-        ActivityStates: ['Active', 'Deleted'] });
+      return listar('resourceBlocks', {
+        ...filtros,
+        EnterpriseIds: enterpriseIds,
+        ActivityStates: ['Active', 'Deleted'],
+      });
     },
   });
 }
