@@ -426,6 +426,8 @@
   "erro.bandeira_nao_encontrada": "Bandeira não encontrada.",
   "erro.auditoria_sem_permissao": "Só o Admin do grupo, o Gestor CSC e o Gerente do hotel veem a auditoria geral.",
   "erro.auditoria_periodo_invalido": "Escolha um período de até {maximoDias} dias, com o fim depois do início.",
+  "erro.indicadores_periodo_invalido": "Escolha um período de até {maximoDias} dias, com o fim no início ou depois.",
+  "erro.indicadores_sem_permissao": "Só a gestão e o proprietário veem o painel de indicadores.",
   "erro.auditoria_cursor_invalido": "A lista mudou de posição. Consulte de novo.",
   "erro.bandeira_desativada": "Esta bandeira está desativada e não pode receber hotéis.",
   "erro.bandeira_nome_repetido": "Já existe uma bandeira com este nome.",

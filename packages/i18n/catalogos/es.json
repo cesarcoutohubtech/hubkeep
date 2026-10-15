@@ -426,6 +426,8 @@
   "erro.bandeira_nao_encontrada": "Marca no encontrada.",
   "erro.auditoria_sem_permissao": "Solo el administrador del grupo, el gestor del centro de servicios y el gerente del hotel ven la auditoría general.",
   "erro.auditoria_periodo_invalido": "Elija un período de hasta {maximoDias} días, con el fin después del inicio.",
+  "erro.indicadores_periodo_invalido": "Elija un período de hasta {maximoDias} días, con el fin en el inicio o después.",
+  "erro.indicadores_sem_permissao": "Solo la gestión y el propietario ven el panel de indicadores.",
   "erro.auditoria_cursor_invalido": "La lista cambió de posición. Consulte de nuevo.",
   "erro.bandeira_desativada": "Esta marca está desactivada y no puede recibir hoteles.",
   "erro.bandeira_nome_repetido": "Ya existe una marca con este nombre.",

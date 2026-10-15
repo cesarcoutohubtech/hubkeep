@@ -799,3 +799,22 @@ O Cesar respondeu ("Cesar aqui. Respostas:"):
 ## ADR-046 aprovado (14/10/2026)
 
 O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no `docs/03` foi trocado na branch `claude/1c-comunicacao-migracao` e entra na `main` com o PR da migração 0049. A aprovação cobre os detalhes do push registrados no ADR.
+
+## Painel de indicadores (item 8): o domínio, na branch (15/10/2026)
+
+**Área compartilhada (`packages/dominio`), registrada antes de mexer.** Branch `claude/1c-painel`, a partir da `main` de 15/10 (a1e155c):
+- `indicadores.ts` (novo): os indicadores do glossário versão 3, uma parcial por hotel com o período em dias locais (regra 5) e a soma das parciais para a rede e a bandeira. Também quem vê: a gestão (Admin do grupo, Gestor CSC e Gerente do hotel, no escopo) vê tudo; o proprietário do hotel ou de UHs dele vê só os cartões (backlog, UH-dias e chamados).
+- `sla.ts`: exporta `inicioDoDiaLocal`, que usa o mesmo cálculo de fuso do calendário de SLA.
+- `politicas.ts`: a chave `preventiva.tolerancia_dias` (decisão 11), `{ dias }` de 0 a 30, padrão 0, com o prefixo `preventiva.` entre os do núcleo (também em `packages/contratos`).
+
+**Escolhas de borda, para o Cesar confirmar** (nenhuma muda o texto do glossário, mas confirmo antes do PR):
+1. **Prazo que ainda corre.** No % de SLA e no % de preventiva em dia, o chamado ou a preventiva com o prazo dentro do período que ainda não venceu e não foi concluído fica fora da conta até vencer. Aparece ao lado como "ainda no prazo". Sem isso, o período que termina hoje puxa o percentual para baixo com o que ainda pode ser cumprido.
+2. **Média da bandeira.** É o valor do conjunto: soma os chamados de todos os hotéis e calcula uma vez. Não é a média dos percentuais de cada hotel, para o hotel pequeno não pesar igual ao grande.
+3. **Idade do backlog.** Conta em dias completos desde a abertura: 0 a 2, 3 a 7, 8 a 15, 16 a 30 e mais de 30.
+4. **Produtividade.** As OS concluídas, corretivas e preventivas, e as horas apontadas, cortadas no período, ficam com a equipe da OS. A OS sem equipe aparece numa linha "sem equipe". A visão por técnico fica de fora; não há política para ligá-la nesta etapa.
+
+**Próximos passos:**
+- **Leitura no `packages/db`:** chamados, OS e transições, preventivas, UH indisponível, apontamentos, UHs ativas e proprietários do hotel, sob a RLS.
+- **Caso de uso e API:** caso de uso em `packages/aplicacao` e `GET /api/v1/indicadores` (período, hotel ou bandeira).
+- **Tela:** a tela `/indicadores` e a tolerância na tela de configuração.
+- **Medição da meta (decisão 9):** com o volume de referência do Kaio.

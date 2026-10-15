@@ -426,6 +426,8 @@
   "erro.bandeira_nao_encontrada": "Brand not found.",
   "erro.auditoria_sem_permissao": "Only the group admin, the service center manager and the hotel manager see the audit log.",
   "erro.auditoria_periodo_invalido": "Choose a period of up to {maximoDias} days, with the end after the start.",
+  "erro.indicadores_periodo_invalido": "Choose a period of up to {maximoDias} days, ending on or after the start.",
+  "erro.indicadores_sem_permissao": "Only management and the owner see the indicators dashboard.",
   "erro.auditoria_cursor_invalido": "The list changed position. Search again.",
   "erro.bandeira_desativada": "This brand is deactivated and can't receive hotels.",
   "erro.bandeira_nome_repetido": "A brand with this name already exists.",

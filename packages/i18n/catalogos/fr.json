@@ -426,6 +426,8 @@
   "erro.bandeira_nao_encontrada": "Enseigne introuvable.",
   "erro.auditoria_sem_permissao": "Seuls l’administrateur du groupe, le responsable du centre de services et le directeur de l’hôtel voient le journal d’audit.",
   "erro.auditoria_periodo_invalido": "Choisissez une période d’au plus {maximoDias} jours, avec la fin après le début.",
+  "erro.indicadores_periodo_invalido": "Choisissez une période de {maximoDias} jours au plus, se terminant le jour du début ou après.",
+  "erro.indicadores_sem_permissao": "Seuls la direction et le propriétaire voient le tableau des indicateurs.",
   "erro.auditoria_cursor_invalido": "La liste a changé de position. Relancez la recherche.",
   "erro.bandeira_desativada": "Cette enseigne est désactivée et ne peut pas recevoir d’hôtels.",
   "erro.bandeira_nome_repetido": "Une enseigne porte déjà ce nom.",
