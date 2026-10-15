@@ -160,13 +160,14 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
     expect(registro.resolver(c, {})).toEqual(PADROES_DO_INTELLIGENCE[c]);
   });
 
-  it('a efetividade v2: os limiares da política, na ordem (parcial < observada ≤ 100)', () => {
+  it('a efetividade v3: os limiares da política, na ordem (parcial < observada ≤ 100)', () => {
     expect(PADROES_DO_INTELLIGENCE[c]).toEqual({
       janelaDias: 90,
       reducaoObservadaPercentual: 60,
       reducaoParcialPercentual: 25,
       aumentoObservadoPercentual: 20,
       minChamadosAntes: 3,
+      codigosDeIntervencao: ['solucao_troca_do_equipamento'],
     });
     const com = (campos: object) => ({ ...copia(PADROES_DO_INTELLIGENCE[c]), ...campos });
     expect(valorValidoDoIntelligence(c, com({ reducaoObservadaPercentual: 100 }))).toBe(true);
@@ -180,8 +181,27 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
       { minChamadosAntes: 2.5 },
       { janelaDias: 0 },
       { limiarPercentual: 20 }, // campo da versão 1: fora do formato
+      { codigosDeIntervencao: 'solucao_troca_do_equipamento' },
+      { codigosDeIntervencao: ['x', 'x'] },
+      { codigosDeIntervencao: [''] },
     ])
       expect(valorValidoDoIntelligence(c, com(ruim))).toBe(false);
+    expect(valorValidoDoIntelligence(c, com({ codigosDeIntervencao: [] }))).toBe(true);
+    expect(
+      valorValidoDoIntelligence(
+        c,
+        com({ codigosDeIntervencao: ['solucao_troca_do_equipamento', 'solucao_troca_de_peca'] }),
+      ),
+    ).toBe(true);
+  });
+
+  it('a efetividade gravada antes da v3, sem os códigos de intervenção, continua valendo', () => {
+    const antiga = copia(PADROES_DO_INTELLIGENCE[c]);
+    delete antiga.codigosDeIntervencao;
+    antiga.janelaDias = 60;
+    expect(valorValidoDoIntelligence(c, antiga)).toBe(true);
+    const registro = registroDePoliticas([EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE]);
+    expect(registro.resolver(c, { grupo: antiga })).toBe(antiga);
   });
 
   it('o sistêmico gravado antes da v4, sem a população mínima e o percentual afetado, continua valendo', () => {

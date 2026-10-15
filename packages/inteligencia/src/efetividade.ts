@@ -16,26 +16,41 @@
 // nunca vira uma comparação válida, por mais que a janela termine.
 //
 // A versão 1 (limiar único de 20% nos dois sentidos) nunca foi gravada: a
-// efetividade é calculada sob demanda, e a 2 é a primeira versão que um
-// resultado gravado vai levar.
+// efetividade é calculada sob demanda. A 2 também não chegou a ser gravada.
+//
+// Versão 3 (adendo ao ADR-033 de 15/10/2026, aprovado por Cesar e Kaio):
+// - a intervenção é a OS corretiva concluída com o código de solução na lista
+//   `codigosDeIntervencao` da política (padrão: só "Troca do equipamento");
+//   quem a identifica é `intervencao.ts`;
+// - o custo das corretivas, antes → depois, sai das próprias corretivas, pelo
+//   aceite (glossário de métricas v3), sem a OS da intervenção, que é o custo
+//   da troca e não da falha. Cada lado mostra a cobertura ("custo informado em
+//   X de Y OS"); abaixo de 50% em qualquer um dos lados
+//   (`COBERTURA_MINIMA_DO_CUSTO`, confirmado pelo Kaio em 15/10/2026), não há
+//   variação: a tela mostra "dados insuficientes". O lado sem nenhuma OS
+//   aceita tem custo zero conhecido e conta como coberto.
 import type { Parada } from '@hubkeep/dominio';
 import { type Corretiva, horasParadasNoTrecho } from './historico';
 import { DIA_MS } from './score';
 
-export const VERSAO_EFETIVIDADE = 2;
+export const VERSAO_EFETIVIDADE = 3;
 
-export interface Custo {
-  em: Date;
-  valor: number;
-}
+/** A parte das OS aceitas de cada lado que precisa ter o custo informado (adendo ao ADR-033). */
+export const COBERTURA_MINIMA_DO_CUSTO = 0.5;
+
+/** Os códigos de solução que contam como intervenção, sem política gravada. */
+export const CODIGOS_DE_INTERVENCAO_PADRAO: readonly string[] = ['solucao_troca_do_equipamento'];
+
+/** O máximo de códigos na lista da política. */
+export const MAXIMO_DE_CODIGOS_DE_INTERVENCAO = 20;
 
 export interface EntradaEfetividade {
   intervencaoEm: Date;
-  /** Corretivas do escopo (ativo, local, andar ou categoria), já filtradas. */
+  /** Corretivas do escopo (o ativo), já filtradas, com o aceite e o custo informado. */
   corretivas: readonly Corretiva[];
   paradas: readonly Parada[];
-  /** Custo informado das OS (`app.os.custo_informado`, I4); null sem dado. */
-  custos?: readonly Custo[] | null;
+  /** A corretiva da própria intervenção, que fica fora do custo; ausente sem ela. */
+  intervencaoId?: string;
 }
 
 export interface ConfigEfetividade {
@@ -49,6 +64,13 @@ export interface ConfigEfetividade {
   aumentoObservadoPercentual: number;
   /** Menos chamados que isto antes da intervenção: não há base de comparação. */
   minChamadosAntes: number;
+  /**
+   * Os códigos de solução que fazem da OS uma intervenção: a chave padrão do
+   * código (`app.codigo_manutencao.chave_padrao`) ou o id do código criado pelo
+   * grupo. Ausente na política gravada antes da versão 3: vale o padrão. A
+   * lista vazia desliga a efetividade.
+   */
+  codigosDeIntervencao?: readonly string[];
 }
 
 export const PADRAO_EFETIVIDADE: ConfigEfetividade = {
@@ -57,7 +79,22 @@ export const PADRAO_EFETIVIDADE: ConfigEfetividade = {
   reducaoParcialPercentual: 25,
   aumentoObservadoPercentual: 20,
   minChamadosAntes: 3,
+  codigosDeIntervencao: CODIGOS_DE_INTERVENCAO_PADRAO,
 };
+
+/** A lista de códigos da política, ou a do padrão quando a política é anterior à versão 3. */
+export const codigosDeIntervencao = (c: ConfigEfetividade): readonly string[] =>
+  c.codigosDeIntervencao ?? CODIGOS_DE_INTERVENCAO_PADRAO;
+
+/** Até 20 códigos, cada um um texto não vazio de até 64 caracteres, sem repetir. */
+export function listaDeCodigosValida(v: unknown): v is readonly string[] {
+  return (
+    Array.isArray(v) &&
+    v.length <= MAXIMO_DE_CODIGOS_DE_INTERVENCAO &&
+    v.every((c) => typeof c === 'string' && c.trim() === c && c.length > 0 && c.length <= 64) &&
+    new Set(v).size === v.length
+  );
+}
 
 /**
  * Os limiares só fazem sentido nesta ordem: a redução parcial começa antes da
@@ -73,11 +110,12 @@ export function limiaresDeEfetividadeValidos(c: ConfigEfetividade): boolean {
     c.reducaoParcialPercentual > 0 &&
     c.reducaoParcialPercentual < c.reducaoObservadaPercentual &&
     c.reducaoObservadaPercentual <= 100 &&
-    c.aumentoObservadoPercentual > 0
+    c.aumentoObservadoPercentual > 0 &&
+    (c.codigosDeIntervencao === undefined || listaDeCodigosValida(c.codigosDeIntervencao))
   );
 }
 
-export type ChaveMetrica = 'chamados' | 'reaberturas' | 'horas_paradas' | 'custo';
+export type ChaveMetrica = 'chamados' | 'reaberturas' | 'horas_paradas';
 
 export interface MetricaAntesDepois {
   chave: ChaveMetrica;
@@ -95,14 +133,39 @@ export type ResultadoEfetividade =
   | 'sem_base_de_comparacao'
   | 'janela_incompleta';
 
+/** O custo informado das OS aceitas de um lado da intervenção. */
+export interface CustoDoLado {
+  /** Soma das OS com o custo informado; 0 quando nenhuma tem. */
+  soma: number;
+  /** OS aceitas no lado com o custo preenchido (o X de "X de Y OS"). */
+  informadas: number;
+  /** OS aceitas no lado (o Y). */
+  aceitas: number;
+}
+
+export interface CustoAntesDepois {
+  antes: CustoDoLado;
+  depois: CustoDoLado;
+  /** Os dois lados com a cobertura mínima; senão, "dados insuficientes". */
+  suficiente: boolean;
+  /** null sem cobertura suficiente, ou com o antes em zero. */
+  variacaoPercentual: number | null;
+}
+
 export interface Efetividade {
   versao: number;
   resultado: ResultadoEfetividade;
   /** O depois ainda não completou a janela: as métricas são parciais. */
   diasDecorridos: number;
   metricas: readonly MetricaAntesDepois[];
+  /** O custo das corretivas, antes → depois, com a cobertura de cada lado. */
+  custo: CustoAntesDepois;
   configuracao: ConfigEfetividade;
 }
+
+/** O lado tem a cobertura mínima; sem OS aceita, o custo é zero e é conhecido. */
+export const ladoCoberto = (l: CustoDoLado): boolean =>
+  l.aceitas === 0 || l.informadas >= COBERTURA_MINIMA_DO_CUSTO * l.aceitas;
 
 const variacao = (antes: number, depois: number): number | null =>
   antes === 0 ? null : Math.round(((depois - antes) / antes) * 1000) / 10;
@@ -161,24 +224,28 @@ export function efetividadeAntesDepois(
       horasParadasNoTrecho(e.paradas, t, fimDepois, agora),
     ),
   ];
-  if (e.custos) {
-    const custos = e.custos;
-    metricas.push(
-      par(
-        'custo',
-        contar(
-          custos,
-          (c) => antes(c.em),
-          (c) => c.valor,
-        ),
-        contar(
-          custos,
-          (c) => depois(c.em),
-          (c) => c.valor,
-        ),
-      ),
+  const custoDoLado = (dentro: (d: Date) => boolean): CustoDoLado => {
+    const aceitas = e.corretivas.filter(
+      (c) => c.id !== e.intervencaoId && c.aceitaEm !== null && dentro(c.aceitaEm),
     );
-  }
+    const comCusto = aceitas.filter(
+      (c) => c.custoInformado !== undefined && c.custoInformado !== null,
+    );
+    return {
+      soma: comCusto.reduce((s, c) => s + (c.custoInformado as number), 0),
+      informadas: comCusto.length,
+      aceitas: aceitas.length,
+    };
+  };
+  const custoAntes = custoDoLado(antes);
+  const custoDepois = custoDoLado(depois);
+  const suficiente = ladoCoberto(custoAntes) && ladoCoberto(custoDepois);
+  const custo: CustoAntesDepois = {
+    antes: custoAntes,
+    depois: custoDepois,
+    suficiente,
+    variacaoPercentual: suficiente ? variacao(custoAntes.soma, custoDepois.soma) : null,
+  };
 
   const diasDecorridos = Math.max(0, Math.floor((agora.getTime() - t) / DIA_MS));
   const chamados = metricas[0] as MetricaAntesDepois;
@@ -194,5 +261,12 @@ export function efetividadeAntesDepois(
     resultado = 'aumento_observado';
   else resultado = 'sem_mudanca_relevante';
 
-  return { versao: VERSAO_EFETIVIDADE, resultado, diasDecorridos, metricas, configuracao: config };
+  return {
+    versao: VERSAO_EFETIVIDADE,
+    resultado,
+    diasDecorridos,
+    metricas,
+    custo,
+    configuracao: config,
+  };
 }
