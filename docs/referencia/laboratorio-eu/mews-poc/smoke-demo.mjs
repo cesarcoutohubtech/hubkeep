@@ -23,30 +23,34 @@ async function executar() {
     maxRetries: 1,
   });
   // Na demo pública, nenhum dado real de clientes, hóspedes ou hotéis deve ser usado.
-  const enterprises = await mews.listarEmpresas();
-  const primeira = enterprises.find((item) => typeof item?.Id === 'string');
+  const empresas = await mews.lerPrimeiraPaginaDeEmpresas();
+  const primeira = empresas.itens.find((item) => typeof item?.Id === 'string');
   if (!primeira) {
     globalThis.console.log(JSON.stringify({ ambiente: 'mews-demo', empresas: 0, status: 'sem_dados' }));
     return;
   }
 
   const enterpriseId = primeira.Id;
-  const [recursos, bloqueios] = await Promise.all([
-    mews.listarRecursos([enterpriseId]),
-    mews.listarBloqueios([enterpriseId]),
-  ]);
+  const recursos = await mews.lerPrimeiraPaginaDeRecursos([enterpriseId]);
+  const bloqueios = await mews.lerPrimeiraPaginaDeBloqueios([enterpriseId]);
   const escopo = criarEscopo({
     tenantId: 'tenant-sintetico-mews-lab',
     vinculos: [{ enterpriseId, hotelId: 'hotel-sintetico-mews-lab' }],
   });
-  const projecao = montarProjecao(escopo, recursos, bloqueios);
+  const projecao = montarProjecao(escopo, recursos.itens, bloqueios.itens);
   // Nunca mostrar tokens, nomes de recursos, campos livres, hóspedes, URLs ou payloads crus.
   globalThis.console.log(JSON.stringify({
     ambiente: 'mews-demo',
     status: 'consulta_read_only_realizada',
-    empresasConsultadas: enterprises.length,
-    recursosConsultados: recursos.length,
-    bloqueiosConsultados: bloqueios.length,
+    chamadasHttpEsperadas: 3,
+    empresasAmostradas: empresas.itens.length,
+    recursosAmostrados: recursos.itens.length,
+    bloqueiosAmostrados: bloqueios.itens.length,
+    existeProximaPagina: {
+      empresas: Boolean(empresas.cursor),
+      recursos: Boolean(recursos.cursor),
+      bloqueios: Boolean(bloqueios.cursor),
+    },
     espacosNormalizados: projecao.espacos.length,
     bloqueiosNormalizados: projecao.bloqueios.length,
     persistiuNoHubKeep: projecao.persistiuNoHubKeep,
