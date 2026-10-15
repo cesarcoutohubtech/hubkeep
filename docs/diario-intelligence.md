@@ -2177,3 +2177,18 @@ O agente recomenda a **(a)**: a ressalva de correlação já está na tela, e a 
   - **Kaio:** os quatro pontos de detalhe acima.
   - **Cesar e Kaio:** a página do insight, opção (a), (b) ou (c).
 - **Próximo:** o roteiro da demonstração ganha o chamado de modernização do elevador com "Troca do equipamento", e o PR 2 traz as rotas, os contratos, as três telas e os textos, com o nome do fornecedor e a descrição do chamado. O primeiro passo é ler o cenário `efetividade-elevador` do roteiro e `iaTabelaEfetividade` no mock.
+
+### Respostas de 15/10/2026 sobre o PR 1
+
+Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma com quem fala:
+- **Kaio:** "4 escolhas conferido". Os quatro pontos de detalhe acima ficam como estão.
+- **Página do insight:** "Kaio aqui. Opção A, como recomendada" e "Cesar aqui. Opção A, como recomendada".
+  - A página do insight mostra as intervenções nos ativos do insight concluídas depois da primeira detecção dele.
+  - Entra no PR 2.
+- **Status dos 50% no `docs/03`:** "Cesar aqui: num PR só para ela".
+  - O PR de zona protegida abre depois do merge do #290, porque o agente tem uma branch só.
+  - Ele também precisa que não haja outro PR de zona protegida aberto.
+
+**Próximo:**
+1. depois do merge do #290, o PR da linha do `docs/03`;
+2. depois do merge dele, o PR 2 da efetividade, com a página do insight pela opção (a).
