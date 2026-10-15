@@ -254,6 +254,7 @@ export {
 } from './execucao';
 export {
   exigirAtivoNoChamado,
+  exigirChamadoParaParada,
   exigirParadaAberta,
   exigirSemParadaAberta,
   paradaAEncerrarNaConclusao,
@@ -340,6 +341,7 @@ export {
   ehUnidadeDePeriodicidade,
   exigirPlanoNaoEncerrado,
   exigirResponsavelParaAtivar,
+  hotelJaTemPlanoQueCobreOAtivo,
   normalizarNomeDoPlano,
   ocorrenciaMaisRecenteAte,
   ocorrencias,
@@ -353,20 +355,24 @@ export {
 export type {
   AcaoDoPlano,
   Periodicidade,
+  PlanoQueCobre,
   SituacaoDoPlano,
   UnidadeDePeriodicidade,
 } from './plano-preventivo';
 export {
   ESTADOS_DA_PREVENTIVA_ABERTA,
   MOTIVOS_DE_PULO,
+  PENDENCIAS_DO_PLANO,
   copiaDoPlano,
   modeloParaACopia,
+  pendenciasDoPlano,
   planejarGeracao,
   responsavelQueVale,
 } from './geracao-preventiva';
 export type {
   AtivoParaGerar,
   MotivoDePulo,
+  PendenciaDoPlano,
   PlanejamentoDaGeracao,
   PlanoAplicado,
   PlanoParaGerar,
@@ -554,3 +560,27 @@ export {
   validarPeriodoDaAuditoria,
 } from './auditoria-geral';
 export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
+export {
+  lerPlanoSugerido,
+  podeGerirModelosDeAtivo,
+  preencherComModelo,
+  validarModeloDeAtivo,
+  validarModeloDoAtivo,
+} from './modelos-de-ativo';
+export type {
+  AtivoEmCadastro,
+  CategoriaDoModelo,
+  ChecklistDoModelo,
+  DadosDoModeloDeAtivo,
+} from './modelos-de-ativo';
+export {
+  CANAIS_DE_ENVIO,
+  LIMITE_DE_ENVIOS_POR_DIA,
+  LIMITE_DO_PERIODO_DA_CONTAGEM_DIAS,
+  SITUACOES_DE_ENVIO,
+  pessoasDoAviso,
+  podeVerContagemDeEnvios,
+  situacaoAntesDoEnvio,
+  validarPeriodoDaContagem,
+} from './comunicacao';
+export type { CanalDeEnvio, ResponsavelDaOsAtiva, SituacaoDeEnvio } from './comunicacao';

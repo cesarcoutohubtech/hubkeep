@@ -750,3 +750,95 @@ A aprovação está no chat do agente da 1c, em 13/10/2026.
   - o que fazer com a branch `claude/1c-arrendado-migracao`, recriada por engano;
   - as aprovações do glossário.
 - **Próxima tarefa:** com o aviso do `db push`, juntar a `main` na `claude/1c-arrendado-os`, validar e abrir o PR 3. Enquanto isso, na branch: o ADR da comunicação e a migração das duas tabelas, para abrir na vez dela, depois da PV3.
+
+## Comunicação: o ADR-046 e a migração das duas tabelas, na branch (13/10/2026)
+
+O Cesar mandou prosseguir ("Cesar aqui. Prossiga"). O PR 3 do arrendado abriu no #261, que não deve ser mergeado antes do `db push` da 0047.
+
+A branch `claude/1c-comunicacao-migracao`, a partir da `main`, traz:
+- **A migração** `20261014120000_comunicacao.sql` (0049, depois da 0048 da PV3; renomeada em 14/10/2026), com `app.envio_notificacao` e `app.inscricao_push`.
+- **O pgTAP** `041_isolamento_comunicacao.test.sql`, com 45 asserções.
+- **O meta-teste 001:** as duas tabelas entram na lista fechada, e o registro dos envios, na lista das tabelas só de inserção.
+- **Os tipos do Kysely.**
+- **O `docs/03`:**
+  - o ADR-046, com o status "aguarda aprovação do Cesar";
+  - o status aprovado do ADR-045, que não pôde entrar no #257.
+
+O PR é de zona protegida e só abre na vez dele, depois da parte protegida da PV3 (C9).
+
+**Antes de abrir:**
+- conferir a última migração da `main`;
+- renomear o arquivo com data e hora depois da migração da PV3, para o `db push` não recusar a ordem;
+- refazer o número no comentário e no ADR-046.
+
+Feito em 14/10/2026, depois do merge do #262 (PV3, 0048): a migração virou 0049 (`20261014120000`), o pgTAP virou 041 e a `main` entrou na branch.
+
+### Ponto de retomada (13/10/2026, comunicação na branch)
+- **`main`:** em `b7e9870`. O dev espera o `db push` da 0047.
+- **PRs da 1c:** o #261 (PR 3 do arrendado), fora da zona protegida. Não mergear antes do `db push` da 0047.
+- **Na branch, sem PR:** `claude/1c-comunicacao-migracao`, com a migração, o pgTAP, o meta-teste, os tipos, o ADR-046 e o status do ADR-045.
+- **Esperando o Cesar:**
+  - o `db push` da 0047;
+  - a vez da migração da comunicação, depois da PV3;
+  - o que fazer com a branch `claude/1c-arrendado-migracao`;
+  - a conta e o DNS do SES (F0-12);
+  - as aprovações do glossário.
+- **Próxima tarefa:** o PR do e-mail do SLA (fora da zona protegida), na branch, a partir desta.
+  - **O que entra:** a porta `EnviadorDeEmail` com o adaptador "desligado", o manipulador do `chamado.sla_alerta`, o modelo do e-mail no catálogo, o registro dos envios, a contagem do C8 e o teste de paridade.
+  - **Primeiro passo:** ler `packages/aplicacao/src/casos-de-uso/eventos.ts` e a porta `EnviadorDeEmail`.
+
+## Comunicação, PR do e-mail do SLA: na branch (13/10/2026)
+
+O #261 entrou na `main`. A branch `claude/1c-email-sla` foi feita a partir da `claude/1c-comunicacao-migracao`, com a `main` mesclada. O PR só abre depois que a migração da comunicação estiver na `main` e no dev, porque o código grava em `app.envio_notificacao`.
+
+**Aviso de área compartilhada com a 1b (`packages/dominio`, outbox e catálogos):**
+- **Domínio** (`comunicacao.ts`):
+  - `CANAIS_DE_ENVIO`, `SITUACOES_DE_ENVIO` e `LIMITE_DE_ENVIOS_POR_DIA` (30, C8);
+  - `pessoasDoAviso`: os papéis pelas atribuições vigentes que cobrem o hotel, mais o responsável da OS ativa, que é o Técnico ou os membros ativos da equipe;
+  - `situacaoAntesDoEnvio` (`sem_endereco` e `sem_provedor`), `podeVerContagemDeEnvios` e `validarPeriodoDaContagem` (até 31 dias).
+- **Aplicação:**
+  - o manipulador do `chamado.sla_alerta` em `criarManipuladoresDeEventos`, com a dependência opcional `comunicacao`;
+  - um e-mail por pessoa, no idioma dela e depois no do tenant (C6);
+  - o envio já registrado não sai de novo, e a falha de uma pessoa não para as outras;
+  - o `EventoPendente` ganha o `registroId`, o chamado do aviso;
+  - o caso de uso `contagemDeEnvios` (C8).
+- **Banco:**
+  - `criarPortaComunicacao`, que lê com o `hk_worker` e grava o registro pela unit of work (`repositorios/comunicacao.ts`);
+  - o outbox passa o `registro_id` ao manipulador.
+- **Web:**
+  - na composição, o manipulador com o e-mail desligado (`email: null`, C1): até o SES, cada envio fica como `sem_provedor`;
+  - a rota `GET /api/v1/comunicacao/envios/contagem`.
+- **Catálogos:** o modelo `email.sla.*`, com o texto puro e o HTML e o prazo no fuso do hotel, e o erro `envios_fora_do_papel`, nos 4 idiomas.
+- **Testes:**
+  - domínio, i18n e aplicação, com portas falsas;
+  - a paridade dos dois checks da 0049;
+  - a integração `packages/db/test/comunicacao.test.ts`, que roda só na CI.
+
+**Fica para depois:**
+- o adaptador do SES, quando o Cesar configurar a conta (C1);
+- a tela da contagem: a API já serve o piloto;
+- o push.
+
+**Validação local:** lint e typecheck passaram, e os testes também: 4.580 passaram e nenhum falhou. Os 296 de integração ficaram pulados, porque rodam só na CI.
+
+## Respostas do Cesar de 14/10/2026
+
+O Cesar respondeu ("Cesar aqui. Respostas:"):
+- **A vez da migração da comunicação** é a próxima, depois do merge do #262 e do `db push` da 0048. Ele avisa quando a vez estiver livre.
+- **O status do ADR-045** vai junto com a migração da comunicação.
+- **A branch `claude/1c-arrendado-migracao`** pode ser apagada. O proxy da sessão recusou a exclusão (`git push --delete`); fica para o Cesar apagar no GitHub.
+- **Glossário:** a versão 3 está aprovada por ele e pelo Kaio, e os termos "prazo em risco" e "prazo vencido" foram fechados no #258. O painel da 1c segue a versão 3.
+- **Enquanto a vez não chega,** seguir com o que não depende da migração: o PR 3 do arrendado ou o push. O PR 3 do arrendado já entrou (#261); o push anda numa branch que já tem a migração, porque grava em `app.inscricao_push`, e o PR abre depois do merge e do `db push` da 0049.
+
+## ADR-046 aprovado (14/10/2026)
+
+O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no `docs/03` foi trocado na branch `claude/1c-comunicacao-migracao` e entra na `main` com o PR da migração 0049. A aprovação cobre os detalhes do push registrados no ADR.
+
+### Ponto de retomada (14/10/2026, depois do merge do #272)
+- **`main`:** em `b1f70f8`, com o #272 (migração 0049, pgTAP 041, ADR-046 e ADR-045 aprovados). O dev espera o `db push` da 0049 pelo Cesar.
+- **PRs abertos da 1c:** nenhum. Nenhum PR de zona protegida da 1c na fila.
+- **Nas branches, já com a `main` e validadas (lint, typecheck e testes):**
+  1. `claude/1c-email-sla`: o PR abre quando o Cesar confirmar o `db push` da 0049.
+  2. `claude/1c-push`: o PR abre depois do merge do PR do e-mail.
+- **Esperando o Cesar:** o `db push` da 0049; apagar a branch `claude/1c-arrendado-migracao`; a conta e o DNS do SES (F0-12); as chaves VAPID, depois do deploy do push.
+- **Próxima tarefa:** o painel de indicadores (item 8), pela versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.

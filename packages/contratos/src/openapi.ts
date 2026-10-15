@@ -23,6 +23,13 @@ import {
   RespostaDeModelosDeChecklist,
 } from './checklists';
 import {
+  PedidoDeAlteracaoDeModeloDeAtivo,
+  PedidoDeModeloDeAtivo,
+  PedidoDeVersaoDeModeloDeAtivo,
+  RespostaDeModeloDeAtivoGravado,
+  RespostaDeModelosDeAtivo,
+} from './modelos-de-ativo';
+import {
   PedidoDeAlteracaoDePlanoPreventivo,
   PedidoDeNovoPlanoPreventivo,
   PedidoDeSituacaoDoPlano,
@@ -85,6 +92,7 @@ import {
   PedidoDeReaberturaDeOs,
   PedidoDeTriagem,
   RespostaDeChamado,
+  RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
   ConsultaDaFilaDoDia,
@@ -94,6 +102,7 @@ import {
 } from './chamados';
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
 import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
+import { ConsultaDaContagemDeEnvios, RespostaDaContagemDeEnvios } from './comunicacao';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
@@ -1207,7 +1216,7 @@ export const ROTAS: readonly Rota[] = [
         'O registro mudou desde que o aparelho o leu (conflito_de_versao, transicao_invalida, os_de_outro_responsavel, parada_ja_aberta, parada_nao_aberta, parada_de_outro_chamado); a chave não é guardada.',
       ),
       422: ERRO(
-        'Operação inválida (entrada_invalida ou o código da regra); a chave não é guardada.',
+        'Operação inválida (entrada_invalida ou o código da regra, ex.: parada_na_preventiva); a chave não é guardada.',
       ),
     },
   },
@@ -1495,6 +1504,84 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/modelos-de-ativo',
+    resumo:
+      'Modelos de ativo do grupo, inclusive os desativados (M1). Leem quem cadastra ativo: o Admin do grupo, o Gestor CSC, o Gerente do hotel, o Implantador e o Técnico (o PWA baixa os modelos para cadastrar offline); para os outros, a lista vem vazia. Os campos vêm filtrados pela definição atual da categoria.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Modelos', esquema: RespostaDeModelosDeAtivo },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-ativo',
+    resumo:
+      'Cria um modelo de ativo: categoria (obrigatória), nome, fabricante, modelo, campos pré-preenchidos da categoria (nenhum obrigatório), checklist e periodicidade sugerida. Começa na versão 1. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeModeloDeAtivo,
+    respostas: {
+      201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
+      404: ERRO('categoria_nao_encontrada ou checklist_nao_encontrado.'),
+      422: ERRO(
+        'ativo_nome_invalido, ativo_texto_invalido, campo_desconhecido, valor_de_campo_invalido, periodicidade_invalida, modelo_ativo_categoria_inativa, modelo_ativo_checklist_invalido ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/modelos-de-ativo/{id}',
+    resumo:
+      'Altera o modelo, com a versão vista; se ele mudou nesse meio-tempo, 409 (ADR-029). Os ativos que já nasceram do modelo ficam com o que foi copiado (ADR-026).',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDeModeloDeAtivo,
+    respostas: {
+      200: {
+        descricao: 'Modelo alterado, com a versão nova',
+        esquema: RespostaDeModeloDeAtivoGravado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
+      404: ERRO(
+        'modelo_ativo_nao_encontrado, categoria_nao_encontrada ou checklist_nao_encontrado.',
+      ),
+      409: ERRO('O modelo mudou depois de lido (conflito_de_versao).'),
+      422: ERRO('As mesmas recusas da criação.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-ativo/{id}/desativacao',
+    resumo:
+      'Desativa o modelo (exclusão lógica), com a versão vista. Some da escolha no cadastro do ativo; os ativos que nasceram dele não mudam.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDeModeloDeAtivo,
+    respostas: {
+      200: { descricao: 'Modelo desativado', esquema: RespostaDeModeloDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
+      404: ERRO('Modelo não encontrado (modelo_ativo_nao_encontrado).'),
+      409: ERRO('O modelo mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-ativo/{id}/reativacao',
+    resumo: 'Reativa o modelo, com a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDeModeloDeAtivo,
+    respostas: {
+      200: { descricao: 'Modelo reativado', esquema: RespostaDeModeloDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
+      404: ERRO('Modelo não encontrado (modelo_ativo_nao_encontrado).'),
+      409: ERRO('O modelo mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/planos-preventivos',
     resumo:
       'Planos preventivos do hotel, com a próxima data no fuso do hotel (gestão do hotel e Implantador; os outros recebem a lista vazia).',
@@ -1749,6 +1836,18 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/os/{id}',
+    resumo:
+      'A OS por id, se visível a quem pede: a corretiva ou a preventiva (PV3c), que não tem chamado e traz o plano, o ativo e a data prevista. Com os nomes do hotel, do local, do ativo, do responsável e do fornecedor, e a política da assinatura no aceite.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A OS, com os nomes', esquema: RespostaDeOs },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('OS fora do escopo (os_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/chamados/{id}',
     resumo:
       'O chamado e as OS dele, se visível a quem pede: quem lê o hotel, o proprietário da UH do chamado ou do hotel inteiro. Com os nomes do hotel, do local, do ativo, de quem abriu e dos responsáveis (C7); o que quem pede não lê vem null ou fica de fora.',
@@ -1811,6 +1910,22 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Quem pede não é da gestão (auditoria_sem_permissao).'),
       422: ERRO(
         'Período acima de 92 dias ou com o fim antes do início (auditoria_periodo_invalido, com maximoDias), cursor inválido (auditoria_cursor_invalido) ou filtro fora do formato (entrada_invalida).',
+      ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/comunicacao/envios/contagem',
+    resumo:
+      'Contagem de envios por destinatário e por dia (1c, ADR-046, C8), para a gestão saber quem passa do limite por pessoa e por dia e abrir o resumo agrupado. O dia é a data UTC do envio, e as falhas não contam. Do dia mais recente; no mesmo dia, de quem recebeu mais. Só a gestão: Admin do grupo, Gestor CSC e Gerente do hotel, nos hotéis de cada um (RLS).',
+    exigeTenant: true,
+    consulta: ConsultaDaContagemDeEnvios,
+    respostas: {
+      200: { descricao: 'A contagem no período', esquema: RespostaDaContagemDeEnvios },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão (envios_fora_do_papel).'),
+      422: ERRO(
+        'Período acima de 31 dias ou com o fim antes do início (periodo_invalido, com maximoDias) ou filtro fora do formato (entrada_invalida).',
       ),
     },
   },
@@ -2195,7 +2310,7 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
       409: ERRO('conflito_de_versao (com versaoAtual) ou transicao_invalida.'),
       422: ERRO(
-        'motivo_obrigatorio, parada_sem_ativo, parada_invalida, sem_situacao_para_estado ou entrada_invalida.',
+        'motivo_obrigatorio, parada_sem_ativo, parada_na_preventiva, parada_invalida, sem_situacao_para_estado ou entrada_invalida.',
       ),
     },
   },

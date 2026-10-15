@@ -72,8 +72,12 @@ export interface AppAtivo {
   id: string;
   local_id: string;
   modelo: string | null;
+  modelo_id: string | null;
   nome: string;
   numero_serie: string | null;
+  sugestao_descartada_em: Timestamp | null;
+  sugestao_descartada_por: string | null;
+  sugestao_descarte_motivo: string | null;
   tenant_id: string;
   versao: Generated<number>;
 }
@@ -186,6 +190,18 @@ export interface AppCodigoManutencao {
   tipo: string;
 }
 
+export interface AppEnvioNotificacao {
+  canal: string;
+  criado_em: Generated<Timestamp>;
+  evento_id: string;
+  hotel_id: string;
+  id: string;
+  situacao: string;
+  tenant_id: string;
+  tipo_evento: string;
+  usuario_id: string;
+}
+
 export interface AppEquipe {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -276,6 +292,17 @@ export interface AppHotelProprietario {
   vigencia_inicio: Timestamp;
 }
 
+export interface AppInscricaoPush {
+  chave_auth: string;
+  chave_p256dh: string;
+  criado_em: Generated<Timestamp>;
+  endpoint: string;
+  id: string;
+  revogada_em: Timestamp | null;
+  tenant_id: string;
+  usuario_id: string;
+}
+
 export interface AppInsight {
   anterior_id: string | null;
   atualizado_em: Generated<Timestamp>;
@@ -356,6 +383,22 @@ export interface AppMetricaAtivoDiaria {
   versao_formula_atencao: number;
   versao_formula_reincidencia: number;
   versao_politica: string;
+}
+
+export interface AppModeloAtivo {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  campos: Generated<Json>;
+  categoria_id: string;
+  checklist_modelo_id: string | null;
+  criado_em: Generated<Timestamp>;
+  fabricante: string | null;
+  id: string;
+  modelo: string | null;
+  nome: string;
+  plano_sugerido: Json | null;
+  tenant_id: string;
+  versao: Generated<number>;
 }
 
 export interface AppOperacaoOffline {
@@ -635,6 +678,7 @@ export interface DB {
   "app.chamado": AppChamado;
   "app.checklist_modelo": AppChecklistModelo;
   "app.codigo_manutencao": AppCodigoManutencao;
+  "app.envio_notificacao": AppEnvioNotificacao;
   "app.equipe": AppEquipe;
   "app.equipe_membro": AppEquipeMembro;
   "app.evento_dominio": AppEventoDominio;
@@ -642,11 +686,13 @@ export interface DB {
   "app.fornecedor": AppFornecedor;
   "app.hotel": AppHotel;
   "app.hotel_proprietario": AppHotelProprietario;
+  "app.inscricao_push": AppInscricaoPush;
   "app.insight": AppInsight;
   "app.local": AppLocal;
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
   "app.metrica_ativo_diaria": AppMetricaAtivoDiaria;
+  "app.modelo_ativo": AppModeloAtivo;
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
   "app.os_apontamento": AppOsApontamento;

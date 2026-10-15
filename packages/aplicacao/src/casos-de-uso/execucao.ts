@@ -47,6 +47,7 @@ import {
   decidirNaOs,
   decidirRegistroNaOs,
   exigirAtivoNoChamado,
+  exigirChamadoParaParada,
   exigirChecklistCompletoNaConclusao,
   exigirFotoDepoisNaConclusao,
   exigirParadaAberta,
@@ -76,6 +77,7 @@ import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaPrioridades, PortaSituacoes } from '../portas/situacoes';
 import { montarCalendarioDeSla } from './calendario-sla';
 import type { ChamadoParaTriagem, OsGravada, PortaTriagem } from '../portas/triagem';
+import { lerOsComOrigem } from './origem-da-os';
 import type { LiberacaoDeUh, PortaUhIndisponivel } from '../portas/uh-indisponivel';
 
 export type AcaoDoTecnico = AcaoNaOsDecidida['acao'];
@@ -170,27 +172,15 @@ export function criarCasosDeUsoDeExecucao(deps: {
     return { usuarioId: ctx.usuarioId, atribuicoes, equipes };
   }
 
-  async function osEChamado(
-    ctx: Contexto,
-    osId: string,
-  ): Promise<{ os: OsGravada; chamado: ChamadoParaTriagem }> {
-    const os = await deps.triagem.os(ctx, osId);
-    const chamado = os ? await deps.triagem.chamado(ctx, os.chamadoId) : null;
-    if (!os || !chamado) {
-      throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-    }
-    return { os, chamado };
-  }
-
   async function registro(ctx: Contexto, qual: RegistroNaOs, osId: string) {
-    const { os, chamado } = await osEChamado(ctx, osId);
+    const lida = await lerOsComOrigem(deps.triagem, ctx, osId);
     decidirRegistro(qual, {
       ator: await ator(ctx),
-      chamado,
-      os: { estado: os.estado, responsavel: os.responsavel },
+      ...lida.origem,
+      os: { estado: lida.os.estado, responsavel: lida.os.responsavel },
       agora: deps.relogio.agora(),
     });
-    return { os, chamado };
+    return lida;
   }
 
   const paradas = () => {
@@ -201,10 +191,11 @@ export function criarCasosDeUsoDeExecucao(deps: {
   async function paradaDaConclusao(
     ctx: Contexto,
     os: OsGravada,
-    chamado: ChamadoParaTriagem,
+    chamado: ChamadoParaTriagem | null,
     p: { equipamentoVoltou?: boolean | undefined; concluidaEm?: Date | undefined },
   ): Promise<EncerramentoDeParada | null> {
-    if (chamado.ativoId === null || p.equipamentoVoltou !== true) return null;
+    // A preventiva não tem parada (ela fica no chamado): nada a encerrar.
+    if (chamado === null || chamado.ativoId === null || p.equipamentoVoltou !== true) return null;
     const alvo = paradaAEncerrarNaConclusao(
       await paradas().abertaDoAtivo(ctx, chamado.ativoId),
       chamado.id,
@@ -220,10 +211,11 @@ export function criarCasosDeUsoDeExecucao(deps: {
   async function uhDaConclusao(
     ctx: Contexto,
     os: OsGravada,
-    chamado: ChamadoParaTriagem,
+    chamado: ChamadoParaTriagem | null,
     p: { uhLiberada?: boolean | undefined; concluidaEm?: Date | undefined },
   ): Promise<LiberacaoDeUh | null> {
-    if (p.uhLiberada !== true || !deps.uh) return null;
+    // A UH indisponível fica no chamado: a preventiva não libera UH.
+    if (chamado === null || p.uhLiberada !== true || !deps.uh) return null;
     const alvo = periodoALiberarNaConclusao(
       await deps.uh.abertoDoChamado(ctx, chamado.id),
       p.uhLiberada,
@@ -236,37 +228,29 @@ export function criarCasosDeUsoDeExecucao(deps: {
 
   /** Os códigos sugeridos na conclusão (I6): o que não serve é descartado, nunca recusado. */
   /** A foto "depois" na conclusão, com a política ligada no hotel (I8). */
-  async function exigirFotoDepois(ctx: Contexto, os: OsGravada, chamado: ChamadoParaTriagem) {
-    const politica = await deps.triagem.politica(ctx, chamado.hotel.id, FOTO_DEPOIS_OBRIGATORIA);
+  async function exigirFotoDepois(ctx: Contexto, os: OsGravada) {
+    const politica = await deps.triagem.politica(ctx, os.hotelId, FOTO_DEPOIS_OBRIGATORIA);
     if (!resolverPolitica(FOTO_DEPOIS_OBRIGATORIA, politica).ligado) return;
     exigirFotoDepoisNaConclusao(true, await deps.execucao.fotosDepois(ctx, os.id));
   }
 
   /** O checklist completo na conclusão, com a política ligada no hotel (PV1). */
-  async function exigirChecklistCompleto(
-    ctx: Contexto,
-    os: OsGravada,
-    chamado: ChamadoParaTriagem,
-  ) {
+  async function exigirChecklistCompleto(ctx: Contexto, os: OsGravada) {
     if (!deps.checklists) return;
-    const politica = await deps.triagem.politica(
-      ctx,
-      chamado.hotel.id,
-      CHECKLIST_COMPLETO_OBRIGATORIO,
-    );
+    const politica = await deps.triagem.politica(ctx, os.hotelId, CHECKLIST_COMPLETO_OBRIGATORIO);
     if (!resolverPolitica(CHECKLIST_COMPLETO_OBRIGATORIO, politica).ligado) return;
     exigirChecklistCompletoNaConclusao(true, await deps.checklists.daOs(ctx, os.id));
   }
 
   async function codigosDaConclusao(
     ctx: Contexto,
-    chamado: ChamadoParaTriagem,
+    ativoId: string | null,
     pedido: CodigosSugeridos | undefined,
   ): Promise<NonNullable<AcaoNaOsDecidida['codigos']> | null> {
     if (!pedido || !deps.codigos) return null;
     const [lista, categoria] = await Promise.all([
       deps.codigos.listar(ctx),
-      chamado.ativoId === null ? null : deps.codigos.categoriaDoAtivo(ctx, chamado.ativoId),
+      ativoId === null ? null : deps.codigos.categoriaDoAtivo(ctx, ativoId),
     ]);
     return sugestaoDosCodigos(pedido, lista, categoria);
   }
@@ -274,10 +258,11 @@ export function criarCasosDeUsoDeExecucao(deps: {
   /** A regra de SLA do chamado, da cópia (ADR-042); só lê as prioridades quando há motivo. */
   async function slaDaPausa(
     ctx: Contexto,
-    chamado: ChamadoParaTriagem,
+    chamado: ChamadoParaTriagem | null,
     motivo: MotivoDePausa | null,
   ) {
-    if (motivo === null || chamado.sla.prazoSolucao === null) return null;
+    // A preventiva não tem SLA (ele é do chamado): a pausa não para relógio.
+    if (chamado === null || motivo === null || chamado.sla.prazoSolucao === null) return null;
     if (!deps.prioridades) throw new Error('Pausa com motivo sem a porta de prioridades.');
     return slaDoChamado({
       politicaAplicada: chamado.sla.politicaAplicada,
@@ -294,9 +279,10 @@ export function criarCasosDeUsoDeExecucao(deps: {
   async function slaNaRetomada(
     ctx: Contexto,
     os: OsGravada,
-    chamado: ChamadoParaTriagem,
+    chamado: ChamadoParaTriagem | null,
     retomadaEm: Date,
   ): Promise<NonNullable<AcaoNaOsDecidida['slaNaRetomada']> | null> {
+    if (chamado === null) return null;
     const prazoSolucao = chamado.sla.prazoSolucao;
     const pausa = await deps.execucao.ultimaPausa(ctx, os.id);
     if (!pausa || prazoSolucao === null) return null;
@@ -325,12 +311,12 @@ export function criarCasosDeUsoDeExecucao(deps: {
 
   return {
     async prepararAcao(ctx, acao, p) {
-      const { os, chamado } = await osEChamado(ctx, p.osId);
+      const { os, chamado, origem, ativoId } = await lerOsComOrigem(deps.triagem, ctx, p.osId);
       // A regra antes da versão: a OS reatribuída no servidor, com a operação
       // na fila, volta como os_de_outro_responsavel, e não como versão.
       const d = decidir(acao, {
         ator: await ator(ctx),
-        chamado,
+        ...origem,
         os: { estado: os.estado, responsavel: os.responsavel },
         agora: deps.relogio.agora(),
       });
@@ -342,14 +328,14 @@ export function criarCasosDeUsoDeExecucao(deps: {
         deps.relogio.agora(),
       );
       if (acao === 'concluir') {
-        await exigirFotoDepois(ctx, os, chamado);
-        await exigirChecklistCompleto(ctx, os, chamado);
+        await exigirFotoDepois(ctx, os);
+        await exigirChecklistCompleto(ctx, os);
       }
       const encerrarParada =
         acao === 'concluir' ? await paradaDaConclusao(ctx, os, chamado, p) : null;
       const liberarUh = acao === 'concluir' ? await uhDaConclusao(ctx, os, chamado, p) : null;
       const codigos =
-        acao === 'concluir' ? await codigosDaConclusao(ctx, chamado, p.codigos) : null;
+        acao === 'concluir' ? await codigosDaConclusao(ctx, ativoId, p.codigos) : null;
       const motivo = acao === 'pausar' ? (p.motivo ?? null) : null;
       const pausa =
         acao === 'pausar'
@@ -357,7 +343,7 @@ export function criarCasosDeUsoDeExecucao(deps: {
               motivo,
               paraORelogio: pausaDoChamadoParaORelogio(
                 await slaDaPausa(ctx, chamado, motivo),
-                chamado.sla.prazoSolucao,
+                chamado?.sla.prazoSolucao ?? null,
                 motivo,
               ),
             }
@@ -378,7 +364,7 @@ export function criarCasosDeUsoDeExecucao(deps: {
         quando,
         situacaoId: situacaoPara(situacoes, 'os', d.estado),
         chamado:
-          d.chamado === null
+          d.chamado === null || chamado === null
             ? null
             : {
                 id: chamado.id,
@@ -405,7 +391,9 @@ export function criarCasosDeUsoDeExecucao(deps: {
     },
 
     async prepararParada(ctx, p) {
-      const { os, chamado } = await registro(ctx, 'registrar_parada', p.osId);
+      const lida = await registro(ctx, 'registrar_parada', p.osId);
+      const { os } = lida;
+      const chamado = exigirChamadoParaParada(lida.chamado);
       const ativoId = exigirAtivoNoChamado(chamado.ativoId);
       const { inicio, fim } = validarParada(p, deps.relogio.agora());
       exigirSemParadaAberta(await paradas().abertaDoAtivo(ctx, ativoId));
@@ -413,7 +401,9 @@ export function criarCasosDeUsoDeExecucao(deps: {
     },
 
     async prepararEncerramentoDeParada(ctx, p) {
-      const { os, chamado } = await registro(ctx, 'encerrar_parada', p.osId);
+      const lida = await registro(ctx, 'encerrar_parada', p.osId);
+      const { os } = lida;
+      const chamado = exigirChamadoParaParada(lida.chamado);
       const ativoId = exigirAtivoNoChamado(chamado.ativoId);
       const aberta = exigirParadaAberta(await paradas().abertaDoAtivo(ctx, ativoId));
       // A aberta de outro chamado do mesmo ativo não é desta OS: quem encerra é

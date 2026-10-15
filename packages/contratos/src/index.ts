@@ -70,6 +70,7 @@ export {
   PlanoPreventivoApi,
   RespostaDePlanoAlterado,
   RespostaDePlanosPreventivos,
+  PENDENCIAS_DO_PLANO_API,
   SITUACOES_DO_PLANO_API,
   UNIDADES_DE_PERIODICIDADE_API,
 } from './planos-preventivos';
@@ -121,6 +122,8 @@ export {
   PedidoDeTriagem,
   ResponsavelApi,
   RespostaDeChamado,
+  OsDaPaginaApi,
+  RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
   RespostaDeOsGravada,
@@ -307,3 +310,17 @@ export {
   RespostaDosAvisosDoChamado,
   TIPOS_DE_ALERTA_DE_SLA_API,
 } from './avisos-de-sla';
+export {
+  ModeloDeAtivoApi,
+  PedidoDeAlteracaoDeModeloDeAtivo,
+  PedidoDeModeloDeAtivo,
+  PedidoDeVersaoDeModeloDeAtivo,
+  PlanoSugeridoApi,
+  RespostaDeModeloDeAtivoGravado,
+  RespostaDeModelosDeAtivo,
+} from './modelos-de-ativo';
+export {
+  ConsultaDaContagemDeEnvios,
+  ContagemDeEnviosApi,
+  RespostaDaContagemDeEnvios,
+} from './comunicacao';

@@ -18,6 +18,7 @@
 import type {
   ChamadoResumidoApi,
   EventoDaLinhaDoTempoApi,
+  OsDaPaginaApi,
   OsResumidaApi,
   RespostaDeChamado,
   RespostaDeSituacoesEPrioridades,
@@ -62,6 +63,8 @@ export type OsResumida = z.infer<typeof OsResumidaApi>;
 export type EventoDaLinhaDoTempo = z.infer<typeof EventoDaLinhaDoTempoApi>;
 export type DetalheDoChamado = z.infer<typeof RespostaDeChamado>;
 export type OsDoChamado = DetalheDoChamado['os'][number];
+/** A OS da página da OS (PV3c): a corretiva ou a preventiva, sem chamado. */
+export type OsDaPagina = z.infer<typeof OsDaPaginaApi>;
 /** Os três códigos da OS (I6); null em cada um: não informado. */
 export type CodigosDaOsNaTela = OsDoChamado['codigos'];
 export type SituacoesEPrioridades = z.infer<typeof RespostaDeSituacoesEPrioridades>;
@@ -388,7 +391,7 @@ export function ColunasDeOs() {
   return (
     <thead>
       <tr>
-        <th scope="col">{t('corretiva.coluna.chamado')}</th>
+        <th scope="col">{t('corretiva.coluna.os')}</th>
         <th scope="col">{t('corretiva.coluna.onde')}</th>
         <th scope="col">{t('corretiva.coluna.situacao')}</th>
         <th scope="col">{t('corretiva.coluna.prioridade')}</th>
@@ -406,9 +409,23 @@ export function LinhaDeOs({ o, refs }: { o: OsResumida; refs: Referencias | null
   return (
     <tr>
       <td>
-        <Link href={`/chamados/${o.chamadoId}`}>
-          {o.descricao ?? t('corretiva.os.sem_descricao')}
-        </Link>
+        {o.preventiva ? (
+          // A preventiva (PV3c) não tem chamado: abre a página da OS.
+          <Link href={`/os/${o.id}`}>
+            {t('corretiva.os.preventiva', {
+              plano: o.preventiva.planoNome,
+              ativo: nomes.nome(o.preventiva.ativoNome),
+              data: intl.formatDate(new Date(`${o.preventiva.dataPrevista}T12:00:00Z`), {
+                dateStyle: 'short',
+                timeZone: 'UTC',
+              }),
+            })}
+          </Link>
+        ) : (
+          <Link href={`/chamados/${o.chamadoId}`}>
+            {o.descricao ?? t('corretiva.os.sem_descricao')}
+          </Link>
+        )}
       </td>
       <td>
         {t('corretiva.onde', { hotel: nomes.nome(o.hotelNome), local: nomes.nome(o.localNome) })}
@@ -417,9 +434,13 @@ export function LinhaDeOs({ o, refs }: { o: OsResumida; refs: Referencias | null
         <Selo tom={tomDoEstado(o.estado)}>{nomes.situacao(o.situacaoId)}</Selo>
       </td>
       <td>
-        <SeloDePrioridade nivel={nomes.nivel(o.prioridadeId)}>
-          {nomes.prioridade(o.prioridadeId)}
-        </SeloDePrioridade>
+        {o.preventiva ? (
+          <Selo tom="azul">{t('corretiva.os.selo_preventiva')}</Selo>
+        ) : (
+          <SeloDePrioridade nivel={nomes.nivel(o.prioridadeId)}>
+            {nomes.prioridade(o.prioridadeId)}
+          </SeloDePrioridade>
+        )}
       </td>
       <td>
         {nomes.nome(o.responsavelNome)}
@@ -482,7 +503,7 @@ function useCodigosDaOs(osId: string, ligado: boolean) {
 }
 
 function Aceite(props: {
-  os: OsDoChamado;
+  os: OsNoBloco;
   codigos: CodigosDoTenant | null;
   /** A política do hotel (I8): o aceite traz o quadro da assinatura. */
   assinaturaNoAceite: boolean;
@@ -574,7 +595,7 @@ function Aceite(props: {
 }
 
 /** Os códigos da OS (I6), por nome, para o detalhe; nada se não houver nenhum. */
-function CodigosDaOs(props: { os: OsDoChamado; codigos: CodigosDoTenant | null }) {
+function CodigosDaOs(props: { os: OsNoBloco; codigos: CodigosDoTenant | null }) {
   const t = useT();
   const nomeDoCodigo = useNomeDoCodigo(props.codigos);
   const porId = new Map((props.codigos?.codigos ?? []).map((c) => [c.id, c]));
@@ -646,6 +667,116 @@ function Reabertura(props: { temAtivo: boolean; aoReabrir: (p: PedidoDeReabertur
   );
 }
 
+/** A OS no corpo de uma OS ou da OS preventiva (PV3c): a corretiva e a preventiva usam o mesmo bloco. */
+export type OsNoBloco = OsDoChamado | OsDaPagina;
+
+/**
+ * Uma OS em detalhe: situação, responsável, quem executa, arrendamento,
+ * custo, códigos, checklist, assinatura, motivos, o aceite e a reabertura da
+ * concluída, as fotos e o histórico. O detalhe do chamado mostra um por OS; a
+ * página da OS (PV3c), um só.
+ */
+export function BlocoDaOs<O extends OsNoBloco>(props: {
+  os: O;
+  nomes: DetalheDoChamado['nomes'];
+  refs: Referencias | null;
+  codigos: CodigosDoTenant | null;
+  assinaturaNoAceite: boolean;
+  /** A OS tem ativo com parada possível: a reabertura oferece o equipamento parado. */
+  temAtivo: boolean;
+  aoAceitar: (
+    os: O,
+    custoInformado: number | null,
+    codigos?: CodigosDaOsNaTela | undefined,
+    assinatura?: Traco[] | null,
+  ) => void;
+  aoReabrir: (os: O, p: PedidoDeReabertura) => void;
+}) {
+  const t = useT();
+  const intl = useIntl();
+  const nomes = useNomes(props.refs);
+  const { os: o, nomes: n } = props;
+  const responsavel = nomes.nome(
+    o.responsavel.tipo === 'tecnico'
+      ? n.pessoas[o.responsavel.usuarioId]
+      : n.equipes[o.responsavel.equipeId],
+  );
+  return (
+    <div className="hk-pilha">
+      <div className="hk-linha-de-botoes">
+        <Selo tom={tomDoEstado(o.estado)}>
+          {t('corretiva.os.situacao', {
+            situacao: nomes.situacao(o.situacaoId),
+            data: intl.formatDate(o.criadoEm, dataCurta),
+          })}
+        </Selo>
+        <span className="hk-suave">{t('corretiva.os.responsavel', { nome: responsavel })}</span>
+      </div>
+      <p className="hk-suave" data-executado-por={o.executadoPor}>
+        {o.executadoPor === 'fornecedor'
+          ? t('corretiva.os.executado_por_fornecedor', {
+              nome: nomes.nome(o.fornecedorId ? n.fornecedores[o.fornecedorId] : null),
+            })
+          : t('corretiva.os.executado_pela_equipe')}
+      </p>
+      {o.responsavelArrendamento && (
+        <p className="hk-suave" data-arrendamento={o.responsavelArrendamento}>
+          {t('corretiva.os.arrendamento', {
+            responsavel: o.responsavelArrendamento,
+          })}
+        </p>
+      )}
+      {o.locadorAvisadoEm && (
+        <p className="hk-suave" data-locador-avisado={o.locadorAvisadoEm}>
+          {t('corretiva.os.locador_avisado', {
+            data: intl.formatDate(o.locadorAvisadoEm, dataCurta),
+          })}
+        </p>
+      )}
+      {o.custoInformado !== null && (
+        <p className="hk-suave" data-custo={o.custoInformado}>
+          {t('corretiva.os.custo', {
+            custo: intl.formatNumber(o.custoInformado, {
+              style: 'currency',
+              currency: 'BRL',
+            }),
+          })}
+        </p>
+      )}
+      <CodigosDaOs os={o} codigos={props.codigos} />
+      <ChecklistDaOs key={`checklist-${o.id}-${o.versao}`} osId={o.id} estado={o.estado} />
+      {o.assinaturaAceiteId && <AssinaturaDoAceite anexoId={o.assinaturaAceiteId} />}
+      {o.motivoReabertura && (
+        <p className="hk-suave">
+          {t('corretiva.os.motivo_reabertura', { motivo: o.motivoReabertura })}
+        </p>
+      )}
+      {o.motivoCancelamento && (
+        <p className="hk-suave">
+          {t('corretiva.motivo_cancelamento', { motivo: o.motivoCancelamento })}
+        </p>
+      )}
+      {o.estado === 'concluida' && (
+        <div className="hk-bloco" data-tom="atencao">
+          <p className="hk-bloco-titulo">{t('corretiva.aceite.titulo')}</p>
+          <p className="hk-suave">{t('corretiva.aceite.descricao')}</p>
+          <Aceite
+            os={o}
+            codigos={props.codigos}
+            assinaturaNoAceite={props.assinaturaNoAceite}
+            aoAceitar={(custo, codigos, assinatura) =>
+              props.aoAceitar(o, custo, codigos, assinatura)
+            }
+          />
+          <Reabertura temAtivo={props.temAtivo} aoReabrir={(p) => props.aoReabrir(o, p)} />
+        </div>
+      )}
+      <AnexosDoRegistro entidade="os" registroId={o.id} somenteLeitura />
+      <HistoricoDoRegistro key={`${o.id}-${o.versao}`} entidade="os" registroId={o.id} />
+    </div>
+  );
+}
+
 export function ChamadoEmDetalhe(props: {
   detalhe: DetalheDoChamado;
   refs: Referencias | null;
@@ -663,12 +794,6 @@ export function ChamadoEmDetalhe(props: {
   const intl = useIntl();
   const nomes = useNomes(props.refs);
   const { chamado, os, nomes: n } = props.detalhe;
-  const responsavel = (o: OsDoChamado) =>
-    nomes.nome(
-      o.responsavel.tipo === 'tecnico'
-        ? n.pessoas[o.responsavel.usuarioId]
-        : n.equipes[o.responsavel.equipeId],
-    );
   return (
     <>
       <Painel
@@ -737,91 +862,16 @@ export function ChamadoEmDetalhe(props: {
           <ul className="hk-lista">
             {os.map((o) => (
               <li key={o.id} id={`os-${o.id}`}>
-                <div className="hk-pilha">
-                  <div className="hk-linha-de-botoes">
-                    <Selo tom={tomDoEstado(o.estado)}>
-                      {t('corretiva.os.situacao', {
-                        situacao: nomes.situacao(o.situacaoId),
-                        data: intl.formatDate(o.criadoEm, dataCurta),
-                      })}
-                    </Selo>
-                    <span className="hk-suave">
-                      {t('corretiva.os.responsavel', { nome: responsavel(o) })}
-                    </span>
-                  </div>
-                  <p className="hk-suave" data-executado-por={o.executadoPor}>
-                    {o.executadoPor === 'fornecedor'
-                      ? t('corretiva.os.executado_por_fornecedor', {
-                          nome: nomes.nome(o.fornecedorId ? n.fornecedores[o.fornecedorId] : null),
-                        })
-                      : t('corretiva.os.executado_pela_equipe')}
-                  </p>
-                  {o.responsavelArrendamento && (
-                    <p className="hk-suave" data-arrendamento={o.responsavelArrendamento}>
-                      {t('corretiva.os.arrendamento', {
-                        responsavel: o.responsavelArrendamento,
-                      })}
-                    </p>
-                  )}
-                  {o.locadorAvisadoEm && (
-                    <p className="hk-suave" data-locador-avisado={o.locadorAvisadoEm}>
-                      {t('corretiva.os.locador_avisado', {
-                        data: intl.formatDate(o.locadorAvisadoEm, dataCurta),
-                      })}
-                    </p>
-                  )}
-                  {o.custoInformado !== null && (
-                    <p className="hk-suave" data-custo={o.custoInformado}>
-                      {t('corretiva.os.custo', {
-                        custo: intl.formatNumber(o.custoInformado, {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }),
-                      })}
-                    </p>
-                  )}
-                  <CodigosDaOs os={o} codigos={props.codigos ?? null} />
-                  <ChecklistDaOs
-                    key={`checklist-${o.id}-${o.versao}`}
-                    osId={o.id}
-                    estado={o.estado}
-                  />
-                  {o.assinaturaAceiteId && <AssinaturaDoAceite anexoId={o.assinaturaAceiteId} />}
-                  {o.motivoReabertura && (
-                    <p className="hk-suave">
-                      {t('corretiva.os.motivo_reabertura', { motivo: o.motivoReabertura })}
-                    </p>
-                  )}
-                  {o.motivoCancelamento && (
-                    <p className="hk-suave">
-                      {t('corretiva.motivo_cancelamento', { motivo: o.motivoCancelamento })}
-                    </p>
-                  )}
-                  {o.estado === 'concluida' && (
-                    <div className="hk-bloco" data-tom="atencao">
-                      <p className="hk-bloco-titulo">{t('corretiva.aceite.titulo')}</p>
-                      <p className="hk-suave">{t('corretiva.aceite.descricao')}</p>
-                      <Aceite
-                        os={o}
-                        codigos={props.codigos ?? null}
-                        assinaturaNoAceite={props.detalhe.assinaturaNoAceite}
-                        aoAceitar={(custo, codigos, assinatura) =>
-                          props.aoAceitar(o, custo, codigos, assinatura)
-                        }
-                      />
-                      <Reabertura
-                        temAtivo={chamado.ativoId !== null}
-                        aoReabrir={(p) => props.aoReabrir(o, p)}
-                      />
-                    </div>
-                  )}
-                  <AnexosDoRegistro entidade="os" registroId={o.id} somenteLeitura />
-                  <HistoricoDoRegistro
-                    key={`${o.id}-${o.versao}`}
-                    entidade="os"
-                    registroId={o.id}
-                  />
-                </div>
+                <BlocoDaOs
+                  os={o}
+                  nomes={n}
+                  refs={props.refs}
+                  codigos={props.codigos ?? null}
+                  assinaturaNoAceite={props.detalhe.assinaturaNoAceite}
+                  temAtivo={chamado.ativoId !== null}
+                  aoAceitar={props.aoAceitar}
+                  aoReabrir={props.aoReabrir}
+                />
               </li>
             ))}
           </ul>

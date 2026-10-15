@@ -16,7 +16,10 @@ const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
     "'",
   );
 
-const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsNoAparelho => ({
+/** A corretiva, com chamado: os casos da parada e da UH mexem nele. */
+type OsCorretiva = OsNoAparelho & { chamado: NonNullable<OsNoAparelho['chamado']> };
+
+const os = (estado: OsNoAparelho['estado'], pendentes = 0): OsCorretiva => ({
   id: '0a100000-0000-4000-8000-000000000001',
   hotelId: 'b1000000-0000-4000-8000-000000000001',
   estado,
@@ -75,6 +78,48 @@ const tela = (o: OsNoAparelho, perguntando: boolean | 'parada' | 'uh' | 'motivo'
     aoVoltar={() => undefined}
   />
 );
+
+/** A OS preventiva (PV3c): sem chamado, com o plano, o ativo e o local da OS. */
+const preventiva = (estado: OsNoAparelho['estado']): OsNoAparelho => ({
+  ...os(estado),
+  chamado: null,
+  preventiva: {
+    planoId: '7a000000-0000-4000-8000-000000000001',
+    planoNome: 'PMOC mensal',
+    dataPrevista: '2026-10-14',
+    ativoId: 'a1000000-0000-4000-8000-000000000001',
+    ativoNome: 'Split 12.000 BTU',
+    localId: 'd2000000-0000-4000-8000-000000000001',
+    localNome: 'Casa de máquinas',
+    localEdificacao: null,
+  },
+});
+
+describe('a OS preventiva no PWA (PV3c)', () => {
+  it.each(IDIOMAS)(
+    '%s: na fila e na tela, com o plano, o ativo e o local, sem parada nem UH',
+    (idioma) => {
+      const m = mensagensDe(idioma);
+      const naFila = renderizar(idioma, fila([preventiva('atribuida')]));
+      expect(naFila).toContain('Casa de máquinas');
+      expect(naFila).toContain('PMOC mensal');
+      expect(naFila).toContain('Split 12.000 BTU');
+      expect(naFila).not.toContain('tecnico.fila.');
+      const naTela = renderizar(idioma, tela(preventiva('em_execucao')));
+      expect(naTela).toContain('PMOC mensal');
+      expect(naTela).toContain('Casa de máquinas');
+      expect(naTela).not.toContain('tecnico.os.preventiva');
+      expect(naTela).not.toContain(m['tecnico.os.parada.registrar']);
+      expect(naTela).not.toContain('data-parado-desde');
+    },
+  );
+
+  it('pt-BR: a data prevista na tela da OS', () => {
+    expect(renderizar('pt-BR', tela(preventiva('atribuida')))).toContain(
+      'Preventiva: PMOC mensal, no ativo Split 12.000 BTU, prevista para 14/10/2026',
+    );
+  });
+});
 
 describe('fila do dia com OS', () => {
   it.each(IDIOMAS)('%s', (idioma) => {
@@ -170,7 +215,7 @@ describe('tela da OS', () => {
 
   it.each(IDIOMAS)('%s: parada do ativo (C5)', (idioma) => {
     const m = mensagensDe(idioma);
-    const comAtivo = (o: OsNoAparelho, paradoDesde: string | null): OsNoAparelho => ({
+    const comAtivo = (o: OsCorretiva, paradoDesde: string | null): OsCorretiva => ({
       ...o,
       chamado: {
         ...o.chamado,

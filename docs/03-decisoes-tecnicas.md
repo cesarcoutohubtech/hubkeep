@@ -833,6 +833,31 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Texto pelo catálogo:** o insight guarda tipo, chaves e números, e não título nem resumo (regra 11).
 - Tudo auditado pela unit of work.
 
+**Adendo — a fonte da intervenção na efetividade (US-I04, 15/10/2026).** É uma fonte de dado nova do Intelligence.
+- **Status:**
+  - Aprovado pelo Cesar em 15/10/2026, no chat do agente do Intelligence ("Cesar aqui": "Fonte da intervenção: opção C, o código de solução, pela política inteligencia.efetividade. Registre como adendo ao ADR-033").
+  - Aprovado pelo Kaio em 15/10/2026, no mesmo chat ("Kaio aqui": "Eu aptovo o que o agente propôs o desenho da tela da efetividade").
+  - A regra da cobertura do custo foi acrescentada pelo Cesar depois da proposta que o Kaio aprovou, e **aguarda a confirmação escrita do Kaio**. Os 50% são limiar, e portanto detalhe do Kaio.
+- **Intervenção:**
+  - É a OS corretiva concluída cujo código de solução (`app.os.codigo_solucao_id`, da I6) está na lista da política `inteligencia.efetividade`.
+  - O padrão da lista é só "Troca do equipamento".
+  - A data da intervenção é a conclusão final da OS.
+- **Fonte nova:**
+  - O Intelligence passa a ler o código de solução da OS.
+  - Não há migração nem tabela nova.
+  - O resultado se calcula sob demanda, no servidor, e não se grava. Se um dia for gravado, grava junto a versão da fórmula (ADR-036).
+- **Escopo:** por ativo. A intervenção de área, como vários ativos de um andar ou de uma área comum, fica fora do 1.0.
+- **Custo das corretivas, antes → depois:**
+  - Mostra a cobertura de cada lado: "custo informado em X de Y OS", sobre as corretivas aceitas, como no glossário de métricas v3.
+  - Abaixo de 50% de cobertura em qualquer um dos lados, a linha mostra "dados insuficientes", sem variação.
+  - Os 50% ficam numa constante do `packages/inteligencia`.
+- **Onde aparece e quem vê:**
+  - Aparece nos três lugares decididos em 10/10/2026: a seção abaixo da lista de insights, o detalhe do ativo e a página do insight.
+  - Vê quem decide insight do hotel do ativo.
+  - A efetividade continua sem ser tipo de insight.
+- **Ressalva:** toda exibição diz que a variação observada não prova que a intervenção foi a causa.
+- **Sem o código de solução, a intervenção não aparece.** O piloto treina o preenchimento desde o primeiro dia, mesmo com a política "Códigos obrigatórios no aceite" desligada (`docs/piloto/`).
+
 ## ADR-034 — Intelligence: scores determinísticos, versionados e explicáveis, calculados na aplicação
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-2, e por Cesar em 07/10/2026. Aprovada pelos dois.
@@ -1094,7 +1119,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-041 — Preventiva por tempo: calendário fixo e geração idempotente pelo worker
 
-**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3 (migração 0048). O adendo da PV3, no fim, aguarda aprovação do Cesar.
+**Status:** proposto em 12/10/2026 (`docs/referencia/propostas-desenho-pv-implantacao.md`, PV2 e PV3, PR #197); aprovado pelo Cesar em 12/10/2026, no chat, junto com as 21 decisões do desenho. O texto entra com a migração da PV2 (planos); a geração da OS entra com a da PV3 (migração 0048). O adendo da PV3, no fim, aprovado pelo Cesar em 14/10/2026, no chat do agente da 1b, o segundo item com condição.
 
 **Contexto:** a PV2 e a PV3 da 1b (`docs/12`) trazem a manutenção preventiva: planos por ativo ou por categoria e a OS gerada sozinha na data prevista. Hoje a OS só nasce de chamado (`app.os.chamado_id` é `not null`), o `hk_worker` não grava OS, e a rota `/api/cron/preventiva` existe vazia, fora do `vercel.json` (B9 do `docs/11`). Rotinas legais, como o PMOC do ar-condicionado (Lei 13.589/2018), seguem datas fixas.
 
@@ -1127,9 +1152,12 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - O PWA antigo não quebra: a fila do dia só traz OS preventiva quando o pedido diz que entende (`?preventiva=1`).
 - Plano com responsável inválido (desativado ou sem papel de Técnico no hotel) não gera e aparece com a pendência na lista de planos.
 
-**Adendo da PV3 (13/10/2026, aguarda aprovação do Cesar):** dois detalhes de implementação, propostos no PR da migração 0048.
-- **Trava do hotel por advisory lock, e não por `for update skip locked`:** o `SELECT ... FOR UPDATE` nos planos pede UPDATE do `hk_worker` em `app.plano_preventivo`, que ele não tem e não precisa ter. Cada hotel abre a transação com `pg_try_advisory_xact_lock` (função do próprio Postgres, como a trava da licença), e a execução que não consegue a trava pula o hotel. O índice único continua segurando a mesma ocorrência.
+**Adendo da PV3 (13/10/2026; aprovado pelo Cesar em 14/10/2026, no chat do agente da 1b, o segundo item com condição):** dois detalhes de implementação, propostos no PR da migração 0048 (#262).
+- **Trava do hotel por advisory lock, e não por `for update skip locked`** (aprovado sem condição): o `SELECT ... FOR UPDATE` nos planos pede UPDATE do `hk_worker` em `app.plano_preventivo`, que ele não tem e não precisa ter. Cada hotel abre a transação com `pg_try_advisory_xact_lock` (função do próprio Postgres, como a trava da licença), e a execução que não consegue a trava pula o hotel. O índice único continua segurando a mesma ocorrência.
 - **Modelo de checklist desativado:** a OS preventiva copia o checklist do plano só se o modelo ainda estiver ativo, a mesma regra da triagem (`checklist_modelo_inativo`). Desativado, a OS sai sem checklist, para o calendário do plano não parar.
+  - **Condição do Cesar: a falha não pode ser silenciosa.**
+    - **Log:** a geração registra um aviso no log para cada OS que sai sem checklist, com o plano, o ativo e o modelo (`cron.preventiva.checklist_modelo_inativo`, nível `warn`), e a resposta do cron conta essas OS (`semChecklist`). Entrou no PR deste registro.
+    - **Tela:** a tela do plano mostra "modelo de checklist inativo" quando o modelo do plano está desativado. Entra na PV3c.
 
 ## ADR-042 — Calendário de SLA: prazos calculados no domínio e gravados no chamado
 
@@ -1283,7 +1311,13 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ## ADR-045 — Responsável do arrendamento na OS
 
-**Status:** aguarda aprovação do Cesar. As decisões 5 a 8, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c (`docs/13-plano-fase-1c.md`, "Decisões do desenho da 1c"). A coluna da hora do aviso (`locador_avisado_em`) é um detalhe novo deste ADR.
+**Status:** aprovado por Cesar em 13/10/2026, no chat do agente da 1c ("ADR-045 (responsável do arrendamento na OS): aprovo, como descrito"). A aprovação veio depois do merge do #257 (0047) e cobre:
+- a marca gravada na criação da OS, sem recálculo;
+- a categoria sem regra com a arrendatária;
+- o ajuste manual na triagem até o aceite, com motivo, auditoria e linha do tempo;
+- o aviso ao locador uma vez por OS, com a hora em `locador_avisado_em`.
+
+As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no mesmo dia (`docs/13-plano-fase-1c.md`, "Decisões do desenho da 1c").
 
 **Contexto:**
 - O hotel tem o modelo contratual desde a I2 (`app.hotel.modelo_contratual`, migração 0032), sem comportamento até a 1c.
@@ -1332,3 +1366,58 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Riscos aceitos:**
   - o GRANT por coluna vale para todos os papéis do `hk_app` que passam na policy de UPDATE da OS (como nas migrações 0023, 0026 e 0041). Quem ajusta a marca, e quando, é do domínio, e toda gravação fica na auditoria;
   - sem o e-mail próprio, o locador só vê o aviso na OS, até a comunicação.
+
+## ADR-046 — Comunicação: e-mail e push pelo outbox, com o registro dos envios
+
+**Status:** aprovado por Cesar em 14/10/2026, no chat do agente da 1c ("ADR-046 aprovado"), antes de o PR da migração 0049 abrir. A aprovação cobre o texto da branch `claude/1c-comunicacao-migracao`, com os detalhes do push (o que ele leva, a inscrição fora da auditoria e a revogação na saída do PWA) e a contagem por canal. As decisões C1 a C9, de que este ADR parte, foram aprovadas por ele em 13/10/2026, no chat do agente da 1c ("Comunicação, C1 a C9: aprovo as suas recomendações, com dois registros"), e estão em `docs/referencia/propostas-comunicacao-1c.md`, "Decisões aprovadas".
+
+**Contexto:**
+- O outbox (ADR-007) já entrega os eventos de domínio pelo cron, mas só o `membro.convidado` tem manipulador.
+- O monitor de SLA publica o `chamado.sla_alerta` (ADR-043), e o arrendado publica o `os.locador_avisado` (ADR-045). Os avisos de hoje aparecem só no painel e na ficha.
+- Não há e-mail próprio, nem push, nem recuperação de senha.
+
+**Decisão:**
+- **Provedor (C1):** a porta `EnviadorDeEmail`, com um adaptador por API HTTP do Amazon SES em `sa-east-1`.
+  - A conta, o domínio, a verificação e a saída do sandbox são do Cesar (F0-12).
+  - Sem provedor configurado (dev, preview, CI e até o Cesar configurar), o adaptador é o "desligado": o manipulador grava o envio como `sem_provedor` e não manda nada. Assim o evento não fica pendente esperando o provedor nem dispara de uma vez, com data antiga, quando ele entrar.
+- **Eventos do MVP (C2):**
+  - os dois avisos de SLA vão por e-mail e push, para os destinatários do nível na política `chamado.escalonamento`;
+  - a OS atribuída vai só por push, ao técnico ou à equipe;
+  - o aviso ao locador vai por e-mail, ao proprietário do hotel;
+  - o convite e a recuperação de senha seguem pelo Supabase Auth.
+  - O papel vira pessoa na hora do envio, pelas atribuições vigentes no hotel. O membro sem e-mail ou inativo fica fora, com o registro.
+- **Registro dos envios (C3):** a tabela `app.envio_notificacao`, só de inserção, com uma linha por tentativa.
+  - Um índice único parcial (evento, destinatário e canal, fora a falha) impede o segundo envio quando o outbox entrega o evento de novo.
+  - O texto não fica gravado.
+  - Lê a gestão do hotel, e grava só o `hk_worker`.
+- **Push (C4):** Web Push com chaves VAPID, só no PWA do técnico.
+  - A tabela `app.inscricao_push` tem uma inscrição ativa por pessoa e aparelho; cada pessoa lê, cria e revoga só as próprias.
+  - O worker envia com a biblioteca `web-push`, só no servidor, e revoga a inscrição que o serviço recusa (404 ou 410).
+  - O push leva o título, o nome do hotel e o caminho da OS no PWA (`/os/<id>`), sem a descrição do chamado. O chamado não tem código curto; o caminho leva o id.
+  - A inscrição não vai para a auditoria: a própria tabela guarda a criação e a revogação.
+  - Ao sair do PWA, a inscrição do aparelho é revogada, para o próximo usuário do aparelho não receber os avisos de quem saiu.
+- **Recuperação de senha (C5):** pelo Supabase Auth, com SMTP próprio e template gerado do catálogo, sem uso novo da secret key. O bloco SMTP do `config.toml` vai num PR de zona protegida, com o `config push` do Cesar.
+- **Idioma (C6):** muda a decisão de 25/09 (ADR-022) para os avisos.
+  - O aviso sai no idioma de quem recebe: a preferência do membro, depois o padrão do tenant.
+  - O convite e a recuperação ficam em pt-BR, porque o template do Supabase Auth é único.
+- **Silenciar (C7):** sem preferência de canal por pessoa no MVP. O push se desliga no aparelho.
+- **Volume (C8):** um e-mail por aviso, na hora.
+  - A contagem de envios por destinatário e por dia fica disponível desde o primeiro dia do piloto, pelo índice da tabela, uma linha por canal.
+  - Acima de 30 por pessoa e por dia, abre-se o resumo agrupado.
+
+**Consequências:**
+- **Migração 0049** (`20261014120000_comunicacao.sql`, depois da 0048 da PV3):
+  - as duas tabelas, com RLS forçada, as policies, os índices e os GRANTs;
+  - o pgTAP `041`, com os casos de isolamento;
+  - o meta-teste 001, com as duas tabelas na lista fechada e o registro dos envios na lista das tabelas só de inserção;
+  - os tipos do Kysely.
+- **A ordem dos PRs (C9), fora da zona, salvo o SMTP:**
+  1. o e-mail do SLA: o adaptador "desligado" e o do SES, o manipulador do `chamado.sla_alerta`, o modelo do e-mail no catálogo, o registro dos envios, a contagem do C8 e o teste de paridade dos checks com o domínio;
+  2. o push;
+  3. a recuperação de senha;
+  4. o e-mail ao locador.
+- **Variáveis novas** entram no `.env.example` só pelo nome: a chave do provedor e as chaves VAPID.
+- **Riscos aceitos:**
+  - até o Cesar configurar o SES, nenhum e-mail sai; o registro mostra `sem_provedor`;
+  - no iPhone, o push só funciona com o PWA instalado na tela inicial (iOS 16.4 ou mais novo);
+  - sem silenciar no MVP, um Gestor CSC de muitos hotéis pode receber muitos avisos num dia ruim. A contagem do C8 mede isso no piloto.

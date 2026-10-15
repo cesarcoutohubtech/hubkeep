@@ -241,6 +241,7 @@ describe('criarGeracaoDePreventivas', () => {
         },
         situacaoId: 'sit-atribuida-1',
         responsavelArrendamento: null,
+        avisarLocador: false,
         checklist: null,
       },
     ]);
@@ -267,7 +268,7 @@ describe('criarGeracaoDePreventivas', () => {
       geradas: [],
       modelos: { 'm-ativo': modelo('m-ativo', true), 'm-inativo': modelo('m-inativo', false) },
     });
-    await rodar();
+    const r = await rodar();
     expect(gravadas.map((g) => [g.planoId, g.checklist])).toEqual([
       [
         'p-ativo',
@@ -276,9 +277,14 @@ describe('criarGeracaoDePreventivas', () => {
       ['p-inativo', null],
       ['p-sumiu', null],
     ]);
+    // A OS sem checklist não é silenciosa: volta no resultado, para o aviso no log.
+    expect(r.semChecklist).toEqual([
+      { hotelId: 'sp', planoId: 'p-inativo', ativoId: 'a2', modeloId: 'm-inativo' },
+      { hotelId: 'sp', planoId: 'p-sumiu', ativoId: 'a3', modeloId: 'm-sumiu' },
+    ]);
   });
 
-  it('no hotel arrendado, marca quem responde pela categoria do ativo; nos outros, nada', async () => {
+  it('no hotel arrendado, marca quem responde pela categoria do ativo e avisa o locador; nos outros, nada', async () => {
     const b: Banco = {
       hoteis: [
         hotel('arr', { modeloContratual: 'arrendado' }),
@@ -298,11 +304,11 @@ describe('criarGeracaoDePreventivas', () => {
     };
     const { rodar, gravadas } = geracao(b);
     await rodar();
-    expect(gravadas.map((g) => [g.ativoId, g.responsavelArrendamento])).toEqual([
-      ['a-ar', 'locador'],
-      ['a-ele', 'arrendataria'],
-      ['a-sem', 'arrendataria'],
-      ['a-adm', null],
+    expect(gravadas.map((g) => [g.ativoId, g.responsavelArrendamento, g.avisarLocador])).toEqual([
+      ['a-ar', 'locador', true],
+      ['a-ele', 'arrendataria', false],
+      ['a-sem', 'arrendataria', false],
+      ['a-adm', null, false],
     ]);
   });
 

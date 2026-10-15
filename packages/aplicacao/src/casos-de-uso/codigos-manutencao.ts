@@ -25,6 +25,7 @@ import type { PortaCategorias } from '../portas/categorias';
 import type { CodigoGravado, PortaCodigos } from '../portas/codigos-manutencao';
 import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 import type { PortaTriagem } from '../portas/triagem';
+import { lerOsComOrigem } from './origem-da-os';
 
 export interface CodigoDeManutencao {
   id: string;
@@ -159,16 +160,11 @@ export function criarCasosDeUsoDeCodigos(deps: {
     },
 
     async codigosParaOs(ctx, osId) {
-      const os = await deps.triagem.os(ctx, osId);
-      const chamado = os ? await deps.triagem.chamado(ctx, os.chamadoId) : null;
-      if (!os || !chamado) {
-        throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-      }
+      // O ativo do chamado, na corretiva, ou o da ocorrência, na preventiva (PV3c).
+      const { ativoId } = await lerOsComOrigem(deps.triagem, ctx, osId);
       const [codigos, categoria] = await Promise.all([
         deps.codigos.listar(ctx),
-        chamado.ativoId === null
-          ? Promise.resolve(null)
-          : deps.codigos.categoriaDoAtivo(ctx, chamado.ativoId),
+        ativoId === null ? Promise.resolve(null) : deps.codigos.categoriaDoAtivo(ctx, ativoId),
       ]);
       const porTipo = {} as Record<TipoDeCodigoDeManutencao, string[]>;
       for (const tipo of TIPOS_DE_CODIGO_DE_MANUTENCAO)

@@ -54,6 +54,8 @@ export interface PreventivaAGravar extends PreventivaAGerar {
   situacaoId: string;
   /** Nulo fora do hotel arrendado. */
   responsavelArrendamento: ResponsavelDoArrendamento | null;
+  /** A OS nasce do locador (ADR-045): grava a hora do aviso e publica os.locador_avisado. */
+  avisarLocador: boolean;
   /** O checklist copiado; nulo sem modelo no plano ou com o modelo desativado. */
   checklist: Omit<ModeloParaACopia, 'ativa'> | null;
 }

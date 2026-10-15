@@ -1815,3 +1815,380 @@ Mensagem do Kaio no chat do agente do Kaio ("Kaio aqui"), 13/10/2026: aprova a g
   - **Ponto 4, quando o job roda:** o Cesar quer as 06:00 UTC do dia seguinte, como em produção; o Kaio, as 23:59:59 de São Paulo de cada dia (sugestão original).
 
 **Aguarda:** Cesar e Kaio combinarem os pontos 3 e 4. A gravação usa os dois, então o código espera.
+
+## Atividade 3: a gravação do histórico (13/10/2026)
+
+O Cesar mandou prosseguir ("Cesar aqui. Prossiga") com os pontos 3 e 4 ainda em divergência. A gravação foi escrita com esses dois pontos em constantes, para a escolha final mudar uma linha.
+
+**O que foi feito** (branch `claude/vigilant-cray-l06ew1`, ainda sem PR):
+- `apps/web/test/demonstracao/gravacao-historico.ts`: `gravarHistorico`, pelos casos de uso:
+  - o relógio do roteiro vem da montagem da 1b;
+  - o job do dia e as decisões do insight vêm do módulo, com acessos próprios do hk_worker e do hk_app, que passam pela mesma trava da montagem;
+  - a base do grupo é o kit (`baseDoKit`), que o teste pode trocar.
+- O comando `pnpm demo:historico --ambiente dev|staging [--fim AAAA-MM-DD]`, em `scripts/ops/historico-demonstracao.ts`, com a config `vitest.historico.config.ts`. A conferência do `--fim` tem teste próprio, `tests/historico-inteligencia-ops.test.ts`.
+- `gravacao-historico.test.ts`:
+  - **sem rede:** recusa a Vercel, a produção e o job que ainda não rodou, e calcula o fim padrão;
+  - **na CI:** grava o roteiro curto pela base do kit, confere o estado de cada cenário e roda de novo sem gravar nada; com outro fim, recusa.
+- **No roteiro:**
+  - a parada nasce com o chamado, porque a abertura não aceita `paradoDesde` depois dela;
+  - o teste sem banco usa o fuso de São Paulo e roda os dois momentos do job, e os dois passam.
+
+**Pontos 3 e 4:**
+- **Ponto 3 (quem aceita).** A sugestão original do agente, a Admin aceitar, não passa na regra do aceite. A Admin só aceita quando quem abriu também executou a OS e o hotel não tem outro Gerente (`packages/dominio/src/corretiva.ts`, grupo `aceite`). No roteiro, a Solicitante abre e o Técnico executa, então o aceite da Admin seria recusado. Por isso a gravação usa o Gerente do kit, como o Cesar pediu. O Kaio confirma, ou propõe outra forma, por exemplo a Admin abrir os chamados.
+- **Ponto 4 (quando o job roda).** O padrão é `como_em_producao`, a versão do Cesar. Trocar para `fim_do_dia_local` muda uma constante, e o teste sem banco já cobre as duas.
+
+**Detalhes da gravação, para o Kaio conferir (ADR-033):**
+- **Início do módulo.** O módulo começa em `roteiro.inicio`, o primeiro dia do histórico, e não no primeiro dia do aquecimento, como a proposta dizia: o aquecimento é só do núcleo, antes do contrato do Intelligence.
+- **Abertura das telas.** A política `inteligencia.visibilidade_telas` do grupo abre as telas no primeiro dia do histórico, porque o roteiro decide insights antes dos 60 dias do padrão.
+- **Data das políticas.** As duas políticas do Intelligence são gravadas com o relógio real, porque as chaves do módulo só valem com o módulo vigente.
+
+**Primeira rodada local:** volume curto, num Postgres 16 descartável do contêiner (nunca o dev), com uma base gravada pelo dono no lugar do kit, porque o Auth não roda aqui.
+- **Volume e tempo:** 1.767 chamados, cerca de 8.850 operações e 183 dias calculados, em 5 min 20 s.
+- **Insights:** os 8 esperados, nenhum do ruído, e cada um no estado do roteiro, com 18 decisões.
+
+**Segunda e terceira rodadas locais:**
+- **De novo no mesmo grupo, em 18 s:** nada mudou nos chamados (1.767), nas transições (7.066), nas métricas (28.548) e nos insights (8), e nenhuma decisão foi tomada.
+  - A auditoria ganhou só a credencial do conector, criada e revogada.
+  - As políticas deixaram de ser regravadas quando o grupo já tem histórico, porque regravar mudaria a versão que o job registra.
+- **Com outro fim:** recusa antes de gravar.
+- **Num grupo novo, com o job no fim do dia local (a versão do Kaio no ponto 4):** os mesmos 8 insights, nos mesmos estados finais, em 6 min.
+- **Testes:** lint e typecheck verdes. `pnpm test`: todos verdes, depois de a `HK_HISTORICO_FIM` entrar no `.env.example`. Ela é montada pelo script, como a `HK_DEMO_TURMA`.
+- **`docs/piloto/`:** o README e o roteiro de treinamento citam o grupo do histórico para treinar o módulo.
+
+### Ponto de retomada (13/10/2026, gravação do histórico pronta)
+
+- **`main`:** com o #260.
+- **Nesta branch:** a gravação, o comando e o teste do banco, fora da zona protegida. O PR abre agora.
+- **Esperando:**
+  - **Cesar e Kaio, no ponto 4:** o padrão é `como_em_producao`; trocar é uma linha (`MOMENTO_DO_JOB`).
+  - **Kaio, no ponto 3:** a Admin não pode aceitar pela regra do aceite, então a gravação usa o Gerente.
+  - **Cesar:** depois do merge, rodar `pnpm demo:historico --ambiente dev`, com a `HK_DEMO_SENHA` e a `DEV_SESSION_POOLER` no ambiente. O tempo esperado é de 15 a 30 minutos no dev, a medir.
+- **Próximo:** o volume comum do teste de carga no script (`scripts/carga/inteligencia-sintetico.sql`), decidido pelo Kaio, num PR à parte.
+
+## Volume comum no script de carga (14/10/2026)
+
+Mensagem do Cesar no chat do agente do Kaio ("Cesar aqui"), 14/10/2026:
+- aprova, da parte dele, a gravação do histórico com o aceite pelo Gerente e o job às 06:00 UTC do dia seguinte como padrão. A gravação já está na `main` (#264 e a correção #265); os pontos 3 e 4 ficam como estão no código até o "aprovo" do Kaio;
+- manda seguir com o volume comum num PR à parte, se o Kaio concordar com 20 mil ativos e 24 meses. O Kaio já concordou em 13/10 (seção "Resposta do Kaio").
+
+**O que foi feito** (PR `int:` fora da zona protegida):
+- `scripts/carga/inteligencia-sintetico.sql` ganhou cinco parâmetros opcionais: `meses`, `pausa`, `reabertura`, `uh_indisponivel` e `paradas`. Sem eles, gera o cenário base de antes, conferido de novo com os mesmos números.
+- O volume comum gerou 144.000 chamados, 718.864 transições (4,99 por OS), 20.000 ativos, 6.000 UHs, 7.200 paradas e 14.400 UHs indisponíveis.
+- O job leva de 9 a 19 s por rodada nesse volume, num Postgres descartável do contêiner (nunca o dev). Números e leitura em `docs/referencia/carga-job-inteligencia.md`, seção "Volume comum com a 1c".
+- **Para a 1c:** o comando do volume comum está no cabeçalho do script e na referência. A 1c mede o painel com ele.
+
+### Ponto de retomada (14/10/2026, volume comum)
+
+- **`main`:** com o #265, verde.
+- **Nesta branch:** o volume comum no script de carga e a medição do job. O PR abre agora.
+- **Esperando:**
+  - **Kaio, nos pontos 3 e 4:** confirmar o Gerente no aceite (a Admin não pode aceitar pela regra do aceite) e o job às 06:00 UTC (`MOMENTO_DO_JOB`).
+  - **Cesar:** rodar `pnpm demo:historico --ambiente dev`, com a `HK_DEMO_SENHA` e a `DEV_SESSION_POOLER` no ambiente; e o merge do PR do volume comum.
+- **Próximo:** a proposta de otimização do job (leitura dos chamados e gravação da métrica), só depois de o Cesar e o Kaio lerem os números.
+
+## Resposta à 1b: o tempo do teste da gravação na CI (14/10/2026)
+
+Resposta ao "Pedido ao agente do Intelligence (14/10/2026)", em `docs/diario-fase-1b.md`: o `gravacao-historico.test.ts` levava cerca de 11 minutos na integração do web e estourava o job do banco (20 minutos). A `main` em `d88fc2f` (#269) ficou com o job cancelado.
+
+**Correção** (PR `int:` fora da zona protegida, que abre antes de outros merges):
+- **Roteiro mínimo para o teste no banco** (`VOLUME_MINIMO`): os mesmos cenários e o mesmo ruído por ativo do roteiro curto, sem os chamados soltos (sem ativo). Cai de 1.767 para 309 chamados e de cerca de 8.850 para 1.576 operações.
+- **Medida num Postgres local limpo** (contêiner do agente, nunca o dev): a gravação leva 84 s, contra cerca de 320 s do roteiro curto. Os 8 insights abrem, nenhum fora do roteiro, com 18 decisões.
+- **O teste sem banco** confere o roteiro mínimo também: cada cenário abre o insight esperado e o ruído não abre nenhum.
+- **O que fica igual:** o roteiro curto e o completo, o comando `pnpm demo:historico` (volume completo) e o job.
+- O job próprio na CI, a outra saída do pedido, mexeria em workflow (zona protegida) e não foi preciso.
+
+**Do `pnpm demo:historico` no dev (Cesar, 14/10/2026):** as primeiras rodadas caíram com `ECONNRESET` no meio de uma transação. O log do Supavisor mostra "Client socket closed while state was busy", ou seja, a conexão foi cortada entre o notebook e o pooler, e não pelo Supabase. Depois disso o `pnpm demo:dados` passou, e a gravação seguiu até a fase das operações por dia. O resultado final fica para o Cesar mandar.
+
+### Ponto de retomada (14/10/2026, teste da gravação mais curto)
+
+- **`main`:** em `d88fc2f`, com o job do banco cancelado por tempo. **Não mergear outra coisa** antes do PR desta correção.
+- **Nesta branch:** o roteiro mínimo no teste da gravação. O PR abre agora.
+- **Esperando:**
+  - **Cesar:** o merge desta correção; o resultado final do `pnpm demo:historico --ambiente dev`.
+  - **Kaio, nos pontos 3 e 4:** confirmar o Gerente no aceite e o job às 06:00 UTC (`MOMENTO_DO_JOB`).
+- **Próximo:** registrar o tempo da gravação no dev e no `docs/piloto/`, quando o Cesar mandar o resultado; depois, a proposta de otimização do job.
+
+## O `pnpm demo:historico` no dev: limite de 8 horas e progresso (14/10/2026)
+
+**O que se viu** (Cesar, 14/10/2026, rodada das 16:12 com `--fim 2026-10-13`): em 48 minutos a gravação não tinha chegado à primeira linha "Dia ...", e o teste para em 1 hora.
+- O volume completo tem 4.314 chamados e cerca de 21,5 mil operações (17.235 passos de OS, mais aberturas e fins de parada). Há também 183 rodadas do job.
+- Antes do primeiro dia vêm 1.042 chamados de aquecimento, cerca de 5 mil operações.
+- Do notebook até o dev, cada caso de uso faz várias idas e voltas pela internet. A velocidade ficou abaixo de 3 operações por segundo, o que dá de 3 a 4 horas no total. A estimativa da proposta (uns 10 minutos) tomava o banco ao lado e estava errada.
+- **A retomada não encurta.** Ela passa de novo por cada operação já gravada: não duplica, mas cada uma ainda consulta o banco. Uma nova rodada de 1 hora volta ao mesmo ponto.
+
+**Decisão do Cesar** (nesta sessão, 14/10/2026): esperar o volume completo, sem trocar pelo mínimo. "Cesar aqui. Sim, pode" para os dois ajustes:
+1. O limite do teste do `demo:historico` sobe de 1 para 8 horas (`executar-historico.demo.ts`).
+2. A gravação escreve uma linha a cada 250 operações, com o tempo decorrido de verdade; a linha "Dia ..." também leva o tempo.
+
+O volume, os cenários, o roteiro e o job não mudam.
+
+### Ponto de retomada (14/10/2026, demo:historico com limite de 8 horas)
+
+- **`main`:** com o #273 (roteiro mínimo no teste da gravação); o job do banco voltou a caber no tempo.
+- **Nesta branch:** o limite de 8 horas e o progresso do `demo:historico`. PR `int:`, fora da zona protegida.
+- **Esperando:**
+  - **Cesar:** o merge deste PR; depois, uma rodada do `pnpm demo:historico --ambiente dev --fim 2026-10-13` até o fim, com o notebook ligado, e a saída final (grupo, estados dos cenários, tempo total).
+  - **Kaio, nos pontos 3 e 4:** confirmar o Gerente no aceite e o job às 06:00 UTC (`MOMENTO_DO_JOB`).
+  - **Cesar:** o retry do `BEGIN` no pool, como pedido à 1b ou por este agente num PR à parte.
+- **Próximo:** registrar o tempo da gravação no dev e no `docs/piloto/`; depois, uma retomada mais rápida da gravação (pular sem consulta o que já foi gravado) e a proposta de otimização do job.
+
+## Decisões do Kaio de 15/10/2026 e o retry da gravação
+
+"Kaio aqui", nesta sessão, 15/10/2026.
+
+**Aprovações:**
+1. **Pontos 3 e 4 da gravação do histórico:** "aprovo" no Gerente aceitando a OS e no job às 06:00 UTC do dia seguinte. O Cesar já tinha aprovado em 14/10, então os dois pontos estão fechados. Os comentários de `QUEM_ACEITA` e `MOMENTO_DO_JOB` passam a dizer "combinado".
+2. **As duas observações sobre o motor** (ADR-033, detalhe do Kaio):
+   - **Crescimento:** só vale depois de duas janelas completas de dados do hotel, contadas do primeiro chamado dele.
+   - **Sinal sistêmico por modelo:** exige população mínima de uns 10 ativos, pelo menos 3 ativos distintos afetados e pelo menos 30% da população afetada.
+   - As duas mexem na primeira tela que a Slaviero vai ver, no 61º dia, então entram antes da tela da efetividade.
+
+**Respostas às decisões pendentes** (registradas como posição do Kaio):
+1. **Retry da gravação:** pode, com três condições. A retomada recomeça do último dia gravado com sucesso, e não do início. As tentativas são limitadas, com espera crescente. Se todas falharem, a gravação para com mensagem clara.
+2. **Retry do `BEGIN` no pool do `packages/db`:** não agora. O retry fica só no script da gravação. O núcleo se reabre se o staging mostrar queda no `BEGIN`.
+3. **Piloto:** o Intelligence fica ativo desde o primeiro dia, sem cobrança. O contrato do módulo tem a mesma data do primeiro contrato do núcleo, e as telas abrem 60 dias depois pela política `inteligencia.visibilidade_telas`. O Kaio diz que isso "já estava decidido". O `docs/piloto/README.md` ainda diz que essa decisão é do Cesar, e o agente não achou o registro dela, então o item **aguarda a confirmação escrita do Cesar**.
+
+**Ordem:**
+1. o retry;
+2. os dois ajustes do motor;
+3. a proposta da tela da efetividade;
+4. o registro do tempo da gravação, quando ela terminar.
+
+A otimização do job fica adiada. O gatilho para reabrir é uma rodada acima de 60 s.
+
+### O retry e a retomada rápida da gravação (PR `int:`, fora da zona protegida)
+
+- **`apps/web/test/demonstracao/tentar-de-novo.ts`** (novo):
+  - `comNovaTentativa` repete a operação quando a conexão cai. São até 5 novas tentativas, com espera de 2, 4, 8, 16 e 32 s.
+  - Erro de dado ou de regra sobe na hora.
+  - Se todas as tentativas caírem, a gravação para com `ConexaoPerdida`. A mensagem diz em que operação parou e como continuar: o mesmo comando, com o mesmo `--fim`.
+  - `ehQuedaDeConexao` reconhece a queda pelo código (`ECONNRESET`, `ETIMEDOUT`, a classe 08 e o `57P01` do Postgres) ou pela mensagem ("Connection terminated unexpectedly"), também na causa.
+- **Na gravação:**
+  - Cada operação do roteiro e a leitura dos insights do dia passam pelo retry. As operações do roteiro podem ser repetidas sem duplicar.
+  - O job do dia e as decisões ficam sem retry: se falharem, a retomada cuida.
+- **A retomada recomeça do último dia gravado:**
+  - O dono lê de uma vez o id de cada chamado aberto, em `app.operacao_offline`, do mesmo jeito que a gravação já conferia o fim.
+  - As operações antes do job do último dia gravado são puladas sem consulta, porque já estavam no banco quando esse job rodou.
+  - Se faltar alguma abertura, a retomada volta ao início e confere uma a uma, como antes.
+- **Testes:**
+  - `tentar-de-novo.test.ts`, sem banco, com 5 testes.
+  - No teste da gravação no banco, a segunda rodada confere que a retomada pulou as operações ("Retomada no dia ...").
+
+### Ponto de retomada (15/10/2026, retry da gravação)
+
+- **`main`:** verde, em `521a339` (#280).
+- **Nesta branch:** o retry e a retomada rápida da gravação. O PR abre agora.
+- **Dev:** a gravação do volume completo, rodando no notebook do Cesar desde as 08:23 de 15/10, com `--fim 2026-10-13`.
+- **Esperando:**
+  - **Cesar:** o merge do PR do retry e a confirmação escrita do item 3 (o módulo no piloto desde o primeiro dia).
+  - **Cesar ou Kaio:** a saída final da gravação no dev (grupo, estados dos cenários e tempo total).
+- **Próximo:** a proposta de desenho dos dois ajustes do motor, para o Kaio aprovar antes do código. O primeiro passo é ler a política `inteligencia.sistemico` e a regra de crescimento em `packages/inteligencia`.
+
+## A gravação do histórico no dev terminou (15/10/2026)
+
+Pela saída no notebook do Cesar (print enviado nesta sessão em 15/10/2026):
+- **Grupo:** `634ad71d-d946-4deb-8e31-a007f16cd21b`, com 4.314 chamados.
+- **Os 8 cenários com insight terminaram no estado do roteiro:**
+  - em ação: fornecedor e caldeira;
+  - aceito: modelo;
+  - em revisão: crescimento;
+  - novo: área (novo);
+  - resolvido: elevador e andar;
+  - descartado: área (descartado).
+- **"138 dias calculados, 16 decisões"** conta só o que esta rodada gravou. Os outros dias do histórico foram calculados na rodada de 14/10, que caiu, e o job não grava de novo um dia já calculado.
+- **Tempo:** 3h43m46s em 15/10, das 08:23 às 12:07, sem queda.
+  - Essa rodada começou antes do #283, então passou de novo, uma a uma, pelas cerca de 9 mil operações que já estavam gravadas.
+  - Somada aos 51 minutos de 14/10, a gravação levou umas 4h35m.
+  - Gravando direto, sem queda, a estimativa é de 3 a 3,5 horas.
+- O `docs/piloto/README.md` registra o tempo e como retomar.
+
+## Os dois ajustes do motor: sistêmico versão 4 (15/10/2026)
+
+"Kaio aqui", nesta sessão, 15/10/2026: "Aprovo proposta dos dois ajustes do motor". É detalhe dentro do ADR-033.
+
+Os três pontos que a proposta deixou em aberto não foram respondidos. Seguem a frase do Kaio ao pé da letra:
+- os 3 ativos afetados trocam o mínimo de 5;
+- os 30% valem para qualquer tamanho de frota;
+- a evidência ganha "de P instalados".
+
+Qualquer um deles muda antes do merge, se o Kaio pedir.
+
+**Crescimento:**
+- Só vale no hotel cujo primeiro chamado foi aberto até `agora − 2 × janelaDias`, ou seja, 60 dias atrás com o padrão.
+- O primeiro chamado é o mais antigo dos que o job já lê, contando o cancelado (`primeiroChamadoPorHotel`, `fonte.ts`). Sem esse dado, vale a corretiva mais antiga da entrada.
+- A leitura do job vai sempre além das duas janelas (`inicioDaLeitura`). O hotel sem nenhum chamado entre 12 meses e 60 dias atrás é tratado como novo: a regra só demora a começar.
+- As duas janelas ficam fixas no código, sem campo na política.
+
+**Mesmo modelo:**
+- Dois campos novos na política `inteligencia.sistemico.mesmoModelo`:
+  - `minPopulacao: 10`: os ativos instalados do modelo na janela;
+  - `percentualMinimoAfetado: 30`: os ativos distintos com chamado sobre a população. A conta é exata; o arredondado fica só na evidência.
+- `minAtivos` passa de 5 para 3.
+- Continuam como estão os 3 hotéis, os 6 chamados em 90 dias e a taxa de pelo menos o dobro da base, nunca menos de 0,3.
+- **A política gravada antes da v4 continua valendo:**
+  - Os dois campos novos podem faltar e, ausentes, vale o padrão (`CAMPOS_QUE_PODEM_FALTAR` em `politicas.ts`; `minimosDaPopulacao` em `sistemico.ts`).
+  - Sem isso, a validação exigia as mesmas chaves do padrão, e o resolvedor voltaria ao padrão. O grupo de demonstração ficaria com quatro das cinco regras desligadas.
+  - O `minAtivos: 5` que já está gravado na política do grupo de demonstração continua valendo lá.
+- A evidência ganha o `percentualAfetado`. A frase do catálogo ganha "(de P instalados)" nos quatro idiomas, com `populacao` vinda de `ativosDoModelo`.
+
+**Versão:**
+- `VERSAO_SISTEMICO` passa a 4. O que já foi gravado com a 3 não é recalculado (ADR-036).
+- No glossário de métricas foram atualizadas as linhas do sinal sistêmico, da taxa do modelo e do crescimento.
+
+**Na demonstração:**
+- O Polar Inverter 18000 tem 12 ativos, todos com chamado (100%), então passa.
+- Os modelos das áreas comuns têm menos de 10 ativos e deixam de poder disparar.
+- O aquecimento de 60 dias já cumpre o crescimento.
+- O teste do roteiro passou sem mudança.
+
+**Testes:**
+- `packages/inteligencia`: 296 passaram. Os casos novos cobrem:
+  - a população de 9 e de 10;
+  - 30% no limite (3 de 10), 3 de 11 e a conta exata (299 e 300 de 1000);
+  - os 3 ativos distintos;
+  - a política antiga, sem os campos novos;
+  - o crescimento com primeiro chamado a 59 e a 60 dias, o mais antigo entre o mapa e a corretiva, a conta por hotel e a janela de 45 dias;
+  - a validação dos campos novos;
+  - `primeiroChamadoPorHotel`.
+- Os testes do job e do dia que usavam parques de 6 ativos ganharam 4 ativos do modelo sem chamado, para a população chegar a 10.
+- `apps/web`: 413 passaram e 56 foram pulados (os que pedem banco).
+- Na raiz: 553 passaram.
+- `packages/i18n`: 80 passaram.
+- Typecheck, ESLint e Prettier passaram.
+
+### Ponto de retomada (15/10/2026, sistêmico v4)
+
+- **`main`:** em `f6d4d66` (#283).
+- **Dev:** com o histórico completo gravado em 15/10, com a versão 3 do sistêmico. O job do dev passa a gravar a versão 4 depois do merge.
+- **Nesta branch:** os dois ajustes do motor e o tempo da gravação. É um PR `int:`, fora da zona protegida.
+- **Esperando:**
+  - **Cesar:** o merge deste PR e a confirmação escrita do item 3 (o módulo no piloto desde o primeiro dia).
+  - **Kaio:** se quiser, mudar algum dos três pontos acima antes do merge.
+- **Próximo:** a proposta de desenho da tela da efetividade, para Cesar e Kaio. O primeiro passo é ler `efetividade.ts` e o mock (`docs/referencia/design/csc-mock`).
+
+## A efetividade: a proposta e as decisões do Cesar (15/10/2026)
+
+**A proposta** (feita nesta sessão em 15/10/2026, para Cesar e Kaio):
+- **O bloqueio que ela resolve:** o produto não registra o que é uma "intervenção". O motor `efetividadeAntesDepois` recebe a data de quem chama e não tem chamador em produção. No mock, a intervenção é uma marcação no chamado. No roteiro da demonstração, a data da modernização do elevador não chega ao banco.
+- **Três opções para a fonte:**
+  - A: marcação na OS (migração, zona protegida, área compartilhada da 1b e da 1c);
+  - B: a data da decisão do insight;
+  - C: o código de solução da OS, por política. Foi a recomendada.
+- **A tela:** nos três lugares aprovados em 10/10, com as colunas do mock e a ressalva de correlação. Quem vê é quem decide insight do hotel do ativo.
+- **Por dentro:** cálculo sob demanda no servidor com o motor que já existe, sem tabela nova. Uma leitura nova no `packages/db`, pelo `withContext`. Dois PRs `int:` fora da zona protegida: (1) a política e a leitura; (2) as três telas.
+
+**Decisões do Cesar** ("Cesar aqui", nesta sessão, 15/10/2026: "Sobre a efetividade, aprovo da minha parte"):
+1. **Fonte da intervenção:** a opção C, o código de solução, pela política `inteligencia.efetividade`. Ele pede o registro como adendo ao ADR-033, por ser fonte de dado nova do Intelligence.
+2. **Lista padrão:** só "Troca do equipamento".
+3. **Custo das corretivas, antes → depois:** sim, com indicador de cobertura.
+   - Mostra "custo informado em X de Y OS".
+   - Abaixo de 50% de cobertura em qualquer um dos lados, mostra "dados insuficientes", sem variação.
+   - O limite de 50% fica numa constante.
+4. **Intervenção de área:** fora do 1.0.
+5. **Demonstração:** o roteiro ganha o chamado de modernização do elevador com o código "Troca do equipamento". A nova rodada do `demo:historico` fica para depois do merge do PR 1 da efetividade. A gravação atual termina como está.
+6. **Piloto:** o treinamento inclui o preenchimento do código de solução desde o primeiro dia, mesmo antes de os códigos serem obrigatórios. Isso está no `docs/piloto/README.md` e no `docs/piloto/roteiro-treinamento.md`.
+7. **Os PRs da efetividade abrem só depois do "aprovo" do Kaio.**
+
+**Item 3 de 15/10, confirmado por escrito pelo Cesar** (mesma mensagem): "o Intelligence fica ativo no piloto desde o primeiro dia, sem cobrança. O contrato do módulo tem a mesma data do primeiro contrato do núcleo, e as telas abrem 60 dias depois." O `docs/piloto/README.md` deixa de marcar isso como "a confirmar", e o roteiro do treinamento também.
+
+**Aprovação do Kaio** ("Kaio aqui", nesta sessão, 15/10/2026): "Eu aptovo o que o agente propôs o desenho da tela da efetividade. aprovo tambem os pontos 3 e 4 da gravação."
+- A aprovação cobre a proposta do agente: a opção C, só "Troca do equipamento" na lista, a coluna do custo antes → depois e a intervenção de área fora do 1.0. As quatro coincidem com as decisões do Cesar.
+- **A regra da cobertura do custo veio do Cesar depois da proposta**: o "custo informado em X de Y OS" e o "dados insuficientes" abaixo de 50%. Os 50% são limiar, e portanto detalhe do Kaio. Por isso, essa regra **aguarda a confirmação escrita do Kaio**, e ele pode trocar o limite.
+- Os pontos 3 e 4 da gravação já estavam aprovados pelo Kaio nesta sessão, mais cedo em 15/10. Não muda nada.
+
+**Status:** a fonte da intervenção (opção C) está aprovada por Cesar e Kaio. Os PRs da efetividade podem abrir.
+
+### O adendo ao ADR-033
+
+- Entrou no `docs/03`, logo depois do ADR-033, com o título "Adendo — a fonte da intervenção na efetividade".
+- O `docs/03` é zona protegida, então o adendo vai num PR próprio. Na conferência de 15/10, não havia outro PR de zona protegida aberto: #287, #285, #282, #281 e #263 não tocam a zona.
+- Este PR leva também o registro das decisões no diário e no `docs/piloto/`.
+- O PR 1 da efetividade abre depois do merge dele, porque o agente tem uma branch só.
+
+### Ponto de retomada (15/10/2026, adendo da efetividade)
+
+- **`main`:** em `6f3be5a` (#286, sistêmico v4). A branch recomeçou da `main` depois do merge.
+- **Dev:** tem o histórico completo, gravado em 15/10 com a versão 3 do sistêmico. Não há nova rodada antes do merge do PR 1 da efetividade.
+- **Nesta branch:** o adendo ao ADR-033 e o registro das decisões de Cesar e Kaio. É um PR de zona protegida.
+- **Esperando:**
+  - **Cesar:** o merge do PR do adendo.
+  - **Kaio:** a confirmação da regra da cobertura do custo, com os 50%.
+- **Próximo, depois do merge:** o PR 1 da efetividade (`int:`).
+  - O que entra: a política `inteligencia.efetividade` com a lista de códigos, a constante dos 50%, a cobertura do custo no motor e a leitura no `packages/db`.
+  - O primeiro passo é recomeçar a branch da `main` e ler `packages/inteligencia/src/efetividade.ts`, usando a política do sistêmico como modelo.
+
+## Os 50% confirmados e o PR 1 da efetividade (15/10/2026)
+
+"Kaio aqui", nesta sessão, 15/10/2026: "Eu confirmo os 50%. Prossiga. 288 mergeado."
+- A regra da cobertura do custo está aprovada por Cesar e Kaio.
+- O status do adendo no `docs/03` ainda diz "aguarda a confirmação escrita do Kaio". Como o `docs/03` é zona protegida, a linha muda no próximo PR de zona protegida do Intelligence, ou num PR só para ela, se o Cesar preferir.
+
+### O que o PR 1 traz (`int:`, fora da zona protegida)
+
+**Motor (`packages/inteligencia`):**
+- **`efetividade.ts`, versão 3:**
+  - a política ganha `codigosDeIntervencao`, com o padrão `['solucao_troca_do_equipamento']`;
+  - a política gravada antes, sem o campo, continua valendo (`CAMPOS_QUE_PODEM_FALTAR`);
+  - `COBERTURA_MINIMA_DO_CUSTO = 0.5`;
+  - o custo antes → depois sai das próprias corretivas, pelo aceite, sem a OS da intervenção. Cada lado tem `soma`, `informadas` e `aceitas`, e o resultado diz se a cobertura é suficiente;
+  - a métrica "custo" saiu da lista `metricas` e virou o campo `custo`.
+- **`intervencao.ts` (novo), a identificação da intervenção:**
+  - a OS que vale no chamado (a mesma regra do job);
+  - o código pela chave padrão ou pelo id;
+  - a conclusão final como data;
+  - fora ficam o chamado cancelado, a OS cancelada, o chamado sem ativo e a OS reaberta sem nova conclusão;
+  - a política resolve por hotel (hotel → bandeira → grupo → padrão).
+- **`painel-efetividade.ts` (novo):** `efetividadeDoAtivo` e `listarEfetividades`, para quem decide o insight do hotel do ativo, com as intervenções dos últimos 180 dias, até 100.
+
+**Leitura (`packages/db`), em `repositorios/inteligencia-efetividade.ts`, pelo hk_app com o contexto de quem pede:**
+- as linhas de `inteligencia.efetividade`;
+- as intervenções, pelo id do código ou pela chave padrão, com uma conclusão depois da data;
+- o histórico dos ativos no trecho (chamados com OS, código e transições, e as paradas).
+
+**Web:** a ligação em `modulos/inteligencia/painel.ts` (`efetividadeDoAtivo` e `efetividades`). Ainda não há rota nem tela; elas vêm no PR 2.
+
+### Pontos de detalhe que o agente decidiu, para o Kaio conferir (ADR-033: detalhe do Kaio)
+
+1. **O custo conta pelo aceite**, como no glossário v3, e a OS da própria intervenção fica fora dos dois lados, porque o custo dela é o da troca, e não o da falha. O chamado da intervenção continua contando como chamado antes.
+2. **O lado sem nenhuma OS aceita conta como coberto**, com custo zero conhecido. Com o antes em zero, não há porcentagem.
+3. **A lista de códigos:** a chave padrão ou o id do código do grupo, até 20, sem repetir. A lista vazia desliga a efetividade.
+4. **180 dias** (a janela de leitura) **e até 100 intervenções** na seção da lista.
+
+### Pendência para Cesar e Kaio: a página do insight
+
+O desenho aprovado mostra, na página do insight, as intervenções concluídas **depois da primeira decisão de aceitar ou agir**. O insight não guarda a data dessa decisão:
+- a página não tem linha do tempo no 1.0 (Cesar, 10/10/2026);
+- a auditoria do insight vai sem hotel, e só o Admin do grupo a lê.
+
+Opções:
+- **(a)** contar desde a primeira detecção do insight, sem dado novo;
+- **(b)** gravar a data da primeira decisão no insight, o que pede migração na `app.insight` e é zona protegida;
+- **(c)** deixar a página do insight fora do PR 2.
+
+O agente recomenda a **(a)**: a ressalva de correlação já está na tela, e a intervenção feita entre a detecção e a decisão também responde ao insight. É mudança no que foi aprovado, então espera os dois.
+
+### Ponto de retomada (15/10/2026, PR 1 da efetividade)
+
+- **`main`:** em `11a9742` (#288, adendo ao ADR-033).
+- **Dev:** sem mudança. A nova rodada do `demo:historico` fica para depois do merge deste PR.
+- **Nesta branch:** o PR 1 da efetividade.
+- **Esperando:**
+  - **Cesar:** o merge do PR 1.
+  - **Kaio:** os quatro pontos de detalhe acima.
+  - **Cesar e Kaio:** a página do insight, opção (a), (b) ou (c).
+- **Próximo:** o roteiro da demonstração ganha o chamado de modernização do elevador com "Troca do equipamento", e o PR 2 traz as rotas, os contratos, as três telas e os textos, com o nome do fornecedor e a descrição do chamado. O primeiro passo é ler o cenário `efetividade-elevador` do roteiro e `iaTabelaEfetividade` no mock.
+
+### Respostas de 15/10/2026 sobre o PR 1
+
+Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma com quem fala:
+- **Kaio:** "4 escolhas conferido". Os quatro pontos de detalhe acima ficam como estão.
+- **Página do insight:** "Kaio aqui. Opção A, como recomendada" e "Cesar aqui. Opção A, como recomendada".
+  - A página do insight mostra as intervenções nos ativos do insight concluídas depois da primeira detecção dele.
+  - Entra no PR 2.
+- **Status dos 50% no `docs/03`:** "Cesar aqui: num PR só para ela".
+  - O PR de zona protegida abre depois do merge do #290, porque o agente tem uma branch só.
+  - Ele também precisa que não haja outro PR de zona protegida aberto.
+
+**Próximo:**
+1. depois do merge do #290, o PR da linha do `docs/03`;
+2. depois do merge dele, o PR 2 da efetividade, com a página do insight pela opção (a).

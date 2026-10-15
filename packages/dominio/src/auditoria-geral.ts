@@ -33,6 +33,7 @@ export const ENTIDADES_DA_AUDITORIA = [
   'local',
   'local_proprietario',
   'membro',
+  'modelo_ativo',
   'os',
   'os_apontamento',
   'os_checklist',

@@ -778,3 +778,201 @@ A partir da 0048, a OS pode não ter chamado (a preventiva), e a transição `ge
   - o aceite automático da preventiva, com a 1c.
 
   Primeiro passo: a leitura da OS por id com `OrigemDaOs` no repositório da triagem e da execução.
+
+## Decisões do Cesar: o adendo da PV3 ao ADR-041 (14/10/2026)
+
+O Cesar aprovou no chat do agente da 1b, em 14/10/2026, os dois detalhes do adendo:
+- **Trava do hotel por advisory lock:** aprovada.
+- **OS sem checklist quando o modelo foi desativado:** aprovada com condição. A falha não pode ser silenciosa:
+  - a geração registra um aviso no log com o plano, o ativo e o modelo;
+  - a tela do plano, na PV3c, mostra "modelo de checklist inativo".
+
+O registro vai num PR de zona protegida (`claude/1b-adendo-pv3`), com o aviso no log: o resultado da geração traz `semChecklist`, e a rota do cron registra `cron.preventiva.checklist_modelo_inativo` em `warn`. A tela fica na PV3c.
+
+O #262 já estava mergeado (13/10/2026, 23:46Z) quando o Cesar escreveu. No último commit (`4540af2`), o pgTAP rodou os 40 arquivos, com o 040, e passou (1324 testes), nas duas passagens. Os outros checks passaram, menos o "zona protegida", por desenho.
+
+## Aviso de área compartilhada com a 1c: PV3c (14/10/2026)
+
+A PV3c mexe na OS e no chamado, áreas compartilhadas com a 1c:
+- os casos de uso da execução, da triagem sobre a OS e do aceite, que passam a aceitar a OS preventiva, sem chamado;
+- os repositórios da OS em `packages/db`;
+- a fila do dia, no contrato e no PWA;
+- o aviso ao locador na preventiva, no padrão do #261.
+
+Para a OS corretiva, nada muda. O aceite automático da preventiva (`os.aceite_automatico`) só entra depois de combinar com a 1c, neste diário. O trabalho fica na branch `claude/1b-pv3c`, a partir da `main`, trazendo a `main` com frequência.
+
+## Ponto de retomada (14/10/2026, adendo da PV3)
+
+- **`main`:** em `a263f1a`, com a 0048 (#262). O `db push` da 0048 é do Cesar, que deixou para 14/10/2026.
+- **PR aberto da 1b:** o do adendo (`claude/1b-adendo-pv3`), de zona protegida (só o `docs/03`); o resto do PR fica fora da zona.
+- **Esperando o Cesar:** o merge do PR do adendo e o `db push` da 0048. O cron da preventiva roda a partir do próximo deploy do web; sem a 0048 no banco, os hotéis com plano ativo falham e vão para o log e o Sentry.
+- **Próxima tarefa:** a PV3c, fora da zona, numa branch nova a partir da `main`. Ela traz:
+  - as ações (execução, aceite, cancelamento) na OS sem chamado;
+  - a fila do dia com a preventiva;
+  - as telas do PWA e do web, com "modelo de checklist inativo" na tela do plano (condição do adendo);
+  - a pendência do plano sem responsável na lista;
+  - o aviso ao locador na preventiva, no padrão da corretiva (#261);
+  - o aceite automático da preventiva, com a 1c.
+
+  Primeiro passo: a leitura da OS por id com `OrigemDaOs` no repositório da triagem e da execução.
+
+## PV3c-1 — as ações na OS preventiva, sem chamado (14/10/2026)
+
+O aviso de área compartilhada com a 1c está no PR do adendo da PV3 (`claude/1b-adendo-pv3`). Para a OS corretiva, nada muda. O trabalho fica na branch `claude/1b-pv3c`.
+
+**Leitura da OS:**
+- `OsGravada` ganha a bandeira do hotel e a `preventiva` (plano, ativo, data prevista). O chamado e o autor passam a anuláveis.
+- `OsDaCorretiva` é o tipo com chamado e autor, devolvido pela leitura das OS de um chamado; o detalhe do chamado não muda.
+- A leitura da OS por id deixa de esconder a preventiva.
+- `lerOsComOrigem` (`packages/aplicacao`) devolve a OS, o chamado (nulo na preventiva), a origem da regra (`OrigemDaOs`) e o ativo: o do chamado, ou o da ocorrência.
+
+**Ações:**
+- **Execução** (iniciar, pausar, retomar, concluir, horas, material, foto, checklist): o responsável age na preventiva como na corretiva.
+  - As políticas da conclusão (foto "depois", checklist completo) são lidas no hotel da OS.
+  - A pausa com motivo não para relógio, e a retomada não mexe em prazo: o SLA é do chamado.
+  - A conclusão não encerra parada nem libera UH.
+  - Os códigos sugeridos usam a categoria do ativo da ocorrência.
+- **Triagem e aceite** (reatribuir, quem executa, arrendamento, cancelar, aceitar, assinatura, reabrir): a regra olha o hotel da OS.
+  - O reflexo no chamado e a versão do chamado saem nulos.
+  - No aceite, sem quem abriu, a regra do Gerente único fica sem as equipes de quem abriu.
+  - As rotas omitem `versaoDoChamado` na preventiva.
+- **Parada na preventiva:** recusada com `parada_na_preventiva` (422; mensagem nas quatro línguas). A parada guarda o chamado do ativo (`app.parada_ativo.chamado_id`, da C5), e mudar isso é migração (zona protegida).
+
+**Fila do dia:** o repositório traz a preventiva com o plano (nome da cópia), a data prevista, o ativo e o local da OS. Ela só chega ao PWA que pede `preventiva=1`, e o PWA ainda não pede: a tela entra na PV3c-2.
+
+**Aviso ao locador na preventiva:** a OS do locador nasce com `locador_avisado_em`, a auditoria `avisar_locador` e o evento `os.locador_avisado`, como na corretiva (#261). Não precisa de mudança no banco: o worker grava a hora no INSERT.
+
+**Testes:**
+- domínio: `exigirChamadoParaParada`;
+- aplicação: `os-preventiva.test.ts`, com a execução, a triagem e o aceite numa preventiva, mais os casos novos do checklist e da geração;
+- db, só na CI: `os-preventiva.test.ts`, com a fila, a execução pela sincronização, o aceite, o cancelamento e a parada recusada, mais o aviso ao locador em `geracao-preventiva.test.ts`.
+
+**Fica para depois:**
+- **Aceite automático da preventiva:** combinar com a 1c. A leitura do job ainda faz join com o chamado, então a preventiva fica de fora.
+- **PV3c-2:**
+  - as telas do PWA e do web, incluindo a lista de OS com a preventiva;
+  - "modelo de checklist inativo" na tela do plano (condição do adendo);
+  - a pendência do plano sem responsável.
+
+**Para o Cesar decidir:**
+1. **Parada na preventiva:**
+   - recusar, como está;
+   - ou abrir a parada no ativo sem chamado. Isso pede migração na `app.parada_ativo` (zona protegida).
+2. **Gerente que é o técnico da preventiva:** hoje ele aceita a própria OS. Na corretiva, quem abriu e executa não decide (dúvida já registrada na PV3b).
+3. **Fila do dia:** mostrar se o ativo da preventiva está parado (`paradoDesde`)? Hoje não mostra.
+
+## PV3c-2a — as pendências do plano preventivo na tela (14/10/2026)
+
+A condição do Cesar no adendo da PV3 ao ADR-041 pede que a falha não seja silenciosa. O aviso no log entrou no #266. Este PR traz a tela, na branch `claude/1b-pv3c2`:
+- **Domínio:** `pendenciasDoPlano`, com dois avisos.
+  - `checklist_inativo`: o modelo do plano foi desativado, e a OS sai sem checklist.
+  - `responsavel_invalido`: o responsável padrão deixou de valer, pela mesma regra da geração (`responsavelQueVale`), e o plano não gera OS.
+  - O plano encerrado não tem pendência. O plano sem responsável já aparece como "Sem responsável".
+- **Leitura:** `responsaveisDosPlanos` (`packages/db/src/responsaveis-do-plano.ts`) lê em lote o membro ativo, as atribuições e a equipe. Serve à geração (hk_worker) e à tela (hk_app), cada um com a RLS do seu papel. A porta dos planos ganha `conferencia` (o responsável e se o modelo está ativo).
+- **Contrato:** `PlanoPreventivoApi.pendencias` (`PENDENCIAS_DO_PLANO_API`, conferida contra o domínio).
+- **Telas:** um selo âmbar por pendência na lista de planos (Preventivas) e na ficha do ativo, com o texto nas quatro línguas (`admin.preventivas.pendencia`).
+- **Testes:**
+  - domínio: `pendenciasDoPlano`;
+  - aplicação: as pendências no hotel e no ativo;
+  - web: `telas-pv2`, nas quatro línguas;
+  - db, só na CI: o modelo e o técnico desativados aparecem para o Gerente.
+
+**Próximos PRs da PV3c-2:**
+- **(b) web:** a lista de OS com a preventiva e a página `/os/{id}`, com as ações.
+- **(c) PWA:** a preventiva na fila e na tela da OS. O PWA passa a pedir `preventiva=1` só depois do (b), para o gestor conseguir aceitar pelo web o que o técnico concluir.
+
+### Pedido ao agente do Intelligence (14/10/2026)
+
+O `apps/web/test/demonstracao/gravacao-historico.test.ts` (#264, #265) passou a levar cerca de 11 minutos na integração do web.
+- **Onde:** 659 s na execução de `9719ee7` da `main`.
+- **Efeito:** o job `pgTAP (meta e isolamento)` encosta no limite, e às vezes estoura. Foram cancelados:
+  - a `main` em `a263f1a` (#265);
+  - o #268 em `2e13a14`;
+  - possivelmente a `main` em `726a4f0`.
+- **Antes:** a integração do web inteira levava menos de um minuto.
+
+O pedido é reduzir o volume da gravação nesse teste, ou levá-lo para um job próprio. Peço que a correção abra antes de outros merges, se a `main` ficar vermelha por isso.
+
+## PV3c-2b — a OS preventiva no web: a lista e a página da OS (14/10/2026)
+
+Na branch `claude/1b-pv3c2b`, PR fora da zona protegida:
+- **Lista de OS:**
+  - a preventiva entra na lista. A coluna "Chamado" vira "OS";
+  - a linha da preventiva mostra o plano, o ativo e a data prevista, e abre `/os/{id}`;
+  - no lugar da prioridade, o selo "Preventiva". Com o filtro de prioridade, a preventiva sai, porque não tem chamado.
+- **`GET /api/v1/os/{id}`** (contrato `RespostaDeOs`, `OsDaPaginaApi`): a OS por id, corretiva ou preventiva. Traz os nomes do hotel, do local, do ativo, do responsável e do fornecedor (`nomesDaOs`) e a política da assinatura no aceite.
+- **Página `/os/{id}`:** carrega pela API no navegador. Não usa o `carregarNaPagina`, cuja lista fechada é zona protegida (ADR-039, adendo da P1c).
+  - No alto, o plano, o ativo e a data prevista; na corretiva, o caminho para o chamado.
+  - O bloco da OS é o mesmo do detalhe do chamado: checklist, códigos, aceite, reabertura sem o equipamento parado, fotos e histórico.
+  - As ações de triagem também são as mesmas: reatribuir, quem executa, arrendamento e cancelar.
+- **Refatoração sem mudar o detalhe do chamado:** `BlocoDaOs` sai de `ChamadoEmDetalhe` e `AcoesDaOs` sai de `TriagemDoChamado`. Os testes das telas do chamado continuam iguais.
+- **Testes:**
+  - aplicação: a leitura por id e os nomes;
+  - web: a linha da preventiva, o bloco, as ações e a página (`pagina-da-os.test.tsx`);
+  - db, só na CI: a lista, a leitura por id e os nomes, em `os-preventiva.test.ts`.
+
+**Próximo:** a PV3c-2c, o PWA. O técnico passa a receber a preventiva na fila (`preventiva=1`), agora que o gestor consegue aceitá-la pelo web.
+
+## PV3c-2c — a OS preventiva no PWA do técnico (14/10/2026)
+
+Na branch `claude/1b-pv3c2c`, PR fora da zona protegida. **Mergear depois do #270**, para o técnico só receber a preventiva quando o gestor já conseguir aceitá-la no web.
+- **Fila:** o PWA pede `GET /api/v1/os/do-dia?preventiva=1` e guarda a OS sem chamado (`OsGuardada = OsDoDiaApi`). O IndexedDB não muda de versão: a guardada antes da PV3c não tem o campo `preventiva` e continua sendo lida como corretiva. O PWA antigo, ainda no aparelho, não pede `preventiva=1` e não recebe a preventiva.
+- **Telas:**
+  - **Cartão da fila:** o local, o plano e o ativo (`tecnico.fila.item_preventiva`).
+  - **Tela da OS:** o local da OS, e o plano, o ativo e a data prevista (`tecnico.os.preventiva`), sem a nota da parada nem a da UH.
+- **Projeção:** na preventiva, a parada, a pergunta da parada e a da UH não existem (`paradaPossivel` devolve null), coerente com `parada_na_preventiva`. A sugestão de códigos usa o ativo da ocorrência (`ativoDaOs`).
+- **Testes:** a fila pede `preventiva=1` e guarda a preventiva; a projeção, o local e o cache antigo; a fila e a tela da OS nas quatro línguas.
+
+Com isso, a PV3c fecha, exceto o aceite automático da preventiva, que espera o acordo com a 1c.
+
+## Ponto de retomada (14/10/2026, PV3c completa)
+
+- **`main`:** em `edc6678`, com a PV3c inteira (#268, #269, #270 e #271) e a correção do Intelligence no teste da gravação do histórico (#273). O `db push` da 0048 foi feito pelo Cesar em 14/10/2026; a PV3c não tem migração.
+- **PRs abertos da 1b:** só o deste ponto de retomada. Nenhum trabalho sem enviar.
+- **Pedido ao Intelligence:** atendido pelo #273 (roteiro mínimo no `gravacao-historico.test.ts`). O #271 já passou com o pgTAP em 14 minutos, antes dele.
+- **Fica de fora da PV3c:** o aceite automático da preventiva, que espera o acordo com a 1c. A leitura do job ainda faz join com o chamado.
+- **Para o Cesar decidir** (detalhes na PV3c-1):
+  1. parada na preventiva: recusada, como está, ou migração na `app.parada_ativo`;
+  2. o Gerente que é o técnico da preventiva aceita a própria OS?
+  3. a fila do dia mostra se o ativo da preventiva está parado (`paradoDesde`)?
+- **Próxima tarefa:** a M1, modelos de ativo por categoria (item 3 da fila da 1b; desenho em `docs/referencia/propostas-desenho-pv-implantacao.md`, seção M1). Ela tem migração, então é zona protegida. Primeiro passo: conferir no GitHub se há PR de zona protegida aberto e qual é a última migração da `main`.
+
+## M1 — modelos de ativo por categoria (15/10/2026)
+
+**Decisões do Cesar (15/10/2026, nesta conversa):**
+1. **Plano sugerido:** o worker não ganha INSERT em `app.plano_preventivo`, pelo mesmo motivo da trava da PV3 e porque plano é configuração do hotel e precisa de autor. O plano sugerido nasce pelo `hk_app`, com autor, quando alguém aprova o ativo na fila de aprovação (M4). Quem aprova confirma ou descarta o plano.
+2. **"O hotel já tem plano que cobre o ativo":**
+   - contam o plano por categoria da categoria do ativo e o plano no próprio ativo, ativo ou pausado;
+   - não contam o plano em outro ativo da mesma categoria nem o plano encerrado.
+   - A regra fica em `hotelJaTemPlanoQueCobreOAtivo` (`packages/dominio/src/plano-preventivo.ts`), com testes dos quatro casos e do ativo sem categoria.
+
+**Zona protegida:** a migração 0050 (`app.modelo_ativo` e `app.ativo.modelo_id`) e o pgTAP 042 estão no #276, sem nenhuma permissão nova para o worker.
+
+**Em aberto antes do plano sugerido:** o desenho pedido pelo Cesar não é exatamente o A nem o C da proposta. Os dois foram reenviados a ele em duas linhas, antes de seguir.
+
+### Decisões do Cesar de 15/10/2026 (segunda rodada)
+
+- **Plano sugerido:** fica só o caminho C, com ou sem fila de aprovação, sem híbrido.
+  - A lista de sugestões mostra os ativos aprovados, com modelo e sem plano que os cubra. O ativo pendente na fila não entra.
+  - A gestão cria o plano com um clique, pelo `hk_app` e com autor. A RLS do plano não muda e o worker não ganha permissão.
+  - Descartar fica gravado no ativo, com quem, quando e motivo, e o ativo sai da lista.
+  - O painel de implantação ganha o contador "ativos com modelo e sem plano".
+  - A fila de aprovação (M4) continua decidindo só o ativo.
+- **Colunas do descarte:** o Cesar pediu que entrassem na 0050, mas ela já estava na `main` (#276). Por isso vieram na migração 0051 (#279), ainda num único PR de zona protegida.
+
+### M1a — cadastro dos modelos de ativo (15/10/2026)
+
+Na branch `claude/1b-m1-app`, PR fora da zona protegida.
+- **Domínio (`modelos-de-ativo.ts`):**
+  - só o Admin do grupo gere (`modelos_de_ativo_so_admin`);
+  - categoria ativa, salvo a que o modelo já tinha;
+  - nome e textos com as regras do ativo;
+  - campos com as chaves e os tipos da categoria, sem obrigatório, porque o modelo só sugere;
+  - checklist ativo e da mesma categoria, quando tem uma;
+  - periodicidade com as regras do plano.
+  - `preencherComModelo` (preenche só o vazio) e `validarModeloDoAtivo` ficam prontos para a M1b.
+- **Aplicação, db e API:** listar, criar, alterar, desativar e reativar, sempre com a versão (ADR-029). Rotas em `/api/v1/modelos-de-ativo` e documentação no OpenAPI. A entidade `modelo_ativo` entra na auditoria, e os erros têm mensagem nos quatro catálogos.
+- **Tela `/admin/modelos-de-ativo`:** fica no menu de cadastros. Os campos estendidos viraram o componente `CamposDaCategoria`, usado também pelo cadastro do ativo.
+- **Próximo:**
+  - **M1b:** a escolha do modelo no cadastro do ativo, no web e no PWA (operação `ativo.cadastrar` com `modeloId`).
+  - **M1c:** a lista de sugestões, o descarte e o contador. Depende da 0051 (#279).

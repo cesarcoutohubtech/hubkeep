@@ -31,6 +31,12 @@ import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
 import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
 import { CampoDeBusca, comBusca } from '../../../../cliente/CampoDeBusca';
+import {
+  CamposDaCategoria,
+  type DefinicaoDeCampo,
+  type ValorDeCampo,
+  camposDoFormulario,
+} from '../../../../cliente/campos-da-categoria';
 import { useIdioma, useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
 const PADRAO = [
@@ -49,14 +55,7 @@ type Rotulos = Partial<Record<Idioma, string>>;
 const NIVEIS = [1, 2, 3, 4, 5] as const;
 type NomesDeCriticidade = Partial<Record<string, Rotulos>>;
 const TOM_DA_CRITICIDADE: Record<number, TomDeSelo> = { 4: 'ambar', 5: 'vermelho' };
-interface Campo {
-  chave: string;
-  tipo: 'texto' | 'numero' | 'data' | 'lista' | 'sim_nao';
-  obrigatorio: boolean;
-  rotulos: Rotulos;
-  unidade: string | null;
-  opcoes: { chave: string; rotulos: Rotulos }[];
-}
+type Campo = DefinicaoDeCampo;
 interface Categoria {
   id: string;
   chavePadrao: string | null;
@@ -69,7 +68,7 @@ interface Local {
   nome: string;
   status: 'ativo' | 'pendente_licenca' | 'inativo';
 }
-type Valor = string | number | boolean;
+type Valor = ValorDeCampo;
 interface Ativo {
   id: string;
   localId: string;
@@ -109,23 +108,6 @@ const texto = (f: FormData, campo: string) => {
   const v = String(f.get(campo) ?? '').trim();
   return v === '' ? null : v;
 };
-
-/** Valores dos campos estendidos do formulário, no tipo de cada definição; vazio fica de fora. */
-function camposDoFormulario(f: FormData, definicoes: readonly Campo[]): Record<string, Valor> {
-  const saida: Record<string, Valor> = {};
-  for (const d of definicoes) {
-    const nome = `campo.${d.chave}`;
-    if (d.tipo === 'sim_nao') {
-      const v = f.get(nome);
-      if (v === 'sim' || v === 'nao') saida[d.chave] = v === 'sim';
-      continue;
-    }
-    const v = texto(f, nome);
-    if (v === null) continue;
-    saida[d.chave] = d.tipo === 'numero' ? Number(v) : v;
-  }
-  return saida;
-}
 
 /** Formulário de um ativo, novo ou existente: a categoria escolhida decide os campos. */
 function FormularioDeAtivo({
@@ -237,48 +219,12 @@ function FormularioDeAtivo({
           </Selecao>
         )}
       </CampoDoFormulario>
-      {definicoes.map((d) => {
-        const nome = `campo.${d.chave}`;
-        const etiqueta = rotulo(d.rotulos, d.chave) + (d.unidade ? ` (${d.unidade})` : '');
-        const atual = valorDe(d.chave);
-        return (
-          <CampoDoFormulario
-            key={`${categoriaId}|${d.chave}`}
-            rotulo={d.obrigatorio ? t('admin.ativos.obrigatorio', { campo: etiqueta }) : etiqueta}
-          >
-            {(p) =>
-              d.tipo === 'lista' ? (
-                <Selecao {...p} name={nome} defaultValue={typeof atual === 'string' ? atual : ''}>
-                  <option value="" />
-                  {d.opcoes.map((o) => (
-                    <option key={o.chave} value={o.chave}>
-                      {rotulo(o.rotulos, o.chave)}
-                    </option>
-                  ))}
-                </Selecao>
-              ) : d.tipo === 'sim_nao' ? (
-                <Selecao
-                  {...p}
-                  name={nome}
-                  defaultValue={atual === true ? 'sim' : atual === false ? 'nao' : ''}
-                >
-                  <option value="" />
-                  <option value="sim">{t('admin.ativos.sim')}</option>
-                  <option value="nao">{t('admin.ativos.nao')}</option>
-                </Selecao>
-              ) : (
-                <Entrada
-                  {...p}
-                  name={nome}
-                  type={d.tipo === 'numero' ? 'number' : d.tipo === 'data' ? 'date' : 'text'}
-                  step={d.tipo === 'numero' ? 'any' : undefined}
-                  defaultValue={atual === undefined ? '' : String(atual)}
-                />
-              )
-            }
-          </CampoDoFormulario>
-        );
-      })}
+      <CamposDaCategoria
+        definicoes={definicoes}
+        valorDe={valorDe}
+        rotulo={rotulo}
+        prefixoDaChave={String(categoriaId)}
+      />
       <div className="hk-linha-de-botoes">
         <Botao type="submit" variante={ativo ? 'padrao' : 'primario'}>
           {ativo ? t('admin.ativos.acao.salvar') : t('admin.ativos.acao.cadastrar')}
@@ -468,6 +414,8 @@ interface PlanoDoAtivo {
   unidade: string;
   situacao: 'ativo' | 'pausado' | 'encerrado';
   proximaData: string | null;
+  /** O que a tela avisa (PV3c): o modelo de checklist desativado e o responsável que deixou de valer. */
+  pendencias: ('checklist_inativo' | 'responsavel_invalido')[];
 }
 
 /** Os planos preventivos do ativo (PV2), sob demanda; quem não gere o hotel recebe a lista vazia. */
@@ -522,6 +470,11 @@ function PlanosDoAtivo({ ativo }: { ativo: Ativo }) {
                 >
                   {t('admin.preventivas.situacao', { situacao: p.situacao })}
                 </Selo>
+                {p.pendencias.map((pendencia) => (
+                  <Selo key={pendencia} tom="ambar">
+                    {t('admin.preventivas.pendencia', { pendencia })}
+                  </Selo>
+                ))}
               </li>
             ))}
           </ul>

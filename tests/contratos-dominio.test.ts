@@ -33,6 +33,7 @@ import {
   PedidoDePolitica,
   TIPOS_DE_CODIGO_DE_MANUTENCAO_API,
   ACOES_DO_PLANO_API,
+  PENDENCIAS_DO_PLANO_API,
   SITUACOES_DO_PLANO_API,
   UNIDADES_DE_PERIODICIDADE_API,
 } from '../packages/contratos/src/index';
@@ -68,6 +69,7 @@ import {
   PREFIXOS_DO_NUCLEO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
   ACOES_DO_PLANO,
+  PENDENCIAS_DO_PLANO,
   SITUACOES_DO_PLANO,
   UNIDADES_DE_PERIODICIDADE,
 } from '../packages/dominio/src/index';
@@ -318,6 +320,10 @@ describe('contratos × domínio', () => {
     expect([...UNIDADES_DE_PERIODICIDADE_API]).toEqual([...UNIDADES_DE_PERIODICIDADE]);
     expect([...SITUACOES_DO_PLANO_API]).toEqual([...SITUACOES_DO_PLANO]);
     expect([...ACOES_DO_PLANO_API]).toEqual([...ACOES_DO_PLANO]);
+  });
+
+  it('as pendências do plano preventivo da API são as do domínio (PV3c)', () => {
+    expect([...PENDENCIAS_DO_PLANO_API]).toEqual([...PENDENCIAS_DO_PLANO]);
   });
 
   it('as pendências do painel de implantação são as do domínio', () => {

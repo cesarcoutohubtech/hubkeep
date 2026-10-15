@@ -169,6 +169,8 @@ export function explicacaoDoSinal(sinal: Pick<SinalSistemico, 'regra' | 'evidenc
       valores: {
         ...comuns,
         distintos: e.distintos,
+        // O sinal gravado antes da v4 já trazia os ativos do modelo.
+        populacao: e.ativosDoModelo ?? e.distintos,
         taxa: e.taxaPorAtivo ?? 0,
         base: e.basePorAtivo ?? 0,
       },

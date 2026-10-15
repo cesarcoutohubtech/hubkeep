@@ -22,6 +22,7 @@ export {
   criarPortaAtivos,
   criarPortaCategorias,
   criarPortaChecklists,
+  criarPortaModelosDeAtivo,
   criarPortaPlanosPreventivos,
   criarPortaCodigos,
   criarPortaModulos,
@@ -52,6 +53,7 @@ export { criarPortaConsultasDaCorretiva } from './consultas-da-corretiva';
 export { criarPortaHistorico } from './historico';
 export { criarPortaAuditoriaGeral } from './auditoria-geral';
 export { criarPortaAvisosDeSla } from './avisos-de-sla';
+export { criarPortaComunicacao } from './comunicacao';
 export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from './inteligencia';
 export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
 export type {
@@ -66,6 +68,11 @@ export type {
   MetricaDoPainelNoBanco,
   NomesDoPainelNoBanco,
 } from './repositorios/inteligencia-painel';
+export type {
+  ChamadoDaEfetividadeNoBanco,
+  OsDaEfetividadeNoBanco,
+  ParadaDaEfetividadeNoBanco,
+} from './repositorios/inteligencia-efetividade';
 export type {
   AtivoDoJob,
   ChamadoDoJob,

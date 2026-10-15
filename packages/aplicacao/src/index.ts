@@ -27,7 +27,20 @@ export type {
   PedidoDeConviteDeMembro,
 } from './casos-de-uso/convites';
 export { criarManipuladoresDeEventos } from './casos-de-uso/eventos';
-export type { EventoPendente, Manipulador } from './casos-de-uso/eventos';
+export type {
+  DependenciasDaComunicacao,
+  EventoPendente,
+  Manipulador,
+} from './casos-de-uso/eventos';
+export { criarCasosDeUsoDeComunicacao } from './casos-de-uso/comunicacao';
+export type { CasosDeUsoDeComunicacao, ContagemNoPeriodo } from './casos-de-uso/comunicacao';
+export type {
+  ChamadoDoAviso,
+  ContagemDeEnvios,
+  EnvioRegistrado,
+  PessoaDoEnvio,
+  PortaComunicacao,
+} from './portas/comunicacao';
 export { CredencialInvalida, formatarCredencial, lerCredencial } from './credencial-agente';
 export type {
   Criptografia,
@@ -226,7 +239,7 @@ export type {
   SessaoDaGeracao,
 } from './portas/geracao-preventiva';
 export { criarGeracaoDePreventivas } from './casos-de-uso/geracao-preventiva';
-export type { ResultadoDaGeracao } from './casos-de-uso/geracao-preventiva';
+export type { OsSemChecklist, ResultadoDaGeracao } from './casos-de-uso/geracao-preventiva';
 export type {
   AceiteAutomaticoAGravar,
   OsParaOAceiteAutomatico,
@@ -241,8 +254,10 @@ export type {
   AssinaturaDoAceite,
   ChamadoParaTriagem,
   MudancaNoChamado,
+  OsDaCorretiva,
   OsGravada,
   PortaTriagem,
+  PreventivaDaOs,
   ReflexoNoChamado,
 } from './portas/triagem';
 export { criarCasosDeUsoDeTriagem } from './casos-de-uso/triagem';
@@ -325,3 +340,14 @@ export type {
   EventoDoHistorico,
   HistoricoDoRegistro,
 } from './casos-de-uso/historico';
+export type {
+  ModeloDeAtivoGravado,
+  MudancaDeModeloDeAtivo,
+  PortaModelosDeAtivo,
+} from './portas/modelos-de-ativo';
+export { criarCasosDeUsoDeModelosDeAtivo } from './casos-de-uso/modelos-de-ativo';
+export type {
+  CasosDeUsoDeModelosDeAtivo,
+  ModeloDeAtivo,
+  PedidoDeModeloDeAtivo,
+} from './casos-de-uso/modelos-de-ativo';

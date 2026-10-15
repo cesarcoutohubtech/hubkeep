@@ -11,10 +11,12 @@ import {
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeAuditoriaGeral,
   type CasosDeUsoDeAvisosDeSla,
+  type CasosDeUsoDeComunicacao,
   type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
   type CasosDeUsoDeChecklists,
+  type CasosDeUsoDeModelosDeAtivo,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeConsultas,
@@ -43,8 +45,10 @@ import {
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeAvisosDeSla,
+  criarCasosDeUsoDeComunicacao,
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeChecklists,
+  criarCasosDeUsoDeModelosDeAtivo,
   criarCasosDeUsoDeCodigos,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeConsultas,
@@ -73,10 +77,12 @@ import {
   criarPortaAtivos,
   criarPortaAuditoriaGeral,
   criarPortaAvisosDeSla,
+  criarPortaComunicacao,
   criarPortaBandeiras,
   criarPortaCategorias,
   criarPortaChamados,
   criarPortaChecklists,
+  criarPortaModelosDeAtivo,
   criarPortaCodigos,
   criarPortaConfiguracao,
   criarPortaConsultasDaCorretiva,
@@ -126,6 +132,7 @@ export interface FabricasDeCasosDeUso {
   categorias(): CasosDeUsoDeCategorias;
   codigos(): CasosDeUsoDeCodigos;
   checklists(): CasosDeUsoDeChecklists;
+  modelosDeAtivo(): CasosDeUsoDeModelosDeAtivo;
   planosPreventivos(): CasosDeUsoDePlanosPreventivos;
   situacoes(): CasosDeUsoDeSituacoes;
   chamados(): CasosDeUsoDeChamados;
@@ -135,6 +142,7 @@ export interface FabricasDeCasosDeUso {
   historico(): CasosDeUsoDeHistorico;
   auditoriaGeral(): CasosDeUsoDeAuditoriaGeral;
   avisosDeSla(): CasosDeUsoDeAvisosDeSla;
+  comunicacao(): CasosDeUsoDeComunicacao;
   paradas(): CasosDeUsoDeParadas;
   uhIndisponivel(): CasosDeUsoDeUhIndisponivel;
   ativos(): CasosDeUsoDeAtivos;
@@ -235,6 +243,13 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
         relogio,
       }),
     ),
+    modelosDeAtivo: uma(() =>
+      criarCasosDeUsoDeModelosDeAtivo({
+        modelos: criarPortaModelosDeAtivo(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
     planosPreventivos: uma(() =>
       criarCasosDeUsoDePlanosPreventivos({
         planos: criarPortaPlanosPreventivos(banco),
@@ -305,6 +320,13 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
         avisos: criarPortaAvisosDeSla(banco),
         atribuicoes,
         prioridades: criarPortaPrioridades(banco),
+        relogio,
+      }),
+    ),
+    comunicacao: uma(() =>
+      criarCasosDeUsoDeComunicacao({
+        comunicacao: criarPortaComunicacao(banco),
+        atribuicoes,
         relogio,
       }),
     ),
