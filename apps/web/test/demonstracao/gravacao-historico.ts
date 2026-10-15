@@ -172,6 +172,8 @@ export function baseDoKit(o: {
 const conflito = (e: unknown, codigo: string) => e instanceof Conflito && e.codigo === codigo;
 const diaIso = (d: Date) => d.toISOString().slice(0, 10);
 const MINUTO_MS = 60_000;
+/** De quantas em quantas operações a gravação escreve o progresso. */
+const OPERACOES_POR_LINHA = 250;
 
 type Evento =
   | { quando: Date; tipo: 'abrir'; chamado: ChamadoDoRoteiro }
@@ -619,6 +621,14 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
     const diaDoInstante = new Map(instantes.map((t, i) => [t.getTime(), r.dias[i] as string]));
 
     const eventos = eventosDoRoteiro(r);
+    // O progresso com o tempo de verdade (não o do roteiro): do notebook até o
+    // dev, o volume completo leva horas, e o aquecimento sozinho passa de 40
+    // minutos sem nenhuma linha de "Dia".
+    const comecoReal = Date.now();
+    const decorrido = () => {
+      const s = Math.round((Date.now() - comecoReal) / 1000);
+      return `${Math.floor(s / 3600)}h${String(Math.floor(s / 60) % 60).padStart(2, '0')}m`;
+    };
     let k = 0;
     let diasCalculados = 0;
     let insightsAbertos = 0;
@@ -629,6 +639,9 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
       const instante = instantes[i] as Date;
       for (; k < eventos.length && (eventos[k] as Evento).quando < instante; k += 1) {
         await aplicar(eventos[k] as Evento);
+        if ((k + 1) % OPERACOES_POR_LINHA === 0) {
+          log(`Operações: ${k + 1} de ${eventos.length} (${decorrido()}).`);
+        }
       }
       // O dia já gravado numa execução anterior não roda de novo: o job
       // reabriria como recorrência o insight que o roteiro já encerrou. As
@@ -677,7 +690,8 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
           decisoes += 1;
         }
       }
-      if ((i + 1) % 30 === 0) log(`Dia ${dia}: ${k} de ${eventos.length} operações.`);
+      if ((i + 1) % 30 === 0)
+        log(`Dia ${dia}: ${k} de ${eventos.length} operações (${decorrido()}).`);
     }
 
     // O estado final de cada insight, pelo cenário.

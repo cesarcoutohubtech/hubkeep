@@ -924,3 +924,15 @@ Na branch `claude/1b-pv3c2c`, PR fora da zona protegida. **Mergear depois do #27
 - **Testes:** a fila pede `preventiva=1` e guarda a preventiva; a projeção, o local e o cache antigo; a fila e a tela da OS nas quatro línguas.
 
 Com isso, a PV3c fecha, exceto o aceite automático da preventiva, que espera o acordo com a 1c.
+
+## Ponto de retomada (14/10/2026, PV3c completa)
+
+- **`main`:** em `edc6678`, com a PV3c inteira (#268, #269, #270 e #271) e a correção do Intelligence no teste da gravação do histórico (#273). O `db push` da 0048 foi feito pelo Cesar em 14/10/2026; a PV3c não tem migração.
+- **PRs abertos da 1b:** só o deste ponto de retomada. Nenhum trabalho sem enviar.
+- **Pedido ao Intelligence:** atendido pelo #273 (roteiro mínimo no `gravacao-historico.test.ts`). O #271 já passou com o pgTAP em 14 minutos, antes dele.
+- **Fica de fora da PV3c:** o aceite automático da preventiva, que espera o acordo com a 1c. A leitura do job ainda faz join com o chamado.
+- **Para o Cesar decidir** (detalhes na PV3c-1):
+  1. parada na preventiva: recusada, como está, ou migração na `app.parada_ativo`;
+  2. o Gerente que é o técnico da preventiva aceita a própria OS?
+  3. a fila do dia mostra se o ativo da preventiva está parado (`paradoDesde`)?
+- **Próxima tarefa:** a M1, modelos de ativo por categoria (item 3 da fila da 1b; desenho em `docs/referencia/propostas-desenho-pv-implantacao.md`, seção M1). Ela tem migração, então é zona protegida. Primeiro passo: conferir no GitHub se há PR de zona protegida aberto e qual é a última migração da `main`.
