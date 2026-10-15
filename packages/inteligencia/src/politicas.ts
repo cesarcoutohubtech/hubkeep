@@ -28,6 +28,7 @@ import {
   PADRAO_EFETIVIDADE,
   type ConfigEfetividade,
   limiaresDeEfetividadeValidos,
+  listaDeCodigosValida,
 } from './efetividade';
 import { PADRAO_REINCIDENCIA, type ConfigReincidencia } from './reincidencia';
 import { FAIXAS_PADRAO } from './score';
@@ -110,13 +111,19 @@ function faixasValidas(v: unknown): boolean {
  * valor gravado antes deles: ausentes, vale o padrão. Sem isso, a política
  * gravada antes deixaria de valer inteira, e o resolvedor voltaria ao padrão.
  * O mesmo modelo v4 (Kaio, 15/10/2026): a população mínima e o percentual afetado.
+ * A efetividade v3 (adendo ao ADR-033, 15/10/2026): os códigos de intervenção.
  */
-const CAMPOS_QUE_PODEM_FALTAR = new Set(['minPopulacao', 'percentualMinimoAfetado']);
+const CAMPOS_QUE_PODEM_FALTAR = new Set([
+  'minPopulacao',
+  'percentualMinimoAfetado',
+  'codigosDeIntervencao',
+]);
 
 /** Mesmas chaves do padrão, recursivamente; número finito e não negativo onde o padrão tem número. */
 function mesmoFormato(v: unknown, padrao: unknown, campo: string): boolean {
   if (campo === 'faixas') return faixasValidas(v);
   if (campo === 'limiteInsight') return typeof v === 'number' && v >= 0 && v <= 100;
+  if (campo === 'codigosDeIntervencao') return listaDeCodigosValida(v);
   if (typeof padrao === 'boolean') return typeof v === 'boolean';
   if (typeof padrao === 'number') return typeof v === 'number' && Number.isFinite(v) && v >= 0;
   if (!objeto(padrao) || !objeto(v)) return false;

@@ -69,6 +69,11 @@ export type {
   NomesDoPainelNoBanco,
 } from './repositorios/inteligencia-painel';
 export type {
+  ChamadoDaEfetividadeNoBanco,
+  OsDaEfetividadeNoBanco,
+  ParadaDaEfetividadeNoBanco,
+} from './repositorios/inteligencia-efetividade';
+export type {
   AtivoDoJob,
   ChamadoDoJob,
   DeteccaoNoInsightDoJob,
