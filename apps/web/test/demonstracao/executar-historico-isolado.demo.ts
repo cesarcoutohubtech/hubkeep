@@ -10,10 +10,7 @@ import pg from 'pg';
 import { expect, it } from 'vitest';
 import { TENANT_DO_HISTORICO, baseDoKit, gravarHistorico } from './gravacao-historico';
 import { NOME_DO_GRUPO } from './historico-inteligencia';
-import {
-  IDENTIDADE_HISTORICO_V2 as NOVO,
-  conferirIsolamentoV2,
-} from './isolamento-historico-v2';
+import { IDENTIDADE_HISTORICO_V2 as NOVO, conferirIsolamentoV2 } from './isolamento-historico-v2';
 
 const exigir = (nome: string): string => {
   const valor = process.env[nome];
@@ -113,8 +110,10 @@ async function nomearApenasNovoGrupo(url: string): Promise<void> {
 }
 
 it('verificar ou executar histórico Intelligence V2 isolado', { timeout: 8 * 3_600_000 }, async () => {
-  if (process.env['HK_HISTORICO_V2_MODO'] !== 'verificar' &&
-      process.env['HK_HISTORICO_V2_MODO'] !== 'executar') {
+  if (
+    process.env['HK_HISTORICO_V2_MODO'] !== 'verificar' &&
+    process.env['HK_HISTORICO_V2_MODO'] !== 'executar'
+  ) {
     throw new Error('Modo v2 inválido. Use --verificar ou --executar.');
   }
   const executar = process.env['HK_HISTORICO_V2_MODO'] === 'executar';
@@ -126,7 +125,9 @@ it('verificar ou executar histórico Intelligence V2 isolado', { timeout: 8 * 3_
   console.log(`Novo tenant de demonstração: ${NOVO.tenantId}, domínio ${NOVO.dominio}.`);
 
   if (!executar) {
-    console.log('VERIFICAÇÃO APROVADA: nenhuma escrita feita. Para criar v2, execute com --executar.');
+    console.log(
+      'VERIFICAÇÃO APROVADA: nenhuma escrita feita. Para criar v2, execute com --executar.',
+    );
     return;
   }
 
@@ -151,7 +152,7 @@ it('verificar ou executar histórico Intelligence V2 isolado', { timeout: 8 * 3_
 
   console.log(
     `V2 criada: ${NOVO.nome}; chamados=${resultado.chamados}; dias=${resultado.diasCalculados}; ` +
-    `insights=${resultado.insightsAbertos}; decisões=${resultado.decisoes}.\n` +
-    'Contagens do grupo antigo preservadas nas tabelas verificadas.',
+      `insights=${resultado.insightsAbertos}; decisões=${resultado.decisoes}.\n` +
+      'Contagens do grupo antigo preservadas nas tabelas verificadas.',
   );
 });
