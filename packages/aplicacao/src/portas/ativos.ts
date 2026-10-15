@@ -8,6 +8,8 @@ export interface AtivoGravado {
   hotelId: string;
   localId: string;
   categoriaId: string | null;
+  /** O modelo de que o ativo nasceu (M1). */
+  modeloId: string | null;
   nome: string;
   fabricante: string | null;
   modelo: string | null;
@@ -31,6 +33,7 @@ export interface AtivoGravado {
 /** O que uma gravação (cadastro ou alteração) escreve, já validado pelo domínio. */
 export interface DadosDeAtivo {
   categoriaId: string | null;
+  modeloId: string | null;
   nome: string;
   fabricante: string | null;
   modelo: string | null;
@@ -69,6 +72,11 @@ export interface PortaAtivos {
   ): Promise<{ hotel?: unknown; grupo?: unknown }>;
   /** Categorias do tenant, com as definições como estão no banco. */
   categorias(ctx: Contexto): Promise<{ id: string; ativa: boolean; campos: unknown }[]>;
+  /** O modelo de ativo (M1), se visível a quem pede; senão null. */
+  modelo(
+    ctx: Contexto,
+    modeloId: string,
+  ): Promise<{ id: string; categoriaId: string; ativa: boolean } | null>;
   /** Com `termo` (já normalizado, B6), só os que o têm na coluna `busca`. */
   ativos(ctx: Contexto, hotelId: string, termo?: string): Promise<AtivoGravado[]>;
   ativo(ctx: Contexto, ativoId: string): Promise<AtivoGravado | null>;

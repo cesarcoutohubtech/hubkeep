@@ -186,6 +186,8 @@
   "admin.ativos.obrigatorio": "{campo} (obligatorio)",
   "admin.ativos.sim": "Sí",
   "admin.ativos.nao": "No",
+  "admin.ativos.campo.modelo_de_ativo": "Modelo de activo",
+  "admin.ativos.sem_modelo": "Sin modelo (completar a mano)",
   "admin.ativos.desativado": "Desactivado",
   "admin.ativos.acao.cadastrar": "Registrar",
   "admin.ativos.acao.salvar": "Guardar",

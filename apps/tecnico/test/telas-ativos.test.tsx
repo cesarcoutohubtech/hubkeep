@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { ProvedorDeIdioma } from '../src/i18n';
 import type { Referencia } from '../src/referencia/banco';
 import type { PortaDeFotos } from '../src/anexos/fotos';
-import { Ativos, camposDaI1 } from '../src/telas/Ativos';
+import { Ativos, camposDaI1, modeloDaGravacao } from '../src/telas/Ativos';
 import { FotosDoAtivo } from '../src/telas/FotosDoAtivo';
 
 const referencia: Referencia = {
@@ -156,5 +156,53 @@ describe('compra, garantia e criticidade no PWA (I1)', () => {
 
   it('referência com a I1: o vazio vai como null, e apaga', () => {
     expect(camposDaI1({ ...guardado, ...vazios, criticidade: 2 }, vazios)).toEqual(vazios);
+  });
+});
+
+describe('modelo de ativo no PWA (M1)', () => {
+  const comModelos: Referencia = {
+    ...referencia,
+    modelos: [
+      {
+        id: 'm1',
+        categoriaId: 'cat-ar',
+        nome: 'Split 12.000',
+        fabricante: 'Fabricante X',
+        modelo: 'X-12',
+        campos: {},
+        ativa: true,
+      },
+      {
+        id: 'm2',
+        categoriaId: 'cat-ar',
+        nome: 'Split antigo',
+        fabricante: null,
+        modelo: null,
+        campos: {},
+        ativa: false,
+      },
+    ],
+  };
+
+  it.each(IDIOMAS)('%s: o cadastro oferece os modelos ativos guardados', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(idioma, comModelos);
+    expect(html).toContain(m['admin.ativos.sem_modelo']);
+    expect(html).toContain('Split 12.000');
+    expect(html).not.toContain('Split antigo');
+  });
+
+  it('sem modelos guardados (referência anterior à M1), sem a escolha', () => {
+    const m = mensagensDe('pt-BR');
+    expect(renderizar('pt-BR', referencia)).not.toContain(m['admin.ativos.sem_modelo']);
+  });
+
+  it('cadastro leva o modelo, mesmo nulo; referência anterior à M1 só leva o escolhido', () => {
+    const guardado = referencia.ativos.h1?.[0];
+    if (!guardado) throw new Error('sem ativo');
+    expect(modeloDaGravacao(null, null)).toEqual({ modeloId: null });
+    expect(modeloDaGravacao(guardado, null)).toEqual({});
+    expect(modeloDaGravacao(guardado, 'm1')).toEqual({ modeloId: 'm1' });
+    expect(modeloDaGravacao({ ...guardado, modeloId: 'm1' }, null)).toEqual({ modeloId: null });
   });
 });
