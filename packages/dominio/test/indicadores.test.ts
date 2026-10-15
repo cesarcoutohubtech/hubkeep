@@ -17,6 +17,7 @@ import {
   podeVerIndicadores,
   resolverPolitica,
   somarParciais,
+  amostraSuficiente,
   validarPeriodoDoPainel,
   validarPolitica,
   visaoDoHotel,
@@ -527,5 +528,15 @@ describe('política da tolerância da preventiva (decisão 11)', () => {
     for (const v of [{ dias: -1 }, { dias: 31 }, { dias: 1.5 }, { dias: 1, outro: 1 }, null]) {
       expect(() => validarPolitica('preventiva.tolerancia_dias', v)).toThrow();
     }
+  });
+});
+
+describe('amostra mínima do destaque na comparação (Cesar, 15/10/2026)', () => {
+  it('concorre com 10 itens ou mais', () => {
+    expect([amostraSuficiente(9), amostraSuficiente(10), amostraSuficiente(25)]).toEqual([
+      false,
+      true,
+      true,
+    ]);
   });
 });

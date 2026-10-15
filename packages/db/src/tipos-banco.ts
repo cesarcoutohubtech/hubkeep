@@ -72,6 +72,7 @@ export interface AppAtivo {
   id: string;
   local_id: string;
   modelo: string | null;
+  modelo_id: string | null;
   nome: string;
   numero_serie: string | null;
   tenant_id: string;
@@ -381,6 +382,22 @@ export interface AppMetricaAtivoDiaria {
   versao_politica: string;
 }
 
+export interface AppModeloAtivo {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  campos: Generated<Json>;
+  categoria_id: string;
+  checklist_modelo_id: string | null;
+  criado_em: Generated<Timestamp>;
+  fabricante: string | null;
+  id: string;
+  modelo: string | null;
+  nome: string;
+  plano_sugerido: Json | null;
+  tenant_id: string;
+  versao: Generated<number>;
+}
+
 export interface AppOperacaoOffline {
   chave: string;
   recebida_em: Generated<Timestamp>;
@@ -672,6 +689,7 @@ export interface DB {
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
   "app.metrica_ativo_diaria": AppMetricaAtivoDiaria;
+  "app.modelo_ativo": AppModeloAtivo;
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
   "app.os_apontamento": AppOsApontamento;

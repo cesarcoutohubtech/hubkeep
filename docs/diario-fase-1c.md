@@ -787,6 +787,40 @@ Feito em 14/10/2026, depois do merge do #262 (PV3, 0048): a migração virou 004
   - **O que entra:** a porta `EnviadorDeEmail` com o adaptador "desligado", o manipulador do `chamado.sla_alerta`, o modelo do e-mail no catálogo, o registro dos envios, a contagem do C8 e o teste de paridade.
   - **Primeiro passo:** ler `packages/aplicacao/src/casos-de-uso/eventos.ts` e a porta `EnviadorDeEmail`.
 
+## Comunicação, PR do e-mail do SLA: na branch (13/10/2026)
+
+O #261 entrou na `main`. A branch `claude/1c-email-sla` foi feita a partir da `claude/1c-comunicacao-migracao`, com a `main` mesclada. O PR só abre depois que a migração da comunicação estiver na `main` e no dev, porque o código grava em `app.envio_notificacao`.
+
+**Aviso de área compartilhada com a 1b (`packages/dominio`, outbox e catálogos):**
+- **Domínio** (`comunicacao.ts`):
+  - `CANAIS_DE_ENVIO`, `SITUACOES_DE_ENVIO` e `LIMITE_DE_ENVIOS_POR_DIA` (30, C8);
+  - `pessoasDoAviso`: os papéis pelas atribuições vigentes que cobrem o hotel, mais o responsável da OS ativa, que é o Técnico ou os membros ativos da equipe;
+  - `situacaoAntesDoEnvio` (`sem_endereco` e `sem_provedor`), `podeVerContagemDeEnvios` e `validarPeriodoDaContagem` (até 31 dias).
+- **Aplicação:**
+  - o manipulador do `chamado.sla_alerta` em `criarManipuladoresDeEventos`, com a dependência opcional `comunicacao`;
+  - um e-mail por pessoa, no idioma dela e depois no do tenant (C6);
+  - o envio já registrado não sai de novo, e a falha de uma pessoa não para as outras;
+  - o `EventoPendente` ganha o `registroId`, o chamado do aviso;
+  - o caso de uso `contagemDeEnvios` (C8).
+- **Banco:**
+  - `criarPortaComunicacao`, que lê com o `hk_worker` e grava o registro pela unit of work (`repositorios/comunicacao.ts`);
+  - o outbox passa o `registro_id` ao manipulador.
+- **Web:**
+  - na composição, o manipulador com o e-mail desligado (`email: null`, C1): até o SES, cada envio fica como `sem_provedor`;
+  - a rota `GET /api/v1/comunicacao/envios/contagem`.
+- **Catálogos:** o modelo `email.sla.*`, com o texto puro e o HTML e o prazo no fuso do hotel, e o erro `envios_fora_do_papel`, nos 4 idiomas.
+- **Testes:**
+  - domínio, i18n e aplicação, com portas falsas;
+  - a paridade dos dois checks da 0049;
+  - a integração `packages/db/test/comunicacao.test.ts`, que roda só na CI.
+
+**Fica para depois:**
+- o adaptador do SES, quando o Cesar configurar a conta (C1);
+- a tela da contagem: a API já serve o piloto;
+- o push.
+
+**Validação local:** lint e typecheck passaram, e os testes também: 4.580 passaram e nenhum falhou. Os 296 de integração ficaram pulados, porque rodam só na CI.
+
 ## Respostas do Cesar de 14/10/2026
 
 O Cesar respondeu ("Cesar aqui. Respostas:"):
@@ -800,6 +834,15 @@ O Cesar respondeu ("Cesar aqui. Respostas:"):
 
 O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no `docs/03` foi trocado na branch `claude/1c-comunicacao-migracao` e entra na `main` com o PR da migração 0049. A aprovação cobre os detalhes do push registrados no ADR.
 
+### Ponto de retomada (14/10/2026, depois do merge do #272)
+- **`main`:** em `b1f70f8`, com o #272 (migração 0049, pgTAP 041, ADR-046 e ADR-045 aprovados). O dev espera o `db push` da 0049 pelo Cesar.
+- **PRs abertos da 1c:** nenhum. Nenhum PR de zona protegida da 1c na fila.
+- **Nas branches, já com a `main` e validadas (lint, typecheck e testes):**
+  1. `claude/1c-email-sla`: o PR abre quando o Cesar confirmar o `db push` da 0049.
+  2. `claude/1c-push`: o PR abre depois do merge do PR do e-mail.
+- **Esperando o Cesar:** o `db push` da 0049; apagar a branch `claude/1c-arrendado-migracao`; a conta e o DNS do SES (F0-12); as chaves VAPID, depois do deploy do push.
+- **Próxima tarefa:** o painel de indicadores (item 8), pela versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
+
 ## Painel de indicadores (item 8): o domínio, na branch (15/10/2026)
 
 **Área compartilhada (`packages/dominio`), registrada antes de mexer.** Branch `claude/1c-painel`, a partir da `main` de 15/10 (a1e155c):
@@ -807,7 +850,7 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
 - `sla.ts`: exporta `inicioDoDiaLocal`, que usa o mesmo cálculo de fuso do calendário de SLA.
 - `politicas.ts`: a chave `preventiva.tolerancia_dias` (decisão 11), `{ dias }` de 0 a 30, padrão 0, com o prefixo `preventiva.` entre os do núcleo (também em `packages/contratos`).
 
-**Escolhas de borda, para o Cesar confirmar** (nenhuma muda o texto do glossário, mas confirmo antes do PR):
+**Escolhas de borda** (nenhuma muda o texto do glossário; respondidas pelo Cesar em 15/10/2026, na seção seguinte):
 1. **Prazo que ainda corre.** No % de SLA e no % de preventiva em dia, o chamado ou a preventiva com o prazo dentro do período que ainda não venceu e não foi concluído fica fora da conta até vencer. Aparece ao lado como "ainda no prazo". Sem isso, o período que termina hoje puxa o percentual para baixo com o que ainda pode ser cumprido.
 2. **Média da bandeira.** É o valor do conjunto: soma os chamados de todos os hotéis e calcula uma vez. Não é a média dos percentuais de cada hotel, para o hotel pequeno não pesar igual ao grande.
 3. **Idade do backlog.** Conta em dias completos desde a abertura: 0 a 2, 3 a 7, 8 a 15, 16 a 30 e mais de 30.
@@ -831,13 +874,27 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
 - **Medição da meta (decisão 9):** depende do volume de referência do Kaio.
 - **Paridade da produtividade:** o mock separa fornecedor, preventivas, corretivas e corretivas no prazo. O glossário versão 3 diz "por equipe e por hotel". Mudar é uma versão nova do glossário, que só sai com a aprovação de Cesar e Kaio.
 
+### Decisões do Cesar sobre o painel (15/10/2026)
+
+O Cesar respondeu às quatro escolhas no chat do agente da 1c ("Cesar aqui"):
+1. **Prazo que ainda corre:** fora da conta, como "ainda no prazo". Aprovado.
+2. **Média da bandeira:** sobre todos os chamados juntos. Aprovado, com um ajuste no destaque da comparação:
+   - cada percentual mostra o número de itens ao lado;
+   - só concorre ao destaque de melhor da coluna o hotel com pelo menos 10 itens no período naquela coluna;
+   - abaixo disso, o percentual aparece como "amostra pequena";
+   - o mínimo fica numa constante, para ajustar no piloto.
+   No código: `LIMITES_DO_PAINEL.amostraMinimaDoDestaque` e `amostraSuficiente` (`packages/dominio/src/indicadores.ts`). Valem para as duas colunas de percentual, o % de SLA (itens: os chamados da conta) e o % de preventiva em dia (itens: as preventivas da conta).
+3. **Idade do backlog:** em dias completos, com as faixas propostas. Aprovado.
+4. **Produtividade:** por equipe, com a linha "sem equipe", como no glossário versão 3. Aprovado. **Candidata à versão 4 do glossário, depois do piloto:** a separação por fornecedor, preventiva e corretiva, como no mock.
+
+O Cesar vai testar a tela no dev com o grupo do histórico de demonstração; daqui ela não foi aberta no navegador.
+
 ### Ponto de retomada (15/10/2026, painel de indicadores)
 
 - **`main`:** a1e155c.
 - **Dev:** com a 0049, que o Cesar confirmou em 15/10.
-- **PRs abertos da 1c:** [#277](https://github.com/cesarcoutohubtech/hubkeep/pull/277), o e-mail do SLA (head 8324884, fora da zona). Espera o merge do Cesar.
-- **Branches sem PR:**
-  - `claude/1c-push`: o PR abre depois do merge do #277.
-  - `claude/1c-painel`: o domínio, a leitura, a API e a tela do painel, validados (lint, typecheck e testes). O PR abre depois que o Cesar responder às quatro escolhas de borda acima. Não toca a zona protegida.
-- **Zona protegida:** a vez é da 1b, com a 0050. O painel não precisa de migração.
-- **Próximo passo:** com a resposta do Cesar, atualizar a branch com a `main`, validar e abrir o PR do painel. Depois, a impressão da OS e o CSV (item 9).
+- **Atualização (15/10/2026, depois do merge do #277):**
+  - **`main`:** a92dc65.
+  - **PRs abertos da 1c, fora da zona e esperando o merge do Cesar:** [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, e o PR do painel, que abre em seguida.
+  - **Zona protegida:** a vez é da 1b. O painel não precisa de migração.
+  - **Próximo passo:** a impressão da OS e o CSV (item 9).

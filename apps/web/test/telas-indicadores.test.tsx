@@ -153,10 +153,38 @@ describe('painel de indicadores em cada idioma', () => {
       'pt-BR',
       <ComparacaoNaBandeira bandeira={bandeira} hoteis={completos} />,
     );
-    expect(html).toContain('<strong>95%</strong>');
+    expect(html).toContain('<strong>95% (40 itens)</strong>');
     expect(html).toContain('<strong>10 h</strong>');
     expect(html).toContain('(melhor da bandeira)');
     expect(html).toContain('Bandeira inteira');
+  });
+
+  it('abaixo de 10 itens, o percentual é amostra pequena e não concorre ao destaque', () => {
+    const pequeno = {
+      ...(completos[1] as (typeof completos)[number]),
+      indicadores: indicadores({
+        percentualDeSla: 100,
+        sla: {
+          total: 9,
+          dentroDoPrazo: 9,
+          aindaNoPrazo: 0,
+          pausadoSegundos: 0,
+          pausadoMedioSegundos: 0,
+        },
+        preventiva: { total: 10, emDia: 10, atrasadas: 0, aindaNoPrazo: 0 },
+        percentualDePreventivaEmDia: 100,
+      }),
+    };
+    const hoteisDaBandeira = [completos[0] as (typeof completos)[number], pequeno];
+    expect(melhoresDaColuna(hoteisDaBandeira)[0]).toBe(95);
+    expect(melhoresDaColuna(hoteisDaBandeira)[3]).toBe(100);
+    const html = renderizar(
+      'pt-BR',
+      <ComparacaoNaBandeira bandeira={bandeira} hoteis={hoteisDaBandeira} />,
+    );
+    expect(html).toContain('Amostra pequena (9 itens)');
+    expect(html).toContain('<strong>95% (40 itens)</strong>');
+    expect(html).toContain('<strong>100% (10 itens)</strong>');
   });
 
   it('a página abre carregando, sem estilo inline nem h1 próprio', () => {

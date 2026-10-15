@@ -19,6 +19,7 @@ import {
   type CasosDeUsoDeAuditoriaGeral,
   type CasosDeUsoDeAvisosDeSla,
   type CasosDeUsoDeIndicadores,
+  type CasosDeUsoDeComunicacao,
   type CasosDeUsoDeHistorico,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
@@ -50,6 +51,7 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaComunicacao,
   criarPortaMonitorDeSla,
   criarPortaAceiteAutomatico,
   criarPortaGeracaoPreventiva,
@@ -379,6 +381,9 @@ export const casosDeUsoDeAvisosDeSla = async (): Promise<CasosDeUsoDeAvisosDeSla
 /** Painel de indicadores (1c, item 8), pelo hk_app: a gestão vê tudo; o proprietário, os cartões. */
 export const casosDeUsoDeIndicadores = async (): Promise<CasosDeUsoDeIndicadores> =>
   (await fabricas()).indicadores();
+/** A contagem de envios por destinatário e por dia (1c, C8), pelo hk_app. */
+export const casosDeUsoDeComunicacao = async (): Promise<CasosDeUsoDeComunicacao> =>
+  (await fabricas()).comunicacao();
 
 /** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */
 export const casosDeUsoDeParadas = async (): Promise<CasosDeUsoDeParadas> =>
@@ -401,10 +406,24 @@ export const casosDeUsoDeSincronizacao = async (): Promise<CasosDeUsoDeSincroniz
   (await fabricas()).sincronizacao();
 
 let manipuladores: Record<string, Manipulador> | undefined;
-/** Processa o outbox de um tenant (hk_worker); a rota /api/cron/outbox chama para todos. */
+/**
+ * Processa o outbox de um tenant (hk_worker); a rota /api/cron/outbox chama
+ * para todos. O aviso de SLA vai pela comunicação (1c, ADR-046) com o e-mail
+ * desligado (C1): até o Cesar configurar o SES, cada envio fica registrado
+ * como sem_provedor, e nada sai.
+ */
 export async function processarOutboxDoTenant(tenantId: string): Promise<ResultadoOutbox> {
-  manipuladores ??= criarManipuladoresDeEventos(administracaoDoAuth());
-  return processarOutbox(await acessoBancoDoWorker(), tenantId, manipuladores);
+  const banco = await acessoBancoDoWorker();
+  manipuladores ??= criarManipuladoresDeEventos({
+    ...administracaoDoAuth(),
+    comunicacao: {
+      porta: criarPortaComunicacao(banco),
+      email: null,
+      urlDoSite: (process.env['HK_URL_SITE'] ?? '').replace(/\/+$/, ''),
+      relogio: relogioDoSistema,
+    },
+  });
+  return processarOutbox(banco, tenantId, manipuladores);
 }
 
 let verificador: VerificadorDeToken | undefined;

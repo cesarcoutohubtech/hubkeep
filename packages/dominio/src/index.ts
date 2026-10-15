@@ -342,6 +342,7 @@ export {
   ehUnidadeDePeriodicidade,
   exigirPlanoNaoEncerrado,
   exigirResponsavelParaAtivar,
+  hotelJaTemPlanoQueCobreOAtivo,
   normalizarNomeDoPlano,
   ocorrenciaMaisRecenteAte,
   ocorrencias,
@@ -355,6 +356,7 @@ export {
 export type {
   AcaoDoPlano,
   Periodicidade,
+  PlanoQueCobre,
   SituacaoDoPlano,
   UnidadeDePeriodicidade,
 } from './plano-preventivo';
@@ -563,6 +565,7 @@ export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
 export {
   FAIXAS_DE_IDADE,
   LIMITES_DO_PAINEL,
+  amostraSuficiente,
   PAPEIS_DO_PAINEL,
   conclusaoDoChamado,
   diasDoPeriodo,
@@ -593,3 +596,14 @@ export type {
   SomasDeSla,
   VisaoDoHotel,
 } from './indicadores';
+export {
+  CANAIS_DE_ENVIO,
+  LIMITE_DE_ENVIOS_POR_DIA,
+  LIMITE_DO_PERIODO_DA_CONTAGEM_DIAS,
+  SITUACOES_DE_ENVIO,
+  pessoasDoAviso,
+  podeVerContagemDeEnvios,
+  situacaoAntesDoEnvio,
+  validarPeriodoDaContagem,
+} from './comunicacao';
+export type { CanalDeEnvio, ResponsavelDaOsAtiva, SituacaoDeEnvio } from './comunicacao';

@@ -7,6 +7,7 @@
 // só se formatam, no idioma de quem vê.
 import type { RespostaDosIndicadores, z } from '@hubkeep/contratos';
 import { FAIXAS_DE_IDADE_API } from '@hubkeep/contratos';
+import { amostraSuficiente } from '@hubkeep/dominio';
 import { Indicador, Indicadores, MensagemVazia, Painel, Tabela } from '@hubkeep/ui';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/cliente';
@@ -219,24 +220,44 @@ export function ChamadosPorDia({ serie }: { serie: PainelDeIndicadores['serie'] 
   );
 }
 
-/** As colunas da comparação e o sentido do melhor: maior ou menor. */
-const COLUNAS = [
-  { chave: 'sla', valor: (i: IndicadoresNaTela) => i.percentualDeSla, melhor: 'maior' },
+/**
+ * As colunas da comparação e o sentido do melhor: maior ou menor. As de
+ * percentual dizem quantos itens entram na conta: o número aparece ao lado, e
+ * abaixo do mínimo o hotel não concorre ao destaque (amostra pequena).
+ */
+const COLUNAS: readonly {
+  chave: 'sla' | 'mttr' | 'backlog_100' | 'preventiva' | 'uh_dias' | 'chamados_100';
+  valor: (i: IndicadoresNaTela) => number | null;
+  melhor: 'maior' | 'menor';
+  itens?: (i: IndicadoresNaTela) => number;
+}[] = [
+  {
+    chave: 'sla',
+    valor: (i) => i.percentualDeSla,
+    melhor: 'maior',
+    itens: (i) => i.sla.total,
+  },
   { chave: 'mttr', valor: (i: IndicadoresNaTela) => i.mttrHoras, melhor: 'menor' },
   { chave: 'backlog_100', valor: (i: IndicadoresNaTela) => i.backlogPor100Uhs, melhor: 'menor' },
   {
     chave: 'preventiva',
-    valor: (i: IndicadoresNaTela) => i.percentualDePreventivaEmDia,
+    valor: (i) => i.percentualDePreventivaEmDia,
     melhor: 'maior',
+    itens: (i) => i.preventiva.total,
   },
   { chave: 'uh_dias', valor: (i: IndicadoresNaTela) => i.uhDias, melhor: 'menor' },
   { chave: 'chamados_100', valor: (i: IndicadoresNaTela) => i.chamadosPor100Uhs, melhor: 'menor' },
-] as const;
+];
 
-/** O melhor valor de cada coluna entre os hotéis; null sem nenhum valor. */
+/** O valor concorre ao destaque? Nas colunas de percentual, só com a amostra mínima. */
+const concorre = (c: (typeof COLUNAS)[number], i: IndicadoresNaTela) =>
+  c.valor(i) !== null && (c.itens === undefined || amostraSuficiente(c.itens(i)));
+
+/** O melhor valor de cada coluna entre os hotéis que concorrem; null sem nenhum. */
 export function melhoresDaColuna(hoteis: readonly HotelCompleto[]): (number | null)[] {
   return COLUNAS.map((c) => {
     const valores = hoteis
+      .filter((h) => concorre(c, h.indicadores))
       .map((h) => c.valor(h.indicadores))
       .filter((v): v is number => v !== null);
     if (valores.length === 0) return null;
@@ -258,13 +279,16 @@ export function ComparacaoNaBandeira({
   const celula = (i: IndicadoresNaTela, n: number, destaque: boolean) => {
     const coluna = COLUNAS[n] as (typeof COLUNAS)[number];
     const v = coluna.valor(i);
+    const itens = coluna.itens?.(i);
     const texto =
       coluna.chave === 'mttr'
         ? f.tempo(v)
-        : coluna.chave === 'sla' || coluna.chave === 'preventiva'
-          ? f.percentual(v)
-          : f.opcional(v);
-    const melhor = destaque && v !== null && v === melhores[n];
+        : itens === undefined
+          ? f.opcional(v)
+          : amostraSuficiente(itens)
+            ? t('indicadores.comparacao.percentual', { valor: f.percentual(v), n: itens })
+            : t('indicadores.comparacao.amostra_pequena', { n: itens });
+    const melhor = destaque && concorre(coluna, i) && v === melhores[n];
     return (
       <td key={coluna.chave} className="hk-num" data-melhor={melhor ? '' : undefined}>
         {melhor ? <strong>{texto}</strong> : texto}

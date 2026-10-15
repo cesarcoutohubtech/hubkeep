@@ -316,3 +316,8 @@ export {
   IndicadoresApi,
   RespostaDosIndicadores,
 } from './indicadores';
+export {
+  ConsultaDaContagemDeEnvios,
+  ContagemDeEnviosApi,
+  RespostaDaContagemDeEnvios,
+} from './comunicacao';

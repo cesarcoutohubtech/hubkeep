@@ -30,7 +30,18 @@ export const LIMITES_DO_PAINEL = {
   diasPorConsulta: 92,
   /** A maior tolerância da preventiva em dia, em dias. */
   toleranciaMaxima: 30,
+  /**
+   * Na comparação na bandeira, o hotel só concorre ao destaque de melhor de
+   * uma coluna de percentual com pelo menos estes itens no período; abaixo, o
+   * percentual aparece como "amostra pequena" (Cesar, 15/10/2026; a ajustar
+   * no piloto).
+   */
+  amostraMinimaDoDestaque: 10,
 } as const;
+
+/** A coluna de percentual tem itens bastantes para concorrer ao destaque? */
+export const amostraSuficiente = (itens: number): boolean =>
+  itens >= LIMITES_DO_PAINEL.amostraMinimaDoDestaque;
 
 /** As faixas do backlog por idade, em dias completos desde a abertura. */
 export const FAIXAS_DE_IDADE = [
