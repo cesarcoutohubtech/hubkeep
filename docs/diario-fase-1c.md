@@ -898,3 +898,14 @@ O Cesar vai testar a tela no dev com o grupo do histórico de demonstração; da
   - **PRs abertos da 1c, fora da zona e esperando o merge do Cesar:** [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, e o PR do painel, que abre em seguida.
   - **Zona protegida:** a vez é da 1b. O painel não precisa de migração.
   - **Próximo passo:** a impressão da OS e o CSV (item 9).
+
+### Ponto de retomada (15/10/2026, pausa pelo limite semanal)
+
+- **`main`:** a92dc65, com o #277 (e-mail do SLA). O dev tem a 0049.
+- **Com o merge do Cesar, fora da zona e verdes nos cinco checks:**
+  - [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, no head 3650e3d. Entra primeiro.
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, no head 1e9fb5b mais este registro. O Cesar faz o "Update branch" depois do #281; se der conflito, fica para a volta do agente.
+- **Decisão do Cesar (15/10/2026):** o MTTR fica sem mínimo de amostra no destaque da comparação até o piloto.
+- **Sem acompanhamento:** nenhuma conferência marcada e nenhum PR acompanhado. Na volta, conferir uma vez o estado dos dois PRs.
+- **Trabalho não enviado:** nenhum.
+- **Próximo item:** a impressão da OS e o CSV (item 9), ainda não começado. Primeiro passo: ler a seção 6 de `docs/referencia/paridade-mock-1c.md` e o item 9 do `docs/13`.
