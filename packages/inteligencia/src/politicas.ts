@@ -105,6 +105,14 @@ function faixasValidas(v: unknown): boolean {
   return true;
 }
 
+/**
+ * Campos que entraram depois da primeira versão da política e podem faltar no
+ * valor gravado antes deles: ausentes, vale o padrão. Sem isso, a política
+ * gravada antes deixaria de valer inteira, e o resolvedor voltaria ao padrão.
+ * O mesmo modelo v4 (Kaio, 15/10/2026): a população mínima e o percentual afetado.
+ */
+const CAMPOS_QUE_PODEM_FALTAR = new Set(['minPopulacao', 'percentualMinimoAfetado']);
+
 /** Mesmas chaves do padrão, recursivamente; número finito e não negativo onde o padrão tem número. */
 function mesmoFormato(v: unknown, padrao: unknown, campo: string): boolean {
   if (campo === 'faixas') return faixasValidas(v);
@@ -113,8 +121,10 @@ function mesmoFormato(v: unknown, padrao: unknown, campo: string): boolean {
   if (typeof padrao === 'number') return typeof v === 'number' && Number.isFinite(v) && v >= 0;
   if (!objeto(padrao) || !objeto(v)) return false;
   const chaves = Object.keys(padrao);
-  if (Object.keys(v).length !== chaves.length) return false;
-  if (!chaves.every((k) => Object.hasOwn(v, k) && mesmoFormato(v[k], padrao[k], k))) return false;
+  if (!Object.keys(v).every((k) => Object.hasOwn(padrao, k))) return false;
+  const campoValido = (k: string) =>
+    Object.hasOwn(v, k) ? mesmoFormato(v[k], padrao[k], k) : CAMPOS_QUE_PODEM_FALTAR.has(k);
+  if (!chaves.every(campoValido)) return false;
   if (campo === 'pesos') return Object.values(v).some((p) => (p as number) > 0);
   return true;
 }

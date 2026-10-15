@@ -35,7 +35,12 @@ import {
   VERSAO_DE_POLITICA_PADRAO,
   calcularDia,
 } from './dia';
-import { type ChamadoDaFonte, corretivasDosChamados, inicioDaLeitura } from './fonte';
+import {
+  type ChamadoDaFonte,
+  corretivasDosChamados,
+  inicioDaLeitura,
+  primeiroChamadoPorHotel,
+} from './fonte';
 import {
   type Corretiva,
   type LocalAnalisado,
@@ -187,6 +192,7 @@ export async function executarDiaDoTenant(
     ativos,
     corretivas,
     locais,
+    primeiroChamadoPorHotel: primeiroChamadoPorHotel(chamados),
     ...(sistemico ? { sistemico } : {}),
   });
 
