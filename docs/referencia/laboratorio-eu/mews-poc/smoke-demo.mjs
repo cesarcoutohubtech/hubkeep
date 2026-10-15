@@ -29,7 +29,7 @@ async function executar() {
     clientName: 'HubKeep-EU-Lab/0.1',
     pageSize: 20,
     maxPages: 3,
-    maxRetries: 1,
+    maxRetries: 0, // smoke limitado a até três POST reais, inclusive se ocorrer 429/5xx
   });
   // Na demo pública, nenhum dado real de clientes, hóspedes ou hotéis deve ser usado.
   const empresas = await mews.lerPrimeiraPaginaDeEmpresas();
