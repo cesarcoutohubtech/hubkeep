@@ -310,3 +310,9 @@ export {
   RespostaDosAvisosDoChamado,
   TIPOS_DE_ALERTA_DE_SLA_API,
 } from './avisos-de-sla';
+export {
+  ConsultaDosIndicadores,
+  FAIXAS_DE_IDADE_API,
+  IndicadoresApi,
+  RespostaDosIndicadores,
+} from './indicadores';

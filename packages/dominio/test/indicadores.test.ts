@@ -470,7 +470,7 @@ describe('quem vê o painel', () => {
     revogadoEm: null,
     ...extra,
   });
-  const H = { id: 'h1', bandeiraId: 'b1', proprietarioIds: ['p1'] };
+  const H = { id: 'h1', bandeiraId: 'b1', doUsuarioComoProprietario: true };
 
   it('a gestão com escopo que cobre o hotel vê tudo', () => {
     expect(visaoDoHotel([atribuicao('admin_grupo', { tipo: 'grupo' })], H, AGORA)).toBe('completa');
@@ -482,7 +482,7 @@ describe('quem vê o painel', () => {
     ).toBeNull();
   });
 
-  it('o proprietário do hotel vê só os cartões; o de outro, nada', () => {
+  it('o proprietário do hotel vê só os cartões; o de outro hotel, nada', () => {
     expect(
       visaoDoHotel(
         [atribuicao('proprietario', { tipo: 'proprietario', proprietarioId: 'p1' })],
@@ -492,8 +492,8 @@ describe('quem vê o painel', () => {
     ).toBe('cartoes');
     expect(
       visaoDoHotel(
-        [atribuicao('proprietario', { tipo: 'proprietario', proprietarioId: 'p2' })],
-        H,
+        [atribuicao('proprietario', { tipo: 'proprietario', proprietarioId: 'p1' })],
+        { ...H, doUsuarioComoProprietario: false },
         AGORA,
       ),
     ).toBeNull();

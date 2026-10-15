@@ -521,27 +521,26 @@ export const PAPEIS_DO_PAINEL: readonly Papel[] = ['admin_grupo', 'gestor_csc', 
  * - 'completa': a gestão com escopo que cobre o hotel;
  * - 'cartoes': o proprietário (o locador é o proprietário, decisão 6) do hotel
  *   ou de UHs dele, só com o backlog, os UH-dias e os chamados, sem
- *   produtividade e sem comparação; o que ele lê do hotel a RLS decide;
+ *   produtividade e sem comparação; o que ele lê do hotel a RLS decide. Se o
+ *   hotel é dele, quem diz é o banco (authz.hoteis_proprietario e
+ *   authz.locais_proprietario), porque a RLS não mostra os vínculos a ele;
  * - null: nada (o hotel fica fora do painel).
  */
 export type VisaoDoHotel = 'completa' | 'cartoes';
 
 export function visaoDoHotel(
   minhas: readonly Atribuicao[],
-  hotel: { id: string; bandeiraId: string | null; proprietarioIds: readonly string[] },
+  hotel: { id: string; bandeiraId: string | null; doUsuarioComoProprietario: boolean },
   agora: Date,
 ): VisaoDoHotel | null {
   const vigentes = minhas.filter((a) => vigente(a, agora));
   if (vigentes.some((a) => PAPEIS_DO_PAINEL.includes(a.papel) && escopoCobreHotel(a, hotel))) {
     return 'completa';
   }
-  const doProprietario = vigentes.some(
-    (a) =>
-      a.papel === 'proprietario' &&
-      a.escopo.tipo === 'proprietario' &&
-      hotel.proprietarioIds.includes(a.escopo.proprietarioId),
+  const proprietario = vigentes.some(
+    (a) => a.papel === 'proprietario' && a.escopo.tipo === 'proprietario',
   );
-  return doProprietario ? 'cartoes' : null;
+  return proprietario && hotel.doUsuarioComoProprietario ? 'cartoes' : null;
 }
 
 /** Abre o painel quem tem um papel da gestão ou de proprietário vigente. */
