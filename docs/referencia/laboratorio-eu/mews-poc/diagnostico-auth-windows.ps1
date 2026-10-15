@@ -1,7 +1,7 @@
 # HubKeep EU — diagnostico de autenticacao Mews DEMO, somente leitura.
 # Requer Windows PowerShell 5.1+; sem persistencia, Supabase, HubKeep ou producao.
 # Obtem dois pares PUBLICOS de demonstracao (Gross e Net) da documentacao oficial.
-# Maximo absoluto: 5 requisicoes POST (2 de configuracao, 3 de leitura).
+# Maximo absoluto: 5 requisicoes POST (2 de configuracao, 3+ leituras conforme resultado).
 [CmdletBinding()]
 param()
 
@@ -60,14 +60,37 @@ function Consultar([hashtable]$par, [string]$recurso, [hashtable]$filtros) {
                 if ($r -match '^[a-zA-Z0-9-]{1,80}$') { $requestId = $r }
             } catch { }
         }
-        # Nunca apresentar o corpo do erro, excecao, resposta ou tokens.
-        return @{ Ok = $false; Http = $status; Dados = $null; RequestId = $requestId }
+        # Apenas o campo Message do JSON de erro (nunca Details nem payload bruto).
+        # Sanitiza IDs, tokens, caracteres de controle e limita comprimento.
+        $safeMessage = $null
+        if ($null -ne $response) {
+            try {
+                $stream = $response.GetResponseStream()
+                if ($null -ne $stream) {
+                    $reader = New-Object System.IO.StreamReader($stream)
+                    $body = $reader.ReadToEnd()
+                    $reader.Dispose()
+                    $json = ConvertFrom-Json -InputObject $body
+                    if ($json.Message -is [string]) {
+                        $msg = $json.Message
+                        $msg = $msg.Replace($par.ClientToken, '[token]').Replace($par.AccessToken, '[token]')
+                        $msg = [regex]::Replace($msg, '(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', '[id]')
+                        $msg = [regex]::Replace($msg, '[A-Za-z0-9-]{40,}', '[codigo]')
+                        $msg = [regex]::Replace($msg, '[\r\n\t]', ' ')
+                        $msg = [regex]::Replace($msg, '[^a-zA-Z0-9À-ÿ .,:;!?()_/-]', '')
+                        $safeMessage = $msg.Substring(0, [Math]::Min(160, $msg.Length))
+                    }
+                }
+            } catch {}
+        }
+        return @{ Ok = $false; Http = $status; Dados = $null; RequestId = $requestId; Message = $safeMessage }
     }
 }
 
 function Estado([hashtable]$resultado) {
     $est = [ordered]@{ Http = $resultado.Http }
     if ($resultado.RequestId) { $est['RequestId'] = $resultado.RequestId }
+    if ($resultado.Message) { $est['Mensagem'] = $resultado.Message }
     return $est
 }
 
@@ -109,33 +132,43 @@ try {
         $relatorio['Resultado'] = 'autenticacao_confirmada'
         $relatorio['AmbienteAutenticado'] = $escolhido.Ambiente
         $enterpriseId = [string]$configuracao.Enterprise.Id
-        $consultas = @(
-            @{ Caminho = 'enterprises/getAll'; Nome = 'Empresas'; Filtros = @{ Limitation = @{ Count = 5 } } },
-            @{ Caminho = 'resources/getAll'; Nome = 'Recursos'; Filtros = @{
-                EnterpriseIds = @($enterpriseId)
-                Extent = @{ Resources = $true; Inactive = $false }
-                Limitation = @{ Count = 5 }
-            } },
-            @{ Caminho = 'resourceBlocks/getAll'; Nome = 'Bloqueios'; Filtros = @{
-                EnterpriseIds = @($enterpriseId)
-                ActivityStates = @('Active')
-                Limitation = @{ Count = 5 }
-            } }
-        )
-        foreach ($q in $consultas) {
-            $r = Consultar $escolhido $q.Caminho $q.Filtros
-            $info = Estado $r
-            if ($r.Ok) {
-                $campo = switch ($q.Nome) {
-                    'Empresas' { 'Enterprises' }
-                    'Recursos' { 'Resources' }
-                    'Bloqueios' { 'ResourceBlocks' }
-                }
-                $prop = $r.Dados.PSObject.Properties[$campo]
-                if ($null -eq $prop) { $info['CampoEsperado'] = 'ausente' }
-                else { $info['Itens'] = @($prop.Value).Count }
+        # A configuracao identifica a propriedade single-enterprise: enterprises/getAll
+        # pode estar bloqueado, nao e pre-requisito para a integracao.
+        $rec = Consultar $escolhido 'resources/getAll' @{
+            EnterpriseIds = @($enterpriseId)
+            Extent = @{ Resources = $true; Inactive = $false }
+            Limitation = @{ Count = 5 }
+        }
+        $relatorio.Leituras['Recursos'] = Estado $rec
+        if ($rec.Ok) {
+            $prop = $rec.Dados.PSObject.Properties['Resources']
+            if ($null -eq $prop) { $relatorio.Leituras['Recursos']['CampoEsperado'] = 'ausente' }
+            else { $relatorio.Leituras['Recursos']['Itens'] = @($prop.Value).Count }
+        }
+
+        # Primeiro bloco SEM filtros opcionais, conforme o contrato do Mews.
+        $bloco = Consultar $escolhido 'resourceBlocks/getAll' @{ Limitation = @{ Count = 5 } }
+        $relatorio.Leituras['BloqueiosSemFiltros'] = Estado $bloco
+        if ($bloco.Ok) {
+            $prop = $bloco.Dados.PSObject.Properties['ResourceBlocks']
+            if ($null -eq $prop) {
+                $relatorio.Leituras['BloqueiosSemFiltros']['CampoEsperado'] = 'ausente'
             }
-            $relatorio.Leituras[$q.Nome] = $info
+            else { $relatorio.Leituras['BloqueiosSemFiltros']['Itens'] = @($prop.Value).Count }
+            # Se o corpo minimo passou, testar qual filtro opcional causa o 400.
+            $escopoBloco = Consultar $escolhido 'resourceBlocks/getAll' @{
+                Limitation = @{ Count = 5 }
+                EnterpriseIds = @($enterpriseId)
+            }
+            $relatorio.Leituras['BloqueiosComEnterpriseId'] = Estado $escopoBloco
+            if ($escopoBloco.Ok) {
+                $filtrado = Consultar $escolhido 'resourceBlocks/getAll' @{
+                    Limitation = @{ Count = 5 }
+                    EnterpriseIds = @($enterpriseId)
+                    ActivityStates = @('Active')
+                }
+                $relatorio.Leituras['BloqueiosComActivityStates'] = Estado $filtrado
+            }
         }
     }
     $relatorio['TotalPosts'] = $script:contador
