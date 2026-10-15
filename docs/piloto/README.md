@@ -13,8 +13,11 @@ Material de apoio ao piloto da Slaviero, escrito sobre o que existe na `main` em
 **[vai mudar na 1b]**
 - Geração automática da OS preventiva (PV3): os planos preventivos já se cadastram (PV2, #220 e #222), mas ainda não geram OS. Quando a PV3 entrar, a OS preventiva chega à fila do técnico; o manual será atualizado.
 
-**[a confirmar]**
-- **HubKeep Intelligence no piloto.** O módulo opcional só aparece para o grupo que o contratou, e a contratação não tem tela: até o backoffice existir, é gravada pelo script de operação `pnpm ops:modulo`, que hoje só roda no dev. Se o piloto contrata o módulo, e em que data, decide o Cesar. Sem o módulo, nada do Intelligence aparece para o usuário. Com o módulo, o job calcula desde o primeiro dia, mas as telas só abrem na data da política `inteligencia.visibilidade_telas`: por padrão, 60 dias depois da primeira ativação, e só para o Admin do grupo e o Gestor CSC (decisão do Cesar de 12/10/2026). O Admin vê e muda a data em **HubKeep Intelligence → Abertura das telas**.
+**HubKeep Intelligence no piloto (decidido pelo Cesar em 15/10/2026)**
+- **O módulo fica ativo desde o primeiro dia do piloto, sem cobrança.** O contrato do módulo tem a mesma data do primeiro contrato do núcleo, e as telas abrem 60 dias depois.
+- A contratação não tem tela: até o backoffice existir, é gravada pelo script de operação `pnpm ops:modulo`, que hoje só roda no dev.
+- O job calcula desde o primeiro dia, mas as telas só abrem na data da política `inteligencia.visibilidade_telas`: por padrão, 60 dias depois da primeira ativação, e só para o Admin do grupo e o Gestor CSC (decisão do Cesar de 12/10/2026). O Admin vê e muda a data em **HubKeep Intelligence → Abertura das telas**.
+- **O código de solução se preenche desde o primeiro dia**, em toda OS corretiva, mesmo com a política "Códigos obrigatórios no aceite" desligada. A efetividade das intervenções **[ainda não existe]** vai contar como intervenção a OS com o código "Troca do equipamento" (decisão de Cesar e Kaio de 15/10/2026). Sem o código preenchido, a intervenção não aparece, e o que ficou sem código não se recupera depois. O treinamento cobre isso (`roteiro-treinamento.md`).
 
 **[ainda não existe]**
 - Importação de ativos por planilha (M2), QR em lote e etiqueta de impressão (M3), modelos por categoria (M1), aprovação de ativos cadastrados pelo celular (M4).

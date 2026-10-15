@@ -2065,3 +2065,54 @@ Qualquer um deles muda antes do merge, se o Kaio pedir.
   - **Cesar:** o merge deste PR e a confirmação escrita do item 3 (o módulo no piloto desde o primeiro dia).
   - **Kaio:** se quiser, mudar algum dos três pontos acima antes do merge.
 - **Próximo:** a proposta de desenho da tela da efetividade, para Cesar e Kaio. O primeiro passo é ler `efetividade.ts` e o mock (`docs/referencia/design/csc-mock`).
+
+## A efetividade: a proposta e as decisões do Cesar (15/10/2026)
+
+**A proposta** (feita nesta sessão em 15/10/2026, para Cesar e Kaio):
+- **O bloqueio que ela resolve:** o produto não registra o que é uma "intervenção". O motor `efetividadeAntesDepois` recebe a data de quem chama e não tem chamador em produção. No mock, a intervenção é uma marcação no chamado. No roteiro da demonstração, a data da modernização do elevador não chega ao banco.
+- **Três opções para a fonte:**
+  - A: marcação na OS (migração, zona protegida, área compartilhada da 1b e da 1c);
+  - B: a data da decisão do insight;
+  - C: o código de solução da OS, por política. Foi a recomendada.
+- **A tela:** nos três lugares aprovados em 10/10, com as colunas do mock e a ressalva de correlação. Quem vê é quem decide insight do hotel do ativo.
+- **Por dentro:** cálculo sob demanda no servidor com o motor que já existe, sem tabela nova. Uma leitura nova no `packages/db`, pelo `withContext`. Dois PRs `int:` fora da zona protegida: (1) a política e a leitura; (2) as três telas.
+
+**Decisões do Cesar** ("Cesar aqui", nesta sessão, 15/10/2026: "Sobre a efetividade, aprovo da minha parte"):
+1. **Fonte da intervenção:** a opção C, o código de solução, pela política `inteligencia.efetividade`. Ele pede o registro como adendo ao ADR-033, por ser fonte de dado nova do Intelligence.
+2. **Lista padrão:** só "Troca do equipamento".
+3. **Custo das corretivas, antes → depois:** sim, com indicador de cobertura.
+   - Mostra "custo informado em X de Y OS".
+   - Abaixo de 50% de cobertura em qualquer um dos lados, mostra "dados insuficientes", sem variação.
+   - O limite de 50% fica numa constante.
+4. **Intervenção de área:** fora do 1.0.
+5. **Demonstração:** o roteiro ganha o chamado de modernização do elevador com o código "Troca do equipamento". A nova rodada do `demo:historico` fica para depois do merge do PR 1 da efetividade. A gravação atual termina como está.
+6. **Piloto:** o treinamento inclui o preenchimento do código de solução desde o primeiro dia, mesmo antes de os códigos serem obrigatórios. Isso está no `docs/piloto/README.md` e no `docs/piloto/roteiro-treinamento.md`.
+7. **Os PRs da efetividade abrem só depois do "aprovo" do Kaio.**
+
+**Item 3 de 15/10, confirmado por escrito pelo Cesar** (mesma mensagem): "o Intelligence fica ativo no piloto desde o primeiro dia, sem cobrança. O contrato do módulo tem a mesma data do primeiro contrato do núcleo, e as telas abrem 60 dias depois." O `docs/piloto/README.md` deixa de marcar isso como "a confirmar", e o roteiro do treinamento também.
+
+**Aprovação do Kaio** ("Kaio aqui", nesta sessão, 15/10/2026): "Eu aptovo o que o agente propôs o desenho da tela da efetividade. aprovo tambem os pontos 3 e 4 da gravação."
+- A aprovação cobre a proposta do agente: a opção C, só "Troca do equipamento" na lista, a coluna do custo antes → depois e a intervenção de área fora do 1.0. As quatro coincidem com as decisões do Cesar.
+- **A regra da cobertura do custo veio do Cesar depois da proposta**: o "custo informado em X de Y OS" e o "dados insuficientes" abaixo de 50%. Os 50% são limiar, e portanto detalhe do Kaio. Por isso, essa regra **aguarda a confirmação escrita do Kaio**, e ele pode trocar o limite.
+- Os pontos 3 e 4 da gravação já estavam aprovados pelo Kaio nesta sessão, mais cedo em 15/10. Não muda nada.
+
+**Status:** a fonte da intervenção (opção C) está aprovada por Cesar e Kaio. Os PRs da efetividade podem abrir.
+
+### O adendo ao ADR-033
+
+- Entrou no `docs/03`, logo depois do ADR-033, com o título "Adendo — a fonte da intervenção na efetividade".
+- O `docs/03` é zona protegida, então o adendo vai num PR próprio. Na conferência de 15/10, não havia outro PR de zona protegida aberto: #287, #285, #282, #281 e #263 não tocam a zona.
+- Este PR leva também o registro das decisões no diário e no `docs/piloto/`.
+- O PR 1 da efetividade abre depois do merge dele, porque o agente tem uma branch só.
+
+### Ponto de retomada (15/10/2026, adendo da efetividade)
+
+- **`main`:** em `6f3be5a` (#286, sistêmico v4). A branch recomeçou da `main` depois do merge.
+- **Dev:** tem o histórico completo, gravado em 15/10 com a versão 3 do sistêmico. Não há nova rodada antes do merge do PR 1 da efetividade.
+- **Nesta branch:** o adendo ao ADR-033 e o registro das decisões de Cesar e Kaio. É um PR de zona protegida.
+- **Esperando:**
+  - **Cesar:** o merge do PR do adendo.
+  - **Kaio:** a confirmação da regra da cobertura do custo, com os 50%.
+- **Próximo, depois do merge:** o PR 1 da efetividade (`int:`).
+  - O que entra: a política `inteligencia.efetividade` com a lista de códigos, a constante dos 50%, a cobertura do custo no motor e a leitura no `packages/db`.
+  - O primeiro passo é recomeçar a branch da `main` e ler `packages/inteligencia/src/efetividade.ts`, usando a política do sistêmico como modelo.
