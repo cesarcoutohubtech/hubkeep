@@ -4,19 +4,48 @@ Protótipo **isolado**, sem dependências externas e sem imports do monorepo. Pr
 
 ## Rodar
 
-Requer Node.js 20+; na pasta deste experimento:
+Requer Node.js 22+; na pasta deste experimento:
 
 ```bash
 node --test testes.test.mjs
 node exemplo.mjs
+node smoke-demo.mjs  # sem --live: NÃO faz requisições
 ```
 
 O exemplo usa apenas dados **fictícios** e não chama o Mews. O módulo `client.mjs` recebe `fetchImpl` injetável, permitindo simular as chamadas sem token e sem rede. A PoC só aceita a URL exata `https://api.mews-demo.com` e só chama operações `getAll` allowlisted.
 
+
+## Validar leitura Mews demo (opt-in)
+
+Este experimento inclui `smoke-demo.mjs`. **Sem `--live` não há requisições**.
+Para confirmar a conectividade com a API Mews sem acesso a produção, preencher **apenas
+no ambiente do processo local** os dois tokens de **demo pública** descritos em:
+https://docs.mews.com/connector-api/guidelines/environments
+
+```bash
+# No terminal local, definir as variáveis (NUNCA gravar no Git):
+# MEWS_DEMO_CLIENT_TOKEN e MEWS_DEMO_ACCESS_TOKEN
+node smoke-demo.mjs --live
+```
+
+O script realiza **até três chamadas POST**, usando a primeira página de `enterprises/getAll`,
+`resources/getAll` e `resourceBlocks/getAll` de uma empresa demo; informa **somente
+contagens** e se existem mais páginas. Não mostra nomes, token ou payload bruto, não
+persiste e não altera status de UH/chamados. A ausência de propriedade retorna
+`sem_dados`. Uma resposta de erro não prova disponibilidade da API. O uso
+de tokens públicos da demo não caracteriza certificação nem acesso à produção.
+
+**Evidências coletadas nesta rodada** (15/10/2026): 25 testes locais com dados simulados
+aprovados. Foi possível acessar a página inicial de `api.mews-demo.com` pelo
+navegador, mas **nenhuma chamada real POST de API foi executada**: o navegador
+automatizado não expôs o console e este ambiente de execução não resolve o
+DNS do host externo. Não marcar o gate de autenticação/demo como concluído.
+
 ## Funções
 
 - `criarClienteMews({clientToken,accessToken,fetchImpl,...})`: cliente demo, pagination Cursor, rate-limit mínimo, retry em 408/429/5xx, `Retry-After`, timeout e mensagens que não incluem tokens.
-- `listarEmpresas()`, `listarRecursos([enterpriseId])`, `listarBloqueios([enterpriseId])`: exclusivamente leitura.
+- `listarEmpresas()`, `listarRecursos([enterpriseId])`, `listarBloqueios([enterpriseId])`: exclusivamente leitura paginada.
+- `lerPrimeiraPaginaDeEmpresas()`, `lerPrimeiraPaginaDeRecursos([enterpriseId])`, `lerPrimeiraPaginaDeBloqueios([enterpriseId])`: leitura LIMITADA a uma página por tipo, usada no smoke.
 - `criarEscopo({tenantId,vinculos})`: vínculo explícito `enterpriseId` → `hotelId`; nenhuma autoassociação pelo nome do hotel.
 - `montarProjecao(escopo,recursos,bloqueios)`: candidatos de espaços e bloqueios, sem notas, sem contato de hóspede, sem efeitos no domínio.
 
