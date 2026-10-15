@@ -837,7 +837,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Status:**
   - Aprovado pelo Cesar em 15/10/2026, no chat do agente do Intelligence ("Cesar aqui": "Fonte da intervenção: opção C, o código de solução, pela política inteligencia.efetividade. Registre como adendo ao ADR-033").
   - Aprovado pelo Kaio em 15/10/2026, no mesmo chat ("Kaio aqui": "Eu aptovo o que o agente propôs o desenho da tela da efetividade").
-  - A regra da cobertura do custo foi acrescentada pelo Cesar depois da proposta que o Kaio aprovou, e **aguarda a confirmação escrita do Kaio**. Os 50% são limiar, e portanto detalhe do Kaio.
+  - A regra da cobertura do custo foi acrescentada pelo Cesar depois da proposta que o Kaio aprovou. Os 50% são limiar, e portanto detalhe do Kaio, que os confirmou em 15/10/2026, no mesmo chat ("Kaio aqui": "Eu confirmo os 50%"). Ficam na constante `COBERTURA_MINIMA_DO_CUSTO` do `packages/inteligencia` (#290).
 - **Intervenção:**
   - É a OS corretiva concluída cujo código de solução (`app.os.codigo_solucao_id`, da I6) está na lista da política `inteligencia.efetividade`.
   - O padrão da lista é só "Troca do equipamento".
