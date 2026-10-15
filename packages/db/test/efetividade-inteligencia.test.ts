@@ -8,6 +8,8 @@
 //     transições, e as paradas que tocam o trecho;
 //   - as linhas de inteligencia.efetividade.
 //
+// A OS corretiva não leva ativo_id (check os_de_um_tipo): o ativo é o do chamado.
+//
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
@@ -127,16 +129,15 @@ describe.skipIf(!temBanco)('a leitura da efetividade do Intelligence', { timeout
       );
       const os = randomUUID();
       await q(
-        `insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, ativo_id, estado, situacao_id,
+        `insert into app.os (id, tenant_id, hotel_id, chamado_id, local_id, estado, situacao_id,
            tecnico_id, criado_por, criado_em, custo_informado, codigo_solucao_id)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12)`,
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11)`,
         [
           os,
           T,
           p.hotel,
           p.id,
           p.local,
-          p.ativo,
           p.aceito === undefined ? 'concluida' : 'aceita',
           situacaoOs,
           U.admin,
