@@ -936,3 +936,16 @@ Com isso, a PV3c fecha, exceto o aceite automático da preventiva, que espera o 
   2. o Gerente que é o técnico da preventiva aceita a própria OS?
   3. a fila do dia mostra se o ativo da preventiva está parado (`paradoDesde`)?
 - **Próxima tarefa:** a M1, modelos de ativo por categoria (item 3 da fila da 1b; desenho em `docs/referencia/propostas-desenho-pv-implantacao.md`, seção M1). Ela tem migração, então é zona protegida. Primeiro passo: conferir no GitHub se há PR de zona protegida aberto e qual é a última migração da `main`.
+
+## M1 — modelos de ativo por categoria (15/10/2026)
+
+**Decisões do Cesar (15/10/2026, nesta conversa):**
+1. **Plano sugerido:** o worker não ganha INSERT em `app.plano_preventivo`, pelo mesmo motivo da trava da PV3 e porque plano é configuração do hotel e precisa de autor. O plano sugerido nasce pelo `hk_app`, com autor, quando alguém aprova o ativo na fila de aprovação (M4). Quem aprova confirma ou descarta o plano.
+2. **"O hotel já tem plano que cobre o ativo":**
+   - contam o plano por categoria da categoria do ativo e o plano no próprio ativo, ativo ou pausado;
+   - não contam o plano em outro ativo da mesma categoria nem o plano encerrado.
+   - A regra fica em `hotelJaTemPlanoQueCobreOAtivo` (`packages/dominio/src/plano-preventivo.ts`), com testes dos quatro casos e do ativo sem categoria.
+
+**Zona protegida:** a migração 0050 (`app.modelo_ativo` e `app.ativo.modelo_id`) e o pgTAP 042 estão no #276, sem nenhuma permissão nova para o worker.
+
+**Em aberto antes do plano sugerido:** o desenho pedido pelo Cesar não é exatamente o A nem o C da proposta. Os dois foram reenviados a ele em duas linhas, antes de seguir.

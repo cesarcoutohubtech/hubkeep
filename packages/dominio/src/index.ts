@@ -341,6 +341,7 @@ export {
   ehUnidadeDePeriodicidade,
   exigirPlanoNaoEncerrado,
   exigirResponsavelParaAtivar,
+  hotelJaTemPlanoQueCobreOAtivo,
   normalizarNomeDoPlano,
   ocorrenciaMaisRecenteAte,
   ocorrencias,
@@ -354,6 +355,7 @@ export {
 export type {
   AcaoDoPlano,
   Periodicidade,
+  PlanoQueCobre,
   SituacaoDoPlano,
   UnidadeDePeriodicidade,
 } from './plano-preventivo';
