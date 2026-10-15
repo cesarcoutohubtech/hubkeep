@@ -52,12 +52,32 @@ function Consultar([hashtable]$par, [string]$recurso, [hashtable]$filtros) {
     catch {
         $status = 0
         $requestId = $null
+        $retryAfterSeconds = $null
         $response = $_.Exception.Response
         if ($null -ne $response) {
             try { $status = [int]$response.StatusCode } catch { }
             try {
                 $r = [string]$response.Headers['Request-Id']
                 if ($r -match '^[a-zA-Z0-9-]{1,80}$') { $requestId = $r }
+            } catch { }
+        }
+        if ($status -eq 429 -and $null -ne $response) {
+            # Cabecalho oficial Retry-After; nenhum retry automatico.
+            try {
+                $valor = [string]$response.Headers['Retry-After']
+                $segundos = 0
+                if ([int]::TryParse($valor, [ref]$segundos) -and $segundos -ge 0 -and $segundos -le 86400) {
+                    $retryAfterSeconds = $segundos
+                }
+                else {
+                    $data = [DateTimeOffset]::MinValue
+                    if ([DateTimeOffset]::TryParse($valor, [ref]$data)) {
+                        $intervalo = [Math]::Ceiling(($data - [DateTimeOffset]::UtcNow).TotalSeconds)
+                        if ($intervalo -ge 0 -and $intervalo -le 86400) {
+                            $retryAfterSeconds = [int]$intervalo
+                        }
+                    }
+                }
             } catch { }
         }
         # Apenas o campo Message do JSON de erro (nunca Details nem payload bruto).
@@ -83,7 +103,7 @@ function Consultar([hashtable]$par, [string]$recurso, [hashtable]$filtros) {
                 }
             } catch {}
         }
-        return @{ Ok = $false; Http = $status; Dados = $null; RequestId = $requestId; Message = $safeMessage }
+        return @{ Ok = $false; Http = $status; Dados = $null; RequestId = $requestId; Message = $safeMessage; RetryAfterSegundos = $retryAfterSeconds }
     }
 }
 
