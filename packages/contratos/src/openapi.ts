@@ -23,6 +23,13 @@ import {
   RespostaDeModelosDeChecklist,
 } from './checklists';
 import {
+  PedidoDeAlteracaoDeModeloDeAtivo,
+  PedidoDeModeloDeAtivo,
+  PedidoDeVersaoDeModeloDeAtivo,
+  RespostaDeModeloDeAtivoGravado,
+  RespostaDeModelosDeAtivo,
+} from './modelos-de-ativo';
+import {
   PedidoDeAlteracaoDePlanoPreventivo,
   PedidoDeNovoPlanoPreventivo,
   PedidoDeSituacaoDoPlano,
@@ -1493,6 +1500,84 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
       404: ERRO('Modelo não encontrado (checklist_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/modelos-de-ativo',
+    resumo:
+      'Modelos de ativo do grupo, inclusive os desativados (M1). Leem quem cadastra ativo: o Admin do grupo, o Gestor CSC, o Gerente do hotel, o Implantador e o Técnico (o PWA baixa os modelos para cadastrar offline); para os outros, a lista vem vazia. Os campos vêm filtrados pela definição atual da categoria.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Modelos', esquema: RespostaDeModelosDeAtivo },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-ativo',
+    resumo:
+      'Cria um modelo de ativo: categoria (obrigatória), nome, fabricante, modelo, campos pré-preenchidos da categoria (nenhum obrigatório), checklist e periodicidade sugerida. Começa na versão 1. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDeModeloDeAtivo,
+    respostas: {
+      201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
+      404: ERRO('categoria_nao_encontrada ou checklist_nao_encontrado.'),
+      422: ERRO(
+        'ativo_nome_invalido, ativo_texto_invalido, campo_desconhecido, valor_de_campo_invalido, periodicidade_invalida, modelo_ativo_categoria_inativa, modelo_ativo_checklist_invalido ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/modelos-de-ativo/{id}',
+    resumo:
+      'Altera o modelo, com a versão vista; se ele mudou nesse meio-tempo, 409 (ADR-029). Os ativos que já nasceram do modelo ficam com o que foi copiado (ADR-026).',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDeModeloDeAtivo,
+    respostas: {
+      200: {
+        descricao: 'Modelo alterado, com a versão nova',
+        esquema: RespostaDeModeloDeAtivoGravado,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
+      404: ERRO(
+        'modelo_ativo_nao_encontrado, categoria_nao_encontrada ou checklist_nao_encontrado.',
+      ),
+      409: ERRO('O modelo mudou depois de lido (conflito_de_versao).'),
+      422: ERRO('As mesmas recusas da criação.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-ativo/{id}/desativacao',
+    resumo:
+      'Desativa o modelo (exclusão lógica), com a versão vista. Some da escolha no cadastro do ativo; os ativos que nasceram dele não mudam.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDeModeloDeAtivo,
+    respostas: {
+      200: { descricao: 'Modelo desativado', esquema: RespostaDeModeloDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
+      404: ERRO('Modelo não encontrado (modelo_ativo_nao_encontrado).'),
+      409: ERRO('O modelo mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/modelos-de-ativo/{id}/reativacao',
+    resumo: 'Reativa o modelo, com a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDeModeloDeAtivo,
+    respostas: {
+      200: { descricao: 'Modelo reativado', esquema: RespostaDeModeloDeAtivoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
+      404: ERRO('Modelo não encontrado (modelo_ativo_nao_encontrado).'),
+      409: ERRO('O modelo mudou depois de lido (conflito_de_versao).'),
     },
   },
   {

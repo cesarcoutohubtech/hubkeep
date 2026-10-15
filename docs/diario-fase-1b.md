@@ -949,3 +949,30 @@ Com isso, a PV3c fecha, exceto o aceite automático da preventiva, que espera o 
 **Zona protegida:** a migração 0050 (`app.modelo_ativo` e `app.ativo.modelo_id`) e o pgTAP 042 estão no #276, sem nenhuma permissão nova para o worker.
 
 **Em aberto antes do plano sugerido:** o desenho pedido pelo Cesar não é exatamente o A nem o C da proposta. Os dois foram reenviados a ele em duas linhas, antes de seguir.
+
+### Decisões do Cesar de 15/10/2026 (segunda rodada)
+
+- **Plano sugerido:** fica só o caminho C, com ou sem fila de aprovação, sem híbrido.
+  - A lista de sugestões mostra os ativos aprovados, com modelo e sem plano que os cubra. O ativo pendente na fila não entra.
+  - A gestão cria o plano com um clique, pelo `hk_app` e com autor. A RLS do plano não muda e o worker não ganha permissão.
+  - Descartar fica gravado no ativo, com quem, quando e motivo, e o ativo sai da lista.
+  - O painel de implantação ganha o contador "ativos com modelo e sem plano".
+  - A fila de aprovação (M4) continua decidindo só o ativo.
+- **Colunas do descarte:** o Cesar pediu que entrassem na 0050, mas ela já estava na `main` (#276). Por isso vieram na migração 0051 (#279), ainda num único PR de zona protegida.
+
+### M1a — cadastro dos modelos de ativo (15/10/2026)
+
+Na branch `claude/1b-m1-app`, PR fora da zona protegida.
+- **Domínio (`modelos-de-ativo.ts`):**
+  - só o Admin do grupo gere (`modelos_de_ativo_so_admin`);
+  - categoria ativa, salvo a que o modelo já tinha;
+  - nome e textos com as regras do ativo;
+  - campos com as chaves e os tipos da categoria, sem obrigatório, porque o modelo só sugere;
+  - checklist ativo e da mesma categoria, quando tem uma;
+  - periodicidade com as regras do plano.
+  - `preencherComModelo` (preenche só o vazio) e `validarModeloDoAtivo` ficam prontos para a M1b.
+- **Aplicação, db e API:** listar, criar, alterar, desativar e reativar, sempre com a versão (ADR-029). Rotas em `/api/v1/modelos-de-ativo` e documentação no OpenAPI. A entidade `modelo_ativo` entra na auditoria, e os erros têm mensagem nos quatro catálogos.
+- **Tela `/admin/modelos-de-ativo`:** fica no menu de cadastros. Os campos estendidos viraram o componente `CamposDaCategoria`, usado também pelo cadastro do ativo.
+- **Próximo:**
+  - **M1b:** a escolha do modelo no cadastro do ativo, no web e no PWA (operação `ativo.cadastrar` com `modeloId`).
+  - **M1c:** a lista de sugestões, o descarte e o contador. Depende da 0051 (#279).

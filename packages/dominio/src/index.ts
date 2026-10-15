@@ -561,6 +561,19 @@ export {
 } from './auditoria-geral';
 export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
 export {
+  lerPlanoSugerido,
+  podeGerirModelosDeAtivo,
+  preencherComModelo,
+  validarModeloDeAtivo,
+  validarModeloDoAtivo,
+} from './modelos-de-ativo';
+export type {
+  AtivoEmCadastro,
+  CategoriaDoModelo,
+  ChecklistDoModelo,
+  DadosDoModeloDeAtivo,
+} from './modelos-de-ativo';
+export {
   CANAIS_DE_ENVIO,
   LIMITE_DE_ENVIOS_POR_DIA,
   LIMITE_DO_PERIODO_DA_CONTAGEM_DIAS,
