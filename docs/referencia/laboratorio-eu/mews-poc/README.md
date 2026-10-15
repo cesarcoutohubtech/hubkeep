@@ -33,7 +33,7 @@ Não utilize tokens de produção neste script. A leitura é limitada a **até t
 POSTs**, uma página de empresas, recursos e bloqueios da demo; mostra somente
 contagens, sem nomes, hóspedes, payload bruto ou tokens.
 
-**Evidências da rodada** (15/10/2026): 27 testes sintéticos aprovados
+**Evidências da rodada** (15/10/2026): 28 testes sintéticos aprovados
 localmente. A URL inicial `api.mews-demo.com` carregou no navegador, mas
 **nenhuma chamada POST real foi concluída**: o navegador automatizado não
 conseguiu executar a requisição, e o contêiner não resolve o DNS externo.
