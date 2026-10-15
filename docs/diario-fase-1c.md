@@ -813,8 +813,31 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
 3. **Idade do backlog.** Conta em dias completos desde a abertura: 0 a 2, 3 a 7, 8 a 15, 16 a 30 e mais de 30.
 4. **Produtividade.** As OS concluídas, corretivas e preventivas, e as horas apontadas, cortadas no período, ficam com a equipe da OS. A OS sem equipe aparece numa linha "sem equipe". A visão por técnico fica de fora; não há política para ligá-la nesta etapa.
 
-**Próximos passos:**
-- **Leitura no `packages/db`:** chamados, OS e transições, preventivas, UH indisponível, apontamentos, UHs ativas e proprietários do hotel, sob a RLS.
-- **Caso de uso e API:** caso de uso em `packages/aplicacao` e `GET /api/v1/indicadores` (período, hotel ou bandeira).
-- **Tela:** a tela `/indicadores` e a tolerância na tela de configuração.
-- **Medição da meta (decisão 9):** com o volume de referência do Kaio.
+**Feito na branch (15/10/2026):**
+- **Leitura (`packages/db/src/indicadores.ts`):** sob a RLS, só o recorte que pode contar no período. Se o hotel é do usuário como proprietário, quem diz são `authz.hoteis_proprietario()` e `authz.locais_proprietario()`, que já existem e têm `execute` para o `hk_app`: a RLS de `app.hotel_proprietario` só mostra os vínculos ao Admin. Nenhuma função nova no banco. Teste de integração em `packages/db/test/indicadores.test.ts`, que roda só na CI.
+- **Caso de uso e API:** caso de uso em `packages/aplicacao` e `GET /api/v1/indicadores?inicio=&fim=&hotelId=&bandeiraId=`, com o OpenAPI.
+- **Tela `/indicadores`** (menu Operação):
+  - os sete cartões da rede, com a variação contra o período anterior do mesmo tamanho;
+  - o backlog por idade e os chamados por dia;
+  - a comparação na bandeira, com o melhor de cada coluna em destaque;
+  - a produtividade;
+  - os cartões do proprietário.
+  - Textos nos quatro idiomas.
+
+**Fica para depois:**
+- **Exportar CSV do painel:** item 9.
+- **Gráficos:** a série sai como tabela. Linha e barras num PR seguinte.
+- **Tolerância da preventiva na tela de configuração:** hoje só pela API de políticas.
+- **Medição da meta (decisão 9):** depende do volume de referência do Kaio.
+- **Paridade da produtividade:** o mock separa fornecedor, preventivas, corretivas e corretivas no prazo. O glossário versão 3 diz "por equipe e por hotel". Mudar é uma versão nova do glossário, que só sai com a aprovação de Cesar e Kaio.
+
+### Ponto de retomada (15/10/2026, painel de indicadores)
+
+- **`main`:** a1e155c.
+- **Dev:** com a 0049, que o Cesar confirmou em 15/10.
+- **PRs abertos da 1c:** [#277](https://github.com/cesarcoutohubtech/hubkeep/pull/277), o e-mail do SLA (head 8324884, fora da zona). Espera o merge do Cesar.
+- **Branches sem PR:**
+  - `claude/1c-push`: o PR abre depois do merge do #277.
+  - `claude/1c-painel`: o domínio, a leitura, a API e a tela do painel, validados (lint, typecheck e testes). O PR abre depois que o Cesar responder às quatro escolhas de borda acima. Não toca a zona protegida.
+- **Zona protegida:** a vez é da 1b, com a 0050. O painel não precisa de migração.
+- **Próximo passo:** com a resposta do Cesar, atualizar a branch com a `main`, validar e abrir o PR do painel. Depois, a impressão da OS e o CSV (item 9).
