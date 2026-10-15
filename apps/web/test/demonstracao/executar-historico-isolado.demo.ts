@@ -109,7 +109,7 @@ async function nomearApenasNovoGrupo(url: string): Promise<void> {
   }
 }
 
-it('verificar ou executar histórico Intelligence V2 isolado', { timeout: 8 * 3_600_000 }, async () => {
+it('histórico Intelligence V2 isolado', { timeout: 8 * 3_600_000 }, async () => {
   if (
     process.env['HK_HISTORICO_V2_MODO'] !== 'verificar' &&
     process.env['HK_HISTORICO_V2_MODO'] !== 'executar'
