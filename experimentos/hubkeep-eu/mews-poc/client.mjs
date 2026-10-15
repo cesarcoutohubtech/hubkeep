@@ -40,8 +40,8 @@ export function criarClienteMews({
   accessToken,
   clientName = 'HubKeep-EU-PoC/0.1',
   baseUrl = BASE_DEMO,
-  fetchImpl = fetch,
-  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  fetchImpl = globalThis.fetch,
+  sleep = (ms) => new Promise((resolve) => globalThis.setTimeout(resolve, ms)),
   now = Date.now,
   pageSize = 100,
   maxPages = 50,
@@ -74,7 +74,7 @@ export function criarClienteMews({
       let resposta;
       try {
         resposta = await fetchImpl(url, { method: 'POST', headers: { 'content-type': 'application/json' },
-          body: corpo, signal: AbortSignal.timeout(timeoutMs) });
+          body: corpo, signal: globalThis.AbortSignal.timeout(timeoutMs) });
       } catch {
         // O erro bruto do transportador poderia revelar corpo/tokens.
         if (tentativa === maxRetries) throw new ErroMews('rede_indisponivel');
