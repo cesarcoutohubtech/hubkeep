@@ -331,3 +331,40 @@ test('smoke com maxRetries zero faz só uma tentativa mesmo diante de HTTP 429',
   await assert.rejects(cliente.lerPrimeiraPaginaDeEmpresas(), (e) => e.status === 429);
   assert.equal(chamadas, 1);
 });
+
+test('configuracao valida um unico hotel sem retornar informacoes privadas', async () => {
+  let capturado = null;
+  const cliente = criarClienteMews({
+    ...token, fetchImpl: async (url, req) => {
+      capturado = { url, body: JSON.parse(req.body), method: req.method };
+      return resp({ Enterprise: { Id: 'mews-1', Name: 'Nome privado', Email: 'email@exemplo.com' } });
+    },
+  });
+  assert.equal(await cliente.obterIdentificadorEmpresa(), 'mews-1');
+  assert.equal(capturado.method, 'POST');
+  assert.ok(capturado.url.endsWith('/configuration/get'));
+  assert.equal(capturado.body.Limitation, undefined);
+});
+
+test('configuracao sem Enterprise.Id falha fechado', async () => {
+  const cliente = criarClienteMews({
+    ...token, fetchImpl: async () => resp({ Enterprise: { Name: 'sem identificador' } }),
+  });
+  await assert.rejects(cliente.obterIdentificadorEmpresa(), /configuracao_sem_empresa/);
+});
+
+test('recursoBlocks no smoke sem filtros opcionais envia somente Limitation', async () => {
+  let body = null;
+  const cliente = criarClienteMews({
+    ...token, pageSize: 5, fetchImpl: async (url, req) => {
+      assert.ok(url.endsWith('/resourceBlocks/getAll'));
+      body = JSON.parse(req.body);
+      return resp({ ResourceBlocks: [], Cursor: null });
+    },
+  });
+  const r = await cliente.lerPrimeiraPaginaDeBloqueiosSemFiltros();
+  assert.deepEqual(r.itens, []);
+  assert.deepEqual(body.Limitation, { Count: 5 });
+  assert.equal(body.ActivityStates, undefined);
+  assert.equal(body.EnterpriseIds, undefined);
+});
