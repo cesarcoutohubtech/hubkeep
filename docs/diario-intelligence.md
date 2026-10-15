@@ -2251,3 +2251,18 @@ Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma c
 - **Nesta branch:** o PR 2 da efetividade.
 - **Esperando:** o Cesar, para o merge e a nova rodada do `demo:historico`.
 - **Próximo:** conferir no dev, depois da rodada, que a modernização do elevador aparece nas três telas. Depois, o que Cesar e Kaio priorizarem.
+
+### Ponto de retomada (15/10/2026, depois do merge do #294)
+
+"Cesar aqui. 294 mergeado. Prossiga." Os cinco checks do #294 passaram no head `7e21ba9`, inclusive o pgTAP com a integração do `packages/db`.
+
+- **`main`:** em `f5caca9` (#294). No momento do registro, o CI e o banco da `main` ainda rodavam; o "segurança" já tinha passado.
+- **Dev:** sem mudança. Falta a nova rodada da gravação.
+- **Nesta branch:** só este ponto de retomada, recomeçada da `main`. Sem PR aberto.
+- **Esperando o Cesar:** a rodada de `pnpm demo:historico --ambiente dev --fim 2026-10-13` no notebook, até o fim, e a saída final (grupo, estados dos cenários, tempo total).
+- **Próximo:** com a saída da rodada, conferir no dev que a modernização do elevador do hotel 5 aparece nas três telas:
+  - na lista de efetividade;
+  - no detalhe do ativo;
+  - na página do insight do elevador.
+  
+  Depois, abrir o PR deste diário com o resultado e seguir o que Cesar e Kaio priorizarem.
