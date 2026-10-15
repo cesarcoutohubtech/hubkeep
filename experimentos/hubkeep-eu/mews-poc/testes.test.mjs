@@ -48,6 +48,7 @@ test('somente endpoints getAll em POST com autenticação no corpo', async () =>
 test('paginação cursor usa retorno mesmo com página cheia; termina na página curta', async () => {
   const vistos = [];
   const c = criarClienteMews({ ...token, pageSize: 2, fetchImpl: async (url, req) => {
+    assert.ok(url.startsWith('https://api.mews-demo.com/'));
     const q = JSON.parse(req.body);
     vistos.push(q.Limitation.Cursor);
     if (!q.Limitation.Cursor) return resp({ Resources: [{ Id: '1' }, { Id: '2' }], Cursor: 'pagina2' });
