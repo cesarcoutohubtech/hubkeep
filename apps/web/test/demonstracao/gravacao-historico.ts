@@ -201,6 +201,32 @@ function eventosDoRoteiro(r: RoteiroDoHistorico): Evento[] {
     .map((x) => x.e);
 }
 
+/**
+ * O plano da retomada a partir do corte (o job do último dia gravado): das
+ * operações antes dele, as dos chamados já abertos no banco ficam puladas, com
+ * o id de cada um, e as dos chamados que não estão no banco (os que o roteiro
+ * ganhou depois da gravação) voltam em `faltam`, na ordem de tempo. A gravação
+ * segue de `fim`.
+ */
+export function planoDaRetomada<
+  E extends { quando: Date; tipo: string; chamado: { chave: string } },
+>(
+  eventos: readonly E[],
+  corte: Date,
+  idGravado: (chamado: E['chamado']) => string | undefined,
+): { fim: number; ids: Map<string, string>; faltam: E[] } {
+  let fim = 0;
+  while (fim < eventos.length && (eventos[fim] as E).quando < corte) fim += 1;
+  const ids = new Map<string, string>();
+  const faltam: E[] = [];
+  for (const e of eventos.slice(0, fim)) {
+    const id = idGravado(e.chamado);
+    if (id !== undefined) ids.set(e.chamado.chave, id);
+    else faltam.push(e);
+  }
+  return { fim, ids, faltam };
+}
+
 /** Um acesso só do papel pedido, depois da mesma trava da montagem. */
 async function acessoConferido(
   papel: 'app' | 'worker',
@@ -671,33 +697,28 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
     let k = 0;
     // A retomada recomeça do último dia gravado (Kaio, 15/10/2026): as
     // operações antes do job desse dia já estavam no banco quando ele rodou, e
-    // só se recupera do banco o id de cada chamado aberto. Se faltar alguma
-    // abertura, a retomada volta ao início, que confere uma a uma.
+    // só se recupera do banco o id de cada chamado aberto. O chamado que o
+    // roteiro ganhou depois da gravação (a modernização do elevador) não está
+    // no banco: as operações dele antes desse dia rodam primeiro, em ordem.
     const iDoUltimo =
       ultimoDiaGravado === null
         ? -1
         : instantes.findIndex((t) => diaNoFuso(t, FUSO_DO_HISTORICO) === ultimoDiaGravado);
+    let aposACorte: Evento[] = [];
     if (iDoUltimo >= 0) {
-      const corte = instantes[iDoUltimo] as Date;
-      let fim = 0;
-      while (fim < eventos.length && (eventos[fim] as Evento).quando < corte) fim += 1;
-      const aberturas = eventos.slice(0, fim).filter((e) => e.tipo === 'abrir');
-      const chaveDaAbertura = (e: Evento) => idFixo(tenantId, `chamado:${e.chamado.chave}`);
-      const faltam = aberturas.filter((e) => !aberturasGravadas.has(chaveDaAbertura(e))).length;
-      if (faltam === 0) {
-        for (const e of aberturas) {
-          chamados.set(e.chamado.chave, aberturasGravadas.get(chaveDaAbertura(e)) as string);
-        }
-        k = fim;
-        log(
-          `Retomada no dia ${ultimoDiaGravado}: ${k} de ${eventos.length} operações ` +
-            'já gravadas, puladas.',
-        );
-      } else {
-        log(
-          `Retomada do início: ${faltam} aberturas antes de ${ultimoDiaGravado} não estão no banco.`,
-        );
-      }
+      const plano = planoDaRetomada(eventos, instantes[iDoUltimo] as Date, (c) =>
+        aberturasGravadas.get(idFixo(tenantId, `chamado:${c.chave}`)),
+      );
+      for (const [chave, id] of plano.ids) chamados.set(chave, id);
+      k = plano.fim;
+      aposACorte = plano.faltam;
+      log(
+        `Retomada no dia ${ultimoDiaGravado}: ${k - aposACorte.length} de ${eventos.length} ` +
+          `operações já gravadas, puladas` +
+          (aposACorte.length > 0
+            ? `; ${aposACorte.length} de chamados novos no roteiro, gravadas agora.`
+            : '.'),
+      );
     }
     const comoContinuar =
       `Rode de novo o mesmo comando, com o mesmo --fim (${o.fim}): ` +
@@ -707,6 +728,13 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
     let decisoes = 0;
     const inesperados = new Set<string>();
     const estados: Record<string, string> = {};
+    for (const e of aposACorte) {
+      await comNovaTentativa(() => aplicar(e), {
+        descricao: `a operação ${eventos.indexOf(e) + 1} de ${eventos.length} (${e.tipo}, chamado ${e.chamado.chave})`,
+        comoContinuar,
+        log,
+      });
+    }
     for (const [i, dia] of r.dias.entries()) {
       const instante = instantes[i] as Date;
       for (; k < eventos.length && (eventos[k] as Evento).quando < instante; k += 1) {

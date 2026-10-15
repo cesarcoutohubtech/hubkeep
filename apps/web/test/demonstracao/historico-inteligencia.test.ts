@@ -27,8 +27,10 @@ import {
   HORA_MS,
 } from '@hubkeep/inteligencia';
 import { TRANSICOES_DA_OS } from '@hubkeep/dominio';
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  CHAVE_DA_MODERNIZACAO,
   type ChamadoDoRoteiro,
   FUSO_DO_HISTORICO,
   MOMENTO_DO_JOB,
@@ -242,6 +244,33 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
     expect(doHistorico).toBeGreaterThan(3_000);
     expect(doHistorico).toBeLessThan(3_600);
     expect(r.volume).toEqual(VOLUME_COMPLETO);
+  });
+
+  it('o roteiro já gravado no dev (fim 2026-10-13) não muda; a modernização entra com chave fixa', () => {
+    // A gravação no dev de 15/10/2026 tem 4.314 chamados, e o primeiro foi
+    // aberto às 11:21:07.681 UTC de 13/02/2026. Chamado acrescentado depois
+    // sorteia à parte e tem chave fixa; mudar o resto exige grupo novo.
+    const r = roteiroDoHistorico({ fim: '2026-10-13' });
+    const gravados = r.chamados.filter((c) => c.chave !== CHAVE_DA_MODERNIZACAO);
+    expect(gravados).toHaveLength(4_314);
+    expect(r.chamados[0]?.abertoEm.toISOString()).toBe('2026-02-13T11:21:07.681Z');
+    const impressao = createHash('sha256')
+      .update(
+        JSON.stringify(
+          gravados.map((c) => [
+            c.chave,
+            c.abertoEm.getTime(),
+            c.descricao,
+            c.ativo,
+            c.os.custo,
+            c.os.passos.map((p) => p.quando.getTime()),
+            c.parada?.fim.getTime() ?? null,
+          ]),
+        ),
+      )
+      .digest('hex');
+    expect(impressao).toBe('a98562160e43f470b0340422727b13f2865719d3e4ec2be3f6fbe11c7cad094c');
+    expect(r.chamados.filter((c) => c.chave === CHAVE_DA_MODERNIZACAO)).toHaveLength(1);
   });
 
   it('a única intervenção do roteiro é a modernização do elevador, na data do cenário', () => {
