@@ -60,6 +60,40 @@ deve estar acessível, e o computador deve ter saída HTTPS para a demo oficial.
 O script ainda requer **uma execução real no Windows**: não há PowerShell nem
 resolução DNS da API Mews no ambiente de teste desta conversa.
 
+
+### HTTP 401 na primeira chamada — diagnóstico sem tokens privados
+
+Se `smoke-windows.ps1` retornar `http_401` na primeira chamada,
+**não executar repetidamente o mesmo script**. Um 401 significa falta de
+autorização (credencial inválida/expirada, integração desabilitada ou
+permissão ausente), não erro de DNS.
+
+Use o script `diagnostico-auth-windows.ps1` no Windows. Ele lê **dois pares
+públicos** documentados (Gross e Net), realiza primeiramente
+`configuration/get` — a operação inicial recomendada oficialmente pela Mews.
+Somente se essa autenticação tiver êxito, consulta uma página de
+`enterprises/getAll`, `resources/getAll` e `resourceBlocks/getAll`.
+No máximo **cinco POSTs read-only**, sem criar dados, sem token de
+produção e sem exibir credenciais ou dados de hóspedes. O resultado distingue:
+
+- Configuração autorizada (HTTP 200): o token é válido para a propriedade
+  de demo, mesmo que outra operação apresente 401 de permissão.
+- Configuração 401 em Gross e Net: investigar validade/permissões dos
+  tokens públicos no Mews; não concluir que existe defeito no HubKeep.
+- Configuração OK, operação de leitura 401: investigar permissão específica
+  do endpoint, e guardar somente o `Request-Id` público para suporte.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\diagnostico-auth-windows.ps1"
+```
+
+O script **não foi executado neste ambiente** (sem PowerShell e sem
+resolução de rede para a demo). Deve ser baixado e revisado no GitHub,
+executado uma única vez e seus resultados compartilhados **sem tokens**.
+Se ambos os ambientes negarem autenticação, o próximo passo é solicitar
+uma credencial de demonstração dedicada à Mews, com autorização
+prévia antes de contatá-la.
+
 ## Funções
 
 - `criarClienteMews({clientToken,accessToken,fetchImpl,...})`: cliente demo, pagination Cursor, rate-limit mínimo, retry em 408/429/5xx, `Retry-After`, timeout e mensagens que não incluem tokens.
