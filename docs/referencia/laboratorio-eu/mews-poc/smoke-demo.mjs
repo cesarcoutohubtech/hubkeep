@@ -1,18 +1,27 @@
 // Teste opt-in da demo pública Mews. Sem escrita e sem persistência de dados.
-// Nunca passar tokens na CLI: usar somente variáveis de ambiente locais.
+// Tokens públicos de DEMO são lidos por entrada interativa, sem gravação ou env no monorepo.
 import { criarClienteMews, ErroMews } from './client.mjs';
 import { criarEscopo, montarProjecao } from './normalizacao.mjs';
+import { createInterface } from 'node:readline/promises';
 
 async function executar() {
   if (!globalThis.process.argv.includes('--live')) {
     globalThis.console.log('Modo seguro: nenhuma chamada externa. Use --live para optar pelo teste Mews demo.');
     return;
   }
-  const clientToken = globalThis.process.env.MEWS_DEMO_CLIENT_TOKEN;
-  const accessToken = globalThis.process.env.MEWS_DEMO_ACCESS_TOKEN;
-  if (!clientToken || !accessToken) {
-    throw new Error('defina_MEWS_DEMO_CLIENT_TOKEN_e_MEWS_DEMO_ACCESS_TOKEN');
+  const linha = createInterface({
+    input: globalThis.process.stdin,
+    output: globalThis.process.stdout,
+  });
+  let clientToken;
+  let accessToken;
+  try {
+    clientToken = (await linha.question('Mews ClientToken público de DEMO: ')).trim();
+    accessToken = (await linha.question('Mews AccessToken público de DEMO: ')).trim();
+  } finally {
+    linha.close();
   }
+  if (!clientToken || !accessToken) throw new Error('credenciais_demo_obrigatorias');
 
   const mews = criarClienteMews({
     clientToken,
