@@ -33,6 +33,11 @@
 -- UPDATE segue a policy que já vale para o ativo: quem escreve no hotel. Os
 -- dados copiados do modelo ficam no ativo (ADR-026): mudar o modelo não muda
 -- o ativo já cadastrado.
+--
+-- O plano sugerido não muda nenhuma permissão (Cesar, 15/10/2026): ele nasce
+-- pelo hk_app, com autor, por quem já cria plano; o worker não ganha INSERT em
+-- app.plano_preventivo, porque plano é configuração do hotel e precisa de
+-- autor.
 -- Só estrutura e autorização: nenhuma função, trigger ou regra de negócio.
 -- ============================================================================
 
