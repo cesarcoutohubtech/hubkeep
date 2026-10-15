@@ -13,4 +13,4 @@ const bloqueios = [
     EndUtc: '2026-10-16T11:00:00Z', UpdatedUtc: '2026-10-15T09:00:00Z',
     Notes: 'Ignorar: campo livre potencialmente pessoal' },
 ];
-console.log(JSON.stringify(montarProjecao(escopo, recursos, bloqueios), null, 2));
+globalThis.console.log(JSON.stringify(montarProjecao(escopo, recursos, bloqueios), null, 2));
