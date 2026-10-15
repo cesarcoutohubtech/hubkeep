@@ -295,3 +295,25 @@ test('primeira página recusa sobrescrita de credenciais e lista ausente', async
   await assert.rejects(c.lerPrimeiraPaginaDeEmpresas({ ClientToken: 'forjado' }), /filtros_reservados/);
   await assert.rejects(c.lerPrimeiraPaginaDeEmpresas(), /lista_ausente/);
 });
+
+test('escopo não expõe o mapa mutável entre propriedades e hotéis', () => {
+  const vinculos = [{ enterpriseId: 'a', hotelId: 'hotelA' }];
+  const fechado = criarEscopo({ tenantId: 'tenantA', vinculos });
+  assert.equal(fechado.hoteis, undefined);
+  assert.equal(typeof fechado.localizarHotel, 'function');
+  assert.equal(fechado.localizarHotel('a'), 'hotelA');
+  assert.ok(Object.isFrozen(fechado));
+  vinculos[0].hotelId = 'hotel-injetado';
+  vinculos.push({ enterpriseId: 'b', hotelId: 'hotelB' });
+  assert.equal(fechado.localizarHotel('a'), 'hotelA');
+  assert.equal(fechado.localizarHotel('b'), undefined);
+  assert.throws(() => { fechado.localizarHotel = () => 'invasor'; }, TypeError);
+});
+
+test('não permite adicionar um vínculo de outro tenant por mutação posterior', () => {
+  const apenasA = criarEscopo({ tenantId: 'tenantA', vinculos: [
+    { enterpriseId: 'empresaA', hotelId: 'hotelA' },
+  ] });
+  assert.equal(normalizarEspaco(apenasA, space('quarto9', 'empresaB')), null);
+  assert.equal(normalizarBloqueio(apenasA, block('bloco9', 'empresaB', 'quarto9')), null);
+});
