@@ -2266,3 +2266,36 @@ Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma c
   - na página do insight do elevador.
   
   Depois, abrir o PR deste diário com o resultado e seguir o que Cesar e Kaio priorizarem.
+
+## A rodada depois do #294 recusou o fim (15/10/2026)
+
+**O que se viu** (Cesar, 15/10/2026, saída colada nesta sessão): a rodada `pnpm demo:historico --ambiente dev --fim 2026-10-13` parou em 1 s com `FimDiferente`. O primeiro chamado gravado foi aberto às 11:21:07.681 UTC de 13/02/2026; o do roteiro novo, às 11:06:22.717. Nada foi gravado.
+
+**A causa:** o chamado da modernização, acrescentado no #294, sorteava os instantes na mesma sequência do roteiro. Com isso mudavam os instantes de todos os chamados sorteados depois dele, inclusive o primeiro. Mudavam também as chaves (`ch00001`…), que seguem a ordem de abertura. O teste do roteiro não pegou porque compara o roteiro consigo mesmo, não com o que está gravado no dev.
+
+**A correção** (PR `int:`, fora da zona protegida):
+- **Roteiro:** o chamado acrescentado depois da primeira gravação sorteia numa sequência à parte e tem chave fixa (`ch-modernizacao-elevador`), fora da numeração.
+  - Conferido contra o roteiro do `7987b00`, com `--fim 2026-10-13`: os 4.314 chamados gravados saem com as mesmas chaves, instantes, passos, custos e paradas.
+  - Os cadastros, os cenários e a política sistêmica também saem iguais.
+  - A modernização passa a ser aberta em 23/06/2026 e concluída às 15:47 UTC do mesmo dia, que é a data da intervenção.
+- **Retomada:** antes, se faltava uma abertura antes do último dia gravado, a gravação voltava ao início e conferia uma a uma (umas 3,5 horas). Agora ela pula os chamados que já estão no banco e grava, em ordem, só as operações dos chamados novos.
+  - A função é `planoDaRetomada`.
+  - Na rodada no dev, isso dá as 4 operações da modernização e os dias depois de 13/10, que são nenhum.
+  - Os dias já calculados não rodam de novo, como antes. A efetividade lê as OS na hora, então a modernização aparece sem recalcular os dias.
+- **Testes, sem banco:**
+  - um que trava o roteiro gravado no dev: os 4.314 chamados, o primeiro instante e uma impressão SHA-256 das chaves, dos instantes, dos passos, dos custos e das paradas;
+  - dois do plano da retomada.
+
+### Ponto de retomada (15/10/2026, correção da retomada depois do #294)
+
+- **`main`:** verde, em `f5caca9` (#294). O CI, o banco e o segurança passaram.
+- **Dev:** sem mudança. A rodada de 15/10 à noite foi recusada antes de gravar.
+- **Nesta branch:** a correção do roteiro e da retomada, com este diário. O PR abre agora.
+- **Esperando o Cesar:**
+  1. O merge do PR da correção.
+  2. A mesma rodada: `git pull` na `main`, as duas variáveis da sessão e `pnpm demo:historico --ambiente dev --fim 2026-10-13`. A saída deve ter a linha "Retomada no dia 2026-10-13: … 4 de chamados novos no roteiro, gravadas agora." e terminar em minutos.
+  3. A saída final.
+- **Próximo:** conferir no dev que a modernização aparece nas três telas:
+  - na lista de efetividade;
+  - no detalhe do ativo;
+  - na página do insight do elevador.
