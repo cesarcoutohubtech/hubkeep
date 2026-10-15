@@ -2116,3 +2116,79 @@ Qualquer um deles muda antes do merge, se o Kaio pedir.
 - **Próximo, depois do merge:** o PR 1 da efetividade (`int:`).
   - O que entra: a política `inteligencia.efetividade` com a lista de códigos, a constante dos 50%, a cobertura do custo no motor e a leitura no `packages/db`.
   - O primeiro passo é recomeçar a branch da `main` e ler `packages/inteligencia/src/efetividade.ts`, usando a política do sistêmico como modelo.
+
+## Os 50% confirmados e o PR 1 da efetividade (15/10/2026)
+
+"Kaio aqui", nesta sessão, 15/10/2026: "Eu confirmo os 50%. Prossiga. 288 mergeado."
+- A regra da cobertura do custo está aprovada por Cesar e Kaio.
+- O status do adendo no `docs/03` ainda diz "aguarda a confirmação escrita do Kaio". Como o `docs/03` é zona protegida, a linha muda no próximo PR de zona protegida do Intelligence, ou num PR só para ela, se o Cesar preferir.
+
+### O que o PR 1 traz (`int:`, fora da zona protegida)
+
+**Motor (`packages/inteligencia`):**
+- **`efetividade.ts`, versão 3:**
+  - a política ganha `codigosDeIntervencao`, com o padrão `['solucao_troca_do_equipamento']`;
+  - a política gravada antes, sem o campo, continua valendo (`CAMPOS_QUE_PODEM_FALTAR`);
+  - `COBERTURA_MINIMA_DO_CUSTO = 0.5`;
+  - o custo antes → depois sai das próprias corretivas, pelo aceite, sem a OS da intervenção. Cada lado tem `soma`, `informadas` e `aceitas`, e o resultado diz se a cobertura é suficiente;
+  - a métrica "custo" saiu da lista `metricas` e virou o campo `custo`.
+- **`intervencao.ts` (novo), a identificação da intervenção:**
+  - a OS que vale no chamado (a mesma regra do job);
+  - o código pela chave padrão ou pelo id;
+  - a conclusão final como data;
+  - fora ficam o chamado cancelado, a OS cancelada, o chamado sem ativo e a OS reaberta sem nova conclusão;
+  - a política resolve por hotel (hotel → bandeira → grupo → padrão).
+- **`painel-efetividade.ts` (novo):** `efetividadeDoAtivo` e `listarEfetividades`, para quem decide o insight do hotel do ativo, com as intervenções dos últimos 180 dias, até 100.
+
+**Leitura (`packages/db`), em `repositorios/inteligencia-efetividade.ts`, pelo hk_app com o contexto de quem pede:**
+- as linhas de `inteligencia.efetividade`;
+- as intervenções, pelo id do código ou pela chave padrão, com uma conclusão depois da data;
+- o histórico dos ativos no trecho (chamados com OS, código e transições, e as paradas).
+
+**Web:** a ligação em `modulos/inteligencia/painel.ts` (`efetividadeDoAtivo` e `efetividades`). Ainda não há rota nem tela; elas vêm no PR 2.
+
+### Pontos de detalhe que o agente decidiu, para o Kaio conferir (ADR-033: detalhe do Kaio)
+
+1. **O custo conta pelo aceite**, como no glossário v3, e a OS da própria intervenção fica fora dos dois lados, porque o custo dela é o da troca, e não o da falha. O chamado da intervenção continua contando como chamado antes.
+2. **O lado sem nenhuma OS aceita conta como coberto**, com custo zero conhecido. Com o antes em zero, não há porcentagem.
+3. **A lista de códigos:** a chave padrão ou o id do código do grupo, até 20, sem repetir. A lista vazia desliga a efetividade.
+4. **180 dias** (a janela de leitura) **e até 100 intervenções** na seção da lista.
+
+### Pendência para Cesar e Kaio: a página do insight
+
+O desenho aprovado mostra, na página do insight, as intervenções concluídas **depois da primeira decisão de aceitar ou agir**. O insight não guarda a data dessa decisão:
+- a página não tem linha do tempo no 1.0 (Cesar, 10/10/2026);
+- a auditoria do insight vai sem hotel, e só o Admin do grupo a lê.
+
+Opções:
+- **(a)** contar desde a primeira detecção do insight, sem dado novo;
+- **(b)** gravar a data da primeira decisão no insight, o que pede migração na `app.insight` e é zona protegida;
+- **(c)** deixar a página do insight fora do PR 2.
+
+O agente recomenda a **(a)**: a ressalva de correlação já está na tela, e a intervenção feita entre a detecção e a decisão também responde ao insight. É mudança no que foi aprovado, então espera os dois.
+
+### Ponto de retomada (15/10/2026, PR 1 da efetividade)
+
+- **`main`:** em `11a9742` (#288, adendo ao ADR-033).
+- **Dev:** sem mudança. A nova rodada do `demo:historico` fica para depois do merge deste PR.
+- **Nesta branch:** o PR 1 da efetividade.
+- **Esperando:**
+  - **Cesar:** o merge do PR 1.
+  - **Kaio:** os quatro pontos de detalhe acima.
+  - **Cesar e Kaio:** a página do insight, opção (a), (b) ou (c).
+- **Próximo:** o roteiro da demonstração ganha o chamado de modernização do elevador com "Troca do equipamento", e o PR 2 traz as rotas, os contratos, as três telas e os textos, com o nome do fornecedor e a descrição do chamado. O primeiro passo é ler o cenário `efetividade-elevador` do roteiro e `iaTabelaEfetividade` no mock.
+
+### Respostas de 15/10/2026 sobre o PR 1
+
+Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma com quem fala:
+- **Kaio:** "4 escolhas conferido". Os quatro pontos de detalhe acima ficam como estão.
+- **Página do insight:** "Kaio aqui. Opção A, como recomendada" e "Cesar aqui. Opção A, como recomendada".
+  - A página do insight mostra as intervenções nos ativos do insight concluídas depois da primeira detecção dele.
+  - Entra no PR 2.
+- **Status dos 50% no `docs/03`:** "Cesar aqui: num PR só para ela".
+  - O PR de zona protegida abre depois do merge do #290, porque o agente tem uma branch só.
+  - Ele também precisa que não haja outro PR de zona protegida aberto.
+
+**Próximo:**
+1. depois do merge do #290, o PR da linha do `docs/03`;
+2. depois do merge dele, o PR 2 da efetividade, com a página do insight pela opção (a).

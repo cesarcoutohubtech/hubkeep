@@ -14,6 +14,7 @@ import {
   TIPOS_DE_INSIGHT_API,
 } from '@hubkeep/contratos';
 import type {
+  ChamadoDaEfetividadeNoBanco,
   DecisaoNoBanco,
   InsightComEvidenciaNoBanco,
   PortaDoPainelDoIntelligence,
@@ -74,6 +75,34 @@ const linha = (extra: Partial<InsightComEvidenciaNoBanco> = {}): InsightComEvide
   ...extra,
 });
 
+/** A troca do equipamento do elevador, como o banco a devolve. */
+const TROCA: ChamadoDaEfetividadeNoBanco = {
+  id: '66600000-0000-0000-0000-000000000001',
+  hotelId: H1,
+  bandeiraId: null,
+  localId: '77700000-0000-0000-0000-000000000001',
+  ativoId: A1,
+  abertaEm: new Date('2026-09-01T00:00:00Z'),
+  estado: 'concluido',
+  impactoHospede: null,
+  os: [
+    {
+      estado: 'aceita',
+      criadaEm: new Date('2026-09-01T00:00:00Z'),
+      codigoFalha: null,
+      codigoSolucaoId: '88800000-0000-0000-0000-000000000001',
+      codigoSolucaoChave: 'solucao_troca_do_equipamento',
+      executadoPor: 'fornecedor',
+      fornecedorId: null,
+      custoInformado: 48000,
+      transicoes: [
+        { acao: 'concluir', para: 'concluida', quando: new Date('2026-09-05T00:00:00Z') },
+        { acao: 'aceitar', para: 'aceita', quando: new Date('2026-09-06T00:00:00Z') },
+      ],
+    },
+  ],
+};
+
 function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
   const decisoes: DecisaoNoBanco[] = [];
   const porta: PortaDoPainelDoIntelligence = {
@@ -117,6 +146,9 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
       },
     ],
     insightsDoEscopo: async () => insights,
+    politicasDaEfetividade: async () => [],
+    intervencoes: async () => [TROCA],
+    historicoDosAtivos: async () => ({ chamados: [TROCA], paradas: [] }),
   };
   return { porta, decisoes };
 }
@@ -262,6 +294,23 @@ describe('o painel sobre a porta do banco', () => {
     expect(resposta.serie).toEqual([{ dia: '2026-10-10', atencao: 75, faixa: 'alta_atencao' }]);
     expect(resposta.atual).toMatchObject({ calculadoEm: '2026-10-10T03:00:00.000Z', calculo: 1 });
     expect(resposta.insights.map((i) => i.id)).toEqual([I1]);
+  });
+
+  it('a efetividade do ativo e a da seção da lista, pelas linhas do banco', async () => {
+    const { casos } = painel([linha()]);
+    const doAtivo = await casos.efetividadeDoAtivo(ctx, A1);
+    expect(doAtivo.map((e) => [e.intervencao.chamadoId, e.intervencao.em])).toEqual([
+      [TROCA.id, new Date('2026-09-05T00:00:00Z')],
+    ]);
+    // A OS da troca abriu antes da conclusão e conta como chamado antes; o custo dela fica fora.
+    expect(doAtivo[0]?.efetividade).toMatchObject({
+      versao: 3,
+      resultado: 'sem_base_de_comparacao',
+      custo: { antes: { aceitas: 0 }, depois: { aceitas: 0 }, suficiente: true },
+    });
+    const lista = await casos.efetividades(ctx);
+    expect(lista.intervencoes.map((e) => e.intervencao.ativoId)).toEqual([A1]);
+    expect(lista.nomes.hoteis).toEqual({ [H1]: 'Hotel 1' });
   });
 
   it('a decisão leva o usuário do contexto como responsável', async () => {

@@ -30,6 +30,14 @@ import {
   nomesDoPainel,
 } from './repositorios/inteligencia-painel';
 import {
+  type ChamadoDaEfetividadeNoBanco,
+  type ParadaDaEfetividadeNoBanco,
+  historicoDosAtivosNoBanco,
+  intervencoesNoBanco,
+  politicasDaEfetividade,
+} from './repositorios/inteligencia-efetividade';
+import {
+  type PoliticaDoJob,
   type SessaoDoJobDoIntelligence,
   sessaoDoJobDoIntelligence,
 } from './repositorios/inteligencia';
@@ -76,6 +84,18 @@ export interface PortaDoPainelDoIntelligence {
     valor: string,
     limite: number,
   ): Promise<InsightDoPainelNoBanco[]>;
+  /** A efetividade (adendo ao ADR-033): as linhas de inteligencia.efetividade que quem pede lê. */
+  politicasDaEfetividade(ctx: Contexto): Promise<PoliticaDoJob[]>;
+  intervencoes(
+    ctx: Contexto,
+    filtro: { codigos: readonly string[]; desde: Date; ativoId?: string },
+  ): Promise<ChamadoDaEfetividadeNoBanco[]>;
+  historicoDosAtivos(
+    ctx: Contexto,
+    ativoIds: readonly string[],
+    desde: Date,
+    ate: Date,
+  ): Promise<{ chamados: ChamadoDaEfetividadeNoBanco[]; paradas: ParadaDaEfetividadeNoBanco[] }>;
 }
 
 export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPainelDoIntelligence {
@@ -93,5 +113,9 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
       banco.withContext(ctx, (tx) => metricasDoAtivo(tx, ativoId, desde)),
     insightsDoEscopo: (ctx, tipo, chave, valor, limite) =>
       banco.withContext(ctx, (tx) => insightsDoEscopo(tx, tipo, chave, valor, limite)),
+    politicasDaEfetividade: (ctx) => banco.withContext(ctx, (tx) => politicasDaEfetividade(tx)),
+    intervencoes: (ctx, filtro) => banco.withContext(ctx, (tx) => intervencoesNoBanco(tx, filtro)),
+    historicoDosAtivos: (ctx, ativoIds, desde, ate) =>
+      banco.withContext(ctx, (tx) => historicoDosAtivosNoBanco(tx, ativoIds, desde, ate)),
   };
 }

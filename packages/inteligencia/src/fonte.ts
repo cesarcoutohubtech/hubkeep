@@ -55,7 +55,7 @@ export type CorretivaDaFonte = Omit<Corretiva, 'concluidaEm' | 'reaberturas' | '
 };
 
 /** A OS que conta para o chamado: a que não foi cancelada, ou a cancelada mais recente. */
-function osDoChamado(os: readonly OsDaFonte[]): OsDaFonte | undefined {
+export function osDoChamado<O extends OsDaFonte>(os: readonly O[]): O | undefined {
   const viva = os.find((o) => o.estado !== 'cancelada');
   if (viva) return viva;
   return [...os].sort((a, b) => b.criadaEm.getTime() - a.criadaEm.getTime())[0];
@@ -169,10 +169,10 @@ const CHAVES_DO_HOTEL: readonly ChaveDoHotel[] = [
 ];
 
 /** As linhas de uma chave que valem para o hotel, na ordem da resolução: hotel, bandeira, grupo. */
-function niveisDoHotel(
+export function niveisDoHotel(
   linhas: readonly LinhaDePolitica[],
   chave: string,
-  hotel: HotelDaFonte,
+  hotel: Pick<HotelDaFonte, 'id' | 'bandeiraId'>,
 ): LinhaDePolitica[] {
   const daChave = linhas.filter((l) => l.chave === chave);
   return [
