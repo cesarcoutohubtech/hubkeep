@@ -75,6 +75,9 @@ export interface AppAtivo {
   modelo_id: string | null;
   nome: string;
   numero_serie: string | null;
+  sugestao_descartada_em: Timestamp | null;
+  sugestao_descartada_por: string | null;
+  sugestao_descarte_motivo: string | null;
   tenant_id: string;
   versao: Generated<number>;
 }
