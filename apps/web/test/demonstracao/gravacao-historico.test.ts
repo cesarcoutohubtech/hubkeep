@@ -220,7 +220,10 @@ describe.skipIf(!temAmbiente)('a gravação no Supabase do runner', () => {
     'rodar de novo com o mesmo fim não grava nada; com outro fim, recusa',
     async () => {
       const antes = await contar();
-      const segunda = await gravarHistorico(opcoes);
+      const linhas: string[] = [];
+      const segunda = await gravarHistorico({ ...opcoes, log: (l) => linhas.push(l) });
+      // A retomada pula, sem consulta, o que vem antes do último dia gravado.
+      expect(linhas.some((l) => l.startsWith('Retomada no dia '))).toBe(true);
       expect(segunda.diasCalculados).toBe(0);
       expect(segunda.decisoes).toBe(0);
       expect(segunda.estados).toEqual(primeira.estados);
