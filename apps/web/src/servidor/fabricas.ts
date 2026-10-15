@@ -11,6 +11,7 @@ import {
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeAuditoriaGeral,
   type CasosDeUsoDeAvisosDeSla,
+  type CasosDeUsoDeComunicacao,
   type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
@@ -43,6 +44,7 @@ import {
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeAvisosDeSla,
+  criarCasosDeUsoDeComunicacao,
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeChecklists,
   criarCasosDeUsoDeCodigos,
@@ -73,6 +75,7 @@ import {
   criarPortaAtivos,
   criarPortaAuditoriaGeral,
   criarPortaAvisosDeSla,
+  criarPortaComunicacao,
   criarPortaBandeiras,
   criarPortaCategorias,
   criarPortaChamados,
@@ -135,6 +138,7 @@ export interface FabricasDeCasosDeUso {
   historico(): CasosDeUsoDeHistorico;
   auditoriaGeral(): CasosDeUsoDeAuditoriaGeral;
   avisosDeSla(): CasosDeUsoDeAvisosDeSla;
+  comunicacao(): CasosDeUsoDeComunicacao;
   paradas(): CasosDeUsoDeParadas;
   uhIndisponivel(): CasosDeUsoDeUhIndisponivel;
   ativos(): CasosDeUsoDeAtivos;
@@ -305,6 +309,13 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
         avisos: criarPortaAvisosDeSla(banco),
         atribuicoes,
         prioridades: criarPortaPrioridades(banco),
+        relogio,
+      }),
+    ),
+    comunicacao: uma(() =>
+      criarCasosDeUsoDeComunicacao({
+        comunicacao: criarPortaComunicacao(banco),
+        atribuicoes,
         relogio,
       }),
     ),

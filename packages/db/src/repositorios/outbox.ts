@@ -33,7 +33,7 @@ export async function processarOutbox(
   return banco.withSistema({ tenantId }, async (tx) => {
     const pendentes = await tx
       .selectFrom('app.evento_dominio')
-      .select(['id', 'tenant_id', 'tipo', 'payload', 'tentativas'])
+      .select(['id', 'tenant_id', 'tipo', 'registro_id', 'payload', 'tentativas'])
       .where('processado_em', 'is', null)
       .where('disponivel_em', '<=', sql<Date>`now()`)
       .where('tipo', 'in', tipos)
@@ -49,6 +49,7 @@ export async function processarOutbox(
         id: linha.id,
         tenantId: linha.tenant_id,
         tipo: linha.tipo,
+        registroId: linha.registro_id,
         payload: (linha.payload ?? {}) as Record<string, unknown>,
       };
       try {
