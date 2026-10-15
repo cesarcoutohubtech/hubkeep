@@ -33,11 +33,32 @@ Não utilize tokens de produção neste script. A leitura é limitada a **até t
 POSTs**, uma página de empresas, recursos e bloqueios da demo; mostra somente
 contagens, sem nomes, hóspedes, payload bruto ou tokens.
 
-**Evidências da rodada** (15/10/2026): 25 testes sintéticos aprovados
+**Evidências da rodada** (15/10/2026): 27 testes sintéticos aprovados
 localmente. A URL inicial `api.mews-demo.com` carregou no navegador, mas
 **nenhuma chamada POST real foi concluída**: o navegador automatizado não
 conseguiu executar a requisição, e o contêiner não resolve o DNS externo.
 Não marcar autenticação ou homologação como concluída.
+
+
+### Teste independente no Windows (sem instalar Node.js)
+
+Para quem utiliza Windows, existe também `smoke-windows.ps1`. Ele busca **somente os
+tokens públicos Gross Demo diretamente da documentação HTTPS do Mews** e executa
+até três POSTs de leitura no host `api.mews-demo.com`. Não acessa Supabase,
+GitHub, bancos ou o HubKeep. Não imprime tokens, IDs ou respostas completas;
+mostra apenas contagens e estados de execução.
+
+Após clonar/atualizar este PR, abrir o PowerShell na pasta do repositório:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docs\referencia\laboratorio-eu\mews-poc\smoke-windows.ps1
+```
+
+A liberação de execução acima vale apenas para **essa instância do PowerShell**.
+Execute apenas depois de verificar o conteúdo do script no GitHub. A documentação
+deve estar acessível, e o computador deve ter saída HTTPS para a demo oficial.
+O script ainda requer **uma execução real no Windows**: não há PowerShell nem
+resolução DNS da API Mews no ambiente de teste desta conversa.
 
 ## Funções
 
