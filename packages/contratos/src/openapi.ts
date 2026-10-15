@@ -95,6 +95,7 @@ import {
 } from './chamados';
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
 import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
+import { ConsultaDosIndicadores, RespostaDosIndicadores } from './indicadores';
 import { ConsultaDaContagemDeEnvios, RespostaDaContagemDeEnvios } from './comunicacao';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
@@ -1855,6 +1856,22 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Quem pede não é da gestão do hotel (avisos_sla_fora_do_escopo).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/indicadores',
+    resumo:
+      'O painel de indicadores (1c, item 8), pelas definições do glossário único de métricas: backlog e backlog por idade, % de SLA com o tempo pausado ao lado, MTTR com a mediana, % de preventiva em dia, razão preventiva/corretiva, chamados por 100 UHs, UH-dias perdidos, a série diária, a comparação na bandeira e a produtividade por equipe. O período é de dias locais (até 92), contados no fuso de cada hotel. A gestão vê tudo no escopo dela; o proprietário vê só os cartões dos hotéis dele (backlog, UH-dias e chamados). A rede, as bandeiras, a série e a produtividade somam só os hotéis da visão completa.',
+    exigeTenant: true,
+    consulta: ConsultaDosIndicadores,
+    respostas: {
+      200: { descricao: 'Os indicadores do período', esquema: RespostaDosIndicadores },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão nem proprietário (indicadores_sem_permissao).'),
+      422: ERRO(
+        'Período acima de 92 dias ou com o fim antes do início (indicadores_periodo_invalido, com maximoDias) ou filtro fora do formato (entrada_invalida).',
+      ),
     },
   },
   {

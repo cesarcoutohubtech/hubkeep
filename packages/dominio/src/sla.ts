@@ -398,6 +398,17 @@ function instanteDaHoraLocal(local: number, fuso: string): number {
   return validos.length > 0 ? Math.min(...validos) : Math.max(antes, depois);
 }
 
+/**
+ * O instante em que começa o dia local (aaaa-mm-dd) no fuso IANA do hotel:
+ * os limites dos períodos do painel de indicadores (regra 5 do glossário).
+ * Sem a meia-noite local (o salto do horário de verão), vale o instante logo
+ * depois do salto.
+ */
+export function inicioDoDiaLocal(dia: string, fuso: string): Date {
+  const [ano, mes, d] = dia.split('-').map(Number) as [number, number, number];
+  return new Date(instanteDaHoraLocal(Date.UTC(ano, mes - 1, d), fuso));
+}
+
 // ---------------------------------------------------------------------------
 // Cálculo
 
