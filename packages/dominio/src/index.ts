@@ -560,3 +560,16 @@ export {
   validarPeriodoDaAuditoria,
 } from './auditoria-geral';
 export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
+export {
+  lerPlanoSugerido,
+  podeGerirModelosDeAtivo,
+  preencherComModelo,
+  validarModeloDeAtivo,
+  validarModeloDoAtivo,
+} from './modelos-de-ativo';
+export type {
+  AtivoEmCadastro,
+  CategoriaDoModelo,
+  ChecklistDoModelo,
+  DadosDoModeloDeAtivo,
+} from './modelos-de-ativo';

@@ -310,3 +310,12 @@ export {
   RespostaDosAvisosDoChamado,
   TIPOS_DE_ALERTA_DE_SLA_API,
 } from './avisos-de-sla';
+export {
+  ModeloDeAtivoApi,
+  PedidoDeAlteracaoDeModeloDeAtivo,
+  PedidoDeModeloDeAtivo,
+  PedidoDeVersaoDeModeloDeAtivo,
+  PlanoSugeridoApi,
+  RespostaDeModeloDeAtivoGravado,
+  RespostaDeModelosDeAtivo,
+} from './modelos-de-ativo';

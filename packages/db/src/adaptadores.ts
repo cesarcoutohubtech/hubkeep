@@ -16,6 +16,7 @@ import type {
   PortaAtribuicoes,
   PortaCategorias,
   PortaChecklists,
+  PortaModelosDeAtivo,
   PortaChamados,
   PlanoGravado,
   PortaPlanosPreventivos,
@@ -104,6 +105,7 @@ import {
   responderChecklist,
 } from './repositorios/checklists';
 import { criarChamado } from './repositorios/chamados';
+import { alterarModeloDeAtivo, criarModeloDeAtivo } from './repositorios/modelos-de-ativo';
 import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
 import { alterarFeriadoDoHotel, criarFeriadoDoHotel } from './repositorios/feriados-do-hotel';
 import {
@@ -2326,5 +2328,60 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
       }),
     registrar: (ctx, dados) => banco.executar(ctx, (uow) => registrarAnexo(uow, dados)),
     remover: (ctx, anexoId) => banco.executar(ctx, (uow) => removerAnexo(uow, anexoId)),
+  };
+}
+
+/** Modelos de ativo (fase 1b, M1; migração 0050), pelo hk_app. */
+export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtivo {
+  return {
+    listar: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.modelo_ativo')
+            .select([
+              'id',
+              'categoria_id',
+              'nome',
+              'fabricante',
+              'modelo',
+              'campos',
+              'checklist_modelo_id',
+              'plano_sugerido',
+              'versao',
+              'ativa',
+            ])
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          categoriaId: m.categoria_id,
+          nome: m.nome,
+          fabricante: m.fabricante,
+          modelo: m.modelo,
+          campos: m.campos,
+          checklistModeloId: m.checklist_modelo_id,
+          planoSugerido: m.plano_sugerido,
+          versao: m.versao,
+          ativa: m.ativa,
+        })),
+      ),
+    categorias: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        tx.selectFrom('app.categoria_ativo').select(['id', 'ativa', 'campos']).execute(),
+      ),
+    checklists: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.checklist_modelo')
+            .select(['id', 'ativa', 'categoria_id'])
+            .execute()
+        ).map((c) => ({ id: c.id, ativa: c.ativa, categoriaId: c.categoria_id })),
+      ),
+    criar: (ctx, dados) => banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados)),
+    alterar: (ctx, id, versao, mudanca) =>
+      banco.executar(ctx, (uow) => alterarModeloDeAtivo(uow, id, versao, mudanca)),
   };
 }
