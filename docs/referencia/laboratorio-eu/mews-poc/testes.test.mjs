@@ -317,3 +317,17 @@ test('não permite adicionar um vínculo de outro tenant por mutação posterior
   assert.equal(normalizarEspaco(apenasA, space('quarto9', 'empresaB')), null);
   assert.equal(normalizarBloqueio(apenasA, block('bloco9', 'empresaB', 'quarto9')), null);
 });
+
+test('smoke com maxRetries zero faz só uma tentativa mesmo diante de HTTP 429', async () => {
+  let chamadas = 0;
+  const cliente = criarClienteMews({
+    ...token,
+    maxRetries: 0,
+    fetchImpl: async () => {
+      chamadas++;
+      return resp({ Error: 'rate_limit' }, 429, { 'retry-after': '3' });
+    },
+  });
+  await assert.rejects(cliente.lerPrimeiraPaginaDeEmpresas(), (e) => e.status === 429);
+  assert.equal(chamadas, 1);
+});
