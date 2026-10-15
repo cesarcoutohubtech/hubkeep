@@ -311,7 +311,13 @@ export {
   TIPOS_DE_ALERTA_DE_SLA_API,
 } from './avisos-de-sla';
 export {
+  CANAIS_DE_ENVIO_API,
+  ConfiguracaoDoPushApi,
   ConsultaDaContagemDeEnvios,
   ContagemDeEnviosApi,
+  PedidoDeInscricaoPush,
+  PedidoDeRevogacaoPush,
   RespostaDaContagemDeEnvios,
+  RespostaDaInscricaoPush,
+  RespostaDaRevogacaoPush,
 } from './comunicacao';
