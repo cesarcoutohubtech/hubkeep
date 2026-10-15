@@ -27,7 +27,20 @@ export type {
   PedidoDeConviteDeMembro,
 } from './casos-de-uso/convites';
 export { criarManipuladoresDeEventos } from './casos-de-uso/eventos';
-export type { EventoPendente, Manipulador } from './casos-de-uso/eventos';
+export type {
+  DependenciasDaComunicacao,
+  EventoPendente,
+  Manipulador,
+} from './casos-de-uso/eventos';
+export { criarCasosDeUsoDeComunicacao } from './casos-de-uso/comunicacao';
+export type { CasosDeUsoDeComunicacao, ContagemNoPeriodo } from './casos-de-uso/comunicacao';
+export type {
+  ChamadoDoAviso,
+  ContagemDeEnvios,
+  EnvioRegistrado,
+  PessoaDoEnvio,
+  PortaComunicacao,
+} from './portas/comunicacao';
 export { CredencialInvalida, formatarCredencial, lerCredencial } from './credencial-agente';
 export type {
   Criptografia,

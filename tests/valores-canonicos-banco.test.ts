@@ -19,12 +19,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ACOES_DA_OS,
+  CANAIS_DE_ENVIO,
   EXECUTORES_DA_OS,
   MODULOS_CONTRATAVEIS,
   MOMENTOS_DA_FOTO,
   MOTIVOS_DE_PAUSA,
   TIPOS_DE_ALERTA_DE_SLA,
   ORIGENS_DO_CHAMADO,
+  SITUACOES_DE_ENVIO,
   RESPONSAVEIS_DO_ARRENDAMENTO,
   SITUACOES_DO_PLANO,
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
@@ -140,6 +142,18 @@ describe('valores canônicos: banco × domínio (1c, ADR-045)', () => {
     expect(valoresDoCheck('os_responsavel_arrendamento_lista', 'responsavel_arrendamento')).toEqual(
       [...RESPONSAVEIS_DO_ARRENDAMENTO],
     );
+  });
+});
+
+describe('valores canônicos: banco × domínio (1c, ADR-046)', () => {
+  it('envio_notificacao_canal_lista aceita exatamente os CANAIS_DE_ENVIO do domínio', () => {
+    expect(valoresDoCheck('envio_notificacao_canal_lista', 'canal')).toEqual([...CANAIS_DE_ENVIO]);
+  });
+
+  it('envio_notificacao_situacao_lista aceita exatamente as SITUACOES_DE_ENVIO do domínio', () => {
+    expect(valoresDoCheck('envio_notificacao_situacao_lista', 'situacao')).toEqual([
+      ...SITUACOES_DE_ENVIO,
+    ]);
   });
 });
 

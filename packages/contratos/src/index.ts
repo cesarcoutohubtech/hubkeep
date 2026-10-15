@@ -319,3 +319,8 @@ export {
   RespostaDeModeloDeAtivoGravado,
   RespostaDeModelosDeAtivo,
 } from './modelos-de-ativo';
+export {
+  ConsultaDaContagemDeEnvios,
+  ContagemDeEnviosApi,
+  RespostaDaContagemDeEnvios,
+} from './comunicacao';
