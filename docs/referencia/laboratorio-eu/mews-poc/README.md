@@ -33,7 +33,7 @@ Não utilize tokens de produção neste script. A leitura é limitada a **até t
 POSTs**, uma página de empresas, recursos e bloqueios da demo; mostra somente
 contagens, sem nomes, hóspedes, payload bruto ou tokens.
 
-**Evidências da rodada** (15/10/2026): 28 testes sintéticos aprovados
+**Evidências da rodada anterior** (15/10/2026): 28 testes sintéticos aprovados
 localmente. A URL inicial `api.mews-demo.com` carregou no navegador, mas
 **nenhuma chamada POST real foi concluída**: o navegador automatizado não
 conseguiu executar a requisição, e o contêiner não resolve o DNS externo.
@@ -71,10 +71,14 @@ permissão ausente), não erro de DNS.
 Use o script `diagnostico-auth-windows.ps1` no Windows. Ele lê **dois pares
 públicos** documentados (Gross e Net), realiza primeiramente
 `configuration/get` — a operação inicial recomendada oficialmente pela Mews.
-Somente se essa autenticação tiver êxito, consulta uma página de
-`enterprises/getAll`, `resources/getAll` e `resourceBlocks/getAll`.
-No máximo **cinco POSTs read-only**, sem criar dados, sem token de
-produção e sem exibir credenciais ou dados de hóspedes. O resultado distingue:
+Somente se essa autenticação tiver êxito, usa **o Enterprise.Id de `configuration/get`**
+para ler recursos. A listagem `enterprises/getAll` deixou de ser pré-requisito:
+no teste real de 15/10/2026 ela respondeu HTTP 401 apesar da autenticação bem-sucedida.
+O diagnóstico consulta também `resourceBlocks/getAll` com **apenas `Limitation`**,
+sem filtros opcionais, e acrescenta filtros gradualmente somente se a leitura
+mínima funcionar. No máximo **cinco POSTs read-only** e sem dados de hóspedes.
+O campo `Message` do erro HTTP, quando disponível, é sanitizado e limitado a
+160 caracteres (sem tokens, IDs, detalhes ou corpo bruto). O resultado distingue:
 
 - Configuração autorizada (HTTP 200): o token é válido para a propriedade
   de demo, mesmo que outra operação apresente 401 de permissão.
@@ -93,6 +97,22 @@ executado uma única vez e seus resultados compartilhados **sem tokens**.
 Se ambos os ambientes negarem autenticação, o próximo passo é solicitar
 uma credencial de demonstração dedicada à Mews, com autorização
 prévia antes de contatá-la.
+
+### Evidência real do Windows (15/10/2026)
+
+- Gross `configuration/get`: HTTP 200, identidade da propriedade recuperada.
+- `resources/getAll`: HTTP 200, primeira página com **5 recursos**.
+- `enterprises/getAll`: HTTP 401 — permissão do endpoint não confirmada;
+  não necessário para o conector single-property.
+- `resourceBlocks/getAll` com filtros opcionais: HTTP 400. Novo diagnóstico
+  investiga com `Limitation` apenas, depois `EnterpriseIds` e `ActivityStates`.
+- Request-Ids para eventual suporte Mews:
+  empresas `874d5fac-d8df-4eb7-af73-5744b598d24b`;
+  bloqueios `31b04475-bd79-47e0-af73-c22fc6cf21c6`.
+
+A configuração e leitura de recursos estão confirmadas no Mews Demo, **mas a
+leitura de bloqueios ainda não**. Não fazer merge/instalação produtiva com
+base apenas nessa prova; necessário validar o próximo resultado real.
 
 ## Funções
 
