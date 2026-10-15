@@ -262,3 +262,36 @@ test('vínculo duplicado falha fechado', () => {
 test('chaves grandes não cabem no contrato e são recusadas', () => {
   assert.throws(() => chaveMews('a'.repeat(200), 'b'), /identificador_mews_muito_longo/);
 });
+
+test('smoke faz apenas uma página mesmo com cursor e página cheia', async () => {
+  let chamadas = 0;
+  const c = criarClienteMews({ ...token, pageSize: 1, fetchImpl: async () => {
+    chamadas += 1;
+    return resp({ Enterprises: [{ Id: 'E1' }], Cursor: 'mais' });
+  } });
+  const r = await c.lerPrimeiraPaginaDeEmpresas();
+  assert.equal(chamadas, 1);
+  assert.equal(r.cursor, 'mais');
+  assert.deepEqual(r.itens, [{ Id: 'E1' }]);
+});
+
+test('smoke valida escopo e extents nos recursos e bloqueios', async () => {
+  const chamadas = [];
+  const c = criarClienteMews({ ...token, fetchImpl: async (url, req) => {
+    chamadas.push({ url, body: JSON.parse(req.body) });
+    return resp(url.includes('resourceBlocks') ? { ResourceBlocks: [] } : { Resources: [] });
+  } });
+  await c.lerPrimeiraPaginaDeRecursos(['hotel-M']);
+  await c.lerPrimeiraPaginaDeBloqueios(['hotel-M']);
+  assert.equal(chamadas.length, 2);
+  assert.deepEqual(chamadas[0].body.EnterpriseIds, ['hotel-M']);
+  assert.deepEqual(chamadas[0].body.Extent, { Resources: true, Inactive: true });
+  assert.deepEqual(chamadas[1].body.ActivityStates, ['Active', 'Deleted']);
+  assert.throws(() => c.lerPrimeiraPaginaDeBloqueios([]), /enterprise_ids_obrigatorios/);
+});
+
+test('primeira página recusa sobrescrita de credenciais e lista ausente', async () => {
+  const c = criarClienteMews({ ...token, fetchImpl: async () => resp({ Other: [] }) });
+  await assert.rejects(c.lerPrimeiraPaginaDeEmpresas({ ClientToken: 'forjado' }), /filtros_reservados/);
+  await assert.rejects(c.lerPrimeiraPaginaDeEmpresas(), /lista_ausente/);
+});
