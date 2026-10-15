@@ -20,10 +20,13 @@ export function conferirIsolamentoV2(tenantOriginal: string): void {
   if (IDENTIDADE_HISTORICO_V2.tenantId === tenantOriginal) {
     throw new Error('Tenant v2 coincide com a demonstração original. Nada foi gravado.');
   }
-  if (
-    !IDENTIDADE_HISTORICO_V2.dominio.endsWith('.test') ||
-    IDENTIDADE_HISTORICO_V2.dominio === 'intelligence.demo.hubkeep.test'
-  ) {
+  // Usar uma comparação de valores em runtime; a igualdade direta de
+  // literais constantes é sinalizada como TS2367 pelo TypeScript 6.
+  const dominios = new Set<string>([
+    IDENTIDADE_HISTORICO_V2.dominio,
+    'intelligence.demo.hubkeep.test',
+  ]);
+  if (!IDENTIDADE_HISTORICO_V2.dominio.endsWith('.test') || dominios.size !== 2) {
     throw new Error('Domínio de contas da v2 não é isolado. Nada foi gravado.');
   }
 }
