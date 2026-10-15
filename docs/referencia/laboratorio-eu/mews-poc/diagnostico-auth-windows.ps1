@@ -177,6 +177,11 @@ try {
             else { $relatorio.Leituras['Recursos']['Itens'] = @($prop.Value).Count }
         }
 
+        # Nao disparar mais consultas caso o endpoint anterior tenha sido limitado.
+        if ($rec.Http -eq 429) {
+            $relatorio['Resultado'] = 'autenticado_mas_limitado_429'
+        }
+        else {
         # Primeiro bloco SEM filtros opcionais, conforme o contrato do Mews.
         $bloco = Consultar $escolhido 'resourceBlocks/getAll' @{ Limitation = @{ Count = 5 } }
         $relatorio.Leituras['BloqueiosSemFiltros'] = Estado $bloco
@@ -200,6 +205,11 @@ try {
                 }
                 $relatorio.Leituras['BloqueiosComActivityStates'] = Estado $filtrado
             }
+        }
+        # Mesmo um 429 no final de uma sequencia nao e falha de login.
+        if ($bloco.Http -eq 429 -or $escopoBloco.Http -eq 429 -or $filtrado.Http -eq 429) {
+            $relatorio['Resultado'] = 'autenticado_mas_limitado_429'
+        }
         }
     }
     $relatorio['TotalPosts'] = $script:contador
