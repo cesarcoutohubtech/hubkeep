@@ -141,7 +141,37 @@ export function criarClienteMews({
     throw new ErroMews('limite_paginas_excedido');
   }
 
+  /**
+   * Consulta UMA página de demonstração, sem iterar por todos os hotéis.
+   * Permite teste de fumaça com no máximo três chamadas HTTP totais.
+   */
+  async function lerPagina(operacao, filtros = {}) {
+    if (!OPERACOES[operacao]) throw new ErroMews('operacao_nao_permitida');
+    if (filtros.Limitation || filtros.ClientToken || filtros.AccessToken || filtros.Client) {
+      throw new ErroMews('filtros_reservados');
+    }
+    const response = await requisitar(operacao, { ...filtros, Limitation: { Count: pageSize } });
+    const items = response[OPERACOES[operacao][1]];
+    if (!Array.isArray(items)) throw new ErroMews('lista_ausente');
+    return { itens: items, cursor: typeof response.Cursor === 'string' ? response.Cursor : null };
+  }
+
   return Object.freeze({
+    lerPrimeiraPaginaDeEmpresas: (filtros = {}) => lerPagina('enterprises', filtros),
+    lerPrimeiraPaginaDeRecursos: (enterpriseIds) => {
+      if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
+        throw new ErroMews('enterprise_ids_obrigatorios');
+      }
+      return lerPagina('resources', { EnterpriseIds: enterpriseIds,
+        Extent: { Resources: true, Inactive: true } });
+    },
+    lerPrimeiraPaginaDeBloqueios: (enterpriseIds) => {
+      if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
+        throw new ErroMews('enterprise_ids_obrigatorios');
+      }
+      return lerPagina('resourceBlocks', { EnterpriseIds: enterpriseIds,
+        ActivityStates: ['Active', 'Deleted'] });
+    },
     listarEmpresas: (filtros = {}) => listar('enterprises', filtros),
     listarRecursos: (enterpriseIds, filtros = {}) => {
       if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
