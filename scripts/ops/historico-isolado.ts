@@ -13,7 +13,9 @@ import { carregarWebDoAmbiente, exigir, rodarNoWeb, urlDoDonoComCa } from './web
 const argv = process.argv.slice(2);
 const permitidas = new Set(['--ambiente', '--fim', '--verificar', '--executar']);
 if (argv.some((x) => x.startsWith('--') && !permitidas.has(x))) {
-  throw new Error('Argumento não permitido. Informe apenas --ambiente dev --fim AAAA-MM-DD e um modo.');
+  throw new Error(
+    'Argumento não permitido. Informe apenas --ambiente dev --fim AAAA-MM-DD e um modo.',
+  );
 }
 const { ambiente } = lerArgs(argv, ['dev']); // staging e produção PROIBIDOS nesta execução.
 const fim = lerFimDoHistorico(argv);
@@ -29,7 +31,9 @@ if (executar && exigir('HK_DEMO_SENHA').length < 12) {
   throw new Error('HK_DEMO_SENHA precisa ter pelo menos 12 caracteres.');
 }
 
-console.log(`Intelligence v2: ${executar ? 'EXECUTAR' : 'VERIFICAR'} em DEV (${ref}), fim ${fim}.\n`);
+console.log(
+  `Intelligence v2: ${executar ? 'EXECUTAR' : 'VERIFICAR'} em DEV (${ref}), fim ${fim}.\n`,
+);
 process.exit(
   rodarNoWeb('vitest.historico-isolado.config.ts', {
     HK_HISTORICO_V2_URL_DONO: urlDoDonoComCa(dono),
