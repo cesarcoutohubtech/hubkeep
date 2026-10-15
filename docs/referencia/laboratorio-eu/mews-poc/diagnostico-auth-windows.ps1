@@ -67,7 +67,7 @@ function Consultar([hashtable]$par, [string]$recurso, [hashtable]$filtros) {
 
 function Estado([hashtable]$resultado) {
     $est = [ordered]@{ Http = $resultado.Http }
-    if ($resultado.RequestId) { $est.RequestId = $resultado.RequestId }
+    if ($resultado.RequestId) { $est['RequestId'] = $resultado.RequestId }
     return $est
 }
 
@@ -103,11 +103,11 @@ try {
     }
 
     if ($null -eq $escolhido) {
-        $relatorio.Resultado = 'autenticacao_nao_confirmada'
+        $relatorio['Resultado'] = 'autenticacao_nao_confirmada'
     }
     else {
-        $relatorio.Resultado = 'autenticacao_confirmada'
-        $relatorio.AmbienteAutenticado = $escolhido.Ambiente
+        $relatorio['Resultado'] = 'autenticacao_confirmada'
+        $relatorio['AmbienteAutenticado'] = $escolhido.Ambiente
         $enterpriseId = [string]$configuracao.Enterprise.Id
         $consultas = @(
             @{ Caminho = 'enterprises/getAll'; Nome = 'Empresas'; Filtros = @{ Limitation = @{ Count = 5 } } },
@@ -132,14 +132,14 @@ try {
                     'Bloqueios' { 'ResourceBlocks' }
                 }
                 $prop = $r.Dados.PSObject.Properties[$campo]
-                if ($null -eq $prop) { $info.CampoEsperado = 'ausente' }
-                else { $info.Itens = @($prop.Value).Count }
+                if ($null -eq $prop) { $info['CampoEsperado'] = 'ausente' }
+                else { $info['Itens'] = @($prop.Value).Count }
             }
             $relatorio.Leituras[$q.Nome] = $info
         }
     }
-    $relatorio.TotalPosts = $script:contador
-    $relatorio.LimitePosts = $limite
+    $relatorio['TotalPosts'] = $script:contador
+    $relatorio['LimitePosts'] = $limite
     Write-Output (ConvertTo-Json -InputObject $relatorio -Depth 8)
 }
 catch {
