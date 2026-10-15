@@ -1931,3 +1931,55 @@ O volume, os cenários, o roteiro e o job não mudam.
   - **Kaio, nos pontos 3 e 4:** confirmar o Gerente no aceite e o job às 06:00 UTC (`MOMENTO_DO_JOB`).
   - **Cesar:** o retry do `BEGIN` no pool, como pedido à 1b ou por este agente num PR à parte.
 - **Próximo:** registrar o tempo da gravação no dev e no `docs/piloto/`; depois, uma retomada mais rápida da gravação (pular sem consulta o que já foi gravado) e a proposta de otimização do job.
+
+## Decisões do Kaio de 15/10/2026 e o retry da gravação
+
+"Kaio aqui", nesta sessão, 15/10/2026.
+
+**Aprovações:**
+1. **Pontos 3 e 4 da gravação do histórico:** "aprovo" no Gerente aceitando a OS e no job às 06:00 UTC do dia seguinte. O Cesar já tinha aprovado em 14/10, então os dois pontos estão fechados. Os comentários de `QUEM_ACEITA` e `MOMENTO_DO_JOB` passam a dizer "combinado".
+2. **As duas observações sobre o motor** (ADR-033, detalhe do Kaio):
+   - **Crescimento:** só vale depois de duas janelas completas de dados do hotel, contadas do primeiro chamado dele.
+   - **Sinal sistêmico por modelo:** exige população mínima de uns 10 ativos, pelo menos 3 ativos distintos afetados e pelo menos 30% da população afetada.
+   - As duas mexem na primeira tela que a Slaviero vai ver, no 61º dia, então entram antes da tela da efetividade.
+
+**Respostas às decisões pendentes** (registradas como posição do Kaio):
+1. **Retry da gravação:** pode, com três condições. A retomada recomeça do último dia gravado com sucesso, e não do início. As tentativas são limitadas, com espera crescente. Se todas falharem, a gravação para com mensagem clara.
+2. **Retry do `BEGIN` no pool do `packages/db`:** não agora. O retry fica só no script da gravação. O núcleo se reabre se o staging mostrar queda no `BEGIN`.
+3. **Piloto:** o Intelligence fica ativo desde o primeiro dia, sem cobrança. O contrato do módulo tem a mesma data do primeiro contrato do núcleo, e as telas abrem 60 dias depois pela política `inteligencia.visibilidade_telas`. O Kaio diz que isso "já estava decidido". O `docs/piloto/README.md` ainda diz que essa decisão é do Cesar, e o agente não achou o registro dela, então o item **aguarda a confirmação escrita do Cesar**.
+
+**Ordem:**
+1. o retry;
+2. os dois ajustes do motor;
+3. a proposta da tela da efetividade;
+4. o registro do tempo da gravação, quando ela terminar.
+
+A otimização do job fica adiada. O gatilho para reabrir é uma rodada acima de 60 s.
+
+### O retry e a retomada rápida da gravação (PR `int:`, fora da zona protegida)
+
+- **`apps/web/test/demonstracao/tentar-de-novo.ts`** (novo):
+  - `comNovaTentativa` repete a operação quando a conexão cai. São até 5 novas tentativas, com espera de 2, 4, 8, 16 e 32 s.
+  - Erro de dado ou de regra sobe na hora.
+  - Se todas as tentativas caírem, a gravação para com `ConexaoPerdida`. A mensagem diz em que operação parou e como continuar: o mesmo comando, com o mesmo `--fim`.
+  - `ehQuedaDeConexao` reconhece a queda pelo código (`ECONNRESET`, `ETIMEDOUT`, a classe 08 e o `57P01` do Postgres) ou pela mensagem ("Connection terminated unexpectedly"), também na causa.
+- **Na gravação:**
+  - Cada operação do roteiro e a leitura dos insights do dia passam pelo retry. As operações do roteiro podem ser repetidas sem duplicar.
+  - O job do dia e as decisões ficam sem retry: se falharem, a retomada cuida.
+- **A retomada recomeça do último dia gravado:**
+  - O dono lê de uma vez o id de cada chamado aberto, em `app.operacao_offline`, do mesmo jeito que a gravação já conferia o fim.
+  - As operações antes do job do último dia gravado são puladas sem consulta, porque já estavam no banco quando esse job rodou.
+  - Se faltar alguma abertura, a retomada volta ao início e confere uma a uma, como antes.
+- **Testes:**
+  - `tentar-de-novo.test.ts`, sem banco, com 5 testes.
+  - No teste da gravação no banco, a segunda rodada confere que a retomada pulou as operações ("Retomada no dia ...").
+
+### Ponto de retomada (15/10/2026, retry da gravação)
+
+- **`main`:** verde, em `521a339` (#280).
+- **Nesta branch:** o retry e a retomada rápida da gravação. O PR abre agora.
+- **Dev:** a gravação do volume completo, rodando no notebook do Cesar desde as 08:23 de 15/10, com `--fim 2026-10-13`.
+- **Esperando:**
+  - **Cesar:** o merge do PR do retry e a confirmação escrita do item 3 (o módulo no piloto desde o primeiro dia).
+  - **Cesar ou Kaio:** a saída final da gravação no dev (grupo, estados dos cenários e tempo total).
+- **Próximo:** a proposta de desenho dos dois ajustes do motor, para o Kaio aprovar antes do código. O primeiro passo é ler a política `inteligencia.sistemico` e a regra de crescimento em `packages/inteligencia`.

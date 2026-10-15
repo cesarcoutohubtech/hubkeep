@@ -21,7 +21,11 @@
 // - Rodar de novo com o mesmo fim não duplica nada: as operações do Técnico e
 //   a abertura têm chave fixa, a triagem e o aceite conferem o estado, o job
 //   não roda de novo num dia já gravado e a decisão já tomada é pulada. Com
-//   outro fim, a gravação recusa antes de gravar.
+//   outro fim, a gravação recusa antes de gravar. A retomada recomeça do
+//   último dia gravado, sem consultar de novo as operações de antes dele.
+// - Se a conexão cair, a operação tenta de novo, com espera crescente
+//   (tentar-de-novo.ts); se todas as tentativas caírem, a gravação para e diz
+//   como continuar (Kaio, 15/10/2026).
 // - Nunca roda na Vercel nem em produção: a montagem e os acessos próprios do
 //   job e do painel passam pela mesma trava (conferirAlvoDaMontagem).
 import { createHash } from 'node:crypto';
@@ -64,6 +68,7 @@ import {
   instanteDoJob,
   roteiroDoHistorico,
 } from './historico-inteligencia';
+import { comNovaTentativa } from './tentar-de-novo';
 import { conferirAlvoDaMontagem, montarComRelogio, refDoRemoto } from './montagem-com-relogio';
 
 type Ambiente = Readonly<Record<string, string | undefined>>;
@@ -242,6 +247,9 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
   const dono = new pg.Client({ connectionString: o.urlDono });
   await dono.connect();
   let ultimoDiaGravado: string | null;
+  // A chave fixa da abertura de cada chamado já gravado e o id dele, para a
+  // retomada pular sem consulta o que vem antes do último dia gravado.
+  const aberturasGravadas = new Map<string, string>();
   try {
     const { rows } = await dono.query<{ criado_em: Date }>(
       `select c.criado_em from app.operacao_offline o
@@ -263,6 +271,14 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
       [tenantId],
     );
     ultimoDiaGravado = dias[0]?.dia ?? null;
+    if (ultimoDiaGravado !== null) {
+      const { rows: abertas } = await dono.query<{ chave: string; id: string }>(
+        `select chave::text as chave, resposta->>'id' as id from app.operacao_offline
+          where tenant_id = $1 and tipo = 'chamado.abrir'`,
+        [tenantId],
+      );
+      for (const a of abertas) aberturasGravadas.set(a.chave, a.id);
+    }
     await dono.query(`insert into app.tenant (id, nome) values ($1, $2) on conflict do nothing`, [
       tenantId,
       NOME_DO_GRUPO,
@@ -630,6 +646,39 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
       return `${Math.floor(s / 3600)}h${String(Math.floor(s / 60) % 60).padStart(2, '0')}m`;
     };
     let k = 0;
+    // A retomada recomeça do último dia gravado (Kaio, 15/10/2026): as
+    // operações antes do job desse dia já estavam no banco quando ele rodou, e
+    // só se recupera do banco o id de cada chamado aberto. Se faltar alguma
+    // abertura, a retomada volta ao início, que confere uma a uma.
+    const iDoUltimo =
+      ultimoDiaGravado === null
+        ? -1
+        : instantes.findIndex((t) => diaNoFuso(t, FUSO_DO_HISTORICO) === ultimoDiaGravado);
+    if (iDoUltimo >= 0) {
+      const corte = instantes[iDoUltimo] as Date;
+      let fim = 0;
+      while (fim < eventos.length && (eventos[fim] as Evento).quando < corte) fim += 1;
+      const aberturas = eventos.slice(0, fim).filter((e) => e.tipo === 'abrir');
+      const chaveDaAbertura = (e: Evento) => idFixo(tenantId, `chamado:${e.chamado.chave}`);
+      const faltam = aberturas.filter((e) => !aberturasGravadas.has(chaveDaAbertura(e))).length;
+      if (faltam === 0) {
+        for (const e of aberturas) {
+          chamados.set(e.chamado.chave, aberturasGravadas.get(chaveDaAbertura(e)) as string);
+        }
+        k = fim;
+        log(
+          `Retomada no dia ${ultimoDiaGravado}: ${k} de ${eventos.length} operações ` +
+            'já gravadas, puladas.',
+        );
+      } else {
+        log(
+          `Retomada do início: ${faltam} aberturas antes de ${ultimoDiaGravado} não estão no banco.`,
+        );
+      }
+    }
+    const comoContinuar =
+      `Rode de novo o mesmo comando, com o mesmo --fim (${o.fim}): ` +
+      'a gravação continua do último dia gravado.';
     let diasCalculados = 0;
     let insightsAbertos = 0;
     let decisoes = 0;
@@ -638,7 +687,12 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
     for (const [i, dia] of r.dias.entries()) {
       const instante = instantes[i] as Date;
       for (; k < eventos.length && (eventos[k] as Evento).quando < instante; k += 1) {
-        await aplicar(eventos[k] as Evento);
+        const e = eventos[k] as Evento;
+        await comNovaTentativa(() => aplicar(e), {
+          descricao: `a operação ${k + 1} de ${eventos.length} (${e.tipo}, chamado ${e.chamado.chave})`,
+          comoContinuar,
+          log,
+        });
         if ((k + 1) % OPERACOES_POR_LINHA === 0) {
           log(`Operações: ${k + 1} de ${eventos.length} (${decorrido()}).`);
         }
@@ -658,7 +712,10 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
 
       // As decisões do dia, logo depois do job.
       agora = new Date(instante.getTime() + MINUTO_MS);
-      const { insights } = await painel.listar(admin, { estado: 'abertos' });
+      const { insights } = await comNovaTentativa(
+        () => painel.listar(admin, { estado: 'abertos' }),
+        { descricao: `a leitura dos insights do dia ${dia}`, comoContinuar, log },
+      );
       for (const ins of insights) {
         const doRoteiro = {
           tipo: ins.tipo as 'atencao_ativo' | 'sistemico',

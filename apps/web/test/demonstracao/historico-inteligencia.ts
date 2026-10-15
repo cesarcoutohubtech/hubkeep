@@ -73,7 +73,8 @@ export const FUSO_DO_HISTORICO = 'America/Sao_Paulo';
  * - `como_em_producao` (Cesar): às 06:00 UTC do dia seguinte, o instante do
  *   cron; a linha da métrica leva a data local desse instante, o dia seguinte;
  * - `fim_do_dia_local` (Kaio): no último instante do dia em São Paulo.
- * Os dois ainda vão combinar; o teste sem banco roda os dois.
+ * Combinado: como em produção (Cesar, 14/10/2026; Kaio, 15/10/2026). O teste
+ * sem banco segue rodando os dois.
  */
 export type MomentoDoJob = 'como_em_producao' | 'fim_do_dia_local';
 export const MOMENTO_DO_JOB: MomentoDoJob = 'como_em_producao';
@@ -85,7 +86,8 @@ export function instanteDoJob(dia: string, momento: MomentoDoJob): Date {
 
 /**
  * Quem aceita a OS concluída (ponto 3 da gravação, 13/10/2026): o Gerente do
- * hotel do kit (Cesar) ou a Admin do grupo (Kaio). Os dois ainda vão combinar.
+ * hotel do kit (Cesar) ou a Admin do grupo (Kaio). Combinado: o Gerente (Cesar,
+ * 14/10/2026; Kaio, 15/10/2026).
  */
 export type QuemAceita = 'gerente' | 'admin';
 export const QUEM_ACEITA: QuemAceita = 'gerente';
