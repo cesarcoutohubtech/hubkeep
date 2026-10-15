@@ -976,3 +976,28 @@ Na branch `claude/1b-m1-app`, PR fora da zona protegida.
 - **Próximo:**
   - **M1b:** a escolha do modelo no cadastro do ativo, no web e no PWA (operação `ativo.cadastrar` com `modeloId`).
   - **M1c:** a lista de sugestões, o descarte e o contador. Depende da 0051 (#279).
+
+## Ponto de retomada (15/10/2026, pausa pelo limite semanal)
+
+- **`main` e dev:**
+  - A `main` estava em `a92dc65`. A M1 já tem nela a 0050 (#276) e a regra do plano que cobre o ativo (#278).
+  - O Cesar vai mergear o #279 (0051, colunas do descarte da sugestão, pgTAP 042 com 49 asserções) e o #280 (M1a, cadastro dos modelos de ativo), os dois verdes, e fazer o `db push` da 0051. A 0050 já foi aplicada no dev.
+- **PRs da 1b:** nenhum acompanhado. As conferências agendadas foram canceladas, e os eventos do GitHub não são acompanhados durante a pausa.
+- **Trabalho sem PR:** a M1b está pronta na branch `claude/1b-m1b`, montada sobre a M1a e com este ponto de retomada.
+  - O ativo guarda `modeloId` no cadastro, na alteração e na fila offline.
+  - O modelo precisa estar ativo e ser da categoria do ativo. O modelo que o ativo já tinha vale mesmo desativado, e o ausente na alteração mantém o gravado.
+  - Escolher o modelo preenche só o que está vazio, no web e no PWA. A referência do PWA guarda os modelos.
+  - `AtivoApi.modeloId` é opcional na leitura, para o PWA aceitar o servidor de antes da M1 durante a publicação.
+  - Lint, typecheck e testes locais estão verdes. Os testes de integração ficam para a CI.
+- **PV3c:** completa (#268 a #271), exceto o aceite automático da preventiva, que espera o acordo com a 1c.
+  - Seguem esperando a decisão do Cesar:
+    1. a parada na preventiva;
+    2. se o Gerente que é o técnico aceita a própria preventiva;
+    3. se a fila mostra `paradoDesde` na preventiva.
+- **Próxima tarefa:** abrir o PR da M1b.
+  - Primeiro passo: conferir no GitHub se o #280 entrou na `main`. Depois, fazer o merge da `main` na `claude/1b-m1b`, rodar lint, typecheck e testes, e abrir o PR (`1b:`) com base na `main`.
+- **Depois da M1b, a M1c.** Exige o #279 mergeado e o `db push` da 0051.
+  - Lista de sugestões: ativos aprovados, com modelo, sem plano que os cubra (`hotelJaTemPlanoQueCobreOAtivo`) e sem descarte.
+  - A gestão cria o plano com um clique, pelo `hk_app`, pausado e sem responsável.
+  - O descarte grava quem, quando e o motivo.
+  - O painel de implantação ganha o contador "ativos com modelo e sem plano". Atualizar os tipos do Kysely com as colunas da 0051, se ainda não estiverem na `main`.
