@@ -12,7 +12,9 @@ const exigir = (nome: string): string => {
   return v;
 };
 
-it('histórico de demonstração do Intelligence', { timeout: 3_600_000 }, async () => {
+// Até 8 horas: do notebook até o dev, o volume completo (cerca de 21,5 mil
+// operações pelos casos de uso) leva de 3 a 4 horas (14/10/2026).
+it('histórico de demonstração do Intelligence', { timeout: 8 * 3_600_000 }, async () => {
   const log = (linha: string) => console.log(linha);
   const r = await gravarHistorico({
     fim: process.env['HK_HISTORICO_FIM'] || fimPadraoDoHistorico(new Date()),

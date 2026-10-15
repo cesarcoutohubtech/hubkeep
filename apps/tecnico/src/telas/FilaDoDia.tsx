@@ -18,7 +18,7 @@ import {
 import { useIntl } from 'react-intl';
 import type { OperacaoNaFila } from '../fila/banco';
 import { nomeDoIdioma, opcoesDeIdioma, useT } from '../i18n';
-import type { OsNoAparelho } from '../os/projecao';
+import { type OsNoAparelho, localDaOs } from '../os/projecao';
 import { FaixaDaRede, TelaDoTecnico } from './TelaDoTecnico';
 import { nomeDoLocal } from '../locais';
 
@@ -167,13 +167,16 @@ export function FilaDoDia(props: {
               <li key={o.id} data-estado={o.estado}>
                 <button className="tc-cartao" onClick={() => props.aoAbrirOs(o.id)}>
                   <span className="tc-cartao-titulo">
-                    {t('tecnico.fila.item', {
-                      local: nomeDoLocal(t, {
-                        nome: o.chamado.localNome,
-                        edificacao: o.chamado.localEdificacao,
-                      }),
-                      descricao: o.chamado.descricao,
-                    })}
+                    {o.chamado
+                      ? t('tecnico.fila.item', {
+                          local: nomeDoLocal(t, localDaOs(o)),
+                          descricao: o.chamado.descricao,
+                        })
+                      : t('tecnico.fila.item_preventiva', {
+                          local: nomeDoLocal(t, localDaOs(o)),
+                          plano: o.preventiva?.planoNome ?? '',
+                          ativo: o.preventiva?.ativoNome ?? '',
+                        })}
                   </span>
                   <span className="tc-cartao-rodape">
                     <Selo tom={TOM_DO_ESTADO[o.estado]}>{t(rotuloDoEstado(o.estado))}</Selo>

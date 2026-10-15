@@ -892,3 +892,47 @@ O `apps/web/test/demonstracao/gravacao-historico.test.ts` (#264, #265) passou a 
 - **Antes:** a integração do web inteira levava menos de um minuto.
 
 O pedido é reduzir o volume da gravação nesse teste, ou levá-lo para um job próprio. Peço que a correção abra antes de outros merges, se a `main` ficar vermelha por isso.
+
+## PV3c-2b — a OS preventiva no web: a lista e a página da OS (14/10/2026)
+
+Na branch `claude/1b-pv3c2b`, PR fora da zona protegida:
+- **Lista de OS:**
+  - a preventiva entra na lista. A coluna "Chamado" vira "OS";
+  - a linha da preventiva mostra o plano, o ativo e a data prevista, e abre `/os/{id}`;
+  - no lugar da prioridade, o selo "Preventiva". Com o filtro de prioridade, a preventiva sai, porque não tem chamado.
+- **`GET /api/v1/os/{id}`** (contrato `RespostaDeOs`, `OsDaPaginaApi`): a OS por id, corretiva ou preventiva. Traz os nomes do hotel, do local, do ativo, do responsável e do fornecedor (`nomesDaOs`) e a política da assinatura no aceite.
+- **Página `/os/{id}`:** carrega pela API no navegador. Não usa o `carregarNaPagina`, cuja lista fechada é zona protegida (ADR-039, adendo da P1c).
+  - No alto, o plano, o ativo e a data prevista; na corretiva, o caminho para o chamado.
+  - O bloco da OS é o mesmo do detalhe do chamado: checklist, códigos, aceite, reabertura sem o equipamento parado, fotos e histórico.
+  - As ações de triagem também são as mesmas: reatribuir, quem executa, arrendamento e cancelar.
+- **Refatoração sem mudar o detalhe do chamado:** `BlocoDaOs` sai de `ChamadoEmDetalhe` e `AcoesDaOs` sai de `TriagemDoChamado`. Os testes das telas do chamado continuam iguais.
+- **Testes:**
+  - aplicação: a leitura por id e os nomes;
+  - web: a linha da preventiva, o bloco, as ações e a página (`pagina-da-os.test.tsx`);
+  - db, só na CI: a lista, a leitura por id e os nomes, em `os-preventiva.test.ts`.
+
+**Próximo:** a PV3c-2c, o PWA. O técnico passa a receber a preventiva na fila (`preventiva=1`), agora que o gestor consegue aceitá-la pelo web.
+
+## PV3c-2c — a OS preventiva no PWA do técnico (14/10/2026)
+
+Na branch `claude/1b-pv3c2c`, PR fora da zona protegida. **Mergear depois do #270**, para o técnico só receber a preventiva quando o gestor já conseguir aceitá-la no web.
+- **Fila:** o PWA pede `GET /api/v1/os/do-dia?preventiva=1` e guarda a OS sem chamado (`OsGuardada = OsDoDiaApi`). O IndexedDB não muda de versão: a guardada antes da PV3c não tem o campo `preventiva` e continua sendo lida como corretiva. O PWA antigo, ainda no aparelho, não pede `preventiva=1` e não recebe a preventiva.
+- **Telas:**
+  - **Cartão da fila:** o local, o plano e o ativo (`tecnico.fila.item_preventiva`).
+  - **Tela da OS:** o local da OS, e o plano, o ativo e a data prevista (`tecnico.os.preventiva`), sem a nota da parada nem a da UH.
+- **Projeção:** na preventiva, a parada, a pergunta da parada e a da UH não existem (`paradaPossivel` devolve null), coerente com `parada_na_preventiva`. A sugestão de códigos usa o ativo da ocorrência (`ativoDaOs`).
+- **Testes:** a fila pede `preventiva=1` e guarda a preventiva; a projeção, o local e o cache antigo; a fila e a tela da OS nas quatro línguas.
+
+Com isso, a PV3c fecha, exceto o aceite automático da preventiva, que espera o acordo com a 1c.
+
+## Ponto de retomada (14/10/2026, PV3c completa)
+
+- **`main`:** em `edc6678`, com a PV3c inteira (#268, #269, #270 e #271) e a correção do Intelligence no teste da gravação do histórico (#273). O `db push` da 0048 foi feito pelo Cesar em 14/10/2026; a PV3c não tem migração.
+- **PRs abertos da 1b:** só o deste ponto de retomada. Nenhum trabalho sem enviar.
+- **Pedido ao Intelligence:** atendido pelo #273 (roteiro mínimo no `gravacao-historico.test.ts`). O #271 já passou com o pgTAP em 14 minutos, antes dele.
+- **Fica de fora da PV3c:** o aceite automático da preventiva, que espera o acordo com a 1c. A leitura do job ainda faz join com o chamado.
+- **Para o Cesar decidir** (detalhes na PV3c-1):
+  1. parada na preventiva: recusada, como está, ou migração na `app.parada_ativo`;
+  2. o Gerente que é o técnico da preventiva aceita a própria OS?
+  3. a fila do dia mostra se o ativo da preventiva está parado (`paradoDesde`)?
+- **Próxima tarefa:** a M1, modelos de ativo por categoria (item 3 da fila da 1b; desenho em `docs/referencia/propostas-desenho-pv-implantacao.md`, seção M1). Ela tem migração, então é zona protegida. Primeiro passo: conferir no GitHub se há PR de zona protegida aberto e qual é a última migração da `main`.

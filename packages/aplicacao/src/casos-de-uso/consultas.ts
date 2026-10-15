@@ -43,6 +43,8 @@ export interface CasosDeUsoDeConsultas {
   listarOs(ctx: Contexto, pedido: PedidoDeLista): Promise<Pagina<OsResumida>>;
   /** 404 chamado_nao_encontrado se o chamado não é visível. */
   nomesDoChamado(ctx: Contexto, chamadoId: string): Promise<NomesDoChamado>;
+  /** Os nomes da página da OS (PV3c); 404 os_nao_encontrada se a OS não é visível. */
+  nomesDaOs(ctx: Contexto, osId: string): Promise<NomesDoChamado>;
   /** 404 chamado_nao_encontrado se o chamado não é visível. */
   linhaDoTempo(ctx: Contexto, chamadoId: string): Promise<EventoDaLinhaDoTempo[]>;
 }
@@ -94,6 +96,12 @@ export function criarCasosDeUsoDeConsultas(deps: {
     },
 
     nomesDoChamado: nomes,
+
+    async nomesDaOs(ctx, osId) {
+      const n = await deps.consultas.nomesDaOs(ctx, osId);
+      if (!n) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
+      return n;
+    },
 
     async linhaDoTempo(ctx, chamadoId) {
       await nomes(ctx, chamadoId);

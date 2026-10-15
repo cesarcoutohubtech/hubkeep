@@ -2,7 +2,7 @@
 //   - sem rede: recusa a Vercel e o banco de produção antes de conectar, e o
 //     fim padrão é o último dia cujo job já rodou;
 //   - contra o Supabase do runner (só na CI, com Auth e banco reais): grava o
-//     roteiro curto pela base do kit, e cada cenário abre o insight esperado e
+//     roteiro mínimo pela base do kit, e cada cenário abre o insight esperado e
 //     termina no estado do roteiro, sem nenhum insight do ruído; rodar de novo
 //     com o mesmo fim não grava nada; com outro fim, recusa antes de gravar.
 import { randomUUID } from 'node:crypto';
@@ -15,7 +15,7 @@ import {
   fimPadraoDoHistorico,
   gravarHistorico,
 } from './gravacao-historico';
-import { VOLUME_CURTO, roteiroDoHistorico } from './historico-inteligencia';
+import { VOLUME_MINIMO, roteiroDoHistorico } from './historico-inteligencia';
 
 const FIM = '2026-10-12';
 const REF_PRODUCAO = 'cccccccccccccccccccc';
@@ -147,15 +147,17 @@ const TABELAS = [
   'licenca.contrato',
 ];
 
-// O roteiro curto passa por cerca de 9 mil operações e 183 rodadas do job,
-// duas vezes: alguns minutos no runner. O limite é próprio, com folga.
+// O roteiro mínimo passa por cerca de 1.600 operações e 183 rodadas do job,
+// duas vezes: 84 s num Postgres local, contra cerca de 320 s do roteiro curto,
+// que levava 11 minutos no runner e estourava o job do banco (pedido da 1b,
+// 14/10/2026). O limite é próprio, com folga.
 const LIMITE_MS = 30 * 60_000;
 
 describe.skipIf(!temAmbiente)('a gravação no Supabase do runner', () => {
   const tenantId = randomUUID();
   const opcoes = {
     fim: FIM,
-    volume: VOLUME_CURTO,
+    volume: VOLUME_MINIMO,
     urlDono: URL_DONO as string,
     tenantId,
     dominio: `historico-${tenantId.slice(0, 8)}.hubkeep.test`,
@@ -204,7 +206,7 @@ describe.skipIf(!temAmbiente)('a gravação no Supabase do runner', () => {
     async () => {
       primeira = await gravarHistorico(opcoes);
       expect(primeira.inesperados).toEqual([]);
-      const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
+      const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_MINIMO });
       const esperados = Object.fromEntries(
         r.cenarios.filter((c) => c.alvo).map((c) => [c.chave, c.estadoFinal]),
       );

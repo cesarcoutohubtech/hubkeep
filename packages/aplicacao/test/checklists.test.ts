@@ -80,7 +80,7 @@ function montar(opcoes: {
     bandeiraId: HOTEL.bandeiraId,
     chamadoId: opcoes.preventiva ? null : 'c-1',
     preventiva: opcoes.preventiva
-      ? { planoId: 'p-1', ativoId: 'a-1', dataPrevista: '2026-10-14' }
+      ? { planoId: 'p-1', planoNome: 'PMOC', ativoId: 'a-1', dataPrevista: '2026-10-14' }
       : null,
     estado: opcoes.estado ?? 'em_execucao',
     situacaoId: 's',
