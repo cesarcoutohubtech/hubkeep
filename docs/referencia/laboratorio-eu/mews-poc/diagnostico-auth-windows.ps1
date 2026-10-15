@@ -161,7 +161,7 @@ try {
                 EnterpriseIds = @($enterpriseId)
             }
             $relatorio.Leituras['BloqueiosComEnterpriseId'] = Estado $escopoBloco
-            if ($escopoBloco.Ok) {
+            if ($escopoBloco.Ok -and $script:contador -lt $limite) {
                 $filtrado = Consultar $escolhido 'resourceBlocks/getAll' @{
                     Limitation = @{ Count = 5 }
                     EnterpriseIds = @($enterpriseId)
