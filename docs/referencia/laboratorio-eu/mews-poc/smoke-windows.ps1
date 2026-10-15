@@ -63,8 +63,8 @@ try {
     Exigir $bloco.Success 'documentacao_demo_inesperada'
 
     $texto = $bloco.Groups[1].Value
-    $clientMatch = [regex]::Match($texto, '\*\*ClientToken\*\*\s*-\s*`([^`]+)`')
-    $accessMatch = [regex]::Match($texto, '\*\*AccessToken\*\*\s*-\s*`([^`]+)`')
+    $clientMatch = [regex]::Match($texto, 'ClientToken[^\r\n]*?`([A-Za-z0-9-]{40,})`')
+    $accessMatch = [regex]::Match($texto, 'AccessToken[^\r\n]*?`([A-Za-z0-9-]{40,})`')
     Exigir ($clientMatch.Success -and $accessMatch.Success) 'tokens_publicos_nao_localizados'
 
     $script:clientToken = $clientMatch.Groups[1].Value
