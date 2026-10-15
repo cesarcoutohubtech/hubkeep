@@ -4,7 +4,7 @@ import { criarClienteMews, ErroMews } from './client.mjs';
 import { chaveMews, criarEscopo, normalizarEspaco, normalizarBloqueio, montarProjecao } from './normalizacao.mjs';
 
 const token = { clientToken: 'segredo-cliente', accessToken: 'segredo-acesso', minIntervalMs: 0 };
-const resp = (json, status = 200, headers = {}) => new Response(JSON.stringify(json), { status, headers });
+const resp = (json, status = 200, headers = {}) => new globalThis.Response(JSON.stringify(json), { status, headers });
 const escopo = criarEscopo({ tenantId: 'tenantA', vinculos: [
   { enterpriseId: 'empresaA', hotelId: 'hotelA' },
   { enterpriseId: 'empresaB', hotelId: 'hotelB' },
