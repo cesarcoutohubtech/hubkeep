@@ -5,6 +5,7 @@ import {
   dataDaOcorrencia,
   decidirSituacaoDoPlano,
   diaNoFuso,
+  hotelJaTemPlanoQueCobreOAtivo,
   normalizarNomeDoPlano,
   ocorrenciaMaisRecenteAte,
   ocorrencias,
@@ -255,5 +256,69 @@ describe('o dia do plano no fuso do hotel', () => {
     expect(diaNoFuso(instante, 'America/Sao_Paulo')).toBe('2026-10-13');
     expect(diaNoFuso(instante, 'UTC')).toBe('2026-10-14');
     expect(diaNoFuso(instante, 'Asia/Tokyo')).toBe('2026-10-14');
+  });
+});
+
+describe('hotelJaTemPlanoQueCobreOAtivo (M1, Cesar 15/10/2026)', () => {
+  const ativo = { id: 'ativo-novo', categoriaId: 'cat-ar' };
+  const plano = (
+    alvo: { ativoId: string | null; categoriaId: string | null },
+    situacao: 'ativo' | 'pausado' | 'encerrado',
+  ) => ({ ...alvo, situacao });
+
+  it('conta o plano por categoria da categoria do ativo, ativo ou pausado', () => {
+    for (const situacao of ['ativo', 'pausado'] as const) {
+      expect(
+        hotelJaTemPlanoQueCobreOAtivo(ativo, [
+          plano({ ativoId: null, categoriaId: 'cat-ar' }, situacao),
+        ]),
+      ).toBe(true);
+    }
+    expect(
+      hotelJaTemPlanoQueCobreOAtivo(ativo, [
+        plano({ ativoId: null, categoriaId: 'cat-porta' }, 'ativo'),
+      ]),
+    ).toBe(false);
+  });
+
+  it('conta o plano no próprio ativo, ativo ou pausado', () => {
+    for (const situacao of ['ativo', 'pausado'] as const) {
+      expect(
+        hotelJaTemPlanoQueCobreOAtivo(ativo, [
+          plano({ ativoId: 'ativo-novo', categoriaId: null }, situacao),
+        ]),
+      ).toBe(true);
+    }
+  });
+
+  it('não conta o plano em outro ativo da mesma categoria', () => {
+    expect(
+      hotelJaTemPlanoQueCobreOAtivo(ativo, [
+        plano({ ativoId: 'outro-ativo', categoriaId: null }, 'ativo'),
+      ]),
+    ).toBe(false);
+  });
+
+  it('não conta o plano encerrado', () => {
+    expect(
+      hotelJaTemPlanoQueCobreOAtivo(ativo, [
+        plano({ ativoId: null, categoriaId: 'cat-ar' }, 'encerrado'),
+        plano({ ativoId: 'ativo-novo', categoriaId: null }, 'encerrado'),
+      ]),
+    ).toBe(false);
+  });
+
+  it('ativo sem categoria: só o plano no próprio ativo conta', () => {
+    const semCategoria = { id: 'ativo-novo', categoriaId: null };
+    expect(
+      hotelJaTemPlanoQueCobreOAtivo(semCategoria, [
+        plano({ ativoId: null, categoriaId: 'cat-ar' }, 'ativo'),
+      ]),
+    ).toBe(false);
+    expect(
+      hotelJaTemPlanoQueCobreOAtivo(semCategoria, [
+        plano({ ativoId: 'ativo-novo', categoriaId: null }, 'pausado'),
+      ]),
+    ).toBe(true);
   });
 });
