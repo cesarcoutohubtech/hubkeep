@@ -18,28 +18,26 @@ O exemplo usa apenas dados **fictícios** e não chama o Mews. O módulo `client
 ## Validar leitura Mews demo (opt-in)
 
 Este experimento inclui `smoke-demo.mjs`. **Sem `--live` não há requisições**.
-Para confirmar a conectividade com a API Mews sem acesso a produção, preencher **apenas
-no ambiente do processo local** os dois tokens de **demo pública** descritos em:
+Para confirmar conectividade somente com a API de demonstração, copie os
+dois tokens públicos informados pela Mews em:
 https://docs.mews.com/connector-api/guidelines/environments
 
 ```bash
-# No terminal local, definir as variáveis (NUNCA gravar no Git):
-# MEWS_DEMO_CLIENT_TOKEN e MEWS_DEMO_ACCESS_TOKEN
 node smoke-demo.mjs --live
 ```
 
-O script realiza **até três chamadas POST**, usando a primeira página de `enterprises/getAll`,
-`resources/getAll` e `resourceBlocks/getAll` de uma empresa demo; informa **somente
-contagens** e se existem mais páginas. Não mostra nomes, token ou payload bruto, não
-persiste e não altera status de UH/chamados. A ausência de propriedade retorna
-`sem_dados`. Uma resposta de erro não prova disponibilidade da API. O uso
-de tokens públicos da demo não caracteriza certificação nem acesso à produção.
+O script solicita **interativamente** o `ClientToken` e o `AccessToken`
+públicos de demo. Os valores digitados **podem aparecer no terminal**, mas não
+são gravados pelo laboratório em arquivos ou transmitidos ao HubKeep.
+Não utilize tokens de produção neste script. A leitura é limitada a **até três
+POSTs**, uma página de empresas, recursos e bloqueios da demo; mostra somente
+contagens, sem nomes, hóspedes, payload bruto ou tokens.
 
-**Evidências coletadas nesta rodada** (15/10/2026): 25 testes locais com dados simulados
-aprovados. Foi possível acessar a página inicial de `api.mews-demo.com` pelo
-navegador, mas **nenhuma chamada real POST de API foi executada**: o navegador
-automatizado não expôs o console e este ambiente de execução não resolve o
-DNS do host externo. Não marcar o gate de autenticação/demo como concluído.
+**Evidências da rodada** (15/10/2026): 25 testes sintéticos aprovados
+localmente. A URL inicial `api.mews-demo.com` carregou no navegador, mas
+**nenhuma chamada POST real foi concluída**: o navegador automatizado não
+conseguiu executar a requisição, e o contêiner não resolve o DNS externo.
+Não marcar autenticação ou homologação como concluída.
 
 ## Funções
 
