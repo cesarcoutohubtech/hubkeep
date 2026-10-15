@@ -98,6 +98,34 @@ Se ambos os ambientes negarem autenticação, o próximo passo é solicitar
 uma credencial de demonstração dedicada à Mews, com autorização
 prévia antes de contatá-la.
 
+### HTTP 429 da demo publica — controle de capacidade
+
+Em 15/10/2026 uma nova execução do diagnóstico parou **na primeira chamada**:
+`configuration/get` respondeu `HTTP 429`, Request-Id
+`3ec4cb6b-81f5-4ce5-b5ed-e1e56215ad78`. Isso **não invalida** os
+resultados anteriores da mesma demo (`configuration/get` e
+`resources/getAll` com HTTP 200).
+
+Os tokens da demo são públicos e o limite (atualmente anunciado como 200
+requisições por AccessToken em 30 segundos) é compartilhado por quem utiliza
+aquele token. Portanto, um único POST do HubKeep pode receber 429 devido ao
+tráfego de terceiros. A Mews recomenda o cabeçalho `Retry-After` e um
+backoff conservador: https://docs.mews.com/connector-api/guidelines/requests
+
+A versão atual de `diagnostico-auth-windows.ps1`:
+- apresenta o `RetryAfterSegundos` quando a Mews enviar o cabeçalho e
+  **não refaz a chamada automaticamente**;
+- trata `429` na autenticação como `limite_temporario_429` /
+  `AutenticacaoNestaExecucao=nao_avaliada`;
+- interrompe a sequência ao receber 429 em um endpoint, preservando a
+  contagem efetiva de requisições e as evidências já obtidas.
+
+**Não testar de novo em sequência.** Aguardar o intervalo indicado pela
+Mews e fazer somente uma execução posterior. Se o cabeçalho estiver ausente,
+usar espera progressiva e não repetir em ciclos curtos. O diagnóstico só
+estará finalizado quando a leitura de `resourceBlocks/getAll` tiver
+resposta válida e o erro 400 anterior estiver esclarecido.
+
 ### Evidência real do Windows (15/10/2026)
 
 - Gross `configuration/get`: HTTP 200, identidade da propriedade recuperada.
