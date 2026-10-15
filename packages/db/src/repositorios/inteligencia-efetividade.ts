@@ -13,6 +13,8 @@ export interface OsDaEfetividadeNoBanco extends OsDoJob {
   codigoSolucaoId: string | null;
   /** `app.codigo_manutencao.chave_padrao` do código de solução. */
   codigoSolucaoChave: string | null;
+  /** `app.fornecedor.nome`, quando a OS foi executada por fornecedor. */
+  fornecedorNome: string | null;
 }
 
 export interface ChamadoDaEfetividadeNoBanco {
@@ -25,6 +27,7 @@ export interface ChamadoDaEfetividadeNoBanco {
   abertaEm: Date;
   estado: EstadoDoChamado;
   impactoHospede: boolean | null;
+  descricao: string;
   os: OsDaEfetividadeNoBanco[];
 }
 
@@ -86,6 +89,7 @@ async function chamadosComOs(
         'c.criado_em',
         'c.estado',
         'c.impacto_hospede',
+        'c.descricao',
       ])
       .where('c.id', 'in', [...ids])
       .orderBy('c.id')
@@ -93,6 +97,7 @@ async function chamadosComOs(
     tx
       .selectFrom('app.os as o')
       .leftJoin('app.codigo_manutencao as k', 'k.id', 'o.codigo_solucao_id')
+      .leftJoin('app.fornecedor as f', 'f.id', 'o.fornecedor_id')
       .select([
         'o.id',
         'o.chamado_id',
@@ -101,6 +106,7 @@ async function chamadosComOs(
         'o.codigo_falha_id',
         'o.codigo_solucao_id',
         'k.chave_padrao',
+        'f.nome as fornecedor_nome',
         'o.executado_por',
         'o.fornecedor_id',
         'o.custo_informado',
@@ -129,12 +135,14 @@ async function chamadosComOs(
     abertaEm: data(c.criado_em),
     estado: c.estado as EstadoDoChamado,
     impactoHospede: c.impacto_hospede,
+    descricao: c.descricao,
     os: (doChamado.get(c.id) ?? []).map((o) => ({
       estado: o.estado as EstadoDaOs,
       criadaEm: data(o.criado_em),
       codigoFalha: o.codigo_falha_id,
       codigoSolucaoId: o.codigo_solucao_id,
       codigoSolucaoChave: o.chave_padrao,
+      fornecedorNome: o.fornecedor_nome,
       executadoPor: o.executado_por as ExecutadoPor,
       fornecedorId: o.fornecedor_id,
       custoInformado: o.custo_informado === null ? null : Number(o.custo_informado),
@@ -149,12 +157,12 @@ async function chamadosComOs(
 
 /**
  * Os chamados com ativo cuja OS tem um destes códigos de solução (pelo id ou
- * pela chave padrão) e foi concluída depois de `desde`; com `ativoId`, só os
- * desse ativo. A conclusão final e a OS que vale, o motor decide.
+ * pela chave padrão) e foi concluída depois de `desde`; com `ativoIds`, só os
+ * desses ativos. A conclusão final e a OS que vale, o motor decide.
  */
 export async function intervencoesNoBanco(
   tx: Tx,
-  filtro: { codigos: readonly string[]; desde: Date; ativoId?: string },
+  filtro: { codigos: readonly string[]; desde: Date; ativoIds?: readonly string[] },
 ): Promise<ChamadoDaEfetividadeNoBanco[]> {
   if (!filtro.codigos.length) return [];
   const codigos = [...filtro.codigos];
@@ -185,7 +193,10 @@ export async function intervencoesNoBanco(
           .where('t.quando', '>', filtro.desde),
       ),
     );
-  if (filtro.ativoId) consulta = consulta.where('c.ativo_id', '=', filtro.ativoId);
+  if (filtro.ativoIds) {
+    if (!filtro.ativoIds.length) return [];
+    consulta = consulta.where('c.ativo_id', 'in', [...filtro.ativoIds]);
+  }
   const ids = (await consulta.execute()).map((l) => l.id);
   return chamadosComOs(tx, ids);
 }

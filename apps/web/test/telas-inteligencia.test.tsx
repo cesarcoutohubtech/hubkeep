@@ -7,11 +7,15 @@ import { IDIOMAS, type IdiomaDeExibicao, PSEUDO_IDIOMA, mensagensDe } from '@hub
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { Insight, Nomes } from '../src/app/(painel)/inteligencia/comum';
+import type { Efetividades, Insight, Nomes } from '../src/app/(painel)/inteligencia/comum';
 import { type Abertura, ConteudoDaAbertura } from '../src/app/(painel)/inteligencia/abertura/tela';
 import { ConteudoDoAtivo } from '../src/app/(painel)/inteligencia/ativos/[id]/tela';
 import { ConteudoDoInsight } from '../src/app/(painel)/inteligencia/insights/[id]/tela';
-import { TabelaDeInsights, caminhoDaLista } from '../src/app/(painel)/inteligencia/insights/tela';
+import {
+  SecaoDaEfetividade,
+  TabelaDeInsights,
+  caminhoDaLista,
+} from '../src/app/(painel)/inteligencia/insights/tela';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
 const H1 = '11111111-1111-4111-8111-111111111111';
@@ -87,6 +91,61 @@ const serie = Array.from({ length: 12 }, (_, i) => ({
 
 const nada = async () => undefined;
 
+const C2 = '55555555-5555-4555-8555-555555555552';
+const K = '77777777-7777-4777-8777-777777777777';
+const efetividade: Efetividades = {
+  intervencoes: [
+    {
+      intervencao: {
+        chamadoId: C2,
+        hotelId: H1,
+        bandeiraId: B,
+        ativoId: A,
+        em: '2026-09-05T15:00:00.000Z',
+        codigoSolucaoId: K,
+        executadoPor: 'fornecedor',
+        fornecedorId: null,
+        fornecedorNome: 'Elevadores Sul',
+        custoInformado: 48000,
+        descricao: 'Modernização do elevador',
+      },
+      efetividade: {
+        versao: 3,
+        resultado: 'janela_incompleta',
+        diasDecorridos: 35,
+        metricas: [
+          { chave: 'chamados', antes: 9, depois: 1, variacaoPercentual: -88.9 },
+          { chave: 'reaberturas', antes: 2, depois: 0, variacaoPercentual: -100 },
+          { chave: 'horas_paradas', antes: 96.5, depois: 4, variacaoPercentual: -95.9 },
+        ],
+        custo: {
+          antes: { soma: 7200, informadas: 3, aceitas: 9 },
+          depois: { soma: 300, informadas: 1, aceitas: 1 },
+          suficiente: false,
+          variacaoPercentual: null,
+        },
+        configuracao: {
+          janelaDias: 90,
+          reducaoObservadaPercentual: 60,
+          reducaoParcialPercentual: 25,
+          aumentoObservadoPercentual: 20,
+          minChamadosAntes: 3,
+        },
+      },
+    },
+  ],
+  nomes: {
+    hoteis: { [H1]: 'Hotel Batel' },
+    bandeiras: {},
+    pessoas: {},
+    ativos: { [A]: 'Elevador social 2' },
+  },
+};
+const semEfetividade: Efetividades = {
+  intervencoes: [],
+  nomes: { hoteis: {}, bandeiras: {}, pessoas: {}, ativos: {} },
+};
+
 type PaginaDoInsight = Parameters<typeof ConteudoDoInsight>[0]['pagina'];
 type PaginaDoAtivo = Parameters<typeof ConteudoDoAtivo>[0]['pagina'];
 const IDIOMAS_DO_TESTE: IdiomaDeExibicao[] = [...IDIOMAS, PSEUDO_IDIOMA];
@@ -109,6 +168,7 @@ const insightDeAtencao = (extra: Partial<Insight> = {}): PaginaDoInsight => ({
   chamados: [],
   serie,
   nomes,
+  efetividade,
 });
 
 const sistemico: PaginaDoInsight = {
@@ -152,6 +212,7 @@ const sistemico: PaginaDoInsight = {
   ],
   serie,
   nomes,
+  efetividade: semEfetividade,
 };
 
 const ativo: PaginaDoAtivo = {
@@ -184,6 +245,7 @@ const ativo: PaginaDoAtivo = {
   },
   insights: [base],
   nomes,
+  efetividade,
 };
 
 const fechada: Abertura = {
@@ -205,6 +267,8 @@ describe('telas do Intelligence em todos os idiomas, sem chave crua', () => {
       renderizar(idioma, <ConteudoDoInsight pagina={sistemico} aoDecidir={nada} />),
       renderizar(idioma, <ConteudoDoAtivo pagina={ativo} />),
       renderizar(idioma, <ConteudoDaAbertura abertura={fechada} aoGravar={nada} />),
+      renderizar(idioma, <SecaoDaEfetividade efetividade={efetividade} />),
+      renderizar(idioma, <SecaoDaEfetividade efetividade={semEfetividade} />),
     ].join('');
     expect(html).not.toMatch(/inteligencia\.[a-z_]+\.[a-z_]/);
     expect(html).toContain('Elevador social 2');
@@ -289,6 +353,71 @@ describe('o detalhe do ativo', () => {
       <ConteudoDoAtivo pagina={{ ...ativo, atual: null, serie: [] }} />,
     );
     expect(html).toContain('Ainda não há resultado gravado para Elevador social 2');
+  });
+});
+
+describe('a efetividade das intervenções (adendo ao ADR-033)', () => {
+  it('a seção da lista: o chamado, quem executou, o custo da OS, antes e depois e a ressalva', () => {
+    const html = renderizar('pt-BR', <SecaoDaEfetividade efetividade={efetividade} />);
+    expect(html).toContain('Efetividade das intervenções');
+    expect(html).toContain('Modernização do elevador');
+    expect(html).toContain('Executada pelo fornecedor Elevadores Sul');
+    expect(html).toContain('Custo da OS:');
+    expect(html).toContain(`href="/inteligencia/ativos/${A}"`);
+    expect(html).toContain('janela em curso');
+    expect(html).toContain('96,5 → 4');
+    expect(html).toContain('Janela incompleta');
+    expect(html).toContain('Passaram 35 de 90 dias depois da intervenção.');
+    expect(html).toContain('não prova que a intervenção foi a causa');
+  });
+
+  it('o custo abaixo de 50% em um dos lados: dados insuficientes, com a cobertura', () => {
+    const html = renderizar('pt-BR', <SecaoDaEfetividade efetividade={efetividade} />);
+    expect(html).toContain('Dados insuficientes');
+    expect(html).toContain('Custo informado em 3 de 9 OS antes e em 1 de 1 OS depois.');
+  });
+
+  it('o custo suficiente: as duas somas', () => {
+    const [linha] = efetividade.intervencoes;
+    if (!linha) throw new Error('sem linha');
+    const suficiente: Efetividades = {
+      ...efetividade,
+      intervencoes: [
+        {
+          ...linha,
+          efetividade: {
+            ...linha.efetividade,
+            custo: { ...linha.efetividade.custo, suficiente: true, variacaoPercentual: -95.8 },
+          },
+        },
+      ],
+    };
+    const html = renderizar('pt-BR', <SecaoDaEfetividade efetividade={suficiente} />);
+    expect(html).not.toContain('Dados insuficientes');
+    expect(html).toMatch(/R\$\s?7\.200,00 → R\$\s?300,00/);
+  });
+
+  it('sem intervenção: a seção da lista e a do ativo dizem que não há; a do insight não aparece', () => {
+    expect(renderizar('pt-BR', <SecaoDaEfetividade efetividade={semEfetividade} />)).toContain(
+      'Nenhuma intervenção concluída nos últimos 180 dias',
+    );
+    expect(
+      renderizar('pt-BR', <ConteudoDoAtivo pagina={{ ...ativo, efetividade: semEfetividade }} />),
+    ).toContain('Nenhuma intervenção concluída neste ativo nos últimos 180 dias.');
+    const html = renderizar('pt-BR', <ConteudoDoInsight pagina={sistemico} aoDecidir={nada} />);
+    expect(html).not.toContain('Efetividade da intervenção');
+  });
+
+  it('no ativo e no insight, a mesma tabela', () => {
+    expect(renderizar('pt-BR', <ConteudoDoAtivo pagina={ativo} />)).toContain(
+      'Intervenções neste ativo',
+    );
+    const html = renderizar(
+      'pt-BR',
+      <ConteudoDoInsight pagina={insightDeAtencao()} aoDecidir={nada} />,
+    );
+    expect(html).toContain('Efetividade da intervenção');
+    expect(html).toContain('Intervenções concluídas depois da primeira detecção do insight, em');
   });
 });
 

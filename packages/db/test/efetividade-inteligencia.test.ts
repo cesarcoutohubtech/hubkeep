@@ -247,6 +247,7 @@ describe.skipIf(!temBanco)('a leitura da efetividade do Intelligence', { timeout
       bandeiraId: null,
       ativoId: A1,
       estado: 'concluido',
+      descricao: 'Parado',
     });
     expect(troca?.os).toHaveLength(1);
     expect(troca?.os[0]).toMatchObject({
@@ -254,6 +255,7 @@ describe.skipIf(!temBanco)('a leitura da efetividade do Intelligence', { timeout
       codigoSolucaoId: K.troca,
       codigoSolucaoChave: TROCA,
       custoInformado: 48000,
+      fornecedorNome: null,
     });
     expect(troca?.os[0]?.transicoes.map((t) => t.acao)).toEqual(['concluir', 'aceitar']);
     const doGrupo = todas.find((c) => c.id === C.doGrupo);
@@ -262,7 +264,7 @@ describe.skipIf(!temBanco)('a leitura da efetividade do Intelligence', { timeout
     const doAtivo = await porta.intervencoes(ctx(U.admin), {
       codigos,
       desde: antes(180),
-      ativoId: A1,
+      ativoIds: [A1],
     });
     expect(ids(doAtivo)).toEqual([C.troca, C.doGrupo].sort());
     const soAChave = await porta.intervencoes(ctx(U.admin), {
@@ -271,6 +273,9 @@ describe.skipIf(!temBanco)('a leitura da efetividade do Intelligence', { timeout
     });
     expect(ids(soAChave)).toEqual([C.troca, C.velha, C.noH2].sort());
     expect(await porta.intervencoes(ctx(U.admin), { codigos: [], desde: antes(180) })).toEqual([]);
+    expect(
+      await porta.intervencoes(ctx(U.admin), { codigos, desde: antes(180), ativoIds: [] }),
+    ).toEqual([]);
   });
 
   it('o Gerente lê só as do próprio hotel (RLS do chamado)', async () => {

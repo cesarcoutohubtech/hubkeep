@@ -88,7 +88,7 @@ export interface PortaDoPainelDoIntelligence {
   politicasDaEfetividade(ctx: Contexto): Promise<PoliticaDoJob[]>;
   intervencoes(
     ctx: Contexto,
-    filtro: { codigos: readonly string[]; desde: Date; ativoId?: string },
+    filtro: { codigos: readonly string[]; desde: Date; ativoIds?: readonly string[] },
   ): Promise<ChamadoDaEfetividadeNoBanco[]>;
   historicoDosAtivos(
     ctx: Contexto,

@@ -1,7 +1,8 @@
 'use client';
 // Lista de insights do HubKeep Intelligence (proposta das telas do 1.0, tela
 // 1): os quatro indicadores, os filtros (estado, tipo, faixa e hotel) e a
-// tabela dos insights que quem vê decide (a API recorta pela RLS). Sem o
+// tabela dos insights que quem vê decide (a API recorta pela RLS), e, abaixo
+// dela, a efetividade das intervenções (adendo ao ADR-033, 15/10/2026). Sem o
 // módulo ou sem papel que decide, a API responde 404 inteligencia_indisponivel.
 import type {
   RespostaDeHoteis,
@@ -25,8 +26,10 @@ import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { Aviso } from '../../../../cliente/aviso';
 import { useT } from '../../../../i18n/cliente';
 import {
+  type Efetividades,
   SeloDaFaixa,
   SeloDoEstado,
+  TabelaDeEfetividade,
   useDatas,
   useEscopoDoInsight,
   useTituloDoInsight,
@@ -75,6 +78,7 @@ export function TelaDeInsights() {
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [hoteis, setHoteis] = useState<Hoteis['hoteis']>([]);
   const [lista, setLista] = useState<Lista | null>(null);
+  const [efetividade, setEfetividade] = useState<Efetividades | null>(null);
   const [erro, setErro] = useState<ErroDaApi | null>(null);
   // Só o Admin do grupo lê a abertura das telas: para ele, o link.
   const [veAbertura, setVeAbertura] = useState(false);
@@ -85,6 +89,9 @@ export function TelaDeInsights() {
     );
     void chamarApi('/api/v1/inteligencia/abertura').then((r) => setVeAbertura(r.ok));
     void chamarApi<Hoteis>('/api/v1/hoteis').then((r) => r.ok && setHoteis(r.dados.hoteis));
+    void chamarApi<Efetividades>('/api/v1/inteligencia/efetividade').then((r) =>
+      r.ok ? setEfetividade(r.dados) : setErro(r.erro),
+    );
   }, []);
 
   const carregar = useCallback(async (f: Filtro) => {
@@ -201,7 +208,24 @@ export function TelaDeInsights() {
         )}
         <p className="hk-suave">{t('inteligencia.lista.rodape')}</p>
       </Painel>
+      {efetividade && <SecaoDaEfetividade efetividade={efetividade} />}
     </div>
+  );
+}
+
+/** A seção abaixo da lista: as intervenções dos hotéis em que a pessoa decide. */
+export function SecaoDaEfetividade({ efetividade }: { efetividade: Efetividades }) {
+  const t = useT();
+  return (
+    <Painel
+      titulo={t('inteligencia.efetividade.lista.titulo')}
+      dica={t('inteligencia.efetividade.dica')}
+    >
+      <TabelaDeEfetividade
+        efetividade={efetividade}
+        vazio={t('inteligencia.efetividade.lista.vazio')}
+      />
+    </Painel>
   );
 }
 
