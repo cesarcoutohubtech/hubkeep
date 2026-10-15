@@ -201,6 +201,8 @@ export interface CasosDeUsoDeTriagem {
   ): Promise<{ versao: number; versaoDoChamado: number | null; paradaId: string | null }>;
   /** As OS do chamado visíveis a quem pede (RLS), da mais antiga para a mais nova. */
   osDoChamado(ctx: Contexto, chamadoId: string): Promise<OsDaCorretiva[]>;
+  /** A OS por id, a corretiva ou a preventiva (PV3c); 404 os_nao_encontrada se não é visível. */
+  os(ctx: Contexto, osId: string): Promise<OsGravada>;
 }
 
 /** As regras que o teste de aceite troca para provar a RLS sozinha. */
@@ -703,5 +705,11 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
     // Quem vê o chamado vê as OS dele (policy de app.os); a rota confere o chamado antes.
     osDoChamado: (ctx, chamadoId) => deps.triagem.osDoChamado(ctx, chamadoId),
+
+    async os(ctx, osId) {
+      const os = await deps.triagem.os(ctx, osId);
+      if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
+      return os;
+    },
   };
 }

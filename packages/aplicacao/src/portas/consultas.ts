@@ -31,7 +31,10 @@ export interface OsResumida {
   id: string;
   hotelId: string;
   hotelNome: string | null;
-  chamadoId: string;
+  /** O chamado da corretiva; null na preventiva (PV3c). */
+  chamadoId: string | null;
+  /** A preventiva: o plano (nome da cópia), a data prevista e o ativo; null na corretiva. */
+  preventiva: { planoNome: string; dataPrevista: string; ativoNome: string | null } | null;
   localNome: string | null;
   /** Do chamado; null se quem pede lê a OS e não o chamado. */
   descricao: string | null;
@@ -81,6 +84,11 @@ export interface PortaConsultasDaCorretiva {
   os(ctx: Contexto, filtro: FiltroDaLista, limite: number): Promise<OsResumida[]>;
   /** null se o chamado não é visível a quem pede. */
   nomesDoChamado(ctx: Contexto, chamadoId: string): Promise<NomesDoChamado | null>;
+  /**
+   * Os nomes da página da OS (PV3c): o hotel, o local e o ativo da OS, e o
+   * responsável e o fornecedor dela; null se a OS não é visível.
+   */
+  nomesDaOs(ctx: Contexto, osId: string): Promise<NomesDoChamado | null>;
   /** Da mais antiga para a mais nova; só o que a auditoria mostra a quem pede (RLS). */
   linhaDoTempo(ctx: Contexto, chamadoId: string): Promise<EventoDaLinhaDoTempo[]>;
 }

@@ -55,6 +55,8 @@ export interface ChamadoParaTriagem {
 /** A OS preventiva (PV3, ADR-041): o plano, o ativo e a data prevista da ocorrência. */
 export interface PreventivaDaOs {
   planoId: string;
+  /** O nome do plano na cópia gravada na OS (ADR-026). */
+  planoNome: string;
   ativoId: string;
   /** AAAA-MM-DD, no fuso do hotel. */
   dataPrevista: string;

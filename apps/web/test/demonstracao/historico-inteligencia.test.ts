@@ -28,10 +28,12 @@ import { describe, expect, it } from 'vitest';
 import {
   type ChamadoDoRoteiro,
   FUSO_DO_HISTORICO,
+  MOMENTO_DO_JOB,
   type MomentoDoJob,
   type RoteiroDoHistorico,
   VOLUME_COMPLETO,
   VOLUME_CURTO,
+  VOLUME_MINIMO,
   cenarioDoInsight,
   decisoesDoDia,
   estadoAposPasso,
@@ -194,16 +196,23 @@ async function simular(r: RoteiroDoHistorico, momento: MomentoDoJob) {
 // dois testes têm por isso um limite próprio, porque qualquer um pode ser o
 // primeiro a pedi-la (com -t, por exemplo).
 const LIMITE_DA_SIMULACAO_MS = 20_000;
-const simulacoes = new Map<MomentoDoJob, ReturnType<typeof simular>>();
-function simulacaoDoRoteiroCurto(momento: MomentoDoJob) {
-  let s = simulacoes.get(momento);
+const simulacoes = new Map<string, ReturnType<typeof simular>>();
+function simulacaoDoRoteiro(momento: MomentoDoJob, volume = VOLUME_CURTO) {
+  const chave = `${momento}:${JSON.stringify(volume)}`;
+  let s = simulacoes.get(chave);
   if (!s) {
-    s = simular(roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO }), momento);
-    simulacoes.set(momento, s);
+    s = simular(roteiroDoHistorico({ fim: FIM, volume }), momento);
+    simulacoes.set(chave, s);
   }
   return s;
 }
 const MOMENTOS: readonly MomentoDoJob[] = ['como_em_producao', 'fim_do_dia_local'];
+// O roteiro curto nos dois momentos do job; o mínimo (o do teste da gravação no
+// banco) no momento padrão.
+const VOLUMES_E_MOMENTOS = [
+  ...MOMENTOS.map((momento) => ({ nome: 'curto', volume: VOLUME_CURTO, momento })),
+  { nome: 'mínimo', volume: VOLUME_MINIMO, momento: MOMENTO_DO_JOB },
+];
 
 describe('roteiro do histórico de demonstração do Intelligence', () => {
   it('é determinístico: a mesma semente e o mesmo fim dão o mesmo roteiro', () => {
@@ -252,11 +261,11 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
     }
   });
 
-  it.each(MOMENTOS)(
-    'cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum (job: %s)',
-    async (momento) => {
-      const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
-      const { insights } = await simulacaoDoRoteiroCurto(momento);
+  it.each(VOLUMES_E_MOMENTOS)(
+    'cada cenário abre o insight esperado e termina no estado do roteiro; o ruído não abre nenhum (roteiro $nome, job: $momento)',
+    async ({ volume, momento }) => {
+      const r = roteiroDoHistorico({ fim: FIM, volume });
+      const { insights } = await simulacaoDoRoteiro(momento, volume);
       const inesperados = insights.filter((i) => i.cenario?.startsWith('inesperado:'));
       expect(inesperados.map((i) => `${i.cenario} em ${i.abertoNoDia}`)).toEqual([]);
       for (const c of r.cenarios.filter((x) => x.alvo)) {
@@ -275,7 +284,7 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
     'a reincidência, a substituição e a efetividade aparecem nos ativos dos cenários (job: %s)',
     async (momento) => {
       const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
-      const { metricas } = await simulacaoDoRoteiroCurto(momento);
+      const { metricas } = await simulacaoDoRoteiro(momento);
       const agora = fimDoDia(FIM);
       const cenario = (chave: string) => r.cenarios.find((c) => c.chave === chave);
 

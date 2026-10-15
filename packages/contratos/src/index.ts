@@ -122,6 +122,8 @@ export {
   PedidoDeTriagem,
   ResponsavelApi,
   RespostaDeChamado,
+  OsDaPaginaApi,
+  RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
   RespostaDeOsGravada,

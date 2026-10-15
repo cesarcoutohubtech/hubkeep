@@ -296,3 +296,33 @@ export function validarAlvoDoPlano(a: {
     throw new RegraViolada('plano_alvo_invalido', 'O plano tem um alvo: o ativo ou a categoria.');
   }
 }
+
+// ---------------------------------------------------------------------------
+// Plano sugerido pelo modelo do ativo (M1)
+// ---------------------------------------------------------------------------
+
+/** O que a regra precisa de cada plano do hotel do ativo. */
+export interface PlanoQueCobre {
+  ativoId: string | null;
+  categoriaId: string | null;
+  situacao: SituacaoDoPlano;
+}
+
+/**
+ * O hotel já tem plano que cobre o ativo? Se tem, a sugestão de plano do
+ * modelo não nasce, para não duplicar (Cesar, 15/10/2026). Contam, ativos ou
+ * pausados: o plano por categoria da categoria do ativo e o plano no próprio
+ * ativo. Não contam o plano em outro ativo da mesma categoria, que não cobre o
+ * ativo novo, nem o plano encerrado. A lista são os planos do hotel do ativo.
+ */
+export function hotelJaTemPlanoQueCobreOAtivo(
+  ativo: { id: string; categoriaId: string | null },
+  planosDoHotel: readonly PlanoQueCobre[],
+): boolean {
+  return planosDoHotel.some(
+    (p) =>
+      (p.situacao === 'ativo' || p.situacao === 'pausado') &&
+      (p.ativoId === ativo.id ||
+        (p.ativoId === null && ativo.categoriaId !== null && p.categoriaId === ativo.categoriaId)),
+  );
+}
