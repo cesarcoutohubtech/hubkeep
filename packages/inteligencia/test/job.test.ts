@@ -238,7 +238,7 @@ describe('executarDiaDoTenant: o registro de cada execução', () => {
       {
         ...r,
         disparadoPor: 'cron',
-        versoesDeFormula: { reincidencia: 3, atencao: 4, sistemico: 3 },
+        versoesDeFormula: { reincidencia: 3, atencao: 4, sistemico: 4 },
         versoesDePolitica: { h1: 'hotel:p1@2026-09-01', h2: 'padrao', h3: 'padrao' },
       },
     ]);
@@ -350,6 +350,8 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
     fabricante: 'Trane',
     modelo: 'T9',
   });
+  // Quatro do modelo sem chamado: a população do modelo chega aos 10 do mínimo (v4).
+  const instalados = ['s1', 's2', 's3', 's4'].map((id) => modelo(id, 'h1'));
   // Seis ativos em três hotéis (os mínimos do mesmo modelo); um quarto hotel entra depois.
   const hoteisDoModelo: HotelDoDia[] = [...hoteis, { hotelId: 'h4', bandeiraId: 'b2' }];
   const cinco = [
@@ -364,7 +366,7 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
   it('o novo conjunto abre outro insight, ligado ao anterior, e os dois ficam abertos', async () => {
     const { banco, dados, portas } = cenario({
       hoteis: hoteisDoModelo,
-      ativos: [...cinco, base],
+      ativos: [...cinco, ...instalados, base],
       corretivas: cinco.map(falha),
     });
     await executarDiaDoTenant(portas, { agora });
@@ -373,7 +375,7 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
     expect(sistemicos()[0]).toMatchObject({ hotelIds: ['h1', 'h2', 'h3'], anteriorId: null });
 
     const m7 = modelo('m7', 'h4');
-    dados.ativos = [...cinco, m7, base];
+    dados.ativos = [...cinco, m7, ...instalados, base];
     dados.corretivas = [...cinco, m7].map(falha);
     await executarDiaDoTenant(portas, { agora: dia(1) });
 
@@ -392,13 +394,13 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
     const todos = [...cinco, m7];
     const { banco, dados, portas } = cenario({
       hoteis: hoteisDoModelo,
-      ativos: [...todos, base],
+      ativos: [...todos, ...instalados, base],
       corretivas: todos.map(falha),
     });
     await executarDiaDoTenant(portas, { agora });
     const antes = banco.insights.map((i) => ({ ...i }));
 
-    dados.ativos = [...cinco, base];
+    dados.ativos = [...cinco, ...instalados, base];
     dados.corretivas = cinco.map(falha);
     const r = await executarDiaDoTenant(portas, { agora: dia(1) });
     expect(r).toMatchObject({ insightsAbertos: 0, insightsAtualizados: 0, insightsIgnorados: 1 });
@@ -408,7 +410,7 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
   it('descartado "não relevante" silencia a família por 30 dias; "substituído" não', async () => {
     const { banco, portas } = cenario({
       hoteis: hoteisDoModelo,
-      ativos: [...cinco, base],
+      ativos: [...cinco, ...instalados, base],
       corretivas: cinco.map(falha),
     });
     await executarDiaDoTenant(portas, { agora });

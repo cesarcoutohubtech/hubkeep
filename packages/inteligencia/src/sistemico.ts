@@ -30,6 +30,15 @@
 // A versão 3 (glossário de métricas versão 3, divergência b, 13/10/2026) tira
 // da conta todo chamado cancelado; na 2, o cancelado com OS entrava.
 // O que já foi gravado com a 2 não é recalculado (ADR-036).
+//
+// A versão 4 (Kaio, 15/10/2026, ADR-033) traz os dois ajustes das
+// observações do histórico de demonstração:
+// - o crescimento só vale no hotel com duas janelas completas de dados,
+//   contadas do primeiro chamado dele; antes disso, a janela anterior cobre só
+//   parte do tempo, e quase todo código parece crescer;
+// - o mesmo modelo exige população mínima (10 ativos instalados do modelo),
+//   3 ativos distintos com chamado e pelo menos 30% da população com chamado:
+//   com poucos ativos por modelo, poucos chamados bastavam para dobrar a base.
 import {
   type AtivoAnalisado,
   type Corretiva,
@@ -39,7 +48,7 @@ import {
 } from './historico';
 import { DIA_MS } from './score';
 
-export const VERSAO_SISTEMICO = 3;
+export const VERSAO_SISTEMICO = 4;
 
 export interface ConfigSistemico {
   mesmoModelo: {
@@ -50,6 +59,16 @@ export interface ConfigSistemico {
     minChamados: number;
     /** Ativos distintos do modelo com chamado na janela. */
     minAtivos: number;
+    /**
+     * Ativos instalados do modelo na janela (v4). Ausente na política gravada
+     * antes da v4: vale o padrão.
+     */
+    minPopulacao?: number;
+    /**
+     * Percentual mínimo da população do modelo com chamado na janela (v4).
+     * Ausente na política gravada antes da v4: vale o padrão.
+     */
+    percentualMinimoAfetado?: number;
     janelaDias: number;
     /** A taxa do modelo precisa ser de pelo menos esta vez a da base. */
     taxaMinimaVezesBase: number;
@@ -78,7 +97,9 @@ export const PADRAO_SISTEMICO: ConfigSistemico = {
     ativa: true,
     minHoteis: 3,
     minChamados: 6,
-    minAtivos: 5,
+    minAtivos: 3,
+    minPopulacao: 10,
+    percentualMinimoAfetado: 30,
     janelaDias: 90,
     taxaMinimaVezesBase: 2,
     taxaMinima: 0.3,
@@ -95,9 +116,25 @@ export const PADRAO_SISTEMICO: ConfigSistemico = {
   crescimento: { ativa: false, percentual: 50, minAtual: 5, janelaDias: 30 },
 };
 
+/** Os dois campos da v4, com o padrão quando a política gravada não os tem. */
+export function minimosDaPopulacao(m: ConfigSistemico['mesmoModelo']): {
+  minPopulacao: number;
+  percentualMinimoAfetado: number;
+} {
+  const padrao = PADRAO_SISTEMICO.mesmoModelo;
+  return {
+    minPopulacao: m.minPopulacao ?? (padrao.minPopulacao as number),
+    percentualMinimoAfetado:
+      m.percentualMinimoAfetado ?? (padrao.percentualMinimoAfetado as number),
+  };
+}
+
 /**
  * Os mínimos só fazem sentido como inteiros de pelo menos 1, e a taxa e a
- * razão contra a base não podem ser negativas. Conferido ao gravar a política.
+ * razão contra a base não podem ser negativas. O percentual afetado fica
+ * entre 0 e 100. Os campos da v4 podem faltar (vale o padrão), para a
+ * política gravada antes dela continuar valendo. Conferido ao gravar a
+ * política e ao resolvê-la.
  */
 export function configSistemicoValida(c: ConfigSistemico): boolean {
   const inteiro = (n: number) => Number.isInteger(n) && n >= 1;
@@ -106,6 +143,11 @@ export function configSistemicoValida(c: ConfigSistemico): boolean {
     inteiro(m.minHoteis) &&
     inteiro(m.minChamados) &&
     inteiro(m.minAtivos) &&
+    (m.minPopulacao === undefined || inteiro(m.minPopulacao)) &&
+    (m.percentualMinimoAfetado === undefined ||
+      (typeof m.percentualMinimoAfetado === 'number' &&
+        m.percentualMinimoAfetado >= 0 &&
+        m.percentualMinimoAfetado <= 100)) &&
     inteiro(m.janelaDias) &&
     m.taxaMinimaVezesBase > 0 &&
     m.taxaMinima >= 0 &&
@@ -142,8 +184,13 @@ export interface SinalSistemico {
     corretivaIds: readonly string[];
     anterior?: number;
     variacaoPercentual?: number;
-    /** Mesmo modelo: os ativos instalados do modelo, a taxa dele e a da base (chamados por ativo na janela). */
+    /**
+     * Mesmo modelo: os ativos instalados do modelo (a população), o percentual
+     * dela com chamado (v4), a taxa do modelo e a da base (chamados por ativo
+     * na janela).
+     */
     ativosDoModelo?: number;
+    percentualAfetado?: number;
     taxaPorAtivo?: number;
     basePorAtivo?: number;
     /** Mesmo fornecedor: OS concluídas com volta, a taxa e a da equipe interna. */
@@ -157,6 +204,12 @@ export interface EntradaSistemico {
   corretivas: readonly Corretiva[];
   ativos: readonly AtivoAnalisado[];
   locais: readonly LocalAnalisado[];
+  /**
+   * O chamado mais antigo de cada hotel entre os que o job leu, com o
+   * cancelado (`primeiroChamadoPorHotel`, fonte.ts). Vale o mais antigo entre
+   * ele e a corretiva mais antiga do hotel na entrada; ausente, só a corretiva.
+   */
+  primeiroChamadoPorHotel?: ReadonlyMap<string, Date>;
 }
 
 const unicos = (xs: readonly string[]) => [...new Set(xs)].sort();
@@ -196,6 +249,7 @@ export function detectarSistemicos(
   // O ativo baixado antes do início da janela também fica de fora, com os
   // chamados dele.
   const mm = config.mesmoModelo;
+  const { minPopulacao, percentualMinimoAfetado } = minimosDaPopulacao(mm);
   const inicioDoModelo = agora.getTime() - mm.janelaDias * DIA_MS;
   const naJanelaDoAtivo = (a: AtivoAnalisado): boolean =>
     !a.desativadoEm || a.desativadoEm.getTime() > inicioDoModelo;
@@ -231,8 +285,14 @@ export function detectarSistemicos(
       if (hotelIds.length < mm.minHoteis || cs.length < mm.minChamados || distintos < mm.minAtivos)
         continue;
       const doModelo = (instalados.get(k) ?? []).length;
+      // A população é a dos ativos instalados do modelo; o ativo com chamado
+      // na janela conta mesmo se a leitura não o trouxe como instalado.
+      const populacao = Math.max(doModelo, distintos);
+      // A conta do percentual é exata; o arredondado fica só na evidência.
+      if (populacao < minPopulacao || distintos * 100 < percentualMinimoAfetado * populacao)
+        continue;
       const categoria = naBaseDaCategoria.get(categoriaId) as { ativos: number; chamados: number };
-      const taxa = cs.length / Math.max(doModelo, distintos);
+      const taxa = cs.length / populacao;
       const ativosDaBase = categoria.ativos - doModelo;
       // Sem outro modelo instalado na categoria, não há com o que comparar.
       if (ativosDaBase <= 0) continue;
@@ -249,7 +309,8 @@ export function detectarSistemicos(
           janelaDias: mm.janelaDias,
           hotelIds,
           corretivaIds: cs.map((c) => c.id),
-          ativosDoModelo: Math.max(doModelo, distintos),
+          ativosDoModelo: populacao,
+          percentualAfetado: percentual(distintos, populacao),
           taxaPorAtivo: Math.round(taxa * 100) / 100,
           basePorAtivo: Math.round(base * 100) / 100,
         },
@@ -353,8 +414,19 @@ export function detectarSistemicos(
     });
   }
 
-  // Crescimento da mesma falha no hotel, contra a janela anterior de igual tamanho.
+  // Crescimento da mesma falha no hotel, contra a janela anterior de igual
+  // tamanho. Só no hotel com duas janelas completas de dados, contadas do
+  // primeiro chamado dele (v4): antes, a janela anterior cobre só parte do tempo.
   const cr = config.crescimento;
+  const primeiroDoHotel = new Map(e.primeiroChamadoPorHotel ?? []);
+  for (const c of e.corretivas) {
+    const antes = primeiroDoHotel.get(c.hotelId);
+    if (!antes || c.abertaEm.getTime() < antes.getTime())
+      primeiroDoHotel.set(c.hotelId, c.abertaEm);
+  }
+  const limiteDoPrimeiro = agora.getTime() - 2 * cr.janelaDias * DIA_MS;
+  const comDuasJanelas = (hotelId: string) =>
+    (primeiroDoHotel.get(hotelId)?.getTime() ?? Infinity) <= limiteDoPrimeiro;
   const chaveHotel = (c: Corretiva) => {
     const falha = falhaDe(c);
     return falha ? `${c.hotelId}#${falha}` : null;
@@ -371,6 +443,7 @@ export function detectarSistemicos(
     const variacaoPercentual = percentual(cs.length - antes, antes);
     if (variacaoPercentual < cr.percentual) continue;
     const [hotelId, falha] = k.split('#') as [string, string];
+    if (!comDuasJanelas(hotelId)) continue;
     sinais.push({
       regra: 'crescimento_categoria',
       situacao: 'possivel',

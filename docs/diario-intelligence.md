@@ -1983,3 +1983,85 @@ A otimização do job fica adiada. O gatilho para reabrir é uma rodada acima de
   - **Cesar:** o merge do PR do retry e a confirmação escrita do item 3 (o módulo no piloto desde o primeiro dia).
   - **Cesar ou Kaio:** a saída final da gravação no dev (grupo, estados dos cenários e tempo total).
 - **Próximo:** a proposta de desenho dos dois ajustes do motor, para o Kaio aprovar antes do código. O primeiro passo é ler a política `inteligencia.sistemico` e a regra de crescimento em `packages/inteligencia`.
+
+## A gravação do histórico no dev terminou (15/10/2026)
+
+Pela saída no notebook do Cesar (print enviado nesta sessão em 15/10/2026):
+- **Grupo:** `634ad71d-d946-4deb-8e31-a007f16cd21b`, com 4.314 chamados.
+- **Os 8 cenários com insight terminaram no estado do roteiro:**
+  - em ação: fornecedor e caldeira;
+  - aceito: modelo;
+  - em revisão: crescimento;
+  - novo: área (novo);
+  - resolvido: elevador e andar;
+  - descartado: área (descartado).
+- **"138 dias calculados, 16 decisões"** conta só o que esta rodada gravou. Os outros dias do histórico foram calculados na rodada de 14/10, que caiu, e o job não grava de novo um dia já calculado.
+- **Tempo:** 3h43m46s em 15/10, das 08:23 às 12:07, sem queda.
+  - Essa rodada começou antes do #283, então passou de novo, uma a uma, pelas cerca de 9 mil operações que já estavam gravadas.
+  - Somada aos 51 minutos de 14/10, a gravação levou umas 4h35m.
+  - Gravando direto, sem queda, a estimativa é de 3 a 3,5 horas.
+- O `docs/piloto/README.md` registra o tempo e como retomar.
+
+## Os dois ajustes do motor: sistêmico versão 4 (15/10/2026)
+
+"Kaio aqui", nesta sessão, 15/10/2026: "Aprovo proposta dos dois ajustes do motor". É detalhe dentro do ADR-033.
+
+Os três pontos que a proposta deixou em aberto não foram respondidos. Seguem a frase do Kaio ao pé da letra:
+- os 3 ativos afetados trocam o mínimo de 5;
+- os 30% valem para qualquer tamanho de frota;
+- a evidência ganha "de P instalados".
+
+Qualquer um deles muda antes do merge, se o Kaio pedir.
+
+**Crescimento:**
+- Só vale no hotel cujo primeiro chamado foi aberto até `agora − 2 × janelaDias`, ou seja, 60 dias atrás com o padrão.
+- O primeiro chamado é o mais antigo dos que o job já lê, contando o cancelado (`primeiroChamadoPorHotel`, `fonte.ts`). Sem esse dado, vale a corretiva mais antiga da entrada.
+- A leitura do job vai sempre além das duas janelas (`inicioDaLeitura`). O hotel sem nenhum chamado entre 12 meses e 60 dias atrás é tratado como novo: a regra só demora a começar.
+- As duas janelas ficam fixas no código, sem campo na política.
+
+**Mesmo modelo:**
+- Dois campos novos na política `inteligencia.sistemico.mesmoModelo`:
+  - `minPopulacao: 10`: os ativos instalados do modelo na janela;
+  - `percentualMinimoAfetado: 30`: os ativos distintos com chamado sobre a população. A conta é exata; o arredondado fica só na evidência.
+- `minAtivos` passa de 5 para 3.
+- Continuam como estão os 3 hotéis, os 6 chamados em 90 dias e a taxa de pelo menos o dobro da base, nunca menos de 0,3.
+- **A política gravada antes da v4 continua valendo:**
+  - Os dois campos novos podem faltar e, ausentes, vale o padrão (`CAMPOS_QUE_PODEM_FALTAR` em `politicas.ts`; `minimosDaPopulacao` em `sistemico.ts`).
+  - Sem isso, a validação exigia as mesmas chaves do padrão, e o resolvedor voltaria ao padrão. O grupo de demonstração ficaria com quatro das cinco regras desligadas.
+  - O `minAtivos: 5` que já está gravado na política do grupo de demonstração continua valendo lá.
+- A evidência ganha o `percentualAfetado`. A frase do catálogo ganha "(de P instalados)" nos quatro idiomas, com `populacao` vinda de `ativosDoModelo`.
+
+**Versão:**
+- `VERSAO_SISTEMICO` passa a 4. O que já foi gravado com a 3 não é recalculado (ADR-036).
+- No glossário de métricas foram atualizadas as linhas do sinal sistêmico, da taxa do modelo e do crescimento.
+
+**Na demonstração:**
+- O Polar Inverter 18000 tem 12 ativos, todos com chamado (100%), então passa.
+- Os modelos das áreas comuns têm menos de 10 ativos e deixam de poder disparar.
+- O aquecimento de 60 dias já cumpre o crescimento.
+- O teste do roteiro passou sem mudança.
+
+**Testes:**
+- `packages/inteligencia`: 296 passaram. Os casos novos cobrem:
+  - a população de 9 e de 10;
+  - 30% no limite (3 de 10), 3 de 11 e a conta exata (299 e 300 de 1000);
+  - os 3 ativos distintos;
+  - a política antiga, sem os campos novos;
+  - o crescimento com primeiro chamado a 59 e a 60 dias, o mais antigo entre o mapa e a corretiva, a conta por hotel e a janela de 45 dias;
+  - a validação dos campos novos;
+  - `primeiroChamadoPorHotel`.
+- Os testes do job e do dia que usavam parques de 6 ativos ganharam 4 ativos do modelo sem chamado, para a população chegar a 10.
+- `apps/web`: 413 passaram e 56 foram pulados (os que pedem banco).
+- Na raiz: 553 passaram.
+- `packages/i18n`: 80 passaram.
+- Typecheck, ESLint e Prettier passaram.
+
+### Ponto de retomada (15/10/2026, sistêmico v4)
+
+- **`main`:** em `f6d4d66` (#283).
+- **Dev:** com o histórico completo gravado em 15/10, com a versão 3 do sistêmico. O job do dev passa a gravar a versão 4 depois do merge.
+- **Nesta branch:** os dois ajustes do motor e o tempo da gravação. É um PR `int:`, fora da zona protegida.
+- **Esperando:**
+  - **Cesar:** o merge deste PR e a confirmação escrita do item 3 (o módulo no piloto desde o primeiro dia).
+  - **Kaio:** se quiser, mudar algum dos três pontos acima antes do merge.
+- **Próximo:** a proposta de desenho da tela da efetividade, para Cesar e Kaio. O primeiro passo é ler `efetividade.ts` e o mock (`docs/referencia/design/csc-mock`).

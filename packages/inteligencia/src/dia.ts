@@ -124,6 +124,8 @@ export interface EntradaDoDia {
   locais: readonly LocalAnalisado[];
   /** Política do grupo: o sinal sistêmico cruza hotéis. */
   sistemico?: ConfigSistemico;
+  /** O chamado mais antigo de cada hotel entre os lidos, com o cancelado (sistêmico v4). */
+  primeiroChamadoPorHotel?: ReadonlyMap<string, Date>;
 }
 
 export interface ResultadoDoAtivo {
@@ -279,7 +281,12 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
   }
 
   const sistemicos = detectarSistemicos(
-    { corretivas, ativos, locais: e.locais.filter((l) => hoteis.has(l.hotelId)) },
+    {
+      corretivas,
+      ativos,
+      locais: e.locais.filter((l) => hoteis.has(l.hotelId)),
+      ...(e.primeiroChamadoPorHotel ? { primeiroChamadoPorHotel: e.primeiroChamadoPorHotel } : {}),
+    },
     e.agora,
     e.sistemico ?? PADRAO_SISTEMICO,
   );

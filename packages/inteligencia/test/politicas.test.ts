@@ -184,6 +184,23 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
       expect(valorValidoDoIntelligence(c, com(ruim))).toBe(false);
   });
 
+  it('o sistêmico gravado antes da v4, sem a população mínima e o percentual afetado, continua valendo', () => {
+    const k = 'inteligencia.sistemico';
+    const antiga = copia(PADROES_DO_INTELLIGENCE[k]);
+    delete antiga.mesmoModelo.minPopulacao;
+    delete antiga.mesmoModelo.percentualMinimoAfetado;
+    antiga.mesmoModelo.minAtivos = 5;
+    antiga.mesmoAndar.ativa = true;
+    expect(valorValidoDoIntelligence(k, antiga)).toBe(true);
+    // Só esses dois podem faltar.
+    const semJanela = copia(antiga);
+    delete (semJanela.mesmoModelo as { janelaDias?: number }).janelaDias;
+    expect(valorValidoDoIntelligence(k, semJanela)).toBe(false);
+    // O resolvedor fica com a gravada, e não volta ao padrão.
+    const registro = registroDePoliticas([EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE]);
+    expect(registro.resolver(k, { grupo: antiga })).toBe(antiga);
+  });
+
   it('o sistêmico v2: booleano `ativa` em cada regra, mínimos inteiros de pelo menos 1', () => {
     const k = 'inteligencia.sistemico';
     const base = copia(PADROES_DO_INTELLIGENCE[k]);
@@ -211,6 +228,15 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
       }),
       com((c) => {
         c.mesmoFornecedor.minConcluidas = 0;
+      }),
+      com((c) => {
+        c.mesmoModelo.minPopulacao = 0;
+      }),
+      com((c) => {
+        c.mesmoModelo.percentualMinimoAfetado = 101;
+      }),
+      com((c) => {
+        (c.mesmoModelo as Record<string, unknown>)['outroCampo'] = 1;
       }),
     ];
     for (const ruim of ruins) expect(valorValidoDoIntelligence(k, ruim)).toBe(false);

@@ -95,6 +95,21 @@ export function corretivasDosChamados(chamados: readonly ChamadoDaFonte[]): Corr
 }
 
 /**
+ * O chamado mais antigo de cada hotel entre os lidos, com o cancelado: o
+ * começo dos dados do hotel, para o crescimento (sistêmico v4). A leitura vai
+ * sempre além das duas janelas do crescimento (`inicioDaLeitura`), então o
+ * hotel com chamado antes delas aparece aqui com ele.
+ */
+export function primeiroChamadoPorHotel(chamados: readonly ChamadoDaFonte[]): Map<string, Date> {
+  const primeiro = new Map<string, Date>();
+  for (const c of chamados) {
+    const antes = primeiro.get(c.hotelId);
+    if (!antes || c.abertaEm.getTime() < antes.getTime()) primeiro.set(c.hotelId, c.abertaEm);
+  }
+  return primeiro;
+}
+
+/**
  * O instante mais antigo que alguma regra do dia olha: o custo informado (12
  * meses), a janela da reincidência de cada hotel e as do sinal sistêmico (o
  * crescimento compara a janela com a anterior; o mesmo fornecedor olha a
