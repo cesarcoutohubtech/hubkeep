@@ -68,7 +68,9 @@ Por hotel, o dia presencial soma cerca de 4 h (B, C e o fechamento). A sessão A
 | 1:50 a 2:10 | **Paradas a encerrar** e **UH indisponível** (exercícios 7 e 14) |
 | 2:10 a 2:30 | Cadastros do hotel: Locais (com edificação), Equipes, Ativos (com compra, garantia e criticidade), **Fornecedores**, **Ver QR**, **Preventivas** e **Feriados do hotel** (exercícios 20 e 21); dúvidas |
 
-Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**, **Hotéis** (Trazer para implantação, Ativar), **Configuração e políticas** (modelo contratual, nomes da criticidade, códigos obrigatórios no aceite, foto de depois, assinatura no aceite, checklist completo, e o nível bandeira), **Códigos de manutenção** e **Checklists** (só o Admin), **Auditoria** com o CSV (exercício 19; o Gerente também usa). Se o grupo contratar o HubKeep Intelligence **[a confirmar]**, acrescentar o menu do módulo (lista de insights, "Por que estou vendo isso?" e a decisão). As telas só abrem na data da política de abertura (padrão: 60 dias depois da ativação), então o treino do módulo fica para perto dessa data, ou para o "Grupo Demonstração — Intelligence" (`pnpm demo:historico`), que já tem seis meses de histórico e as telas abertas; antes dela, mostrar ao Admin só a página **Abertura das telas**.
+Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**, **Hotéis** (Trazer para implantação, Ativar), **Configuração e políticas** (modelo contratual, nomes da criticidade, códigos obrigatórios no aceite, foto de depois, assinatura no aceite, checklist completo, e o nível bandeira), **Códigos de manutenção** e **Checklists** (só o Admin), **Auditoria** com o CSV (exercício 19; o Gerente também usa). O grupo do piloto tem o HubKeep Intelligence desde o primeiro dia (decisão do Cesar de 15/10/2026), então acrescentar o menu do módulo (lista de insights, "Por que estou vendo isso?" e a decisão). As telas só abrem na data da política de abertura (padrão: 60 dias depois da ativação), então o treino do módulo fica para perto dessa data, ou para o "Grupo Demonstração — Intelligence" (`pnpm demo:historico`), que já tem seis meses de histórico e as telas abertas; antes dela, mostrar ao Admin só a página **Abertura das telas**.
+
+**Código de solução desde o primeiro dia.** Em toda OS corretiva, o técnico escolhe a **Solução** no PWA, e quem aceita confere a **Solução** no aceite, mesmo com a política "Códigos obrigatórios no aceite" desligada. Treinar isso nos exercícios 4, 6 e 15, nas duas sessões. O motivo para dizer à turma: a efetividade do HubKeep Intelligence **[ainda não existe]** vai comparar os chamados do ativo antes e depois de uma troca do equipamento, e só reconhece a troca pelo código "Troca do equipamento". OS sem código não aparece, e o que ficou sem código não se recupera depois.
 
 No **grupo de demonstração do Intelligence** (o histórico de seis meses gerado no dev ou no staging), a demonstração usa as telas do Intelligence e os indicadores. A linha do tempo dos chamados (a aba **Histórico** do chamado, da OS e do ativo) e a **Auditoria** mostram a data em que o histórico foi gerado, e não as datas do histórico: elas registram quando o dado entrou de fato (decisão do Cesar de 13/10/2026).
 
@@ -169,7 +171,7 @@ Por hotel, ao final dos dias de treinamento:
 - [ ] Entrou, trocou o idioma e saiu sem ajuda.
 - [ ] Triou um chamado, gerou OS para técnico e para equipe e reatribuiu.
 - [ ] Cancelou uma OS e um chamado com motivo.
-- [ ] Aceitou e reabriu uma OS concluída (e, em chamado com ativo, usou "O equipamento está parado"), conferindo falha, causa, solução, o custo informado e as fotos de antes e depois, e assinou o aceite.
+- [ ] Aceitou e reabriu uma OS concluída (e, em chamado com ativo, usou "O equipamento está parado"), conferindo falha, causa, solução, o custo informado e as fotos de antes e depois, e assinou o aceite. Sabe que a **Solução** se confere em todo aceite de corretiva, mesmo quando a política não exige.
 - [ ] Aplicou um checklist numa OS e leu as respostas do técnico.
 - [ ] Consultou a **Auditoria** e exportou o CSV.
 - [ ] Cadastrou e ativou um plano preventivo e cadastrou um feriado do hotel.
@@ -183,7 +185,7 @@ Por hotel, ao final dos dias de treinamento:
 - [ ] Respondeu um checklist, inclusive um item de conformidade.
 - [ ] Pausou uma OS escolhendo o motivo e retomou.
 - [ ] Respondeu à pergunta do equipamento parado e à da UH liberada.
-- [ ] Escolheu falha, causa e solução numa OS.
+- [ ] Escolheu falha, causa e solução numa OS, e sabe que a **Solução** se preenche em toda OS corretiva, mesmo quando o aceite não exige.
 - [ ] Trabalhou offline e confirmou "Tudo enviado." ao voltar a rede.
 - [ ] Leu um QR real e abriu o ativo.
 - [ ] Abriu um chamado pelo PWA.

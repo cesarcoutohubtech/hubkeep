@@ -55,7 +55,7 @@ export type CorretivaDaFonte = Omit<Corretiva, 'concluidaEm' | 'reaberturas' | '
 };
 
 /** A OS que conta para o chamado: a que não foi cancelada, ou a cancelada mais recente. */
-function osDoChamado(os: readonly OsDaFonte[]): OsDaFonte | undefined {
+export function osDoChamado<O extends OsDaFonte>(os: readonly O[]): O | undefined {
   const viva = os.find((o) => o.estado !== 'cancelada');
   if (viva) return viva;
   return [...os].sort((a, b) => b.criadaEm.getTime() - a.criadaEm.getTime())[0];
@@ -92,6 +92,21 @@ export function corretivasDosChamados(chamados: readonly ChamadoDaFonte[]): Corr
     });
   }
   return corretivas;
+}
+
+/**
+ * O chamado mais antigo de cada hotel entre os lidos, com o cancelado: o
+ * começo dos dados do hotel, para o crescimento (sistêmico v4). A leitura vai
+ * sempre além das duas janelas do crescimento (`inicioDaLeitura`), então o
+ * hotel com chamado antes delas aparece aqui com ele.
+ */
+export function primeiroChamadoPorHotel(chamados: readonly ChamadoDaFonte[]): Map<string, Date> {
+  const primeiro = new Map<string, Date>();
+  for (const c of chamados) {
+    const antes = primeiro.get(c.hotelId);
+    if (!antes || c.abertaEm.getTime() < antes.getTime()) primeiro.set(c.hotelId, c.abertaEm);
+  }
+  return primeiro;
 }
 
 /**
@@ -154,10 +169,10 @@ const CHAVES_DO_HOTEL: readonly ChaveDoHotel[] = [
 ];
 
 /** As linhas de uma chave que valem para o hotel, na ordem da resolução: hotel, bandeira, grupo. */
-function niveisDoHotel(
+export function niveisDoHotel(
   linhas: readonly LinhaDePolitica[],
   chave: string,
-  hotel: HotelDaFonte,
+  hotel: Pick<HotelDaFonte, 'id' | 'bandeiraId'>,
 ): LinhaDePolitica[] {
   const daChave = linhas.filter((l) => l.chave === chave);
   return [

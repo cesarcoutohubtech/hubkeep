@@ -544,13 +544,22 @@ describe('a evidência do sinal sistêmico para o catálogo', () => {
     janelaDias: 90,
     hotelIds: ['h1', 'h2', 'h3'],
     corretivaIds: [],
+    ativosDoModelo: 12,
     taxaPorAtivo: 2.25,
     basePorAtivo: 0.5,
   };
-  it('o mesmo modelo, com as taxas', () => {
+  it('o mesmo modelo, com a população e as taxas', () => {
     expect(explicacaoDoSinal({ regra: 'mesmo_modelo', evidencia })).toEqual({
       chave: 'inteligencia.sistemico.evidencia.mesmo_modelo',
-      valores: { quantidade: 9, hoteis: 3, janelaDias: 90, distintos: 4, taxa: 2.25, base: 0.5 },
+      valores: {
+        quantidade: 9,
+        hoteis: 3,
+        janelaDias: 90,
+        distintos: 4,
+        populacao: 12,
+        taxa: 2.25,
+        base: 0.5,
+      },
     });
   });
   it('as outras regras, a frase genérica', () => {

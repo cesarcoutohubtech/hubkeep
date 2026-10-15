@@ -13,6 +13,11 @@ import type { InsightDoPainelNoBanco, PortaDoPainelDoIntelligence } from '@hubke
 import type { Contexto } from '@hubkeep/dominio';
 import {
   type AberturaDoPainel,
+  type EfetividadeDaIntervencao,
+  type EfetividadesDoPainel,
+  type PortasDaEfetividade,
+  efetividadeDoAtivo,
+  listarEfetividades,
   FUSO_PADRAO_DO_GRUPO,
   type AcaoDoInsight,
   type FiltroDeEstadoDoInsight,
@@ -21,7 +26,6 @@ import {
   type ListaDeInsights,
   type PaginaDoAtivo,
   type PaginaDoInsight,
-  type PortasDoPainel,
   type ResumoDoPainel,
   type TipoDeInsight,
   aberturaDoPainel,
@@ -66,6 +70,10 @@ export interface CasosDeUsoDoPainel {
   listar(ctx: Contexto, pedido: PedidoDeListaDoPainel): Promise<ListaDeInsights>;
   ver(ctx: Contexto, insightId: string): Promise<PaginaDoInsight>;
   ativo(ctx: Contexto, ativoId: string): Promise<PaginaDoAtivo>;
+  /** As intervenções do ativo, com o antes e depois (adendo ao ADR-033, 15/10/2026). */
+  efetividadeDoAtivo(ctx: Contexto, ativoId: string): Promise<EfetividadeDaIntervencao[]>;
+  /** A seção abaixo da lista de insights: as intervenções dos hotéis em que a pessoa decide. */
+  efetividades(ctx: Contexto): Promise<EfetividadesDoPainel>;
   decidir(
     ctx: Contexto,
     insightId: string,
@@ -86,7 +94,7 @@ function noMotor<T extends InsightDoPainelNoBanco>(
   return { ...i, tipo: i.tipo, estado: i.estado, motivoDeDescarte: motivo };
 }
 
-export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDoPainel {
+export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDaEfetividade {
   const { porta } = deps;
   return {
     modulos: () => deps.modulos.contratados(ctx),
@@ -116,6 +124,10 @@ export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDoPaine
     metricasDoAtivo: (ativoId, desde) => porta.metricasDoAtivo(ctx, ativoId, desde),
     insightsDoEscopo: async (tipo, chave, valor) =>
       (await porta.insightsDoEscopo(ctx, tipo, chave, valor, LIMITE_DA_LISTA)).map(noMotor),
+    politicasDaEfetividade: () => porta.politicasDaEfetividade(ctx),
+    intervencoes: (filtro) => porta.intervencoes(ctx, filtro),
+    historicoDosAtivos: (ativoIds, desde, ate) =>
+      porta.historicoDosAtivos(ctx, ativoIds, desde, ate),
   };
 }
 
@@ -127,6 +139,9 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
     listar: (ctx, pedido) => listarInsights(portasDoPainel(deps, ctx), pedido, agora()),
     ver: (ctx, insightId) => verInsight(portasDoPainel(deps, ctx), insightId, agora()),
     ativo: (ctx, ativoId) => verAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    efetividadeDoAtivo: (ctx, ativoId) =>
+      efetividadeDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    efetividades: (ctx) => listarEfetividades(portasDoPainel(deps, ctx), agora()),
     decidir: (ctx, insightId, pedido) =>
       decidirInsight(
         portasDoPainel(deps, ctx),

@@ -833,6 +833,31 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Texto pelo catálogo:** o insight guarda tipo, chaves e números, e não título nem resumo (regra 11).
 - Tudo auditado pela unit of work.
 
+**Adendo — a fonte da intervenção na efetividade (US-I04, 15/10/2026).** É uma fonte de dado nova do Intelligence.
+- **Status:**
+  - Aprovado pelo Cesar em 15/10/2026, no chat do agente do Intelligence ("Cesar aqui": "Fonte da intervenção: opção C, o código de solução, pela política inteligencia.efetividade. Registre como adendo ao ADR-033").
+  - Aprovado pelo Kaio em 15/10/2026, no mesmo chat ("Kaio aqui": "Eu aptovo o que o agente propôs o desenho da tela da efetividade").
+  - A regra da cobertura do custo foi acrescentada pelo Cesar depois da proposta que o Kaio aprovou, e **aguarda a confirmação escrita do Kaio**. Os 50% são limiar, e portanto detalhe do Kaio.
+- **Intervenção:**
+  - É a OS corretiva concluída cujo código de solução (`app.os.codigo_solucao_id`, da I6) está na lista da política `inteligencia.efetividade`.
+  - O padrão da lista é só "Troca do equipamento".
+  - A data da intervenção é a conclusão final da OS.
+- **Fonte nova:**
+  - O Intelligence passa a ler o código de solução da OS.
+  - Não há migração nem tabela nova.
+  - O resultado se calcula sob demanda, no servidor, e não se grava. Se um dia for gravado, grava junto a versão da fórmula (ADR-036).
+- **Escopo:** por ativo. A intervenção de área, como vários ativos de um andar ou de uma área comum, fica fora do 1.0.
+- **Custo das corretivas, antes → depois:**
+  - Mostra a cobertura de cada lado: "custo informado em X de Y OS", sobre as corretivas aceitas, como no glossário de métricas v3.
+  - Abaixo de 50% de cobertura em qualquer um dos lados, a linha mostra "dados insuficientes", sem variação.
+  - Os 50% ficam numa constante do `packages/inteligencia`.
+- **Onde aparece e quem vê:**
+  - Aparece nos três lugares decididos em 10/10/2026: a seção abaixo da lista de insights, o detalhe do ativo e a página do insight.
+  - Vê quem decide insight do hotel do ativo.
+  - A efetividade continua sem ser tipo de insight.
+- **Ressalva:** toda exibição diz que a variação observada não prova que a intervenção foi a causa.
+- **Sem o código de solução, a intervenção não aparece.** O piloto treina o preenchimento desde o primeiro dia, mesmo com a política "Códigos obrigatórios no aceite" desligada (`docs/piloto/`).
+
 ## ADR-034 — Intelligence: scores determinísticos, versionados e explicáveis, calculados na aplicação
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-2, e por Cesar em 07/10/2026. Aprovada pelos dois.

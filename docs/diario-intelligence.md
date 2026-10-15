@@ -1983,3 +1983,212 @@ A otimização do job fica adiada. O gatilho para reabrir é uma rodada acima de
   - **Cesar:** o merge do PR do retry e a confirmação escrita do item 3 (o módulo no piloto desde o primeiro dia).
   - **Cesar ou Kaio:** a saída final da gravação no dev (grupo, estados dos cenários e tempo total).
 - **Próximo:** a proposta de desenho dos dois ajustes do motor, para o Kaio aprovar antes do código. O primeiro passo é ler a política `inteligencia.sistemico` e a regra de crescimento em `packages/inteligencia`.
+
+## A gravação do histórico no dev terminou (15/10/2026)
+
+Pela saída no notebook do Cesar (print enviado nesta sessão em 15/10/2026):
+- **Grupo:** `634ad71d-d946-4deb-8e31-a007f16cd21b`, com 4.314 chamados.
+- **Os 8 cenários com insight terminaram no estado do roteiro:**
+  - em ação: fornecedor e caldeira;
+  - aceito: modelo;
+  - em revisão: crescimento;
+  - novo: área (novo);
+  - resolvido: elevador e andar;
+  - descartado: área (descartado).
+- **"138 dias calculados, 16 decisões"** conta só o que esta rodada gravou. Os outros dias do histórico foram calculados na rodada de 14/10, que caiu, e o job não grava de novo um dia já calculado.
+- **Tempo:** 3h43m46s em 15/10, das 08:23 às 12:07, sem queda.
+  - Essa rodada começou antes do #283, então passou de novo, uma a uma, pelas cerca de 9 mil operações que já estavam gravadas.
+  - Somada aos 51 minutos de 14/10, a gravação levou umas 4h35m.
+  - Gravando direto, sem queda, a estimativa é de 3 a 3,5 horas.
+- O `docs/piloto/README.md` registra o tempo e como retomar.
+
+## Os dois ajustes do motor: sistêmico versão 4 (15/10/2026)
+
+"Kaio aqui", nesta sessão, 15/10/2026: "Aprovo proposta dos dois ajustes do motor". É detalhe dentro do ADR-033.
+
+Os três pontos que a proposta deixou em aberto não foram respondidos. Seguem a frase do Kaio ao pé da letra:
+- os 3 ativos afetados trocam o mínimo de 5;
+- os 30% valem para qualquer tamanho de frota;
+- a evidência ganha "de P instalados".
+
+Qualquer um deles muda antes do merge, se o Kaio pedir.
+
+**Crescimento:**
+- Só vale no hotel cujo primeiro chamado foi aberto até `agora − 2 × janelaDias`, ou seja, 60 dias atrás com o padrão.
+- O primeiro chamado é o mais antigo dos que o job já lê, contando o cancelado (`primeiroChamadoPorHotel`, `fonte.ts`). Sem esse dado, vale a corretiva mais antiga da entrada.
+- A leitura do job vai sempre além das duas janelas (`inicioDaLeitura`). O hotel sem nenhum chamado entre 12 meses e 60 dias atrás é tratado como novo: a regra só demora a começar.
+- As duas janelas ficam fixas no código, sem campo na política.
+
+**Mesmo modelo:**
+- Dois campos novos na política `inteligencia.sistemico.mesmoModelo`:
+  - `minPopulacao: 10`: os ativos instalados do modelo na janela;
+  - `percentualMinimoAfetado: 30`: os ativos distintos com chamado sobre a população. A conta é exata; o arredondado fica só na evidência.
+- `minAtivos` passa de 5 para 3.
+- Continuam como estão os 3 hotéis, os 6 chamados em 90 dias e a taxa de pelo menos o dobro da base, nunca menos de 0,3.
+- **A política gravada antes da v4 continua valendo:**
+  - Os dois campos novos podem faltar e, ausentes, vale o padrão (`CAMPOS_QUE_PODEM_FALTAR` em `politicas.ts`; `minimosDaPopulacao` em `sistemico.ts`).
+  - Sem isso, a validação exigia as mesmas chaves do padrão, e o resolvedor voltaria ao padrão. O grupo de demonstração ficaria com quatro das cinco regras desligadas.
+  - O `minAtivos: 5` que já está gravado na política do grupo de demonstração continua valendo lá.
+- A evidência ganha o `percentualAfetado`. A frase do catálogo ganha "(de P instalados)" nos quatro idiomas, com `populacao` vinda de `ativosDoModelo`.
+
+**Versão:**
+- `VERSAO_SISTEMICO` passa a 4. O que já foi gravado com a 3 não é recalculado (ADR-036).
+- No glossário de métricas foram atualizadas as linhas do sinal sistêmico, da taxa do modelo e do crescimento.
+
+**Na demonstração:**
+- O Polar Inverter 18000 tem 12 ativos, todos com chamado (100%), então passa.
+- Os modelos das áreas comuns têm menos de 10 ativos e deixam de poder disparar.
+- O aquecimento de 60 dias já cumpre o crescimento.
+- O teste do roteiro passou sem mudança.
+
+**Testes:**
+- `packages/inteligencia`: 296 passaram. Os casos novos cobrem:
+  - a população de 9 e de 10;
+  - 30% no limite (3 de 10), 3 de 11 e a conta exata (299 e 300 de 1000);
+  - os 3 ativos distintos;
+  - a política antiga, sem os campos novos;
+  - o crescimento com primeiro chamado a 59 e a 60 dias, o mais antigo entre o mapa e a corretiva, a conta por hotel e a janela de 45 dias;
+  - a validação dos campos novos;
+  - `primeiroChamadoPorHotel`.
+- Os testes do job e do dia que usavam parques de 6 ativos ganharam 4 ativos do modelo sem chamado, para a população chegar a 10.
+- `apps/web`: 413 passaram e 56 foram pulados (os que pedem banco).
+- Na raiz: 553 passaram.
+- `packages/i18n`: 80 passaram.
+- Typecheck, ESLint e Prettier passaram.
+
+### Ponto de retomada (15/10/2026, sistêmico v4)
+
+- **`main`:** em `f6d4d66` (#283).
+- **Dev:** com o histórico completo gravado em 15/10, com a versão 3 do sistêmico. O job do dev passa a gravar a versão 4 depois do merge.
+- **Nesta branch:** os dois ajustes do motor e o tempo da gravação. É um PR `int:`, fora da zona protegida.
+- **Esperando:**
+  - **Cesar:** o merge deste PR e a confirmação escrita do item 3 (o módulo no piloto desde o primeiro dia).
+  - **Kaio:** se quiser, mudar algum dos três pontos acima antes do merge.
+- **Próximo:** a proposta de desenho da tela da efetividade, para Cesar e Kaio. O primeiro passo é ler `efetividade.ts` e o mock (`docs/referencia/design/csc-mock`).
+
+## A efetividade: a proposta e as decisões do Cesar (15/10/2026)
+
+**A proposta** (feita nesta sessão em 15/10/2026, para Cesar e Kaio):
+- **O bloqueio que ela resolve:** o produto não registra o que é uma "intervenção". O motor `efetividadeAntesDepois` recebe a data de quem chama e não tem chamador em produção. No mock, a intervenção é uma marcação no chamado. No roteiro da demonstração, a data da modernização do elevador não chega ao banco.
+- **Três opções para a fonte:**
+  - A: marcação na OS (migração, zona protegida, área compartilhada da 1b e da 1c);
+  - B: a data da decisão do insight;
+  - C: o código de solução da OS, por política. Foi a recomendada.
+- **A tela:** nos três lugares aprovados em 10/10, com as colunas do mock e a ressalva de correlação. Quem vê é quem decide insight do hotel do ativo.
+- **Por dentro:** cálculo sob demanda no servidor com o motor que já existe, sem tabela nova. Uma leitura nova no `packages/db`, pelo `withContext`. Dois PRs `int:` fora da zona protegida: (1) a política e a leitura; (2) as três telas.
+
+**Decisões do Cesar** ("Cesar aqui", nesta sessão, 15/10/2026: "Sobre a efetividade, aprovo da minha parte"):
+1. **Fonte da intervenção:** a opção C, o código de solução, pela política `inteligencia.efetividade`. Ele pede o registro como adendo ao ADR-033, por ser fonte de dado nova do Intelligence.
+2. **Lista padrão:** só "Troca do equipamento".
+3. **Custo das corretivas, antes → depois:** sim, com indicador de cobertura.
+   - Mostra "custo informado em X de Y OS".
+   - Abaixo de 50% de cobertura em qualquer um dos lados, mostra "dados insuficientes", sem variação.
+   - O limite de 50% fica numa constante.
+4. **Intervenção de área:** fora do 1.0.
+5. **Demonstração:** o roteiro ganha o chamado de modernização do elevador com o código "Troca do equipamento". A nova rodada do `demo:historico` fica para depois do merge do PR 1 da efetividade. A gravação atual termina como está.
+6. **Piloto:** o treinamento inclui o preenchimento do código de solução desde o primeiro dia, mesmo antes de os códigos serem obrigatórios. Isso está no `docs/piloto/README.md` e no `docs/piloto/roteiro-treinamento.md`.
+7. **Os PRs da efetividade abrem só depois do "aprovo" do Kaio.**
+
+**Item 3 de 15/10, confirmado por escrito pelo Cesar** (mesma mensagem): "o Intelligence fica ativo no piloto desde o primeiro dia, sem cobrança. O contrato do módulo tem a mesma data do primeiro contrato do núcleo, e as telas abrem 60 dias depois." O `docs/piloto/README.md` deixa de marcar isso como "a confirmar", e o roteiro do treinamento também.
+
+**Aprovação do Kaio** ("Kaio aqui", nesta sessão, 15/10/2026): "Eu aptovo o que o agente propôs o desenho da tela da efetividade. aprovo tambem os pontos 3 e 4 da gravação."
+- A aprovação cobre a proposta do agente: a opção C, só "Troca do equipamento" na lista, a coluna do custo antes → depois e a intervenção de área fora do 1.0. As quatro coincidem com as decisões do Cesar.
+- **A regra da cobertura do custo veio do Cesar depois da proposta**: o "custo informado em X de Y OS" e o "dados insuficientes" abaixo de 50%. Os 50% são limiar, e portanto detalhe do Kaio. Por isso, essa regra **aguarda a confirmação escrita do Kaio**, e ele pode trocar o limite.
+- Os pontos 3 e 4 da gravação já estavam aprovados pelo Kaio nesta sessão, mais cedo em 15/10. Não muda nada.
+
+**Status:** a fonte da intervenção (opção C) está aprovada por Cesar e Kaio. Os PRs da efetividade podem abrir.
+
+### O adendo ao ADR-033
+
+- Entrou no `docs/03`, logo depois do ADR-033, com o título "Adendo — a fonte da intervenção na efetividade".
+- O `docs/03` é zona protegida, então o adendo vai num PR próprio. Na conferência de 15/10, não havia outro PR de zona protegida aberto: #287, #285, #282, #281 e #263 não tocam a zona.
+- Este PR leva também o registro das decisões no diário e no `docs/piloto/`.
+- O PR 1 da efetividade abre depois do merge dele, porque o agente tem uma branch só.
+
+### Ponto de retomada (15/10/2026, adendo da efetividade)
+
+- **`main`:** em `6f3be5a` (#286, sistêmico v4). A branch recomeçou da `main` depois do merge.
+- **Dev:** tem o histórico completo, gravado em 15/10 com a versão 3 do sistêmico. Não há nova rodada antes do merge do PR 1 da efetividade.
+- **Nesta branch:** o adendo ao ADR-033 e o registro das decisões de Cesar e Kaio. É um PR de zona protegida.
+- **Esperando:**
+  - **Cesar:** o merge do PR do adendo.
+  - **Kaio:** a confirmação da regra da cobertura do custo, com os 50%.
+- **Próximo, depois do merge:** o PR 1 da efetividade (`int:`).
+  - O que entra: a política `inteligencia.efetividade` com a lista de códigos, a constante dos 50%, a cobertura do custo no motor e a leitura no `packages/db`.
+  - O primeiro passo é recomeçar a branch da `main` e ler `packages/inteligencia/src/efetividade.ts`, usando a política do sistêmico como modelo.
+
+## Os 50% confirmados e o PR 1 da efetividade (15/10/2026)
+
+"Kaio aqui", nesta sessão, 15/10/2026: "Eu confirmo os 50%. Prossiga. 288 mergeado."
+- A regra da cobertura do custo está aprovada por Cesar e Kaio.
+- O status do adendo no `docs/03` ainda diz "aguarda a confirmação escrita do Kaio". Como o `docs/03` é zona protegida, a linha muda no próximo PR de zona protegida do Intelligence, ou num PR só para ela, se o Cesar preferir.
+
+### O que o PR 1 traz (`int:`, fora da zona protegida)
+
+**Motor (`packages/inteligencia`):**
+- **`efetividade.ts`, versão 3:**
+  - a política ganha `codigosDeIntervencao`, com o padrão `['solucao_troca_do_equipamento']`;
+  - a política gravada antes, sem o campo, continua valendo (`CAMPOS_QUE_PODEM_FALTAR`);
+  - `COBERTURA_MINIMA_DO_CUSTO = 0.5`;
+  - o custo antes → depois sai das próprias corretivas, pelo aceite, sem a OS da intervenção. Cada lado tem `soma`, `informadas` e `aceitas`, e o resultado diz se a cobertura é suficiente;
+  - a métrica "custo" saiu da lista `metricas` e virou o campo `custo`.
+- **`intervencao.ts` (novo), a identificação da intervenção:**
+  - a OS que vale no chamado (a mesma regra do job);
+  - o código pela chave padrão ou pelo id;
+  - a conclusão final como data;
+  - fora ficam o chamado cancelado, a OS cancelada, o chamado sem ativo e a OS reaberta sem nova conclusão;
+  - a política resolve por hotel (hotel → bandeira → grupo → padrão).
+- **`painel-efetividade.ts` (novo):** `efetividadeDoAtivo` e `listarEfetividades`, para quem decide o insight do hotel do ativo, com as intervenções dos últimos 180 dias, até 100.
+
+**Leitura (`packages/db`), em `repositorios/inteligencia-efetividade.ts`, pelo hk_app com o contexto de quem pede:**
+- as linhas de `inteligencia.efetividade`;
+- as intervenções, pelo id do código ou pela chave padrão, com uma conclusão depois da data;
+- o histórico dos ativos no trecho (chamados com OS, código e transições, e as paradas).
+
+**Web:** a ligação em `modulos/inteligencia/painel.ts` (`efetividadeDoAtivo` e `efetividades`). Ainda não há rota nem tela; elas vêm no PR 2.
+
+### Pontos de detalhe que o agente decidiu, para o Kaio conferir (ADR-033: detalhe do Kaio)
+
+1. **O custo conta pelo aceite**, como no glossário v3, e a OS da própria intervenção fica fora dos dois lados, porque o custo dela é o da troca, e não o da falha. O chamado da intervenção continua contando como chamado antes.
+2. **O lado sem nenhuma OS aceita conta como coberto**, com custo zero conhecido. Com o antes em zero, não há porcentagem.
+3. **A lista de códigos:** a chave padrão ou o id do código do grupo, até 20, sem repetir. A lista vazia desliga a efetividade.
+4. **180 dias** (a janela de leitura) **e até 100 intervenções** na seção da lista.
+
+### Pendência para Cesar e Kaio: a página do insight
+
+O desenho aprovado mostra, na página do insight, as intervenções concluídas **depois da primeira decisão de aceitar ou agir**. O insight não guarda a data dessa decisão:
+- a página não tem linha do tempo no 1.0 (Cesar, 10/10/2026);
+- a auditoria do insight vai sem hotel, e só o Admin do grupo a lê.
+
+Opções:
+- **(a)** contar desde a primeira detecção do insight, sem dado novo;
+- **(b)** gravar a data da primeira decisão no insight, o que pede migração na `app.insight` e é zona protegida;
+- **(c)** deixar a página do insight fora do PR 2.
+
+O agente recomenda a **(a)**: a ressalva de correlação já está na tela, e a intervenção feita entre a detecção e a decisão também responde ao insight. É mudança no que foi aprovado, então espera os dois.
+
+### Ponto de retomada (15/10/2026, PR 1 da efetividade)
+
+- **`main`:** em `11a9742` (#288, adendo ao ADR-033).
+- **Dev:** sem mudança. A nova rodada do `demo:historico` fica para depois do merge deste PR.
+- **Nesta branch:** o PR 1 da efetividade.
+- **Esperando:**
+  - **Cesar:** o merge do PR 1.
+  - **Kaio:** os quatro pontos de detalhe acima.
+  - **Cesar e Kaio:** a página do insight, opção (a), (b) ou (c).
+- **Próximo:** o roteiro da demonstração ganha o chamado de modernização do elevador com "Troca do equipamento", e o PR 2 traz as rotas, os contratos, as três telas e os textos, com o nome do fornecedor e a descrição do chamado. O primeiro passo é ler o cenário `efetividade-elevador` do roteiro e `iaTabelaEfetividade` no mock.
+
+### Respostas de 15/10/2026 sobre o PR 1
+
+Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma com quem fala:
+- **Kaio:** "4 escolhas conferido". Os quatro pontos de detalhe acima ficam como estão.
+- **Página do insight:** "Kaio aqui. Opção A, como recomendada" e "Cesar aqui. Opção A, como recomendada".
+  - A página do insight mostra as intervenções nos ativos do insight concluídas depois da primeira detecção dele.
+  - Entra no PR 2.
+- **Status dos 50% no `docs/03`:** "Cesar aqui: num PR só para ela".
+  - O PR de zona protegida abre depois do merge do #290, porque o agente tem uma branch só.
+  - Ele também precisa que não haja outro PR de zona protegida aberto.
+
+**Próximo:**
+1. depois do merge do #290, o PR da linha do `docs/03`;
+2. depois do merge dele, o PR 2 da efetividade, com a página do insight pela opção (a).

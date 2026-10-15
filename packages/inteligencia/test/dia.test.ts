@@ -285,8 +285,15 @@ describe('calcularDia: detecções sistêmicas', () => {
     );
   // Outro modelo na categoria, sem chamado: sem ele não há com o que comparar,
   // e o mesmo modelo não dispara (respostas de 10/10/2026).
+  // Mais quatro do modelo, sem chamado: a população do modelo chega aos 10 do mínimo (v4).
   const base = [
     ativo({ id: 'o1', hotelId: 'h1', categoriaId: 'hvac', fabricante: 'Trane', modelo: 'T9' }),
+    ...doModelo([
+      ['s1', 'h1'],
+      ['s2', 'h1'],
+      ['s3', 'h1'],
+      ['s4', 'h1'],
+    ]),
   ];
   const falhas = (as: readonly AtivoDoDia[]): Corretiva[] =>
     as.map((a, i) =>

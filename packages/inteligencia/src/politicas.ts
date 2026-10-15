@@ -28,6 +28,7 @@ import {
   PADRAO_EFETIVIDADE,
   type ConfigEfetividade,
   limiaresDeEfetividadeValidos,
+  listaDeCodigosValida,
 } from './efetividade';
 import { PADRAO_REINCIDENCIA, type ConfigReincidencia } from './reincidencia';
 import { FAIXAS_PADRAO } from './score';
@@ -105,16 +106,32 @@ function faixasValidas(v: unknown): boolean {
   return true;
 }
 
+/**
+ * Campos que entraram depois da primeira versão da política e podem faltar no
+ * valor gravado antes deles: ausentes, vale o padrão. Sem isso, a política
+ * gravada antes deixaria de valer inteira, e o resolvedor voltaria ao padrão.
+ * O mesmo modelo v4 (Kaio, 15/10/2026): a população mínima e o percentual afetado.
+ * A efetividade v3 (adendo ao ADR-033, 15/10/2026): os códigos de intervenção.
+ */
+const CAMPOS_QUE_PODEM_FALTAR = new Set([
+  'minPopulacao',
+  'percentualMinimoAfetado',
+  'codigosDeIntervencao',
+]);
+
 /** Mesmas chaves do padrão, recursivamente; número finito e não negativo onde o padrão tem número. */
 function mesmoFormato(v: unknown, padrao: unknown, campo: string): boolean {
   if (campo === 'faixas') return faixasValidas(v);
   if (campo === 'limiteInsight') return typeof v === 'number' && v >= 0 && v <= 100;
+  if (campo === 'codigosDeIntervencao') return listaDeCodigosValida(v);
   if (typeof padrao === 'boolean') return typeof v === 'boolean';
   if (typeof padrao === 'number') return typeof v === 'number' && Number.isFinite(v) && v >= 0;
   if (!objeto(padrao) || !objeto(v)) return false;
   const chaves = Object.keys(padrao);
-  if (Object.keys(v).length !== chaves.length) return false;
-  if (!chaves.every((k) => Object.hasOwn(v, k) && mesmoFormato(v[k], padrao[k], k))) return false;
+  if (!Object.keys(v).every((k) => Object.hasOwn(padrao, k))) return false;
+  const campoValido = (k: string) =>
+    Object.hasOwn(v, k) ? mesmoFormato(v[k], padrao[k], k) : CAMPOS_QUE_PODEM_FALTAR.has(k);
+  if (!chaves.every(campoValido)) return false;
   if (campo === 'pesos') return Object.values(v).some((p) => (p as number) > 0);
   return true;
 }

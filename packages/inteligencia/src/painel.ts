@@ -313,7 +313,7 @@ async function abertura(
  * insight; senão, o painel não existe. Devolve só as atribuições dos papéis
  * da política: é por elas que se decide.
  */
-async function exigirPainel(p: PortasDoPainel, agora: Date): Promise<readonly Atribuicao[]> {
+export async function exigirPainel(p: PortasDoPainel, agora: Date): Promise<readonly Atribuicao[]> {
   const [modulos, atribuicoes] = await Promise.all([p.modulos(), p.atribuicoes()]);
   if (!modulosVigentes(modulos, agora).has('inteligencia')) throw indisponivel();
   const v = await abertura(p, modulos);
@@ -413,7 +413,7 @@ function estadosDoFiltro(filtro: FiltroDeEstadoDoInsight): readonly EstadoDoInsi
   return [filtro];
 }
 
-const unicos = (xs: readonly (string | null)[]) =>
+export const unicos = (xs: readonly (string | null)[]): string[] =>
   [...new Set(xs.filter((x): x is string => x !== null))].sort();
 
 function nomesDe(p: PortasDoPainel, insights: readonly InsightDoPainel[]) {
@@ -580,7 +580,8 @@ export async function decidirInsight(
   return { versao, estado: r.estado, responsavelId };
 }
 
-const ativoNaoEncontrado = () => new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
+export const ativoNaoEncontrado = (): NaoEncontrado =>
+  new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
 
 /**
  * O detalhe do ativo no Intelligence: a atenção dos últimos 90 dias, o último
