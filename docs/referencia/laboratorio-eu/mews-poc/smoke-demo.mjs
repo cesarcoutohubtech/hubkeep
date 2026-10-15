@@ -32,16 +32,11 @@ async function executar() {
     maxRetries: 0, // smoke limitado a até três POST reais, inclusive se ocorrer 429/5xx
   });
   // Na demo pública, nenhum dado real de clientes, hóspedes ou hotéis deve ser usado.
-  const empresas = await mews.lerPrimeiraPaginaDeEmpresas();
-  const primeira = empresas.itens.find((item) => typeof item?.Id === 'string');
-  if (!primeira) {
-    globalThis.console.log(JSON.stringify({ ambiente: 'mews-demo', empresas: 0, status: 'sem_dados' }));
-    return;
-  }
-
-  const enterpriseId = primeira.Id;
+  // A autenticacao single-property da Mews oferece diretamente Enterprise.Id.
+  // enterprises/getAll pode exigir uma permissao que tokens demo individuais nao possuem.
+  const enterpriseId = await mews.obterIdentificadorEmpresa();
   const recursos = await mews.lerPrimeiraPaginaDeRecursos([enterpriseId]);
-  const bloqueios = await mews.lerPrimeiraPaginaDeBloqueios([enterpriseId]);
+  const bloqueios = await mews.lerPrimeiraPaginaDeBloqueiosSemFiltros();
   const escopo = criarEscopo({
     tenantId: 'tenant-sintetico-mews-lab',
     vinculos: [{ enterpriseId, hotelId: 'hotel-sintetico-mews-lab' }],
@@ -52,11 +47,10 @@ async function executar() {
     ambiente: 'mews-demo',
     status: 'consulta_read_only_realizada',
     chamadasHttpEsperadas: 3,
-    empresasAmostradas: empresas.itens.length,
+    consultaConfiguracao: true,
     recursosAmostrados: recursos.itens.length,
     bloqueiosAmostrados: bloqueios.itens.length,
     existeProximaPagina: {
-      empresas: Boolean(empresas.cursor),
       recursos: Boolean(recursos.cursor),
       bloqueios: Boolean(bloqueios.cursor),
     },
