@@ -2280,7 +2280,7 @@ Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma c
   - A modernização passa a ser aberta em 23/06/2026 e concluída às 15:47 UTC do mesmo dia, que é a data da intervenção.
 - **Retomada:** antes, se faltava uma abertura antes do último dia gravado, a gravação voltava ao início e conferia uma a uma (umas 3,5 horas). Agora ela pula os chamados que já estão no banco e grava, em ordem, só as operações dos chamados novos.
   - A função é `planoDaRetomada`.
-  - Na rodada no dev, isso dá as 4 operações da modernização e os dias depois de 13/10, que são nenhum.
+  - Na rodada no dev, isso dá as 5 operações da modernização (abrir, gerar, iniciar, concluir e aceitar) e os dias depois de 13/10, que são nenhum.
   - Os dias já calculados não rodam de novo, como antes. A efetividade lê as OS na hora, então a modernização aparece sem recalcular os dias.
 - **Testes, sem banco:**
   - um que trava o roteiro gravado no dev: os 4.314 chamados, o primeiro instante e uma impressão SHA-256 das chaves, dos instantes, dos passos, dos custos e das paradas;
@@ -2293,7 +2293,7 @@ Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma c
 - **Nesta branch:** a correção do roteiro e da retomada, com este diário. O PR abre agora.
 - **Esperando o Cesar:**
   1. O merge do PR da correção.
-  2. A mesma rodada: `git pull` na `main`, as duas variáveis da sessão e `pnpm demo:historico --ambiente dev --fim 2026-10-13`. A saída deve ter a linha "Retomada no dia 2026-10-13: … 4 de chamados novos no roteiro, gravadas agora." e terminar em minutos.
+  2. A mesma rodada: `git pull` na `main`, as duas variáveis da sessão e `pnpm demo:historico --ambiente dev --fim 2026-10-13`. A saída deve ter a linha "Retomada no dia 2026-10-13: … 5 de chamados novos no roteiro, gravadas agora." e terminar em minutos.
   3. A saída final.
 - **Próximo:** conferir no dev que a modernização aparece nas três telas:
   - na lista de efetividade;
