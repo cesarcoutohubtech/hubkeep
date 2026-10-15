@@ -205,6 +205,12 @@ export interface PassoDaOs {
 
 export interface OsDoRoteiro {
   codigoFalha: string;
+  /**
+   * A chave padrão do código de solução, informada na conclusão; null sem
+   * código. "Troca do equipamento" faz da OS uma intervenção na efetividade
+   * (adendo ao ADR-033 de 15/10/2026).
+   */
+  codigoSolucao: string | null;
   executadoPor: ExecutadoPor;
   fornecedor: string | null;
   /** Em reais, informado no aceite; null quando não informado. */
@@ -507,6 +513,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
   const fornecedores: FornecedorDoRoteiro[] = [
     { chave: 'f-frio', nome: 'Frio Sul Demonstração' },
     { chave: 'f-servicos', nome: 'Serviços Gerais Demonstração' },
+    { chave: 'f-elevadores', nome: 'Elevadores Demonstração' },
   ];
 
   // Chamados: uma OS por chamado, com o caminho de sempre (gerar, iniciar,
@@ -518,6 +525,8 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
     ativo: string | null;
     abertoEm: Date;
     codigoFalha: string;
+    /** A chave padrão do código de solução; sem o campo, sem código. */
+    codigoSolucao?: string;
     descricao: string;
     cenario: string | null;
     impactoHospede?: boolean | null;
@@ -529,7 +538,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
     /** Reaberturas antes do aceite. */
     reaberturas?: number;
   }
-  const chamado = (p: PedidoDeChamado) => {
+  const chamado = (p: PedidoDeChamado): readonly PassoDaOs[] => {
     const t = p.abertoEm.getTime();
     const gerada = t + entre(0.5, 3) * HORA_MS;
     const iniciada = gerada + entre(0.5, 6) * HORA_MS;
@@ -570,6 +579,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       estado: estadoDoChamado(feitos.length ? estadoDaOs : null),
       os: {
         codigoFalha: p.codigoFalha,
+        codigoSolucao: p.codigoSolucao ?? null,
         executadoPor: p.executadoPor ?? 'equipe_interna',
         fornecedor: p.fornecedor ?? null,
         custo: estadoDaOs === 'aceita' ? (p.custo ?? null) : null,
@@ -579,6 +589,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       parada: parada && parada.inicio.getTime() <= fimDoHistorico ? parada : null,
       cenario: p.cenario,
     });
+    return feitos;
   };
 
   // --- cenários ---------------------------------------------------------------
@@ -645,6 +656,26 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
         custo: 2_500,
         reaberturas: i === 2 ? 1 : 0,
       });
+    // A modernização: a OS concluída com "Troca do equipamento", pelo
+    // fornecedor de elevadores, é a intervenção que a efetividade reconhece.
+    // A data da intervenção é a conclusão dela. É obra planejada: sem parada
+    // aberta pelo chamado e sem hóspede afetado.
+    const modernizacao = chamado({
+      hotel: h(5),
+      local: `${h(5)}-hall`,
+      ativo: a,
+      cenario: c,
+      abertoEm: em(112, 8),
+      codigoFalha: 'porta_elevador',
+      codigoSolucao: 'solucao_troca_do_equipamento',
+      descricao: 'Modernização do elevador social: troca do equipamento.',
+      impactoHospede: false,
+      executadoPor: 'fornecedor',
+      fornecedor: 'f-elevadores',
+      custo: 48_000,
+    });
+    const intervencaoEm = [...modernizacao].reverse().find((p) => p.acao === 'concluir')?.quando;
+    if (!intervencaoEm) throw new Error('A modernização do elevador precisa estar concluída.');
     chamado({
       hotel: h(5),
       local: `${h(5)}-hall`,
@@ -660,7 +691,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       chave: c,
       sinal: 'atencao',
       ativo: a,
-      intervencaoEm: em(110, 13),
+      intervencaoEm,
       alvo: { tipo: 'atencao_ativo', ativo: a, hotel: h(5) },
       decisoes: [
         { aposDias: 2, acao: 'aceitar' },
@@ -674,7 +705,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       chave: 'efetividade-elevador',
       sinal: 'efetividade',
       ativo: a,
-      intervencaoEm: em(110, 13),
+      intervencaoEm,
       alvo: null,
       decisoes: [],
       estadoFinal: null,

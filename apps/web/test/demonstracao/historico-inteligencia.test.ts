@@ -8,7 +8,9 @@
 // teste dela quando a montagem da 1b estiver na main.
 import {
   type AtivoDoDia,
+  type ChamadoDaEfetividade,
   type ChamadoDaFonte,
+  PADRAO_EFETIVIDADE,
   type DeteccaoDoDia,
   type EstadoDoInsight,
   type InsightExistente,
@@ -19,6 +21,7 @@ import {
   efetividadeAntesDepois,
   executarDiaDoTenant,
   fimDoDia,
+  intervencoesDosChamados,
   sinalDeSubstituicao,
   DIA_MS,
   HORA_MS,
@@ -239,6 +242,54 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
     expect(doHistorico).toBeGreaterThan(3_000);
     expect(doHistorico).toBeLessThan(3_600);
     expect(r.volume).toEqual(VOLUME_COMPLETO);
+  });
+
+  it('a única intervenção do roteiro é a modernização do elevador, na data do cenário', () => {
+    const r = roteiroDoHistorico({ fim: FIM });
+    const cenario = r.cenarios.find((c) => c.chave === 'efetividade-elevador');
+    // Os chamados do roteiro como o banco os devolveria, com a chave padrão do código.
+    const chamados: ChamadoDaEfetividade[] = r.chamados.map((c) => ({
+      id: c.chave,
+      hotelId: c.hotel,
+      bandeiraId: null,
+      localId: c.local,
+      ativoId: c.ativo,
+      abertaEm: c.abertoEm,
+      estado: c.estado,
+      impactoHospede: c.impactoHospede,
+      descricao: c.descricao,
+      os: [
+        {
+          estado: c.os.estado,
+          criadaEm: c.abertoEm,
+          codigoFalha: c.os.codigoFalha,
+          codigoSolucaoId: c.os.codigoSolucao && `id-${c.os.codigoSolucao}`,
+          codigoSolucaoChave: c.os.codigoSolucao,
+          executadoPor: c.os.executadoPor,
+          fornecedorId: c.os.fornecedor,
+          custoInformado: c.os.custo,
+          transicoes: c.os.passos.map((x) => ({
+            acao: x.acao,
+            para: estadoAposPasso(x.acao),
+            quando: x.quando,
+          })),
+        },
+      ],
+    }));
+    const intervencoes = intervencoesDosChamados(
+      chamados,
+      () => PADRAO_EFETIVIDADE,
+      r.inicioDosChamados,
+      fimDoDia(FIM),
+    );
+    expect(intervencoes.map((i) => [i.ativoId, i.em])).toEqual([
+      [cenario?.ativo, cenario?.intervencaoEm],
+    ]);
+    expect(intervencoes[0]).toMatchObject({
+      executadoPor: 'fornecedor',
+      fornecedorId: 'f-elevadores',
+      custoInformado: 48_000,
+    });
   });
 
   it('nenhum chamado fica fora do histórico, e a OS segue as transições do domínio', () => {

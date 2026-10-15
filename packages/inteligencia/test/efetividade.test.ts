@@ -338,7 +338,8 @@ describe('rótulos da efetividade: variação observada, nunca causa', () => {
     const textos = Object.entries(CATALOGOS[idioma])
       .filter(([k]) => k.startsWith('inteligencia.efetividade.'))
       .filter(([k]) => k !== 'inteligencia.efetividade.ressalva');
-    expect(textos.length).toBe(4);
+    // Os 4 do motor e os 23 das telas (adendo ao ADR-033, 15/10/2026).
+    expect(textos.length).toBe(27);
     for (const [k, texto] of textos) expect([k, causal.test(texto ?? '')]).toEqual([k, false]);
   });
 });

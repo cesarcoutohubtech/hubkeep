@@ -13,10 +13,10 @@ import type { InsightDoPainelNoBanco, PortaDoPainelDoIntelligence } from '@hubke
 import type { Contexto } from '@hubkeep/dominio';
 import {
   type AberturaDoPainel,
-  type EfetividadeDaIntervencao,
   type EfetividadesDoPainel,
   type PortasDaEfetividade,
   efetividadeDoAtivo,
+  efetividadeDoInsight,
   listarEfetividades,
   FUSO_PADRAO_DO_GRUPO,
   type AcaoDoInsight,
@@ -71,9 +71,11 @@ export interface CasosDeUsoDoPainel {
   ver(ctx: Contexto, insightId: string): Promise<PaginaDoInsight>;
   ativo(ctx: Contexto, ativoId: string): Promise<PaginaDoAtivo>;
   /** As intervenções do ativo, com o antes e depois (adendo ao ADR-033, 15/10/2026). */
-  efetividadeDoAtivo(ctx: Contexto, ativoId: string): Promise<EfetividadeDaIntervencao[]>;
+  efetividadeDoAtivo(ctx: Contexto, ativoId: string): Promise<EfetividadesDoPainel>;
   /** A seção abaixo da lista de insights: as intervenções dos hotéis em que a pessoa decide. */
   efetividades(ctx: Contexto): Promise<EfetividadesDoPainel>;
+  /** Na página do insight: as intervenções nos ativos dele, depois da primeira detecção. */
+  efetividadeDoInsight(ctx: Contexto, insightId: string): Promise<EfetividadesDoPainel>;
   decidir(
     ctx: Contexto,
     insightId: string,
@@ -142,6 +144,8 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
     efetividadeDoAtivo: (ctx, ativoId) =>
       efetividadeDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
     efetividades: (ctx) => listarEfetividades(portasDoPainel(deps, ctx), agora()),
+    efetividadeDoInsight: (ctx, insightId) =>
+      efetividadeDoInsight(portasDoPainel(deps, ctx), insightId, agora()),
     decidir: (ctx, insightId, pedido) =>
       decidirInsight(
         portasDoPainel(deps, ctx),

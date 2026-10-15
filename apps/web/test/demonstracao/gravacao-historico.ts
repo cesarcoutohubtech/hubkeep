@@ -476,6 +476,22 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
           ).id,
       );
     }
+    // Os códigos de solução do roteiro (a troca do equipamento da modernização)
+    // são os padrão, pela chave: sem eles no grupo, instala os padrão.
+    const chavesDeSolucao = new Set(
+      r.chamados.flatMap((c) => (c.os.codigoSolucao ? [c.os.codigoSolucao] : [])),
+    );
+    let comSolucao = codigos;
+    if ([...chavesDeSolucao].some((k) => !comSolucao.some((x) => x.chavePadrao === k))) {
+      await casos.codigos.instalarCodigosPadrao(admin);
+      comSolucao = (await casos.codigos.listarCodigos(admin)).codigos;
+    }
+    const solucoes = new Map<string, string>();
+    for (const k of chavesDeSolucao) {
+      const id = comSolucao.find((x) => x.tipo === 'solucao' && x.chavePadrao === k)?.id;
+      if (!id) throw new Error(`Código de solução padrão ${k} não encontrado.`);
+      solucoes.set(k, id);
+    }
     const fornecedoresGravados = await casos.fornecedores.listar(admin);
     const fornecedores = new Map<string, string>();
     for (const f of r.fornecedores) {
@@ -603,7 +619,14 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
             osId: os.id,
             versao: os.versao,
             ...(passo.acao === 'concluir'
-              ? { codigos: { falhaId: codigosDoRoteiro.get(c.os.codigoFalha) ?? null } }
+              ? {
+                  codigos: {
+                    falhaId: codigosDoRoteiro.get(c.os.codigoFalha) ?? null,
+                    ...(c.os.codigoSolucao
+                      ? { solucaoId: solucoes.get(c.os.codigoSolucao) ?? null }
+                      : {}),
+                  },
+                }
               : {}),
           },
         });

@@ -2192,3 +2192,62 @@ Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma c
 **Próximo:**
 1. depois do merge do #290, o PR da linha do `docs/03`;
 2. depois do merge dele, o PR 2 da efetividade, com a página do insight pela opção (a).
+
+### O status dos 50% no `docs/03` (15/10/2026)
+
+- O #290 entrou na `main` ("Cesar aqui. Merge feito. Prossiga").
+- A linha do adendo ao ADR-033 no `docs/03` deixa de dizer "aguarda a confirmação escrita do Kaio". Ela passa a citar a confirmação dele ("Eu confirmo os 50%") e a constante `COBERTURA_MINIMA_DO_CUSTO`.
+- O PR é de zona protegida e só tem essa linha, como o Cesar pediu ("num PR só para ela").
+- Antes de abrir, o agente conferiu que nenhum PR aberto toca a zona: #291, #285, #282, #281 e #263.
+- **Próximo:** depois do merge deste PR, o PR 2 da efetividade. O primeiro passo é ler o cenário `efetividade-elevador` do roteiro da demonstração e `iaTabelaEfetividade` no mock.
+
+## O PR 2 da efetividade: as três telas (15/10/2026)
+
+"Cesar aqui. 292 mergeado." O PR 2 é `int:`, fora da zona protegida, e segue o adendo ao ADR-033 com as decisões de Cesar e Kaio de 15/10/2026.
+
+**Motor (`packages/inteligencia`):**
+- `efetividadeDoInsight` (opção a): as intervenções nos ativos do insight concluídas depois da primeira detecção.
+  - O ativo do escopo, na atenção; no sistêmico, os ativos dos chamados da evidência que quem lê vê.
+  - Só nos hotéis em que a pessoa decide.
+- Os três casos de uso devolvem os nomes dos hotéis e dos ativos (`EfetividadesDoPainel`).
+- A intervenção leva a descrição do chamado e o nome do fornecedor, para a tela.
+- O filtro da leitura passa de um ativo (`ativoId`) para uma lista (`ativoIds`).
+
+**Leitura (`packages/db`):** a descrição do chamado e o nome do fornecedor (left join na `app.fornecedor`), e o filtro por lista de ativos.
+
+**API:**
+- `RespostaDasEfetividades` e `EfetividadeDaIntervencaoApi`, com o custo de cada lado e o `suficiente`.
+- O campo `efetividade` nas respostas do ativo e do insight.
+- A rota nova `GET /api/v1/inteligencia/efetividade`, no OpenAPI.
+
+**Telas (`apps/web`):**
+- `TabelaDeEfetividade` (em `comum.tsx`) segue as colunas do mock:
+  - a intervenção: o chamado, quem executou e o custo da OS;
+  - o ativo (com link) e o hotel;
+  - quando;
+  - os chamados antes e depois ("janela em curso");
+  - o tempo parado antes → depois;
+  - o custo das corretivas, com "custo informado em X de Y OS" e "Dados insuficientes" abaixo de 50%;
+  - a variação observada (selo e explicação).
+  - A ressalva fica no rodapé.
+- Os três lugares:
+  - **Efetividade das intervenções**, abaixo da lista;
+  - **Intervenções neste ativo**, no detalhe do ativo;
+  - **Efetividade da intervenção**, na página do insight, só quando há intervenção.
+- Os textos estão nos quatro idiomas.
+
+**Demonstração (`historico-inteligencia.ts`):**
+- O cenário do elevador do hotel 5 ganha a OS de modernização:
+  - executada pelo fornecedor "Elevadores Demonstração", com R$ 48 mil e o código "Troca do equipamento";
+  - a data da intervenção dos dois cenários passa a ser a conclusão dela.
+- A modernização vai sem parada e sem hóspede afetado, por ser obra planejada. Com 36 h de parada e hóspede afetado, a atenção do elevador ficava alta depois do resolvido, e o cenário abria um segundo insight.
+- A gravação passa o código de solução na conclusão. Se o grupo não tiver os códigos padrão, ela os instala.
+- **A nova rodada do `demo:historico`** (com o mesmo `--fim`) fica para depois do merge deste PR, como o Cesar decidiu. A retomada volta ao início, porque a abertura nova não está no banco.
+
+### Ponto de retomada (15/10/2026, PR 2 da efetividade)
+
+- **`main`:** em `7987b00` (#292).
+- **Dev:** sem mudança. Depois do merge deste PR, o Cesar roda de novo o `demo:historico` no notebook, com o mesmo `--fim`.
+- **Nesta branch:** o PR 2 da efetividade.
+- **Esperando:** o Cesar, para o merge e a nova rodada do `demo:historico`.
+- **Próximo:** conferir no dev, depois da rodada, que a modernização do elevador aparece nas três telas. Depois, o que Cesar e Kaio priorizarem.

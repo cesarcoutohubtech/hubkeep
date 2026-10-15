@@ -2,7 +2,8 @@
 // Detalhe do ativo no Intelligence (proposta das telas do 1.0, tela 3): os
 // indicadores, os três fatores que mais pesaram, a atenção dos últimos 90 dias
 // (o resultado original de cada dia), a composição do score, como o resultado
-// foi gravado (a condição do Cesar no ADR-036) e os insights do ativo. A
+// foi gravado (a condição do Cesar no ADR-036), os insights do ativo e as
+// intervenções nele, com o antes e depois (adendo ao ADR-033, 15/10/2026). A
 // página não decide nada: a decisão é só na página do insight (decisão 2).
 import type { RespostaDoAtivoNoIntelligence, z } from '@hubkeep/contratos';
 import type { Chave } from '@hubkeep/i18n';
@@ -20,7 +21,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../../cliente/api';
 import { Aviso } from '../../../../../cliente/aviso';
 import { useT } from '../../../../../i18n/cliente';
-import { AtencaoNosDias, SeloDaFaixa, SeloDoEstado, useDatas, useNomeDaFaixa } from '../../comum';
+import {
+  AtencaoNosDias,
+  SeloDaFaixa,
+  SeloDoEstado,
+  TabelaDeEfetividade,
+  useDatas,
+  useNomeDaFaixa,
+} from '../../comum';
 
 type Pagina = z.infer<typeof RespostaDoAtivoNoIntelligence>;
 
@@ -150,6 +158,15 @@ export function ConteudoDoAtivo({ pagina }: { pagina: Pagina }) {
           </div>
         </>
       )}
+      <Painel
+        titulo={t('inteligencia.efetividade.ativo.titulo')}
+        dica={t('inteligencia.efetividade.dica')}
+      >
+        <TabelaDeEfetividade
+          efetividade={pagina.efetividade}
+          vazio={t('inteligencia.efetividade.ativo.vazio')}
+        />
+      </Painel>
     </>
   );
 }

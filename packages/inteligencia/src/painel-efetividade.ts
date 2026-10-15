@@ -1,11 +1,12 @@
 // A efetividade no painel do Intelligence (adendo ao ADR-033 de 15/10/2026):
 // a leitura das intervenções e o antes e depois de cada uma, sob demanda, sem
-// gravar resultado. As telas (PR seguinte) mostram nos três lugares decididos
-// em 10/10/2026; aqui ficam dois deles:
+// gravar resultado, nos três lugares decididos em 10/10/2026:
 // - o detalhe do ativo: as intervenções do ativo;
-// - a seção abaixo da lista de insights: as intervenções do escopo de quem lê.
-// A página do insight espera a data da decisão (pendência registrada no
-// diário do Intelligence, 15/10/2026).
+// - a seção abaixo da lista de insights: as intervenções do escopo de quem lê;
+// - a página do insight: as intervenções nos ativos do insight concluídas
+//   depois da primeira detecção dele. O insight não guarda a data da primeira
+//   decisão (sem linha do tempo no 1.0), e a opção (a) foi aprovada por Cesar e
+//   Kaio em 15/10/2026.
 //
 // - Quem vê: quem decide o insight do hotel do ativo, como no detalhe do
 //   ativo (Cesar, 10/10/2026). Na lista, a intervenção de hotel em que a
@@ -15,7 +16,7 @@
 //   `LIMITE_DAS_INTERVENCOES`.
 // - O histórico de cada ativo vem numa leitura só, do início da janela antes
 //   da primeira intervenção ao fim da janela depois da última.
-import type { Parada } from '@hubkeep/dominio';
+import { NaoEncontrado, type Parada } from '@hubkeep/dominio';
 import { type Efetividade, codigosDeIntervencao } from './efetividade';
 import type { LinhaDePolitica } from './fonte';
 import { podeDecidirInsight } from './insight';
@@ -31,6 +32,7 @@ import {
   type NomesDoPainel,
   type PortasDoPainel,
   ativoNaoEncontrado,
+  chamadosDaEvidencia,
   exigirPainel,
   unicos,
 } from './painel';
@@ -52,13 +54,13 @@ export interface PortasDaEfetividade extends PortasDoPainel {
   politicasDaEfetividade(): Promise<readonly LinhaDePolitica[]>;
   /**
    * Os chamados com ativo cuja OS tem um destes códigos de solução (pela chave
-   * padrão ou pelo id) e uma conclusão depois de `desde`; com `ativoId`, só os
-   * desse ativo. A regra (a OS que vale, a conclusão final) é do motor.
+   * padrão ou pelo id) e uma conclusão depois de `desde`; com `ativoIds`, só os
+   * desses ativos. A regra (a OS que vale, a conclusão final) é do motor.
    */
   intervencoes(filtro: {
     codigos: readonly string[];
     desde: Date;
-    ativoId?: string;
+    ativoIds?: readonly string[];
   }): Promise<readonly ChamadoDaEfetividade[]>;
   /**
    * Os chamados dos ativos abertos até `ate` e abertos depois de `desde` ou
@@ -120,7 +122,7 @@ export async function efetividadeDoAtivo(
   p: PortasDaEfetividade,
   ativoId: string,
   agora: Date,
-): Promise<EfetividadeDaIntervencao[]> {
+): Promise<EfetividadesDoPainel> {
   const atribuicoes = await exigirPainel(p, agora);
   const ativo = await p.ativo(ativoId);
   if (
@@ -137,10 +139,51 @@ export async function efetividadeDoAtivo(
   const codigos = codigosDeIntervencao(
     efetividadeDoHotel(linhas, { id: ativo.hotelId, bandeiraId: ativo.bandeiraId }),
   );
-  if (!codigos.length) return [];
+  if (!codigos.length) return comNomes(p, []);
   const desde = new Date(agora.getTime() - DIAS_DAS_INTERVENCOES * DIA_MS);
-  const chamados = await p.intervencoes({ codigos, desde, ativoId: ativo.id });
-  return calcular(p, chamados, linhas, agora);
+  const chamados = await p.intervencoes({ codigos, desde, ativoIds: [ativo.id] });
+  return comNomes(p, await calcular(p, chamados, linhas, agora));
+}
+
+const insightNaoEncontrado = () =>
+  new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
+
+/**
+ * A página do insight: as intervenções nos ativos do insight (o do escopo, na
+ * atenção; os dos chamados da evidência que quem lê vê, no sistêmico),
+ * concluídas depois da primeira detecção, nos hotéis em que a pessoa decide.
+ */
+export async function efetividadeDoInsight(
+  p: PortasDaEfetividade,
+  insightId: string,
+  agora: Date,
+): Promise<EfetividadesDoPainel> {
+  const atribuicoes = await exigirPainel(p, agora);
+  const insight = await p.insight(insightId);
+  if (!insight) throw insightNaoEncontrado();
+  const doEscopo = insight.escopo['ativoId'];
+  const ids = chamadosDaEvidencia(insight.evidencia);
+  const ativoIds = doEscopo
+    ? [doEscopo]
+    : unicos(ids.length ? (await p.chamados(ids)).map((c) => c.ativoId) : []);
+  if (!ativoIds.length) return comNomes(p, []);
+  const linhas = await p.politicasDaEfetividade();
+  const desde = new Date(agora.getTime() - DIAS_DAS_INTERVENCOES * DIA_MS);
+  const chamados = await p.intervencoes({ codigos: codigosDoTenant(linhas), desde, ativoIds });
+  const lista = await calcular(
+    p,
+    chamados,
+    linhas,
+    agora,
+    (i) =>
+      i.em.getTime() > insight.primeiraDeteccaoEm.getTime() &&
+      podeDecidirInsight(
+        atribuicoes,
+        { tipo: 'hotel', hotelId: i.hotelId, bandeiraId: i.bandeiraId },
+        agora,
+      ),
+  );
+  return comNomes(p, lista);
 }
 
 /** A seção abaixo da lista de insights: as intervenções dos hotéis em que a pessoa decide. */
@@ -159,6 +202,14 @@ export async function listarEfetividades(
       agora,
     ),
   );
+  return comNomes(p, intervencoes);
+}
+
+/** Os nomes dos hotéis e dos ativos das intervenções, só os que quem pede lê. */
+async function comNomes(
+  p: PortasDaEfetividade,
+  intervencoes: EfetividadeDaIntervencao[],
+): Promise<EfetividadesDoPainel> {
   const nomes = await p.nomes({
     hotelIds: unicos(intervencoes.map((e) => e.intervencao.hotelId)),
     bandeiraIds: [],

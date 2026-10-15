@@ -4,6 +4,7 @@ import type { Atribuicao, Escopo, Papel } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import {
   type AtivoDoPainel,
+  type InsightComEvidencia,
   type ChamadoDaEfetividade,
   DIAS_DAS_INTERVENCOES,
   LIMITE_DAS_INTERVENCOES,
@@ -12,6 +13,7 @@ import {
   type ParadaDoAtivo,
   type PortasDaEfetividade,
   efetividadeDoAtivo,
+  efetividadeDoInsight,
   listarEfetividades,
 } from '../src/index';
 
@@ -71,7 +73,9 @@ interface Memoria {
   linhas: LinhaDePolitica[];
   intervencoes: ChamadoDaEfetividade[];
   historico: { chamados: ChamadoDaEfetividade[]; paradas: ParadaDoAtivo[] };
-  filtros: { codigos: readonly string[]; desde: Date; ativoId?: string }[];
+  filtros: { codigos: readonly string[]; desde: Date; ativoIds?: readonly string[] }[];
+  insights: InsightComEvidencia[];
+  chamadosDoInsight: { id: string; ativoId: string | null }[];
   leituras: { ativoIds: readonly string[]; desde: Date; ate: Date }[];
 }
 
@@ -84,6 +88,8 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaEfetividade & { m: Memoria
     historico: { chamados: [], paradas: [] },
     filtros: [],
     leituras: [],
+    insights: [],
+    chamadosDoInsight: [],
     ...m,
   };
   const nao = async (): Promise<never> => {
@@ -101,9 +107,18 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaEfetividade & { m: Memoria
     fuso: async () => 'America/Sao_Paulo',
     contagens: nao,
     insights: nao,
-    insight: nao,
+    insight: async (id) => mem.insights.find((i) => i.id === id) ?? null,
     ligados: nao,
-    chamados: nao,
+    chamados: async (ids) =>
+      mem.chamadosDoInsight
+        .filter((c) => ids.includes(c.id))
+        .map((c) => ({
+          ...c,
+          hotelId: 'h1',
+          abertoEm: antes(10),
+          estado: 'concluido',
+          descricao: 'Parado',
+        })),
     decidir: nao,
     metricasDoAtivo: nao,
     insightsDoEscopo: nao,
@@ -117,7 +132,9 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaEfetividade & { m: Memoria
     politicasDaEfetividade: async () => mem.linhas,
     intervencoes: async (filtro) => {
       mem.filtros.push(filtro);
-      return mem.intervencoes.filter((c) => !filtro.ativoId || c.ativoId === filtro.ativoId);
+      return mem.intervencoes.filter(
+        (c) => !filtro.ativoIds || (c.ativoId !== null && filtro.ativoIds.includes(c.ativoId)),
+      );
     },
     historicoDosAtivos: async (ativoIds, desde, ate) => {
       mem.leituras.push({ ativoIds, desde, ate });
@@ -129,14 +146,14 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaEfetividade & { m: Memoria
 describe('efetividade no detalhe do ativo', () => {
   it('as intervenções do ativo, com o antes e depois, numa leitura do histórico', async () => {
     const p = emMemoria({ intervencoes: [troca('a1', 'h1', 120), troca('a1', 'h1', 30)] });
-    const lista = await efetividadeDoAtivo(p, 'a1', agora);
+    const { intervencoes: lista } = await efetividadeDoAtivo(p, 'a1', agora);
     expect(lista.map((e) => e.intervencao.em)).toEqual([antes(30), antes(120)]);
     expect(lista.map((e) => e.efetividade.versao)).toEqual([3, 3]);
     expect(p.m.filtros).toEqual([
       {
         codigos: ['solucao_troca_do_equipamento'],
         desde: antes(DIAS_DAS_INTERVENCOES),
-        ativoId: 'a1',
+        ativoIds: ['a1'],
       },
     ]);
     // Do início da janela antes da primeira ao fim da janela depois da última, até agora.
@@ -145,7 +162,7 @@ describe('efetividade no detalhe do ativo', () => {
 
   it('sem intervenção, sem leitura do histórico; com a lista vazia na política, nem a das intervenções', async () => {
     const vazio = emMemoria();
-    expect(await efetividadeDoAtivo(vazio, 'a1', agora)).toEqual([]);
+    expect((await efetividadeDoAtivo(vazio, 'a1', agora)).intervencoes).toEqual([]);
     expect(vazio.m.leituras).toEqual([]);
     const desligada = emMemoria({
       linhas: [
@@ -161,7 +178,7 @@ describe('efetividade no detalhe do ativo', () => {
       ],
       intervencoes: [troca('a1', 'h1', 30)],
     });
-    expect(await efetividadeDoAtivo(desligada, 'a1', agora)).toEqual([]);
+    expect((await efetividadeDoAtivo(desligada, 'a1', agora)).intervencoes).toEqual([]);
     expect(desligada.m.filtros).toEqual([]);
   });
 
@@ -222,5 +239,79 @@ describe('a seção da efetividade abaixo da lista de insights', () => {
       nomes: { hoteis: {}, bandeiras: {}, pessoas: {}, ativos: {} },
     });
     expect(p.m.leituras).toEqual([]);
+  });
+});
+
+describe('a efetividade na página do insight (opção a: depois da primeira detecção)', () => {
+  const insight = (extra: Partial<InsightComEvidencia> = {}): InsightComEvidencia => ({
+    id: 'i1',
+    hotelId: 'h1',
+    bandeiraId: null,
+    hotelIds: ['h1'],
+    tipo: 'atencao_ativo',
+    escopo: { ativoId: 'a1', hotelId: 'h1' },
+    estado: 'em_acao',
+    faixa: 'alta_atencao',
+    valor: 75,
+    versaoScore: 3,
+    anteriorId: null,
+    primeiraDeteccaoEm: antes(60),
+    ultimaDeteccaoEm: antes(1),
+    responsavelId: 'u1',
+    encerradoEm: null,
+    encerradoPor: null,
+    nota: null,
+    motivoDeDescarte: null,
+    versao: 2,
+    detalhe: {},
+    evidencia: { corretivaIds: [] },
+    ...extra,
+  });
+
+  it('na atenção: o ativo do escopo, só as concluídas depois da primeira detecção', async () => {
+    const p = emMemoria({
+      insights: [insight()],
+      intervencoes: [troca('a1', 'h1', 90), troca('a1', 'h1', 30)],
+    });
+    const { intervencoes: lista } = await efetividadeDoInsight(p, 'i1', agora);
+    expect(lista.map((e) => e.intervencao.em)).toEqual([antes(30)]);
+    expect(p.m.filtros[0]?.ativoIds).toEqual(['a1']);
+  });
+
+  it('no sistêmico: os ativos dos chamados da evidência; e só nos hotéis em que a pessoa decide', async () => {
+    const p = emMemoria({
+      insights: [
+        insight({
+          hotelId: null,
+          hotelIds: ['h1', 'h2'],
+          tipo: 'sistemico',
+          escopo: { regra: 'mesmo_modelo' },
+          evidencia: { corretivaIds: ['k1', 'k2', 'k3'] },
+        }),
+      ],
+      chamadosDoInsight: [
+        { id: 'k1', ativoId: 'a1' },
+        { id: 'k2', ativoId: 'a2' },
+        { id: 'k3', ativoId: 'a1' },
+      ],
+      intervencoes: [troca('a1', 'h1', 20), troca('a2', 'h2', 10)],
+    });
+    const { intervencoes: lista } = await efetividadeDoInsight(p, 'i1', agora);
+    expect(p.m.filtros[0]?.ativoIds).toEqual(['a1', 'a2']);
+    expect(lista.map((e) => e.intervencao.ativoId)).toEqual(['a1']);
+  });
+
+  it('o insight que quem lê não vê: insight_nao_encontrado', async () => {
+    await expect(efetividadeDoInsight(emMemoria(), 'i1', agora)).rejects.toMatchObject({
+      codigo: 'insight_nao_encontrado',
+    });
+  });
+
+  it('sem ativo no insight, sem leitura', async () => {
+    const p = emMemoria({
+      insights: [insight({ escopo: { regra: 'mesma_area_comum' }, tipo: 'sistemico' })],
+    });
+    expect((await efetividadeDoInsight(p, 'i1', agora)).intervencoes).toEqual([]);
+    expect(p.m.filtros).toEqual([]);
   });
 });

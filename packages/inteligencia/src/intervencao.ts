@@ -40,11 +40,15 @@ export interface OsDaEfetividade extends OsDaFonte {
   codigoSolucaoId: string | null;
   /** A chave padrão do código de solução; null no código criado pelo grupo ou sem código. */
   codigoSolucaoChave: string | null;
+  /** O nome do fornecedor que executou (`app.fornecedor.nome`), para a tela; ausente sem leitura. */
+  fornecedorNome?: string | null;
 }
 
 /** Um chamado com as OS dele e a bandeira do hotel, para resolver a política. */
 export interface ChamadoDaEfetividade extends Omit<ChamadoDaFonte, 'os'> {
   bandeiraId: string | null;
+  /** O que aconteceu (`app.chamado.descricao`), para a tela; ausente sem leitura. */
+  descricao?: string;
   os: readonly OsDaEfetividade[];
 }
 
@@ -59,7 +63,10 @@ export interface Intervencao {
   codigoSolucaoId: string;
   executadoPor: OsDaFonte['executadoPor'];
   fornecedorId: string | null;
+  fornecedorNome: string | null;
   custoInformado: number | null;
+  /** A descrição do chamado; null sem leitura. */
+  descricao: string | null;
 }
 
 /** O código da OS está na lista, pela chave padrão ou pelo id. */
@@ -123,7 +130,9 @@ export function intervencoesDosChamados(
       codigoSolucaoId: os.codigoSolucaoId,
       executadoPor: os.executadoPor,
       fornecedorId: os.fornecedorId,
+      fornecedorNome: os.fornecedorNome ?? null,
       custoInformado: os.custoInformado,
+      descricao: c.descricao ?? null,
     });
   }
   return intervencoes.sort(

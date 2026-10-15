@@ -186,6 +186,7 @@ import {
   PedidoDeDecisaoDoInsight,
   RespostaDaDecisaoDoInsight,
   RespostaDeInsights,
+  RespostaDasEfetividades,
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
@@ -2373,7 +2374,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/inteligencia/insights/{id}',
     resumo:
-      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê e a série de chamados por semana nas últimas 12 semanas.',
+      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê, a série de chamados por semana nas últimas 12 semanas e a efetividade das intervenções nos ativos do insight concluídas depois da primeira detecção.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Insight', esquema: RespostaDoInsight },
@@ -2387,7 +2388,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/inteligencia/ativos/{id}',
     resumo:
-      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, e os insights de atenção do ativo. Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
+      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, os insights de atenção do ativo e a efetividade das intervenções no ativo nos últimos 180 dias. Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Ativo', esquema: RespostaDoAtivoNoIntelligence },
@@ -2395,6 +2396,18 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO(
         'inteligencia_indisponivel, ou ativo_nao_encontrado (fora do escopo de quem decide ou inexistente).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/efetividade',
+    resumo:
+      'A efetividade das intervenções, a seção abaixo da lista de insights (adendo ao ADR-033 de 15/10/2026): as OS corretivas concluídas nos últimos 180 dias com o código de solução na lista da política inteligencia.efetividade do hotel, da mais recente para a mais antiga, até 100, só dos hotéis em que quem pede decide insight. Cada uma com os chamados, as reaberturas e o tempo parado do ativo antes e depois, e o custo das corretivas com a cobertura de cada lado. É a variação observada, nunca a causa.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Intervenções', esquema: RespostaDasEfetividades },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Sem o módulo ou sem papel que decide (inteligencia_indisponivel).'),
     },
   },
   {

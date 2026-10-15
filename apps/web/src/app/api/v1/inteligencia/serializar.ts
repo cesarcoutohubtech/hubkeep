@@ -26,3 +26,21 @@ export function insightNaApi<T extends ComDatas>(
 }
 
 export const dataNaApi = iso;
+
+/** A efetividade (adendo ao ADR-033): a data da intervenção em texto; o resto vai como o motor devolve. */
+export function efetividadesNaApi<
+  I extends { em: Date },
+  E extends { metricas: readonly unknown[] },
+  N,
+>(e: { intervencoes: readonly { intervencao: I; efetividade: E }[]; nomes: N }) {
+  return {
+    intervencoes: e.intervencoes.map((x) => ({
+      intervencao: { ...x.intervencao, em: iso(x.intervencao.em) },
+      efetividade: {
+        ...x.efetividade,
+        metricas: [...x.efetividade.metricas] as E['metricas'][number][],
+      },
+    })),
+    nomes: e.nomes,
+  };
+}
