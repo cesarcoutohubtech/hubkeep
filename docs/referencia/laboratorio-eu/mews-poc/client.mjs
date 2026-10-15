@@ -5,6 +5,7 @@
  */
 const BASE_DEMO = 'https://api.mews-demo.com';
 const OPERACOES = Object.freeze({
+  configuration: ['configuration/get', null],
   enterprises: ['enterprises/getAll', 'Enterprises'],
   resources: ['resources/getAll', 'Resources'],
   resourceBlocks: ['resourceBlocks/getAll', 'ResourceBlocks'],
@@ -118,7 +119,7 @@ export function criarClienteMews({
   }
 
   async function listar(operacao, filtros = {}) {
-    if (!OPERACOES[operacao]) throw new ErroMews('operacao_nao_permitida');
+    if (!OPERACOES[operacao] || !OPERACOES[operacao][1]) throw new ErroMews('operacao_nao_permitida');
     if (filtros.Limitation || filtros.ClientToken || filtros.AccessToken || filtros.Client) {
       throw new ErroMews('filtros_reservados');
     }
@@ -146,7 +147,7 @@ export function criarClienteMews({
    * Permite teste de fumaça com no máximo três chamadas HTTP totais.
    */
   async function lerPagina(operacao, filtros = {}) {
-    if (!OPERACOES[operacao]) throw new ErroMews('operacao_nao_permitida');
+    if (!OPERACOES[operacao] || !OPERACOES[operacao][1]) throw new ErroMews('operacao_nao_permitida');
     if (filtros.Limitation || filtros.ClientToken || filtros.AccessToken || filtros.Client) {
       throw new ErroMews('filtros_reservados');
     }
@@ -156,7 +157,20 @@ export function criarClienteMews({
     return { itens: items, cursor: typeof response.Cursor === 'string' ? response.Cursor : null };
   }
 
+  async function obterIdentificadorEmpresa() {
+    const dados = await requisitar('configuration', {});
+    const enterpriseId = dados.Enterprise?.Id;
+    if (typeof enterpriseId !== 'string' || !enterpriseId.trim()) {
+      throw new ErroMews('configuracao_sem_empresa');
+    }
+    // Retorno minimo; a resposta crua da Mews pode conter contato/endereco.
+    return enterpriseId;
+  }
+
   return Object.freeze({
+    obterIdentificadorEmpresa,
+    // Fallback de diagnostico: defaults oficiais, sem filtros opcionais.
+    lerPrimeiraPaginaDeBloqueiosSemFiltros: () => lerPagina('resourceBlocks'),
     lerPrimeiraPaginaDeEmpresas: (filtros = {}) => lerPagina('enterprises', filtros),
     lerPrimeiraPaginaDeRecursos: (enterpriseIds) => {
       if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
