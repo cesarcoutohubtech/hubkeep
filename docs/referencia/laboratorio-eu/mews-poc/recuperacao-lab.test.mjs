@@ -80,3 +80,48 @@ test('retorno mutavel nao altera armazenamento',async()=>{
   const l=db.ler(escopo);l.bloqueios[0].Id='mudado';
   assert.equal(db.ler(escopo).bloqueios[0].Id,'a');
 });
+
+
+test('varredura avanca apenas seu proprio checkpoint', async()=>{
+  const db=criarArmazenamentoSimulado(), s=sync(db);
+  await rodar(s,'2026-10-16T13:00:00Z',[b('a')]);
+  const sweep=await rodar(s,'2026-10-16T14:00:00Z',[],'reconciliacao');
+  assert.equal(sweep.checkpointUtc,'2026-10-16T13:00:00Z');
+  assert.equal(sweep.checkpointVarreduraUtc,'2026-10-16T14:00:00Z');
+  let janela;
+  await s.executar({hotelId:'hotel-a',enterpriseId:'ent-a',ateUtc:'2026-10-16T14:30:00Z',
+    listarBloqueios:async (_empresas,filtro)=>{janela=filtro;return [b('b','2026-10-16T14:10:00Z')];}});
+  assert.equal(janela.UpdatedUtc.StartUtc,'2026-10-16T12:55:00Z');
+  assert.equal(db.ler(escopo).bloqueios.length,2);
+});
+test('varredura pode ter horario inferior ao ultimo incremental sem regressao',async()=>{
+  const db=criarArmazenamentoSimulado(),s=sync(db);
+  await rodar(s,'2026-10-16T13:00:00Z',[]);
+  await rodar(s,'2026-10-16T15:00:00Z',[]);
+  await rodar(s,'2026-10-16T14:00:00Z',[],'reconciliacao');
+  const estado=db.ler(escopo);
+  assert.equal(estado.checkpointUtc,'2026-10-16T15:00:00Z');
+  assert.equal(estado.checkpointVarreduraUtc,'2026-10-16T14:00:00Z');
+});
+test('varredura regressiva recusa antes de consultar',async()=>{
+  const db=criarArmazenamentoSimulado(),s=sync(db);
+  await rodar(s,'2026-10-16T13:00:00Z',[]);
+  let consultas=0;
+  await assert.rejects(s.executar({hotelId:'hotel-a',enterpriseId:'ent-a',
+    ateUtc:'2026-10-16T12:00:00Z',modo:'reconciliacao',
+    listarBloqueios:async()=>{consultas++;return [];}}),/varredura_nao_avanca/);
+  assert.equal(consultas,0);
+});
+test('falha de reconciliacao preserva ambos os checkpoints',async()=>{
+  const db=criarArmazenamentoSimulado(),s=sync(db);
+  await rodar(s,'2026-10-16T13:00:00Z',[b('a')]);
+  await assert.rejects(s.executar({hotelId:'hotel-a',enterpriseId:'ent-a',modo:'reconciliacao',
+    ateUtc:'2026-10-16T14:00:00Z',listarBloqueios:async()=>{throw Error('falha_remota');}}),/falha_remota/);
+  assert.equal(db.ler(escopo).checkpointUtc,'2026-10-16T13:00:00Z');
+  assert.equal(db.ler(escopo).checkpointVarreduraUtc,'2026-10-16T13:00:00Z');
+  assert.equal(db.ler(escopo).revisao,1);
+});
+test('reconciliacao exige bootstrap previamente validado',async()=>{
+  const db=criarArmazenamentoSimulado();
+  await assert.rejects(rodar(sync(db),'2026-10-16T14:00:00Z',[],'reconciliacao'),/bootstrap_necessario/);
+});
