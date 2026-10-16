@@ -182,8 +182,17 @@ try {
             $relatorio['Resultado'] = 'autenticado_mas_limitado_429'
         }
         else {
-        # Primeiro bloco SEM filtros opcionais, conforme o contrato do Mews.
-        $bloco = Consultar $escolhido 'resourceBlocks/getAll' @{ Limitation = @{ Count = 5 } }
+        # Contrato validado em demo: pelo menos CreatedUtc, UpdatedUtc ou CollidingUtc.
+        $inicio = [DateTime]::UtcNow.Date
+        $janela = @{
+            StartUtc = $inicio.ToString('yyyy-MM-ddTHH:mm:ssZ')
+            EndUtc = $inicio.AddDays(30).ToString('yyyy-MM-ddTHH:mm:ssZ')
+        }
+        # Sem EnterpriseIds/ActivityStates: isola filtro temporal na primeira consulta.
+        $bloco = Consultar $escolhido 'resourceBlocks/getAll' @{
+            Limitation = @{ Count = 5 }
+            CollidingUtc = $janela
+        }
         $relatorio.Leituras['BloqueiosSemFiltros'] = Estado $bloco
         if ($bloco.Ok) {
             $prop = $bloco.Dados.PSObject.Properties['ResourceBlocks']
@@ -195,6 +204,7 @@ try {
             $escopoBloco = Consultar $escolhido 'resourceBlocks/getAll' @{
                 Limitation = @{ Count = 5 }
                 EnterpriseIds = @($enterpriseId)
+                CollidingUtc = $janela
             }
             $relatorio.Leituras['BloqueiosComEnterpriseId'] = Estado $escopoBloco
             if ($escopoBloco.Ok -and $script:contador -lt $limite) {
@@ -202,6 +212,7 @@ try {
                     Limitation = @{ Count = 5 }
                     EnterpriseIds = @($enterpriseId)
                     ActivityStates = @('Active')
+                    CollidingUtc = $janela
                 }
                 $relatorio.Leituras['BloqueiosComActivityStates'] = Estado $filtrado
             }
