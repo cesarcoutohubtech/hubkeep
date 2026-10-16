@@ -160,7 +160,7 @@ export function efetividadeDaIntervencao(
   i: Intervencao,
   historico: {
     chamados: readonly ChamadoDaEfetividade[];
-    paradas: readonly (Parada & { ativoId: string })[];
+    paradas: readonly (Parada & { ativoId: string; chamadoId: string })[];
   },
   config: ConfigEfetividade,
   agora: Date,

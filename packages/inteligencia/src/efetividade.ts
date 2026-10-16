@@ -29,11 +29,17 @@
 //   (`COBERTURA_MINIMA_DO_CUSTO`, confirmado pelo Kaio em 15/10/2026), não há
 //   variação: a tela mostra "dados insuficientes". O lado sem nenhuma OS
 //   aceita tem custo zero conhecido e conta como coberto.
+//
+// Versão 4 (Kaio, 16/10/2026, detalhe do ADR-033): o chamado da própria
+// intervenção fica fora de todas as métricas, e não só do custo: dos chamados,
+// das reaberturas e do tempo parado (as paradas abertas por ele). Na versão 3,
+// ele contava como um chamado a mais no "antes", o que puxava toda variação
+// para a redução e podia tirar um ativo do "sem base de comparação".
 import type { Parada } from '@hubkeep/dominio';
 import { type Corretiva, horasParadasNoTrecho } from './historico';
 import { DIA_MS } from './score';
 
-export const VERSAO_EFETIVIDADE = 3;
+export const VERSAO_EFETIVIDADE = 4;
 
 /** A parte das OS aceitas de cada lado que precisa ter o custo informado (adendo ao ADR-033). */
 export const COBERTURA_MINIMA_DO_CUSTO = 0.5;
@@ -48,8 +54,12 @@ export interface EntradaEfetividade {
   intervencaoEm: Date;
   /** Corretivas do escopo (o ativo), já filtradas, com o aceite e o custo informado. */
   corretivas: readonly Corretiva[];
-  paradas: readonly Parada[];
-  /** A corretiva da própria intervenção, que fica fora do custo; ausente sem ela. */
+  /** As paradas do ativo, com o chamado que abriu cada uma, quando se sabe. */
+  paradas: readonly (Parada & { chamadoId?: string })[];
+  /**
+   * O chamado da própria intervenção, que fica fora de todas as métricas (o
+   * chamado, as reaberturas, as paradas dele e o custo); ausente sem ele.
+   */
   intervencaoId?: string;
 }
 
@@ -177,6 +187,10 @@ export function efetividadeAntesDepois(
 ): Efetividade {
   const t = e.intervencaoEm.getTime();
   const janela = config.janelaDias * DIA_MS;
+  const daIntervencao = (id: string | undefined) =>
+    e.intervencaoId !== undefined && id === e.intervencaoId;
+  const corretivas = e.corretivas.filter((c) => !daIntervencao(c.id));
+  const paradas = e.paradas.filter((p) => !daIntervencao(p.chamadoId));
   const fimDepois = Math.min(t + janela, agora.getTime());
   const antes = (d: Date) => d.getTime() >= t - janela && d.getTime() < t;
   const depois = (d: Date) => d.getTime() >= t && d.getTime() < fimDepois;
@@ -195,12 +209,12 @@ export function efetividadeAntesDepois(
     par(
       'chamados',
       contar(
-        e.corretivas,
+        corretivas,
         (c) => antes(c.abertaEm),
         () => 1,
       ),
       contar(
-        e.corretivas,
+        corretivas,
         (c) => depois(c.abertaEm),
         () => 1,
       ),
@@ -208,26 +222,24 @@ export function efetividadeAntesDepois(
     par(
       'reaberturas',
       contar(
-        e.corretivas,
+        corretivas,
         (c) => antes(c.abertaEm),
         (c) => c.reaberturas,
       ),
       contar(
-        e.corretivas,
+        corretivas,
         (c) => depois(c.abertaEm),
         (c) => c.reaberturas,
       ),
     ),
     par(
       'horas_paradas',
-      horasParadasNoTrecho(e.paradas, t - janela, t, agora),
-      horasParadasNoTrecho(e.paradas, t, fimDepois, agora),
+      horasParadasNoTrecho(paradas, t - janela, t, agora),
+      horasParadasNoTrecho(paradas, t, fimDepois, agora),
     ),
   ];
   const custoDoLado = (dentro: (d: Date) => boolean): CustoDoLado => {
-    const aceitas = e.corretivas.filter(
-      (c) => c.id !== e.intervencaoId && c.aceitaEm !== null && dentro(c.aceitaEm),
-    );
+    const aceitas = corretivas.filter((c) => c.aceitaEm !== null && dentro(c.aceitaEm));
     const comCusto = aceitas.filter(
       (c) => c.custoInformado !== undefined && c.custoInformado !== null,
     );

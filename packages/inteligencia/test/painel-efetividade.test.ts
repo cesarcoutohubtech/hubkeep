@@ -148,7 +148,7 @@ describe('efetividade no detalhe do ativo', () => {
     const p = emMemoria({ intervencoes: [troca('a1', 'h1', 120), troca('a1', 'h1', 30)] });
     const { intervencoes: lista } = await efetividadeDoAtivo(p, 'a1', agora);
     expect(lista.map((e) => e.intervencao.em)).toEqual([antes(30), antes(120)]);
-    expect(lista.map((e) => e.efetividade.versao)).toEqual([3, 3]);
+    expect(lista.map((e) => e.efetividade.versao)).toEqual([4, 4]);
     expect(p.m.filtros).toEqual([
       {
         codigos: ['solucao_troca_do_equipamento'],

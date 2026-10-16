@@ -110,7 +110,7 @@ const efetividade: Efetividades = {
         descricao: 'Modernização do elevador',
       },
       efetividade: {
-        versao: 3,
+        versao: 4,
         resultado: 'janela_incompleta',
         diasDecorridos: 35,
         metricas: [
