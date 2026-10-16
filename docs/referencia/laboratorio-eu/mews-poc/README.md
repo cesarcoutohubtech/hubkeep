@@ -2,48 +2,44 @@
 
 Protótipo **isolado**, sem dependências externas e sem imports do monorepo. Preparado para a Hub Tech testar a leitura da Mews Connector API em **demo**. **Não escreve na API, não integra o banco, não recebe webhooks de produção e não cria chamados/OS.**
 
-## Estado das evidências — 16/10/2026
+## Evidências reais — 16/10/2026
 
-- **Confirmado em Windows no Gross Demo (conjunto público 1):**
-  `configuration/get` HTTP 200 e `resources/getAll` HTTP 200 (5 itens).
-- `enterprises/getAll` respondeu 401 apesar da configuração autorizada.
-  Para integrar **um hotel**, obter `Enterprise.Id` por `configuration/get`.
-- **16/10/2026, Windows (Gross 2):** `resourceBlocks/getAll` com apenas
-  `Limitation.Count=5` retornou **HTTP 400**, Request-Id
-  `c0a18460-c339-4b76-a12a-8508a7edcf1d`. Mensagem oficial:
-  `Please specify at least one of the filters: CreatedUtc, UpdatedUtc, CollidingUtc.`
-  A operação `configuration/get` logo depois retornou **HTTP 200**.
-- A tabela oficial lista os filtros temporais como opcionais individualmente,
-  mas o serviço exige **ao menos um filtro temporal** em qualquer consulta
-  `resourceBlocks/getAll`. `Limitation` também é obrigatório, e cada
-  intervalo tem no máximo **três meses**.
-- O novo script envia **`CollidingUtc` de 30 dias a partir da data UTC
-  corrente**, além de `Limitation.Count=5`, sem filtros opcionais extras.
-  **Esta versão corrigida ainda não foi executada no Windows**.
-- Outra tentativa com o conjunto Gross 1 respondeu 429 já na primeira chamada.
-  Como os tokens são públicos e compartilhados, o diagnóstico não repete
-  requisições automaticamente nem assume falha de autenticação.
-- **Nova prova mínima:** `diagnostico-bloqueios-windows.ps1`, que usa o
-  segundo par público Gross diretamente da documentação oficial. Faz
-  **primeiro a leitura de bloqueios com `CollidingUtc` (30 dias UTC)
-  e `Limitation.Count=5`**. Se houver
-  HTTP 400, 401 ou 403, executa **somente mais uma** chamada de
-  `configuration/get` para separar credenciais de permissão/formato.
-  No máximo **2 POSTs read-only**; 429 encerra imediatamente.
-  Retorna apenas código HTTP, quantidade de itens, presença de cursor,
-  `Request-Id`, `Retry-After` e `Message` sanitizada.
-  Um HTTP 200 com zero itens **comprova o endpoint**, não existência de
-  bloqueios ativos nem mapeamento para chamados/OS.
+**Gate de leitura básica da demo concluído no Windows:**
 
-No Windows, após revisar e baixar o novo script:
+- `configuration/get`: **HTTP 200** no Gross Demo; identidade da propriedade obtida.
+- `resources/getAll`: **HTTP 200**, primeira página com 5 recursos.
+- `resourceBlocks/getAll`: **HTTP 200**, primeira página com **5 bloqueios** e
+  `CursorPresente=true`, usando o **segundo conjunto público Gross Demo**
+  e uma única chamada POST, somente leitura.
+- A consulta anterior de bloqueios com apenas `Limitation` retornou HTTP 400,
+  Request-Id `c0a18460-c339-4b76-a12a-8508a7edcf1d`, informando que é
+  necessário pelo menos um de `CreatedUtc`, `UpdatedUtc`, `CollidingUtc`.
+  **Correção validada:** `CollidingUtc` entre 00:00 UTC do dia de execução
+  e 30 dias depois, somado a `Limitation.Count=5`.
+- `enterprises/getAll` retornou HTTP 401 em teste anterior, embora
+  `configuration/get` tenha funcionado. Em conectores de hotel único,
+  obter a propriedade de `configuration/get`; não exigir listagem global.
+- As credenciais de demo são públicas e compartilhadas: se houver HTTP 429,
+  respeitar `Retry-After` e **não repetir automaticamente o diagnóstico**.
+
+O resultado prova **autorização e leitura da primeira página** no ambiente
+Mews Demo. **Não comprova** leitura de todas as páginas, reconciliação
+incremental, associação com hotéis/quartos reais, produção, webhooks,
+persistência, sincronização de OS ou segurança fim a fim em um tenant real.
+
+O script validado no Windows é `diagnostico-bloqueios-windows.ps1`:
+máximo **2 POSTs**, nenhum retry, apenas tokens públicos; normalmente conclui
+com **1 POST** quando a leitura funciona. Saída apenas com códigos HTTP,
+contagens e presença de cursor; nenhum payload nem token exibido.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\diagnostico-bloqueios-windows.ps1"
 ```
 
-O script foi revisado estaticamente, porém **ainda não executado em Windows**;
-o usuário deve retornar o JSON antes de declararmos o endpoint validado.
-Nenhum dado produtivo, token privado, tenant, Supabase ou núcleo é usado.
+Os testes sintéticos Node do laboratório estão declarados em
+`testes.test.mjs`; os checks gerais GitHub não devem ser confundidos com
+execução local comprovada de todos os casos do laboratório.
+Para essa suíte, executar `node --test testes.test.mjs`.
 
 ## Rodar
 
@@ -166,9 +162,8 @@ A versão atual de `diagnostico-auth-windows.ps1`:
 
 **Não testar de novo em sequência.** Aguardar o intervalo indicado pela
 Mews e fazer somente uma execução posterior. Se o cabeçalho estiver ausente,
-usar espera progressiva e não repetir em ciclos curtos. O diagnóstico só
-estará finalizado quando a leitura de `resourceBlocks/getAll` tiver
-resposta válida e o erro 400 anterior estiver esclarecido.
+usar espera progressiva e não repetir em ciclos curtos. O HTTP 400 sem filtro temporal foi esclarecido e corrigido; a leitura
+da primeira página de bloqueios retornou HTTP 200 no teste de 16/10.
 
 ### Evidência real do Windows (15/10/2026)
 
@@ -184,9 +179,10 @@ resposta válida e o erro 400 anterior estiver esclarecido.
   empresas `874d5fac-d8df-4eb7-af73-5744b598d24b`;
   bloqueios `31b04475-bd79-47e0-af73-c22fc6cf21c6`.
 
-A configuração e leitura de recursos estão confirmadas no Mews Demo, **mas a
-leitura de bloqueios ainda não**. Não fazer merge/instalação produtiva com
-base apenas nessa prova; necessário validar o próximo resultado real.
+A configuração, a leitura de recursos e a **primeira página de bloqueios**
+estão confirmadas no Mews Demo. A etapa seguinte é validar paginação,
+reconciliação, escopo por propriedade e execução dos testes sintéticos antes
+de qualquer integração produtiva.
 
 ## Funções
 
