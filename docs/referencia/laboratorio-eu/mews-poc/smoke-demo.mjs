@@ -36,7 +36,15 @@ async function executar() {
   // enterprises/getAll pode exigir uma permissao que tokens demo individuais nao possuem.
   const enterpriseId = await mews.obterIdentificadorEmpresa();
   const recursos = await mews.lerPrimeiraPaginaDeRecursos([enterpriseId]);
-  const bloqueios = await mews.lerPrimeiraPaginaDeBloqueiosSemFiltros();
+  // Requisito confirmado na API real: sempre informar janela temporal.
+  const inicio = new Date();
+  inicio.setUTCHours(0, 0, 0, 0);
+  const fim = new Date(inicio.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const intervalo = {
+    StartUtc: inicio.toISOString().replace('.000Z', 'Z'),
+    EndUtc: fim.toISOString().replace('.000Z', 'Z'),
+  };
+  const bloqueios = await mews.lerPrimeiraPaginaDeBloqueios([enterpriseId], intervalo);
   const escopo = criarEscopo({
     tenantId: 'tenant-sintetico-mews-lab',
     vinculos: [{ enterpriseId, hotelId: 'hotel-sintetico-mews-lab' }],
