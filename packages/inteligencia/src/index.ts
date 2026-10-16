@@ -11,6 +11,7 @@ export * from './insight';
 export * from './intervencao';
 export * from './job';
 export * from './painel';
+export * from './painel-busca';
 export * from './painel-efetividade';
 export * from './painel-substituicao';
 export * from './politicas';

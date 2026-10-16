@@ -433,6 +433,41 @@ export async function ativoDoPainel(tx: Tx, id: string): Promise<AtivoDoPainelNo
     : null;
 }
 
+export interface AtivoEncontradoNoBanco {
+  id: string;
+  nome: string;
+  hotelId: string;
+  bandeiraId: string | null;
+}
+
+/**
+ * "Procurar ativo" no Intelligence: os ativos sem baixa cujo texto de busca
+ * (`app.ativo.busca`, já normalizado) contém o termo, em ordem de nome, até
+ * `limite`. A RLS recorta o que quem pede lê; o motor recorta quem decide.
+ */
+export async function ativosPorBusca(
+  tx: Tx,
+  termo: string,
+  limite: number,
+): Promise<AtivoEncontradoNoBanco[]> {
+  const linhas = await tx
+    .selectFrom('app.ativo as a')
+    .innerJoin('app.hotel as h', 'h.id', 'a.hotel_id')
+    .select(['a.id', 'a.nome', 'a.hotel_id', 'h.bandeira_id'])
+    .where('a.busca', 'ilike', `%${termo.replace(/[\\%_]/g, '\\$&')}%`)
+    .where('a.desativado_em', 'is', null)
+    .orderBy('a.nome')
+    .orderBy('a.id')
+    .limit(limite)
+    .execute();
+  return linhas.map((a) => ({
+    id: a.id,
+    nome: a.nome,
+    hotelId: a.hotel_id,
+    bandeiraId: a.bandeira_id,
+  }));
+}
+
 /** O primeiro cálculo de cada dia, sem recálculo, a partir de `desde` (AAAA-MM-DD). */
 export async function metricasDoAtivo(
   tx: Tx,

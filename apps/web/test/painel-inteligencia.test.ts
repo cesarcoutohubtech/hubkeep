@@ -9,6 +9,7 @@ import {
   MOTIVOS_DE_DESCARTE_API,
   PAPEIS_QUE_VEEM_AS_TELAS_API,
   RespostaDaAberturaDoIntelligence,
+  RespostaDaBuscaDeAtivosNoIntelligence,
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   TIPOS_DE_INSIGHT_API,
@@ -112,7 +113,12 @@ const TROCA: ChamadoDaEfetividadeNoBanco = {
 
 function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
   const decisoes: DecisaoNoBanco[] = [];
+  const buscas: { termo: string; limite: number }[] = [];
   const porta: PortaDoPainelDoIntelligence = {
+    ativosPorBusca: async (_ctx, termo, limite) => {
+      buscas.push({ termo, limite });
+      return [{ id: A1, nome: 'Elevador social 2', hotelId: H1, bandeiraId: null }];
+    },
     contagens: async () => [
       { tipo: 'atencao_ativo', faixa: 'critico', comResponsavel: false, quantidade: 2 },
     ],
@@ -161,7 +167,7 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
     intervencoes: async () => [TROCA],
     historicoDosAtivos: async () => ({ chamados: [TROCA], paradas: [] }),
   };
-  return { porta, decisoes };
+  return { porta, decisoes, buscas };
 }
 
 /** As políticas gravadas no grupo: por padrão, a visibilidade com o Gerente, já aberta. */
@@ -183,9 +189,10 @@ const painel = (
   politicas: { chave: string; escopo: EscopoDePolitica; valor: unknown }[] = COM_O_GERENTE,
   atribuicoes: Atribuicao[] = [gerente],
 ) => {
-  const { porta, decisoes } = portaEmMemoria(insights);
+  const { porta, decisoes, buscas } = portaEmMemoria(insights);
   return {
     decisoes,
+    buscas,
     casos: criarPainel({
       porta,
       modulos: {
@@ -295,6 +302,22 @@ describe('o painel sobre a porta do banco', () => {
       encerradoEm: null,
       acoes: ['revisar', 'aceitar', 'descartar'],
       podeDecidir: true,
+    });
+  });
+
+  it('procurar ativo: o termo normalizado, o nome do hotel e o contrato da API', async () => {
+    const { casos, buscas } = painel([linha()]);
+    const r = RespostaDaBuscaDeAtivosNoIntelligence.parse(
+      await casos.procurarAtivos(ctx, '  Elévador '),
+    );
+    expect(buscas).toEqual([{ termo: 'elevador', limite: 100 }]);
+    expect(r.ativos.map((a) => a.id)).toEqual([A1]);
+    expect(r.nomes.hoteis).toEqual({ [H1]: 'Hotel 1' });
+    // Sem termo, nada é lido; abaixo de 3 letras, busca_curta.
+    expect((await casos.procurarAtivos(ctx, null)).ativos).toEqual([]);
+    expect(buscas).toHaveLength(1);
+    await expect(casos.procurarAtivos(ctx, 'el')).rejects.toMatchObject({
+      codigo: 'busca_curta',
     });
   });
 

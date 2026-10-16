@@ -427,6 +427,11 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
       dataCompra: '2014-06-01',
       garantiaAte: '2016-05-31',
     });
+    // Procurar ativo: pelo texto de busca, em uso; o termo com curinga do LIKE é literal.
+    expect(
+      (await porta.ativosPorBusca(ctx(U.gerente), 'social', 10)).filter((x) => x.id === A),
+    ).toEqual([{ id: A, nome: 'Elevador social 2', hotelId: H1, bandeiraId: B1 }]);
+    expect(await porta.ativosPorBusca(ctx(U.gerente), 'el%vador', 10)).toEqual([]);
     const doGerente = await porta.metricasDoAtivo(ctx(U.gerente), A, '2026-09-15');
     expect(doGerente.map((m) => [m.dia, m.calculo, m.recalculo, m.atencao])).toEqual([
       ['2026-10-01', 1, false, 60],

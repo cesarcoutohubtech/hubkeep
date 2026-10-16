@@ -1003,6 +1003,8 @@
   "inteligencia.efetividade.insight.dica": "Interventions terminées après la première détection de l’insight, le {data}.",
   "inteligencia.efetividade.lista.vazio": "Aucune intervention terminée au cours des 180 derniers jours dans les hôtels où vous décidez.",
   "inteligencia.efetividade.ativo.vazio": "Aucune intervention terminée sur cet équipement au cours des 180 derniers jours.",
+  "inteligencia.procurar.titulo": "Rechercher un équipement",
+  "inteligencia.procurar.dica": "Ouvre la page de l’équipement dans les hôtels où vous décidez, même sans insight. Recherche par nom, fabricant, modèle ou numéro de série.",
   "inteligencia.substituicao.titulo": "Signal de remplacement",
   "inteligencia.substituicao.dica": "Critères des 12 derniers mois, calculés maintenant.",
   "inteligencia.substituicao.sinal": "{sinal, select, sem_sinal {Aucun signal} observar {À surveiller} avaliar_substituicao {Évaluer le remplacement} revisao_necessaria {Révision nécessaire} other {{sinal}}}",

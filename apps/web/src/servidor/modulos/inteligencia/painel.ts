@@ -3,16 +3,20 @@
 // contexto de quem pede. Aqui só a tradução das linhas para o motor; as regras
 // (o módulo e o papel, a transição, o responsável, a substituição) são do
 // motor, e a RLS da app.insight é a última palavra sobre quem lê e decide.
-import type {
-  PortaAtribuicoes,
-  PortaConfiguracao,
-  PortaModulos,
-  Relogio,
+import {
+  type PortaAtribuicoes,
+  type PortaConfiguracao,
+  type PortaModulos,
+  type Relogio,
+  termoDeBusca,
 } from '@hubkeep/aplicacao';
 import type { InsightDoPainelNoBanco, PortaDoPainelDoIntelligence } from '@hubkeep/db';
 import type { Contexto } from '@hubkeep/dominio';
 import {
   type AberturaDoPainel,
+  type AtivosEncontrados,
+  type PortasDaBuscaDeAtivos,
+  procurarAtivos,
   type EfetividadesDoPainel,
   type PortasDaSubstituicao,
   type SubstituicaoDoAtivo,
@@ -72,6 +76,8 @@ export interface CasosDeUsoDoPainel {
   listar(ctx: Contexto, pedido: PedidoDeListaDoPainel): Promise<ListaDeInsights>;
   ver(ctx: Contexto, insightId: string): Promise<PaginaDoInsight>;
   ativo(ctx: Contexto, ativoId: string): Promise<PaginaDoAtivo>;
+  /** "Procurar ativo" (16/10/2026): o termo cru da query; abaixo de 3 letras, busca_curta. */
+  procurarAtivos(ctx: Contexto, busca: string | null): Promise<AtivosEncontrados>;
   /** As intervenções do ativo, com o antes e depois (adendo ao ADR-033, 15/10/2026). */
   efetividadeDoAtivo(ctx: Contexto, ativoId: string): Promise<EfetividadesDoPainel>;
   /** O sinal de substituição do ativo, calculado agora (proposta de 16/10/2026); null no ativo baixado. */
@@ -100,7 +106,10 @@ function noMotor<T extends InsightDoPainelNoBanco>(
   return { ...i, tipo: i.tipo, estado: i.estado, motivoDeDescarte: motivo };
 }
 
-export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDaSubstituicao {
+export function portasDoPainel(
+  deps: DepsDoPainel,
+  ctx: Contexto,
+): PortasDaSubstituicao & PortasDaBuscaDeAtivos {
   const { porta } = deps;
   return {
     modulos: () => deps.modulos.contratados(ctx),
@@ -127,6 +136,7 @@ export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDaSubst
     nomes: (p) => porta.nomes(ctx, p),
     decidir: (d) => porta.decidir(ctx, d),
     ativo: (id) => porta.ativo(ctx, id),
+    ativosPorBusca: (termo, limite) => porta.ativosPorBusca(ctx, termo, limite),
     metricasDoAtivo: (ativoId, desde) => porta.metricasDoAtivo(ctx, ativoId, desde),
     insightsDoEscopo: async (tipo, chave, valor) =>
       (await porta.insightsDoEscopo(ctx, tipo, chave, valor, LIMITE_DA_LISTA)).map(noMotor),
@@ -146,6 +156,8 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
     listar: (ctx, pedido) => listarInsights(portasDoPainel(deps, ctx), pedido, agora()),
     ver: (ctx, insightId) => verInsight(portasDoPainel(deps, ctx), insightId, agora()),
     ativo: (ctx, ativoId) => verAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    procurarAtivos: async (ctx, busca) =>
+      procurarAtivos(portasDoPainel(deps, ctx), termoDeBusca(busca), agora()),
     efetividadeDoAtivo: (ctx, ativoId) =>
       efetividadeDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
     substituicaoDoAtivo: (ctx, ativoId) =>

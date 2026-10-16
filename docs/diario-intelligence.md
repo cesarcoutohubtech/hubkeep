@@ -2562,3 +2562,32 @@ PR `int:`, fora da zona protegida, sem migração e sem tocar no `packages/domin
 - **Esperando o Cesar:** o merge.
 - **Depois do merge:** conferir no dev a lava-roupa do hotel 6 ("Avaliar substituição").
 - **Próximo:** o que Cesar e Kaio priorizarem.
+
+## A página do ativo sem caminho e o "Procurar ativo" (16/10/2026)
+
+O Cesar não achou a página da lava-roupa do hotel 6. Ela só abria pelo insight ou pela intervenção, e o ativo que só tem sinal de substituição não tem nenhum dos dois. O agente não conferiu esse caminho no #306.
+- **Contorno:** o id pelo SQL Editor do dev. A página abriu (`/inteligencia/ativos/01a13ab6-…`), mas nos prints não aparecia a seção do sinal. O motivo provável é o app local ainda sem o #306, e o agente pediu para conferir.
+- **Opções:**
+  - (a) "Procurar ativo" no Intelligence (recomendada);
+  - (b) uma seção dos ativos com sinal;
+  - (c) um link na ficha do núcleo.
+- "Cesar aqui. Seguir como recomendado" e "Kaio aqui. Seguir como recomendado" (nesta sessão, 16/10/2026): a opção (a).
+
+**O que o PR traz** (`int:`, fora da zona protegida, sem migração):
+- **Motor (`painel-busca.ts`):** `procurarAtivos`.
+  - Recebe o termo já normalizado, lê até 100 ativos e devolve até 20, só dos hotéis em que a pessoa decide insight, com o nome do hotel.
+  - Sem termo, devolve a lista vazia, sem ler o banco.
+- **Leitura (`packages/db`):** `ativosPorBusca`, pela coluna `busca` do núcleo, só os ativos em uso, com o curinga do LIKE escapado.
+- **API:** `GET /api/v1/inteligencia/ativos?busca=`, no OpenAPI, normalizado pelo `termoDeBusca` (abaixo de 3 letras, `busca_curta`).
+  - A descrição da rota do ativo passa a citar o sinal de substituição, que faltou no #306.
+- **Tela:** o painel "Procurar ativo", acima da lista de insights, com o `CampoDeBusca` das listas do núcleo. Os textos estão nos quatro idiomas.
+
+### Ponto de retomada (16/10/2026, procurar ativo)
+
+- **`main`:** em `ae48018` (#306).
+- **Dev:** sem mudança. A busca aparece depois do merge.
+- **Nesta branch:** o "Procurar ativo". O PR abre agora.
+- **Esperando o Cesar:**
+  - o merge;
+  - conferir, com o app local atualizado da `main`, que a seção "Sinal de substituição" aparece na lava-roupa.
+- **Próximo:** o que Cesar e Kaio priorizarem.
