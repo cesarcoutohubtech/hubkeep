@@ -79,6 +79,10 @@ export function prepararLote({ tenantId, hotelId, enterpriseId, checkpointEspera
   }
   const safeEspacos = listaSegura(espacos, CAMPOS_ESPACO, escopo, 'espaco');
   const safeBloqueios = listaSegura(bloqueios, CAMPOS_BLOQUEIO, escopo, 'bloqueio');
+  const recursosAutorizados = new Set(safeEspacos.map(x => x.codigoExterno));
+  if (safeBloqueios.some(b => !recursosAutorizados.has(b.codigoRecurso))) {
+    throw new Error('bloqueio_sem_recurso_do_hotel');
+  }
   // Não confundir ausência na consulta incremental com exclusão.
   const assinatura = JSON.stringify([key, checkpointEsperado, novoCheckpoint, safeEspacos, safeBloqueios]);
   return Object.freeze({
@@ -114,8 +118,20 @@ export function criarRepositorioSimulado() {
     // Construir a nova projeção fora da publicação para evitar estados parciais.
     const recursos = new Map(anterior?.recursos ?? []);
     const bloqueios = new Map(anterior?.bloqueios ?? []);
-    for (const item of plano.espacos) recursos.set(item.codigoExterno, structuredClone(item));
-    for (const item of plano.bloqueios) bloqueios.set(item.codigoExterno, structuredClone(item));
+    for (const item of plano.espacos) {
+      const anteriorItem = recursos.get(item.codigoExterno);
+      if (!anteriorItem?.atualizadoEm || !item.atualizadoEm ||
+          instante(item.atualizadoEm) >= instante(anteriorItem.atualizadoEm)) {
+        recursos.set(item.codigoExterno, structuredClone(item));
+      }
+    }
+    for (const item of plano.bloqueios) {
+      const anteriorItem = bloqueios.get(item.codigoExterno);
+      // Tombstone mais novo nunca é ressuscitado por evento fora de ordem.
+      if (!anteriorItem || instante(item.atualizadoEm) >= instante(anteriorItem.atualizadoEm)) {
+        bloqueios.set(item.codigoExterno, structuredClone(item));
+      }
+    }
     estados.set(key, { checkpointUtc: plano.novoCheckpoint, digest: plano.digest,
       recursos, bloqueios });
     return Object.freeze({ resultado: 'aplicado', checkpointUtc: plano.novoCheckpoint });
