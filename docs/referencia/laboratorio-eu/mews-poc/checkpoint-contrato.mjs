@@ -72,7 +72,10 @@ function listaSegura(items, campos, escopo, tipo) {
  * Checkpoint esperado null somente no primeiro commit.
  */
 export function prepararLote({ tenantId, hotelId, enterpriseId, checkpointEsperado = null,
-  novoCheckpoint, espacos, bloqueios }) {
+  novoCheckpoint, espacos, bloqueios, modo = 'incremental', versaoEsperada = null }) {
+  if (!['incremental', 'reconciliacao'].includes(modo)) throw new Error('modo_invalido');
+  if (versaoEsperada !== null &&
+      (!Number.isSafeInteger(versaoEsperada) || versaoEsperada < 0)) throw new Error('versao_invalida');
   const escopo = { tenantId, hotelId, enterpriseId };
   const key = identidade(escopo);
   const proximoMs = instante(novoCheckpoint);
@@ -86,9 +89,9 @@ export function prepararLote({ tenantId, hotelId, enterpriseId, checkpointEspera
     throw new Error('bloqueio_sem_recurso_do_hotel');
   }
   // Não confundir ausência na consulta incremental com exclusão.
-  const assinatura = JSON.stringify([key, checkpointEsperado, novoCheckpoint, safeEspacos, safeBloqueios]);
+  const assinatura = JSON.stringify([key, modo, checkpointEsperado, novoCheckpoint, safeEspacos, safeBloqueios]);
   return Object.freeze({
-    key, ...escopo, checkpointEsperado, novoCheckpoint,
+    key, ...escopo, modo, versaoEsperada, checkpointEsperado, novoCheckpoint,
     digest: createHash('sha256').update(assinatura).digest('hex'),
     espacos: Object.freeze(safeEspacos.map(x => Object.freeze(x))),
     bloqueios: Object.freeze(safeBloqueios.map(x => Object.freeze(x))),
@@ -110,11 +113,27 @@ export function criarRepositorioSimulado() {
     const key = identidade(plano);
     if (key !== plano.key) throw new Error('plano_fora_do_escopo');
     const anterior = estados.get(key);
-    if (anterior?.checkpointUtc === plano.novoCheckpoint && anterior.digest === plano.digest) {
-      return Object.freeze({ resultado: 'replay_idempotente', checkpointUtc: anterior.checkpointUtc });
+    const modo = plano.modo ?? 'incremental';
+    if (!['incremental', 'reconciliacao'].includes(modo)) throw new Error('modo_invalido');
+    const atualDoModo = modo === 'incremental'
+      ? (anterior?.checkpointUtc ?? null)
+      : (anterior?.checkpointVarreduraUtc ?? null);
+    const digestDoModo = modo === 'incremental'
+      ? anterior?.digestIncremental
+      : anterior?.digestVarredura;
+    if (atualDoModo === plano.novoCheckpoint && digestDoModo === plano.digest) {
+      return Object.freeze({ resultado: 'replay_idempotente', checkpointUtc: atualDoModo });
     }
-    if ((anterior?.checkpointUtc ?? null) !== plano.checkpointEsperado) {
+    if (atualDoModo !== plano.checkpointEsperado ||
+        (plano.versaoEsperada !== null && plano.versaoEsperada !== undefined &&
+         (anterior?.versao ?? 0) !== plano.versaoEsperada)) {
       throw new Error('conflito_checkpoint_cas');
+    }
+    if (modo === 'reconciliacao' && !anterior?.checkpointUtc) {
+      throw new Error('bootstrap_necessario');
+    }
+    if (atualDoModo !== null && instante(plano.novoCheckpoint) <= instante(atualDoModo)) {
+      throw new Error('checkpoint_nao_avanca');
     }
     if (falharAntesCommit) throw new Error('falha_simulada_sem_commit');
     // Construir a nova projeção fora da publicação para evitar estados parciais.
@@ -130,12 +149,24 @@ export function criarRepositorioSimulado() {
     for (const item of plano.bloqueios) {
       const anteriorItem = bloqueios.get(item.codigoExterno);
       // Tombstone mais novo nunca é ressuscitado por evento fora de ordem.
-      if (!anteriorItem || instante(item.atualizadoEm) >= instante(anteriorItem.atualizadoEm)) {
+      if (!anteriorItem ||
+          instante(item.atualizadoEm) > instante(anteriorItem.atualizadoEm) ||
+          (instante(item.atualizadoEm) === instante(anteriorItem.atualizadoEm) &&
+           item.ativoNoPms === false && anteriorItem.ativoNoPms !== false)) {
         bloqueios.set(item.codigoExterno, copiar(item));
       }
     }
-    estados.set(key, { checkpointUtc: plano.novoCheckpoint, digest: plano.digest,
-      recursos, bloqueios });
+    // Incremental e varredura possuem marcas/digests distintos e CAS de revisao comum.
+    const primeiroCommit = !anterior && modo === 'incremental';
+    const checkpointUtc = modo === 'incremental' ? plano.novoCheckpoint : anterior.checkpointUtc;
+    const checkpointVarreduraUtc = modo === 'reconciliacao' ? plano.novoCheckpoint
+      : (primeiroCommit ? plano.novoCheckpoint : (anterior?.checkpointVarreduraUtc ?? null));
+    estados.set(key, {
+      checkpointUtc, checkpointVarreduraUtc, versao: (anterior?.versao ?? 0) + 1,
+      digestIncremental: modo === 'incremental' ? plano.digest : (anterior?.digestIncremental ?? null),
+      digestVarredura: modo === 'reconciliacao' ? plano.digest : (anterior?.digestVarredura ?? null),
+      recursos, bloqueios,
+    });
     return Object.freeze({ resultado: 'aplicado', checkpointUtc: plano.novoCheckpoint });
   }
   function consultar({ tenantId, hotelId, enterpriseId }) {
@@ -143,6 +174,8 @@ export function criarRepositorioSimulado() {
     const s = estados.get(key);
     return s ? copiar({
       checkpointUtc: s.checkpointUtc,
+      checkpointVarreduraUtc: s.checkpointVarreduraUtc,
+      versao: s.versao,
       espacos: [...s.recursos.values()],
       bloqueios: [...s.bloqueios.values()],
     }) : null;
