@@ -9,6 +9,7 @@ import type { Contexto } from '@hubkeep/dominio';
 import type { AcessoBanco } from './acesso';
 import {
   type AtivoDoPainelNoBanco,
+  type AtivoEncontradoNoBanco,
   type ChamadoDoInsightNoBanco,
   type ContagemDeInsightsNoBanco,
   type DecisaoNoBanco,
@@ -19,6 +20,7 @@ import {
   type MetricaDoPainelNoBanco,
   type NomesDoPainelNoBanco,
   ativoDoPainel,
+  ativosPorBusca,
   chamadosDoInsight,
   contagensDeInsights,
   decidirInsightNoBanco,
@@ -35,6 +37,7 @@ import {
   historicoDosAtivosNoBanco,
   intervencoesNoBanco,
   politicasDaEfetividade,
+  politicasDaSubstituicao,
 } from './repositorios/inteligencia-efetividade';
 import {
   type PoliticaDoJob,
@@ -76,6 +79,8 @@ export interface PortaDoPainelDoIntelligence {
   /** Na unit of work de quem decide: o estado, a auditoria e o evento. */
   decidir(ctx: Contexto, d: DecisaoNoBanco): Promise<{ versao: number }>;
   ativo(ctx: Contexto, id: string): Promise<AtivoDoPainelNoBanco | null>;
+  /** "Procurar ativo": os ativos sem baixa do termo (normalizado), até `limite`. */
+  ativosPorBusca(ctx: Contexto, termo: string, limite: number): Promise<AtivoEncontradoNoBanco[]>;
   metricasDoAtivo(ctx: Contexto, ativoId: string, desde: string): Promise<MetricaDoPainelNoBanco[]>;
   insightsDoEscopo(
     ctx: Contexto,
@@ -86,6 +91,8 @@ export interface PortaDoPainelDoIntelligence {
   ): Promise<InsightDoPainelNoBanco[]>;
   /** A efetividade (adendo ao ADR-033): as linhas de inteligencia.efetividade que quem pede lê. */
   politicasDaEfetividade(ctx: Contexto): Promise<PoliticaDoJob[]>;
+  /** O sinal de substituição: as linhas de inteligencia.substituicao que quem pede lê. */
+  politicasDaSubstituicao(ctx: Contexto): Promise<PoliticaDoJob[]>;
   intervencoes(
     ctx: Contexto,
     filtro: { codigos: readonly string[]; desde: Date; ativoIds?: readonly string[] },
@@ -109,11 +116,14 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
     nomes: (ctx, p) => banco.withContext(ctx, (tx) => nomesDoPainel(tx, p)),
     decidir: (ctx, d) => banco.executar(ctx, (uow) => decidirInsightNoBanco(uow, d)),
     ativo: (ctx, id) => banco.withContext(ctx, (tx) => ativoDoPainel(tx, id)),
+    ativosPorBusca: (ctx, termo, limite) =>
+      banco.withContext(ctx, (tx) => ativosPorBusca(tx, termo, limite)),
     metricasDoAtivo: (ctx, ativoId, desde) =>
       banco.withContext(ctx, (tx) => metricasDoAtivo(tx, ativoId, desde)),
     insightsDoEscopo: (ctx, tipo, chave, valor, limite) =>
       banco.withContext(ctx, (tx) => insightsDoEscopo(tx, tipo, chave, valor, limite)),
     politicasDaEfetividade: (ctx) => banco.withContext(ctx, (tx) => politicasDaEfetividade(tx)),
+    politicasDaSubstituicao: (ctx) => banco.withContext(ctx, (tx) => politicasDaSubstituicao(tx)),
     intervencoes: (ctx, filtro) => banco.withContext(ctx, (tx) => intervencoesNoBanco(tx, filtro)),
     historicoDosAtivos: (ctx, ativoIds, desde, ate) =>
       banco.withContext(ctx, (tx) => historicoDosAtivosNoBanco(tx, ativoIds, desde, ate)),

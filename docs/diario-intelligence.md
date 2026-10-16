@@ -2483,3 +2483,111 @@ O Cesar mergeou o #300 às 13:45 UTC, com os cinco checks verdes no head `46e12e
   - **Cesar:** o merge;
   - **1c:** a política `preventiva.tolerancia_dias`.
 - **Próximo:** o que Cesar e Kaio priorizarem. Entre as opções levantadas, a proposta da tela do sinal de substituição (componente novo, Cesar e Kaio).
+
+## A tela do sinal de substituição: proposta (16/10/2026)
+
+"Cesar aqui. Pode desenhar a proposta da tela do sinal de substituição" e "Kaio aqui. Pode desenhar a proposta da tela do sinal de substituição" (nesta sessão, 16/10/2026). Nenhum código foi escrito.
+
+**O que existe:**
+- O motor (`sinalDeSubstituicao`, `substituicao.ts`, versão 1) e a política `inteligencia.substituicao`, com os limites padrão. Nenhum caso de uso chama o motor.
+- A regra 1 do cálculo do dia (#101, Kaio e Cesar, 06 e 07/10/2026): "A substituição fica na tela do ativo".
+- O PRD e o mock põem "Repair vs Replace" e "reparar ou substituir" na 2.0, junto com o custo. O comentário do motor separa: o sinal no 1.0, a tela de decisão na 2.0.
+- A demonstração já tem o cenário da lava-roupa de 12 anos do hotel 6, conferido no teste como "avaliar substituição".
+
+**A proposta:**
+1. **Escopo.** No 1.0, só o sinal, na página do ativo. Não registra decisão, não afirma retorno do investimento e não usa o valor de reposição. Esses três ficam na 2.0.
+2. **Onde e quem vê.** Uma seção nova, "Sinal de substituição", na página do ativo, entre a série dos 90 dias e "Intervenções neste ativo". Vê quem vê a página do ativo, ou seja, quem decide o insight do hotel. O sinal não abre insight, não entra na lista e não notifica.
+3. **Cálculo.** Na hora da leitura, sem gravar, como a efetividade. A tela diz "calculado agora" e a versão da regra.
+   - **Alternativa:** gravar no job. Pede uma coluna nova na métrica diária, ou seja, migração e zona protegida.
+4. **Fontes dos critérios:**
+   - corretivas em 12 meses, sem o chamado cancelado;
+   - tempo parado do ativo em 12 meses;
+   - idade pela `data_compra`, em anos completos; sem a data, o critério não é avaliado;
+   - custo sobre o valor de reposição: sem dado no 1.0, numa linha discreta;
+   - impacto no hóspede: o Guest Impact Score é da 1.5. No 1.0, a porcentagem dos chamados do ativo em 12 meses que afetaram hóspede, como na atenção (ADR-034);
+   - criticidade, do cadastro;
+   - reincidência, pelo score do último dia gravado, o mesmo que a página já mostra;
+   - garantia vigente, pela `garantia_ate` no fuso do hotel.
+5. **A tela:**
+   - o selo do estado e "N critérios atingidos de M avaliados";
+   - a tabela, com critério, valor, limite e "atingido", "não atingido" ou "sem dado";
+   - em "revisão necessária", a frase sobre a garantia;
+   - a ressalva fixa;
+   - "calculado agora", com a versão.
+
+**Decisões:**
+- **Cesar e Kaio:** os itens 1 a 4, porque são componente novo, quem vê e fonte de dado.
+- **Kaio:** os limites, os textos e se a seção aparece quando não há sinal.
+
+### Ponto de retomada (16/10/2026, proposta da tela de substituição)
+
+- **`main`:** em `cc44ee8` (#303).
+- **Dev:** sem mudança.
+- **Nesta branch:** só este registro, sem PR. Ele entra no PR da tela.
+- **Esperando Cesar e Kaio:** as decisões da proposta.
+- **Próximo:** com as decisões, um PR `int:` fora da zona protegida, sem migração:
+  - no motor, `substituicaoDoAtivo` no painel, com a política do hotel;
+  - no `packages/db`, a `data_compra` e a `garantia_ate` na leitura do ativo do painel, e o histórico de 12 meses pela leitura da efetividade;
+  - no contrato, o campo `substituicao` na resposta do ativo;
+  - a tela e os textos nos quatro idiomas;
+  - a proposta das telas e o glossário.
+
+### As aprovações e o PR (16/10/2026)
+
+"Cesar aqui. Pode seguir" e "Kaio aqui. Pode seguir" (nesta sessão, 16/10/2026). A proposta está aprovada inteira:
+- os itens 1 a 4, por Cesar e Kaio;
+- os detalhes do Kaio, como recomendados: os limites do padrão ficam como estão, os textos são os da proposta e a seção aparece também sem sinal.
+
+PR `int:`, fora da zona protegida, sem migração e sem tocar no `packages/dominio`.
+
+**O que o PR traz:**
+- **Motor (`painel-substituicao.ts`):**
+  - `substituicaoDoAtivo` calcula o sinal na leitura, com a política `inteligencia.substituicao` do hotel (`substituicaoDoHotel`);
+  - a regra de quem vê é a do detalhe do ativo, e o ativo baixado devolve null;
+  - lê numa vez o histórico de 12 meses (`historicoDosAtivos`, o mesmo da efetividade) e a série da página, para a reincidência do último dia.
+- **Leitura (`packages/db`):**
+  - o ativo do painel traz o fuso do hotel, a `data_compra` e a `garantia_ate`;
+  - `politicasDaSubstituicao` lê só essa chave.
+- **API:** o campo `substituicao` na resposta do ativo (`SubstituicaoDoAtivoApi`). O fuso e as datas ficam no servidor.
+- **Tela:** a seção "Sinal de substituição" acima de "Intervenções neste ativo", com o selo, o resumo, a tabela, a linha discreta da reposição, o aviso da garantia, a ressalva e a versão. Os textos estão nos quatro idiomas.
+- **Detalhes de tela que o agente escolheu, para o Kaio conferir (ADR-033):**
+  - a criticidade aparece em nível ("4 de 5"), e o limite é o primeiro nível que atinge;
+  - o selo é cinza em "sem sinal", azul em "observar" e âmbar nos outros dois.
+
+### Ponto de retomada (16/10/2026, sinal de substituição)
+
+- **`main`:** em `cc44ee8` (#303).
+- **Dev:** sem mudança. O sinal aparece no dev depois do merge, sem rodar o `demo:historico`.
+- **Nesta branch:** o sinal de substituição. O PR abre agora.
+- **Esperando o Cesar:** o merge.
+- **Depois do merge:** conferir no dev a lava-roupa do hotel 6 ("Avaliar substituição").
+- **Próximo:** o que Cesar e Kaio priorizarem.
+
+## A página do ativo sem caminho e o "Procurar ativo" (16/10/2026)
+
+O Cesar não achou a página da lava-roupa do hotel 6. Ela só abria pelo insight ou pela intervenção, e o ativo que só tem sinal de substituição não tem nenhum dos dois. O agente não conferiu esse caminho no #306.
+- **Contorno:** o id pelo SQL Editor do dev. A página abriu (`/inteligencia/ativos/01a13ab6-…`), mas nos prints não aparecia a seção do sinal. O motivo provável é o app local ainda sem o #306, e o agente pediu para conferir.
+- **Opções:**
+  - (a) "Procurar ativo" no Intelligence (recomendada);
+  - (b) uma seção dos ativos com sinal;
+  - (c) um link na ficha do núcleo.
+- "Cesar aqui. Seguir como recomendado" e "Kaio aqui. Seguir como recomendado" (nesta sessão, 16/10/2026): a opção (a).
+
+**O que o PR traz** (`int:`, fora da zona protegida, sem migração):
+- **Motor (`painel-busca.ts`):** `procurarAtivos`.
+  - Recebe o termo já normalizado, lê até 100 ativos e devolve até 20, só dos hotéis em que a pessoa decide insight, com o nome do hotel.
+  - Sem termo, devolve a lista vazia, sem ler o banco.
+- **Leitura (`packages/db`):** `ativosPorBusca`, pela coluna `busca` do núcleo, só os ativos em uso, com o curinga do LIKE escapado.
+- **API:** `GET /api/v1/inteligencia/ativos?busca=`, no OpenAPI, normalizado pelo `termoDeBusca` (abaixo de 3 letras, `busca_curta`).
+  - A descrição da rota do ativo passa a citar o sinal de substituição, que faltou no #306.
+- **Tela:** o painel "Procurar ativo", acima da lista de insights, com o `CampoDeBusca` das listas do núcleo. Os textos estão nos quatro idiomas.
+
+### Ponto de retomada (16/10/2026, procurar ativo)
+
+- **`main`:** em `ae48018` (#306).
+- **Dev:** sem mudança. A busca aparece depois do merge.
+- **Nesta branch:** o "Procurar ativo". O PR abre agora.
+- **Esperando o Cesar:**
+  - o merge;
+  - conferir, com o app local atualizado da `main`, que a seção "Sinal de substituição" aparece na lava-roupa.
+- **Próximo:** o que Cesar e Kaio priorizarem.

@@ -282,12 +282,16 @@ export {
   PAPEIS_QUE_VEEM_AS_TELAS_API,
   RESULTADOS_DA_EFETIVIDADE_API,
   RespostaDaAberturaDoIntelligence,
+  RespostaDaBuscaDeAtivosNoIntelligence,
   RespostaDasEfetividades,
   RespostaDaDecisaoDoInsight,
   RespostaDeInsights,
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
+  CRITERIOS_DE_SUBSTITUICAO_API,
+  SINAIS_DE_SUBSTITUICAO_API,
+  SubstituicaoDoAtivoApi,
   TIPOS_DE_INSIGHT_API,
 } from './inteligencia';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';

@@ -186,6 +186,7 @@ import {
   PedidoDeDecisaoDoInsight,
   RespostaDaDecisaoDoInsight,
   RespostaDeInsights,
+  RespostaDaBuscaDeAtivosNoIntelligence,
   RespostaDasEfetividades,
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
@@ -2386,9 +2387,23 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/inteligencia/ativos',
+    resumo:
+      'Procurar ativo no Intelligence: os ativos em uso cujo nome, fabricante, modelo ou número de série contém o trecho (sem acento), só dos hotéis em que quem pede decide insight, em ordem de nome, até 20, com o nome do hotel. Sem ?busca=, a lista vem vazia. Leva à página do ativo, também do ativo sem insight.',
+    exigeTenant: true,
+    busca: true,
+    respostas: {
+      200: { descricao: 'Ativos', esquema: RespostaDaBuscaDeAtivosNoIntelligence },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Sem o módulo ou sem papel que decide (inteligencia_indisponivel).'),
+      422: ERRO('Termo com menos de 3 caracteres (busca_curta).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/inteligencia/ativos/{id}',
     resumo:
-      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, os insights de atenção do ativo e a efetividade das intervenções no ativo nos últimos 180 dias. Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
+      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, os insights de atenção do ativo, a efetividade das intervenções no ativo nos últimos 180 dias e o sinal de substituição, calculado na leitura (nulo no ativo baixado). Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Ativo', esquema: RespostaDoAtivoNoIntelligence },

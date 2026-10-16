@@ -207,6 +207,29 @@ describe.skipIf(!temBanco)('a leitura da efetividade do Intelligence', { timeout
         U.admin,
       ],
     );
+    await q(
+      `insert into app.politica (id, tenant_id, escopo_tipo, hotel_id, chave, valor, atualizado_por)
+       values ($1, $2, 'hotel', $3, 'inteligencia.substituicao', $4, $5)`,
+      [
+        randomUUID(),
+        T,
+        H1,
+        JSON.stringify({
+          limites: {
+            corretivas12m: 4,
+            horasParadas12m: 40,
+            idadeAnos: 10,
+            custoSobreReposicao: 0.5,
+            impactoHospede: 70,
+            criticidade: 0.75,
+            reincidencia: 70,
+          },
+          minimoParaObservar: 2,
+          minimoParaAvaliar: 4,
+        }),
+        U.admin,
+      ],
+    );
 
     banco = await criarAcessoBanco({ app: { url: URL_APP ?? '', max: 3 } });
     porta = criarPortaDoPainelDoIntelligence(banco);
@@ -316,5 +339,18 @@ describe.skipIf(!temBanco)('a leitura da efetividade do Intelligence', { timeout
       TROCA,
       K.doGrupo,
     ]);
+  });
+
+  it('as linhas de inteligencia.substituicao, só as dessa chave', async () => {
+    const linhas = await porta.politicasDaSubstituicao(ctx(U.gerente));
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0]).toMatchObject({
+      chave: 'inteligencia.substituicao',
+      escopo: 'hotel',
+      hotelId: H1,
+    });
+    expect((linhas[0]?.valor as { limites: { corretivas12m: number } }).limites.corretivas12m).toBe(
+      4,
+    );
   });
 });

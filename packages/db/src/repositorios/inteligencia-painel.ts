@@ -89,6 +89,12 @@ export interface AtivoDoPainelNoBanco {
   bandeiraId: string | null;
   criticidade: number | null;
   desativadoEm: Date | null;
+  /** O fuso do hotel do ativo. */
+  fuso: string;
+  /** AAAA-MM-DD; null sem a data. */
+  dataCompra: string | null;
+  /** AAAA-MM-DD; null sem a data. */
+  garantiaAte: string | null;
 }
 
 export interface MetricaDoPainelNoBanco {
@@ -399,7 +405,17 @@ export async function ativoDoPainel(tx: Tx, id: string): Promise<AtivoDoPainelNo
   const a = await tx
     .selectFrom('app.ativo as a')
     .innerJoin('app.hotel as h', 'h.id', 'a.hotel_id')
-    .select(['a.id', 'a.nome', 'a.hotel_id', 'h.bandeira_id', 'a.criticidade', 'a.desativado_em'])
+    .select([
+      'a.id',
+      'a.nome',
+      'a.hotel_id',
+      'h.bandeira_id',
+      'a.criticidade',
+      'a.desativado_em',
+      'h.fuso',
+      sql<string | null>`a.data_compra::text`.as('data_compra'),
+      sql<string | null>`a.garantia_ate::text`.as('garantia_ate'),
+    ])
     .where('a.id', '=', id)
     .executeTakeFirst();
   return a
@@ -410,8 +426,46 @@ export async function ativoDoPainel(tx: Tx, id: string): Promise<AtivoDoPainelNo
         bandeiraId: a.bandeira_id,
         criticidade: a.criticidade,
         desativadoEm: a.desativado_em === null ? null : data(a.desativado_em),
+        fuso: a.fuso,
+        dataCompra: a.data_compra,
+        garantiaAte: a.garantia_ate,
       }
     : null;
+}
+
+export interface AtivoEncontradoNoBanco {
+  id: string;
+  nome: string;
+  hotelId: string;
+  bandeiraId: string | null;
+}
+
+/**
+ * "Procurar ativo" no Intelligence: os ativos sem baixa cujo texto de busca
+ * (`app.ativo.busca`, já normalizado) contém o termo, em ordem de nome, até
+ * `limite`. A RLS recorta o que quem pede lê; o motor recorta quem decide.
+ */
+export async function ativosPorBusca(
+  tx: Tx,
+  termo: string,
+  limite: number,
+): Promise<AtivoEncontradoNoBanco[]> {
+  const linhas = await tx
+    .selectFrom('app.ativo as a')
+    .innerJoin('app.hotel as h', 'h.id', 'a.hotel_id')
+    .select(['a.id', 'a.nome', 'a.hotel_id', 'h.bandeira_id'])
+    .where('a.busca', 'ilike', `%${termo.replace(/[\\%_]/g, '\\$&')}%`)
+    .where('a.desativado_em', 'is', null)
+    .orderBy('a.nome')
+    .orderBy('a.id')
+    .limit(limite)
+    .execute();
+  return linhas.map((a) => ({
+    id: a.id,
+    nome: a.nome,
+    hotelId: a.hotel_id,
+    bandeiraId: a.bandeira_id,
+  }));
 }
 
 /** O primeiro cálculo de cada dia, sem recálculo, a partir de `desde` (AAAA-MM-DD). */

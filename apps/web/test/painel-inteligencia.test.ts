@@ -9,6 +9,7 @@ import {
   MOTIVOS_DE_DESCARTE_API,
   PAPEIS_QUE_VEEM_AS_TELAS_API,
   RespostaDaAberturaDoIntelligence,
+  RespostaDaBuscaDeAtivosNoIntelligence,
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   TIPOS_DE_INSIGHT_API,
@@ -35,6 +36,7 @@ import {
   dataNaApi,
   efetividadesNaApi,
   insightNaApi,
+  substituicaoNaApi,
 } from '../src/app/api/v1/inteligencia/serializar';
 import { criarPainel } from '../src/servidor/modulos/inteligencia/painel';
 
@@ -111,7 +113,12 @@ const TROCA: ChamadoDaEfetividadeNoBanco = {
 
 function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
   const decisoes: DecisaoNoBanco[] = [];
+  const buscas: { termo: string; limite: number }[] = [];
   const porta: PortaDoPainelDoIntelligence = {
+    ativosPorBusca: async (_ctx, termo, limite) => {
+      buscas.push({ termo, limite });
+      return [{ id: A1, nome: 'Elevador social 2', hotelId: H1, bandeiraId: null }];
+    },
     contagens: async () => [
       { tipo: 'atencao_ativo', faixa: 'critico', comResponsavel: false, quantidade: 2 },
     ],
@@ -133,6 +140,9 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
             bandeiraId: null,
             criticidade: 5,
             desativadoEm: null,
+            fuso: 'America/Sao_Paulo',
+            dataCompra: '2014-06-01',
+            garantiaAte: null,
           }
         : null,
     metricasDoAtivo: async () => [
@@ -153,10 +163,11 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
     ],
     insightsDoEscopo: async () => insights,
     politicasDaEfetividade: async () => [],
+    politicasDaSubstituicao: async () => [],
     intervencoes: async () => [TROCA],
     historicoDosAtivos: async () => ({ chamados: [TROCA], paradas: [] }),
   };
-  return { porta, decisoes };
+  return { porta, decisoes, buscas };
 }
 
 /** As políticas gravadas no grupo: por padrão, a visibilidade com o Gerente, já aberta. */
@@ -178,9 +189,10 @@ const painel = (
   politicas: { chave: string; escopo: EscopoDePolitica; valor: unknown }[] = COM_O_GERENTE,
   atribuicoes: Atribuicao[] = [gerente],
 ) => {
-  const { porta, decisoes } = portaEmMemoria(insights);
+  const { porta, decisoes, buscas } = portaEmMemoria(insights);
   return {
     decisoes,
+    buscas,
     casos: criarPainel({
       porta,
       modulos: {
@@ -293,6 +305,22 @@ describe('o painel sobre a porta do banco', () => {
     });
   });
 
+  it('procurar ativo: o termo normalizado, o nome do hotel e o contrato da API', async () => {
+    const { casos, buscas } = painel([linha()]);
+    const r = RespostaDaBuscaDeAtivosNoIntelligence.parse(
+      await casos.procurarAtivos(ctx, '  Elévador '),
+    );
+    expect(buscas).toEqual([{ termo: 'elevador', limite: 100 }]);
+    expect(r.ativos.map((a) => a.id)).toEqual([A1]);
+    expect(r.nomes.hoteis).toEqual({ [H1]: 'Hotel 1' });
+    // Sem termo, nada é lido; abaixo de 3 letras, busca_curta.
+    expect((await casos.procurarAtivos(ctx, null)).ativos).toEqual([]);
+    expect(buscas).toHaveLength(1);
+    await expect(casos.procurarAtivos(ctx, 'el')).rejects.toMatchObject({
+      codigo: 'busca_curta',
+    });
+  });
+
   it('o detalhe do ativo passa pelo contrato da API', async () => {
     const { casos } = painel([linha()]);
     const p = await casos.ativo(ctx, A1);
@@ -303,7 +331,25 @@ describe('o painel sobre a porta do banco', () => {
       insights: p.insights.map(insightNaApi),
       nomes: p.nomes,
       efetividade: efetividadesNaApi(await casos.efetividadeDoAtivo(ctx, A1)),
+      substituicao: substituicaoNaApi(
+        (await casos.substituicaoDoAtivo(ctx, A1)) as NonNullable<
+          Awaited<ReturnType<typeof casos.substituicaoDoAtivo>>
+        >,
+      ),
     });
+    // O sinal de substituição, calculado agora: a idade pela data de compra (2014),
+    // a reincidência do último dia gravado e o custo sobre a reposição sem dado.
+    expect(resposta.substituicao).toMatchObject({ versao: 1, avaliados: 6 });
+    expect(
+      resposta.substituicao?.criterios
+        .filter((c) => ['idadeAnos', 'reincidencia', 'custoSobreReposicao'].includes(c.chave))
+        .map((c) => [c.chave, c.valor]),
+    ).toEqual([
+      ['idadeAnos', 12],
+      ['custoSobreReposicao', null],
+      ['reincidencia', 40],
+    ]);
+    expect('fuso' in resposta.ativo).toBe(false);
     expect(resposta.efetividade.intervencoes[0]?.intervencao).toMatchObject({
       em: '2026-09-05T00:00:00.000Z',
       descricao: 'Modernização do elevador',

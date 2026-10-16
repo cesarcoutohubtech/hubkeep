@@ -58,6 +58,7 @@ export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from 
 export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
 export type {
   AtivoDoPainelNoBanco,
+  AtivoEncontradoNoBanco,
   ChamadoDoInsightNoBanco,
   ContagemDeInsightsNoBanco,
   DecisaoNoBanco,
