@@ -29,19 +29,22 @@ async function executar() {
     clientName: 'HubKeep-EU-Lab/0.1',
     pageSize: 20,
     maxPages: 3,
-    maxRetries: 1,
+    maxRetries: 0, // smoke limitado a até três POST reais, inclusive se ocorrer 429/5xx
   });
   // Na demo pública, nenhum dado real de clientes, hóspedes ou hotéis deve ser usado.
-  const empresas = await mews.lerPrimeiraPaginaDeEmpresas();
-  const primeira = empresas.itens.find((item) => typeof item?.Id === 'string');
-  if (!primeira) {
-    globalThis.console.log(JSON.stringify({ ambiente: 'mews-demo', empresas: 0, status: 'sem_dados' }));
-    return;
-  }
-
-  const enterpriseId = primeira.Id;
+  // A autenticacao single-property da Mews oferece diretamente Enterprise.Id.
+  // enterprises/getAll pode exigir uma permissao que tokens demo individuais nao possuem.
+  const enterpriseId = await mews.obterIdentificadorEmpresa();
   const recursos = await mews.lerPrimeiraPaginaDeRecursos([enterpriseId]);
-  const bloqueios = await mews.lerPrimeiraPaginaDeBloqueios([enterpriseId]);
+  // Requisito confirmado na API real: sempre informar janela temporal.
+  const inicio = new Date();
+  inicio.setUTCHours(0, 0, 0, 0);
+  const fim = new Date(inicio.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const intervalo = {
+    StartUtc: inicio.toISOString().replace('.000Z', 'Z'),
+    EndUtc: fim.toISOString().replace('.000Z', 'Z'),
+  };
+  const bloqueios = await mews.lerPrimeiraPaginaDeBloqueios([enterpriseId], intervalo);
   const escopo = criarEscopo({
     tenantId: 'tenant-sintetico-mews-lab',
     vinculos: [{ enterpriseId, hotelId: 'hotel-sintetico-mews-lab' }],
@@ -52,11 +55,10 @@ async function executar() {
     ambiente: 'mews-demo',
     status: 'consulta_read_only_realizada',
     chamadasHttpEsperadas: 3,
-    empresasAmostradas: empresas.itens.length,
+    consultaConfiguracao: true,
     recursosAmostrados: recursos.itens.length,
     bloqueiosAmostrados: bloqueios.itens.length,
     existeProximaPagina: {
-      empresas: Boolean(empresas.cursor),
       recursos: Boolean(recursos.cursor),
       bloqueios: Boolean(bloqueios.cursor),
     },

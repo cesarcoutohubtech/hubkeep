@@ -10,6 +10,7 @@ import {
 } from './normalizacao.mjs';
 
 const token = { clientToken: 'segredo-cliente', accessToken: 'segredo-acesso', minIntervalMs: 0 };
+const janela = { StartUtc: '2026-10-16T00:00:00Z', EndUtc: '2026-11-15T00:00:00Z' };
 const resp = (json, status = 200, headers = {}) =>
   new globalThis.Response(JSON.stringify(json), { status, headers });
 const escopo = criarEscopo({
@@ -179,9 +180,10 @@ test('resources usa extensão e blocos incluem excluídos; somente leitura', asy
     },
   });
   await c.listarRecursos(['empresaA']);
-  await c.listarBloqueios(['empresaA']);
+  await c.listarBloqueios(['empresaA'], { CollidingUtc: janela });
   assert.deepEqual(a[0].body.Extent, { Resources: true, Inactive: true });
   assert.deepEqual(a[1].body.ActivityStates, ['Active', 'Deleted']);
+  assert.deepEqual(a[1].body.CollidingUtc, janela);
   assert.ok(a.every((x) => x.url.endsWith('/getAll')));
 });
 test('normalização descarta não-Space, propriedade desconhecida e sem nome', () => {
@@ -282,11 +284,12 @@ test('smoke valida escopo e extents nos recursos e bloqueios', async () => {
     return resp(url.includes('resourceBlocks') ? { ResourceBlocks: [] } : { Resources: [] });
   } });
   await c.lerPrimeiraPaginaDeRecursos(['hotel-M']);
-  await c.lerPrimeiraPaginaDeBloqueios(['hotel-M']);
+  await c.lerPrimeiraPaginaDeBloqueios(['hotel-M'], janela);
   assert.equal(chamadas.length, 2);
   assert.deepEqual(chamadas[0].body.EnterpriseIds, ['hotel-M']);
   assert.deepEqual(chamadas[0].body.Extent, { Resources: true, Inactive: true });
   assert.deepEqual(chamadas[1].body.ActivityStates, ['Active', 'Deleted']);
+  assert.deepEqual(chamadas[1].body.CollidingUtc, janela);
   assert.throws(() => c.lerPrimeiraPaginaDeBloqueios([]), /enterprise_ids_obrigatorios/);
 });
 
@@ -294,4 +297,113 @@ test('primeira página recusa sobrescrita de credenciais e lista ausente', async
   const c = criarClienteMews({ ...token, fetchImpl: async () => resp({ Other: [] }) });
   await assert.rejects(c.lerPrimeiraPaginaDeEmpresas({ ClientToken: 'forjado' }), /filtros_reservados/);
   await assert.rejects(c.lerPrimeiraPaginaDeEmpresas(), /lista_ausente/);
+});
+
+test('escopo não expõe o mapa mutável entre propriedades e hotéis', () => {
+  const vinculos = [{ enterpriseId: 'a', hotelId: 'hotelA' }];
+  const fechado = criarEscopo({ tenantId: 'tenantA', vinculos });
+  assert.equal(fechado.hoteis, undefined);
+  assert.equal(typeof fechado.localizarHotel, 'function');
+  assert.equal(fechado.localizarHotel('a'), 'hotelA');
+  assert.ok(Object.isFrozen(fechado));
+  vinculos[0].hotelId = 'hotel-injetado';
+  vinculos.push({ enterpriseId: 'b', hotelId: 'hotelB' });
+  assert.equal(fechado.localizarHotel('a'), 'hotelA');
+  assert.equal(fechado.localizarHotel('b'), undefined);
+  assert.throws(() => { fechado.localizarHotel = () => 'invasor'; }, TypeError);
+});
+
+test('não permite adicionar um vínculo de outro tenant por mutação posterior', () => {
+  const apenasA = criarEscopo({ tenantId: 'tenantA', vinculos: [
+    { enterpriseId: 'empresaA', hotelId: 'hotelA' },
+  ] });
+  assert.equal(normalizarEspaco(apenasA, space('quarto9', 'empresaB')), null);
+  assert.equal(normalizarBloqueio(apenasA, block('bloco9', 'empresaB', 'quarto9')), null);
+});
+
+test('smoke com maxRetries zero faz só uma tentativa mesmo diante de HTTP 429', async () => {
+  let chamadas = 0;
+  const cliente = criarClienteMews({
+    ...token,
+    maxRetries: 0,
+    fetchImpl: async () => {
+      chamadas++;
+      return resp({ Error: 'rate_limit' }, 429, { 'retry-after': '3' });
+    },
+  });
+  await assert.rejects(cliente.lerPrimeiraPaginaDeEmpresas(), (e) => e.status === 429);
+  assert.equal(chamadas, 1);
+});
+
+test('configuracao valida um unico hotel sem retornar informacoes privadas', async () => {
+  let capturado = null;
+  const cliente = criarClienteMews({
+    ...token, fetchImpl: async (url, req) => {
+      capturado = { url, body: JSON.parse(req.body), method: req.method };
+      return resp({ Enterprise: { Id: 'mews-1', Name: 'Nome privado', Email: 'email@exemplo.com' } });
+    },
+  });
+  assert.equal(await cliente.obterIdentificadorEmpresa(), 'mews-1');
+  assert.equal(capturado.method, 'POST');
+  assert.ok(capturado.url.endsWith('/configuration/get'));
+  assert.equal(capturado.body.Limitation, undefined);
+});
+
+test('configuracao sem Enterprise.Id falha fechado', async () => {
+  const cliente = criarClienteMews({
+    ...token, fetchImpl: async () => resp({ Enterprise: { Name: 'sem identificador' } }),
+  });
+  await assert.rejects(cliente.obterIdentificadorEmpresa(), /configuracao_sem_empresa/);
+});
+
+test('bloqueios do smoke exigem intervalo temporal e permitem uma unica pagina', async () => {
+  let body = null;
+  const cliente = criarClienteMews({
+    ...token, pageSize: 5, fetchImpl: async (url, req) => {
+      assert.ok(url.endsWith('/resourceBlocks/getAll'));
+      body = JSON.parse(req.body);
+      return resp({ ResourceBlocks: [], Cursor: null });
+    },
+  });
+  const r = await cliente.lerPrimeiraPaginaDeBloqueios(['empresaA'], janela);
+  assert.deepEqual(r.itens, []);
+  assert.deepEqual(body.Limitation, { Count: 5 });
+  assert.equal(body.ActivityStates, undefined);
+  assert.deepEqual(body.EnterpriseIds, ['empresaA']);
+  assert.deepEqual(body.CollidingUtc, janela);
+});
+
+test('recusa bloqueios sem filtro UTC antes de qualquer chamada HTTP', async () => {
+  let chamadas = 0;
+  const c = criarClienteMews({
+    ...token, fetchImpl: async () => {
+      chamadas++;
+      return resp({ ResourceBlocks: [] });
+    },
+  });
+  assert.throws(() => c.listarBloqueios(['empresaA']), /filtro_temporal_obrigatorio/);
+  assert.throws(
+    () => c.lerPrimeiraPaginaDeBloqueios(['empresaA']),
+    /intervalo_temporal_invalido/,
+  );
+  assert.equal(chamadas, 0);
+});
+
+test('recusa janela invertida, maior que 89 dias ou sem UTC antes do POST', () => {
+  const c = criarClienteMews({ ...token, fetchImpl: async () => resp({ ResourceBlocks: [] }) });
+  const invalidas = [
+    { StartUtc: '2026-10-18T00:00:00Z', EndUtc: '2026-10-17T00:00:00Z' },
+    { StartUtc: '2026-01-01T00:00:00Z', EndUtc: '2026-05-01T00:00:00Z' },
+    { StartUtc: '2026-10-01T00:00:00', EndUtc: '2026-10-02T00:00:00' },
+  ];
+  for (const intervalo of invalidas) {
+    assert.throws(
+      () => c.listarBloqueios(['empresaA'], { CollidingUtc: intervalo }),
+      /intervalo_temporal_invalido/,
+    );
+  }
+  assert.throws(
+    () => c.listarBloqueios(['empresaA'], { CreatedUtc: janela, UpdatedUtc: janela }),
+    /filtro_temporal_obrigatorio/,
+  );
 });
