@@ -2333,3 +2333,29 @@ Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma c
   - **Cesar:** o merge deste PR.
   - **Kaio:** a decisão sobre excluir o chamado da intervenção do "antes".
 - **Próximo:** se o Kaio aprovar, o PR do motor (efetividade versão 4). Depois, o que Cesar e Kaio priorizarem.
+
+### A resposta do Kaio sobre o "antes" e o ponto de retomada (15/10/2026, fim do dia)
+
+"Cesar aqui. 297 mergeado." Na mesma mensagem, o Kaio escreveu: "Vamos deixar como esta senão tiver grande impacto. Aprovo o PR do motor (efetividade versão 4)."
+
+As duas frases apontam para lados diferentes. O agente não abriu o PR do motor e leva a pergunta para o Kaio na retomada.
+
+**O impacto, para o Kaio decidir:**
+- **Na demonstração, é pequeno:** os chamados ficam 7 → 1 em vez de 6 → 1, e o resultado continua "Redução observada".
+- **No cliente, o desvio é sistemático:** toda intervenção soma 1 chamado ao "antes". Isso puxa a variação para "redução" em todos os casos e tem dois efeitos que podem mudar o resultado:
+  - **A base mínima.** Com menos de 3 chamados antes, o resultado é "sem base de comparação". Um ativo com 2 falhas reais passa a ter 3 e ganha um resultado de redução que ele não tem.
+  - **O tempo parado.** Se o chamado da troca abrir com o equipamento parado até a troca, as horas dessa parada entram todas no "antes". É o caso comum de troca de equipamento quebrado.
+- **A mudança proposta:** excluir o chamado da intervenção dos chamados, das reaberturas e do tempo parado do "antes", como já é no custo. A efetividade sobe para a versão 4.
+
+**Ponto de retomada:**
+- **`main`:** em `a82ac2e` (#297).
+- **Dev:** com a modernização gravada; as telas foram conferidas pelo Cesar em 15/10.
+- **Nesta branch:** só este registro, recomeçado da `main`. Sem PR; ele entra no próximo PR deste agente.
+- **Esperando o Kaio:** se o PR do motor (efetividade versão 4) sai ou se fica como está.
+- **Próximo:**
+  - **Se sair:** em `packages/inteligencia/src/efetividade.ts`, as métricas do "antes" deixam de contar o chamado `intervencaoId`. Depois:
+    - os testes;
+    - a versão 4 e o rótulo;
+    - o glossário;
+    - o `docs/piloto/README.md`.
+  - **Se ficar como está:** registrar a decisão e seguir o que Cesar e Kaio priorizarem.
