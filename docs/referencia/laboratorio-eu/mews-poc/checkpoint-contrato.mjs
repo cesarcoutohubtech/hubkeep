@@ -12,6 +12,8 @@ const CAMPOS_BLOQUEIO = [
   'ativoNoPms', 'atualizadoEm',
 ];
 const str = (s) => typeof s === 'string' && s.trim() && s.length <= 200 ? s : null;
+// Os lotes possuem somente objetos JSON simples já sanitizados; sem estruturas especiais.
+const copiar = (item) => JSON.parse(JSON.stringify(item));
 function instante(s) {
   const ms = typeof s === 'string' && ISO_UTC.test(s) ? Date.parse(s) : NaN;
   if (!Number.isFinite(ms)) throw new Error('checkpoint_utc_invalido');
@@ -122,14 +124,14 @@ export function criarRepositorioSimulado() {
       const anteriorItem = recursos.get(item.codigoExterno);
       if (!anteriorItem?.atualizadoEm || !item.atualizadoEm ||
           instante(item.atualizadoEm) >= instante(anteriorItem.atualizadoEm)) {
-        recursos.set(item.codigoExterno, structuredClone(item));
+        recursos.set(item.codigoExterno, copiar(item));
       }
     }
     for (const item of plano.bloqueios) {
       const anteriorItem = bloqueios.get(item.codigoExterno);
       // Tombstone mais novo nunca é ressuscitado por evento fora de ordem.
       if (!anteriorItem || instante(item.atualizadoEm) >= instante(anteriorItem.atualizadoEm)) {
-        bloqueios.set(item.codigoExterno, structuredClone(item));
+        bloqueios.set(item.codigoExterno, copiar(item));
       }
     }
     estados.set(key, { checkpointUtc: plano.novoCheckpoint, digest: plano.digest,
@@ -139,7 +141,7 @@ export function criarRepositorioSimulado() {
   function consultar({ tenantId, hotelId, enterpriseId }) {
     const key = identidade({ tenantId, hotelId, enterpriseId });
     const s = estados.get(key);
-    return s ? structuredClone({
+    return s ? copiar({
       checkpointUtc: s.checkpointUtc,
       espacos: [...s.recursos.values()],
       bloqueios: [...s.bloqueios.values()],
