@@ -5,6 +5,8 @@
 //   repositorios/inteligencia.ts.
 // - O painel (as telas do 1.0): leitura e decisão com o hk_app e o contexto de
 //   quem pede (repositorios/inteligencia-painel.ts).
+// - O sinal do hóspede (ADR-047): importação e classificação com o hk_app e o
+//   contexto de quem pede, na unit of work (repositorios/inteligencia-sinal.ts).
 import type { Contexto } from '@hubkeep/dominio';
 import type { AcessoBanco } from './acesso';
 import {
@@ -39,6 +41,18 @@ import {
   politicasDaEfetividade,
   politicasDaSubstituicao,
 } from './repositorios/inteligencia-efetividade';
+import {
+  type ClassificacaoNoBanco,
+  type HotelDoSinalNoBanco,
+  type ImportacaoNoBanco,
+  type ReferenciasDaClassificacaoNoBanco,
+  type SinalParaClassificarNoBanco,
+  classificarSinalNoBanco,
+  gravarSinaisNoBanco,
+  hotelDoSinal,
+  referenciasDaClassificacao,
+  sinalParaClassificar,
+} from './repositorios/inteligencia-sinal';
 import {
   type PoliticaDoJob,
   type SessaoDoJobDoIntelligence,
@@ -103,6 +117,20 @@ export interface PortaDoPainelDoIntelligence {
     desde: Date,
     ate: Date,
   ): Promise<{ chamados: ChamadoDaEfetividadeNoBanco[]; paradas: ParadaDaEfetividadeNoBanco[] }>;
+  /** O sinal do hóspede (ADR-047): o hotel da importação, se quem pede o lê. */
+  hotelDoSinal(ctx: Contexto, id: string): Promise<HotelDoSinalNoBanco | null>;
+  /** Na unit of work de quem importa: as linhas do lote, a auditoria e o evento. */
+  gravarSinais(
+    ctx: Contexto,
+    i: ImportacaoNoBanco,
+  ): Promise<{ loteId: string; inseridos: string[] }>;
+  sinalParaClassificar(ctx: Contexto, id: string): Promise<SinalParaClassificarNoBanco | null>;
+  referenciasDaClassificacao(
+    ctx: Contexto,
+    r: { ativoId: string | null; uhId: string | null; categoriaId: string | null },
+  ): Promise<ReferenciasDaClassificacaoNoBanco>;
+  /** Na unit of work de quem classifica: a classificação, a auditoria e o evento. */
+  classificar(ctx: Contexto, c: ClassificacaoNoBanco): Promise<{ versao: number }>;
 }
 
 export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPainelDoIntelligence {
@@ -127,5 +155,11 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
     intervencoes: (ctx, filtro) => banco.withContext(ctx, (tx) => intervencoesNoBanco(tx, filtro)),
     historicoDosAtivos: (ctx, ativoIds, desde, ate) =>
       banco.withContext(ctx, (tx) => historicoDosAtivosNoBanco(tx, ativoIds, desde, ate)),
+    hotelDoSinal: (ctx, id) => banco.withContext(ctx, (tx) => hotelDoSinal(tx, id)),
+    gravarSinais: (ctx, i) => banco.executar(ctx, (uow) => gravarSinaisNoBanco(uow, i)),
+    sinalParaClassificar: (ctx, id) => banco.withContext(ctx, (tx) => sinalParaClassificar(tx, id)),
+    referenciasDaClassificacao: (ctx, r) =>
+      banco.withContext(ctx, (tx) => referenciasDaClassificacao(tx, r)),
+    classificar: (ctx, c) => banco.executar(ctx, (uow) => classificarSinalNoBanco(uow, c)),
   };
 }

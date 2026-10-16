@@ -38,6 +38,7 @@ export const ENTIDADES_DA_AUDITORIA_API = [
   'preferencia_membro',
   'prioridade',
   'proprietario',
+  'sinal_hospede',
   'situacao',
   'tenant',
   'uh_indisponivel',

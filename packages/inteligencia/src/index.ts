@@ -17,6 +17,7 @@ export * from './painel-substituicao';
 export * from './politicas';
 export * from './reincidencia';
 export * from './score';
+export * from './sinal-hospede';
 export * from './sistemico';
 export * from './substituicao';
 export * from './visibilidade';

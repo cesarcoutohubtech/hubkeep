@@ -70,6 +70,14 @@ export type {
   NomesDoPainelNoBanco,
 } from './repositorios/inteligencia-painel';
 export type {
+  ClassificacaoNoBanco,
+  HotelDoSinalNoBanco,
+  ImportacaoNoBanco,
+  ReferenciasDaClassificacaoNoBanco,
+  SinalNovoNoBanco,
+  SinalParaClassificarNoBanco,
+} from './repositorios/inteligencia-sinal';
+export type {
   ChamadoDaEfetividadeNoBanco,
   OsDaEfetividadeNoBanco,
   ParadaDaEfetividadeNoBanco,
