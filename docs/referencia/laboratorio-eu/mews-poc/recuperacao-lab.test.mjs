@@ -5,7 +5,9 @@ import { criarArmazenamentoSimulado, criarReconciliadorLaboratorio } from './rec
 const escopo = { tenantId:'tenant-a', hotelId:'hotel-a', enterpriseId:'ent-a' };
 const escopoB = { tenantId:'tenant-b', hotelId:'hotel-b', enterpriseId:'ent-b' };
 const b = (id, updated='2026-10-16T12:00:00Z', demais={}) =>
-  ({ Id:id, EnterpriseId:'ent-a', AssignedResourceId:'room-1', UpdatedUtc:updated, ...demais });
+  ({ Id:id, EnterpriseId:'ent-a', AssignedResourceId:'room-1', Type:'OutOfOrder',
+    StartUtc:'2026-10-16T11:00:00Z', EndUtc:'2026-10-17T11:00:00Z',
+    UpdatedUtc:updated, ...demais });
 function sync(db, vinculos=[{hotelId:'hotel-a',enterpriseId:'ent-a'}], tenantId='tenant-a') {
   return criarReconciliadorLaboratorio({ armazenamento:db, tenantId, vinculos });
 }
