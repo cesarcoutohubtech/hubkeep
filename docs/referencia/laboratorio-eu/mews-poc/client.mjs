@@ -160,7 +160,9 @@ export function criarClienteMews({
       if (!Array.isArray(lote)) throw new ErroMews('lista_ausente');
       itens.push(...lote);
       const proximo = resposta.Cursor;
-      if (lote.length < pageSize || !proximo) return itens;
+      // Cursor é a autoridade para avançar; uma página curta ainda pode
+      // ter continuação. Nunca perder itens por parar só pelo tamanho.
+      if (proximo === null || proximo === undefined || proximo === '') return itens;
       if (typeof proximo !== 'string' || vistos.has(proximo)) throw new ErroMews('cursor_repetido');
       vistos.add(proximo);
       cursor = proximo;
