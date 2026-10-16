@@ -55,7 +55,13 @@ import {
   familiaDoInsight,
   listaCanonicaDeHoteis,
 } from './insight';
-import { type ConfigReincidencia, PADRAO_REINCIDENCIA, reincidencia } from './reincidencia';
+import {
+  type ConfigReincidencia,
+  PADRAO_REINCIDENCIA,
+  diasAposPreventiva,
+  marcarAposPreventiva,
+  reincidencia,
+} from './reincidencia';
 import { DIA_MS, type Score, sugereInsight } from './score';
 import { diaNoFuso, inicioDoDiaNoFuso } from './visibilidade';
 import {
@@ -100,7 +106,8 @@ export interface AtivoDoDia extends AtivoAnalisado {
   /**
    * As OS preventivas do ativo (PV3) criadas até `agora`, com as transições:
    * as que ainda podem estar atrasadas e as tocadas desde o início da leitura.
-   * Ausente ou vazia, a preventiva atrasada fica sem dado (atenção versão 5).
+   * Ausente ou vazia, a preventiva atrasada (atenção versão 5) e a falha
+   * depois de preventiva (reincidência versão 4) ficam sem dado.
    */
   preventivas?: readonly PreventivaNoTempo[];
   /**
@@ -226,7 +233,12 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
     .map((a): ResultadoDoAtivo => {
       const h = hoteis.get(a.hotelId) as HotelDoDia;
       const cfgR = h.reincidencia ?? PADRAO_REINCIDENCIA;
-      const cs = doAtivo.get(a.id) ?? [];
+      const cs = marcarAposPreventiva(
+        doAtivo.get(a.id) ?? [],
+        a.preventivas,
+        diasAposPreventiva(cfgR),
+        e.agora,
+      );
       const r = reincidencia(cs, e.agora, cfgR);
       const atencao = atencaoDoAtivo(
         {

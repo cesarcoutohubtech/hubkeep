@@ -120,7 +120,7 @@ describe('inicioDaLeitura', () => {
     expect(inicioDaLeitura(hoteis, PADRAO_SISTEMICO, agora)).toEqual(dia(-JANELA_CUSTO_DIAS));
   });
 
-  it('a maior janela vence: a da reincidência de um hotel ou o dobro da do crescimento', () => {
+  it('a maior janela vence: a da reincidência de um hotel, mais os dias da falha depois de preventiva, ou o dobro da do crescimento', () => {
     const longa = { ...PADRAO_REINCIDENCIA, janelaDias: 400 };
     expect(
       inicioDaLeitura(
@@ -128,7 +128,7 @@ describe('inicioDaLeitura', () => {
         PADRAO_SISTEMICO,
         agora,
       ),
-    ).toEqual(dia(-400));
+    ).toEqual(dia(-430));
     const crescimento = { ...PADRAO_SISTEMICO.crescimento, janelaDias: 250 };
     expect(inicioDaLeitura(hoteis, { ...PADRAO_SISTEMICO, crescimento }, agora)).toEqual(dia(-500));
   });

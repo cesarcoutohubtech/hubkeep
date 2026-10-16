@@ -204,6 +204,17 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
     expect(registro.resolver(c, { grupo: antiga })).toBe(antiga);
   });
 
+  it('a reincidência gravada antes da v4, sem os dias da falha depois de preventiva, continua valendo', () => {
+    const k = 'inteligencia.reincidencia';
+    const antiga = copia(PADROES_DO_INTELLIGENCE[k]);
+    delete antiga.diasAposPreventiva;
+    antiga.janelaDias = 60;
+    expect(valorValidoDoIntelligence(k, antiga)).toBe(true);
+    expect(valorValidoDoIntelligence(k, { ...antiga, diasAposPreventiva: -1 })).toBe(false);
+    const registro = registroDePoliticas([EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE]);
+    expect(registro.resolver(k, { grupo: antiga })).toBe(antiga);
+  });
+
   it('o sistêmico gravado antes da v4, sem a população mínima e o percentual afetado, continua valendo', () => {
     const k = 'inteligencia.sistemico';
     const antiga = copia(PADROES_DO_INTELLIGENCE[k]);

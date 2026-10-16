@@ -40,8 +40,10 @@
 // conta todo chamado cancelado (divergência b). A versão 4 (divergência a)
 // grava o dia no fuso do hotel, e não em UTC. A versão 5 (Kaio e Cesar,
 // 16/10/2026) tira a preventiva atrasada do "sem dado" para o ativo com OS
-// preventiva. O que já foi gravado com as versões anteriores não é recalculado
-// (ADR-036).
+// preventiva. A versão 6 (Kaio e Cesar, 16/10/2026) não muda a fórmula da
+// atenção: acompanha a reincidência versão 4, que passa a ler a falha depois
+// de preventiva, e muda o número da atenção pelo componente da reincidência. O
+// que já foi gravado com as versões anteriores não é recalculado (ADR-036).
 import {
   CRITICIDADE_MAXIMA,
   type Criticidade,
@@ -50,7 +52,7 @@ import {
 } from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
-export const VERSAO_ATENCAO = 5;
+export const VERSAO_ATENCAO = 6;
 
 /**
  * A tolerância da preventiva atrasada, em dias. É a política
