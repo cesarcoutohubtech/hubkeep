@@ -288,6 +288,9 @@ export {
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
+  CRITERIOS_DE_SUBSTITUICAO_API,
+  SINAIS_DE_SUBSTITUICAO_API,
+  SubstituicaoDoAtivoApi,
   TIPOS_DE_INSIGHT_API,
 } from './inteligencia';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';

@@ -37,6 +37,9 @@ const ativo = (id: string, hotelId: string, bandeiraId: string | null = null): A
   bandeiraId,
   criticidade: null,
   desativadoEm: null,
+  fuso: 'America/Sao_Paulo',
+  dataCompra: null,
+  garantiaAte: null,
 });
 
 let seq = 0;

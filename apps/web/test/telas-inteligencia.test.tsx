@@ -246,6 +246,23 @@ const ativo: PaginaDoAtivo = {
   insights: [base],
   nomes,
   efetividade,
+  substituicao: {
+    versao: 1,
+    sinal: 'avaliar_substituicao',
+    atingidos: 4,
+    avaliados: 6,
+    garantiaVigente: false,
+    criterios: [
+      { chave: 'corretivas12m', valor: 7, limite: 6, atingido: true },
+      { chave: 'horasParadas12m', valor: 49, limite: 40, atingido: true },
+      { chave: 'idadeAnos', valor: 12, limite: 10, atingido: true },
+      { chave: 'custoSobreReposicao', valor: null, limite: 0.5, atingido: null },
+      { chave: 'impactoHospede', valor: 0, limite: 70, atingido: false },
+      { chave: 'criticidade', valor: 0.8, limite: 0.75, atingido: true },
+      { chave: 'reincidencia', valor: null, limite: 70, atingido: null },
+    ],
+    calculadoEm: '2026-10-10T15:00:00.000Z',
+  },
 };
 
 const fechada: Abertura = {
@@ -345,6 +362,50 @@ describe('o detalhe do ativo', () => {
     expect(html).toContain('Atenção ao ativo, versão 2');
     expect(html).toContain('1 de 3 dias no limite de 70 ou acima');
     expect(html).toContain(`href="/inteligencia/insights/${I1}"`);
+  });
+
+  it('o sinal de substituição: o estado, os critérios com valor e limite, a reposição numa linha discreta e a ressalva', () => {
+    const html = renderizar('pt-BR', <ConteudoDoAtivo pagina={ativo} />);
+    expect(html).toContain('Sinal de substituição');
+    expect(html).toContain('Avaliar substituição');
+    expect(html).toContain('4 critérios atingidos de 6 avaliados.');
+    expect(html).toContain('Corretivas em 12 meses');
+    expect(html).toContain('a partir de 6');
+    expect(html).toContain('12 anos');
+    expect(html).toContain('49 h');
+    // A criticidade em nível: 4 de 5, e o limite é o primeiro nível que atinge.
+    expect(html).toContain('4 de 5');
+    expect(html).toContain('a partir de 4 de 5');
+    expect(html).toContain('Sem dado');
+    // O custo sobre a reposição não tem linha na tabela: só a frase discreta.
+    expect(html).not.toContain('Custo de 12 meses sobre o valor de reposição</th>');
+    expect(html).toContain('Ainda sem dado: o custo de 12 meses sobre o valor de reposição');
+    expect(html).toContain('É um sinal para análise, não uma recomendação.');
+    expect(html).toContain('com a versão 1 da regra');
+    expect(html).not.toContain('revise com o fornecedor');
+  });
+
+  it('na garantia, a revisão necessária pede o fornecedor; sem sinal (ativo baixado), a seção não aparece', () => {
+    const naGarantia = renderizar(
+      'pt-BR',
+      <ConteudoDoAtivo
+        pagina={{
+          ...ativo,
+          substituicao: {
+            ...(ativo.substituicao as NonNullable<PaginaDoAtivo['substituicao']>),
+            sinal: 'revisao_necessaria',
+            garantiaVigente: true,
+          },
+        }}
+      />,
+    );
+    expect(naGarantia).toContain('Revisão necessária');
+    expect(naGarantia).toContain('O ativo está na garantia: revise com o fornecedor');
+    const baixado = renderizar(
+      'pt-BR',
+      <ConteudoDoAtivo pagina={{ ...ativo, substituicao: null }} />,
+    );
+    expect(baixado).not.toContain('Sinal de substituição');
   });
 
   it('sem resultado gravado, a página diz que o job ainda não calculou', () => {

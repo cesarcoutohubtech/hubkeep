@@ -371,8 +371,10 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
     const A = randomUUID();
     const IA = randomUUID();
     await q(
-      `insert into app.ativo (id, tenant_id, hotel_id, local_id, nome, busca, codigo_qr, criticidade)
-       values ($1, $2, $3, $4, 'Elevador social 2', 'elevador social 2', 'ABCDEFGHJ1', 5)`,
+      `insert into app.ativo (id, tenant_id, hotel_id, local_id, nome, busca, codigo_qr, criticidade,
+                              data_compra, garantia_ate)
+       values ($1, $2, $3, $4, 'Elevador social 2', 'elevador social 2', 'ABCDEFGHJ1', 5,
+               '2014-06-01', '2016-05-31')`,
       [A, TENANT, H1, L1],
     );
     const metrica = (dia: string, calculo: number, recalculo: boolean, atencao: number | null) =>
@@ -420,6 +422,10 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
       bandeiraId: B1,
       criticidade: 5,
       desativadoEm: null,
+      // O fuso do hotel e as datas de compra e garantia, para o sinal de substituição.
+      fuso: 'UTC',
+      dataCompra: '2014-06-01',
+      garantiaAte: '2016-05-31',
     });
     const doGerente = await porta.metricasDoAtivo(ctx(U.gerente), A, '2026-09-15');
     expect(doGerente.map((m) => [m.dia, m.calculo, m.recalculo, m.atencao])).toEqual([

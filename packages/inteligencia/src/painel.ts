@@ -213,6 +213,12 @@ export interface AtivoDoPainel {
   bandeiraId: string | null;
   criticidade: number | null;
   desativadoEm: Date | null;
+  /** O fuso IANA do hotel (`app.hotel.fuso`): o dia da idade e da garantia. */
+  fuso: string;
+  /** `app.ativo.data_compra`, AAAA-MM-DD; null sem a data. */
+  dataCompra: string | null;
+  /** `app.ativo.garantia_ate`, AAAA-MM-DD, o último dia em que a garantia vale; null sem a data. */
+  garantiaAte: string | null;
 }
 
 /** Uma linha da `app.metrica_ativo_diaria`, como o job gravou. */

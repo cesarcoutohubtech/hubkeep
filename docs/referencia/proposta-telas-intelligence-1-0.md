@@ -37,6 +37,13 @@ Todo insight abre aqui. No sistêmico, a página mostra a regra e os chamados; n
 - **Como o score foi composto:** os oito componentes com peso, com valor, peso, peso usado, pontos e a nota da linha (por exemplo, "custo informado em X de Y corretivas", medições abaixo do mínimo, garantia sem data). O componente sem dado aparece com traço, e um aviso diz que o peso dele foi dividido entre os outros (ADR-034). Os UH-dias ficam numa linha discreta no fim da tabela: "Ainda sem dado: UH-dias (peso 0)".
 - **Como este resultado foi gravado:** quando foi calculado, o número do cálculo (original ou recálculo), a versão da fórmula e a da política. É a condição do Cesar no ADR-036 aparecendo na tela.
 - **Insights deste ativo,** com link para a página do insight.
+- **Sinal de substituição** (proposta de 16/10/2026, aprovada por Cesar e Kaio no mesmo dia), entre o resto da página e "Intervenções neste ativo":
+  - o selo do estado (sem sinal, observar, avaliar substituição ou revisão necessária) e "N critérios atingidos de M avaliados";
+  - a tabela dos critérios de 12 meses, com o valor, o limite e o resultado (atingido, não atingido ou sem dado);
+  - na revisão necessária, o aviso de rever com o fornecedor, porque o ativo está na garantia;
+  - o custo sobre o valor de reposição numa linha discreta, sem dado até o módulo de custos (2.0);
+  - a ressalva de que é sinal para análise, e não recomendação, e "calculado agora", com a versão da regra.
+  - Só o sinal: a decisão de substituir registrada e o retorno do investimento ficam na 2.0. O sinal não abre insight e não notifica. O ativo baixado não tem a seção.
 
 ## Como as telas se ligam
 

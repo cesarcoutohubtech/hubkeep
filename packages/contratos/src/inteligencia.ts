@@ -281,6 +281,51 @@ export const MetricaDoAtivoApi = z
   })
   .meta({ id: 'MetricaDoAtivoApi' });
 
+/** Os estados do sinal de substituição (`SinalDeSubstituicao` do motor). */
+export const SINAIS_DE_SUBSTITUICAO_API = [
+  'sem_sinal',
+  'observar',
+  'avaliar_substituicao',
+  'revisao_necessaria',
+] as const;
+
+/** Os critérios do sinal de substituição (`Criterio['chave']` do motor), na ordem do motor. */
+export const CRITERIOS_DE_SUBSTITUICAO_API = [
+  'corretivas12m',
+  'horasParadas12m',
+  'idadeAnos',
+  'custoSobreReposicao',
+  'impactoHospede',
+  'criticidade',
+  'reincidencia',
+] as const;
+
+/**
+ * O sinal de substituição do ativo, calculado na leitura (proposta de
+ * 16/10/2026, Cesar e Kaio). É sinal para análise: não registra decisão.
+ */
+export const SubstituicaoDoAtivoApi = z
+  .object({
+    versao: z.int(),
+    sinal: z.enum(SINAIS_DE_SUBSTITUICAO_API),
+    atingidos: z.int(),
+    /** Os critérios com dado para avaliar. */
+    avaliados: z.int(),
+    /** Nulo sem a data da garantia. */
+    garantiaVigente: z.boolean().nullable(),
+    criterios: z.array(
+      z.object({
+        chave: z.enum(CRITERIOS_DE_SUBSTITUICAO_API),
+        /** Nulo sem dado: o critério não foi avaliado. */
+        valor: z.number().nullable(),
+        limite: z.number(),
+        atingido: z.boolean().nullable(),
+      }),
+    ),
+    calculadoEm: Data,
+  })
+  .meta({ id: 'SubstituicaoDoAtivoApi' });
+
 /** O detalhe do ativo no Intelligence: a atenção dos últimos 90 dias e os insights do ativo. */
 export const RespostaDoAtivoNoIntelligence = z
   .object({
@@ -300,5 +345,7 @@ export const RespostaDoAtivoNoIntelligence = z
     nomes: NomesDoPainelApi,
     /** As intervenções no ativo concluídas nos últimos 180 dias. */
     efetividade: RespostaDasEfetividades,
+    /** O sinal de substituição, calculado agora; nulo para o ativo baixado. */
+    substituicao: SubstituicaoDoAtivoApi.nullable(),
   })
   .meta({ id: 'RespostaDoAtivoNoIntelligence' });

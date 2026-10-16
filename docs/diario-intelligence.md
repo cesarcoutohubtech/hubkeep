@@ -2531,3 +2531,34 @@ O Cesar mergeou o #300 às 13:45 UTC, com os cinco checks verdes no head `46e12e
   - no contrato, o campo `substituicao` na resposta do ativo;
   - a tela e os textos nos quatro idiomas;
   - a proposta das telas e o glossário.
+
+### As aprovações e o PR (16/10/2026)
+
+"Cesar aqui. Pode seguir" e "Kaio aqui. Pode seguir" (nesta sessão, 16/10/2026). A proposta está aprovada inteira:
+- os itens 1 a 4, por Cesar e Kaio;
+- os detalhes do Kaio, como recomendados: os limites do padrão ficam como estão, os textos são os da proposta e a seção aparece também sem sinal.
+
+PR `int:`, fora da zona protegida, sem migração e sem tocar no `packages/dominio`.
+
+**O que o PR traz:**
+- **Motor (`painel-substituicao.ts`):**
+  - `substituicaoDoAtivo` calcula o sinal na leitura, com a política `inteligencia.substituicao` do hotel (`substituicaoDoHotel`);
+  - a regra de quem vê é a do detalhe do ativo, e o ativo baixado devolve null;
+  - lê numa vez o histórico de 12 meses (`historicoDosAtivos`, o mesmo da efetividade) e a série da página, para a reincidência do último dia.
+- **Leitura (`packages/db`):**
+  - o ativo do painel traz o fuso do hotel, a `data_compra` e a `garantia_ate`;
+  - `politicasDaSubstituicao` lê só essa chave.
+- **API:** o campo `substituicao` na resposta do ativo (`SubstituicaoDoAtivoApi`). O fuso e as datas ficam no servidor.
+- **Tela:** a seção "Sinal de substituição" acima de "Intervenções neste ativo", com o selo, o resumo, a tabela, a linha discreta da reposição, o aviso da garantia, a ressalva e a versão. Os textos estão nos quatro idiomas.
+- **Detalhes de tela que o agente escolheu, para o Kaio conferir (ADR-033):**
+  - a criticidade aparece em nível ("4 de 5"), e o limite é o primeiro nível que atinge;
+  - o selo é cinza em "sem sinal", azul em "observar" e âmbar nos outros dois.
+
+### Ponto de retomada (16/10/2026, sinal de substituição)
+
+- **`main`:** em `cc44ee8` (#303).
+- **Dev:** sem mudança. O sinal aparece no dev depois do merge, sem rodar o `demo:historico`.
+- **Nesta branch:** o sinal de substituição. O PR abre agora.
+- **Esperando o Cesar:** o merge.
+- **Depois do merge:** conferir no dev a lava-roupa do hotel 6 ("Avaliar substituição").
+- **Próximo:** o que Cesar e Kaio priorizarem.

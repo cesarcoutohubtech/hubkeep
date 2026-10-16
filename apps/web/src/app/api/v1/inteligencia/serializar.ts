@@ -1,4 +1,6 @@
 // O painel do Intelligence na API: as datas do motor viram texto ISO 8601.
+import type { SubstituicaoDoAtivo } from '@hubkeep/inteligencia';
+
 const iso = (d: Date) => d.toISOString();
 
 interface ComDatas {
@@ -42,5 +44,19 @@ export function efetividadesNaApi<
       },
     })),
     nomes: e.nomes,
+  };
+}
+
+/** O sinal de substituição: a data do cálculo em texto; a configuração fica fora (os limites vão em cada critério). */
+export function substituicaoNaApi(s: SubstituicaoDoAtivo) {
+  const { versao, sinal, atingidos, garantiaVigente, criterios } = s.substituicao;
+  return {
+    versao,
+    sinal,
+    atingidos,
+    avaliados: s.avaliados,
+    garantiaVigente,
+    criterios: criterios.map((c) => ({ ...c })),
+    calculadoEm: iso(s.calculadoEm),
   };
 }
