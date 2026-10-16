@@ -91,7 +91,7 @@ test('varredura avanca apenas seu proprio checkpoint', async()=>{
   let janela;
   await s.executar({hotelId:'hotel-a',enterpriseId:'ent-a',ateUtc:'2026-10-16T14:30:00Z',
     listarBloqueios:async (_empresas,filtro)=>{janela=filtro;return [b('b','2026-10-16T14:10:00Z')];}});
-  assert.equal(janela.UpdatedUtc.StartUtc,'2026-10-16T12:55:00Z');
+  assert.equal(Date.parse(janela.UpdatedUtc.StartUtc), Date.parse('2026-10-16T12:55:00Z'));
   assert.equal(db.ler(escopo).bloqueios.length,2);
 });
 test('varredura pode ter horario inferior ao ultimo incremental sem regressao',async()=>{
