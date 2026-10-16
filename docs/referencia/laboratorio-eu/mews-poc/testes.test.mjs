@@ -78,7 +78,7 @@ test('somente endpoints getAll em POST com autenticação no corpo', async () =>
   assert.equal(chamadas[0].body.AccessToken, token.accessToken);
   assert.deepEqual(chamadas[0].body.Limitation, { Count: 100 });
 });
-test('paginação cursor usa retorno mesmo com página cheia; termina na página curta', async () => {
+test('paginação cursor continua até resposta sem Cursor', async () => {
   const vistos = [];
   const c = criarClienteMews({
     ...token,
@@ -89,7 +89,7 @@ test('paginação cursor usa retorno mesmo com página cheia; termina na página
       vistos.push(q.Limitation.Cursor);
       if (!q.Limitation.Cursor)
         return resp({ Resources: [{ Id: '1' }, { Id: '2' }], Cursor: 'pagina2' });
-      return resp({ Resources: [{ Id: '3' }], Cursor: 'pagina3' });
+      return resp({ Resources: [{ Id: '3' }], Cursor: null });
     },
   });
   assert.deepEqual(
@@ -98,6 +98,25 @@ test('paginação cursor usa retorno mesmo com página cheia; termina na página
   );
   assert.deepEqual(vistos, [undefined, 'pagina2']);
 });
+test('cursor manda avançar mesmo quando página retorna menos itens que Count', async () => {
+  const vistos = [];
+  const c = criarClienteMews({
+    ...token, pageSize: 3,
+    fetchImpl: async (_url, req) => {
+      const body = JSON.parse(req.body);
+      vistos.push(body.Limitation.Cursor ?? null);
+      return body.Limitation.Cursor
+        ? resp({ Resources: [{ Id: '2' }], Cursor: null })
+        : resp({ Resources: [{ Id: '1' }], Cursor: 'mais' });
+    },
+  });
+  assert.deepEqual(
+    (await c.listarRecursos(['empresaA'])).map((x) => x.Id),
+    ['1', '2'],
+  );
+  assert.deepEqual(vistos, [null, 'mais']);
+});
+
 test('não repete cursor, nem roda páginas sem fim', async () => {
   const c = criarClienteMews({
     ...token,
