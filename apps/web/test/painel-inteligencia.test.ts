@@ -35,6 +35,7 @@ import {
   dataNaApi,
   efetividadesNaApi,
   insightNaApi,
+  substituicaoNaApi,
 } from '../src/app/api/v1/inteligencia/serializar';
 import { criarPainel } from '../src/servidor/modulos/inteligencia/painel';
 
@@ -133,6 +134,9 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
             bandeiraId: null,
             criticidade: 5,
             desativadoEm: null,
+            fuso: 'America/Sao_Paulo',
+            dataCompra: '2014-06-01',
+            garantiaAte: null,
           }
         : null,
     metricasDoAtivo: async () => [
@@ -153,6 +157,7 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
     ],
     insightsDoEscopo: async () => insights,
     politicasDaEfetividade: async () => [],
+    politicasDaSubstituicao: async () => [],
     intervencoes: async () => [TROCA],
     historicoDosAtivos: async () => ({ chamados: [TROCA], paradas: [] }),
   };
@@ -303,7 +308,25 @@ describe('o painel sobre a porta do banco', () => {
       insights: p.insights.map(insightNaApi),
       nomes: p.nomes,
       efetividade: efetividadesNaApi(await casos.efetividadeDoAtivo(ctx, A1)),
+      substituicao: substituicaoNaApi(
+        (await casos.substituicaoDoAtivo(ctx, A1)) as NonNullable<
+          Awaited<ReturnType<typeof casos.substituicaoDoAtivo>>
+        >,
+      ),
     });
+    // O sinal de substituição, calculado agora: a idade pela data de compra (2014),
+    // a reincidência do último dia gravado e o custo sobre a reposição sem dado.
+    expect(resposta.substituicao).toMatchObject({ versao: 1, avaliados: 6 });
+    expect(
+      resposta.substituicao?.criterios
+        .filter((c) => ['idadeAnos', 'reincidencia', 'custoSobreReposicao'].includes(c.chave))
+        .map((c) => [c.chave, c.valor]),
+    ).toEqual([
+      ['idadeAnos', 12],
+      ['custoSobreReposicao', null],
+      ['reincidencia', 40],
+    ]);
+    expect('fuso' in resposta.ativo).toBe(false);
     expect(resposta.efetividade.intervencoes[0]?.intervencao).toMatchObject({
       em: '2026-09-05T00:00:00.000Z',
       descricao: 'Modernização do elevador',

@@ -14,8 +14,10 @@ import type { Contexto } from '@hubkeep/dominio';
 import {
   type AberturaDoPainel,
   type EfetividadesDoPainel,
-  type PortasDaEfetividade,
+  type PortasDaSubstituicao,
+  type SubstituicaoDoAtivo,
   efetividadeDoAtivo,
+  substituicaoDoAtivo,
   efetividadeDoInsight,
   listarEfetividades,
   FUSO_PADRAO_DO_GRUPO,
@@ -72,6 +74,8 @@ export interface CasosDeUsoDoPainel {
   ativo(ctx: Contexto, ativoId: string): Promise<PaginaDoAtivo>;
   /** As intervenções do ativo, com o antes e depois (adendo ao ADR-033, 15/10/2026). */
   efetividadeDoAtivo(ctx: Contexto, ativoId: string): Promise<EfetividadesDoPainel>;
+  /** O sinal de substituição do ativo, calculado agora (proposta de 16/10/2026); null no ativo baixado. */
+  substituicaoDoAtivo(ctx: Contexto, ativoId: string): Promise<SubstituicaoDoAtivo | null>;
   /** A seção abaixo da lista de insights: as intervenções dos hotéis em que a pessoa decide. */
   efetividades(ctx: Contexto): Promise<EfetividadesDoPainel>;
   /** Na página do insight: as intervenções nos ativos dele, depois da primeira detecção. */
@@ -96,7 +100,7 @@ function noMotor<T extends InsightDoPainelNoBanco>(
   return { ...i, tipo: i.tipo, estado: i.estado, motivoDeDescarte: motivo };
 }
 
-export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDaEfetividade {
+export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDaSubstituicao {
   const { porta } = deps;
   return {
     modulos: () => deps.modulos.contratados(ctx),
@@ -127,6 +131,7 @@ export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDaEfeti
     insightsDoEscopo: async (tipo, chave, valor) =>
       (await porta.insightsDoEscopo(ctx, tipo, chave, valor, LIMITE_DA_LISTA)).map(noMotor),
     politicasDaEfetividade: () => porta.politicasDaEfetividade(ctx),
+    politicasDaSubstituicao: () => porta.politicasDaSubstituicao(ctx),
     intervencoes: (filtro) => porta.intervencoes(ctx, filtro),
     historicoDosAtivos: (ativoIds, desde, ate) =>
       porta.historicoDosAtivos(ctx, ativoIds, desde, ate),
@@ -143,6 +148,8 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
     ativo: (ctx, ativoId) => verAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
     efetividadeDoAtivo: (ctx, ativoId) =>
       efetividadeDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    substituicaoDoAtivo: (ctx, ativoId) =>
+      substituicaoDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
     efetividades: (ctx) => listarEfetividades(portasDoPainel(deps, ctx), agora()),
     efetividadeDoInsight: (ctx, insightId) =>
       efetividadeDoInsight(portasDoPainel(deps, ctx), insightId, agora()),

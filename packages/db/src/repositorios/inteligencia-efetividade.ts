@@ -38,7 +38,6 @@ export interface ParadaDaEfetividadeNoBanco {
   fim: Date | null;
 }
 
-const CHAVE = 'inteligencia.efetividade';
 const data = (v: Date | string) => (v instanceof Date ? v : new Date(v));
 
 function porChave<T>(xs: readonly T[], k: (x: T) => string): Map<string, T[]> {
@@ -51,13 +50,13 @@ function porChave<T>(xs: readonly T[], k: (x: T) => string): Map<string, T[]> {
   return m;
 }
 
-/** As linhas ativas de inteligencia.efetividade que quem pede lê. */
-export async function politicasDaEfetividade(tx: Tx): Promise<PoliticaDoJob[]> {
+/** As linhas ativas de uma chave do painel que quem pede lê. */
+async function politicasDaChave(tx: Tx, chave: string): Promise<PoliticaDoJob[]> {
   const linhas = await tx
     .selectFrom('app.politica')
     .select(['id', 'chave', 'escopo_tipo', 'hotel_id', 'bandeira_id', 'valor', 'atualizado_em'])
     .where('ativa', '=', true)
-    .where('chave', '=', CHAVE)
+    .where('chave', '=', chave)
     .orderBy('id')
     .execute();
   return linhas.map((l) => ({
@@ -70,6 +69,13 @@ export async function politicasDaEfetividade(tx: Tx): Promise<PoliticaDoJob[]> {
     atualizadoEm: data(l.atualizado_em),
   }));
 }
+
+/** As linhas ativas de inteligencia.efetividade que quem pede lê. */
+export const politicasDaEfetividade = (tx: Tx) => politicasDaChave(tx, 'inteligencia.efetividade');
+
+/** As linhas ativas de inteligencia.substituicao que quem pede lê (o sinal de substituição, 16/10/2026). */
+export const politicasDaSubstituicao = (tx: Tx) =>
+  politicasDaChave(tx, 'inteligencia.substituicao');
 
 /** Os chamados destes ids, com as OS (e o código de solução), as transições e a bandeira do hotel. */
 async function chamadosComOs(

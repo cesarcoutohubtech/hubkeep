@@ -35,6 +35,7 @@ import {
   historicoDosAtivosNoBanco,
   intervencoesNoBanco,
   politicasDaEfetividade,
+  politicasDaSubstituicao,
 } from './repositorios/inteligencia-efetividade';
 import {
   type PoliticaDoJob,
@@ -86,6 +87,8 @@ export interface PortaDoPainelDoIntelligence {
   ): Promise<InsightDoPainelNoBanco[]>;
   /** A efetividade (adendo ao ADR-033): as linhas de inteligencia.efetividade que quem pede lê. */
   politicasDaEfetividade(ctx: Contexto): Promise<PoliticaDoJob[]>;
+  /** O sinal de substituição: as linhas de inteligencia.substituicao que quem pede lê. */
+  politicasDaSubstituicao(ctx: Contexto): Promise<PoliticaDoJob[]>;
   intervencoes(
     ctx: Contexto,
     filtro: { codigos: readonly string[]; desde: Date; ativoIds?: readonly string[] },
@@ -114,6 +117,7 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
     insightsDoEscopo: (ctx, tipo, chave, valor, limite) =>
       banco.withContext(ctx, (tx) => insightsDoEscopo(tx, tipo, chave, valor, limite)),
     politicasDaEfetividade: (ctx) => banco.withContext(ctx, (tx) => politicasDaEfetividade(tx)),
+    politicasDaSubstituicao: (ctx) => banco.withContext(ctx, (tx) => politicasDaSubstituicao(tx)),
     intervencoes: (ctx, filtro) => banco.withContext(ctx, (tx) => intervencoesNoBanco(tx, filtro)),
     historicoDosAtivos: (ctx, ativoIds, desde, ate) =>
       banco.withContext(ctx, (tx) => historicoDosAtivosNoBanco(tx, ativoIds, desde, ate)),

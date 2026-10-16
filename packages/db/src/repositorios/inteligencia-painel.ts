@@ -89,6 +89,12 @@ export interface AtivoDoPainelNoBanco {
   bandeiraId: string | null;
   criticidade: number | null;
   desativadoEm: Date | null;
+  /** O fuso do hotel do ativo. */
+  fuso: string;
+  /** AAAA-MM-DD; null sem a data. */
+  dataCompra: string | null;
+  /** AAAA-MM-DD; null sem a data. */
+  garantiaAte: string | null;
 }
 
 export interface MetricaDoPainelNoBanco {
@@ -399,7 +405,17 @@ export async function ativoDoPainel(tx: Tx, id: string): Promise<AtivoDoPainelNo
   const a = await tx
     .selectFrom('app.ativo as a')
     .innerJoin('app.hotel as h', 'h.id', 'a.hotel_id')
-    .select(['a.id', 'a.nome', 'a.hotel_id', 'h.bandeira_id', 'a.criticidade', 'a.desativado_em'])
+    .select([
+      'a.id',
+      'a.nome',
+      'a.hotel_id',
+      'h.bandeira_id',
+      'a.criticidade',
+      'a.desativado_em',
+      'h.fuso',
+      sql<string | null>`a.data_compra::text`.as('data_compra'),
+      sql<string | null>`a.garantia_ate::text`.as('garantia_ate'),
+    ])
     .where('a.id', '=', id)
     .executeTakeFirst();
   return a
@@ -410,6 +426,9 @@ export async function ativoDoPainel(tx: Tx, id: string): Promise<AtivoDoPainelNo
         bandeiraId: a.bandeira_id,
         criticidade: a.criticidade,
         desativadoEm: a.desativado_em === null ? null : data(a.desativado_em),
+        fuso: a.fuso,
+        dataCompra: a.data_compra,
+        garantiaAte: a.garantia_ate,
       }
     : null;
 }

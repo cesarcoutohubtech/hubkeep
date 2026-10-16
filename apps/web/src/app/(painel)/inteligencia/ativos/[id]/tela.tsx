@@ -2,9 +2,11 @@
 // Detalhe do ativo no Intelligence (proposta das telas do 1.0, tela 3): os
 // indicadores, os três fatores que mais pesaram, a atenção dos últimos 90 dias
 // (o resultado original de cada dia), a composição do score, como o resultado
-// foi gravado (a condição do Cesar no ADR-036), os insights do ativo e as
-// intervenções nele, com o antes e depois (adendo ao ADR-033, 15/10/2026). A
-// página não decide nada: a decisão é só na página do insight (decisão 2).
+// foi gravado (a condição do Cesar no ADR-036), os insights do ativo, o sinal
+// de substituição (proposta de 16/10/2026, Cesar e Kaio) e as intervenções nele,
+// com o antes e depois (adendo ao ADR-033, 15/10/2026). A página não decide
+// nada: a decisão é só na página do insight (decisão 2), e a de reparar ou
+// substituir é da equipe.
 import type { RespostaDoAtivoNoIntelligence, z } from '@hubkeep/contratos';
 import type { Chave } from '@hubkeep/i18n';
 import {
@@ -15,7 +17,17 @@ import {
   detalhamentoDoScore,
   explicacaoDoScore,
 } from '@hubkeep/inteligencia';
-import { Dados, Indicador, Indicadores, MensagemVazia, Nota, Painel, Tabela } from '@hubkeep/ui';
+import {
+  Dados,
+  Indicador,
+  Indicadores,
+  MensagemVazia,
+  Nota,
+  Painel,
+  Selo,
+  Tabela,
+  type TomDeSelo,
+} from '@hubkeep/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../../cliente/api';
@@ -158,6 +170,7 @@ export function ConteudoDoAtivo({ pagina }: { pagina: Pagina }) {
           </div>
         </>
       )}
+      {pagina.substituicao && <SinalDeSubstituicao substituicao={pagina.substituicao} />}
       <Painel
         titulo={t('inteligencia.efetividade.ativo.titulo')}
         dica={t('inteligencia.efetividade.dica')}
@@ -239,6 +252,113 @@ function Composicao({ score, atencao }: { score: Score; atencao: number | null }
         </p>
       )}
       <p className="hk-suave">{t('inteligencia.composicao.uh_dias')}</p>
+    </Painel>
+  );
+}
+
+type Substituicao = NonNullable<Pagina['substituicao']>;
+type Criterio = Substituicao['criterios'][number];
+
+const TOM_DO_SINAL: Readonly<Record<Substituicao['sinal'], TomDeSelo>> = {
+  sem_sinal: 'cinza',
+  observar: 'azul',
+  avaliar_substituicao: 'ambar',
+  revisao_necessaria: 'ambar',
+};
+
+/**
+ * O número do critério como a tela mostra: a criticidade em nível de 1 a 5 (o
+ * limite, o primeiro nível que atinge) e o custo sobre a reposição em
+ * porcentagem; os outros, como vêm.
+ */
+function naTela(chave: Criterio['chave'], n: number, limite = false): number {
+  if (chave === 'criticidade') return limite ? Math.ceil(n * 5 - 1e-9) : Math.round(n * 5);
+  if (chave === 'custoSobreReposicao') return Math.round(n * 100);
+  return n;
+}
+
+/**
+ * O sinal de substituição: o estado, os critérios com o valor e o limite, e a
+ * ressalva. É sinal para análise; o custo sobre a reposição, sem dado no 1.0,
+ * fica numa linha discreta.
+ */
+function SinalDeSubstituicao({ substituicao: s }: { substituicao: Substituicao }) {
+  const t = useT();
+  const { dataHora } = useDatas();
+  const semValor = t('inteligencia.sem_valor');
+  const semReposicao = s.criterios.some(
+    (c) => c.chave === 'custoSobreReposicao' && c.atingido === null,
+  );
+  const linhas = s.criterios.filter(
+    (c) => !(c.chave === 'custoSobreReposicao' && c.atingido === null),
+  );
+  const resultado = (c: Criterio) =>
+    c.atingido === null ? 'sem_dado' : c.atingido ? 'atingido' : 'nao_atingido';
+  return (
+    <Painel
+      titulo={t('inteligencia.substituicao.titulo')}
+      dica={t('inteligencia.substituicao.dica')}
+      acoes={
+        <Selo tom={TOM_DO_SINAL[s.sinal]}>
+          {t('inteligencia.substituicao.sinal', { sinal: s.sinal })}
+        </Selo>
+      }
+    >
+      <p>
+        {t('inteligencia.substituicao.resumo', {
+          atingidos: s.atingidos,
+          avaliados: s.avaliados,
+        })}
+      </p>
+      {s.sinal === 'revisao_necessaria' && (
+        <Nota tom="atencao">{t('inteligencia.substituicao.garantia')}</Nota>
+      )}
+      <Tabela legenda={t('inteligencia.substituicao.titulo')}>
+        <thead>
+          <tr>
+            <th scope="col">{t('inteligencia.substituicao.coluna.criterio')}</th>
+            <th scope="col" className="hk-num">
+              {t('inteligencia.substituicao.coluna.valor')}
+            </th>
+            <th scope="col" className="hk-num">
+              {t('inteligencia.substituicao.coluna.limite')}
+            </th>
+            <th scope="col">{t('inteligencia.substituicao.coluna.resultado')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {linhas.map((c) => (
+            <tr key={c.chave}>
+              <th scope="row">{t('inteligencia.substituicao.criterio', { chave: c.chave })}</th>
+              <td className="hk-num">
+                {c.valor === null
+                  ? semValor
+                  : t('inteligencia.substituicao.valor', {
+                      chave: c.chave,
+                      valor: naTela(c.chave, c.valor),
+                    })}
+              </td>
+              <td className="hk-num">
+                {t('inteligencia.substituicao.limite', {
+                  limite: t('inteligencia.substituicao.valor', {
+                    chave: c.chave,
+                    valor: naTela(c.chave, c.limite, true),
+                  }),
+                })}
+              </td>
+              <td>{t('inteligencia.substituicao.resultado', { resultado: resultado(c) })}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Tabela>
+      {semReposicao && <p className="hk-suave">{t('inteligencia.substituicao.sem_reposicao')}</p>}
+      <Nota tom="info">{t('inteligencia.substituicao.ressalva')}</Nota>
+      <p className="hk-suave">
+        {t('inteligencia.substituicao.calculado', {
+          quando: dataHora(s.calculadoEm),
+          versao: s.versao,
+        })}
+      </p>
     </Painel>
   );
 }
