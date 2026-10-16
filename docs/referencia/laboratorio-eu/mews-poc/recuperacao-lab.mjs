@@ -3,6 +3,8 @@
  * NAO conecta Mews, Supabase ou HubKeep. Nao usar em producao.
  * O adaptador simula transacoes atomicas com compare-and-swap por hotel.
  */
+import { criarRepositorioSimulado, prepararLote } from './checkpoint-contrato.mjs';
+
 const MS_DIA = 86400000;
 function dataUtc(s) {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(s) || !Number.isFinite(Date.parse(s)))
@@ -15,49 +17,88 @@ function chave({ tenantId, hotelId, enterpriseId }) {
     throw new Error('escopo_invalido');
   return JSON.stringify([tenantId, hotelId, enterpriseId]);
 }
+/**
+ * Compatibilidade do laboratorio com o contrato CANONICO do PR #304.
+ * Nao mantem Map/snapshot proprio: todos os commits vao para
+ * criarRepositorioSimulado() em checkpoint-contrato.mjs.
+ * Dados de recursos nos testes sao estritamente sintéticos, derivando
+ * IDs de recurso dos bloqueios. Integracao real exigira listarRecursos
+ * autorizado e validado na Mews; nao usar este adaptador em producao.
+ */
 export function criarArmazenamentoSimulado() {
-  const estados = new Map();
+  const repositorio = criarRepositorioSimulado();
   return Object.freeze({
     ler(escopo) {
-      const e = estados.get(chave(escopo));
-      return e ? copia(e) : { revisao: 0, checkpointUtc: null, checkpointVarreduraUtc: null, bloqueios: [] };
+      const salvo = repositorio.consultar(escopo);
+      if (!salvo) {
+        return { revisao: 0, checkpointUtc: null, checkpointVarreduraUtc: null, bloqueios: [] };
+      }
+      const prefixo = `${escopo.enterpriseId}|`;
+      const blocos = salvo.bloqueios.map(item => ({
+        Id: item.codigoExterno.slice(prefixo.length),
+        EnterpriseId: escopo.enterpriseId,
+        AssignedResourceId: item.codigoRecurso.slice(prefixo.length),
+        Type: item.tipoBloqueio,
+        StartUtc: item.inicio,
+        EndUtc: item.fim,
+        IsActive: item.ativoNoPms,
+        UpdatedUtc: item.atualizadoEm,
+      }));
+      return { revisao: salvo.versao, checkpointUtc: salvo.checkpointUtc,
+        checkpointVarreduraUtc: salvo.checkpointVarreduraUtc, bloqueios: blocos };
     },
     confirmar(escopo, revisaoEsperada, novo) {
-      const k = chave(escopo);
-      const atual = estados.get(k) ?? { revisao: 0, checkpointUtc: null, checkpointVarreduraUtc: null, bloqueios: [] };
-      if (atual.revisao !== revisaoEsperada) throw new Error('conflito_de_revisao');
+      const atual = repositorio.consultar(escopo);
+      if ((atual?.versao ?? 0) !== revisaoEsperada) throw new Error('conflito_de_revisao');
       if (!novo || !Array.isArray(novo.bloqueios)) throw new Error('snapshot_invalido');
       const modo = novo.modo ?? 'incremental';
       if (!['incremental', 'reconciliacao'].includes(modo)) throw new Error('modo_invalido');
-      const proximoMs = dataUtc(novo.checkpointUtc);
-      const marcoIncremental = atual.checkpointUtc ? dataUtc(atual.checkpointUtc) : null;
-      let checkpointUtc = atual.checkpointUtc;
-      let checkpointVarreduraUtc = atual.checkpointVarreduraUtc;
-      if (modo === 'incremental') {
-        if (marcoIncremental !== null && proximoMs <= marcoIncremental)
-          throw new Error('checkpoint_regressivo');
-        checkpointUtc = novo.checkpointUtc;
-        // O bootstrap e CollidingUtc, logo tambem constitui uma primeira varredura.
-        if (marcoIncremental === null) checkpointVarreduraUtc = novo.checkpointUtc;
-      } else {
-        if (marcoIncremental === null) throw new Error('bootstrap_necessario');
-        if (atual.checkpointVarreduraUtc &&
-            proximoMs <= dataUtc(atual.checkpointVarreduraUtc)) throw new Error('varredura_regressiva');
-        checkpointVarreduraUtc = novo.checkpointUtc;
-      }
-      const ids = new Set();
-      for (const b of novo.bloqueios) {
-        if (!b || typeof b.Id !== 'string' || !b.Id || ids.has(b.Id) ||
-            b.EnterpriseId !== escopo.enterpriseId) throw new Error('bloqueio_invalido');
-        dataUtc(b.UpdatedUtc);
-        ids.add(b.Id);
-      }
-      const commit = copia({ revisao: atual.revisao + 1, checkpointUtc, checkpointVarreduraUtc, bloqueios: novo.bloqueios });
-      estados.set(k, commit); // unico ponto de publicacao
-      return copia(commit);
+      const recursos = new Map();
+      const bloqueios = novo.bloqueios.map(bruto => {
+        if (!bruto || typeof bruto.Id !== 'string' || !bruto.Id ||
+            bruto.EnterpriseId !== escopo.enterpriseId) throw new Error('bloqueio_invalido');
+        if (typeof bruto.AssignedResourceId !== 'string' || !bruto.AssignedResourceId) {
+          throw new Error('recurso_invalido');
+        }
+        dataUtc(bruto.UpdatedUtc);
+        if (bruto.DeletedUtc != null) dataUtc(bruto.DeletedUtc);
+        if (bruto.Type !== 'OutOfOrder' && bruto.Type !== 'InternalUse') {
+          throw new Error('tipo_bloqueio_invalido');
+        }
+        dataUtc(bruto.StartUtc);
+        dataUtc(bruto.EndUtc);
+        const resourceId = bruto.AssignedResourceId;
+        const codigoRecurso = `${escopo.enterpriseId}|${resourceId}`;
+        if (!recursos.has(codigoRecurso)) {
+          recursos.set(codigoRecurso, {
+            ...escopo, resourceId, codigoExterno: codigoRecurso,
+            ativoNoPms: true, atualizadoEm: null,
+          });
+        }
+        return {
+          ...escopo,
+          codigoExterno: `${escopo.enterpriseId}|${bruto.Id}`,
+          codigoRecurso,
+          tipoBloqueio: bruto.Type,
+          inicio: bruto.StartUtc,
+          fim: bruto.EndUtc,
+          ativoNoPms: bruto.IsActive !== false && bruto.DeletedUtc == null,
+          atualizadoEm: bruto.UpdatedUtc,
+        };
+      });
+      const checkpointEsperado = modo === 'incremental'
+        ? (atual?.checkpointUtc ?? null)
+        : (atual?.checkpointVarreduraUtc ?? null);
+      const plano = prepararLote({ ...escopo, modo,
+        versaoEsperada: revisaoEsperada, checkpointEsperado,
+        novoCheckpoint: novo.checkpointUtc,
+        espacos: [...recursos.values()], bloqueios });
+      repositorio.aplicar(plano);
+      return this.ler(escopo);
     },
   });
 }
+
 export function criarReconciliadorLaboratorio({ armazenamento, tenantId, vinculos, horizonteDias = 30, sobreposicaoMinutos = 5 }) {
   if (!armazenamento || typeof armazenamento.ler !== 'function' || typeof armazenamento.confirmar !== 'function')
     throw new Error('armazenamento_invalido');
