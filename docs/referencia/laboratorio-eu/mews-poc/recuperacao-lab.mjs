@@ -12,11 +12,6 @@ function dataUtc(s) {
   return Date.parse(s);
 }
 function copia(v) { return JSON.parse(JSON.stringify(v)); }
-function chave({ tenantId, hotelId, enterpriseId }) {
-  if (![tenantId, hotelId, enterpriseId].every(x => typeof x === 'string' && x.trim().length > 0))
-    throw new Error('escopo_invalido');
-  return JSON.stringify([tenantId, hotelId, enterpriseId]);
-}
 /**
  * Compatibilidade do laboratorio com o contrato CANONICO do PR #304.
  * Nao mantem Map/snapshot proprio: todos os commits vao para
@@ -27,8 +22,7 @@ function chave({ tenantId, hotelId, enterpriseId }) {
  */
 export function criarArmazenamentoSimulado() {
   const repositorio = criarRepositorioSimulado();
-  return Object.freeze({
-    ler(escopo) {
+  function ler(escopo) {
       const salvo = repositorio.consultar(escopo);
       if (!salvo) {
         return { revisao: 0, checkpointUtc: null, checkpointVarreduraUtc: null, bloqueios: [] };
@@ -46,7 +40,9 @@ export function criarArmazenamentoSimulado() {
       }));
       return { revisao: salvo.versao, checkpointUtc: salvo.checkpointUtc,
         checkpointVarreduraUtc: salvo.checkpointVarreduraUtc, bloqueios: blocos };
-    },
+  }
+  return Object.freeze({
+    ler,
     confirmar(escopo, revisaoEsperada, novo) {
       const atual = repositorio.consultar(escopo);
       if ((atual?.versao ?? 0) !== revisaoEsperada) throw new Error('conflito_de_revisao');
@@ -94,7 +90,7 @@ export function criarArmazenamentoSimulado() {
         novoCheckpoint: novo.checkpointUtc,
         espacos: [...recursos.values()], bloqueios });
       repositorio.aplicar(plano);
-      return this.ler(escopo);
+      return ler(escopo);
     },
   });
 }
