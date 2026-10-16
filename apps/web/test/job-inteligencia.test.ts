@@ -119,6 +119,7 @@ class SessaoEmMemoria implements SessaoDoJobDoIntelligence {
         garantiaAte: null,
         desativadoEm: null,
         paradas: [{ inicio: dia(-3), fim: null }],
+        preventivas: [],
       },
       {
         id: 'a2',
@@ -130,6 +131,7 @@ class SessaoEmMemoria implements SessaoDoJobDoIntelligence {
         garantiaAte: null,
         desativadoEm: null,
         paradas: [],
+        preventivas: [],
       },
     ]);
   chamados = () => this.ler('chamados', chamadosPesados());
