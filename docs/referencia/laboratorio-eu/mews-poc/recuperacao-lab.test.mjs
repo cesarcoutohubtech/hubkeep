@@ -125,3 +125,11 @@ test('reconciliacao exige bootstrap previamente validado',async()=>{
   const db=criarArmazenamentoSimulado();
   await assert.rejects(rodar(sync(db),'2026-10-16T14:00:00Z',[],'reconciliacao'),/bootstrap_necessario/);
 });
+
+
+test('tombstone prevalece mesmo com timestamp empatado',async()=>{
+  const db=criarArmazenamentoSimulado(),s=sync(db);
+  await rodar(s,'2026-10-16T13:00:00Z',[b('a','2026-10-16T12:00:00Z',{IsActive:false,DeletedUtc:'2026-10-16T12:00:00Z'})]);
+  await rodar(s,'2026-10-16T14:00:00Z',[b('a','2026-10-16T12:00:00Z',{IsActive:true})]);
+  assert.equal(db.ler(escopo).bloqueios[0].IsActive,false);
+});
