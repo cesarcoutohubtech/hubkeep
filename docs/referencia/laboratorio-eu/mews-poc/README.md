@@ -8,14 +8,25 @@ Protótipo **isolado**, sem dependências externas e sem imports do monorepo. Pr
   `configuration/get` HTTP 200 e `resources/getAll` HTTP 200 (5 itens).
 - `enterprises/getAll` respondeu 401 apesar da configuração autorizada.
   Para integrar **um hotel**, obter `Enterprise.Id` por `configuration/get`.
-- `resourceBlocks/getAll` com filtros opcionais respondeu 400. A resposta
-  **sem filtros opcionais** ainda não foi testada.
-- Outra tentativa com o conjunto 1 respondeu 429 já na primeira chamada.
+- **16/10/2026, Windows (Gross 2):** `resourceBlocks/getAll` com apenas
+  `Limitation.Count=5` retornou **HTTP 400**, Request-Id
+  `c0a18460-c339-4b76-a12a-8508a7edcf1d`. Mensagem oficial:
+  `Please specify at least one of the filters: CreatedUtc, UpdatedUtc, CollidingUtc.`
+  A operação `configuration/get` logo depois retornou **HTTP 200**.
+- A tabela oficial lista os filtros temporais como opcionais individualmente,
+  mas o serviço exige **ao menos um filtro temporal** em qualquer consulta
+  `resourceBlocks/getAll`. `Limitation` também é obrigatório, e cada
+  intervalo tem no máximo **três meses**.
+- O novo script envia **`CollidingUtc` de 30 dias a partir da data UTC
+  corrente**, além de `Limitation.Count=5`, sem filtros opcionais extras.
+  **Esta versão corrigida ainda não foi executada no Windows**.
+- Outra tentativa com o conjunto Gross 1 respondeu 429 já na primeira chamada.
   Como os tokens são públicos e compartilhados, o diagnóstico não repete
   requisições automaticamente nem assume falha de autenticação.
 - **Nova prova mínima:** `diagnostico-bloqueios-windows.ps1`, que usa o
   segundo par público Gross diretamente da documentação oficial. Faz
-  **primeiro a leitura de bloqueios com `Limitation.Count=5`**. Se houver
+  **primeiro a leitura de bloqueios com `CollidingUtc` (30 dias UTC)
+  e `Limitation.Count=5`**. Se houver
   HTTP 400, 401 ou 403, executa **somente mais uma** chamada de
   `configuration/get` para separar credenciais de permissão/formato.
   No máximo **2 POSTs read-only**; 429 encerra imediatamente.
@@ -106,9 +117,10 @@ públicos** documentados (Gross e Net), realiza primeiramente
 Somente se essa autenticação tiver êxito, usa **o Enterprise.Id de `configuration/get`**
 para ler recursos. A listagem `enterprises/getAll` deixou de ser pré-requisito:
 no teste real de 15/10/2026 ela respondeu HTTP 401 apesar da autenticação bem-sucedida.
-O diagnóstico consulta também `resourceBlocks/getAll` com **apenas `Limitation`**,
-sem filtros opcionais, e acrescenta filtros gradualmente somente se a leitura
-mínima funcionar. No máximo **cinco POSTs read-only** e sem dados de hóspedes.
+O diagnóstico consulta também `resourceBlocks/getAll` com
+**`Limitation` e `CollidingUtc` de 30 dias**; acrescenta os filtros de
+propriedade/atividade somente após essa leitura funcionar.
+No máximo **cinco POSTs read-only**, sem dados de hóspedes.
 O campo `Message` do erro HTTP, quando disponível, é sanitizado e limitado a
 160 caracteres (sem tokens, IDs, detalhes ou corpo bruto). O resultado distingue:
 
@@ -164,8 +176,10 @@ resposta válida e o erro 400 anterior estiver esclarecido.
 - `resources/getAll`: HTTP 200, primeira página com **5 recursos**.
 - `enterprises/getAll`: HTTP 401 — permissão do endpoint não confirmada;
   não necessário para o conector single-property.
-- `resourceBlocks/getAll` com filtros opcionais: HTTP 400. Novo diagnóstico
-  investiga com `Limitation` apenas, depois `EnterpriseIds` e `ActivityStates`.
+- `resourceBlocks/getAll` com filtros opcionais: HTTP 400. Em 16/10 o
+  filtro temporal ausente foi identificado por resposta oficial da API.
+  Reteste corrigido usa `Limitation` e `CollidingUtc`, primeiro sem
+  `EnterpriseIds` nem `ActivityStates`.
 - Request-Ids para eventual suporte Mews:
   empresas `874d5fac-d8df-4eb7-af73-5744b598d24b`;
   bloqueios `31b04475-bd79-47e0-af73-c22fc6cf21c6`.
@@ -177,7 +191,7 @@ base apenas nessa prova; necessário validar o próximo resultado real.
 ## Funções
 
 - `criarClienteMews({clientToken,accessToken,fetchImpl,...})`: cliente demo, pagination Cursor, rate-limit mínimo, retry em 408/429/5xx, `Retry-After`, timeout e mensagens que não incluem tokens.
-- `listarEmpresas()`, `listarRecursos([enterpriseId])`, `listarBloqueios([enterpriseId])`: exclusivamente leitura paginada.
+- `listarEmpresas()`, `listarRecursos([enterpriseId])`, `listarBloqueios([enterpriseId], {CollidingUtc})`: exclusivamente leitura paginada.
 - `lerPrimeiraPaginaDeEmpresas()`, `lerPrimeiraPaginaDeRecursos([enterpriseId])`, `lerPrimeiraPaginaDeBloqueios([enterpriseId])`: leitura LIMITADA a uma página por tipo, usada no smoke.
 - `criarEscopo({tenantId,vinculos})`: vínculo explícito `enterpriseId` → `hotelId`; nenhuma autoassociação pelo nome do hotel.
 - `montarProjecao(escopo,recursos,bloqueios)`: candidatos de espaços e bloqueios, sem notas, sem contato de hóspede, sem efeitos no domínio.
@@ -196,6 +210,7 @@ base apenas nessa prova; necessário validar o próximo resultado real.
 - https://docs.mews.com/connector-api/operations/enterprises
 - https://docs.mews.com/connector-api/operations/resources
 - https://docs.mews.com/connector-api/operations/resourceblocks
+- Evidência operacional: HTTP 400 com mensagem de filtro obrigatório; esta regra prevalece para o laboratório.
 - https://docs.mews.com/connector-api/guidelines/pagination
 - https://docs.mews.com/connector-api/guidelines/requests
 - https://docs.mews.com/connector-api/events/wh-general
