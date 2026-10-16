@@ -12,6 +12,7 @@ import { type Abertura, ConteudoDaAbertura } from '../src/app/(painel)/inteligen
 import { ConteudoDoAtivo } from '../src/app/(painel)/inteligencia/ativos/[id]/tela';
 import { ConteudoDoInsight } from '../src/app/(painel)/inteligencia/insights/[id]/tela';
 import {
+  AtivosEncontrados,
   SecaoDaEfetividade,
   TabelaDeInsights,
   caminhoDaLista,
@@ -265,6 +266,11 @@ const ativo: PaginaDoAtivo = {
   },
 };
 
+const encontrados = {
+  ativos: [{ id: A, nome: 'Lava-roupa industrial', hotelId: H1, bandeiraId: B }],
+  nomes,
+};
+
 const fechada: Abertura = {
   config: { aPartirDe: null, diasAposAtivacao: 60, papeis: ['admin_grupo', 'gestor_csc'] },
   abertura: {
@@ -286,6 +292,8 @@ describe('telas do Intelligence em todos os idiomas, sem chave crua', () => {
       renderizar(idioma, <ConteudoDaAbertura abertura={fechada} aoGravar={nada} />),
       renderizar(idioma, <SecaoDaEfetividade efetividade={efetividade} />),
       renderizar(idioma, <SecaoDaEfetividade efetividade={semEfetividade} />),
+      renderizar(idioma, <AtivosEncontrados encontrados={encontrados} termo="lava" />),
+      renderizar(idioma, <AtivosEncontrados encontrados={{ ativos: [], nomes }} termo="lava" />),
     ].join('');
     expect(html).not.toMatch(/inteligencia\.[a-z_]+\.[a-z_]/);
     expect(html).toContain('Elevador social 2');
@@ -479,6 +487,18 @@ describe('a efetividade das intervenções (adendo ao ADR-033)', () => {
     );
     expect(html).toContain('Efetividade da intervenção');
     expect(html).toContain('Intervenções concluídas depois da primeira detecção do insight, em');
+  });
+});
+
+describe('procurar ativo', () => {
+  it('cada ativo achado leva à página dele no Intelligence, com o hotel; sem nada, a frase da busca', () => {
+    const html = renderizar('pt-BR', <AtivosEncontrados encontrados={encontrados} termo="lava" />);
+    expect(html).toContain(`href="/inteligencia/ativos/${A}"`);
+    expect(html).toContain('Lava-roupa industrial');
+    expect(html).toContain('Hotel Batel');
+    expect(
+      renderizar('pt-BR', <AtivosEncontrados encontrados={{ ativos: [], nomes }} termo="lava" />),
+    ).toContain('Nada encontrado para “lava”.');
   });
 });
 

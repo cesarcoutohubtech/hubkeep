@@ -1003,6 +1003,8 @@
   "inteligencia.efetividade.insight.dica": "Intervenciones concluidas después de la primera detección del insight, el {data}.",
   "inteligencia.efetividade.lista.vazio": "Ninguna intervención concluida en los últimos 180 días en los hoteles en los que usted decide.",
   "inteligencia.efetividade.ativo.vazio": "Ninguna intervención concluida en este activo en los últimos 180 días.",
+  "inteligencia.procurar.titulo": "Buscar activo",
+  "inteligencia.procurar.dica": "Abre la página del activo en los hoteles en los que usted decide, también sin insight. Busca por nombre, fabricante, modelo o número de serie.",
   "inteligencia.substituicao.titulo": "Señal de sustitución",
   "inteligencia.substituicao.dica": "Criterios de los últimos 12 meses, calculados ahora.",
   "inteligencia.substituicao.sinal": "{sinal, select, sem_sinal {Sin señal} observar {Observar} avaliar_substituicao {Evaluar sustitución} revisao_necessaria {Revisión necesaria} other {{sinal}}}",

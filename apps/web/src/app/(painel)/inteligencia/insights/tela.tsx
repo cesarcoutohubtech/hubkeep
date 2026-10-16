@@ -2,9 +2,12 @@
 // Lista de insights do HubKeep Intelligence (proposta das telas do 1.0, tela
 // 1): os quatro indicadores, os filtros (estado, tipo, faixa e hotel) e a
 // tabela dos insights que quem vê decide (a API recorta pela RLS), e, abaixo
-// dela, a efetividade das intervenções (adendo ao ADR-033, 15/10/2026). Sem o
+// dela, a efetividade das intervenções (adendo ao ADR-033, 15/10/2026). Acima
+// da lista, "Procurar ativo" (Cesar e Kaio, 16/10/2026) leva à página de
+// qualquer ativo dos hotéis em que a pessoa decide, também sem insight. Sem o
 // módulo ou sem papel que decide, a API responde 404 inteligencia_indisponivel.
 import type {
+  RespostaDaBuscaDeAtivosNoIntelligence,
   RespostaDeHoteis,
   RespostaDeInsights,
   RespostaDoResumoDoIntelligence,
@@ -23,6 +26,7 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { CampoDeBusca, comBusca } from '../../../../cliente/CampoDeBusca';
 import { Aviso } from '../../../../cliente/aviso';
 import { useT } from '../../../../i18n/cliente';
 import {
@@ -145,6 +149,7 @@ export function TelaDeInsights() {
           />
         </Indicadores>
       )}
+      <ProcurarAtivo />
       <Painel titulo={t('inteligencia.lista.titulo')}>
         <form className="hk-filtros" onSubmit={(e) => e.preventDefault()}>
           <Campo rotulo={t('inteligencia.filtro.estado')}>
@@ -210,6 +215,66 @@ export function TelaDeInsights() {
       </Painel>
       {efetividade && <SecaoDaEfetividade efetividade={efetividade} />}
     </div>
+  );
+}
+
+type Encontrados = z.infer<typeof RespostaDaBuscaDeAtivosNoIntelligence>;
+
+/** "Procurar ativo": o termo vai para a API, e cada ativo achado leva à página dele. */
+function ProcurarAtivo() {
+  const t = useT();
+  const [termo, setTermo] = useState('');
+  const [encontrados, setEncontrados] = useState<Encontrados | null>(null);
+  const [erro, setErro] = useState<ErroDaApi | null>(null);
+
+  const procurar = async (novo: string) => {
+    setTermo(novo);
+    setErro(null);
+    if (novo === '') {
+      setEncontrados(null);
+      return;
+    }
+    const r = await chamarApi<Encontrados>(comBusca('/api/v1/inteligencia/ativos', novo));
+    if (!r.ok) {
+      setErro(r.erro);
+      setEncontrados(null);
+      return;
+    }
+    setEncontrados(r.dados);
+  };
+
+  return (
+    <Painel titulo={t('inteligencia.procurar.titulo')} dica={t('inteligencia.procurar.dica')}>
+      <CampoDeBusca aoBuscar={(novo) => void procurar(novo)} />
+      <Aviso aviso={erro && { tipo: 'erro', erro }} />
+      {encontrados && <AtivosEncontrados encontrados={encontrados} termo={termo} />}
+    </Painel>
+  );
+}
+
+export function AtivosEncontrados({
+  encontrados,
+  termo,
+}: {
+  encontrados: Encontrados;
+  termo: string;
+}) {
+  const t = useT();
+  if (encontrados.ativos.length === 0)
+    return <MensagemVazia>{t('comum.busca.sem_resultado', { termo })}</MensagemVazia>;
+  return (
+    <ul className="hk-lista">
+      {encontrados.ativos.map((a) => (
+        <li key={a.id}>
+          <span className="hk-em-linha">
+            <Link href={`/inteligencia/ativos/${a.id}`}>{a.nome}</Link>
+            <span className="hk-suave">
+              {encontrados.nomes.hoteis[a.hotelId] ?? t('inteligencia.sem_valor')}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

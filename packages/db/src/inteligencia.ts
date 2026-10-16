@@ -9,6 +9,7 @@ import type { Contexto } from '@hubkeep/dominio';
 import type { AcessoBanco } from './acesso';
 import {
   type AtivoDoPainelNoBanco,
+  type AtivoEncontradoNoBanco,
   type ChamadoDoInsightNoBanco,
   type ContagemDeInsightsNoBanco,
   type DecisaoNoBanco,
@@ -19,6 +20,7 @@ import {
   type MetricaDoPainelNoBanco,
   type NomesDoPainelNoBanco,
   ativoDoPainel,
+  ativosPorBusca,
   chamadosDoInsight,
   contagensDeInsights,
   decidirInsightNoBanco,
@@ -77,6 +79,8 @@ export interface PortaDoPainelDoIntelligence {
   /** Na unit of work de quem decide: o estado, a auditoria e o evento. */
   decidir(ctx: Contexto, d: DecisaoNoBanco): Promise<{ versao: number }>;
   ativo(ctx: Contexto, id: string): Promise<AtivoDoPainelNoBanco | null>;
+  /** "Procurar ativo": os ativos sem baixa do termo (normalizado), até `limite`. */
+  ativosPorBusca(ctx: Contexto, termo: string, limite: number): Promise<AtivoEncontradoNoBanco[]>;
   metricasDoAtivo(ctx: Contexto, ativoId: string, desde: string): Promise<MetricaDoPainelNoBanco[]>;
   insightsDoEscopo(
     ctx: Contexto,
@@ -112,6 +116,8 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
     nomes: (ctx, p) => banco.withContext(ctx, (tx) => nomesDoPainel(tx, p)),
     decidir: (ctx, d) => banco.executar(ctx, (uow) => decidirInsightNoBanco(uow, d)),
     ativo: (ctx, id) => banco.withContext(ctx, (tx) => ativoDoPainel(tx, id)),
+    ativosPorBusca: (ctx, termo, limite) =>
+      banco.withContext(ctx, (tx) => ativosPorBusca(tx, termo, limite)),
     metricasDoAtivo: (ctx, ativoId, desde) =>
       banco.withContext(ctx, (tx) => metricasDoAtivo(tx, ativoId, desde)),
     insightsDoEscopo: (ctx, tipo, chave, valor, limite) =>

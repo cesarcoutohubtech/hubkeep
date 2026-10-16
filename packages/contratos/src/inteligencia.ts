@@ -281,6 +281,24 @@ export const MetricaDoAtivoApi = z
   })
   .meta({ id: 'MetricaDoAtivoApi' });
 
+/**
+ * "Procurar ativo" no Intelligence (16/10/2026): os ativos em uso do termo, só
+ * dos hotéis em que quem pede decide insight, em ordem de nome, até 20.
+ */
+export const RespostaDaBuscaDeAtivosNoIntelligence = z
+  .object({
+    ativos: z.array(
+      z.object({
+        id: z.guid(),
+        nome: z.string(),
+        hotelId: z.guid(),
+        bandeiraId: z.guid().nullable(),
+      }),
+    ),
+    nomes: NomesDoPainelApi,
+  })
+  .meta({ id: 'RespostaDaBuscaDeAtivosNoIntelligence' });
+
 /** Os estados do sinal de substituição (`SinalDeSubstituicao` do motor). */
 export const SINAIS_DE_SUBSTITUICAO_API = [
   'sem_sinal',

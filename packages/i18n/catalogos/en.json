@@ -1003,6 +1003,8 @@
   "inteligencia.efetividade.insight.dica": "Interventions completed after the insight was first detected, on {data}.",
   "inteligencia.efetividade.lista.vazio": "No interventions completed in the last 180 days in the hotels where you decide.",
   "inteligencia.efetividade.ativo.vazio": "No interventions completed on this asset in the last 180 days.",
+  "inteligencia.procurar.titulo": "Find asset",
+  "inteligencia.procurar.dica": "Opens the asset page in the hotels where you decide, even without an insight. Searches by name, manufacturer, model or serial number.",
   "inteligencia.substituicao.titulo": "Replacement signal",
   "inteligencia.substituicao.dica": "Criteria for the last 12 months, calculated now.",
   "inteligencia.substituicao.sinal": "{sinal, select, sem_sinal {No signal} observar {Watch} avaliar_substituicao {Evaluate replacement} revisao_necessaria {Review required} other {{sinal}}}",

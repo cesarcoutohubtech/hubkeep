@@ -282,6 +282,7 @@ export {
   PAPEIS_QUE_VEEM_AS_TELAS_API,
   RESULTADOS_DA_EFETIVIDADE_API,
   RespostaDaAberturaDoIntelligence,
+  RespostaDaBuscaDeAtivosNoIntelligence,
   RespostaDasEfetividades,
   RespostaDaDecisaoDoInsight,
   RespostaDeInsights,
