@@ -109,7 +109,12 @@ export function criarReconciliadorLaboratorio({ armazenamento, tenantId, vinculo
               .filter(c => Object.hasOwn(bruto, c)).map(c => [c, bruto[c]])
           );
           const velho = dados.get(seguro.Id);
-          if (!velho || stamp >= dataUtc(velho.UpdatedUtc)) dados.set(seguro.Id, seguro);
+          // Em empate de UpdatedUtc, tombstone sempre vence: jamais reativar por replay.
+          const tombstone = item => item.IsActive === false || item.DeletedUtc != null;
+          if (!velho || stamp > dataUtc(velho.UpdatedUtc) ||
+            (stamp === dataUtc(velho.UpdatedUtc) && tombstone(seguro) && !tombstone(velho))) {
+            dados.set(seguro.Id, seguro);
+          }
         }
         // Ausencia na janela nao indica exclusao, inclusive na reconciliacao.
         const salvo = armazenamento.confirmar(escopo, anterior.revisao, {
