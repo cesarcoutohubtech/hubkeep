@@ -36,10 +36,18 @@ contagens e presença de cursor; nenhum payload nem token exibido.
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\diagnostico-bloqueios-windows.ps1"
 ```
 
-Os testes sintéticos Node do laboratório estão declarados em
-`testes.test.mjs`; os checks gerais GitHub não devem ser confundidos com
-execução local comprovada de todos os casos do laboratório.
-Para essa suíte, executar `node --test testes.test.mjs`.
+O laboratório contém **33 testes sintéticos Node** em `testes.test.mjs`.
+Eles verificam, entre outros comportamentos, a rejeição de filtro temporal
+ausente/inválido, a separação entre hotéis e o limite de tentativas HTTP.
+A **CI geral do GitHub não substitui a execução dessa suíte independente**.
+Na pasta `docs/referencia/laboratorio-eu/mews-poc`, executar:
+
+```bash
+node --test testes.test.mjs
+```
+
+A prova de leitura da API (HTTP 200) é independente dos testes sintéticos:
+uma não valida automaticamente a outra.
 
 ## Rodar
 
