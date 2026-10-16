@@ -10,6 +10,7 @@ import {
 } from './normalizacao.mjs';
 
 const token = { clientToken: 'segredo-cliente', accessToken: 'segredo-acesso', minIntervalMs: 0 };
+const janela = { StartUtc: '2026-10-16T00:00:00Z', EndUtc: '2026-11-15T00:00:00Z' };
 const resp = (json, status = 200, headers = {}) =>
   new globalThis.Response(JSON.stringify(json), { status, headers });
 const escopo = criarEscopo({
@@ -179,9 +180,10 @@ test('resources usa extensão e blocos incluem excluídos; somente leitura', asy
     },
   });
   await c.listarRecursos(['empresaA']);
-  await c.listarBloqueios(['empresaA']);
+  await c.listarBloqueios(['empresaA'], { CollidingUtc: janela });
   assert.deepEqual(a[0].body.Extent, { Resources: true, Inactive: true });
   assert.deepEqual(a[1].body.ActivityStates, ['Active', 'Deleted']);
+  assert.deepEqual(a[1].body.CollidingUtc, janela);
   assert.ok(a.every((x) => x.url.endsWith('/getAll')));
 });
 test('normalização descarta não-Space, propriedade desconhecida e sem nome', () => {
@@ -282,11 +284,12 @@ test('smoke valida escopo e extents nos recursos e bloqueios', async () => {
     return resp(url.includes('resourceBlocks') ? { ResourceBlocks: [] } : { Resources: [] });
   } });
   await c.lerPrimeiraPaginaDeRecursos(['hotel-M']);
-  await c.lerPrimeiraPaginaDeBloqueios(['hotel-M']);
+  await c.lerPrimeiraPaginaDeBloqueios(['hotel-M'], janela);
   assert.equal(chamadas.length, 2);
   assert.deepEqual(chamadas[0].body.EnterpriseIds, ['hotel-M']);
   assert.deepEqual(chamadas[0].body.Extent, { Resources: true, Inactive: true });
   assert.deepEqual(chamadas[1].body.ActivityStates, ['Active', 'Deleted']);
+  assert.deepEqual(chamadas[1].body.CollidingUtc, janela);
   assert.throws(() => c.lerPrimeiraPaginaDeBloqueios([]), /enterprise_ids_obrigatorios/);
 });
 
@@ -353,7 +356,7 @@ test('configuracao sem Enterprise.Id falha fechado', async () => {
   await assert.rejects(cliente.obterIdentificadorEmpresa(), /configuracao_sem_empresa/);
 });
 
-test('recursoBlocks no smoke sem filtros opcionais envia somente Limitation', async () => {
+test('bloqueios do smoke exigem intervalo temporal e permitem uma unica pagina', async () => {
   let body = null;
   const cliente = criarClienteMews({
     ...token, pageSize: 5, fetchImpl: async (url, req) => {
@@ -362,9 +365,45 @@ test('recursoBlocks no smoke sem filtros opcionais envia somente Limitation', as
       return resp({ ResourceBlocks: [], Cursor: null });
     },
   });
-  const r = await cliente.lerPrimeiraPaginaDeBloqueiosSemFiltros();
+  const r = await cliente.lerPrimeiraPaginaDeBloqueios(['empresaA'], janela);
   assert.deepEqual(r.itens, []);
   assert.deepEqual(body.Limitation, { Count: 5 });
   assert.equal(body.ActivityStates, undefined);
-  assert.equal(body.EnterpriseIds, undefined);
+  assert.deepEqual(body.EnterpriseIds, ['empresaA']);
+  assert.deepEqual(body.CollidingUtc, janela);
+});
+
+test('recusa bloqueios sem filtro UTC antes de qualquer chamada HTTP', async () => {
+  let chamadas = 0;
+  const c = criarClienteMews({
+    ...token, fetchImpl: async () => {
+      chamadas++;
+      return resp({ ResourceBlocks: [] });
+    },
+  });
+  assert.throws(() => c.listarBloqueios(['empresaA']), /filtro_temporal_obrigatorio/);
+  assert.throws(
+    () => c.lerPrimeiraPaginaDeBloqueios(['empresaA']),
+    /intervalo_temporal_invalido/,
+  );
+  assert.equal(chamadas, 0);
+});
+
+test('recusa janela invertida, maior que 89 dias ou sem UTC antes do POST', () => {
+  const c = criarClienteMews({ ...token, fetchImpl: async () => resp({ ResourceBlocks: [] }) });
+  const invalidas = [
+    { StartUtc: '2026-10-18T00:00:00Z', EndUtc: '2026-10-17T00:00:00Z' },
+    { StartUtc: '2026-01-01T00:00:00Z', EndUtc: '2026-05-01T00:00:00Z' },
+    { StartUtc: '2026-10-01T00:00:00', EndUtc: '2026-10-02T00:00:00' },
+  ];
+  for (const intervalo of invalidas) {
+    assert.throws(
+      () => c.listarBloqueios(['empresaA'], { CollidingUtc: intervalo }),
+      /intervalo_temporal_invalido/,
+    );
+  }
+  assert.throws(
+    () => c.listarBloqueios(['empresaA'], { CreatedUtc: janela, UpdatedUtc: janela }),
+    /filtro_temporal_obrigatorio/,
+  );
 });
