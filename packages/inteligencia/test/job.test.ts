@@ -238,7 +238,7 @@ describe('executarDiaDoTenant: o registro de cada execução', () => {
       {
         ...r,
         disparadoPor: 'cron',
-        versoesDeFormula: { reincidencia: 3, atencao: 5, sistemico: 4 },
+        versoesDeFormula: { reincidencia: 4, atencao: 6, sistemico: 4 },
         versoesDePolitica: { h1: 'hotel:p1@2026-09-01', h2: 'padrao', h3: 'padrao' },
       },
     ]);

@@ -80,6 +80,34 @@ describe('calcularDia: scores e métrica do dia', () => {
     );
   });
 
+  it('a falha depois de preventiva sai das OS preventivas do ativo; sem nenhuma, fica sem dado (reincidência versão 4)', () => {
+    const preventiva = {
+      dataPrevista: '2026-09-17',
+      transicoes: [{ para: 'concluida' as const, quando: dia(-12) }],
+    };
+    const r = calcularDia({
+      agora,
+      hoteis,
+      ativos: [ativo({ id: 'a1', preventivas: [preventiva] }), ativo({ id: 'a2' })],
+      corretivas: ['a1', 'a2'].flatMap((ativoId) => [
+        corretiva({ ativoId, abertaEm: dia(-50) }),
+        corretiva({ ativoId, abertaEm: dia(-10) }),
+      ]),
+      locais: [],
+    });
+    const componente = (id: string) =>
+      r.ativos
+        .find((a) => a.ativoId === id)
+        ?.reincidencia.componentes.find((c) => c.chave === 'apos_preventiva');
+    // a1: a corretiva de −10 abre 2 dias depois da conclusão; a de −50, antes.
+    expect(componente('a1')?.valor).toBe(0.5);
+    expect(componente('a1')?.evidencia).toMatchObject({ quantidade: 1, comDado: 2 });
+    expect(componente('a2')?.valor).toBeNull();
+    expect(r.ativos.find((a) => a.ativoId === 'a2')?.reincidencia.ausentes).toContain(
+      'apos_preventiva',
+    );
+  });
+
   it('ativo com histórico pesado passa do limite e gera a detecção de atenção no hotel', () => {
     const r = calcularDia({
       agora,
@@ -108,8 +136,8 @@ describe('calcularDia: scores e métrica do dia', () => {
       atencao: a1?.atencao.valor,
       faixaAtencao: a1?.atencao.faixa,
       recalculo: false,
-      versaoFormulaReincidencia: 3,
-      versaoFormulaAtencao: 5,
+      versaoFormulaReincidencia: 4,
+      versaoFormulaAtencao: 6,
       versaoPolitica: 'padrao',
       detalheReincidencia: a1?.reincidencia,
       detalheAtencao: a1?.atencao,
@@ -124,7 +152,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixa: a1?.atencao.faixa,
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: a1?.atencao.valor,
-      versao: 5,
+      versao: 6,
       escopo: { ativoId: 'a1', hotelId: 'h1' },
     });
     expect(atencao[0]?.corretivaIds).toHaveLength(6);

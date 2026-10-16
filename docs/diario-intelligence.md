@@ -2453,3 +2453,33 @@ O Cesar mergeou o #300 às 13:45 UTC, com os cinco checks verdes no head `46e12e
   - a reincidência versão 4 e a atenção versão 6;
   - os testes;
   - o glossário e o `docs/piloto/README.md`.
+
+### A aprovação do Cesar e o PR (16/10/2026)
+
+"Cesar aqui. De acordo" (nesta sessão, 16/10/2026). Com isso, a proposta está aprovada inteira. PR `int:`, fora da zona protegida, sem migração e sem tocar no `packages/dominio`.
+
+**O que o PR traz:**
+- **Motor (`reincidencia.ts`):**
+  - `marcarAposPreventiva`: a corretiva aberta até `diasAposPreventiva` dias (padrão 30) depois da conclusão de uma OS preventiva do ativo, pelas transições até `agora`, ganha `aposPreventiva`. O ativo sem nenhuma OS preventiva fica sem o campo, e o componente é sem dado;
+  - o `diasAposPreventiva` entra na política `inteligencia.reincidencia`, opcional: a política gravada antes dele continua valendo, com o padrão;
+  - a evidência do componente leva os dias;
+  - `VERSAO_REINCIDENCIA` passa a 4 e `VERSAO_ATENCAO` a 6, sem mudar a fórmula da atenção.
+- **Job:**
+  - o `calcularDia` marca as corretivas de cada ativo com as `preventivas` do `AtivoDoDia`, que o #300 já lê;
+  - o `inicioDaLeitura` soma os dias da falha depois de preventiva à janela da reincidência, para a conclusão da preventiva antes da janela entrar.
+- **Testes:**
+  - a regra, com o limite de 30 dias, a conclusão depois de `agora`, a preventiva aberta e o ativo sem preventiva;
+  - o `calcularDia`;
+  - a política antiga sem o campo;
+  - a janela de leitura.
+- **Docs:** o glossário de métricas e uma linha nova no `docs/piloto/README.md`.
+
+### Ponto de retomada (16/10/2026, falha depois de preventiva)
+
+- **`main`:** em `a708e8b` (#300).
+- **Dev:** sem mudança. A reincidência versão 4 e a atenção versão 6 valem a partir do próximo job depois do merge. O grupo da demonstração não tem preventivas, então os números dele não mudam.
+- **Nesta branch:** a falha depois de preventiva. O PR abre agora.
+- **Esperando:**
+  - **Cesar:** o merge;
+  - **1c:** a política `preventiva.tolerancia_dias`.
+- **Próximo:** o que Cesar e Kaio priorizarem. Entre as opções levantadas, a proposta da tela do sinal de substituição (componente novo, Cesar e Kaio).

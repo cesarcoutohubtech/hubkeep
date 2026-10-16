@@ -112,11 +112,13 @@ function faixasValidas(v: unknown): boolean {
  * gravada antes deixaria de valer inteira, e o resolvedor voltaria ao padrão.
  * O mesmo modelo v4 (Kaio, 15/10/2026): a população mínima e o percentual afetado.
  * A efetividade v3 (adendo ao ADR-033, 15/10/2026): os códigos de intervenção.
+ * A reincidência v4 (Kaio e Cesar, 16/10/2026): os dias da falha depois de preventiva.
  */
 const CAMPOS_QUE_PODEM_FALTAR = new Set([
   'minPopulacao',
   'percentualMinimoAfetado',
   'codigosDeIntervencao',
+  'diasAposPreventiva',
 ]);
 
 /** Mesmas chaves do padrão, recursivamente; número finito e não negativo onde o padrão tem número. */

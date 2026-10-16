@@ -21,7 +21,7 @@ import type {
 import type { ConfigAtencao } from './atencao';
 import { type HotelDoDia, JANELA_CUSTO_DIAS, VERSAO_DE_POLITICA_PADRAO } from './dia';
 import type { Corretiva, TransicaoDaOs } from './historico';
-import { type ConfigReincidencia, PADRAO_REINCIDENCIA } from './reincidencia';
+import { type ConfigReincidencia, PADRAO_REINCIDENCIA, diasAposPreventiva } from './reincidencia';
 import { DIA_MS } from './score';
 import type { ConfigSistemico } from './sistemico';
 
@@ -111,9 +111,10 @@ export function primeiroChamadoPorHotel(chamados: readonly ChamadoDaFonte[]): Ma
 
 /**
  * O instante mais antigo que alguma regra do dia olha: o custo informado (12
- * meses), a janela da reincidência de cada hotel e as do sinal sistêmico (o
- * crescimento compara a janela com a anterior; o mesmo fornecedor olha a
- * conclusão na janela). Quem lê o banco traz:
+ * meses), a janela da reincidência de cada hotel, mais os dias da falha depois
+ * de preventiva (a conclusão da preventiva vem antes da corretiva), e as do
+ * sinal sistêmico (o crescimento compara a janela com a anterior; o mesmo
+ * fornecedor olha a conclusão na janela). Quem lê o banco traz:
  * - os chamados abertos depois dele, ou com transição de OS depois dele (a OS
  *   aberta antes e concluída na janela conta no custo e no fornecedor);
  * - os ativos sem baixa antes dele, e as paradas que terminam depois dele.
@@ -125,7 +126,10 @@ export function inicioDaLeitura(
 ): Date {
   const dias = Math.max(
     JANELA_CUSTO_DIAS,
-    ...hoteis.map((h) => (h.reincidencia ?? PADRAO_REINCIDENCIA).janelaDias),
+    ...hoteis.map((h) => {
+      const r = h.reincidencia ?? PADRAO_REINCIDENCIA;
+      return r.janelaDias + diasAposPreventiva(r);
+    }),
     sistemico.mesmoModelo.janelaDias,
     sistemico.mesmoAndar.janelaDias,
     sistemico.mesmaAreaComum.janelaDias,
