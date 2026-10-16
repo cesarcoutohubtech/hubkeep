@@ -47,3 +47,14 @@
 ## Condição de saída
 
 Só considerar "persistência durável aprovada" depois de migração/driver/testes em banco descartável, revisão de segurança, CI verde e confirmação humana dos gates. **Este documento não dá autorização para aplicar SQL ou conectar Mews real.**
+
+## Consolidação do contrato (laboratório — PR #305)
+
+O PR #304 permanece **fonte canônica** do armazenamento simulado: `checkpoint-contrato.mjs` expõe `prepararLote` e `criarRepositorioSimulado`. O laboratório `recuperacao-lab.mjs` agora fornece apenas uma **interface adaptadora sintética** e o orquestrador de janelas; ele não armazena dados em um segundo `Map` persistente.
+
+- O contrato aceita `modo=incremental|reconciliacao`, `versaoEsperada` (CAS comum) e checkpoint esperado do modo. O registro conserva `checkpointUtc` (incremental) e `checkpointVarreduraUtc` (sweep) independentes, além de digests por modo.
+- Eventos com `UpdatedUtc` idêntico preservam tombstone; ausência em página não exclui registro.
+- No **teste sintético exclusivamente**, o adaptador deriva `resourceId` dos próprios bloqueios porque os fixtures não consultam recursos reais. Isso **não valida recurso autorizado**. O driver futuro deve consultar recursos Mews da propriedade, validar `Space` e vínculos reais antes de `prepararLote`, como no laboratório de normalização.
+- Não há persistência durável, autenticação real, conexão Mews, processo agendado ou write no HubKeep. A integração final deverá remover o adaptador de dados sintéticos e ligar as portas da camada de aplicação ao driver validado.
+- Nenhum mecanismo novo de criação de OS, mudança de status ou licenciamento é autorizado.
+
