@@ -31,7 +31,11 @@ import {
   TIPOS_DE_INSIGHT,
 } from '@hubkeep/inteligencia';
 import { describe, expect, it } from 'vitest';
-import { insightNaApi, dataNaApi } from '../src/app/api/v1/inteligencia/serializar';
+import {
+  dataNaApi,
+  efetividadesNaApi,
+  insightNaApi,
+} from '../src/app/api/v1/inteligencia/serializar';
 import { criarPainel } from '../src/servidor/modulos/inteligencia/painel';
 
 const agora = new Date('2026-10-10T12:00:00Z');
@@ -85,6 +89,7 @@ const TROCA: ChamadoDaEfetividadeNoBanco = {
   abertaEm: new Date('2026-09-01T00:00:00Z'),
   estado: 'concluido',
   impactoHospede: null,
+  descricao: 'Modernização do elevador',
   os: [
     {
       estado: 'aceita',
@@ -94,6 +99,7 @@ const TROCA: ChamadoDaEfetividadeNoBanco = {
       codigoSolucaoChave: 'solucao_troca_do_equipamento',
       executadoPor: 'fornecedor',
       fornecedorId: null,
+      fornecedorNome: 'Elevadores Sul',
       custoInformado: 48000,
       transicoes: [
         { acao: 'concluir', para: 'concluida', quando: new Date('2026-09-05T00:00:00Z') },
@@ -266,12 +272,17 @@ describe('o painel sobre a porta do banco', () => {
   });
 
   it('a página passa pelo contrato da API', async () => {
-    const p = await painel([linha()]).casos.ver(ctx, I1);
+    const { casos } = painel([linha()]);
+    const p = await casos.ver(ctx, I1);
+    // A troca concluída em 05/09 é anterior à primeira detecção (01/10): fica fora (opção a).
+    const efetividade = await casos.efetividadeDoInsight(ctx, I1);
+    expect(efetividade.intervencoes).toEqual([]);
     const resposta = {
       insight: insightNaApi(p.insight),
       chamados: [],
       serie: p.serie.map((s) => ({ inicio: dataNaApi(s.inicio), quantidade: s.quantidade })),
       nomes: p.nomes,
+      efetividade: efetividadesNaApi(efetividade),
     };
     expect(RespostaDoInsight.parse(resposta).insight).toMatchObject({
       id: I1,
@@ -283,13 +294,20 @@ describe('o painel sobre a porta do banco', () => {
   });
 
   it('o detalhe do ativo passa pelo contrato da API', async () => {
-    const p = await painel([linha()]).casos.ativo(ctx, A1);
+    const { casos } = painel([linha()]);
+    const p = await casos.ativo(ctx, A1);
     const resposta = RespostaDoAtivoNoIntelligence.parse({
       ativo: { ...p.ativo, desativadoEm: null },
       serie: p.serie,
       atual: p.atual && { ...p.atual, calculadoEm: dataNaApi(p.atual.calculadoEm) },
       insights: p.insights.map(insightNaApi),
       nomes: p.nomes,
+      efetividade: efetividadesNaApi(await casos.efetividadeDoAtivo(ctx, A1)),
+    });
+    expect(resposta.efetividade.intervencoes[0]?.intervencao).toMatchObject({
+      em: '2026-09-05T00:00:00.000Z',
+      descricao: 'Modernização do elevador',
+      fornecedorNome: 'Elevadores Sul',
     });
     expect(resposta.serie).toEqual([{ dia: '2026-10-10', atencao: 75, faixa: 'alta_atencao' }]);
     expect(resposta.atual).toMatchObject({ calculadoEm: '2026-10-10T03:00:00.000Z', calculo: 1 });
@@ -298,7 +316,7 @@ describe('o painel sobre a porta do banco', () => {
 
   it('a efetividade do ativo e a da seção da lista, pelas linhas do banco', async () => {
     const { casos } = painel([linha()]);
-    const doAtivo = await casos.efetividadeDoAtivo(ctx, A1);
+    const { intervencoes: doAtivo } = await casos.efetividadeDoAtivo(ctx, A1);
     expect(doAtivo.map((e) => [e.intervencao.chamadoId, e.intervencao.em])).toEqual([
       [TROCA.id, new Date('2026-09-05T00:00:00Z')],
     ]);

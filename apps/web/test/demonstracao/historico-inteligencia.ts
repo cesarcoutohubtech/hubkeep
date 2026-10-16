@@ -56,6 +56,11 @@ import {
 export const NOME_DO_GRUPO = 'Grupo Demonstração — Intelligence';
 export const DOMINIO_DO_GRUPO = 'intelligence.demo.hubkeep.test';
 export const SEMENTE_DO_HISTORICO = 20261013;
+/**
+ * A chave fixa da modernização do elevador, acrescentada ao roteiro depois da
+ * primeira gravação no dev (efetividade, 15/10/2026).
+ */
+export const CHAVE_DA_MODERNIZACAO = 'ch-modernizacao-elevador';
 export const DIAS_DO_HISTORICO = 183;
 /**
  * Dias de chamados do núcleo antes do contrato do Intelligence. Sem eles, nos
@@ -205,6 +210,12 @@ export interface PassoDaOs {
 
 export interface OsDoRoteiro {
   codigoFalha: string;
+  /**
+   * A chave padrão do código de solução, informada na conclusão; null sem
+   * código. "Troca do equipamento" faz da OS uma intervenção na efetividade
+   * (adendo ao ADR-033 de 15/10/2026).
+   */
+  codigoSolucao: string | null;
   executadoPor: ExecutadoPor;
   fornecedor: string | null;
   /** Em reais, informado no aceite; null quando não informado. */
@@ -349,6 +360,11 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
   const semente = o.semente ?? SEMENTE_DO_HISTORICO;
   const sortear = sorteador(semente);
   const entre = (a: number, b: number) => a + sortear() * (b - a);
+  // O chamado acrescentado ao roteiro depois da primeira gravação no dev sorteia
+  // numa sequência à parte e tem chave fixa: assim os outros chamados mantêm os
+  // instantes e as chaves já gravados, e a retomada grava só o que é novo.
+  const sortearAParte = sorteador(semente + 1);
+  const entreAParte = (a: number, b: number) => a + sortearAParte() * (b - a);
 
   const inicioDoFim = new Date(`${o.fim}T00:00:00Z`).getTime();
   const inicioDoDia = (antesDoFim: number) => inicioDoFim - antesDoFim * DIA_MS;
@@ -507,17 +523,22 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
   const fornecedores: FornecedorDoRoteiro[] = [
     { chave: 'f-frio', nome: 'Frio Sul Demonstração' },
     { chave: 'f-servicos', nome: 'Serviços Gerais Demonstração' },
+    { chave: 'f-elevadores', nome: 'Elevadores Demonstração' },
   ];
 
   // Chamados: uma OS por chamado, com o caminho de sempre (gerar, iniciar,
   // concluir, aceitar), cortado no fim do histórico.
   const chamados: Omit<ChamadoDoRoteiro, 'chave'>[] = [];
+  /** A chave fixa de cada chamado acrescentado, pela posição em `chamados`. */
+  const chavesFixas = new Map<number, string>();
   interface PedidoDeChamado {
     hotel: string;
     local: string;
     ativo: string | null;
     abertoEm: Date;
     codigoFalha: string;
+    /** A chave padrão do código de solução; sem o campo, sem código. */
+    codigoSolucao?: string;
     descricao: string;
     cenario: string | null;
     impactoHospede?: boolean | null;
@@ -528,25 +549,31 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
     horasParadas?: number;
     /** Reaberturas antes do aceite. */
     reaberturas?: number;
+    /** Só no chamado acrescentado depois da primeira gravação: sorteio à parte. */
+    chaveFixa?: string;
   }
-  const chamado = (p: PedidoDeChamado) => {
+  const chamado = (p: PedidoDeChamado): readonly PassoDaOs[] => {
+    const sortearEntre = p.chaveFixa ? entreAParte : entre;
     const t = p.abertoEm.getTime();
-    const gerada = t + entre(0.5, 3) * HORA_MS;
-    const iniciada = gerada + entre(0.5, 6) * HORA_MS;
+    const gerada = t + sortearEntre(0.5, 3) * HORA_MS;
+    const iniciada = gerada + sortearEntre(0.5, 6) * HORA_MS;
     // A parada nasce com o chamado ("o equipamento está parado"), como a
     // abertura grava: o paradoDesde não pode ser depois da abertura.
     const parada = p.horasParadas
       ? { inicio: new Date(t), fim: new Date(t + p.horasParadas * HORA_MS) }
       : null;
-    let concluida = Math.max(iniciada + entre(1, 6) * HORA_MS, parada ? parada.fim.getTime() : 0);
+    let concluida = Math.max(
+      iniciada + sortearEntre(1, 6) * HORA_MS,
+      parada ? parada.fim.getTime() : 0,
+    );
     const passos: PassoDaOs[] = [
       { acao: 'gerar', quando: new Date(gerada) },
       { acao: 'iniciar', quando: new Date(iniciada) },
       { acao: 'concluir', quando: new Date(concluida) },
     ];
     for (let r = 0; r < (p.reaberturas ?? 0); r += 1) {
-      const reaberta = concluida + entre(4, 20) * HORA_MS;
-      concluida = reaberta + entre(2, 12) * HORA_MS;
+      const reaberta = concluida + sortearEntre(4, 20) * HORA_MS;
+      concluida = reaberta + sortearEntre(2, 12) * HORA_MS;
       passos.push(
         {
           acao: 'reabrir',
@@ -556,10 +583,11 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
         { acao: 'concluir', quando: new Date(concluida) },
       );
     }
-    passos.push({ acao: 'aceitar', quando: new Date(concluida + entre(2, 30) * HORA_MS) });
+    passos.push({ acao: 'aceitar', quando: new Date(concluida + sortearEntre(2, 30) * HORA_MS) });
     const feitos = passos.filter((s) => s.quando.getTime() <= fimDoHistorico);
     const ultimo = feitos[feitos.length - 1];
     const estadoDaOs: EstadoDaOs = ultimo ? estadoAposPasso(ultimo.acao) : 'atribuida';
+    if (p.chaveFixa) chavesFixas.set(chamados.length, p.chaveFixa);
     chamados.push({
       hotel: p.hotel,
       local: p.local,
@@ -570,6 +598,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       estado: estadoDoChamado(feitos.length ? estadoDaOs : null),
       os: {
         codigoFalha: p.codigoFalha,
+        codigoSolucao: p.codigoSolucao ?? null,
         executadoPor: p.executadoPor ?? 'equipe_interna',
         fornecedor: p.fornecedor ?? null,
         custo: estadoDaOs === 'aceita' ? (p.custo ?? null) : null,
@@ -579,6 +608,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       parada: parada && parada.inicio.getTime() <= fimDoHistorico ? parada : null,
       cenario: p.cenario,
     });
+    return feitos;
   };
 
   // --- cenários ---------------------------------------------------------------
@@ -645,6 +675,27 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
         custo: 2_500,
         reaberturas: i === 2 ? 1 : 0,
       });
+    // A modernização: a OS concluída com "Troca do equipamento", pelo
+    // fornecedor de elevadores, é a intervenção que a efetividade reconhece.
+    // A data da intervenção é a conclusão dela. É obra planejada: sem parada
+    // aberta pelo chamado e sem hóspede afetado.
+    const modernizacao = chamado({
+      hotel: h(5),
+      local: `${h(5)}-hall`,
+      ativo: a,
+      cenario: c,
+      abertoEm: em(112, 8),
+      codigoFalha: 'porta_elevador',
+      codigoSolucao: 'solucao_troca_do_equipamento',
+      descricao: 'Modernização do elevador social: troca do equipamento.',
+      impactoHospede: false,
+      executadoPor: 'fornecedor',
+      fornecedor: 'f-elevadores',
+      custo: 48_000,
+      chaveFixa: CHAVE_DA_MODERNIZACAO,
+    });
+    const intervencaoEm = [...modernizacao].reverse().find((p) => p.acao === 'concluir')?.quando;
+    if (!intervencaoEm) throw new Error('A modernização do elevador precisa estar concluída.');
     chamado({
       hotel: h(5),
       local: `${h(5)}-hall`,
@@ -660,7 +711,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       chave: c,
       sinal: 'atencao',
       ativo: a,
-      intervencaoEm: em(110, 13),
+      intervencaoEm,
       alvo: { tipo: 'atencao_ativo', ativo: a, hotel: h(5) },
       decisoes: [
         { aposDias: 2, acao: 'aceitar' },
@@ -674,7 +725,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       chave: 'efetividade-elevador',
       sinal: 'efetividade',
       ativo: a,
-      intervencaoEm: em(110, 13),
+      intervencaoEm,
       alvo: null,
       decisoes: [],
       estadoFinal: null,
@@ -1071,10 +1122,15 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
     }
   });
 
+  // A numeração das chaves pula os chamados de chave fixa.
+  let numero = 0;
   const ordenados = chamados
     .map((c, i) => ({ c, i }))
     .sort((x, y) => x.c.abertoEm.getTime() - y.c.abertoEm.getTime() || x.i - y.i)
-    .map(({ c }, i) => ({ chave: `ch${String(i + 1).padStart(5, '0')}`, ...c }));
+    .map(({ c, i }) => ({
+      chave: chavesFixas.get(i) ?? `ch${String((numero += 1)).padStart(5, '0')}`,
+      ...c,
+    }));
 
   return {
     semente,

@@ -36,6 +36,7 @@ import {
   type Nomes,
   SeloDaFaixa,
   SeloDoEstado,
+  TabelaDeEfetividade,
   useDatas,
   useEscopoDoInsight,
   useNomeDaFaixa,
@@ -169,6 +170,16 @@ export function ConteudoDoInsight({
             <ChamadosDoInsight chamados={pagina.chamados} nomes={nomes} />
           ) : (
             <AtivoDoInsight insight={insight} nomes={nomes} />
+          )}
+          {pagina.efetividade.intervencoes.length > 0 && (
+            <Painel
+              titulo={t('inteligencia.efetividade.insight.titulo')}
+              dica={t('inteligencia.efetividade.insight.dica', {
+                data: data(insight.primeiraDeteccaoEm),
+              })}
+            >
+              <TabelaDeEfetividade efetividade={pagina.efetividade} />
+            </Painel>
           )}
         </div>
         <Decisao insight={insight} nomes={nomes} aoDecidir={aoDecidir} />

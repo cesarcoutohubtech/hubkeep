@@ -144,6 +144,84 @@ export const ChamadoDoInsightApi = z
   })
   .meta({ id: 'ChamadoDoInsightApi' });
 
+/** Os resultados da efetividade (`ResultadoEfetividade` do motor). */
+export const RESULTADOS_DA_EFETIVIDADE_API = [
+  'reducao_observada',
+  'reducao_parcial',
+  'sem_mudanca_relevante',
+  'aumento_observado',
+  'sem_base_de_comparacao',
+  'janela_incompleta',
+] as const;
+
+/** As métricas antes e depois (`ChaveMetrica` do motor); o custo vem à parte, com a cobertura. */
+export const METRICAS_DA_EFETIVIDADE_API = ['chamados', 'reaberturas', 'horas_paradas'] as const;
+
+const CustoDoLadoApi = z.object({
+  /** Em reais, das OS aceitas com o custo informado. */
+  soma: z.number(),
+  /** O X de "custo informado em X de Y OS". */
+  informadas: z.int(),
+  /** O Y. */
+  aceitas: z.int(),
+});
+
+/**
+ * Uma intervenção com o antes e depois (adendo ao ADR-033 de 15/10/2026): a OS
+ * corretiva concluída com o código de solução na lista da política. É a
+ * variação observada, nunca a causa.
+ */
+export const EfetividadeDaIntervencaoApi = z
+  .object({
+    intervencao: z.object({
+      chamadoId: z.guid(),
+      hotelId: z.guid(),
+      bandeiraId: z.guid().nullable(),
+      ativoId: z.guid(),
+      /** A conclusão final da OS. */
+      em: Data,
+      codigoSolucaoId: z.guid(),
+      executadoPor: z.string(),
+      fornecedorId: z.guid().nullable(),
+      fornecedorNome: z.string().nullable(),
+      custoInformado: z.number().nullable(),
+      descricao: z.string().nullable(),
+    }),
+    efetividade: z.object({
+      versao: z.int(),
+      resultado: z.enum(RESULTADOS_DA_EFETIVIDADE_API),
+      diasDecorridos: z.int(),
+      metricas: z.array(
+        z.object({
+          chave: z.enum(METRICAS_DA_EFETIVIDADE_API),
+          antes: z.number(),
+          depois: z.number(),
+          variacaoPercentual: z.number().nullable(),
+        }),
+      ),
+      /** Abaixo de 50% de cobertura num dos lados, `suficiente` é falso e não há variação. */
+      custo: z.object({
+        antes: CustoDoLadoApi,
+        depois: CustoDoLadoApi,
+        suficiente: z.boolean(),
+        variacaoPercentual: z.number().nullable(),
+      }),
+      configuracao: z.object({
+        janelaDias: z.int(),
+        reducaoObservadaPercentual: z.number(),
+        reducaoParcialPercentual: z.number(),
+        aumentoObservadoPercentual: z.number(),
+        minChamadosAntes: z.int(),
+      }),
+    }),
+  })
+  .meta({ id: 'EfetividadeDaIntervencaoApi' });
+
+/** As intervenções, da mais recente para a mais antiga, com os nomes dos hotéis e dos ativos. */
+export const RespostaDasEfetividades = z
+  .object({ intervencoes: z.array(EfetividadeDaIntervencaoApi), nomes: NomesDoPainelApi })
+  .meta({ id: 'RespostaDasEfetividades' });
+
 export const RespostaDoInsight = z
   .object({
     insight: InsightApi.extend({
@@ -158,6 +236,8 @@ export const RespostaDoInsight = z
     /** Chamados por semana, nas últimas 12 semanas, da mais antiga para a atual. */
     serie: z.array(z.object({ inicio: Data, quantidade: z.int() })),
     nomes: NomesDoPainelApi,
+    /** As intervenções nos ativos do insight concluídas depois da primeira detecção. */
+    efetividade: RespostaDasEfetividades,
   })
   .meta({ id: 'RespostaDoInsight' });
 
@@ -218,5 +298,7 @@ export const RespostaDoAtivoNoIntelligence = z
     atual: MetricaDoAtivoApi.nullable(),
     insights: z.array(InsightApi),
     nomes: NomesDoPainelApi,
+    /** As intervenções no ativo concluídas nos últimos 180 dias. */
+    efetividade: RespostaDasEfetividades,
   })
   .meta({ id: 'RespostaDoAtivoNoIntelligence' });

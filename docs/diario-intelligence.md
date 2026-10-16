@@ -2192,3 +2192,144 @@ Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma c
 **Próximo:**
 1. depois do merge do #290, o PR da linha do `docs/03`;
 2. depois do merge dele, o PR 2 da efetividade, com a página do insight pela opção (a).
+
+### O status dos 50% no `docs/03` (15/10/2026)
+
+- O #290 entrou na `main` ("Cesar aqui. Merge feito. Prossiga").
+- A linha do adendo ao ADR-033 no `docs/03` deixa de dizer "aguarda a confirmação escrita do Kaio". Ela passa a citar a confirmação dele ("Eu confirmo os 50%") e a constante `COBERTURA_MINIMA_DO_CUSTO`.
+- O PR é de zona protegida e só tem essa linha, como o Cesar pediu ("num PR só para ela").
+- Antes de abrir, o agente conferiu que nenhum PR aberto toca a zona: #291, #285, #282, #281 e #263.
+- **Próximo:** depois do merge deste PR, o PR 2 da efetividade. O primeiro passo é ler o cenário `efetividade-elevador` do roteiro da demonstração e `iaTabelaEfetividade` no mock.
+
+## O PR 2 da efetividade: as três telas (15/10/2026)
+
+"Cesar aqui. 292 mergeado." O PR 2 é `int:`, fora da zona protegida, e segue o adendo ao ADR-033 com as decisões de Cesar e Kaio de 15/10/2026.
+
+**Motor (`packages/inteligencia`):**
+- `efetividadeDoInsight` (opção a): as intervenções nos ativos do insight concluídas depois da primeira detecção.
+  - O ativo do escopo, na atenção; no sistêmico, os ativos dos chamados da evidência que quem lê vê.
+  - Só nos hotéis em que a pessoa decide.
+- Os três casos de uso devolvem os nomes dos hotéis e dos ativos (`EfetividadesDoPainel`).
+- A intervenção leva a descrição do chamado e o nome do fornecedor, para a tela.
+- O filtro da leitura passa de um ativo (`ativoId`) para uma lista (`ativoIds`).
+
+**Leitura (`packages/db`):** a descrição do chamado e o nome do fornecedor (left join na `app.fornecedor`), e o filtro por lista de ativos.
+
+**API:**
+- `RespostaDasEfetividades` e `EfetividadeDaIntervencaoApi`, com o custo de cada lado e o `suficiente`.
+- O campo `efetividade` nas respostas do ativo e do insight.
+- A rota nova `GET /api/v1/inteligencia/efetividade`, no OpenAPI.
+
+**Telas (`apps/web`):**
+- `TabelaDeEfetividade` (em `comum.tsx`) segue as colunas do mock:
+  - a intervenção: o chamado, quem executou e o custo da OS;
+  - o ativo (com link) e o hotel;
+  - quando;
+  - os chamados antes e depois ("janela em curso");
+  - o tempo parado antes → depois;
+  - o custo das corretivas, com "custo informado em X de Y OS" e "Dados insuficientes" abaixo de 50%;
+  - a variação observada (selo e explicação).
+  - A ressalva fica no rodapé.
+- Os três lugares:
+  - **Efetividade das intervenções**, abaixo da lista;
+  - **Intervenções neste ativo**, no detalhe do ativo;
+  - **Efetividade da intervenção**, na página do insight, só quando há intervenção.
+- Os textos estão nos quatro idiomas.
+
+**Demonstração (`historico-inteligencia.ts`):**
+- O cenário do elevador do hotel 5 ganha a OS de modernização:
+  - executada pelo fornecedor "Elevadores Demonstração", com R$ 48 mil e o código "Troca do equipamento";
+  - a data da intervenção dos dois cenários passa a ser a conclusão dela.
+- A modernização vai sem parada e sem hóspede afetado, por ser obra planejada. Com 36 h de parada e hóspede afetado, a atenção do elevador ficava alta depois do resolvido, e o cenário abria um segundo insight.
+- A gravação passa o código de solução na conclusão. Se o grupo não tiver os códigos padrão, ela os instala.
+- **A nova rodada do `demo:historico`** (com o mesmo `--fim`) fica para depois do merge deste PR, como o Cesar decidiu. A retomada volta ao início, porque a abertura nova não está no banco.
+
+### Ponto de retomada (15/10/2026, PR 2 da efetividade)
+
+- **`main`:** em `7987b00` (#292).
+- **Dev:** sem mudança. Depois do merge deste PR, o Cesar roda de novo o `demo:historico` no notebook, com o mesmo `--fim`.
+- **Nesta branch:** o PR 2 da efetividade.
+- **Esperando:** o Cesar, para o merge e a nova rodada do `demo:historico`.
+- **Próximo:** conferir no dev, depois da rodada, que a modernização do elevador aparece nas três telas. Depois, o que Cesar e Kaio priorizarem.
+
+### Ponto de retomada (15/10/2026, depois do merge do #294)
+
+"Cesar aqui. 294 mergeado. Prossiga." Os cinco checks do #294 passaram no head `7e21ba9`, inclusive o pgTAP com a integração do `packages/db`.
+
+- **`main`:** em `f5caca9` (#294). No momento do registro, o CI e o banco da `main` ainda rodavam; o "segurança" já tinha passado.
+- **Dev:** sem mudança. Falta a nova rodada da gravação.
+- **Nesta branch:** só este ponto de retomada, recomeçada da `main`. Sem PR aberto.
+- **Esperando o Cesar:** a rodada de `pnpm demo:historico --ambiente dev --fim 2026-10-13` no notebook, até o fim, e a saída final (grupo, estados dos cenários, tempo total).
+- **Próximo:** com a saída da rodada, conferir no dev que a modernização do elevador do hotel 5 aparece nas três telas:
+  - na lista de efetividade;
+  - no detalhe do ativo;
+  - na página do insight do elevador.
+  
+  Depois, abrir o PR deste diário com o resultado e seguir o que Cesar e Kaio priorizarem.
+
+## A rodada depois do #294 recusou o fim (15/10/2026)
+
+**O que se viu** (Cesar, 15/10/2026, saída colada nesta sessão): a rodada `pnpm demo:historico --ambiente dev --fim 2026-10-13` parou em 1 s com `FimDiferente`. O primeiro chamado gravado foi aberto às 11:21:07.681 UTC de 13/02/2026; o do roteiro novo, às 11:06:22.717. Nada foi gravado.
+
+**A causa:** o chamado da modernização, acrescentado no #294, sorteava os instantes na mesma sequência do roteiro. Com isso mudavam os instantes de todos os chamados sorteados depois dele, inclusive o primeiro. Mudavam também as chaves (`ch00001`…), que seguem a ordem de abertura. O teste do roteiro não pegou porque compara o roteiro consigo mesmo, não com o que está gravado no dev.
+
+**A correção** (PR `int:`, fora da zona protegida):
+- **Roteiro:** o chamado acrescentado depois da primeira gravação sorteia numa sequência à parte e tem chave fixa (`ch-modernizacao-elevador`), fora da numeração.
+  - Conferido contra o roteiro do `7987b00`, com `--fim 2026-10-13`: os 4.314 chamados gravados saem com as mesmas chaves, instantes, passos, custos e paradas.
+  - Os cadastros, os cenários e a política sistêmica também saem iguais.
+  - A modernização passa a ser aberta em 23/06/2026 e concluída às 15:47 UTC do mesmo dia, que é a data da intervenção.
+- **Retomada:** antes, se faltava uma abertura antes do último dia gravado, a gravação voltava ao início e conferia uma a uma (umas 3,5 horas). Agora ela pula os chamados que já estão no banco e grava, em ordem, só as operações dos chamados novos.
+  - A função é `planoDaRetomada`.
+  - Na rodada no dev, isso dá as 5 operações da modernização (abrir, gerar, iniciar, concluir e aceitar) e os dias depois de 13/10, que são nenhum.
+  - Os dias já calculados não rodam de novo, como antes. A efetividade lê as OS na hora, então a modernização aparece sem recalcular os dias.
+- **Testes, sem banco:**
+  - um que trava o roteiro gravado no dev: os 4.314 chamados, o primeiro instante e uma impressão SHA-256 das chaves, dos instantes, dos passos, dos custos e das paradas;
+  - dois do plano da retomada.
+
+### Ponto de retomada (15/10/2026, correção da retomada depois do #294)
+
+- **`main`:** verde, em `f5caca9` (#294). O CI, o banco e o segurança passaram.
+- **Dev:** sem mudança. A rodada de 15/10 à noite foi recusada antes de gravar.
+- **Nesta branch:** a correção do roteiro e da retomada, com este diário. O PR abre agora.
+- **Esperando o Cesar:**
+  1. O merge do PR da correção.
+  2. A mesma rodada: `git pull` na `main`, as duas variáveis da sessão e `pnpm demo:historico --ambiente dev --fim 2026-10-13`. A saída deve ter a linha "Retomada no dia 2026-10-13: … 5 de chamados novos no roteiro, gravadas agora." e terminar em minutos.
+  3. A saída final.
+- **Próximo:** conferir no dev que a modernização aparece nas três telas:
+  - na lista de efetividade;
+  - no detalhe do ativo;
+  - na página do insight do elevador.
+
+## A modernização gravada no dev e as telas conferidas (15/10/2026)
+
+**A rodada** (Cesar, 15/10/2026, saída colada nesta sessão), depois do merge do #295:
+- A linha da retomada: "Retomada no dia 2026-10-14: 21569 de 21574 operações já gravadas, puladas; 5 de chamados novos no roteiro, gravadas agora."
+- O grupo é o mesmo, `634ad71d-d946-4deb-8e31-a007f16cd21b`, agora com 4.315 chamados.
+- 0 dias calculados e 0 decisões. Os 8 cenários continuam no estado do roteiro.
+- Tempo: 56 s no teste, 69 s no total.
+
+**As telas** ("Cesar aqui. Aparentemente, tudo certo", com prints do web local ligado ao dev):
+- **Detalhe do ativo** (Elevador social, Hotel Demonstração Serra), painel **Intervenções neste ativo**. Uma linha:
+  - a modernização, executada pelo fornecedor Elevadores Demonstração, com custo da OS de R$ 48.000,00, em 23/06/2026;
+  - chamados: 7 antes e 1 depois;
+  - tempo parado: 72 → 0;
+  - custo: R$ 15.000,00 → R$ 300,00, "custo informado em 6 de 6 OS antes e em 1 de 1 OS depois";
+  - variação: "Redução observada", com a ressalva no rodapé.
+- **Página do insight** de atenção do elevador (resolvido): o painel **Efetividade da intervenção** aparece, com a dica "primeira detecção do insight, em 03/05/2026".
+- **A seção abaixo da lista de insights** não veio nos prints.
+- O score do ativo (39, de 15/10) ainda não conta o custo da modernização, porque os dias já calculados não mudam. É o esperado: a efetividade lê as OS na hora.
+
+**Ponto de detalhe para o Kaio (ADR-033: detalhe do Kaio):** os "Chamados antes" contam 7, e o próprio chamado da modernização está entre eles. O motor conta todo chamado corretivo aberto na janela antes da conclusão da intervenção, e a modernização foi aberta às 08:00 e concluída às 15:47 do mesmo dia.
+- O custo já exclui a própria OS da intervenção (escolha 1 do Kaio). Os chamados, as reaberturas e o tempo parado não excluem.
+- A recomendação do agente: excluir o chamado da intervenção das três métricas do "antes", como no custo. No roteiro, os chamados ficam 6 → 1, e o resultado não muda.
+- Só muda com o "aprovo" do Kaio. Seria um PR `int:` no motor, com a versão da efetividade subindo para 4.
+
+### Ponto de retomada (15/10/2026, efetividade no dev)
+
+- **`main`:** em `33d9064` (#296, que não é deste agente). O #295 entrou antes, em `576b2c3`.
+- **Dev:** com a modernização no grupo do histórico. As três telas da efetividade foram conferidas pelo Cesar (duas por print).
+- **Nesta branch:** este registro, recomeçado da `main`. PR `int:` de diário.
+- **Esperando:**
+  - **Cesar:** o merge deste PR.
+  - **Kaio:** a decisão sobre excluir o chamado da intervenção do "antes".
+- **Próximo:** se o Kaio aprovar, o PR do motor (efetividade versão 4). Depois, o que Cesar e Kaio priorizarem.
