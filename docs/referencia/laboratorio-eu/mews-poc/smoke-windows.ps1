@@ -93,9 +93,15 @@ try {
         EnterpriseIds = @($id)
         Extent = @{ Resources = $true; Inactive = $true }
     }
+    $inicio = [DateTime]::UtcNow.Date
+    $janela = @{
+        StartUtc = $inicio.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        EndUtc = $inicio.AddDays(30).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
     $blo = Consultar-Demo 'resourceBlocks/getAll' @{
         EnterpriseIds = @($id)
         ActivityStates = @('Active', 'Deleted')
+        CollidingUtc = $janela
     }
     $recursos = Obter-Lista $rec 'Resources'
     $bloqueios = Obter-Lista $blo 'ResourceBlocks'
