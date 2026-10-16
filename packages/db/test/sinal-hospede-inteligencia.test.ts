@@ -76,7 +76,7 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
     );
     await q(
       `insert into app.ativo (codigo_qr, id, tenant_id, hotel_id, local_id, categoria_id, nome, busca)
-       values ('QSINAL0001', $1, $2, $3, $4, $5, 'Split UH 101', 'split uh 101')`,
+       values ('SNHSP00001', $1, $2, $3, $4, $5, 'Split UH 101', 'split uh 101')`,
       [A1, TENANT, H1, UH1, CAT],
     );
     for (const [nome, id] of Object.entries(U)) {
