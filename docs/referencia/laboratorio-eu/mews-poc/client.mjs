@@ -28,6 +28,32 @@ export class ErroMews extends Error {
   }
 }
 
+// A API Mews valida em runtime que pelo menos um filtro temporal seja
+// informado em resourceBlocks/getAll, apesar de a tabela descrever os
+// campos individualmente como opcionais. Nao permitir uma consulta global.
+const DIA_MS = 24 * 60 * 60 * 1000;
+function validarFiltroTemporalBloqueios(filtros) {
+  const chaves = ['CollidingUtc', 'CreatedUtc', 'UpdatedUtc'];
+  const presentes = chaves.filter((c) => Object.hasOwn(filtros, c));
+  if (presentes.length !== 1) throw new ErroMews('filtro_temporal_obrigatorio');
+  const intervalo = filtros[presentes[0]];
+  if (!intervalo || typeof intervalo !== 'object' || Array.isArray(intervalo)) {
+    throw new ErroMews('intervalo_temporal_invalido');
+  }
+  const { StartUtc, EndUtc } = intervalo;
+  const utc = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
+  if (typeof StartUtc !== 'string' || typeof EndUtc !== 'string' ||
+      !utc.test(StartUtc) || !utc.test(EndUtc)) {
+    throw new ErroMews('intervalo_temporal_invalido');
+  }
+  const inicio = Date.parse(StartUtc);
+  const fim = Date.parse(EndUtc);
+  if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio ||
+      fim - inicio > 89 * DIA_MS) {
+    throw new ErroMews('intervalo_temporal_invalido');
+  }
+}
+
 /**
  * @param {object} opts
  * @param {string} opts.clientToken Token DEMO, nunca enviado a logs.
@@ -169,8 +195,6 @@ export function criarClienteMews({
 
   return Object.freeze({
     obterIdentificadorEmpresa,
-    // Fallback de diagnostico: defaults oficiais, sem filtros opcionais.
-    lerPrimeiraPaginaDeBloqueiosSemFiltros: () => lerPagina('resourceBlocks'),
     lerPrimeiraPaginaDeEmpresas: (filtros = {}) => lerPagina('enterprises', filtros),
     lerPrimeiraPaginaDeRecursos: (enterpriseIds) => {
       if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
@@ -179,12 +203,17 @@ export function criarClienteMews({
       return lerPagina('resources', { EnterpriseIds: enterpriseIds,
         Extent: { Resources: true, Inactive: true } });
     },
-    lerPrimeiraPaginaDeBloqueios: (enterpriseIds) => {
+    lerPrimeiraPaginaDeBloqueios: (enterpriseIds, collidingUtc) => {
       if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
         throw new ErroMews('enterprise_ids_obrigatorios');
       }
-      return lerPagina('resourceBlocks', { EnterpriseIds: enterpriseIds,
-        ActivityStates: ['Active', 'Deleted'] });
+      const filtros = { CollidingUtc: collidingUtc };
+      validarFiltroTemporalBloqueios(filtros);
+      return lerPagina('resourceBlocks', {
+        EnterpriseIds: enterpriseIds,
+        ActivityStates: ['Active', 'Deleted'],
+        ...filtros,
+      });
     },
     listarEmpresas: (filtros = {}) => listar('enterprises', filtros),
     listarRecursos: (enterpriseIds, filtros = {}) => {
@@ -201,6 +230,7 @@ export function criarClienteMews({
       if (!Array.isArray(enterpriseIds) || !enterpriseIds.length || !enterpriseIds.every(Boolean)) {
         throw new ErroMews('enterprise_ids_obrigatorios');
       }
+      validarFiltroTemporalBloqueios(filtros);
       return listar('resourceBlocks', {
         ...filtros,
         EnterpriseIds: enterpriseIds,
