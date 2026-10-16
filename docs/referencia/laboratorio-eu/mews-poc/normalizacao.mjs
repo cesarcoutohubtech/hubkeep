@@ -26,14 +26,14 @@ export function criarEscopo(entrada) {
       throw new Error('vinculo_invalido');
     mapa.set(v.enterpriseId, v.hotelId);
   }
-  return Object.freeze({ tenantId: entrada.tenantId, hoteis: mapa });
+  return Object.freeze({ tenantId: entrada.tenantId, localizarHotel: (id) => mapa.get(id) });
 }
 
 export function normalizarEspaco(escopo, recurso) {
   if (!recurso || recurso.Data?.Discriminator !== 'Space') return null;
   if (!str(recurso.Id) || !str(recurso.EnterpriseId) || !str(recurso.Name))
     return null;
-  const hotelId = escopo.hoteis.get(recurso.EnterpriseId);
+  const hotelId = escopo.localizarHotel(recurso.EnterpriseId);
   if (!hotelId) return null;
   const estado = str(recurso.State);
   return Object.freeze({
@@ -64,7 +64,7 @@ export function normalizarBloqueio(escopo, bloco, idsValidos = null) {
     !str(bloco.AssignedResourceId)
   )
     return null;
-  const hotelId = escopo.hoteis.get(bloco.EnterpriseId);
+  const hotelId = escopo.localizarHotel(bloco.EnterpriseId);
   if (!hotelId) return null;
   const codigoRecurso = chaveMews(bloco.EnterpriseId, bloco.AssignedResourceId);
   if (idsValidos && !idsValidos.has(codigoRecurso)) return null;
