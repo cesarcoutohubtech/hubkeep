@@ -26,8 +26,10 @@
 //   medição no plano da categoria, sem dado); o ativo com menos medições na
 //   janela que o mínimo da política contribui 0, sem redistribuir. Até o
 //   checklist tipado (PV1), nenhuma categoria tem medição;
-// - preventiva atrasada fica sem dado até a etapa PV; criticidade, sem o
-//   cadastro; reincidência, sem dado nenhum;
+// - preventiva atrasada: desde a versão 5, sai das OS preventivas do ativo
+//   (PV3), pela regra do domínio (`preventivaAtrasada`); o ativo sem nenhuma
+//   OS preventiva fica sem dado (Kaio, 16/10/2026), porque não ter plano não é
+//   estar em dia. Criticidade, sem o cadastro; reincidência, sem dado nenhum;
 // - UH-dias fica sem dado, com peso 0 (decisão de 07/10/2026). Quando a origem
 //   for lida e o peso passar de 0, a atenção ganha a versão seguinte.
 //
@@ -36,8 +38,10 @@
 // (glossário de métricas versão 3, 13/10/2026) conta o custo e a cobertura
 // pelas corretivas aceitas, e não pelas concluídas (divergência d), e tira da
 // conta todo chamado cancelado (divergência b). A versão 4 (divergência a)
-// grava o dia no fuso do hotel, e não em UTC. O que já foi gravado com as
-// versões anteriores não é recalculado (ADR-036).
+// grava o dia no fuso do hotel, e não em UTC. A versão 5 (Kaio e Cesar,
+// 16/10/2026) tira a preventiva atrasada do "sem dado" para o ativo com OS
+// preventiva. O que já foi gravado com as versões anteriores não é recalculado
+// (ADR-036).
 import {
   CRITICIDADE_MAXIMA,
   type Criticidade,
@@ -46,7 +50,15 @@ import {
 } from './historico';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
-export const VERSAO_ATENCAO = 4;
+export const VERSAO_ATENCAO = 5;
+
+/**
+ * A tolerância da preventiva atrasada, em dias. É a política
+ * `preventiva.tolerancia_dias` do painel da 1c (decisão 11, padrão 0), que
+ * ainda não existe no código: até existir, vale o padrão (aviso à 1c no diário
+ * do Intelligence, 16/10/2026).
+ */
+export const TOLERANCIA_DA_PREVENTIVA_DIAS = 0;
 
 /**
  * Medições do checklist tipado na janela (etapa PV1): quantas saíram da faixa

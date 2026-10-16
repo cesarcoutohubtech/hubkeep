@@ -30,11 +30,12 @@
 // - o sinal sistêmico não tem score: entra com a faixa fixa 'atencao' e vale
 //   no hotel quando todas as corretivas são de um hotel; senão, na rede, da
 //   bandeira quando os hotéis são todos dela, ou do grupo.
-import type { Parada } from '@hubkeep/dominio';
+import { type Parada, type PreventivaNoTempo, preventivaAtrasada } from '@hubkeep/dominio';
 import {
   type ConfigAtencao,
   type MedicoesDoAtivo,
   PADRAO_ATENCAO,
+  TOLERANCIA_DA_PREVENTIVA_DIAS,
   atencaoDoAtivo,
 } from './atencao';
 import type { LinhaDaMetricaDiaria } from './agregacao';
@@ -96,8 +97,12 @@ export interface AtivoDoDia extends AtivoAnalisado {
   criticidade: Criticidade | null;
   /** Paradas do ativo (C5), as abertas com fim null. */
   paradas: readonly Parada[];
-  /** Preventiva vencida do ativo (etapa P); ausente sem dado. */
-  preventivaAtrasada?: boolean | null;
+  /**
+   * As OS preventivas do ativo (PV3) criadas até `agora`, com as transições:
+   * as que ainda podem estar atrasadas e as tocadas desde o início da leitura.
+   * Ausente ou vazia, a preventiva atrasada fica sem dado (atenção versão 5).
+   */
+  preventivas?: readonly PreventivaNoTempo[];
   /**
    * Medições do checklist tipado na janela (PV1). Só contam se a categoria do
    * ativo está em `categoriasComMedicao`; lá, ausente é nenhuma medição.
@@ -238,7 +243,15 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
             tenant: custoDoTenant,
           },
           impactoHospede: impactoHospedeDosChamados(cs, e.agora, cfgR.janelaDias),
-          preventivaAtrasada: a.preventivaAtrasada ?? null,
+          preventivaAtrasada: a.preventivas?.length
+            ? a.preventivas.some((p) =>
+                preventivaAtrasada(p, {
+                  fuso: h.fuso ?? 'UTC',
+                  agora: e.agora,
+                  toleranciaDias: TOLERANCIA_DA_PREVENTIVA_DIAS,
+                }),
+              )
+            : null,
           medicoes:
             a.categoriaId !== null && comMedicao.has(a.categoriaId)
               ? (a.medicoes ?? { foraDaFaixa: 0, total: 0 })
