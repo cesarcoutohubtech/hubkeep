@@ -33,6 +33,7 @@ export interface ChamadoDaEfetividadeNoBanco {
 
 export interface ParadaDaEfetividadeNoBanco {
   ativoId: string;
+  chamadoId: string;
   inicio: Date;
   fim: Date | null;
 }
@@ -239,7 +240,7 @@ export async function historicoDosAtivosNoBanco(
       .execute(),
     tx
       .selectFrom('app.parada_ativo')
-      .select(['ativo_id', 'inicio', 'fim'])
+      .select(['ativo_id', 'chamado_id', 'inicio', 'fim'])
       .where('ativo_id', 'in', [...ativoIds])
       .where('inicio', '<=', ate)
       .where((eb) => eb.or([eb('fim', 'is', null), eb('fim', '>', desde)]))
@@ -253,6 +254,7 @@ export async function historicoDosAtivosNoBanco(
     ),
     paradas: paradas.map((p) => ({
       ativoId: p.ativo_id,
+      chamadoId: p.chamado_id,
       inicio: data(p.inicio),
       fim: p.fim === null ? null : data(p.fim),
     })),

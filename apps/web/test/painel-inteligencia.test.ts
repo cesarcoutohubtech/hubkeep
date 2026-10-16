@@ -320,9 +320,9 @@ describe('o painel sobre a porta do banco', () => {
     expect(doAtivo.map((e) => [e.intervencao.chamadoId, e.intervencao.em])).toEqual([
       [TROCA.id, new Date('2026-09-05T00:00:00Z')],
     ]);
-    // A OS da troca abriu antes da conclusão e conta como chamado antes; o custo dela fica fora.
+    // A OS da troca abriu antes da conclusão, mas fica fora de todas as métricas (versão 4).
     expect(doAtivo[0]?.efetividade).toMatchObject({
-      versao: 3,
+      versao: 4,
       resultado: 'sem_base_de_comparacao',
       custo: { antes: { aceitas: 0 }, depois: { aceitas: 0 }, suficiente: true },
     });

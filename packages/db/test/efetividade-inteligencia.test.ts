@@ -293,7 +293,9 @@ describe.skipIf(!temBanco)('a leitura da efetividade do Intelligence', { timeout
       codigoSolucaoChave: 'solucao_troca_de_peca',
       custoInformado: 300,
     });
-    expect(h.paradas).toEqual([{ ativoId: A1, inicio: antes(58), fim: antes(57) }]);
+    expect(h.paradas).toEqual([
+      { ativoId: A1, chamadoId: C.peca, inicio: antes(58), fim: antes(57) },
+    ]);
     const doOutroHotel = await porta.historicoDosAtivos(ctx(U.gerente), [A2], antes(150), agora);
     expect(doOutroHotel).toEqual({ chamados: [], paradas: [] });
     expect(await porta.historicoDosAtivos(ctx(U.admin), [], antes(150), agora)).toEqual({

@@ -196,7 +196,7 @@ describe('a política da efetividade por hotel', () => {
 });
 
 describe('o antes e depois da intervenção, pelo histórico do ativo', () => {
-  it('só o ativo da intervenção, com o custo das aceitas e sem a OS da troca', () => {
+  it('só o ativo da intervenção, sem o chamado da troca em nenhuma métrica (versão 4)', () => {
     const troca = chamado({ abertaEm: dia(-25) });
     const [i] = intervencoesDosChamados([troca], padrao, desde, agora);
     if (!i) throw new Error('sem intervenção');
@@ -223,8 +223,10 @@ describe('o antes e depois da intervenção, pelo histórico do ativo', () => {
           corretiva(-50, 9_999, 'a2'),
         ],
         paradas: [
-          { ativoId: 'a1', inicio: dia(-30), fim: dia(-29) },
-          { ativoId: 'a2', inicio: dia(-30), fim: dia(-20) },
+          { ativoId: 'a1', chamadoId: 'c-outro', inicio: dia(-30), fim: dia(-29) },
+          { ativoId: 'a2', chamadoId: 'c-a2', inicio: dia(-30), fim: dia(-20) },
+          // A parada aberta pelo chamado da troca fica fora.
+          { ativoId: 'a1', chamadoId: troca.id, inicio: dia(-25), fim: dia(-24) },
         ],
       },
       PADRAO_EFETIVIDADE,
@@ -234,14 +236,15 @@ describe('o antes e depois da intervenção, pelo histórico do ativo', () => {
       antes: 24,
       depois: 0,
     });
-    // A troca abriu antes da conclusão: conta como chamado antes, mas não no custo.
-    expect(e.metricas[0]).toMatchObject({ chave: 'chamados', antes: 3, depois: 1 });
+    // A troca abriu antes da conclusão, mas não conta como chamado antes nem no custo.
+    expect(e.metricas[0]).toMatchObject({ chave: 'chamados', antes: 2, depois: 1 });
     expect(e.custo).toEqual({
       antes: { soma: 800, informadas: 2, aceitas: 2 },
       depois: { soma: 100, informadas: 1, aceitas: 1 },
       suficiente: true,
       variacaoPercentual: -87.5,
     });
-    expect(e.resultado).toBe('janela_incompleta');
+    // Sem a troca, ficam dois chamados antes: menos que o mínimo de 3.
+    expect(e.resultado).toBe('sem_base_de_comparacao');
   });
 });

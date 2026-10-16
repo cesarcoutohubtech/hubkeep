@@ -46,6 +46,8 @@ export const LIMITE_DAS_INTERVENCOES = 100;
 
 export interface ParadaDoAtivo extends Parada {
   ativoId: string;
+  /** O chamado que abriu a parada: a da intervenção fica fora da efetividade (versão 4). */
+  chamadoId: string;
 }
 
 /** O que a efetividade lê, além das portas do painel, no contexto de quem pede. */

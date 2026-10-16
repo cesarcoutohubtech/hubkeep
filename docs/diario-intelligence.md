@@ -2359,3 +2359,34 @@ As duas frases apontam para lados diferentes. O agente não abriu o PR do motor 
     - o glossário;
     - o `docs/piloto/README.md`.
   - **Se ficar como está:** registrar a decisão e seguir o que Cesar e Kaio priorizarem.
+
+## A efetividade versão 4 (16/10/2026)
+
+"Kaio aqui.. Versão 4" (nesta sessão, 16/10/2026). Isso resolve a ambiguidade da mensagem de 15/10. É detalhe do Kaio dentro do adendo ao ADR-033. PR `int:`, fora da zona protegida.
+
+**O que muda:**
+- **Motor (`efetividade.ts`):** o chamado da própria intervenção (`intervencaoId`) fica fora de todas as métricas:
+  - dos chamados e das reaberturas;
+  - do tempo parado, ou seja, das paradas abertas por ele;
+  - do custo, que já o excluía na versão 3.
+  - `VERSAO_EFETIVIDADE` passa a 4. Sem o `intervencaoId`, tudo conta, como antes.
+- **Leitura (`packages/db`):** cada parada do histórico traz o `chamado_id`, que já existia em `app.parada_ativo`. Não há migração.
+  - `ParadaDoAtivo` e `ParadaDaEfetividadeNoBanco` ganham o `chamadoId`.
+- **Efeito na demonstração:** o elevador fica com 6 → 1 chamados, e o resultado continua "Redução observada".
+
+**Testes:**
+- **No motor:** um caso novo mostra a troca com reabertura e parada até a conclusão. Com 2 chamados de verdade antes, o resultado é "sem base de comparação", e sem o `intervencaoId` as métricas voltam a 3, 1 e 12 h.
+- **Na leitura pelo histórico:** a parada aberta pela troca fica fora.
+- **Atualizados:**
+  - as versões nos testes do painel e das telas;
+  - o teste do banco, que agora traz o `chamadoId` da parada;
+  - o glossário de métricas;
+  - o `docs/piloto/README.md`, com uma linha nova.
+
+### Ponto de retomada (16/10/2026, efetividade versão 4)
+
+- **`main`:** em `d81ee48` (#298, que não é deste agente).
+- **Dev:** sem mudança. A efetividade é calculada na hora, então a versão 4 aparece no dev depois do merge, sem rodar o `demo:historico`.
+- **Nesta branch:** a versão 4, com o diário de 15/10 à noite e este registro. O PR abre agora.
+- **Esperando o Cesar:** o merge do PR.
+- **Próximo:** o que Cesar e Kaio priorizarem.

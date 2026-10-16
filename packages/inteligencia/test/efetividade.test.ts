@@ -79,8 +79,8 @@ describe('efetividade da intervenção', () => {
     expect(e.resultado).toBe(resultado);
   });
 
-  it('a versão 3, os limiares de 08/10 e a lista de códigos do adendo de 15/10/2026', () => {
-    expect(VERSAO_EFETIVIDADE).toBe(3);
+  it('a versão 4, os limiares de 08/10 e a lista de códigos do adendo de 15/10/2026', () => {
+    expect(VERSAO_EFETIVIDADE).toBe(4);
     expect(PADRAO_EFETIVIDADE).toEqual({
       janelaDias: 90,
       reducaoObservadaPercentual: 60,
@@ -91,7 +91,36 @@ describe('efetividade da intervenção', () => {
     });
     expect(COBERTURA_MINIMA_DO_CUSTO).toBe(0.5);
     const e = efetividadeAntesDepois({ intervencaoEm: t, corretivas: [], paradas: [] }, agora);
-    expect(e.versao).toBe(3);
+    expect(e.versao).toBe(4);
+  });
+
+  it('versão 4: o chamado da intervenção fica fora dos chamados, das reaberturas e das paradas', () => {
+    const troca = corretiva({ abertaEm: hora(-8, t), reaberturas: 1 });
+    const comTroca = (intervencaoId?: string) =>
+      efetividadeAntesDepois(
+        {
+          intervencaoEm: t,
+          // Dois chamados de verdade antes: menos que o mínimo de 3.
+          corretivas: [...corretivasEm([-60, -30]), troca],
+          paradas: [
+            { inicio: dia(-30, t), fim: hora(4, dia(-30, t)) },
+            // O equipamento parado desde a abertura do chamado da troca até ela.
+            { chamadoId: troca.id, inicio: hora(-8, t), fim: t },
+          ],
+          ...(intervencaoId ? { intervencaoId } : {}),
+        },
+        agora,
+      );
+    const v4 = comTroca(troca.id);
+    expect(v4.metricas.map((m) => [m.chave, m.antes])).toEqual([
+      ['chamados', 2],
+      ['reaberturas', 0],
+      ['horas_paradas', 4],
+    ]);
+    // Sem ele, os dois chamados não fazem base de comparação.
+    expect(v4.resultado).toBe('sem_base_de_comparacao');
+    // Sem saber qual é o chamado da intervenção, tudo conta, como na versão 3.
+    expect(comTroca().metricas.map((m) => m.antes)).toEqual([3, 1, 12]);
   });
 
   // Dez chamados antes (nos 90 dias antes da intervenção) e `depois` chamados depois.
@@ -177,7 +206,7 @@ describe('efetividade da intervenção', () => {
       { ...PADRAO_EFETIVIDADE, reducaoParcialPercentual: 10 },
     );
     expect(f.resultado).toBe('reducao_parcial');
-    expect(f.versao).toBe(3);
+    expect(f.versao).toBe(4);
   });
 
   it('o custo fica nas métricas de chamados, reaberturas e tempo parado, e não entre elas', () => {
