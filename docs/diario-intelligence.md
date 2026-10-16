@@ -2428,3 +2428,28 @@ As duas frases apontam para lados diferentes. O agente não abriu o PR do motor 
   - **Cesar:** o merge.
   - **1c:** a política `preventiva.tolerancia_dias`, quando ela criar o painel de indicadores.
 - **Próximo:** quando a política existir, ler a tolerância dela no job, no lugar da constante. Até lá, o que Cesar e Kaio priorizarem.
+
+## A falha depois de preventiva na reincidência: proposta (16/10/2026)
+
+O Cesar mergeou o #300 às 13:45 UTC, com os cinco checks verdes no head `46e12ed`. Depois, ele escreveu "Cesar aqui. Okay, tem algo a mais que podemos adiantar aqui?" (nesta sessão).
+
+**A proposta do agente:**
+- O componente "falha depois de preventiva" da reincidência (peso 10%, no glossário desde a versão 1) fica sempre sem dado, porque o job não lia as OS preventivas. Desde o #300 ele lê.
+- A corretiva conta como falha depois de preventiva quando abre até **30 dias** depois da conclusão de uma OS preventiva do mesmo ativo, como a "falha depois de corretiva".
+- O ativo sem nenhuma OS preventiva fica sem dado nesse componente, como na preventiva atrasada.
+- A reincidência passa à versão 4. Como ela entra na atenção do ativo, a atenção passa à versão 6. Os dias já gravados não mudam (ADR-036).
+
+**Aprovações:**
+- "Kaio aqui. De acordo . Prossiga" (nesta sessão, 16/10/2026). Os 30 dias são limiar, detalhe só do Kaio (ADR-033), e ficam fechados.
+- O ativo sem preventiva ficar sem dado foi tratado como mudança ("na dúvida, tratar como mudança"), então **aguarda o "de acordo" escrito do Cesar**. Nenhum código foi escrito.
+
+### Ponto de retomada (16/10/2026, proposta da falha depois de preventiva)
+
+- **`main`:** em `a708e8b` (#300).
+- **Dev:** sem mudança. A atenção versão 5 vale a partir do próximo job.
+- **Nesta branch:** recomeçada da `main`, só com este registro. Sem PR; ele entra no PR da falha depois de preventiva.
+- **Esperando o Cesar:** o "de acordo" no ativo sem preventiva ficar sem dado.
+- **Próximo:** com o ok, em `packages/inteligencia/src/fonte.ts` (ou onde o `calcularDia` monta as corretivas), marcar `aposPreventiva` a partir das `preventivas` do `AtivoDoDia`, com a conclusão de cada uma pelas transições até `agora`. Depois:
+  - a reincidência versão 4 e a atenção versão 6;
+  - os testes;
+  - o glossário e o `docs/piloto/README.md`.
