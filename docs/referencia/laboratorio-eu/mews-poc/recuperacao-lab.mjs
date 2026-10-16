@@ -9,7 +9,7 @@ function dataUtc(s) {
     throw new Error('utc_invalido');
   return Date.parse(s);
 }
-function copia(v) { return structuredClone(v); }
+function copia(v) { return JSON.parse(JSON.stringify(v)); }
 function chave({ tenantId, hotelId, enterpriseId }) {
   if (![tenantId, hotelId, enterpriseId].every(x => typeof x === 'string' && x.trim().length > 0))
     throw new Error('escopo_invalido');
@@ -20,16 +20,31 @@ export function criarArmazenamentoSimulado() {
   return Object.freeze({
     ler(escopo) {
       const e = estados.get(chave(escopo));
-      return e ? copia(e) : { revisao: 0, checkpointUtc: null, bloqueios: [] };
+      return e ? copia(e) : { revisao: 0, checkpointUtc: null, checkpointVarreduraUtc: null, bloqueios: [] };
     },
     confirmar(escopo, revisaoEsperada, novo) {
       const k = chave(escopo);
-      const atual = estados.get(k) ?? { revisao: 0, checkpointUtc: null, bloqueios: [] };
+      const atual = estados.get(k) ?? { revisao: 0, checkpointUtc: null, checkpointVarreduraUtc: null, bloqueios: [] };
       if (atual.revisao !== revisaoEsperada) throw new Error('conflito_de_revisao');
       if (!novo || !Array.isArray(novo.bloqueios)) throw new Error('snapshot_invalido');
+      const modo = novo.modo ?? 'incremental';
+      if (!['incremental', 'reconciliacao'].includes(modo)) throw new Error('modo_invalido');
       const proximoMs = dataUtc(novo.checkpointUtc);
-      if (atual.checkpointUtc && proximoMs <= dataUtc(atual.checkpointUtc))
-        throw new Error('checkpoint_regressivo');
+      const marcoIncremental = atual.checkpointUtc ? dataUtc(atual.checkpointUtc) : null;
+      let checkpointUtc = atual.checkpointUtc;
+      let checkpointVarreduraUtc = atual.checkpointVarreduraUtc;
+      if (modo === 'incremental') {
+        if (marcoIncremental !== null && proximoMs <= marcoIncremental)
+          throw new Error('checkpoint_regressivo');
+        checkpointUtc = novo.checkpointUtc;
+        // O bootstrap e CollidingUtc, logo tambem constitui uma primeira varredura.
+        if (marcoIncremental === null) checkpointVarreduraUtc = novo.checkpointUtc;
+      } else {
+        if (marcoIncremental === null) throw new Error('bootstrap_necessario');
+        if (atual.checkpointVarreduraUtc &&
+            proximoMs <= dataUtc(atual.checkpointVarreduraUtc)) throw new Error('varredura_regressiva');
+        checkpointVarreduraUtc = novo.checkpointUtc;
+      }
       const ids = new Set();
       for (const b of novo.bloqueios) {
         if (!b || typeof b.Id !== 'string' || !b.Id || ids.has(b.Id) ||
@@ -37,7 +52,7 @@ export function criarArmazenamentoSimulado() {
         dataUtc(b.UpdatedUtc);
         ids.add(b.Id);
       }
-      const commit = copia({ revisao: atual.revisao + 1, checkpointUtc: novo.checkpointUtc, bloqueios: novo.bloqueios });
+      const commit = copia({ revisao: atual.revisao + 1, checkpointUtc, checkpointVarreduraUtc, bloqueios: novo.bloqueios });
       estados.set(k, commit); // unico ponto de publicacao
       return copia(commit);
     },
@@ -66,8 +81,11 @@ export function criarReconciliadorLaboratorio({ armazenamento, tenantId, vinculo
       const ate = dataUtc(ateUtc);
       const escopo = { tenantId, hotelId, enterpriseId };
       const anterior = armazenamento.ler(escopo);
-      if (anterior.checkpointUtc && ate <= dataUtc(anterior.checkpointUtc))
+      if (modo === 'incremental' && anterior.checkpointUtc && ate <= dataUtc(anterior.checkpointUtc))
         throw new Error('checkpoint_nao_avanca');
+      if (modo === 'reconciliacao' && !anterior.checkpointUtc) throw new Error('bootstrap_necessario');
+      if (modo === 'reconciliacao' && anterior.checkpointVarreduraUtc &&
+          ate <= dataUtc(anterior.checkpointVarreduraUtc)) throw new Error('varredura_nao_avanca');
       const desde = anterior.checkpointUtc ? dataUtc(anterior.checkpointUtc) - sobreposicaoMinutos * 60000 : null;
       if (modo === 'incremental' && desde !== null && ate - desde > 30 * MS_DIA)
         throw new Error('intervalo_longo_exige_fatiamento');
@@ -95,10 +113,11 @@ export function criarReconciliadorLaboratorio({ armazenamento, tenantId, vinculo
         }
         // Ausencia na janela nao indica exclusao, inclusive na reconciliacao.
         const salvo = armazenamento.confirmar(escopo, anterior.revisao, {
-          checkpointUtc: ateUtc, bloqueios: [...dados.values()],
+          modo, checkpointUtc: ateUtc, bloqueios: [...dados.values()],
         });
         return Object.freeze({
           modo, janela: copia(janela), checkpointUtc: salvo.checkpointUtc,
+          checkpointVarreduraUtc: salvo.checkpointVarreduraUtc,
           revisao: salvo.revisao, quantidade: salvo.bloqueios.length,
           recebidos: recebidos.size, gravouNoHubKeep: false, gerouOs: false,
         });
