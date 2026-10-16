@@ -2483,3 +2483,51 @@ O Cesar mergeou o #300 às 13:45 UTC, com os cinco checks verdes no head `46e12e
   - **Cesar:** o merge;
   - **1c:** a política `preventiva.tolerancia_dias`.
 - **Próximo:** o que Cesar e Kaio priorizarem. Entre as opções levantadas, a proposta da tela do sinal de substituição (componente novo, Cesar e Kaio).
+
+## A tela do sinal de substituição: proposta (16/10/2026)
+
+"Cesar aqui. Pode desenhar a proposta da tela do sinal de substituição" e "Kaio aqui. Pode desenhar a proposta da tela do sinal de substituição" (nesta sessão, 16/10/2026). Nenhum código foi escrito.
+
+**O que existe:**
+- O motor (`sinalDeSubstituicao`, `substituicao.ts`, versão 1) e a política `inteligencia.substituicao`, com os limites padrão. Nenhum caso de uso chama o motor.
+- A regra 1 do cálculo do dia (#101, Kaio e Cesar, 06 e 07/10/2026): "A substituição fica na tela do ativo".
+- O PRD e o mock põem "Repair vs Replace" e "reparar ou substituir" na 2.0, junto com o custo. O comentário do motor separa: o sinal no 1.0, a tela de decisão na 2.0.
+- A demonstração já tem o cenário da lava-roupa de 12 anos do hotel 6, conferido no teste como "avaliar substituição".
+
+**A proposta:**
+1. **Escopo.** No 1.0, só o sinal, na página do ativo. Não registra decisão, não afirma retorno do investimento e não usa o valor de reposição. Esses três ficam na 2.0.
+2. **Onde e quem vê.** Uma seção nova, "Sinal de substituição", na página do ativo, entre a série dos 90 dias e "Intervenções neste ativo". Vê quem vê a página do ativo, ou seja, quem decide o insight do hotel. O sinal não abre insight, não entra na lista e não notifica.
+3. **Cálculo.** Na hora da leitura, sem gravar, como a efetividade. A tela diz "calculado agora" e a versão da regra.
+   - **Alternativa:** gravar no job. Pede uma coluna nova na métrica diária, ou seja, migração e zona protegida.
+4. **Fontes dos critérios:**
+   - corretivas em 12 meses, sem o chamado cancelado;
+   - tempo parado do ativo em 12 meses;
+   - idade pela `data_compra`, em anos completos; sem a data, o critério não é avaliado;
+   - custo sobre o valor de reposição: sem dado no 1.0, numa linha discreta;
+   - impacto no hóspede: o Guest Impact Score é da 1.5. No 1.0, a porcentagem dos chamados do ativo em 12 meses que afetaram hóspede, como na atenção (ADR-034);
+   - criticidade, do cadastro;
+   - reincidência, pelo score do último dia gravado, o mesmo que a página já mostra;
+   - garantia vigente, pela `garantia_ate` no fuso do hotel.
+5. **A tela:**
+   - o selo do estado e "N critérios atingidos de M avaliados";
+   - a tabela, com critério, valor, limite e "atingido", "não atingido" ou "sem dado";
+   - em "revisão necessária", a frase sobre a garantia;
+   - a ressalva fixa;
+   - "calculado agora", com a versão.
+
+**Decisões:**
+- **Cesar e Kaio:** os itens 1 a 4, porque são componente novo, quem vê e fonte de dado.
+- **Kaio:** os limites, os textos e se a seção aparece quando não há sinal.
+
+### Ponto de retomada (16/10/2026, proposta da tela de substituição)
+
+- **`main`:** em `cc44ee8` (#303).
+- **Dev:** sem mudança.
+- **Nesta branch:** só este registro, sem PR. Ele entra no PR da tela.
+- **Esperando Cesar e Kaio:** as decisões da proposta.
+- **Próximo:** com as decisões, um PR `int:` fora da zona protegida, sem migração:
+  - no motor, `substituicaoDoAtivo` no painel, com a política do hotel;
+  - no `packages/db`, a `data_compra` e a `garantia_ate` na leitura do ativo do painel, e o histórico de 12 meses pela leitura da efetividade;
+  - no contrato, o campo `substituicao` na resposta do ativo;
+  - a tela e os textos nos quatro idiomas;
+  - a proposta das telas e o glossário.
