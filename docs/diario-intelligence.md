@@ -2299,3 +2299,37 @@ Uma mensagem nesta sessão, em 15/10/2026, trouxe as linhas dos dois, cada uma c
   - na lista de efetividade;
   - no detalhe do ativo;
   - na página do insight do elevador.
+
+## A modernização gravada no dev e as telas conferidas (15/10/2026)
+
+**A rodada** (Cesar, 15/10/2026, saída colada nesta sessão), depois do merge do #295:
+- A linha da retomada: "Retomada no dia 2026-10-14: 21569 de 21574 operações já gravadas, puladas; 5 de chamados novos no roteiro, gravadas agora."
+- O grupo é o mesmo, `634ad71d-d946-4deb-8e31-a007f16cd21b`, agora com 4.315 chamados.
+- 0 dias calculados e 0 decisões. Os 8 cenários continuam no estado do roteiro.
+- Tempo: 56 s no teste, 69 s no total.
+
+**As telas** ("Cesar aqui. Aparentemente, tudo certo", com prints do web local ligado ao dev):
+- **Detalhe do ativo** (Elevador social, Hotel Demonstração Serra), painel **Intervenções neste ativo**. Uma linha:
+  - a modernização, executada pelo fornecedor Elevadores Demonstração, com custo da OS de R$ 48.000,00, em 23/06/2026;
+  - chamados: 7 antes e 1 depois;
+  - tempo parado: 72 → 0;
+  - custo: R$ 15.000,00 → R$ 300,00, "custo informado em 6 de 6 OS antes e em 1 de 1 OS depois";
+  - variação: "Redução observada", com a ressalva no rodapé.
+- **Página do insight** de atenção do elevador (resolvido): o painel **Efetividade da intervenção** aparece, com a dica "primeira detecção do insight, em 03/05/2026".
+- **A seção abaixo da lista de insights** não veio nos prints.
+- O score do ativo (39, de 15/10) ainda não conta o custo da modernização, porque os dias já calculados não mudam. É o esperado: a efetividade lê as OS na hora.
+
+**Ponto de detalhe para o Kaio (ADR-033: detalhe do Kaio):** os "Chamados antes" contam 7, e o próprio chamado da modernização está entre eles. O motor conta todo chamado corretivo aberto na janela antes da conclusão da intervenção, e a modernização foi aberta às 08:00 e concluída às 15:47 do mesmo dia.
+- O custo já exclui a própria OS da intervenção (escolha 1 do Kaio). Os chamados, as reaberturas e o tempo parado não excluem.
+- A recomendação do agente: excluir o chamado da intervenção das três métricas do "antes", como no custo. No roteiro, os chamados ficam 6 → 1, e o resultado não muda.
+- Só muda com o "aprovo" do Kaio. Seria um PR `int:` no motor, com a versão da efetividade subindo para 4.
+
+### Ponto de retomada (15/10/2026, efetividade no dev)
+
+- **`main`:** em `33d9064` (#296, que não é deste agente). O #295 entrou antes, em `576b2c3`.
+- **Dev:** com a modernização no grupo do histórico. As três telas da efetividade foram conferidas pelo Cesar (duas por print).
+- **Nesta branch:** este registro, recomeçado da `main`. PR `int:` de diário.
+- **Esperando:**
+  - **Cesar:** o merge deste PR.
+  - **Kaio:** a decisão sobre excluir o chamado da intervenção do "antes".
+- **Próximo:** se o Kaio aprovar, o PR do motor (efetividade versão 4). Depois, o que Cesar e Kaio priorizarem.
