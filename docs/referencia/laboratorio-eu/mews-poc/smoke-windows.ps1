@@ -24,7 +24,7 @@ function Obter-Lista([object]$resposta, [string]$campo) {
 }
 
 function Consultar-Demo([string]$operacao, [hashtable]$parametros) {
-    $permitidas = @('enterprises/getAll', 'resources/getAll', 'resourceBlocks/getAll')
+    $permitidas = @('configuration/get', 'resources/getAll', 'resourceBlocks/getAll')
     Exigir ($permitidas -contains $operacao) 'operacao_nao_permitida'
     Exigir ($script:numeroChamadas -lt $maxChamadas) 'limite_de_chamadas'
     $script:numeroChamadas++
@@ -71,24 +71,11 @@ try {
     $script:accessToken = $accessMatch.Groups[1].Value
     Exigir ($script:clientToken.Length -gt 20 -and $script:accessToken.Length -gt 20) 'tokens_invalidos'
 
-    $emp = Consultar-Demo 'enterprises/getAll' @{}
-    $empresas = Obter-Lista $emp 'Enterprises'
-    $empresa = @($empresas | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Id) } | Select-Object -First 1)
-
-    if ($empresa.Count -eq 0) {
-        $saida = [ordered]@{
-            Ambiente = 'Mews Demo (Gross)'
-            AutenticacaoHttp = 'confirmada'
-            EmpresasAmostradas = $empresas.Count
-            Resultado = 'sem_empresa_demo'
-            ChamadasHttp = $script:numeroChamadas
-            Gravacao = $false
-        }
-        Write-Output (ConvertTo-Json -InputObject $saida -Depth 3)
-        exit 0
-    }
-
-    $id = [string]$empresa[0].Id
+    # A demo single-property expõe Enterprise.Id em configuration/get.
+    # enterprises/getAll retornou 401 com token de propriedade valido.
+    $configuracao = Consultar-Demo 'configuration/get' @{}
+    $id = [string]$configuracao.Enterprise.Id
+    Exigir (-not [string]::IsNullOrWhiteSpace($id)) 'configuracao_sem_empresa'
     $rec = Consultar-Demo 'resources/getAll' @{
         EnterpriseIds = @($id)
         Extent = @{ Resources = $true; Inactive = $true }
@@ -110,11 +97,10 @@ try {
     $saida = [ordered]@{
         Ambiente = 'Mews Demo (Gross)'
         AutenticacaoHttp = 'confirmada'
-        EmpresasAmostradas = $empresas.Count
+        ConfiguracaoConfirmada = $true
         RecursosAmostrados = $recursos.Count
         BloqueiosAmostrados = $bloqueios.Count
         MaisPaginas = [ordered]@{
-            Empresas = -not [string]::IsNullOrEmpty([string]$emp.Cursor)
             Recursos = -not [string]::IsNullOrEmpty([string]$rec.Cursor)
             Bloqueios = -not [string]::IsNullOrEmpty([string]$blo.Cursor)
         }
