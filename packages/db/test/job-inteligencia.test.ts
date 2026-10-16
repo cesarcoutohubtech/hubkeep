@@ -46,6 +46,13 @@ const C = {
   canceladoSemOs: randomUUID(),
 };
 const OS = { recente: randomUUID(), antigoComTransicao: randomUUID(), antigo: randomUUID() };
+const PLANO = randomUUID();
+const PV = {
+  aberta: randomUUID(),
+  concluidaNaJanela: randomUUID(),
+  concluidaAntiga: randomUUID(),
+  criadaDepois: randomUUID(),
+};
 const I = { aberto: randomUUID(), velho: randomUUID(), novo: randomUUID() };
 const POLITICA = randomUUID();
 const ABB = 'ABCDEFGHJK';
@@ -146,6 +153,27 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
     await transicao(OS.recente, antes(9));
     await transicao(OS.antigoComTransicao, antes(20));
     await transicao(OS.antigo, antes(590));
+    // As OS preventivas do ativo em uso (PV3): a aberta e a concluída na janela
+    // entram; a concluída antes de desde e a criada depois de agora, não.
+    await q(
+      `insert into app.plano_preventivo (id, tenant_id, hotel_id, ativo_id, nome, intervalo, unidade,
+         inicio, situacao, criado_por)
+       values ($1, $2, $3, $4, 'Revisão', 1, 'mes', '2025-01-01', 'ativo', $5)`,
+      [PLANO, T, H1, A.emUso, U],
+    );
+    const preventiva = (id: string, prevista: Date, estado: string, criada: Date) =>
+      q(
+        `insert into app.os (id, tenant_id, hotel_id, local_id, plano_id, ativo_id, data_prevista,
+           plano_aplicado, estado, situacao_id, tecnico_id, criado_em)
+         values ($1, $2, $3, $4, $5, $6, ($7::timestamptz)::date, '{}', $8, $9, $10, $11)`,
+        [id, T, H1, L1, PLANO, A.emUso, prevista, estado, situacaoOs, U, criada],
+      );
+    await preventiva(PV.aberta, antes(30), 'atribuida', antes(31));
+    await preventiva(PV.concluidaNaJanela, antes(60), 'concluida', antes(61));
+    await preventiva(PV.concluidaAntiga, antes(500), 'concluida', antes(501));
+    await preventiva(PV.criadaDepois, antes(-5), 'atribuida', new Date(agora.getTime() + DIA));
+    await transicao(PV.concluidaNaJanela, antes(55));
+    await transicao(PV.concluidaAntiga, antes(499));
     await q(
       `insert into app.politica (id, tenant_id, escopo_tipo, hotel_id, chave, valor, atualizado_por)
        values ($1, $2, 'grupo', null, 'inteligencia.reincidencia', '{"janelaDias": 30}', $3)`,
@@ -199,6 +227,7 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       'app.parada_ativo',
       'app.os_transicao',
       'app.os',
+      'app.plano_preventivo',
       'app.chamado',
       'app.politica',
       'app.situacao',
@@ -257,6 +286,15 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       garantiaAte: new Date('2026-01-31T00:00:00Z'),
       desativadoEm: null,
     });
+    const dia = (d: Date) => d.toISOString().slice(0, 10);
+    expect(ativos.find((a) => a.id === A.emUso)?.preventivas).toEqual([
+      {
+        dataPrevista: dia(antes(60)),
+        transicoes: [{ para: 'concluida', quando: antes(55) }],
+      },
+      { dataPrevista: dia(antes(30)), transicoes: [] },
+    ]);
+    expect(ativos.find((a) => a.id === A.baixadoNaJanela)?.preventivas).toEqual([]);
   });
 
   it('chamados abertos depois de desde ou com transição de OS depois dele, com a OS e as transições', async () => {

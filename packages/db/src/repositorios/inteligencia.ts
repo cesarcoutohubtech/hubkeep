@@ -66,6 +66,12 @@ export interface AtivoDoJob {
   garantiaAte: Date | null;
   desativadoEm: Date | null;
   paradas: { inicio: Date; fim: Date | null }[];
+  /**
+   * As OS preventivas do ativo (PV3) criadas até `agora`, com as transições
+   * até `agora`: as que ainda estão abertas, as previstas desde `desde` e as
+   * tocadas desde `desde`. A preventiva atrasada é regra do domínio.
+   */
+  preventivas: { dataPrevista: string; transicoes: { para: EstadoDaOs; quando: Date }[] }[];
 }
 
 export interface TransicaoDoJob {
@@ -299,7 +305,26 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
     },
 
     async ativos(agora, desde) {
-      const [ativos, paradas] = await Promise.all([
+      const preventivasDoPeriodo = () =>
+        tx
+          .selectFrom('app.os as o')
+          .where('o.plano_id', 'is not', null)
+          .where('o.criado_em', '<=', agora)
+          .where((eb) =>
+            eb.or([
+              eb('o.estado', 'in', ['atribuida', 'em_execucao', 'pausada']),
+              eb('o.data_prevista', '>=', sql<Date>`(${desde}::timestamptz)::date`),
+              eb.exists(
+                eb
+                  .selectFrom('app.os_transicao as t')
+                  .select(sql<number>`1`.as('um'))
+                  .whereRef('t.hotel_id', '=', 'o.hotel_id')
+                  .whereRef('t.os_id', '=', 'o.id')
+                  .where('t.quando', '>=', desde),
+              ),
+            ]),
+          );
+      const [ativos, paradas, preventivas, transicoes] = await Promise.all([
         tx
           .selectFrom('app.ativo')
           .select([
@@ -323,8 +348,23 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
           .where((eb) => eb.or([eb('fim', 'is', null), eb('fim', '>', desde)]))
           .orderBy('inicio')
           .execute(),
+        preventivasDoPeriodo()
+          .select(['o.id', 'o.ativo_id', sql<string>`o.data_prevista::text`.as('data_prevista')])
+          .$narrowType<{ ativo_id: NotNull }>()
+          .orderBy('o.data_prevista')
+          .orderBy('o.id')
+          .execute(),
+        tx
+          .selectFrom('app.os_transicao')
+          .select(['os_id', 'para', 'quando'])
+          .where('os_id', 'in', preventivasDoPeriodo().select('o.id'))
+          .where('quando', '<=', agora)
+          .orderBy('quando')
+          .execute(),
       ]);
       const doAtivo = porChave(paradas, (p) => p.ativo_id);
+      const daOs = porChave(transicoes, (t) => t.os_id);
+      const preventivasDoAtivo = porChave(preventivas, (p) => p.ativo_id);
       return ativos.map((a) => ({
         id: a.id,
         hotelId: a.hotel_id,
@@ -337,6 +377,13 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
         paradas: (doAtivo.get(a.id) ?? []).map((p) => ({
           inicio: data(p.inicio),
           fim: p.fim && data(p.fim),
+        })),
+        preventivas: (preventivasDoAtivo.get(a.id) ?? []).map((p) => ({
+          dataPrevista: p.data_prevista,
+          transicoes: (daOs.get(p.id) ?? []).map((t) => ({
+            para: t.para as EstadoDaOs,
+            quando: data(t.quando),
+          })),
         })),
       }));
     },

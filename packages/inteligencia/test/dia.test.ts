@@ -47,6 +47,39 @@ const problematico = (ativoId: string): Corretiva[] =>
   );
 
 describe('calcularDia: scores e métrica do dia', () => {
+  it('a preventiva atrasada sai das OS preventivas do ativo; sem nenhuma, fica sem dado (versão 5)', () => {
+    // agora é 30/09/2026, 12:00 UTC; os hotéis do teste contam em UTC.
+    const preventiva = (dataPrevista: string, concluidaEm?: Date) => ({
+      dataPrevista,
+      transicoes: concluidaEm ? [{ para: 'concluida' as const, quando: concluidaEm }] : [],
+    });
+    const r = calcularDia({
+      agora,
+      hoteis,
+      ativos: [
+        ativo({ id: 'a1', preventivas: [preventiva('2026-09-29')] }),
+        ativo({
+          id: 'a2',
+          preventivas: [preventiva('2026-09-29', dia(-1)), preventiva('2026-09-30')],
+        }),
+        // A conclusão depois de agora não conta: no dia, ela ainda estava atrasada.
+        ativo({ id: 'a3', preventivas: [preventiva('2026-09-20', dia(2))] }),
+        ativo({ id: 'a4' }),
+        ativo({ id: 'a5', preventivas: [] }),
+      ],
+      corretivas: [],
+      locais: [],
+    });
+    const componente = (id: string) =>
+      r.ativos
+        .find((a) => a.ativoId === id)
+        ?.atencao.componentes.find((c) => c.chave === 'preventiva_atrasada')?.valor;
+    expect(['a1', 'a2', 'a3', 'a4', 'a5'].map(componente)).toEqual([1, 0, 1, null, null]);
+    expect(r.ativos.find((a) => a.ativoId === 'a4')?.atencao.ausentes).toContain(
+      'preventiva_atrasada',
+    );
+  });
+
   it('ativo com histórico pesado passa do limite e gera a detecção de atenção no hotel', () => {
     const r = calcularDia({
       agora,
@@ -76,7 +109,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixaAtencao: a1?.atencao.faixa,
       recalculo: false,
       versaoFormulaReincidencia: 3,
-      versaoFormulaAtencao: 4,
+      versaoFormulaAtencao: 5,
       versaoPolitica: 'padrao',
       detalheReincidencia: a1?.reincidencia,
       detalheAtencao: a1?.atencao,
@@ -91,7 +124,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixa: a1?.atencao.faixa,
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: a1?.atencao.valor,
-      versao: 4,
+      versao: 5,
       escopo: { ativoId: 'a1', hotelId: 'h1' },
     });
     expect(atencao[0]?.corretivaIds).toHaveLength(6);

@@ -2390,3 +2390,41 @@ As duas frases apontam para lados diferentes. O agente não abriu o PR do motor 
 - **Nesta branch:** a versão 4, com o diário de 15/10 à noite e este registro. O PR abre agora.
 - **Esperando o Cesar:** o merge do PR.
 - **Próximo:** o que Cesar e Kaio priorizarem.
+
+## A preventiva atrasada na atenção do ativo (16/10/2026)
+
+**A proposta e as decisões** (nesta sessão, 16/10/2026):
+- O componente "preventiva atrasada" da atenção (peso 10%) esperava a PV3, que está na `main`.
+- "Kaio aqui: o ativo sem preventiva fica 'sem dado' (minha recomendação)."
+- "Cesar aqui: de acordo."
+  - Ok para escrever a regra no `packages/dominio`.
+  - Ok para avisar a 1c de que o Intelligence vai ler a política `preventiva.tolerancia_dias` quando ela existir.
+
+**Aviso de área compartilhada:** este PR mexe no `packages/dominio`. Ele acrescenta a função `preventivaAtrasada` num arquivo novo, `preventiva-atrasada.ts`, sem mudar nada do que existe, e a exporta no `index.ts`. A branch é atualizada a partir da `main` antes do PR.
+
+**Aviso à 1c:** a tolerância da preventiva é a política `preventiva.tolerancia_dias`, com padrão 0 (decisão 11 do plano da 1c, do painel de indicadores). Hoje ela não existe no código. Até existir, o Intelligence usa 0 numa constante (`TOLERANCIA_DA_PREVENTIVA_DIAS`, em `packages/inteligencia`).
+- Quando a 1c criar a política, o Intelligence passa a lê-la, sem mudar a fórmula.
+- A função do domínio já recebe a tolerância como parâmetro. A "preventiva em dia" do painel pode usar a mesma regra, porque é o complemento dela.
+
+**O que o PR traz** (`int:`, fora da zona protegida):
+- **Domínio (`packages/dominio/src/preventiva-atrasada.ts`):** a função `preventivaAtrasada(os, { fuso, agora, toleranciaDias })`.
+  - O estado da OS é o da última transição até `agora`. Aberta é atribuída, em execução ou pausada (`ESTADOS_DA_PREVENTIVA_ABERTA`, da PV3).
+  - Está atrasada quando o dia de `agora`, no fuso do hotel, já passou da data prevista mais a tolerância.
+  - Cinco testes cobrem a virada do dia no fuso, a tolerância, os estados, a conclusão depois do instante e as entradas inválidas.
+- **Motor (`packages/inteligencia`):**
+  - o `AtivoDoDia` troca o campo `preventivaAtrasada` pela lista `preventivas`;
+  - o `calcularDia` usa a regra do domínio, com o fuso do hotel e `TOLERANCIA_DA_PREVENTIVA_DIAS = 0`;
+  - a lista ausente ou vazia fica sem dado;
+  - `VERSAO_ATENCAO` passa a 5;
+  - um teste novo cobre a atrasada, a em dia, a concluída depois do instante e o ativo sem preventiva.
+- **Leitura (`packages/db`, `sessaoDoJobDoIntelligence().ativos`):** traz as OS preventivas de cada ativo criadas até `agora` que entram na conta (as abertas, as previstas desde `desde` e as tocadas desde `desde`), com as transições até `agora`. O teste do banco ganhou o plano e quatro OS preventivas, e só roda na CI.
+
+### Ponto de retomada (16/10/2026, preventiva atrasada)
+
+- **`main`:** em `c1c2418` (#299).
+- **Dev:** sem mudança. A versão 5 da atenção vale a partir do próximo job, depois do merge. O grupo da demonstração não tem preventivas, então a atenção dele não muda.
+- **Nesta branch:** a preventiva atrasada. O PR abre agora.
+- **Esperando:**
+  - **Cesar:** o merge.
+  - **1c:** a política `preventiva.tolerancia_dias`, quando ela criar o painel de indicadores.
+- **Próximo:** quando a política existir, ler a tolerância dela no job, no lugar da constante. Até lá, o que Cesar e Kaio priorizarem.
