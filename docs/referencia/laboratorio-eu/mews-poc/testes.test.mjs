@@ -368,7 +368,8 @@ test('bloqueios do smoke exigem intervalo temporal e permitem uma unica pagina',
   const r = await cliente.lerPrimeiraPaginaDeBloqueios(['empresaA'], janela);
   assert.deepEqual(r.itens, []);
   assert.deepEqual(body.Limitation, { Count: 5 });
-  assert.equal(body.ActivityStates, undefined);
+  // A sincronização precisa conhecer bloqueios ativos e excluídos.
+  assert.deepEqual(body.ActivityStates, ['Active', 'Deleted']);
   assert.deepEqual(body.EnterpriseIds, ['empresaA']);
   assert.deepEqual(body.CollidingUtc, janela);
 });
