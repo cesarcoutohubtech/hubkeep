@@ -2,6 +2,38 @@
 
 Protótipo **isolado**, sem dependências externas e sem imports do monorepo. Preparado para a Hub Tech testar a leitura da Mews Connector API em **demo**. **Não escreve na API, não integra o banco, não recebe webhooks de produção e não cria chamados/OS.**
 
+## Estado das evidências — 16/10/2026
+
+- **Confirmado em Windows no Gross Demo (conjunto público 1):**
+  `configuration/get` HTTP 200 e `resources/getAll` HTTP 200 (5 itens).
+- `enterprises/getAll` respondeu 401 apesar da configuração autorizada.
+  Para integrar **um hotel**, obter `Enterprise.Id` por `configuration/get`.
+- `resourceBlocks/getAll` com filtros opcionais respondeu 400. A resposta
+  **sem filtros opcionais** ainda não foi testada.
+- Outra tentativa com o conjunto 1 respondeu 429 já na primeira chamada.
+  Como os tokens são públicos e compartilhados, o diagnóstico não repete
+  requisições automaticamente nem assume falha de autenticação.
+- **Nova prova mínima:** `diagnostico-bloqueios-windows.ps1`, que usa o
+  segundo par público Gross diretamente da documentação oficial. Faz
+  **primeiro a leitura de bloqueios com `Limitation.Count=5`**. Se houver
+  HTTP 400, 401 ou 403, executa **somente mais uma** chamada de
+  `configuration/get` para separar credenciais de permissão/formato.
+  No máximo **2 POSTs read-only**; 429 encerra imediatamente.
+  Retorna apenas código HTTP, quantidade de itens, presença de cursor,
+  `Request-Id`, `Retry-After` e `Message` sanitizada.
+  Um HTTP 200 com zero itens **comprova o endpoint**, não existência de
+  bloqueios ativos nem mapeamento para chamados/OS.
+
+No Windows, após revisar e baixar o novo script:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\diagnostico-bloqueios-windows.ps1"
+```
+
+O script foi revisado estaticamente, porém **ainda não executado em Windows**;
+o usuário deve retornar o JSON antes de declararmos o endpoint validado.
+Nenhum dado produtivo, token privado, tenant, Supabase ou núcleo é usado.
+
 ## Rodar
 
 Requer Node.js 22+; na pasta deste experimento:
@@ -30,14 +62,14 @@ O script solicita **interativamente** o `ClientToken` e o `AccessToken`
 públicos de demo. Os valores digitados **podem aparecer no terminal**, mas não
 são gravados pelo laboratório em arquivos ou transmitidos ao HubKeep.
 Não utilize tokens de produção neste script. A leitura é limitada a **até três
-POSTs**, uma página de empresas, recursos e bloqueios da demo; mostra somente
+POSTs**, de configuração, recursos e bloqueios da demo; mostra somente
 contagens, sem nomes, hóspedes, payload bruto ou tokens.
 
-**Evidências da rodada anterior** (15/10/2026): 28 testes sintéticos aprovados
-localmente. A URL inicial `api.mews-demo.com` carregou no navegador, mas
-**nenhuma chamada POST real foi concluída**: o navegador automatizado não
-conseguiu executar a requisição, e o contêiner não resolve o DNS externo.
-Não marcar autenticação ou homologação como concluída.
+**Evidências da primeira rodada local** (15/10/2026): 28 testes sintéticos
+aprovados. Naquela rodada, nenhum POST real foi concluído por limitações de
+DNS e navegador. **Depois houve chamadas reais do Windows com HTTP 200**,
+conforme o estado de evidências acima. Não marcar o conector completo como
+homologado sem validar bloqueios, sincronização e isolamento.
 
 
 ### Teste independente no Windows (sem instalar Node.js)
