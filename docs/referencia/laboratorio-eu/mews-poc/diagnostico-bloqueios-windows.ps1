@@ -40,6 +40,15 @@ function Consultar([hashtable]$par, [string]$operacao) {
         Client = 'HubKeep EU Blocks ReadOnly 0.3'
     }
     if ($operacao -eq 'resourceBlocks/getAll') {
+        # A API exige CreatedUtc, UpdatedUtc ou CollidingUtc, mesmo que a
+        # tabela de campos da documentacao os descreva como opcionais.
+        # Janela conservadora de 30 dias UTC, inferior ao maximo de 3 meses.
+        $inicio = [DateTime]::UtcNow.Date
+        $fim = $inicio.AddDays(30)
+        $corpo['CollidingUtc'] = @{
+            StartUtc = $inicio.ToString('yyyy-MM-ddTHH:mm:ssZ')
+            EndUtc = $fim.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        }
         $corpo['Limitation'] = @{ Count = 5 }
     }
     $argumentos = @{
@@ -122,7 +131,7 @@ function Estado([hashtable]$resultado) {
 
 try {
     $par = CredenciaisPublicas
-    # Endpoint alvo PRIMEIRO: apenas 1 POST quando funcionar.
+    # Endpoint alvo PRIMEIRO: uma janela UTC; apenas 1 POST quando funcionar.
     $blocos = Consultar $par 'resourceBlocks/getAll'
     $saida = [ordered]@{
         Ambiente = 'Gross Demo'
