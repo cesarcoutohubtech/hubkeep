@@ -125,3 +125,48 @@ test('um lote divergente com checkpoint já aplicado não é aceito como replay'
     /conflito_checkpoint_cas/,
   );
 });
+
+
+test('marcas incrementais e varredura nao se sobrescrevem', () => {
+  const store = criarRepositorioSimulado();
+  store.aplicar(plano());
+  const sweep = plano({ modo:'reconciliacao', versaoEsperada:1,
+    checkpointEsperado:D1, novoCheckpoint:D2, bloqueios:[] });
+  store.aplicar(sweep);
+  assert.equal(store.consultar(escopo).checkpointUtc,D1);
+  assert.equal(store.consultar(escopo).checkpointVarreduraUtc,D2);
+  store.aplicar(plano({ versaoEsperada:2, checkpointEsperado:D1,
+    novoCheckpoint:'2026-10-16T13:00:00Z', bloqueios:[] }));
+  assert.equal(store.consultar(escopo).checkpointUtc,'2026-10-16T13:00:00Z');
+  assert.equal(store.consultar(escopo).checkpointVarreduraUtc,D2);
+  assert.equal(store.consultar(escopo).versao,3);
+});
+test('revisao CAS compartilhada rejeita lote preparado antes da varredura', () => {
+  const store=criarRepositorioSimulado();
+  store.aplicar(plano());
+  const obsoleto=plano({checkpointEsperado:D1,versaoEsperada:1,novoCheckpoint:D2});
+  store.aplicar(plano({modo:'reconciliacao',checkpointEsperado:D1,
+    novoCheckpoint:D2,versaoEsperada:1,bloqueios:[]}));
+  assert.throws(()=>store.aplicar(obsoleto), /conflito_checkpoint_cas/);
+  assert.equal(store.consultar(escopo).checkpointUtc,D1);
+});
+test('empate temporal entre tombstone e evento ativo conserva tombstone', () => {
+  const store=criarRepositorioSimulado();
+  store.aplicar(plano());
+  store.aplicar(plano({checkpointEsperado:D1,novoCheckpoint:D2,
+    bloqueios:[bloqueio({atualizadoEm:D1,ativoNoPms:false})]}));
+  store.aplicar(plano({checkpointEsperado:D2,novoCheckpoint:'2026-10-16T13:00:00Z',
+    bloqueios:[bloqueio({atualizadoEm:D1,ativoNoPms:true})]}));
+  assert.equal(store.consultar(escopo).bloqueios[0].ativoNoPms,false);
+});
+test('varredura antes do primeiro incremental falha fechada', () => {
+  const store=criarRepositorioSimulado();
+  assert.throws(()=>store.aplicar(plano({modo:'reconciliacao'})),/bootstrap_necessario/);
+  assert.equal(store.consultar(escopo),null);
+});
+test('replay do mesmo lote com revisao antiga e aceito pelo digest', () => {
+  const store=criarRepositorioSimulado();
+  const p=plano({versaoEsperada:0});
+  assert.equal(store.aplicar(p).resultado,'aplicado');
+  assert.equal(store.aplicar(p).resultado,'replay_idempotente');
+});
