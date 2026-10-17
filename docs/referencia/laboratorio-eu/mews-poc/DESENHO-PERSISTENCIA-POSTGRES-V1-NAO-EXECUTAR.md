@@ -48,6 +48,7 @@ create table app.mews_vinculo (
   criado_em timestamptz not null default now(),
   primary key (tenant_id, hotel_id, enterprise_id),
   unique (tenant_id, hotel_id),
+  unique (tenant_id, enterprise_id),
   foreign key (tenant_id, hotel_id) references app.hotel (tenant_id, id),
   foreign key (tenant_id, validado_por) references app.membro (tenant_id, usuario_id)
 );
@@ -72,6 +73,7 @@ create table app.mews_recurso (
   hotel_id uuid not null,
   enterprise_id text not null,
   resource_id text not null check (length(resource_id) between 1 and 200),
+  tipo text not null default 'Space' check (tipo = 'Space'),
   ativo boolean not null,
   updated_utc timestamptz,
   deleted_utc timestamptz,
@@ -105,7 +107,7 @@ create table app.mews_bloqueio (
 
 ## Políticas RLS e autorização a implementar
 
-- `app.mews_vinculo`: `hk_app` faz SELECT/INSERT e UPDATE **apenas `revogado_em`** se `tenant_id = (select authz.tenant_id())` **e** `(select authz.eh_admin_grupo())` e a aplicação confirmar autorização; toda operação via UoW com auditoria/outbox. `hk_worker` faz SELECT apenas no `tenant_id = (select authz.tenant_sistema())`; sem UPDATE do vínculo.
+- `app.mews_vinculo`: `hk_app` recebe **SELECT por coluna apenas** para `tenant_id,hotel_id,enterprise_id,validado_em,revogado_em` (não para `credencial_ref`) e INSERT/UPDATE **somente por colunas expressamente concedidas**, sem escopo mutável; policies com `tenant_id = (select authz.tenant_id())` **e** `(select authz.eh_admin_grupo())`. Autorização de ação e revogação via caso de uso/UoW auditado. `hk_worker` pode SELECT de vínculo no `tenant_id = (select authz.tenant_sistema())`, sem UPDATE/DELETE; o cofre de segredo é separado e controlado no servidor.
 - `app.mews_checkpoint`, `app.mews_recurso`, `app.mews_bloqueio`: somente `hk_worker` com SELECT/INSERT e UPDATE das colunas mutáveis; policies por `authz.tenant_sistema()` **e vínculo vigente** nas operações de escrita. RLS com `FORCE` e FKs compostas. Nenhuma policy `hk_app` de leitura operacional por enquanto.
 - `credencial_ref` é uma referência de segredo de cofre, **não** credencial da Mews. Nunca incluir em listagens, logs ou resposta API. O acesso a segredos requer autorização adicional fora do banco.
 - Validação de vínculo vigente no início **e dentro do commit transacional**, após bloqueio da linha `mews_vinculo`. Somente RLS por tenant não protege contra um worker mapeando hotel errado dentro do mesmo tenant: o backend precisa validar hotel e EnterpriseId.
