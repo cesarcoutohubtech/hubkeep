@@ -200,7 +200,7 @@ describe.skipIf(!temBanco)('persistência transacional Mews V1', { timeout: 70_0
       'select ativo from app.mews_bloqueio where tenant_id = $1 and block_id = $2',
       [T, 'block-1'],
     );
-    expect(bloqueios.rows[0].ativo).toBe(false);
+    expect(bloqueios.rows[0]).toMatchObject({ ativo: false });
     expect((await estado()).ultimo_sweep_utc?.toISOString()).toBe(c2);
     expect((await estado()).versao).toBe('3');
   });
