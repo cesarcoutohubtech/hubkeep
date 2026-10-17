@@ -3,8 +3,15 @@
 // os selos de faixa e de estado, o título e o escopo do insight, as datas e
 // os dois gráficos em SVG (chamados por semana e atenção nos últimos 90
 // dias), sempre com os números também em texto, para o leitor de tela e o
-// celular (decisão 6). As cores seguem o mock oficial.
-import type { InsightApi, NomesDoPainelApi, RespostaDasEfetividades, z } from '@hubkeep/contratos';
+// celular (decisão 6). As cores seguem o mock oficial. A tabela das
+// reclamações de hóspede serve às páginas do insight e do ativo (C2 do ADR-047).
+import type {
+  InsightApi,
+  NomesDoPainelApi,
+  ReclamacoesDoPainelApi,
+  RespostaDasEfetividades,
+  z,
+} from '@hubkeep/contratos';
 import type { Chave } from '@hubkeep/i18n';
 import { MensagemVazia, Selo, Tabela, type TomDeSelo } from '@hubkeep/ui';
 import Link from 'next/link';
@@ -14,6 +21,7 @@ import { useT } from '../../../i18n/cliente';
 export type Insight = z.infer<typeof InsightApi>;
 export type Nomes = z.infer<typeof NomesDoPainelApi>;
 export type Efetividades = z.infer<typeof RespostaDasEfetividades>;
+export type Reclamacoes = z.infer<typeof ReclamacoesDoPainelApi>;
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -421,5 +429,88 @@ export function TabelaDeEfetividade({
       </Tabela>
       <p className="hk-suave">{t('inteligencia.efetividade.ressalva')}</p>
     </>
+  );
+}
+
+/**
+ * As reclamações de hóspede, da mais recente para a mais antiga, com o texto
+ * (como na fila). Na página do ativo, cada uma diz se pesa no score: só a
+ * ligação confirmada pesa (D2 do ADR-047).
+ */
+export function TabelaDeReclamacoes({
+  reclamacoes,
+  legenda,
+  comPeso = false,
+}: {
+  reclamacoes: Reclamacoes;
+  legenda: string;
+  comPeso?: boolean;
+}) {
+  const t = useT();
+  const { data, numero } = useDatas();
+  const { sinais, nomes } = reclamacoes;
+  const semValor = t('inteligencia.sem_valor');
+  return (
+    <Tabela legenda={legenda}>
+      <thead>
+        <tr>
+          <th scope="col">{t('inteligencia.sinais.coluna.data')}</th>
+          <th scope="col">{t('inteligencia.sinais.coluna.fonte')}</th>
+          <th scope="col" className="hk-num">
+            {t('inteligencia.sinais.coluna.nota')}
+          </th>
+          <th scope="col">{t('inteligencia.reclamacoes.coluna.uh')}</th>
+          <th scope="col">{t('inteligencia.reclamacoes.coluna.ligacao')}</th>
+          <th scope="col">{t('inteligencia.sinais.coluna.texto')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sinais.map((s) => (
+          <tr key={s.id}>
+            <td>{data(s.ocorridoEm)}</td>
+            <td>{s.fonte}</td>
+            <td className="hk-num">
+              {s.nota !== null && s.escala !== null
+                ? t('inteligencia.sinais.nota', {
+                    nota: numero(s.nota, 2),
+                    escala: numero(s.escala, 0),
+                  })
+                : semValor}
+            </td>
+            <td>{(s.uhId && nomes.uhs[s.uhId]) || s.uhCitada || semValor}</td>
+            <td>
+              {t('inteligencia.sinais.ligacao', { ligacao: s.ligacao })}
+              {s.ativoId && (
+                <>
+                  <br />
+                  <Link href={`/inteligencia/ativos/${s.ativoId}`}>
+                    {nomes.ativos[s.ativoId] ?? semValor}
+                  </Link>
+                </>
+              )}
+              {comPeso && (
+                <>
+                  <br />
+                  <Selo tom={s.ligacao === 'confirmada' ? 'ambar' : 'cinza'}>
+                    {t('inteligencia.reclamacoes.pesa', {
+                      pesa: s.ligacao === 'confirmada' ? 'sim' : 'nao',
+                    })}
+                  </Selo>
+                </>
+              )}
+            </td>
+            <td>
+              {s.texto ?? (
+                <span className="hk-suave">
+                  {s.textoApagadoEm
+                    ? t('inteligencia.sinais.texto_apagado', { data: data(s.textoApagadoEm) })
+                    : t('inteligencia.sinais.sem_texto')}
+                </span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </Tabela>
   );
 }

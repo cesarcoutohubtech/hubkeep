@@ -25,6 +25,10 @@ import {
   type LigacaoDoSinal,
   type LinhaDoCsv,
   type PortasDaFilaDoSinal,
+  type PortasDasReclamacoes,
+  type ReclamacoesDoPainel,
+  reclamacoesDoAtivo,
+  reclamacoesDoInsight,
   type ResultadoDaImportacao,
   type SinalDaFila,
   type SituacaoDaFila,
@@ -35,7 +39,6 @@ import {
   type PortasDaBuscaDeAtivos,
   procurarAtivos,
   type EfetividadesDoPainel,
-  type PortasDaSubstituicao,
   type SubstituicaoDoAtivo,
   efetividadeDoAtivo,
   substituicaoDoAtivo,
@@ -108,6 +111,10 @@ export interface CasosDeUsoDoPainel {
   efetividadeDoAtivo(ctx: Contexto, ativoId: string): Promise<EfetividadesDoPainel>;
   /** O sinal de substituição do ativo, calculado agora (proposta de 16/10/2026); null no ativo baixado. */
   substituicaoDoAtivo(ctx: Contexto, ativoId: string): Promise<SubstituicaoDoAtivo | null>;
+  /** As reclamações ligadas ao ativo na janela do score (C2 do ADR-047). */
+  reclamacoesDoAtivo(ctx: Contexto, ativoId: string): Promise<ReclamacoesDoPainel>;
+  /** As reclamações da evidência do insight sistêmico; null nos outros insights. */
+  reclamacoesDoInsight(ctx: Contexto, insightId: string): Promise<ReclamacoesDoPainel | null>;
   /** A seção abaixo da lista de insights: as intervenções dos hotéis em que a pessoa decide. */
   efetividades(ctx: Contexto): Promise<EfetividadesDoPainel>;
   /** Na página do insight: as intervenções nos ativos dele, depois da primeira detecção. */
@@ -158,7 +165,7 @@ function sinalNoMotor(s: SinalDaFilaNoBanco): SinalDaFila {
 export function portasDoPainel(
   deps: DepsDoPainel,
   ctx: Contexto,
-): PortasDaSubstituicao & PortasDaBuscaDeAtivos & PortasDaFilaDoSinal {
+): PortasDasReclamacoes & PortasDaBuscaDeAtivos & PortasDaFilaDoSinal {
   const { porta } = deps;
   return {
     modulos: () => deps.modulos.contratados(ctx),
@@ -202,6 +209,11 @@ export function portasDoPainel(
     sinaisDoHotel: async (hotelId, situacao, limite) =>
       (await porta.sinaisDoHotel(ctx, hotelId, situacao, limite)).map(sinalNoMotor),
     sinalParaClassificar: (id) => porta.sinalParaClassificar(ctx, id),
+    sinaisPorIds: async (ids, limite) =>
+      (await porta.sinaisPorIds(ctx, ids, limite)).map(sinalNoMotor),
+    sinaisDoAtivo: async (ativoId, desde, ate, limite) =>
+      (await porta.sinaisDoAtivo(ctx, ativoId, desde, ate, limite)).map(sinalNoMotor),
+    nomesDasUhs: (ids) => porta.nomesDasUhs(ctx, ids),
     referenciasDaClassificacao: (r) => porta.referenciasDaClassificacao(ctx, r),
     classificar: (c) => porta.classificar(ctx, c),
   };
@@ -221,6 +233,10 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
       efetividadeDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
     substituicaoDoAtivo: (ctx, ativoId) =>
       substituicaoDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    reclamacoesDoAtivo: (ctx, ativoId) =>
+      reclamacoesDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    reclamacoesDoInsight: (ctx, insightId) =>
+      reclamacoesDoInsight(portasDoPainel(deps, ctx), insightId, agora()),
     efetividades: (ctx) => listarEfetividades(portasDoPainel(deps, ctx), agora()),
     efetividadeDoInsight: (ctx, insightId) =>
       efetividadeDoInsight(portasDoPainel(deps, ctx), insightId, agora()),

@@ -337,4 +337,30 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
     expect(await porta.sinaisDoHotelNaJanela(ctx(U.tecnico), H1, new Date(0), agora)).toEqual([]);
     expect(await porta.politicasDoImpacto(ctx(U.gerente))).toEqual([]);
   });
+
+  it('as reclamações da evidência e as do ativo, com o texto, só para quem as lê (C2)', async () => {
+    const todas = await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50);
+    const r1 = todas.find((s) => s.idExterno === 'r-1');
+    if (!r1) throw new Error('sem a r-1');
+    const outra = randomUUID();
+    const porIds = await porta.sinaisPorIds(ctx(U.gerente), [r1.id, outra], 50);
+    expect(porIds.map((s) => s.id)).toEqual([r1.id]);
+    expect(porIds[0]).toMatchObject({ texto: r1.texto, ligacao: 'confirmada', ativoId: A1 });
+    expect(await porta.sinaisPorIds(ctx(U.tecnico), [r1.id], 50)).toEqual([]);
+    expect(await porta.sinaisPorIds(ctx(U.gerente), [], 50)).toEqual([]);
+    const doAtivo = await porta.sinaisDoAtivo(
+      ctx(U.gerente),
+      A1,
+      new Date(agora.getTime() - 30 * 86_400_000),
+      agora,
+      50,
+    );
+    expect(doAtivo.map((s) => s.id)).toEqual([r1.id]);
+    expect(
+      await porta.sinaisDoAtivo(ctx(U.gerente), A1, agora, new Date(agora.getTime() + 1), 50),
+    ).toEqual([]);
+    expect(await porta.sinaisDoAtivo(ctx(U.tecnico), A1, new Date(0), agora, 50)).toEqual([]);
+    expect(await porta.nomesDasUhs(ctx(U.gerente), [UH1])).toEqual({ [UH1]: 'UH 101' });
+    expect(await porta.nomesDasUhs(ctx(U.gerente), [])).toEqual({});
+  });
 });

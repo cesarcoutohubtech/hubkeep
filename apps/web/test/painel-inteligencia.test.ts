@@ -1,7 +1,8 @@
 // A ligação do painel do Intelligence (as telas do 1.0), sem banco: as portas
 // do motor sobre uma porta do packages/db em memória, com a forma das linhas
 // do banco; e as listas da API iguais às do motor. Também o sinal do hóspede
-// (ADR-047): a importação, a fila e a classificação pelo contrato da API.
+// (ADR-047): a importação, a fila e a classificação pelo contrato da API, e
+// as reclamações das páginas do insight e do ativo (C2).
 import {
   ACOES_DO_INSIGHT_API,
   COLUNAS_DO_CSV_API,
@@ -54,6 +55,7 @@ import {
   efetividadesNaApi,
   filaDeSinaisNaApi,
   insightNaApi,
+  reclamacoesNaApi,
   substituicaoNaApi,
 } from '../src/app/api/v1/inteligencia/serializar';
 import { criarPainel } from '../src/servidor/modulos/inteligencia/painel';
@@ -159,6 +161,7 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]
   const importacoes: ImportacaoNoBanco[] = [];
   const classificacoes: ClassificacaoNoBanco[] = [];
   const filas: { hotelId: string; situacao: string; limite: number }[] = [];
+  const doAtivo: { ativoId: string; desde: Date; ate: Date; limite: number }[] = [];
   const porta: PortaDoPainelDoIntelligence = {
     ativosPorBusca: async (_ctx, termo, limite) => {
       buscas.push({ termo, limite });
@@ -227,13 +230,20 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]
     },
     sinalParaClassificar: async (_ctx, id) =>
       id === S1 ? { id: S1, hotelId: H1, bandeiraId: null, versao: 1 } : null,
+    sinaisPorIds: async (_ctx, ids, limite) =>
+      sinais.filter((x) => ids.includes(x.id)).slice(0, limite),
+    sinaisDoAtivo: async (_ctx, ativoId, desde, ate, limite) => {
+      doAtivo.push({ ativoId, desde, ate, limite });
+      return sinais.filter((x) => x.ativoId === ativoId).slice(0, limite);
+    },
+    nomesDasUhs: async (_ctx, ids) => Object.fromEntries(ids.map((id) => [id, 'UH 101'])),
     referenciasDaClassificacao: async () => ({ ativo: null, uh: null, categoria: null }),
     classificar: async (_ctx, c) => {
       classificacoes.push(c);
       return { versao: c.versaoEsperada + 1 };
     },
   };
-  return { porta, decisoes, buscas, importacoes, classificacoes, filas };
+  return { porta, decisoes, buscas, importacoes, classificacoes, filas, doAtivo };
 }
 
 /** As políticas gravadas no grupo: por padrão, a visibilidade com o Gerente, já aberta. */
@@ -256,11 +266,12 @@ const painel = (
   atribuicoes: Atribuicao[] = [gerente],
   sinais: SinalDaFilaNoBanco[] = [SINAL],
 ) => {
-  const { porta, decisoes, buscas, importacoes, classificacoes, filas } = portaEmMemoria(
+  const { porta, decisoes, buscas, importacoes, classificacoes, filas, doAtivo } = portaEmMemoria(
     insights,
     sinais,
   );
   return {
+    doAtivo,
     decisoes,
     buscas,
     importacoes,
@@ -378,6 +389,8 @@ describe('o painel sobre a porta do banco', () => {
     const resposta = {
       insight: insightNaApi(p.insight),
       chamados: [],
+      // O insight de atenção não traz reclamações na evidência.
+      reclamacoes: await casos.reclamacoesDoInsight(ctx, I1),
       serie: p.serie.map((s) => ({ inicio: dataNaApi(s.inicio), quantidade: s.quantidade })),
       nomes: p.nomes,
       efetividade: efetividadesNaApi(efetividade),
@@ -422,7 +435,9 @@ describe('o painel sobre a porta do banco', () => {
           Awaited<ReturnType<typeof casos.substituicaoDoAtivo>>
         >,
       ),
+      reclamacoes: reclamacoesNaApi(await casos.reclamacoesDoAtivo(ctx, A1)),
     });
+    expect(resposta.reclamacoes).toMatchObject({ sinais: [], total: null, janelaDias: 90 });
     // O sinal de substituição, calculado agora: a idade pela data de compra (2014),
     // a reincidência do último dia gravado e o custo sobre a reposição sem dado.
     expect(resposta.substituicao).toMatchObject({ versao: 2, avaliados: 6 });
@@ -444,6 +459,48 @@ describe('o painel sobre a porta do banco', () => {
     expect(resposta.serie).toEqual([{ dia: '2026-10-10', atencao: 75, faixa: 'alta_atencao' }]);
     expect(resposta.atual).toMatchObject({ calculadoEm: '2026-10-10T03:00:00.000Z', calculo: 1 });
     expect(resposta.insights.map((i) => i.id)).toEqual([I1]);
+  });
+
+  it('as reclamações da evidência do insight sistêmico, pelo contrato da API', async () => {
+    const UH = '99900000-0000-0000-0000-000000000001';
+    const ligada = {
+      ...SINAL,
+      manutencao: true,
+      uhId: UH,
+      ativoId: A1,
+      ligacao: 'confirmada',
+      classificadoEm: new Date('2026-10-09T10:00:00Z'),
+      classificadoPor: U1,
+    };
+    const sistemico = linha({
+      tipo: 'sistemico',
+      escopo: { regra: 'reclamacoes_categoria' },
+      evidencia: { corretivaIds: [], sinalIds: [S1, '66600000-0000-0000-0000-000000000009'] },
+    });
+    const { casos } = painel([sistemico], true, COM_O_GERENTE, [gerente], [ligada]);
+    const r = await casos.reclamacoesDoInsight(ctx, I1);
+    const api = RespostaDoInsight.shape.reclamacoes.parse(r && reclamacoesNaApi(r));
+    // A evidência tem duas; quem pede lê uma (a outra a RLS deixaria de fora).
+    expect(api).toMatchObject({ total: 2, limitada: false, janelaDias: null });
+    expect(api?.sinais.map((x) => [x.id, x.texto, x.ocorridoEm])).toEqual([
+      [S1, 'Elevador parado de novo', '2026-10-08T12:00:00.000Z'],
+    ]);
+    expect(api?.nomes.uhs).toEqual({ [UH]: 'UH 101' });
+  });
+
+  it('as reclamações do ativo: a janela da política do score, e só para quem decide', async () => {
+    const ligada = { ...SINAL, manutencao: true, ativoId: A1, ligacao: 'possivel' };
+    const { casos, doAtivo } = painel([], true, COM_O_GERENTE, [gerente], [ligada]);
+    const r = await casos.reclamacoesDoAtivo(ctx, A1);
+    expect(r).toMatchObject({ total: null, limitada: false, janelaDias: 90 });
+    expect(r.sinais.map((x) => x.ligacao)).toEqual(['possivel']);
+    expect(doAtivo).toEqual([
+      { ativoId: A1, desde: new Date('2026-07-12T12:00:00Z'), ate: agora, limite: 51 },
+    ]);
+    const outro = { ...gerente, escopo: { tipo: 'hotel' as const, hotelId: S1 } };
+    await expect(
+      painel([], true, COM_O_GERENTE, [outro], [ligada]).casos.reclamacoesDoAtivo(ctx, A1),
+    ).rejects.toMatchObject({ codigo: 'ativo_nao_encontrado' });
   });
 
   it('a efetividade do ativo e a da seção da lista, pelas linhas do banco', async () => {
