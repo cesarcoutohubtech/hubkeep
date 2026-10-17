@@ -189,10 +189,18 @@ describe.skipIf(!temBanco)('persistência transacional Mews V1', { timeout: 70_0
     const p = plano(4, c4, c5, [espaco('space-1')]);
     await expect(repo.aplicar({ ...p, digest: 'a'.repeat(64) }))
       .rejects.toThrow('mews_digest_invalido');
-    const outro = { ...p, tenantId: TB, hotelId: HB, enterpriseId: EB };
-    await expect(repo.aplicar(outro)).rejects.toThrow();
-    const outroComDigest: LoteMews = { ...p, tenantId: TB, hotelId: HB };
-    await expect(repo.aplicar(outroComDigest)).rejects.toThrow();
+    // Lote válido do tenant B, porém sem vínculo: RLS + bloqueio do vínculo
+    // impedem importar dados de outra propriedade, mesmo com digest íntegro.
+    const chaveB = JSON.stringify([TB, HB, EB]);
+    const semVinculo: LoteMews = {
+      tenantId: TB, hotelId: HB, enterpriseId: EB, key: chaveB,
+      modo: 'incremental', versaoEsperada: 0, checkpointEsperado: null,
+      novoCheckpoint: c1, espacos: [], bloqueios: [],
+      digest: createHash('sha256').update(JSON.stringify([
+        chaveB, 'incremental', null, c1, [], [],
+      ])).digest('hex'),
+    };
+    await expect(repo.aplicar(semVinculo)).rejects.toThrow('mews_vinculo_invalido');
     await dono.query('update app.mews_vinculo set revogado_em = $2 where id = $1',
       [V, c5]);
     await expect(repo.aplicar(p)).rejects.toThrow('mews_vinculo_invalido');
