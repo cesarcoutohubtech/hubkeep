@@ -2,7 +2,8 @@
 // real, com o hk_app e o contexto de quem pede (na CI, o Supabase do runner):
 //   - a importação grava o lote, conta a repetida (on conflict do nothing) e
 //     não muda a linha que existe; auditoria por lote, sem hotel_id e sem o
-//     texto, e o evento;
+//     texto (o caso nomeado da policy da auditoria, migração 0053), e o
+//     evento; a importação em que nada entrou não grava nenhum dos dois;
 //   - fora do escopo (o Gerente em outro hotel; o Técnico), a RLS recusa;
 //   - a classificação com a trava de versão, a auditoria e o evento; fora do
 //     escopo, a linha não aparece;
@@ -168,6 +169,22 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
       [TENANT, segunda.loteId],
     );
     expect(eventos.rows).toEqual([{ tipo: 'sinal_hospede.importado' }]);
+  });
+
+  it('a importação em que nada entrou não grava auditoria nem evento', async () => {
+    const r = await porta.gravarSinais(ctx(U.gerente), {
+      hotelId: H1,
+      importadoPor: U.gerente,
+      em: agora,
+      sinais: [sinal('r-1', 'De novo')],
+    });
+    expect(r.inseridos).toEqual([]);
+    const gravados = await q(
+      `select (select count(*)::int from app.auditoria where tenant_id = $1 and registro_id = $2) as auditorias,
+              (select count(*)::int from app.evento_dominio where tenant_id = $1 and registro_id = $2) as eventos`,
+      [TENANT, r.loteId],
+    );
+    expect(gravados.rows[0]).toEqual({ auditorias: 0, eventos: 0 });
   });
 
   it('fora do escopo, a RLS recusa a importação', async () => {

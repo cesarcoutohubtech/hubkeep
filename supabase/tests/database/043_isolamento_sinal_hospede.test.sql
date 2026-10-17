@@ -18,12 +18,14 @@
 -- classificar só em nome próprio; a origem não muda depois de importada;
 -- nenhum UPDATE em campo de escopo; sem DELETE; o worker vê só o tenant do
 -- job e só apaga o texto.
+-- Auditoria sem hotel (0053, Cesar em 17/10/2026): o Gerente grava a da
+-- reclamação e a do lote que vê, e só delas; o técnico não grava nem lê.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(54);
+select plan(59);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -242,6 +244,22 @@ select throws_ok(
      (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000002',
       gen_random_uuid(), 'booking', 'b-2', now(), 'aaaaaaaa-0000-0000-0000-000000000002') $$,
   '42501', null, 'gerente não importa em outro hotel');
+-- Auditoria sem hotel (0053): o Gerente grava a da reclamação e a do lote que vê, e só delas
+select lives_ok(
+  $$ insert into app.auditoria (id, tenant_id, usuario_id, entidade, registro_id, acao, hotel_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000002',
+      'sinal_hospede', '5a100000-0000-0000-0000-000000000001', 'classificar', null) $$,
+  'gerente grava a auditoria sem hotel da reclamação que vê');
+select lives_ok(
+  $$ insert into app.auditoria (id, tenant_id, usuario_id, entidade, registro_id, acao, hotel_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000002',
+      'sinal_hospede', '1a000000-0000-0000-0000-000000000001', 'importar', null) $$,
+  'gerente grava a auditoria sem hotel do lote que vê');
+select throws_ok(
+  $$ insert into app.auditoria (id, tenant_id, usuario_id, entidade, registro_id, acao, hotel_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000002',
+      'sinal_hospede', '5a200000-0000-0000-0000-000000000001', 'classificar', null) $$,
+  '42501', null, 'gerente não grava a auditoria da reclamação de outro hotel');
 
 -- Gestor CSC da Bandeira 1: vê os hotéis da bandeira
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000003', true)) ctx;
@@ -260,6 +278,13 @@ select is_empty($$ update app.sinal_hospede set manutencao = false, classificado
                                                classificado_por = 'aaaaaaaa-0000-0000-0000-000000000004'
                    returning 1 $$,
   'técnico não classifica');
+select throws_ok(
+  $$ insert into app.auditoria (id, tenant_id, usuario_id, entidade, registro_id, acao, hotel_id) values
+     (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-0000-0000-000000000004',
+      'sinal_hospede', '5a100000-0000-0000-0000-000000000001', 'classificar', null) $$,
+  '42501', null, 'técnico não grava a auditoria sem hotel do sinal');
+select is_empty($$ select 1 from app.auditoria where entidade = 'sinal_hospede' $$,
+  'técnico não lê a auditoria do sinal');
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000009', true)) ctx;
 select is_empty('select 1 from app.sinal_hospede', 'solicitante não vê o sinal do hóspede');
 
