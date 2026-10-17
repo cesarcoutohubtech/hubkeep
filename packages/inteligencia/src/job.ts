@@ -26,11 +26,12 @@
 // - A leitura dos ativos e dos chamados começa em `inicioDaLeitura`, calculado
 //   com as políticas já resolvidas; o chamado vira corretiva por
 //   `corretivasDosChamados` (fonte.ts).
-// - O sinal do hóspede (ADR-047): as reclamações de manutenção com categoria
-//   entram na regra sistêmica das reclamações (sistêmico v5), lidas só na
-//   janela dela; e o texto das avaliações que passaram da retenção da política
-//   `inteligencia.sinal_hospede` (a do grupo) é apagado, com a quantidade no
-//   registro da execução. O recálculo não lê reclamações nem apaga texto.
+// - O sinal do hóspede (ADR-047): as reclamações, sem o texto, são lidas na
+//   maior janela entre a da regra sistêmica das reclamações (sistêmico v5) e
+//   a do Guest Impact Score de cada hotel (atenção v7); e o texto das
+//   avaliações que passaram da retenção da política `inteligencia.sinal_hospede`
+//   (a do grupo) é apagado, com a quantidade no registro da execução. O
+//   recálculo lê as reclamações, para a atenção, mas não apaga texto.
 import { type ModuloContratado, modulosVigentes } from '@hubkeep/dominio';
 import type { LinhaDaMetricaDiaria } from './agregacao';
 import {
@@ -57,10 +58,10 @@ import { VERSAO_ATENCAO } from './atencao';
 import { VERSAO_REINCIDENCIA } from './reincidencia';
 import { type ConfigSinalHospede, PADRAO_SINAL_HOSPEDE, limiteDaRetencao } from './sinal-retencao';
 import { DIA_MS } from './score';
+import { PADRAO_IMPACTO_HOSPEDE, type SinalDaFonte } from './impacto-hospede';
 import {
   type ConfigSistemico,
   PADRAO_SISTEMICO,
-  type ReclamacaoAnalisada,
   VERSAO_SISTEMICO,
   regraDasReclamacoes,
 } from './sistemico';
@@ -93,11 +94,8 @@ export interface FonteDoJob {
   insights(): Promise<readonly InsightExistente[]>;
   /** O maior número de cálculo já gravado de cada ativo no dia (`AAAA-MM-DD`). */
   calculosDoDia(dia: string): Promise<ReadonlyMap<string, number>>;
-  /**
-   * As reclamações de hóspede classificadas como de manutenção, com categoria,
-   * avaliadas depois de `desde` e até `agora` (ADR-047).
-   */
-  reclamacoes(agora: Date, desde: Date): Promise<readonly ReclamacaoAnalisada[]>;
+  /** As reclamações de hóspede avaliadas depois de `desde` e até `agora`, sem o texto (ADR-047). */
+  sinais(agora: Date, desde: Date): Promise<readonly SinalDaFonte[]>;
   /** A política `inteligencia.sinal_hospede` do grupo, ou undefined para o padrão. */
   politicaDoSinal(): Promise<ConfigSinalHospede | undefined>;
 }
@@ -204,12 +202,16 @@ export async function executarDiaDoTenant(
   ]);
   const desde = inicioDaLeitura(hoteis, sistemico ?? PADRAO_SISTEMICO, p.agora);
   const rc = regraDasReclamacoes(sistemico ?? PADRAO_SISTEMICO);
-  const [ativos, chamados, reclamacoes] = await Promise.all([
+  const diasDosSinais = Math.max(
+    rc.ativa ? rc.janelaDias : 0,
+    ...hoteis.map((h) => (h.impactoHospede ?? PADRAO_IMPACTO_HOSPEDE).janelaDias),
+  );
+  const [ativos, chamados, sinais] = await Promise.all([
     fonte.ativos(p.agora, desde),
     fonte.corretivas(p.agora, desde),
-    recalculo || !rc.ativa
-      ? []
-      : fonte.reclamacoes(p.agora, new Date(p.agora.getTime() - rc.janelaDias * DIA_MS)),
+    diasDosSinais > 0
+      ? fonte.sinais(p.agora, new Date(p.agora.getTime() - diasDosSinais * DIA_MS))
+      : [],
   ]);
 
   const corretivas: Corretiva[] = corretivasDosChamados(chamados).map(({ transicoes, ...c }) => ({
@@ -225,7 +227,7 @@ export async function executarDiaDoTenant(
     corretivas,
     locais,
     primeiroChamadoPorHotel: primeiroChamadoPorHotel(chamados),
-    reclamacoes,
+    sinais,
     ...(sistemico ? { sistemico } : {}),
   });
 

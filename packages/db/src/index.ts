@@ -88,7 +88,6 @@ export type {
   ChamadoDoJob,
   DeteccaoNoInsightDoJob,
   ExecucaoNoBancoDoJob,
-  ReclamacaoDoJob,
   HotelDoJob,
   InsightDoJob,
   LocalDoJob,
@@ -97,6 +96,7 @@ export type {
   OsDoJob,
   PoliticaDoJob,
   SessaoDoJobDoIntelligence,
+  SinalDoJob,
   TransicaoDoJob,
 } from './repositorios/inteligencia';
 export { novoId } from './ids';

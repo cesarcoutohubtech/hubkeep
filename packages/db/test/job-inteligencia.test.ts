@@ -7,8 +7,8 @@
 //   - os insights abertos e o último encerrado de cada família;
 //   - grava métrica, abre e atualiza insight com auditoria e evento, numa
 //     transação: se algo falha, nada fica;
-//   - o sinal do hóspede (ADR-047): as reclamações de manutenção com
-//     categoria, sem o texto, e o apagamento do texto vencido, só no tenant.
+//   - o sinal do hóspede (ADR-047): as reclamações da janela, sem o texto, e
+//     o apagamento do texto vencido, só no tenant.
 //
 //   HK_TESTE_URL_WORKER, HK_TESTE_URL_DONO
 import { createHash, randomUUID } from 'node:crypto';
@@ -475,7 +475,7 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
     ]);
   });
 
-  it('sinal do hóspede: as reclamações de manutenção com categoria e a retenção do texto, só no tenant', async () => {
+  it('sinal do hóspede: as reclamações da janela, sem o texto, e a retenção do texto, só no tenant', async () => {
     await q(
       `insert into app.categoria_ativo (id, tenant_id, chave_padrao) values ($1, $2, 'hidraulica')`,
       [CAT, T],
@@ -531,12 +531,26 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
     await sinal(S.outroTenant, T2, HB, UB, antes(400), nada, 'Do outro tenant');
 
     const apagados = await porta.noTenant(T, async (s) => {
-      expect(await s.reclamacoes(agora, antes(14))).toEqual([
-        { id: S.recente, hotelId: H1, categoriaId: CAT, uhId: L1, ocorridoEm: antes(5) },
+      const recentes = await s.sinais(agora, antes(14));
+      expect(recentes.map((r) => r.id)).toEqual([S.recente, S.semCategoria, S.fora]);
+      expect(recentes[0]).toEqual({
+        id: S.recente,
+        hotelId: H1,
+        ocorridoEm: antes(5),
+        nota: null,
+        escala: null,
+        manutencao: true,
+        categoriaId: CAT,
+        uhId: L1,
+        ativoId: null,
+        ligacao: 'sem_ligacao',
+      });
+      expect((await s.sinais(agora, antes(450))).map((r) => r.id)).toEqual([
+        S.velho,
+        S.recente,
+        S.semCategoria,
+        S.fora,
       ]);
-      expect((await s.reclamacoes(agora, antes(450))).map((r) => r.id).sort()).toEqual(
-        [S.recente, S.velho].sort(),
-      );
       return s.apagarTextos(antes(365), agora);
     });
     expect(apagados).toBe(1);

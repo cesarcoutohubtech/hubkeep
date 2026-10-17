@@ -42,17 +42,22 @@
 // 16/10/2026) tira a preventiva atrasada do "sem dado" para o ativo com OS
 // preventiva. A versão 6 (Kaio e Cesar, 16/10/2026) não muda a fórmula da
 // atenção: acompanha a reincidência versão 4, que passa a ler a falha depois
-// de preventiva, e muda o número da atenção pelo componente da reincidência. O
-// que já foi gravado com as versões anteriores não é recalculado (ADR-036).
+// de preventiva, e muda o número da atenção pelo componente da reincidência. A
+// versão 7 (ADR-047; Cesar e Kaio, 17/10/2026) troca o impacto no hóspede pelo
+// Guest Impact Score no hotel com reclamação importada na janela; no hotel sem
+// nenhuma, continua a porcentagem dos chamados (`impactoNoHospede`). A
+// evidência diz a fonte. O que já foi gravado com as versões anteriores não é
+// recalculado (ADR-036).
 import {
   CRITICIDADE_MAXIMA,
   type Criticidade,
   type CustoNaJanela,
   type SituacaoDaGarantia,
 } from './historico';
+import type { ImpactoNoHospede } from './impacto-hospede';
 import { FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
-export const VERSAO_ATENCAO = 6;
+export const VERSAO_ATENCAO = 7;
 
 /**
  * A tolerância da preventiva atrasada, em dias. É a política
@@ -112,11 +117,13 @@ export interface EntradaAtencao {
    */
   custo?: CustoDaAtencao | null;
   /**
-   * Impacto no hóspede, de 0 a 100. No 1.0, a porcentagem dos chamados que
-   * afetaram hóspede (`impactoHospedeDosChamados`); na 1.5, o Guest Impact
-   * Score, com versão nova do score. Sempre disponível: ausente conta 0.
+   * Impacto no hóspede, de 0 a 100. Na versão 7, o `impactoNoHospede`: o
+   * Guest Impact Score no hotel com reclamação na janela, ou a porcentagem
+   * dos chamados que afetaram hóspede. Também aceita só o número (a
+   * porcentagem dos chamados), como até a versão 6. Sempre disponível:
+   * ausente conta 0.
    */
-  impactoHospede?: number | null;
+  impactoHospede?: number | ImpactoNoHospede | null;
   /** Preventiva vencida do ativo (etapa PV); null sem dado. */
   preventivaAtrasada?: boolean | null;
   /**
@@ -188,7 +195,8 @@ export function atencaoDoAtivo(
   config: ConfigAtencao = PADRAO_ATENCAO,
 ): Score<ConfigAtencao> {
   const horas = e.horasParadas ?? 0;
-  const impacto = e.impactoHospede ?? 0;
+  const ih = e.impactoHospede ?? null;
+  const impacto = typeof ih === 'number' ? ih : (ih?.valor ?? 0);
   const custo = e.custo ?? null;
   const comCusto = custo !== null && custoDisponivelNoTenant(custo.tenant);
   const preventiva = e.preventivaAtrasada ?? null;
@@ -219,7 +227,7 @@ export function atencaoDoAtivo(
         chave: 'impacto_hospede',
         peso: config.pesos.impactoHospede,
         valor: razao(impacto, 100),
-        evidencia: { score: impacto },
+        evidencia: evidenciaDoImpacto(impacto, typeof ih === 'number' ? null : ih),
       },
       {
         chave: 'criticidade',
@@ -286,4 +294,29 @@ export function atencaoDoAtivo(
     config.faixas,
     config,
   );
+}
+
+/** A evidência do impacto no hóspede: o valor, a fonte e, pelas reclamações, o porquê. */
+function evidenciaDoImpacto(
+  valor: number,
+  ih: ImpactoNoHospede | null,
+): Readonly<Record<string, number | string | null>> {
+  if (!ih) return { score: valor };
+  if (!ih.score) return { score: valor, fonte: ih.fonte };
+  const ev = (componente: string, campo: string) => {
+    const v = ih.score?.componentes.find((c) => c.chave === componente)?.evidencia[campo];
+    return typeof v === 'number' ? v : null;
+  };
+  return {
+    score: valor,
+    fonte: ih.fonte,
+    versaoImpacto: ih.score.versao,
+    confirmadas: ev('volume', 'confirmadas') ?? 0,
+    possiveis: ev('volume', 'possiveis') ?? 0,
+    janelaDias: ev('volume', 'janelaDias') ?? 0,
+    uhs: ev('amplitude', 'uhs') ?? 0,
+    depoisDoReparo: ev('recorrencia', 'depoisDoReparo'),
+    notaMediaEm5: ev('severidade', 'notaMediaEm5'),
+    percentualDosChamados: ev('operacional', 'percentual') ?? 0,
+  };
 }

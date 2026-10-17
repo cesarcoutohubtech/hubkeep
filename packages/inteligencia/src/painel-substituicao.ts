@@ -12,12 +12,21 @@
 //
 // As fontes de cada critério, em 12 meses até `agora`: as corretivas do ativo
 // (sem o chamado cancelado), o tempo parado, a idade pela data de compra, o
-// impacto no hóspede como na atenção (a porcentagem dos chamados que afetaram
-// hóspede; o Guest Impact Score é da 1.5), a criticidade do cadastro, a
-// reincidência do último dia gravado e a garantia no dia do fuso do hotel.
+// impacto no hóspede como na atenção versão 7 (o Guest Impact Score na janela
+// da política do hotel, se o hotel tem reclamação importada nela; senão, a
+// porcentagem dos chamados de 12 meses que afetaram hóspede; versão 2,
+// ADR-047), a criticidade do cadastro, a reincidência do último dia gravado e
+// a garantia no dia do fuso do hotel.
 import { diaNoFuso } from '@hubkeep/dominio';
 import { type LinhaDePolitica, niveisDoHotel } from './fonte';
 import { ehCriticidade, horasParadasNoTrecho, impactoHospedeDosChamados } from './historico';
+import {
+  type ConfigImpactoHospede,
+  PADRAO_IMPACTO_HOSPEDE,
+  type SinalDaFonte,
+  impactoNoHospede,
+  ultimoReparo,
+} from './impacto-hospede';
 import { podeDecidirInsight } from './insight';
 import { corretivasDoAtivo } from './intervencao';
 import {
@@ -40,11 +49,16 @@ import {
 export const DIAS_DA_SUBSTITUICAO = 365;
 
 const CHAVE_DA_SUBSTITUICAO = 'inteligencia.substituicao';
+const CHAVE_DO_IMPACTO = 'inteligencia.impacto_hospede';
 
 /** O que a substituição lê, além das portas da efetividade, no contexto de quem pede. */
 export interface PortasDaSubstituicao extends PortasDaEfetividade {
   /** As linhas ativas de `inteligencia.substituicao`, nos três níveis. */
   politicasDaSubstituicao(): Promise<readonly LinhaDePolitica[]>;
+  /** As linhas ativas de `inteligencia.impacto_hospede`, nos três níveis (ADR-047). */
+  politicasDoImpacto(): Promise<readonly LinhaDePolitica[]>;
+  /** As reclamações do hotel avaliadas depois de `desde` e até `ate`, sem o texto (ADR-047). */
+  sinaisDoHotelNaJanela(hotelId: string, desde: Date, ate: Date): Promise<readonly SinalDaFonte[]>;
 }
 
 export interface SubstituicaoDoAtivo {
@@ -63,6 +77,17 @@ export function substituicaoDoHotel(
     valorValidoDoIntelligence(CHAVE_DA_SUBSTITUICAO, l.valor),
   );
   return (valida?.valor as ConfigSubstituicao | undefined) ?? PADRAO_SUBSTITUICAO;
+}
+
+/** O Guest Impact Score do hotel: a primeira linha válida, do hotel ao grupo, ou o padrão. */
+export function impactoDoHotel(
+  linhas: readonly LinhaDePolitica[],
+  hotel: { id: string; bandeiraId: string | null },
+): ConfigImpactoHospede {
+  const valida = niveisDoHotel(linhas, CHAVE_DO_IMPACTO, hotel).find((l) =>
+    valorValidoDoIntelligence(CHAVE_DO_IMPACTO, l.valor),
+  );
+  return (valida?.valor as ConfigImpactoHospede | undefined) ?? PADRAO_IMPACTO_HOSPEDE;
 }
 
 /** Anos completos entre duas datas AAAA-MM-DD; null sem a data de início ou com ela no futuro. */
@@ -102,13 +127,24 @@ export async function substituicaoDoAtivo(
   const diaDaSerie = new Date(agora.getTime() - (DIAS_DA_SERIE_DO_ATIVO - 1) * DIA_MS)
     .toISOString()
     .slice(0, 10);
-  const [linhas, historico, metricas] = await Promise.all([
+  const hotel = { id: ativo.hotelId, bandeiraId: ativo.bandeiraId };
+  const [linhas, historico, metricas, doImpacto] = await Promise.all([
     p.politicasDaSubstituicao(),
     p.historicoDosAtivos([ativo.id], desde, agora),
     p.metricasDoAtivo(ativo.id, diaDaSerie),
+    p.politicasDoImpacto(),
   ]);
+  const impacto = impactoDoHotel(doImpacto, hotel);
+  const sinais = await p.sinaisDoHotelNaJanela(
+    ativo.hotelId,
+    new Date(agora.getTime() - impacto.janelaDias * DIA_MS),
+    agora,
+  );
   const substituicao = sinalDeSubstituicao(
-    entradaDoAtivo(ativo, historico, metricas.at(-1)?.reincidencia ?? null, agora),
+    entradaDoAtivo(ativo, historico, metricas.at(-1)?.reincidencia ?? null, agora, {
+      config: impacto,
+      sinais,
+    }),
     substituicaoDoHotel(linhas, { id: ativo.hotelId, bandeiraId: ativo.bandeiraId }),
   );
   return {
@@ -123,6 +159,7 @@ function entradaDoAtivo(
   historico: Awaited<ReturnType<PortasDaEfetividade['historicoDosAtivos']>>,
   reincidencia: number | null,
   agora: Date,
+  hospede: { config: ConfigImpactoHospede; sinais: readonly SinalDaFonte[] },
 ): Parameters<typeof sinalDeSubstituicao>[0] {
   const inicio = agora.getTime() - DIAS_DA_SUBSTITUICAO * DIA_MS;
   const corretivas = corretivasDoAtivo(historico.chamados, ativo.id, agora).filter(
@@ -141,7 +178,17 @@ function entradaDoAtivo(
     // O valor de reposição é da 2.0: sem ele, o critério do custo fica sem dado.
     custo12m: null,
     custoReposicao: null,
-    impactoHospede: impactoHospedeDosChamados(corretivas, agora, DIAS_DA_SUBSTITUICAO),
+    impactoHospede: impactoNoHospede(
+      {
+        // Os sinais já vêm da janela da política, só do hotel do ativo.
+        hotelComReclamacao: hospede.sinais.length > 0,
+        reclamacoes: hospede.sinais.filter((x) => x.ativoId === ativo.id),
+        ultimoReparoEm: ultimoReparo(corretivas, agora),
+        percentualDosChamados: impactoHospedeDosChamados(corretivas, agora, DIAS_DA_SUBSTITUICAO),
+      },
+      agora,
+      hospede.config,
+    ).valor,
     criticidade: ehCriticidade(ativo.criticidade) ? ativo.criticidade : null,
     reincidencia,
     garantiaVigente: ativo.garantiaAte === null ? null : hoje <= ativo.garantiaAte,

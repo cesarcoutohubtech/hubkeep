@@ -9,7 +9,9 @@
 //     escopo, a linha não aparece;
 //   - as referências da classificação (ativo, UH e categoria) e o hotel da
 //     importação, só o que quem pede lê;
-//   - a fila de classificação do hotel, por recorte, só para quem a lê.
+//   - a fila de classificação do hotel, por recorte, só para quem a lê;
+//   - as reclamações do hotel no trecho, sem o texto, e as linhas da política
+//     do Guest Impact Score, para a substituição (ADR-047, PR C1b).
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -312,5 +314,27 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
     expect(await porta.sinaisDoHotel(ctx(U.gerente), H1, 'fora', 50)).toEqual([]);
     expect(await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 1)).toHaveLength(1);
     expect(await porta.sinaisDoHotel(ctx(U.tecnico), H1, 'todas', 50)).toEqual([]);
+  });
+
+  it('as reclamações do hotel no trecho, sem o texto, para a substituição', async () => {
+    const lidas = await porta.sinaisDoHotelNaJanela(
+      ctx(U.gerente),
+      H1,
+      new Date(agora.getTime() - 30 * 86_400_000),
+      agora,
+    );
+    expect(lidas.map((s) => s.ativoId)).toContain(A1);
+    const r1 = lidas.find((s) => s.ativoId === A1);
+    expect(r1).toMatchObject({
+      hotelId: H1,
+      manutencao: true,
+      ligacao: 'confirmada',
+      nota: 2.5,
+      escala: 5,
+    });
+    expect(Object.keys(r1 ?? {})).not.toContain('texto');
+    expect(await porta.sinaisDoHotelNaJanela(ctx(U.gerente), H2, new Date(0), agora)).toEqual([]);
+    expect(await porta.sinaisDoHotelNaJanela(ctx(U.tecnico), H1, new Date(0), agora)).toEqual([]);
+    expect(await porta.politicasDoImpacto(ctx(U.gerente))).toEqual([]);
   });
 });
