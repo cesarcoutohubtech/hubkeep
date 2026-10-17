@@ -2752,6 +2752,7 @@ A tela explica como o PRD pede: "Guest Impact 82, alto: 9 reclamações em 90 di
 - **Retenção:** a política nova `inteligencia.sinal_hospede` (`retencaoTextoDias`, de 30 a 1825, padrão 365), lida no nível do grupo. O job do dia apaga o texto das reclamações avaliadas antes do prazo (UPDATE do texto para null, com a data do apagamento, pelo `hk_worker`). A quantidade vai no resumo e na auditoria da execução. O recálculo não apaga nem lê reclamações.
 - **`packages/db`:** a leitura das reclamações (sem o texto) e o apagamento na sessão do job, com teste de integração (só na CI).
 - **Glossário de métricas:** a regra nova na linha do sinal sistêmico.
+- **Área compartilhada (catálogos de texto):** só chaves `inteligencia.*`. Uma opção nova em `inteligencia.sistemico.regra` e a chave `inteligencia.sistemico.evidencia.reclamacoes_categoria`, nos quatro idiomas. Nenhuma chave do núcleo muda. O registro deveria ter vindo antes da edição; fica aqui, com o aviso à 1b e à 1c.
 
 **Fica para o C2:** a página do insight ainda não lista as reclamações da evidência (mostra a regra e a explicação, sem os chamados).
 
