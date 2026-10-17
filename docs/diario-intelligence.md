@@ -2765,3 +2765,11 @@ A tela explica como o PRD pede: "Guest Impact 82, alto: 9 reclamações em 90 di
 - **Nesta branch:** o C1a (`int:`, fora da zona protegida). O PR abre agora.
 - **Esperando:** o merge do C1a; o "de acordo" do Kaio na D1 a D4 do PR C; os detalhes do Kaio; as perguntas ao Slaviero, pelo agente da 1b.
 - **Próximo:** com o "de acordo" do Kaio, o C1b (Guest Impact Score v1, atenção v7 e substituição v2). Primeiro passo: a leitura das reclamações ligadas a ativo na sessão do job e a função do score em `packages/inteligencia`.
+
+### A `main` vermelha depois do #314 (17/10/2026)
+
+- **O pgTAP do #314 morreu no runner** (a porta 54322 já estava em uso no `supabase start`), antes de qualquer teste. O PR foi mergeado assim ("Cesar aqui. 314 mergeado."), e o teste novo da sessão do job rodou pela primeira vez na `main`.
+- **A falha:** o teste do sinal do hóspede no `packages/db` (`job-inteligencia.test.ts`) usava o mesmo parâmetro `$1` para o id (uuid) e para o código externo (texto), e o Postgres recusou (`42P08`, "uuid versus text"). O defeito é do teste; o código do C1a não chegou a ser exercido contra o banco.
+- **A correção:** um parâmetro próprio para o código externo. O Cesar foi avisado para não mergear outra coisa antes.
+- **Também na `main`:** o #313 (`eu:`, migração 0054) entrou junto; o run dele foi cancelado pelo do #314, que passou em tudo menos nesse teste.
+- **O Kaio deu o "de acordo" na D1 a D4** ("Kaio aqui, de acordo com as decisões D1 a D4"), depois do "Cesar aqui. Siga". O C1b (Guest Impact Score) está em andamento, guardado fora desta correção.
