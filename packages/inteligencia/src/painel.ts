@@ -302,7 +302,8 @@ const indisponivel = () =>
     'O Intelligence não está disponível para você neste tenant.',
   );
 
-const naoEncontrado = () => new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
+export const insightNaoEncontrado = () =>
+  new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
 
 /** A abertura das telas no tenant, com a política do grupo e o fuso. */
 async function abertura(
@@ -500,7 +501,7 @@ export async function verInsight(
 ): Promise<PaginaDoInsight> {
   const atribuicoes = await exigirPainel(p, agora);
   const insight = await p.insight(insightId);
-  if (!insight) throw naoEncontrado();
+  if (!insight) throw insightNaoEncontrado();
   const idsDosChamados = chamadosDaEvidencia(insight.evidencia);
   const [ligados, chamados, nomes] = await Promise.all([
     p.ligados([insight.id]),
@@ -560,7 +561,7 @@ export async function decidirInsight(
 ): Promise<{ versao: number; estado: EstadoDoInsight; responsavelId: string }> {
   const atribuicoes = await exigirPainel(p, agora);
   const atual = await p.insight(pedido.insightId);
-  if (!atual) throw naoEncontrado();
+  if (!atual) throw insightNaoEncontrado();
   if (atual.versao !== pedido.versao) throw conflitoDeVersao(atual.versao);
   const r = decidirNoInsight(pedido.acao, {
     atribuicoes,

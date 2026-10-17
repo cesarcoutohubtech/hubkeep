@@ -163,51 +163,52 @@ export async function gravarSinaisNoBanco(
   return { loteId, inseridos: chaves };
 }
 
-/**
- * A fila de classificação do hotel: as reclamações do recorte (sem
- * classificação, de manutenção, fora da manutenção ou todas), da data mais
- * recente para a mais antiga, até `limite`.
- */
-export async function sinaisDoHotel(
-  tx: Tx,
-  hotelId: string,
-  situacao: string,
-  limite: number,
-): Promise<SinalDaFilaNoBanco[]> {
-  let q = tx
-    .selectFrom('app.sinal_hospede')
-    .select([
-      'id',
-      'hotel_id',
-      'fonte',
-      'id_externo',
-      'ocorrido_em',
-      'nota',
-      'escala',
-      'texto',
-      'texto_apagado_em',
-      'idioma',
-      'uh_citada',
-      'manutencao',
-      'categoria_id',
-      'uh_id',
-      'ativo_id',
-      'ligacao',
-      'classificado_em',
-      'classificado_por',
-      'criado_em',
-      'versao',
-    ])
-    .where('hotel_id', '=', hotelId);
-  if (situacao === 'pendentes') q = q.where('manutencao', 'is', null);
-  else if (situacao === 'manutencao') q = q.where('manutencao', '=', true);
-  else if (situacao === 'fora') q = q.where('manutencao', '=', false);
-  const linhas = await q
-    .orderBy('ocorrido_em', 'desc')
-    .orderBy('id', 'desc')
-    .limit(limite)
-    .execute();
-  return linhas.map((s) => ({
+const COLUNAS_DA_FILA = [
+  'id',
+  'hotel_id',
+  'fonte',
+  'id_externo',
+  'ocorrido_em',
+  'nota',
+  'escala',
+  'texto',
+  'texto_apagado_em',
+  'idioma',
+  'uh_citada',
+  'manutencao',
+  'categoria_id',
+  'uh_id',
+  'ativo_id',
+  'ligacao',
+  'classificado_em',
+  'classificado_por',
+  'criado_em',
+  'versao',
+] as const;
+
+function linhaDaFila(s: {
+  id: string;
+  hotel_id: string;
+  fonte: string;
+  id_externo: string;
+  ocorrido_em: Date | string;
+  nota: number | string | null;
+  escala: number | null;
+  texto: string | null;
+  texto_apagado_em: Date | string | null;
+  idioma: string | null;
+  uh_citada: string | null;
+  manutencao: boolean | null;
+  categoria_id: string | null;
+  uh_id: string | null;
+  ativo_id: string | null;
+  ligacao: string;
+  classificado_em: Date | string | null;
+  classificado_por: string | null;
+  criado_em: Date | string;
+  versao: number;
+}): SinalDaFilaNoBanco {
+  return {
     id: s.id,
     hotelId: s.hotel_id,
     fonte: s.fonte,
@@ -228,7 +229,91 @@ export async function sinaisDoHotel(
     classificadoPor: s.classificado_por,
     importadoEm: data(s.criado_em),
     versao: s.versao,
-  }));
+  };
+}
+
+/**
+ * A fila de classificação do hotel: as reclamações do recorte (sem
+ * classificação, de manutenção, fora da manutenção ou todas), da data mais
+ * recente para a mais antiga, até `limite`.
+ */
+export async function sinaisDoHotel(
+  tx: Tx,
+  hotelId: string,
+  situacao: string,
+  limite: number,
+): Promise<SinalDaFilaNoBanco[]> {
+  let q = tx
+    .selectFrom('app.sinal_hospede')
+    .select(COLUNAS_DA_FILA)
+    .where('hotel_id', '=', hotelId);
+  if (situacao === 'pendentes') q = q.where('manutencao', 'is', null);
+  else if (situacao === 'manutencao') q = q.where('manutencao', '=', true);
+  else if (situacao === 'fora') q = q.where('manutencao', '=', false);
+  const linhas = await q
+    .orderBy('ocorrido_em', 'desc')
+    .orderBy('id', 'desc')
+    .limit(limite)
+    .execute();
+  return linhas.map(linhaDaFila);
+}
+
+/**
+ * As reclamações destes ids que quem pede lê (a RLS filtra), com o texto, da
+ * data mais recente para a mais antiga, até `limite`: as da evidência do
+ * insight sistêmico (C2 do ADR-047).
+ */
+export async function sinaisPorIds(
+  tx: Tx,
+  ids: readonly string[],
+  limite: number,
+): Promise<SinalDaFilaNoBanco[]> {
+  if (!ids.length) return [];
+  const linhas = await tx
+    .selectFrom('app.sinal_hospede')
+    .select(COLUNAS_DA_FILA)
+    .where('id', 'in', ids)
+    .orderBy('ocorrido_em', 'desc')
+    .orderBy('id', 'desc')
+    .limit(limite)
+    .execute();
+  return linhas.map(linhaDaFila);
+}
+
+/**
+ * As reclamações ligadas ao ativo (possível ou confirmada), avaliadas depois
+ * de `desde` e até `ate`, com o texto, da mais recente para a mais antiga,
+ * até `limite` (o índice das reclamações do ativo da 0052).
+ */
+export async function sinaisDoAtivo(
+  tx: Tx,
+  ativoId: string,
+  desde: Date,
+  ate: Date,
+  limite: number,
+): Promise<SinalDaFilaNoBanco[]> {
+  const linhas = await tx
+    .selectFrom('app.sinal_hospede')
+    .select(COLUNAS_DA_FILA)
+    .where('ativo_id', '=', ativoId)
+    .where('ocorrido_em', '>', desde)
+    .where('ocorrido_em', '<=', ate)
+    .orderBy('ocorrido_em', 'desc')
+    .orderBy('id', 'desc')
+    .limit(limite)
+    .execute();
+  return linhas.map(linhaDaFila);
+}
+
+/** O nome de cada UH destes ids que quem pede lê. */
+export async function nomesDasUhs(tx: Tx, ids: readonly string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const linhas = await tx
+    .selectFrom('app.local')
+    .select(['id', 'nome'])
+    .where('id', 'in', ids)
+    .execute();
+  return Object.fromEntries(linhas.map((l) => [l.id, l.nome]));
 }
 
 export async function sinalParaClassificar(

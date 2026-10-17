@@ -1,5 +1,10 @@
 // O painel do Intelligence na API: as datas do motor viram texto ISO 8601.
-import type { FilaDoSinal, SubstituicaoDoAtivo } from '@hubkeep/inteligencia';
+import type {
+  FilaDoSinal,
+  ReclamacoesDoPainel,
+  SinalDaFila,
+  SubstituicaoDoAtivo,
+} from '@hubkeep/inteligencia';
 
 const iso = (d: Date) => d.toISOString();
 
@@ -61,18 +66,24 @@ export function substituicaoNaApi(s: SubstituicaoDoAtivo) {
   };
 }
 
-/** A fila do sinal do hóspede (ADR-047): as datas em texto. */
-export function filaDeSinaisNaApi(f: FilaDoSinal) {
+/** Uma reclamação do sinal do hóspede (ADR-047): as datas em texto. */
+function sinalNaApi(s: SinalDaFila) {
   const ouNulo = (d: Date | null) => (d === null ? null : iso(d));
   return {
-    sinais: f.sinais.map((s) => ({
-      ...s,
-      ocorridoEm: iso(s.ocorridoEm),
-      textoApagadoEm: ouNulo(s.textoApagadoEm),
-      classificadoEm: ouNulo(s.classificadoEm),
-      importadoEm: iso(s.importadoEm),
-    })),
-    limitada: f.limitada,
-    nomes: f.nomes,
+    ...s,
+    ocorridoEm: iso(s.ocorridoEm),
+    textoApagadoEm: ouNulo(s.textoApagadoEm),
+    classificadoEm: ouNulo(s.classificadoEm),
+    importadoEm: iso(s.importadoEm),
   };
+}
+
+/** A fila do sinal do hóspede (ADR-047): as datas em texto. */
+export function filaDeSinaisNaApi(f: FilaDoSinal) {
+  return { sinais: f.sinais.map(sinalNaApi), limitada: f.limitada, nomes: f.nomes };
+}
+
+/** As reclamações das páginas do insight e do ativo (C2 do ADR-047): as datas em texto. */
+export function reclamacoesNaApi(r: ReclamacoesDoPainel) {
+  return { ...r, sinais: r.sinais.map(sinalNaApi) };
 }

@@ -2381,7 +2381,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/inteligencia/insights/{id}',
     resumo:
-      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê, a série de chamados por semana nas últimas 12 semanas e a efetividade das intervenções nos ativos do insight concluídas depois da primeira detecção.',
+      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê, as reclamações de hóspede da evidência no insight sistêmico das reclamações (até 50, as mais recentes, com o total; quem não lê as reclamações do hotel vê só o total), a série de chamados por semana nas últimas 12 semanas e a efetividade das intervenções nos ativos do insight concluídas depois da primeira detecção.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Insight', esquema: RespostaDoInsight },
@@ -2409,7 +2409,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/inteligencia/ativos/{id}',
     resumo:
-      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, os insights de atenção do ativo, a efetividade das intervenções no ativo nos últimos 180 dias e o sinal de substituição, calculado na leitura (nulo no ativo baixado). Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
+      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, os insights de atenção do ativo, a efetividade das intervenções no ativo nos últimos 180 dias o sinal de substituição, calculado na leitura (nulo no ativo baixado), e as reclamações de hóspede ligadas ao ativo na janela do Guest Impact Score (até 50, as mais recentes, com o texto). Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Ativo', esquema: RespostaDoAtivoNoIntelligence },

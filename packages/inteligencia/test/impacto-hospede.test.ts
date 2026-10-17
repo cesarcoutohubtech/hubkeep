@@ -197,6 +197,14 @@ describe('o impacto no hóspede na atenção versão 7', () => {
       notaMediaEm5: 0.5,
       percentualDosChamados: 20,
     });
+    // O valor, o peso e os pontos de cada componente do score, para a página do ativo (C2).
+    for (const parte of ih.score?.componentes ?? []) {
+      const nome = parte.chave.charAt(0).toUpperCase() + parte.chave.slice(1);
+      expect(c?.evidencia[`valor${nome}`]).toBe(parte.valor);
+      expect(c?.evidencia[`peso${nome}`]).toBe(parte.peso);
+      expect(c?.evidencia[`pontos${nome}`]).toBe(parte.pontos);
+    }
+    expect(c?.evidencia).toMatchObject({ valorRecorrencia: null, pesoVolume: 0.3 });
     expect(explicacaoDoScore(s, 10).map((e) => e.chave)).toContain(
       'inteligencia.motivo.atencao_ativo.impacto_hospede_reclamacoes',
     );
