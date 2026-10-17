@@ -19,6 +19,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
 export type Json = JsonValue;
 
 export type JsonArray = JsonValue[];
@@ -385,6 +387,55 @@ export interface AppMetricaAtivoDiaria {
   versao_politica: string;
 }
 
+export interface AppMewsBloqueio {
+  ativo: boolean;
+  block_id: string;
+  deleted_utc: Timestamp | null;
+  enterprise_id: string;
+  fim_utc: Timestamp;
+  hotel_id: string;
+  inicio_utc: Timestamp;
+  resource_id: string;
+  tenant_id: string;
+  tipo: string;
+  updated_utc: Timestamp;
+}
+
+export interface AppMewsCheckpoint {
+  concluido_em: Timestamp | null;
+  digest_incremental: string | null;
+  digest_sweep: string | null;
+  enterprise_id: string;
+  hotel_id: string;
+  tenant_id: string;
+  ultimo_sweep_utc: Timestamp | null;
+  ultimo_updated_utc: Timestamp | null;
+  versao: Generated<Int8>;
+}
+
+export interface AppMewsRecurso {
+  ativo: boolean;
+  deleted_utc: Timestamp | null;
+  enterprise_id: string;
+  hotel_id: string;
+  resource_id: string;
+  tenant_id: string;
+  tipo: Generated<string>;
+  updated_utc: Timestamp | null;
+}
+
+export interface AppMewsVinculo {
+  credencial_ref: string;
+  criado_em: Generated<Timestamp>;
+  enterprise_id: string;
+  hotel_id: string;
+  id: string;
+  revogado_em: Timestamp | null;
+  tenant_id: string;
+  validado_em: Timestamp;
+  validado_por: string;
+}
+
 export interface AppModeloAtivo {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -719,6 +770,10 @@ export interface DB {
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
   "app.metrica_ativo_diaria": AppMetricaAtivoDiaria;
+  "app.mews_bloqueio": AppMewsBloqueio;
+  "app.mews_checkpoint": AppMewsCheckpoint;
+  "app.mews_recurso": AppMewsRecurso;
+  "app.mews_vinculo": AppMewsVinculo;
   "app.modelo_ativo": AppModeloAtivo;
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
