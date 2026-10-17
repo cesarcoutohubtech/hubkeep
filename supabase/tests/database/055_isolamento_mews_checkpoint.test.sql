@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
-select plan(12);
+select plan(13);
 grant usage on schema extensions to hk_app, hk_worker;
 insert into auth.users (id,email) values ('aaaaaaaa-0000-0000-0000-000000000001','admina@mews.test'),('aaaaaaaa-0000-0000-0000-000000000002','gerente@mews.test'),('aaaaaaaa-0000-0000-0000-000000000003','proprietario@mews.test'),('aaaaaaaa-0000-0000-0000-000000000004','implantador@mews.test'),('bbbbbbbb-0000-0000-0000-000000000001','adminb@mews.test');
 insert into app.tenant(id,nome) values ('10000000-0000-0000-0000-000000000000','Grupo A'),('20000000-0000-0000-0000-000000000000','Grupo B');
@@ -43,6 +43,17 @@ select results_eq($$ select count(*)::int from app.mews_checkpoint $$,$$values (
 select isnt_empty($$ update app.mews_checkpoint set versao=versao+1 where hotel_id='11100000-0000-0000-0000-000000000001' returning 1 $$,'worker A pode atualizar versao do proprio tenant');
 select throws_ok($$ update app.mews_checkpoint set hotel_id='11100000-0000-0000-0000-000000000002' $$, '42501',null,'escopo hotel e imutavel');
 select throws_ok($$ delete from app.mews_checkpoint $$, '42501',null,'worker nao tem DELETE fisico');
+reset role;
+-- Revogacao impede novas escritas tecnicas mesmo se o worker segue ativo.
+update app.mews_vinculo set revogado_em=now()
+ where tenant_id='10000000-0000-0000-0000-000000000000'
+   and hotel_id='11100000-0000-0000-0000-000000000001';
+set local role hk_worker;
+select from (select set_config('app.usuario_id','',true),
+ set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
+select throws_ok($ update app.mews_checkpoint set versao=versao+1
+ where hotel_id='11100000-0000-0000-0000-000000000001' $,
+ '42501', null, 'checkpoint: vinculo revogado impede UPDATE');
 reset role;
 select * from finish();
 rollback;
