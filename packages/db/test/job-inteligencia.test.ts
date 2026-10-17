@@ -494,7 +494,7 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
         `insert into app.sinal_hospede (id, tenant_id, hotel_id, lote_id, fonte, id_externo, ocorrido_em,
            texto, manutencao, categoria_id, uh_id, classificado_em, classificado_por, texto_apagado_em,
            importado_por)
-         values ($1, $2, $3, $4, 'google', $1, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+         values ($1, $2, $3, $4, 'google', $14, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
           id,
           tenant,
@@ -509,6 +509,8 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
           c.manutencao === null ? null : quem,
           apagado,
           quem,
+          // O código externo é o id em texto: o mesmo parâmetro não pode ser uuid e text.
+          id,
         ],
       );
     const manut = { manutencao: true, categoria: CAT, uh: L1 };
