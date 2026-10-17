@@ -11,3 +11,5 @@
 - PR #310 permanece antigo Draft documental; não mergeado. Merges pertencem apenas ao Cesar.
 - **Próximo passo:** aplicar paridade de audit entity/I18n na branch #317; rodar CI completa e banco; marcar Ready somente depois de checks verdes; revisão de revinculação, cofre e GDPR antes de ativar.
 
+
+- **Reserva adicional, antes de editar contratos:** `packages/contratos/src/auditoria-geral.ts` mantém cópia literal de `ENTIDADES_DA_AUDITORIA_API`; precisa acrescentar `mews_checkpoint` na mesma posição para o teste raiz `a lista da API é a do domínio` e a opção de filtro de API. Sem alteração de endpoint nem permissões.
