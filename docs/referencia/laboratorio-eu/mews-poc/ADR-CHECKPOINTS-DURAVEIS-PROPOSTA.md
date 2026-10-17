@@ -1,10 +1,10 @@
-# ADR proposta — Checkpoints duráveis e isolamento da integração Mews
+# ADR aprovada — Checkpoints duráveis e isolamento da integração Mews
 
-**Situação: proposta, não aprovada nem aplicada.**
+**Situação: decisão arquitetural aprovada por Cesar em 17/10/2026**, em resposta expressa à solicitação de aprovação formal da ADR durante a revisão do PR #313. **Aprovação NÃO autoriza `supabase db push`, credenciais reais, piloto ou produção.**
+**Implementação:** migração 0054 incorporada à `main` pelo PR #313, mas aplicação no Supabase-dev não foi confirmada. O driver transacional e o job ainda exigem implementação e validação específicas.
 **Referência:** HubKeep Europa issue #284; PoC Mews PRs #293, #302 e #303.
 **Data:** 16/10/2026.
-**Mudanças nesta branch:** apenas arquivos de laboratório, sem migração executável
-nem chamada à API Mews, Supabase, banco de produção ou jobs.
+**Contexto histórico da proposta original:** criada no laboratório, antes da migração 0054. O texto abaixo contém trechos do planejamento original; o adendo aprovado ao final explicita a implementação e os limites atuais.
 
 ## Por que precisamos evoluir
 
@@ -74,7 +74,7 @@ com rotação/revogação por hotel e logs sanitizados.
 3. Validar `versao`/`ultimo_updated_utc` esperado. Se lote já confirmado
    com mesmo digest: replay idempotente. Se divergir: conflito e replanejamento.
 4. Upsert **somente** registros técnico-permitidos, com chave composta;
-   `WHERE incoming.updated_utc >= stored.updated_utc` impede reativar tombstone.
+   aceitar atualização posterior **somente se** `incoming.updated_utc > stored.updated_utc`; em igualdade de timestamp, **tombstone prevalece** e o evento ativo não pode reativá-lo.
    Não realizar DELETE por ausência na página.
 5. Avançar watermark correspondente + incrementar versão **na mesma transação**
    que os upserts; `COMMIT` só após sucesso completo. Falha = `ROLLBACK`.
@@ -135,3 +135,13 @@ node --test docs/referencia/laboratorio-eu/mews-poc/checkpoint-contrato.test.mjs
 **12 testes novos**; continuam **44/44 aprovados** nas suítes anteriores,
 conforme output do usuário. A soma de testes declarados após este PR será
 **56**, mas **não afirmar 56/56 até a execução real**.
+
+## Registro de aprovação e atualização do contexto — 17/10/2026
+
+- **Decisão aprovada:** V1 Mews em **somente leitura**, inicialmente voltada à administração, **sem geração automática de OS, mudança de status de quartos/UHs, licença, ou escrita no PMS**. Checkpoints incrementais e de varredura devem ser independentes; lote + marca temporal publicados de modo atômico, com CAS/versão, replay idempotente e isolamento por tenant/hotel/EnterpriseId.
+- **Aprovação formal expressa por Cesar** em 17/10/2026 na conversa sobre a revisão da migração: resposta “Simm aprovo” à pergunta “Você aprova formalmente essa ADR para concluirmos a etapa de revisão do PR #313?”. O consentimento refere-se à **ADR de arquitetura**, não a execução em qualquer ambiente.
+- **Convergência com o PR #313:** a migração 0054 já está mergeada, com vínculo `id uuid` como PK e unicidades compostas, três tabelas técnicas com PKs compostas, RLS FORCED, grants, quatro arquivos pgTAP de isolamento e tipos Kysely. A tabela física pode usar PK + UNIQUE, desde que o contrato de chaves compostas e isolamento continue preservado.
+- **Correção normativa:** em versões anteriores do desenho constava uma comparação `>=` descrita erroneamente como proteção suficiente para exclusões. A regra correta é que timestamp maior substitui o anterior; no empate, **tombstone prevalece**. Nunca inferir exclusão pela ausência em página incremental ou na varredura.
+- **Pendências antes de integração real:** driver transacional na camada `packages/db`, autorização e revogação do vínculo, referência opaca a segredo, tratamento de concorrência, revalidação sob lock, política GDPR/retenção e auditoria/outbox, testes integrados. Nenhum processo deve validar hotel ou recurso apenas com identificadores vindos de payload sintético.
+- **Restrições de execução:** o merge de PR não é permissão para aplicar SQL em Supabase-dev/staging/produção. Requer autorização posterior e específica do Cesar, com backup/rollback e CI verde. Não editar retroativamente a migração 0054 já incorporada: ajustes físicos devem ser migração nova.
+- **Registro canônico:** ADR-048 em `docs/03-decisoes-tecnicas.md`; esta nota explica e preserva o histórico da proposta original.
