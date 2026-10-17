@@ -133,8 +133,12 @@ async function simular(r: RoteiroDoHistorico, momento: MomentoDoJob) {
           insights: async () => insights,
           calculosDoDia: async (d) =>
             new Map((metricasPorDia.get(d) ?? []).map((m) => [m.ativoId, m.calculo])),
+          // O histórico de demonstração não tem reclamação de hóspede.
+          reclamacoes: async () => [],
+          politicaDoSinal: async () => undefined,
         },
         gravacao: {
+          apagarTextos: async () => 0,
           gravarMetricas: async (linhas) => {
             metricas.push(...linhas);
             for (const m of linhas)

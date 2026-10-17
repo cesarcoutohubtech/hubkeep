@@ -157,8 +157,9 @@ export function detalhamentoDoScore(score: Score): Detalhamento {
 
 /**
  * A evidência do sinal sistêmico, pronta para o catálogo. A regra do mesmo
- * modelo tem frase própria, com as taxas; as outras, a genérica (chamados,
- * hotéis e janela), até ganharem a sua.
+ * modelo tem frase própria, com as taxas, e a das reclamações de hóspede
+ * (sistêmico v5), com as UHs; as outras, a genérica (chamados, hotéis e
+ * janela), até ganharem a sua.
  */
 export function explicacaoDoSinal(sinal: Pick<SinalSistemico, 'regra' | 'evidencia'>): Explicacao {
   const e = sinal.evidencia;
@@ -174,6 +175,12 @@ export function explicacaoDoSinal(sinal: Pick<SinalSistemico, 'regra' | 'evidenc
         taxa: e.taxaPorAtivo ?? 0,
         base: e.basePorAtivo ?? 0,
       },
+    };
+  }
+  if (sinal.regra === 'reclamacoes_categoria') {
+    return {
+      chave: 'inteligencia.sistemico.evidencia.reclamacoes_categoria',
+      valores: { quantidade: e.quantidade, uhs: e.distintos, janelaDias: e.janelaDias },
     };
   }
   return { chave: 'inteligencia.sistemico.evidencia.generica', valores: comuns };

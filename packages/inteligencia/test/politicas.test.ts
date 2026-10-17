@@ -7,9 +7,11 @@ import {
   EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE,
   MINIMO_DA_JANELA_DE_LEITURA_DIAS,
   PADRAO_JANELA_DE_LEITURA,
+  PADRAO_SINAL_HOSPEDE,
   PADROES_DO_INTELLIGENCE,
   ehChaveDePoliticaDoIntelligence,
   janelaDeLeituraEfetiva,
+  limiteDaRetencao,
   minimoDaJanelaDeLeitura,
   validarJanelaDeLeitura,
   validarPoliticaDoIntelligence,
@@ -19,7 +21,7 @@ import {
 const copia = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 describe('políticas do Intelligence (ADR-035)', () => {
-  it('as sete chaves do ADR, e todo padrão vale no próprio formato', () => {
+  it('as oito chaves dos ADRs, e todo padrão vale no próprio formato', () => {
     expect(CHAVES_DE_POLITICA_DO_INTELLIGENCE).toEqual([
       'inteligencia.reincidencia',
       'inteligencia.atencao_ativo',
@@ -28,6 +30,7 @@ describe('políticas do Intelligence (ADR-035)', () => {
       'inteligencia.substituicao',
       'inteligencia.metrica_janela_leitura',
       'inteligencia.visibilidade_telas',
+      'inteligencia.sinal_hospede',
     ]);
     for (const c of CHAVES_DE_POLITICA_DO_INTELLIGENCE)
       expect(valorValidoDoIntelligence(c, copia(PADROES_DO_INTELLIGENCE[c]))).toBe(true);
@@ -338,5 +341,31 @@ describe('janela de leitura da métrica diária (ADR-035, ADR-036)', () => {
         usadoDias: 240,
       },
     });
+  });
+});
+
+describe('retenção do texto do hóspede (ADR-047)', () => {
+  const c = 'inteligencia.sinal_hospede';
+
+  it('padrão de 365 dias; inteiro, de 30 a 1825, sem outra chave', () => {
+    expect(PADRAO_SINAL_HOSPEDE).toEqual({ retencaoTextoDias: 365 });
+    for (const dias of [30, 365, 1825])
+      expect(valorValidoDoIntelligence(c, { retencaoTextoDias: dias })).toBe(true);
+    for (const ruim of [
+      { retencaoTextoDias: 29 },
+      { retencaoTextoDias: 1826 },
+      { retencaoTextoDias: 90.5 },
+      { retencaoTextoDias: '90' },
+      { retencaoTextoDias: 90, extra: 1 },
+      {},
+      null,
+    ])
+      expect(valorValidoDoIntelligence(c, ruim)).toBe(false);
+  });
+
+  it('o limite é a data da avaliação menos os dias da política', () => {
+    expect(limiteDaRetencao(new Date('2026-10-17T12:00:00Z'), { retencaoTextoDias: 30 })).toEqual(
+      new Date('2026-09-17T12:00:00Z'),
+    );
   });
 });

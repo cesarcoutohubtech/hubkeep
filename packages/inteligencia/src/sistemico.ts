@@ -39,6 +39,14 @@
 // - o mesmo modelo exige população mínima (10 ativos instalados do modelo),
 //   3 ativos distintos com chamado e pelo menos 30% da população com chamado:
 //   com poucos ativos por modelo, poucos chamados bastavam para dobrar a base.
+//
+// A versão 5 (ADR-047, a 1.5 sem IA) traz a regra das reclamações de hóspede
+// (`reclamacoes_categoria`): reclamações classificadas como de manutenção, da
+// mesma categoria, no mesmo hotel, numa janela curta e de UHs distintas. A
+// fonte é a classificação de uma pessoa, com ou sem ativo ligado: a regra não
+// liga nada a ativo. Vem ligada por padrão, porque sem importação nada
+// dispara. As outras regras não mudam; o campo novo da política pode faltar
+// na política gravada antes (vale o padrão).
 import {
   type AtivoAnalisado,
   type Corretiva,
@@ -48,7 +56,7 @@ import {
 } from './historico';
 import { DIA_MS } from './score';
 
-export const VERSAO_SISTEMICO = 4;
+export const VERSAO_SISTEMICO = 5;
 
 export interface ConfigSistemico {
   mesmoModelo: {
@@ -90,6 +98,12 @@ export interface ConfigSistemico {
     limiarPercentual: number;
   };
   crescimento: { ativa: boolean; percentual: number; minAtual: number; janelaDias: number };
+  /**
+   * Reclamações de hóspede (v5): de manutenção, da mesma categoria, no mesmo
+   * hotel, em `janelaDias`, pela data da avaliação, de pelo menos `minUhs`
+   * UHs distintas. Ausente na política gravada antes da v5: vale o padrão.
+   */
+  reclamacoes?: { ativa: boolean; minReclamacoes: number; minUhs: number; janelaDias: number };
 }
 
 export const PADRAO_SISTEMICO: ConfigSistemico = {
@@ -114,7 +128,14 @@ export const PADRAO_SISTEMICO: ConfigSistemico = {
     limiarPercentual: 30,
   },
   crescimento: { ativa: false, percentual: 50, minAtual: 5, janelaDias: 30 },
+  reclamacoes: { ativa: true, minReclamacoes: 3, minUhs: 2, janelaDias: 14 },
 };
+
+/** A regra das reclamações (v5), com o padrão quando a política gravada não a tem. */
+export const regraDasReclamacoes = (
+  c: ConfigSistemico,
+): NonNullable<ConfigSistemico['reclamacoes']> =>
+  c.reclamacoes ?? (PADRAO_SISTEMICO.reclamacoes as NonNullable<ConfigSistemico['reclamacoes']>);
 
 /** Os dois campos da v4, com o padrão quando a política gravada não os tem. */
 export function minimosDaPopulacao(m: ConfigSistemico['mesmoModelo']): {
@@ -158,7 +179,11 @@ export function configSistemicoValida(c: ConfigSistemico): boolean {
     inteiro(c.mesmoFornecedor.janelaDias) &&
     inteiro(c.mesmoFornecedor.minConcluidas) &&
     inteiro(c.crescimento.minAtual) &&
-    inteiro(c.crescimento.janelaDias)
+    inteiro(c.crescimento.janelaDias) &&
+    (c.reclamacoes === undefined ||
+      (inteiro(c.reclamacoes.minReclamacoes) &&
+        inteiro(c.reclamacoes.minUhs) &&
+        inteiro(c.reclamacoes.janelaDias)))
   );
 }
 
@@ -167,7 +192,8 @@ export type RegraSistemica =
   | 'mesmo_andar'
   | 'mesma_area_comum'
   | 'mesmo_fornecedor'
-  | 'crescimento_categoria';
+  | 'crescimento_categoria'
+  | 'reclamacoes_categoria';
 
 export interface SinalSistemico {
   regra: RegraSistemica;
@@ -197,7 +223,21 @@ export interface SinalSistemico {
     voltas?: number;
     taxaPercentual?: number;
     taxaInternaPercentual?: number | null;
+    /** Reclamações de hóspede (v5): as reclamações contadas; `distintos` são as UHs. */
+    sinalIds?: readonly string[];
   };
+}
+
+/**
+ * A reclamação de hóspede classificada como de manutenção, com a categoria
+ * (ADR-047). O texto não entra: a regra conta, não lê.
+ */
+export interface ReclamacaoAnalisada {
+  id: string;
+  hotelId: string;
+  categoriaId: string;
+  uhId: string | null;
+  ocorridoEm: Date;
 }
 
 export interface EntradaSistemico {
@@ -210,6 +250,8 @@ export interface EntradaSistemico {
    * ele e a corretiva mais antiga do hotel na entrada; ausente, só a corretiva.
    */
   primeiroChamadoPorHotel?: ReadonlyMap<string, Date>;
+  /** As reclamações de manutenção com categoria (v5); ausente, a regra não tem o que contar. */
+  reclamacoes?: readonly ReclamacaoAnalisada[];
 }
 
 const unicos = (xs: readonly string[]) => [...new Set(xs)].sort();
@@ -457,6 +499,41 @@ export function detectarSistemicos(
         corretivaIds: cs.map((c) => c.id),
         anterior: antes,
         variacaoPercentual,
+      },
+    });
+  }
+
+  // Reclamações de hóspede (v5): de manutenção, da mesma categoria, no mesmo
+  // hotel, na janela pela data da avaliação, de UHs distintas. A reclamação
+  // sem UH conta na quantidade, mas não nas UHs.
+  const rc = regraDasReclamacoes(config);
+  const inicioDasReclamacoes = agora.getTime() - rc.janelaDias * DIA_MS;
+  const porCategoria = agrupar(
+    rc.ativa
+      ? (e.reclamacoes ?? []).filter(
+          (r) =>
+            r.ocorridoEm.getTime() > inicioDasReclamacoes &&
+            r.ocorridoEm.getTime() <= agora.getTime(),
+        )
+      : [],
+    (r) => `${r.hotelId}#${r.categoriaId}`,
+  );
+  for (const [k, rs] of porCategoria) {
+    const uhs = unicos(rs.flatMap((r) => (r.uhId ? [r.uhId] : [])));
+    if (rs.length < rc.minReclamacoes || uhs.length < rc.minUhs) continue;
+    const [hotelId, categoriaId] = k.split('#') as [string, string];
+    sinais.push({
+      regra: 'reclamacoes_categoria',
+      situacao: 'possivel',
+      versao: VERSAO_SISTEMICO,
+      chave: { hotelId, categoriaId },
+      evidencia: {
+        quantidade: rs.length,
+        distintos: uhs.length,
+        janelaDias: rc.janelaDias,
+        hotelIds: [hotelId],
+        corretivaIds: [],
+        sinalIds: rs.map((r) => r.id).sort(),
       },
     });
   }

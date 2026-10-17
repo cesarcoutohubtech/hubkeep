@@ -26,6 +26,11 @@
 // - A leitura dos ativos e dos chamados começa em `inicioDaLeitura`, calculado
 //   com as políticas já resolvidas; o chamado vira corretiva por
 //   `corretivasDosChamados` (fonte.ts).
+// - O sinal do hóspede (ADR-047): as reclamações de manutenção com categoria
+//   entram na regra sistêmica das reclamações (sistêmico v5), lidas só na
+//   janela dela; e o texto das avaliações que passaram da retenção da política
+//   `inteligencia.sinal_hospede` (a do grupo) é apagado, com a quantidade no
+//   registro da execução. O recálculo não lê reclamações nem apaga texto.
 import { type ModuloContratado, modulosVigentes } from '@hubkeep/dominio';
 import type { LinhaDaMetricaDiaria } from './agregacao';
 import {
@@ -50,7 +55,15 @@ import {
 import { type InsightExistente, decidirDeteccao } from './insight';
 import { VERSAO_ATENCAO } from './atencao';
 import { VERSAO_REINCIDENCIA } from './reincidencia';
-import { type ConfigSistemico, PADRAO_SISTEMICO, VERSAO_SISTEMICO } from './sistemico';
+import { type ConfigSinalHospede, PADRAO_SINAL_HOSPEDE, limiteDaRetencao } from './sinal-retencao';
+import { DIA_MS } from './score';
+import {
+  type ConfigSistemico,
+  PADRAO_SISTEMICO,
+  type ReclamacaoAnalisada,
+  VERSAO_SISTEMICO,
+  regraDasReclamacoes,
+} from './sistemico';
 
 /** O que o job lê do tenant. Todas as leituras são do contexto dele (RLS). */
 export interface FonteDoJob {
@@ -80,6 +93,13 @@ export interface FonteDoJob {
   insights(): Promise<readonly InsightExistente[]>;
   /** O maior número de cálculo já gravado de cada ativo no dia (`AAAA-MM-DD`). */
   calculosDoDia(dia: string): Promise<ReadonlyMap<string, number>>;
+  /**
+   * As reclamações de hóspede classificadas como de manutenção, com categoria,
+   * avaliadas depois de `desde` e até `agora` (ADR-047).
+   */
+  reclamacoes(agora: Date, desde: Date): Promise<readonly ReclamacaoAnalisada[]>;
+  /** A política `inteligencia.sinal_hospede` do grupo, ou undefined para o padrão. */
+  politicaDoSinal(): Promise<ConfigSinalHospede | undefined>;
 }
 
 export interface NovoInsight {
@@ -103,6 +123,11 @@ export interface GravacaoDoJob {
   atualizarInsight(atualizacao: AtualizacaoDeInsight): Promise<void>;
   /** O registro da execução, que quem grava põe na auditoria. */
   registrarExecucao(execucao: ExecucaoDoJob): Promise<void>;
+  /**
+   * Apaga o texto das reclamações avaliadas antes de `ate` que ainda o têm
+   * (null, com a data do apagamento em `agora`); devolve quantas apagou.
+   */
+  apagarTextos(ate: Date, agora: Date): Promise<number>;
 }
 
 export interface PortasDoJob {
@@ -129,6 +154,8 @@ export interface ResumoDoJob {
   insightsAbertos: number;
   insightsAtualizados: number;
   insightsIgnorados: number;
+  /** Reclamações de hóspede cujo texto passou da retenção e foi apagado (ADR-047). */
+  textosApagados: number;
 }
 
 /** O que fica registrado de cada execução num tenant com o módulo vigente. */
@@ -166,6 +193,7 @@ export async function executarDiaDoTenant(
       insightsAbertos: 0,
       insightsAtualizados: 0,
       insightsIgnorados: 0,
+      textosApagados: 0,
     };
   }
   const [hoteis, locais, sistemico, insights] = await Promise.all([
@@ -175,9 +203,13 @@ export async function executarDiaDoTenant(
     fonte.insights(),
   ]);
   const desde = inicioDaLeitura(hoteis, sistemico ?? PADRAO_SISTEMICO, p.agora);
-  const [ativos, chamados] = await Promise.all([
+  const rc = regraDasReclamacoes(sistemico ?? PADRAO_SISTEMICO);
+  const [ativos, chamados, reclamacoes] = await Promise.all([
     fonte.ativos(p.agora, desde),
     fonte.corretivas(p.agora, desde),
+    recalculo || !rc.ativa
+      ? []
+      : fonte.reclamacoes(p.agora, new Date(p.agora.getTime() - rc.janelaDias * DIA_MS)),
   ]);
 
   const corretivas: Corretiva[] = corretivasDosChamados(chamados).map(({ transicoes, ...c }) => ({
@@ -193,6 +225,7 @@ export async function executarDiaDoTenant(
     corretivas,
     locais,
     primeiroChamadoPorHotel: primeiroChamadoPorHotel(chamados),
+    reclamacoes,
     ...(sistemico ? { sistemico } : {}),
   });
 
@@ -223,6 +256,7 @@ export async function executarDiaDoTenant(
     insightsAbertos: 0,
     insightsAtualizados: 0,
     insightsIgnorados: 0,
+    textosApagados: 0,
   };
 
   // O recálculo não abre nem atualiza insight.
@@ -242,6 +276,15 @@ export async function executarDiaDoTenant(
     } else {
       resumo.insightsIgnorados += 1;
     }
+  }
+
+  // A retenção do texto do hóspede (LGPD): só na rodada do dia.
+  if (!recalculo) {
+    const retencao = (await fonte.politicaDoSinal()) ?? PADRAO_SINAL_HOSPEDE;
+    resumo.textosApagados = await gravacao.apagarTextos(
+      limiteDaRetencao(p.agora, retencao),
+      p.agora,
+    );
   }
 
   await gravacao.registrarExecucao({

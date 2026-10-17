@@ -4,6 +4,8 @@ import {
   type AtivoDoDia,
   type CorretivaDaFonte,
   type HotelDoDia,
+  type NovoInsight,
+  PADRAO_SISTEMICO,
   type TransicaoDaOs,
   executarDiaDoTenant,
   fimDoDia,
@@ -102,6 +104,7 @@ describe('executarDiaDoTenant: o dia normal', () => {
       insightsAbertos: 1,
       insightsAtualizados: 0,
       insightsIgnorados: 0,
+      textosApagados: 0,
     });
     expect(
       banco.metricas.map((m) => [m.ativoId, m.calculo, m.recalculo, m.versaoPolitica]),
@@ -238,7 +241,7 @@ describe('executarDiaDoTenant: o registro de cada execução', () => {
       {
         ...r,
         disparadoPor: 'cron',
-        versoesDeFormula: { reincidencia: 4, atencao: 6, sistemico: 4 },
+        versoesDeFormula: { reincidencia: 4, atencao: 6, sistemico: 5 },
         versoesDePolitica: { h1: 'hotel:p1@2026-09-01', h2: 'padrao', h3: 'padrao' },
       },
     ]);
@@ -274,6 +277,7 @@ describe('executarDiaDoTenant: só no tenant com o módulo vigente (I7)', () => 
     insightsAbertos: 0,
     insightsAtualizados: 0,
     insightsIgnorados: 0,
+    textosApagados: 0,
   });
 
   it('sem o módulo: só lê os módulos, não grava nada', async () => {
@@ -315,7 +319,9 @@ describe('executarDiaDoTenant: só no tenant com o módulo vigente (I7)', () => 
         'insights',
         'locais',
         'modulos',
+        'politicaDoSinal',
         'politicaSistemica',
+        'reclamacoes',
       ].sort(),
     );
     expect(banco.metricas).toHaveLength(2);
@@ -429,5 +435,75 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
     const aberto = await executarDiaDoTenant(portas, { agora: dia(3) });
     expect(aberto.insightsAbertos).toBe(1);
     expect(banco.insights.filter((i) => i.tipo === 'sistemico')).toHaveLength(2);
+  });
+});
+
+describe('executarDiaDoTenant: o sinal do hóspede (ADR-047)', () => {
+  const reclamacao = (n: number, hotelId = 'h1') => ({
+    id: `s${n}`,
+    hotelId,
+    categoriaId: 'hidraulica',
+    uhId: `uh${n}`,
+    ocorridoEm: dia(-n),
+  });
+
+  it('as reclamações da janela da regra abrem o sistêmico, com as reclamações no detalhe', async () => {
+    const { fonte, portas } = cenario({
+      reclamacoes: [reclamacao(1), reclamacao(2), reclamacao(3), reclamacao(20)],
+    });
+    const abertos: NovoInsight[] = [];
+    const abrir = portas.gravacao.abrirInsight;
+    portas.gravacao.abrirInsight = async (n) => {
+      abertos.push(n);
+      await abrir(n);
+    };
+    await executarDiaDoTenant(portas, { agora });
+    expect(fonte.desdeDasReclamacoes).toEqual([dia(-14)]);
+    const sistemico = abertos.find((n) => n.deteccao.tipo === 'sistemico')?.deteccao;
+    expect(sistemico).toMatchObject({
+      escopo: { regra: 'reclamacoes_categoria', hotelId: 'h1', categoriaId: 'hidraulica' },
+      hotelIds: ['h1'],
+      corretivaIds: [],
+      detalhe: { evidencia: { sinalIds: ['s1', 's2', 's3'] } },
+    });
+  });
+
+  it('o recálculo e a regra desligada não leem reclamações', async () => {
+    const { fonte, portas } = cenario({
+      reclamacoes: [reclamacao(1)],
+      sistemico: {
+        ...PADRAO_SISTEMICO,
+        reclamacoes: { ativa: false, minReclamacoes: 3, minUhs: 2, janelaDias: 14 },
+      },
+    });
+    await executarDiaDoTenant(portas, { agora });
+    const recalculo = cenario({ reclamacoes: [reclamacao(1)] });
+    await executarDiaDoTenant(recalculo.portas, { agora: fimDoDia('2026-09-20'), recalculo: true });
+    expect([...fonte.lidas, ...recalculo.fonte.lidas]).not.toContain('reclamacoes');
+    expect(recalculo.fonte.lidas).not.toContain('politicaDoSinal');
+  });
+
+  it('apaga o texto que passou da retenção do grupo e conta no registro; o recálculo não apaga', async () => {
+    const { banco, portas } = cenario({ sinalHospede: { retencaoTextoDias: 30 } });
+    banco.textos = [
+      { id: 's-velho', ocorridoEm: dia(-31), apagadoEm: null },
+      { id: 's-novo', ocorridoEm: dia(-29), apagadoEm: null },
+      { id: 's-apagado', ocorridoEm: dia(-60), apagadoEm: dia(-20) },
+    ];
+    await executarDiaDoTenant(portas, { agora: fimDoDia('2026-09-20'), recalculo: true });
+    expect(banco.textos.map((t) => t.apagadoEm)).toEqual([null, null, dia(-20)]);
+    const r = await executarDiaDoTenant(portas, { agora });
+    expect(r.textosApagados).toBe(1);
+    expect(banco.textos.map((t) => t.apagadoEm)).toEqual([agora, null, dia(-20)]);
+    expect(banco.execucoes.at(-1)).toMatchObject({ textosApagados: 1 });
+  });
+
+  it('sem política gravada, a retenção padrão de 365 dias', async () => {
+    const { banco, portas } = cenario();
+    banco.textos = [
+      { id: 's1', ocorridoEm: dia(-366), apagadoEm: null },
+      { id: 's2', ocorridoEm: dia(-364), apagadoEm: null },
+    ];
+    expect((await executarDiaDoTenant(portas, { agora })).textosApagados).toBe(1);
   });
 });

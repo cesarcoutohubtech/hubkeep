@@ -23,6 +23,7 @@ import { type HotelDoDia, JANELA_CUSTO_DIAS, VERSAO_DE_POLITICA_PADRAO } from '.
 import type { Corretiva, TransicaoDaOs } from './historico';
 import { type ConfigReincidencia, PADRAO_REINCIDENCIA, diasAposPreventiva } from './reincidencia';
 import { DIA_MS } from './score';
+import type { ConfigSinalHospede } from './sinal-retencao';
 import type { ConfigSistemico } from './sistemico';
 
 /** Uma OS do chamado, como o banco a guarda, com as transições (I5). */
@@ -144,6 +145,7 @@ export const CHAVES_DO_JOB = [
   'inteligencia.reincidencia',
   'inteligencia.atencao_ativo',
   'inteligencia.sistemico',
+  'inteligencia.sinal_hospede',
 ] as const;
 
 /** Uma linha ativa de `app.politica`, como o banco a guarda. */
@@ -233,4 +235,17 @@ export function politicaSistemicaDoGrupo(
 ): ConfigSistemico {
   const grupo = linhas.find((l) => l.chave === 'inteligencia.sistemico' && l.escopo === 'grupo');
   return registro.resolver('inteligencia.sistemico', { grupo: grupo?.valor }) as ConfigSistemico;
+}
+
+/** A retenção do texto do hóspede (ADR-047): só a do grupo, que responde pelo dado. */
+export function politicaDoSinalDoGrupo(
+  linhas: readonly LinhaDePolitica[],
+  registro: RegistroDePoliticas,
+): ConfigSinalHospede {
+  const grupo = linhas.find(
+    (l) => l.chave === 'inteligencia.sinal_hospede' && l.escopo === 'grupo',
+  );
+  return registro.resolver('inteligencia.sinal_hospede', {
+    grupo: grupo?.valor,
+  }) as ConfigSinalHospede;
 }

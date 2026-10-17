@@ -67,6 +67,7 @@ import { diaNoFuso, inicioDoDiaNoFuso } from './visibilidade';
 import {
   type ConfigSistemico,
   PADRAO_SISTEMICO,
+  type ReclamacaoAnalisada,
   type RegraSistemica,
   type SinalSistemico,
   detectarSistemicos,
@@ -138,6 +139,8 @@ export interface EntradaDoDia {
   sistemico?: ConfigSistemico;
   /** O chamado mais antigo de cada hotel entre os lidos, com o cancelado (sistêmico v4). */
   primeiroChamadoPorHotel?: ReadonlyMap<string, Date>;
+  /** As reclamações de hóspede de manutenção com categoria (sistêmico v5, ADR-047). */
+  reclamacoes?: readonly ReclamacaoAnalisada[];
 }
 
 export interface ResultadoDoAtivo {
@@ -311,6 +314,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
       ativos,
       locais: e.locais.filter((l) => hoteis.has(l.hotelId)),
       ...(e.primeiroChamadoPorHotel ? { primeiroChamadoPorHotel: e.primeiroChamadoPorHotel } : {}),
+      reclamacoes: (e.reclamacoes ?? []).filter((r) => hoteis.has(r.hotelId)),
     },
     e.agora,
     e.sistemico ?? PADRAO_SISTEMICO,

@@ -9,8 +9,12 @@ import {
   type EntradaSistemico,
   type LocalAnalisado,
   PADRAO_SISTEMICO,
+  type ReclamacaoAnalisada,
   VERSAO_SISTEMICO,
   chaveDeModelo,
+  configSistemicoValida,
+  explicacaoDoSinal,
+  regraDasReclamacoes,
   detectarSistemicos as detectar,
 } from '../src';
 import { agora, corretiva, dia, todasAsRegras } from './apoio';
@@ -153,7 +157,7 @@ describe('mesmo modelo (versão 2: mínimos da política e taxa contra a base)',
     );
 
   it('o padrão é o aprovado: 3 hotéis, 6 chamados em 90 dias, 3 ativos, população de 10 com 30% afetado, dobro da base e mínimo 0,3', () => {
-    expect(VERSAO_SISTEMICO).toBe(4);
+    expect(VERSAO_SISTEMICO).toBe(5);
     expect(PADRAO_SISTEMICO.mesmoModelo).toEqual({
       ativa: true,
       minHoteis: 3,
@@ -173,7 +177,7 @@ describe('mesmo modelo (versão 2: mínimos da política e taxa contra a base)',
     expect(sinais).toHaveLength(1);
     expect(sinais[0]).toMatchObject({
       situacao: 'possivel',
-      versao: 4,
+      versao: 5,
       chave: { categoriaId: 'hvac', modelo: 'carrier|xpower 12' },
       evidencia: {
         quantidade: 6,
@@ -599,6 +603,7 @@ describe('rótulos do sistêmico v2', () => {
     'mesma_area_comum',
     'mesmo_fornecedor',
     'crescimento_categoria',
+    'reclamacoes_categoria',
   ];
 
   it.each(IDIOMAS)(
@@ -641,5 +646,106 @@ describe('rótulos do sistêmico v2', () => {
     ).toBe(
       '6 chamados em 6 ativos do mesmo modelo (de 12 instalados), em 3 hotéis, nos últimos 90 dias: 1 por ativo, contra 0,5 nos outros modelos da mesma categoria',
     );
+  });
+});
+
+describe('reclamações de hóspede (v5, ADR-047)', () => {
+  const r = (
+    n: number,
+    p: Partial<ReclamacaoAnalisada> & { uhId?: string | null } = {},
+  ): ReclamacaoAnalisada => ({
+    id: `s${n}`,
+    hotelId: 'h1',
+    categoriaId: 'hidraulica',
+    uhId: `uh${n}`,
+    ocorridoEm: dia(-n),
+    ...p,
+  });
+  const so = (reclamacoes: ReclamacaoAnalisada[], config = PADRAO_SISTEMICO) =>
+    detectar({ corretivas: [], ativos: [], locais: [], reclamacoes }, agora, config).filter(
+      (s) => s.regra === 'reclamacoes_categoria',
+    );
+
+  it('o padrão: ligada, 3 reclamações de 2 UHs em 14 dias', () => {
+    expect(PADRAO_SISTEMICO.reclamacoes).toEqual({
+      ativa: true,
+      minReclamacoes: 3,
+      minUhs: 2,
+      janelaDias: 14,
+    });
+  });
+
+  it('PRD 37: água fria em várias UHs → possível problema, com as reclamações e as UHs', () => {
+    const sinais = so([r(1), r(2), r(3, { uhId: 'uh1' }), r(4, { uhId: null })]);
+    expect(sinais).toEqual([
+      {
+        regra: 'reclamacoes_categoria',
+        situacao: 'possivel',
+        versao: 5,
+        chave: { hotelId: 'h1', categoriaId: 'hidraulica' },
+        evidencia: {
+          quantidade: 4,
+          distintos: 2,
+          janelaDias: 14,
+          hotelIds: ['h1'],
+          corretivaIds: [],
+          sinalIds: ['s1', 's2', 's3', 's4'],
+        },
+      },
+    ]);
+    expect(explicacaoDoSinal(sinais[0] as (typeof sinais)[number])).toEqual({
+      chave: 'inteligencia.sistemico.evidencia.reclamacoes_categoria',
+      valores: { quantidade: 4, uhs: 2, janelaDias: 14 },
+    });
+  });
+
+  it('abaixo dos mínimos, fora da janela, em outra categoria ou outro hotel: não dispara', () => {
+    expect(so([r(1), r(2)])).toEqual([]);
+    expect(so([r(1), r(2, { uhId: 'uh1' }), r(3, { uhId: 'uh1' })])).toEqual([]);
+    expect(so([r(1), r(2), r(15)])).toEqual([]);
+    expect(so([r(1), r(2), r(3, { categoriaId: 'ar' })])).toEqual([]);
+    expect(so([r(1), r(2), r(3, { hotelId: 'h2' })])).toEqual([]);
+    expect(so([r(1), r(2), r(3, { ocorridoEm: dia(1) })])).toEqual([]);
+  });
+
+  it('desligada pela política, não dispara; a política gravada antes da v5 vale com o padrão', () => {
+    const desligada = {
+      ...PADRAO_SISTEMICO,
+      reclamacoes: { ...regraDasReclamacoes(PADRAO_SISTEMICO), ativa: false },
+    };
+    expect(so([r(1), r(2), r(3)], desligada)).toEqual([]);
+    const antes: ConfigSistemico = { ...PADRAO_SISTEMICO };
+    delete antes.reclamacoes;
+    expect(regraDasReclamacoes(antes)).toEqual(PADRAO_SISTEMICO.reclamacoes);
+    expect(so([r(1), r(2), r(3)], antes)).toHaveLength(1);
+    expect(configSistemicoValida(antes)).toBe(true);
+    expect(
+      configSistemicoValida({
+        ...PADRAO_SISTEMICO,
+        reclamacoes: { ativa: true, minReclamacoes: 0, minUhs: 2, janelaDias: 14 },
+      }),
+    ).toBe(false);
+  });
+
+  it.each(IDIOMAS)('%s: a evidência das reclamações formata pelo catálogo', (idioma) => {
+    const { t } = criarTradutor(idioma);
+    const texto = t('inteligencia.sistemico.evidencia.reclamacoes_categoria', {
+      quantidade: 4,
+      uhs: 2,
+      janelaDias: 14,
+    });
+    expect(texto).not.toMatch(/[{}]/);
+    expect(texto).toContain('14');
+  });
+
+  it('pt-BR: a frase das reclamações', () => {
+    const { t } = criarTradutor('pt-BR');
+    expect(
+      t('inteligencia.sistemico.evidencia.reclamacoes_categoria', {
+        quantidade: 4,
+        uhs: 2,
+        janelaDias: 14,
+      }),
+    ).toBe('4 reclamações de hóspede da mesma categoria, de 2 UHs diferentes, nos últimos 14 dias');
   });
 });

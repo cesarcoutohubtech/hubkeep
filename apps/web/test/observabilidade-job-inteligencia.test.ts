@@ -25,6 +25,7 @@ const resumo = (semModulo = false): ResumoDoJob => ({
   insightsAbertos: semModulo ? 0 : 1,
   insightsAtualizados: 0,
   insightsIgnorados: 0,
+  textosApagados: 0,
 });
 
 function montar(opcoes: { checkInFalha?: boolean } = {}) {

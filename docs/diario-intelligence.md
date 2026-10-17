@@ -2742,3 +2742,25 @@ A tela explica como o PRD pede: "Guest Impact 82, alto: 9 reclamações em 90 di
 **4. Detalhes do Kaio** (ADR-033), com os padrões propostos: a janela de 90 dias; os pesos e os limites da tabela; as faixas (as mesmas FAIXAS_PADRAO); na regra sistêmica, X = 3, Y = 14 dias e Z = 2 UHs; a retenção de 365 dias contada da data da avaliação.
 
 **5. O que muda nos números.** A atenção v7 e a substituição v2 só mudam onde há reclamação confirmada; o resultado já gravado não é recalculado (ADR-036). Os testes do motor cobrem os casos do PRD: "Ar do 304 muito barulhento" sem ligação não pesa; 8 UHs com água fria em 10 dias abrem o sistêmico.
+
+### O PR C1a: a regra das reclamações e a retenção (17/10/2026)
+
+**Decisão:** "Cesar aqui. Siga" (nesta sessão, 17/10/2026), sobre a proposta do PR C. O agente seguiu só com o que o ADR-047 aprovado já cobre: a regra sistêmica das reclamações e a retenção do texto. O Guest Impact Score espera o Kaio, porque a D1 (manter a porcentagem no hotel sem importação) muda o texto do ADR ("no lugar da porcentagem") e é decisão dos dois; a D2 é detalhe do Kaio. Por isso a ordem ficou: C1a (este), depois o score (C1b) e as telas (C2).
+
+**O que o C1a traz** (sem migração, fora da zona protegida):
+- **Sistêmico versão 5:** a regra `reclamacoes_categoria`. Dispara com 3 reclamações de manutenção da mesma categoria, no mesmo hotel, em 14 dias pela data da avaliação, de pelo menos 2 UHs distintas. Vem ligada por padrão. A evidência guarda os ids das reclamações, e a explicação tem frase própria nos quatro idiomas. O campo novo da política pode faltar na política gravada antes (vale o padrão).
+- **Retenção:** a política nova `inteligencia.sinal_hospede` (`retencaoTextoDias`, de 30 a 1825, padrão 365), lida no nível do grupo. O job do dia apaga o texto das reclamações avaliadas antes do prazo (UPDATE do texto para null, com a data do apagamento, pelo `hk_worker`). A quantidade vai no resumo e na auditoria da execução. O recálculo não apaga nem lê reclamações.
+- **`packages/db`:** a leitura das reclamações (sem o texto) e o apagamento na sessão do job, com teste de integração (só na CI).
+- **Glossário de métricas:** a regra nova na linha do sinal sistêmico.
+
+**Fica para o C2:** a página do insight ainda não lista as reclamações da evidência (mostra a regra e a explicação, sem os chamados).
+
+**Detalhes para o Kaio** (ADR-033): os mínimos da regra (3 reclamações, 2 UHs, 14 dias) e se ela vem ligada; a retenção de 365 dias contada da data da avaliação e lida só no grupo.
+
+### Ponto de retomada (17/10/2026, PR C1a)
+
+- **`main`:** com o #312 (ADR-047 aprovado), verde.
+- **Dev:** 0052 e 0053 aplicadas e conferidas no `supabase migration list` (print do Cesar).
+- **Nesta branch:** o C1a (`int:`, fora da zona protegida). O PR abre agora.
+- **Esperando:** o merge do C1a; o "de acordo" do Kaio na D1 a D4 do PR C; os detalhes do Kaio; as perguntas ao Slaviero, pelo agente da 1b.
+- **Próximo:** com o "de acordo" do Kaio, o C1b (Guest Impact Score v1, atenção v7 e substituição v2). Primeiro passo: a leitura das reclamações ligadas a ativo na sessão do job e a função do score em `packages/inteligencia`.
