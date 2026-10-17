@@ -147,6 +147,7 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/inteligencia\/insights\/[^/]+$/, 'inteligencia.pagina.titulo'],
   [/^\/inteligencia\/ativos\/[^/]+$/, 'inteligencia.ativo.titulo'],
   [/^\/inteligencia\/abertura$/, 'inteligencia.abertura.titulo'],
+  [/^\/inteligencia\/sinais$/, 'inteligencia.sinais.titulo'],
 ];
 
 export const tituloDaRota = (caminho: string): Chave | undefined =>

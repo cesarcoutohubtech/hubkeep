@@ -293,6 +293,20 @@ export {
   SINAIS_DE_SUBSTITUICAO_API,
   SubstituicaoDoAtivoApi,
   TIPOS_DE_INSIGHT_API,
+  COLUNAS_DO_CSV_API,
+  COLUNAS_OBRIGATORIAS_DO_CSV_API,
+  ConsultaDaFilaDeSinais,
+  ERROS_DA_LINHA_API,
+  LIGACOES_DO_SINAL_API,
+  LIMITE_BYTES_DA_IMPORTACAO,
+  LIMITE_DA_IMPORTACAO_API,
+  PedidoDeClassificacaoDeSinal,
+  PedidoDeImportacaoDeSinais,
+  RespostaDaClassificacaoDeSinal,
+  RespostaDaFilaDeSinais,
+  RespostaDaImportacaoDeSinais,
+  SITUACOES_DA_FILA_API,
+  SinalDaFilaApi,
 } from './inteligencia';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';

@@ -75,6 +75,7 @@ export type {
   ImportacaoNoBanco,
   ReferenciasDaClassificacaoNoBanco,
   SinalNovoNoBanco,
+  SinalDaFilaNoBanco,
   SinalParaClassificarNoBanco,
 } from './repositorios/inteligencia-sinal';
 export type {

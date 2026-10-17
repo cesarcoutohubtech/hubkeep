@@ -192,6 +192,12 @@ import {
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
   RespostaDaAberturaDoIntelligence,
+  ConsultaDaFilaDeSinais,
+  PedidoDeClassificacaoDeSinal,
+  PedidoDeImportacaoDeSinais,
+  RespostaDaClassificacaoDeSinal,
+  RespostaDaFilaDeSinais,
+  RespostaDaImportacaoDeSinais,
 } from './inteligencia';
 
 type Esquema = z.ZodType;
@@ -2441,6 +2447,58 @@ export const ROTAS: readonly Rota[] = [
         'Outra pessoa decidiu antes (conflito_de_versao) ou a ação não vale no estado (transicao_invalida).',
       ),
       422: ERRO('motivo_obrigatorio, motivo_de_descarte_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/sinais',
+    resumo:
+      'A fila de classificação das reclamações de hóspede de um hotel (ADR-047): as sem classificação por padrão, ou as de manutenção, as fora da manutenção ou todas, da data da avaliação mais recente para a mais antiga, até 200, com o nome do ativo ligado e o de quem classificou. Só para quem decide insight no hotel (Admin do grupo, Gestor CSC e Gerente do hotel).',
+    exigeTenant: true,
+    consulta: ConsultaDaFilaDeSinais,
+    respostas: {
+      200: { descricao: 'Reclamações', esquema: RespostaDaFilaDeSinais },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, ou hotel_nao_encontrado (fora de quem decide insight ou inexistente).',
+      ),
+      422: ERRO('Sem o hotel ou filtro fora do formato (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/importacoes',
+    resumo:
+      'Importa as linhas de um CSV de reclamações e avaliações de hóspede num hotel (ADR-047), com as colunas do HubKeep (id_externo, data, fonte, nota, escala, texto, idioma, uh), até 1000 linhas e 1 MB por pedido. Cada linha é validada à parte: a resposta diz, por linha, se entrou, se era repetida (a mesma fonte e o mesmo código externo no hotel; a reimportação não muda a que existe) ou o código do erro. Grava o lote com auditoria (sem o texto) e o evento sinal_hospede.importado; sem nenhuma linha nova, não grava nada.',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeSinais,
+    respostas: {
+      200: { descricao: 'Resultado por linha', esquema: RespostaDaImportacaoDeSinais },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, ou hotel_nao_encontrado (fora de quem decide insight ou inexistente).',
+      ),
+      413: ERRO('O pedido passou de 1 MB (corpo_grande).'),
+      422: ERRO('importacao_vazia, importacao_grande ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/{id}/classificacao',
+    resumo:
+      'Uma pessoa classifica a reclamação (ADR-047): se é manutenção e, sendo, a categoria, a UH e o ativo, com o estado da ligação (sem ligação, possível ou confirmada). Nada liga a reclamação ao ativo sem uma pessoa. Sem manutenção, sem categoria nem ativo; com ativo, a ligação é possível ou confirmada e a categoria é a do ativo; o ativo e a UH são do hotel da reclamação. Reclassificar é permitido. Grava com a trava de versão, auditoria e o evento sinal_hospede.classificado.',
+    exigeTenant: true,
+    corpo: PedidoDeClassificacaoDeSinal,
+    respostas: {
+      200: { descricao: 'Reclamação classificada', esquema: RespostaDaClassificacaoDeSinal },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, sinal_nao_encontrado, ativo_nao_encontrado, uh_nao_encontrada ou categoria_nao_encontrada.',
+      ),
+      409: ERRO('Outra pessoa classificou antes (conflito_de_versao).'),
+      422: ERRO(
+        'ligacao_invalida, classificacao_sem_manutencao, ligacao_sem_ativo, ativo_baixado, categoria_do_ativo ou entrada_invalida.',
+      ),
     },
   },
 ];

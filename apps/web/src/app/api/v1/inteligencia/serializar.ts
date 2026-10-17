@@ -1,5 +1,5 @@
 // O painel do Intelligence na API: as datas do motor viram texto ISO 8601.
-import type { SubstituicaoDoAtivo } from '@hubkeep/inteligencia';
+import type { FilaDoSinal, SubstituicaoDoAtivo } from '@hubkeep/inteligencia';
 
 const iso = (d: Date) => d.toISOString();
 
@@ -58,5 +58,21 @@ export function substituicaoNaApi(s: SubstituicaoDoAtivo) {
     garantiaVigente,
     criterios: criterios.map((c) => ({ ...c })),
     calculadoEm: iso(s.calculadoEm),
+  };
+}
+
+/** A fila do sinal do hóspede (ADR-047): as datas em texto. */
+export function filaDeSinaisNaApi(f: FilaDoSinal) {
+  const ouNulo = (d: Date | null) => (d === null ? null : iso(d));
+  return {
+    sinais: f.sinais.map((s) => ({
+      ...s,
+      ocorridoEm: iso(s.ocorridoEm),
+      textoApagadoEm: ouNulo(s.textoApagadoEm),
+      classificadoEm: ouNulo(s.classificadoEm),
+      importadoEm: iso(s.importadoEm),
+    })),
+    limitada: f.limitada,
+    nomes: f.nomes,
   };
 }
