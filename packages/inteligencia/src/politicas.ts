@@ -22,6 +22,9 @@
 // A sétima, inteligencia.visibilidade_telas (adendo de 12/10/2026, aprovado
 // por Cesar; aguarda o Kaio), é quando e para quem as telas aparecem
 // (visibilidade.ts). Vale só no nível do grupo.
+//
+// A oitava, inteligencia.sinal_hospede (ADR-047), é a retenção do texto do
+// hóspede, em dias, de 30 a 1825 (sinal-retencao.ts). O job lê a do grupo.
 import { type ExtensaoDePolitica, RegraViolada } from '@hubkeep/dominio';
 import { PADRAO_ATENCAO, type ConfigAtencao, configAtencaoValida } from './atencao';
 import {
@@ -33,6 +36,11 @@ import {
 import { PADRAO_REINCIDENCIA, type ConfigReincidencia } from './reincidencia';
 import { FAIXAS_PADRAO } from './score';
 import { PADRAO_SISTEMICO, type ConfigSistemico, configSistemicoValida } from './sistemico';
+import {
+  type ConfigSinalHospede,
+  PADRAO_SINAL_HOSPEDE,
+  configSinalHospedeValida,
+} from './sinal-retencao';
 import { PADRAO_SUBSTITUICAO, type ConfigSubstituicao } from './substituicao';
 import {
   type ConfigVisibilidadeTelas,
@@ -58,6 +66,7 @@ export interface ValoresDePoliticaDoIntelligence {
   'inteligencia.substituicao': ConfigSubstituicao;
   'inteligencia.metrica_janela_leitura': ConfigJanelaDeLeitura;
   'inteligencia.visibilidade_telas': ConfigVisibilidadeTelas;
+  'inteligencia.sinal_hospede': ConfigSinalHospede;
 }
 export type ChaveDePoliticaDoIntelligence = keyof ValoresDePoliticaDoIntelligence;
 
@@ -71,6 +80,7 @@ export const PADROES_DO_INTELLIGENCE: {
   'inteligencia.substituicao': PADRAO_SUBSTITUICAO,
   'inteligencia.metrica_janela_leitura': PADRAO_JANELA_DE_LEITURA,
   'inteligencia.visibilidade_telas': PADRAO_VISIBILIDADE_TELAS,
+  'inteligencia.sinal_hospede': PADRAO_SINAL_HOSPEDE,
 };
 
 export const CHAVES_DE_POLITICA_DO_INTELLIGENCE = Object.keys(
@@ -113,8 +123,10 @@ function faixasValidas(v: unknown): boolean {
  * O mesmo modelo v4 (Kaio, 15/10/2026): a população mínima e o percentual afetado.
  * A efetividade v3 (adendo ao ADR-033, 15/10/2026): os códigos de intervenção.
  * A reincidência v4 (Kaio e Cesar, 16/10/2026): os dias da falha depois de preventiva.
+ * O sistêmico v5 (ADR-047): a regra das reclamações de hóspede.
  */
 const CAMPOS_QUE_PODEM_FALTAR = new Set([
+  'reclamacoes',
   'minPopulacao',
   'percentualMinimoAfetado',
   'codigosDeIntervencao',
@@ -152,6 +164,7 @@ export function valorValidoDoIntelligence<C extends ChaveDePoliticaDoIntelligenc
     );
   }
   if (chave === 'inteligencia.visibilidade_telas') return configVisibilidadeValida(valor);
+  if (chave === 'inteligencia.sinal_hospede') return configSinalHospedeValida(valor);
   if (!mesmoFormato(valor, PADROES_DO_INTELLIGENCE[chave], '')) return false;
   // Atenção: o mínimo de medições é inteiro e de pelo menos 1.
   if (chave === 'inteligencia.atencao_ativo') return configAtencaoValida(valor as ConfigAtencao);

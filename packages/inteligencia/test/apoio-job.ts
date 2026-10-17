@@ -11,6 +11,7 @@ import {
   type AtivoDoDia,
   type AtualizacaoDeInsight,
   type ChamadoDaFonte,
+  type ConfigSinalHospede,
   type ConfigSistemico,
   type CorretivaDaFonte,
   type DeteccaoDoDia,
@@ -20,6 +21,7 @@ import {
   type GravacaoDoJob,
   type HotelDoDia,
   type InsightExistente,
+  type ReclamacaoAnalisada,
   type LinhaDaMetricaDiaria,
   type LocalAnalisado,
   type NovoInsight,
@@ -41,6 +43,8 @@ export class BancoEmMemoria {
   metricas: LinhaDaMetricaDiaria[] = [];
   insights: InsightGravado[] = [];
   execucoes: ExecucaoDoJob[] = [];
+  /** As reclamações com texto, para a retenção (ADR-047). */
+  textos: { id: string; ocorridoEm: Date; apagadoEm: Date | null }[] = [];
   private seq = 0;
 
   gravarMetricas(linhas: readonly LinhaDaMetricaDiaria[]): void {
@@ -99,6 +103,10 @@ export interface DadosDoTenant {
   modulos?: ModuloContratado[];
   /** Chamados como o banco os guarda, além das corretivas acima. */
   chamados?: ChamadoDaFonte[];
+  /** As reclamações de manutenção com categoria (ADR-047). */
+  reclamacoes?: ReclamacaoAnalisada[];
+  /** A política `inteligencia.sinal_hospede` do grupo; ausente, o padrão. */
+  sinalHospede?: ConfigSinalHospede;
 }
 
 /**
@@ -164,6 +172,19 @@ export class FonteEmMemoria implements FonteDoJob {
   politicaSistemica = async () => this.ler('politicaSistemica', this.dados.sistemico);
   insights = async (): Promise<readonly InsightExistente[]> =>
     this.ler('insights', this.banco.insights);
+  /** O `desde` que o job pediu à leitura das reclamações. */
+  desdeDasReclamacoes: Date[] = [];
+  reclamacoes = async (agora: Date, desde: Date) => {
+    this.desdeDasReclamacoes.push(desde);
+    return this.ler(
+      'reclamacoes',
+      (this.dados.reclamacoes ?? []).filter(
+        (r) =>
+          r.ocorridoEm.getTime() > desde.getTime() && r.ocorridoEm.getTime() <= agora.getTime(),
+      ),
+    );
+  };
+  politicaDoSinal = async () => this.ler('politicaDoSinal', this.dados.sinalHospede);
   calculosDoDia = async (dia: string): Promise<ReadonlyMap<string, number>> => {
     this.lidas.push('calculosDoDia');
     const m = new Map<string, number>();
@@ -182,6 +203,13 @@ export class GravacaoEmMemoria implements GravacaoDoJob {
   };
   atualizarInsight = async (a: AtualizacaoDeInsight) => this.banco.atualizar(a);
   registrarExecucao = async (e: ExecucaoDoJob) => void this.banco.execucoes.push(e);
+  apagarTextos = async (ate: Date, agora: Date) => {
+    const vencidos = this.banco.textos.filter(
+      (t) => t.apagadoEm === null && t.ocorridoEm.getTime() < ate.getTime(),
+    );
+    for (const t of vencidos) t.apagadoEm = agora;
+    return vencidos.length;
+  };
 }
 
 export type { DeteccaoDoDia };

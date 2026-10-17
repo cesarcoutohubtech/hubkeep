@@ -30,6 +30,7 @@ import {
   fimDoDiaNoFuso,
   hoteisDoDia,
   listaCanonicaDeHoteis,
+  politicaDoSinalDoGrupo,
   politicaSistemicaDoGrupo,
 } from '@hubkeep/inteligencia';
 
@@ -90,6 +91,8 @@ export function portasDoJob(
       politicaSistemica: async () => politicaSistemicaDoGrupo(await politicas(), await registro()),
       insights: async () => (await sessao.insights()).map(insightExistente),
       calculosDoDia: (dia) => sessao.calculosDoDia(dia),
+      reclamacoes: (ate, desde) => sessao.reclamacoes(ate, desde),
+      politicaDoSinal: async () => politicaDoSinalDoGrupo(await politicas(), await registro()),
     },
     gravacao: {
       gravarMetricas: (linhas) => sessao.gravarMetricas(linhas),
@@ -123,6 +126,7 @@ export function portasDoJob(
           em,
         }),
       registrarExecucao: (execucao) => sessao.registrarExecucao(execucao),
+      apagarTextos: (ate, em) => sessao.apagarTextos(ate, em),
     },
   };
 }
@@ -185,6 +189,7 @@ const somar = (a: ResumoDoJob, b: ResumoDoJob): ResumoDoJob => ({
   insightsAbertos: a.insightsAbertos + b.insightsAbertos,
   insightsAtualizados: a.insightsAtualizados + b.insightsAtualizados,
   insightsIgnorados: a.insightsIgnorados + b.insightsIgnorados,
+  textosApagados: a.textosApagados + b.textosApagados,
 });
 
 /**

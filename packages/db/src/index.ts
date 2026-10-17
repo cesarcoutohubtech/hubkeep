@@ -88,6 +88,7 @@ export type {
   ChamadoDoJob,
   DeteccaoNoInsightDoJob,
   ExecucaoNoBancoDoJob,
+  ReclamacaoDoJob,
   HotelDoJob,
   InsightDoJob,
   LocalDoJob,

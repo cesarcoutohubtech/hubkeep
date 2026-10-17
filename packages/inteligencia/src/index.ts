@@ -18,6 +18,7 @@ export * from './politicas';
 export * from './reincidencia';
 export * from './score';
 export * from './sinal-hospede';
+export * from './sinal-retencao';
 export * from './sistemico';
 export * from './substituicao';
 export * from './visibilidade';
