@@ -2831,7 +2831,7 @@ O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do
 
 **Detalhes do Kaio** (ADR-033): o limite de linhas por lista (proposta: 50, as mais recentes), os rótulos e a ordem das seções.
 
-**Decisão (17/10/2026):** "Cesar aqui. Vamos fazer conforme proposto", com o sim nas perguntas (a) e (b); "Kaio aqui, limite de linhas por lista (proponho as 50 mais recentes), os rótulos e a ordem das seções. Fazer como proposto". O Kaio respondeu pelos detalhes; o "sim" dele na (a) e na (b) fica para confirmar antes do merge.
+**Decisão (17/10/2026):** "Cesar aqui. Vamos fazer conforme proposto", com o sim nas perguntas (a) e (b); "Kaio aqui, limite de linhas por lista (proponho as 50 mais recentes), os rótulos e a ordem das seções. Fazer como proposto". O Kaio respondeu pelos detalhes, e depois confirmou a (a) e a (b): "Kaio aqui. Sim para A e B" (17/10/2026, no chat do agente do Intelligence).
 
 **Área compartilhada:** o C2 mexe nos catálogos de texto (`packages/i18n/catalogos`, chaves novas `inteligencia.reclamacoes.*` e `inteligencia.impacto.*`, só no prefixo do Intelligence). Registro antes de começar.
 
@@ -2855,3 +2855,16 @@ O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do
 - **Nesta branch:** o C2, fora da zona protegida, no PR aberto.
 - **Esperando:** o merge do C2; o "sim" do Kaio na (a) e na (b) da proposta do C2; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
 - **Próximo:** com o PR C fechado, a 1.5 sem IA fica completa. O que resta dela depende de outros: a entrada por API e webhook (IX1 a IX3 do núcleo) e a sugestão da IA (regra 9).
+
+### O merge do C2 (17/10/2026)
+
+- **#321 mergeado** com o pgTAP ainda rodando (o job que também roda a integração do `packages/db`, com o teste novo das leituras do C2). Os outros quatro checks passaram antes do merge. O resultado do pgTAP é conferido uma vez depois; vermelho, a correção vem antes de qualquer outro merge.
+- **O "sim" do Kaio na (a) e na (b)** veio junto com o "Cesar aqui. continue": nenhuma decisão do C2 fica pendente.
+
+### Ponto de retomada (17/10/2026, depois do C2)
+
+- **`main`:** com o C2 (#321). Sem migração nova do Intelligence desde a 0053; nada para `db push`.
+- **Nesta branch:** só este registro, sem PR; entra no próximo PR do Intelligence.
+- **Esperando:** o resultado do pgTAP do #321; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** a 1.5 sem IA está completa. O que segue precisa de proposta e decisão (ver a resposta ao Cesar de 17/10/2026).
+
