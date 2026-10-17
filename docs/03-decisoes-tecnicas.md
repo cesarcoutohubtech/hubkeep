@@ -1460,3 +1460,22 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 - **Riscos aceitos:**
   - a classificação à mão dá trabalho ao gerente e ao CSC, e o volume do piloto ainda não é conhecido. O tamanho da fila mostra se a sugestão da IA precisa vir antes;
   - sem as respostas do cliente, o CSV de colunas fixas pode pedir conversão da exportação de cada ferramenta.
+
+## ADR-048 — Mews V1: checkpoints duráveis, isolamento e sincronização somente leitura
+
+**Status:** aprovado por Cesar em 17/10/2026, na conversa de revisão da migração Mews, com resposta expressa **“Simm aprovo”** à pergunta de aprovação formal da ADR. **A aprovação não autoriza aplicação de migração no Supabase-dev, staging ou produção, nem uso de credenciais reais.** Documentação de referência: `docs/referencia/laboratorio-eu/mews-poc/ADR-CHECKPOINTS-DURAVEIS-PROPOSTA.md` (histórico e adendo de aprovação).
+
+**Contexto:** o laboratório da Mews (PRs #304 e #305) demonstrou leitura, projeção, tratamento de falhas, checkpoints e reconciliação em memória. A migração 0054 do PR #313 foi incorporada à `main` com a estrutura física, testes pgTAP e tipos Kysely, mas isso não confirma a aplicação em Supabase-dev. É necessário um driver transacional durável antes de sincronizar dados reais.
+
+**Decisão:**
+- Mews é conector **somente leitura**; a V1 aparece inicialmente apenas em administração. Não cria OS, não atualiza status de quarto/UH, licença ou PMS, não insere hóspedes/notas/PII, não guarda credenciais em claro.
+- Escopo estrito `tenant_id + hotel_id + enterprise_id`; vínculo válido/revogado é verificado pelo servidor e revalidado dentro da transação. Recursos permitidos são **Space** previamente validados; bloqueios permitidos `OutOfOrder` e `InternalUse`. Nenhuma informação de payload sintético prova autorização de recurso.
+- Persistência técnica usa `app.mews_vinculo`, `app.mews_checkpoint`, `app.mews_recurso`, `app.mews_bloqueio`, com FKs compostas, RLS `ENABLE/FORCE`, `hk_worker` segregado por tenant e privilégios mínimos. `hk_app` recebe só o necessário para o vínculo administrativo; referência do cofre não é legível por esse papel.
+- **Duas marcas independentes:** `ultimo_updated_utc` para sincronização incremental e `ultimo_sweep_utc` para varredura de bloqueios futuros. Cada commit aplica projeção e watermark correspondente **na mesma transação**, com controle CAS de versão e replay idempotente por digest. Falha encerra com `ROLLBACK` completo.
+- Tombstone prevalece sobre evento ativo com o **mesmo** `UpdatedUtc`; só uma versão temporal estritamente posterior pode substituí-lo de acordo com a regra validada do domínio. Ausência num delta/sweep não é exclusão.
+- O driver pertence à camada `packages/db` e respeita `withSistema`, Unit of Work, auditoria/outbox e limites de payload/observabilidade. Não criar trigger, nova função SQL nem automação operacional sem nova decisão.
+- A migração 0054 já mergeada **não será editada retroativamente**. Correções futuras no banco devem ocorrer por nova migração e PR de zona protegida.
+
+**Antes do primeiro uso em DEV:** conferir o estado atual de migrações sem executar SQL; concluir driver, testes de concorrência, perda de conexão, revogação e rollback, política GDPR/retenção e cofre de segredos; exigir CI verde, revisão técnica e **autorização específica** do Cesar para o `db push`. DEV, staging e produção não recebem autorização automática por esta ADR.
+
+**Riscos aceitos no desenho:** latência de reconciliação de acordo com janela e rate limit Mews; a atualização do estado técnico depende de validação de recursos por propriedade e de transações idempotentes. A operação hoteleira permanece desacoplada nesta V1.
