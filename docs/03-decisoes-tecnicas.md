@@ -1424,7 +1424,7 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 
 ## ADR-047 — Intelligence: o sinal do hóspede, importado e classificado sem IA
 
-**Status:** aguarda aprovação de Cesar e de Kaio, por escrito (ADR-033, "Quem aprova ADR do Intelligence"). A decisão de trazer agora a parte da 1.5 que não precisa de IA foi dada pelos dois em 16/10/2026, no chat do agente do Intelligence ("Cesar aqui. De acordo. Prossiga" e "Kaio aqui. De acordo. Prossiga"), sobre a proposta registrada em `docs/diario-intelligence.md`, "A 1.5 sem IA: o sinal do hóspede". Esse "de acordo" aprova o rumo; o texto deste ADR só vale com o "aprovo" dos dois depois de lido.
+**Status:** aprovado por Cesar e por Kaio em 17/10/2026, por escrito, no chat do agente do Intelligence ("Cesar aqui. O “aprovo” a ADR-047." e "kaio aqui. O “aprovo” a ADR-047."), como pede o ADR-033 ("Quem aprova ADR do Intelligence"). A aprovação veio depois do merge do #308 (migração 0052), do #309 (migração 0053) e do #311 (as rotas e a tela), e cobre o texto deste ADR na `main`, com a migração 0053. A decisão de trazer agora a parte da 1.5 que não precisa de IA já tinha sido dada pelos dois em 16/10/2026, no mesmo chat ("Cesar aqui. De acordo. Prossiga" e "Kaio aqui. De acordo. Prossiga"), sobre a proposta registrada em `docs/diario-intelligence.md`, "A 1.5 sem IA: o sinal do hóspede".
 
 **Contexto:**
 - O PRD do Intelligence põe o feedback do hóspede na 1.5 (seções 10, 11, 26 e 33): fontes por CSV, API e webhook, classificação por IA, associação a hotel, UH e ativo, e o Guest Impact Score. O ADR-033 já diz que "a tabela de sinais nasce na 1.5, só para o feedback externo, com os três estados de associação".
