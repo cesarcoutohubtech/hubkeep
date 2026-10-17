@@ -8,10 +8,12 @@
 // A importação grava as linhas do lote com on conflict do nothing: a mesma
 // avaliação (hotel, fonte e código externo) entra uma vez, e a reimportação
 // não muda a que existe. Uma auditoria por lote, com as contagens, e o evento
-// sinal_hospede.importado. A classificação grava com a trava de versão, uma
+// sinal_hospede.importado (a importação em que nada entrou não grava nenhum
+// dos dois). A classificação grava com a trava de versão, uma
 // auditoria e o evento sinal_hospede.classificado. As auditorias vão sem
 // hotel_id e sem o texto do hóspede, como a do insight (Cesar, 10/10/2026):
-// a RLS da app.auditoria deixaria quem não decide insight lê-las.
+// a RLS da app.auditoria deixaria quem não decide insight lê-las. O INSERT
+// dessa auditoria sem hotel é o caso nomeado da migração 0053.
 import { NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { Tx } from '../conexao';
@@ -118,6 +120,9 @@ export async function gravarSinaisNoBanco(
         .execute()
     : [];
   const chaves = inseridos.map((r) => `${r.fonte}|${r.id_externo}`);
+  // Nada entrou (tudo repetido): nada mudou, e não há auditoria nem evento.
+  // A policy da auditoria (0053) confere o lote pelas reclamações dele.
+  if (!chaves.length) return { loteId, inseridos: chaves };
   const contagens = { entraram: chaves.length, repetidas: i.sinais.length - chaves.length };
   uow.auditar({
     entidade: 'sinal_hospede',

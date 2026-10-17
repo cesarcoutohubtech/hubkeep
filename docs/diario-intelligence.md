@@ -2656,3 +2656,19 @@ PR `int:` de zona protegida (migração, pgTAP e `docs/03`). Antes de abrir, nen
   - o Kaio conferir os detalhes acima;
   - as perguntas ao Slaviero, pelo agente da 1b.
 - **Próximo:** o PR B (contrato, rotas, a importação por CSV e a fila de classificação nos quatro idiomas), fora da zona protegida. Primeiro passo: as portas do sinal no `portasDoPainel` do web e a rota `POST /api/v1/inteligencia/sinais/importacoes`.
+
+### A auditoria do sinal sem hotel e a `main` vermelha (16 e 17/10/2026)
+
+- **Falha na CI do #308:** a integração do `packages/db` caiu duas vezes. A primeira foi o código do QR do ativo do teste (`QSINAL0001`, com I e L), corrigido no `a5c95bd`. A segunda foi de desenho: a RLS da `app.auditoria` recusou a auditoria sem `hotel_id` gravada pelo Gerente. O INSERT só aceita hotel nulo do Admin do grupo, do implantador e dos casos nomeados (preferência, fornecedor e insight, 0040), e a 0052 não trouxe o caso do sinal. O agente não viu isso antes do PR.
+- **Opções levadas ao Cesar:** (1) o caso `sinal_hospede` na policy, no molde da 0040 (recomendada); (2) auditoria com `hotel_id`, que o Técnico e o Solicitante leriam; (3) sem auditoria, contra a regra 6.
+- **Decisão:** "Cesar aqui. De acordo com a opção 1" (nesta sessão, 17/10/2026).
+- **O #308 foi mergeado com esse check vermelho** ("Cesar aqui. 308 mergeado"). A `main` ficou vermelha na integração do `packages/db`, e o Cesar foi avisado para não mergear outra coisa antes da correção.
+- **A correção** (`int:`, zona protegida): a migração 0053 com o caso na policy, o índice por lote, os casos no pgTAP 043, e a importação em que nada entrou deixa de gravar auditoria e evento (teste novo na integração). A 0052 não foi editada, porque já está na `main`.
+
+### Ponto de retomada (17/10/2026, correção da auditoria do sinal)
+
+- **`main`:** em `8d63b47` (#308), vermelha na integração do `packages/db` (2 testes do sinal do hóspede).
+- **Dev:** a 0052 vai ao dev pelo `db push` do Cesar; pode ir junto com a 0053, depois do merge da correção.
+- **Nesta branch:** a correção. O PR abre agora, e é o único de zona protegida aberto.
+- **Esperando o Cesar:** o merge da correção antes de qualquer outro; o `db push` (0052 e 0053); e o "aprovo" de Cesar e Kaio no ADR-047.
+- **Próximo:** o PR B (contrato, rotas, importação por CSV e fila de classificação), fora da zona protegida.
