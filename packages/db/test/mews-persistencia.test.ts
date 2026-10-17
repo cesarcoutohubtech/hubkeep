@@ -154,17 +154,19 @@ describe.skipIf(!temBanco)('persistência transacional Mews V1', { timeout: 70_0
     await dono.end();
   });
 
-  const estado = async () =>
-    (
-      await dono.query<{
-        versao: string;
-        ultimo_updated_utc: Date | null;
-        ultimo_sweep_utc: Date | null;
-      }>(
-        'select versao, ultimo_updated_utc, ultimo_sweep_utc from app.mews_checkpoint where tenant_id = $1',
-        [T],
-      )
-    ).rows[0];
+  const estado = async () => {
+    const consulta = await dono.query<{
+      versao: string;
+      ultimo_updated_utc: Date | null;
+      ultimo_sweep_utc: Date | null;
+    }>(
+      'select versao, ultimo_updated_utc, ultimo_sweep_utc from app.mews_checkpoint where tenant_id = $1',
+      [T],
+    );
+    const linha = consulta.rows[0];
+    if (!linha) throw new Error('mews_checkpoint_ausente');
+    return linha;
+  };
 
   it('bootstrap, replay idempotente e auditoria única', async () => {
     const p = plano(0, null, c1, [espaco('space-1')]);
