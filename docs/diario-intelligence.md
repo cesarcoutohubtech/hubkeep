@@ -2714,3 +2714,31 @@ PR `int:` de zona protegida (migração, pgTAP e `docs/03`). Antes de abrir, nen
 - **Nesta branch:** o status do ADR-047 (`docs/03`, zona protegida) e a menção no `docs/02`. O PR abre agora.
 - **Esperando:** o merge desse PR; o Kaio conferir os detalhes do PR A e do PR B; as perguntas ao Slaviero, pelo agente da 1b.
 - **Próximo:** a proposta do PR C (a regra sistêmica das reclamações, o Guest Impact Score v1 no lugar da porcentagem do "afeta hóspede", a atenção v7, a substituição v2 e a retenção no job). Parar na proposta antes do código. Primeiro passo: ler como a atenção e a substituição usam o "afeta hóspede" hoje (`packages/inteligencia`).
+
+## O PR C do sinal do hóspede: proposta (17/10/2026)
+
+O ADR-047, aprovado, já define o rumo do PR C: a regra sistêmica das reclamações, o Guest Impact Score v1 no lugar da porcentagem do "afeta hóspede" (atenção v7 e substituição v2) e a retenção do texto no job. Esta proposta detalha o desenho e separa o que é decisão de Cesar e Kaio do que é detalhe do Kaio (ADR-033). Não precisa de migração: o `hk_worker` já lê a `app.sinal_hospede` e atualiza só o texto (0052), e o insight e a métrica guardam a evidência em JSON.
+
+**1. Guest Impact Score v1 (por ativo, de 0 a 100, determinístico).** Conta as reclamações de manutenção ligadas ao ativo, na janela da política (padrão: 90 dias pela data da avaliação). Os componentes seguem o PRD (seção 11), com o que existe sem IA:
+
+| Componente | Peso | Como entra |
+|---|---|---|
+| Volume | 30% | reclamações na janela sobre o limite (padrão 5) |
+| Severidade | 25% | média de (1 − nota/escala) das que têm nota; sem nota, sem dado e o peso redistribui |
+| Recorrência depois do reparo | 20% | reclamações depois da última corretiva concluída do ativo, sobre o limite (padrão 3) |
+| Amplitude de UHs | 15% | UHs distintas citadas na classificação, sobre o limite (padrão 3) |
+| Impacto operacional | 10% | a porcentagem atual dos chamados que afetaram hóspede (o PMS não existe no HubKeep) |
+
+A tela explica como o PRD pede: "Guest Impact 82, alto: 9 reclamações em 90 dias, 6 UHs, nota média 1,8 de 5, 4 depois do reparo".
+
+**2. Decisões para Cesar e Kaio:**
+- **D1, o hotel que não importa reclamações.** Se o score substituir a porcentagem em todos os ativos, quem não importa nada perde quase todo o componente, e a atenção cai em todos os hotéis sem importação. Recomendação: o score vale no hotel com reclamação importada na janela; no hotel sem nenhuma, o componente continua a porcentagem dos chamados, como hoje. A evidência diz a fonte (reclamações ou chamados). Alternativa: o score em todos, com a queda aceita.
+- **D2, o que conta como ligada.** Recomendação: só a ligação confirmada entra no score; a possível aparece na explicação ("2 possíveis, não contadas"), sem pesar. Alternativa: a possível com metade do peso.
+- **D3, a regra sistêmica das reclamações** (sistêmico v5, regra `reclamacoes_categoria`): X reclamações de manutenção da mesma categoria, no mesmo hotel, em Y dias, de pelo menos Z UHs distintas, com ou sem ativo ligado. Abre "possível problema sistêmico", como as outras regras. Recomendação: ligada por padrão, porque sem importação nada dispara. A evidência guarda os ids das reclamações, e a página do insight lista as reclamações (data, fonte, nota e texto), que só quem decide insight lê.
+- **D4, a ordem.** Recomendação: C1 com o motor, o job e a política de retenção, sem tela nova; C2 com as telas (a seção "Reclamações ligadas" e a explicação do score na página do ativo, e as reclamações na página do insight sistêmico).
+
+**3. Retenção (LGPD).** A política nova `inteligencia.sinal_hospede` traz `retencaoTextoDias`. O job do dia apaga o texto (UPDATE para null, com `texto_apagado_em`) das reclamações cuja data de avaliação passou do prazo. A classificação, a nota e as datas ficam. A auditoria é uma linha por tenant e por rodada, com a quantidade e sem os ids. O padrão espera a resposta do cliente (pergunta 4); até lá, a proposta é 365 dias, com mínimo de 30 e máximo de 1825.
+
+**4. Detalhes do Kaio** (ADR-033), com os padrões propostos: a janela de 90 dias; os pesos e os limites da tabela; as faixas (as mesmas FAIXAS_PADRAO); na regra sistêmica, X = 3, Y = 14 dias e Z = 2 UHs; a retenção de 365 dias contada da data da avaliação.
+
+**5. O que muda nos números.** A atenção v7 e a substituição v2 só mudam onde há reclamação confirmada; o resultado já gravado não é recalculado (ADR-036). Os testes do motor cobrem os casos do PRD: "Ar do 304 muito barulhento" sem ligação não pesa; 8 UHs com água fria em 10 dias abrem o sistêmico.
