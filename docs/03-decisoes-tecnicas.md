@@ -1461,6 +1461,12 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
   - a classificação à mão dá trabalho ao gerente e ao CSC, e o volume do piloto ainda não é conhecido. O tamanho da fila mostra se a sugestão da IA precisa vir antes;
   - sem as respostas do cliente, o CSV de colunas fixas pode pedir conversão da exportação de cada ferramenta.
 
+**Adendo de 17/10/2026 (decisões D1 a D4 do PR C):** aprovado por Cesar ("Cesar aqui. Siga") e por Kaio ("Kaio aqui, de acordo com as decisões D1 a D4"), no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O PR C do sinal do hóspede: proposta".
+- **D1:** o score vale no hotel com alguma reclamação importada na janela; no hotel sem nenhuma, o impacto no hóspede continua a porcentagem dos chamados, e a evidência diz a fonte. Isso ajusta o "no lugar da porcentagem" da decisão acima.
+- **D2:** só a ligação confirmada pesa; a possível aparece na explicação.
+- **D3:** a regra sistêmica das reclamações vem ligada por padrão, e a página do insight lista as reclamações da evidência.
+- **D4:** o PR C sai em partes: C1a (a regra e a retenção, #314), C1b (o score, a atenção versão 7 e a substituição versão 2, com a política `inteligencia.impacto_hospede`, #318) e C2 (as telas).
+
 ## ADR-048 — Mews V1: checkpoints duráveis, isolamento e sincronização somente leitura
 
 **Status:** aprovado por Cesar em 17/10/2026, na conversa de revisão da migração Mews, com resposta expressa **“Simm aprovo”** à pergunta de aprovação formal da ADR. **A aprovação não autoriza aplicação de migração no Supabase-dev, staging ou produção, nem uso de credenciais reais.** Documentação de referência: `docs/referencia/laboratorio-eu/mews-poc/ADR-CHECKPOINTS-DURAVEIS-PROPOSTA.md` (histórico e adendo de aprovação).

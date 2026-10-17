@@ -2797,3 +2797,14 @@ A tela explica como o PRD pede: "Guest Impact 82, alto: 9 reclamações em 90 di
 - **Nesta branch:** o C1b, fora da zona protegida, no PR aberto depois do merge do #316, com a branch atualizada da `main`.
 - **Esperando:** o merge do C1b; o merge do #315 (zona protegida, de outro agente), para abrir o PR do adendo ao ADR-047; os detalhes do Kaio; as perguntas ao Slaviero.
 - **Próximo:** o C2 (as telas): as reclamações da evidência na página do insight sistêmico, e as reclamações ligadas e a explicação do score na página do ativo.
+
+### O PR do adendo ao ADR-047 (17/10/2026)
+
+O #318 (C1b) e o #315 (`eu:`, ADR-048) entraram na `main`. Sem outro PR de zona protegida aberto (conferido no GitHub: #317, #310, #282 e #281 passam no check "zona protegida"), o adendo das decisões D1 a D4 entra no `docs/03`, no fim do ADR-047, com o texto registrado acima. O PR é só de documentação e falha no check "zona protegida" por desenho (ADR-023).
+
+### Ponto de retomada (17/10/2026, adendo ao ADR-047)
+
+- **`main`:** com o C1b (#318) e o ADR-048 (#315). Sem migração nova do Intelligence desde a 0053.
+- **Nesta branch:** o adendo ao ADR-047, no PR de zona protegida; o merge é do Cesar.
+- **Esperando:** o merge do adendo; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** o C2 (as telas), em branch nova a partir da `main` depois do merge do adendo. Primeiro passo: as reclamações da evidência na página do insight sistêmico (os `sinalIds` da evidência da regra `reclamacoes_categoria`).
