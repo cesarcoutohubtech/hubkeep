@@ -6,6 +6,7 @@
 // da lista, "Procurar ativo" (Cesar e Kaio, 16/10/2026) leva à página de
 // qualquer ativo dos hotéis em que a pessoa decide, também sem insight. Sem o
 // módulo ou sem papel que decide, a API responde 404 inteligencia_indisponivel.
+// Acima de tudo, o link para as reclamações de hóspede (ADR-047).
 import type {
   RespostaDaBuscaDeAtivosNoIntelligence,
   RespostaDeHoteis,
@@ -117,11 +118,10 @@ export function TelaDeInsights() {
   return (
     <div className="hk-pilha">
       <Nota tom="info">{t('inteligencia.lista.modulo')}</Nota>
-      {veAbertura && (
-        <p>
-          <Link href="/inteligencia/abertura">{t('inteligencia.abertura.link')}</Link>
-        </p>
-      )}
+      <p className="hk-em-linha">
+        <Link href="/inteligencia/sinais">{t('inteligencia.sinais.link')}</Link>
+        {veAbertura && <Link href="/inteligencia/abertura">{t('inteligencia.abertura.link')}</Link>}
+      </p>
       <Aviso aviso={erro && { tipo: 'erro', erro }} />
       {resumo && (
         <Indicadores rotulo={t('inteligencia.indicadores.rotulo')}>

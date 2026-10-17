@@ -2686,3 +2686,17 @@ PR `int:` de zona protegida (migração, pgTAP e `docs/03`). Antes de abrir, nen
 - **A tela** `/inteligencia/sinais`: a importação do CSV (o navegador lê o arquivo e manda só as colunas do HubKeep; as outras, como nome e contato do hóspede, ficam fora) e a fila de classificação, nos quatro idiomas.
 
 **Detalhes que o agente escolheu, para o Kaio conferir (ADR-033):** a fila mostra até 200; o recorte padrão é "sem classificação"; o separador do CSV é a vírgula ou o ponto e vírgula (o do cabeçalho); as colunas fora do modelo são ignoradas, e a tela diz quais.
+
+**Verificação local:** lint e typecheck verdes; testes da raiz 559, `inteligencia` 375, `web` 449 (56 pulados), `db` 77 (268 pulados, com banco só na CI), sem falhas. A integração nova da fila (`sinal-hospede-inteligencia.test.ts`) roda só na CI.
+
+### Ponto de retomada (17/10/2026, sinal do hóspede, PR B)
+
+- **`main`:** em `0ee359f` (#309), verde.
+- **Dev:** a 0052 e a 0053 esperam o `db push` do Cesar; sem elas, a tela nova responde erro no dev.
+- **Nesta branch:** o PR B (`int:`, fora da zona protegida). O PR abre agora.
+- **Esperando:**
+  - o merge do PR B e o `db push` (0052 e 0053) pelo Cesar;
+  - o "aprovo" escrito de Cesar e de Kaio no ADR-047;
+  - o Kaio conferir os detalhes do PR A e do PR B;
+  - as perguntas ao Slaviero, pelo agente da 1b.
+- **Próximo:** a proposta do PR C (a regra sistêmica das reclamações, o Guest Impact Score v1 no lugar da porcentagem do "afeta hóspede", a atenção v7, a substituição v2 e a retenção no job). Parar na proposta antes do código. Primeiro passo: ler como a atenção e a substituição usam o "afeta hóspede" hoje (`packages/inteligencia`).
