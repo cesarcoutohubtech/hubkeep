@@ -2,6 +2,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 select plan(17);
+grant usage on schema extensions to hk_worker;
 
 -- Só fixtures descartáveis do runner pgTAP. Não alcança Supabase-dev/prod.
 insert into auth.users (id, email) values
