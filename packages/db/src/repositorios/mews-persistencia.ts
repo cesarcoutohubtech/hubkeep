@@ -270,7 +270,7 @@ export function criarPersistenciaMews(
   banco: Pick<AcessoBanco, 'executarComoSistema'>,
 ) {
   return {
-    aplicar: (plano: LoteMews): Promise<ResultadoPersistenciaMews> => {
+    aplicar: async (plano: LoteMews): Promise<ResultadoPersistenciaMews> => {
       const lote = conferirLoteMews(plano);
       return banco.executarComoSistema({ tenantId: lote.tenantId },
         (uow) => persistirNaUnidade(uow, lote));
