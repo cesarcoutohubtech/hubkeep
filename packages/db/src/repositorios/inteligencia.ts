@@ -204,21 +204,62 @@ export interface SessaoDoJobDoIntelligence {
   atualizarInsight(deteccao: DeteccaoNoInsightDoJob): Promise<void>;
   /** A auditoria da execução no tenant. */
   registrarExecucao(execucao: ExecucaoNoBancoDoJob): Promise<void>;
-  /**
-   * As reclamações de hóspede de manutenção com categoria, avaliadas depois de
-   * `desde` e até `agora`, sem o texto (ADR-047).
-   */
-  reclamacoes(agora: Date, desde: Date): Promise<ReclamacaoDoJob[]>;
+  /** As reclamações de hóspede avaliadas depois de `desde` e até `agora`, sem o texto (ADR-047). */
+  sinais(agora: Date, desde: Date): Promise<SinalDoJob[]>;
   /** Apaga o texto das reclamações avaliadas antes de `ate`; devolve quantas. */
   apagarTextos(ate: Date, agora: Date): Promise<number>;
 }
 
-export interface ReclamacaoDoJob {
+export interface SinalDoJob {
   id: string;
   hotelId: string;
-  categoriaId: string;
-  uhId: string | null;
   ocorridoEm: Date;
+  nota: number | null;
+  escala: number | null;
+  manutencao: boolean | null;
+  categoriaId: string | null;
+  uhId: string | null;
+  ativoId: string | null;
+  ligacao: string;
+}
+
+/** As reclamações do trecho, sem o texto (ADR-047), na forma do motor. */
+export async function sinaisNoTrecho(
+  tx: Tx,
+  desde: Date,
+  ate: Date,
+  hotelId?: string,
+): Promise<SinalDoJob[]> {
+  let q = tx
+    .selectFrom('app.sinal_hospede')
+    .select([
+      'id',
+      'hotel_id',
+      'ocorrido_em',
+      'nota',
+      'escala',
+      'manutencao',
+      'categoria_id',
+      'uh_id',
+      'ativo_id',
+      'ligacao',
+    ])
+    .where('ocorrido_em', '>', desde)
+    .where('ocorrido_em', '<=', ate);
+  if (hotelId) q = q.where('hotel_id', '=', hotelId);
+  const linhas = await q.orderBy('ocorrido_em').orderBy('id').execute();
+  return linhas.map((r) => ({
+    id: r.id,
+    hotelId: r.hotel_id,
+    ocorridoEm: data(r.ocorrido_em),
+    nota: r.nota === null ? null : Number(r.nota),
+    escala: r.escala,
+    manutencao: r.manutencao,
+    categoriaId: r.categoria_id,
+    uhId: r.uh_id,
+    ativoId: r.ativo_id,
+    ligacao: r.ligacao,
+  }));
 }
 
 const LOTE_DE_METRICAS = 500;
@@ -510,24 +551,7 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
       }));
     },
 
-    async reclamacoes(agora, desde) {
-      const linhas = await tx
-        .selectFrom('app.sinal_hospede')
-        .select(['id', 'hotel_id', 'categoria_id', 'uh_id', 'ocorrido_em'])
-        .where('manutencao', '=', true)
-        .where('categoria_id', 'is not', null)
-        .where('ocorrido_em', '>', desde)
-        .where('ocorrido_em', '<=', agora)
-        .$narrowType<{ categoria_id: NotNull }>()
-        .execute();
-      return linhas.map((r) => ({
-        id: r.id,
-        hotelId: r.hotel_id,
-        categoriaId: r.categoria_id,
-        uhId: r.uh_id,
-        ocorridoEm: data(r.ocorrido_em),
-      }));
-    },
+    sinais: (agora, desde) => sinaisNoTrecho(tx, desde, agora),
 
     async apagarTextos(ate, agora) {
       const r = await tx

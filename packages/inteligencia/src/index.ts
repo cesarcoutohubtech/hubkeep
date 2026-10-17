@@ -7,6 +7,7 @@ export * from './efetividade';
 export * from './explicacao';
 export * from './fonte';
 export * from './historico';
+export * from './impacto-hospede';
 export * from './insight';
 export * from './intervencao';
 export * from './job';

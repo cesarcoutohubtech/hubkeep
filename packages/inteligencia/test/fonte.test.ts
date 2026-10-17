@@ -10,6 +10,7 @@ import {
   type LinhaDePolitica,
   type OsDaFonte,
   PADRAO_ATENCAO,
+  PADRAO_IMPACTO_HOSPEDE,
   PADRAO_REINCIDENCIA,
   PADRAO_SISTEMICO,
   corretivasDosChamados,
@@ -161,6 +162,7 @@ describe('hoteisDoDia', () => {
         fuso: id === 'h3' ? 'America/Manaus' : 'America/Sao_Paulo',
         reincidencia: PADRAO_REINCIDENCIA,
         atencao: PADRAO_ATENCAO,
+        impactoHospede: PADRAO_IMPACTO_HOSPEDE,
         versaoPolitica: 'padrao',
       })),
     );

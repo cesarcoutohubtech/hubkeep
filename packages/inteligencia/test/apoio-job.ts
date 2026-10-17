@@ -21,7 +21,7 @@ import {
   type GravacaoDoJob,
   type HotelDoDia,
   type InsightExistente,
-  type ReclamacaoAnalisada,
+  type SinalDaFonte,
   type LinhaDaMetricaDiaria,
   type LocalAnalisado,
   type NovoInsight,
@@ -103,8 +103,8 @@ export interface DadosDoTenant {
   modulos?: ModuloContratado[];
   /** Chamados como o banco os guarda, além das corretivas acima. */
   chamados?: ChamadoDaFonte[];
-  /** As reclamações de manutenção com categoria (ADR-047). */
-  reclamacoes?: ReclamacaoAnalisada[];
+  /** As reclamações de hóspede, sem o texto (ADR-047). */
+  sinais?: SinalDaFonte[];
   /** A política `inteligencia.sinal_hospede` do grupo; ausente, o padrão. */
   sinalHospede?: ConfigSinalHospede;
 }
@@ -173,12 +173,12 @@ export class FonteEmMemoria implements FonteDoJob {
   insights = async (): Promise<readonly InsightExistente[]> =>
     this.ler('insights', this.banco.insights);
   /** O `desde` que o job pediu à leitura das reclamações. */
-  desdeDasReclamacoes: Date[] = [];
-  reclamacoes = async (agora: Date, desde: Date) => {
-    this.desdeDasReclamacoes.push(desde);
+  desdeDosSinais: Date[] = [];
+  sinais = async (agora: Date, desde: Date) => {
+    this.desdeDosSinais.push(desde);
     return this.ler(
-      'reclamacoes',
-      (this.dados.reclamacoes ?? []).filter(
+      'sinais',
+      (this.dados.sinais ?? []).filter(
         (r) =>
           r.ocorridoEm.getTime() > desde.getTime() && r.ocorridoEm.getTime() <= agora.getTime(),
       ),

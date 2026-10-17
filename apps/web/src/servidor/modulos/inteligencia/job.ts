@@ -91,7 +91,7 @@ export function portasDoJob(
       politicaSistemica: async () => politicaSistemicaDoGrupo(await politicas(), await registro()),
       insights: async () => (await sessao.insights()).map(insightExistente),
       calculosDoDia: (dia) => sessao.calculosDoDia(dia),
-      reclamacoes: (ate, desde) => sessao.reclamacoes(ate, desde),
+      sinais: (ate, desde) => sessao.sinais(ate, desde),
       politicaDoSinal: async () => politicaDoSinalDoGrupo(await politicas(), await registro()),
     },
     gravacao: {

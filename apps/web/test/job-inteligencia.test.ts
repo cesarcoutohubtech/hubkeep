@@ -147,7 +147,7 @@ class SessaoEmMemoria implements SessaoDoJobDoIntelligence {
   atualizarInsight = async (d: DeteccaoNoInsightDoJob) => void this.atualizados.push(d);
   execucoes: ExecucaoNoBancoDoJob[] = [];
   registrarExecucao = async (e: ExecucaoNoBancoDoJob) => void this.execucoes.push(e);
-  reclamacoes = () => this.ler('reclamacoes', []);
+  sinais = () => this.ler('sinais', []);
   apagamentos: { ate: Date; agora: Date }[] = [];
   apagarTextos = async (ate: Date, agora: Date) => {
     this.apagamentos.push({ ate, agora });
@@ -222,7 +222,7 @@ describe('portasDoJob sobre a sessão do banco', () => {
     expect(r.textosApagados).toBe(2);
     expect(sessao.apagamentos).toEqual([{ ate: dia(-90), agora }]);
     expect(sessao.execucoes[0]).toMatchObject({ textosApagados: 2 });
-    expect(sessao.lidas).toContain('reclamacoes');
+    expect(sessao.lidas).toContain('sinais');
   });
 
   it('sem o módulo vigente: lê só os módulos e não grava nada', async () => {

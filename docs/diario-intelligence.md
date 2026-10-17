@@ -2773,3 +2773,27 @@ A tela explica como o PRD pede: "Guest Impact 82, alto: 9 reclamações em 90 di
 - **A correção:** um parâmetro próprio para o código externo. O Cesar foi avisado para não mergear outra coisa antes.
 - **Também na `main`:** o #313 (`eu:`, migração 0054) entrou junto; o run dele foi cancelado pelo do #314, que passou em tudo menos nesse teste.
 - **O Kaio deu o "de acordo" na D1 a D4** ("Kaio aqui, de acordo com as decisões D1 a D4"), depois do "Cesar aqui. Siga". O C1b (Guest Impact Score) está em andamento, guardado fora desta correção.
+
+### O PR C1b: o Guest Impact Score (17/10/2026)
+
+**Decisão:** D1 a D4 com o "de acordo" dos dois ("Cesar aqui. Siga" e "Kaio aqui, de acordo com as decisões D1 a D4"). A D1 muda o texto do ADR-047 ("no lugar da porcentagem"), e o adendo precisa entrar no `docs/03`. Mas o #315 (`eu:`, ADR-048) é um PR de zona protegida aberto, e só pode haver um por vez: o C1b sai fora da zona, e o adendo fica para um PR próprio depois do merge do #315. O texto do adendo:
+
+> **Adendo de 17/10/2026 (decisões D1 a D4 do PR C):** aprovado por Cesar ("Cesar aqui. Siga") e por Kaio ("Kaio aqui, de acordo com as decisões D1 a D4"), no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O PR C do sinal do hóspede: proposta". (D1) O score vale no hotel com alguma reclamação importada na janela; no hotel sem nenhuma, o impacto no hóspede continua a porcentagem dos chamados, e a evidência diz a fonte. (D2) Só a ligação confirmada pesa; a possível aparece na explicação. (D3) A regra sistêmica das reclamações vem ligada por padrão, e a página do insight lista as reclamações da evidência. (D4) O PR C sai em partes: C1a (a regra e a retenção), C1b (o score, a atenção versão 7 e a substituição versão 2, com a política `inteligencia.impacto_hospede`) e C2 (as telas).
+
+**O que o C1b traz:**
+- **Guest Impact Score v1** (`impacto-hospede.ts`): volume 30%, severidade pela nota 25%, recorrência depois do último reparo 20%, amplitude de UHs 15% e a porcentagem dos chamados que afetaram hóspede 10%, na janela de 90 dias. Só a ligação confirmada pesa (D2). Sem nota ou sem reparo, o componente fica sem dado e o peso redistribui.
+- **Política nova `inteligencia.impacto_hospede`** (a nona), resolvida por hotel, como a atenção: a janela, os limites, os pesos e as faixas.
+- **Atenção versão 7:** o componente do impacto no hóspede usa o score no hotel com reclamação importada na janela; no hotel sem nenhuma, a porcentagem dos chamados (D1). A evidência diz a fonte e o porquê (confirmadas, possíveis, UHs, nota média, depois do reparo). O motivo e a nota da linha no detalhamento têm frase própria nos quatro idiomas.
+- **Substituição versão 2:** o critério do impacto no hóspede usa o mesmo cálculo, com as reclamações do hotel lidas na janela da política. O rótulo virou "Impacto no hóspede", de 0 a 100.
+- **Job:** lê as reclamações da janela (sem o texto) uma vez, na maior janela entre a da regra sistêmica e a do score; o recálculo também lê, para a atenção.
+- **`packages/db`:** a leitura das reclamações do trecho (`sinaisNoTrecho`), no job e no painel, e as linhas da política nova; testes de integração (só na CI).
+- **Glossário de métricas:** a atenção 7, a substituição 2 e o Guest Impact Score.
+
+**Detalhes para o Kaio** (ADR-033): os pesos (os do PRD) e os limites (5 reclamações, 3 depois do reparo, 3 UHs), a janela de 90 dias, a severidade pela nota (1 − nota/escala) e a porcentagem dos chamados de 12 meses no critério da substituição.
+
+### Ponto de retomada (17/10/2026, PR C1b)
+
+- **`main`:** verde de novo com o merge do #316 (correção do teste).
+- **Nesta branch:** o C1b, fora da zona protegida, no PR aberto depois do merge do #316, com a branch atualizada da `main`.
+- **Esperando:** o merge do C1b; o merge do #315 (zona protegida, de outro agente), para abrir o PR do adendo ao ADR-047; os detalhes do Kaio; as perguntas ao Slaviero.
+- **Próximo:** o C2 (as telas): as reclamações da evidência na página do insight sistêmico, e as reclamações ligadas e a explicação do score na página do ativo.

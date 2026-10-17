@@ -33,9 +33,9 @@ const custoDe = (soma: number, informadas = 1, aceitas = 1): CustoDaAtencao => (
   tenant: { informadas: 30, aceitas: 40 },
 });
 
-describe('atenção por ativo, versão 6', () => {
+describe('atenção por ativo, versão 7', () => {
   it('a versão, os pesos padrão e o mínimo de medições são os aprovados', () => {
-    expect(VERSAO_ATENCAO).toBe(6);
+    expect(VERSAO_ATENCAO).toBe(7);
     const p = PADRAO_ATENCAO.pesos;
     expect(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, Math.round(v * 100)]))).toEqual(
       {
@@ -63,7 +63,7 @@ describe('atenção por ativo, versão 6', () => {
     });
     // Impacto no hóspede e garantia valem 0 e têm peso:
     // (0,77 × 0,20 + 24/48 × 0,15 + 0 + 0,8 × 0,15 + 0) / 0,70 = 0,349 / 0,70 = 50.
-    expect([s.valor, s.faixa, s.versao]).toEqual([50, 'atencao', 6]);
+    expect([s.valor, s.faixa, s.versao]).toEqual([50, 'atencao', 7]);
     expect(s.ausentes).toEqual([
       'custo',
       'preventiva_atrasada',

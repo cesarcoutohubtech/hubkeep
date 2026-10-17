@@ -5,7 +5,7 @@ import {
   type CorretivaDaFonte,
   type HotelDoDia,
   type NovoInsight,
-  PADRAO_SISTEMICO,
+  type SinalDaFonte,
   type TransicaoDaOs,
   executarDiaDoTenant,
   fimDoDia,
@@ -241,7 +241,7 @@ describe('executarDiaDoTenant: o registro de cada execução', () => {
       {
         ...r,
         disparadoPor: 'cron',
-        versoesDeFormula: { reincidencia: 4, atencao: 6, sistemico: 5 },
+        versoesDeFormula: { reincidencia: 4, atencao: 7, sistemico: 5 },
         versoesDePolitica: { h1: 'hotel:p1@2026-09-01', h2: 'padrao', h3: 'padrao' },
       },
     ]);
@@ -321,7 +321,7 @@ describe('executarDiaDoTenant: só no tenant com o módulo vigente (I7)', () => 
         'modulos',
         'politicaDoSinal',
         'politicaSistemica',
-        'reclamacoes',
+        'sinais',
       ].sort(),
     );
     expect(banco.metricas).toHaveLength(2);
@@ -439,17 +439,23 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
 });
 
 describe('executarDiaDoTenant: o sinal do hóspede (ADR-047)', () => {
-  const reclamacao = (n: number, hotelId = 'h1') => ({
+  const reclamacao = (n: number, extra: Partial<SinalDaFonte> = {}): SinalDaFonte => ({
     id: `s${n}`,
-    hotelId,
+    hotelId: 'h1',
+    ocorridoEm: dia(-n),
+    nota: null,
+    escala: null,
+    manutencao: true,
     categoriaId: 'hidraulica',
     uhId: `uh${n}`,
-    ocorridoEm: dia(-n),
+    ativoId: null,
+    ligacao: 'sem_ligacao',
+    ...extra,
   });
 
   it('as reclamações da janela da regra abrem o sistêmico, com as reclamações no detalhe', async () => {
     const { fonte, portas } = cenario({
-      reclamacoes: [reclamacao(1), reclamacao(2), reclamacao(3), reclamacao(20)],
+      sinais: [reclamacao(1), reclamacao(2), reclamacao(3), reclamacao(20)],
     });
     const abertos: NovoInsight[] = [];
     const abrir = portas.gravacao.abrirInsight;
@@ -458,7 +464,8 @@ describe('executarDiaDoTenant: o sinal do hóspede (ADR-047)', () => {
       await abrir(n);
     };
     await executarDiaDoTenant(portas, { agora });
-    expect(fonte.desdeDasReclamacoes).toEqual([dia(-14)]);
+    // A maior janela: a do Guest Impact Score (90 dias), acima da regra (14).
+    expect(fonte.desdeDosSinais).toEqual([dia(-90)]);
     const sistemico = abertos.find((n) => n.deteccao.tipo === 'sistemico')?.deteccao;
     expect(sistemico).toMatchObject({
       escopo: { regra: 'reclamacoes_categoria', hotelId: 'h1', categoriaId: 'hidraulica' },
@@ -468,19 +475,40 @@ describe('executarDiaDoTenant: o sinal do hóspede (ADR-047)', () => {
     });
   });
 
-  it('o recálculo e a regra desligada não leem reclamações', async () => {
-    const { fonte, portas } = cenario({
-      reclamacoes: [reclamacao(1)],
-      sistemico: {
-        ...PADRAO_SISTEMICO,
-        reclamacoes: { ativa: false, minReclamacoes: 3, minUhs: 2, janelaDias: 14 },
-      },
+  it('o recálculo lê as reclamações, para a atenção, mas não a retenção', async () => {
+    const recalculo = cenario({ sinais: [reclamacao(1)] });
+    await executarDiaDoTenant(recalculo.portas, { agora: fimDoDia('2026-09-20'), recalculo: true });
+    expect(recalculo.fonte.lidas).toContain('sinais');
+    expect(recalculo.fonte.lidas).not.toContain('politicaDoSinal');
+  });
+
+  it('atenção v7: o hotel com reclamação usa o Guest Impact Score; o sem, a porcentagem dos chamados', async () => {
+    const confirmada = (n: number, ativoId: string, hotelId = 'h1') =>
+      reclamacao(n, { ativoId, hotelId, ligacao: 'confirmada', nota: 1, escala: 5 });
+    const { banco, portas } = cenario({
+      sinais: [
+        confirmada(1, 'a1'),
+        confirmada(2, 'a1'),
+        reclamacao(5, { ativoId: 'a1', ligacao: 'possivel' }),
+      ],
     });
     await executarDiaDoTenant(portas, { agora });
-    const recalculo = cenario({ reclamacoes: [reclamacao(1)] });
-    await executarDiaDoTenant(recalculo.portas, { agora: fimDoDia('2026-09-20'), recalculo: true });
-    expect([...fonte.lidas, ...recalculo.fonte.lidas]).not.toContain('reclamacoes');
-    expect(recalculo.fonte.lidas).not.toContain('politicaDoSinal');
+    const impacto = (ativoId: string) =>
+      (
+        banco.metricas.find((m) => m.ativoId === ativoId)?.detalheAtencao as unknown as {
+          componentes: { chave: string; evidencia: Record<string, unknown> }[];
+        }
+      ).componentes.find((c) => c.chave === 'impacto_hospede')?.evidencia;
+    expect(impacto('a1')).toMatchObject({
+      fonte: 'reclamacoes',
+      versaoImpacto: 1,
+      confirmadas: 2,
+      possiveis: 1,
+      uhs: 2,
+    });
+    // O h2 não importou nada: continua a porcentagem dos chamados.
+    expect(impacto('a2')).toEqual({ score: 0, fonte: 'chamados' });
+    expect(banco.metricas.every((m) => m.versaoFormulaAtencao === 7)).toBe(true);
   });
 
   it('apaga o texto que passou da retenção do grupo e conta no registro; o recálculo não apaga', async () => {

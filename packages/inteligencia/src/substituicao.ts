@@ -6,7 +6,10 @@
 import { CRITICIDADE_MAXIMA, type Criticidade } from './historico';
 import { razao } from './score';
 
-export const VERSAO_SUBSTITUICAO = 1;
+// A versão 2 (ADR-047; Cesar e Kaio, 17/10/2026) troca o impacto no hóspede
+// pelo da atenção versão 7: o Guest Impact Score no hotel com reclamação
+// importada na janela, ou a porcentagem dos chamados (`impactoNoHospede`).
+export const VERSAO_SUBSTITUICAO = 2;
 
 export interface EntradaSubstituicao {
   corretivas12m: number;
@@ -14,7 +17,7 @@ export interface EntradaSubstituicao {
   idadeAnos: number | null;
   custo12m: number | null;
   custoReposicao: number | null;
-  /** Guest Impact Score, de 0 a 100 (1.5). */
+  /** O impacto no hóspede, de 0 a 100 (`impactoNoHospede`, versão 2). */
   impactoHospede: number | null;
   criticidade: Criticidade | null;
   /** Score de reincidência, de 0 a 100. */
