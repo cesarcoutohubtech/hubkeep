@@ -2808,3 +2808,25 @@ O #318 (C1b) e o #315 (`eu:`, ADR-048) entraram na `main`. Sem outro PR de zona 
 - **Nesta branch:** o adendo ao ADR-047, no PR de zona protegida; o merge é do Cesar.
 - **Esperando:** o merge do adendo; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
 - **Próximo:** o C2 (as telas), em branch nova a partir da `main` depois do merge do adendo. Primeiro passo: as reclamações da evidência na página do insight sistêmico (os `sinalIds` da evidência da regra `reclamacoes_categoria`).
+
+### O PR C2 do sinal do hóspede: proposta (17/10/2026)
+
+O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do score. Proposta, antes do código:
+
+**1. Página do insight sistêmico das reclamações.** Hoje a regra `reclamacoes_categoria` grava os `sinalIds` na evidência, mas a página só lista chamados (e a lista fica vazia). A proposta é uma seção "Reclamações da evidência", no lugar da tabela de chamados quando a regra é a das reclamações: data, fonte, nota, UH, ligação com o ativo (com o link do ativo) e o texto (ou "texto apagado em …"), com o link para a fila do hotel.
+
+**2. Página do ativo.** Uma seção "Impacto no hóspede", perto do "Por que":
+- o score (0 a 100) e a fonte: as reclamações (D1) ou a porcentagem dos chamados, com a frase de quando o hotel não importa reclamação;
+- os cinco componentes com o valor e o peso (volume, severidade, recorrência depois do reparo, amplitude de UHs e a porcentagem dos chamados), e o que ficou sem dado;
+- as reclamações ligadas ao ativo na janela da política, as confirmadas (que pesam) e as possíveis (que não pesam, D2), com as mesmas colunas da página do insight.
+- O indicador do topo passa a mostrar o score "de 100" quando a fonte são as reclamações, e a porcentagem quando são os chamados.
+
+**Quem vê:** não muda. A página do ativo já exige quem decide insight no hotel do ativo (Admin do grupo, Gestor CSC, Gerente com o hotel), o mesmo conjunto da fila e da RLS da `app.sinal_hospede`. Na página do insight, a leitura das reclamações passa pela RLS da `app.sinal_hospede` com o contexto do usuário: quem lê o insight mas não lê as reclamações do hotel vê só a quantidade.
+
+**O que entra:** duas leituras novas no `packages/db`, com o texto e pela RLS (`sinaisPorIds` e `sinaisDoAtivo`, pelo índice das reclamações do ativo da 0052); os campos novos nas respostas das rotas do insight e do ativo (`packages/contratos`); as seções nas duas telas; os textos nos quatro idiomas (catálogos, área compartilhada: registro aqui antes de mexer); testes. Sem migração e fora da zona protegida.
+
+**Para decidir (Cesar e Kaio):**
+- **(a)** O texto do hóspede aparece nas duas páginas, como na fila? A proposta é sim: o público é o mesmo da fila.
+- **(b)** As possíveis aparecem na página do ativo, marcadas como "não pesa"? A proposta é sim (D2: "a possível aparece na explicação").
+
+**Detalhes do Kaio** (ADR-033): o limite de linhas por lista (proposta: 50, as mais recentes), os rótulos e a ordem das seções.
