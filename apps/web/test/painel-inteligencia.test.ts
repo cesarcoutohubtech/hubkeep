@@ -166,6 +166,12 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
     politicasDaSubstituicao: async () => [],
     intervencoes: async () => [TROCA],
     historicoDosAtivos: async () => ({ chamados: [TROCA], paradas: [] }),
+    // O sinal do hóspede (ADR-047) ainda não tem rota no web.
+    hotelDoSinal: async () => null,
+    gravarSinais: async () => ({ loteId: 'lote', inseridos: [] }),
+    sinalParaClassificar: async () => null,
+    referenciasDaClassificacao: async () => ({ ativo: null, uh: null, categoria: null }),
+    classificar: async (_ctx, c) => ({ versao: c.versaoEsperada + 1 }),
   };
   return { porta, decisoes, buscas };
 }

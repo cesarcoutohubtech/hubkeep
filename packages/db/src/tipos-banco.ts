@@ -570,6 +570,33 @@ export interface AppProprietario {
   tenant_id: string;
 }
 
+export interface AppSinalHospede {
+  ativo_id: string | null;
+  atualizado_em: Generated<Timestamp>;
+  categoria_id: string | null;
+  classificado_em: Timestamp | null;
+  classificado_por: string | null;
+  criado_em: Generated<Timestamp>;
+  escala: number | null;
+  fonte: string;
+  hotel_id: string;
+  id: string;
+  id_externo: string;
+  idioma: string | null;
+  importado_por: string;
+  ligacao: Generated<string>;
+  lote_id: string;
+  manutencao: boolean | null;
+  nota: Numeric | null;
+  ocorrido_em: Timestamp;
+  tenant_id: string;
+  texto: string | null;
+  texto_apagado_em: Timestamp | null;
+  uh_citada: string | null;
+  uh_id: string | null;
+  versao: Generated<number>;
+}
+
 export interface AppSituacao {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -705,6 +732,7 @@ export interface DB {
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.prioridade": AppPrioridade;
   "app.proprietario": AppProprietario;
+  "app.sinal_hospede": AppSinalHospede;
   "app.situacao": AppSituacao;
   "app.sla_alerta": AppSlaAlerta;
   "app.tenant": AppTenant;

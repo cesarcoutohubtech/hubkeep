@@ -44,6 +44,7 @@ export const ENTIDADES_DA_AUDITORIA = [
   'preferencia_membro',
   'prioridade',
   'proprietario',
+  'sinal_hospede',
   'situacao',
   'tenant',
   'uh_indisponivel',

@@ -2591,3 +2591,68 @@ O Cesar não achou a página da lava-roupa do hotel 6. Ela só abria pelo insigh
   - o merge;
   - conferir, com o app local atualizado da `main`, que a seção "Sinal de substituição" aparece na lava-roupa.
 - **Próximo:** o que Cesar e Kaio priorizarem.
+
+### Conferências depois do #307 (16/10/2026)
+
+- **Busca:** "ja fiz a busca com "lava" e deu certo. Cesar aqui." O "Procurar ativo" acha a lava-roupa, e a página abre com a seção "Sinal de substituição" (print do Cesar, ativo `01a13ab3-…`, "Sem sinal", 1 critério atingido de 6 avaliados).
+- **Detalhes da tela, decididos pelo Kaio (ADR-033):** "Kaio aqui. Ficou bom sim. Manter." A criticidade fica em nível ("4 de 5" e "a partir de 4 de 5"), e o selo de "Sem sinal" fica cinza.
+
+## A 1.5 sem IA: o sinal do hóspede (16/10/2026)
+
+**Pedido do Cesar:** integrar os canais de pesquisa e avaliação dos clientes e trazer as reclamações ligadas à manutenção. Com o piloto reagendado, "quero trazer o que for possivel para agora".
+
+**Como estava no projeto:** é a Intelligence 1.5 (Guest Impact), depois do 1.0 e do piloto, e dependente do provedor de IA. Nada implementado: só o "afeta hóspede" do chamado (I4), que o 1.0 usa como porcentagem. Os limites eram a regra 9 do `CLAUDE.md` (sem IA no MVP), o ADR-033 ("a tabela de sinais nasce na 1.5") e o PRD ("não implementar feedback externo antes do 1.0"). Nenhuma pergunta ao cliente sobre as ferramentas que ele usa.
+
+**Proposta do agente (nesta sessão):** trazer agora a parte da 1.5 que não precisa de IA.
+1. **A tabela `app.sinal_hospede`:** a reclamação ou avaliação, com hotel, fonte, código externo, data, nota e escala, texto, idioma e a UH citada. Sem nome, e-mail ou reserva do hóspede. Única por hotel, fonte e código externo. RLS, isolamento e pgTAP.
+2. **Importação por CSV na tela do Intelligence**, com colunas fixas do HubKeep. O navegador lê o arquivo e manda as linhas; o arquivo não fica guardado. O resultado vem por linha (entrou, repetida, erro com código).
+3. **Classificação à mão:** é manutenção ou não, a categoria do ativo, a UH, o ativo quando se sabe, e o estado da ligação ("sem ligação", "possível", "confirmada"). Nunca ligar ao ativo sem uma pessoa confirmar.
+4. **No motor:** a regra sistêmica das reclamações (X da mesma categoria, no mesmo hotel, em Y dias, abre "possível problema sistêmico", X e Y em política) e o Guest Impact Score v1, determinístico, das reclamações confirmadas, no lugar da porcentagem do "afeta hóspede" (atenção v7, substituição v2).
+5. **Retenção (LGPD):** a política diz por quantos dias o texto fica; depois, o job apaga o texto (`update` para null) e mantém a classificação.
+
+**Fica para depois:** a sugestão da IA (provedor e regra 9, do Cesar); a entrada por API e webhook (IX1 a IX3 do núcleo, "não antes do piloto", do Cesar em 30/09); abrir chamado a partir da reclamação (área compartilhada).
+
+**Decisões pedidas:** antecipar a 1.5 sem IA; a fonte nova e a tabela (ADR-047); quem vê e classifica (quem decide insight no hotel: Gerente, Gestor CSC e Admin do grupo; o Técnico não vê o texto); CSV com colunas fixas, com o mapeamento por ferramenta depois; o Guest Impact Score v1 no lugar da porcentagem.
+
+**Aprovação:** "Cesar aqui. De acordo. Prossiga" e "Kaio aqui. De acordo. Prossiga" (nesta sessão, 16/10/2026). A proposta está aprovada inteira, com as recomendações: CSV de colunas fixas e o Guest Impact Score v1 no lugar da porcentagem. O ADR-047 entra como proposta e só vale com o "aprovo" escrito dos dois, depois de lido.
+
+**Ordem dos PRs** (`int:`):
+- **A, zona protegida:** o ADR-047 (proposta), a migração 0052 da `app.sinal_hospede`, o pgTAP (meta-teste 28 e isolamento), o motor no `packages/inteligencia` e a gravação e a leitura no `packages/db`. Antes de abrir, conferir que não há outro PR de zona protegida aberto (16/10: nenhum; #281, #282 e #305 passam no check da zona).
+- **B:** contrato, rotas, a importação por CSV e a fila de classificação, nos quatro idiomas.
+- **C:** a regra sistêmica, o Guest Impact Score v1, a atenção v7, a substituição v2 e a retenção no job.
+
+**Pedido ao agente da 1b e administração** (perguntas ao cliente, `docs/referencia/perguntas-cliente.md`), para o Cesar levar:
+1. Que ferramentas de pesquisa e avaliação o grupo usa hoje (pesquisa própria, NPS ou CSAT, TrustYou, ReviewPro, myHotel, MARA, Google, Booking, central de atendimento) e em quais hotéis?
+2. Cada uma exporta planilha (CSV ou Excel) ou tem API? Com que frequência dá para exportar, e quem tem o acesso?
+3. O que vem na exportação: data, nota e escala, texto, idioma, UH, código da avaliação? Vem nome ou contato do hóspede (o HubKeep não guarda)?
+4. Por quanto tempo o texto da avaliação pode ficar guardado no HubKeep (LGPD), e quem no grupo responde por isso?
+5. Quem vai importar e classificar as reclamações em cada hotel (gerente, CSC)?
+
+**Área compartilhada, antes de mexer (16/10/2026):** o PR A acrescenta a entidade `sinal_hospede` à lista da auditoria geral (`ENTIDADES_DA_AUDITORIA`, em `packages/dominio/src/auditoria-geral.ts`, e a lista da API em `packages/contratos`) e o nome dela no catálogo (`auditoria.entidade`, nos quatro idiomas). É só um item a mais na lista, sem mudar regra; o teste `tests/auditoria-entidades.test.ts` exige os três juntos. Aviso à 1b e à 1c por este registro.
+
+### O PR A (16/10/2026)
+
+PR `int:` de zona protegida (migração, pgTAP e `docs/03`). Antes de abrir, nenhum outro PR de zona protegida aberto (#281, #282 e #305 passam no check da zona).
+
+**O que o PR traz:**
+- **ADR-047** no `docs/03`, como proposta: "aguarda aprovação de Cesar e de Kaio, por escrito".
+- **Migração 0052** (`20261016200000_sinal_hospede.sql`): a `app.sinal_hospede`, com RLS forçada, as policies de quem decide insight no hotel (importar e classificar em nome próprio), o UPDATE do `hk_app` só nas colunas da classificação, o do `hk_worker` só no apagamento do texto, as FKs compostas (UH e ativo pelo hotel) e os checks de formato. A UH chama `uh_id`, porque `local_id` é campo de escopo.
+- **pgTAP:** o `043` (54 casos) e a tabela na lista fechada do meta-teste 28. Paridade da ligação na raiz (`valores-canonicos-banco`).
+- **Motor (`sinal-hospede.ts`):** `validarLinha` (as colunas fixas `id_externo, data, fonte, nota, escala, texto, idioma, uh`; a fonte vira código; a data é o dia, ao meio-dia UTC, ou o instante com fuso), `importarSinais` (até 1000 linhas, resultado por linha: entrou, repetida ou o código do erro) e `classificarSinal` (as regras da ligação, do ativo, da UH e da categoria, com a trava de versão).
+- **`packages/db`:** a gravação do lote (on conflict do nothing, auditoria por lote e o evento `sinal_hospede.importado`), a classificação (trava de versão, auditoria e o evento `sinal_hospede.classificado`), as auditorias sem `hotel_id` e sem o texto, e as leituras do hotel, do sinal e das referências. Teste de integração novo (só na CI).
+- **Área compartilhada:** a entidade `sinal_hospede` na lista da auditoria geral (domínio e contrato) e o nome dela nos catálogos; os códigos de erro novos nos quatro idiomas.
+- **Tipos do Kysely** escritos à mão, no formato do gerador.
+
+**Detalhes que o agente escolheu, para o Kaio conferir (ADR-033):** o limite de 1000 linhas por importação; os tamanhos (código externo 200, fonte 40, texto 4000, idioma 20, UH 40); a escala inteira de 1 a 100; a folga de um dia para a data no futuro; a linha precisa de texto ou de nota.
+
+### Ponto de retomada (16/10/2026, sinal do hóspede, PR A)
+
+- **`main`:** em `e430279` (#307).
+- **Dev:** sem mudança. A migração 0052 vai ao dev pelo `db push` do Cesar, depois do merge.
+- **Nesta branch:** o PR A. O PR abre agora.
+- **Esperando:**
+  - o "aprovo" escrito de Cesar e de Kaio no ADR-047, depois de lido;
+  - o merge e o `db push` do Cesar;
+  - o Kaio conferir os detalhes acima;
+  - as perguntas ao Slaviero, pelo agente da 1b.
+- **Próximo:** o PR B (contrato, rotas, a importação por CSV e a fila de classificação nos quatro idiomas), fora da zona protegida. Primeiro passo: as portas do sinal no `portasDoPainel` do web e a rota `POST /api/v1/inteligencia/sinais/importacoes`.

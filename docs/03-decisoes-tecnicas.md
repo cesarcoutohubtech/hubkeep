@@ -1421,3 +1421,41 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
   - até o Cesar configurar o SES, nenhum e-mail sai; o registro mostra `sem_provedor`;
   - no iPhone, o push só funciona com o PWA instalado na tela inicial (iOS 16.4 ou mais novo);
   - sem silenciar no MVP, um Gestor CSC de muitos hotéis pode receber muitos avisos num dia ruim. A contagem do C8 mede isso no piloto.
+
+## ADR-047 — Intelligence: o sinal do hóspede, importado e classificado sem IA
+
+**Status:** aguarda aprovação de Cesar e de Kaio, por escrito (ADR-033, "Quem aprova ADR do Intelligence"). A decisão de trazer agora a parte da 1.5 que não precisa de IA foi dada pelos dois em 16/10/2026, no chat do agente do Intelligence ("Cesar aqui. De acordo. Prossiga" e "Kaio aqui. De acordo. Prossiga"), sobre a proposta registrada em `docs/diario-intelligence.md`, "A 1.5 sem IA: o sinal do hóspede". Esse "de acordo" aprova o rumo; o texto deste ADR só vale com o "aprovo" dos dois depois de lido.
+
+**Contexto:**
+- O PRD do Intelligence põe o feedback do hóspede na 1.5 (seções 10, 11, 26 e 33): fontes por CSV, API e webhook, classificação por IA, associação a hotel, UH e ativo, e o Guest Impact Score. O ADR-033 já diz que "a tabela de sinais nasce na 1.5, só para o feedback externo, com os três estados de associação".
+- O piloto foi reagendado, e o Cesar pediu para trazer agora o que for possível (16/10/2026).
+- A regra 9 do `CLAUDE.md` (sem IA no MVP) continua valendo, e o provedor de IA não foi escolhido. A entrada por API e webhook depende da credencial por tenant e da entrega assinada do núcleo (IX1 a IX3), que ficam para depois do piloto (Cesar, 30/09/2026).
+- Hoje o impacto no hóspede do motor é a porcentagem dos chamados do ativo marcados com "afeta hóspede" (ADR-034).
+
+**Decisão:**
+- **A tabela `app.sinal_hospede`** (migração 0052), uma linha por reclamação ou avaliação de hóspede:
+  - **origem:** o hotel, a fonte (um código curto, como `google`, `booking`, `trustyou` ou `pesquisa_interna`, sem lista fechada: a fonte é dado do cliente, não `if` no código), o código externo, a data, a nota e a escala, o texto, o idioma e a UH como veio na exportação;
+  - **classificação:** se é manutenção (vazio enquanto ninguém classificou), a categoria do ativo, a UH do cadastro, o ativo e o estado da ligação com o ativo, mais quem classificou e quando;
+  - **importação:** o lote e quem importou;
+  - **sem dado pessoal do hóspede:** nem nome, nem e-mail, nem telefone, nem número da reserva. O texto pode trazer dado pessoal escrito pelo próprio hóspede; por isso a retenção abaixo;
+  - **a mesma avaliação não entra duas vezes:** única por hotel, fonte e código externo. A reimportação conta a linha como repetida e não muda a que existe.
+- **Os três estados da ligação com o ativo** (ADR-033): `sem_ligacao`, `possivel` e `confirmada`. Com ativo, a ligação é `possivel` ou `confirmada`; sem ativo, é `sem_ligacao` (check). Só uma pessoa liga a reclamação ao ativo: nada no HubKeep liga por correspondência de texto (PRD, seção 10.4; "correlação não é causa").
+- **Entrada por CSV com colunas fixas do HubKeep**, na tela do Intelligence e para um hotel por vez. O navegador lê o arquivo e manda as linhas; o arquivo não fica guardado no Storage. O limite por importação e a validação de cada linha são do `packages/inteligencia`; a resposta diz, por linha, se entrou, se era repetida ou o código do erro. O mapeamento das colunas de cada ferramenta fica para depois, com as respostas do cliente.
+- **Classificação à mão:** a pessoa marca se é manutenção e, sendo, a categoria, a UH e o ativo, quando sabe. Reclassificar é permitido, com a trava de versão. As regras (o ativo é do hotel da reclamação, a ligação acompanha o ativo, a categoria só na reclamação de manutenção) são do domínio; o banco guarda o formato e as FKs.
+- **Quem vê, importa e classifica:** quem decide insight no hotel (o Admin do grupo, o Gestor CSC e o Gerente com o hotel), pela mesma lista de papéis da `app.insight`. O Técnico, o Solicitante, o implantador e o proprietário não leem: o texto do hóspede não vai ao PWA. Quem importa e quem classifica gravam em nome próprio (check da policy). Vale só para o tenant com o módulo `inteligencia` vigente, como o resto do módulo.
+- **Auditoria e evento pela unit of work:** a importação grava uma auditoria por lote (quantas entraram e quantas eram repetidas) e o evento `sinal_hospede.importado`; a classificação grava uma auditoria por reclamação e o evento `sinal_hospede.classificado`. As auditorias vão sem `hotel_id` e sem o texto, como a do insight (Cesar, 10/10/2026), para o texto do hóspede não chegar a quem não decide insight.
+- **Retenção (LGPD):** a política `inteligencia.sinal_hospede` diz por quantos dias o texto fica guardado. Depois disso, o job do worker apaga o texto (UPDATE para null, com a data do apagamento) e mantém a classificação, a nota e as datas. Não há DELETE (exclusão é lógica). O padrão é detalhe do Kaio e espera a resposta do cliente.
+- **O que o motor faz com o sinal** (PR C, com proposta própria antes do código):
+  - a regra sistêmica das reclamações: X reclamações de manutenção da mesma categoria, no mesmo hotel, em Y dias, abrem o insight sistêmico "possível problema sistêmico" (PRD, seção 15), com X e Y na política;
+  - o Guest Impact Score v1, determinístico e explicável, das reclamações de manutenção ligadas ao ativo, no lugar da porcentagem do "afeta hóspede" (ADR-034), com versão nova da atenção e do sinal de substituição. Os pesos, as faixas e se a ligação "possível" conta são detalhe do Kaio.
+- **IA, depois e só como sugestão:** quando o provedor for escolhido e a regra 9 mudar, a IA entra só para o texto (ADR-033): sugere se é manutenção, a categoria e a UH, com a confiança, e a pessoa confirma. A sugestão nunca liga ao ativo nem confirma a ligação.
+
+**Consequências:**
+- **Migração 0052** (`20261016200000_sinal_hospede.sql`): a tabela com RLS forçada, as policies, os índices (a fila do que falta classificar e as reclamações do ativo) e os GRANTs. O hk_app lê, insere e atualiza só as colunas da classificação; o hk_worker lê e atualiza só o texto e a data do apagamento. Nenhum campo de escopo recebe UPDATE (meta-teste 18).
+- **pgTAP:** o `043`, com os casos de isolamento, e a tabela na lista fechada do meta-teste 28. O teste de paridade da raiz cobre o check da ligação.
+- **Tipos do Kysely** escritos no formato do gerador, até o `db:types` da CI.
+- **A ordem dos PRs** (`int:`): A, com este ADR, a migração, o motor e a gravação e a leitura no `packages/db` (zona protegida); B, o contrato, as rotas, a importação e a fila de classificação nos quatro idiomas; C, a regra sistêmica, o Guest Impact Score v1 e a retenção no job.
+- **Fica para depois:** a sugestão da IA; a entrada por API e webhook, sobre a IX1 a IX3 do núcleo (rota em português, a mesma credencial e a mesma entrega assinada, sem um segundo mecanismo); abrir chamado a partir da reclamação, que mexe no fluxo do chamado, área compartilhada.
+- **Riscos aceitos:**
+  - a classificação à mão dá trabalho ao gerente e ao CSC, e o volume do piloto ainda não é conhecido. O tamanho da fila mostra se a sugestão da IA precisa vir antes;
+  - sem as respostas do cliente, o CSV de colunas fixas pode pedir conversão da exportação de cada ferramenta.
