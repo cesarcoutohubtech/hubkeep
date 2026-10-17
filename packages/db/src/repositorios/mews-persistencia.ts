@@ -57,8 +57,11 @@ function iso(data: Date | null): string | null {
   return data ? data.toISOString() : null;
 }
 function escopoIgual(item: Escopo, lote: Escopo): boolean {
-  return item.tenantId === lote.tenantId &&
-    item.hotelId === lote.hotelId && item.enterpriseId === lote.enterpriseId;
+  return (
+    item.tenantId === lote.tenantId &&
+    item.hotelId === lote.hotelId &&
+    item.enterpriseId === lote.enterpriseId
+  );
 }
 
 /** Validação de confiança e digest CANÔNICO antes de abrir conexão. */
@@ -70,70 +73,108 @@ export function conferirLoteMews(lote: LoteMews): LoteMews {
     throw new Error('mews_escopo_invalido');
   }
   const key = JSON.stringify([lote.tenantId, lote.hotelId, lote.enterpriseId]);
-  if (lote.key !== key || !Number.isSafeInteger(lote.versaoEsperada) ||
-      lote.versaoEsperada < 0 || !DIGEST.test(lote.digest)) {
+  if (
+    lote.key !== key ||
+    !Number.isSafeInteger(lote.versaoEsperada) ||
+    lote.versaoEsperada < 0 ||
+    !DIGEST.test(lote.digest)
+  ) {
     throw new Error('mews_plano_invalido');
   }
   dataUtc(lote.novoCheckpoint);
   if (lote.checkpointEsperado !== null) dataUtc(lote.checkpointEsperado);
-  if (!Array.isArray(lote.espacos) || !Array.isArray(lote.bloqueios) ||
-      lote.espacos.length + lote.bloqueios.length > LIMITE_ITENS) {
+  if (
+    !Array.isArray(lote.espacos) ||
+    !Array.isArray(lote.bloqueios) ||
+    lote.espacos.length + lote.bloqueios.length > LIMITE_ITENS
+  ) {
     throw new Error('mews_lote_excessivo');
   }
   const recursos = new Set<string>();
   const idsRecurso = new Set<string>();
-  const espacos = lote.espacos.map((r) => {
-    if (!escopoIgual(r, lote) || !texto(r.resourceId) ||
+  const espacos = lote.espacos
+    .map((r) => {
+      if (
+        !escopoIgual(r, lote) ||
+        !texto(r.resourceId) ||
         r.codigoExterno !== lote.enterpriseId + '|' + r.resourceId ||
-        !texto(r.codigoExterno) || typeof r.ativoNoPms !== 'boolean' ||
-        (r.atualizadoEm !== null && typeof r.atualizadoEm !== 'string')) {
-      throw new Error('mews_recurso_invalido');
-    }
-    if (r.atualizadoEm !== null) dataUtc(r.atualizadoEm);
-    if (!r.ativoNoPms && r.atualizadoEm === null) throw new Error('mews_tombstone_sem_data');
-    if (recursos.has(r.codigoExterno)) throw new Error('mews_recurso_duplicado');
-    recursos.add(r.codigoExterno);
-    idsRecurso.add(r.resourceId);
-    return {
-      resourceId: r.resourceId, codigoExterno: r.codigoExterno,
-      ativoNoPms: r.ativoNoPms, atualizadoEm: r.atualizadoEm,
-    };
-  }).sort((a, b) => a.codigoExterno.localeCompare(b.codigoExterno));
+        !texto(r.codigoExterno) ||
+        typeof r.ativoNoPms !== 'boolean' ||
+        (r.atualizadoEm !== null && typeof r.atualizadoEm !== 'string')
+      ) {
+        throw new Error('mews_recurso_invalido');
+      }
+      if (r.atualizadoEm !== null) dataUtc(r.atualizadoEm);
+      if (!r.ativoNoPms && r.atualizadoEm === null) throw new Error('mews_tombstone_sem_data');
+      if (recursos.has(r.codigoExterno)) throw new Error('mews_recurso_duplicado');
+      recursos.add(r.codigoExterno);
+      idsRecurso.add(r.resourceId);
+      return {
+        resourceId: r.resourceId,
+        codigoExterno: r.codigoExterno,
+        ativoNoPms: r.ativoNoPms,
+        atualizadoEm: r.atualizadoEm,
+      };
+    })
+    .sort((a, b) => a.codigoExterno.localeCompare(b.codigoExterno));
   const idsBloqueio = new Set<string>();
-  const bloqueios = lote.bloqueios.map((b) => {
-    const prefixo = lote.enterpriseId + '|';
-    const id = typeof b.codigoExterno === 'string' && b.codigoExterno.startsWith(prefixo)
-      ? b.codigoExterno.slice(prefixo.length) : '';
-    if (!escopoIgual(b, lote) || !texto(id) || !texto(b.codigoExterno) ||
-        !texto(b.codigoRecurso) || !b.codigoRecurso.startsWith(prefixo) ||
+  const bloqueios = lote.bloqueios
+    .map((b) => {
+      const prefixo = lote.enterpriseId + '|';
+      const id =
+        typeof b.codigoExterno === 'string' && b.codigoExterno.startsWith(prefixo)
+          ? b.codigoExterno.slice(prefixo.length)
+          : '';
+      if (
+        !escopoIgual(b, lote) ||
+        !texto(id) ||
+        !texto(b.codigoExterno) ||
+        !texto(b.codigoRecurso) ||
+        !b.codigoRecurso.startsWith(prefixo) ||
         !idsRecurso.has(b.codigoRecurso.slice(prefixo.length)) ||
         !['OutOfOrder', 'InternalUse'].includes(b.tipoBloqueio) ||
         typeof b.ativoNoPms !== 'boolean' ||
-        dataUtc(b.fim).getTime() <= dataUtc(b.inicio).getTime()) {
-      throw new Error('mews_bloqueio_invalido');
-    }
-    dataUtc(b.atualizadoEm);
-    if (idsBloqueio.has(b.codigoExterno)) throw new Error('mews_bloqueio_duplicado');
-    idsBloqueio.add(b.codigoExterno);
-    if (b.ativoNoPms && !espacos.some((r) =>
-      r.codigoExterno === b.codigoRecurso && r.ativoNoPms)) {
-      throw new Error('mews_bloqueio_recurso_inativo');
-    }
-    return {
-      codigoExterno: b.codigoExterno, codigoRecurso: b.codigoRecurso,
-      tipoBloqueio: b.tipoBloqueio, inicio: b.inicio, fim: b.fim,
-      ativoNoPms: b.ativoNoPms, atualizadoEm: b.atualizadoEm,
-    };
-  }).sort((a, b) => a.codigoExterno.localeCompare(b.codigoExterno));
+        dataUtc(b.fim).getTime() <= dataUtc(b.inicio).getTime()
+      ) {
+        throw new Error('mews_bloqueio_invalido');
+      }
+      dataUtc(b.atualizadoEm);
+      if (idsBloqueio.has(b.codigoExterno)) throw new Error('mews_bloqueio_duplicado');
+      idsBloqueio.add(b.codigoExterno);
+      if (
+        b.ativoNoPms &&
+        !espacos.some((r) => r.codigoExterno === b.codigoRecurso && r.ativoNoPms)
+      ) {
+        throw new Error('mews_bloqueio_recurso_inativo');
+      }
+      return {
+        codigoExterno: b.codigoExterno,
+        codigoRecurso: b.codigoRecurso,
+        tipoBloqueio: b.tipoBloqueio,
+        inicio: b.inicio,
+        fim: b.fim,
+        ativoNoPms: b.ativoNoPms,
+        atualizadoEm: b.atualizadoEm,
+      };
+    })
+    .sort((a, b) => a.codigoExterno.localeCompare(b.codigoExterno));
   const assinatura = JSON.stringify([
-    key, lote.modo, lote.checkpointEsperado, lote.novoCheckpoint, espacos, bloqueios,
+    key,
+    lote.modo,
+    lote.checkpointEsperado,
+    lote.novoCheckpoint,
+    espacos,
+    bloqueios,
   ]);
   if (createHash('sha256').update(assinatura).digest('hex') !== lote.digest) {
     throw new Error('mews_digest_invalido');
   }
   // Apenas campos sanitizados; nunca encaminhar Notes ou payload bruto.
-  return { ...lote, espacos: espacos.map((r) => ({ ...loteEscopo(lote), ...r })),
-    bloqueios: bloqueios.map((b) => ({ ...loteEscopo(lote), ...b })) };
+  return {
+    ...lote,
+    espacos: espacos.map((r) => ({ ...loteEscopo(lote), ...r })),
+    bloqueios: bloqueios.map((b) => ({ ...loteEscopo(lote), ...b })),
+  };
 }
 function loteEscopo(lote: Escopo): Escopo {
   return { tenantId: lote.tenantId, hotelId: lote.hotelId, enterpriseId: lote.enterpriseId };
@@ -148,36 +189,48 @@ function dataOpcional(valor: string | null): Date | null {
  * persiste projeção e checkpoint atomicamente. Revogação também disputa o lock.
  */
 async function persistirNaUnidade(
-  uow: UnidadeDeTrabalho, lote: LoteMews,
+  uow: UnidadeDeTrabalho,
+  lote: LoteMews,
 ): Promise<ResultadoPersistenciaMews> {
   const tx = transacaoDe(uow);
   const filtro = {
-    tenant_id: lote.tenantId, hotel_id: lote.hotelId, enterprise_id: lote.enterpriseId,
+    tenant_id: lote.tenantId,
+    hotel_id: lote.hotelId,
+    enterprise_id: lote.enterpriseId,
   };
-  const vinculo = await tx.selectFrom('app.mews_vinculo')
+  const vinculo = await tx
+    .selectFrom('app.mews_vinculo')
     .select(['id', 'revogado_em'])
     .where('tenant_id', '=', filtro.tenant_id)
     .where('hotel_id', '=', filtro.hotel_id)
     .where('enterprise_id', '=', filtro.enterprise_id)
-    .forUpdate().executeTakeFirst();
+    .forUpdate()
+    .executeTakeFirst();
   if (!vinculo || vinculo.revogado_em !== null) throw new Error('mews_vinculo_invalido');
 
-  const ck = await tx.selectFrom('app.mews_checkpoint').selectAll()
+  const ck = await tx
+    .selectFrom('app.mews_checkpoint')
+    .selectAll()
     .where('tenant_id', '=', filtro.tenant_id)
     .where('hotel_id', '=', filtro.hotel_id)
     .where('enterprise_id', '=', filtro.enterprise_id)
-    .forUpdate().executeTakeFirst();
+    .forUpdate()
+    .executeTakeFirst();
   const versao = ck ? BigInt(ck.versao) : 0n;
   const incremental = lote.modo === 'incremental';
   const marco = incremental ? (ck?.ultimo_updated_utc ?? null) : (ck?.ultimo_sweep_utc ?? null);
   const digestAtual = incremental ? ck?.digest_incremental : ck?.digest_sweep;
   if (iso(marco) === iso(dataUtc(lote.novoCheckpoint)) && digestAtual === lote.digest) {
-    return { resultado: 'replay_idempotente', versao: versao.toString(),
-      checkpointUtc: lote.novoCheckpoint };
+    return {
+      resultado: 'replay_idempotente',
+      versao: versao.toString(),
+      checkpointUtc: lote.novoCheckpoint,
+    };
   }
-  if (versao !== BigInt(lote.versaoEsperada) ||
-      iso(marco) !== (lote.checkpointEsperado === null
-        ? null : iso(dataUtc(lote.checkpointEsperado)))) {
+  if (
+    versao !== BigInt(lote.versaoEsperada) ||
+    iso(marco) !== (lote.checkpointEsperado === null ? null : iso(dataUtc(lote.checkpointEsperado)))
+  ) {
     throw new Error('mews_conflito_checkpoint_cas');
   }
   if (!incremental && !ck?.ultimo_updated_utc) throw new Error('mews_bootstrap_necessario');
@@ -189,47 +242,63 @@ async function persistirNaUnidade(
   // tombstones; no empate, tombstone vence evento ativo.
   for (const r of lote.espacos) {
     const tempo = dataOpcional(r.atualizadoEm);
-    await tx.insertInto('app.mews_recurso').values({
-      ...filtro, resource_id: r.resourceId, tipo: 'Space',
-      ativo: r.ativoNoPms, updated_utc: tempo,
-      deleted_utc: r.ativoNoPms ? null : tempo,
-    }).onConflict((oc) => oc.columns([
-      'tenant_id', 'hotel_id', 'enterprise_id', 'resource_id',
-    ]).doUpdateSet({
-      ativo: sql<boolean>`excluded.ativo`,
-      updated_utc: sql<Date | null>`excluded.updated_utc`,
-      deleted_utc: sql<Date | null>`excluded.deleted_utc`,
-    }).where(sql<boolean>`
+    await tx
+      .insertInto('app.mews_recurso')
+      .values({
+        ...filtro,
+        resource_id: r.resourceId,
+        tipo: 'Space',
+        ativo: r.ativoNoPms,
+        updated_utc: tempo,
+        deleted_utc: r.ativoNoPms ? null : tempo,
+      })
+      .onConflict((oc) =>
+        oc.columns(['tenant_id', 'hotel_id', 'enterprise_id', 'resource_id']).doUpdateSet({
+          ativo: sql<boolean>`excluded.ativo`,
+          updated_utc: sql<Date | null>`excluded.updated_utc`,
+          deleted_utc: sql<Date | null>`excluded.deleted_utc`,
+        }).where(sql<boolean>`
       (app.mews_recurso.updated_utc is null and excluded.updated_utc is not null)
       or excluded.updated_utc > app.mews_recurso.updated_utc
       or (excluded.updated_utc = app.mews_recurso.updated_utc
           and excluded.ativo = false and app.mews_recurso.ativo = true)
-    `)).execute();
+    `),
+      )
+      .execute();
   }
   for (const b of lote.bloqueios) {
     const blockId = b.codigoExterno.slice(lote.enterpriseId.length + 1);
     const resourceId = b.codigoRecurso.slice(lote.enterpriseId.length + 1);
     const updated = dataUtc(b.atualizadoEm);
-    await tx.insertInto('app.mews_bloqueio').values({
-      ...filtro, block_id: blockId, resource_id: resourceId,
-      tipo: b.tipoBloqueio, inicio_utc: dataUtc(b.inicio), fim_utc: dataUtc(b.fim),
-      ativo: b.ativoNoPms, updated_utc: updated,
-      deleted_utc: b.ativoNoPms ? null : updated,
-    }).onConflict((oc) => oc.columns([
-      'tenant_id', 'hotel_id', 'enterprise_id', 'block_id',
-    ]).doUpdateSet({
-      resource_id: sql<string>`excluded.resource_id`,
-      tipo: sql<string>`excluded.tipo`,
-      inicio_utc: sql<Date>`excluded.inicio_utc`,
-      fim_utc: sql<Date>`excluded.fim_utc`,
-      ativo: sql<boolean>`excluded.ativo`,
-      updated_utc: sql<Date>`excluded.updated_utc`,
-      deleted_utc: sql<Date | null>`excluded.deleted_utc`,
-    }).where(sql<boolean>`
+    await tx
+      .insertInto('app.mews_bloqueio')
+      .values({
+        ...filtro,
+        block_id: blockId,
+        resource_id: resourceId,
+        tipo: b.tipoBloqueio,
+        inicio_utc: dataUtc(b.inicio),
+        fim_utc: dataUtc(b.fim),
+        ativo: b.ativoNoPms,
+        updated_utc: updated,
+        deleted_utc: b.ativoNoPms ? null : updated,
+      })
+      .onConflict((oc) =>
+        oc.columns(['tenant_id', 'hotel_id', 'enterprise_id', 'block_id']).doUpdateSet({
+          resource_id: sql<string>`excluded.resource_id`,
+          tipo: sql<string>`excluded.tipo`,
+          inicio_utc: sql<Date>`excluded.inicio_utc`,
+          fim_utc: sql<Date>`excluded.fim_utc`,
+          ativo: sql<boolean>`excluded.ativo`,
+          updated_utc: sql<Date>`excluded.updated_utc`,
+          deleted_utc: sql<Date | null>`excluded.deleted_utc`,
+        }).where(sql<boolean>`
       excluded.updated_utc > app.mews_bloqueio.updated_utc
       or (excluded.updated_utc = app.mews_bloqueio.updated_utc
           and excluded.ativo = false and app.mews_bloqueio.ativo = true)
-    `)).execute();
+    `),
+      )
+      .execute();
   }
 
   const seguinte = (versao + 1n).toString();
@@ -238,26 +307,46 @@ async function persistirNaUnidade(
     const atualizacao = incremental
       ? { ultimo_updated_utc: dataUtc(lote.novoCheckpoint), digest_incremental: lote.digest }
       : { ultimo_sweep_utc: dataUtc(lote.novoCheckpoint), digest_sweep: lote.digest };
-    const atualizado = await tx.updateTable('app.mews_checkpoint').set({
-      ...atualizacao, versao: seguinte, concluido_em: agora,
-    }).where('tenant_id', '=', filtro.tenant_id)
+    const atualizado = await tx
+      .updateTable('app.mews_checkpoint')
+      .set({
+        ...atualizacao,
+        versao: seguinte,
+        concluido_em: agora,
+      })
+      .where('tenant_id', '=', filtro.tenant_id)
       .where('hotel_id', '=', filtro.hotel_id)
       .where('enterprise_id', '=', filtro.enterprise_id)
-      .where('versao', '=', versao.toString()).returning('versao').executeTakeFirst();
+      .where('versao', '=', versao.toString())
+      .returning('versao')
+      .executeTakeFirst();
     if (!atualizado) throw new Error('mews_conflito_checkpoint_cas');
   } else {
-    await tx.insertInto('app.mews_checkpoint').values({
-      ...filtro, versao: seguinte, concluido_em: agora,
-      ultimo_updated_utc: dataUtc(lote.novoCheckpoint), ultimo_sweep_utc: null,
-      digest_incremental: lote.digest, digest_sweep: null,
-    }).execute();
+    await tx
+      .insertInto('app.mews_checkpoint')
+      .values({
+        ...filtro,
+        versao: seguinte,
+        concluido_em: agora,
+        ultimo_updated_utc: dataUtc(lote.novoCheckpoint),
+        ultimo_sweep_utc: null,
+        digest_incremental: lote.digest,
+        digest_sweep: null,
+      })
+      .execute();
   }
   uow.auditar({
-    entidade: 'mews_checkpoint', registroId: vinculo.id, hotelId: lote.hotelId,
+    entidade: 'mews_checkpoint',
+    registroId: vinculo.id,
+    hotelId: lote.hotelId,
     acao: 'mews_projecao_tecnica',
     antes: { versao: versao.toString(), modo: lote.modo },
-    depois: { versao: seguinte, modo: lote.modo, recursos: lote.espacos.length,
-      bloqueios: lote.bloqueios.length },
+    depois: {
+      versao: seguinte,
+      modo: lote.modo,
+      recursos: lote.espacos.length,
+      bloqueios: lote.bloqueios.length,
+    },
   });
   return { resultado: 'aplicado', versao: seguinte, checkpointUtc: lote.novoCheckpoint };
 }
@@ -266,14 +355,13 @@ async function persistirNaUnidade(
  * Adapter ainda não ligado à composição, cron nem API. Sempre gera UoW no
  * papel hk_worker, com tenant fixado antes da primeira query (RLS FORCE).
  */
-export function criarPersistenciaMews(
-  banco: Pick<AcessoBanco, 'executarComoSistema'>,
-) {
+export function criarPersistenciaMews(banco: Pick<AcessoBanco, 'executarComoSistema'>) {
   return {
     aplicar: async (plano: LoteMews): Promise<ResultadoPersistenciaMews> => {
       const lote = conferirLoteMews(plano);
-      return banco.executarComoSistema({ tenantId: lote.tenantId },
-        (uow) => persistirNaUnidade(uow, lote));
+      return banco.executarComoSistema({ tenantId: lote.tenantId }, (uow) =>
+        persistirNaUnidade(uow, lote),
+      );
     },
   };
 }
