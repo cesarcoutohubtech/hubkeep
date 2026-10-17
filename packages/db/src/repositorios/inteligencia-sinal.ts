@@ -61,6 +61,29 @@ export interface ReferenciasDaClassificacaoNoBanco {
   categoria: { id: string } | null;
 }
 
+export interface SinalDaFilaNoBanco {
+  id: string;
+  hotelId: string;
+  fonte: string;
+  idExterno: string;
+  ocorridoEm: Date;
+  nota: number | null;
+  escala: number | null;
+  texto: string | null;
+  textoApagadoEm: Date | null;
+  idioma: string | null;
+  uhCitada: string | null;
+  manutencao: boolean | null;
+  categoriaId: string | null;
+  uhId: string | null;
+  ativoId: string | null;
+  ligacao: string;
+  classificadoEm: Date | null;
+  classificadoPor: string | null;
+  importadoEm: Date;
+  versao: number;
+}
+
 export interface ClassificacaoNoBanco {
   sinalId: string;
   versaoEsperada: number;
@@ -138,6 +161,74 @@ export async function gravarSinaisNoBanco(
     payload: { hotelId: i.hotelId, ...contagens },
   });
   return { loteId, inseridos: chaves };
+}
+
+/**
+ * A fila de classificação do hotel: as reclamações do recorte (sem
+ * classificação, de manutenção, fora da manutenção ou todas), da data mais
+ * recente para a mais antiga, até `limite`.
+ */
+export async function sinaisDoHotel(
+  tx: Tx,
+  hotelId: string,
+  situacao: string,
+  limite: number,
+): Promise<SinalDaFilaNoBanco[]> {
+  let q = tx
+    .selectFrom('app.sinal_hospede')
+    .select([
+      'id',
+      'hotel_id',
+      'fonte',
+      'id_externo',
+      'ocorrido_em',
+      'nota',
+      'escala',
+      'texto',
+      'texto_apagado_em',
+      'idioma',
+      'uh_citada',
+      'manutencao',
+      'categoria_id',
+      'uh_id',
+      'ativo_id',
+      'ligacao',
+      'classificado_em',
+      'classificado_por',
+      'criado_em',
+      'versao',
+    ])
+    .where('hotel_id', '=', hotelId);
+  if (situacao === 'pendentes') q = q.where('manutencao', 'is', null);
+  else if (situacao === 'manutencao') q = q.where('manutencao', '=', true);
+  else if (situacao === 'fora') q = q.where('manutencao', '=', false);
+  const linhas = await q
+    .orderBy('ocorrido_em', 'desc')
+    .orderBy('id', 'desc')
+    .limit(limite)
+    .execute();
+  return linhas.map((s) => ({
+    id: s.id,
+    hotelId: s.hotel_id,
+    fonte: s.fonte,
+    idExterno: s.id_externo,
+    ocorridoEm: data(s.ocorrido_em),
+    nota: s.nota === null ? null : Number(s.nota),
+    escala: s.escala,
+    texto: s.texto,
+    textoApagadoEm: s.texto_apagado_em === null ? null : data(s.texto_apagado_em),
+    idioma: s.idioma,
+    uhCitada: s.uh_citada,
+    manutencao: s.manutencao,
+    categoriaId: s.categoria_id,
+    uhId: s.uh_id,
+    ativoId: s.ativo_id,
+    ligacao: s.ligacao,
+    classificadoEm: s.classificado_em === null ? null : data(s.classificado_em),
+    classificadoPor: s.classificado_por,
+    importadoEm: data(s.criado_em),
+    versao: s.versao,
+  }));
 }
 
 export async function sinalParaClassificar(

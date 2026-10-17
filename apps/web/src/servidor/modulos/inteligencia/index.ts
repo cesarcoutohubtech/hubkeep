@@ -32,7 +32,12 @@ import {
 } from './observabilidade';
 import { type CasosDeUsoDoPainel, type DepsDoPainel, criarPainel } from './painel';
 
-export type { CasosDeUsoDoPainel, PedidoDeDecisaoDoPainel, PedidoDeListaDoPainel } from './painel';
+export type {
+  CasosDeUsoDoPainel,
+  PedidoDeClassificacaoDoPainel,
+  PedidoDeDecisaoDoPainel,
+  PedidoDeListaDoPainel,
+} from './painel';
 
 export interface MontagemDoIntelligence {
   /** Somadas às chaves do núcleo só para o tenant com o módulo vigente. */

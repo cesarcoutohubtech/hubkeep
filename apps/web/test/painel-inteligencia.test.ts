@@ -1,8 +1,17 @@
 // A ligação do painel do Intelligence (as telas do 1.0), sem banco: as portas
 // do motor sobre uma porta do packages/db em memória, com a forma das linhas
-// do banco; e as listas da API iguais às do motor.
+// do banco; e as listas da API iguais às do motor. Também o sinal do hóspede
+// (ADR-047): a importação, a fila e a classificação pelo contrato da API.
 import {
   ACOES_DO_INSIGHT_API,
+  COLUNAS_DO_CSV_API,
+  COLUNAS_OBRIGATORIAS_DO_CSV_API,
+  ERROS_DA_LINHA_API,
+  LIGACOES_DO_SINAL_API,
+  LIMITE_DA_IMPORTACAO_API,
+  RespostaDaFilaDeSinais,
+  RespostaDaImportacaoDeSinais,
+  SITUACOES_DA_FILA_API,
   ESTADOS_DO_INSIGHT_API,
   FAIXAS_DO_INSIGHT_API,
   FILTROS_DE_ESTADO_DO_INSIGHT_API,
@@ -16,14 +25,22 @@ import {
 } from '@hubkeep/contratos';
 import type {
   ChamadoDaEfetividadeNoBanco,
+  ClassificacaoNoBanco,
   DecisaoNoBanco,
+  ImportacaoNoBanco,
   InsightComEvidenciaNoBanco,
   PortaDoPainelDoIntelligence,
+  SinalDaFilaNoBanco,
 } from '@hubkeep/db';
 import type { EscopoDePolitica } from '@hubkeep/aplicacao';
 import type { Atribuicao } from '@hubkeep/dominio';
 import {
   ACOES_DO_INSIGHT,
+  COLUNAS_DO_CSV,
+  ERROS_DA_LINHA,
+  LIGACOES_DO_SINAL,
+  LIMITE_DA_IMPORTACAO,
+  SITUACOES_DA_FILA,
   ESTADOS_DO_INSIGHT,
   FAIXAS_PADRAO,
   FILTROS_DE_ESTADO_DO_INSIGHT,
@@ -35,6 +52,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dataNaApi,
   efetividadesNaApi,
+  filaDeSinaisNaApi,
   insightNaApi,
   substituicaoNaApi,
 } from '../src/app/api/v1/inteligencia/serializar';
@@ -45,6 +63,7 @@ const H1 = '11100000-0000-0000-0000-000000000001';
 const I1 = '22200000-0000-0000-0000-000000000001';
 const U1 = '33300000-0000-0000-0000-000000000001';
 const A1 = '55500000-0000-0000-0000-000000000001';
+const S1 = '66600000-0000-0000-0000-000000000001';
 const ctx = { usuarioId: U1, tenantId: '44400000-0000-0000-0000-000000000001' };
 
 const gerente: Atribuicao = {
@@ -111,9 +130,35 @@ const TROCA: ChamadoDaEfetividadeNoBanco = {
   ],
 };
 
-function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
+const SINAL: SinalDaFilaNoBanco = {
+  id: S1,
+  hotelId: H1,
+  fonte: 'google',
+  idExterno: 'r-1',
+  ocorridoEm: new Date('2026-10-08T12:00:00Z'),
+  nota: 2.5,
+  escala: 5,
+  texto: 'Elevador parado de novo',
+  textoApagadoEm: null,
+  idioma: 'pt-BR',
+  uhCitada: null,
+  manutencao: null,
+  categoriaId: null,
+  uhId: null,
+  ativoId: null,
+  ligacao: 'sem_ligacao',
+  classificadoEm: null,
+  classificadoPor: null,
+  importadoEm: new Date('2026-10-09T10:00:00Z'),
+  versao: 1,
+};
+
+function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]) {
   const decisoes: DecisaoNoBanco[] = [];
   const buscas: { termo: string; limite: number }[] = [];
+  const importacoes: ImportacaoNoBanco[] = [];
+  const classificacoes: ClassificacaoNoBanco[] = [];
+  const filas: { hotelId: string; situacao: string; limite: number }[] = [];
   const porta: PortaDoPainelDoIntelligence = {
     ativosPorBusca: async (_ctx, termo, limite) => {
       buscas.push({ termo, limite });
@@ -166,14 +211,27 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[]) {
     politicasDaSubstituicao: async () => [],
     intervencoes: async () => [TROCA],
     historicoDosAtivos: async () => ({ chamados: [TROCA], paradas: [] }),
-    // O sinal do hóspede (ADR-047) ainda não tem rota no web.
-    hotelDoSinal: async () => null,
-    gravarSinais: async () => ({ loteId: 'lote', inseridos: [] }),
-    sinalParaClassificar: async () => null,
+    hotelDoSinal: async (_ctx, id) => (id === H1 ? { id: H1, bandeiraId: null } : null),
+    gravarSinais: async (_ctx, i) => {
+      importacoes.push(i);
+      return {
+        loteId: '77700000-0000-0000-0000-000000000001',
+        inseridos: i.sinais.map((x) => `${x.fonte}|${x.idExterno}`),
+      };
+    },
+    sinaisDoHotel: async (_ctx, hotelId, situacao, limite) => {
+      filas.push({ hotelId, situacao, limite });
+      return sinais;
+    },
+    sinalParaClassificar: async (_ctx, id) =>
+      id === S1 ? { id: S1, hotelId: H1, bandeiraId: null, versao: 1 } : null,
     referenciasDaClassificacao: async () => ({ ativo: null, uh: null, categoria: null }),
-    classificar: async (_ctx, c) => ({ versao: c.versaoEsperada + 1 }),
+    classificar: async (_ctx, c) => {
+      classificacoes.push(c);
+      return { versao: c.versaoEsperada + 1 };
+    },
   };
-  return { porta, decisoes, buscas };
+  return { porta, decisoes, buscas, importacoes, classificacoes, filas };
 }
 
 /** As políticas gravadas no grupo: por padrão, a visibilidade com o Gerente, já aberta. */
@@ -194,11 +252,18 @@ const painel = (
   modulos = true,
   politicas: { chave: string; escopo: EscopoDePolitica; valor: unknown }[] = COM_O_GERENTE,
   atribuicoes: Atribuicao[] = [gerente],
+  sinais: SinalDaFilaNoBanco[] = [SINAL],
 ) => {
-  const { porta, decisoes, buscas } = portaEmMemoria(insights);
+  const { porta, decisoes, buscas, importacoes, classificacoes, filas } = portaEmMemoria(
+    insights,
+    sinais,
+  );
   return {
     decisoes,
     buscas,
+    importacoes,
+    classificacoes,
+    filas,
     casos: criarPainel({
       porta,
       modulos: {
@@ -222,6 +287,19 @@ describe('as listas da API são as do motor', () => {
     expect([...ACOES_DO_INSIGHT_API]).toEqual([...ACOES_DO_INSIGHT]);
     expect([...MOTIVOS_DE_DESCARTE_API]).toEqual([...MOTIVOS_DE_DESCARTE]);
     expect([...FAIXAS_DO_INSIGHT_API]).toEqual(FAIXAS_PADRAO.map((f) => f.chave));
+  });
+
+  it('as do sinal do hóspede: colunas, limite, erros da linha, ligações e recortes', () => {
+    expect([...COLUNAS_DO_CSV_API]).toEqual([...COLUNAS_DO_CSV]);
+    expect(
+      COLUNAS_OBRIGATORIAS_DO_CSV_API.every((c) =>
+        (COLUNAS_DO_CSV as readonly string[]).includes(c),
+      ),
+    ).toBe(true);
+    expect(LIMITE_DA_IMPORTACAO_API).toBe(LIMITE_DA_IMPORTACAO);
+    expect([...ERROS_DA_LINHA_API]).toEqual([...ERROS_DA_LINHA]);
+    expect([...LIGACOES_DO_SINAL_API]).toEqual([...LIGACOES_DO_SINAL]);
+    expect([...SITUACOES_DA_FILA_API]).toEqual([...SITUACOES_DA_FILA]);
   });
 });
 
@@ -391,6 +469,73 @@ describe('o painel sobre a porta do banco', () => {
       responsavelId: U1,
     });
     expect(decisoes[0]).toMatchObject({ acao: 'aceitar', responsavelId: U1, encerradoPor: null });
+  });
+
+  it('a importação do sinal leva quem pede e passa pelo contrato da API', async () => {
+    const { casos, importacoes } = painel([]);
+    const r = RespostaDaImportacaoDeSinais.parse(
+      await casos.importarSinais(ctx, H1, [
+        { id_externo: 'r-1', data: '2026-10-08', fonte: 'Google', nota: '2,5', escala: '5' },
+        { id_externo: 'r-2', data: '08/10/2026', fonte: 'google', texto: 'Chuveiro frio' },
+      ]),
+    );
+    expect(r).toMatchObject({ entraram: 1, repetidas: 0, erros: 1 });
+    expect(r.linhas[1]).toEqual({ linha: 2, resultado: 'erro', erro: 'data_invalida' });
+    expect(importacoes).toHaveLength(1);
+    expect(importacoes[0]).toMatchObject({ hotelId: H1, importadoPor: U1 });
+    await expect(
+      casos.importarSinais(ctx, '99900000-0000-0000-0000-000000000009', [{}]),
+    ).rejects.toMatchObject({
+      codigo: 'hotel_nao_encontrado',
+    });
+  });
+
+  it('a fila do sinal: as sem classificação por padrão, pelo contrato da API', async () => {
+    const { casos, filas } = painel([]);
+    const fila = RespostaDaFilaDeSinais.parse(
+      filaDeSinaisNaApi(await casos.filaDeSinais(ctx, H1, undefined)),
+    );
+    expect(filas).toEqual([{ hotelId: H1, situacao: 'pendentes', limite: 201 }]);
+    expect(fila.sinais[0]).toMatchObject({
+      id: S1,
+      ocorridoEm: '2026-10-08T12:00:00.000Z',
+      classificadoEm: null,
+      ligacao: 'sem_ligacao',
+    });
+    await casos.filaDeSinais(ctx, H1, 'todas');
+    expect(filas[1]?.situacao).toBe('todas');
+  });
+
+  it('a classificação do sinal leva quem pede', async () => {
+    const { casos, classificacoes } = painel([]);
+    expect(
+      await casos.classificarSinal(ctx, S1, {
+        versao: 1,
+        manutencao: false,
+        categoriaId: null,
+        uhId: null,
+        ativoId: null,
+        ligacao: 'sem_ligacao',
+      }),
+    ).toEqual({ versao: 2 });
+    expect(classificacoes[0]).toMatchObject({
+      sinalId: S1,
+      classificadoPor: U1,
+      manutencao: false,
+    });
+  });
+
+  it('ligação do sinal fora da lista do motor é defeito, não dado', async () => {
+    const { casos } = painel(
+      [],
+      true,
+      COM_O_GERENTE,
+      [gerente],
+      [{ ...SINAL, ligacao: 'inventada' }],
+    );
+    await expect(casos.filaDeSinais(ctx, H1, 'todas')).rejects.toThrow(
+      'Ligação do sinal desconhecida',
+    );
   });
 
   it('linha do banco fora das listas do motor é defeito, não dado', async () => {

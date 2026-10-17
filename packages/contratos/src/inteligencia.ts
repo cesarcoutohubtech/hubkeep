@@ -367,3 +367,150 @@ export const RespostaDoAtivoNoIntelligence = z
     substituicao: SubstituicaoDoAtivoApi.nullable(),
   })
   .meta({ id: 'RespostaDoAtivoNoIntelligence' });
+
+// O sinal do hóspede (ADR-047, a 1.5 sem IA): a importação por CSV e a fila
+// de classificação. As listas repetem as do @hubkeep/inteligencia
+// (sinal-hospede.ts); o teste da ligação no web confere que são as mesmas.
+
+/** As colunas do CSV do HubKeep, na ordem do modelo. */
+export const COLUNAS_DO_CSV_API = [
+  'id_externo',
+  'data',
+  'fonte',
+  'nota',
+  'escala',
+  'texto',
+  'idioma',
+  'uh',
+] as const;
+/** As colunas sem as quais o arquivo não serve. */
+export const COLUNAS_OBRIGATORIAS_DO_CSV_API = ['id_externo', 'data', 'fonte'] as const;
+/** O máximo de linhas de um arquivo (e de um pedido). */
+export const LIMITE_DA_IMPORTACAO_API = 1000;
+/**
+ * O corpo do pedido de importação: acima do padrão (256 KB), porque cada
+ * linha pode trazer até 4000 caracteres de texto; a tela manda o arquivo em
+ * partes abaixo disso.
+ */
+export const LIMITE_BYTES_DA_IMPORTACAO = 1024 * 1024;
+export const ERROS_DA_LINHA_API = [
+  'id_externo_ausente',
+  'id_externo_longo',
+  'data_invalida',
+  'data_no_futuro',
+  'fonte_invalida',
+  'nota_invalida',
+  'escala_invalida',
+  'sem_conteudo',
+  'texto_longo',
+  'idioma_invalido',
+  'uh_longa',
+  'repetida_no_arquivo',
+] as const;
+export const LIGACOES_DO_SINAL_API = ['sem_ligacao', 'possivel', 'confirmada'] as const;
+export const SITUACOES_DA_FILA_API = ['pendentes', 'manutencao', 'fora', 'todas'] as const;
+
+/** O texto de cada coluna como veio no arquivo; a validação é do Intelligence, por linha. */
+const CelulaDoCsv = z.string().max(8000).optional();
+
+export const PedidoDeImportacaoDeSinais = z
+  .object({
+    hotelId: z.guid(),
+    /** Só as colunas do HubKeep: a tela não manda as outras (nome e contato do hóspede ficam fora). */
+    linhas: z
+      .array(
+        z.strictObject(
+          Object.fromEntries(COLUNAS_DO_CSV_API.map((c) => [c, CelulaDoCsv])) as Record<
+            (typeof COLUNAS_DO_CSV_API)[number],
+            typeof CelulaDoCsv
+          >,
+        ),
+      )
+      .min(1)
+      .max(LIMITE_DA_IMPORTACAO_API),
+  })
+  .meta({ id: 'PedidoDeImportacaoDeSinais' });
+
+export const RespostaDaImportacaoDeSinais = z
+  .object({
+    /** Nulo quando nenhuma linha era válida. */
+    loteId: z.guid().nullable(),
+    entraram: z.int(),
+    repetidas: z.int(),
+    erros: z.int(),
+    /** Uma por linha do pedido; a linha 1 é a primeira do pedido, sem o cabeçalho. */
+    linhas: z.array(
+      z.discriminatedUnion('resultado', [
+        z.object({ linha: z.int().min(1), resultado: z.enum(['entrou', 'repetida']) }),
+        z.object({
+          linha: z.int().min(1),
+          resultado: z.literal('erro'),
+          erro: z.enum(ERROS_DA_LINHA_API),
+        }),
+      ]),
+    ),
+  })
+  .meta({ id: 'RespostaDaImportacaoDeSinais' });
+
+export const ConsultaDaFilaDeSinais = z
+  .object({
+    hotelId: z.guid(),
+    /** As sem classificação, sem o campo. */
+    situacao: z.enum(SITUACOES_DA_FILA_API).optional(),
+  })
+  .meta({ id: 'ConsultaDaFilaDeSinais' });
+
+export const SinalDaFilaApi = z
+  .object({
+    id: z.guid(),
+    hotelId: z.guid(),
+    fonte: z.string(),
+    idExterno: z.string(),
+    ocorridoEm: Data,
+    nota: z.number().nullable(),
+    escala: z.int().nullable(),
+    /** Nulo sem texto na importação ou depois do apagamento da retenção (textoApagadoEm). */
+    texto: z.string().nullable(),
+    textoApagadoEm: Data.nullable(),
+    idioma: z.string().nullable(),
+    uhCitada: z.string().nullable(),
+    /** Nulo enquanto ninguém classificou. */
+    manutencao: z.boolean().nullable(),
+    categoriaId: z.guid().nullable(),
+    uhId: z.guid().nullable(),
+    ativoId: z.guid().nullable(),
+    ligacao: z.enum(LIGACOES_DO_SINAL_API),
+    classificadoEm: Data.nullable(),
+    classificadoPor: z.guid().nullable(),
+    importadoEm: Data,
+    versao: z.int().min(1),
+  })
+  .meta({ id: 'SinalDaFilaApi' });
+
+export const RespostaDaFilaDeSinais = z
+  .object({
+    sinais: z.array(SinalDaFilaApi),
+    /** Há mais reclamações no recorte do que a fila mostra (até 200). */
+    limitada: z.boolean(),
+    nomes: z.object({
+      ativos: z.record(z.string(), z.string()),
+      pessoas: z.record(z.string(), z.string()),
+    }),
+  })
+  .meta({ id: 'RespostaDaFilaDeSinais' });
+
+export const PedidoDeClassificacaoDeSinal = z
+  .object({
+    /** A versão que a tela viu: outra pessoa classificou antes, 409 conflito_de_versao. */
+    versao: z.int().min(1),
+    manutencao: z.boolean(),
+    categoriaId: z.guid().nullable(),
+    uhId: z.guid().nullable(),
+    ativoId: z.guid().nullable(),
+    ligacao: z.enum(LIGACOES_DO_SINAL_API),
+  })
+  .meta({ id: 'PedidoDeClassificacaoDeSinal' });
+
+export const RespostaDaClassificacaoDeSinal = z
+  .object({ versao: z.int() })
+  .meta({ id: 'RespostaDaClassificacaoDeSinal' });

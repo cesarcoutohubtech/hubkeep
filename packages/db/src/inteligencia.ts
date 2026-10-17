@@ -46,11 +46,13 @@ import {
   type HotelDoSinalNoBanco,
   type ImportacaoNoBanco,
   type ReferenciasDaClassificacaoNoBanco,
+  type SinalDaFilaNoBanco,
   type SinalParaClassificarNoBanco,
   classificarSinalNoBanco,
   gravarSinaisNoBanco,
   hotelDoSinal,
   referenciasDaClassificacao,
+  sinaisDoHotel,
   sinalParaClassificar,
 } from './repositorios/inteligencia-sinal';
 import {
@@ -124,6 +126,13 @@ export interface PortaDoPainelDoIntelligence {
     ctx: Contexto,
     i: ImportacaoNoBanco,
   ): Promise<{ loteId: string; inseridos: string[] }>;
+  /** A fila de classificação do hotel no recorte, da data mais recente, até `limite`. */
+  sinaisDoHotel(
+    ctx: Contexto,
+    hotelId: string,
+    situacao: string,
+    limite: number,
+  ): Promise<SinalDaFilaNoBanco[]>;
   sinalParaClassificar(ctx: Contexto, id: string): Promise<SinalParaClassificarNoBanco | null>;
   referenciasDaClassificacao(
     ctx: Contexto,
@@ -157,6 +166,8 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
       banco.withContext(ctx, (tx) => historicoDosAtivosNoBanco(tx, ativoIds, desde, ate)),
     hotelDoSinal: (ctx, id) => banco.withContext(ctx, (tx) => hotelDoSinal(tx, id)),
     gravarSinais: (ctx, i) => banco.executar(ctx, (uow) => gravarSinaisNoBanco(uow, i)),
+    sinaisDoHotel: (ctx, hotelId, situacao, limite) =>
+      banco.withContext(ctx, (tx) => sinaisDoHotel(tx, hotelId, situacao, limite)),
     sinalParaClassificar: (ctx, id) => banco.withContext(ctx, (tx) => sinalParaClassificar(tx, id)),
     referenciasDaClassificacao: (ctx, r) =>
       banco.withContext(ctx, (tx) => referenciasDaClassificacao(tx, r)),

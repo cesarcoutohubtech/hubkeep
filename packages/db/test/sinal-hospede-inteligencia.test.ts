@@ -8,7 +8,8 @@
 //   - a classificação com a trava de versão, a auditoria e o evento; fora do
 //     escopo, a linha não aparece;
 //   - as referências da classificação (ativo, UH e categoria) e o hotel da
-//     importação, só o que quem pede lê.
+//     importação, só o que quem pede lê;
+//   - a fila de classificação do hotel, por recorte, só para quem a lê.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -286,5 +287,30 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
       [TENANT, sinalId],
     );
     expect(eventos.rows).toEqual([{ tipo: 'sinal_hospede.classificado', hotel: H1 }]);
+  });
+
+  it('a fila do hotel por recorte, só para quem a lê', async () => {
+    const todas = await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50);
+    const r1 = todas.find((s) => s.idExterno === 'r-1');
+    expect(r1).toMatchObject({
+      hotelId: H1,
+      fonte: 'google',
+      nota: 2.5,
+      escala: 5,
+      manutencao: true,
+      ligacao: 'confirmada',
+      ativoId: A1,
+      classificadoPor: U.gerente,
+      versao: 2,
+    });
+    expect(r1?.ocorridoEm).toBeInstanceOf(Date);
+    const ids = (xs: readonly { idExterno: string }[]) => xs.map((s) => s.idExterno);
+    const pendentes = await porta.sinaisDoHotel(ctx(U.gerente), H1, 'pendentes', 50);
+    expect(pendentes.length).toBe(todas.length - 1);
+    expect(ids(pendentes)).not.toContain('r-1');
+    expect(ids(await porta.sinaisDoHotel(ctx(U.gerente), H1, 'manutencao', 50))).toEqual(['r-1']);
+    expect(await porta.sinaisDoHotel(ctx(U.gerente), H1, 'fora', 50)).toEqual([]);
+    expect(await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 1)).toHaveLength(1);
+    expect(await porta.sinaisDoHotel(ctx(U.tecnico), H1, 'todas', 50)).toEqual([]);
   });
 });
