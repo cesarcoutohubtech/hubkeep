@@ -2700,3 +2700,17 @@ PR `int:` de zona protegida (migração, pgTAP e `docs/03`). Antes de abrir, nen
   - o Kaio conferir os detalhes do PR A e do PR B;
   - as perguntas ao Slaviero, pelo agente da 1b.
 - **Próximo:** a proposta do PR C (a regra sistêmica das reclamações, o Guest Impact Score v1 no lugar da porcentagem do "afeta hóspede", a atenção v7, a substituição v2 e a retenção no job). Parar na proposta antes do código. Primeiro passo: ler como a atenção e a substituição usam o "afeta hóspede" hoje (`packages/inteligencia`).
+
+### O "aprovo" do ADR-047 e o `db push` (17/10/2026)
+
+- **Aprovação do ADR-047**, por escrito, no chat do agente do Intelligence, depois do merge do #311: "Cesar aqui. O “aprovo” a ADR-047." e "kaio aqui. O “aprovo” a ADR-047." A aprovação cobre o texto do ADR na `main`, com a migração 0053. O status no `docs/03` e a menção no `docs/02` mudam num PR de zona protegida só com isso. Antes de abrir, nenhum outro PR de zona protegida estava aberto (#281, #282 e #310 passam no check da zona).
+- **#311 mergeado e `db push` feito** pelo Cesar ("311 mergeado. db push feito"): a 0052 e a 0053 vão para o dev. Falta a conferência no `supabase migration list`, que é do Cesar.
+- **O #311 entrou com o pgTAP ainda rodando** (o check que roda também a integração do `packages/db`, com o teste novo da fila). O agente conferiu o resultado depois do merge.
+
+### Ponto de retomada (17/10/2026, ADR-047 aprovado)
+
+- **`main`:** em `950ad1e` (#311).
+- **Dev:** a 0052 e a 0053 aplicadas pelo `db push` do Cesar; falta conferir no `supabase migration list`.
+- **Nesta branch:** o status do ADR-047 (`docs/03`, zona protegida) e a menção no `docs/02`. O PR abre agora.
+- **Esperando:** o merge desse PR; o Kaio conferir os detalhes do PR A e do PR B; as perguntas ao Slaviero, pelo agente da 1b.
+- **Próximo:** a proposta do PR C (a regra sistêmica das reclamações, o Guest Impact Score v1 no lugar da porcentagem do "afeta hóspede", a atenção v7, a substituição v2 e a retenção no job). Parar na proposta antes do código. Primeiro passo: ler como a atenção e a substituição usam o "afeta hóspede" hoje (`packages/inteligencia`).
