@@ -40,6 +40,7 @@ import {
   intervencoesNoBanco,
   politicasDaEfetividade,
   politicasDaSubstituicao,
+  politicasDoImpacto,
 } from './repositorios/inteligencia-efetividade';
 import {
   type ClassificacaoNoBanco,
@@ -58,7 +59,9 @@ import {
 import {
   type PoliticaDoJob,
   type SessaoDoJobDoIntelligence,
+  type SinalDoJob,
   sessaoDoJobDoIntelligence,
+  sinaisNoTrecho,
 } from './repositorios/inteligencia';
 
 export interface PortaDoJobDoIntelligence {
@@ -109,6 +112,15 @@ export interface PortaDoPainelDoIntelligence {
   politicasDaEfetividade(ctx: Contexto): Promise<PoliticaDoJob[]>;
   /** O sinal de substituição: as linhas de inteligencia.substituicao que quem pede lê. */
   politicasDaSubstituicao(ctx: Contexto): Promise<PoliticaDoJob[]>;
+  /** O Guest Impact Score (ADR-047): as linhas de inteligencia.impacto_hospede que quem pede lê. */
+  politicasDoImpacto(ctx: Contexto): Promise<PoliticaDoJob[]>;
+  /** As reclamações do hotel no trecho, sem o texto, como quem pede as lê (ADR-047). */
+  sinaisDoHotelNaJanela(
+    ctx: Contexto,
+    hotelId: string,
+    desde: Date,
+    ate: Date,
+  ): Promise<SinalDoJob[]>;
   intervencoes(
     ctx: Contexto,
     filtro: { codigos: readonly string[]; desde: Date; ativoIds?: readonly string[] },
@@ -161,6 +173,9 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
       banco.withContext(ctx, (tx) => insightsDoEscopo(tx, tipo, chave, valor, limite)),
     politicasDaEfetividade: (ctx) => banco.withContext(ctx, (tx) => politicasDaEfetividade(tx)),
     politicasDaSubstituicao: (ctx) => banco.withContext(ctx, (tx) => politicasDaSubstituicao(tx)),
+    politicasDoImpacto: (ctx) => banco.withContext(ctx, (tx) => politicasDoImpacto(tx)),
+    sinaisDoHotelNaJanela: (ctx, hotelId, desde, ate) =>
+      banco.withContext(ctx, (tx) => sinaisNoTrecho(tx, desde, ate, hotelId)),
     intervencoes: (ctx, filtro) => banco.withContext(ctx, (tx) => intervencoesNoBanco(tx, filtro)),
     historicoDosAtivos: (ctx, ativoIds, desde, ate) =>
       banco.withContext(ctx, (tx) => historicoDosAtivosNoBanco(tx, ativoIds, desde, ate)),

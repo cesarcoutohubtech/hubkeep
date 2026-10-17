@@ -209,6 +209,8 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]
     insightsDoEscopo: async () => insights,
     politicasDaEfetividade: async () => [],
     politicasDaSubstituicao: async () => [],
+    politicasDoImpacto: async () => [],
+    sinaisDoHotelNaJanela: async () => [],
     intervencoes: async () => [TROCA],
     historicoDosAtivos: async () => ({ chamados: [TROCA], paradas: [] }),
     hotelDoSinal: async (_ctx, id) => (id === H1 ? { id: H1, bandeiraId: null } : null),
@@ -423,7 +425,7 @@ describe('o painel sobre a porta do banco', () => {
     });
     // O sinal de substituição, calculado agora: a idade pela data de compra (2014),
     // a reincidência do último dia gravado e o custo sobre a reposição sem dado.
-    expect(resposta.substituicao).toMatchObject({ versao: 1, avaliados: 6 });
+    expect(resposta.substituicao).toMatchObject({ versao: 2, avaliados: 6 });
     expect(
       resposta.substituicao?.criterios
         .filter((c) => ['idadeAnos', 'reincidencia', 'custoSobreReposicao'].includes(c.chave))

@@ -191,6 +191,9 @@ export function portasDoPainel(
       (await porta.insightsDoEscopo(ctx, tipo, chave, valor, LIMITE_DA_LISTA)).map(noMotor),
     politicasDaEfetividade: () => porta.politicasDaEfetividade(ctx),
     politicasDaSubstituicao: () => porta.politicasDaSubstituicao(ctx),
+    politicasDoImpacto: () => porta.politicasDoImpacto(ctx),
+    sinaisDoHotelNaJanela: (hotelId, desde, ate) =>
+      porta.sinaisDoHotelNaJanela(ctx, hotelId, desde, ate),
     intervencoes: (filtro) => porta.intervencoes(ctx, filtro),
     historicoDosAtivos: (ativoIds, desde, ate) =>
       porta.historicoDosAtivos(ctx, ativoIds, desde, ate),

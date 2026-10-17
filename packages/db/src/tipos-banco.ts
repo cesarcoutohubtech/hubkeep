@@ -430,6 +430,7 @@ export interface AppMewsVinculo {
   enterprise_id: string;
   hotel_id: string;
   id: string;
+  lock_versao: Generated<Int8>;
   revogado_em: Timestamp | null;
   tenant_id: string;
   validado_em: Timestamp;

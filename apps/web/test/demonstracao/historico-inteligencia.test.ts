@@ -134,7 +134,7 @@ async function simular(r: RoteiroDoHistorico, momento: MomentoDoJob) {
           calculosDoDia: async (d) =>
             new Map((metricasPorDia.get(d) ?? []).map((m) => [m.ativoId, m.calculo])),
           // O histórico de demonstração não tem reclamação de hóspede.
-          reclamacoes: async () => [],
+          sinais: async () => [],
           politicaDoSinal: async () => undefined,
         },
         gravacao: {

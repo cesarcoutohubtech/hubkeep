@@ -25,8 +25,16 @@
 //
 // A oitava, inteligencia.sinal_hospede (ADR-047), é a retenção do texto do
 // hóspede, em dias, de 30 a 1825 (sinal-retencao.ts). O job lê a do grupo.
+// A nona, inteligencia.impacto_hospede (ADR-047, PR C1b), é o Guest Impact
+// Score (impacto-hospede.ts): a janela, os limites, os pesos e as faixas,
+// resolvida por hotel, como a atenção.
 import { type ExtensaoDePolitica, RegraViolada } from '@hubkeep/dominio';
 import { PADRAO_ATENCAO, type ConfigAtencao, configAtencaoValida } from './atencao';
+import {
+  type ConfigImpactoHospede,
+  PADRAO_IMPACTO_HOSPEDE,
+  configImpactoHospedeValida,
+} from './impacto-hospede';
 import {
   PADRAO_EFETIVIDADE,
   type ConfigEfetividade,
@@ -67,6 +75,7 @@ export interface ValoresDePoliticaDoIntelligence {
   'inteligencia.metrica_janela_leitura': ConfigJanelaDeLeitura;
   'inteligencia.visibilidade_telas': ConfigVisibilidadeTelas;
   'inteligencia.sinal_hospede': ConfigSinalHospede;
+  'inteligencia.impacto_hospede': ConfigImpactoHospede;
 }
 export type ChaveDePoliticaDoIntelligence = keyof ValoresDePoliticaDoIntelligence;
 
@@ -81,6 +90,7 @@ export const PADROES_DO_INTELLIGENCE: {
   'inteligencia.metrica_janela_leitura': PADRAO_JANELA_DE_LEITURA,
   'inteligencia.visibilidade_telas': PADRAO_VISIBILIDADE_TELAS,
   'inteligencia.sinal_hospede': PADRAO_SINAL_HOSPEDE,
+  'inteligencia.impacto_hospede': PADRAO_IMPACTO_HOSPEDE,
 };
 
 export const CHAVES_DE_POLITICA_DO_INTELLIGENCE = Object.keys(
@@ -173,6 +183,9 @@ export function valorValidoDoIntelligence<C extends ChaveDePoliticaDoIntelligenc
     return limiaresDeEfetividadeValidos(valor as ConfigEfetividade);
   // Sistêmico: mínimos inteiros de pelo menos 1, taxa e razão contra a base positivas.
   if (chave === 'inteligencia.sistemico') return configSistemicoValida(valor as ConfigSistemico);
+  // Impacto no hóspede: a janela e os limites são inteiros de pelo menos 1.
+  if (chave === 'inteligencia.impacto_hospede')
+    return configImpactoHospedeValida(valor as ConfigImpactoHospede);
   return true;
 }
 
