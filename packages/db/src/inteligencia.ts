@@ -52,8 +52,11 @@ import {
   classificarSinalNoBanco,
   gravarSinaisNoBanco,
   hotelDoSinal,
+  nomesDasUhs,
   referenciasDaClassificacao,
+  sinaisDoAtivo,
   sinaisDoHotel,
+  sinaisPorIds,
   sinalParaClassificar,
 } from './repositorios/inteligencia-sinal';
 import {
@@ -146,6 +149,22 @@ export interface PortaDoPainelDoIntelligence {
     limite: number,
   ): Promise<SinalDaFilaNoBanco[]>;
   sinalParaClassificar(ctx: Contexto, id: string): Promise<SinalParaClassificarNoBanco | null>;
+  /** As reclamações destes ids que quem pede lê, com o texto, da mais recente, até `limite`. */
+  sinaisPorIds(
+    ctx: Contexto,
+    ids: readonly string[],
+    limite: number,
+  ): Promise<SinalDaFilaNoBanco[]>;
+  /** As reclamações ligadas ao ativo no trecho, com o texto, da mais recente, até `limite`. */
+  sinaisDoAtivo(
+    ctx: Contexto,
+    ativoId: string,
+    desde: Date,
+    ate: Date,
+    limite: number,
+  ): Promise<SinalDaFilaNoBanco[]>;
+  /** O nome de cada UH destes ids que quem pede lê. */
+  nomesDasUhs(ctx: Contexto, ids: readonly string[]): Promise<Record<string, string>>;
   referenciasDaClassificacao(
     ctx: Contexto,
     r: { ativoId: string | null; uhId: string | null; categoriaId: string | null },
@@ -184,6 +203,11 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
     sinaisDoHotel: (ctx, hotelId, situacao, limite) =>
       banco.withContext(ctx, (tx) => sinaisDoHotel(tx, hotelId, situacao, limite)),
     sinalParaClassificar: (ctx, id) => banco.withContext(ctx, (tx) => sinalParaClassificar(tx, id)),
+    sinaisPorIds: (ctx, ids, limite) =>
+      banco.withContext(ctx, (tx) => sinaisPorIds(tx, ids, limite)),
+    sinaisDoAtivo: (ctx, ativoId, desde, ate, limite) =>
+      banco.withContext(ctx, (tx) => sinaisDoAtivo(tx, ativoId, desde, ate, limite)),
+    nomesDasUhs: (ctx, ids) => banco.withContext(ctx, (tx) => nomesDasUhs(tx, ids)),
     referenciasDaClassificacao: (ctx, r) =>
       banco.withContext(ctx, (tx) => referenciasDaClassificacao(tx, r)),
     classificar: (ctx, c) => banco.executar(ctx, (uow) => classificarSinalNoBanco(uow, c)),

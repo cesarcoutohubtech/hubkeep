@@ -318,5 +318,17 @@ function evidenciaDoImpacto(
     depoisDoReparo: ev('recorrencia', 'depoisDoReparo'),
     notaMediaEm5: ev('severidade', 'notaMediaEm5'),
     percentualDosChamados: ev('operacional', 'percentual') ?? 0,
+    // O valor (0 a 1, null sem dado), o peso e os pontos de cada componente
+    // do score, para a página do ativo mostrar a composição gravada (C2).
+    ...Object.fromEntries(
+      ih.score.componentes.flatMap((c) => {
+        const nome = c.chave.charAt(0).toUpperCase() + c.chave.slice(1);
+        return [
+          [`valor${nome}`, c.valor],
+          [`peso${nome}`, c.peso],
+          [`pontos${nome}`, c.pontos],
+        ];
+      }),
+    ),
   };
 }

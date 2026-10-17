@@ -302,6 +302,7 @@ export {
   LIMITE_DA_IMPORTACAO_API,
   PedidoDeClassificacaoDeSinal,
   PedidoDeImportacaoDeSinais,
+  ReclamacoesDoPainelApi,
   RespostaDaClassificacaoDeSinal,
   RespostaDaFilaDeSinais,
   RespostaDaImportacaoDeSinais,

@@ -2808,3 +2808,50 @@ O #318 (C1b) e o #315 (`eu:`, ADR-048) entraram na `main`. Sem outro PR de zona 
 - **Nesta branch:** o adendo ao ADR-047, no PR de zona protegida; o merge é do Cesar.
 - **Esperando:** o merge do adendo; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
 - **Próximo:** o C2 (as telas), em branch nova a partir da `main` depois do merge do adendo. Primeiro passo: as reclamações da evidência na página do insight sistêmico (os `sinalIds` da evidência da regra `reclamacoes_categoria`).
+
+### O PR C2 do sinal do hóspede: proposta (17/10/2026)
+
+O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do score. Proposta, antes do código:
+
+**1. Página do insight sistêmico das reclamações.** Hoje a regra `reclamacoes_categoria` grava os `sinalIds` na evidência, mas a página só lista chamados (e a lista fica vazia). A proposta é uma seção "Reclamações da evidência", no lugar da tabela de chamados quando a regra é a das reclamações: data, fonte, nota, UH, ligação com o ativo (com o link do ativo) e o texto (ou "texto apagado em …"), com o link para a fila do hotel.
+
+**2. Página do ativo.** Uma seção "Impacto no hóspede", perto do "Por que":
+- o score (0 a 100) e a fonte: as reclamações (D1) ou a porcentagem dos chamados, com a frase de quando o hotel não importa reclamação;
+- os cinco componentes com o valor e o peso (volume, severidade, recorrência depois do reparo, amplitude de UHs e a porcentagem dos chamados), e o que ficou sem dado;
+- as reclamações ligadas ao ativo na janela da política, as confirmadas (que pesam) e as possíveis (que não pesam, D2), com as mesmas colunas da página do insight.
+- O indicador do topo passa a mostrar o score "de 100" quando a fonte são as reclamações, e a porcentagem quando são os chamados.
+
+**Quem vê:** não muda. A página do ativo já exige quem decide insight no hotel do ativo (Admin do grupo, Gestor CSC, Gerente com o hotel), o mesmo conjunto da fila e da RLS da `app.sinal_hospede`. Na página do insight, a leitura das reclamações passa pela RLS da `app.sinal_hospede` com o contexto do usuário: quem lê o insight mas não lê as reclamações do hotel vê só a quantidade.
+
+**O que entra:** duas leituras novas no `packages/db`, com o texto e pela RLS (`sinaisPorIds` e `sinaisDoAtivo`, pelo índice das reclamações do ativo da 0052); os campos novos nas respostas das rotas do insight e do ativo (`packages/contratos`); as seções nas duas telas; os textos nos quatro idiomas (catálogos, área compartilhada: registro aqui antes de mexer); testes. Sem migração e fora da zona protegida.
+
+**Para decidir (Cesar e Kaio):**
+- **(a)** O texto do hóspede aparece nas duas páginas, como na fila? A proposta é sim: o público é o mesmo da fila.
+- **(b)** As possíveis aparecem na página do ativo, marcadas como "não pesa"? A proposta é sim (D2: "a possível aparece na explicação").
+
+**Detalhes do Kaio** (ADR-033): o limite de linhas por lista (proposta: 50, as mais recentes), os rótulos e a ordem das seções.
+
+**Decisão (17/10/2026):** "Cesar aqui. Vamos fazer conforme proposto", com o sim nas perguntas (a) e (b); "Kaio aqui, limite de linhas por lista (proponho as 50 mais recentes), os rótulos e a ordem das seções. Fazer como proposto". O Kaio respondeu pelos detalhes; o "sim" dele na (a) e na (b) fica para confirmar antes do merge.
+
+**Área compartilhada:** o C2 mexe nos catálogos de texto (`packages/i18n/catalogos`, chaves novas `inteligencia.reclamacoes.*` e `inteligencia.impacto.*`, só no prefixo do Intelligence). Registro antes de começar.
+
+**Como fica:**
+- **Os componentes do score na página do ativo** vêm da evidência gravada pelo job (o mesmo valor do indicador), não de um cálculo novo na leitura. A evidência do impacto no hóspede da atenção 7 ganha o valor e o peso de cada componente do Guest Impact Score (campos novos, sem mudar o cálculo nem a versão). O dia gravado antes disso mostra o resumo sem a tabela dos componentes.
+- **As reclamações** são lidas na hora, pela RLS da `app.sinal_hospede`: as da evidência do insight (até 50, as mais recentes, com o total da evidência) e as ligadas ao ativo na janela da política do score (até 50).
+
+### O PR C2: as telas do sinal do hóspede (17/10/2026)
+
+**O que traz:**
+- **Página do insight sistêmico das reclamações:** a seção "Reclamações da evidência" no lugar do gráfico e da tabela de chamados (que ficavam vazios nessa regra), com a data, a fonte, a nota, a UH, a ligação com o ativo (e o link dele) e o texto, até 50, as mais recentes, e o link da fila. Quem lê o insight mas não as reclamações do hotel vê só o total.
+- **Página do ativo:** a seção "Impacto no hóspede": a fonte e o valor (o score de 100 ou a porcentagem dos chamados, D1), a tabela dos componentes do score (valor, peso e pontos, como o job gravou) e as reclamações ligadas ao ativo na janela da política, com o selo "Pesa no score" (confirmada) ou "Não pesa" (possível, D2). O indicador do topo mostra "de 100" pelas reclamações.
+- **Motor:** `painel-reclamacoes.ts` (`reclamacoesDoInsight`, `reclamacoesDoAtivo`, limite de 50); a evidência do impacto no hóspede da atenção 7 ganha `valor*`, `peso*` e `pontos*` de cada componente, sem mudar o cálculo nem a versão.
+- **`packages/db`:** `sinaisPorIds`, `sinaisDoAtivo` e `nomesDasUhs`, pela RLS; teste de integração (só na CI).
+- **Contrato:** `ReclamacoesDoPainelApi`, e o campo `reclamacoes` nas respostas do insight (nulo fora da regra das reclamações) e do ativo. As duas respostas foram para depois do sinal do hóspede no arquivo, porque usam o esquema dele.
+- **Textos** nos quatro idiomas (`inteligencia.reclamacoes.*`, `inteligencia.impacto.*` e `inteligencia.ativo.pelas_reclamacoes`); glossário de métricas.
+
+### Ponto de retomada (17/10/2026, PR C2)
+
+- **`main`:** com o C1b (#318), o ADR-048 (#315) e o adendo ao ADR-047 (#319). Sem migração nova do Intelligence desde a 0053.
+- **Nesta branch:** o C2, fora da zona protegida, no PR aberto.
+- **Esperando:** o merge do C2; o "sim" do Kaio na (a) e na (b) da proposta do C2; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** com o PR C fechado, a 1.5 sem IA fica completa. O que resta dela depende de outros: a entrada por API e webhook (IX1 a IX3 do núcleo) e a sugestão da IA (regra 9).
