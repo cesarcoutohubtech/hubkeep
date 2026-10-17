@@ -51,8 +51,8 @@ update app.mews_vinculo set revogado_em=now()
 set local role hk_worker;
 select from (select set_config('app.usuario_id','',true),
  set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($ update app.mews_checkpoint set versao=versao+1
- where hotel_id='11100000-0000-0000-0000-000000000001' $,
+select throws_ok($$ update app.mews_checkpoint set versao=versao+1
+ where hotel_id='11100000-0000-0000-0000-000000000001' $$,
  '42501', null, 'checkpoint: vinculo revogado impede UPDATE');
 reset role;
 select * from finish();
