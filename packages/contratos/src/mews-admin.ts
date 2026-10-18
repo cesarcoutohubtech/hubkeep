@@ -11,8 +11,8 @@ export const LinhaDoStatusMewsApi = z.object({
   recursosAtivos: z.number().int().nonnegative(),
   bloqueiosOutOfOrder: z.number().int().nonnegative(),
   bloqueiosInternalUse: z.number().int().nonnegative(),
-});
+}).meta({ id: 'LinhaDoStatusMewsApi' });
 
 export const RespostaDoStatusMews = z.object({
   hoteis: z.array(LinhaDoStatusMewsApi),
-});
+}).meta({ id: 'RespostaDoStatusMews' });
