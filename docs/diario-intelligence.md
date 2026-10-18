@@ -2831,7 +2831,7 @@ O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do
 
 **Detalhes do Kaio** (ADR-033): o limite de linhas por lista (proposta: 50, as mais recentes), os rótulos e a ordem das seções.
 
-**Decisão (17/10/2026):** "Cesar aqui. Vamos fazer conforme proposto", com o sim nas perguntas (a) e (b); "Kaio aqui, limite de linhas por lista (proponho as 50 mais recentes), os rótulos e a ordem das seções. Fazer como proposto". O Kaio respondeu pelos detalhes; o "sim" dele na (a) e na (b) fica para confirmar antes do merge.
+**Decisão (17/10/2026):** "Cesar aqui. Vamos fazer conforme proposto", com o sim nas perguntas (a) e (b); "Kaio aqui, limite de linhas por lista (proponho as 50 mais recentes), os rótulos e a ordem das seções. Fazer como proposto". O Kaio respondeu pelos detalhes, e depois confirmou a (a) e a (b): "Kaio aqui. Sim para A e B" (17/10/2026, no chat do agente do Intelligence).
 
 **Área compartilhada:** o C2 mexe nos catálogos de texto (`packages/i18n/catalogos`, chaves novas `inteligencia.reclamacoes.*` e `inteligencia.impacto.*`, só no prefixo do Intelligence). Registro antes de começar.
 
@@ -2855,3 +2855,38 @@ O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do
 - **Nesta branch:** o C2, fora da zona protegida, no PR aberto.
 - **Esperando:** o merge do C2; o "sim" do Kaio na (a) e na (b) da proposta do C2; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
 - **Próximo:** com o PR C fechado, a 1.5 sem IA fica completa. O que resta dela depende de outros: a entrada por API e webhook (IX1 a IX3 do núcleo) e a sugestão da IA (regra 9).
+
+### O merge do C2 (17/10/2026)
+
+- **#321 mergeado** com o pgTAP ainda rodando (o job que também roda a integração do `packages/db`, com o teste novo das leituras do C2). Os outros quatro checks passaram antes do merge. O resultado do pgTAP é conferido uma vez depois; vermelho, a correção vem antes de qualquer outro merge.
+- **O "sim" do Kaio na (a) e na (b)** veio junto com o "Cesar aqui. continue": nenhuma decisão do C2 fica pendente.
+
+### Ponto de retomada (17/10/2026, depois do C2)
+
+- **`main`:** com o C2 (#321). Sem migração nova do Intelligence desde a 0053; nada para `db push`.
+- **Nesta branch:** só este registro, sem PR; entra no próximo PR do Intelligence.
+- **Esperando:** o resultado do pgTAP do #321 (passou: success, conferido uma vez); os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** a 1.5 sem IA está completa. O que segue precisa de proposta e decisão (ver a resposta ao Cesar de 17/10/2026).
+
+
+### Reclamações no histórico de demonstração (18/10/2026)
+
+**Decisão:** "Kaio aqui. Sim, siga conforme recomendado" (18/10/2026, no chat do agente do Intelligence), para a opção 1 da resposta de 17/10/2026. Seed e mock da demonstração: detalhe do Kaio (ADR-033). Sem migração, fora da zona protegida e sem tocar em área compartilhada.
+
+**O que traz:**
+- **Roteiro** (`historico-inteligencia.ts`): os hotéis 2 e 3 importam as avaliações em lotes semanais de CSV, de 91 dias para cá (13 lotes por hotel), e a Admin classifica cada lote duas horas depois da importação. O último lote de cada hotel fica na fila, sem classificação. Os outros quatro hotéis não importam, e o impacto no hóspede deles segue a porcentagem dos chamados (D1). As reclamações sorteiam numa sequência à parte: os chamados já gravados no dev não mudam (a impressão do teste é a mesma).
+- **Fundo:** cerca de quatro avaliações por semana em cada hotel que importa: elogios e atendimento (sem manutenção), só a nota e poucas de manutenção, em categorias que giram, sem hidráulica. As de ar-condicionado vão ligadas como possíveis ao ar da UH.
+- **Cenário `impacto-caldeira`:** cada falha da caldeira do hotel 2 vira uma reclamação confirmada na caldeira ("sem água quente"), no dia da falha. No último dia, o score é 70 de 100 pelas reclamações (7 confirmadas, 5 UHs); a caldeira do hotel 1 segue pelos chamados.
+- **Cenário `sistemico-reclamacoes`:** chuveiro fraco em cinco UHs do hotel 3 numa semana; a Admin liga as três últimas à bomba de recalque como possíveis (não pesam, D2). Abre o insight da regra das reclamações, revisado e aceito.
+- **Gravação** (`gravacao-historico.ts`): o CSV de cada lote é lido como a tela lê (`lerCsvDeSinais`) e entra pelo `importarSinais` do painel; a classificação passa pelo `classificarSinal`, com o relógio do roteiro. Rodar de novo não duplica: a avaliação repetida não entra, e só a que está na fila é classificada. A retomada repassa as reclamações antes do último dia gravado. O resumo ganha as reclamações importadas e as classificadas.
+- **CSV de exemplo** em `docs/exemplos/reclamacoes-hospede.csv`: o lote do chuveiro fraco do roteiro gravado no dev, para testar a importação pela tela. O teste confere que o arquivo segue o roteiro; `HK_ATUALIZAR_EXEMPLO=1` regera (variável no `.env.example`).
+- **Testes:** a simulação sem banco passa as reclamações ao job (as importadas até cada dia, com a classificação feita até ali) e confere os cenários, nenhum insight inesperado, o impacto pelas reclamações e pelos chamados, o CSV lido e validado e a fila no fim. O teste da gravação no banco (só na CI) confere as contagens e limpa a `app.sinal_hospede`.
+
+**O grupo já gravado no dev** (fim 2026-10-13): rodar de novo o `pnpm demo:historico --ambiente dev --fim 2026-10-13` leva minutos. A retomada importa e classifica as reclamações nas datas do roteiro, e elas aparecem na fila e nas listas do insight e do ativo, que são lidas na hora. O score pelas reclamações e o insight sistêmico vêm do job, que não roda de novo nos dias já gravados: o score aparece no próximo dia em que o job rodar para o grupo, e o insight sistêmico não aparece, porque a rajada já saiu da janela de 14 dias. Para ver tudo, só num grupo novo, e o comando ainda não escolhe o grupo (seria outro PR).
+
+### Ponto de retomada (18/10/2026, reclamações na demonstração)
+
+- **`main`:** com o C2 (#321); o pgTAP do #321 passou. Sem migração nova do Intelligence desde a 0053; nada para `db push`.
+- **Nesta branch:** as reclamações no histórico de demonstração, no PR aberto (`int:`, fora da zona protegida), com os registros de 17/10 do merge do C2.
+- **Esperando:** o merge deste PR; depois dele, a decisão de Cesar e Kaio sobre o grupo do dev (retomada no grupo atual, em minutos, sem o insight sistêmico; ou um grupo novo, com outro PR para o comando escolher o grupo); os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** o que depende de outros (o mapeamento das colunas por ferramenta, a API e o webhook IX1 a IX3, a IA pela regra 9) ou a abertura de chamado a partir da reclamação, que precisa de proposta.
