@@ -13,19 +13,19 @@
 
 -- Versao, watermarks e conclusao: sem digest/checksum de lotes.
 grant select (
-  tenant_id, hotel_id, enterprise_id, versao,
+  tenant_id, hotel_id, versao,
   ultimo_updated_utc, ultimo_sweep_utc, concluido_em
 ) on app.mews_checkpoint to hk_app;
 
--- Somente chaves de escopo e flags para contagem. Sem resource_id nem payload.
+-- Somente chaves de escopo e flags para contagem. Sem enterprise_id, resource_id nem payload.
 grant select (
-  tenant_id, hotel_id, enterprise_id, ativo
+  tenant_id, hotel_id, ativo
 ) on app.mews_recurso to hk_app;
 
 -- Somente chaves de escopo, tipo tecnico e flag para contagem.
--- Nao liberar block_id, resource_id nem intervalos de bloqueio nesta fase.
+-- Nao liberar enterprise_id, block_id, resource_id nem intervalos nesta fase.
 grant select (
-  tenant_id, hotel_id, enterprise_id, tipo, ativo
+  tenant_id, hotel_id, tipo, ativo
 ) on app.mews_bloqueio to hk_app;
 
 -- Exigir Admin ativo no tenant E vinculo Mews nao revogado do hotel.
