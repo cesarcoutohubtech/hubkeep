@@ -2890,3 +2890,14 @@ O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do
 - **Nesta branch:** as reclamações no histórico de demonstração, no PR aberto (`int:`, fora da zona protegida), com os registros de 17/10 do merge do C2.
 - **Esperando:** o merge deste PR; depois dele, a decisão de Cesar e Kaio sobre o grupo do dev (retomada no grupo atual, em minutos, sem o insight sistêmico; ou um grupo novo, com outro PR para o comando escolher o grupo); os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
 - **Próximo:** o que depende de outros (o mapeamento das colunas por ferramenta, a API e o webhook IX1 a IX3, a IA pela regra 9) ou a abertura de chamado a partir da reclamação, que precisa de proposta.
+
+### O merge das reclamações na demonstração (18/10/2026)
+
+- **#322 mergeado** (Cesar, 18/10/2026), com os cinco checks verdes no PR, inclusive o pgTAP, que roda o teste da gravação no banco.
+
+### Ponto de retomada (18/10/2026, depois do #322)
+
+- **`main`:** com as reclamações no histórico de demonstração (#322). Sem migração nova do Intelligence desde a 0053; nada para `db push`.
+- **Nesta branch:** só este registro, sem PR; entra no próximo PR do Intelligence.
+- **Esperando:** a decisão de Cesar e Kaio sobre o grupo do dev (retomada no grupo atual ou grupo novo); os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** ver a resposta ao Cesar de 18/10/2026.
