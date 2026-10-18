@@ -5,6 +5,7 @@
 // Somente o operador local com DEV_SESSION_POOLER pode executar este script.
 import pg from 'pg';
 import { conexaoDono, lerArgs } from './ambiente.ts';
+import { formatarCandidatoMews, LIMITE_CANDIDATOS } from './mews-candidatos-core.mjs';
 
 const argv = process.argv.slice(2);
 if (argv.length !== 2 || argv[0] !== '--ambiente' || argv[1] !== 'dev') {
@@ -12,10 +13,6 @@ if (argv.length !== 2 || argv[0] !== '--ambiente' || argv[1] !== 'dev') {
 }
 const { ambiente } = lerArgs(argv, ['dev']);
 
-const LIMITE = 20;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const limpar = (texto) =>
-  String(texto ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 75);
 const codigoErro = (e) =>
   typeof e?.code === 'string' && /^[A-Z0-9]{5}$/.test(e.code) ? e.code : 'nao_disponivel';
 
@@ -51,26 +48,15 @@ async function executar() {
            or t.nome ~* '(demonstra|demo)'
         order by t.nome, h.nome, h.id
         limit $1`,
-      [LIMITE + 1],
+      [LIMITE_CANDIDATOS + 1],
     );
-    if (r.rows.length > LIMITE) {
+    if (r.rows.length > LIMITE_CANDIDATOS) {
       throw new Error('muitos_candidatos');
     }
-    console.log(`Hotéis encontrados no dev (máximo ${LIMITE}): ${r.rows.length}`);
+    console.log(`Hotéis encontrados no dev (máximo ${LIMITE_CANDIDATOS}): ${r.rows.length}`);
     for (const row of r.rows) {
-      if (!UUID.test(row.hotel_id) || !UUID.test(row.tenant_id)) {
-        throw new Error('identificador_invalido');
-      }
-      const elegivel = row.hotel_ficticio === true &&
-        row.status === 'ativo' && row.possui_vinculo === false;
-      console.log(`\nGrupo: ${limpar(row.grupo)}`);
-      console.log(`Hotel: ${limpar(row.hotel)}`);
-      console.log(`tenant_id: ${row.tenant_id}`);
-      console.log(`hotel_id: ${row.hotel_id}`);
-      console.log(`Status: ${limpar(row.status)}`);
-      console.log(`Vínculo Mews: ${row.vinculo_ativo ? 'ativo' :
-        row.possui_vinculo ? 'existente (não ativo)' : 'inexistente'}`);
-      console.log(`Candidato: ${elegivel ? 'SIM, sujeito à seleção humana' : 'NÃO, exige revisão'}`);
+      const candidato = formatarCandidatoMews(row);
+      console.log('\n' + candidato.linhas.join('\n'));
     }
     if (r.rows.length === 0) {
       console.log('Nenhum hotel fictício correspondente. Não criar nem alterar hotéis.');
