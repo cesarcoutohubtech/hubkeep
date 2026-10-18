@@ -347,3 +347,5 @@ export {
   ContagemDeEnviosApi,
   RespostaDaContagemDeEnvios,
 } from './comunicacao';
+
+export { LinhaDoStatusMewsApi, RespostaDoStatusMews } from './mews-admin';
