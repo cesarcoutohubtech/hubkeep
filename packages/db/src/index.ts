@@ -107,5 +107,5 @@ export type { HotelVisivel } from './consultas';
 export type { AppPapel as Papel, DB } from './tipos-banco';
 
 /** Status técnico Mews V1 — somente leitura admin, por RLS. */
-export { criarPortaStatusAdministrativoMews } from './mews-admin';
+export { criarPortaStatusAdministrativoMews, criarPortaCandidatosHoteisMews } from './mews-admin';
 export type { StatusAdministrativoMews, LinhaDoStatusMews } from './mews-admin';
