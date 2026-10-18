@@ -21,3 +21,10 @@
 - Entrega: laboratório `ensaio-vinculo-demo.mjs` com cliente injetado, porta de conferência de hotel/vínculo ainda sem implementação real, escopo estrito e resumo agregado sem PII. Testes sintéticos de ponta a ponta offline executados pela CI geral; documentação `ENSAIO-VINCULO-DEMO-V1.md`.
 - Mantido **sem rota, job, cron, aplicação de lote, migração, cofre nem credencial de produção**. A primeira execução de API real ou gravação do vínculo exigirá autorização específica posterior.
 - **Ponto de retomada:** aguardar CI deste PR, corrigir problemas e liberar para revisão somente com checks verdes. Merge manual pelo Cesar. Após merge, próximo gate é selecionar hotel fictício e propriedade Mews Demo, confirmar escopo e revisar referência de cofre/revogação/GDPR.
+
+## 18/10/2026 — Descoberta read-only de hotel fictício para Mews Demo
+
+- PR #327 já mergeado; `main` com checks gerais e banco ainda executando no início deste trabalho, sem falhas confirmadas. Ambiente HubKeep-dev mantém migrações 0054/0055/0056; pré-voo 32/32 e validação visual Admin/Gerente.
+- Próximo gate autorizado: preparar **identificação de candidatos de hotel fictício e critérios de cofre/revogação**. Não houve autorização para criar `app.mews_vinculo`, usar Mews Demo real, ativar cron ou persistir checkpoints.
+- Nova branch `claude/eu-mews-selecao-hotel-demo-20261018`: consulta restrita a `--ambiente dev`, valida project ref, abre transação READ ONLY e faz rollback, filtra hotéis de demonstração, exibe apenas identificadores locais necessários e estado de vínculo, sem EnterpriseId/credencial/PII. Classificação pura e teste offline para CI. Guia `SELECAO-HOTEL-E-COFRE-DEMO.md` especifica seleção manual e etapas separadas de cofre, revogação e retenção.
+- Próxima ação: abrir PR em Draft, validar CI; depois do merge manual pelo Cesar, o operador poderá executar **somente o script de listagem de candidatos**, enviar a escolha e aprovar uma propriedade Mews específica, sem gravações.
