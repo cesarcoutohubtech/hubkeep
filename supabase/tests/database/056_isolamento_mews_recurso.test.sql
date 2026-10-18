@@ -35,12 +35,12 @@ select is_empty($$ select 1 from app.mews_recurso $$,'Implantador vencido nao le
 reset role;
 set local role hk_worker;
 select from (select set_config('app.usuario_id','',true),set_config('app.tenant_id','',true)) ctx;
-select is_empty($$$ select 1 from app.mews_recurso $$$,'worker sem contexto nao le');
+select is_empty($$ select 1 from app.mews_recurso $$,'worker sem contexto nao le');
 select from (select set_config('app.usuario_id','',true),set_config('app.tenant_id','20000000-0000-0000-0000-000000000000',true)) ctx;
-select results_eq($$$ select count(*)::int from app.mews_recurso $$$,$$values (1)$$,'worker B le somente B');
+select results_eq($$ select count(*)::int from app.mews_recurso $$,$$values (1)$$,'worker B le somente B');
 select throws_ok($$ insert into app.mews_recurso(tenant_id,hotel_id,enterprise_id,resource_id,ativo) values ('10000000-0000-0000-0000-000000000000','11100000-0000-0000-0000-000000000001','E-A1','ERR',true) $$, '42501',null,'worker B nao pode inserir tenant A');
 select from (select set_config('app.usuario_id','',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select results_eq($$$ select count(*)::int from app.mews_recurso $$$,$$$values (2)$$$,'worker A le duas propriedades do tenant A');
+select results_eq($$ select count(*)::int from app.mews_recurso $$,$$values (2)$$,'worker A le duas propriedades do tenant A');
 select isnt_empty($$ update app.mews_recurso set ativo=false where resource_id='R1' returning 1 $$,'worker A pode atualizar ativo do proprio tenant');
 select throws_ok($$ update app.mews_recurso set hotel_id='11100000-0000-0000-0000-000000000002' $$, '42501',null,'escopo hotel e imutavel');
 select throws_ok($$ delete from app.mews_recurso $$, '42501',null,'worker nao tem DELETE fisico');
