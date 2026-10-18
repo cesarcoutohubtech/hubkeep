@@ -34,12 +34,12 @@ select is_empty($$ select 1 from app.mews_checkpoint $$,'Implantador vencido nao
 reset role;
 set local role hk_worker;
 select from (select set_config('app.usuario_id','',true),set_config('app.tenant_id','',true)) ctx;
-select is_empty($$$ select 1 from app.mews_checkpoint $$$,'worker sem contexto nao le');
+select is_empty($$ select 1 from app.mews_checkpoint $$,'worker sem contexto nao le');
 select from (select set_config('app.usuario_id','',true),set_config('app.tenant_id','20000000-0000-0000-0000-000000000000',true)) ctx;
-select results_eq($$$ select count(*)::int from app.mews_checkpoint $$$,$$values (1)$$,'worker B le somente B');
+select results_eq($$ select count(*)::int from app.mews_checkpoint $$,$$values (1)$$,'worker B le somente B');
 select throws_ok($$ insert into app.mews_checkpoint(tenant_id,hotel_id,enterprise_id) values ('10000000-0000-0000-0000-000000000000','11100000-0000-0000-0000-000000000001','E-A1') $$, '42501',null,'worker B nao pode inserir tenant A');
 select from (select set_config('app.usuario_id','',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select results_eq($$$ select count(*)::int from app.mews_checkpoint $$$,$$$values (2)$$$,'worker A le duas propriedades do tenant A');
+select results_eq($$ select count(*)::int from app.mews_checkpoint $$,$$values (2)$$,'worker A le duas propriedades do tenant A');
 select isnt_empty($$ update app.mews_checkpoint set versao=versao+1 where hotel_id='11100000-0000-0000-0000-000000000001' returning 1 $$,'worker A pode atualizar versao do proprio tenant');
 select throws_ok($$ update app.mews_checkpoint set hotel_id='11100000-0000-0000-0000-000000000002' $$, '42501',null,'escopo hotel e imutavel');
 select throws_ok($$ delete from app.mews_checkpoint $$, '42501',null,'worker nao tem DELETE fisico');
