@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
+import { CandidatosMewsDemo } from './candidatos';
 
 type Status = z.infer<typeof RespostaDoStatusMews>;
 
@@ -40,7 +41,8 @@ export default function PainelAdministrativoMews() {
   if (!status) return <MensagemVazia>{t('comum.carregando')}</MensagemVazia>;
 
   return (
-    <Painel dica={t('admin.mews.descricao')}>
+    <>
+      <Painel dica={t('admin.mews.descricao')}>
       {status.hoteis.length === 0 ? (
         <MensagemVazia>{t('admin.mews.sem_vinculos')}</MensagemVazia>
       ) : (
@@ -75,6 +77,8 @@ export default function PainelAdministrativoMews() {
           </tbody>
         </Tabela>
       )}
-    </Painel>
+      </Painel>
+      <CandidatosMewsDemo />
+    </>
   );
 }
