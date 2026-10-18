@@ -2901,3 +2901,31 @@ O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do
 - **Nesta branch:** só este registro, sem PR; entra no próximo PR do Intelligence.
 - **Esperando:** a decisão de Cesar e Kaio sobre o grupo do dev (retomada no grupo atual ou grupo novo); os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
 - **Próximo:** ver a resposta ao Cesar de 18/10/2026.
+
+### A rodada das reclamações no dev (18/10/2026)
+
+**Do Cesar** (saída colada nesta sessão, depois de "Cesar aqui. Continue"): `pnpm demo:historico --ambiente dev --fim 2026-10-13`, em 161 s. "Retomada no dia 2026-10-14: 21574 de 21574 operações já gravadas, puladas." e "126 reclamações importadas e 119 classificadas". As 126 são o total do roteiro desse fim; as 7 sem classificação são as do último lote de cada hotel, que ficam na fila. Os oito cenários de antes seguem nos mesmos estados. O `sistemico-reclamacoes` não aparece, como esperado (o job não roda de novo nos dias gravados). O score pelas reclamações da caldeira aparece no próximo dia em que o job rodar para o grupo.
+
+### Abrir chamado a partir da reclamação: proposta (18/10/2026)
+
+O ADR-047 deixou para depois "abrir chamado a partir da reclamação, que mexe no fluxo do chamado, área compartilhada". Proposta, antes do código, para Cesar e Kaio:
+
+**Como é hoje:** o chamado abre pelo caso de uso `abrir` do núcleo (`POST /api/v1/chamados`, e no PWA pela operação `chamado.abrir`). O web não tem tela de abrir chamado. O chamado não guarda nenhuma referência externa (`origem` só aceita `interno`), e o Intelligence nunca chamou caso de uso de escrita do núcleo.
+
+**O que entra:**
+1. **Na fila de reclamações,** a reclamação classificada como de manutenção, com UH ou ativo, ganha o botão "Abrir chamado". Ele abre um formulário curto: o local (a UH da classificação, ou o local do ativo), o ativo (o da ligação, possível ou confirmada, que a pessoa pode tirar), a descrição, que a pessoa escreve, e "afeta hóspede" marcado.
+2. **O chamado abre pelo caso de uso do núcleo, sem mudar o núcleo:** a mesma validação, a mesma prioridade pela categoria, o mesmo SLA, a mesma auditoria e o mesmo evento `chamado.aberto`. Quem abre é a pessoa logada, e quem vê a fila já pode abrir chamado no hotel.
+3. **A ligação fica do lado do Intelligence:** a coluna `chamado_id` na `app.sinal_hospede`, com a FK composta para `app.chamado` e o UPDATE só dela para o `hk_app`. Ela serve para a fila mostrar "chamado aberto" com o link e para não abrir dois chamados da mesma reclamação. O núcleo não fica sabendo do Intelligence.
+4. **Quem vê e quem decide:** não muda. É quem decide insight no hotel (a fila), e o chamado aberto segue as regras de sempre.
+
+**Para decidir (Cesar e Kaio):**
+- **(a)** A ligação em `app.sinal_hospede.chamado_id` (migração, pgTAP e adendo ao ADR-047: PR de zona protegida)? Proposta: sim. Sem ela, o botão só preencheria o formulário, sem registro de que a reclamação virou chamado.
+- **(b)** Abrir e ligar em duas transações (o chamado pelo caso de uso do núcleo; depois a ligação, com a trava de versão da reclamação) ou numa só (um ponto de extensão no caso de uso `abrir`, que muda o `packages/aplicacao`, área compartilhada com a 1b)? Proposta: duas. O risco é um chamado sem ligação se a segunda falhar; a tela confere a versão antes de abrir e mostra o erro, e a pessoa liga de novo.
+- **(c)** O texto do hóspede vai para a descrição do chamado? Proposta: não automaticamente. O chamado é lido pelo Técnico e pela Solicitante, que não leem a reclamação (RLS), e o texto do hóspede tem retenção própria (C1a). A descrição vem com uma sugestão sem o texto ("Reclamação de hóspede, Google, 12/09/2026: hidráulica, UH 305"), e a pessoa escreve o resto.
+- **(d)** A `origem` do chamado fica `interno`? Proposta: sim. Um valor novo muda o domínio, o check do banco e o teste de paridade do núcleo, e a IX2 vai usar esse campo para a integração.
+
+**Detalhes do Kaio** (ADR-033): os rótulos, a sugestão da descrição e se o botão também aparece nas listas da página do ativo e do insight (proposta: só na fila, por enquanto).
+
+**Fora desta proposta:** abrir um chamado para várias reclamações de uma vez (o insight sistêmico) e ligar a reclamação a um chamado que já existe.
+
+**Área compartilhada:** a proposta não muda `packages/dominio`, `packages/aplicacao` nem o fluxo do chamado; usa o caso de uso `abrir` como ele é. Se a (b) for "numa só", muda o `packages/aplicacao`, e o pedido vai para a 1b antes.
