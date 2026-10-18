@@ -101,6 +101,7 @@ import {
   RespostaDeReaberturaDeOs,
 } from './chamados';
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
+import { RespostaDoStatusMews } from './mews-admin';
 import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
 import { ConsultaDaContagemDeEnvios, RespostaDaContagemDeEnvios } from './comunicacao';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
@@ -221,6 +222,17 @@ export interface Rota {
 const ERRO = (descricao: string) => ({ descricao, esquema: ErroApi });
 
 export const ROTAS: readonly Rota[] = [
+  {
+    metodo: 'get',
+    caminho: '/api/v1/mews/status',
+    resumo: 'Mews V1: checkpoints, horários e contagens técnicas (somente Admin do grupo).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Status técnico por hotel', esquema: RespostaDoStatusMews },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Apenas Admin do grupo (sem_permissao).'),
+    },
+  },
   {
     metodo: 'get',
     caminho: '/api/v1/sessao',
