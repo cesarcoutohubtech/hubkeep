@@ -1,62 +1,55 @@
-# Mews Demo — seleção segura do hotel e referência de credenciais
+# Mews Demo — seleção do hotel e referência segura de credenciais
 
-**18/10/2026 · Preparação somente leitura · Não ativado.**
+**18/10/2026 · Código de preparação · Nenhum vínculo criado.**
 
-## Objetivo
+## Contexto e princípio de segurança
 
-Selecionar **um hotel fictício existente** no projeto HubKeep-dev para uma futura prova controlada de Mews Demo. Não associar automaticamente hotéis por nome; `Gross Demo` na Mews não é equivalente a `Hotel Demonstração Centro` no HubKeep sem uma confirmação explícita do Admin e do responsável pelo ensaio.
+O PR #327 já criou um ensaio 100% offline que exige uma identidade de propriedade e confirmação de escopo antes de qualquer leitura. Esta entrega prepara a identificação humana de um **hotel fictício do HubKeep-dev**, mas **não vincula** o hotel à Mews, não busca tokens e não executa sincronização.
 
-O PR #327 já oferece o ensaio offline que exige confirmação de escopo, valida `EnterpriseId` no `configuration/get` e descarta toda a projeção sem gravação. **Este PR não conecta nem executa esse ensaio com credenciais ou banco reais.**
+A leitura de hotéis é dado de negócio. Por isso **não usar o papel dono do banco nem scripts com `DEV_SESSION_POOLER` para listar hotéis**. A consulta ocorre somente na API autenticada do HubKeep, com `hk_app`, contexto de tenant/usuário na transação (`withContext`), checagem `authz.eh_admin_grupo()` e RLS.
 
-## Passo 1 — consulta de candidatos do HubKeep-dev (após merge)
+## Como listar os candidatos (após merge deste PR)
 
-Com o PowerShell aberto na **raiz** do checkout HubKeep e variável `DEV_SESSION_POOLER` existente, confirmar que `supabase/config.toml` mantém o `[remotes.dev]` esperado e executar:
+1. Na instalação web conectada **somente ao HubKeep-dev**, acesse `/admin/mews` com uma conta **Admin do grupo**.
+2. Veja a nova seção **Hotéis candidatos à demonstração Mews**. Ela consulta `GET /api/v1/mews/candidatos` em uma sessão autenticada, limitada ao tenant selecionado.
+3. Verifique o nome e o **ID interno do hotel**, o estado cadastral, a existência de vínculo técnico anterior e a marcação **Elegível para revisão humana**.
+4. Escolha o hotel fictício desejado **manualmente** e registre a escolha no procedimento de aprovação. Não escolher automaticamente `Hotel Demonstração Centro`, `Praia` ou `Serra` pelo nome; precisam existir no tenant correto.
+5. Se o resultado estiver vazio ou truncado (mais de 20 candidatos), **não criar hotel nem associar automaticamente**; revisar a implantação demonstrativa.
 
-```powershell
-git pull --ff-only origin main
-node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ops/mews-candidatos-hotel-dev.mjs --ambiente dev
-```
+### Semântica de elegibilidade
 
-A consulta usa a função `conexaoDono('dev')`, que recusa credenciais de projetos com *ref* diferente de `[remotes.dev]`, verifica apenas **até 20 hotéis potencialmente demonstrativos** e abre `BEGIN TRANSACTION READ ONLY` com `ROLLBACK`. Não faz POST, `INSERT`, `UPDATE`, `DELETE`, fixture nem migração.
+- A lista procura somente hotéis com código de demonstração `DEMO-` ou nome com identificação inequívoca `Demo`/`Demonstração`.
+- `Elegível para revisão humana` exige hotel `ativo` e **sem qualquer vínculo Mews**, mesmo revogado. Hotel com vínculo revogado exige procedimento de revinculação e não é reutilizado silenciosamente.
+- `Elegível` **não significa autorizado para integração**: ainda faltam validar a identidade da propriedade na Mews, obter autorização do Admin, cofre, retenção e reversibilidade.
+- A API expõe apenas `hotelId`, `nome`, `status`, `vinculo` (nenhum/ativo/revogado), `candidato` e `truncado`. Nunca devolve `tenant_id`, `EnterpriseId`, `credencial_ref`, tokens, nomes de hóspedes, Notes ou payload Mews.
+- Gerentes, técnicos e outros perfis recebem 403, não uma lista vazia que pareça autorizada. Usuário sem sessão recebe 401. A UI não fornece botão de escrita.
 
-A saída inclui somente nome de grupo/hotel, `tenant_id` e `hotel_id` internos, status, presença de vínculo e elegibilidade. **Nunca traz `credencial_ref`, `EnterpriseId`, informações de hóspedes ou dados de usuários.**
+## Identidade da propriedade Mews Demo
 
-**Um candidato marcado SIM não é uma autorização de vínculo.** A indicação exige hotel com identificação fictícia explícita, estado `ativo` e nenhum vínculo Mews já existente. Hotel em implantação, sem evidência de que é fictício ou com vínculo ativo/revogado fica marcado NÃO. O usuário escolhe o candidato e confirma manualmente a correspondência com a propriedade Mews Demo antes de prosseguir.
+A operação de leitura `configuration/get` do laboratório pode devolver o `Enterprise.Id` da propriedade cujas credenciais estão em uso. A evidência anterior obteve HTTP 200 na **Gross Demo**, mas isso não comprova associação com nenhum hotel do HubKeep.
 
-Se o script retornar 0 hotéis ou limite excedido, **não criar automaticamente** hotéis; revisar filtros e cadastros por procedimento separado. O script não consulta grupos/tenants de produção ou staging.
+Uma futura aprovação explícita deve registrar **qual hotel fictício no tenant correto** será associado a qual `EnterpriseId`. Não mapear por nome semelhante. Se a credencial apontar para outra propriedade, o ensaio deve falhar antes de buscar recursos/bloqueios.
 
-## Passo 2 — identidade da propriedade Mews
+## Cofre e revogação (proposta, ainda não implementada)
 
-A operação de leitura `configuration/get` pode devolver um único `Enterprise.Id` para credenciais de uma propriedade. O laboratório obteve HTTP 200 na Gross Demo em teste anterior, porém isso **não comprova a correspondência com o hotel HubKeep selecionado**.
+O campo `app.mews_vinculo.credencial_ref` deve guardar **apenas uma referência opaca** a um segredo externo, nunca `ClientToken`, `AccessToken`, URL com senha ou conteúdo da resposta da API.
 
-Antes de associar, registrar em uma aprovação humana específica:
-- Grupo e hotel do HubKeep-dev escolhidos (IDs internos, **não** IDs de clientes reais);
-- Nome reconhecível da propriedade de demonstração, `Gross Demo`, e evidência de correspondência de `EnterpriseId`, sem colar tokens;
-- Identidade/permissão do Admin do grupo que fez a conferência e data;
-- Comportamento de revogação/revinculação (sem substituir silenciosamente um vínculo já existente);
-- Escopo limitado a `Space` e `ResourceBlock` de `OutOfOrder`/`InternalUse`, sem mapear automaticamente UH ou OS.
+1. Manter segredos segregados por ambiente: **demo/dev diferente de produção**. Apenas processo servidor autorizado lê o segredo. Nunca browser, logs, PR, arquivos versionados ou saída PowerShell.
+2. Referências ao cofre devem ser rotacionáveis sem revelar `EnterpriseId`, projeto, hotel ou token. Validar identidade com `configuration/get` antes de efetivar ou rever o vínculo.
+3. O Admin do grupo deve confirmar o tenant e o hotel sob sessão real e RLS. Um `conferidoPorAdmin: true` fornecido pelo navegador, isoladamente, **não é autorização**.
+4. Revogação precisa impedir novas consultas/persistências; no banco, o driver de persistência confere a revogação em transação. Revinculação deve ter plano separado, preservando trilha de auditoria, sem alterar credencial silenciosamente.
+5. Não assumir disponibilidade da Mews Demo com tokens públicos compartilhados. Em 429, obedecer `Retry-After`; não iniciar loops ou jobs até existir autorização e política de rate limit.
+6. Rever retenção de checkpoints/IDs técnicos e GDPR antes da primeira gravação no dev; não persistir hóspedes nem nomes/Notes.
 
-## Passo 3 — cofre (proposta de desenho, ainda não implementada)
+**Isto não é implantação de um cofre.** A gestão de segredos ainda não está ligada ao worker.
 
-O campo `app.mews_vinculo.credencial_ref` contém **somente identificador opaco de referência**, jamais `ClientToken`, `AccessToken`, URL contendo segredo, senha ou payload.
+## Gates pendentes
 
-Regras de implantação futura:
-1. Tokens de demonstração/produção ficam em gerenciador de segredos com segregação **dev vs. produção** e controle de acesso mínimo para um processo servidor autorizado. O painel web e o navegador nunca recebem os tokens.
-2. Usar referência opaca e rotacionável, sem inferir projeto, hotel, EnterpriseId ou qualquer dado protegido por inspeção do valor. Nunca colocar tokens no Git, em PR, logs, testes, variáveis públicas do navegador ou resultados do PowerShell.
-3. A criação de vínculo requer Admin do grupo autenticado, validação tenant/hotel e consulta `configuration/get` à propriedade com credencial já sob custódia do cofre. Nunca aceitar `conferidoPorAdmin` enviado diretamente do cliente como evidência.
-4. Revogação deve bloquear a leitura e a persistência no mesmo escopo; o worker checa o vínculo ativo durante a transação de escrita. Rotação exige conferir novamente a propriedade, com procedimento de rollback e auditoria técnica sem segredos.
-5. A Mews Demo pública possui limites de tráfego compartilhados. Em HTTP 429, obedecer `Retry-After`, sem criar loops automáticos. Para integração controlada com persistência, preferir acesso de demonstração dedicado, sem dependência de tokens públicos.
-6. Retenção de checkpoints e identificadores externos e proteção de dados/GDPR precisam de revisão e aceite antes do primeiro vínculo persistido, mesmo com hotel fictício.
+- [ ] Cesar escolher uma linha elegível da lista administrativa.
+- [ ] Cesar confirmar a correspondência explícita do hotel com a propriedade Gross Demo (sem enviar tokens pelo chat).
+- [ ] Implementar e revisar porta de `consultarEscopo` real com sessão e RLS, sem trusts do navegador.
+- [ ] Aprovar a custódia de tokens demo, rotação, revogação, retenção e plano de rollback.
+- [ ] Receber autorização separada **antes de inserir `app.mews_vinculo`, consultar a API Demo real ou gravar checkpoints**.
+- [ ] Sem cron, webhooks, escrita na Mews, geração de OS, alterações de UH ou licença.
 
-**Isto não é uma implementação de cofre ou OAuth.** Credenciais continuam fora do HubKeep-dev, e não existe processo autorizado para consumir segredos nesta etapa.
-
-## Gates de ativação ainda pendentes
-
-- [ ] Cesar selecionar um hotel fictício a partir do inventário do dev;
-- [ ] Cesar confirmar a propriedade Gross Demo e a associação hotel ↔ `EnterpriseId`;
-- [ ] Especificar e revisar implementação de cofre e política de revogação;
-- [ ] Implementar porta de `consultarEscopo` real no servidor com autenticação e RLS;
-- [ ] Aprovação específica antes de **criar vínculo**, gravar `app.mews_checkpoint`/`mews_recurso`/`mews_bloqueio`, ou executar primeira chamada real à Mews Demo;
-- [ ] Sem cron, webhooks, atualização de UH/OS/licença, ou gravação na Mews.
-
-**Não executar `supabase db push`**: a migração 0056 já está aplicada e este PR não adiciona migrações.
+**Não executar `supabase db push`**. As migrações Mews 0054/0055/0056 já estão aplicadas no HubKeep-dev e este PR não cria novas.
