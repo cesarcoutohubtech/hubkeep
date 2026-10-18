@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Pré-voo Mews V1 no HubKeep-dev: somente SELECT em transação READ ONLY.
-// Nunca usa service_role, não faz db push, DDL, fixture, teste com escrita,
+// Não usa credenciais de aplicação privilegiadas, não faz db push, DDL, fixture, teste com escrita,
 // nem imprime senha, URL ou identificadores de hotéis e de usuários.
 //
 // Uso: node --experimental-strip-types --no-warnings=ExperimentalWarning
