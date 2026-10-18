@@ -76,8 +76,10 @@ select results_eq($$select count(*)::int from app.mews_checkpoint$$,$$values (1)
  'Admin A ve checkpoint apenas do vinculo ativo');
 select results_eq($$select count(*)::int from app.mews_recurso where ativo$$,$$values (1)$$,
  'Admin A conta apenas recurso ativo autorizado');
-select results_eq($$select count(*)::int from app.mews_bloqueio where ativo$$,$$values (1)$$,
+select results_eq($select count(*)::int from app.mews_bloqueio where ativo$,$values (1)$,
  'Admin A conta apenas bloqueio autorizado');
+select is_empty($select 1 from app.mews_checkpoint where enterprise_id='E-REV'$,
+ 'Vinculo revogado oculta checkpoint ate do Admin A');
 select throws_ok($$select digest_incremental from app.mews_checkpoint$$,'42501',null,
  'Admin nao le digest do checkpoint');
 select throws_ok($$select resource_id from app.mews_recurso$$,'42501',null,
