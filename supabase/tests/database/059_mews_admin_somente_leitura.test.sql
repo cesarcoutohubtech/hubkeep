@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
-select plan(27);
+select plan(30);
 grant usage on schema extensions to hk_app;
 
 -- Apenas dados sinteticos; pgTAP sempre ROLLBACK no banco descartavel de CI.
@@ -66,6 +66,12 @@ select ok(has_column_privilege('hk_app','app.mews_recurso','ativo','SELECT'),'ap
 select ok(not has_column_privilege('hk_app','app.mews_recurso','resource_id','SELECT'),'app nao le id externo de recurso');
 select ok(has_column_privilege('hk_app','app.mews_bloqueio','tipo','SELECT'),'app le tipo tecnico');
 select ok(not has_column_privilege('hk_app','app.mews_bloqueio','block_id','SELECT'),'app nao le id de bloqueio');
+select ok(not has_column_privilege('hk_app','app.mews_checkpoint','enterprise_id','SELECT'),
+ 'app nao le enterprise externo no checkpoint');
+select ok(not has_column_privilege('hk_app','app.mews_recurso','enterprise_id','SELECT'),
+ 'app nao le enterprise externo no recurso');
+select ok(not has_column_privilege('hk_app','app.mews_bloqueio','enterprise_id','SELECT'),
+ 'app nao le enterprise externo no bloqueio');
 select ok(not has_table_privilege('hk_app','app.mews_checkpoint','INSERT'),'app nao insere checkpoint');
 select ok(not has_table_privilege('hk_app','app.mews_checkpoint','UPDATE'),'app nao altera checkpoint');
 
