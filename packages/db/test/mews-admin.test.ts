@@ -7,6 +7,7 @@ import {
   type AcessoBanco,
   criarAcessoBanco,
   criarPortaStatusAdministrativoMews,
+  criarPortaCandidatosHoteisMews,
 } from '../src/index';
 
 const URL_APP = process.env.HK_TESTE_URL_APP;
@@ -20,7 +21,8 @@ const T = randomUUID(),
   TB = randomUUID();
 const H = randomUUID(),
   HR = randomUUID(),
-  HB = randomUUID();
+  HB = randomUUID(),
+  HD = randomUUID();
 const UA = randomUUID(),
   UG = randomUUID(),
   UB = randomUUID();
@@ -38,6 +40,8 @@ describe.skipIf(!temBanco)('Mews V1: status administrativo e RLS', { timeout: 70
   const ctx = (usuarioId: string, tenantId = T) => ({ usuarioId, tenantId });
   const status = async (usuarioId: string, tenantId = T) =>
     criarPortaStatusAdministrativoMews(banco).listar(ctx(usuarioId, tenantId));
+  const candidatos = async (usuarioId: string, tenantId = T) =>
+    criarPortaCandidatosHoteisMews(banco).listar(ctx(usuarioId, tenantId));
 
   beforeAll(async () => {
     dono = new pg.Client({ connectionString: URL_DONO });
@@ -50,8 +54,9 @@ describe.skipIf(!temBanco)('Mews V1: status administrativo e RLS', { timeout: 70
     }
     for (const [hotel, tenant, nome] of [
       [H, T, 'Hotel A'],
-      [HR, T, 'Hotel revogado'],
+      [HR, T, 'Hotel Demonstração Revogado'],
       [HB, TB, 'Hotel B'],
+      [HD, T, 'Hotel Demonstração Livre'],
     ]) {
       await dono.query(
         "insert into app.hotel(id,tenant_id,nome,fuso,status) values ($1,$2,$3,'UTC','ativo')",
@@ -196,6 +201,32 @@ describe.skipIf(!temBanco)('Mews V1: status administrativo e RLS', { timeout: 70
     expect(outro?.hoteis).toHaveLength(1);
     expect(outro?.hoteis[0]?.hotelId).toBe(HB);
     expect(await status(UA, TB)).toBeNull();
+  });
+
+  it('Admin vê somente hotéis fictícios e nenhum segredo Mews', async () => {
+    const r = await candidatos(UA);
+    expect(r?.truncado).toBe(false);
+    expect(r?.hoteis).toEqual([
+      {
+        hotelId: HD, nome: 'Hotel Demonstração Livre',
+        status: 'ativo', vinculo: 'nenhum', candidato: true,
+      },
+      {
+        hotelId: HR, nome: 'Hotel Demonstração Revogado',
+        status: 'ativo', vinculo: 'revogado', candidato: false,
+      },
+    ]);
+    for (const h of r?.hoteis ?? []) {
+      expect(Object.keys(h).sort()).toEqual(
+        ['hotelId', 'nome', 'status', 'vinculo', 'candidato'].sort(),
+      );
+    }
+  });
+
+  it('Gerente e tenant forjado não podem descobrir candidatos Mews', async () => {
+    expect(await candidatos(UG)).toBeNull();
+    expect(await candidatos(UA, TB)).toBeNull();
+    expect(await candidatos(UB, TB)).toEqual({ hoteis: [], truncado: false });
   });
 
   it('Vinculo revogado some da listagem, sem excluir auditoria', async () => {
