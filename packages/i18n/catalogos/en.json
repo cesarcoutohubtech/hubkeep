@@ -1469,5 +1469,19 @@
   "admin.preventivas.sem_proxima": "No next date",
   "admin.preventivas.vazio": "No preventive plan in this hotel.",
   "admin.preventivas.do_ativo": "Preventive plans",
-  "admin.preventivas.do_ativo_vazio": "No preventive plan for this asset."
+  "admin.preventivas.do_ativo_vazio": "No preventive plan for this asset.",
+  "menu.mews": "Mews integration",
+  "admin.mews.titulo": "Mews integration",
+  "admin.mews.descricao": "Read-only for group admins. Shows technical checkpoints and counts without accessing Mews or changing hotel operations.",
+  "admin.mews.sem_vinculos": "No active Mews link for this group.",
+  "admin.mews.sem_checkpoint": "Not synchronized yet",
+  "admin.mews.sem_dado": "No record",
+  "admin.mews.hotel": "Hotel",
+  "admin.mews.versao": "Version",
+  "admin.mews.incremental": "Last incremental update",
+  "admin.mews.varredura": "Last sweep",
+  "admin.mews.concluido": "Last commit",
+  "admin.mews.recursos": "Active resources",
+  "admin.mews.fora_de_uso": "Out-of-order blocks",
+  "admin.mews.uso_interno": "Internal-use blocks"
 }
