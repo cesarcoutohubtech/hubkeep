@@ -15,6 +15,7 @@ import {
   type EstadoDoInsight,
   type InsightExistente,
   type LinhaDaMetricaDiaria,
+  type SinalDaFonte,
   TRANSICOES_DO_INSIGHT,
   aceiteDaOs,
   conclusaoEReaberturas,
@@ -23,11 +24,14 @@ import {
   fimDoDia,
   intervencoesDosChamados,
   sinalDeSubstituicao,
+  validarLinha,
   DIA_MS,
   HORA_MS,
 } from '@hubkeep/inteligencia';
 import { TRANSICOES_DA_OS } from '@hubkeep/dominio';
 import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   CHAVE_DA_MODERNIZACAO,
@@ -42,11 +46,19 @@ import {
   cenarioDoInsight,
   decisoesDoDia,
   estadoAposPasso,
+  csvDoLote,
   instanteDoJob,
   roteiroDoHistorico,
 } from './historico-inteligencia';
+import { lerCsvDeSinais } from '../../src/app/(painel)/inteligencia/sinais/csv';
 
 const FIM = '2026-10-12';
+/**
+ * O CSV de exemplo, para quem testa a importação pela tela: o lote do chuveiro
+ * fraco do roteiro gravado no dev (fim 2026-10-13). Regerar:
+ * HK_ATUALIZAR_EXEMPLO=1 com este teste.
+ */
+const EXEMPLO = join(import.meta.dirname, '..', '..', '..', '..', 'docs', 'exemplos');
 
 interface InsightSimulado extends InsightExistente {
   tipo: DeteccaoDoDia['tipo'];
@@ -104,6 +116,9 @@ async function simular(r: RoteiroDoHistorico, momento: MomentoDoJob) {
   const paradas = new Map<string, { inicio: Date; fim: Date }[]>();
   for (const c of r.chamados)
     if (c.ativo && c.parada) paradas.set(c.ativo, [...(paradas.get(c.ativo) ?? []), c.parada]);
+  const reclamacoes = r.lotesDeReclamacoes.flatMap((lote) =>
+    lote.reclamacoes.map((x) => ({ lote, x, ocorridoEm: new Date(`${x.data}T12:00:00Z`) })),
+  );
 
   for (const dia of r.dias) {
     const agora = instanteDoJob(dia, momento);
@@ -133,8 +148,29 @@ async function simular(r: RoteiroDoHistorico, momento: MomentoDoJob) {
           insights: async () => insights,
           calculosDoDia: async (d) =>
             new Map((metricasPorDia.get(d) ?? []).map((m) => [m.ativoId, m.calculo])),
-          // O histórico de demonstração não tem reclamação de hóspede.
-          sinais: async () => [],
+          // As reclamações como o banco as guardaria em `agora`: as importadas
+          // até ali, com a classificação feita até ali.
+          sinais: async (ag, desde): Promise<SinalDaFonte[]> =>
+            reclamacoes
+              .filter(
+                ({ lote, ocorridoEm }) =>
+                  lote.importadoEm <= ag && ocorridoEm > desde && ocorridoEm <= ag,
+              )
+              .map(({ lote, x, ocorridoEm }) => {
+                const c = lote.classificadoEm && lote.classificadoEm <= ag ? x.classificacao : null;
+                return {
+                  id: x.idExterno,
+                  hotelId: lote.hotel,
+                  ocorridoEm,
+                  nota: x.nota,
+                  escala: x.escala,
+                  manutencao: c ? c.manutencao : null,
+                  categoriaId: c?.categoria ?? null,
+                  uhId: c?.uh ?? null,
+                  ativoId: c?.ativo ?? null,
+                  ligacao: c?.ligacao ?? 'sem_ligacao',
+                };
+              }),
           politicaDoSinal: async () => undefined,
         },
         gravacao: {
@@ -429,4 +465,84 @@ describe('roteiro do histórico de demonstração do Intelligence', () => {
     },
     LIMITE_DA_SIMULACAO_MS,
   );
+
+  it.each(MOMENTOS)(
+    'o impacto no hóspede vem das reclamações nos hotéis que importam e dos chamados nos outros (job: %s)',
+    async (momento) => {
+      const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
+      const { metricas } = await simulacaoDoRoteiro(momento);
+      const impacto = (ativo: string) =>
+        metricas
+          .filter((m) => m.ativoId === ativo)
+          .at(-1)
+          ?.detalheAtencao.componentes.find((c) => c.chave === 'impacto_hospede')?.evidencia;
+      const caldeira = r.cenarios.find((c) => c.chave === 'impacto-caldeira')?.ativo as string;
+      // As sete falhas da caldeira do hotel 2 na janela do score, confirmadas.
+      expect(impacto(caldeira)).toMatchObject({
+        fonte: 'reclamacoes',
+        confirmadas: 7,
+        possiveis: 0,
+        score: 70,
+      });
+      // As possíveis da bomba do hotel 3 aparecem, sem pesar (D2).
+      expect(impacto(`${r.hoteis[2]?.chave}-bomba`)).toMatchObject({
+        fonte: 'reclamacoes',
+        confirmadas: 0,
+        possiveis: 3,
+      });
+      // O hotel que não importa segue a porcentagem dos chamados (D1).
+      expect(impacto(`${r.hoteis[0]?.chave}-caldeira`)).toMatchObject({ fonte: 'chamados' });
+    },
+    LIMITE_DA_SIMULACAO_MS,
+  );
+
+  it('as reclamações: lotes semanais em dois hotéis, o CSV lido como na tela, o último lote na fila', () => {
+    const r = roteiroDoHistorico({ fim: FIM, volume: VOLUME_CURTO });
+    expect(r.hoteisComReclamacoes).toEqual([r.hoteis[1]?.chave, r.hoteis[2]?.chave]);
+    const agora = fimDoDia(FIM);
+    const ids = new Set<string>();
+    for (const lote of r.lotesDeReclamacoes) {
+      expect(lote.importadoEm.getTime()).toBeLessThanOrEqual(agora.getTime());
+      const lido = lerCsvDeSinais(csvDoLote(lote));
+      if (!lido.ok) throw new Error(`${lote.chave}: ${lido.erro}`);
+      expect(lido.ignoradas).toEqual([]);
+      lido.linhas.forEach((linha, i) => {
+        const v = validarLinha(linha, lote.importadoEm);
+        if (!v.ok) throw new Error(`${lote.chave}, linha ${i + 1}: ${v.erro}`);
+        const esperada = lote.reclamacoes[i];
+        expect(v.sinal).toMatchObject({
+          fonte: esperada?.fonte,
+          idExterno: esperada?.idExterno,
+          texto: esperada?.texto,
+          nota: esperada?.nota,
+        });
+        expect(v.sinal.ocorridoEm.getTime()).toBeLessThan(lote.importadoEm.getTime());
+        ids.add(`${lote.hotel}|${v.sinal.fonte}|${v.sinal.idExterno}`);
+      });
+    }
+    const total = r.lotesDeReclamacoes.reduce((s, l) => s + l.reclamacoes.length, 0);
+    expect(ids.size).toBe(total);
+    for (const hotel of r.hoteisComReclamacoes) {
+      const doHotel = r.lotesDeReclamacoes.filter((l) => l.hotel === hotel);
+      expect(doHotel.length).toBe(13);
+      // Só o último lote fica sem classificação, para a fila da demonstração.
+      expect(doHotel.map((l) => l.classificadoEm === null)).toEqual([
+        ...Array(12).fill(false),
+        true,
+      ]);
+      expect(doHotel.at(-1)?.reclamacoes.every((x) => x.classificacao === null)).toBe(true);
+    }
+  });
+
+  it('o CSV de exemplo (docs/exemplos) é o lote do chuveiro fraco do roteiro gravado no dev', () => {
+    const r = roteiroDoHistorico({ fim: '2026-10-13' });
+    const lote = r.lotesDeReclamacoes.find((l) =>
+      l.reclamacoes.some((x) => x.cenario === 'sistemico-reclamacoes'),
+    );
+    if (!lote) throw new Error('O roteiro não tem o lote do chuveiro fraco.');
+    const csv = csvDoLote(lote);
+    const arquivo = join(EXEMPLO, 'reclamacoes-hospede.csv');
+    if (process.env['HK_ATUALIZAR_EXEMPLO'] === '1') writeFileSync(arquivo, csv);
+    expect(readFileSync(arquivo, 'utf8')).toBe(csv);
+  });
 });
