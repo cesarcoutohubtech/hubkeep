@@ -1483,5 +1483,16 @@
   "admin.mews.concluido": "Último commit",
   "admin.mews.recursos": "Recursos activos",
   "admin.mews.fora_de_uso": "Bloqueos fuera de servicio",
-  "admin.mews.uso_interno": "Bloqueos de uso interno"
+  "admin.mews.uso_interno": "Bloqueos de uso interno",
+  "admin.mews.candidatos.descricao": "Hoteles de prueba del grupo disponibles para revisión de una futura demostración Mews. Aquí no se crea ningún vínculo.",
+  "admin.mews.candidatos.vazio": "No hay hoteles de prueba en este grupo.",
+  "admin.mews.candidatos.titulo": "Hoteles candidatos para Mews Demo",
+  "admin.mews.candidatos.codigo": "ID del hotel",
+  "admin.mews.candidatos.situacao": "Estado",
+  "admin.mews.candidatos.vinculo": "Vínculo Mews",
+  "admin.mews.candidatos.aptidao": "Preselección",
+  "admin.mews.candidatos.estado": "{estado, select, ativo {Activo} revogado {Revocado} nenhum {Ninguno} other {Desconocido}}",
+  "admin.mews.candidatos.para_revisao": "Apto para revisión humana",
+  "admin.mews.candidatos.nao_apto": "No apto",
+  "admin.mews.candidatos.truncado": "Hay más de 20 hoteles candidatos. Revise el grupo antes de elegir."
 }
