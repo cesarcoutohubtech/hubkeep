@@ -72,9 +72,9 @@ select ok(not has_table_privilege('hk_app','app.mews_checkpoint','UPDATE'),'app 
 set local role hk_app;
 select from (select set_config('app.usuario_id','ca000000-0000-0000-0000-000000000001',true),
  set_config('app.tenant_id','ca100000-0000-0000-0000-000000000000',true)) ctx;
-select results_eq($$select count(*)::int from app.mews_checkpoint$$,$$$values (1)$$$,
+select results_eq($$select count(*)::int from app.mews_checkpoint$$,$$values (1)$$,
  'Admin A ve checkpoint apenas do vinculo ativo');
-select results_eq($$select count(*)::int from app.mews_recurso where ativo$$,$$$values (1)$$$,
+select results_eq($$select count(*)::int from app.mews_recurso where ativo$$,$$values (1)$$,
  'Admin A conta apenas recurso ativo autorizado');
 select results_eq($$select count(*)::int from app.mews_bloqueio where ativo$$,$$values (1)$$,
  'Admin A conta apenas bloqueio autorizado');
@@ -99,7 +99,7 @@ select is_empty($$select 1 from app.mews_checkpoint$$,'Implantador vencido nao v
 
 select from (select set_config('app.usuario_id','cb000000-0000-0000-0000-000000000001',true),
  set_config('app.tenant_id','cb100000-0000-0000-0000-000000000000',true)) ctx;
-select results_eq($$select count(*)::int from app.mews_checkpoint$$,$$$values (1)$$$,
+select results_eq($$select count(*)::int from app.mews_checkpoint$$,$$values (1)$$,
  'Admin B le apenas B');
 select is_empty($$select 1 from app.mews_checkpoint
  where tenant_id='ca100000-0000-0000-0000-000000000000'$$,
