@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({}));
 vi.mock('../src/cliente/sessao', () => ({ sair: vi.fn() }));
 
-const { HREF_DA_ABERTURA, ITEM_DO_INTELLIGENCE, MENU, intelligenceAtivo, itemAtivo, tituloDaRota } =
+const { HREF_DA_ABERTURA, ITEM_DO_INTELLIGENCE, ITEM_DA_MEWS, MENU, intelligenceAtivo, itemAtivo, tituloDaRota } =
   await import('../src/cliente/moldura');
 
 describe('menu da moldura', () => {
@@ -71,5 +71,15 @@ describe('o item do HubKeep Intelligence', () => {
     expect(intelligenceAtivo('/inteligencia/ativos/0190a')).toBe(true);
     expect(intelligenceAtivo('/inteligencia-x')).toBe(false);
     expect(intelligenceAtivo('/admin/ativos')).toBe(false);
+  });
+});
+
+
+describe('Mews V1: menu autorizado pelo servidor', () => {
+  it('não aparece no MENU geral e possui rota e título próprios', () => {
+    expect(ITEM_DA_MEWS.href).toBe('/admin/mews');
+    expect(MENU.flatMap((g) => g.itens).map((i) => i.href)).not.toContain(ITEM_DA_MEWS.href);
+    expect(existsSync(`src/app/(painel)${ITEM_DA_MEWS.href}/page.tsx`)).toBe(true);
+    expect(tituloDaRota(ITEM_DA_MEWS.href)).toBe('admin.mews.titulo');
   });
 });
