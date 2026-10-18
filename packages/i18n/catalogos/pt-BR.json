@@ -1469,5 +1469,19 @@
   "admin.preventivas.sem_proxima": "Sem próxima data",
   "admin.preventivas.vazio": "Nenhum plano preventivo neste hotel.",
   "admin.preventivas.do_ativo": "Planos preventivos",
-  "admin.preventivas.do_ativo_vazio": "Nenhum plano preventivo para este ativo."
+  "admin.preventivas.do_ativo_vazio": "Nenhum plano preventivo para este ativo.",
+  "menu.mews": "Integração Mews",
+  "admin.mews.titulo": "Integração Mews",
+  "admin.mews.descricao": "Somente leitura para o Admin do grupo. Mostra checkpoints técnicos e contagens, sem acessar a Mews nem alterar a operação.",
+  "admin.mews.sem_vinculos": "Nenhum vínculo Mews ativo para este grupo.",
+  "admin.mews.sem_checkpoint": "Ainda não sincronizado",
+  "admin.mews.sem_dado": "Sem registro",
+  "admin.mews.hotel": "Hotel",
+  "admin.mews.versao": "Versão",
+  "admin.mews.incremental": "Último incremental",
+  "admin.mews.varredura": "Última varredura",
+  "admin.mews.concluido": "Último commit",
+  "admin.mews.recursos": "Recursos ativos",
+  "admin.mews.fora_de_uso": "Bloqueios fora de uso",
+  "admin.mews.uso_interno": "Bloqueios de uso interno"
 }

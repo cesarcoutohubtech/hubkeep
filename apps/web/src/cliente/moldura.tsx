@@ -108,6 +108,12 @@ export const ITEM_DO_INTELLIGENCE = {
 /** Para o Admin do grupo, com as telas ainda fechadas: a página da abertura. */
 export const HREF_DA_ABERTURA = '/inteligencia/abertura';
 
+/** Mews V1: item separado do MENU porque só o Admin vê (GET autenticado). */
+export const ITEM_DA_MEWS = {
+  href: '/admin/mews',
+  chave: 'menu.mews',
+} as const satisfies { href: string; chave: Chave };
+
 /** O item do Intelligence fica ativo em todas as telas do módulo. */
 export const intelligenceAtivo = (caminho: string) =>
   caminho === '/inteligencia' || caminho.startsWith('/inteligencia/');
@@ -125,6 +131,7 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/sla$/, 'sla.painel.titulo'],
   [/^\/admin\/paradas$/, 'admin.paradas.titulo'],
   [/^\/admin\/hoteis$/, 'admin.hoteis.titulo'],
+  [/^\/admin\/mews$/, 'admin.mews.titulo'],
   [/^\/admin\/locais$/, 'admin.locais.titulo'],
   [/^\/admin\/categorias$/, 'admin.categorias.titulo'],
   [/^\/admin\/codigos$/, 'admin.codigos.titulo'],
@@ -180,6 +187,7 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
   const [abertos, setAbertos] = useState<number | null>(null);
   // Telas fechadas, mas quem vê é o Admin do grupo: o item leva à abertura.
   const [soAbertura, setSoAbertura] = useState(false);
+  const [mewsVisivel, setMewsVisivel] = useState(false);
 
   useEffect(() => {
     const salvo = lerCookie(COOKIE_TENANT);
@@ -220,6 +228,22 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
       setSoAbertura(!r.ok && (await chamarApi('/api/v1/inteligencia/abertura')).ok);
     });
   }, [grupoPronto, caminho]);
+
+  useEffect(() => {
+    if (!grupoPronto || !tenant) {
+      setMewsVisivel(false);
+      return;
+    }
+    let valido = true;
+    // O servidor valida Admin com authz.eh_admin_grupo() e RLS.
+    // Nao mostrar sequer o item a gerentes, tecnicos ou sem contexto.
+    void chamarApi('/api/v1/mews/status').then((r) => {
+      if (valido) setMewsVisivel(r.ok);
+    });
+    return () => {
+      valido = false;
+    };
+  }, [grupoPronto, tenant]);
 
   function trocarGrupo(tn: string) {
     gravarCookieTenant(tn);
@@ -271,6 +295,15 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
                   {t(i.chave)}
                 </ItemDeMenu>
               ))}
+              {g.grupo === 'menu.grupo.configuracao' && mewsVisivel && (
+                <ItemDeMenu
+                  href={ITEM_DA_MEWS.href}
+                  componente={Link}
+                  ativo={itemAtivo(caminho, ITEM_DA_MEWS.href)}
+                >
+                  {t(ITEM_DA_MEWS.chave)}
+                </ItemDeMenu>
+              )}
             </GrupoDeMenu>
           ))}
           {(abertos !== null || soAbertura) && (
