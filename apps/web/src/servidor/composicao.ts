@@ -51,6 +51,7 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaStatusAdministrativoMews,
   criarPortaComunicacao,
   criarPortaMonitorDeSla,
   criarPortaAceiteAutomatico,
@@ -429,3 +430,8 @@ export async function processarOutboxDoTenant(tenantId: string): Promise<Resulta
 
 let verificador: VerificadorDeToken | undefined;
 export const verificadorDeToken = () => (verificador ??= criarVerificadorJwks(urlSupabase()));
+
+/** Estado Mews V1: somente leitura para Admin do grupo, sem job ou credenciais. */
+export const statusAdministrativoMews = memo(async () =>
+  criarPortaStatusAdministrativoMews(await acessoBanco()),
+);
