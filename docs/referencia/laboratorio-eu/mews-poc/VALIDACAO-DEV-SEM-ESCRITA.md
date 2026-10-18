@@ -62,3 +62,9 @@ Se a conexão falhar por variável ou certificado, usar os procedimentos existen
 Antes de vincular uma conta Mews de verdade: aprovar fluxo de revinculação/revogação, referência opaca ao cofre e ciclo de vida de credenciais, retenção/GDPR, identificação hotel↔EnterpriseId com autorização externa, backoff e observabilidade, e aprovação específica da ativação em DEV. O V1 atual **não** dispara sincronização nem gera OS.
 
 **Limite de autorização:** continuar o trabalho de preparação ou consultar o dev não autoriza `db push`, migração em produção ou ativação de dados reais.
+
+## Diagnóstico de falso negativo nas policies (18/10/2026)
+
+Na primeira execução real do pré-voo no HubKeep-dev, o resultado foi **29/32**, com falha **apenas** nos três testes `Policy de leitura Admin`. As migrações 0054/0055/0056, RLS FORCE e grants mínimos passaram. A causa identificada no script antigo é a leitura de `pg_policies.roles` (`name[]`) como se fosse necessariamente um array JavaScript: a representação do driver PostgreSQL pode ser um texto. O pré-voo corrigido realiza `'hk_app'::name = any(roles)` **dentro do PostgreSQL**, com confirmação `cmd = 'SELECT'` e `qual is not null`.
+
+Depois de incorporar o PR corretivo e atualizar o checkout, **reexecutar somente o pré-voo de leitura**. Não recriar policies, não fazer `supabase db push` outra vez e não modificar permissões sem evidência de uma falha real. Se a nova consulta ainda apontar falha, interromper e inspecionar a policy real com consulta somente leitura antes de qualquer correção de schema.

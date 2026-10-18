@@ -139,6 +139,36 @@ describe.skipIf(!temBanco)('Mews V1: status administrativo e RLS', { timeout: 70
     await dono.end();
   });
 
+  it('consulta pg_policies reconhece as tres policies hk_app sem parser name[]', async () => {
+    const resultado = await dono.query<{
+      tablename: string;
+      permite_hk_app: boolean;
+      somente_leitura: boolean;
+      tem_filtro: boolean;
+    }>(
+      `select tablename,
+              ('hk_app'::name = any(roles)) as permite_hk_app,
+              (cmd = 'SELECT') as somente_leitura,
+              (qual is not null) as tem_filtro
+         from pg_policies
+        where schemaname = 'app' and policyname = 'app_admin_select'
+          and tablename = any($1::text[])`,
+      [['mews_checkpoint', 'mews_recurso', 'mews_bloqueio']],
+    );
+    expect(resultado.rows.map((r) => r.tablename).sort()).toEqual([
+      'mews_bloqueio',
+      'mews_checkpoint',
+      'mews_recurso',
+    ]);
+    for (const policy of resultado.rows) {
+      expect(policy).toMatchObject({
+        permite_hk_app: true,
+        somente_leitura: true,
+        tem_filtro: true,
+      });
+    }
+  });
+
   it('Admin A ve apenas hotel ativo e contagens sanitizadas', async () => {
     const r = await status(UA);
     expect(r?.hoteis).toHaveLength(1);

@@ -97,17 +97,26 @@ async function executar() {
       registrar(r?.rls === true && r?.rls_forcada === true, `RLS ENABLE/FORCE: app.${tabela}`);
     }
 
+    // pg_policies.roles tem tipo name[]; o driver pode devolver texto
+    // (ex.: "{hk_app}") em vez de um array JS. Comparar no PostgreSQL
+    // evita falso negativo sem alterar a policy ou conceder privilégios.
     const policies = await cliente.query(
-      `select tablename, roles from pg_policies
+      `select tablename,
+              ('hk_app'::name = any(roles)) as permite_hk_app,
+              (cmd = 'SELECT') as somente_leitura,
+              (qual is not null) as tem_filtro
+         from pg_policies
         where schemaname = 'app' and policyname = 'app_admin_select'
           and tablename = any($1::text[])`,
       [PROJECOES],
     );
-    const porPolicy = new Map(policies.rows.map((r) => [r.tablename, r.roles]));
+    const porPolicy = new Map(policies.rows.map((r) => [r.tablename, r]));
     for (const tabela of PROJECOES) {
-      const roles = porPolicy.get(tabela);
+      const policy = porPolicy.get(tabela);
       registrar(
-        Array.isArray(roles) && roles.includes('hk_app'),
+        policy?.permite_hk_app === true &&
+          policy?.somente_leitura === true &&
+          policy?.tem_filtro === true,
         `Policy de leitura Admin: app.${tabela}`,
       );
     }

@@ -22,6 +22,11 @@ describe('pré-voo Mews: somente leitura do Supabase-dev', () => {
     for (const tabela of ['mews_checkpoint', 'mews_recurso', 'mews_bloqueio']) {
       expect(fonte).toContain(tabela);
     }
+    // A comparacao de roles name[] ocorre no banco: pg pode retornar "{hk_app}".
+    expect(fonte).toContain("('hk_app'::name = any(roles))");
+    expect(fonte).toContain("cmd = 'SELECT'");
+    expect(fonte).toContain('qual is not null');
+    expect(fonte).not.toContain('Array.isArray(roles)');
     expect(fonte).toContain('relforcerowsecurity');
     expect(fonte).toContain('has_column_privilege');
     expect(fonte).toContain('credencial_ref');
