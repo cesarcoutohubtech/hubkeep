@@ -126,33 +126,35 @@ export function criarPortaCandidatosHoteisMews(banco: AcessoBanco) {
       banco.withContext(ctx, async (tx) => {
         // O mesmo gate do painel Mews; RLS garante que apenas o tenant atual
         // e hotéis visíveis do Admin possam entrar no resultado.
-        const papel = await sql<{ autorizado: boolean }>`select authz.eh_admin_grupo() as autorizado`.execute(tx);
+        const papel = await sql<{
+          autorizado: boolean;
+        }>`select authz.eh_admin_grupo() as autorizado`.execute(tx);
         if (papel.rows[0]?.autorizado !== true) return null;
         const [hoteis, vinculos] = await Promise.all([
-          tx.selectFrom('app.hotel')
+          tx
+            .selectFrom('app.hotel')
             .select(['id', 'nome', 'cod_externo', 'status'])
             .orderBy('nome')
             .execute(),
-          tx.selectFrom('app.mews_vinculo')
-            .select(['hotel_id', 'revogado_em'])
-            .execute(),
+          tx.selectFrom('app.mews_vinculo').select(['hotel_id', 'revogado_em']).execute(),
         ]);
-        const vinculoPorHotel = new Map(vinculos.map((v) => [
-          v.hotel_id,
-          v.revogado_em === null ? 'ativo' : 'revogado',
-        ] as const));
-        const candidatos = hoteis.filter((h) =>
-          (h.cod_externo?.startsWith('DEMO-') ?? false) || NOME_FICTICIO.test(h.nome),
-        ).map((h) => {
-          const vinculo = vinculoPorHotel.get(h.id) ?? 'nenhum';
-          return {
-            hotelId: h.id,
-            nome: h.nome,
-            status: h.status,
-            vinculo,
-            candidato: h.status === 'ativo' && vinculo === 'nenhum',
-          };
-        });
+        const vinculoPorHotel = new Map(
+          vinculos.map((v) => [v.hotel_id, v.revogado_em === null ? 'ativo' : 'revogado'] as const),
+        );
+        const candidatos = hoteis
+          .filter(
+            (h) => (h.cod_externo?.startsWith('DEMO-') ?? false) || NOME_FICTICIO.test(h.nome),
+          )
+          .map((h) => {
+            const vinculo = vinculoPorHotel.get(h.id) ?? 'nenhum';
+            return {
+              hotelId: h.id,
+              nome: h.nome,
+              status: h.status,
+              vinculo,
+              candidato: h.status === 'ativo' && vinculo === 'nenhum',
+            };
+          });
         return {
           hoteis: candidatos.slice(0, LIMITE_CANDIDATOS),
           truncado: candidatos.length > LIMITE_CANDIDATOS,
