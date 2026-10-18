@@ -145,7 +145,7 @@ export function criarPortaCandidatosHoteisMews(banco: AcessoBanco) {
           .filter(
             (h) => (h.cod_externo?.startsWith('DEMO-') ?? false) || NOME_FICTICIO.test(h.nome),
           )
-          .map((h) => {
+          .map((h): CandidatoHotelMews => {
             const vinculo = vinculoPorHotel.get(h.id) ?? 'nenhum';
             return {
               hotelId: h.id,
