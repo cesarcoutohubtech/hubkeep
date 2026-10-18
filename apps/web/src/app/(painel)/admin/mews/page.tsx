@@ -26,12 +26,15 @@ export default function PainelAdministrativoMews() {
         setErro(null);
       } else setErro(resposta.erro);
     });
-    return () => { ativo = false; };
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   const data = (valor: string | null) =>
-    valor ? intl.formatDate(new Date(valor), { dateStyle: 'short', timeStyle: 'short' }) :
-      t('admin.mews.sem_dado');
+    valor
+      ? intl.formatDate(new Date(valor), { dateStyle: 'short', timeStyle: 'short' })
+      : t('admin.mews.sem_dado');
 
   if (erro) return <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>;
   if (!status) return <MensagemVazia>{t('comum.carregando')}</MensagemVazia>;
@@ -57,7 +60,9 @@ export default function PainelAdministrativoMews() {
           <tbody>
             {status.hoteis.map((h) => (
               <tr key={h.hotelId}>
-                <td><strong>{h.nome}</strong></td>
+                <td>
+                  <strong>{h.nome}</strong>
+                </td>
                 <td>{h.versao ?? t('admin.mews.sem_checkpoint')}</td>
                 <td>{data(h.ultimoUpdatedUtc)}</td>
                 <td>{data(h.ultimoSweepUtc)}</td>
