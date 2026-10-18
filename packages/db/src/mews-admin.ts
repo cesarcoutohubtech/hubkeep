@@ -117,7 +117,7 @@ export interface CandidatosHoteisMews {
   truncado: boolean;
 }
 
-const NOME_FICTICIO = /demonstra[çc][ãa]o|(^|[\\s-])demo($|[\\s-])/i;
+const NOME_FICTICIO = /demonstra[çc][ãa]o|(^|[ -])demo($|[ -])/i;
 const LIMITE_CANDIDATOS = 20;
 
 export function criarPortaCandidatosHoteisMews(banco: AcessoBanco) {
