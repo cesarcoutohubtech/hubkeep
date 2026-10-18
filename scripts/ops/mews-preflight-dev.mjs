@@ -71,10 +71,15 @@ async function executar() {
     );
     const presentes = new Set(historico.rows.map((r) => r.version));
     for (const [versao, descricao] of MIGRACOES) {
-      registrar(presentes.has(versao), `Migração ${descricao} (${versao}) consta no histórico remoto`);
+      registrar(
+        presentes.has(versao),
+        `Migração ${descricao} (${versao}) consta no histórico remoto`,
+      );
     }
     if (presentes.size !== MIGRACOES.length) {
-      console.log('Ambiente ainda não preparado: verificações de privilégios não foram executadas.');
+      console.log(
+        'Ambiente ainda não preparado: verificações de privilégios não foram executadas.',
+      );
       return;
     }
 
@@ -101,21 +106,28 @@ async function executar() {
     const porPolicy = new Map(policies.rows.map((r) => [r.tablename, r.roles]));
     for (const tabela of PROJECOES) {
       const roles = porPolicy.get(tabela);
-      registrar(Array.isArray(roles) && roles.includes('hk_app'), `Policy de leitura Admin: app.${tabela}`);
+      registrar(
+        Array.isArray(roles) && roles.includes('hk_app'),
+        `Policy de leitura Admin: app.${tabela}`,
+      );
     }
 
     for (const [tabela, coluna] of COLUNAS_PERMITIDAS) {
-      const p = await cliente.query(
-        'select has_column_privilege($1, $2, $3, $4) as liberado',
-        ['hk_app', `app.${tabela}`, coluna, 'SELECT'],
-      );
+      const p = await cliente.query('select has_column_privilege($1, $2, $3, $4) as liberado', [
+        'hk_app',
+        `app.${tabela}`,
+        coluna,
+        'SELECT',
+      ]);
       registrar(p.rows[0]?.liberado === true, `Leitura permitida: ${tabela}.${coluna}`);
     }
     for (const [tabela, coluna] of COLUNAS_PROIBIDAS) {
-      const p = await cliente.query(
-        'select has_column_privilege($1, $2, $3, $4) as liberado',
-        ['hk_app', `app.${tabela}`, coluna, 'SELECT'],
-      );
+      const p = await cliente.query('select has_column_privilege($1, $2, $3, $4) as liberado', [
+        'hk_app',
+        `app.${tabela}`,
+        coluna,
+        'SELECT',
+      ]);
       registrar(p.rows[0]?.liberado === false, `Leitura negada: ${tabela}.${coluna}`);
     }
     for (const tabela of PROJECOES) {
@@ -126,15 +138,20 @@ async function executar() {
         [`app.${tabela}`],
       );
       const r = p.rows[0];
-      registrar(r?.ins === false && r?.upd === false && r?.del === false, `Sem escrita hk_app: app.${tabela}`);
+      registrar(
+        r?.ins === false && r?.upd === false && r?.del === false,
+        `Sem escrita hk_app: app.${tabela}`,
+      );
     }
 
     const esquema = await cliente.query(
       `select has_schema_privilege('anon', 'app', 'USAGE') as anon,
               has_schema_privilege('authenticated', 'app', 'USAGE') as autenticado`,
     );
-    registrar(esquema.rows[0]?.anon === false && esquema.rows[0]?.autenticado === false,
-      'Sem acesso aos schemas app por anon/authenticated');
+    registrar(
+      esquema.rows[0]?.anon === false && esquema.rows[0]?.autenticado === false,
+      'Sem acesso aos schemas app por anon/authenticated',
+    );
   } catch (e) {
     registrar(false, `Consulta read-only interrompida (código: ${erroSeguro(e)})`);
   } finally {
@@ -155,5 +172,7 @@ try {
   registrar(false, `Falha ao iniciar diagnóstico (código: ${erroSeguro(e)})`);
 }
 const falhas = resultados.filter((r) => !r.ok).length;
-console.log(`RESULTADO: ${falhas === 0 ? 'APROVADO' : 'PENDENTE'} — ${resultados.length - falhas}/${resultados.length} checks.`);
+console.log(
+  `RESULTADO: ${falhas === 0 ? 'APROVADO' : 'PENDENTE'} — ${resultados.length - falhas}/${resultados.length} checks.`,
+);
 if (falhas > 0) process.exitCode = 1;
