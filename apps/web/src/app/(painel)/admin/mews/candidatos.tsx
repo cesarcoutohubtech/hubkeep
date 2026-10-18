@@ -22,7 +22,9 @@ export function CandidatosMewsDemo() {
         setErro(null);
       } else setErro(r.erro);
     });
-    return () => { ativo = false; };
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   if (erro) return <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>;
@@ -47,13 +49,19 @@ export function CandidatosMewsDemo() {
             <tbody>
               {lista.hoteis.map((h) => (
                 <tr key={h.hotelId}>
-                  <td><strong>{h.nome}</strong></td>
-                  <td><code>{h.hotelId}</code></td>
+                  <td>
+                    <strong>{h.nome}</strong>
+                  </td>
+                  <td>
+                    <code>{h.hotelId}</code>
+                  </td>
                   <td>{t('hotel.status', { status: h.status })}</td>
                   <td>{t('admin.mews.candidatos.estado', { estado: h.vinculo })}</td>
-                  <td>{h.candidato
-                    ? t('admin.mews.candidatos.para_revisao')
-                    : t('admin.mews.candidatos.nao_apto')}</td>
+                  <td>
+                    {h.candidato
+                      ? t('admin.mews.candidatos.para_revisao')
+                      : t('admin.mews.candidatos.nao_apto')}
+                  </td>
                 </tr>
               ))}
             </tbody>
