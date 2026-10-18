@@ -13,3 +13,11 @@
 
 
 - **Reserva adicional, antes de editar contratos:** `packages/contratos/src/auditoria-geral.ts` mantém cópia literal de `ENTIDADES_DA_AUDITORIA_API`; precisa acrescentar `mews_checkpoint` na mesma posição para o teste raiz `a lista da API é a do domínio` e a opção de filtro de API. Sem alteração de endpoint nem permissões.
+
+## 18/10/2026 — Preparação de vínculo Mews Demo (sem ativação)
+
+- O Cesar autorizou **preparar código e testes** para a próxima fase Mews Demo → HubKeep-dev. **Não** autorizou escrita no dev, tokens reais, acesso à API Mews nesta etapa ou execução de worker.
+- DEV: migrações 0054/0055/0056 aplicadas com pré-voo 32/32 aprovado, acesso visual Admin válido e Gerente negado. Main verificou CI verde antes da branch.
+- Entrega: laboratório `ensaio-vinculo-demo.mjs` com cliente injetado, porta de conferência de hotel/vínculo ainda sem implementação real, escopo estrito e resumo agregado sem PII. Testes sintéticos de ponta a ponta offline executados pela CI geral; documentação `ENSAIO-VINCULO-DEMO-V1.md`.
+- Mantido **sem rota, job, cron, aplicação de lote, migração, cofre nem credencial de produção**. A primeira execução de API real ou gravação do vínculo exigirá autorização específica posterior.
+- **Ponto de retomada:** aguardar CI deste PR, corrigir problemas e liberar para revisão somente com checks verdes. Merge manual pelo Cesar. Após merge, próximo gate é selecionar hotel fictício e propriedade Mews Demo, confirmar escopo e revisar referência de cofre/revogação/GDPR.
