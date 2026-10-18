@@ -240,7 +240,9 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
     void chamarApi('/api/v1/mews/status').then((r) => {
       if (valido) setMewsVisivel(r.ok);
     });
-    return () => { valido = false; };
+    return () => {
+      valido = false;
+    };
   }, [grupoPronto, tenant]);
 
   function trocarGrupo(tn: string) {
@@ -294,8 +296,11 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
                 </ItemDeMenu>
               ))}
               {g.grupo === 'menu.grupo.configuracao' && mewsVisivel && (
-                <ItemDeMenu href={ITEM_DA_MEWS.href} componente={Link}
-                  ativo={itemAtivo(caminho, ITEM_DA_MEWS.href)}>
+                <ItemDeMenu
+                  href={ITEM_DA_MEWS.href}
+                  componente={Link}
+                  ativo={itemAtivo(caminho, ITEM_DA_MEWS.href)}
+                >
                   {t(ITEM_DA_MEWS.chave)}
                 </ItemDeMenu>
               )}
