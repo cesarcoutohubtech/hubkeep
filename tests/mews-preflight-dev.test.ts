@@ -10,7 +10,9 @@ describe('pré-voo Mews: somente leitura do Supabase-dev', () => {
     expect(fonte).toContain('conexaoDono(ambiente)');
     expect(fonte).toContain('BEGIN TRANSACTION READ ONLY');
     expect(fonte).toContain("'ROLLBACK'");
-    expect(fonte).not.toMatch(/cliente\.query\(\s*['"`](INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TRUNCATE)\b/i);
+    expect(fonte).not.toMatch(
+      /cliente\.query\(\s*['"`](INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TRUNCATE)\b/i,
+    );
   });
 
   it('verifica as três migrações aprovadas, FORCE RLS e as colunas sensíveis', () => {
