@@ -52,6 +52,7 @@ import {
   type ResultadoOutbox,
   criarAcessoBanco,
   criarPortaStatusAdministrativoMews,
+  criarPortaCandidatosHoteisMews,
   criarPortaComunicacao,
   criarPortaMonitorDeSla,
   criarPortaAceiteAutomatico,
@@ -434,4 +435,9 @@ export const verificadorDeToken = () => (verificador ??= criarVerificadorJwks(ur
 /** Estado Mews V1: somente leitura para Admin do grupo, sem job ou credenciais. */
 export const statusAdministrativoMews = memo(async () =>
   criarPortaStatusAdministrativoMews(await acessoBanco()),
+);
+
+/** Candidatos a hotel de demonstração, sem gravações, só Admin do grupo. */
+export const candidatosHoteisMews = memo(async () =>
+  criarPortaCandidatosHoteisMews(await acessoBanco()),
 );

@@ -349,3 +349,4 @@ export {
 } from './comunicacao';
 
 export { LinhaDoStatusMewsApi, RespostaDoStatusMews } from './mews-admin';
+export { CandidatoHotelMewsApi, RespostaDeCandidatosMews } from './mews-admin';

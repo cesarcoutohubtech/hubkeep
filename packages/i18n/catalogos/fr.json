@@ -1483,5 +1483,16 @@
   "admin.mews.concluido": "Dernier commit",
   "admin.mews.recursos": "Ressources actives",
   "admin.mews.fora_de_uso": "Blocages hors service",
-  "admin.mews.uso_interno": "Blocages d'utilisation interne"
+  "admin.mews.uso_interno": "Blocages d'utilisation interne",
+  "admin.mews.candidatos.descricao": "Hôtels de démonstration du groupe pouvant être évalués pour un futur test Mews. Aucun lien n'est créé ici.",
+  "admin.mews.candidatos.vazio": "Aucun hôtel de démonstration trouvé dans ce groupe.",
+  "admin.mews.candidatos.titulo": "Hôtels candidats à la démo Mews",
+  "admin.mews.candidatos.codigo": "Identifiant de l'hôtel",
+  "admin.mews.candidatos.situacao": "Statut",
+  "admin.mews.candidatos.vinculo": "Lien Mews",
+  "admin.mews.candidatos.aptidao": "Présélection",
+  "admin.mews.candidatos.estado": "{estado, select, ativo {Actif} revogado {Révoqué} nenhum {Aucun} other {Inconnu}}",
+  "admin.mews.candidatos.para_revisao": "Éligible à la validation humaine",
+  "admin.mews.candidatos.nao_apto": "Non éligible",
+  "admin.mews.candidatos.truncado": "Plus de 20 hôtels candidats existent. Vérifiez le groupe avant de choisir."
 }

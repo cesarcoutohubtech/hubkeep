@@ -20,3 +20,21 @@ export const RespostaDoStatusMews = z
     hoteis: z.array(LinhaDoStatusMewsApi),
   })
   .meta({ id: 'RespostaDoStatusMews' });
+
+/** Pré-seleção informativa: esta API nunca cria vínculo ou consulta a Mews. */
+export const CandidatoHotelMewsApi = z
+  .object({
+    hotelId: z.guid(),
+    nome: z.string(),
+    status: z.string(),
+    vinculo: z.enum(['nenhum', 'ativo', 'revogado']),
+    candidato: z.boolean(),
+  })
+  .meta({ id: 'CandidatoHotelMewsApi' });
+
+export const RespostaDeCandidatosMews = z
+  .object({
+    hoteis: z.array(CandidatoHotelMewsApi),
+    truncado: z.boolean(),
+  })
+  .meta({ id: 'RespostaDeCandidatosMews' });

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
+import { CandidatosMewsDemo } from './candidatos';
 
 type Status = z.infer<typeof RespostaDoStatusMews>;
 
@@ -40,41 +41,44 @@ export default function PainelAdministrativoMews() {
   if (!status) return <MensagemVazia>{t('comum.carregando')}</MensagemVazia>;
 
   return (
-    <Painel dica={t('admin.mews.descricao')}>
-      {status.hoteis.length === 0 ? (
-        <MensagemVazia>{t('admin.mews.sem_vinculos')}</MensagemVazia>
-      ) : (
-        <Tabela legenda={t('admin.mews.titulo')}>
-          <thead>
-            <tr>
-              <th scope="col">{t('admin.mews.hotel')}</th>
-              <th scope="col">{t('admin.mews.versao')}</th>
-              <th scope="col">{t('admin.mews.incremental')}</th>
-              <th scope="col">{t('admin.mews.varredura')}</th>
-              <th scope="col">{t('admin.mews.concluido')}</th>
-              <th scope="col">{t('admin.mews.recursos')}</th>
-              <th scope="col">{t('admin.mews.fora_de_uso')}</th>
-              <th scope="col">{t('admin.mews.uso_interno')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {status.hoteis.map((h) => (
-              <tr key={h.hotelId}>
-                <td>
-                  <strong>{h.nome}</strong>
-                </td>
-                <td>{h.versao ?? t('admin.mews.sem_checkpoint')}</td>
-                <td>{data(h.ultimoUpdatedUtc)}</td>
-                <td>{data(h.ultimoSweepUtc)}</td>
-                <td>{data(h.concluidoEm)}</td>
-                <td>{h.recursosAtivos}</td>
-                <td>{h.bloqueiosOutOfOrder}</td>
-                <td>{h.bloqueiosInternalUse}</td>
+    <>
+      <Painel dica={t('admin.mews.descricao')}>
+        {status.hoteis.length === 0 ? (
+          <MensagemVazia>{t('admin.mews.sem_vinculos')}</MensagemVazia>
+        ) : (
+          <Tabela legenda={t('admin.mews.titulo')}>
+            <thead>
+              <tr>
+                <th scope="col">{t('admin.mews.hotel')}</th>
+                <th scope="col">{t('admin.mews.versao')}</th>
+                <th scope="col">{t('admin.mews.incremental')}</th>
+                <th scope="col">{t('admin.mews.varredura')}</th>
+                <th scope="col">{t('admin.mews.concluido')}</th>
+                <th scope="col">{t('admin.mews.recursos')}</th>
+                <th scope="col">{t('admin.mews.fora_de_uso')}</th>
+                <th scope="col">{t('admin.mews.uso_interno')}</th>
               </tr>
-            ))}
-          </tbody>
-        </Tabela>
-      )}
-    </Painel>
+            </thead>
+            <tbody>
+              {status.hoteis.map((h) => (
+                <tr key={h.hotelId}>
+                  <td>
+                    <strong>{h.nome}</strong>
+                  </td>
+                  <td>{h.versao ?? t('admin.mews.sem_checkpoint')}</td>
+                  <td>{data(h.ultimoUpdatedUtc)}</td>
+                  <td>{data(h.ultimoSweepUtc)}</td>
+                  <td>{data(h.concluidoEm)}</td>
+                  <td>{h.recursosAtivos}</td>
+                  <td>{h.bloqueiosOutOfOrder}</td>
+                  <td>{h.bloqueiosInternalUse}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Tabela>
+        )}
+      </Painel>
+      <CandidatosMewsDemo />
+    </>
   );
 }
