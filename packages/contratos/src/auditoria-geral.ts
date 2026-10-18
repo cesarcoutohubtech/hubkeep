@@ -27,6 +27,7 @@ export const ENTIDADES_DA_AUDITORIA_API = [
   'local',
   'local_proprietario',
   'membro',
+  'mews_checkpoint',
   'modelo_ativo',
   'os',
   'os_apontamento',
