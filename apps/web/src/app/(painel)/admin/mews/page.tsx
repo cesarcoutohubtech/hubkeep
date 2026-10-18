@@ -1,7 +1,7 @@
 'use client';
 // Mews V1: painel de integracao SOMENTE LEITURA, exclusivo do Admin do grupo.
 // Nenhum botao de sincronizar, credencial, alteracao de UH/OS ou escrita no PMS.
-import { type RespostaDoStatusMews, type z } from '@hubkeep/contratos';
+import { RespostaDoStatusMews, type z } from '@hubkeep/contratos';
 import { MensagemDeErro, MensagemVazia, Painel, Tabela } from '@hubkeep/ui';
 import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
