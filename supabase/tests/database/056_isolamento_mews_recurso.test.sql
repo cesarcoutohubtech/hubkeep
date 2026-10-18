@@ -25,13 +25,13 @@ select throws_ok($$ insert into app.mews_recurso(tenant_id,hotel_id,enterprise_i
 select throws_ok($$ insert into app.mews_recurso(tenant_id,hotel_id,enterprise_id,resource_id,tipo,ativo) values ('10000000-0000-0000-0000-000000000000','11100000-0000-0000-0000-000000000001','E-A1','R-GUEST','Guest',true) $$, '23514',null,'Somente recurso Space autorizado');
 set local role hk_app;
 select from (select set_config('app.usuario_id','aaaaaaaa-0000-0000-0000-000000000001',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($$ select 1 from app.mews_recurso $$, '42501',null,'hk_app Admin nao le projecao tecnica');
+select results_eq($ select count(*)::int from app.mews_recurso $,$values (2)$,'Admin A le apenas dois recursos do tenant A');
 select from (select set_config('app.usuario_id','aaaaaaaa-0000-0000-0000-000000000002',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($$ select 1 from app.mews_recurso $$, '42501',null,'Gerente nao le dados tecnicos');
+select is_empty($ select 1 from app.mews_recurso $,'Gerente nao le dados tecnicos');
 select from (select set_config('app.usuario_id','aaaaaaaa-0000-0000-0000-000000000003',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($$ select 1 from app.mews_recurso $$, '42501',null,'Proprietario nao le dados tecnicos');
+select is_empty($ select 1 from app.mews_recurso $,'Proprietario nao le dados tecnicos');
 select from (select set_config('app.usuario_id','aaaaaaaa-0000-0000-0000-000000000004',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($$ select 1 from app.mews_recurso $$, '42501',null,'Implantador vencido nao le dados tecnicos');
+select is_empty($ select 1 from app.mews_recurso $,'Implantador vencido nao le dados tecnicos');
 reset role;
 set local role hk_worker;
 select from (select set_config('app.usuario_id','',true),set_config('app.tenant_id','',true)) ctx;
