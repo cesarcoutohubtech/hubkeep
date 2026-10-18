@@ -22,6 +22,7 @@ const TELAS = [
   'hoteis',
   'implantacao',
   'locais',
+  'mews',
   'membros',
   'proprietarios',
   'sla',
