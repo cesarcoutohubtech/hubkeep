@@ -6,8 +6,15 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({}));
 vi.mock('../src/cliente/sessao', () => ({ sair: vi.fn() }));
 
-const { HREF_DA_ABERTURA, ITEM_DO_INTELLIGENCE, ITEM_DA_MEWS, MENU, intelligenceAtivo, itemAtivo, tituloDaRota } =
-  await import('../src/cliente/moldura');
+const {
+  HREF_DA_ABERTURA,
+  ITEM_DO_INTELLIGENCE,
+  ITEM_DA_MEWS,
+  MENU,
+  intelligenceAtivo,
+  itemAtivo,
+  tituloDaRota,
+} = await import('../src/cliente/moldura');
 
 describe('menu da moldura', () => {
   const itens = MENU.flatMap((g) => g.itens);
@@ -73,7 +80,6 @@ describe('o item do HubKeep Intelligence', () => {
     expect(intelligenceAtivo('/admin/ativos')).toBe(false);
   });
 });
-
 
 describe('Mews V1: menu autorizado pelo servidor', () => {
   it('não aparece no MENU geral e possui rota e título próprios', () => {
