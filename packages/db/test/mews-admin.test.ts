@@ -208,12 +208,18 @@ describe.skipIf(!temBanco)('Mews V1: status administrativo e RLS', { timeout: 70
     expect(r?.truncado).toBe(false);
     expect(r?.hoteis).toEqual([
       {
-        hotelId: HD, nome: 'Hotel Demonstração Livre',
-        status: 'ativo', vinculo: 'nenhum', candidato: true,
+        hotelId: HD,
+        nome: 'Hotel Demonstração Livre',
+        status: 'ativo',
+        vinculo: 'nenhum',
+        candidato: true,
       },
       {
-        hotelId: HR, nome: 'Hotel Demonstração Revogado',
-        status: 'ativo', vinculo: 'revogado', candidato: false,
+        hotelId: HR,
+        nome: 'Hotel Demonstração Revogado',
+        status: 'ativo',
+        vinculo: 'revogado',
+        candidato: false,
       },
     ]);
     for (const h of r?.hoteis ?? []) {
