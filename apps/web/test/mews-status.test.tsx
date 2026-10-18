@@ -1,5 +1,9 @@
 // Painel Mews V1: contrato mínimo e renderização inicial nos quatro idiomas.
-import { LinhaDoStatusMewsApi, RespostaDoStatusMews, RespostaDeCandidatosMews } from '@hubkeep/contratos';
+import {
+  LinhaDoStatusMewsApi,
+  RespostaDoStatusMews,
+  RespostaDeCandidatosMews,
+} from '@hubkeep/contratos';
 import { IDIOMAS, mensagensDe } from '@hubkeep/i18n';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -59,18 +63,23 @@ describe('Mews V1: somente leitura administrativa', () => {
   it('DTO Mews de candidatos não exporta dados de propriedade ou credencial', () => {
     const exemplo = {
       hotelId: 'ca200000-0000-0000-0000-000000000001',
-      nome: 'Hotel Demonstração Centro', status: 'ativo',
-      vinculo: 'nenhum', candidato: true,
+      nome: 'Hotel Demonstração Centro',
+      status: 'ativo',
+      vinculo: 'nenhum',
+      candidato: true,
     };
     const resposta = RespostaDeCandidatosMews.parse({
-      hoteis: [{ ...exemplo, enterprise_id: 'privado',
-        credencial_ref: 'privado', tenant_id: 'privado' }],
+      hoteis: [
+        { ...exemplo, enterprise_id: 'privado', credencial_ref: 'privado', tenant_id: 'privado' },
+      ],
       truncado: false,
     });
     expect(resposta).toEqual({ hoteis: [exemplo], truncado: false });
-    expect(RespostaDeCandidatosMews.safeParse({
-      hoteis: [{ ...exemplo, vinculo: 'outro' }], truncado: false,
-    }).success).toBe(false);
+    expect(
+      RespostaDeCandidatosMews.safeParse({
+        hoteis: [{ ...exemplo, vinculo: 'outro' }],
+        truncado: false,
+      }).success,
+    ).toBe(false);
   });
-
 });
