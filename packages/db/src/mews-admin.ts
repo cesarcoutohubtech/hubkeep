@@ -138,7 +138,7 @@ export function criarPortaCandidatosHoteisMews(banco: AcessoBanco) {
             .execute(),
           tx.selectFrom('app.mews_vinculo').select(['hotel_id', 'revogado_em']).execute(),
         ]);
-        const vinculoPorHotel = new Map(
+        const vinculoPorHotel = new Map<string, 'ativo' | 'revogado'>(
           vinculos.map((v) => [v.hotel_id, v.revogado_em === null ? 'ativo' : 'revogado'] as const),
         );
         const candidatos = hoteis
