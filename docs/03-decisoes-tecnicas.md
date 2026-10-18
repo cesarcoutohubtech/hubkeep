@@ -1485,3 +1485,14 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 **Antes do primeiro uso em DEV:** conferir o estado atual de migrações sem executar SQL; concluir driver, testes de concorrência, perda de conexão, revogação e rollback, política GDPR/retenção e cofre de segredos; exigir CI verde, revisão técnica e **autorização específica** do Cesar para o `db push`. DEV, staging e produção não recebem autorização automática por esta ADR.
 
 **Riscos aceitos no desenho:** latência de reconciliação de acordo com janela e rate limit Mews; a atualização do estado técnico depende de validação de recursos por propriedade e de transações idempotentes. A operação hoteleira permanece desacoplada nesta V1.
+
+### Adendo ADR-048 — leitura administrativa de estado Mews (aprovação de 17/10/2026)
+
+**Aprovação expressa do Cesar nesta conversa (17/10/2026):** respondeu **“Sim, autorizo”** à pergunta: “Você aprova formalmente que somente o Admin do grupo visualize os horários e a versão da sincronização Mews, além das contagens de recursos e bloqueios técnicos?”. A aprovação é **apenas dessa consulta administrativa**; não autoriza merge, `db push`, uso de credenciais reais ou ativação de conector.
+
+**Decisão autorizada para a migração 0056, no PR #323:**
+- `hk_app` consulta `app.mews_checkpoint` somente nas colunas de escopo, versão, marcas UTC e conclusão; não lê digest.
+- `hk_app` consulta `app.mews_recurso` apenas colunas de escopo e `ativo`, e `app.mews_bloqueio` apenas colunas de escopo, tipo e `ativo`, para **contagens**; não recebe `resource_id`, `block_id`, intervalos ou dados operacionais.
+- `RLS FORCE`: apenas Admin do grupo vigente no tenant e com vínculo Mews **não revogado**; gerente, proprietário, implantador, tenant alheio e sessão sem contexto continuam sem acesso. Nenhuma permissão INSERT/UPDATE/DELETE nova para `hk_app`.
+- Leitura servida exclusivamente pelo backend autenticado. Não expor tabelas via Data API ou browser. Nenhuma OS, alteração de UH, escrita no PMS ou ingestão real é autorizada por esta decisão.
+- Revisão pgTAP, CI e aprovação humana de merge permanecem obrigatórias. **Aplicação em Supabase-dev/produção depende de autorização posterior e específica.**

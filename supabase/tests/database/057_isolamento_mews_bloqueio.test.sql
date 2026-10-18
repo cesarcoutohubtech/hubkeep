@@ -26,13 +26,13 @@ select throws_ok($$ insert into app.mews_bloqueio(tenant_id,hotel_id,enterprise_
 select throws_ok($$ insert into app.mews_bloqueio(tenant_id,hotel_id,enterprise_id,block_id,resource_id,tipo,inicio_utc,fim_utc,ativo,updated_utc) values ('10000000-0000-0000-0000-000000000000','11100000-0000-0000-0000-000000000001','E-A1','B-INVALIDO','R1','Guest',now(),now()+interval '1 day',true,now()) $$, '23514',null,'Somente bloqueios tecnicos');
 set local role hk_app;
 select from (select set_config('app.usuario_id','aaaaaaaa-0000-0000-0000-000000000001',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($$ select 1 from app.mews_bloqueio $$, '42501',null,'hk_app Admin nao le projecao tecnica');
+select results_eq($$ select count(*)::int from app.mews_bloqueio $$,$$values (2)$$,'Admin A le apenas dois bloqueios do tenant A');
 select from (select set_config('app.usuario_id','aaaaaaaa-0000-0000-0000-000000000002',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($$ select 1 from app.mews_bloqueio $$, '42501',null,'Gerente nao le dados tecnicos');
+select is_empty($$ select 1 from app.mews_bloqueio $$,'Gerente nao le dados tecnicos');
 select from (select set_config('app.usuario_id','aaaaaaaa-0000-0000-0000-000000000003',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($$ select 1 from app.mews_bloqueio $$, '42501',null,'Proprietario nao le dados tecnicos');
+select is_empty($$ select 1 from app.mews_bloqueio $$,'Proprietario nao le dados tecnicos');
 select from (select set_config('app.usuario_id','aaaaaaaa-0000-0000-0000-000000000004',true),set_config('app.tenant_id','10000000-0000-0000-0000-000000000000',true)) ctx;
-select throws_ok($$ select 1 from app.mews_bloqueio $$, '42501',null,'Implantador vencido nao le dados tecnicos');
+select is_empty($$ select 1 from app.mews_bloqueio $$,'Implantador vencido nao le dados tecnicos');
 reset role;
 set local role hk_worker;
 select from (select set_config('app.usuario_id','',true),set_config('app.tenant_id','',true)) ctx;
