@@ -92,6 +92,7 @@ import {
   PedidoDeReaberturaDeOs,
   PedidoDeTriagem,
   RespostaDeChamado,
+  RespostaDaImpressaoDaOs,
   RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
@@ -1873,6 +1874,18 @@ export const ROTAS: readonly Rota[] = [
     exigeTenant: true,
     respostas: {
       200: { descricao: 'A OS, com os nomes', esquema: RespostaDeOs },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('OS fora do escopo (os_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/os/{id}/impressao',
+    resumo:
+      'A OS para imprimir (1c, item 9): a mesma da página da OS, com a descrição do chamado e o aceite no papel (assinado, aceito ou pendente). Para quem só enxerga o hotel como proprietário, sem o custo informado (custoOculto). O checklist e as fotos saem das rotas da OS.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A OS para imprimir', esquema: RespostaDaImpressaoDaOs },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('OS fora do escopo (os_nao_encontrada).'),
     },
