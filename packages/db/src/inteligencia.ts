@@ -55,6 +55,7 @@ import {
   gravarSinaisNoBanco,
   hotelDoSinal,
   ligarChamadoNoBanco,
+  ligarChamadosNoBanco,
   nomesDasUhs,
   reclamacaoParaChamado,
   referenciasDaClassificacao,
@@ -179,6 +180,8 @@ export interface PortaDoPainelDoIntelligence {
   reclamacaoParaChamado(ctx: Contexto, id: string): Promise<ReclamacaoParaChamadoNoBanco | null>;
   /** Na unit of work de quem abriu o chamado: a ligação (0057), a auditoria e o evento. */
   ligarChamado(ctx: Contexto, l: LigacaoDoChamadoNoBanco): Promise<void>;
+  /** As ligações de várias reclamações ao mesmo chamado, numa unit of work. */
+  ligarChamados(ctx: Contexto, ls: readonly LigacaoDoChamadoNoBanco[]): Promise<void>;
 }
 
 export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPainelDoIntelligence {
@@ -222,5 +225,6 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
     reclamacaoParaChamado: (ctx, id) =>
       banco.withContext(ctx, (tx) => reclamacaoParaChamado(tx, id)),
     ligarChamado: (ctx, l) => banco.executar(ctx, (uow) => ligarChamadoNoBanco(uow, l)),
+    ligarChamados: (ctx, ls) => banco.executar(ctx, (uow) => ligarChamadosNoBanco(uow, ls)),
   };
 }

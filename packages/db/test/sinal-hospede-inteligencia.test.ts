@@ -440,5 +440,19 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
       [TENANT],
     );
     expect(eventos.rows).toEqual([{ chamado: CH }]);
+
+    // Várias reclamações no mesmo chamado (o insight sistêmico), numa transação.
+    const r2 = (await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50)).find(
+      (s) => s.idExterno === 'r-2',
+    );
+    if (!r2) throw new Error('sem a r-2');
+    await porta.ligarChamados(ctx(U.gerente), [
+      { sinalId: r2.id, hotelId: H1, chamadoId: CH, ligadoPor: U.gerente, em: agora },
+    ]);
+    const ligadas = await q(
+      `select count(*)::int as n from app.sinal_hospede_chamado where tenant_id = $1 and chamado_id = $2`,
+      [TENANT, CH],
+    );
+    expect(ligadas.rows).toEqual([{ n: 2 }]);
   });
 });
