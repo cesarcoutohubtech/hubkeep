@@ -269,6 +269,8 @@ export const casosDeUsoDoPainelDoIntelligence = memo(async () => {
     atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
     configuracao: criarPortaConfiguracao(banco),
     relogio: relogioDoSistema,
+    // Abrir chamado a partir da reclamação: o caso de uso do núcleo, como ele é.
+    chamados: { abrir: async (ctx, pedido) => (await casosDeUsoDeChamados()).abrir(ctx, pedido) },
   });
 });
 

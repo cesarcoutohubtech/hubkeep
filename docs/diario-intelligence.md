@@ -2960,3 +2960,16 @@ Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona protegida (#310
 - **Próximo:** o PR comum de abrir chamado a partir da reclamação: a porta no `packages/db` (ligar e ler as ligações), o caso de uso no `packages/inteligencia` (quem abre, quando a reclamação pode virar chamado, a sugestão da descrição), a rota que chama o `abrir` do núcleo e depois liga, o botão e o formulário na fila, os textos nos quatro idiomas e os testes. Primeiro passo: a leitura das ligações na fila (`linhaDaFila` com o chamado).
 
 **Do Kaio** (19/10/2026, nesta sessão): "Kaio aqui. Aprovo A troca da coluna pela tabela (a1) e o adendo ao ADR-047. Continue". O adendo fica aprovado pelos dois, e o #330 sai do rascunho.
+
+### O PR de abrir chamado a partir da reclamação (19/10/2026)
+
+Preparado numa branch local, sobre o #330: só vai para a branch do agente e para o PR depois do merge do #330 e do `db push`, com base na `main`.
+
+**O que traz:**
+- **`packages/db`:** a fila e as listas das reclamações trazem o chamado ligado (`chamadoId`), pela RLS da 0057; `reclamacaoParaChamado` (a reclamação com o local do ativo e o chamado já ligado) e `ligarChamadoNoBanco` (a ligação, a auditoria sem hotel `ligar_chamado` e o evento `sinal_hospede.chamado_ligado`; a ligação repetida vira `reclamacao_ja_tem_chamado`). Teste de integração (só na CI).
+- **Motor** (`chamado-da-reclamacao.ts`): `prepararChamadoDaReclamacao` confere quem decide insight no hotel, a reclamação de manutenção com UH ou ativo e sem chamado, e monta o pedido do núcleo (o local do ativo ou a UH, o ativo, a descrição da pessoa e "afeta hóspede"); `ligarChamadoDaReclamacao` liga em nome de quem abriu, e a mesma ligação de novo não faz nada.
+- **Web:** o painel recebe o caso de uso `abrir` do núcleo pela composição, sem mudança nele; abre e depois liga. Se a ligação falhar, `chamado_sem_ligacao` com o id do chamado, e a tela oferece "Ligar de novo".
+- **API:** `POST /api/v1/inteligencia/sinais/{id}/chamado` e `.../chamado/ligacao`, os contratos e o OpenAPI; o `chamadoId` no `SinalDaFilaApi`.
+- **Tela da fila:** o botão "Abrir chamado" na reclamação de manutenção com UH ou ativo e sem chamado; o formulário com o ativo (que a pessoa pode tirar), o local, a descrição com a sugestão sem o texto do hóspede e o aviso de "afeta hóspede"; o link "Ver o chamado" depois.
+- **Textos** nos quatro idiomas: `inteligencia.sinais.acao.abrir_chamado`, `inteligencia.sinais.chamado.*` e os cinco erros novos.
+- **Área compartilhada:** só os catálogos (prefixo do Intelligence e os códigos de erro novos). O chamado, o `packages/aplicacao` e o `packages/dominio` não mudam.

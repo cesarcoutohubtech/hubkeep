@@ -46,13 +46,17 @@ import {
   type ClassificacaoNoBanco,
   type HotelDoSinalNoBanco,
   type ImportacaoNoBanco,
+  type LigacaoDoChamadoNoBanco,
+  type ReclamacaoParaChamadoNoBanco,
   type ReferenciasDaClassificacaoNoBanco,
   type SinalDaFilaNoBanco,
   type SinalParaClassificarNoBanco,
   classificarSinalNoBanco,
   gravarSinaisNoBanco,
   hotelDoSinal,
+  ligarChamadoNoBanco,
   nomesDasUhs,
+  reclamacaoParaChamado,
   referenciasDaClassificacao,
   sinaisDoAtivo,
   sinaisDoHotel,
@@ -171,6 +175,10 @@ export interface PortaDoPainelDoIntelligence {
   ): Promise<ReferenciasDaClassificacaoNoBanco>;
   /** Na unit of work de quem classifica: a classificação, a auditoria e o evento. */
   classificar(ctx: Contexto, c: ClassificacaoNoBanco): Promise<{ versao: number }>;
+  /** A reclamação, se quem pede a lê, com o local do ativo e o chamado já ligado. */
+  reclamacaoParaChamado(ctx: Contexto, id: string): Promise<ReclamacaoParaChamadoNoBanco | null>;
+  /** Na unit of work de quem abriu o chamado: a ligação (0057), a auditoria e o evento. */
+  ligarChamado(ctx: Contexto, l: LigacaoDoChamadoNoBanco): Promise<void>;
 }
 
 export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPainelDoIntelligence {
@@ -211,5 +219,8 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
     referenciasDaClassificacao: (ctx, r) =>
       banco.withContext(ctx, (tx) => referenciasDaClassificacao(tx, r)),
     classificar: (ctx, c) => banco.executar(ctx, (uow) => classificarSinalNoBanco(uow, c)),
+    reclamacaoParaChamado: (ctx, id) =>
+      banco.withContext(ctx, (tx) => reclamacaoParaChamado(tx, id)),
+    ligarChamado: (ctx, l) => banco.executar(ctx, (uow) => ligarChamadoNoBanco(uow, l)),
   };
 }

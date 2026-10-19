@@ -14,6 +14,7 @@ export * from './job';
 export * from './painel';
 export * from './painel-busca';
 export * from './painel-efetividade';
+export * from './chamado-da-reclamacao';
 export * from './painel-reclamacoes';
 export * from './painel-substituicao';
 export * from './politicas';

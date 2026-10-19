@@ -396,6 +396,7 @@ const naFila = (s: Partial<SinalDaFila> = {}): SinalDaFila => ({
   classificadoPor: null,
   importadoEm: new Date('2026-10-11T09:00:00Z'),
   versao: 1,
+  chamadoId: null,
   ...s,
 });
 

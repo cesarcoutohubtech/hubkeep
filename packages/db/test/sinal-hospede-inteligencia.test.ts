@@ -11,7 +11,10 @@
 //     importação, só o que quem pede lê;
 //   - a fila de classificação do hotel, por recorte, só para quem a lê;
 //   - as reclamações do hotel no trecho, sem o texto, e as linhas da política
-//     do Guest Impact Score, para a substituição (ADR-047, PR C1b).
+//     do Guest Impact Score, para a substituição (ADR-047, PR C1b);
+//   - a ligação com o chamado aberto a partir da reclamação (0057): a
+//     reclamação com o local do ativo, a ligação com auditoria sem hotel e o
+//     evento, uma por reclamação, e o chamado na fila.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -107,6 +110,10 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
     for (const t of [
       'app.evento_dominio',
       'app.auditoria',
+      'app.sinal_hospede_chamado',
+      'app.chamado',
+      'app.situacao',
+      'app.prioridade',
       'app.sinal_hospede',
       'app.ativo',
       'app.categoria_ativo',
@@ -362,5 +369,76 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
     expect(await porta.sinaisDoAtivo(ctx(U.tecnico), A1, new Date(0), agora, 50)).toEqual([]);
     expect(await porta.nomesDasUhs(ctx(U.gerente), [UH1])).toEqual({ [UH1]: 'UH 101' });
     expect(await porta.nomesDasUhs(ctx(U.gerente), [])).toEqual({});
+  });
+
+  it('a ligação com o chamado aberto a partir da reclamação (0057)', async () => {
+    const r1 = (await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50)).find(
+      (s) => s.idExterno === 'r-1',
+    );
+    if (!r1) throw new Error('sem a r-1');
+    expect(r1.chamadoId).toBeNull();
+    expect(await porta.reclamacaoParaChamado(ctx(U.gerente), r1.id)).toEqual({
+      id: r1.id,
+      hotelId: H1,
+      bandeiraId: null,
+      manutencao: true,
+      uhId: r1.uhId,
+      ativoId: A1,
+      localDoAtivo: UH1,
+      chamadoId: null,
+    });
+    expect(await porta.reclamacaoParaChamado(ctx(U.tecnico), r1.id)).toBeNull();
+
+    // O chamado que o Gerente abriu (o caso de uso do núcleo tem os testes dele).
+    const [SIT, PRI, CH] = [randomUUID(), randomUUID(), randomUUID()];
+    await q(
+      `insert into app.situacao (id, tenant_id, entidade, estado, chave_padrao, ordem, cor)
+       values ($1, $2, 'chamado', 'aberto', 'chamado_aberto', 10, '#2563eb')`,
+      [SIT, TENANT],
+    );
+    await q(
+      `insert into app.prioridade (id, tenant_id, chave_padrao, ordem, peso) values ($1, $2, 'alta', 20, 30)`,
+      [PRI, TENANT],
+    );
+    await q(
+      `insert into app.chamado (id, tenant_id, hotel_id, local_id, ativo_id, descricao, busca, estado,
+         situacao_id, prioridade_id, politica_aplicada, aberto_por, prazo_atendimento, prazo_solucao)
+       values ($1, $2, $3, $4, $5, 'Ar barulhento', 'ar barulhento', 'aberto', $6, $7, '{}', $8,
+         now() + interval '1 day', now() + interval '2 days')`,
+      [CH, TENANT, H1, UH1, A1, SIT, PRI, U.gerente],
+    );
+    await porta.ligarChamado(ctx(U.gerente), {
+      sinalId: r1.id,
+      hotelId: H1,
+      chamadoId: CH,
+      ligadoPor: U.gerente,
+      em: agora,
+    });
+    expect(
+      (await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50)).find((s) => s.id === r1.id)
+        ?.chamadoId,
+    ).toBe(CH);
+    expect((await porta.reclamacaoParaChamado(ctx(U.gerente), r1.id))?.chamadoId).toBe(CH);
+    await expect(
+      porta.ligarChamado(ctx(U.gerente), {
+        sinalId: r1.id,
+        hotelId: H1,
+        chamadoId: CH,
+        ligadoPor: U.gerente,
+        em: agora,
+      }),
+    ).rejects.toMatchObject({ codigo: 'reclamacao_ja_tem_chamado' });
+    const auditoria = await q(
+      `select hotel_id, depois from app.auditoria
+        where tenant_id = $1 and registro_id = $2 and acao = 'ligar_chamado'`,
+      [TENANT, r1.id],
+    );
+    expect(auditoria.rows).toEqual([{ hotel_id: null, depois: { chamadoId: CH } }]);
+    const eventos = await q(
+      `select payload->>'chamadoId' as chamado from app.evento_dominio
+        where tenant_id = $1 and tipo = 'sinal_hospede.chamado_ligado'`,
+      [TENANT],
+    );
+    expect(eventos.rows).toEqual([{ chamado: CH }]);
   });
 });
