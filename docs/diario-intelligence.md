@@ -2939,3 +2939,22 @@ O ADR-047 deixou para depois "abrir chamado a partir da reclamação, que mexe n
 - **(a2) A coluna, afrouxando o `with check`:** tirar a condição de `classificado_por` da policy e deixar só na aplicação. Fica mais simples, mas o banco deixa de garantir que a classificação é gravada em nome de quem a faz.
 
 O "aprovo" do Cesar e as respostas do Kaio foram para a coluna (a). Como a (a1) muda o desenho, a escolha volta para os dois antes da migração.
+
+**Do Cesar** (19/10/2026, nesta sessão): "Cesar aqui. Vamos conforme recomendado", isto é, a (a1), a tabela de ligação. **Falta o Kaio** na (a1) e no "aprovo" do adendo.
+
+### O PR da ligação reclamação–chamado (zona protegida, 19/10/2026)
+
+Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona protegida (#310, #282 e #281 têm o check "zona protegida" verde).
+
+**O que traz:**
+- **Migração 0057** (`20261019120000_sinal_hospede_chamado.sql`): a tabela `app.sinal_hospede_chamado`, só de inserção, uma ligação por reclamação, a FK `(hotel_id, chamado_id, ligado_por)` para a chave `(hotel_id, id, aberto_por)` da `app.chamado` e a chave `(hotel_id, id)` nova na `app.sinal_hospede`. Lê e liga quem decide insight no hotel, em nome próprio; o `hk_worker` não lê.
+- **pgTAP:** o `060`, com os seis casos e mais (uma ligação por reclamação, em nome próprio, sem UPDATE nem DELETE, o worker sem acesso); a tabela nas listas dos meta-testes 28 e 32.
+- **Adendo ao ADR-047** no `docs/03` (aprovado pelo Cesar; aguarda o Kaio), a nota no `docs/02` e o tipo do Kysely no formato do gerador.
+- Não tem código de aplicação: o caso de uso, a rota, o botão e os textos vêm no PR seguinte, depois do merge e do `db push`.
+
+### Ponto de retomada (19/10/2026, PR da ligação reclamação–chamado)
+
+- **`main`:** com o #322 e os PRs do Mews até o #328. Última migração na `main`: 0056.
+- **Nesta branch:** a migração 0057, o pgTAP 060, os meta-testes, o adendo ao ADR-047, o `docs/02` e o tipo do Kysely, no PR de zona protegida aberto como rascunho.
+- **Esperando:** o Kaio, na (a1) e no "aprovo" do adendo (o rascunho não deve ser mergeado antes); depois, o merge e o `db push` do Cesar, com a conferência no `supabase migration list` do dev.
+- **Próximo:** o PR comum de abrir chamado a partir da reclamação: a porta no `packages/db` (ligar e ler as ligações), o caso de uso no `packages/inteligencia` (quem abre, quando a reclamação pode virar chamado, a sugestão da descrição), a rota que chama o `abrir` do núcleo e depois liga, o botão e o formulário na fila, os textos nos quatro idiomas e os testes. Primeiro passo: a leitura das ligações na fila (`linhaDaFila` com o chamado).
