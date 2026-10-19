@@ -1,8 +1,9 @@
 // Tela dos modelos de ativo (fase 1b, M1): o formulário mostra os campos da
 // categoria sem a marca de obrigatório (o modelo só sugere), os checklists
 // que cabem na categoria e a periodicidade sugerida; o modelo existente vem
-// com os valores e com desativar. Renderiza no servidor (react-dom/server),
-// sem rede.
+// com os valores e com desativar. As sugestões de plano (M1c) mostram o
+// ativo, o modelo e a periodicidade, com criar só quando há periodicidade e
+// o descarte com motivo. Renderiza no servidor (react-dom/server), sem rede.
 import { IDIOMAS, type IdiomaDeExibicao, mensagensDe } from '@hubkeep/i18n';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -13,6 +14,7 @@ import {
   FormularioDeModelo,
   type Modelo,
 } from '../src/cliente/modelos-de-ativo';
+import { ListaDeSugestoes, type SugestaoDePlano } from '../src/cliente/sugestoes-de-plano';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
@@ -110,5 +112,49 @@ describe('modelos de ativo no web (M1)', () => {
     expect(html).toContain('value="12000"');
     expect(html).toContain('value="3"');
     expect(html).toContain(m['admin.modelos_de_ativo.acao.desativar']);
+  });
+});
+
+const SUGESTOES: SugestaoDePlano[] = [
+  {
+    ativoId: '0a000000-0000-4000-8000-000000000001',
+    ativoNome: 'Split UH 101',
+    ativoVersao: 3,
+    modeloId: MODELO.id,
+    modeloNome: 'Split 12.000',
+    periodicidade: { intervalo: 3, unidade: 'mes' },
+    checklistModeloId: null,
+  },
+  {
+    ativoId: '0a000000-0000-4000-8000-000000000002',
+    ativoNome: 'Frigobar UH 102',
+    ativoVersao: 1,
+    modeloId: '3a000000-0000-4000-8000-000000000002',
+    modeloNome: null,
+    periodicidade: null,
+    checklistModeloId: null,
+  },
+];
+
+describe('sugestões de plano no web (M1c)', () => {
+  it.each(IDIOMAS)('%s: ativo, modelo, criar só com periodicidade e descarte', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(
+      idioma,
+      <ListaDeSugestoes sugestoes={SUGESTOES} executar={async () => {}} />,
+    );
+    expect(html).toContain('Split UH 101');
+    expect(html).toContain('Frigobar UH 102');
+    expect(html).toContain('Split 12.000');
+    expect(html).toContain(m['admin.preventivas.sugestoes.sem_periodicidade']);
+    expect(html.split(m['admin.preventivas.sugestoes.criar'] ?? '§').length - 1).toBe(1);
+    expect(html.split(m['admin.preventivas.sugestoes.descartar'] ?? '§').length - 1).toBe(2);
+    expect(html).toContain('name="motivo"');
+  });
+
+  it('sem sugestões, a mensagem vazia', () => {
+    const m = mensagensDe('pt-BR');
+    const html = renderizar('pt-BR', <ListaDeSugestoes sugestoes={[]} executar={async () => {}} />);
+    expect(html).toContain(m['admin.preventivas.sugestoes.vazio']);
   });
 });

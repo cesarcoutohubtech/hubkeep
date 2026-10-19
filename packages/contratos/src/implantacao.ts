@@ -29,7 +29,13 @@ export const RespostaDeImplantacao = z
       areasComuns: z.int(),
       inativos: z.int(),
     }),
-    ativos: z.object({ ativos: z.int(), semCategoria: z.int(), locaisSemAtivo: z.int() }),
+    ativos: z.object({
+      ativos: z.int(),
+      semCategoria: z.int(),
+      locaisSemAtivo: z.int(),
+      /** Com modelo, sem plano que os cubra e sem descarte (M1). */
+      comModeloSemPlano: z.int(),
+    }),
     papeis: z.array(z.object({ papel: z.enum(PAPEIS_API), pessoas: z.int() })),
     pessoasSemPapelVigente: z.array(z.object({ usuarioId: z.guid(), nome: z.string() })),
     pendencias: z.array(z.enum(PENDENCIAS_DE_IMPLANTACAO_API)),

@@ -126,6 +126,57 @@ export async function alterarAtivo(
   return { versao: r.versao };
 }
 
+/**
+ * Descarta a sugestão de plano do ativo (M1, migração 0051): quem e quando
+ * vêm do contexto, pela versão (ADR-029). O check da tabela exige as três
+ * colunas juntas e o motivo não vazio.
+ */
+export async function descartarSugestaoDePlano(
+  uow: UnidadeDeTrabalho,
+  id: string,
+  versaoEsperada: number,
+  motivo: string,
+): Promise<{ versao: number }> {
+  if (!uow.usuarioId) throw new Error('Descartar a sugestão exige um usuário no contexto.');
+  const tx = transacaoDe(uow);
+  const r = await tx
+    .updateTable('app.ativo')
+    .set({
+      sugestao_descartada_em: agoraNaGravacao(uow),
+      sugestao_descartada_por: uow.usuarioId,
+      sugestao_descarte_motivo: motivo,
+      versao: sql<number>`versao + 1`,
+      atualizado_em: agoraNaGravacao(uow),
+    })
+    .where('id', '=', id)
+    .where('versao', '=', versaoEsperada)
+    .returning(['hotel_id', 'versao'])
+    .executeTakeFirst();
+  if (!r) {
+    const atual = await tx
+      .selectFrom('app.ativo')
+      .select('versao')
+      .where('id', '=', id)
+      .executeTakeFirst();
+    if (atual && atual.versao !== versaoEsperada) throw conflitoDeVersao(atual.versao);
+    throw new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
+  }
+  uow.auditar({
+    entidade: 'ativo',
+    registroId: id,
+    acao: 'descartar_sugestao',
+    hotelId: r.hotel_id,
+    depois: { sugestaoDescarteMotivo: motivo, versao: r.versao },
+  });
+  uow.publicar({
+    tipo: 'ativo.alterado',
+    entidade: 'ativo',
+    registroId: id,
+    payload: { hotelId: r.hotel_id, acao: 'descartar_sugestao', versao: r.versao },
+  });
+  return { versao: r.versao };
+}
+
 export async function moverAtivo(
   uow: UnidadeDeTrabalho,
   id: string,

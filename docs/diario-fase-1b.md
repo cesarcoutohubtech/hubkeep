@@ -1001,3 +1001,18 @@ Na branch `claude/1b-m1-app`, PR fora da zona protegida.
   - A gestão cria o plano com um clique, pelo `hk_app`, pausado e sem responsável.
   - O descarte grava quem, quando e o motivo.
   - O painel de implantação ganha o contador "ativos com modelo e sem plano". Atualizar os tipos do Kysely com as colunas da 0051, se ainda não estiverem na `main`.
+
+## M1b e M1c (19/10/2026)
+
+- **Retomada:** o #279 (0051) e o #280 (M1a) entraram na `main` em 15/10. A M1b foi atualizada com a `main` e virou o PR #329 (`claude/1b-m1b`). O `db push` da 0051 foi combinado com o Cesar antes da pausa; a conferência no `supabase migration list` do dev é dele.
+- **M1c, na branch `claude/1b-m1c`** (montada sobre a M1b; o PR abre depois do merge do #329, com base na `main`):
+  - **Domínio (`sugestoes-de-plano.ts`):** `ativoSemPlanoComModelo` (ativo ativo, com modelo, sem descarte e sem plano que o cubra, por `hotelJaTemPlanoQueCobreOAtivo`), `exigirPeriodicidadeSugerida` (`sugestao_sem_periodicidade`) e `nomeDoPlanoSugerido`.
+  - **Aplicação:** `criarCasosDeUsoDeSugestoesDePlano` com listar, criar o plano e descartar. Quem pode é quem gere planos (`podeGerirPlanos`). O plano nasce pelo caso de uso dos planos, com as mesmas validações: pausado, sem responsável, com a periodicidade e o checklist do modelo (só se ativo), o nome do ativo e o início no dia de hoje no fuso do hotel. O ativo que saiu da lista dá `sugestao_de_plano_indisponivel`; o motivo segue `normalizarMotivo` (`motivo_obrigatorio`, até 500).
+  - **db:** `criarPortaSugestoesDePlano` e `descartarSugestaoDePlano` (versão do ativo, quem e quando do contexto, auditoria `ativo`/`descartar_sugestao`, evento `ativo.alterado`).
+  - **API:** `GET /api/v1/hoteis/{id}/sugestoes-de-plano`, `POST /api/v1/ativos/{id}/plano-sugerido` e `POST /api/v1/ativos/{id}/plano-sugerido/descarte`, no OpenAPI.
+  - **Telas:** as sugestões ficam na tela de preventivas, acima da lista de planos; o painel de implantação ganha "ativos com modelo e sem plano" e o atalho para as sugestões.
+- **Escolhas minhas, para o Cesar confirmar:**
+  1. O contador e a lista usam o mesmo critério. O ativo cujo modelo não sugere periodicidade entra, mas sem o botão de um clique: a gestão cria o plano pela tela de preventivas ou descarta.
+  2. O modelo desativado continua sugerindo: o ativo segue sendo daquele modelo.
+  3. Não há "desfazer descarte" nesta etapa.
+  4. Enquanto a M4 não existe, todo ativo conta como aprovado.

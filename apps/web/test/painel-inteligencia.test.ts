@@ -32,6 +32,8 @@ import type {
   InsightComEvidenciaNoBanco,
   PortaDoPainelDoIntelligence,
   SinalDaFilaNoBanco,
+  LigacaoDoChamadoNoBanco,
+  ReclamacaoParaChamadoNoBanco,
 } from '@hubkeep/db';
 import type { EscopoDePolitica } from '@hubkeep/aplicacao';
 import type { Atribuicao } from '@hubkeep/dominio';
@@ -153,9 +155,26 @@ const SINAL: SinalDaFilaNoBanco = {
   classificadoPor: null,
   importadoEm: new Date('2026-10-09T10:00:00Z'),
   versao: 1,
+  chamadoId: null,
 };
 
 function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]) {
+  // Abrir chamado a partir da reclamação: a reclamação lida, as ligações e a falha.
+  const chamado = {
+    reclamacao: {
+      id: S1,
+      hotelId: H1,
+      bandeiraId: null,
+      manutencao: true,
+      uhId: null,
+      ativoId: A1,
+      localDoAtivo: '77700000-0000-0000-0000-000000000001',
+      chamadoId: null,
+    } as ReclamacaoParaChamadoNoBanco,
+    falharLigacao: false,
+    ligacoes: [] as LigacaoDoChamadoNoBanco[],
+    abertos: [] as unknown[],
+  };
   const decisoes: DecisaoNoBanco[] = [];
   const buscas: { termo: string; limite: number }[] = [];
   const importacoes: ImportacaoNoBanco[] = [];
@@ -242,8 +261,13 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]
       classificacoes.push(c);
       return { versao: c.versaoEsperada + 1 };
     },
+    reclamacaoParaChamado: async (_ctx, id) => (id === S1 ? chamado.reclamacao : null),
+    ligarChamado: async (_ctx, l) => {
+      if (chamado.falharLigacao) throw new Error('conexão caiu');
+      chamado.ligacoes.push(l);
+    },
   };
-  return { porta, decisoes, buscas, importacoes, classificacoes, filas, doAtivo };
+  return { porta, decisoes, buscas, importacoes, classificacoes, filas, doAtivo, chamado };
 }
 
 /** As políticas gravadas no grupo: por padrão, a visibilidade com o Gerente, já aberta. */
@@ -266,11 +290,10 @@ const painel = (
   atribuicoes: Atribuicao[] = [gerente],
   sinais: SinalDaFilaNoBanco[] = [SINAL],
 ) => {
-  const { porta, decisoes, buscas, importacoes, classificacoes, filas, doAtivo } = portaEmMemoria(
-    insights,
-    sinais,
-  );
+  const { porta, decisoes, buscas, importacoes, classificacoes, filas, doAtivo, chamado } =
+    portaEmMemoria(insights, sinais);
   return {
+    chamado,
     doAtivo,
     decisoes,
     buscas,
@@ -288,6 +311,12 @@ const painel = (
       atribuicoes: { doUsuario: async () => atribuicoes },
       configuracao: { politicas: async () => politicas },
       relogio: { agora: () => agora },
+      chamados: {
+        abrir: async (_ctx, pedido) => {
+          chamado.abertos.push(pedido);
+          return { id: '99900000-0000-0000-0000-000000000001', versao: 1 };
+        },
+      },
     }),
   };
 };
@@ -595,6 +624,53 @@ describe('o painel sobre a porta do banco', () => {
     await expect(casos.filaDeSinais(ctx, H1, 'todas')).rejects.toThrow(
       'Ligação do sinal desconhecida',
     );
+  });
+
+  it('abrir chamado da reclamação: o pedido do motor vai ao caso de uso do núcleo, e a ligação vem depois', async () => {
+    const { casos, chamado } = painel([]);
+    expect(
+      await casos.abrirChamadoDaReclamacao(ctx, S1, {
+        comAtivo: true,
+        descricao: 'Elevador parado',
+      }),
+    ).toEqual({ chamadoId: '99900000-0000-0000-0000-000000000001' });
+    expect(chamado.abertos).toEqual([
+      {
+        localId: '77700000-0000-0000-0000-000000000001',
+        ativoId: A1,
+        descricao: 'Elevador parado',
+        impactoHospede: true,
+      },
+    ]);
+    expect(chamado.ligacoes).toEqual([
+      {
+        sinalId: S1,
+        hotelId: H1,
+        chamadoId: '99900000-0000-0000-0000-000000000001',
+        ligadoPor: U1,
+        em: agora,
+      },
+    ]);
+  });
+
+  it('a ligação que falha depois do chamado aberto: chamado_sem_ligacao, com o chamado', async () => {
+    const { casos, chamado } = painel([]);
+    chamado.falharLigacao = true;
+    await expect(
+      casos.abrirChamadoDaReclamacao(ctx, S1, { comAtivo: false, descricao: 'x' }),
+    ).rejects.toMatchObject({
+      codigo: 'reclamacao_sem_local',
+    });
+    await expect(
+      casos.abrirChamadoDaReclamacao(ctx, S1, { comAtivo: true, descricao: 'x' }),
+    ).rejects.toMatchObject({
+      codigo: 'chamado_sem_ligacao',
+      parametros: { chamadoId: '99900000-0000-0000-0000-000000000001' },
+    });
+    expect(chamado.abertos).toHaveLength(1);
+    chamado.falharLigacao = false;
+    await casos.ligarChamadoDaReclamacao(ctx, S1, '99900000-0000-0000-0000-000000000001');
+    expect(chamado.ligacoes).toHaveLength(1);
   });
 
   it('linha do banco fora das listas do motor é defeito, não dado', async () => {

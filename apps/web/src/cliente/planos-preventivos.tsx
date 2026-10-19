@@ -18,6 +18,7 @@ import { useIntl } from 'react-intl';
 import { chamarApi } from './api';
 import { Aviso, type AvisoDeAcao } from './aviso';
 import { SeletorDeHotel, useHoteis } from './cadastro';
+import { ListaDeSugestoes, type SugestaoDePlano } from './sugestoes-de-plano';
 import { useIdioma, useT } from '../i18n/cliente';
 
 type Situacao = 'ativo' | 'pausado' | 'encerrado';
@@ -75,7 +76,11 @@ export function previa(intervalo: string, unidade: string, inicio: string, hoje:
 export function PlanosPreventivos({
   inicial,
 }: {
-  inicial?: { lista: { hoje: string; planos: Plano[] }; apoio: Apoio };
+  inicial?: {
+    lista: { hoje: string; planos: Plano[] };
+    apoio: Apoio;
+    sugestoes?: SugestaoDePlano[];
+  };
 }) {
   const t = useT();
   const intl = useIntl();
@@ -85,13 +90,14 @@ export function PlanosPreventivos({
     inicial?.lista ?? null,
   );
   const [apoio, setApoio] = useState<Apoio | null>(inicial?.apoio ?? null);
+  const [sugestoes, setSugestoes] = useState<SugestaoDePlano[]>(inicial?.sugestoes ?? []);
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
   const [editando, setEditando] = useState<Plano | null>(null);
   const [rascunho, setRascunho] = useState({ intervalo: '1', unidade: 'mes', inicio: '' });
 
   const carregar = useCallback(async () => {
     if (!hotelId) return;
-    const [p, a, c, m, e] = await Promise.all([
+    const [p, a, c, m, e, s] = await Promise.all([
       chamarApi<{ hoje: string; planos: Plano[] }>(`/api/v1/hoteis/${hotelId}/planos-preventivos`),
       chamarApi<{ ativos: Apoio['ativos'] }>(`/api/v1/hoteis/${hotelId}/ativos`),
       chamarApi<{ idiomaPadrao: Idioma; categorias: Apoio['categorias'] }>(
@@ -101,9 +107,12 @@ export function PlanosPreventivos({
       chamarApi<{ equipes: Apoio['equipes']; tecnicos: Apoio['tecnicos'] }>(
         `/api/v1/hoteis/${hotelId}/equipes`,
       ),
+      chamarApi<{ sugestoes: SugestaoDePlano[] }>(`/api/v1/hoteis/${hotelId}/sugestoes-de-plano`),
     ]);
     if (!p.ok) return setAviso({ tipo: 'erro', erro: p.erro });
     setLista(p.dados);
+    // Quem não gere planos no hotel recebe 403: a tela fica sem sugestões.
+    setSugestoes(s.ok ? s.dados.sugestoes : []);
     setApoio({
       ativos: a.ok ? a.dados.ativos : [],
       categorias: c.ok ? c.dados.categorias : [],
@@ -367,6 +376,8 @@ export function PlanosPreventivos({
           ) : null}
         </div>
       </form>
+
+      {lista ? <ListaDeSugestoes sugestoes={sugestoes} executar={executar} /> : null}
 
       {!lista ? (
         <MensagemVazia>{t('comum.carregando')}</MensagemVazia>

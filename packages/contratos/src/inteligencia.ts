@@ -441,6 +441,8 @@ export const SinalDaFilaApi = z
     classificadoPor: z.guid().nullable(),
     importadoEm: Data,
     versao: z.int().min(1),
+    /** O chamado aberto a partir da reclamação; nulo sem chamado. */
+    chamadoId: z.guid().nullable(),
   })
   .meta({ id: 'SinalDaFilaApi' });
 
@@ -471,6 +473,28 @@ export const PedidoDeClassificacaoDeSinal = z
 export const RespostaDaClassificacaoDeSinal = z
   .object({ versao: z.int() })
   .meta({ id: 'RespostaDaClassificacaoDeSinal' });
+
+// Abrir chamado a partir da reclamação (adendo de 19/10/2026 ao ADR-047): o
+// chamado abre pelo caso de uso do núcleo, e a ligação vem depois.
+export const PedidoDeChamadoDaReclamacao = z
+  .object({
+    /** Com o ativo da classificação; sem ele, o chamado abre na UH da classificação. */
+    comAtivo: z.boolean(),
+    /** A descrição do chamado, escrita pela pessoa (o texto do hóspede não vai junto). */
+    descricao: z.string().trim().min(1).max(2000),
+  })
+  .meta({ id: 'PedidoDeChamadoDaReclamacao' });
+
+export const RespostaDoChamadoDaReclamacao = z
+  .object({ chamadoId: z.guid() })
+  .meta({ id: 'RespostaDoChamadoDaReclamacao' });
+
+export const PedidoDeLigacaoDoChamado = z
+  .object({
+    /** O chamado que quem pede abriu a partir da reclamação, quando a ligação falhou. */
+    chamadoId: z.guid(),
+  })
+  .meta({ id: 'PedidoDeLigacaoDoChamado' });
 
 // As reclamações nas páginas do insight e do ativo (C2 do ADR-047). As
 // respostas das duas páginas ficam depois do sinal do hóspede, que elas usam.
