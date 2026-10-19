@@ -59,6 +59,9 @@ export interface AtivoGuardado {
   dataCompra?: string | null;
   garantiaAte?: string | null;
   criticidade?: number | null;
+  /** A situação do cadastro (M4) e o motivo da recusa. Opcionais: a referência guardada antes da M4 não tem. */
+  situacaoCadastro?: 'pendente' | 'aprovado' | 'recusado' | undefined;
+  motivoDaRecusa?: string | null | undefined;
 }
 
 /** Um código de falha, causa ou solução do tenant (I6). */

@@ -14,6 +14,7 @@ const ATIVO = {
   modeloId: 'm-ar',
   ativo: true,
   sugestaoDescartada: false,
+  cadastroPendente: false,
 };
 
 describe('sugestões de plano (M1)', () => {
@@ -21,7 +22,8 @@ describe('sugestões de plano (M1)', () => {
     expect(ativoSemPlanoComModelo(ATIVO, [])).toBe(true);
   });
 
-  it('sem modelo, desativado ou descartado não entra', () => {
+  it('sem modelo, desativado, descartado ou com o cadastro pendente não entra', () => {
+    expect(ativoSemPlanoComModelo({ ...ATIVO, cadastroPendente: true }, [])).toBe(false);
     expect(ativoSemPlanoComModelo({ ...ATIVO, modeloId: null }, [])).toBe(false);
     expect(ativoSemPlanoComModelo({ ...ATIVO, ativo: false }, [])).toBe(false);
     expect(ativoSemPlanoComModelo({ ...ATIVO, sugestaoDescartada: true }, [])).toBe(false);

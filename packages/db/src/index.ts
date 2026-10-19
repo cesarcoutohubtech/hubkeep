@@ -24,6 +24,7 @@ export {
   criarPortaChecklists,
   criarPortaModelosDeAtivo,
   criarPortaSugestoesDePlano,
+  criarPortaCadastrosDeAtivos,
   criarPortaPlanosPreventivos,
   criarPortaCodigos,
   criarPortaModulos,

@@ -4,8 +4,7 @@
 //
 //   - entra o ativo ativo, com modelo, sem descarte e sem plano que o cubra
 //     pela regra de hotelJaTemPlanoQueCobreOAtivo;
-//   - o ativo pendente na fila de aprovação (M4) não entra; enquanto a M4 não
-//     existe, todo ativo conta como aprovado;
+//   - o ativo pendente na fila de aprovação (M4) não entra;
 //   - o plano nasce pausado e sem responsável, com a periodicidade e o
 //     checklist do modelo; sem periodicidade no modelo, não há plano de um
 //     clique, e a gestão cria pela tela de preventivas;
@@ -25,6 +24,8 @@ export interface AtivoParaSugestao {
   ativo: boolean;
   /** A sugestão do ativo foi descartada (quem, quando e motivo ficam no ativo). */
   sugestaoDescartada: boolean;
+  /** O cadastro ainda espera a aprovação (M4): fica fora até ser aprovado. */
+  cadastroPendente: boolean;
 }
 
 /** O ativo entra na lista de sugestões (e no contador do painel). */
@@ -36,6 +37,7 @@ export function ativoSemPlanoComModelo(
     ativo.ativo &&
     ativo.modeloId !== null &&
     !ativo.sugestaoDescartada &&
+    !ativo.cadastroPendente &&
     !hotelJaTemPlanoQueCobreOAtivo(ativo, planosDoHotel)
   );
 }

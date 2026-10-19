@@ -22,6 +22,7 @@ const FotoDepoisObrigatoria = z.strictObject({ ligado: z.boolean() });
 const AssinaturaNoAceite = z.strictObject({ ligado: z.boolean() });
 /** Checklist completo obrigatório na conclusão (PV1); desligado por padrão. */
 const ChecklistCompletoObrigatorio = z.strictObject({ ligado: z.boolean() });
+const AprovacaoDoCadastro = z.strictObject({ ligado: z.boolean() });
 const PrioridadePadraoPorCategoria = z.record(z.guid(), z.guid());
 
 /** Nome de cada nível da criticidade (1 a 5) por idioma, parcial (I1). */
@@ -153,6 +154,7 @@ export const FORMATOS_DE_POLITICA_API = {
   'os.checklist_completo_obrigatorio': ChecklistCompletoObrigatorio,
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria,
   'ativo.criticidade': NomesDeCriticidadeApi,
+  'ativo.aprovacao_do_cadastro': AprovacaoDoCadastro,
   'chamado.sla': PoliticaDeSlaApi,
   'hotel.horario_atendimento': HorarioDeAtendimentoApi,
   'chamado.escalonamento': EscalonamentoDeSlaApi,
@@ -205,6 +207,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('os.checklist_completo_obrigatorio'),
     escopo: EscopoDePolitica,
     valor: ChecklistCompletoObrigatorio.nullable(),
+  }),
+  z.object({
+    chave: z.literal('ativo.aprovacao_do_cadastro'),
+    escopo: EscopoDePolitica,
+    valor: AprovacaoDoCadastro.nullable(),
   }),
   z.object({
     chave: z.literal('chamado.prioridade_padrao_por_categoria'),
@@ -319,6 +326,7 @@ export const RespostaDeConfiguracao = z
         resolvida('os.checklist_completo_obrigatorio', ChecklistCompletoObrigatorio),
         resolvida('chamado.prioridade_padrao_por_categoria', PrioridadePadraoPorCategoria),
         resolvida('ativo.criticidade', NomesDeCriticidadeApi),
+        resolvida('ativo.aprovacao_do_cadastro', AprovacaoDoCadastro),
         resolvida('chamado.sla', PoliticaDeSlaApi),
         resolvida('hotel.horario_atendimento', HorarioDeAtendimentoApi),
         resolvida('chamado.escalonamento', EscalonamentoDeSlaApi),

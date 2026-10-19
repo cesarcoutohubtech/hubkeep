@@ -65,6 +65,7 @@ describe('políticas (ADR-026)', () => {
     ['os.assinatura_no_aceite', false, 'politica_valor_invalido'],
     ['os.checklist_completo_obrigatorio', { ligado: 0 }, 'politica_valor_invalido'],
     ['os.checklist_completo_obrigatorio', { ligado: true, extra: 1 }, 'politica_valor_invalido'],
+    ['ativo.aprovacao_do_cadastro', { ligado: 'sim' }, 'politica_valor_invalido'],
     ['chamado.prioridade_padrao_por_categoria', { nao_uuid: U1 }, 'politica_valor_invalido'],
     ['chamado.nao_existe', {}, 'politica_desconhecida'],
     ['ativo.criticidade', { 6: { 'pt-BR': 'Seis' } }, 'politica_valor_invalido'],
@@ -100,6 +101,7 @@ describe('políticas (ADR-026)', () => {
       'os.foto_depois_obrigatoria',
       'os.assinatura_no_aceite',
       'os.checklist_completo_obrigatorio',
+      'ativo.aprovacao_do_cadastro',
     ] as const) {
       expect(resolverPolitica(chave, {})).toEqual({ ligado: false });
       expect(resolverPolitica(chave, { hotel: { ligado: true } })).toEqual({ ligado: true });

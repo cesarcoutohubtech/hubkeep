@@ -27,6 +27,8 @@ export async function criarAtivo(
   hotelId: string,
   localId: string,
   dados: DadosDeAtivo,
+  /** Com que situação o cadastro nasce (M4): pendente só pelo PWA com a política ligada. */
+  situacao: 'pendente' | 'aprovado' = 'aprovado',
 ): Promise<{ id: string; versao: number }> {
   const id = novoId();
   const codigoQr = novoCodigoQr();
@@ -38,6 +40,7 @@ export async function criarAtivo(
       hotel_id: hotelId,
       local_id: localId,
       codigo_qr: codigoQr,
+      situacao_cadastro: situacao,
       ...colunasDeDados(dados),
       ...datasDaCriacao(uow),
     })
@@ -47,13 +50,13 @@ export async function criarAtivo(
     registroId: id,
     acao: 'criar',
     hotelId,
-    depois: { localId, codigoQr, ...dados },
+    depois: { localId, codigoQr, situacaoCadastro: situacao, ...dados },
   });
   uow.publicar({
     tipo: 'ativo.criado',
     entidade: 'ativo',
     registroId: id,
-    payload: { hotelId, localId },
+    payload: { hotelId, localId, situacaoCadastro: situacao },
   });
   return { id, versao: 1 };
 }

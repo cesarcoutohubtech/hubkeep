@@ -17,7 +17,7 @@ const CHAVE = '0193a000-0000-4000-8000-000000000001';
 function montar() {
   const guardadas = new Map<string, RespostaDeOperacao>();
   const gravadas: PreferenciasGravadas[] = [];
-  const ativos = new Map<string, { versao: number; dados: DadosDeAtivo }>();
+  const ativos = new Map<string, { versao: number; dados: DadosDeAtivo; situacao?: string }>();
   const os = { concluida: false };
   // A parada aberta do ativo do chamado (C5), como o banco a guardaria.
   const parada = { aberta: false, registradas: 0 };
@@ -30,9 +30,9 @@ function montar() {
       if (antes) return { repetida: true, resposta: antes };
       const resposta = await efeito({
         gravarPreferencias: async (p) => void gravadas.push(p),
-        cadastrarAtivo: async (_h, _l, dados) => {
+        cadastrarAtivo: async (_h, _l, dados, situacao) => {
           const id = `ativo-${ativos.size + 1}`;
-          ativos.set(id, { versao: 1, dados });
+          ativos.set(id, { versao: 1, dados, ...(situacao ? { situacao } : {}) });
           return { id, versao: 1 };
         },
         alterarAtivo: async (id, esperada, mudanca) => {
@@ -77,10 +77,12 @@ function montar() {
   const casos = criarCasosDeUsoDeSincronizacao({
     operacoes,
     ativos: {
+      // Como o de verdade com a aprovação do cadastro ligada no hotel (M4).
       prepararCadastro: async (_c, p) => ({
         hotelId: 'h1',
         localId: p.localId,
         dados: semCampos(p),
+        situacaoNoPwa: 'pendente',
       }),
       prepararAlteracao: async (_c, ativoId, p) => ({
         ativoId,
@@ -178,6 +180,8 @@ describe('receber operação offline', () => {
       resposta: { id: 'ativo-1', versao: 1 },
     });
     expect(ativos.size).toBe(1);
+    // A situação com que o cadastro do PWA nasce vem da preparação (M4).
+    expect(ativos.get('ativo-1')?.situacao).toBe('pendente');
   });
 
   it('ativo.alterar com versão velha: conflito_de_versao, e a chave não é guardada', async () => {
