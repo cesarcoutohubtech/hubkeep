@@ -123,6 +123,7 @@ export {
   ResponsavelApi,
   RespostaDeChamado,
   OsDaPaginaApi,
+  RespostaDaImpressaoDaOs,
   RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,

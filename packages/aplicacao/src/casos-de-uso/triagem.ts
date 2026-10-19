@@ -55,6 +55,7 @@ import {
   type QuemExecuta,
   RegraViolada,
   conflitoDeVersao,
+  custoNaImpressao,
   decidirNaOs,
   decidirNoChamado,
   decidirQuemExecuta,
@@ -203,6 +204,11 @@ export interface CasosDeUsoDeTriagem {
   osDoChamado(ctx: Contexto, chamadoId: string): Promise<OsDaCorretiva[]>;
   /** A OS por id, a corretiva ou a preventiva (PV3c); 404 os_nao_encontrada se não é visível. */
   os(ctx: Contexto, osId: string): Promise<OsGravada>;
+  /**
+   * A OS para imprimir (1c, item 9): a mesma da página da OS, sem o custo
+   * informado para quem só enxerga o hotel como proprietário (custoOculto).
+   */
+  osParaImpressao(ctx: Contexto, osId: string): Promise<{ os: OsGravada; custoOculto: boolean }>;
 }
 
 /** As regras que o teste de aceite troca para provar a RLS sozinha. */
@@ -710,6 +716,16 @@ export function criarCasosDeUsoDeTriagem(deps: {
       const os = await deps.triagem.os(ctx, osId);
       if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
       return os;
+    },
+
+    async osParaImpressao(ctx, osId) {
+      const [os, minhas] = await Promise.all([
+        deps.triagem.os(ctx, osId),
+        deps.atribuicoes.doUsuario(ctx),
+      ]);
+      if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
+      const custoOculto = !custoNaImpressao(minhas, hotelDa(os).hotel, deps.relogio.agora());
+      return { os: custoOculto ? { ...os, custoInformado: null } : os, custoOculto };
     },
   };
 }

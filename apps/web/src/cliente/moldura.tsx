@@ -128,6 +128,7 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/chamados$/, 'corretiva.chamados.titulo'],
   [/^\/chamados\/[^/]+$/, 'corretiva.chamado.titulo'],
   [/^\/os$/, 'corretiva.os.titulo'],
+  [/^\/os\/[^/]+\/impressao$/, 'impressao_os.titulo'],
   [/^\/sla$/, 'sla.painel.titulo'],
   [/^\/admin\/paradas$/, 'admin.paradas.titulo'],
   [/^\/admin\/hoteis$/, 'admin.hoteis.titulo'],

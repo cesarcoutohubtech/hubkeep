@@ -842,3 +842,43 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
   2. `claude/1c-push`: o PR abre depois do merge do PR do e-mail.
 - **Esperando o Cesar:** o `db push` da 0049; apagar a branch `claude/1c-arrendado-migracao`; a conta e o DNS do SES (F0-12); as chaves VAPID, depois do deploy do push.
 - **Próxima tarefa:** o painel de indicadores (item 8), pela versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
+
+## Impressão da OS e CSV (item 9): começo (19/10/2026)
+
+**Retomada.** Na volta da pausa, o #281 e o #282 estavam abertos e em conflito com a `main` (af1b9aa). Atualizei as duas branches com merge da `main`; os conflitos eram só de listas de exportação e do fim dos catálogos. Lint, typecheck e testes passaram nas duas.
+
+**Área compartilhada (OS e catálogos), registrada antes de mexer.** O item 9 vai em dois PRs, os dois fora da zona protegida e sem migração:
+1. **Impressão da OS** (branch `claude/1c-impressao`):
+   - `GET /api/v1/os/{id}/impressao` monta a OS para imprimir com o que já existe: a OS e os nomes, a descrição do chamado, o checklist com as respostas e as fotos;
+   - a página `/os/{id}/impressao`, com o botão de imprimir e a folha de estilo de impressão;
+   - o caminho "Imprimir OS" no bloco da OS, que serve à página da OS e ao detalhe do chamado.
+2. **CSV:** a lista de chamados, o painel de indicadores (depois do merge do #282) e o aviso "N linhas exportadas, só com o que o seu perfil enxerga", também na auditoria geral.
+
+**Escolhas da impressão** (da seção 6 de `docs/referencia/paridade-mock-1c.md`):
+- **Custo informado:** some da impressão de quem só enxerga o hotel como proprietário ("Não copiar do mock"). Quem decide é o domínio (`custoNaImpressao`): o custo aparece quando quem imprime tem algum papel vigente, que não o de proprietário, com escopo sobre o hotel. O servidor já devolve a OS sem o custo nesse caso. A ficha da OS não muda: hoje o proprietário vê o custo nela.
+- **Execução:** a OS não guarda apontamento na API da ficha. A impressão mostra quem executou (equipe interna ou fornecedor), os códigos de falha, causa e solução e o motivo da reabertura, se houver.
+- **Aceite:** "Aceita com assinatura", com a imagem, quando a OS aceita tem a assinatura; "Aceita sem assinatura"; ou "Pendente". O mock diz "Assinado no celular", mas a assinatura também é desenhada no web (I8), então o texto não diz onde.
+- **Fotos:** as imagens da OS, sem a assinatura, pela miniatura quando há. O PDF anexado não entra na folha.
+
+**Feito na branch (19/10/2026), PR 1 do item 9:**
+- **Domínio (`packages/dominio/src/impressao-da-os.ts`):** `custoNaImpressao` e `aceiteNaImpressao`.
+- **Caso de uso:** `osParaImpressao` na triagem, que devolve a OS sem o custo para quem só enxerga o hotel como proprietário (`custoOculto`).
+- **API:** `GET /api/v1/os/{id}/impressao`, com o contrato e o OpenAPI.
+- **Tela:**
+  - a página `/os/{id}/impressao`, com o botão de imprimir;
+  - o caminho "Imprimir OS" no bloco da OS;
+  - a folha de estilo de impressão em `packages/ui`;
+  - o tema claro ligado no `beforeprint`, porque o CSS só aceita cor de token.
+- **Textos:** nos quatro idiomas.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (19/10/2026, impressão da OS)
+
+- **`main`:** af1b9aa.
+- **PRs da 1c esperando o merge do Cesar, todos fora da zona protegida:**
+  - [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, atualizado com a `main` no head 60bc68b.
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, atualizado com a `main` no head 540e28b.
+  - O PR da impressão da OS, que abre agora.
+  - Os três mexem nas listas de exportação e nos catálogos: o que entrar depois do primeiro pode precisar de nova atualização com a `main`.
+- **Pergunta ao Cesar:** o proprietário vê o custo informado na ficha da OS; só a impressão o esconde. Esconder também na ficha é decisão de quem vê.
+- **Próximo:** o PR 2 do item 9, o CSV da lista de chamados e o aviso do número de linhas (também na auditoria geral). O CSV do painel espera o merge do #282. Primeiro passo: o modo de exportação na consulta da lista de chamados, como o da auditoria geral (`LIMITES_DA_AUDITORIA`).

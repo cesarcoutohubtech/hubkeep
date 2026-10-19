@@ -595,7 +595,7 @@ function Aceite(props: {
 }
 
 /** Os códigos da OS (I6), por nome, para o detalhe; nada se não houver nenhum. */
-function CodigosDaOs(props: { os: OsNoBloco; codigos: CodigosDoTenant | null }) {
+export function CodigosDaOs(props: { os: OsNoBloco; codigos: CodigosDoTenant | null }) {
   const t = useT();
   const nomeDoCodigo = useNomeDoCodigo(props.codigos);
   const porId = new Map((props.codigos?.codigos ?? []).map((c) => [c.id, c]));
@@ -711,6 +711,9 @@ export function BlocoDaOs<O extends OsNoBloco>(props: {
           })}
         </Selo>
         <span className="hk-suave">{t('corretiva.os.responsavel', { nome: responsavel })}</span>
+        <Link href={`/os/${o.id}/impressao`} data-imprimir-os={o.id}>
+          {t('impressao_os.acao.abrir')}
+        </Link>
       </div>
       <p className="hk-suave" data-executado-por={o.executadoPor}>
         {o.executadoPor === 'fornecedor'
