@@ -367,6 +367,16 @@ export type {
   MudancaDeModeloDeAtivo,
   PortaModelosDeAtivo,
 } from './portas/modelos-de-ativo';
+export type {
+  AtivoComSugestao,
+  ModeloDaSugestao,
+  PortaSugestoesDePlano,
+} from './portas/sugestoes-de-plano';
+export { criarCasosDeUsoDeSugestoesDePlano } from './casos-de-uso/sugestoes-de-plano';
+export type {
+  CasosDeUsoDeSugestoesDePlano,
+  SugestaoDePlano,
+} from './casos-de-uso/sugestoes-de-plano';
 export { criarCasosDeUsoDeModelosDeAtivo } from './casos-de-uso/modelos-de-ativo';
 export type {
   CasosDeUsoDeModelosDeAtivo,

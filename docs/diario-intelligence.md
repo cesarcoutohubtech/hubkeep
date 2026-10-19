@@ -2960,3 +2960,49 @@ Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona protegida (#310
 - **Próximo:** o PR comum de abrir chamado a partir da reclamação: a porta no `packages/db` (ligar e ler as ligações), o caso de uso no `packages/inteligencia` (quem abre, quando a reclamação pode virar chamado, a sugestão da descrição), a rota que chama o `abrir` do núcleo e depois liga, o botão e o formulário na fila, os textos nos quatro idiomas e os testes. Primeiro passo: a leitura das ligações na fila (`linhaDaFila` com o chamado).
 
 **Do Kaio** (19/10/2026, nesta sessão): "Kaio aqui. Aprovo A troca da coluna pela tabela (a1) e o adendo ao ADR-047. Continue". O adendo fica aprovado pelos dois, e o #330 sai do rascunho.
+
+### O PR de abrir chamado a partir da reclamação (19/10/2026)
+
+Preparado numa branch local, sobre o #330: só vai para a branch do agente e para o PR depois do merge do #330 e do `db push`, com base na `main`.
+
+**O que traz:**
+- **`packages/db`:** a fila e as listas das reclamações trazem o chamado ligado (`chamadoId`), pela RLS da 0057; `reclamacaoParaChamado` (a reclamação com o local do ativo e o chamado já ligado) e `ligarChamadoNoBanco` (a ligação, a auditoria sem hotel `ligar_chamado` e o evento `sinal_hospede.chamado_ligado`; a ligação repetida vira `reclamacao_ja_tem_chamado`). Teste de integração (só na CI).
+- **Motor** (`chamado-da-reclamacao.ts`): `prepararChamadoDaReclamacao` confere quem decide insight no hotel, a reclamação de manutenção com UH ou ativo e sem chamado, e monta o pedido do núcleo (o local do ativo ou a UH, o ativo, a descrição da pessoa e "afeta hóspede"); `ligarChamadoDaReclamacao` liga em nome de quem abriu, e a mesma ligação de novo não faz nada.
+- **Web:** o painel recebe o caso de uso `abrir` do núcleo pela composição, sem mudança nele; abre e depois liga. Se a ligação falhar, `chamado_sem_ligacao` com o id do chamado, e a tela oferece "Ligar de novo".
+- **API:** `POST /api/v1/inteligencia/sinais/{id}/chamado` e `.../chamado/ligacao`, os contratos e o OpenAPI; o `chamadoId` no `SinalDaFilaApi`.
+- **Tela da fila:** o botão "Abrir chamado" na reclamação de manutenção com UH ou ativo e sem chamado; o formulário com o ativo (que a pessoa pode tirar), o local, a descrição com a sugestão sem o texto do hóspede e o aviso de "afeta hóspede"; o link "Ver o chamado" depois.
+- **Textos** nos quatro idiomas: `inteligencia.sinais.acao.abrir_chamado`, `inteligencia.sinais.chamado.*` e os cinco erros novos.
+- **Área compartilhada:** só os catálogos (prefixo do Intelligence e os códigos de erro novos). O chamado, o `packages/aplicacao` e o `packages/dominio` não mudam.
+
+### O merge do #330 e o PR de abrir chamado (19/10/2026)
+
+- **#330 mergeado** (Cesar, 19/10/2026): a migração 0057 na `main`. O `db push` no dev é do Cesar, com a conferência no `supabase migration list`.
+- **O PR comum** sai agora, com base na `main` (que já tem os PRs #281, #329 e #331 da 1b e da 1c): o trabalho da branch local passou para a branch do agente sem conflito.
+
+### Ponto de retomada (19/10/2026, PR de abrir chamado)
+
+- **`main`:** com o #330 (migração 0057). Última migração na `main`: 0057.
+- **Dev:** espera o `db push` da 0057 (Cesar), antes de usar a tela no dev.
+- **Nesta branch:** o PR `int:` de abrir chamado a partir da reclamação, fora da zona protegida.
+- **Esperando:** o `db push` da 0057; o merge deste PR; os detalhes do Kaio (os rótulos e a sugestão da descrição deste PR, os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** o que fica para depois do adendo (um chamado para várias reclamações, ligar a um chamado que já existe) precisa de proposta; o resto depende de outros (o mapeamento das colunas por ferramenta, a API e o webhook IX1 a IX3, a IA pela regra 9).
+
+### O que fica depois do adendo de 19/10/2026: proposta (19/10/2026)
+
+O adendo deixou para depois "um chamado para várias reclamações de uma vez (o insight sistêmico) e ligar a reclamação a um chamado que já existe". Proposta, antes do código, para Cesar e Kaio:
+
+**1. Um chamado para as reclamações do insight sistêmico.** Na página do insight da regra das reclamações (a lista da evidência, C2), o botão "Abrir um chamado para estas reclamações":
+- o formulário pede o local, porque as reclamações costumam ser de UHs diferentes (o chuveiro fraco em cinco UHs): a pessoa escolhe a UH ou a área comum do hotel, e o ativo, se quiser. Quando todas as reclamações têm o mesmo ativo, ele vem sugerido;
+- o chamado abre pelo caso de uso `abrir` do núcleo, como no PR #334, com "afeta hóspede" e a descrição da pessoa (a sugestão traz a categoria, o número de reclamações e as UHs, sem o texto do hóspede);
+- depois, as reclamações da evidência que ainda não têm chamado são ligadas a ele, uma linha por reclamação na `app.sinal_hospede_chamado`. A tabela já aceita várias reclamações num chamado: **sem migração**;
+- quem vê e quem decide não mudam: quem decide o insight no hotel. Só entram as reclamações que a pessoa lê (a RLS).
+
+**2. Ligar a reclamação a um chamado que já existe.** Na fila, além de "Abrir chamado", a opção "Ligar a um chamado aberto": a lista dos chamados abertos do hotel na mesma UH ou no mesmo ativo, e a pessoa escolhe um. **Esbarra na 0057:** a FK faz quem liga ser quem abriu o chamado, e o chamado aberto por outra pessoa (o Técnico, a Solicitante) não poderia ser ligado. Duas saídas:
+- **(2a)** só os chamados que a própria pessoa abriu (sem migração; cobre pouco);
+- **(2b)** uma migração nova que troca essa FK por `(hotel_id, chamado_id)` e põe `ligado_por` como membro do tenant, com o "em nome próprio" na policy (zona protegida e outro adendo).
+
+**Para decidir (Cesar e Kaio):**
+- **(i)** Seguir com o 1 agora? Proposta: sim, é o caso do insight sistêmico, sem migração.
+- **(ii)** No 2, (2a), (2b) ou deixar para depois do piloto? Proposta: deixar para depois do piloto, porque o 1 e o #334 cobrem o caso comum e o 2 muda a 0057, recém-aprovada.
+
+**Detalhes do Kaio** (ADR-033): os rótulos e a sugestão da descrição do 1.

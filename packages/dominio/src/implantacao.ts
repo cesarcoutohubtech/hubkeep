@@ -11,6 +11,8 @@ import { PermissaoNegada } from './erros';
 import type { ModeloContratual } from './hoteis';
 import { type Resultado, ehAdminGrupo, hoteisComoImplantador, vigente } from './permissoes';
 import type { Atribuicao, Papel } from './tipos';
+import type { PlanoQueCobre } from './plano-preventivo';
+import { type AtivoParaSugestao, ativoSemPlanoComModelo } from './sugestoes-de-plano';
 
 export const PENDENCIAS_DE_IMPLANTACAO = [
   'modelo_contratual_nao_informado',
@@ -35,11 +37,9 @@ export interface LocalParaImplantacao {
   status: 'ativo' | 'pendente_licenca' | 'inativo';
 }
 
-export interface AtivoParaImplantacao {
+/** O ativo do painel; id, modelo e descarte dão o contador de sem plano (M1). */
+export interface AtivoParaImplantacao extends AtivoParaSugestao {
   localId: string;
-  categoriaId: string | null;
-  /** false: desativado; não conta. */
-  ativo: boolean;
 }
 
 export interface PessoaParaImplantacao {
@@ -51,8 +51,16 @@ export interface PessoaParaImplantacao {
 
 export interface ResumoDeImplantacao {
   locais: { uhsAtivas: number; uhsPendentes: number; areasComuns: number; inativos: number };
-  /** Ativos ativos, os sem categoria e os locais não inativos sem nenhum ativo ativo. */
-  ativos: { ativos: number; semCategoria: number; locaisSemAtivo: number };
+  /**
+   * Ativos ativos, os sem categoria, os locais não inativos sem nenhum ativo
+   * ativo e os ativos com modelo e sem plano que os cubra, sem descarte (M1).
+   */
+  ativos: {
+    ativos: number;
+    semCategoria: number;
+    locaisSemAtivo: number;
+    comModeloSemPlano: number;
+  };
   /** Pessoas distintas com papel vigente no hotel (escopo hotel), por papel. */
   papeis: { papel: Papel; pessoas: number }[];
   /** Tiveram papel no hotel, mas nenhum vigente (vencido ou revogado), ou o membro está inativo. */
@@ -83,6 +91,7 @@ export function resumirImplantacao(
   agora: Date,
   ativos: readonly AtivoParaImplantacao[] = [],
   hotel: HotelParaImplantacao = { modeloContratual: null },
+  planos: readonly PlanoQueCobre[] = [],
 ): ResumoDeImplantacao {
   const contar = (f: (l: LocalParaImplantacao) => boolean) => locais.filter(f).length;
   const resumoLocais = {
@@ -97,6 +106,7 @@ export function resumirImplantacao(
     ativos: ativosAtivos.length,
     semCategoria: ativosAtivos.filter((a) => a.categoriaId === null).length,
     locaisSemAtivo: contar((l) => l.status !== 'inativo' && !comAtivo.has(l.id)),
+    comModeloSemPlano: ativosAtivos.filter((a) => ativoSemPlanoComModelo(a, planos)).length,
   };
 
   const noHotel = (a: Atribuicao) => a.escopo.tipo === 'hotel' && a.escopo.hotelId === hotelId;

@@ -601,6 +601,12 @@ export type {
   VisaoDoHotel,
 } from './indicadores';
 export {
+  ativoSemPlanoComModelo,
+  exigirPeriodicidadeSugerida,
+  nomeDoPlanoSugerido,
+} from './sugestoes-de-plano';
+export type { AtivoParaSugestao } from './sugestoes-de-plano';
+export {
   lerPlanoSugerido,
   podeGerirModelosDeAtivo,
   preencherComModelo,

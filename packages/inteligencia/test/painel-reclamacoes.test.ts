@@ -86,6 +86,7 @@ const sinal = (id: string, p: Partial<SinalDaFila> = {}): SinalDaFila => ({
   classificadoPor: 'u2',
   importadoEm: antes(2),
   versao: 2,
+  chamadoId: null,
   ...p,
 });
 

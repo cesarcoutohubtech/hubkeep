@@ -16,10 +16,12 @@ import {
 } from '../src/app/(painel)/inteligencia/sinais/csv';
 import {
   type Apoio,
+  FormularioDeChamado,
   FormularioDeClassificacao,
   LeituraDoArquivo,
   ResultadoDaImportacao,
   TabelaDeSinais,
+  podeAbrirChamado,
   somarPartes,
   uhSugerida,
 } from '../src/app/(painel)/inteligencia/sinais/tela';
@@ -203,6 +205,7 @@ const sinal = {
   classificadoPor: null,
   importadoEm: '2026-10-11T09:00:00.000Z',
   versao: 1,
+  chamadoId: null as string | null,
 };
 const classificado = {
   ...sinal,
@@ -251,7 +254,10 @@ const resultado = {
 describe('as telas das reclamações em todos os idiomas, sem chave crua', () => {
   it.each(IDIOMAS_DO_TESTE)('%s', (idioma) => {
     const html = [
-      renderizar(idioma, <TabelaDeSinais fila={fila} apoio={apoio} aoEditar={nada} />),
+      renderizar(
+        idioma,
+        <TabelaDeSinais fila={fila} apoio={apoio} aoEditar={nada} aoAbrirChamado={nada} />,
+      ),
       renderizar(
         idioma,
         <FormularioDeClassificacao
@@ -270,6 +276,16 @@ describe('as telas das reclamações em todos os idiomas, sem chave crua', () =>
           nomeDoAtivo={undefined}
           aoCancelar={nada}
           aoSalvar={nada}
+        />,
+      ),
+      renderizar(
+        idioma,
+        <FormularioDeChamado
+          sinal={classificado}
+          apoio={apoio}
+          nomeDoAtivo="Split UH 304"
+          aoCancelar={nada}
+          aoAbrir={nada}
         />,
       ),
       renderizar(idioma, <ResultadoDaImportacao resultado={resultado} />),
@@ -306,7 +322,10 @@ describe('as telas das reclamações em todos os idiomas, sem chave crua', () =>
 
 describe('a fila e o formulário', () => {
   it('a fila: a nota, o texto, a UH citada, a classificação com o ativo e quem classificou', () => {
-    const html = renderizar('pt-BR', <TabelaDeSinais fila={fila} apoio={apoio} aoEditar={nada} />);
+    const html = renderizar(
+      'pt-BR',
+      <TabelaDeSinais fila={fila} apoio={apoio} aoEditar={nada} aoAbrirChamado={nada} />,
+    );
     expect(html).toContain('2,5 de 5');
     expect(html).toContain('Ar condicionado do 304 muito barulhento');
     expect(html).toContain('UH citada: 304');
@@ -351,6 +370,45 @@ describe('a fila e o formulário', () => {
     expect(html).toContain('Categoria do ativo');
     expect(html).toContain('Ligação com o ativo');
     expect(html).toMatch(/<option value="confirmada" selected="">Ligação confirmada<\/option>/);
+  });
+
+  it('abrir chamado: só a de manutenção com UH ou ativo e sem chamado; com chamado, o link', () => {
+    expect(podeAbrirChamado(classificado)).toBe(true);
+    expect(podeAbrirChamado(sinal)).toBe(false);
+    expect(
+      podeAbrirChamado({ ...classificado, uhId: null, ativoId: null, ligacao: 'sem_ligacao' }),
+    ).toBe(false);
+    const C = '77777777-7777-4777-8777-777777777777';
+    const html = renderizar(
+      'pt-BR',
+      <TabelaDeSinais
+        fila={{ ...fila, sinais: [classificado, { ...classificado, id: S1, chamadoId: C }] }}
+        apoio={apoio}
+        aoEditar={nada}
+        aoAbrirChamado={nada}
+      />,
+    );
+    expect(html.match(/Abrir chamado/g)).toHaveLength(1);
+    expect(html).toContain(`href="/chamados/${C}"`);
+    expect(html).toContain('Ver o chamado');
+  });
+
+  it('o formulário do chamado: o ativo, o local, a sugestão sem o texto do hóspede e "afeta hóspede"', () => {
+    const html = renderizar(
+      'pt-BR',
+      <FormularioDeChamado
+        sinal={{ ...classificado, texto: 'Texto do hóspede que não vai', textoApagadoEm: null }}
+        apoio={apoio}
+        nomeDoAtivo="Split UH 304"
+        aoCancelar={nada}
+        aoAbrir={nada}
+      />,
+    );
+    expect(html).toContain('Com o ativo Split UH 304');
+    expect(html).toContain('O chamado abre no local do ativo.');
+    expect(html).toMatch(/Reclamação de hóspede, google, [^<]+: Ar-condicionado, UH 304\./);
+    expect(html).not.toContain('Texto do hóspede que não vai');
+    expect(html).toContain('afeta hóspede');
   });
 
   it('o resultado da importação: as contagens e a linha do arquivo com o motivo', () => {

@@ -30,7 +30,12 @@ type Pendencia =
 interface PainelDoHotel {
   hotel: { id: string; nome: string; status: string; modeloContratual: string | null };
   locais: { uhsAtivas: number; uhsPendentes: number; areasComuns: number; inativos: number };
-  ativos: { ativos: number; semCategoria: number; locaisSemAtivo: number };
+  ativos: {
+    ativos: number;
+    semCategoria: number;
+    locaisSemAtivo: number;
+    comModeloSemPlano: number;
+  };
   papeis: { papel: Papel; pessoas: number }[];
   pessoasSemPapelVigente: { usuarioId: string; nome: string }[];
   pendencias: Pendencia[];
@@ -86,8 +91,22 @@ export default function PainelDeImplantacao() {
             <Painel titulo={t('admin.implantacao.locais')}>
               <p>{t('admin.implantacao.resumo_locais', painel.locais)}</p>
             </Painel>
-            <Painel titulo={t('admin.implantacao.ativos')}>
+            <Painel
+              titulo={t('admin.implantacao.ativos')}
+              acoes={
+                painel.ativos.comModeloSemPlano > 0 ? (
+                  <Link href="/admin/preventivas" {...comoBotao('padrao', 'pequeno')}>
+                    {t('admin.implantacao.ir_para_sugestoes')}
+                  </Link>
+                ) : undefined
+              }
+            >
               <p>{t('admin.implantacao.resumo_ativos', painel.ativos)}</p>
+              <p>
+                {t('admin.implantacao.com_modelo_sem_plano', {
+                  n: painel.ativos.comModeloSemPlano,
+                })}
+              </p>
             </Painel>
           </div>
           <Painel

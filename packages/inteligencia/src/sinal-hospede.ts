@@ -470,6 +470,8 @@ export interface SinalDaFila {
   classificadoPor: string | null;
   importadoEm: Date;
   versao: number;
+  /** O chamado aberto a partir da reclamação (adendo de 19/10/2026); null sem chamado. */
+  chamadoId: string | null;
 }
 
 export interface PortasDaFilaDoSinal extends PortasDoSinalDoHospede {

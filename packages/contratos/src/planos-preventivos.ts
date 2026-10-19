@@ -81,3 +81,40 @@ export const RespostaDePlanoAlterado = z
     situacao: z.enum(SITUACOES_DO_PLANO_API).optional(),
   })
   .meta({ id: 'RespostaDePlanoAlterado' });
+
+/**
+ * Sugestão de plano (M1, caminho C): o ativo com modelo e sem plano que o
+ * cubra. Sem periodicidade, o modelo não sugere, e não há plano de um clique.
+ */
+export const SugestaoDePlanoApi = z
+  .object({
+    ativoId: z.guid(),
+    ativoNome: z.string(),
+    /** A versão do ativo, que o descarte leva (ADR-029). */
+    ativoVersao: z.int(),
+    modeloId: z.guid(),
+    /** null: o modelo não está visível. */
+    modeloNome: z.string().nullable(),
+    periodicidade: z
+      .object({ intervalo: z.int(), unidade: z.enum(UNIDADES_DE_PERIODICIDADE_API) })
+      .nullable(),
+    /** O checklist do modelo, só se ainda ativo. */
+    checklistModeloId: z.guid().nullable(),
+  })
+  .meta({ id: 'SugestaoDePlanoApi' });
+
+export const RespostaDeSugestoesDePlano = z
+  .object({ sugestoes: z.array(SugestaoDePlanoApi) })
+  .meta({ id: 'RespostaDeSugestoesDePlano' });
+
+export const PedidoDeDescarteDaSugestao = z
+  .object({
+    /** A versão do ativo lida (ADR-029). */
+    versao: z.int(),
+    motivo: z.string().max(1000),
+  })
+  .meta({ id: 'PedidoDeDescarteDaSugestao' });
+
+export const RespostaDeDescarteDaSugestao = z
+  .object({ versao: z.int() })
+  .meta({ id: 'RespostaDeDescarteDaSugestao' });

@@ -6,6 +6,7 @@ import type {
   Contexto,
   LocalParaImplantacao,
   ModeloContratual,
+  PlanoQueCobre,
 } from '@hubkeep/dominio';
 
 export interface HotelEmImplantacao {
@@ -21,4 +22,6 @@ export interface PortaImplantacao {
   hotel(ctx: Contexto, hotelId: string): Promise<HotelEmImplantacao | null>;
   locais(ctx: Contexto, hotelId: string): Promise<LocalParaImplantacao[]>;
   ativos(ctx: Contexto, hotelId: string): Promise<AtivoParaImplantacao[]>;
+  /** Os planos do hotel, pela RLS, para o contador de ativos com modelo e sem plano (M1). */
+  planos(ctx: Contexto, hotelId: string): Promise<PlanoQueCobre[]>;
 }
