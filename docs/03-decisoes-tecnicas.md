@@ -833,6 +833,31 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Texto pelo catálogo:** o insight guarda tipo, chaves e números, e não título nem resumo (regra 11).
 - Tudo auditado pela unit of work.
 
+**Adendo — a fonte da intervenção na efetividade (US-I04, 15/10/2026).** É uma fonte de dado nova do Intelligence.
+- **Status:**
+  - Aprovado pelo Cesar em 15/10/2026, no chat do agente do Intelligence ("Cesar aqui": "Fonte da intervenção: opção C, o código de solução, pela política inteligencia.efetividade. Registre como adendo ao ADR-033").
+  - Aprovado pelo Kaio em 15/10/2026, no mesmo chat ("Kaio aqui": "Eu aptovo o que o agente propôs o desenho da tela da efetividade").
+  - A regra da cobertura do custo foi acrescentada pelo Cesar depois da proposta que o Kaio aprovou. Os 50% são limiar, e portanto detalhe do Kaio, que os confirmou em 15/10/2026, no mesmo chat ("Kaio aqui": "Eu confirmo os 50%"). Ficam na constante `COBERTURA_MINIMA_DO_CUSTO` do `packages/inteligencia` (#290).
+- **Intervenção:**
+  - É a OS corretiva concluída cujo código de solução (`app.os.codigo_solucao_id`, da I6) está na lista da política `inteligencia.efetividade`.
+  - O padrão da lista é só "Troca do equipamento".
+  - A data da intervenção é a conclusão final da OS.
+- **Fonte nova:**
+  - O Intelligence passa a ler o código de solução da OS.
+  - Não há migração nem tabela nova.
+  - O resultado se calcula sob demanda, no servidor, e não se grava. Se um dia for gravado, grava junto a versão da fórmula (ADR-036).
+- **Escopo:** por ativo. A intervenção de área, como vários ativos de um andar ou de uma área comum, fica fora do 1.0.
+- **Custo das corretivas, antes → depois:**
+  - Mostra a cobertura de cada lado: "custo informado em X de Y OS", sobre as corretivas aceitas, como no glossário de métricas v3.
+  - Abaixo de 50% de cobertura em qualquer um dos lados, a linha mostra "dados insuficientes", sem variação.
+  - Os 50% ficam numa constante do `packages/inteligencia`.
+- **Onde aparece e quem vê:**
+  - Aparece nos três lugares decididos em 10/10/2026: a seção abaixo da lista de insights, o detalhe do ativo e a página do insight.
+  - Vê quem decide insight do hotel do ativo.
+  - A efetividade continua sem ser tipo de insight.
+- **Ressalva:** toda exibição diz que a variação observada não prova que a intervenção foi a causa.
+- **Sem o código de solução, a intervenção não aparece.** O piloto treina o preenchimento desde o primeiro dia, mesmo com a política "Códigos obrigatórios no aceite" desligada (`docs/piloto/`).
+
 ## ADR-034 — Intelligence: scores determinísticos, versionados e explicáveis, calculados na aplicação
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-2, e por Cesar em 07/10/2026. Aprovada pelos dois.
@@ -1396,3 +1421,78 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
   - até o Cesar configurar o SES, nenhum e-mail sai; o registro mostra `sem_provedor`;
   - no iPhone, o push só funciona com o PWA instalado na tela inicial (iOS 16.4 ou mais novo);
   - sem silenciar no MVP, um Gestor CSC de muitos hotéis pode receber muitos avisos num dia ruim. A contagem do C8 mede isso no piloto.
+
+## ADR-047 — Intelligence: o sinal do hóspede, importado e classificado sem IA
+
+**Status:** aprovado por Cesar e por Kaio em 17/10/2026, por escrito, no chat do agente do Intelligence ("Cesar aqui. O “aprovo” a ADR-047." e "kaio aqui. O “aprovo” a ADR-047."), como pede o ADR-033 ("Quem aprova ADR do Intelligence"). A aprovação veio depois do merge do #308 (migração 0052), do #309 (migração 0053) e do #311 (as rotas e a tela), e cobre o texto deste ADR na `main`, com a migração 0053. A decisão de trazer agora a parte da 1.5 que não precisa de IA já tinha sido dada pelos dois em 16/10/2026, no mesmo chat ("Cesar aqui. De acordo. Prossiga" e "Kaio aqui. De acordo. Prossiga"), sobre a proposta registrada em `docs/diario-intelligence.md`, "A 1.5 sem IA: o sinal do hóspede".
+
+**Contexto:**
+- O PRD do Intelligence põe o feedback do hóspede na 1.5 (seções 10, 11, 26 e 33): fontes por CSV, API e webhook, classificação por IA, associação a hotel, UH e ativo, e o Guest Impact Score. O ADR-033 já diz que "a tabela de sinais nasce na 1.5, só para o feedback externo, com os três estados de associação".
+- O piloto foi reagendado, e o Cesar pediu para trazer agora o que for possível (16/10/2026).
+- A regra 9 do `CLAUDE.md` (sem IA no MVP) continua valendo, e o provedor de IA não foi escolhido. A entrada por API e webhook depende da credencial por tenant e da entrega assinada do núcleo (IX1 a IX3), que ficam para depois do piloto (Cesar, 30/09/2026).
+- Hoje o impacto no hóspede do motor é a porcentagem dos chamados do ativo marcados com "afeta hóspede" (ADR-034).
+
+**Decisão:**
+- **A tabela `app.sinal_hospede`** (migração 0052), uma linha por reclamação ou avaliação de hóspede:
+  - **origem:** o hotel, a fonte (um código curto, como `google`, `booking`, `trustyou` ou `pesquisa_interna`, sem lista fechada: a fonte é dado do cliente, não `if` no código), o código externo, a data, a nota e a escala, o texto, o idioma e a UH como veio na exportação;
+  - **classificação:** se é manutenção (vazio enquanto ninguém classificou), a categoria do ativo, a UH do cadastro, o ativo e o estado da ligação com o ativo, mais quem classificou e quando;
+  - **importação:** o lote e quem importou;
+  - **sem dado pessoal do hóspede:** nem nome, nem e-mail, nem telefone, nem número da reserva. O texto pode trazer dado pessoal escrito pelo próprio hóspede; por isso a retenção abaixo;
+  - **a mesma avaliação não entra duas vezes:** única por hotel, fonte e código externo. A reimportação conta a linha como repetida e não muda a que existe.
+- **Os três estados da ligação com o ativo** (ADR-033): `sem_ligacao`, `possivel` e `confirmada`. Com ativo, a ligação é `possivel` ou `confirmada`; sem ativo, é `sem_ligacao` (check). Só uma pessoa liga a reclamação ao ativo: nada no HubKeep liga por correspondência de texto (PRD, seção 10.4; "correlação não é causa").
+- **Entrada por CSV com colunas fixas do HubKeep**, na tela do Intelligence e para um hotel por vez. O navegador lê o arquivo e manda as linhas; o arquivo não fica guardado no Storage. O limite por importação e a validação de cada linha são do `packages/inteligencia`; a resposta diz, por linha, se entrou, se era repetida ou o código do erro. O mapeamento das colunas de cada ferramenta fica para depois, com as respostas do cliente.
+- **Classificação à mão:** a pessoa marca se é manutenção e, sendo, a categoria, a UH e o ativo, quando sabe. Reclassificar é permitido, com a trava de versão. As regras (o ativo é do hotel da reclamação, a ligação acompanha o ativo, a categoria só na reclamação de manutenção) são do domínio; o banco guarda o formato e as FKs.
+- **Quem vê, importa e classifica:** quem decide insight no hotel (o Admin do grupo, o Gestor CSC e o Gerente com o hotel), pela mesma lista de papéis da `app.insight`. O Técnico, o Solicitante, o implantador e o proprietário não leem: o texto do hóspede não vai ao PWA. Quem importa e quem classifica gravam em nome próprio (check da policy). Vale só para o tenant com o módulo `inteligencia` vigente, como o resto do módulo.
+- **Auditoria e evento pela unit of work:** a importação grava uma auditoria por lote (quantas entraram e quantas eram repetidas) e o evento `sinal_hospede.importado`; a classificação grava uma auditoria por reclamação e o evento `sinal_hospede.classificado`. As auditorias vão sem `hotel_id` e sem o texto, como a do insight (Cesar, 10/10/2026), para o texto do hóspede não chegar a quem não decide insight.
+- **Retenção (LGPD):** a política `inteligencia.sinal_hospede` diz por quantos dias o texto fica guardado. Depois disso, o job do worker apaga o texto (UPDATE para null, com a data do apagamento) e mantém a classificação, a nota e as datas. Não há DELETE (exclusão é lógica). O padrão é detalhe do Kaio e espera a resposta do cliente.
+- **O que o motor faz com o sinal** (PR C, com proposta própria antes do código):
+  - a regra sistêmica das reclamações: X reclamações de manutenção da mesma categoria, no mesmo hotel, em Y dias, abrem o insight sistêmico "possível problema sistêmico" (PRD, seção 15), com X e Y na política;
+  - o Guest Impact Score v1, determinístico e explicável, das reclamações de manutenção ligadas ao ativo, no lugar da porcentagem do "afeta hóspede" (ADR-034), com versão nova da atenção e do sinal de substituição. Os pesos, as faixas e se a ligação "possível" conta são detalhe do Kaio.
+- **IA, depois e só como sugestão:** quando o provedor for escolhido e a regra 9 mudar, a IA entra só para o texto (ADR-033): sugere se é manutenção, a categoria e a UH, com a confiança, e a pessoa confirma. A sugestão nunca liga ao ativo nem confirma a ligação.
+
+**Consequências:**
+- **Migração 0052** (`20261016200000_sinal_hospede.sql`): a tabela com RLS forçada, as policies, os índices (a fila do que falta classificar e as reclamações do ativo) e os GRANTs. O hk_app lê, insere e atualiza só as colunas da classificação; o hk_worker lê e atualiza só o texto e a data do apagamento. Nenhum campo de escopo recebe UPDATE (meta-teste 18).
+- **pgTAP:** o `043`, com os casos de isolamento, e a tabela na lista fechada do meta-teste 28. O teste de paridade da raiz cobre o check da ligação.
+- **Tipos do Kysely** escritos no formato do gerador, até o `db:types` da CI.
+- **Migração 0053** (`20261017120000_auditoria_sinal_hospede.sql`): o caso `sinal_hospede` na policy de INSERT da `app.auditoria`, no molde do insight (0040): hotel nulo, quem grava é Gestor CSC ou Gerente, e a reclamação ou o lote existe e é visível a quem grava. Faltou na 0052, e a integração do `packages/db` do #308 falhou na CI. Decisão do Cesar em 17/10/2026, no chat do agente do Intelligence ("Cesar aqui. De acordo com a opção 1"); a tabela é do núcleo. A importação em que nada entrou não grava auditoria nem evento.
+- **A ordem dos PRs** (`int:`): A, com este ADR, a migração, o motor e a gravação e a leitura no `packages/db` (zona protegida); B, o contrato, as rotas, a importação e a fila de classificação nos quatro idiomas; C, a regra sistêmica, o Guest Impact Score v1 e a retenção no job.
+- **Fica para depois:** a sugestão da IA; a entrada por API e webhook, sobre a IX1 a IX3 do núcleo (rota em português, a mesma credencial e a mesma entrega assinada, sem um segundo mecanismo); abrir chamado a partir da reclamação, que mexe no fluxo do chamado, área compartilhada.
+- **Riscos aceitos:**
+  - a classificação à mão dá trabalho ao gerente e ao CSC, e o volume do piloto ainda não é conhecido. O tamanho da fila mostra se a sugestão da IA precisa vir antes;
+  - sem as respostas do cliente, o CSV de colunas fixas pode pedir conversão da exportação de cada ferramenta.
+
+**Adendo de 17/10/2026 (decisões D1 a D4 do PR C):** aprovado por Cesar ("Cesar aqui. Siga") e por Kaio ("Kaio aqui, de acordo com as decisões D1 a D4"), no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O PR C do sinal do hóspede: proposta".
+- **D1:** o score vale no hotel com alguma reclamação importada na janela; no hotel sem nenhuma, o impacto no hóspede continua a porcentagem dos chamados, e a evidência diz a fonte. Isso ajusta o "no lugar da porcentagem" da decisão acima.
+- **D2:** só a ligação confirmada pesa; a possível aparece na explicação.
+- **D3:** a regra sistêmica das reclamações vem ligada por padrão, e a página do insight lista as reclamações da evidência.
+- **D4:** o PR C sai em partes: C1a (a regra e a retenção, #314), C1b (o score, a atenção versão 7 e a substituição versão 2, com a política `inteligencia.impacto_hospede`, #318) e C2 (as telas).
+
+## ADR-048 — Mews V1: checkpoints duráveis, isolamento e sincronização somente leitura
+
+**Status:** aprovado por Cesar em 17/10/2026, na conversa de revisão da migração Mews, com resposta expressa **“Simm aprovo”** à pergunta de aprovação formal da ADR. **A aprovação não autoriza aplicação de migração no Supabase-dev, staging ou produção, nem uso de credenciais reais.** Documentação de referência: `docs/referencia/laboratorio-eu/mews-poc/ADR-CHECKPOINTS-DURAVEIS-PROPOSTA.md` (histórico e adendo de aprovação).
+
+**Contexto:** o laboratório da Mews (PRs #304 e #305) demonstrou leitura, projeção, tratamento de falhas, checkpoints e reconciliação em memória. A migração 0054 do PR #313 foi incorporada à `main` com a estrutura física, testes pgTAP e tipos Kysely, mas isso não confirma a aplicação em Supabase-dev. É necessário um driver transacional durável antes de sincronizar dados reais.
+
+**Decisão:**
+- Mews é conector **somente leitura**; a V1 aparece inicialmente apenas em administração. Não cria OS, não atualiza status de quarto/UH, licença ou PMS, não insere hóspedes/notas/PII, não guarda credenciais em claro.
+- Escopo estrito `tenant_id + hotel_id + enterprise_id`; vínculo válido/revogado é verificado pelo servidor e revalidado dentro da transação. Recursos permitidos são **Space** previamente validados; bloqueios permitidos `OutOfOrder` e `InternalUse`. Nenhuma informação de payload sintético prova autorização de recurso.
+- Persistência técnica usa `app.mews_vinculo`, `app.mews_checkpoint`, `app.mews_recurso`, `app.mews_bloqueio`, com FKs compostas, RLS `ENABLE/FORCE`, `hk_worker` segregado por tenant e privilégios mínimos. `hk_app` recebe só o necessário para o vínculo administrativo; referência do cofre não é legível por esse papel.
+- **Duas marcas independentes:** `ultimo_updated_utc` para sincronização incremental e `ultimo_sweep_utc` para varredura de bloqueios futuros. Cada commit aplica projeção e watermark correspondente **na mesma transação**, com controle CAS de versão e replay idempotente por digest. Falha encerra com `ROLLBACK` completo.
+- Tombstone prevalece sobre evento ativo com o **mesmo** `UpdatedUtc`; só uma versão temporal estritamente posterior pode substituí-lo de acordo com a regra validada do domínio. Ausência num delta/sweep não é exclusão.
+- O driver pertence à camada `packages/db` e respeita `withSistema`, Unit of Work, auditoria/outbox e limites de payload/observabilidade. Não criar trigger, nova função SQL nem automação operacional sem nova decisão.
+- A migração 0054 já mergeada **não será editada retroativamente**. Correções futuras no banco devem ocorrer por nova migração e PR de zona protegida.
+
+**Antes do primeiro uso em DEV:** conferir o estado atual de migrações sem executar SQL; concluir driver, testes de concorrência, perda de conexão, revogação e rollback, política GDPR/retenção e cofre de segredos; exigir CI verde, revisão técnica e **autorização específica** do Cesar para o `db push`. DEV, staging e produção não recebem autorização automática por esta ADR.
+
+**Riscos aceitos no desenho:** latência de reconciliação de acordo com janela e rate limit Mews; a atualização do estado técnico depende de validação de recursos por propriedade e de transações idempotentes. A operação hoteleira permanece desacoplada nesta V1.
+
+### Adendo ADR-048 — leitura administrativa de estado Mews (aprovação de 17/10/2026)
+
+**Aprovação expressa do Cesar nesta conversa (17/10/2026):** respondeu **“Sim, autorizo”** à pergunta: “Você aprova formalmente que somente o Admin do grupo visualize os horários e a versão da sincronização Mews, além das contagens de recursos e bloqueios técnicos?”. A aprovação é **apenas dessa consulta administrativa**; não autoriza merge, `db push`, uso de credenciais reais ou ativação de conector.
+
+**Decisão autorizada para a migração 0056, no PR #323:**
+- `hk_app` consulta `app.mews_checkpoint` somente nas colunas de escopo, versão, marcas UTC e conclusão; não lê digest.
+- `hk_app` consulta `app.mews_recurso` apenas colunas de escopo e `ativo`, e `app.mews_bloqueio` apenas colunas de escopo, tipo e `ativo`, para **contagens**; não recebe `resource_id`, `block_id`, intervalos ou dados operacionais.
+- `RLS FORCE`: apenas Admin do grupo vigente no tenant e com vínculo Mews **não revogado**; gerente, proprietário, implantador, tenant alheio e sessão sem contexto continuam sem acesso. Nenhuma permissão INSERT/UPDATE/DELETE nova para `hk_app`.
+- Leitura servida exclusivamente pelo backend autenticado. Não expor tabelas via Data API ou browser. Nenhuma OS, alteração de UH, escrita no PMS ou ingestão real é autorizada por esta decisão.
+- Revisão pgTAP, CI e aprovação humana de merge permanecem obrigatórias. **Aplicação em Supabase-dev/produção depende de autorização posterior e específica.**

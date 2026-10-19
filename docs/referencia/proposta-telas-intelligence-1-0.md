@@ -14,6 +14,7 @@
 - **Filtros:** estado (abertos por padrão), tipo, escopo e faixa. O filtro por tipo e faixa entrega a lista dos ativos com mais atenção, sem tela própria.
 - **Tabela:** faixa, número do insight, o que é, escopo, score, estado, responsável e última detecção. O insight sistêmico não tem score (traço) e entra na faixa Atenção. O insight de rede mostra o escopo como "3 hotéis da bandeira Aurora".
 - **Substituição:** "Substitui o insight X" e "Substituído pelo insight X", calculado pelo vínculo (`substituidoPor`, no motor).
+- **Procurar ativo** (Cesar e Kaio, 16/10/2026), acima da lista: o campo de busca das listas do núcleo (nome, fabricante, modelo ou número de série, sem acento). Ele acha os ativos em uso dos hotéis em que a pessoa decide insight, até 20, e cada um leva à página do ativo. Sem isso, o ativo sem insight e sem intervenção, como o que só tem sinal de substituição, não tinha caminho até a página.
 - **Quem vê:** cada pessoa vê só o insight cujos hotéis todos ela lê (RLS da `app.insight`). Sem o módulo contratado (`licenca.modulo`), o menu e as rotas não existem.
 
 ### 2. Página do insight (painel de investigação)
@@ -37,6 +38,13 @@ Todo insight abre aqui. No sistêmico, a página mostra a regra e os chamados; n
 - **Como o score foi composto:** os oito componentes com peso, com valor, peso, peso usado, pontos e a nota da linha (por exemplo, "custo informado em X de Y corretivas", medições abaixo do mínimo, garantia sem data). O componente sem dado aparece com traço, e um aviso diz que o peso dele foi dividido entre os outros (ADR-034). Os UH-dias ficam numa linha discreta no fim da tabela: "Ainda sem dado: UH-dias (peso 0)".
 - **Como este resultado foi gravado:** quando foi calculado, o número do cálculo (original ou recálculo), a versão da fórmula e a da política. É a condição do Cesar no ADR-036 aparecendo na tela.
 - **Insights deste ativo,** com link para a página do insight.
+- **Sinal de substituição** (proposta de 16/10/2026, aprovada por Cesar e Kaio no mesmo dia), entre o resto da página e "Intervenções neste ativo":
+  - o selo do estado (sem sinal, observar, avaliar substituição ou revisão necessária) e "N critérios atingidos de M avaliados";
+  - a tabela dos critérios de 12 meses, com o valor, o limite e o resultado (atingido, não atingido ou sem dado);
+  - na revisão necessária, o aviso de rever com o fornecedor, porque o ativo está na garantia;
+  - o custo sobre o valor de reposição numa linha discreta, sem dado até o módulo de custos (2.0);
+  - a ressalva de que é sinal para análise, e não recomendação, e "calculado agora", com a versão da regra.
+  - Só o sinal: a decisão de substituir registrada e o retorno do investimento ficam na 2.0. O sinal não abre insight e não notifica. O ativo baixado não tem a seção.
 
 ## Como as telas se ligam
 

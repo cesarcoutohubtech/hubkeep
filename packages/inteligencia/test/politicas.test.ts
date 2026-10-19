@@ -7,9 +7,11 @@ import {
   EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE,
   MINIMO_DA_JANELA_DE_LEITURA_DIAS,
   PADRAO_JANELA_DE_LEITURA,
+  PADRAO_SINAL_HOSPEDE,
   PADROES_DO_INTELLIGENCE,
   ehChaveDePoliticaDoIntelligence,
   janelaDeLeituraEfetiva,
+  limiteDaRetencao,
   minimoDaJanelaDeLeitura,
   validarJanelaDeLeitura,
   validarPoliticaDoIntelligence,
@@ -19,7 +21,7 @@ import {
 const copia = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 describe('políticas do Intelligence (ADR-035)', () => {
-  it('as sete chaves do ADR, e todo padrão vale no próprio formato', () => {
+  it('as nove chaves dos ADRs, e todo padrão vale no próprio formato', () => {
     expect(CHAVES_DE_POLITICA_DO_INTELLIGENCE).toEqual([
       'inteligencia.reincidencia',
       'inteligencia.atencao_ativo',
@@ -28,6 +30,8 @@ describe('políticas do Intelligence (ADR-035)', () => {
       'inteligencia.substituicao',
       'inteligencia.metrica_janela_leitura',
       'inteligencia.visibilidade_telas',
+      'inteligencia.sinal_hospede',
+      'inteligencia.impacto_hospede',
     ]);
     for (const c of CHAVES_DE_POLITICA_DO_INTELLIGENCE)
       expect(valorValidoDoIntelligence(c, copia(PADROES_DO_INTELLIGENCE[c]))).toBe(true);
@@ -160,13 +164,14 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
     expect(registro.resolver(c, {})).toEqual(PADROES_DO_INTELLIGENCE[c]);
   });
 
-  it('a efetividade v2: os limiares da política, na ordem (parcial < observada ≤ 100)', () => {
+  it('a efetividade v3: os limiares da política, na ordem (parcial < observada ≤ 100)', () => {
     expect(PADROES_DO_INTELLIGENCE[c]).toEqual({
       janelaDias: 90,
       reducaoObservadaPercentual: 60,
       reducaoParcialPercentual: 25,
       aumentoObservadoPercentual: 20,
       minChamadosAntes: 3,
+      codigosDeIntervencao: ['solucao_troca_do_equipamento'],
     });
     const com = (campos: object) => ({ ...copia(PADROES_DO_INTELLIGENCE[c]), ...campos });
     expect(valorValidoDoIntelligence(c, com({ reducaoObservadaPercentual: 100 }))).toBe(true);
@@ -180,8 +185,55 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
       { minChamadosAntes: 2.5 },
       { janelaDias: 0 },
       { limiarPercentual: 20 }, // campo da versão 1: fora do formato
+      { codigosDeIntervencao: 'solucao_troca_do_equipamento' },
+      { codigosDeIntervencao: ['x', 'x'] },
+      { codigosDeIntervencao: [''] },
     ])
       expect(valorValidoDoIntelligence(c, com(ruim))).toBe(false);
+    expect(valorValidoDoIntelligence(c, com({ codigosDeIntervencao: [] }))).toBe(true);
+    expect(
+      valorValidoDoIntelligence(
+        c,
+        com({ codigosDeIntervencao: ['solucao_troca_do_equipamento', 'solucao_troca_de_peca'] }),
+      ),
+    ).toBe(true);
+  });
+
+  it('a efetividade gravada antes da v3, sem os códigos de intervenção, continua valendo', () => {
+    const antiga = copia(PADROES_DO_INTELLIGENCE[c]);
+    delete antiga.codigosDeIntervencao;
+    antiga.janelaDias = 60;
+    expect(valorValidoDoIntelligence(c, antiga)).toBe(true);
+    const registro = registroDePoliticas([EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE]);
+    expect(registro.resolver(c, { grupo: antiga })).toBe(antiga);
+  });
+
+  it('a reincidência gravada antes da v4, sem os dias da falha depois de preventiva, continua valendo', () => {
+    const k = 'inteligencia.reincidencia';
+    const antiga = copia(PADROES_DO_INTELLIGENCE[k]);
+    delete antiga.diasAposPreventiva;
+    antiga.janelaDias = 60;
+    expect(valorValidoDoIntelligence(k, antiga)).toBe(true);
+    expect(valorValidoDoIntelligence(k, { ...antiga, diasAposPreventiva: -1 })).toBe(false);
+    const registro = registroDePoliticas([EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE]);
+    expect(registro.resolver(k, { grupo: antiga })).toBe(antiga);
+  });
+
+  it('o sistêmico gravado antes da v4, sem a população mínima e o percentual afetado, continua valendo', () => {
+    const k = 'inteligencia.sistemico';
+    const antiga = copia(PADROES_DO_INTELLIGENCE[k]);
+    delete antiga.mesmoModelo.minPopulacao;
+    delete antiga.mesmoModelo.percentualMinimoAfetado;
+    antiga.mesmoModelo.minAtivos = 5;
+    antiga.mesmoAndar.ativa = true;
+    expect(valorValidoDoIntelligence(k, antiga)).toBe(true);
+    // Só esses dois podem faltar.
+    const semJanela = copia(antiga);
+    delete (semJanela.mesmoModelo as { janelaDias?: number }).janelaDias;
+    expect(valorValidoDoIntelligence(k, semJanela)).toBe(false);
+    // O resolvedor fica com a gravada, e não volta ao padrão.
+    const registro = registroDePoliticas([EXTENSAO_DE_POLITICAS_DO_INTELLIGENCE]);
+    expect(registro.resolver(k, { grupo: antiga })).toBe(antiga);
   });
 
   it('o sistêmico v2: booleano `ativa` em cada regra, mínimos inteiros de pelo menos 1', () => {
@@ -211,6 +263,15 @@ describe('extensão no registro de políticas do núcleo (adendo ao ADR-026)', (
       }),
       com((c) => {
         c.mesmoFornecedor.minConcluidas = 0;
+      }),
+      com((c) => {
+        c.mesmoModelo.minPopulacao = 0;
+      }),
+      com((c) => {
+        c.mesmoModelo.percentualMinimoAfetado = 101;
+      }),
+      com((c) => {
+        (c.mesmoModelo as Record<string, unknown>)['outroCampo'] = 1;
       }),
     ];
     for (const ruim of ruins) expect(valorValidoDoIntelligence(k, ruim)).toBe(false);
@@ -281,5 +342,31 @@ describe('janela de leitura da métrica diária (ADR-035, ADR-036)', () => {
         usadoDias: 240,
       },
     });
+  });
+});
+
+describe('retenção do texto do hóspede (ADR-047)', () => {
+  const c = 'inteligencia.sinal_hospede';
+
+  it('padrão de 365 dias; inteiro, de 30 a 1825, sem outra chave', () => {
+    expect(PADRAO_SINAL_HOSPEDE).toEqual({ retencaoTextoDias: 365 });
+    for (const dias of [30, 365, 1825])
+      expect(valorValidoDoIntelligence(c, { retencaoTextoDias: dias })).toBe(true);
+    for (const ruim of [
+      { retencaoTextoDias: 29 },
+      { retencaoTextoDias: 1826 },
+      { retencaoTextoDias: 90.5 },
+      { retencaoTextoDias: '90' },
+      { retencaoTextoDias: 90, extra: 1 },
+      {},
+      null,
+    ])
+      expect(valorValidoDoIntelligence(c, ruim)).toBe(false);
+  });
+
+  it('o limite é a data da avaliação menos os dias da política', () => {
+    expect(limiteDaRetencao(new Date('2026-10-17T12:00:00Z'), { retencaoTextoDias: 30 })).toEqual(
+      new Date('2026-09-17T12:00:00Z'),
+    );
   });
 });

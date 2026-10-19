@@ -10,12 +10,14 @@ import {
   type LinhaDePolitica,
   type OsDaFonte,
   PADRAO_ATENCAO,
+  PADRAO_IMPACTO_HOSPEDE,
   PADRAO_REINCIDENCIA,
   PADRAO_SISTEMICO,
   corretivasDosChamados,
   hoteisDoDia,
   inicioDaLeitura,
   politicaSistemicaDoGrupo,
+  primeiroChamadoPorHotel,
 } from '../src';
 import { agora, dia } from './apoio';
 
@@ -119,7 +121,7 @@ describe('inicioDaLeitura', () => {
     expect(inicioDaLeitura(hoteis, PADRAO_SISTEMICO, agora)).toEqual(dia(-JANELA_CUSTO_DIAS));
   });
 
-  it('a maior janela vence: a da reincidência de um hotel ou o dobro da do crescimento', () => {
+  it('a maior janela vence: a da reincidência de um hotel, mais os dias da falha depois de preventiva, ou o dobro da do crescimento', () => {
     const longa = { ...PADRAO_REINCIDENCIA, janelaDias: 400 };
     expect(
       inicioDaLeitura(
@@ -127,7 +129,7 @@ describe('inicioDaLeitura', () => {
         PADRAO_SISTEMICO,
         agora,
       ),
-    ).toEqual(dia(-400));
+    ).toEqual(dia(-430));
     const crescimento = { ...PADRAO_SISTEMICO.crescimento, janelaDias: 250 };
     expect(inicioDaLeitura(hoteis, { ...PADRAO_SISTEMICO, crescimento }, agora)).toEqual(dia(-500));
   });
@@ -160,6 +162,7 @@ describe('hoteisDoDia', () => {
         fuso: id === 'h3' ? 'America/Manaus' : 'America/Sao_Paulo',
         reincidencia: PADRAO_REINCIDENCIA,
         atencao: PADRAO_ATENCAO,
+        impactoHospede: PADRAO_IMPACTO_HOSPEDE,
         versaoPolitica: 'padrao',
       })),
     );
@@ -223,5 +226,22 @@ describe('politicaSistemicaDoGrupo', () => {
     expect(
       politicaSistemicaDoGrupo([{ ...linhaDoHotel, escopo: 'grupo', hotelId: null }], registro),
     ).toEqual(ligado);
+  });
+});
+
+describe('o primeiro chamado de cada hotel (sistêmico v4, crescimento)', () => {
+  it('o mais antigo de cada hotel entre os lidos, com o cancelado', () => {
+    const r = primeiroChamadoPorHotel([
+      chamado({ id: 'c1', hotelId: 'h1', abertaEm: dia(-10) }),
+      chamado({ id: 'c2', hotelId: 'h1', abertaEm: dia(-90), estado: 'cancelado' }),
+      chamado({ id: 'c3', hotelId: 'h2', abertaEm: dia(-5) }),
+      chamado({ id: 'c4', hotelId: 'h2', abertaEm: dia(-30) }),
+    ]);
+    expect(r).toEqual(
+      new Map([
+        ['h1', dia(-90)],
+        ['h2', dia(-30)],
+      ]),
+    );
   });
 });

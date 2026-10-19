@@ -4,12 +4,16 @@
 // de corretiva e falha logo depois de preventiva. A versão 2 (glossário de
 // métricas versão 3, divergência b, 13/10/2026) tira da conta todo chamado
 // cancelado; na 1, o cancelado com OS entrava. A versão 3 (divergência a)
-// grava o dia no fuso do hotel, e não em UTC. O que já foi gravado com as
-// versões anteriores não é recalculado (ADR-036).
+// grava o dia no fuso do hotel, e não em UTC. A versão 4 (Kaio e Cesar,
+// 16/10/2026) lê a falha depois de preventiva das OS preventivas do ativo
+// (PV3): a corretiva aberta até 30 dias depois da conclusão de uma delas; o
+// ativo sem nenhuma OS preventiva fica sem dado nesse componente. O que já foi
+// gravado com as versões anteriores não é recalculado (ADR-036).
+import type { PreventivaNoTempo } from '@hubkeep/dominio';
 import { type Corretiva, ordenarPorAbertura } from './historico';
 import { DIA_MS, FAIXAS_PADRAO, type Faixa, type Score, combinar, razao } from './score';
 
-export const VERSAO_REINCIDENCIA = 3;
+export const VERSAO_REINCIDENCIA = 4;
 
 export interface ConfigReincidencia {
   janelaDias: number;
@@ -20,6 +24,12 @@ export interface ConfigReincidencia {
   limiteReaberturas: number;
   /** Falha até tantos dias depois da conclusão da anterior conta como volta. */
   diasAposCorretiva: number;
+  /**
+   * Falha até tantos dias depois da conclusão de uma OS preventiva do ativo
+   * conta como falha depois de preventiva (versão 4). Ausente na política
+   * gravada antes dela: vale o padrão (`diasAposPreventiva`).
+   */
+  diasAposPreventiva?: number;
   pesos: {
     corretivas: number;
     intervalo: number;
@@ -37,6 +47,7 @@ export const PADRAO_REINCIDENCIA: ConfigReincidencia = {
   intervaloReferenciaDias: 30,
   limiteReaberturas: 3,
   diasAposCorretiva: 30,
+  diasAposPreventiva: 30,
   pesos: {
     corretivas: 0.3,
     intervalo: 0.15,
@@ -47,6 +58,37 @@ export const PADRAO_REINCIDENCIA: ConfigReincidencia = {
   },
   faixas: FAIXAS_PADRAO,
 };
+
+/** Os dias da falha depois de preventiva, com o padrão quando a política gravada não tem o campo. */
+export const diasAposPreventiva = (config: ConfigReincidencia): number =>
+  config.diasAposPreventiva ?? (PADRAO_REINCIDENCIA.diasAposPreventiva as number);
+
+/**
+ * Marca as corretivas do ativo com `aposPreventiva` (versão 4): aberta até
+ * `dias` depois da conclusão de alguma OS preventiva do ativo, pelas
+ * transições até `agora`. Sem nenhuma OS preventiva, o campo fica ausente, e o
+ * componente é sem dado: não ter plano não é falhar depois de preventiva.
+ */
+export function marcarAposPreventiva<C extends Corretiva>(
+  corretivas: readonly C[],
+  preventivas: readonly PreventivaNoTempo[] | undefined,
+  dias: number,
+  agora: Date,
+): C[] {
+  if (!preventivas?.length) return [...corretivas];
+  const conclusoes = preventivas.flatMap((p) =>
+    p.transicoes
+      .filter((t) => t.para === 'concluida' && t.quando.getTime() <= agora.getTime())
+      .map((t) => t.quando.getTime()),
+  );
+  return corretivas.map((c) => ({
+    ...c,
+    aposPreventiva: conclusoes.some((q) => {
+      const d = (c.abertaEm.getTime() - q) / DIA_MS;
+      return d >= 0 && d <= dias;
+    }),
+  }));
+}
 
 /** Corretivas do ativo; as de fora da janela só servem de anterior à primeira. */
 export function reincidencia(
@@ -143,7 +185,11 @@ export function reincidencia(
         chave: 'apos_preventiva',
         peso: config.pesos.aposPreventiva,
         valor: comPreventiva.length === 0 ? null : aposPreventiva / comPreventiva.length,
-        evidencia: { quantidade: aposPreventiva, comDado: comPreventiva.length },
+        evidencia: {
+          quantidade: aposPreventiva,
+          comDado: comPreventiva.length,
+          diasAposPreventiva: diasAposPreventiva(config),
+        },
       },
     ],
     config.faixas,

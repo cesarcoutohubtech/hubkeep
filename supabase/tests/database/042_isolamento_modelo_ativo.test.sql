@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Isolamento de app.modelo_ativo e de app.ativo.modelo_id (migração 0050,
--- fase 1b M1). Os seis casos mínimos do doc 02:
+-- fase 1b M1) e do descarte da sugestão de plano no ativo (migração 0051). Os seis casos mínimos do doc 02:
 --   1. admin de outro tenant não vê nem grava o modelo do tenant A, nem liga
 --      ativo do A a modelo;
 --   2. gerente de hotel: o modelo é do grupo (sem hotel_id), então o caso vira
@@ -15,13 +15,15 @@
 -- Mais: o modelo é lido por quem cadastra ativo, inclusive o Técnico (o PWA
 -- baixa os modelos para cadastrar offline), e não pelo Solicitante; só o
 -- Admin do grupo cria e altera; id e tenant não são alteráveis; sem DELETE; o
--- worker vê só o tenant do job e não grava.
+-- worker vê só o tenant do job e não grava. O descarte da sugestão anda
+-- completo (quando, quem e motivo), com quem descartou do próprio tenant; a
+-- gestão descarta no hotel dela e não no de outro.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(41);
+select plan(49);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -121,6 +123,22 @@ select throws_ok(
   $$ insert into app.modelo_ativo (id, tenant_id, categoria_id, nome, versao) values
      (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', 'ca000000-0000-0000-0000-000000000001', 'x', 0) $$,
   '23514', null, 'a versão do modelo começa em 1');
+select throws_ok(
+  $$ update app.ativo set sugestao_descartada_em = now()
+     where id = 'a1000000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'o descarte da sugestão grava quando, quem e motivo juntos');
+select throws_ok(
+  $$ update app.ativo set sugestao_descartada_em = now(),
+                          sugestao_descartada_por = 'aaaaaaaa-0000-0000-0000-000000000002',
+                          sugestao_descarte_motivo = '  '
+     where id = 'a1000000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'o descarte da sugestão exige motivo');
+select throws_ok(
+  $$ update app.ativo set sugestao_descartada_em = now(),
+                          sugestao_descartada_por = 'bbbbbbbb-0000-0000-0000-000000000001',
+                          sugestao_descarte_motivo = 'intruso'
+     where id = 'a1000000-0000-0000-0000-000000000001' $$,
+  '23503', null, 'quem descarta a sugestão é membro do próprio tenant');
 
 set local role hk_app;
 
@@ -143,6 +161,11 @@ select throws_ok(
 select is_empty($$ update app.ativo set modelo_id = null
                    where tenant_id = '10000000-0000-0000-0000-000000000000' returning 1 $$,
   'admin B não mexe no modelo do ativo do A');
+select is_empty($$ update app.ativo set sugestao_descartada_em = now(),
+                                        sugestao_descartada_por = 'bbbbbbbb-0000-0000-0000-000000000001',
+                                        sugestao_descarte_motivo = 'intruso'
+                   where tenant_id = '10000000-0000-0000-0000-000000000000' returning 1 $$,
+  'admin B não descarta a sugestão do ativo do A');
 
 -- Admin do grupo A: lê, cria e altera
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000001', true),
@@ -174,6 +197,16 @@ select isnt_empty($$ update app.ativo set modelo_id = '3a100000-0000-0000-0000-0
 select is_empty($$ update app.ativo set modelo_id = '3a100000-0000-0000-0000-000000000001'
                    where id = 'a2000000-0000-0000-0000-000000000001' returning 1 $$,
   'gerente não mexe no ativo de outro hotel');
+select isnt_empty($$ update app.ativo set sugestao_descartada_em = now(),
+                                          sugestao_descartada_por = 'aaaaaaaa-0000-0000-0000-000000000002',
+                                          sugestao_descarte_motivo = 'Plano feito pelo fornecedor'
+                     where id = 'a1000000-0000-0000-0000-000000000001' returning 1 $$,
+  'gerente descarta a sugestão no ativo do hotel dele');
+select is_empty($$ update app.ativo set sugestao_descartada_em = now(),
+                                        sugestao_descartada_por = 'aaaaaaaa-0000-0000-0000-000000000002',
+                                        sugestao_descarte_motivo = 'x'
+                   where id = 'a2000000-0000-0000-0000-000000000001' returning 1 $$,
+  'gerente não descarta a sugestão no ativo de outro hotel');
 
 -- Técnico do Hotel 1: lê os modelos (PWA offline), não os grava; cadastra ativo com modelo
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000004', true)) ctx;
@@ -225,6 +258,11 @@ select results_eq(
      where id = '3a100000-0000-0000-0000-000000000001' $$,
   $$ values ('mes', 'cc100000-0000-0000-0000-000000000001') $$,
   'o modelo guarda a periodicidade sugerida e o checklist');
+select results_eq(
+  $$ select sugestao_descartada_por::text, sugestao_descarte_motivo from app.ativo
+     where id = 'a1000000-0000-0000-0000-000000000001' $$,
+  $$ values ('aaaaaaaa-0000-0000-0000-000000000002', 'Plano feito pelo fornecedor') $$,
+  'o ativo guarda quem descartou a sugestão e o motivo');
 reset role;
 
 -- Worker: só o tenant do job, sem gravar
@@ -245,6 +283,8 @@ select throws_ok($$ update app.modelo_ativo set ativa = false $$, '42501', null,
   'worker não altera modelo');
 select throws_ok($$ update app.ativo set modelo_id = null $$, '42501', null,
   'worker não altera o modelo do ativo');
+select throws_ok($$ update app.ativo set sugestao_descartada_em = null $$, '42501', null,
+  'worker não descarta a sugestão');
 reset role;
 
 select * from finish();

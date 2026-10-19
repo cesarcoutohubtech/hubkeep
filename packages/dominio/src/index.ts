@@ -360,6 +360,8 @@ export type {
   SituacaoDoPlano,
   UnidadeDePeriodicidade,
 } from './plano-preventivo';
+export { preventivaAtrasada } from './preventiva-atrasada';
+export type { PreventivaNoTempo } from './preventiva-atrasada';
 export {
   ESTADOS_DA_PREVENTIVA_ABERTA,
   MOTIVOS_DE_PULO,
@@ -596,6 +598,19 @@ export type {
   SomasDeSla,
   VisaoDoHotel,
 } from './indicadores';
+export {
+  lerPlanoSugerido,
+  podeGerirModelosDeAtivo,
+  preencherComModelo,
+  validarModeloDeAtivo,
+  validarModeloDoAtivo,
+} from './modelos-de-ativo';
+export type {
+  AtivoEmCadastro,
+  CategoriaDoModelo,
+  ChecklistDoModelo,
+  DadosDoModeloDeAtivo,
+} from './modelos-de-ativo';
 export {
   CANAIS_DE_ENVIO,
   LIMITE_DE_ENVIOS_POR_DIA,

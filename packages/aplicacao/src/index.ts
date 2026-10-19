@@ -355,3 +355,14 @@ export type {
   IndicadoresDoHotel,
   PainelDeIndicadores,
 } from './casos-de-uso/indicadores';
+export type {
+  ModeloDeAtivoGravado,
+  MudancaDeModeloDeAtivo,
+  PortaModelosDeAtivo,
+} from './portas/modelos-de-ativo';
+export { criarCasosDeUsoDeModelosDeAtivo } from './casos-de-uso/modelos-de-ativo';
+export type {
+  CasosDeUsoDeModelosDeAtivo,
+  ModeloDeAtivo,
+  PedidoDeModeloDeAtivo,
+} from './casos-de-uso/modelos-de-ativo';

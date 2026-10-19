@@ -9,6 +9,7 @@ import {
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
   type CasosDeUsoDeChecklists,
+  type CasosDeUsoDeModelosDeAtivo,
   type CasosDeUsoDePlanosPreventivos,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeTriagem,
@@ -51,6 +52,8 @@ import {
   type AcessoBanco,
   type ResultadoOutbox,
   criarAcessoBanco,
+  criarPortaStatusAdministrativoMews,
+  criarPortaCandidatosHoteisMews,
   criarPortaComunicacao,
   criarPortaMonitorDeSla,
   criarPortaAceiteAutomatico,
@@ -342,6 +345,10 @@ export const casosDeUsoDeCodigos = async (): Promise<CasosDeUsoDeCodigos> =>
 export const casosDeUsoDeChecklists = async (): Promise<CasosDeUsoDeChecklists> =>
   (await fabricas()).checklists();
 
+/** Modelos de ativo por categoria (fase 1b, M1), pelo hk_app. */
+export const casosDeUsoDeModelosDeAtivo = async (): Promise<CasosDeUsoDeModelosDeAtivo> =>
+  (await fabricas()).modelosDeAtivo();
+
 /** Planos preventivos (fase 1b, PV2; ADR-041), pelo hk_app. */
 export const casosDeUsoDePlanosPreventivos = async (): Promise<CasosDeUsoDePlanosPreventivos> =>
   (await fabricas()).planosPreventivos();
@@ -428,3 +435,13 @@ export async function processarOutboxDoTenant(tenantId: string): Promise<Resulta
 
 let verificador: VerificadorDeToken | undefined;
 export const verificadorDeToken = () => (verificador ??= criarVerificadorJwks(urlSupabase()));
+
+/** Estado Mews V1: somente leitura para Admin do grupo, sem job ou credenciais. */
+export const statusAdministrativoMews = memo(async () =>
+  criarPortaStatusAdministrativoMews(await acessoBanco()),
+);
+
+/** Candidatos a hotel de demonstração, sem gravações, só Admin do grupo. */
+export const candidatosHoteisMews = memo(async () =>
+  criarPortaCandidatosHoteisMews(await acessoBanco()),
+);

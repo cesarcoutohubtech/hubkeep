@@ -213,6 +213,12 @@ export interface AtivoDoPainel {
   bandeiraId: string | null;
   criticidade: number | null;
   desativadoEm: Date | null;
+  /** O fuso IANA do hotel (`app.hotel.fuso`): o dia da idade e da garantia. */
+  fuso: string;
+  /** `app.ativo.data_compra`, AAAA-MM-DD; null sem a data. */
+  dataCompra: string | null;
+  /** `app.ativo.garantia_ate`, AAAA-MM-DD, o último dia em que a garantia vale; null sem a data. */
+  garantiaAte: string | null;
 }
 
 /** Uma linha da `app.metrica_ativo_diaria`, como o job gravou. */
@@ -296,7 +302,8 @@ const indisponivel = () =>
     'O Intelligence não está disponível para você neste tenant.',
   );
 
-const naoEncontrado = () => new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
+export const insightNaoEncontrado = () =>
+  new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
 
 /** A abertura das telas no tenant, com a política do grupo e o fuso. */
 async function abertura(
@@ -313,7 +320,7 @@ async function abertura(
  * insight; senão, o painel não existe. Devolve só as atribuições dos papéis
  * da política: é por elas que se decide.
  */
-async function exigirPainel(p: PortasDoPainel, agora: Date): Promise<readonly Atribuicao[]> {
+export async function exigirPainel(p: PortasDoPainel, agora: Date): Promise<readonly Atribuicao[]> {
   const [modulos, atribuicoes] = await Promise.all([p.modulos(), p.atribuicoes()]);
   if (!modulosVigentes(modulos, agora).has('inteligencia')) throw indisponivel();
   const v = await abertura(p, modulos);
@@ -413,7 +420,7 @@ function estadosDoFiltro(filtro: FiltroDeEstadoDoInsight): readonly EstadoDoInsi
   return [filtro];
 }
 
-const unicos = (xs: readonly (string | null)[]) =>
+export const unicos = (xs: readonly (string | null)[]): string[] =>
   [...new Set(xs.filter((x): x is string => x !== null))].sort();
 
 function nomesDe(p: PortasDoPainel, insights: readonly InsightDoPainel[]) {
@@ -494,7 +501,7 @@ export async function verInsight(
 ): Promise<PaginaDoInsight> {
   const atribuicoes = await exigirPainel(p, agora);
   const insight = await p.insight(insightId);
-  if (!insight) throw naoEncontrado();
+  if (!insight) throw insightNaoEncontrado();
   const idsDosChamados = chamadosDaEvidencia(insight.evidencia);
   const [ligados, chamados, nomes] = await Promise.all([
     p.ligados([insight.id]),
@@ -554,7 +561,7 @@ export async function decidirInsight(
 ): Promise<{ versao: number; estado: EstadoDoInsight; responsavelId: string }> {
   const atribuicoes = await exigirPainel(p, agora);
   const atual = await p.insight(pedido.insightId);
-  if (!atual) throw naoEncontrado();
+  if (!atual) throw insightNaoEncontrado();
   if (atual.versao !== pedido.versao) throw conflitoDeVersao(atual.versao);
   const r = decidirNoInsight(pedido.acao, {
     atribuicoes,
@@ -580,7 +587,8 @@ export async function decidirInsight(
   return { versao, estado: r.estado, responsavelId };
 }
 
-const ativoNaoEncontrado = () => new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
+export const ativoNaoEncontrado = (): NaoEncontrado =>
+  new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
 
 /**
  * O detalhe do ativo no Intelligence: a atenção dos últimos 90 dias, o último

@@ -112,6 +112,7 @@ const TABELAS = [
   'app.operacao_offline',
   'app.metrica_ativo_diaria',
   'app.insight',
+  'app.sinal_hospede',
   'app.anexo',
   'app.os_material',
   'app.os_apontamento',
@@ -181,6 +182,7 @@ describe.skipIf(!temAmbiente)('a gravação no Supabase do runner', () => {
         transicoes: await n('app.os_transicao'),
         metricas: await n('app.metrica_ativo_diaria'),
         insights: await n('app.insight'),
+        reclamacoes: await n('app.sinal_hospede'),
       };
     } finally {
       await dono.end();
@@ -212,6 +214,12 @@ describe.skipIf(!temAmbiente)('a gravação no Supabase do runner', () => {
       );
       expect(primeira.estados).toEqual(esperados);
       expect(primeira.diasCalculados).toBe(r.dias.length);
+      // As reclamações de todos os lotes entram; as do último lote de cada hotel ficam na fila.
+      const lotes = r.lotesDeReclamacoes;
+      expect(primeira.reclamacoes).toBe(lotes.reduce((s, l) => s + l.reclamacoes.length, 0));
+      expect(primeira.classificacoes).toBe(
+        lotes.reduce((s, l) => s + l.reclamacoes.filter((x) => x.classificacao).length, 0),
+      );
     },
     LIMITE_MS,
   );
@@ -220,9 +228,14 @@ describe.skipIf(!temAmbiente)('a gravação no Supabase do runner', () => {
     'rodar de novo com o mesmo fim não grava nada; com outro fim, recusa',
     async () => {
       const antes = await contar();
-      const segunda = await gravarHistorico(opcoes);
+      const linhas: string[] = [];
+      const segunda = await gravarHistorico({ ...opcoes, log: (l) => linhas.push(l) });
+      // A retomada pula, sem consulta, o que vem antes do último dia gravado.
+      expect(linhas.some((l) => l.startsWith('Retomada no dia '))).toBe(true);
       expect(segunda.diasCalculados).toBe(0);
       expect(segunda.decisoes).toBe(0);
+      expect(segunda.reclamacoes).toBe(0);
+      expect(segunda.classificacoes).toBe(0);
       expect(segunda.estados).toEqual(primeira.estados);
       expect(await contar()).toEqual(antes);
       await expect(gravarHistorico({ ...opcoes, fim: '2026-10-05' })).rejects.toThrow(FimDiferente);

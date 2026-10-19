@@ -17,6 +17,7 @@ import {
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
   type CasosDeUsoDeChecklists,
+  type CasosDeUsoDeModelosDeAtivo,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeConsultas,
@@ -49,6 +50,7 @@ import {
   criarCasosDeUsoDeComunicacao,
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeChecklists,
+  criarCasosDeUsoDeModelosDeAtivo,
   criarCasosDeUsoDeCodigos,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeConsultas,
@@ -83,6 +85,7 @@ import {
   criarPortaCategorias,
   criarPortaChamados,
   criarPortaChecklists,
+  criarPortaModelosDeAtivo,
   criarPortaCodigos,
   criarPortaConfiguracao,
   criarPortaConsultasDaCorretiva,
@@ -132,6 +135,7 @@ export interface FabricasDeCasosDeUso {
   categorias(): CasosDeUsoDeCategorias;
   codigos(): CasosDeUsoDeCodigos;
   checklists(): CasosDeUsoDeChecklists;
+  modelosDeAtivo(): CasosDeUsoDeModelosDeAtivo;
   planosPreventivos(): CasosDeUsoDePlanosPreventivos;
   situacoes(): CasosDeUsoDeSituacoes;
   chamados(): CasosDeUsoDeChamados;
@@ -239,6 +243,13 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
         checklists: criarPortaChecklists(banco),
         triagem: criarPortaTriagem(banco),
         execucao: criarPortaExecucao(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
+    modelosDeAtivo: uma(() =>
+      criarCasosDeUsoDeModelosDeAtivo({
+        modelos: criarPortaModelosDeAtivo(banco),
         atribuicoes,
         relogio,
       }),

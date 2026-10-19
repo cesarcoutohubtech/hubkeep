@@ -1,4 +1,11 @@
 // O painel do Intelligence na API: as datas do motor viram texto ISO 8601.
+import type {
+  FilaDoSinal,
+  ReclamacoesDoPainel,
+  SinalDaFila,
+  SubstituicaoDoAtivo,
+} from '@hubkeep/inteligencia';
+
 const iso = (d: Date) => d.toISOString();
 
 interface ComDatas {
@@ -26,3 +33,57 @@ export function insightNaApi<T extends ComDatas>(
 }
 
 export const dataNaApi = iso;
+
+/** A efetividade (adendo ao ADR-033): a data da intervenção em texto; o resto vai como o motor devolve. */
+export function efetividadesNaApi<
+  I extends { em: Date },
+  E extends { metricas: readonly unknown[] },
+  N,
+>(e: { intervencoes: readonly { intervencao: I; efetividade: E }[]; nomes: N }) {
+  return {
+    intervencoes: e.intervencoes.map((x) => ({
+      intervencao: { ...x.intervencao, em: iso(x.intervencao.em) },
+      efetividade: {
+        ...x.efetividade,
+        metricas: [...x.efetividade.metricas] as E['metricas'][number][],
+      },
+    })),
+    nomes: e.nomes,
+  };
+}
+
+/** O sinal de substituição: a data do cálculo em texto; a configuração fica fora (os limites vão em cada critério). */
+export function substituicaoNaApi(s: SubstituicaoDoAtivo) {
+  const { versao, sinal, atingidos, garantiaVigente, criterios } = s.substituicao;
+  return {
+    versao,
+    sinal,
+    atingidos,
+    avaliados: s.avaliados,
+    garantiaVigente,
+    criterios: criterios.map((c) => ({ ...c })),
+    calculadoEm: iso(s.calculadoEm),
+  };
+}
+
+/** Uma reclamação do sinal do hóspede (ADR-047): as datas em texto. */
+function sinalNaApi(s: SinalDaFila) {
+  const ouNulo = (d: Date | null) => (d === null ? null : iso(d));
+  return {
+    ...s,
+    ocorridoEm: iso(s.ocorridoEm),
+    textoApagadoEm: ouNulo(s.textoApagadoEm),
+    classificadoEm: ouNulo(s.classificadoEm),
+    importadoEm: iso(s.importadoEm),
+  };
+}
+
+/** A fila do sinal do hóspede (ADR-047): as datas em texto. */
+export function filaDeSinaisNaApi(f: FilaDoSinal) {
+  return { sinais: f.sinais.map(sinalNaApi), limitada: f.limitada, nomes: f.nomes };
+}
+
+/** As reclamações das páginas do insight e do ativo (C2 do ADR-047): as datas em texto. */
+export function reclamacoesNaApi(r: ReclamacoesDoPainel) {
+  return { ...r, sinais: r.sinais.map(sinalNaApi) };
+}
