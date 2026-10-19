@@ -2986,3 +2986,23 @@ Preparado numa branch local, sobre o #330: só vai para a branch do agente e par
 - **Nesta branch:** o PR `int:` de abrir chamado a partir da reclamação, fora da zona protegida.
 - **Esperando:** o `db push` da 0057; o merge deste PR; os detalhes do Kaio (os rótulos e a sugestão da descrição deste PR, os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
 - **Próximo:** o que fica para depois do adendo (um chamado para várias reclamações, ligar a um chamado que já existe) precisa de proposta; o resto depende de outros (o mapeamento das colunas por ferramenta, a API e o webhook IX1 a IX3, a IA pela regra 9).
+
+### O que fica depois do adendo de 19/10/2026: proposta (19/10/2026)
+
+O adendo deixou para depois "um chamado para várias reclamações de uma vez (o insight sistêmico) e ligar a reclamação a um chamado que já existe". Proposta, antes do código, para Cesar e Kaio:
+
+**1. Um chamado para as reclamações do insight sistêmico.** Na página do insight da regra das reclamações (a lista da evidência, C2), o botão "Abrir um chamado para estas reclamações":
+- o formulário pede o local, porque as reclamações costumam ser de UHs diferentes (o chuveiro fraco em cinco UHs): a pessoa escolhe a UH ou a área comum do hotel, e o ativo, se quiser. Quando todas as reclamações têm o mesmo ativo, ele vem sugerido;
+- o chamado abre pelo caso de uso `abrir` do núcleo, como no PR #334, com "afeta hóspede" e a descrição da pessoa (a sugestão traz a categoria, o número de reclamações e as UHs, sem o texto do hóspede);
+- depois, as reclamações da evidência que ainda não têm chamado são ligadas a ele, uma linha por reclamação na `app.sinal_hospede_chamado`. A tabela já aceita várias reclamações num chamado: **sem migração**;
+- quem vê e quem decide não mudam: quem decide o insight no hotel. Só entram as reclamações que a pessoa lê (a RLS).
+
+**2. Ligar a reclamação a um chamado que já existe.** Na fila, além de "Abrir chamado", a opção "Ligar a um chamado aberto": a lista dos chamados abertos do hotel na mesma UH ou no mesmo ativo, e a pessoa escolhe um. **Esbarra na 0057:** a FK faz quem liga ser quem abriu o chamado, e o chamado aberto por outra pessoa (o Técnico, a Solicitante) não poderia ser ligado. Duas saídas:
+- **(2a)** só os chamados que a própria pessoa abriu (sem migração; cobre pouco);
+- **(2b)** uma migração nova que troca essa FK por `(hotel_id, chamado_id)` e põe `ligado_por` como membro do tenant, com o "em nome próprio" na policy (zona protegida e outro adendo).
+
+**Para decidir (Cesar e Kaio):**
+- **(i)** Seguir com o 1 agora? Proposta: sim, é o caso do insight sistêmico, sem migração.
+- **(ii)** No 2, (2a), (2b) ou deixar para depois do piloto? Proposta: deixar para depois do piloto, porque o 1 e o #334 cobrem o caso comum e o 2 muda a 0057, recém-aprovada.
+
+**Detalhes do Kaio** (ADR-033): os rótulos e a sugestão da descrição do 1.
