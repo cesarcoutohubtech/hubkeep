@@ -2973,3 +2973,16 @@ Preparado numa branch local, sobre o #330: só vai para a branch do agente e par
 - **Tela da fila:** o botão "Abrir chamado" na reclamação de manutenção com UH ou ativo e sem chamado; o formulário com o ativo (que a pessoa pode tirar), o local, a descrição com a sugestão sem o texto do hóspede e o aviso de "afeta hóspede"; o link "Ver o chamado" depois.
 - **Textos** nos quatro idiomas: `inteligencia.sinais.acao.abrir_chamado`, `inteligencia.sinais.chamado.*` e os cinco erros novos.
 - **Área compartilhada:** só os catálogos (prefixo do Intelligence e os códigos de erro novos). O chamado, o `packages/aplicacao` e o `packages/dominio` não mudam.
+
+### O merge do #330 e o PR de abrir chamado (19/10/2026)
+
+- **#330 mergeado** (Cesar, 19/10/2026): a migração 0057 na `main`. O `db push` no dev é do Cesar, com a conferência no `supabase migration list`.
+- **O PR comum** sai agora, com base na `main` (que já tem os PRs #281, #329 e #331 da 1b e da 1c): o trabalho da branch local passou para a branch do agente sem conflito.
+
+### Ponto de retomada (19/10/2026, PR de abrir chamado)
+
+- **`main`:** com o #330 (migração 0057). Última migração na `main`: 0057.
+- **Dev:** espera o `db push` da 0057 (Cesar), antes de usar a tela no dev.
+- **Nesta branch:** o PR `int:` de abrir chamado a partir da reclamação, fora da zona protegida.
+- **Esperando:** o `db push` da 0057; o merge deste PR; os detalhes do Kaio (os rótulos e a sugestão da descrição deste PR, os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** o que fica para depois do adendo (um chamado para várias reclamações, ligar a um chamado que já existe) precisa de proposta; o resto depende de outros (o mapeamento das colunas por ferramenta, a API e o webhook IX1 a IX3, a IA pela regra 9).
