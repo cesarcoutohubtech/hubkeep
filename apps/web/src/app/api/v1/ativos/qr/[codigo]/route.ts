@@ -21,6 +21,7 @@ export const GET = rota('ativos.abrir_por_qr', async (r) => {
       id: a.id,
       localId: a.localId,
       categoriaId: a.categoriaId,
+      modeloId: a.modeloId,
       nome: a.nome,
       fabricante: a.fabricante,
       modelo: a.modelo,

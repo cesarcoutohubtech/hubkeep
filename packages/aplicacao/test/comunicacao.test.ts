@@ -6,8 +6,11 @@ import { describe, expect, it } from 'vitest';
 import {
   type ChamadoDoAviso,
   type EnviadorDeEmail,
+  type EnviadorDePush,
   type EnvioRegistrado,
   type EventoPendente,
+  type InscricaoAtiva,
+  type MensagemDePush,
   type PessoaDoEnvio,
   type PortaComunicacao,
   criarCasosDeUsoDeComunicacao,
@@ -32,7 +35,29 @@ const CHAMADO: ChamadoDoAviso = {
   idiomaDoTenant: 'pt-BR',
   atribuicoes: [atr('gerente', 'gerente_hotel'), atr('gestor', 'gestor_csc')],
   responsavelDaOs: { tipo: 'tecnico', usuarioId: 'tecnico' },
+  osAtivaId: 'os1',
 };
+
+const INSCRICOES: InscricaoAtiva[] = [
+  {
+    id: 'i-tec-1',
+    usuarioId: 'tecnico',
+    endpoint: 'https://push.test/1',
+    chaves: { p256dh: 'p', auth: 'a' },
+  },
+  {
+    id: 'i-tec-2',
+    usuarioId: 'tecnico',
+    endpoint: 'https://push.test/2',
+    chaves: { p256dh: 'p', auth: 'a' },
+  },
+  {
+    id: 'i-ger',
+    usuarioId: 'gerente',
+    endpoint: 'https://push.test/3',
+    chaves: { p256dh: 'p', auth: 'a' },
+  },
+];
 
 const PESSOAS: Record<string, PessoaDoEnvio> = {
   gerente: { usuarioId: 'gerente', ativo: true, email: 'gerente@x.test', idioma: null },
@@ -54,16 +79,41 @@ const evento = (destinatarios: string[]): EventoPendente => ({
   },
 });
 
-function montar(p: { email?: EnviadorDeEmail | null; jaEnviados?: string[] } = {}) {
+function montar(
+  p: {
+    email?: EnviadorDeEmail | null;
+    push?: EnviadorDePush | null;
+    jaEnviados?: string[];
+    inscricoes?: InscricaoAtiva[];
+  } = {},
+) {
   const registros: EnvioRegistrado[] = [];
   const pedidos: { papeis: readonly string[] }[] = [];
+  const revogadas: string[] = [];
   const porta: PortaComunicacao = {
     chamadoDoAviso: async (_t, id, papeis) => {
       pedidos.push({ papeis });
       return id === CHAMADO.id ? CHAMADO : null;
     },
+    osDoAviso: async (_t, id, r) =>
+      id === 'os1'
+        ? {
+            id,
+            hotel: { id: 'h1', nome: 'Hotel Centro' },
+            idiomaDoTenant: 'pt-BR',
+            responsavelDaOs:
+              r.tipo === 'tecnico'
+                ? { tipo: 'tecnico', usuarioId: r.usuarioId }
+                : { tipo: 'equipe', membros: ['tecnico', 'gerente'] },
+          }
+        : null,
     pessoas: async (_t, ids) => ids.flatMap((id) => (PESSOAS[id] ? [PESSOAS[id]] : [])),
-    jaEnviado: async (_t, g) => (p.jaEnviados ?? []).includes(g.usuarioId),
+    inscricoesAtivas: async (_t, ids) =>
+      (p.inscricoes ?? INSCRICOES).filter((i) => ids.includes(i.usuarioId)),
+    revogarInscricaoRecusada: async (_t, id) => void revogadas.push(id),
+    jaEnviado: async (_t, g) =>
+      (p.jaEnviados ?? []).includes(`${g.usuarioId}:${g.canal}`) ||
+      (p.jaEnviados ?? []).includes(g.usuarioId),
     registrarEnvio: async (_t, e) => void registros.push(e),
     contagemPorDia: async () => [],
   };
@@ -77,15 +127,18 @@ function montar(p: { email?: EnviadorDeEmail | null; jaEnviados?: string[] } = {
     comunicacao: {
       porta,
       email: p.email === undefined ? null : p.email,
+      push: p.push === undefined ? null : p.push,
       urlDoSite: 'https://hubkeep.test',
       relogio: { agora: () => AGORA },
     },
   });
-  return { manipuladores, registros, pedidos };
+  return { manipuladores, registros, pedidos, revogadas };
 }
 
-const situacoes = (registros: EnvioRegistrado[]) =>
-  Object.fromEntries(registros.map((r) => [r.usuarioId, r.situacao]));
+const situacoes = (registros: EnvioRegistrado[], canal: 'email' | 'push' = 'email') =>
+  Object.fromEntries(
+    registros.filter((r) => r.canal === canal).map((r) => [r.usuarioId, r.situacao]),
+  );
 
 describe('aviso de SLA por e-mail (ADR-046)', () => {
   const todos = ['responsavel_da_os', 'gerente_hotel', 'gestor_csc'];
@@ -133,7 +186,9 @@ describe('aviso de SLA por e-mail (ADR-046)', () => {
     });
     await manipuladores['chamado.sla_alerta']?.(evento(['gerente_hotel', 'gestor_csc']));
     expect(enviados).toEqual(['gestor@x.test']);
-    expect(registros.map((r) => r.usuarioId)).toEqual(['gestor']);
+    expect(registros.filter((r) => r.canal === 'email').map((r) => r.usuarioId)).toEqual([
+      'gestor',
+    ]);
   });
 
   it('a falha de uma pessoa não para as outras; no fim, o evento falha', async () => {
@@ -163,6 +218,11 @@ describe('aviso de SLA por e-mail (ADR-046)', () => {
       envio: { enviarConvite: async () => ({ enviado: true }) },
     });
     expect(Object.keys(manipuladores)).toEqual(['membro.convidado']);
+    expect(Object.keys(montar().manipuladores)).toEqual([
+      'membro.convidado',
+      'chamado.sla_alerta',
+      'os.atribuida',
+    ]);
   });
 
   it('payload sem destinatários é erro, não aviso pela metade', async () => {
@@ -174,11 +234,135 @@ describe('aviso de SLA por e-mail (ADR-046)', () => {
   });
 });
 
+const PUSH_OK = (destinos: { endpoint: string; mensagem: MensagemDePush }[]): EnviadorDePush => ({
+  enviar: async (d, m) => {
+    destinos.push({ endpoint: d.endpoint, mensagem: m });
+    return 'entregue';
+  },
+});
+
+describe('push (ADR-046, C4)', () => {
+  const todos = ['responsavel_da_os', 'gerente_hotel', 'gestor_csc'];
+
+  it('sem as chaves VAPID: nada sai; sem aparelho inscrito, sem_endereco', async () => {
+    const { manipuladores, registros } = montar();
+    await manipuladores['chamado.sla_alerta']?.(evento(todos));
+    expect(situacoes(registros, 'push')).toEqual({
+      gerente: 'sem_provedor',
+      gestor: 'sem_endereco',
+      tecnico: 'sem_provedor',
+    });
+  });
+
+  it('o aviso de SLA vai a cada aparelho, no idioma da pessoa, e abre a OS ativa', async () => {
+    const destinos: { endpoint: string; mensagem: MensagemDePush }[] = [];
+    const { manipuladores, registros } = montar({ push: PUSH_OK(destinos) });
+    await manipuladores['chamado.sla_alerta']?.(evento(todos));
+    expect(destinos.map((d) => d.endpoint)).toEqual([
+      'https://push.test/3',
+      'https://push.test/1',
+      'https://push.test/2',
+    ]);
+    expect(destinos[0]?.mensagem).toEqual({
+      titulo: 'Solução vencida',
+      corpo: 'Hotel Centro. Abra o HubKeep para ver o chamado.',
+      caminho: '/os/os1',
+    });
+    expect(destinos.some((d) => d.mensagem.corpo.includes('Elevador'))).toBe(false);
+    expect(situacoes(registros, 'push')).toEqual({
+      gerente: 'enviado',
+      gestor: 'sem_endereco',
+      tecnico: 'enviado',
+    });
+  });
+
+  it('a inscrição recusada (404 ou 410) é revogada; sem outra, sem_endereco', async () => {
+    const { manipuladores, registros, revogadas } = montar({
+      push: {
+        enviar: async (d) => (d.endpoint === 'https://push.test/3' ? 'expirada' : 'entregue'),
+      },
+    });
+    await manipuladores['chamado.sla_alerta']?.(evento(['gerente_hotel']));
+    expect(revogadas).toEqual(['i-ger']);
+    expect(situacoes(registros, 'push')).toEqual({ gerente: 'sem_endereco' });
+  });
+
+  it('o erro do serviço de push é falhou; o e-mail das pessoas não para', async () => {
+    const enviados: string[] = [];
+    const { manipuladores, registros } = montar({
+      email: { enviar: async (m) => void enviados.push(m.para) },
+      push: {
+        enviar: async () => {
+          throw new Error('serviço fora');
+        },
+      },
+    });
+    await expect(manipuladores['chamado.sla_alerta']?.(evento(['gerente_hotel']))).rejects.toThrow(
+      /gerente \(push\): serviço fora/,
+    );
+    expect(enviados).toEqual(['gerente@x.test']);
+    expect(situacoes(registros, 'push')).toEqual({ gerente: 'falhou' });
+    expect(situacoes(registros, 'email')).toEqual({ gerente: 'enviado' });
+  });
+
+  it('a OS atribuída vai só por push, ao técnico ou aos membros da equipe', async () => {
+    const destinos: { endpoint: string; mensagem: MensagemDePush }[] = [];
+    const { manipuladores, registros } = montar({ push: PUSH_OK(destinos) });
+    const os = (responsavel: Record<string, string>): EventoPendente => ({
+      id: 'ev-os',
+      tenantId: 't1',
+      tipo: 'os.atribuida',
+      registroId: 'os1',
+      payload: { hotelId: 'h1', acao: 'gerar', responsavel },
+    });
+    await manipuladores['os.atribuida']?.(os({ tipo: 'tecnico', usuarioId: 'tecnico' }));
+    expect(destinos.map((d) => d.endpoint)).toEqual(['https://push.test/1', 'https://push.test/2']);
+    expect(destinos[0]?.mensagem).toEqual({
+      titulo: 'Nova OS para você',
+      corpo: 'Hotel Centro. Abra a fila do dia para ver a OS.',
+      caminho: '/os/os1',
+    });
+    expect(registros.map((r) => [r.usuarioId, r.canal, r.situacao, r.tipoEvento])).toEqual([
+      ['tecnico', 'push', 'enviado', 'os.atribuida'],
+    ]);
+
+    registros.length = 0;
+    await manipuladores['os.atribuida']?.({
+      ...os({ tipo: 'equipe', equipeId: 'e1' }),
+      id: 'ev-os-2',
+    });
+    expect(situacoes(registros, 'push')).toEqual({ gerente: 'enviado', tecnico: 'enviado' });
+    expect(registros.every((r) => r.canal === 'push')).toBe(true);
+  });
+
+  it('a OS que não existe mais não manda nada; o evento sem responsável é erro', async () => {
+    const { manipuladores, registros } = montar({ push: PUSH_OK([]) });
+    await manipuladores['os.atribuida']?.({
+      id: 'ev',
+      tenantId: 't1',
+      tipo: 'os.atribuida',
+      registroId: 'os-sumiu',
+      payload: { responsavel: { tipo: 'tecnico', usuarioId: 'tecnico' } },
+    });
+    expect(registros).toEqual([]);
+    await expect(
+      manipuladores['os.atribuida']?.({
+        id: 'ev',
+        tenantId: 't1',
+        tipo: 'os.atribuida',
+        registroId: 'os1',
+        payload: {},
+      }),
+    ).rejects.toThrow(/Evento sem responsavel/);
+  });
+});
+
 describe('contagem de envios por destinatário e por dia (C8)', () => {
   const linhas = [
-    { usuarioId: 'b', nome: 'B', dia: '2026-10-12', envios: 31 },
-    { usuarioId: 'a', nome: 'A', dia: '2026-10-13', envios: 5 },
-    { usuarioId: 'c', nome: 'C', dia: '2026-10-13', envios: 30 },
+    { usuarioId: 'b', nome: 'B', canal: 'email' as const, dia: '2026-10-12', envios: 31 },
+    { usuarioId: 'a', nome: 'A', canal: 'email' as const, dia: '2026-10-13', envios: 5 },
+    { usuarioId: 'c', nome: 'C', canal: 'push' as const, dia: '2026-10-13', envios: 30 },
+    { usuarioId: 'c', nome: 'C', canal: 'email' as const, dia: '2026-10-13', envios: 30 },
   ];
   const caso = (papel: Atribuicao['papel']) =>
     criarCasosDeUsoDeComunicacao({
@@ -192,10 +376,11 @@ describe('contagem de envios por destinatário e por dia (C8)', () => {
   it('do dia mais recente, de quem recebeu mais; acima de 30 marca o limite', async () => {
     const r = await caso('gestor_csc').contagemDeEnvios(ctx, periodo);
     expect(r.limite).toBe(30);
-    expect(r.dias.map((d) => [d.dia, d.usuarioId, d.acimaDoLimite])).toEqual([
-      ['2026-10-13', 'c', false],
-      ['2026-10-13', 'a', false],
-      ['2026-10-12', 'b', true],
+    expect(r.dias.map((d) => [d.dia, d.usuarioId, d.canal, d.acimaDoLimite])).toEqual([
+      ['2026-10-13', 'c', 'email', false],
+      ['2026-10-13', 'c', 'push', false],
+      ['2026-10-13', 'a', 'email', false],
+      ['2026-10-12', 'b', 'email', true],
     ]);
   });
 

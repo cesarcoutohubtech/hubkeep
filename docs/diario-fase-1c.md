@@ -830,6 +830,60 @@ O Cesar respondeu ("Cesar aqui. Respostas:"):
 - **Glossário:** a versão 3 está aprovada por ele e pelo Kaio, e os termos "prazo em risco" e "prazo vencido" foram fechados no #258. O painel da 1c segue a versão 3.
 - **Enquanto a vez não chega,** seguir com o que não depende da migração: o PR 3 do arrendado ou o push. O PR 3 do arrendado já entrou (#261); o push anda numa branch que já tem a migração, porque grava em `app.inscricao_push`, e o PR abre depois do merge e do `db push` da 0049.
 
+## Comunicação, push (C4): na branch (14/10/2026)
+
+A branch `claude/1c-push` foi feita a partir da `claude/1c-email-sla`, que já tem a migração. O PR abre depois do PR do e-mail do SLA, que espera o merge e o `db push` da 0049.
+
+**Aviso de área compartilhada com a 1b (`packages/dominio`, outbox e catálogos):**
+- **Domínio:** `situacaoAntesDoPush` e `inscricaoExpirou` (404 e 410).
+- **Worker:**
+  - o aviso de SLA também vai por push, a cada aparelho inscrito das mesmas pessoas;
+  - a OS atribuída (`os.atribuida`) ganha manipulador e vai só por push, a quem a recebeu no evento: o técnico, ou os membros ativos da equipe;
+  - sem as chaves VAPID, `sem_provedor`; sem aparelho inscrito, `sem_endereco`;
+  - a inscrição que o serviço de push recusa é revogada pelo `hk_worker`.
+- **Banco:**
+  - a inscrição do próprio aparelho pelo `hk_app` (gravar e revogar);
+  - a contagem do C8 sai por canal.
+- **API:** `GET /api/v1/push/configuracao`, `POST /api/v1/push/inscricoes` e `POST /api/v1/push/inscricoes/revogacao`.
+- **Web:**
+  - o adaptador do `web-push` 3.6.7, dependência nova, só no servidor;
+  - as chaves `WEB_PUSH_VAPID_PUBLIC_KEY` e `WEB_PUSH_VAPID_PRIVATE_KEY` saem das reservadas do `.env.example`.
+- **PWA:**
+  - "Avisos neste aparelho" na fila do dia, para ativar e desativar;
+  - o `push-sw.js`, importado pelo service worker;
+  - o toque no aviso abre `/os/<id>`;
+  - ao sair, a inscrição do aparelho é revogada.
+- **Catálogos:** `push.sla.*`, `push.os_atribuida.*` e `tecnico.push.*`, nos 4 idiomas.
+
+**Detalhes para o Cesar ver no ADR-046** (na branch da migração, ainda "aguarda aprovação"):
+- **O que o push leva:** o título, o nome do hotel e o caminho da OS, sem a descrição do chamado. O C4 dizia "o título e o código do chamado", mas o chamado não tem código curto.
+- **Auditoria:** a inscrição não vai para ela, porque a própria tabela guarda a criação e a revogação.
+
+**Para ligar o push:**
+- gerar o par VAPID uma vez por ambiente, com `pnpm --filter @hubkeep/web exec web-push generate-vapid-keys`;
+- pôr as duas chaves na Vercel, e o `HK_URL_SITE` em https.
+
+Convém ligar só depois do deploy deste PR. As `os.atribuida` antigas, sem manipulador até aqui, são processadas no primeiro ciclo do outbox: sem as chaves, ficam só registradas; com as chaves, os técnicos receberiam o aviso de OS antigas.
+
+**Validação local:** lint, typecheck e testes passaram: 4.643 testes passaram e nenhum falhou. A integração nova do `packages/db` roda só na CI.
+
+### Ponto de retomada (14/10/2026, push na branch)
+- **`main`:** em `a263f1a`, com o #262 (PV3, 0048). O CI passou e o `banco` foi cancelado nesse commit. O dev espera o `db push` da 0048 pelo Cesar.
+- **PRs abertos:** nenhum da 1c. Está aberto o #263 (`adm:`), que não é zona protegida.
+- **Nas branches, sem PR, em cadeia:**
+  1. `claude/1c-comunicacao-migracao`: a 0049, o pgTAP 041, o ADR-046 e o status do ADR-045. É o PR de zona protegida, na vez que o Cesar avisar.
+  2. `claude/1c-email-sla`: abre depois do merge e do `db push` da 0049.
+  3. `claude/1c-push`: abre depois do PR do e-mail.
+- **Esperando o Cesar:**
+  - o aviso da vez da zona protegida;
+  - apagar no GitHub a branch `claude/1c-arrendado-migracao`, porque o proxy daqui recusa;
+  - a conta e o DNS do SES (F0-12);
+  - as chaves VAPID, depois do deploy do push;
+  - a aprovação do ADR-046, quando o PR abrir.
+- **Próxima tarefa:**
+  - na vez, abrir o PR da migração: conferir a última migração da `main`, fazer o merge da `main`, abrir o PR e assinar os eventos;
+  - enquanto isso, o painel de indicadores (item 8), que segue a versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
+
 ## ADR-046 aprovado (14/10/2026)
 
 O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no `docs/03` foi trocado na branch `claude/1c-comunicacao-migracao` e entra na `main` com o PR da migração 0049. A aprovação cobre os detalhes do push registrados no ADR.
@@ -843,9 +897,49 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
 - **Esperando o Cesar:** o `db push` da 0049; apagar a branch `claude/1c-arrendado-migracao`; a conta e o DNS do SES (F0-12); as chaves VAPID, depois do deploy do push.
 - **Próxima tarefa:** o painel de indicadores (item 8), pela versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
 
+## Impressão da OS e CSV (item 9): começo (19/10/2026)
+
+**Retomada.** Na volta da pausa, o #281 e o #282 estavam abertos e em conflito com a `main` (af1b9aa). Atualizei as duas branches com merge da `main`; os conflitos eram só de listas de exportação e do fim dos catálogos. Lint, typecheck e testes passaram nas duas.
+
+**Área compartilhada (OS e catálogos), registrada antes de mexer.** O item 9 vai em dois PRs, os dois fora da zona protegida e sem migração:
+1. **Impressão da OS** (branch `claude/1c-impressao`):
+   - `GET /api/v1/os/{id}/impressao` monta a OS para imprimir com o que já existe: a OS e os nomes, a descrição do chamado, o checklist com as respostas e as fotos;
+   - a página `/os/{id}/impressao`, com o botão de imprimir e a folha de estilo de impressão;
+   - o caminho "Imprimir OS" no bloco da OS, que serve à página da OS e ao detalhe do chamado.
+2. **CSV:** a lista de chamados, o painel de indicadores (depois do merge do #282) e o aviso "N linhas exportadas, só com o que o seu perfil enxerga", também na auditoria geral.
+
+**Escolhas da impressão** (da seção 6 de `docs/referencia/paridade-mock-1c.md`):
+- **Custo informado:** some da impressão de quem só enxerga o hotel como proprietário ("Não copiar do mock"). Quem decide é o domínio (`custoNaImpressao`): o custo aparece quando quem imprime tem algum papel vigente, que não o de proprietário, com escopo sobre o hotel. O servidor já devolve a OS sem o custo nesse caso. A ficha da OS não muda: hoje o proprietário vê o custo nela.
+- **Execução:** a OS não guarda apontamento na API da ficha. A impressão mostra quem executou (equipe interna ou fornecedor), os códigos de falha, causa e solução e o motivo da reabertura, se houver.
+- **Aceite:** "Aceita com assinatura", com a imagem, quando a OS aceita tem a assinatura; "Aceita sem assinatura"; ou "Pendente". O mock diz "Assinado no celular", mas a assinatura também é desenhada no web (I8), então o texto não diz onde.
+- **Fotos:** as imagens da OS, sem a assinatura, pela miniatura quando há. O PDF anexado não entra na folha.
+
+**Feito na branch (19/10/2026), PR 1 do item 9:**
+- **Domínio (`packages/dominio/src/impressao-da-os.ts`):** `custoNaImpressao` e `aceiteNaImpressao`.
+- **Caso de uso:** `osParaImpressao` na triagem, que devolve a OS sem o custo para quem só enxerga o hotel como proprietário (`custoOculto`).
+- **API:** `GET /api/v1/os/{id}/impressao`, com o contrato e o OpenAPI.
+- **Tela:**
+  - a página `/os/{id}/impressao`, com o botão de imprimir;
+  - o caminho "Imprimir OS" no bloco da OS;
+  - a folha de estilo de impressão em `packages/ui`;
+  - o tema claro ligado no `beforeprint`, porque o CSS só aceita cor de token.
+- **Textos:** nos quatro idiomas.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (19/10/2026, impressão da OS)
+
+- **`main`:** af1b9aa.
+- **PRs da 1c esperando o merge do Cesar, todos fora da zona protegida:**
+  - [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, atualizado com a `main` no head 60bc68b.
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, atualizado com a `main` no head 540e28b.
+  - O PR da impressão da OS, que abre agora.
+  - Os três mexem nas listas de exportação e nos catálogos: o que entrar depois do primeiro pode precisar de nova atualização com a `main`.
+- **Pergunta ao Cesar:** o proprietário vê o custo informado na ficha da OS; só a impressão o esconde. Esconder também na ficha é decisão de quem vê.
+- **Próximo:** o PR 2 do item 9, o CSV da lista de chamados e o aviso do número de linhas (também na auditoria geral). O CSV do painel espera o merge do #282. Primeiro passo: o modo de exportação na consulta da lista de chamados, como o da auditoria geral (`LIMITES_DA_AUDITORIA`).
+
 ## CSV da lista de chamados e aviso de linhas (item 9, PR 2; 19/10/2026)
 
-O registro da área compartilhada (OS e catálogos) e as escolhas do item 9 estão na branch do PR 1 ([#331](https://github.com/cesarcoutohubtech/hubkeep/pull/331)). Este PR mexe na lista de chamados e nos catálogos.
+O registro da área compartilhada (OS e catálogos) e as escolhas do item 9 estão no começo do item, acima; o PR 1 ([#331](https://github.com/cesarcoutohubtech/hubkeep/pull/331)) entrou na `main` em 19/10/2026. Este PR mexe na lista de chamados e nos catálogos.
 
 **Feito na branch `claude/1c-csv`:**
 - **Domínio:** `LIMITES_DA_EXPORTACAO_DA_LISTA` (`packages/dominio/src/consultas.ts`), com páginas de 1.000 e até 50 mil linhas no CSV. São os limites da decisão 13, da auditoria geral, aplicados à lista de chamados.

@@ -243,6 +243,7 @@ describe.skipIf(!temBanco)('B3 — ativos', { timeout: 60_000 }, () => {
     const porta = criarPortaAtivos(banco);
     const dados = {
       categoriaId: null,
+      modeloId: null,
       nome: 'Intruso',
       fabricante: null,
       modelo: null,

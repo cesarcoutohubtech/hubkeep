@@ -124,6 +124,7 @@ export {
   ResponsavelApi,
   RespostaDeChamado,
   OsDaPaginaApi,
+  RespostaDaImpressaoDaOs,
   RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
@@ -344,9 +345,15 @@ export {
   RespostaDeModelosDeAtivo,
 } from './modelos-de-ativo';
 export {
+  CANAIS_DE_ENVIO_API,
+  ConfiguracaoDoPushApi,
   ConsultaDaContagemDeEnvios,
   ContagemDeEnviosApi,
+  PedidoDeInscricaoPush,
+  PedidoDeRevogacaoPush,
   RespostaDaContagemDeEnvios,
+  RespostaDaInscricaoPush,
+  RespostaDaRevogacaoPush,
 } from './comunicacao';
 
 export { LinhaDoStatusMewsApi, RespostaDoStatusMews } from './mews-admin';

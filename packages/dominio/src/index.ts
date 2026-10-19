@@ -288,6 +288,8 @@ export {
   normalizarCustoInformado,
 } from './executor-e-custo';
 export type { ExecutadoPor, QuemExecuta } from './executor-e-custo';
+export { aceiteNaImpressao, custoNaImpressao } from './impressao-da-os';
+export type { AceiteNaImpressao } from './impressao-da-os';
 export {
   CODIGOS_PADRAO,
   LIMITE_DO_NOME_DE_CODIGO,
@@ -581,9 +583,11 @@ export {
   LIMITE_DE_ENVIOS_POR_DIA,
   LIMITE_DO_PERIODO_DA_CONTAGEM_DIAS,
   SITUACOES_DE_ENVIO,
+  inscricaoExpirou,
   pessoasDoAviso,
   podeVerContagemDeEnvios,
   situacaoAntesDoEnvio,
+  situacaoAntesDoPush,
   validarPeriodoDaContagem,
 } from './comunicacao';
 export type { CanalDeEnvio, ResponsavelDaOsAtiva, SituacaoDeEnvio } from './comunicacao';

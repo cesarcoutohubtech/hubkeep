@@ -92,6 +92,7 @@ import {
   PedidoDeReaberturaDeOs,
   PedidoDeTriagem,
   RespostaDeChamado,
+  RespostaDaImpressaoDaOs,
   RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
@@ -103,7 +104,15 @@ import {
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
 import { RespostaDoStatusMews, RespostaDeCandidatosMews } from './mews-admin';
 import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
-import { ConsultaDaContagemDeEnvios, RespostaDaContagemDeEnvios } from './comunicacao';
+import {
+  ConfiguracaoDoPushApi,
+  ConsultaDaContagemDeEnvios,
+  PedidoDeInscricaoPush,
+  PedidoDeRevogacaoPush,
+  RespostaDaContagemDeEnvios,
+  RespostaDaInscricaoPush,
+  RespostaDaRevogacaoPush,
+} from './comunicacao';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
@@ -1879,6 +1888,18 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/os/{id}/impressao',
+    resumo:
+      'A OS para imprimir (1c, item 9): a mesma da página da OS, com a descrição do chamado e o aceite no papel (assinado, aceito ou pendente). Para quem só enxerga o hotel como proprietário, sem o custo informado (custoOculto). O checklist e as fotos saem das rotas da OS.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A OS para imprimir', esquema: RespostaDaImpressaoDaOs },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('OS fora do escopo (os_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/chamados/{id}',
     resumo:
       'O chamado e as OS dele, se visível a quem pede: quem lê o hotel, o proprietário da UH do chamado ou do hotel inteiro. Com os nomes do hotel, do local, do ativo, de quem abriu e dos responsáveis (C7); o que quem pede não lê vem null ou fica de fora.',
@@ -1958,6 +1979,43 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'Período acima de 31 dias ou com o fim antes do início (periodo_invalido, com maximoDias) ou filtro fora do formato (entrada_invalida).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/push/configuracao',
+    resumo:
+      'A chave pública VAPID do push do PWA do técnico (1c, ADR-046, C4), para o aparelho se inscrever no serviço de push do navegador. Null: o push não está ligado neste ambiente.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A configuração do push', esquema: ConfiguracaoDoPushApi },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/push/inscricoes',
+    resumo:
+      'Grava a inscrição de push do aparelho de quem pede (C4). A mesma inscrição já ativa não grava de novo; com chaves novas, a antiga é revogada. Cada pessoa grava só as próprias (RLS).',
+    exigeTenant: true,
+    corpo: PedidoDeInscricaoPush,
+    respostas: {
+      201: { descricao: 'Inscrição gravada', esquema: RespostaDaInscricaoPush },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO('Endpoint que não é https ou chaves fora do formato (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/push/inscricoes/revogacao',
+    resumo:
+      'Revoga a inscrição de push ativa do aparelho de quem pede, pelo endpoint (C4). Sem inscrição ativa, não faz nada.',
+    exigeTenant: true,
+    corpo: PedidoDeRevogacaoPush,
+    respostas: {
+      200: { descricao: 'Inscrição revogada', esquema: RespostaDaRevogacaoPush },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO('Endpoint que não é https (entrada_invalida).'),
     },
   },
   {
