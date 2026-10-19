@@ -16,12 +16,13 @@ import {
   lerDefinicoes,
   normalizarNomeDeAtivo,
   normalizarTextoDoAtivo,
+  preencherComModelo,
   validarCamposDoAtivo,
   validarCriticidade,
   validarDatasDoAtivo,
 } from '@hubkeep/dominio';
 import { type IdiomaDeExibicao, ehIdioma, resolverNome } from '@hubkeep/i18n';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n';
 import type {
@@ -46,6 +47,8 @@ export interface GravacaoDeAtivo {
   modelo: string | null;
   numeroSerie: string | null;
   campos: Record<string, Valor>;
+  /** O modelo escolhido (M1). Ausente: não muda o que o servidor tem (referência anterior à M1). */
+  modeloId?: string | null;
   /** Ausente: não muda o que o servidor tem (referência anterior à I1). */
   dataCompra?: string | null;
   garantiaAte?: string | null;
@@ -70,6 +73,18 @@ export function camposDaI1(
     }
   }
   return saida;
+}
+
+/**
+ * O modelo que vai na operação (M1): no cadastro, sempre; na alteração de um
+ * ativo da referência guardada antes da M1 (sem o campo), só se o técnico
+ * escolheu um, para não apagar o que o servidor tem.
+ */
+export function modeloDaGravacao(
+  ativo: AtivoGuardado | null,
+  modeloId: string | null,
+): Pick<GravacaoDeAtivo, 'modeloId'> {
+  return !ativo || ativo.modeloId !== undefined || modeloId !== null ? { modeloId } : {};
 }
 
 /** O ativo aberto pelo QR (B5): pode vir da referência ou da API. */
@@ -137,10 +152,59 @@ function Formulario(p: PropsDoFormulario) {
   const { gravar } = p;
   const t = useT();
   const [categoriaId, setCategoriaId] = useState<string | null>(ativo?.categoriaId ?? null);
+  const [modeloId, setModeloId] = useState<string | null>(ativo?.modeloId ?? null);
+  // Escolher o modelo (M1) remonta o formulário com o rascunho preenchido.
+  const [rascunho, setRascunho] = useState<Record<string, string>>({});
+  const [camposDoRascunho, setCamposDoRascunho] = useState<Record<string, Valor> | null>(null);
+  const [geracao, setGeracao] = useState(0);
+  const formulario = useRef<HTMLFormElement>(null);
   const categoria = referencia.categorias.find((c) => c.id === categoriaId) ?? null;
   const definicoes = categoria?.campos ?? [];
   const valorDe = (chave: string) =>
-    categoriaId === ativo?.categoriaId ? ativo?.campos[chave] : undefined;
+    camposDoRascunho
+      ? camposDoRascunho[chave]
+      : categoriaId === ativo?.categoriaId
+        ? ativo?.campos[chave]
+        : undefined;
+  const inicial = (campo: 'nome' | 'fabricante' | 'modelo' | 'numeroSerie') =>
+    rascunho[campo] ?? ativo?.[campo] ?? '';
+  const modelos = (referencia.modelos ?? []).filter(
+    (m) =>
+      (m.ativa && (categoriaId === null || m.categoriaId === categoriaId)) ||
+      m.id === ativo?.modeloId,
+  );
+
+  /** Preenche só o que está vazio e nunca sobrescreve (domínio, preencherComModelo). */
+  function escolherModelo(id: string) {
+    const m = referencia.modelos?.find((x) => x.id === id);
+    if (!m || !formulario.current) {
+      setModeloId(null);
+      return;
+    }
+    const f = new FormData(formulario.current);
+    const atual = (campo: string) => String(f.get(campo) ?? '');
+    const preenchido = preencherComModelo(
+      {
+        categoriaId,
+        nome: atual('nome'),
+        fabricante: atual('fabricante'),
+        modelo: atual('modelo'),
+        campos: camposDoFormulario(f, definicoes),
+      },
+      m,
+      lerDefinicoes(referencia.categorias.find((c) => c.id === m.categoriaId)?.campos ?? []),
+    );
+    setRascunho({
+      ...Object.fromEntries([...f.entries()].map(([k, v]) => [k, String(v)])),
+      nome: preenchido.nome,
+      fabricante: preenchido.fabricante ?? '',
+      modelo: preenchido.modelo ?? '',
+    });
+    setCamposDoRascunho(preenchido.campos);
+    setCategoriaId(preenchido.categoriaId);
+    setModeloId(m.id);
+    setGeracao((g) => g + 1);
+  }
 
   function enviar(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -159,6 +223,7 @@ function Formulario(p: PropsDoFormulario) {
           ativo?.categoriaId ?? null,
           camposDoFormulario(f, definicoes),
         ),
+        ...modeloDaGravacao(ativo, modeloId),
       };
       const criticidade = texto(f, 'criticidade');
       const datas = validarDatasDoAtivo({
@@ -181,11 +246,16 @@ function Formulario(p: PropsDoFormulario) {
   }
 
   return (
-    <form onSubmit={enviar} className="coluna">
+    <form key={geracao} ref={formulario} onSubmit={enviar} className="coluna">
       {ativo ? (
         <p>{t('admin.ativos.no_local', { local: nomeDoLocal(ativo.localId) })}</p>
       ) : (
-        <select name="localId" aria-label={t('admin.ativos.campo.local')} required>
+        <select
+          name="localId"
+          defaultValue={rascunho.localId}
+          aria-label={t('admin.ativos.campo.local')}
+          required
+        >
           {locais
             .filter((l) => l.status !== 'inativo')
             .map((l) => (
@@ -197,15 +267,36 @@ function Formulario(p: PropsDoFormulario) {
       )}
       <input
         name="nome"
-        defaultValue={ativo?.nome ?? ''}
+        defaultValue={inicial('nome')}
         placeholder={t('admin.ativos.campo.nome')}
         aria-label={t('admin.ativos.campo.nome')}
         required
       />
+      {modelos.length > 0 && (
+        <select
+          aria-label={t('admin.ativos.campo.modelo_de_ativo')}
+          value={modeloId ?? ''}
+          onChange={(e) => escolherModelo(e.target.value)}
+        >
+          <option value="">{t('admin.ativos.sem_modelo')}</option>
+          {modelos.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.nome}
+            </option>
+          ))}
+        </select>
+      )}
       <select
         aria-label={t('admin.ativos.campo.categoria')}
         value={categoriaId ?? ''}
-        onChange={(e) => setCategoriaId(e.target.value || null)}
+        onChange={(e) => {
+          const nova = e.target.value || null;
+          setCategoriaId(nova);
+          // O modelo é de uma categoria só: trocar a categoria tira o modelo.
+          if (referencia.modelos?.find((m) => m.id === modeloId)?.categoriaId !== nova) {
+            setModeloId(null);
+          }
+        }}
       >
         <option value="">{t('admin.ativos.sem_categoria')}</option>
         {referencia.categorias
@@ -220,7 +311,7 @@ function Formulario(p: PropsDoFormulario) {
         <input
           key={campo}
           name={campo}
-          defaultValue={ativo?.[campo] ?? ''}
+          defaultValue={inicial(campo)}
           placeholder={t(`admin.ativos.campo.${campo}`)}
           aria-label={t(`admin.ativos.campo.${campo}`)}
         />
@@ -231,12 +322,19 @@ function Formulario(p: PropsDoFormulario) {
           {(['dataCompra', 'garantiaAte'] as const).map((campo) => (
             <label key={campo} className="coluna">
               {t(`admin.ativos.campo.${campo}`)}
-              <input type="date" name={campo} defaultValue={ativo?.[campo] ?? ''} />
+              <input
+                type="date"
+                name={campo}
+                defaultValue={rascunho[campo] ?? ativo?.[campo] ?? ''}
+              />
             </label>
           ))}
           <label className="coluna">
             {t('admin.ativos.campo.criticidade')}
-            <select name="criticidade" defaultValue={String(ativo?.criticidade ?? '')}>
+            <select
+              name="criticidade"
+              defaultValue={rascunho.criticidade ?? String(ativo?.criticidade ?? '')}
+            >
               <option value="">{t('admin.ativos.sem_criticidade')}</option>
               {NIVEIS.map((n) => (
                 <option key={n} value={n}>
@@ -252,7 +350,7 @@ function Formulario(p: PropsDoFormulario) {
         const etiqueta = rotulo(d.rotulos, d.chave) + (d.unidade ? ` (${d.unidade})` : '');
         const atual = valorDe(d.chave);
         return (
-          <label key={`${categoriaId}|${d.chave}`} className="coluna">
+          <label key={`${geracao}|${categoriaId}|${d.chave}`} className="coluna">
             {d.obrigatorio ? t('admin.ativos.obrigatorio', { campo: etiqueta }) : etiqueta}
             {d.tipo === 'lista' ? (
               <select name={nome} defaultValue={typeof atual === 'string' ? atual : ''}>

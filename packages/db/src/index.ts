@@ -54,7 +54,7 @@ export { criarPortaHistorico } from './historico';
 export { criarPortaAuditoriaGeral } from './auditoria-geral';
 export { criarPortaAvisosDeSla } from './avisos-de-sla';
 export { criarPortaIndicadores } from './indicadores';
-export { criarPortaComunicacao } from './comunicacao';
+export { criarPortaComunicacao, criarPortaInscricoesPush } from './comunicacao';
 export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from './inteligencia';
 export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
 export type {

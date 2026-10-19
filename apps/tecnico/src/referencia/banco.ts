@@ -4,7 +4,8 @@
 // lido: outro tenant ou outra pessoa no aparelho não o enxergam. Sair apaga o
 // registro de quem sai (saida.ts, ajuste (b)). Banco separado da fila, para a
 // atualização de um não mexer no outro. Na I6, também os códigos de falha,
-// causa e solução, para o técnico sugerir na conclusão sem rede.
+// causa e solução, para o técnico sugerir na conclusão sem rede. Na M1, os
+// modelos de ativo, para preencher o cadastro sem rede.
 import type { ValorDeCampo } from '@hubkeep/dominio';
 
 export interface HotelGuardado {
@@ -41,6 +42,8 @@ export interface AtivoGuardado {
   id: string;
   localId: string;
   categoriaId: string | null;
+  /** O modelo de que o ativo nasceu (M1). Opcional: a referência guardada antes da M1 não tem. */
+  modeloId?: string | null | undefined;
   nome: string;
   fabricante: string | null;
   modelo: string | null;
@@ -68,6 +71,17 @@ export interface CodigoGuardado {
   ativa: boolean;
 }
 
+/** Um modelo de ativo do grupo (M1), para preencher o cadastro sem rede. */
+export interface ModeloGuardado {
+  id: string;
+  categoriaId: string;
+  nome: string;
+  fabricante: string | null;
+  modelo: string | null;
+  campos: Record<string, ValorDeCampo>;
+  ativa: boolean;
+}
+
 /** Nome de cada nível da criticidade por idioma (política ativo.criticidade do hotel, I1). */
 export type NomesDeCriticidadeGuardados = Partial<Record<string, Partial<Record<string, string>>>>;
 
@@ -85,6 +99,8 @@ export interface Referencia {
   categorias: CategoriaGuardada[];
   /** Os códigos do tenant (I6). Opcional: a referência guardada antes da I6 não tem. */
   codigos?: CodigoGuardado[];
+  /** Os modelos de ativo do grupo (M1). Opcional: a referência guardada antes da M1 não tem. */
+  modelos?: ModeloGuardado[];
   /** Milissegundos desde 1970. */
   lidaEm: number;
 }

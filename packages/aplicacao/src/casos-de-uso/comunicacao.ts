@@ -15,7 +15,10 @@ import type { PortaAtribuicoes, Relogio } from '../portas/papeis';
 export interface ContagemNoPeriodo {
   /** O limite por pessoa e por dia (C8). */
   limite: number;
-  /** Do dia mais recente para o mais antigo; no mesmo dia, de quem recebeu mais. */
+  /**
+   * Do dia mais recente para o mais antigo; no mesmo dia, de quem recebeu
+   * mais. Uma linha por pessoa, dia e canal; o limite vale em cada canal.
+   */
   dias: (ContagemDeEnvios & { acimaDoLimite: boolean })[];
 }
 
@@ -47,7 +50,8 @@ export function criarCasosDeUsoDeComunicacao(deps: {
           (a, b) =>
             b.dia.localeCompare(a.dia) ||
             b.envios - a.envios ||
-            a.usuarioId.localeCompare(b.usuarioId),
+            a.usuarioId.localeCompare(b.usuarioId) ||
+            a.canal.localeCompare(b.canal),
         )
         .map((l) => ({ ...l, acimaDoLimite: l.envios > LIMITE_DE_ENVIOS_POR_DIA }));
       return { limite: LIMITE_DE_ENVIOS_POR_DIA, dias };

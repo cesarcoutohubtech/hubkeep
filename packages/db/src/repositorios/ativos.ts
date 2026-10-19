@@ -14,6 +14,7 @@ import { colunasPesquisaveisDoAtivo } from './busca';
 
 const colunasDeDados = (d: DadosDeAtivo) => ({
   categoria_id: d.categoriaId,
+  modelo_id: d.modeloId,
   ...colunasPesquisaveisDoAtivo(d),
   data_compra: d.dataCompra,
   garantia_ate: d.garantiaAte,
@@ -68,6 +69,7 @@ export async function alterarAtivo(
     .selectFrom('app.ativo')
     .select([
       'categoria_id',
+      'modelo_id',
       'nome',
       'fabricante',
       'modelo',

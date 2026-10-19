@@ -21,6 +21,7 @@ import {
   type CasosDeUsoDeAvisosDeSla,
   type CasosDeUsoDeIndicadores,
   type CasosDeUsoDeComunicacao,
+  type CasosDeUsoDePush,
   type CasosDeUsoDeHistorico,
   type CasosDeUsoDeSituacoes,
   type CasosDeUsoDeConfiguracao,
@@ -45,6 +46,7 @@ import {
   criarAceiteAutomatico,
   criarGeracaoDePreventivas,
   criarCasosDeUsoDeIngestao,
+  criarCasosDeUsoDePush,
   criarManipuladoresDeEventos,
   relogioDoSistema,
 } from '@hubkeep/aplicacao';
@@ -55,6 +57,7 @@ import {
   criarPortaStatusAdministrativoMews,
   criarPortaCandidatosHoteisMews,
   criarPortaComunicacao,
+  criarPortaInscricoesPush,
   criarPortaMonitorDeSla,
   criarPortaAceiteAutomatico,
   criarPortaGeracaoPreventiva,
@@ -78,6 +81,7 @@ import { criarFeriadosOficiais } from './feriados-oficiais';
 import { criarVerificadorJwks } from './identidade';
 import { registrarNoConsole } from './log';
 import { montarInteligencia } from './modulos/inteligencia';
+import { enviadorDePushDoAmbiente } from './push';
 import { resumirGeracao } from './resumo-da-geracao';
 import { enviarCheckInAoSentry, relatarAoSentry } from './sentry';
 
@@ -392,6 +396,22 @@ export const casosDeUsoDeIndicadores = async (): Promise<CasosDeUsoDeIndicadores
 export const casosDeUsoDeComunicacao = async (): Promise<CasosDeUsoDeComunicacao> =>
   (await fabricas()).comunicacao();
 
+let push: CasosDeUsoDePush | undefined;
+/**
+ * O push do PWA (1c, C4), pelo hk_app: a chave pública e as inscrições do
+ * próprio aparelho. A chave só vale com o enviador ligado (as duas chaves e o
+ * site em https).
+ */
+export const casosDeUsoDePush = async (): Promise<CasosDeUsoDePush> => {
+  if (push) return push;
+  const chaves = chavesDoPush();
+  push = criarCasosDeUsoDePush({
+    inscricoes: criarPortaInscricoesPush(await acessoBanco()),
+    chavePublica: enviadorDePushDoAmbiente(chaves) ? (chaves.publica ?? null) : null,
+  });
+  return push;
+};
+
 /** Parada do equipamento pelo web (fase 1a, C5): a lista do ativo e o encerramento. */
 export const casosDeUsoDeParadas = async (): Promise<CasosDeUsoDeParadas> =>
   (await fabricas()).paradas();
@@ -413,11 +433,21 @@ export const casosDeUsoDeSincronizacao = async (): Promise<CasosDeUsoDeSincroniz
   (await fabricas()).sincronizacao();
 
 let manipuladores: Record<string, Manipulador> | undefined;
+const urlDoSite = () => (process.env['HK_URL_SITE'] ?? '').replace(/\/+$/, '');
+
+/** As chaves VAPID do push (C4); sem as duas, o push fica desligado (C1). */
+const chavesDoPush = () => ({
+  publica: process.env['WEB_PUSH_VAPID_PUBLIC_KEY'] || undefined,
+  privada: process.env['WEB_PUSH_VAPID_PRIVATE_KEY'] || undefined,
+  site: urlDoSite(),
+});
+
 /**
  * Processa o outbox de um tenant (hk_worker); a rota /api/cron/outbox chama
- * para todos. O aviso de SLA vai pela comunicação (1c, ADR-046) com o e-mail
- * desligado (C1): até o Cesar configurar o SES, cada envio fica registrado
- * como sem_provedor, e nada sai.
+ * para todos. O aviso de SLA e a OS atribuída vão pela comunicação (1c,
+ * ADR-046). O e-mail está desligado (C1): até o Cesar configurar o SES, cada
+ * envio fica registrado como sem_provedor, e nada sai. O push sai com as
+ * chaves VAPID do ambiente; sem elas, também fica como sem_provedor.
  */
 export async function processarOutboxDoTenant(tenantId: string): Promise<ResultadoOutbox> {
   const banco = await acessoBancoDoWorker();
@@ -426,7 +456,8 @@ export async function processarOutboxDoTenant(tenantId: string): Promise<Resulta
     comunicacao: {
       porta: criarPortaComunicacao(banco),
       email: null,
-      urlDoSite: (process.env['HK_URL_SITE'] ?? '').replace(/\/+$/, ''),
+      push: enviadorDePushDoAmbiente(chavesDoPush()),
+      urlDoSite: urlDoSite(),
       relogio: relogioDoSistema,
     },
   });

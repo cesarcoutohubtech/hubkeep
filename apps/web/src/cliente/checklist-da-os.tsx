@@ -42,6 +42,8 @@ const ESTADOS_QUE_ACEITAM = ['atribuida', 'em_execucao', 'pausada'];
 export function ChecklistDaOs(props: {
   osId: string;
   estado: string;
+  /** Sem aplicar nem trocar o modelo (a impressão da OS, 1c, item 9). */
+  somenteLeitura?: boolean;
   /** Para testes: o checklist e os modelos já carregados (no app, vêm da API). */
   inicial?: { checklist: Checklist | null; modelos: Modelo[] };
 }) {
@@ -62,7 +64,7 @@ export function ChecklistDaOs(props: {
     setChecklist(r.ok ? r.dados.checklist : null);
   }, [props.osId]);
 
-  const aceita = ESTADOS_QUE_ACEITAM.includes(props.estado);
+  const aceita = !props.somenteLeitura && ESTADOS_QUE_ACEITAM.includes(props.estado);
   useEffect(() => {
     void carregar();
   }, [carregar]);

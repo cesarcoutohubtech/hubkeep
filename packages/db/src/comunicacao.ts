@@ -1,15 +1,35 @@
 // Comunicação (1c, item 5; ADR-046), pelo hk_worker, um tenant por transação
 // (withSistema), e a contagem do C8 pelo hk_app, com o contexto de quem pede.
 // O worker lê o chamado do aviso, as atribuições dos papéis do nível, o
-// responsável da OS ativa e as pessoas (membro e preferência de idioma), e
-// grava o registro dos envios (app.envio_notificacao, só de inserção, 0049).
-// A gravação é do repositório, na unit of work do worker (ADR-006).
-import type { ContagemDeEnvios, PortaComunicacao } from '@hubkeep/aplicacao';
+// responsável da OS ativa, a OS atribuída, as pessoas (membro e preferência
+// de idioma) e as inscrições de push ativas, e grava o registro dos envios
+// (app.envio_notificacao, só de inserção, 0049) e a revogação da inscrição
+// que o serviço de push recusou. As inscrições do próprio aparelho são do
+// hk_app, com o contexto da pessoa (C4). A gravação é do repositório, na
+// unit of work (ADR-006).
+import type { ContagemDeEnvios, PortaComunicacao, PortaInscricoesPush } from '@hubkeep/aplicacao';
 import type { ResponsavelDaOsAtiva } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
 import { paraAtribuicao, selecionarAtribuicoes } from './atribuicoes';
-import { registrarEnvio } from './repositorios/comunicacao';
+import type { Tx } from './conexao';
+import {
+  inscreverPush,
+  registrarEnvio,
+  revogarInscricaoRecusada,
+  revogarPushDoAparelho,
+} from './repositorios/comunicacao';
+
+const membrosAtivosDaEquipe = async (tx: Tx, equipeId: string): Promise<string[]> =>
+  (
+    await tx
+      .selectFrom('app.equipe_membro')
+      .select('usuario_id')
+      .where('equipe_id', '=', equipeId)
+      .where('ativo', '=', true)
+      .orderBy('usuario_id')
+      .execute()
+  ).map((m) => m.usuario_id);
 
 export function criarPortaComunicacao(banco: AcessoBanco): PortaComunicacao {
   return {
@@ -45,21 +65,19 @@ export function criarPortaComunicacao(banco: AcessoBanco): PortaComunicacao {
               ).map(paraAtribuicao);
         const os = await tx
           .selectFrom('app.os')
-          .select(['tecnico_id', 'equipe_id'])
+          .select(['id', 'tecnico_id', 'equipe_id'])
           .where('hotel_id', '=', c.hotel_id)
           .where('chamado_id', '=', c.id)
           .where('estado', '<>', 'cancelada')
+          .orderBy('criado_em', 'desc')
           .executeTakeFirst();
         let responsavelDaOs: ResponsavelDaOsAtiva = null;
         if (os?.tecnico_id) responsavelDaOs = { tipo: 'tecnico', usuarioId: os.tecnico_id };
         else if (os?.equipe_id) {
-          const membros = await tx
-            .selectFrom('app.equipe_membro')
-            .select('usuario_id')
-            .where('equipe_id', '=', os.equipe_id)
-            .where('ativo', '=', true)
-            .execute();
-          responsavelDaOs = { tipo: 'equipe', membros: membros.map((m) => m.usuario_id) };
+          responsavelDaOs = {
+            tipo: 'equipe',
+            membros: await membrosAtivosDaEquipe(tx, os.equipe_id),
+          };
         }
         return {
           id: c.id,
@@ -68,6 +86,31 @@ export function criarPortaComunicacao(banco: AcessoBanco): PortaComunicacao {
           idiomaDoTenant: c.idioma_padrao,
           atribuicoes,
           responsavelDaOs,
+          osAtivaId: os?.id ?? null,
+        };
+      }),
+
+    osDoAviso: (tenantId, osId, responsavel) =>
+      banco.withSistema({ tenantId }, async (tx) => {
+        const os = await tx
+          .selectFrom('app.os as o')
+          .innerJoin('app.hotel as h', (j) =>
+            j.onRef('h.tenant_id', '=', 'o.tenant_id').onRef('h.id', '=', 'o.hotel_id'),
+          )
+          .innerJoin('app.tenant as t', 't.id', 'o.tenant_id')
+          .select(['o.id', 'h.id as hotel_id', 'h.nome as hotel_nome', 't.idioma_padrao'])
+          .where('o.id', '=', osId)
+          .where('o.tenant_id', '=', tenantId)
+          .executeTakeFirst();
+        if (!os) return null;
+        return {
+          id: os.id,
+          hotel: { id: os.hotel_id, nome: os.hotel_nome },
+          idiomaDoTenant: os.idioma_padrao,
+          responsavelDaOs:
+            responsavel.tipo === 'tecnico'
+              ? responsavel
+              : { tipo: 'equipe', membros: await membrosAtivosDaEquipe(tx, responsavel.equipeId) },
         };
       }),
 
@@ -94,6 +137,31 @@ export function criarPortaComunicacao(banco: AcessoBanco): PortaComunicacao {
               idioma: m.idioma ?? null,
             })),
           ),
+
+    inscricoesAtivas: (tenantId, usuarioIds) =>
+      usuarioIds.length === 0
+        ? Promise.resolve([])
+        : banco.withSistema({ tenantId }, async (tx) =>
+            (
+              await tx
+                .selectFrom('app.inscricao_push')
+                .select(['id', 'usuario_id', 'endpoint', 'chave_p256dh', 'chave_auth'])
+                .where('usuario_id', 'in', [...usuarioIds])
+                .where('revogada_em', 'is', null)
+                .orderBy('usuario_id')
+                .orderBy('criado_em')
+                .orderBy('id')
+                .execute()
+            ).map((i) => ({
+              id: i.id,
+              usuarioId: i.usuario_id,
+              endpoint: i.endpoint,
+              chaves: { p256dh: i.chave_p256dh, auth: i.chave_auth },
+            })),
+          ),
+
+    revogarInscricaoRecusada: (tenantId, inscricaoId) =>
+      banco.executarComoSistema({ tenantId }, (uow) => revogarInscricaoRecusada(uow, inscricaoId)),
 
     jaEnviado: (tenantId, g) =>
       banco.withSistema({ tenantId }, async (tx) =>
@@ -123,6 +191,7 @@ export function criarPortaComunicacao(banco: AcessoBanco): PortaComunicacao {
           .select([
             'e.usuario_id',
             'm.nome',
+            'e.canal',
             dia.as('dia'),
             (eb) => eb.fn.countAll<string>().as('envios'),
           ])
@@ -130,14 +199,23 @@ export function criarPortaComunicacao(banco: AcessoBanco): PortaComunicacao {
           .where('e.criado_em', '<', f.ate)
           .where('e.situacao', '<>', 'falhou')
           .$if(f.hotelId !== null, (q) => q.where('e.hotel_id', '=', f.hotelId ?? ''))
-          .groupBy(['e.usuario_id', 'm.nome', dia])
+          .groupBy(['e.usuario_id', 'm.nome', 'e.canal', dia])
           .execute();
         return linhas.map((l) => ({
           usuarioId: l.usuario_id,
           nome: l.nome ?? null,
+          canal: l.canal as ContagemDeEnvios['canal'],
           dia: l.dia,
           envios: Number(l.envios),
         }));
       }),
+  };
+}
+
+/** As inscrições de push do próprio aparelho (hk_app), na RLS de app.inscricao_push. */
+export function criarPortaInscricoesPush(banco: AcessoBanco): PortaInscricoesPush {
+  return {
+    inscrever: (ctx, d) => banco.executar(ctx, (uow) => inscreverPush(uow, d)),
+    revogar: (ctx, endpoint) => banco.executar(ctx, (uow) => revogarPushDoAparelho(uow, endpoint)),
   };
 }

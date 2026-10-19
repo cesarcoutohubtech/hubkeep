@@ -649,6 +649,16 @@ export interface AppSinalHospede {
   versao: Generated<number>;
 }
 
+export interface AppSinalHospedeChamado {
+  chamado_id: string;
+  criado_em: Generated<Timestamp>;
+  hotel_id: string;
+  id: string;
+  ligado_por: string;
+  sinal_id: string;
+  tenant_id: string;
+}
+
 export interface AppSituacao {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -789,6 +799,7 @@ export interface DB {
   "app.prioridade": AppPrioridade;
   "app.proprietario": AppProprietario;
   "app.sinal_hospede": AppSinalHospede;
+  "app.sinal_hospede_chamado": AppSinalHospedeChamado;
   "app.situacao": AppSituacao;
   "app.sla_alerta": AppSlaAlerta;
   "app.tenant": AppTenant;

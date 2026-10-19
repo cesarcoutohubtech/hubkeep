@@ -165,6 +165,19 @@ export const RespostaDeOs = z
   .meta({ id: 'RespostaDeOs' });
 
 /**
+ * A OS para imprimir (1c, item 9): a mesma da página da OS, com a descrição
+ * do chamado (null na preventiva) e o aceite no papel. Para quem só enxerga o
+ * hotel como proprietário, o custo informado vem null e custoOculto, true. O
+ * checklist e as fotos saem das rotas de sempre.
+ */
+export const RespostaDaImpressaoDaOs = RespostaDeOs.extend({
+  descricao: z.string().nullable(),
+  custoOculto: z.boolean(),
+  /** assinado: aceita com a assinatura; aceito: sem ela; pendente; null na OS cancelada. */
+  aceite: z.enum(['assinado', 'aceito', 'pendente']).nullable(),
+}).meta({ id: 'RespostaDaImpressaoDaOs' });
+
+/**
  * Filtros das listas de chamados e de OS (C7), na query string. O período é
  * pela data de criação: de (inclusive) até ate (exclusive), em ISO 8601. A
  * prioridade da OS é a do chamado. depoisDe é o `proximo` da página anterior.
