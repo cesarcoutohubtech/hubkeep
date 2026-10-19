@@ -186,6 +186,8 @@
   "admin.ativos.obrigatorio": "{campo} (obligatoire)",
   "admin.ativos.sim": "Oui",
   "admin.ativos.nao": "Non",
+  "admin.ativos.campo.modelo_de_ativo": "Modèle d’équipement",
+  "admin.ativos.sem_modelo": "Sans modèle (remplir à la main)",
   "admin.ativos.desativado": "Désactivé",
   "admin.ativos.acao.cadastrar": "Enregistrer",
   "admin.ativos.acao.salvar": "Enregistrer",

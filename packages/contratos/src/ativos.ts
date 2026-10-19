@@ -20,6 +20,12 @@ export const AtivoApi = z
     id: z.guid(),
     localId: z.guid(),
     categoriaId: z.guid().nullable(),
+    /**
+     * O modelo de que o ativo nasceu (M1); os dados copiados ficam no ativo.
+     * Opcional na leitura, para o PWA novo aceitar a resposta do servidor de
+     * antes da M1 durante a publicação.
+     */
+    modeloId: z.guid().nullable().optional(),
     nome: z.string(),
     fabricante: z.string().nullable(),
     modelo: z.string().nullable(),
@@ -62,6 +68,8 @@ const gravacao = {
   dataCompra: DataDoAtivo.nullable().optional(),
   garantiaAte: DataDoAtivo.nullable().optional(),
   criticidade: z.number().nullable().optional(),
+  /** O modelo escolhido (M1); ausente mantém o gravado (alteração) ou fica nulo (cadastro). */
+  modeloId: z.guid().nullable().optional(),
 };
 
 export const PedidoDeCadastroDeAtivo = z

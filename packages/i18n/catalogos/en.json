@@ -186,6 +186,8 @@
   "admin.ativos.obrigatorio": "{campo} (required)",
   "admin.ativos.sim": "Yes",
   "admin.ativos.nao": "No",
+  "admin.ativos.campo.modelo_de_ativo": "Asset model",
+  "admin.ativos.sem_modelo": "No model (fill in by hand)",
   "admin.ativos.desativado": "Deactivated",
   "admin.ativos.acao.cadastrar": "Register",
   "admin.ativos.acao.salvar": "Save",

@@ -33,6 +33,7 @@ import {
   validarCamposDoAtivo,
   validarCriticidade,
   validarDatasDoAtivo,
+  validarModeloDoAtivo,
   validarMovimentacao,
 } from '@hubkeep/dominio';
 import { termoDeBusca } from '../busca';
@@ -56,6 +57,8 @@ export interface PedidoDeGravacaoDeAtivo {
   garantiaAte?: string | null | undefined;
   /** De 1 a 5; ausente como nas datas. */
   criticidade?: number | null | undefined;
+  /** O modelo escolhido (M1); ausente como nas datas. */
+  modeloId?: string | null | undefined;
 }
 
 export interface PedidoDeCadastroDeAtivo extends PedidoDeGravacaoDeAtivo {
@@ -189,8 +192,22 @@ export function criarCasosDeUsoDeAtivos(deps: {
         throw new NaoEncontrado('categoria_nao_encontrada', 'Categoria não encontrada.');
     }
     const campos = validarCamposDoAtivo(categoria, categoriaAnterior, p.campos);
+    const modeloId = p.modeloId === undefined ? (anterior?.modeloId ?? null) : p.modeloId;
+    if (modeloId !== null) {
+      const modelo = await deps.ativos.modelo(ctx, modeloId);
+      if (!modelo) {
+        throw new NaoEncontrado('modelo_ativo_nao_encontrado', 'Modelo de ativo não encontrado.');
+      }
+      // O modelo que o ativo já tinha continua valendo desativado, como a
+      // categoria; a categoria tem de ser a do modelo, sempre.
+      validarModeloDoAtivo(
+        modeloId === anterior?.modeloId ? { ...modelo, ativa: true } : modelo,
+        p.categoriaId,
+      );
+    }
     return {
       categoriaId: p.categoriaId,
+      modeloId,
       nome,
       fabricante,
       modelo,

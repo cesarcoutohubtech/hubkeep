@@ -9,12 +9,17 @@
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
-import { criarCasosDeUsoDeModelosDeAtivo, relogioDoSistema } from '@hubkeep/aplicacao';
+import {
+  criarCasosDeUsoDeAtivos,
+  criarCasosDeUsoDeModelosDeAtivo,
+  relogioDoSistema,
+} from '@hubkeep/aplicacao';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   type AcessoBanco,
   criarAcessoBanco,
+  criarPortaAtivos,
   criarPortaModelosDeAtivo,
   criarPortasDeAplicacao,
 } from '../src/index';
@@ -29,6 +34,7 @@ if (!temBanco && process.env.HK_EXIGIR_BANCO === '1') {
 const TENANT = randomUUID();
 const H1 = randomUUID();
 const CATEGORIA = randomUUID();
+const UH = randomUUID();
 const U = {
   admin: randomUUID(),
   gerente: randomUUID(),
@@ -51,6 +57,7 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
   let banco: AcessoBanco;
   let modelos: ReturnType<typeof criarCasosDeUsoDeModelosDeAtivo>;
   let semRegra: ReturnType<typeof criarCasosDeUsoDeModelosDeAtivo>;
+  let ativos: ReturnType<typeof criarCasosDeUsoDeAtivos>;
 
   beforeAll(async () => {
     dono = new pg.Client({ connectionString: URL_DONO });
@@ -77,6 +84,11 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
           },
         ]),
       ],
+    );
+    await dono.query(
+      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status)
+       values ($1, $2, $3, 'uh', 'UH 101', 'uh 101', 'ativo')`,
+      [UH, TENANT, H1],
     );
     for (const [nome, id] of Object.entries(U)) {
       await dono.query(`insert into auth.users (id, email) values ($1, $2)`, [
@@ -106,6 +118,11 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
       relogio: relogioDoSistema,
     };
     modelos = criarCasosDeUsoDeModelosDeAtivo(deps);
+    ativos = criarCasosDeUsoDeAtivos({
+      ativos: criarPortaAtivos(banco),
+      atribuicoes: deps.atribuicoes,
+      relogio: relogioDoSistema,
+    });
     // Sem a regra do domínio: só a RLS decide.
     semRegra = criarCasosDeUsoDeModelosDeAtivo({
       ...deps,
@@ -119,8 +136,10 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
     for (const t of [
       'app.evento_dominio',
       'app.auditoria',
+      'app.ativo',
       'app.modelo_ativo',
       'app.categoria_ativo',
+      'app.local',
       'app.atribuicao_escopo',
       'app.hotel',
       'app.membro',
@@ -174,6 +193,21 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
     expect(
       await codigoDe(semRegra.alterar(ctx(U.gerente), modeloId, { ...PEDIDO, versao: 4 })),
     ).toBe('modelo_ativo_nao_encontrado');
+  });
+
+  it('o Técnico cadastra o ativo com o modelo, e o ativo guarda de que modelo nasceu', async () => {
+    const { id } = await ativos.cadastrar(ctx(U.tecnico), {
+      localId: UH,
+      categoriaId: CATEGORIA,
+      nome: 'Split UH 101',
+      fabricante: 'Fabricante X',
+      modelo: 'X-12',
+      numeroSerie: null,
+      campos: { btus: 12000 },
+      modeloId,
+    });
+    const [lido] = (await ativos.listarAtivos(ctx(U.tecnico), H1)).filter((a) => a.id === id);
+    expect(lido?.modeloId).toBe(modeloId);
   });
 
   it('a gravação fica na auditoria e no outbox', async () => {

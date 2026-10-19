@@ -1945,6 +1945,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     'hotel_id',
     'local_id',
     'categoria_id',
+    'modelo_id',
     'nome',
     'fabricante',
     'modelo',
@@ -1965,6 +1966,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     hotel_id: string;
     local_id: string;
     categoria_id: string | null;
+    modelo_id: string | null;
     nome: string;
     fabricante: string | null;
     modelo: string | null;
@@ -1982,6 +1984,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     hotelId: a.hotel_id,
     localId: a.local_id,
     categoriaId: a.categoria_id,
+    modeloId: a.modelo_id,
     nome: a.nome,
     fabricante: a.fabricante,
     modelo: a.modelo,
@@ -2019,6 +2022,15 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
       banco.withContext(ctx, async (tx) =>
         tx.selectFrom('app.categoria_ativo').select(['id', 'ativa', 'campos']).execute(),
       ),
+    modelo: (ctx, modeloId) =>
+      banco.withContext(ctx, async (tx) => {
+        const m = await tx
+          .selectFrom('app.modelo_ativo')
+          .select(['id', 'categoria_id', 'ativa'])
+          .where('id', '=', modeloId)
+          .executeTakeFirst();
+        return m ? { id: m.id, categoriaId: m.categoria_id, ativa: m.ativa } : null;
+      }),
     ativos: (ctx, hotelId, termo) =>
       banco.withContext(ctx, async (tx) =>
         (

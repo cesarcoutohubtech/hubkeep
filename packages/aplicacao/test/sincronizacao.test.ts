@@ -64,6 +64,7 @@ function montar() {
   };
   const semCampos = (p: { nome: string; categoriaId: string | null }): DadosDeAtivo => ({
     categoriaId: p.categoriaId,
+    modeloId: null,
     nome: p.nome,
     fabricante: null,
     modelo: null,
