@@ -3006,3 +3006,7 @@ O adendo deixou para depois "um chamado para várias reclamações de uma vez (o
 - **(ii)** No 2, (2a), (2b) ou deixar para depois do piloto? Proposta: deixar para depois do piloto, porque o 1 e o #334 cobrem o caso comum e o 2 muda a 0057, recém-aprovada.
 
 **Detalhes do Kaio** (ADR-033): os rótulos e a sugestão da descrição do 1.
+
+**O merge do #334** (Cesar, 19/10/2026), com "lint, typecheck e testes" e o pgTAP ainda rodando no head (só o commit do diário depois do código verificado); conferência única agendada.
+
+**Respostas do Cesar** (19/10/2026, "Cesar aqui. Vamos dar sequencia nos trabalhos.", nas perguntas do agente do Intelligence nesta sessão): (i) sim, seguir com um chamado para as reclamações do insight sistêmico; (ii) ligar a um chamado que já existe fica para depois do piloto. **Falta o Kaio** nas duas.
