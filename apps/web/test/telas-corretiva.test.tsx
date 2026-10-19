@@ -429,7 +429,7 @@ describe('arrendado na corretiva (1c, ADR-045)', () => {
 
   it.each([
     ['pt-BR', 'Responde pela OS: o locador', 'Locador avisado em'],
-    ['en', 'Responsible: the landlord', 'Landlord notified on'],
+    ['en', 'Responsible: the lessor', 'Lessor notified on'],
     ['es', 'Responde por la orden: el arrendador', 'Arrendador avisado el'],
     ['fr', 'Responsable de l’ordre : le bailleur', 'Bailleur prévenu le'],
   ] as const)('%s: a marca e o aviso ao locador na ficha da OS', (idioma, marca, aviso) => {

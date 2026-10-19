@@ -53,7 +53,7 @@ describe('e-mail do aviso de SLA (1c, ADR-046)', () => {
 
   it.each([
     ['pt-BR', 'Solução vencida — Hotel Centro', 'Abrir o chamado'],
-    ['en', 'Resolution overdue — Hotel Centro', 'Open the ticket'],
+    ['en', 'Resolution overdue — Hotel Centro', 'Open the request'],
     ['es', 'Solución vencida — Hotel Centro', 'Abrir la solicitud'],
     ['fr', 'Résolution en retard — Hotel Centro', 'Ouvrir la demande'],
   ] as const)('%s: assunto, ação e link', (idioma, assunto, acao) => {
