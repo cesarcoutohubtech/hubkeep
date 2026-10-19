@@ -180,6 +180,14 @@ export const ConsultaDaLista = z
   })
   .meta({ id: 'ConsultaDaLista' });
 
+/**
+ * A lista de chamados tem também a página da exportação (1c, item 9):
+ * exportacao=1 traz 1.000 por página, que a tela junta no CSV.
+ */
+export const ConsultaDaListaDeChamados = ConsultaDaLista.extend({
+  exportacao: z.enum(['1']).optional(),
+}).meta({ id: 'ConsultaDaListaDeChamados' });
+
 /** A lista de OS tem também o filtro "do locador" (1c, ADR-045): doLocador=1. */
 export const ConsultaDaListaDeOs = ConsultaDaLista.extend({
   doLocador: z.enum(['1']).optional(),
@@ -204,7 +212,7 @@ export const ChamadoResumidoApi = z
 
 export const RespostaDeListaDeChamados = z
   .object({
-    /** Do mais novo para o mais antigo, até 50 por página. */
+    /** Do mais novo para o mais antigo, até 50 por página (1.000 na exportação). */
     chamados: z.array(ChamadoResumidoApi),
     /** Para a página seguinte (depoisDe); null na última. */
     proximo: z.guid().nullable(),

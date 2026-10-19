@@ -1494,5 +1494,16 @@
   "admin.mews.candidatos.estado": "{estado, select, ativo {Active} revogado {Revoked} nenhum {None} other {Unknown}}",
   "admin.mews.candidatos.para_revisao": "Eligible for human review",
   "admin.mews.candidatos.nao_apto": "Not eligible",
-  "admin.mews.candidatos.truncado": "More than 20 candidate hotels exist. Review the group before choosing."
+  "admin.mews.candidatos.truncado": "More than 20 candidate hotels exist. Review the group before choosing.",
+
+  "comum.csv_exportado": "{n, plural, one {# row exported} other {# rows exported}} to {arquivo}, only with what your profile can see.",
+  "corretiva.chamados.acao.exportar": "Export CSV",
+  "corretiva.chamados.exportando": "{n, plural, one {# row read…} other {# rows read…}}",
+  "corretiva.chamados.exportacao_grande": "The export has up to {limite, number} rows. Shorten the period or choose more filters.",
+  "corretiva.chamados.arquivo": "requests-{data}.csv",
+  "corretiva.chamados.csv.hotel": "Hotel",
+  "corretiva.chamados.csv.local": "Location",
+  "corretiva.chamados.csv.ativo": "Asset",
+  "corretiva.chamados.csv.descricao": "Description",
+  "corretiva.chamados.csv.id": "Identifier"
 }

@@ -94,6 +94,7 @@ export {
   ChamadoApi,
   ChamadoResumidoApi,
   ConsultaDaLista,
+  ConsultaDaListaDeChamados,
   ConsultaDaListaDeOs,
   ENTIDADES_DA_LINHA_DO_TEMPO_API,
   EXECUTORES_DA_OS_API,

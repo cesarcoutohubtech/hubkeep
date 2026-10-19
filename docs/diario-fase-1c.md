@@ -842,3 +842,26 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
   2. `claude/1c-push`: o PR abre depois do merge do PR do e-mail.
 - **Esperando o Cesar:** o `db push` da 0049; apagar a branch `claude/1c-arrendado-migracao`; a conta e o DNS do SES (F0-12); as chaves VAPID, depois do deploy do push.
 - **Próxima tarefa:** o painel de indicadores (item 8), pela versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
+
+## CSV da lista de chamados e aviso de linhas (item 9, PR 2; 19/10/2026)
+
+O registro da área compartilhada (OS e catálogos) e as escolhas do item 9 estão na branch do PR 1 ([#331](https://github.com/cesarcoutohubtech/hubkeep/pull/331)). Este PR mexe na lista de chamados e nos catálogos.
+
+**Feito na branch `claude/1c-csv`:**
+- **Domínio:** `LIMITES_DA_EXPORTACAO_DA_LISTA` (`packages/dominio/src/consultas.ts`), com páginas de 1.000 e até 50 mil linhas no CSV. São os limites da decisão 13, da auditoria geral, aplicados à lista de chamados.
+- **API:** `GET /api/v1/chamados?exportacao=1` traz 1.000 por página, com os mesmos filtros e o mesmo escopo da RLS. Contrato `ConsultaDaListaDeChamados` e OpenAPI.
+- **Tela:**
+  - o botão "Exportar CSV" na lista de chamados, que junta as páginas no navegador, como a auditoria geral;
+  - o CSV com o BOM e o separador pelo formato regional de quem exporta (decisão 7);
+  - as colunas: aberto em, hotel, local, ativo, descrição, situação, prioridade e identificador.
+- **Aviso depois de exportar:** "N linhas exportadas em arquivo.csv, só com o que o seu perfil enxerga", na lista de chamados e na auditoria geral.
+- **A tela não foi aberta no navegador.**
+
+**Fica para depois:** o CSV do painel de indicadores, que espera o merge do #282.
+
+### Ponto de retomada (19/10/2026, CSV)
+
+- **`main`:** af1b9aa.
+- **PRs da 1c esperando o merge do Cesar, todos fora da zona protegida:** #281 (push), #282 (painel), #331 (impressão da OS) e o deste CSV. Os quatro mexem nas listas de exportação e nos catálogos: depois de cada merge, os outros podem precisar de atualização com a `main`.
+- **Pergunta ao Cesar (no #331):** esconder também na ficha da OS o custo informado do proprietário.
+- **Próximo:** depois do merge do #282, o CSV do painel de indicadores. Em seguida, o catálogo completo (item 10).

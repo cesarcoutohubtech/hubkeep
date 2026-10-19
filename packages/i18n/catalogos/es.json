@@ -1494,5 +1494,16 @@
   "admin.mews.candidatos.estado": "{estado, select, ativo {Activo} revogado {Revocado} nenhum {Ninguno} other {Desconocido}}",
   "admin.mews.candidatos.para_revisao": "Apto para revisión humana",
   "admin.mews.candidatos.nao_apto": "No apto",
-  "admin.mews.candidatos.truncado": "Hay más de 20 hoteles candidatos. Revise el grupo antes de elegir."
+  "admin.mews.candidatos.truncado": "Hay más de 20 hoteles candidatos. Revise el grupo antes de elegir.",
+
+  "comum.csv_exportado": "{n, plural, one {# fila exportada} other {# filas exportadas}} en {arquivo}, solo con lo que su perfil puede ver.",
+  "corretiva.chamados.acao.exportar": "Exportar CSV",
+  "corretiva.chamados.exportando": "{n, plural, one {# fila leída…} other {# filas leídas…}}",
+  "corretiva.chamados.exportacao_grande": "La exportación tiene hasta {limite, number} filas. Acorte el período o elija más filtros.",
+  "corretiva.chamados.arquivo": "solicitudes-{data}.csv",
+  "corretiva.chamados.csv.hotel": "Hotel",
+  "corretiva.chamados.csv.local": "Ubicación",
+  "corretiva.chamados.csv.ativo": "Activo",
+  "corretiva.chamados.csv.descricao": "Descripción",
+  "corretiva.chamados.csv.id": "Identificador"
 }

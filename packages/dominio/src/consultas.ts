@@ -7,6 +7,13 @@ import { RegraViolada } from './erros';
 /** Registros por página nas listas; a próxima página continua do último id (UUID v7). */
 export const TAMANHO_DA_PAGINA = 50;
 
+/**
+ * A exportação da lista de chamados (1c, item 9): páginas de 1.000, que o
+ * navegador junta no CSV até 50 mil linhas (os limites da decisão 13, da
+ * auditoria geral).
+ */
+export const LIMITES_DA_EXPORTACAO_DA_LISTA = { porPagina: 1000, linhasNoCsv: 50_000 } as const;
+
 /** As entidades da auditoria que formam a linha do tempo do chamado. */
 export const ENTIDADES_DA_LINHA_DO_TEMPO = [
   'chamado',

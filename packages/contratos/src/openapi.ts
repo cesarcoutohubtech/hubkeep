@@ -74,7 +74,7 @@ import {
   RespostaDeSituacoesEPrioridadesPadrao,
 } from './situacoes';
 import {
-  ConsultaDaLista,
+  ConsultaDaListaDeChamados,
   ConsultaDaListaDeOs,
   RespostaDeLinhaDoTempo,
   RespostaDeListaDeChamados,
@@ -1893,9 +1893,9 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/chamados',
     resumo:
-      'Lista os chamados no escopo de quem pede (C7): cada papel vê os dos hotéis que lê, e o proprietário, os das UHs e do hotel inteiro dele (RLS). Filtros opcionais: hotel, situação, prioridade e período pela data de abertura (de inclusive, ate exclusive). Do mais novo para o mais antigo, 50 por página; a seguinte com depoisDe = proximo.',
+      'Lista os chamados no escopo de quem pede (C7): cada papel vê os dos hotéis que lê, e o proprietário, os das UHs e do hotel inteiro dele (RLS). Filtros opcionais: hotel, situação, prioridade e período pela data de abertura (de inclusive, ate exclusive). Do mais novo para o mais antigo, 50 por página; a seguinte com depoisDe = proximo. Com exportacao=1, 1.000 por página, que a tela junta no CSV (1c, item 9).',
     exigeTenant: true,
-    consulta: ConsultaDaLista,
+    consulta: ConsultaDaListaDeChamados,
     respostas: {
       200: { descricao: 'Uma página de chamados', esquema: RespostaDeListaDeChamados },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
