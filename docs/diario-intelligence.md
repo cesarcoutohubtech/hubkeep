@@ -2929,3 +2929,5 @@ O ADR-047 deixou para depois "abrir chamado a partir da reclamação, que mexe n
 **Fora desta proposta:** abrir um chamado para várias reclamações de uma vez (o insight sistêmico) e ligar a reclamação a um chamado que já existe.
 
 **Área compartilhada:** a proposta não muda `packages/dominio`, `packages/aplicacao` nem o fluxo do chamado; usa o caso de uso `abrir` como ele é. Se a (b) for "numa só", muda o `packages/aplicacao`, e o pedido vai para a 1b antes.
+
+**Respostas do Kaio** (19/10/2026, "Kaio aqui. Vamos dar sequencia nos trabalhos.", nas perguntas do agente do Intelligence nesta sessão): (a) sim, com a coluna `chamado_id`; (b) duas transações; (c) não copiar o texto, só a sugestão; (d) a origem continua `interno`. **Falta o Cesar** nas quatro, e o adendo ao ADR-047 precisa do "aprovo" escrito dos dois. Os detalhes do Kaio (rótulos, sugestão da descrição, botão só na fila) seguem como na proposta até ele dizer outra coisa.
