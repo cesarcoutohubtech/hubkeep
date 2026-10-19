@@ -9,6 +9,7 @@ import {
   MOMENTOS_DA_FOTO_API,
   MOTIVOS_DE_PAUSA_API,
   RESPONSAVEIS_DO_ARRENDAMENTO_API,
+  CANAIS_DE_ENVIO_API,
   DESTINATARIOS_DO_AVISO_API,
   NIVEIS_DO_AVISO_API,
   TIPOS_DE_ALERTA_DE_SLA_API,
@@ -49,6 +50,7 @@ import {
   MOMENTOS_DA_FOTO,
   MOTIVOS_DE_PAUSA,
   RESPONSAVEIS_DO_ARRENDAMENTO,
+  CANAIS_DE_ENVIO,
   DESTINATARIOS_DO_AVISO,
   NIVEIS_DO_AVISO,
   TIPOS_DE_ALERTA_DE_SLA,
@@ -306,6 +308,7 @@ describe('contratos × domínio', () => {
 
   it('os responsáveis do arrendado da API são os do domínio (decisão 5)', () => {
     expect([...RESPONSAVEIS_DO_ARRENDAMENTO_API]).toEqual([...RESPONSAVEIS_DO_ARRENDAMENTO]);
+    expect([...CANAIS_DE_ENVIO_API]).toEqual([...CANAIS_DE_ENVIO]);
   });
 
   it('os motivos da pausa da API são os do domínio (ADR-042)', () => {

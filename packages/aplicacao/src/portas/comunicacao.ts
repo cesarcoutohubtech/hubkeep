@@ -9,6 +9,7 @@ import type {
   CanalDeEnvio,
   Contexto,
   Papel,
+  Responsavel,
   ResponsavelDaOsAtiva,
   SituacaoDeEnvio,
 } from '@hubkeep/dominio';
@@ -23,6 +24,25 @@ export interface ChamadoDoAviso {
   /** As atribuições do tenant nos papéis pedidos; a vigência e o escopo são do domínio. */
   atribuicoes: Atribuicao[];
   responsavelDaOs: ResponsavelDaOsAtiva;
+  /** A OS ativa do chamado, para o push abrir nela; null sem OS. */
+  osAtivaId: string | null;
+}
+
+/** A OS atribuída, para o push ao técnico ou à equipe (C2). */
+export interface OsDoAviso {
+  id: string;
+  hotel: { id: string; nome: string };
+  idiomaDoTenant: string;
+  /** Quem recebeu a OS no evento: o técnico, ou os membros ativos da equipe. */
+  responsavelDaOs: ResponsavelDaOsAtiva;
+}
+
+/** Uma inscrição ativa de push, de um aparelho de uma pessoa. */
+export interface InscricaoAtiva {
+  id: string;
+  usuarioId: string;
+  endpoint: string;
+  chaves: { p256dh: string; auth: string };
 }
 
 export interface PessoaDoEnvio {
@@ -46,6 +66,7 @@ export interface EnvioRegistrado {
 export interface ContagemDeEnvios {
   usuarioId: string;
   nome: string | null;
+  canal: CanalDeEnvio;
   /** AAAA-MM-DD. */
   dia: string;
   envios: number;
@@ -58,7 +79,13 @@ export interface PortaComunicacao {
     chamadoId: string,
     papeis: readonly Papel[],
   ): Promise<ChamadoDoAviso | null>;
+  /** A OS do evento os.atribuida, com quem a recebeu; null se não existe mais. */
+  osDoAviso(tenantId: string, osId: string, responsavel: Responsavel): Promise<OsDoAviso | null>;
   pessoas(tenantId: string, usuarioIds: readonly string[]): Promise<PessoaDoEnvio[]>;
+  /** As inscrições ativas de push das pessoas, em ordem. */
+  inscricoesAtivas(tenantId: string, usuarioIds: readonly string[]): Promise<InscricaoAtiva[]>;
+  /** Revoga a inscrição que o serviço de push recusou (404 ou 410). */
+  revogarInscricaoRecusada(tenantId: string, inscricaoId: string): Promise<void>;
   /** Já há envio do evento à pessoa no canal, fora as falhas? */
   jaEnviado(
     tenantId: string,
@@ -71,4 +98,34 @@ export interface PortaComunicacao {
     ctx: Contexto,
     f: { de: Date; ate: Date; hotelId: string | null },
   ): Promise<ContagemDeEnvios[]>;
+}
+
+/** O que vai ao aparelho: o título, uma linha e o caminho que o toque abre no PWA. */
+export interface MensagemDePush {
+  titulo: string;
+  corpo: string;
+  /** Caminho do PWA, como /os/<id>. */
+  caminho: string;
+}
+
+/**
+ * O envio pelo serviço de push do navegador (Web Push, VAPID). "expirada":
+ * o serviço recusou a inscrição para sempre (404 ou 410). Outro erro lança.
+ */
+export interface EnviadorDePush {
+  enviar(
+    destino: { endpoint: string; chaves: { p256dh: string; auth: string } },
+    mensagem: MensagemDePush,
+  ): Promise<'entregue' | 'expirada'>;
+}
+
+/** As inscrições do próprio usuário (hk_app, com o contexto dele). */
+export interface PortaInscricoesPush {
+  /** Grava a inscrição do aparelho; a mesma já ativa não grava de novo. */
+  inscrever(
+    ctx: Contexto,
+    d: { endpoint: string; chaves: { p256dh: string; auth: string } },
+  ): Promise<{ id: string }>;
+  /** Revoga a inscrição ativa do aparelho; sem ela, não faz nada. */
+  revogar(ctx: Contexto, endpoint: string): Promise<void>;
 }

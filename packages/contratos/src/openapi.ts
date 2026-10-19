@@ -104,7 +104,15 @@ import {
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
 import { RespostaDoStatusMews, RespostaDeCandidatosMews } from './mews-admin';
 import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
-import { ConsultaDaContagemDeEnvios, RespostaDaContagemDeEnvios } from './comunicacao';
+import {
+  ConfiguracaoDoPushApi,
+  ConsultaDaContagemDeEnvios,
+  PedidoDeInscricaoPush,
+  PedidoDeRevogacaoPush,
+  RespostaDaContagemDeEnvios,
+  RespostaDaInscricaoPush,
+  RespostaDaRevogacaoPush,
+} from './comunicacao';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
@@ -1971,6 +1979,43 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'Período acima de 31 dias ou com o fim antes do início (periodo_invalido, com maximoDias) ou filtro fora do formato (entrada_invalida).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/push/configuracao',
+    resumo:
+      'A chave pública VAPID do push do PWA do técnico (1c, ADR-046, C4), para o aparelho se inscrever no serviço de push do navegador. Null: o push não está ligado neste ambiente.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A configuração do push', esquema: ConfiguracaoDoPushApi },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/push/inscricoes',
+    resumo:
+      'Grava a inscrição de push do aparelho de quem pede (C4). A mesma inscrição já ativa não grava de novo; com chaves novas, a antiga é revogada. Cada pessoa grava só as próprias (RLS).',
+    exigeTenant: true,
+    corpo: PedidoDeInscricaoPush,
+    respostas: {
+      201: { descricao: 'Inscrição gravada', esquema: RespostaDaInscricaoPush },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO('Endpoint que não é https ou chaves fora do formato (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/push/inscricoes/revogacao',
+    resumo:
+      'Revoga a inscrição de push ativa do aparelho de quem pede, pelo endpoint (C4). Sem inscrição ativa, não faz nada.',
+    exigeTenant: true,
+    corpo: PedidoDeRevogacaoPush,
+    respostas: {
+      200: { descricao: 'Inscrição revogada', esquema: RespostaDaRevogacaoPush },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO('Endpoint que não é https (entrada_invalida).'),
     },
   },
   {
