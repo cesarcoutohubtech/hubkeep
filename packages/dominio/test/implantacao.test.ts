@@ -5,6 +5,7 @@ import type { Atribuicao } from '../src/index';
 const AGORA = new Date('2026-09-27T12:00:00Z');
 const H1 = 'h1';
 let seq = 0;
+const semModelo = (id: string) => ({ id, modeloId: null, sugestaoDescartada: false });
 const atr = (
   usuarioId: string,
   papel: Atribuicao['papel'],
@@ -92,15 +93,20 @@ describe('painel de implantação (A5)', () => {
       ],
       AGORA,
       [
-        { localId: 'l1', categoriaId: 'c1', ativo: true },
-        { localId: 'l2', categoriaId: 'c1', ativo: true },
-        { localId: 'l3', categoriaId: 'c1', ativo: true },
-        { localId: 'l4', categoriaId: 'c1', ativo: true },
+        { ...semModelo('a-l1'), localId: 'l1', categoriaId: 'c1', ativo: true },
+        { ...semModelo('a-l2'), localId: 'l2', categoriaId: 'c1', ativo: true },
+        { ...semModelo('a-l3'), localId: 'l3', categoriaId: 'c1', ativo: true },
+        { ...semModelo('a-l4'), localId: 'l4', categoriaId: 'c1', ativo: true },
       ],
       { modeloContratual: 'administrado' },
     );
     expect(r.locais).toEqual({ uhsAtivas: 2, uhsPendentes: 1, areasComuns: 1, inativos: 1 });
-    expect(r.ativos).toEqual({ ativos: 4, semCategoria: 0, locaisSemAtivo: 0 });
+    expect(r.ativos).toEqual({
+      ativos: 4,
+      semCategoria: 0,
+      locaisSemAtivo: 0,
+      comModeloSemPlano: 0,
+    });
     expect(r.papeis).toEqual([
       { papel: 'gerente_hotel', pessoas: 1 },
       { papel: 'solicitante', pessoas: 1 },
@@ -121,18 +127,55 @@ describe('painel de implantação (A5)', () => {
       [],
       AGORA,
       [
-        { localId: 'l1', categoriaId: null, ativo: true },
-        { localId: 'l2', categoriaId: null, ativo: false },
+        { ...semModelo('a-l1'), localId: 'l1', categoriaId: null, ativo: true },
+        { ...semModelo('a-l2'), localId: 'l2', categoriaId: null, ativo: false },
       ],
       { modeloContratual: 'proprio' },
     );
-    expect(r.ativos).toEqual({ ativos: 1, semCategoria: 1, locaisSemAtivo: 1 });
+    expect(r.ativos).toEqual({
+      ativos: 1,
+      semCategoria: 1,
+      locaisSemAtivo: 1,
+      comModeloSemPlano: 0,
+    });
     expect(r.pendencias).toEqual([
       'locais_sem_ativo',
       'ativos_sem_categoria',
       'sem_gerente',
       'sem_tecnico',
     ]);
+  });
+
+  it('ativos com modelo e sem plano (M1): plano que cobre, descarte e desativado não contam', () => {
+    const ativo = (id: string, extra: object = {}) => ({
+      id,
+      localId: 'l1',
+      categoriaId: 'cat-ar',
+      modeloId: 'm-ar',
+      ativo: true,
+      sugestaoDescartada: false,
+      ...extra,
+    });
+    const r = resumirImplantacao(
+      H1,
+      [{ id: 'l1', tipo: 'uh', status: 'ativo' }],
+      [],
+      AGORA,
+      [
+        ativo('a1'),
+        ativo('a2'),
+        ativo('a3', { sugestaoDescartada: true }),
+        ativo('a4', { ativo: false }),
+        ativo('a5', { modeloId: null }),
+        ativo('a6', { categoriaId: 'cat-porta' }),
+      ],
+      { modeloContratual: 'proprio' },
+      [
+        { ativoId: 'a2', categoriaId: null, situacao: 'pausado' },
+        { ativoId: null, categoriaId: 'cat-porta', situacao: 'ativo' },
+      ],
+    );
+    expect(r.ativos.comModeloSemPlano).toBe(1);
   });
 
   it('modelo contratual (I2): nulo é pendência; qualquer dos quatro valores resolve', () => {
