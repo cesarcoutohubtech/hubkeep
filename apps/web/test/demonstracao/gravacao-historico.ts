@@ -21,7 +21,16 @@
 // - Rodar de novo com o mesmo fim não duplica nada: as operações do Técnico e
 //   a abertura têm chave fixa, a triagem e o aceite conferem o estado, o job
 //   não roda de novo num dia já gravado e a decisão já tomada é pulada. Com
-//   outro fim, a gravação recusa antes de gravar.
+//   outro fim, a gravação recusa antes de gravar. A retomada recomeça do
+//   último dia gravado, sem consultar de novo as operações de antes dele.
+// - Se a conexão cair, a operação tenta de novo, com espera crescente
+//   (tentar-de-novo.ts); se todas as tentativas caírem, a gravação para e diz
+//   como continuar (Kaio, 15/10/2026).
+// - As reclamações de hóspede (ADR-047): cada lote semanal do roteiro vira o
+//   CSV do HubKeep, lido como a tela lê (lerCsvDeSinais) e importado pela
+//   Admin; a classificação do lote passa pelo caso de uso, reclamação por
+//   reclamação. Rodar de novo não duplica: a mesma avaliação entra uma vez, e
+//   só a que está na fila é classificada.
 // - Nunca roda na Vercel nem em produção: a montagem e os acessos próprios do
 //   job e do painel passam pela mesma trava (conferirAlvoDaMontagem).
 import { createHash } from 'node:crypto';
@@ -49,6 +58,7 @@ import {
   promoverUhsDoTenant,
   recebimentoDeLotes,
 } from '../../src/servidor/composicao';
+import { lerCsvDeSinais } from '../../src/app/(painel)/inteligencia/sinais/csv';
 import { montarInteligencia } from '../../src/servidor/modulos/inteligencia';
 import {
   type ChamadoDoRoteiro,
@@ -57,13 +67,16 @@ import {
   MOMENTO_DO_JOB,
   type MomentoDoJob,
   NOME_DO_GRUPO,
+  type LoteDeReclamacoes,
   type RoteiroDoHistorico,
   type VolumeDoHistorico,
   cenarioDoInsight,
+  csvDoLote,
   decisoesDoDia,
   instanteDoJob,
   roteiroDoHistorico,
 } from './historico-inteligencia';
+import { comNovaTentativa } from './tentar-de-novo';
 import { conferirAlvoDaMontagem, montarComRelogio, refDoRemoto } from './montagem-com-relogio';
 
 type Ambiente = Readonly<Record<string, string | undefined>>;
@@ -126,6 +139,10 @@ export interface ResumoDaGravacao {
   diasCalculados: number;
   insightsAbertos: number;
   decisoes: number;
+  /** Reclamações que entraram nesta execução (as repetidas ficam de fora). */
+  reclamacoes: number;
+  /** Reclamações classificadas nesta execução. */
+  classificacoes: number;
   /** Os insights que nenhum cenário planta; o esperado é nenhum. */
   inesperados: string[];
   /** O estado de cada insight no fim, pelo cenário. */
@@ -180,6 +197,26 @@ type Evento =
   | { quando: Date; tipo: 'fim_da_parada'; chamado: ChamadoDoRoteiro }
   | { quando: Date; tipo: 'passo'; chamado: ChamadoDoRoteiro; indice: number };
 
+type EventoDasReclamacoes = {
+  quando: Date;
+  tipo: 'importar' | 'classificar';
+  lote: LoteDeReclamacoes;
+};
+
+/** A importação e a classificação de cada lote, em ordem de tempo. */
+function eventosDasReclamacoes(r: RoteiroDoHistorico): EventoDasReclamacoes[] {
+  return r.lotesDeReclamacoes
+    .flatMap((lote): EventoDasReclamacoes[] => [
+      { quando: lote.importadoEm, tipo: 'importar', lote },
+      ...(lote.classificadoEm
+        ? [{ quando: lote.classificadoEm, tipo: 'classificar' as const, lote }]
+        : []),
+    ])
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => a.e.quando.getTime() - b.e.quando.getTime() || a.i - b.i)
+    .map((x) => x.e);
+}
+
 /** Os eventos do roteiro em ordem de tempo; no empate, a ordem do roteiro. */
 function eventosDoRoteiro(r: RoteiroDoHistorico): Evento[] {
   const eventos: Evento[] = [];
@@ -194,6 +231,32 @@ function eventosDoRoteiro(r: RoteiroDoHistorico): Evento[] {
     .map((e, i) => ({ e, i }))
     .sort((a, b) => a.e.quando.getTime() - b.e.quando.getTime() || a.i - b.i)
     .map((x) => x.e);
+}
+
+/**
+ * O plano da retomada a partir do corte (o job do último dia gravado): das
+ * operações antes dele, as dos chamados já abertos no banco ficam puladas, com
+ * o id de cada um, e as dos chamados que não estão no banco (os que o roteiro
+ * ganhou depois da gravação) voltam em `faltam`, na ordem de tempo. A gravação
+ * segue de `fim`.
+ */
+export function planoDaRetomada<
+  E extends { quando: Date; tipo: string; chamado: { chave: string } },
+>(
+  eventos: readonly E[],
+  corte: Date,
+  idGravado: (chamado: E['chamado']) => string | undefined,
+): { fim: number; ids: Map<string, string>; faltam: E[] } {
+  let fim = 0;
+  while (fim < eventos.length && (eventos[fim] as E).quando < corte) fim += 1;
+  const ids = new Map<string, string>();
+  const faltam: E[] = [];
+  for (const e of eventos.slice(0, fim)) {
+    const id = idGravado(e.chamado);
+    if (id !== undefined) ids.set(e.chamado.chave, id);
+    else faltam.push(e);
+  }
+  return { fim, ids, faltam };
 }
 
 /** Um acesso só do papel pedido, depois da mesma trava da montagem. */
@@ -242,6 +305,9 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
   const dono = new pg.Client({ connectionString: o.urlDono });
   await dono.connect();
   let ultimoDiaGravado: string | null;
+  // A chave fixa da abertura de cada chamado já gravado e o id dele, para a
+  // retomada pular sem consulta o que vem antes do último dia gravado.
+  const aberturasGravadas = new Map<string, string>();
   try {
     const { rows } = await dono.query<{ criado_em: Date }>(
       `select c.criado_em from app.operacao_offline o
@@ -263,6 +329,14 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
       [tenantId],
     );
     ultimoDiaGravado = dias[0]?.dia ?? null;
+    if (ultimoDiaGravado !== null) {
+      const { rows: abertas } = await dono.query<{ chave: string; id: string }>(
+        `select chave::text as chave, resposta->>'id' as id from app.operacao_offline
+          where tenant_id = $1 and tipo = 'chamado.abrir'`,
+        [tenantId],
+      );
+      for (const a of abertas) aberturasGravadas.set(a.chave, a.id);
+    }
     await dono.query(`insert into app.tenant (id, nome) values ($1, $2) on conflict do nothing`, [
       tenantId,
       NOME_DO_GRUPO,
@@ -460,6 +534,22 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
           ).id,
       );
     }
+    // Os códigos de solução do roteiro (a troca do equipamento da modernização)
+    // são os padrão, pela chave: sem eles no grupo, instala os padrão.
+    const chavesDeSolucao = new Set(
+      r.chamados.flatMap((c) => (c.os.codigoSolucao ? [c.os.codigoSolucao] : [])),
+    );
+    let comSolucao = codigos;
+    if ([...chavesDeSolucao].some((k) => !comSolucao.some((x) => x.chavePadrao === k))) {
+      await casos.codigos.instalarCodigosPadrao(admin);
+      comSolucao = (await casos.codigos.listarCodigos(admin)).codigos;
+    }
+    const solucoes = new Map<string, string>();
+    for (const k of chavesDeSolucao) {
+      const id = comSolucao.find((x) => x.tipo === 'solucao' && x.chavePadrao === k)?.id;
+      if (!id) throw new Error(`Código de solução padrão ${k} não encontrado.`);
+      solucoes.set(k, id);
+    }
     const fornecedoresGravados = await casos.fornecedores.listar(admin);
     const fornecedores = new Map<string, string>();
     for (const f of r.fornecedores) {
@@ -587,7 +677,14 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
             osId: os.id,
             versao: os.versao,
             ...(passo.acao === 'concluir'
-              ? { codigos: { falhaId: codigosDoRoteiro.get(c.os.codigoFalha) ?? null } }
+              ? {
+                  codigos: {
+                    falhaId: codigosDoRoteiro.get(c.os.codigoFalha) ?? null,
+                    ...(c.os.codigoSolucao
+                      ? { solucaoId: solucoes.get(c.os.codigoSolucao) ?? null }
+                      : {}),
+                  },
+                }
               : {}),
           },
         });
@@ -603,6 +700,60 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
         await casos.triagem.aceitarOs(ctx('gerente'), os.id, {
           versao: os.versao,
           custoInformado: c.os.custo,
+        });
+      }
+    };
+
+    const comoContinuar =
+      `Rode de novo o mesmo comando, com o mesmo --fim (${o.fim}): ` +
+      'a gravação continua do último dia gravado.';
+    let reclamacoes = 0;
+    let classificacoes = 0;
+    const aplicarReclamacoes = async (e: EventoDasReclamacoes) => {
+      agora = e.quando;
+      const hotelId = hotel(e.lote.hotel);
+      if (e.tipo === 'importar') {
+        const lido = lerCsvDeSinais(csvDoLote(e.lote));
+        if (!lido.ok) throw new Error(`O CSV do lote ${e.lote.chave} não foi lido: ${lido.erro}.`);
+        const resultado = await painel.importarSinais(admin, hotelId, lido.linhas);
+        if (resultado.erros > 0) {
+          throw new Error(`O lote ${e.lote.chave} teve ${resultado.erros} linhas com erro.`);
+        }
+        reclamacoes += resultado.entraram;
+        return;
+      }
+      // Só a que está na fila: a já classificada (numa execução anterior) fica.
+      const { sinais } = await painel.filaDeSinais(admin, hotelId, 'pendentes');
+      const naFila = new Map(sinais.map((s) => [`${s.fonte}|${s.idExterno}`, s]));
+      for (const x of e.lote.reclamacoes) {
+        const c = x.classificacao;
+        const s = naFila.get(`${x.fonte}|${x.idExterno}`);
+        if (!c || !s) continue;
+        agora = new Date(agora.getTime() + MINUTO_MS);
+        await painel.classificarSinal(admin, s.id, {
+          versao: s.versao,
+          manutencao: c.manutencao,
+          categoriaId: c.categoria ? categoria(c.categoria) : null,
+          uhId: c.uh ? (locais.get(c.uh) ?? null) : null,
+          ativoId: c.ativo ? (ativos.get(c.ativo) ?? null) : null,
+          ligacao: c.ligacao,
+        });
+        classificacoes += 1;
+      }
+    };
+    const eventosR = eventosDasReclamacoes(r);
+    let kr = 0;
+    const aplicarReclamacoesAte = async (corte: Date) => {
+      for (
+        ;
+        kr < eventosR.length && (eventosR[kr] as EventoDasReclamacoes).quando < corte;
+        kr += 1
+      ) {
+        const e = eventosR[kr] as EventoDasReclamacoes;
+        await comNovaTentativa(() => aplicarReclamacoes(e), {
+          descricao: `a reclamação ${kr + 1} de ${eventosR.length} (${e.tipo}, lote ${e.lote.chave})`,
+          comoContinuar,
+          log,
         });
       }
     };
@@ -630,19 +781,61 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
       return `${Math.floor(s / 3600)}h${String(Math.floor(s / 60) % 60).padStart(2, '0')}m`;
     };
     let k = 0;
+    // A retomada recomeça do último dia gravado (Kaio, 15/10/2026): as
+    // operações antes do job desse dia já estavam no banco quando ele rodou, e
+    // só se recupera do banco o id de cada chamado aberto. O chamado que o
+    // roteiro ganhou depois da gravação (a modernização do elevador) não está
+    // no banco: as operações dele antes desse dia rodam primeiro, em ordem.
+    const iDoUltimo =
+      ultimoDiaGravado === null
+        ? -1
+        : instantes.findIndex((t) => diaNoFuso(t, FUSO_DO_HISTORICO) === ultimoDiaGravado);
+    let aposACorte: Evento[] = [];
+    if (iDoUltimo >= 0) {
+      const plano = planoDaRetomada(eventos, instantes[iDoUltimo] as Date, (c) =>
+        aberturasGravadas.get(idFixo(tenantId, `chamado:${c.chave}`)),
+      );
+      for (const [chave, id] of plano.ids) chamados.set(chave, id);
+      k = plano.fim;
+      aposACorte = plano.faltam;
+      log(
+        `Retomada no dia ${ultimoDiaGravado}: ${k - aposACorte.length} de ${eventos.length} ` +
+          `operações já gravadas, puladas` +
+          (aposACorte.length > 0
+            ? `; ${aposACorte.length} de chamados novos no roteiro, gravadas agora.`
+            : '.'),
+      );
+    }
     let diasCalculados = 0;
     let insightsAbertos = 0;
     let decisoes = 0;
     const inesperados = new Set<string>();
     const estados: Record<string, string> = {};
+    for (const e of aposACorte) {
+      await comNovaTentativa(() => aplicar(e), {
+        descricao: `a operação ${eventos.indexOf(e) + 1} de ${eventos.length} (${e.tipo}, chamado ${e.chamado.chave})`,
+        comoContinuar,
+        log,
+      });
+    }
+    // As reclamações antes do corte passam de novo: a importação repetida não
+    // grava nada, e a classificação pula a que já saiu da fila. Assim entram
+    // também as que o roteiro ganhou depois da gravação.
+    if (iDoUltimo >= 0) await aplicarReclamacoesAte(instantes[iDoUltimo] as Date);
     for (const [i, dia] of r.dias.entries()) {
       const instante = instantes[i] as Date;
       for (; k < eventos.length && (eventos[k] as Evento).quando < instante; k += 1) {
-        await aplicar(eventos[k] as Evento);
+        const e = eventos[k] as Evento;
+        await comNovaTentativa(() => aplicar(e), {
+          descricao: `a operação ${k + 1} de ${eventos.length} (${e.tipo}, chamado ${e.chamado.chave})`,
+          comoContinuar,
+          log,
+        });
         if ((k + 1) % OPERACOES_POR_LINHA === 0) {
           log(`Operações: ${k + 1} de ${eventos.length} (${decorrido()}).`);
         }
       }
+      await aplicarReclamacoesAte(instante);
       // O dia já gravado numa execução anterior não roda de novo: o job
       // reabriria como recorrência o insight que o roteiro já encerrou. As
       // decisões do último dia gravado rodam, porque a execução pode ter
@@ -658,7 +851,10 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
 
       // As decisões do dia, logo depois do job.
       agora = new Date(instante.getTime() + MINUTO_MS);
-      const { insights } = await painel.listar(admin, { estado: 'abertos' });
+      const { insights } = await comNovaTentativa(
+        () => painel.listar(admin, { estado: 'abertos' }),
+        { descricao: `a leitura dos insights do dia ${dia}`, comoContinuar, log },
+      );
       for (const ins of insights) {
         const doRoteiro = {
           tipo: ins.tipo as 'atencao_ativo' | 'sistemico',
@@ -708,13 +904,18 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
         if (cenario) estados[cenario.chave] = ins.estado;
       }
     }
-    log(`Histórico gravado: ${diasCalculados} dias calculados, ${decisoes} decisões.`);
+    log(
+      `Histórico gravado: ${diasCalculados} dias calculados, ${decisoes} decisões, ` +
+        `${reclamacoes} reclamações importadas e ${classificacoes} classificadas.`,
+    );
     return {
       tenantId,
       chamados: chamados.size,
       diasCalculados,
       insightsAbertos,
       decisoes,
+      reclamacoes,
+      classificacoes,
       inesperados: [...inesperados],
       estados,
     };

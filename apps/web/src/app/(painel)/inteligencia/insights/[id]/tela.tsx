@@ -1,7 +1,9 @@
 'use client';
 // Página do insight (proposta das telas do 1.0, tela 2): o cabeçalho, "Por
 // que estou vendo isso?", os chamados por semana, os chamados da evidência
-// (sistêmico) ou o ativo (atenção), e a decisão, o único lugar de decidir no
+// (sistêmico) ou o ativo (atenção), e a decisão. No insight sistêmico das
+// reclamações, as reclamações da evidência ficam no lugar dos chamados e do
+// gráfico deles (C2 do ADR-047, D3). A decisão é o único lugar de decidir no
 // painel (decisão 2). Sem linha do tempo no 1.0 (Cesar, 10/10/2026): só as
 // datas do próprio registro.
 import type { RespostaDoInsight, z } from '@hubkeep/contratos';
@@ -34,8 +36,11 @@ import { useT } from '../../../../../i18n/cliente';
 import {
   ChamadosPorSemana,
   type Nomes,
+  type Reclamacoes,
   SeloDaFaixa,
   SeloDoEstado,
+  TabelaDeEfetividade,
+  TabelaDeReclamacoes,
   useDatas,
   useEscopoDoInsight,
   useNomeDaFaixa,
@@ -157,18 +162,34 @@ export function ConteudoDoInsight({
       <div className="hk-grade" data-colunas="2-1">
         <div className="hk-pilha">
           <PorQue insight={insight} />
-          <Painel
-            titulo={t('inteligencia.semanas.titulo')}
-            dica={t(
-              sistemico ? 'inteligencia.semanas.dica_sistemico' : 'inteligencia.semanas.dica',
-            )}
-          >
-            <ChamadosPorSemana serie={pagina.serie} />
-          </Painel>
-          {sistemico ? (
-            <ChamadosDoInsight chamados={pagina.chamados} nomes={nomes} />
+          {pagina.reclamacoes ? (
+            <ReclamacoesDoInsight reclamacoes={pagina.reclamacoes} />
           ) : (
-            <AtivoDoInsight insight={insight} nomes={nomes} />
+            <>
+              <Painel
+                titulo={t('inteligencia.semanas.titulo')}
+                dica={t(
+                  sistemico ? 'inteligencia.semanas.dica_sistemico' : 'inteligencia.semanas.dica',
+                )}
+              >
+                <ChamadosPorSemana serie={pagina.serie} />
+              </Painel>
+              {sistemico ? (
+                <ChamadosDoInsight chamados={pagina.chamados} nomes={nomes} />
+              ) : (
+                <AtivoDoInsight insight={insight} nomes={nomes} />
+              )}
+            </>
+          )}
+          {pagina.efetividade.intervencoes.length > 0 && (
+            <Painel
+              titulo={t('inteligencia.efetividade.insight.titulo')}
+              dica={t('inteligencia.efetividade.insight.dica', {
+                data: data(insight.primeiraDeteccaoEm),
+              })}
+            >
+              <TabelaDeEfetividade efetividade={pagina.efetividade} />
+            </Painel>
           )}
         </div>
         <Decisao insight={insight} nomes={nomes} aoDecidir={aoDecidir} />
@@ -252,6 +273,40 @@ function ChamadosDoInsight({ chamados, nomes }: { chamados: Pagina['chamados']; 
             ))}
           </tbody>
         </Tabela>
+      )}
+    </Painel>
+  );
+}
+
+/**
+ * As reclamações da evidência, até 50, as mais recentes. Quem lê o insight
+ * mas não as reclamações do hotel vê só o total (a RLS filtra).
+ */
+function ReclamacoesDoInsight({ reclamacoes }: { reclamacoes: Reclamacoes }) {
+  const t = useT();
+  const total = reclamacoes.total ?? reclamacoes.sinais.length;
+  return (
+    <Painel
+      titulo={t('inteligencia.reclamacoes.insight.titulo')}
+      dica={t('inteligencia.reclamacoes.insight.dica', { total })}
+      acoes={<Link href="/inteligencia/sinais">{t('inteligencia.reclamacoes.abrir_fila')}</Link>}
+    >
+      {reclamacoes.sinais.length === 0 ? (
+        <MensagemVazia>{t('inteligencia.reclamacoes.insight.sem_acesso', { total })}</MensagemVazia>
+      ) : (
+        <>
+          <TabelaDeReclamacoes
+            reclamacoes={reclamacoes}
+            legenda={t('inteligencia.reclamacoes.insight.titulo')}
+          />
+          {reclamacoes.limitada && (
+            <Nota>
+              {t('inteligencia.reclamacoes.limitada', {
+                mostradas: reclamacoes.sinais.length,
+              })}
+            </Nota>
+          )}
+        </>
       )}
     </Painel>
   );

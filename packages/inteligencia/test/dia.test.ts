@@ -47,6 +47,67 @@ const problematico = (ativoId: string): Corretiva[] =>
   );
 
 describe('calcularDia: scores e métrica do dia', () => {
+  it('a preventiva atrasada sai das OS preventivas do ativo; sem nenhuma, fica sem dado (versão 5)', () => {
+    // agora é 30/09/2026, 12:00 UTC; os hotéis do teste contam em UTC.
+    const preventiva = (dataPrevista: string, concluidaEm?: Date) => ({
+      dataPrevista,
+      transicoes: concluidaEm ? [{ para: 'concluida' as const, quando: concluidaEm }] : [],
+    });
+    const r = calcularDia({
+      agora,
+      hoteis,
+      ativos: [
+        ativo({ id: 'a1', preventivas: [preventiva('2026-09-29')] }),
+        ativo({
+          id: 'a2',
+          preventivas: [preventiva('2026-09-29', dia(-1)), preventiva('2026-09-30')],
+        }),
+        // A conclusão depois de agora não conta: no dia, ela ainda estava atrasada.
+        ativo({ id: 'a3', preventivas: [preventiva('2026-09-20', dia(2))] }),
+        ativo({ id: 'a4' }),
+        ativo({ id: 'a5', preventivas: [] }),
+      ],
+      corretivas: [],
+      locais: [],
+    });
+    const componente = (id: string) =>
+      r.ativos
+        .find((a) => a.ativoId === id)
+        ?.atencao.componentes.find((c) => c.chave === 'preventiva_atrasada')?.valor;
+    expect(['a1', 'a2', 'a3', 'a4', 'a5'].map(componente)).toEqual([1, 0, 1, null, null]);
+    expect(r.ativos.find((a) => a.ativoId === 'a4')?.atencao.ausentes).toContain(
+      'preventiva_atrasada',
+    );
+  });
+
+  it('a falha depois de preventiva sai das OS preventivas do ativo; sem nenhuma, fica sem dado (reincidência versão 4)', () => {
+    const preventiva = {
+      dataPrevista: '2026-09-17',
+      transicoes: [{ para: 'concluida' as const, quando: dia(-12) }],
+    };
+    const r = calcularDia({
+      agora,
+      hoteis,
+      ativos: [ativo({ id: 'a1', preventivas: [preventiva] }), ativo({ id: 'a2' })],
+      corretivas: ['a1', 'a2'].flatMap((ativoId) => [
+        corretiva({ ativoId, abertaEm: dia(-50) }),
+        corretiva({ ativoId, abertaEm: dia(-10) }),
+      ]),
+      locais: [],
+    });
+    const componente = (id: string) =>
+      r.ativos
+        .find((a) => a.ativoId === id)
+        ?.reincidencia.componentes.find((c) => c.chave === 'apos_preventiva');
+    // a1: a corretiva de −10 abre 2 dias depois da conclusão; a de −50, antes.
+    expect(componente('a1')?.valor).toBe(0.5);
+    expect(componente('a1')?.evidencia).toMatchObject({ quantidade: 1, comDado: 2 });
+    expect(componente('a2')?.valor).toBeNull();
+    expect(r.ativos.find((a) => a.ativoId === 'a2')?.reincidencia.ausentes).toContain(
+      'apos_preventiva',
+    );
+  });
+
   it('ativo com histórico pesado passa do limite e gera a detecção de atenção no hotel', () => {
     const r = calcularDia({
       agora,
@@ -75,8 +136,8 @@ describe('calcularDia: scores e métrica do dia', () => {
       atencao: a1?.atencao.valor,
       faixaAtencao: a1?.atencao.faixa,
       recalculo: false,
-      versaoFormulaReincidencia: 3,
-      versaoFormulaAtencao: 4,
+      versaoFormulaReincidencia: 4,
+      versaoFormulaAtencao: 7,
       versaoPolitica: 'padrao',
       detalheReincidencia: a1?.reincidencia,
       detalheAtencao: a1?.atencao,
@@ -91,7 +152,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixa: a1?.atencao.faixa,
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: a1?.atencao.valor,
-      versao: 4,
+      versao: 7,
       escopo: { ativoId: 'a1', hotelId: 'h1' },
     });
     expect(atencao[0]?.corretivaIds).toHaveLength(6);
@@ -285,8 +346,15 @@ describe('calcularDia: detecções sistêmicas', () => {
     );
   // Outro modelo na categoria, sem chamado: sem ele não há com o que comparar,
   // e o mesmo modelo não dispara (respostas de 10/10/2026).
+  // Mais quatro do modelo, sem chamado: a população do modelo chega aos 10 do mínimo (v4).
   const base = [
     ativo({ id: 'o1', hotelId: 'h1', categoriaId: 'hvac', fabricante: 'Trane', modelo: 'T9' }),
+    ...doModelo([
+      ['s1', 'h1'],
+      ['s2', 'h1'],
+      ['s3', 'h1'],
+      ['s4', 'h1'],
+    ]),
   ];
   const falhas = (as: readonly AtivoDoDia[]): Corretiva[] =>
     as.map((a, i) =>

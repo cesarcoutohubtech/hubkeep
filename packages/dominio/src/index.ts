@@ -359,6 +359,8 @@ export type {
   SituacaoDoPlano,
   UnidadeDePeriodicidade,
 } from './plano-preventivo';
+export { preventivaAtrasada } from './preventiva-atrasada';
+export type { PreventivaNoTempo } from './preventiva-atrasada';
 export {
   ESTADOS_DA_PREVENTIVA_ABERTA,
   MOTIVOS_DE_PULO,

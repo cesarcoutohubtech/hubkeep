@@ -101,6 +101,7 @@ import {
   RespostaDeReaberturaDeOs,
 } from './chamados';
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
+import { RespostaDoStatusMews, RespostaDeCandidatosMews } from './mews-admin';
 import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
 import { ConsultaDaContagemDeEnvios, RespostaDaContagemDeEnvios } from './comunicacao';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
@@ -186,10 +187,18 @@ import {
   PedidoDeDecisaoDoInsight,
   RespostaDaDecisaoDoInsight,
   RespostaDeInsights,
+  RespostaDaBuscaDeAtivosNoIntelligence,
+  RespostaDasEfetividades,
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
   RespostaDaAberturaDoIntelligence,
+  ConsultaDaFilaDeSinais,
+  PedidoDeClassificacaoDeSinal,
+  PedidoDeImportacaoDeSinais,
+  RespostaDaClassificacaoDeSinal,
+  RespostaDaFilaDeSinais,
+  RespostaDaImportacaoDeSinais,
 } from './inteligencia';
 
 type Esquema = z.ZodType;
@@ -213,6 +222,28 @@ export interface Rota {
 const ERRO = (descricao: string) => ({ descricao, esquema: ErroApi });
 
 export const ROTAS: readonly Rota[] = [
+  {
+    metodo: 'get',
+    caminho: '/api/v1/mews/candidatos',
+    resumo: 'Hotéis fictícios candidatos a integração Mews Demo (somente Admin).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Candidatos informativos por hotel', esquema: RespostaDeCandidatosMews },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Apenas Admin do grupo (sem_permissao).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/mews/status',
+    resumo: 'Mews V1: checkpoints, horários e contagens técnicas (somente Admin do grupo).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Status técnico por hotel', esquema: RespostaDoStatusMews },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Apenas Admin do grupo (sem_permissao).'),
+    },
+  },
   {
     metodo: 'get',
     caminho: '/api/v1/sessao',
@@ -2373,7 +2404,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/inteligencia/insights/{id}',
     resumo:
-      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê e a série de chamados por semana nas últimas 12 semanas.',
+      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê, as reclamações de hóspede da evidência no insight sistêmico das reclamações (até 50, as mais recentes, com o total; quem não lê as reclamações do hotel vê só o total), a série de chamados por semana nas últimas 12 semanas e a efetividade das intervenções nos ativos do insight concluídas depois da primeira detecção.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Insight', esquema: RespostaDoInsight },
@@ -2385,9 +2416,23 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/inteligencia/ativos',
+    resumo:
+      'Procurar ativo no Intelligence: os ativos em uso cujo nome, fabricante, modelo ou número de série contém o trecho (sem acento), só dos hotéis em que quem pede decide insight, em ordem de nome, até 20, com o nome do hotel. Sem ?busca=, a lista vem vazia. Leva à página do ativo, também do ativo sem insight.',
+    exigeTenant: true,
+    busca: true,
+    respostas: {
+      200: { descricao: 'Ativos', esquema: RespostaDaBuscaDeAtivosNoIntelligence },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Sem o módulo ou sem papel que decide (inteligencia_indisponivel).'),
+      422: ERRO('Termo com menos de 3 caracteres (busca_curta).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/inteligencia/ativos/{id}',
     resumo:
-      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, e os insights de atenção do ativo. Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
+      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, os insights de atenção do ativo, a efetividade das intervenções no ativo nos últimos 180 dias o sinal de substituição, calculado na leitura (nulo no ativo baixado), e as reclamações de hóspede ligadas ao ativo na janela do Guest Impact Score (até 50, as mais recentes, com o texto). Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Ativo', esquema: RespostaDoAtivoNoIntelligence },
@@ -2395,6 +2440,18 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO(
         'inteligencia_indisponivel, ou ativo_nao_encontrado (fora do escopo de quem decide ou inexistente).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/efetividade',
+    resumo:
+      'A efetividade das intervenções, a seção abaixo da lista de insights (adendo ao ADR-033 de 15/10/2026): as OS corretivas concluídas nos últimos 180 dias com o código de solução na lista da política inteligencia.efetividade do hotel, da mais recente para a mais antiga, até 100, só dos hotéis em que quem pede decide insight. Cada uma com os chamados, as reaberturas e o tempo parado do ativo antes e depois, e o custo das corretivas com a cobertura de cada lado. É a variação observada, nunca a causa.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Intervenções', esquema: RespostaDasEfetividades },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Sem o módulo ou sem papel que decide (inteligencia_indisponivel).'),
     },
   },
   {
@@ -2413,6 +2470,58 @@ export const ROTAS: readonly Rota[] = [
         'Outra pessoa decidiu antes (conflito_de_versao) ou a ação não vale no estado (transicao_invalida).',
       ),
       422: ERRO('motivo_obrigatorio, motivo_de_descarte_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/sinais',
+    resumo:
+      'A fila de classificação das reclamações de hóspede de um hotel (ADR-047): as sem classificação por padrão, ou as de manutenção, as fora da manutenção ou todas, da data da avaliação mais recente para a mais antiga, até 200, com o nome do ativo ligado e o de quem classificou. Só para quem decide insight no hotel (Admin do grupo, Gestor CSC e Gerente do hotel).',
+    exigeTenant: true,
+    consulta: ConsultaDaFilaDeSinais,
+    respostas: {
+      200: { descricao: 'Reclamações', esquema: RespostaDaFilaDeSinais },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, ou hotel_nao_encontrado (fora de quem decide insight ou inexistente).',
+      ),
+      422: ERRO('Sem o hotel ou filtro fora do formato (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/importacoes',
+    resumo:
+      'Importa as linhas de um CSV de reclamações e avaliações de hóspede num hotel (ADR-047), com as colunas do HubKeep (id_externo, data, fonte, nota, escala, texto, idioma, uh), até 1000 linhas e 1 MB por pedido. Cada linha é validada à parte: a resposta diz, por linha, se entrou, se era repetida (a mesma fonte e o mesmo código externo no hotel; a reimportação não muda a que existe) ou o código do erro. Grava o lote com auditoria (sem o texto) e o evento sinal_hospede.importado; sem nenhuma linha nova, não grava nada.',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeSinais,
+    respostas: {
+      200: { descricao: 'Resultado por linha', esquema: RespostaDaImportacaoDeSinais },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, ou hotel_nao_encontrado (fora de quem decide insight ou inexistente).',
+      ),
+      413: ERRO('O pedido passou de 1 MB (corpo_grande).'),
+      422: ERRO('importacao_vazia, importacao_grande ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/{id}/classificacao',
+    resumo:
+      'Uma pessoa classifica a reclamação (ADR-047): se é manutenção e, sendo, a categoria, a UH e o ativo, com o estado da ligação (sem ligação, possível ou confirmada). Nada liga a reclamação ao ativo sem uma pessoa. Sem manutenção, sem categoria nem ativo; com ativo, a ligação é possível ou confirmada e a categoria é a do ativo; o ativo e a UH são do hotel da reclamação. Reclassificar é permitido. Grava com a trava de versão, auditoria e o evento sinal_hospede.classificado.',
+    exigeTenant: true,
+    corpo: PedidoDeClassificacaoDeSinal,
+    respostas: {
+      200: { descricao: 'Reclamação classificada', esquema: RespostaDaClassificacaoDeSinal },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, sinal_nao_encontrado, ativo_nao_encontrado, uh_nao_encontrada ou categoria_nao_encontrada.',
+      ),
+      409: ERRO('Outra pessoa classificou antes (conflito_de_versao).'),
+      422: ERRO(
+        'ligacao_invalida, classificacao_sem_manutencao, ligacao_sem_ativo, ativo_baixado, categoria_do_ativo ou entrada_invalida.',
+      ),
     },
   },
 ];

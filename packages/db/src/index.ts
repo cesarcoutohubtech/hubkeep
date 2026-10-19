@@ -58,6 +58,7 @@ export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from 
 export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
 export type {
   AtivoDoPainelNoBanco,
+  AtivoEncontradoNoBanco,
   ChamadoDoInsightNoBanco,
   ContagemDeInsightsNoBanco,
   DecisaoNoBanco,
@@ -68,6 +69,20 @@ export type {
   MetricaDoPainelNoBanco,
   NomesDoPainelNoBanco,
 } from './repositorios/inteligencia-painel';
+export type {
+  ClassificacaoNoBanco,
+  HotelDoSinalNoBanco,
+  ImportacaoNoBanco,
+  ReferenciasDaClassificacaoNoBanco,
+  SinalNovoNoBanco,
+  SinalDaFilaNoBanco,
+  SinalParaClassificarNoBanco,
+} from './repositorios/inteligencia-sinal';
+export type {
+  ChamadoDaEfetividadeNoBanco,
+  OsDaEfetividadeNoBanco,
+  ParadaDaEfetividadeNoBanco,
+} from './repositorios/inteligencia-efetividade';
 export type {
   AtivoDoJob,
   ChamadoDoJob,
@@ -81,6 +96,7 @@ export type {
   OsDoJob,
   PoliticaDoJob,
   SessaoDoJobDoIntelligence,
+  SinalDoJob,
   TransicaoDoJob,
 } from './repositorios/inteligencia';
 export { novoId } from './ids';
@@ -89,3 +105,7 @@ export { atrasoDaTentativa, processarOutbox } from './repositorios/outbox';
 export type { ResultadoOutbox } from './repositorios/outbox';
 export type { HotelVisivel } from './consultas';
 export type { AppPapel as Papel, DB } from './tipos-banco';
+
+/** Status técnico Mews V1 — somente leitura admin, por RLS. */
+export { criarPortaStatusAdministrativoMews, criarPortaCandidatosHoteisMews } from './mews-admin';
+export type { StatusAdministrativoMews, LinhaDoStatusMews } from './mews-admin';

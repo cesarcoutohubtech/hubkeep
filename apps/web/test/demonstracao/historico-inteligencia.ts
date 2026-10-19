@@ -16,6 +16,10 @@
 //   cresce um código do ruído. Um cenário não cria sinal no outro.
 // - As decisões contam em dias desde a abertura do insight, porque quem abre o
 //   insight é o job, não o roteiro.
+// - As reclamações de hóspede (ADR-047; sim do Kaio de 18/10/2026) chegam em
+//   lotes semanais de CSV em dois hotéis, sorteadas numa sequência à parte:
+//   os chamados não mudam, e o teste confere que, com elas, só os cenários
+//   abrem insight.
 //
 // Ainda não grava nada. A gravação (pnpm demo:historico --ambiente
 // dev|staging, com a trava do kit contra produção) passa pelos casos de uso
@@ -41,11 +45,14 @@ import {
 } from '@hubkeep/dominio';
 import {
   type AcaoDoInsight,
+  COLUNAS_DO_CSV,
+  type ColunaDoCsv,
   type ConfigSistemico,
   type Criticidade,
   DIA_MS,
   type EstadoDoInsight,
   HORA_MS,
+  type LigacaoDoSinal,
   type MotivoDeDescarte,
   PADRAO_SISTEMICO,
   type RegraSistemica,
@@ -56,6 +63,11 @@ import {
 export const NOME_DO_GRUPO = 'Grupo Demonstração — Intelligence';
 export const DOMINIO_DO_GRUPO = 'intelligence.demo.hubkeep.test';
 export const SEMENTE_DO_HISTORICO = 20261013;
+/**
+ * A chave fixa da modernização do elevador, acrescentada ao roteiro depois da
+ * primeira gravação no dev (efetividade, 15/10/2026).
+ */
+export const CHAVE_DA_MODERNIZACAO = 'ch-modernizacao-elevador';
 export const DIAS_DO_HISTORICO = 183;
 /**
  * Dias de chamados do núcleo antes do contrato do Intelligence. Sem eles, nos
@@ -64,6 +76,12 @@ export const DIAS_DO_HISTORICO = 183;
  * HubKeep antes de contratar o módulo, como um cliente de verdade.
  */
 export const DIAS_DE_AQUECIMENTO = 60;
+/**
+ * Dias de reclamações de hóspede antes do fim (ADR-047): os hotéis que
+ * importam começaram há três meses, perto da janela do Guest Impact Score
+ * (90 dias).
+ */
+export const DIAS_DE_RECLAMACOES = 91;
 
 /** O fuso dos seis hotéis do histórico, o mesmo do kit. */
 export const FUSO_DO_HISTORICO = 'America/Sao_Paulo';
@@ -73,7 +91,8 @@ export const FUSO_DO_HISTORICO = 'America/Sao_Paulo';
  * - `como_em_producao` (Cesar): às 06:00 UTC do dia seguinte, o instante do
  *   cron; a linha da métrica leva a data local desse instante, o dia seguinte;
  * - `fim_do_dia_local` (Kaio): no último instante do dia em São Paulo.
- * Os dois ainda vão combinar; o teste sem banco roda os dois.
+ * Combinado: como em produção (Cesar, 14/10/2026; Kaio, 15/10/2026). O teste
+ * sem banco segue rodando os dois.
  */
 export type MomentoDoJob = 'como_em_producao' | 'fim_do_dia_local';
 export const MOMENTO_DO_JOB: MomentoDoJob = 'como_em_producao';
@@ -85,7 +104,8 @@ export function instanteDoJob(dia: string, momento: MomentoDoJob): Date {
 
 /**
  * Quem aceita a OS concluída (ponto 3 da gravação, 13/10/2026): o Gerente do
- * hotel do kit (Cesar) ou a Admin do grupo (Kaio). Os dois ainda vão combinar.
+ * hotel do kit (Cesar) ou a Admin do grupo (Kaio). Combinado: o Gerente (Cesar,
+ * 14/10/2026; Kaio, 15/10/2026).
  */
 export type QuemAceita = 'gerente' | 'admin';
 export const QUEM_ACEITA: QuemAceita = 'gerente';
@@ -203,6 +223,12 @@ export interface PassoDaOs {
 
 export interface OsDoRoteiro {
   codigoFalha: string;
+  /**
+   * A chave padrão do código de solução, informada na conclusão; null sem
+   * código. "Troca do equipamento" faz da OS uma intervenção na efetividade
+   * (adendo ao ADR-033 de 15/10/2026).
+   */
+  codigoSolucao: string | null;
   executadoPor: ExecutadoPor;
   fornecedor: string | null;
   /** Em reais, informado no aceite; null quando não informado. */
@@ -252,7 +278,50 @@ export interface DecisaoDoRoteiro {
 }
 
 export type SinalDoCenario =
-  'atencao' | 'reincidencia' | 'sistemico' | 'substituicao' | 'efetividade';
+  'atencao' | 'reincidencia' | 'sistemico' | 'substituicao' | 'efetividade' | 'impacto_hospede';
+
+export type FonteDaAvaliacao = 'google' | 'booking' | 'tripadvisor';
+
+/** A classificação de uma pessoa (classificarSinal), em chaves do roteiro. */
+export interface ClassificacaoDoRoteiro {
+  manutencao: boolean;
+  categoria: CategoriaPadrao | null;
+  /** O local da UH; null sem UH. */
+  uh: string | null;
+  ativo: string | null;
+  ligacao: LigacaoDoSinal;
+}
+
+/** Uma avaliação de hóspede, como a linha do CSV do HubKeep (COLUNAS_DO_CSV). */
+export interface ReclamacaoDoRoteiro {
+  /** O `id_externo`: fixo, a mesma avaliação a cada execução. */
+  idExterno: string;
+  fonte: FonteDaAvaliacao;
+  /** O dia da avaliação, `AAAA-MM-DD`; a importação o grava ao meio-dia UTC. */
+  data: string;
+  nota: number | null;
+  escala: number | null;
+  texto: string | null;
+  idioma: string | null;
+  /** A UH como o hóspede a citou (o número); null sem citação. */
+  uhCitada: string | null;
+  /** Null na que fica na fila, sem classificação. */
+  classificacao: ClassificacaoDoRoteiro | null;
+  cenario: string | null;
+}
+
+/** O CSV semanal de um hotel: a Admin importa e, depois, classifica. */
+export interface LoteDeReclamacoes {
+  chave: string;
+  hotel: string;
+  importadoEm: Date;
+  /** Null no último lote de cada hotel: ele fica na fila. */
+  classificadoEm: Date | null;
+  reclamacoes: readonly ReclamacaoDoRoteiro[];
+}
+
+/** No sorteio, antes do lote: `t` são os dias antes do fim. */
+type ReclamacaoNoSorteio = Omit<ReclamacaoDoRoteiro, 'data'> & { t: number };
 
 export interface CenarioDoRoteiro {
   chave: string;
@@ -286,6 +355,10 @@ export interface RoteiroDoHistorico {
   /** Em ordem de abertura; a chave segue a ordem. */
   chamados: readonly ChamadoDoRoteiro[];
   cenarios: readonly CenarioDoRoteiro[];
+  /** Os hotéis que importam as avaliações de hóspede; os outros não têm nenhuma. */
+  hoteisComReclamacoes: readonly string[];
+  /** Em ordem de importação. */
+  lotesDeReclamacoes: readonly LoteDeReclamacoes[];
   /** A política `inteligencia.sistemico` do grupo: todas as regras ligadas, com os valores padrão. */
   politicaSistemica: ConfigSistemico;
 }
@@ -347,6 +420,11 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
   const semente = o.semente ?? SEMENTE_DO_HISTORICO;
   const sortear = sorteador(semente);
   const entre = (a: number, b: number) => a + sortear() * (b - a);
+  // O chamado acrescentado ao roteiro depois da primeira gravação no dev sorteia
+  // numa sequência à parte e tem chave fixa: assim os outros chamados mantêm os
+  // instantes e as chaves já gravados, e a retomada grava só o que é novo.
+  const sortearAParte = sorteador(semente + 1);
+  const entreAParte = (a: number, b: number) => a + sortearAParte() * (b - a);
 
   const inicioDoFim = new Date(`${o.fim}T00:00:00Z`).getTime();
   const inicioDoDia = (antesDoFim: number) => inicioDoFim - antesDoFim * DIA_MS;
@@ -505,17 +583,22 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
   const fornecedores: FornecedorDoRoteiro[] = [
     { chave: 'f-frio', nome: 'Frio Sul Demonstração' },
     { chave: 'f-servicos', nome: 'Serviços Gerais Demonstração' },
+    { chave: 'f-elevadores', nome: 'Elevadores Demonstração' },
   ];
 
   // Chamados: uma OS por chamado, com o caminho de sempre (gerar, iniciar,
   // concluir, aceitar), cortado no fim do histórico.
   const chamados: Omit<ChamadoDoRoteiro, 'chave'>[] = [];
+  /** A chave fixa de cada chamado acrescentado, pela posição em `chamados`. */
+  const chavesFixas = new Map<number, string>();
   interface PedidoDeChamado {
     hotel: string;
     local: string;
     ativo: string | null;
     abertoEm: Date;
     codigoFalha: string;
+    /** A chave padrão do código de solução; sem o campo, sem código. */
+    codigoSolucao?: string;
     descricao: string;
     cenario: string | null;
     impactoHospede?: boolean | null;
@@ -526,25 +609,31 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
     horasParadas?: number;
     /** Reaberturas antes do aceite. */
     reaberturas?: number;
+    /** Só no chamado acrescentado depois da primeira gravação: sorteio à parte. */
+    chaveFixa?: string;
   }
-  const chamado = (p: PedidoDeChamado) => {
+  const chamado = (p: PedidoDeChamado): readonly PassoDaOs[] => {
+    const sortearEntre = p.chaveFixa ? entreAParte : entre;
     const t = p.abertoEm.getTime();
-    const gerada = t + entre(0.5, 3) * HORA_MS;
-    const iniciada = gerada + entre(0.5, 6) * HORA_MS;
+    const gerada = t + sortearEntre(0.5, 3) * HORA_MS;
+    const iniciada = gerada + sortearEntre(0.5, 6) * HORA_MS;
     // A parada nasce com o chamado ("o equipamento está parado"), como a
     // abertura grava: o paradoDesde não pode ser depois da abertura.
     const parada = p.horasParadas
       ? { inicio: new Date(t), fim: new Date(t + p.horasParadas * HORA_MS) }
       : null;
-    let concluida = Math.max(iniciada + entre(1, 6) * HORA_MS, parada ? parada.fim.getTime() : 0);
+    let concluida = Math.max(
+      iniciada + sortearEntre(1, 6) * HORA_MS,
+      parada ? parada.fim.getTime() : 0,
+    );
     const passos: PassoDaOs[] = [
       { acao: 'gerar', quando: new Date(gerada) },
       { acao: 'iniciar', quando: new Date(iniciada) },
       { acao: 'concluir', quando: new Date(concluida) },
     ];
     for (let r = 0; r < (p.reaberturas ?? 0); r += 1) {
-      const reaberta = concluida + entre(4, 20) * HORA_MS;
-      concluida = reaberta + entre(2, 12) * HORA_MS;
+      const reaberta = concluida + sortearEntre(4, 20) * HORA_MS;
+      concluida = reaberta + sortearEntre(2, 12) * HORA_MS;
       passos.push(
         {
           acao: 'reabrir',
@@ -554,10 +643,11 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
         { acao: 'concluir', quando: new Date(concluida) },
       );
     }
-    passos.push({ acao: 'aceitar', quando: new Date(concluida + entre(2, 30) * HORA_MS) });
+    passos.push({ acao: 'aceitar', quando: new Date(concluida + sortearEntre(2, 30) * HORA_MS) });
     const feitos = passos.filter((s) => s.quando.getTime() <= fimDoHistorico);
     const ultimo = feitos[feitos.length - 1];
     const estadoDaOs: EstadoDaOs = ultimo ? estadoAposPasso(ultimo.acao) : 'atribuida';
+    if (p.chaveFixa) chavesFixas.set(chamados.length, p.chaveFixa);
     chamados.push({
       hotel: p.hotel,
       local: p.local,
@@ -568,6 +658,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       estado: estadoDoChamado(feitos.length ? estadoDaOs : null),
       os: {
         codigoFalha: p.codigoFalha,
+        codigoSolucao: p.codigoSolucao ?? null,
         executadoPor: p.executadoPor ?? 'equipe_interna',
         fornecedor: p.fornecedor ?? null,
         custo: estadoDaOs === 'aceita' ? (p.custo ?? null) : null,
@@ -577,6 +668,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       parada: parada && parada.inicio.getTime() <= fimDoHistorico ? parada : null,
       cenario: p.cenario,
     });
+    return feitos;
   };
 
   // --- cenários ---------------------------------------------------------------
@@ -643,6 +735,27 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
         custo: 2_500,
         reaberturas: i === 2 ? 1 : 0,
       });
+    // A modernização: a OS concluída com "Troca do equipamento", pelo
+    // fornecedor de elevadores, é a intervenção que a efetividade reconhece.
+    // A data da intervenção é a conclusão dela. É obra planejada: sem parada
+    // aberta pelo chamado e sem hóspede afetado.
+    const modernizacao = chamado({
+      hotel: h(5),
+      local: `${h(5)}-hall`,
+      ativo: a,
+      cenario: c,
+      abertoEm: em(112, 8),
+      codigoFalha: 'porta_elevador',
+      codigoSolucao: 'solucao_troca_do_equipamento',
+      descricao: 'Modernização do elevador social: troca do equipamento.',
+      impactoHospede: false,
+      executadoPor: 'fornecedor',
+      fornecedor: 'f-elevadores',
+      custo: 48_000,
+      chaveFixa: CHAVE_DA_MODERNIZACAO,
+    });
+    const intervencaoEm = [...modernizacao].reverse().find((p) => p.acao === 'concluir')?.quando;
+    if (!intervencaoEm) throw new Error('A modernização do elevador precisa estar concluída.');
     chamado({
       hotel: h(5),
       local: `${h(5)}-hall`,
@@ -658,7 +771,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       chave: c,
       sinal: 'atencao',
       ativo: a,
-      intervencaoEm: em(110, 13),
+      intervencaoEm,
       alvo: { tipo: 'atencao_ativo', ativo: a, hotel: h(5) },
       decisoes: [
         { aposDias: 2, acao: 'aceitar' },
@@ -672,7 +785,7 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       chave: 'efetividade-elevador',
       sinal: 'efetividade',
       ativo: a,
-      intervencaoEm: em(110, 13),
+      intervencaoEm,
       alvo: null,
       decisoes: [],
       estadoFinal: null,
@@ -1069,10 +1182,257 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
     }
   });
 
+  // --- reclamações de hóspede ---------------------------------------------------
+  // O lado do hóspede (ADR-047): os hotéis 2 e 3 importam as avaliações por CSV
+  // toda semana, de três meses para cá, e a Admin classifica cada lote no dia
+  // da importação. O último lote de cada hotel fica na fila, sem classificação.
+  // Os outros hotéis não importam: o impacto no hóspede deles segue a
+  // porcentagem dos chamados (D1). Sorteio numa sequência à parte: os chamados
+  // e as chaves já gravados no dev não mudam.
+  // - O fundo é de avaliações sem manutenção (elogios, atendimento, só a
+  //   nota) e poucas de manutenção, em categorias que giram, sem hidráulica:
+  //   nenhuma categoria junta três reclamações em 14 dias por acaso.
+  // - Só a caldeira do hotel 2 tem reclamação confirmada (uma por falha, no
+  //   dia da falha, antes do reparo): no máximo duas em 14 dias, abaixo da
+  //   regra sistêmica das reclamações. A possível não pesa (D2).
+  const sortearR = sorteador(semente + 2);
+  const escolher = <T>(xs: readonly T[]): T => xs[Math.floor(sortearR() * xs.length)] as T;
+  const dataAntes = (t: number) => new Date(inicioDoDia(t)).toISOString().slice(0, 10);
+  const hoteisComReclamacoes = [h(2), h(3)];
+  const naFila = new Map(hoteisComReclamacoes.map((x) => [x, [] as ReclamacaoNoSorteio[]]));
+  const avaliar = (fonte: FonteDaAvaliacao, notaEm5: number | null) =>
+    notaEm5 === null
+      ? { fonte, nota: null, escala: null }
+      : fonte === 'booking'
+        ? { fonte, nota: notaEm5 * 2, escala: 10 }
+        : { fonte, nota: notaEm5, escala: 5 };
+  const numeroDaUh = (local: string) =>
+    (locais.find((l) => l.chave === local) as LocalDoRoteiro).nome.replace('UH ', '');
+  const uhQualquer = (hotel: string) =>
+    uh(
+      hotel,
+      1 + Math.floor(sortearR() * volume.andares),
+      1 + Math.floor(sortearR() * volume.uhsPorAndar),
+    );
+  const semManutencao: ClassificacaoDoRoteiro = {
+    manutencao: false,
+    categoria: null,
+    uh: null,
+    ativo: null,
+    ligacao: 'sem_ligacao',
+  };
+
+  // Impacto no hóspede: cada falha da caldeira do hotel 2 vira uma reclamação
+  // confirmada na caldeira. O score pelas reclamações aparece na tela do ativo.
+  {
+    const c = 'impacto-caldeira';
+    const a = `${h(2)}-caldeira`;
+    const textos: readonly [FonteDaAvaliacao, number, string, string][] = [
+      [
+        'google',
+        2,
+        'pt-BR',
+        'Fiquei sem água quente no banho de manhã. Avisei a recepção, mas demorou.',
+      ],
+      ['booking', 2, 'pt-BR', 'Chuveiro só com água fria na segunda noite.'],
+      ['tripadvisor', 2, 'en', 'The shower water was cold the whole morning.'],
+      ['google', 1, 'pt-BR', 'Sem água quente de novo; ninguém explicou o que houve.'],
+      ['booking', 2, 'pt-BR', 'Banho frio às 7h, com reunião às 8h.'],
+      ['google', 2, 'es', 'Agua fría en la ducha toda la mañana.'],
+      ['tripadvisor', 3, 'pt-BR', 'Quarto bom, mas o banho estava frio.'],
+    ];
+    textos.forEach(([fonte, nota, idioma, texto], i) => {
+      const local = uhQualquer(h(2));
+      naFila.get(h(2))?.push({
+        t: 85 - i * 11,
+        idExterno: `demo-caldeira-${i + 1}`,
+        ...avaliar(fonte, nota),
+        texto,
+        idioma,
+        uhCitada: numeroDaUh(local),
+        classificacao: {
+          manutencao: true,
+          categoria: 'hidraulica',
+          uh: local,
+          ativo: a,
+          ligacao: 'confirmada',
+        },
+        cenario: c,
+      });
+    });
+    cenarios.push({
+      chave: c,
+      sinal: 'impacto_hospede',
+      ativo: a,
+      alvo: null,
+      decisoes: [],
+      estadoFinal: null,
+    });
+  }
+
+  // Sistêmico, reclamações: chuveiro fraco em cinco UHs do hotel 3 numa
+  // semana. A Admin liga as três últimas à bomba de recalque como possível
+  // (não pesa). Revisado e aceito.
+  {
+    const c = 'sistemico-reclamacoes';
+    const bomba = `${h(3)}-bomba`;
+    const textos: readonly [number, FonteDaAvaliacao, number, string, string, boolean][] = [
+      [35, 'google', 2, 'pt-BR', 'Chuveiro com pouca pressão, mal dava para tirar o xampu.', false],
+      [34, 'booking', 3, 'pt-BR', 'Pressão da água muito fraca no quarto.', false],
+      [33, 'google', 3, 'en', 'Very low water pressure in the shower.', true],
+      [31, 'tripadvisor', 2, 'pt-BR', 'Chuveiro fraco e a pia demorando a encher.', true],
+      [30, 'google', 2, 'pt-BR', 'Água fraca no banho de novo, segundo dia seguido.', true],
+    ];
+    textos.forEach(([t, fonte, nota, idioma, texto, naBomba], i) => {
+      const local = uh(h(3), 1 + (i % volume.andares), 1 + (i % volume.uhsPorAndar));
+      naFila.get(h(3))?.push({
+        t,
+        idExterno: `demo-chuveiro-${i + 1}`,
+        ...avaliar(fonte, nota),
+        texto,
+        idioma,
+        uhCitada: numeroDaUh(local),
+        classificacao: {
+          manutencao: true,
+          categoria: 'hidraulica',
+          uh: local,
+          ativo: naBomba ? bomba : null,
+          ligacao: naBomba ? 'possivel' : 'sem_ligacao',
+        },
+        cenario: c,
+      });
+    });
+    cenarios.push({
+      chave: c,
+      sinal: 'sistemico',
+      alvo: {
+        tipo: 'sistemico',
+        regra: 'reclamacoes_categoria',
+        hoteis: [h(3)],
+        escopo: { categoriaId: 'hidraulica' },
+      },
+      decisoes: [
+        { aposDias: 1, acao: 'revisar' },
+        { aposDias: 3, acao: 'aceitar' },
+      ],
+      estadoFinal: 'aceito',
+    });
+  }
+
+  // O fundo: cerca de quatro avaliações por semana em cada hotel que importa.
+  const SEM_MANUTENCAO: readonly [string, number, string][] = [
+    ['pt-BR', 5, 'Café da manhã muito bom e equipe atenciosa.'],
+    ['pt-BR', 5, 'Localização ótima, perto de tudo.'],
+    ['pt-BR', 4, 'Quarto limpo e confortável. Voltaria.'],
+    ['pt-BR', 3, 'Check-in demorado, mas o quarto estava limpo.'],
+    ['pt-BR', 3, 'Barulho da rua à noite.'],
+    ['pt-BR', 3, 'Estacionamento caro para o que oferece.'],
+    ['en', 5, 'Great stay, friendly staff.'],
+    ['en', 4, 'Good value for money, nice breakfast.'],
+    ['es', 5, 'Excelente atención en la recepción.'],
+    ['fr', 4, 'Très bon séjour, personnel accueillant.'],
+  ];
+  const DE_MANUTENCAO: readonly [CategoriaPadrao, string][] = [
+    ['eletrica', 'A luz do banheiro piscava a noite toda.'],
+    ['eletronicos', 'A TV do quarto não ligava.'],
+    ['mobiliario', 'Cortina emperrada, não fechava direito.'],
+    ['refrigeracao', 'Ar-condicionado barulhento durante a noite.'],
+  ];
+  const FONTES: readonly FonteDaAvaliacao[] = ['google', 'booking', 'tripadvisor'];
+  hoteisComReclamacoes.forEach((hotel, ih) => {
+    const fila = naFila.get(hotel) as ReclamacaoNoSorteio[];
+    let giro = ih;
+    for (let t = DIAS_DE_RECLAMACOES + 1; t >= 2; t -= 1) {
+      const quantas = sortearR() < 0.55 ? (sortearR() < 0.1 ? 2 : 1) : 0;
+      for (let n = 1; n <= quantas; n += 1) {
+        const idExterno = `demo-${hotel}-${dataAntes(t)}-${n}`;
+        const x = sortearR();
+        if (x < 0.15) {
+          const [categoria, texto] = DE_MANUTENCAO[giro++ % DE_MANUTENCAO.length] as [
+            CategoriaPadrao,
+            string,
+          ];
+          const local = uhQualquer(hotel);
+          const ar = ativoPorChave.get(`${local}-ar`);
+          const naUh = categoria === 'refrigeracao' && ar && ar.cenario === null;
+          fila.push({
+            t,
+            idExterno,
+            ...avaliar(escolher(FONTES), 3),
+            texto,
+            idioma: 'pt-BR',
+            uhCitada: numeroDaUh(local),
+            classificacao: {
+              manutencao: true,
+              categoria,
+              uh: local,
+              ativo: naUh ? `${local}-ar` : null,
+              ligacao: naUh ? 'possivel' : 'sem_ligacao',
+            },
+            cenario: null,
+          });
+        } else if (x < 0.25) {
+          fila.push({
+            t,
+            idExterno,
+            ...avaliar(escolher(FONTES), escolher([4, 5])),
+            texto: null,
+            idioma: null,
+            uhCitada: null,
+            classificacao: semManutencao,
+            cenario: null,
+          });
+        } else {
+          const [idioma, nota, texto] = escolher(SEM_MANUTENCAO);
+          fila.push({
+            t,
+            idExterno,
+            ...avaliar(escolher(FONTES), nota),
+            texto,
+            idioma,
+            uhCitada: null,
+            classificacao: semManutencao,
+            cenario: null,
+          });
+        }
+      }
+    }
+  });
+
+  // Os lotes: a importação semanal (10h em Brasília) leva as avaliações dos
+  // sete dias antes dela; a classificação vem duas horas depois, menos no
+  // último lote de cada hotel, que fica na fila.
+  const lotesDeReclamacoes: LoteDeReclamacoes[] = [];
+  for (let d = DIAS_DE_RECLAMACOES - 6; d >= 1; d -= 7) {
+    hoteisComReclamacoes.forEach((hotel, ih) => {
+      const doLote = (naFila.get(hotel) as ReclamacaoNoSorteio[])
+        .filter((r) => r.t > d && r.t <= d + 7)
+        .sort((a, b) => b.t - a.t || a.idExterno.localeCompare(b.idExterno));
+      if (!doLote.length) return;
+      const ultimo = d === 1;
+      lotesDeReclamacoes.push({
+        chave: `reclamacoes-${hotel}-${dataAntes(d)}`,
+        hotel,
+        importadoEm: em(d, 13 + ih),
+        classificadoEm: ultimo ? null : em(d, 15 + ih),
+        reclamacoes: doLote.map(({ t, ...r }) => ({
+          ...r,
+          data: dataAntes(t),
+          classificacao: ultimo ? null : r.classificacao,
+        })),
+      });
+    });
+  }
+
+  // A numeração das chaves pula os chamados de chave fixa.
+  let numero = 0;
   const ordenados = chamados
     .map((c, i) => ({ c, i }))
     .sort((x, y) => x.c.abertoEm.getTime() - y.c.abertoEm.getTime() || x.i - y.i)
-    .map(({ c }, i) => ({ chave: `ch${String(i + 1).padStart(5, '0')}`, ...c }));
+    .map(({ c, i }) => ({
+      chave: chavesFixas.get(i) ?? `ch${String((numero += 1)).padStart(5, '0')}`,
+      ...c,
+    }));
 
   return {
     semente,
@@ -1088,6 +1448,8 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
     codigosDeFalha: [...CODIGOS_DO_RUIDO, ...CODIGOS_DOS_CENARIOS],
     chamados: ordenados,
     cenarios,
+    hoteisComReclamacoes,
+    lotesDeReclamacoes,
     politicaSistemica: {
       mesmoModelo: { ...PADRAO_SISTEMICO.mesmoModelo, ativa: true },
       mesmoAndar: { ...PADRAO_SISTEMICO.mesmoAndar, ativa: true },
@@ -1096,6 +1458,28 @@ export function roteiroDoHistorico(o: OpcoesDoRoteiro): RoteiroDoHistorico {
       crescimento: { ...PADRAO_SISTEMICO.crescimento, ativa: true },
     },
   };
+}
+
+/** O CSV do lote com as colunas do HubKeep, como o hotel exporta da ferramenta de avaliações. */
+export function csvDoLote(lote: LoteDeReclamacoes): string {
+  const campo = (v: string | number | null) => {
+    const s = v === null ? '' : String(v);
+    return /[",\r\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
+  };
+  const linhas = lote.reclamacoes.map((r) => {
+    const valores: Record<ColunaDoCsv, string | number | null> = {
+      id_externo: r.idExterno,
+      data: r.data,
+      fonte: r.fonte,
+      nota: r.nota,
+      escala: r.escala,
+      texto: r.texto,
+      idioma: r.idioma,
+      uh: r.uhCitada,
+    };
+    return COLUNAS_DO_CSV.map((c) => campo(valores[c])).join(',');
+  });
+  return `${[COLUNAS_DO_CSV.join(','), ...linhas].join('\n')}\n`;
 }
 
 /** O estado da OS depois da ação, pelas transições do domínio. */

@@ -1,0 +1,9 @@
+id_externo,data,fonte,nota,escala,texto,idioma,uh
+demo-chuveiro-1,2026-09-08,google,2,5,"Chuveiro com pouca pressão, mal dava para tirar o xampu.",pt-BR,101
+demo-chuveiro-2,2026-09-09,booking,6,10,Pressão da água muito fraca no quarto.,pt-BR,202
+demo-h3-2026-09-09-1,2026-09-09,booking,8,10,"Good value for money, nice breakfast.",en,
+demo-chuveiro-3,2026-09-10,google,3,5,Very low water pressure in the shower.,en,303
+demo-h3-2026-09-10-1,2026-09-10,tripadvisor,5,5,Café da manhã muito bom e equipe atenciosa.,pt-BR,
+demo-h3-2026-09-11-1,2026-09-11,tripadvisor,3,5,"Check-in demorado, mas o quarto estava limpo.",pt-BR,
+demo-chuveiro-4,2026-09-12,tripadvisor,2,5,Chuveiro fraco e a pia demorando a encher.,pt-BR,404
+demo-chuveiro-5,2026-09-13,google,2,5,"Água fraca no banho de novo, segundo dia seguido.",pt-BR,505
