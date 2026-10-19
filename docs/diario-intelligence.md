@@ -2931,3 +2931,11 @@ O ADR-047 deixou para depois "abrir chamado a partir da reclamação, que mexe n
 **Área compartilhada:** a proposta não muda `packages/dominio`, `packages/aplicacao` nem o fluxo do chamado; usa o caso de uso `abrir` como ele é. Se a (b) for "numa só", muda o `packages/aplicacao`, e o pedido vai para a 1b antes.
 
 **Respostas do Kaio** (19/10/2026, "Kaio aqui. Vamos dar sequencia nos trabalhos.", nas perguntas do agente do Intelligence nesta sessão): (a) sim, com a coluna `chamado_id`; (b) duas transações; (c) não copiar o texto, só a sugestão; (d) a origem continua `interno`. **Falta o Cesar** nas quatro, e o adendo ao ADR-047 precisa do "aprovo" escrito dos dois. Os detalhes do Kaio (rótulos, sugestão da descrição, botão só na fila) seguem como na proposta até ele dizer outra coisa.
+
+**Do Cesar** (19/10/2026, nesta sessão): "cesar aqui. Aprovo o adendo ao ADR-047".
+
+**Um ponto que muda a (a), ao preparar a migração (19/10/2026):** a policy de UPDATE da `app.sinal_hospede` (0052) exige, no `with check`, que `classificado_por` seja vazio ou quem grava. Quem abre o chamado nem sempre é quem classificou, e o UPDATE só do `chamado_id` por outra pessoa seria recusado. Duas saídas:
+- **(a1) Tabela de ligação `app.sinal_hospede_chamado`** (proposta): só INSERT e SELECT para o `hk_app`, sem UPDATE nem DELETE; uma ligação por reclamação (`unique (tenant_id, sinal_id)`); a FK `(hotel_id, chamado_id, ligado_por)` para `app.chamado (hotel_id, id, aberto_por)` garante na estrutura que o chamado é do mesmo hotel e que liga quem abriu; a reclamação do mesmo hotel por uma chave `(hotel_id, id)` nova na `app.sinal_hospede`. Lê e insere quem decide insight no hotel, em nome próprio. Tabela nova: RLS forçada, pgTAP de isolamento e os meta-testes.
+- **(a2) A coluna, afrouxando o `with check`:** tirar a condição de `classificado_por` da policy e deixar só na aplicação. Fica mais simples, mas o banco deixa de garantir que a classificação é gravada em nome de quem a faz.
+
+O "aprovo" do Cesar e as respostas do Kaio foram para a coluna (a). Como a (a1) muda o desenho, a escolha volta para os dois antes da migração.
