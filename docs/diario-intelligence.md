@@ -2956,5 +2956,7 @@ Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona protegida (#310
 
 - **`main`:** com o #322 e os PRs do Mews até o #328. Última migração na `main`: 0056.
 - **Nesta branch:** a migração 0057, o pgTAP 060, os meta-testes, o adendo ao ADR-047, o `docs/02` e o tipo do Kysely, no PR de zona protegida aberto como rascunho.
-- **Esperando:** o Kaio, na (a1) e no "aprovo" do adendo (o rascunho não deve ser mergeado antes); depois, o merge e o `db push` do Cesar, com a conferência no `supabase migration list` do dev.
+- **Esperando:** o merge e o `db push` do Cesar, com a conferência no `supabase migration list` do dev.
 - **Próximo:** o PR comum de abrir chamado a partir da reclamação: a porta no `packages/db` (ligar e ler as ligações), o caso de uso no `packages/inteligencia` (quem abre, quando a reclamação pode virar chamado, a sugestão da descrição), a rota que chama o `abrir` do núcleo e depois liga, o botão e o formulário na fila, os textos nos quatro idiomas e os testes. Primeiro passo: a leitura das ligações na fila (`linhaDaFila` com o chamado).
+
+**Do Kaio** (19/10/2026, nesta sessão): "Kaio aqui. Aprovo A troca da coluna pela tabela (a1) e o adendo ao ADR-047. Continue". O adendo fica aprovado pelos dois, e o #330 sai do rascunho.
