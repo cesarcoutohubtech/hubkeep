@@ -63,6 +63,7 @@ export interface AppAtivo {
   busca: string;
   campos: Generated<Json>;
   categoria_id: string | null;
+  chave_importacao: string | null;
   codigo_qr: string;
   criado_em: Generated<Timestamp>;
   criticidade: number | null;
@@ -77,11 +78,23 @@ export interface AppAtivo {
   modelo_id: string | null;
   nome: string;
   numero_serie: string | null;
+  situacao_cadastro: Generated<string>;
   sugestao_descartada_em: Timestamp | null;
   sugestao_descartada_por: string | null;
   sugestao_descarte_motivo: string | null;
   tenant_id: string;
   versao: Generated<number>;
+}
+
+export interface AppAtivoDecisaoCadastro {
+  ativo_id: string;
+  decidido_em: Generated<Timestamp>;
+  decidido_por: string;
+  decisao: string;
+  hotel_id: string;
+  id: string;
+  motivo: string | null;
+  tenant_id: string;
 }
 
 export interface AppAtivoMovimentacao {
@@ -759,6 +772,7 @@ export interface StagingRegistroExterno {
 export interface DB {
   "app.anexo": AppAnexo;
   "app.ativo": AppAtivo;
+  "app.ativo_decisao_cadastro": AppAtivoDecisaoCadastro;
   "app.ativo_movimentacao": AppAtivoMovimentacao;
   "app.atribuicao_escopo": AppAtribuicaoEscopo;
   "app.auditoria": AppAuditoria;
