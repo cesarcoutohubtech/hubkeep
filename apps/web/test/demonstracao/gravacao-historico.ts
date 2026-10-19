@@ -390,6 +390,7 @@ export async function gravarHistorico(o: OpcoesDaGravacao): Promise<ResumoDaGrav
       atribuicoes: criarPortasDeAplicacao(app).atribuicoes,
       configuracao: criarPortaConfiguracao(app),
       relogio,
+      chamados: casos.chamados,
     });
 
     // 3. Hotéis e UHs pelo caminho do conector, como no kit.

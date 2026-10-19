@@ -73,6 +73,8 @@ export type {
   ClassificacaoNoBanco,
   HotelDoSinalNoBanco,
   ImportacaoNoBanco,
+  LigacaoDoChamadoNoBanco,
+  ReclamacaoParaChamadoNoBanco,
   ReferenciasDaClassificacaoNoBanco,
   SinalNovoNoBanco,
   SinalDaFilaNoBanco,

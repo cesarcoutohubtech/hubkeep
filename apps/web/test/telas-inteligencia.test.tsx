@@ -249,6 +249,7 @@ const reclamacao = (
   classificadoPor: null,
   importadoEm: '2026-10-09T09:00:00.000Z',
   versao: 2,
+  chamadoId: null,
   ...extra,
 });
 

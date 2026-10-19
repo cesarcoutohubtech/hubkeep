@@ -5,7 +5,11 @@
 // motor, e a RLS da app.insight é a última palavra sobre quem lê e decide.
 // O sinal do hóspede (ADR-047) usa as mesmas portas, com as da importação,
 // da fila e da classificação; a RLS da app.sinal_hospede é a última palavra.
+// Abrir chamado a partir da reclamação (adendo de 19/10/2026 ao ADR-047): o
+// motor confere a reclamação e monta o pedido, o chamado abre pelo caso de uso
+// `abrir` do núcleo, sem mudança nele, e a ligação vem numa segunda transação.
 import {
+  type CasosDeUsoDeChamados,
   type PortaAtribuicoes,
   type PortaConfiguracao,
   type PortaModulos,
@@ -17,9 +21,12 @@ import type {
   PortaDoPainelDoIntelligence,
   SinalDaFilaNoBanco,
 } from '@hubkeep/db';
-import type { Contexto } from '@hubkeep/dominio';
+import { Conflito, type Contexto, ErroDeDominio } from '@hubkeep/dominio';
 import {
   type AberturaDoPainel,
+  type PortasDoChamadoDaReclamacao,
+  ligarChamadoDaReclamacao,
+  prepararChamadoDaReclamacao,
   type AtivosEncontrados,
   type FilaDoSinal,
   type LigacaoDoSinal,
@@ -72,6 +79,8 @@ export interface DepsDoPainel {
   /** As políticas gravadas no grupo, para inteligencia.visibilidade_telas. */
   configuracao: Pick<PortaConfiguracao, 'politicas'>;
   relogio: Relogio;
+  /** O caso de uso do núcleo que abre o chamado, com o contexto de quem pede. */
+  chamados: Pick<CasosDeUsoDeChamados, 'abrir'>;
 }
 
 const CHAVE_DA_VISIBILIDADE = 'inteligencia.visibilidade_telas';
@@ -97,6 +106,12 @@ export interface PedidoDeClassificacaoDoPainel {
   uhId: string | null;
   ativoId: string | null;
   ligacao: LigacaoDoSinal;
+}
+
+export interface PedidoDeChamadoDaReclamacaoDoPainel {
+  /** Com o ativo da classificação; sem ele, o chamado abre na UH. */
+  comAtivo: boolean;
+  descricao: string;
 }
 
 export interface CasosDeUsoDoPainel {
@@ -141,6 +156,17 @@ export interface CasosDeUsoDoPainel {
     sinalId: string,
     pedido: PedidoDeClassificacaoDoPainel,
   ): Promise<{ versao: number }>;
+  /**
+   * Abre o chamado a partir da reclamação e liga os dois. Se a ligação falhar
+   * depois do chamado aberto: chamado_sem_ligacao, com o id do chamado.
+   */
+  abrirChamadoDaReclamacao(
+    ctx: Contexto,
+    sinalId: string,
+    pedido: PedidoDeChamadoDaReclamacaoDoPainel,
+  ): Promise<{ chamadoId: string }>;
+  /** Liga de novo a reclamação ao chamado que quem pede abriu a partir dela. */
+  ligarChamadoDaReclamacao(ctx: Contexto, sinalId: string, chamadoId: string): Promise<void>;
 }
 
 /** A linha do banco na forma do motor; valor fora das listas é defeito, não dado. */
@@ -165,7 +191,10 @@ function sinalNoMotor(s: SinalDaFilaNoBanco): SinalDaFila {
 export function portasDoPainel(
   deps: DepsDoPainel,
   ctx: Contexto,
-): PortasDasReclamacoes & PortasDaBuscaDeAtivos & PortasDaFilaDoSinal {
+): PortasDasReclamacoes &
+  PortasDaBuscaDeAtivos &
+  PortasDaFilaDoSinal &
+  PortasDoChamadoDaReclamacao {
   const { porta } = deps;
   return {
     modulos: () => deps.modulos.contratados(ctx),
@@ -216,6 +245,8 @@ export function portasDoPainel(
     nomesDasUhs: (ids) => porta.nomesDasUhs(ctx, ids),
     referenciasDaClassificacao: (r) => porta.referenciasDaClassificacao(ctx, r),
     classificar: (c) => porta.classificar(ctx, c),
+    reclamacaoParaChamado: (id) => porta.reclamacaoParaChamado(ctx, id),
+    ligarChamado: (l) => porta.ligarChamado(ctx, l),
   };
 }
 
@@ -262,6 +293,30 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
       classificarSinal(
         portasDoPainel(deps, ctx),
         { ...pedido, sinalId, usuarioId: ctx.usuarioId },
+        agora(),
+      ),
+    abrirChamadoDaReclamacao: async (ctx, sinalId, pedido) => {
+      const portas = portasDoPainel(deps, ctx);
+      const abertura = await prepararChamadoDaReclamacao(portas, { ...pedido, sinalId }, agora());
+      const { id } = await deps.chamados.abrir(ctx, abertura);
+      try {
+        await ligarChamadoDaReclamacao(
+          portas,
+          { sinalId, chamadoId: id, usuarioId: ctx.usuarioId },
+          agora(),
+        );
+      } catch (e) {
+        throw new Conflito('chamado_sem_ligacao', 'O chamado abriu, mas a ligação falhou.', {
+          chamadoId: id,
+          ...(e instanceof ErroDeDominio ? { causa: e.codigo } : {}),
+        });
+      }
+      return { chamadoId: id };
+    },
+    ligarChamadoDaReclamacao: (ctx, sinalId, chamadoId) =>
+      ligarChamadoDaReclamacao(
+        portasDoPainel(deps, ctx),
+        { sinalId, chamadoId, usuarioId: ctx.usuarioId },
         agora(),
       ),
   };

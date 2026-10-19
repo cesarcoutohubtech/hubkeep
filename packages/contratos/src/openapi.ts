@@ -203,9 +203,12 @@ import {
   RespostaDoResumoDoIntelligence,
   RespostaDaAberturaDoIntelligence,
   ConsultaDaFilaDeSinais,
+  PedidoDeChamadoDaReclamacao,
   PedidoDeClassificacaoDeSinal,
   PedidoDeImportacaoDeSinais,
   RespostaDaClassificacaoDeSinal,
+  RespostaDoChamadoDaReclamacao,
+  PedidoDeLigacaoDoChamado,
   RespostaDaFilaDeSinais,
   RespostaDaImportacaoDeSinais,
 } from './inteligencia';
@@ -2580,6 +2583,39 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'ligacao_invalida, classificacao_sem_manutencao, ligacao_sem_ativo, ativo_baixado, categoria_do_ativo ou entrada_invalida.',
       ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/{id}/chamado',
+    resumo:
+      'Abre o chamado a partir da reclamação (adendo de 19/10/2026 ao ADR-047): a reclamação de manutenção, com UH ou ativo, que ainda não tem chamado. O chamado abre pelo caso de uso do núcleo (POST /api/v1/chamados), no local do ativo ou na UH da classificação, com "afeta hóspede" e a descrição da pessoa; o texto do hóspede não vai junto. Depois, numa segunda transação, a reclamação é ligada ao chamado. Se a ligação falhar, o chamado fica aberto e a resposta é chamado_sem_ligacao, com o id dele.',
+    exigeTenant: true,
+    corpo: PedidoDeChamadoDaReclamacao,
+    respostas: {
+      201: { descricao: 'Chamado aberto e ligado', esquema: RespostaDoChamadoDaReclamacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Os erros de permissão da abertura do chamado.'),
+      404: ERRO('inteligencia_indisponivel, sinal_nao_encontrado ou os da abertura do chamado.'),
+      409: ERRO('reclamacao_ja_tem_chamado ou chamado_sem_ligacao (com o id do chamado).'),
+      422: ERRO(
+        'reclamacao_sem_manutencao, reclamacao_sem_ativo, reclamacao_sem_local, entrada_invalida ou os da abertura do chamado.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/{id}/chamado/ligacao',
+    resumo:
+      'Liga de novo a reclamação ao chamado que quem pede abriu a partir dela, quando a ligação falhou (chamado_sem_ligacao). A mesma ligação de novo não muda nada; o banco recusa o chamado de outro hotel ou aberto por outra pessoa.',
+    exigeTenant: true,
+    corpo: PedidoDeLigacaoDoChamado,
+    respostas: {
+      200: { descricao: 'Reclamação ligada ao chamado', esquema: RespostaDoChamadoDaReclamacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('inteligencia_indisponivel ou sinal_nao_encontrado.'),
+      409: ERRO('reclamacao_ja_tem_chamado.'),
+      422: ERRO('entrada_invalida.'),
     },
   },
 ];

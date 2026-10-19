@@ -6,7 +6,11 @@
 //   o que entrou, o repetido e o erro, com a linha do arquivo;
 // - a fila de classificação: as sem classificação por padrão. Uma pessoa diz
 //   se é manutenção e, sendo, a categoria, a UH e o ativo, com a ligação
-//   possível ou confirmada. Nada liga a reclamação ao ativo sem ela.
+//   possível ou confirmada. Nada liga a reclamação ao ativo sem ela;
+// - abrir chamado a partir da reclamação de manutenção com UH ou ativo
+//   (adendo de 19/10/2026 ao ADR-047): o chamado abre pelo núcleo, na UH ou
+//   no local do ativo, com "afeta hóspede"; o texto do hóspede não vai junto,
+//   e a descrição vem com uma sugestão que a pessoa completa.
 // As categorias, as UHs e os ativos vêm das rotas do núcleo que quem decide
 // insight no hotel já lê. Sem decidir no hotel, a API responde
 // hotel_nao_encontrado; sem o módulo, inteligencia_indisponivel.
@@ -21,6 +25,7 @@ import type {
 import { COLUNAS_DO_CSV_API, LIMITE_DA_IMPORTACAO_API } from '@hubkeep/contratos';
 import { CATALOGOS, IDIOMAS, type Idioma, resolverNome } from '@hubkeep/i18n';
 import {
+  AreaDeTexto,
   Botao,
   Campo,
   Entrada,
@@ -325,6 +330,7 @@ function FilaDeSinais({ hotelId, rodada }: { hotelId: string; rodada: number }) 
   const [apoio, setApoio] = useState<Apoio | null>(null);
   const [erro, setErro] = useState<ErroDaApi | null>(null);
   const [editando, setEditando] = useState<Sinal | null>(null);
+  const [abrindo, setAbrindo] = useState<Sinal | null>(null);
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
   const carregar = useCallback(async () => {
@@ -385,7 +391,13 @@ function FilaDeSinais({ hotelId, rodada }: { hotelId: string; rodada: number }) 
           apoio={apoio}
           aoEditar={(s) => {
             setAviso(null);
+            setAbrindo(null);
             setEditando(s);
+          }}
+          aoAbrirChamado={(s) => {
+            setAviso(null);
+            setEditando(null);
+            setAbrindo(s);
           }}
         />
       )}
@@ -404,6 +416,20 @@ function FilaDeSinais({ hotelId, rodada }: { hotelId: string; rodada: number }) 
           aoSalvar={() => {
             setEditando(null);
             setAviso({ tipo: 'ok', texto: t('inteligencia.sinais.form.salva') });
+            void carregar();
+          }}
+        />
+      )}
+      {abrindo && apoio && (
+        <FormularioDeChamado
+          key={abrindo.id}
+          sinal={abrindo}
+          apoio={apoio}
+          nomeDoAtivo={abrindo.ativoId ? fila?.nomes.ativos[abrindo.ativoId] : undefined}
+          aoCancelar={() => setAbrindo(null)}
+          aoAbrir={() => {
+            setAbrindo(null);
+            setAviso({ tipo: 'ok', texto: t('inteligencia.sinais.chamado.aberto') });
             void carregar();
           }}
         />
@@ -428,14 +454,20 @@ export function useNomeDaCategoria(apoio: Apoio | null) {
     }) ?? c.id;
 }
 
+/** Pode virar chamado: de manutenção, com UH ou ativo, e ainda sem chamado. */
+export const podeAbrirChamado = (s: Sinal): boolean =>
+  s.manutencao === true && (s.uhId !== null || s.ativoId !== null) && s.chamadoId === null;
+
 export function TabelaDeSinais({
   fila,
   apoio,
   aoEditar,
+  aoAbrirChamado,
 }: {
   fila: Fila;
   apoio: Apoio | null;
   aoEditar: (s: Sinal) => void;
+  aoAbrirChamado: (s: Sinal) => void;
 }) {
   const t = useT();
   const { data, numero } = useDatas();
@@ -539,11 +571,23 @@ export function TabelaDeSinais({
               )}
             </td>
             <td>
-              <Botao tamanho="pequeno" onClick={() => aoEditar(s)}>
-                {s.manutencao === null
-                  ? t('inteligencia.sinais.acao.classificar')
-                  : t('inteligencia.sinais.acao.alterar')}
-              </Botao>
+              <div className="hk-pilha">
+                <Botao tamanho="pequeno" onClick={() => aoEditar(s)}>
+                  {s.manutencao === null
+                    ? t('inteligencia.sinais.acao.classificar')
+                    : t('inteligencia.sinais.acao.alterar')}
+                </Botao>
+                {podeAbrirChamado(s) && (
+                  <Botao tamanho="pequeno" onClick={() => aoAbrirChamado(s)}>
+                    {t('inteligencia.sinais.acao.abrir_chamado')}
+                  </Botao>
+                )}
+                {s.chamadoId && (
+                  <Link href={`/chamados/${s.chamadoId}`}>
+                    {t('inteligencia.sinais.chamado.ver')}
+                  </Link>
+                )}
+              </div>
             </td>
           </tr>
         ))}
@@ -762,6 +806,147 @@ export function FormularioDeClassificacao({
           </div>
         </form>
       </div>
+    </Painel>
+  );
+}
+
+/**
+ * A sugestão da descrição do chamado, sem o texto do hóspede (detalhe do
+ * Kaio): a fonte, a data, a categoria e a UH que a classificação tiver.
+ */
+export function useSugestaoDoChamado(apoio: Apoio) {
+  const t = useT();
+  const { data } = useDatas();
+  const nomeDaCategoria = useNomeDaCategoria(apoio);
+  return (s: Sinal) => {
+    const c = s.categoriaId ? apoio.categorias.find((x) => x.id === s.categoriaId) : undefined;
+    const uh = s.uhId ? apoio.uhs.find((x) => x.id === s.uhId)?.nome : undefined;
+    const detalhe = [c ? nomeDaCategoria(c) : null, uh ?? null].filter(Boolean).join(', ');
+    return t('inteligencia.sinais.chamado.sugestao', {
+      fonte: s.fonte,
+      data: data(s.ocorridoEm),
+      temDetalhe: detalhe ? 'sim' : 'nao',
+      detalhe,
+    });
+  };
+}
+
+export function FormularioDeChamado({
+  sinal,
+  apoio,
+  nomeDoAtivo,
+  aoCancelar,
+  aoAbrir,
+}: {
+  sinal: Sinal;
+  apoio: Apoio;
+  nomeDoAtivo: string | undefined;
+  aoCancelar: () => void;
+  aoAbrir: (chamadoId: string) => void;
+}) {
+  const t = useT();
+  const { data } = useDatas();
+  const sugestao = useSugestaoDoChamado(apoio);
+  const [comAtivo, setComAtivo] = useState(sinal.ativoId !== null);
+  const [descricao, setDescricao] = useState(() => sugestao(sinal));
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
+  // O chamado que abriu sem a ligação (chamado_sem_ligacao): a pessoa liga de novo.
+  const [semLigacao, setSemLigacao] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const uh = sinal.uhId ? apoio.uhs.find((x) => x.id === sinal.uhId)?.nome : undefined;
+
+  const abrir = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setEnviando(true);
+    const r = await chamarApi<{ chamadoId: string }>(
+      `/api/v1/inteligencia/sinais/${sinal.id}/chamado`,
+      { method: 'POST', body: JSON.stringify({ comAtivo, descricao }) },
+    );
+    setEnviando(false);
+    if (r.ok) return aoAbrir(r.dados.chamadoId);
+    const chamadoId = r.erro.parametros['chamadoId'];
+    if (r.erro.codigo === 'chamado_sem_ligacao' && typeof chamadoId === 'string') {
+      setSemLigacao(chamadoId);
+    }
+    setAviso({ tipo: 'erro', erro: r.erro });
+  };
+
+  const ligar = async (chamadoId: string) => {
+    setEnviando(true);
+    const r = await chamarApi<{ chamadoId: string }>(
+      `/api/v1/inteligencia/sinais/${sinal.id}/chamado/ligacao`,
+      { method: 'POST', body: JSON.stringify({ chamadoId }) },
+    );
+    setEnviando(false);
+    if (r.ok) return aoAbrir(chamadoId);
+    setAviso({ tipo: 'erro', erro: r.erro });
+  };
+
+  return (
+    <Painel
+      nivel={3}
+      titulo={t('inteligencia.sinais.chamado.titulo', { data: data(sinal.ocorridoEm) })}
+      dica={t('inteligencia.sinais.chamado.dica')}
+    >
+      {semLigacao ? (
+        <div className="hk-pilha">
+          <Aviso aviso={aviso} />
+          <p>
+            <Link href={`/chamados/${semLigacao}`}>{t('inteligencia.sinais.chamado.ver')}</Link>
+          </p>
+          <div className="hk-linha-de-botoes">
+            <Botao variante="primario" disabled={enviando} onClick={() => void ligar(semLigacao)}>
+              {t('inteligencia.sinais.chamado.ligar_de_novo')}
+            </Botao>
+            <Botao onClick={aoCancelar}>{t('inteligencia.sinais.form.cancelar')}</Botao>
+          </div>
+        </div>
+      ) : (
+        <form className="hk-pilha" onSubmit={(e) => void abrir(e)}>
+          {sinal.ativoId && (
+            <label className="hk-marcar">
+              <input
+                type="checkbox"
+                checked={comAtivo}
+                onChange={(e) => setComAtivo(e.target.checked)}
+              />
+              {t('inteligencia.sinais.chamado.com_ativo', {
+                ativo: nomeDoAtivo ?? t('inteligencia.sem_valor'),
+              })}
+            </label>
+          )}
+          <p className="hk-suave">
+            {comAtivo && sinal.ativoId
+              ? t('inteligencia.sinais.chamado.local_do_ativo')
+              : t('inteligencia.sinais.chamado.na_uh', { uh: uh ?? t('inteligencia.sem_valor') })}
+          </p>
+          <Campo rotulo={t('inteligencia.sinais.chamado.descricao')}>
+            {(p) => (
+              <AreaDeTexto
+                {...p}
+                value={descricao}
+                maxLength={2000}
+                rows={4}
+                onChange={(e) => setDescricao(e.target.value)}
+              />
+            )}
+          </Campo>
+          <p className="hk-suave">{t('inteligencia.sinais.chamado.afeta_hospede')}</p>
+          <Aviso aviso={aviso} />
+          <div className="hk-linha-de-botoes">
+            <Botao
+              type="submit"
+              variante="primario"
+              disabled={enviando || descricao.trim() === '' || (!comAtivo && !sinal.uhId)}
+            >
+              {t('inteligencia.sinais.chamado.abrir')}
+            </Botao>
+            <Botao type="button" onClick={aoCancelar}>
+              {t('inteligencia.sinais.form.cancelar')}
+            </Botao>
+          </div>
+        </form>
+      )}
     </Painel>
   );
 }
