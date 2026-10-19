@@ -11,6 +11,7 @@ import {
   type CasosDeUsoDeChecklists,
   type CasosDeUsoDeModelosDeAtivo,
   type CasosDeUsoDePlanosPreventivos,
+  type CasosDeUsoDeSugestoesDePlano,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeTriagem,
   type CasosDeUsoDeExecucao,
@@ -351,6 +352,10 @@ export const casosDeUsoDeModelosDeAtivo = async (): Promise<CasosDeUsoDeModelosD
 /** Planos preventivos (fase 1b, PV2; ADR-041), pelo hk_app. */
 export const casosDeUsoDePlanosPreventivos = async (): Promise<CasosDeUsoDePlanosPreventivos> =>
   (await fabricas()).planosPreventivos();
+
+/** Sugestões de plano (fase 1b, M1, caminho C), pelo hk_app. */
+export const casosDeUsoDeSugestoesDePlano = async (): Promise<CasosDeUsoDeSugestoesDePlano> =>
+  (await fabricas()).sugestoesDePlano();
 
 /** Situações e prioridades do tenant (fase 1a, C1; ADR-027), pelo hk_app. */
 export const casosDeUsoDeSituacoes = async (): Promise<CasosDeUsoDeSituacoes> =>

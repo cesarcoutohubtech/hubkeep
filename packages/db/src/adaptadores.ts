@@ -17,6 +17,7 @@ import type {
   PortaCategorias,
   PortaChecklists,
   PortaModelosDeAtivo,
+  PortaSugestoesDePlano,
   PortaChamados,
   PlanoGravado,
   PortaPlanosPreventivos,
@@ -96,7 +97,12 @@ import {
 } from './repositorios/bandeiras';
 import { registrarAnexo, removerAnexo } from './repositorios/anexos';
 import { alterarFornecedor, criarFornecedor } from './repositorios/fornecedores';
-import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
+import {
+  alterarAtivo,
+  criarAtivo,
+  descartarSugestaoDePlano,
+  moverAtivo,
+} from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
 import {
   alterarModeloDeChecklist,
@@ -403,15 +409,26 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
         (
           await tx
             .selectFrom('app.ativo')
-            .select(['local_id', 'categoria_id', 'desativado_em'])
+            .select([
+              'id',
+              'local_id',
+              'categoria_id',
+              'modelo_id',
+              'desativado_em',
+              'sugestao_descartada_em',
+            ])
             .where('hotel_id', '=', hotelId)
             .execute()
         ).map((a) => ({
+          id: a.id,
           localId: a.local_id,
           categoriaId: a.categoria_id,
+          modeloId: a.modelo_id,
           ativo: a.desativado_em === null,
+          sugestaoDescartada: a.sugestao_descartada_em !== null,
         })),
       ),
+    planos: (ctx, hotelId) => planosQueCobrem(banco, ctx, hotelId),
   };
 }
 
@@ -2340,6 +2357,97 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
       }),
     registrar: (ctx, dados) => banco.executar(ctx, (uow) => registrarAnexo(uow, dados)),
     remover: (ctx, anexoId) => banco.executar(ctx, (uow) => removerAnexo(uow, anexoId)),
+  };
+}
+
+/** Os planos do hotel que a regra do plano que cobre o ativo lê (M1), pela RLS. */
+const planosQueCobrem = (banco: AcessoBanco, ctx: Contexto, hotelId: string) =>
+  banco.withContext(ctx, async (tx) =>
+    (
+      await tx
+        .selectFrom('app.plano_preventivo')
+        .select(['ativo_id', 'categoria_id', 'situacao'])
+        .where('hotel_id', '=', hotelId)
+        .execute()
+    ).map((p) => ({
+      ativoId: p.ativo_id,
+      categoriaId: p.categoria_id,
+      situacao: p.situacao as PlanoGravado['situacao'],
+    })),
+  );
+
+/** Sugestões de plano (fase 1b, M1, caminho C; migração 0051), pelo hk_app. */
+export function criarPortaSugestoesDePlano(banco: AcessoBanco): PortaSugestoesDePlano {
+  const selecionar = (tx: Tx) =>
+    tx
+      .selectFrom('app.ativo')
+      .select([
+        'id',
+        'hotel_id',
+        'nome',
+        'categoria_id',
+        'modelo_id',
+        'versao',
+        'desativado_em',
+        'sugestao_descartada_em',
+      ]);
+  type Linha = Awaited<ReturnType<ReturnType<typeof selecionar>['executeTakeFirstOrThrow']>>;
+  const paraAtivo = (a: Linha) => ({
+    id: a.id,
+    hotelId: a.hotel_id,
+    nome: a.nome,
+    categoriaId: a.categoria_id,
+    modeloId: a.modelo_id,
+    versao: a.versao,
+    ativo: a.desativado_em === null,
+    sugestaoDescartada: a.sugestao_descartada_em !== null,
+  });
+  return {
+    ativos: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await selecionar(tx)
+            .where('hotel_id', '=', hotelId)
+            .where('modelo_id', 'is not', null)
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map(paraAtivo),
+      ),
+    ativo: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await selecionar(tx).where('id', '=', id).executeTakeFirst();
+        return a ? paraAtivo(a) : null;
+      }),
+    modelos: (ctx, ids) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.modelo_ativo as m')
+            .leftJoin('app.checklist_modelo as c', (j) =>
+              j
+                .onRef('c.tenant_id', '=', 'm.tenant_id')
+                .onRef('c.id', '=', 'm.checklist_modelo_id'),
+            )
+            .select([
+              'm.id',
+              'm.nome',
+              'm.plano_sugerido',
+              'm.checklist_modelo_id',
+              'c.ativa as checklist_ativa',
+            ])
+            .where('m.id', 'in', [...ids])
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          nome: m.nome,
+          planoSugerido: m.plano_sugerido,
+          checklistModeloId: m.checklist_modelo_id,
+          checklistAtivo: m.checklist_ativa ?? null,
+        })),
+      ),
+    descartar: (ctx, ativoId, versao, motivo) =>
+      banco.executar(ctx, (uow) => descartarSugestaoDePlano(uow, ativoId, versao, motivo)),
   };
 }
 

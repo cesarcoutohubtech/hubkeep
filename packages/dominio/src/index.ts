@@ -563,6 +563,12 @@ export {
 } from './auditoria-geral';
 export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
 export {
+  ativoSemPlanoComModelo,
+  exigirPeriodicidadeSugerida,
+  nomeDoPlanoSugerido,
+} from './sugestoes-de-plano';
+export type { AtivoParaSugestao } from './sugestoes-de-plano';
+export {
   lerPlanoSugerido,
   podeGerirModelosDeAtivo,
   preencherComModelo,

@@ -32,9 +32,12 @@ import {
 import {
   PedidoDeAlteracaoDePlanoPreventivo,
   PedidoDeNovoPlanoPreventivo,
+  PedidoDeDescarteDaSugestao,
   PedidoDeSituacaoDoPlano,
+  RespostaDeDescarteDaSugestao,
   RespostaDePlanoAlterado,
   RespostaDePlanosPreventivos,
+  RespostaDeSugestoesDePlano,
 } from './planos-preventivos';
 import {
   PedidoDeBandeira,
@@ -1713,6 +1716,53 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Planos do ativo', esquema: RespostaDePlanosPreventivos },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/sugestoes-de-plano',
+    resumo:
+      'Sugestões de plano (M1): os ativos do hotel com modelo, sem plano que os cubra e sem descarte, com a periodicidade e o checklist do modelo (quem gere planos).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Sugestões do hotel', esquema: RespostaDeSugestoesDePlano },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/plano-sugerido',
+    resumo:
+      'Cria o plano sugerido do ativo com um clique: pausado, sem responsável, com a periodicidade e o checklist do modelo e o nome do ativo.',
+    exigeTenant: true,
+    respostas: {
+      201: { descricao: 'Plano cadastrado', esquema: RespostaDePlanoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+      422: ERRO(
+        'Sem sugestão (sugestao_de_plano_indisponivel), modelo sem periodicidade (sugestao_sem_periodicidade) ou os erros do cadastro do plano.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/plano-sugerido/descarte',
+    resumo:
+      'Descarta a sugestão de plano do ativo, com o motivo; quem e quando ficam no ativo, e ele sai da lista.',
+    exigeTenant: true,
+    corpo: PedidoDeDescarteDaSugestao,
+    respostas: {
+      200: { descricao: 'Sugestão descartada', esquema: RespostaDeDescarteDaSugestao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+      409: ERRO('O ativo mudou depois de lido (conflito_de_versao).'),
+      422: ERRO(
+        'Sem sugestão (sugestao_de_plano_indisponivel) ou motivo vazio (motivo_obrigatorio).',
+      ),
     },
   },
   {
