@@ -22,16 +22,33 @@
 // A sétima, inteligencia.visibilidade_telas (adendo de 12/10/2026, aprovado
 // por Cesar; aguarda o Kaio), é quando e para quem as telas aparecem
 // (visibilidade.ts). Vale só no nível do grupo.
+//
+// A oitava, inteligencia.sinal_hospede (ADR-047), é a retenção do texto do
+// hóspede, em dias, de 30 a 1825 (sinal-retencao.ts). O job lê a do grupo.
+// A nona, inteligencia.impacto_hospede (ADR-047, PR C1b), é o Guest Impact
+// Score (impacto-hospede.ts): a janela, os limites, os pesos e as faixas,
+// resolvida por hotel, como a atenção.
 import { type ExtensaoDePolitica, RegraViolada } from '@hubkeep/dominio';
 import { PADRAO_ATENCAO, type ConfigAtencao, configAtencaoValida } from './atencao';
+import {
+  type ConfigImpactoHospede,
+  PADRAO_IMPACTO_HOSPEDE,
+  configImpactoHospedeValida,
+} from './impacto-hospede';
 import {
   PADRAO_EFETIVIDADE,
   type ConfigEfetividade,
   limiaresDeEfetividadeValidos,
+  listaDeCodigosValida,
 } from './efetividade';
 import { PADRAO_REINCIDENCIA, type ConfigReincidencia } from './reincidencia';
 import { FAIXAS_PADRAO } from './score';
 import { PADRAO_SISTEMICO, type ConfigSistemico, configSistemicoValida } from './sistemico';
+import {
+  type ConfigSinalHospede,
+  PADRAO_SINAL_HOSPEDE,
+  configSinalHospedeValida,
+} from './sinal-retencao';
 import { PADRAO_SUBSTITUICAO, type ConfigSubstituicao } from './substituicao';
 import {
   type ConfigVisibilidadeTelas,
@@ -57,6 +74,8 @@ export interface ValoresDePoliticaDoIntelligence {
   'inteligencia.substituicao': ConfigSubstituicao;
   'inteligencia.metrica_janela_leitura': ConfigJanelaDeLeitura;
   'inteligencia.visibilidade_telas': ConfigVisibilidadeTelas;
+  'inteligencia.sinal_hospede': ConfigSinalHospede;
+  'inteligencia.impacto_hospede': ConfigImpactoHospede;
 }
 export type ChaveDePoliticaDoIntelligence = keyof ValoresDePoliticaDoIntelligence;
 
@@ -70,6 +89,8 @@ export const PADROES_DO_INTELLIGENCE: {
   'inteligencia.substituicao': PADRAO_SUBSTITUICAO,
   'inteligencia.metrica_janela_leitura': PADRAO_JANELA_DE_LEITURA,
   'inteligencia.visibilidade_telas': PADRAO_VISIBILIDADE_TELAS,
+  'inteligencia.sinal_hospede': PADRAO_SINAL_HOSPEDE,
+  'inteligencia.impacto_hospede': PADRAO_IMPACTO_HOSPEDE,
 };
 
 export const CHAVES_DE_POLITICA_DO_INTELLIGENCE = Object.keys(
@@ -105,16 +126,36 @@ function faixasValidas(v: unknown): boolean {
   return true;
 }
 
+/**
+ * Campos que entraram depois da primeira versão da política e podem faltar no
+ * valor gravado antes deles: ausentes, vale o padrão. Sem isso, a política
+ * gravada antes deixaria de valer inteira, e o resolvedor voltaria ao padrão.
+ * O mesmo modelo v4 (Kaio, 15/10/2026): a população mínima e o percentual afetado.
+ * A efetividade v3 (adendo ao ADR-033, 15/10/2026): os códigos de intervenção.
+ * A reincidência v4 (Kaio e Cesar, 16/10/2026): os dias da falha depois de preventiva.
+ * O sistêmico v5 (ADR-047): a regra das reclamações de hóspede.
+ */
+const CAMPOS_QUE_PODEM_FALTAR = new Set([
+  'reclamacoes',
+  'minPopulacao',
+  'percentualMinimoAfetado',
+  'codigosDeIntervencao',
+  'diasAposPreventiva',
+]);
+
 /** Mesmas chaves do padrão, recursivamente; número finito e não negativo onde o padrão tem número. */
 function mesmoFormato(v: unknown, padrao: unknown, campo: string): boolean {
   if (campo === 'faixas') return faixasValidas(v);
   if (campo === 'limiteInsight') return typeof v === 'number' && v >= 0 && v <= 100;
+  if (campo === 'codigosDeIntervencao') return listaDeCodigosValida(v);
   if (typeof padrao === 'boolean') return typeof v === 'boolean';
   if (typeof padrao === 'number') return typeof v === 'number' && Number.isFinite(v) && v >= 0;
   if (!objeto(padrao) || !objeto(v)) return false;
   const chaves = Object.keys(padrao);
-  if (Object.keys(v).length !== chaves.length) return false;
-  if (!chaves.every((k) => Object.hasOwn(v, k) && mesmoFormato(v[k], padrao[k], k))) return false;
+  if (!Object.keys(v).every((k) => Object.hasOwn(padrao, k))) return false;
+  const campoValido = (k: string) =>
+    Object.hasOwn(v, k) ? mesmoFormato(v[k], padrao[k], k) : CAMPOS_QUE_PODEM_FALTAR.has(k);
+  if (!chaves.every(campoValido)) return false;
   if (campo === 'pesos') return Object.values(v).some((p) => (p as number) > 0);
   return true;
 }
@@ -133,6 +174,7 @@ export function valorValidoDoIntelligence<C extends ChaveDePoliticaDoIntelligenc
     );
   }
   if (chave === 'inteligencia.visibilidade_telas') return configVisibilidadeValida(valor);
+  if (chave === 'inteligencia.sinal_hospede') return configSinalHospedeValida(valor);
   if (!mesmoFormato(valor, PADROES_DO_INTELLIGENCE[chave], '')) return false;
   // Atenção: o mínimo de medições é inteiro e de pelo menos 1.
   if (chave === 'inteligencia.atencao_ativo') return configAtencaoValida(valor as ConfigAtencao);
@@ -141,6 +183,9 @@ export function valorValidoDoIntelligence<C extends ChaveDePoliticaDoIntelligenc
     return limiaresDeEfetividadeValidos(valor as ConfigEfetividade);
   // Sistêmico: mínimos inteiros de pelo menos 1, taxa e razão contra a base positivas.
   if (chave === 'inteligencia.sistemico') return configSistemicoValida(valor as ConfigSistemico);
+  // Impacto no hóspede: a janela e os limites são inteiros de pelo menos 1.
+  if (chave === 'inteligencia.impacto_hospede')
+    return configImpactoHospedeValida(valor as ConfigImpactoHospede);
   return true;
 }
 

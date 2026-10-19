@@ -347,3 +347,14 @@ export type {
   EventoDoHistorico,
   HistoricoDoRegistro,
 } from './casos-de-uso/historico';
+export type {
+  ModeloDeAtivoGravado,
+  MudancaDeModeloDeAtivo,
+  PortaModelosDeAtivo,
+} from './portas/modelos-de-ativo';
+export { criarCasosDeUsoDeModelosDeAtivo } from './casos-de-uso/modelos-de-ativo';
+export type {
+  CasosDeUsoDeModelosDeAtivo,
+  ModeloDeAtivo,
+  PedidoDeModeloDeAtivo,
+} from './casos-de-uso/modelos-de-ativo';

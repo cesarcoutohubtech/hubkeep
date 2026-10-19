@@ -4,6 +4,8 @@ import {
   type AtivoDoDia,
   type CorretivaDaFonte,
   type HotelDoDia,
+  type NovoInsight,
+  type SinalDaFonte,
   type TransicaoDaOs,
   executarDiaDoTenant,
   fimDoDia,
@@ -102,6 +104,7 @@ describe('executarDiaDoTenant: o dia normal', () => {
       insightsAbertos: 1,
       insightsAtualizados: 0,
       insightsIgnorados: 0,
+      textosApagados: 0,
     });
     expect(
       banco.metricas.map((m) => [m.ativoId, m.calculo, m.recalculo, m.versaoPolitica]),
@@ -238,7 +241,7 @@ describe('executarDiaDoTenant: o registro de cada execução', () => {
       {
         ...r,
         disparadoPor: 'cron',
-        versoesDeFormula: { reincidencia: 3, atencao: 4, sistemico: 3 },
+        versoesDeFormula: { reincidencia: 4, atencao: 7, sistemico: 5 },
         versoesDePolitica: { h1: 'hotel:p1@2026-09-01', h2: 'padrao', h3: 'padrao' },
       },
     ]);
@@ -274,6 +277,7 @@ describe('executarDiaDoTenant: só no tenant com o módulo vigente (I7)', () => 
     insightsAbertos: 0,
     insightsAtualizados: 0,
     insightsIgnorados: 0,
+    textosApagados: 0,
   });
 
   it('sem o módulo: só lê os módulos, não grava nada', async () => {
@@ -315,7 +319,9 @@ describe('executarDiaDoTenant: só no tenant com o módulo vigente (I7)', () => 
         'insights',
         'locais',
         'modulos',
+        'politicaDoSinal',
         'politicaSistemica',
+        'sinais',
       ].sort(),
     );
     expect(banco.metricas).toHaveLength(2);
@@ -350,6 +356,8 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
     fabricante: 'Trane',
     modelo: 'T9',
   });
+  // Quatro do modelo sem chamado: a população do modelo chega aos 10 do mínimo (v4).
+  const instalados = ['s1', 's2', 's3', 's4'].map((id) => modelo(id, 'h1'));
   // Seis ativos em três hotéis (os mínimos do mesmo modelo); um quarto hotel entra depois.
   const hoteisDoModelo: HotelDoDia[] = [...hoteis, { hotelId: 'h4', bandeiraId: 'b2' }];
   const cinco = [
@@ -364,7 +372,7 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
   it('o novo conjunto abre outro insight, ligado ao anterior, e os dois ficam abertos', async () => {
     const { banco, dados, portas } = cenario({
       hoteis: hoteisDoModelo,
-      ativos: [...cinco, base],
+      ativos: [...cinco, ...instalados, base],
       corretivas: cinco.map(falha),
     });
     await executarDiaDoTenant(portas, { agora });
@@ -373,7 +381,7 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
     expect(sistemicos()[0]).toMatchObject({ hotelIds: ['h1', 'h2', 'h3'], anteriorId: null });
 
     const m7 = modelo('m7', 'h4');
-    dados.ativos = [...cinco, m7, base];
+    dados.ativos = [...cinco, m7, ...instalados, base];
     dados.corretivas = [...cinco, m7].map(falha);
     await executarDiaDoTenant(portas, { agora: dia(1) });
 
@@ -392,13 +400,13 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
     const todos = [...cinco, m7];
     const { banco, dados, portas } = cenario({
       hoteis: hoteisDoModelo,
-      ativos: [...todos, base],
+      ativos: [...todos, ...instalados, base],
       corretivas: todos.map(falha),
     });
     await executarDiaDoTenant(portas, { agora });
     const antes = banco.insights.map((i) => ({ ...i }));
 
-    dados.ativos = [...cinco, base];
+    dados.ativos = [...cinco, ...instalados, base];
     dados.corretivas = cinco.map(falha);
     const r = await executarDiaDoTenant(portas, { agora: dia(1) });
     expect(r).toMatchObject({ insightsAbertos: 0, insightsAtualizados: 0, insightsIgnorados: 1 });
@@ -408,7 +416,7 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
   it('descartado "não relevante" silencia a família por 30 dias; "substituído" não', async () => {
     const { banco, portas } = cenario({
       hoteis: hoteisDoModelo,
-      ativos: [...cinco, base],
+      ativos: [...cinco, ...instalados, base],
       corretivas: cinco.map(falha),
     });
     await executarDiaDoTenant(portas, { agora });
@@ -427,5 +435,103 @@ describe('executarDiaDoTenant: hotel novo num insight de rede', () => {
     const aberto = await executarDiaDoTenant(portas, { agora: dia(3) });
     expect(aberto.insightsAbertos).toBe(1);
     expect(banco.insights.filter((i) => i.tipo === 'sistemico')).toHaveLength(2);
+  });
+});
+
+describe('executarDiaDoTenant: o sinal do hóspede (ADR-047)', () => {
+  const reclamacao = (n: number, extra: Partial<SinalDaFonte> = {}): SinalDaFonte => ({
+    id: `s${n}`,
+    hotelId: 'h1',
+    ocorridoEm: dia(-n),
+    nota: null,
+    escala: null,
+    manutencao: true,
+    categoriaId: 'hidraulica',
+    uhId: `uh${n}`,
+    ativoId: null,
+    ligacao: 'sem_ligacao',
+    ...extra,
+  });
+
+  it('as reclamações da janela da regra abrem o sistêmico, com as reclamações no detalhe', async () => {
+    const { fonte, portas } = cenario({
+      sinais: [reclamacao(1), reclamacao(2), reclamacao(3), reclamacao(20)],
+    });
+    const abertos: NovoInsight[] = [];
+    const abrir = portas.gravacao.abrirInsight;
+    portas.gravacao.abrirInsight = async (n) => {
+      abertos.push(n);
+      await abrir(n);
+    };
+    await executarDiaDoTenant(portas, { agora });
+    // A maior janela: a do Guest Impact Score (90 dias), acima da regra (14).
+    expect(fonte.desdeDosSinais).toEqual([dia(-90)]);
+    const sistemico = abertos.find((n) => n.deteccao.tipo === 'sistemico')?.deteccao;
+    expect(sistemico).toMatchObject({
+      escopo: { regra: 'reclamacoes_categoria', hotelId: 'h1', categoriaId: 'hidraulica' },
+      hotelIds: ['h1'],
+      corretivaIds: [],
+      detalhe: { evidencia: { sinalIds: ['s1', 's2', 's3'] } },
+    });
+  });
+
+  it('o recálculo lê as reclamações, para a atenção, mas não a retenção', async () => {
+    const recalculo = cenario({ sinais: [reclamacao(1)] });
+    await executarDiaDoTenant(recalculo.portas, { agora: fimDoDia('2026-09-20'), recalculo: true });
+    expect(recalculo.fonte.lidas).toContain('sinais');
+    expect(recalculo.fonte.lidas).not.toContain('politicaDoSinal');
+  });
+
+  it('atenção v7: o hotel com reclamação usa o Guest Impact Score; o sem, a porcentagem dos chamados', async () => {
+    const confirmada = (n: number, ativoId: string, hotelId = 'h1') =>
+      reclamacao(n, { ativoId, hotelId, ligacao: 'confirmada', nota: 1, escala: 5 });
+    const { banco, portas } = cenario({
+      sinais: [
+        confirmada(1, 'a1'),
+        confirmada(2, 'a1'),
+        reclamacao(5, { ativoId: 'a1', ligacao: 'possivel' }),
+      ],
+    });
+    await executarDiaDoTenant(portas, { agora });
+    const impacto = (ativoId: string) =>
+      (
+        banco.metricas.find((m) => m.ativoId === ativoId)?.detalheAtencao as unknown as {
+          componentes: { chave: string; evidencia: Record<string, unknown> }[];
+        }
+      ).componentes.find((c) => c.chave === 'impacto_hospede')?.evidencia;
+    expect(impacto('a1')).toMatchObject({
+      fonte: 'reclamacoes',
+      versaoImpacto: 1,
+      confirmadas: 2,
+      possiveis: 1,
+      uhs: 2,
+    });
+    // O h2 não importou nada: continua a porcentagem dos chamados.
+    expect(impacto('a2')).toEqual({ score: 0, fonte: 'chamados' });
+    expect(banco.metricas.every((m) => m.versaoFormulaAtencao === 7)).toBe(true);
+  });
+
+  it('apaga o texto que passou da retenção do grupo e conta no registro; o recálculo não apaga', async () => {
+    const { banco, portas } = cenario({ sinalHospede: { retencaoTextoDias: 30 } });
+    banco.textos = [
+      { id: 's-velho', ocorridoEm: dia(-31), apagadoEm: null },
+      { id: 's-novo', ocorridoEm: dia(-29), apagadoEm: null },
+      { id: 's-apagado', ocorridoEm: dia(-60), apagadoEm: dia(-20) },
+    ];
+    await executarDiaDoTenant(portas, { agora: fimDoDia('2026-09-20'), recalculo: true });
+    expect(banco.textos.map((t) => t.apagadoEm)).toEqual([null, null, dia(-20)]);
+    const r = await executarDiaDoTenant(portas, { agora });
+    expect(r.textosApagados).toBe(1);
+    expect(banco.textos.map((t) => t.apagadoEm)).toEqual([agora, null, dia(-20)]);
+    expect(banco.execucoes.at(-1)).toMatchObject({ textosApagados: 1 });
+  });
+
+  it('sem política gravada, a retenção padrão de 365 dias', async () => {
+    const { banco, portas } = cenario();
+    banco.textos = [
+      { id: 's1', ocorridoEm: dia(-366), apagadoEm: null },
+      { id: 's2', ocorridoEm: dia(-364), apagadoEm: null },
+    ];
+    expect((await executarDiaDoTenant(portas, { agora })).textosApagados).toBe(1);
   });
 });

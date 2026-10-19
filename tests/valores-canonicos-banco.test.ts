@@ -9,12 +9,13 @@
 // 0041), o motivo da pausa da OS (1c, MOTIVOS_DE_PAUSA, migração 0043) e a
 // unidade e a situação do plano preventivo (PV2, UNIDADES_DE_PERIODICIDADE e
 // SITUACOES_DO_PLANO, migração 0045) e o responsável do arrendamento na OS
-// (1c, RESPONSAVEIS_DO_ARRENDAMENTO, migração 0047). Este
+// (1c, RESPONSAVEIS_DO_ARRENDAMENTO, migração 0047) e a ligação do sinal do
+// hóspede com o ativo (ADR-047, LIGACOES_DO_SINAL, migração 0052). Este
 // teste lê as migrações e falha se um check e a lista do domínio divergirem:
 // valor novo exige migração que amplia o check. Os pgTAP 028, 029 e 030
 // provam, no banco, que o check recusa o que está fora (o 031, no insight; o
 // 033, no momento da foto; o 035, no motivo da pausa; o 036, no plano; o 039,
-// no arrendamento).
+// no arrendamento; o 043, na ligação do sinal).
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
@@ -32,7 +33,11 @@ import {
   TIPOS_DE_CODIGO_DE_MANUTENCAO,
   UNIDADES_DE_PERIODICIDADE,
 } from '../packages/dominio/src/index';
-import { ESTADOS_DO_INSIGHT, MOTIVOS_DE_DESCARTE } from '../packages/inteligencia/src/index';
+import {
+  ESTADOS_DO_INSIGHT,
+  LIGACOES_DO_SINAL,
+  MOTIVOS_DE_DESCARTE,
+} from '../packages/inteligencia/src/index';
 
 /** Última definição da restrição, pela ordem das migrações. */
 function valoresDoCheck(restricao: string, coluna: string): string[] | undefined {
@@ -165,6 +170,12 @@ describe('valores canônicos: banco × Intelligence (ADR-033)', () => {
   it('insight_motivo_descarte_lista aceita exatamente os MOTIVOS_DE_DESCARTE do módulo', () => {
     expect(valoresDoCheck('insight_motivo_descarte_lista', 'motivo_descarte')).toEqual([
       ...MOTIVOS_DE_DESCARTE,
+    ]);
+  });
+
+  it('sinal_hospede_ligacao_lista aceita exatamente as LIGACOES_DO_SINAL do módulo (ADR-047)', () => {
+    expect(valoresDoCheck('sinal_hospede_ligacao_lista', 'ligacao')).toEqual([
+      ...LIGACOES_DO_SINAL,
     ]);
   });
 });

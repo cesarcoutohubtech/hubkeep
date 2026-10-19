@@ -19,10 +19,12 @@ import type {
   StatusDeHotel,
 } from '@hubkeep/dominio';
 import type { ConfigAtencao } from './atencao';
+import type { ConfigImpactoHospede } from './impacto-hospede';
 import { type HotelDoDia, JANELA_CUSTO_DIAS, VERSAO_DE_POLITICA_PADRAO } from './dia';
 import type { Corretiva, TransicaoDaOs } from './historico';
-import { type ConfigReincidencia, PADRAO_REINCIDENCIA } from './reincidencia';
+import { type ConfigReincidencia, PADRAO_REINCIDENCIA, diasAposPreventiva } from './reincidencia';
 import { DIA_MS } from './score';
+import type { ConfigSinalHospede } from './sinal-retencao';
 import type { ConfigSistemico } from './sistemico';
 
 /** Uma OS do chamado, como o banco a guarda, com as transições (I5). */
@@ -55,7 +57,7 @@ export type CorretivaDaFonte = Omit<Corretiva, 'concluidaEm' | 'reaberturas' | '
 };
 
 /** A OS que conta para o chamado: a que não foi cancelada, ou a cancelada mais recente. */
-function osDoChamado(os: readonly OsDaFonte[]): OsDaFonte | undefined {
+export function osDoChamado<O extends OsDaFonte>(os: readonly O[]): O | undefined {
   const viva = os.find((o) => o.estado !== 'cancelada');
   if (viva) return viva;
   return [...os].sort((a, b) => b.criadaEm.getTime() - a.criadaEm.getTime())[0];
@@ -95,10 +97,26 @@ export function corretivasDosChamados(chamados: readonly ChamadoDaFonte[]): Corr
 }
 
 /**
+ * O chamado mais antigo de cada hotel entre os lidos, com o cancelado: o
+ * começo dos dados do hotel, para o crescimento (sistêmico v4). A leitura vai
+ * sempre além das duas janelas do crescimento (`inicioDaLeitura`), então o
+ * hotel com chamado antes delas aparece aqui com ele.
+ */
+export function primeiroChamadoPorHotel(chamados: readonly ChamadoDaFonte[]): Map<string, Date> {
+  const primeiro = new Map<string, Date>();
+  for (const c of chamados) {
+    const antes = primeiro.get(c.hotelId);
+    if (!antes || c.abertaEm.getTime() < antes.getTime()) primeiro.set(c.hotelId, c.abertaEm);
+  }
+  return primeiro;
+}
+
+/**
  * O instante mais antigo que alguma regra do dia olha: o custo informado (12
- * meses), a janela da reincidência de cada hotel e as do sinal sistêmico (o
- * crescimento compara a janela com a anterior; o mesmo fornecedor olha a
- * conclusão na janela). Quem lê o banco traz:
+ * meses), a janela da reincidência de cada hotel, mais os dias da falha depois
+ * de preventiva (a conclusão da preventiva vem antes da corretiva), e as do
+ * sinal sistêmico (o crescimento compara a janela com a anterior; o mesmo
+ * fornecedor olha a conclusão na janela). Quem lê o banco traz:
  * - os chamados abertos depois dele, ou com transição de OS depois dele (a OS
  *   aberta antes e concluída na janela conta no custo e no fornecedor);
  * - os ativos sem baixa antes dele, e as paradas que terminam depois dele.
@@ -110,7 +128,10 @@ export function inicioDaLeitura(
 ): Date {
   const dias = Math.max(
     JANELA_CUSTO_DIAS,
-    ...hoteis.map((h) => (h.reincidencia ?? PADRAO_REINCIDENCIA).janelaDias),
+    ...hoteis.map((h) => {
+      const r = h.reincidencia ?? PADRAO_REINCIDENCIA;
+      return r.janelaDias + diasAposPreventiva(r);
+    }),
     sistemico.mesmoModelo.janelaDias,
     sistemico.mesmoAndar.janelaDias,
     sistemico.mesmaAreaComum.janelaDias,
@@ -125,6 +146,8 @@ export const CHAVES_DO_JOB = [
   'inteligencia.reincidencia',
   'inteligencia.atencao_ativo',
   'inteligencia.sistemico',
+  'inteligencia.sinal_hospede',
+  'inteligencia.impacto_hospede',
 ] as const;
 
 /** Uma linha ativa de `app.politica`, como o banco a guarda. */
@@ -147,17 +170,19 @@ export interface HotelDaFonte {
   fuso: string;
 }
 
-type ChaveDoHotel = 'inteligencia.reincidencia' | 'inteligencia.atencao_ativo';
+type ChaveDoHotel =
+  'inteligencia.reincidencia' | 'inteligencia.atencao_ativo' | 'inteligencia.impacto_hospede';
 const CHAVES_DO_HOTEL: readonly ChaveDoHotel[] = [
   'inteligencia.reincidencia',
   'inteligencia.atencao_ativo',
+  'inteligencia.impacto_hospede',
 ];
 
 /** As linhas de uma chave que valem para o hotel, na ordem da resolução: hotel, bandeira, grupo. */
-function niveisDoHotel(
+export function niveisDoHotel(
   linhas: readonly LinhaDePolitica[],
   chave: string,
-  hotel: HotelDaFonte,
+  hotel: Pick<HotelDaFonte, 'id' | 'bandeiraId'>,
 ): LinhaDePolitica[] {
   const daChave = linhas.filter((l) => l.chave === chave);
   return [
@@ -202,6 +227,7 @@ export function hoteisDoDia(
         fuso: h.fuso,
         reincidencia: valores['inteligencia.reincidencia'] as ConfigReincidencia,
         atencao: valores['inteligencia.atencao_ativo'] as ConfigAtencao,
+        impactoHospede: valores['inteligencia.impacto_hospede'] as ConfigImpactoHospede,
         versaoPolitica: versoes.length ? versoes.join(';') : VERSAO_DE_POLITICA_PADRAO,
       };
     });
@@ -214,4 +240,17 @@ export function politicaSistemicaDoGrupo(
 ): ConfigSistemico {
   const grupo = linhas.find((l) => l.chave === 'inteligencia.sistemico' && l.escopo === 'grupo');
   return registro.resolver('inteligencia.sistemico', { grupo: grupo?.valor }) as ConfigSistemico;
+}
+
+/** A retenção do texto do hóspede (ADR-047): só a do grupo, que responde pelo dado. */
+export function politicaDoSinalDoGrupo(
+  linhas: readonly LinhaDePolitica[],
+  registro: RegistroDePoliticas,
+): ConfigSinalHospede {
+  const grupo = linhas.find(
+    (l) => l.chave === 'inteligencia.sinal_hospede' && l.escopo === 'grupo',
+  );
+  return registro.resolver('inteligencia.sinal_hospede', {
+    grupo: grupo?.valor,
+  }) as ConfigSinalHospede;
 }

@@ -26,6 +26,12 @@
 // - A leitura dos ativos e dos chamados começa em `inicioDaLeitura`, calculado
 //   com as políticas já resolvidas; o chamado vira corretiva por
 //   `corretivasDosChamados` (fonte.ts).
+// - O sinal do hóspede (ADR-047): as reclamações, sem o texto, são lidas na
+//   maior janela entre a da regra sistêmica das reclamações (sistêmico v5) e
+//   a do Guest Impact Score de cada hotel (atenção v7); e o texto das
+//   avaliações que passaram da retenção da política `inteligencia.sinal_hospede`
+//   (a do grupo) é apagado, com a quantidade no registro da execução. O
+//   recálculo lê as reclamações, para a atenção, mas não apaga texto.
 import { type ModuloContratado, modulosVigentes } from '@hubkeep/dominio';
 import type { LinhaDaMetricaDiaria } from './agregacao';
 import {
@@ -35,7 +41,12 @@ import {
   VERSAO_DE_POLITICA_PADRAO,
   calcularDia,
 } from './dia';
-import { type ChamadoDaFonte, corretivasDosChamados, inicioDaLeitura } from './fonte';
+import {
+  type ChamadoDaFonte,
+  corretivasDosChamados,
+  inicioDaLeitura,
+  primeiroChamadoPorHotel,
+} from './fonte';
 import {
   type Corretiva,
   type LocalAnalisado,
@@ -45,7 +56,15 @@ import {
 import { type InsightExistente, decidirDeteccao } from './insight';
 import { VERSAO_ATENCAO } from './atencao';
 import { VERSAO_REINCIDENCIA } from './reincidencia';
-import { type ConfigSistemico, PADRAO_SISTEMICO, VERSAO_SISTEMICO } from './sistemico';
+import { type ConfigSinalHospede, PADRAO_SINAL_HOSPEDE, limiteDaRetencao } from './sinal-retencao';
+import { DIA_MS } from './score';
+import { PADRAO_IMPACTO_HOSPEDE, type SinalDaFonte } from './impacto-hospede';
+import {
+  type ConfigSistemico,
+  PADRAO_SISTEMICO,
+  VERSAO_SISTEMICO,
+  regraDasReclamacoes,
+} from './sistemico';
 
 /** O que o job lê do tenant. Todas as leituras são do contexto dele (RLS). */
 export interface FonteDoJob {
@@ -75,6 +94,10 @@ export interface FonteDoJob {
   insights(): Promise<readonly InsightExistente[]>;
   /** O maior número de cálculo já gravado de cada ativo no dia (`AAAA-MM-DD`). */
   calculosDoDia(dia: string): Promise<ReadonlyMap<string, number>>;
+  /** As reclamações de hóspede avaliadas depois de `desde` e até `agora`, sem o texto (ADR-047). */
+  sinais(agora: Date, desde: Date): Promise<readonly SinalDaFonte[]>;
+  /** A política `inteligencia.sinal_hospede` do grupo, ou undefined para o padrão. */
+  politicaDoSinal(): Promise<ConfigSinalHospede | undefined>;
 }
 
 export interface NovoInsight {
@@ -98,6 +121,11 @@ export interface GravacaoDoJob {
   atualizarInsight(atualizacao: AtualizacaoDeInsight): Promise<void>;
   /** O registro da execução, que quem grava põe na auditoria. */
   registrarExecucao(execucao: ExecucaoDoJob): Promise<void>;
+  /**
+   * Apaga o texto das reclamações avaliadas antes de `ate` que ainda o têm
+   * (null, com a data do apagamento em `agora`); devolve quantas apagou.
+   */
+  apagarTextos(ate: Date, agora: Date): Promise<number>;
 }
 
 export interface PortasDoJob {
@@ -124,6 +152,8 @@ export interface ResumoDoJob {
   insightsAbertos: number;
   insightsAtualizados: number;
   insightsIgnorados: number;
+  /** Reclamações de hóspede cujo texto passou da retenção e foi apagado (ADR-047). */
+  textosApagados: number;
 }
 
 /** O que fica registrado de cada execução num tenant com o módulo vigente. */
@@ -161,6 +191,7 @@ export async function executarDiaDoTenant(
       insightsAbertos: 0,
       insightsAtualizados: 0,
       insightsIgnorados: 0,
+      textosApagados: 0,
     };
   }
   const [hoteis, locais, sistemico, insights] = await Promise.all([
@@ -170,9 +201,17 @@ export async function executarDiaDoTenant(
     fonte.insights(),
   ]);
   const desde = inicioDaLeitura(hoteis, sistemico ?? PADRAO_SISTEMICO, p.agora);
-  const [ativos, chamados] = await Promise.all([
+  const rc = regraDasReclamacoes(sistemico ?? PADRAO_SISTEMICO);
+  const diasDosSinais = Math.max(
+    rc.ativa ? rc.janelaDias : 0,
+    ...hoteis.map((h) => (h.impactoHospede ?? PADRAO_IMPACTO_HOSPEDE).janelaDias),
+  );
+  const [ativos, chamados, sinais] = await Promise.all([
     fonte.ativos(p.agora, desde),
     fonte.corretivas(p.agora, desde),
+    diasDosSinais > 0
+      ? fonte.sinais(p.agora, new Date(p.agora.getTime() - diasDosSinais * DIA_MS))
+      : [],
   ]);
 
   const corretivas: Corretiva[] = corretivasDosChamados(chamados).map(({ transicoes, ...c }) => ({
@@ -187,6 +226,8 @@ export async function executarDiaDoTenant(
     ativos,
     corretivas,
     locais,
+    primeiroChamadoPorHotel: primeiroChamadoPorHotel(chamados),
+    sinais,
     ...(sistemico ? { sistemico } : {}),
   });
 
@@ -217,6 +258,7 @@ export async function executarDiaDoTenant(
     insightsAbertos: 0,
     insightsAtualizados: 0,
     insightsIgnorados: 0,
+    textosApagados: 0,
   };
 
   // O recálculo não abre nem atualiza insight.
@@ -236,6 +278,15 @@ export async function executarDiaDoTenant(
     } else {
       resumo.insightsIgnorados += 1;
     }
+  }
+
+  // A retenção do texto do hóspede (LGPD): só na rodada do dia.
+  if (!recalculo) {
+    const retencao = (await fonte.politicaDoSinal()) ?? PADRAO_SINAL_HOSPEDE;
+    resumo.textosApagados = await gravacao.apagarTextos(
+      limiteDaRetencao(p.agora, retencao),
+      p.agora,
+    );
   }
 
   await gravacao.registrarExecucao({

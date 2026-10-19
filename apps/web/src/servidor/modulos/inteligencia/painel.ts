@@ -3,16 +3,47 @@
 // contexto de quem pede. Aqui só a tradução das linhas para o motor; as regras
 // (o módulo e o papel, a transição, o responsável, a substituição) são do
 // motor, e a RLS da app.insight é a última palavra sobre quem lê e decide.
-import type {
-  PortaAtribuicoes,
-  PortaConfiguracao,
-  PortaModulos,
-  Relogio,
+// O sinal do hóspede (ADR-047) usa as mesmas portas, com as da importação,
+// da fila e da classificação; a RLS da app.sinal_hospede é a última palavra.
+import {
+  type PortaAtribuicoes,
+  type PortaConfiguracao,
+  type PortaModulos,
+  type Relogio,
+  termoDeBusca,
 } from '@hubkeep/aplicacao';
-import type { InsightDoPainelNoBanco, PortaDoPainelDoIntelligence } from '@hubkeep/db';
+import type {
+  InsightDoPainelNoBanco,
+  PortaDoPainelDoIntelligence,
+  SinalDaFilaNoBanco,
+} from '@hubkeep/db';
 import type { Contexto } from '@hubkeep/dominio';
 import {
   type AberturaDoPainel,
+  type AtivosEncontrados,
+  type FilaDoSinal,
+  type LigacaoDoSinal,
+  type LinhaDoCsv,
+  type PortasDaFilaDoSinal,
+  type PortasDasReclamacoes,
+  type ReclamacoesDoPainel,
+  reclamacoesDoAtivo,
+  reclamacoesDoInsight,
+  type ResultadoDaImportacao,
+  type SinalDaFila,
+  type SituacaoDaFila,
+  classificarSinal,
+  ehLigacaoDoSinal,
+  importarSinais,
+  listarSinais,
+  type PortasDaBuscaDeAtivos,
+  procurarAtivos,
+  type EfetividadesDoPainel,
+  type SubstituicaoDoAtivo,
+  efetividadeDoAtivo,
+  substituicaoDoAtivo,
+  efetividadeDoInsight,
+  listarEfetividades,
   FUSO_PADRAO_DO_GRUPO,
   type AcaoDoInsight,
   type FiltroDeEstadoDoInsight,
@@ -21,7 +52,6 @@ import {
   type ListaDeInsights,
   type PaginaDoAtivo,
   type PaginaDoInsight,
-  type PortasDoPainel,
   type ResumoDoPainel,
   type TipoDeInsight,
   aberturaDoPainel,
@@ -60,17 +90,57 @@ export interface PedidoDeDecisaoDoPainel {
   motivoDeDescarte?: string | null | undefined;
 }
 
+export interface PedidoDeClassificacaoDoPainel {
+  versao: number;
+  manutencao: boolean;
+  categoriaId: string | null;
+  uhId: string | null;
+  ativoId: string | null;
+  ligacao: LigacaoDoSinal;
+}
+
 export interface CasosDeUsoDoPainel {
   abertura(ctx: Contexto): Promise<AberturaDoPainel>;
   resumo(ctx: Contexto): Promise<ResumoDoPainel>;
   listar(ctx: Contexto, pedido: PedidoDeListaDoPainel): Promise<ListaDeInsights>;
   ver(ctx: Contexto, insightId: string): Promise<PaginaDoInsight>;
   ativo(ctx: Contexto, ativoId: string): Promise<PaginaDoAtivo>;
+  /** "Procurar ativo" (16/10/2026): o termo cru da query; abaixo de 3 letras, busca_curta. */
+  procurarAtivos(ctx: Contexto, busca: string | null): Promise<AtivosEncontrados>;
+  /** As intervenções do ativo, com o antes e depois (adendo ao ADR-033, 15/10/2026). */
+  efetividadeDoAtivo(ctx: Contexto, ativoId: string): Promise<EfetividadesDoPainel>;
+  /** O sinal de substituição do ativo, calculado agora (proposta de 16/10/2026); null no ativo baixado. */
+  substituicaoDoAtivo(ctx: Contexto, ativoId: string): Promise<SubstituicaoDoAtivo | null>;
+  /** As reclamações ligadas ao ativo na janela do score (C2 do ADR-047). */
+  reclamacoesDoAtivo(ctx: Contexto, ativoId: string): Promise<ReclamacoesDoPainel>;
+  /** As reclamações da evidência do insight sistêmico; null nos outros insights. */
+  reclamacoesDoInsight(ctx: Contexto, insightId: string): Promise<ReclamacoesDoPainel | null>;
+  /** A seção abaixo da lista de insights: as intervenções dos hotéis em que a pessoa decide. */
+  efetividades(ctx: Contexto): Promise<EfetividadesDoPainel>;
+  /** Na página do insight: as intervenções nos ativos dele, depois da primeira detecção. */
+  efetividadeDoInsight(ctx: Contexto, insightId: string): Promise<EfetividadesDoPainel>;
   decidir(
     ctx: Contexto,
     insightId: string,
     pedido: PedidoDeDecisaoDoPainel,
   ): Promise<Awaited<ReturnType<typeof decidirInsight>>>;
+  /** O sinal do hóspede (ADR-047): as linhas do CSV num hotel, com o resultado por linha. */
+  importarSinais(
+    ctx: Contexto,
+    hotelId: string,
+    linhas: readonly LinhaDoCsv[],
+  ): Promise<ResultadoDaImportacao>;
+  /** A fila de classificação do hotel no recorte (as sem classificação, sem ele). */
+  filaDeSinais(
+    ctx: Contexto,
+    hotelId: string,
+    situacao: SituacaoDaFila | undefined,
+  ): Promise<FilaDoSinal>;
+  classificarSinal(
+    ctx: Contexto,
+    sinalId: string,
+    pedido: PedidoDeClassificacaoDoPainel,
+  ): Promise<{ versao: number }>;
 }
 
 /** A linha do banco na forma do motor; valor fora das listas é defeito, não dado. */
@@ -86,7 +156,16 @@ function noMotor<T extends InsightDoPainelNoBanco>(
   return { ...i, tipo: i.tipo, estado: i.estado, motivoDeDescarte: motivo };
 }
 
-export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDoPainel {
+/** A reclamação do banco na forma do motor; ligação fora da lista é defeito, não dado. */
+function sinalNoMotor(s: SinalDaFilaNoBanco): SinalDaFila {
+  if (!ehLigacaoDoSinal(s.ligacao)) throw new Error(`Ligação do sinal desconhecida: ${s.ligacao}`);
+  return { ...s, ligacao: s.ligacao };
+}
+
+export function portasDoPainel(
+  deps: DepsDoPainel,
+  ctx: Contexto,
+): PortasDasReclamacoes & PortasDaBuscaDeAtivos & PortasDaFilaDoSinal {
   const { porta } = deps;
   return {
     modulos: () => deps.modulos.contratados(ctx),
@@ -113,9 +192,30 @@ export function portasDoPainel(deps: DepsDoPainel, ctx: Contexto): PortasDoPaine
     nomes: (p) => porta.nomes(ctx, p),
     decidir: (d) => porta.decidir(ctx, d),
     ativo: (id) => porta.ativo(ctx, id),
+    ativosPorBusca: (termo, limite) => porta.ativosPorBusca(ctx, termo, limite),
     metricasDoAtivo: (ativoId, desde) => porta.metricasDoAtivo(ctx, ativoId, desde),
     insightsDoEscopo: async (tipo, chave, valor) =>
       (await porta.insightsDoEscopo(ctx, tipo, chave, valor, LIMITE_DA_LISTA)).map(noMotor),
+    politicasDaEfetividade: () => porta.politicasDaEfetividade(ctx),
+    politicasDaSubstituicao: () => porta.politicasDaSubstituicao(ctx),
+    politicasDoImpacto: () => porta.politicasDoImpacto(ctx),
+    sinaisDoHotelNaJanela: (hotelId, desde, ate) =>
+      porta.sinaisDoHotelNaJanela(ctx, hotelId, desde, ate),
+    intervencoes: (filtro) => porta.intervencoes(ctx, filtro),
+    historicoDosAtivos: (ativoIds, desde, ate) =>
+      porta.historicoDosAtivos(ctx, ativoIds, desde, ate),
+    hotelDoSinal: (id) => porta.hotelDoSinal(ctx, id),
+    gravarSinais: (i) => porta.gravarSinais(ctx, i),
+    sinaisDoHotel: async (hotelId, situacao, limite) =>
+      (await porta.sinaisDoHotel(ctx, hotelId, situacao, limite)).map(sinalNoMotor),
+    sinalParaClassificar: (id) => porta.sinalParaClassificar(ctx, id),
+    sinaisPorIds: async (ids, limite) =>
+      (await porta.sinaisPorIds(ctx, ids, limite)).map(sinalNoMotor),
+    sinaisDoAtivo: async (ativoId, desde, ate, limite) =>
+      (await porta.sinaisDoAtivo(ctx, ativoId, desde, ate, limite)).map(sinalNoMotor),
+    nomesDasUhs: (ids) => porta.nomesDasUhs(ctx, ids),
+    referenciasDaClassificacao: (r) => porta.referenciasDaClassificacao(ctx, r),
+    classificar: (c) => porta.classificar(ctx, c),
   };
 }
 
@@ -127,10 +227,41 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
     listar: (ctx, pedido) => listarInsights(portasDoPainel(deps, ctx), pedido, agora()),
     ver: (ctx, insightId) => verInsight(portasDoPainel(deps, ctx), insightId, agora()),
     ativo: (ctx, ativoId) => verAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    procurarAtivos: async (ctx, busca) =>
+      procurarAtivos(portasDoPainel(deps, ctx), termoDeBusca(busca), agora()),
+    efetividadeDoAtivo: (ctx, ativoId) =>
+      efetividadeDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    substituicaoDoAtivo: (ctx, ativoId) =>
+      substituicaoDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    reclamacoesDoAtivo: (ctx, ativoId) =>
+      reclamacoesDoAtivo(portasDoPainel(deps, ctx), ativoId, agora()),
+    reclamacoesDoInsight: (ctx, insightId) =>
+      reclamacoesDoInsight(portasDoPainel(deps, ctx), insightId, agora()),
+    efetividades: (ctx) => listarEfetividades(portasDoPainel(deps, ctx), agora()),
+    efetividadeDoInsight: (ctx, insightId) =>
+      efetividadeDoInsight(portasDoPainel(deps, ctx), insightId, agora()),
     decidir: (ctx, insightId, pedido) =>
       decidirInsight(
         portasDoPainel(deps, ctx),
         { ...pedido, insightId, usuarioId: ctx.usuarioId },
+        agora(),
+      ),
+    importarSinais: (ctx, hotelId, linhas) =>
+      importarSinais(
+        portasDoPainel(deps, ctx),
+        { hotelId, usuarioId: ctx.usuarioId, linhas },
+        agora(),
+      ),
+    filaDeSinais: (ctx, hotelId, situacao) =>
+      listarSinais(
+        portasDoPainel(deps, ctx),
+        { hotelId, situacao: situacao ?? 'pendentes' },
+        agora(),
+      ),
+    classificarSinal: (ctx, sinalId, pedido) =>
+      classificarSinal(
+        portasDoPainel(deps, ctx),
+        { ...pedido, sinalId, usuarioId: ctx.usuarioId },
         agora(),
       ),
   };

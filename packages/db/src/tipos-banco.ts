@@ -19,6 +19,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
 export type Json = JsonValue;
 
 export type JsonArray = JsonValue[];
@@ -75,6 +77,9 @@ export interface AppAtivo {
   modelo_id: string | null;
   nome: string;
   numero_serie: string | null;
+  sugestao_descartada_em: Timestamp | null;
+  sugestao_descartada_por: string | null;
+  sugestao_descarte_motivo: string | null;
   tenant_id: string;
   versao: Generated<number>;
 }
@@ -382,6 +387,56 @@ export interface AppMetricaAtivoDiaria {
   versao_politica: string;
 }
 
+export interface AppMewsBloqueio {
+  ativo: boolean;
+  block_id: string;
+  deleted_utc: Timestamp | null;
+  enterprise_id: string;
+  fim_utc: Timestamp;
+  hotel_id: string;
+  inicio_utc: Timestamp;
+  resource_id: string;
+  tenant_id: string;
+  tipo: string;
+  updated_utc: Timestamp;
+}
+
+export interface AppMewsCheckpoint {
+  concluido_em: Timestamp | null;
+  digest_incremental: string | null;
+  digest_sweep: string | null;
+  enterprise_id: string;
+  hotel_id: string;
+  tenant_id: string;
+  ultimo_sweep_utc: Timestamp | null;
+  ultimo_updated_utc: Timestamp | null;
+  versao: Generated<Int8>;
+}
+
+export interface AppMewsRecurso {
+  ativo: boolean;
+  deleted_utc: Timestamp | null;
+  enterprise_id: string;
+  hotel_id: string;
+  resource_id: string;
+  tenant_id: string;
+  tipo: Generated<string>;
+  updated_utc: Timestamp | null;
+}
+
+export interface AppMewsVinculo {
+  credencial_ref: string;
+  criado_em: Generated<Timestamp>;
+  enterprise_id: string;
+  hotel_id: string;
+  id: string;
+  lock_versao: Generated<Int8>;
+  revogado_em: Timestamp | null;
+  tenant_id: string;
+  validado_em: Timestamp;
+  validado_por: string;
+}
+
 export interface AppModeloAtivo {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -567,6 +622,33 @@ export interface AppProprietario {
   tenant_id: string;
 }
 
+export interface AppSinalHospede {
+  ativo_id: string | null;
+  atualizado_em: Generated<Timestamp>;
+  categoria_id: string | null;
+  classificado_em: Timestamp | null;
+  classificado_por: string | null;
+  criado_em: Generated<Timestamp>;
+  escala: number | null;
+  fonte: string;
+  hotel_id: string;
+  id: string;
+  id_externo: string;
+  idioma: string | null;
+  importado_por: string;
+  ligacao: Generated<string>;
+  lote_id: string;
+  manutencao: boolean | null;
+  nota: Numeric | null;
+  ocorrido_em: Timestamp;
+  tenant_id: string;
+  texto: string | null;
+  texto_apagado_em: Timestamp | null;
+  uh_citada: string | null;
+  uh_id: string | null;
+  versao: Generated<number>;
+}
+
 export interface AppSituacao {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
@@ -689,6 +771,10 @@ export interface DB {
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
   "app.metrica_ativo_diaria": AppMetricaAtivoDiaria;
+  "app.mews_bloqueio": AppMewsBloqueio;
+  "app.mews_checkpoint": AppMewsCheckpoint;
+  "app.mews_recurso": AppMewsRecurso;
+  "app.mews_vinculo": AppMewsVinculo;
   "app.modelo_ativo": AppModeloAtivo;
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
@@ -702,6 +788,7 @@ export interface DB {
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.prioridade": AppPrioridade;
   "app.proprietario": AppProprietario;
+  "app.sinal_hospede": AppSinalHospede;
   "app.situacao": AppSituacao;
   "app.sla_alerta": AppSlaAlerta;
   "app.tenant": AppTenant;

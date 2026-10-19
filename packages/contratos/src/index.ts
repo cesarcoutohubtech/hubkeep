@@ -270,21 +270,44 @@ export {
   ChamadoDoInsightApi,
   ConsultaDeInsights,
   ESTADOS_DO_INSIGHT_API,
+  EfetividadeDaIntervencaoApi,
   FAIXAS_DO_INSIGHT_API,
   FILTROS_DE_ESTADO_DO_INSIGHT_API,
   InsightApi,
+  METRICAS_DA_EFETIVIDADE_API,
   MOTIVOS_DE_DESCARTE_API,
   MetricaDoAtivoApi,
   NomesDoPainelApi,
   PedidoDeDecisaoDoInsight,
   PAPEIS_QUE_VEEM_AS_TELAS_API,
+  RESULTADOS_DA_EFETIVIDADE_API,
   RespostaDaAberturaDoIntelligence,
+  RespostaDaBuscaDeAtivosNoIntelligence,
+  RespostaDasEfetividades,
   RespostaDaDecisaoDoInsight,
   RespostaDeInsights,
   RespostaDoAtivoNoIntelligence,
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
+  CRITERIOS_DE_SUBSTITUICAO_API,
+  SINAIS_DE_SUBSTITUICAO_API,
+  SubstituicaoDoAtivoApi,
   TIPOS_DE_INSIGHT_API,
+  COLUNAS_DO_CSV_API,
+  COLUNAS_OBRIGATORIAS_DO_CSV_API,
+  ConsultaDaFilaDeSinais,
+  ERROS_DA_LINHA_API,
+  LIGACOES_DO_SINAL_API,
+  LIMITE_BYTES_DA_IMPORTACAO,
+  LIMITE_DA_IMPORTACAO_API,
+  PedidoDeClassificacaoDeSinal,
+  PedidoDeImportacaoDeSinais,
+  ReclamacoesDoPainelApi,
+  RespostaDaClassificacaoDeSinal,
+  RespostaDaFilaDeSinais,
+  RespostaDaImportacaoDeSinais,
+  SITUACOES_DA_FILA_API,
+  SinalDaFilaApi,
 } from './inteligencia';
 export { ROTAS, type Rota, gerarOpenApi } from './openapi';
 export { z } from 'zod';
@@ -311,6 +334,15 @@ export {
   TIPOS_DE_ALERTA_DE_SLA_API,
 } from './avisos-de-sla';
 export {
+  ModeloDeAtivoApi,
+  PedidoDeAlteracaoDeModeloDeAtivo,
+  PedidoDeModeloDeAtivo,
+  PedidoDeVersaoDeModeloDeAtivo,
+  PlanoSugeridoApi,
+  RespostaDeModeloDeAtivoGravado,
+  RespostaDeModelosDeAtivo,
+} from './modelos-de-ativo';
+export {
   CANAIS_DE_ENVIO_API,
   ConfiguracaoDoPushApi,
   ConsultaDaContagemDeEnvios,
@@ -321,3 +353,6 @@ export {
   RespostaDaInscricaoPush,
   RespostaDaRevogacaoPush,
 } from './comunicacao';
+
+export { LinhaDoStatusMewsApi, RespostaDoStatusMews } from './mews-admin';
+export { CandidatoHotelMewsApi, RespostaDeCandidatosMews } from './mews-admin';
