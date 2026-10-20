@@ -1187,3 +1187,15 @@ Ler a política no job, no lugar da constante, é do Kaio. Até lá, o painel e 
   - a política da tolerância, que o Intelligence pode passar a ler.
 - **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR; o que vier depois depende das respostas acima.
 - **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.
+
+### Ponto de retomada (20/10/2026, depois do merge do #343)
+
+- **`main`:** 5de68ac, com o #343 (tolerância) e o #342 do Intelligence. Às 15h, o CI e a segurança da `main` tinham passado, e o banco ainda rodava. O Cesar avisou que o `db push` está feito.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel, atualizado com a `main` 5de68ac; aqui, lint, typecheck e testes passaram.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial (seção 4 da paridade);
+  - "Onde mais quebra" para o glossário.
+- **Pedidos e avisos ao Kaio:** os termos nos textos `inteligencia.*`; "Onde mais quebra"; a política da tolerância, que o Intelligence pode passar a ler.
+- **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR.
+- **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.
