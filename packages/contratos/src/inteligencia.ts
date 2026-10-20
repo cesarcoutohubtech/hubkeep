@@ -489,6 +489,26 @@ export const RespostaDoChamadoDaReclamacao = z
   .object({ chamadoId: z.guid() })
   .meta({ id: 'RespostaDoChamadoDaReclamacao' });
 
+// Um chamado para as reclamações do insight sistêmico (proposta de 19/10/2026,
+// item 1): a pessoa escolhe o local, e as reclamações sem chamado são ligadas.
+export const PedidoDeChamadoDoInsight = z
+  .object({
+    /** A UH ou a área comum do hotel do insight. */
+    localId: z.guid(),
+    ativoId: z.guid().nullable(),
+    /** A descrição do chamado, escrita pela pessoa (o texto do hóspede não vai junto). */
+    descricao: z.string().trim().min(1).max(2000),
+  })
+  .meta({ id: 'PedidoDeChamadoDoInsight' });
+
+export const RespostaDoChamadoDoInsight = z
+  .object({
+    chamadoId: z.guid(),
+    /** Quantas reclamações do insight foram ligadas ao chamado nesta chamada. */
+    ligadas: z.int().min(0),
+  })
+  .meta({ id: 'RespostaDoChamadoDoInsight' });
+
 export const PedidoDeLigacaoDoChamado = z
   .object({
     /** O chamado que quem pede abriu a partir da reclamação, quando a ligação falhou. */
