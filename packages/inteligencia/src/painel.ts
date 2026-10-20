@@ -191,10 +191,13 @@ export interface PortasDoPainel {
   /** O ativo, se quem pede o lê, com a bandeira do hotel dele. */
   ativo(id: string): Promise<AtivoDoPainel | null>;
   /**
-   * O resultado original de cada dia (o primeiro cálculo, sem recálculo) a
-   * partir de `desde` (AAAA-MM-DD), em ordem de dia.
+   * O resultado de cada dia a partir de `desde` (AAAA-MM-DD), em ordem de dia:
+   * o original (o primeiro cálculo, sem recálculo) ou, no dia que o job nunca
+   * gravou, o primeiro recálculo, que é o único registro dele (ADR-036).
    */
   metricasDoAtivo(ativoId: string, desde: string): Promise<readonly MetricaDoPainel[]>;
+  /** Os recálculos do dia (AAAA-MM-DD), do primeiro ao último, até LIMITE_DE_RECALCULOS. */
+  recalculosDoDia(ativoId: string, dia: string): Promise<readonly MetricaDoPainel[]>;
   /** Os insights de um tipo com este par no escopo, do mais novo ao mais antigo. */
   insightsDoEscopo(
     tipo: TipoDeInsight,
@@ -205,6 +208,9 @@ export interface PortasDoPainel {
 
 /** Dias da série de atenção da página do ativo. */
 export const DIAS_DA_SERIE_DO_ATIVO = 90;
+
+/** Os recálculos do último dia que a página do ativo mostra (ADR-036). */
+export const LIMITE_DE_RECALCULOS = 20;
 
 export interface AtivoDoPainel {
   id: string;
@@ -245,6 +251,11 @@ export interface PaginaDoAtivo {
   serie: { dia: string; atencao: number | null; faixa: string }[];
   /** O último dia gravado, com o detalhe; null se o job ainda não gravou nenhum. */
   atual: MetricaDoPainel | null;
+  /**
+   * Os outros cálculos do dia de `atual`, marcados como recálculo, do primeiro
+   * ao último: a tela os mostra só a pedido, e o painel segue no `atual`.
+   */
+  recalculos: MetricaDoPainel[];
   /** Os insights de atenção deste ativo, abertos e encerrados. */
   insights: ItemDaLista[];
   nomes: NomesDoPainel;
@@ -619,7 +630,8 @@ export async function verAtivo(
     p.metricasDoAtivo(ativo.id, desde),
     p.insightsDoEscopo('atencao_ativo', 'ativoId', ativo.id),
   ]);
-  const [ligados, nomes] = await Promise.all([
+  const atual = metricas.at(-1) ?? null;
+  const [ligados, nomes, recalculos] = await Promise.all([
     insights.length ? p.ligados(insights.map((i) => i.id)) : Promise.resolve([]),
     p.nomes({
       hotelIds: [ativo.hotelId],
@@ -627,11 +639,14 @@ export async function verAtivo(
       usuarioIds: unicos(insights.flatMap((i) => [i.responsavelId, i.encerradoPor])),
       ativoIds: [ativo.id],
     }),
+    atual ? p.recalculosDoDia(ativo.id, atual.dia) : Promise.resolve([]),
   ]);
   return {
     ativo,
     serie: metricas.map((m) => ({ dia: m.dia, atencao: m.atencao, faixa: m.faixa })),
-    atual: metricas.at(-1) ?? null,
+    atual,
+    // No dia que o job nunca gravou, o `atual` já é o primeiro recálculo.
+    recalculos: recalculos.filter((r) => !(atual?.recalculo && r.calculo === atual.calculo)),
     insights: insights.map((i) => ({
       ...i,
       ...vinculos(i, ligados),

@@ -468,7 +468,26 @@ export async function ativosPorBusca(
   }));
 }
 
-/** O primeiro cálculo de cada dia, sem recálculo, a partir de `desde` (AAAA-MM-DD). */
+const COLUNAS_DA_METRICA = [
+  sql<string>`dia::text`.as('dia'),
+  'calculo',
+  'recalculo',
+  'calculado_em',
+  'atencao',
+  'faixa_atencao',
+  'reincidencia',
+  'versao_formula_atencao',
+  'versao_formula_reincidencia',
+  'versao_politica',
+  'detalhe_atencao',
+  'detalhe_reincidencia',
+] as const;
+
+/**
+ * O resultado de cada dia a partir de `desde` (AAAA-MM-DD): o original (o
+ * primeiro cálculo sem recálculo) ou, no dia que o job nunca gravou, o
+ * primeiro recálculo, que é o único registro dele (ADR-036).
+ */
 export async function metricasDoAtivo(
   tx: Tx,
   ativoId: string,
@@ -477,27 +496,50 @@ export async function metricasDoAtivo(
   const linhas = await tx
     .selectFrom('app.metrica_ativo_diaria')
     .distinctOn('dia')
-    .select([
-      sql<string>`dia::text`.as('dia'),
-      'calculo',
-      'recalculo',
-      'calculado_em',
-      'atencao',
-      'faixa_atencao',
-      'reincidencia',
-      'versao_formula_atencao',
-      'versao_formula_reincidencia',
-      'versao_politica',
-      'detalhe_atencao',
-      'detalhe_reincidencia',
-    ])
+    .select(COLUNAS_DA_METRICA)
     .where('ativo_id', '=', ativoId)
-    .where('recalculo', '=', false)
     .where('dia', '>=', sql<Date>`${desde}::date`)
     .orderBy('dia')
+    .orderBy('recalculo')
     .orderBy('calculo')
     .execute();
-  return linhas.map((m) => ({
+  return linhas.map(metricaDoPainel);
+}
+
+/** Os recálculos de um dia (AAAA-MM-DD) do ativo, do primeiro ao último, até `limite`. */
+export async function recalculosDoDia(
+  tx: Tx,
+  ativoId: string,
+  dia: string,
+  limite: number,
+): Promise<MetricaDoPainelNoBanco[]> {
+  const linhas = await tx
+    .selectFrom('app.metrica_ativo_diaria')
+    .select(COLUNAS_DA_METRICA)
+    .where('ativo_id', '=', ativoId)
+    .where('recalculo', '=', true)
+    .where('dia', '=', sql<Date>`${dia}::date`)
+    .orderBy('calculo')
+    .limit(limite)
+    .execute();
+  return linhas.map(metricaDoPainel);
+}
+
+function metricaDoPainel(m: {
+  dia: string;
+  calculo: number;
+  recalculo: boolean;
+  calculado_em: Date;
+  atencao: number | null;
+  faixa_atencao: string;
+  reincidencia: number | null;
+  versao_formula_atencao: number;
+  versao_formula_reincidencia: number;
+  versao_politica: string;
+  detalhe_atencao: unknown;
+  detalhe_reincidencia: unknown;
+}): MetricaDoPainelNoBanco {
+  return {
     dia: m.dia,
     calculo: m.calculo,
     recalculo: m.recalculo,
@@ -510,7 +552,7 @@ export async function metricasDoAtivo(
     versaoPolitica: m.versao_politica,
     detalheAtencao: m.detalhe_atencao,
     detalheReincidencia: m.detalhe_reincidencia,
-  }));
+  };
 }
 
 /** Os insights de um tipo com o par `chave` = `valor` no escopo, do mais novo ao mais antigo. */

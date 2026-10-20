@@ -152,6 +152,7 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaSubstituicao & { m: Memori
       mem.series.push({ ativoId, desde });
       return mem.metricas;
     },
+    recalculosDoDia: nao,
     historicoDosAtivos: async (ativoIds, desde, ate) => {
       mem.leituras.push({ ativoIds, desde, ate });
       return mem.historico;

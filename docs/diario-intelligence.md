@@ -3122,3 +3122,36 @@ A proposta é o botão "Ver os recálculos deste dia", no bloco "Como este resul
   - a decisão do Cesar sobre particionar ou reter a métrica diária;
   - os detalhes do Kaio.
 - **Próximo:** com a decisão do item 3, o (r). Primeiro passo: a leitura dos recálculos do ativo e do dia no `packages/db` (`inteligencia-painel.ts`, ao lado da leitura do original). Com os "aprovo" e a vez da zona protegida, o PR de status no `docs/03`.
+
+### As respostas sobre o item 2 e o item 3 (20/10/2026)
+
+**Respostas** (20/10/2026, nesta sessão):
+- **Do Cesar:** "Cesar aqui. Ambos agora." Sobre o item 3, o (r) e o (n) entram antes do piloto.
+- **Do Kaio:** "Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169."
+
+O que isso fecha e o que ainda falta:
+- **Itens 1 e 2** (quem lê o insight e quem lê a métrica diária): têm a decisão do Cesar de 10/10 e, agora, o "aprovo" escrito do Kaio. Ficam aprovados pelos dois, e o status muda no próximo PR de zona protegida.
+- **Itens 3 e 4** (o texto dos adendos de 08/10 aos ADR-034 e ADR-036): têm o "aprovo" do Kaio. Falta o "aprovo" escrito do Cesar no texto. O "Ambos agora" foi sobre o item 3 da proposta, e não sobre esses adendos.
+- **#169:** o Kaio aprova, nesta sessão, os itens "aprovado por Kaio" reunidos na issue. O agente não comenta nem fecha a issue em nome dele, porque o GitHub usa a conta do Cesar. Fica registrado aqui, com a frase dele.
+- **Item 3:** falta o Kaio. Como no chamado do insight, o (r) é preparado a partir do "sim" do Cesar, e o PR abre só depois do "sim" do Kaio. O (n) pede PR de zona protegida, que espera o merge do #340 e o "aprovo" dos dois no adendo ao ADR-033.
+
+**Área compartilhada, antes de mexer (20/10/2026):** o (r) acrescenta chaves `inteligencia.gravado.*` nos catálogos de texto (`packages/i18n`, nos quatro idiomas), só no prefixo do Intelligence. Nenhuma chave do núcleo muda. Aviso à 1b e à 1c por este registro.
+
+### O (r): os recálculos na página do ativo (20/10/2026)
+
+Preparado a partir do "Ambos agora" do Cesar. O PR só abre depois do "sim" do Kaio no item 3. Não tem migração e fica fora da zona protegida.
+
+**O que traz:**
+- **`packages/db`:**
+  - `recalculosDoDia`: os recálculos de um ativo num dia, pela RLS da métrica, até 20.
+  - `metricasDoAtivo` passa a devolver, em cada dia, o original ou, no dia que o job nunca gravou, o primeiro recálculo, que é o único registro dele (ADR-036). Antes, esse dia sumia da série e do "atual".
+  - O teste de integração cobre os dois casos e roda só na CI.
+- **Motor:** a porta `recalculosDoDia`. A `PaginaDoAtivo` ganha `recalculos`, os do dia do "atual" sem o próprio "atual" (`LIMITE_DE_RECALCULOS = 20`). Quem vê não muda: é quem vê a página do ativo.
+- **API:** `recalculos` na resposta de `GET /api/v1/inteligencia/ativos/{id}`, só com o resumo (`RecalculoDoAtivoApi`, sem o detalhe).
+- **Tela:** o botão **Ver os recálculos deste dia** no bloco "Como este resultado foi gravado", e a tabela com o selo "Recálculo N", quando, a atenção com a faixa, a reincidência e as versões. A nota diz que o painel e os insights continuam no resultado de cima. Nenhum botão dispara recálculo.
+- **Textos:** dez chaves `inteligencia.gravado.*` nos quatro idiomas.
+- **Docs:** o "Onde aparece" em `docs/referencia/observabilidade-job-inteligencia.md` e uma linha no `docs/piloto/README.md`.
+
+**Detalhes que o agente escolheu, para o Kaio conferir (ADR-033):** o rótulo do botão, as colunas e o limite de 20 recálculos por dia.
+
+**Verificação local:** lint e typecheck verdes. 5.491 testes: 5.135 passaram, 0 falhas e 356 pulados (a integração do banco, que roda só na CI).

@@ -57,6 +57,7 @@ import {
   efetividadesNaApi,
   filaDeSinaisNaApi,
   insightNaApi,
+  recalculosNaApi,
   reclamacoesNaApi,
   substituicaoNaApi,
 } from '../src/app/api/v1/inteligencia/serializar';
@@ -228,6 +229,27 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]
         detalheReincidencia: { chave: 'reincidencia' },
       },
     ],
+    recalculosDoDia: async (_ctx, _ativoId, dia, limite) => {
+      expect(limite).toBe(20);
+      return dia === '2026-10-10'
+        ? [
+            {
+              dia,
+              calculo: 2,
+              recalculo: true,
+              calculadoEm: new Date('2026-10-12T14:00:00Z'),
+              atencao: 68,
+              faixa: 'atencao',
+              reincidencia: 35,
+              versaoFormulaAtencao: 7,
+              versaoFormulaReincidencia: 4,
+              versaoPolitica: 'padrao',
+              detalheAtencao: { chave: 'atencao_ativo' },
+              detalheReincidencia: { chave: 'reincidencia' },
+            },
+          ]
+        : [];
+    },
     insightsDoEscopo: async () => insights,
     politicasDaEfetividade: async () => [],
     politicasDaSubstituicao: async () => [],
@@ -468,6 +490,7 @@ describe('o painel sobre a porta do banco', () => {
       ativo: { ...p.ativo, desativadoEm: null },
       serie: p.serie,
       atual: p.atual && { ...p.atual, calculadoEm: dataNaApi(p.atual.calculadoEm) },
+      recalculos: recalculosNaApi(p.recalculos),
       insights: p.insights.map(insightNaApi),
       nomes: p.nomes,
       efetividade: efetividadesNaApi(await casos.efetividadeDoAtivo(ctx, A1)),
@@ -499,6 +522,19 @@ describe('o painel sobre a porta do banco', () => {
     });
     expect(resposta.serie).toEqual([{ dia: '2026-10-10', atencao: 75, faixa: 'alta_atencao' }]);
     expect(resposta.atual).toMatchObject({ calculadoEm: '2026-10-10T03:00:00.000Z', calculo: 1 });
+    // Os recálculos do dia, só o resumo: o detalhe fica no resultado de cima.
+    expect(resposta.recalculos).toEqual([
+      {
+        calculo: 2,
+        calculadoEm: '2026-10-12T14:00:00.000Z',
+        atencao: 68,
+        faixa: 'atencao',
+        reincidencia: 35,
+        versaoFormulaAtencao: 7,
+        versaoFormulaReincidencia: 4,
+        versaoPolitica: 'padrao',
+      },
+    ]);
     expect(resposta.insights.map((i) => i.id)).toEqual([I1]);
   });
 

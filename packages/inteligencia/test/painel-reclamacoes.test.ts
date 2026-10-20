@@ -140,6 +140,7 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDasReclamacoes & { m: Memori
     intervencoes: nao,
     ativo: async (id) => (id === ativo.id ? ativo : null),
     metricasDoAtivo: nao,
+    recalculosDoDia: nao,
     historicoDosAtivos: nao,
     politicasDaSubstituicao: nao,
     politicasDoImpacto: async () => mem.linhasDoImpacto,

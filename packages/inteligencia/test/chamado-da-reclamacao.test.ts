@@ -67,6 +67,7 @@ function emMemoria(
     decidir: nao,
     ativo: nao,
     metricasDoAtivo: nao,
+    recalculosDoDia: nao,
     insightsDoEscopo: nao,
     reclamacaoParaChamado: async (id) => (r && r.id === id ? r : null),
     ligarChamado: async (l) => {

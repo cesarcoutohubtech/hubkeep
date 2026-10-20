@@ -50,6 +50,7 @@ pnpm ops:recalcular-inteligencia --ambiente dev --tenant <uuid> \
   - A linha original fica. Os insights não mudam.
   - A auditoria recebe `recalcular_dia`, com `disparadoPor` `ops:<por>`.
   - O dia em que o módulo não estava vigente não grava nada.
+- **Onde aparece:** na página do ativo do Intelligence, no bloco "Como este resultado foi gravado", o botão **Ver os recálculos deste dia** lista os recálculos do último dia gravado, com o número do cálculo, quando, a atenção, a reincidência e as versões. O painel e os insights continuam no original. No dia que o job nunca gravou, o primeiro recálculo é o resultado do dia e aparece como "Recálculo 1".
 - **Limites:** no máximo 366 dias por pedido, e só dias que já terminaram, em UTC, como o motor corta o dia. Pela carga, cada dia leva cerca de 6 s no piloto, então um ano leva perto de 40 minutos.
 - **`--dry-run`:** roda cada dia inteiro, com as gravações, e desfaz a transação. Mostra os números e não deixa nada.
 - **Falha no meio:** o dia que falha para o pedido, e os anteriores já ficaram gravados. Rodar o mesmo período de novo grava mais um cálculo desses dias, o que o recálculo permite; para não repetir, recomece do dia que falhou.
