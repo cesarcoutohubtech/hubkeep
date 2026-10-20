@@ -89,6 +89,7 @@ function emMemoria(
     decidir: nao,
     ativo: nao,
     metricasDoAtivo: nao,
+    recalculosDoDia: nao,
     insightsDoEscopo: nao,
     nomes: async (p) => ({
       hoteis: {},

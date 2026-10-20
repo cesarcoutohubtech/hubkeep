@@ -19,6 +19,7 @@ import {
   explicacaoDoScore,
 } from '@hubkeep/inteligencia';
 import {
+  Botao,
   Dados,
   Indicador,
   Indicadores,
@@ -198,7 +199,7 @@ export function ConteudoDoAtivo({ pagina }: { pagina: Pagina }) {
               {score && <Composicao score={score} atencao={atual.atencao} />}
             </div>
             <div className="hk-pilha">
-              <Gravado atual={atual} limite={limite} />
+              <Gravado atual={atual} recalculos={pagina.recalculos} limite={limite} />
               <InsightsDoAtivo pagina={pagina} />
             </div>
           </div>
@@ -493,9 +494,19 @@ function SinalDeSubstituicao({ substituicao: s }: { substituicao: Substituicao }
   );
 }
 
-function Gravado({ atual, limite }: { atual: NonNullable<Pagina['atual']>; limite: number }) {
+function Gravado({
+  atual,
+  recalculos,
+  limite,
+}: {
+  atual: NonNullable<Pagina['atual']>;
+  recalculos: Pagina['recalculos'];
+  limite: number;
+}) {
   const t = useT();
   const { dataHora } = useDatas();
+  // Os recálculos aparecem só a pedido (ADR-036); o painel segue no resultado de cima.
+  const [verRecalculos, setVerRecalculos] = useState(false);
   return (
     <Painel titulo={t('inteligencia.gravado.titulo')}>
       <Dados
@@ -522,7 +533,77 @@ function Gravado({ atual, limite }: { atual: NonNullable<Pagina['atual']>; limit
         ]}
       />
       <p className="hk-suave">{t('inteligencia.gravado.nota')}</p>
+      {!verRecalculos ? (
+        <div className="hk-linha-de-botoes">
+          <Botao onClick={() => setVerRecalculos(true)}>
+            {t('inteligencia.gravado.ver_recalculos')}
+          </Botao>
+        </div>
+      ) : recalculos.length === 0 ? (
+        <MensagemVazia>{t('inteligencia.gravado.recalculos_vazio')}</MensagemVazia>
+      ) : (
+        <Recalculos recalculos={recalculos} />
+      )}
     </Painel>
+  );
+}
+
+export function Recalculos({ recalculos }: { recalculos: Pagina['recalculos'] }) {
+  const t = useT();
+  const { dataHora } = useDatas();
+  const nomeDaFaixa = useNomeDaFaixa();
+  return (
+    <>
+      <Tabela legenda={t('inteligencia.gravado.recalculos')}>
+        <thead>
+          <tr>
+            <th scope="col">{t('inteligencia.gravado.calculo')}</th>
+            <th scope="col">{t('inteligencia.gravado.calculado_em')}</th>
+            <th scope="col" className="hk-num">
+              {t('inteligencia.gravado.coluna.atencao')}
+            </th>
+            <th scope="col" className="hk-num">
+              {t('inteligencia.gravado.coluna.reincidencia')}
+            </th>
+            <th scope="col">{t('inteligencia.gravado.coluna.versoes')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {recalculos.map((r) => (
+            <tr key={r.calculo}>
+              <td>
+                <Selo>
+                  {t('inteligencia.gravado.calculo_valor', {
+                    recalculo: 'true',
+                    calculo: r.calculo,
+                  })}
+                </Selo>
+              </td>
+              <td>{dataHora(r.calculadoEm)}</td>
+              <td className="hk-num">
+                {r.atencao === null
+                  ? t('inteligencia.gravado.sem_valor')
+                  : t('inteligencia.gravado.atencao_valor', {
+                      valor: r.atencao,
+                      faixa: nomeDaFaixa(r.faixa),
+                    })}
+              </td>
+              <td className="hk-num">
+                {r.reincidencia === null ? t('inteligencia.gravado.sem_valor') : r.reincidencia}
+              </td>
+              <td>
+                {t('inteligencia.gravado.versoes_valor', {
+                  atencao: r.versaoFormulaAtencao,
+                  reincidencia: r.versaoFormulaReincidencia,
+                  politica: r.versaoPolitica,
+                })}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Tabela>
+      <p className="hk-suave">{t('inteligencia.gravado.recalculos_nota')}</p>
+    </>
   );
 }
 

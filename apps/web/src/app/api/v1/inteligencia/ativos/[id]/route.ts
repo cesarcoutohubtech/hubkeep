@@ -1,8 +1,9 @@
 // GET /api/v1/inteligencia/ativos/{id} — o detalhe do ativo no Intelligence:
-// a atenção dos últimos 90 dias, o último resultado gravado com o detalhe, os
-// insights do ativo, a efetividade das intervenções nele e o sinal de
-// substituição, calculado agora, e as reclamações de hóspede ligadas a ele
-// (C2 do ADR-047). Só para quem decide o insight do hotel do ativo.
+// a atenção dos últimos 90 dias, o último resultado gravado com o detalhe e
+// os recálculos do mesmo dia (ADR-036), os insights do ativo, a efetividade
+// das intervenções nele e o sinal de substituição, calculado agora, e as
+// reclamações de hóspede ligadas a ele (C2 do ADR-047). Só para quem decide o
+// insight do hotel do ativo.
 import { RespostaDoAtivoNoIntelligence } from '@hubkeep/contratos';
 import { casosDeUsoDoPainelDoIntelligence } from '../../../../../../servidor/composicao';
 import { ErroHttp, rota } from '../../../../../../servidor/http';
@@ -10,6 +11,7 @@ import {
   dataNaApi,
   efetividadesNaApi,
   insightNaApi,
+  recalculosNaApi,
   reclamacoesNaApi,
   substituicaoNaApi,
 } from '../../serializar';
@@ -43,6 +45,7 @@ export const GET = rota('inteligencia.ativo', async (r) => {
     },
     serie: p.serie,
     atual: p.atual && { ...p.atual, calculadoEm: dataNaApi(p.atual.calculadoEm) },
+    recalculos: recalculosNaApi(p.recalculos),
     insights: p.insights.map(insightNaApi),
     nomes: p.nomes,
     efetividade: efetividadesNaApi(efetividade),

@@ -262,6 +262,20 @@ export const MetricaDoAtivoApi = z
   })
   .meta({ id: 'MetricaDoAtivoApi' });
 
+/** Um recálculo do dia na página do ativo (ADR-036): o resumo, sem o detalhe. */
+export const RecalculoDoAtivoApi = z
+  .object({
+    calculo: z.int(),
+    calculadoEm: Data,
+    atencao: z.int().nullable(),
+    faixa: z.string(),
+    reincidencia: z.int().nullable(),
+    versaoFormulaAtencao: z.int(),
+    versaoFormulaReincidencia: z.int(),
+    versaoPolitica: z.string(),
+  })
+  .meta({ id: 'RecalculoDoAtivoApi' });
+
 /**
  * "Procurar ativo" no Intelligence (16/10/2026): os ativos em uso do termo, só
  * dos hotéis em que quem pede decide insight, em ordem de nome, até 20.
@@ -573,6 +587,8 @@ export const RespostaDoAtivoNoIntelligence = z
     serie: z.array(z.object({ dia: z.iso.date(), atencao: z.int().nullable(), faixa: z.string() })),
     /** O último dia gravado, com o detalhe; nulo se o job ainda não gravou nenhum. */
     atual: MetricaDoAtivoApi.nullable(),
+    /** Os recálculos do dia de `atual`, do primeiro ao último (até 20); a tela os mostra a pedido. */
+    recalculos: z.array(RecalculoDoAtivoApi),
     insights: z.array(InsightApi),
     nomes: NomesDoPainelApi,
     /** As intervenções no ativo concluídas nos últimos 180 dias. */
