@@ -477,6 +477,8 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       metricasGravadas: 1,
       versoesDeFormula: { reincidencia: 1, atencao: 2, sistemico: 2 },
       versoesDePolitica: { [H1]: 'padrao' },
+      // O dia de 2026 tem o mês dele (0061): nada na partição padrão.
+      metricasNaParticaoPadrao: 0,
     });
     const eventos = await q(
       `select tipo, registro_id from app.evento_dominio where tenant_id = $1 order by tipo`,
