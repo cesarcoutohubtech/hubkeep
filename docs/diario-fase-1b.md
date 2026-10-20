@@ -1165,6 +1165,23 @@ Na branch `claude/1b-pb1b`, sobre a `claude/1b-pb1`. O PR abre depois dos PRs do
 - **Telas filtram pela bandeira do hotel:** o cadastro do ativo (web e PWA), o checklist do plano e o checklist da OS. O PWA guarda a bandeira do hotel e do modelo na referência; a referência guardada antes da PB1b vale como do grupo até a próxima leitura.
 - Testes: domínio e aplicação com os casos novos; integração em `bandeira-nos-modelos.test.ts`, só na CI; telas do web e do PWA.
 
+### M3a — folha de etiquetas do QR em lote (20/10/2026)
+
+Na branch `claude/great-bohr-y0tomg`, a partir da `main` com o #348. Fora da zona protegida, sem migração.
+- **Tela `/admin/etiquetas`** (menu de cadastros, "Etiquetas QR"): o hotel, o local e a categoria (opcionais) e o tamanho da etiqueta. A folha é gerada no navegador, como o QR individual (B5), e impressa pela impressão do navegador, no tema claro. A lista vem de `GET /hoteis/{id}/ativos`, no escopo de quem pede.
+- **A etiqueta** leva o QR, o nome e o código legível (`codigoQrLegivel` no domínio, `XXXXX-XXXXX`, que a leitura aceita de volta), nunca o id. Saem os ativos em uso e não recusados.
+- **Três tamanhos** até a resposta do cliente (pergunta 24 do `docs/12`): 40 × 25, 60 × 35 e 90 × 50 mm.
+- **Por importação:** depois da gravação, a tela da importação abre a mesma folha com os ativos criados naquele envio.
+- **Falta (M3b, zona protegida):** os códigos reservados (`app.qr_reservado`), a geração do lote, a folha de etiquetas sem ativo e a ligação pelo PWA (`qr_nao_reservado`, `qr_ja_ligado`). Pela decisão 21, a etiqueta reservada vale só para ativo novo.
+
+## Ponto de retomada (20/10/2026, PR da M3a)
+
+- **`main`:** com o #348 (PB1b); a PB1 está completa. **Dev:** o Cesar conferiu o `supabase migration list` em 20/10/2026, nesta sessão.
+- **PR aberto:** o da M3a (`claude/great-bohr-y0tomg`), fora da zona protegida.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge do PR da M3a; as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** a M3b (códigos reservados, zona protegida: migração `app.qr_reservado`, pgTAP de isolamento e meta-testes), numa branch a partir da `main`. Primeiro passo: conferir no GitHub se há PR de zona protegida aberto e a última migração da `main`.
+
 ## Ponto de retomada (20/10/2026, PR da PB1b)
 
 - **`main`:** com o #340 (zona da PB1, migração 0059) e o #344 (PB1a). **Dev:** o `db push` da 0058 e da 0059 não foram confirmados aqui.

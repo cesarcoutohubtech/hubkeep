@@ -33,3 +33,7 @@ export function lerCodigoQr(texto: string): string | null {
 
 /** O caminho impresso no QR, relativo ao endereço do PWA. */
 export const caminhoDoQr = (codigo: string): string => `/q/${codigo}`;
+
+/** O código como sai impresso na etiqueta (M3): dois grupos de cinco, que a leitura aceita de volta. */
+export const codigoQrLegivel = (codigo: string): string =>
+  codigo.length === TAMANHO_DO_CODIGO_QR ? `${codigo.slice(0, 5)}-${codigo.slice(5)}` : codigo;

@@ -10,11 +10,11 @@
 import type { RespostaDaImpressaoDaOs, z } from '@hubkeep/contratos';
 import { Botao } from '@hubkeep/ui';
 import Link from 'next/link';
-import { useEffect } from 'react';
 import { useIntl } from 'react-intl';
 import { ChecklistDaOs } from './checklist-da-os';
 import type { CodigosDoTenant } from './codigos-manutencao';
 import { CodigosDaOs, type Referencias, useNomes } from './corretiva';
+import { useTemaClaroNaImpressao } from './impressao';
 import { useT } from '../i18n/cliente';
 
 export type ImpressaoDaOs = z.infer<typeof RespostaDaImpressaoDaOs>;
@@ -33,24 +33,7 @@ const dataEHora = { dateStyle: 'short', timeStyle: 'short' } as const;
 /** O botão de imprimir e a volta para a OS; não saem no papel. */
 export function BarraDaImpressao({ osId }: { osId: string }) {
   const t = useT();
-  useEffect(() => {
-    const raiz = document.documentElement;
-    let anterior: string | undefined;
-    const antes = () => {
-      anterior = raiz.dataset.tema;
-      raiz.dataset.tema = 'claro';
-    };
-    const depois = () => {
-      if (anterior === undefined) delete raiz.dataset.tema;
-      else raiz.dataset.tema = anterior;
-    };
-    window.addEventListener('beforeprint', antes);
-    window.addEventListener('afterprint', depois);
-    return () => {
-      window.removeEventListener('beforeprint', antes);
-      window.removeEventListener('afterprint', depois);
-    };
-  }, []);
+  useTemaClaroNaImpressao();
   return (
     <div className="hk-linha-de-botoes hk-nao-imprimir">
       <Link href={`/os/${osId}`} className="hk-voltar">

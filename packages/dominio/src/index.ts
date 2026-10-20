@@ -208,6 +208,7 @@ export {
   TAMANHO_DO_CODIGO_QR,
   caminhoDoQr,
   codigoQrDeBytes,
+  codigoQrLegivel,
   lerCodigoQr,
 } from './qr';
 export {

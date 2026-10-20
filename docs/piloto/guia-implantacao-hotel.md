@@ -112,7 +112,7 @@ Exemplo de lote: 12 ativos fictícios em `modelo-ativos-criticos.csv`, cobrindo 
 ### Etapa 7. Etiquetas QR
 
 1. Web, **Ativos**, no ativo: **Ver QR** (e **Ocultar QR**). Mostra a imagem e o "Código XXXXXXXXXX". O QR é gerado no navegador com o endereço do PWA e o caminho `/q/<código>`. Se o endereço do PWA não estiver configurado: "O endereço do app do técnico não está configurado; o QR não pode ser gerado."
-2. Imprimir pela impressão do navegador. **Etiqueta de impressão e QR em lote: [ainda não existe]** (M3). O código não revela o id do ativo.
+2. Web, **Etiquetas QR** (menu de cadastros): escolher o hotel e, se quiser, o local e a categoria, e o tamanho da etiqueta (pequena 40 × 25 mm, média 60 × 35 mm ou grande 90 × 50 mm). A folha traz uma etiqueta por ativo em uso, com o QR, o nome e o código em dois grupos de cinco (XXXXX-XXXXX). **Imprimir** abre a impressão do navegador; imprimir em escala de 100%. Depois de importar uma planilha (Etapa 6), a tela da importação oferece **Etiquetas dos N ativos importados**, com a mesma folha. O código não revela o id do ativo.
 3. Colar a etiqueta no equipamento. **Testar:** apontar a câmera do celular de um técnico; o PWA abre o ativo. Sem rede e sem o ativo guardado no aparelho, aparece "Este ativo não está guardado no aparelho. Abra o QR de novo quando houver conexão."
 4. Gerar códigos antes de cadastrar e ligar a etiqueta pelo celular: **[ainda não existe]** (M3).
 

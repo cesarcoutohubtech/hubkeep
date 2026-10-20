@@ -1310,3 +1310,61 @@ fieldset.hk-em-linha > legend {
     border: 0;
   }
 }
+
+/* Folha de etiquetas do QR em lote (M3): o tamanho vem da tela, em mm; o papel
+   sai no tema claro, e o QR tem o quadro branco próprio. */
+.hk-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2mm;
+}
+
+.hk-etiqueta {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  width: var(--etiqueta-largura);
+  height: var(--etiqueta-altura);
+  margin: 0;
+  padding: 1.5mm;
+  overflow: hidden;
+  border: 1px dashed var(--hk-linha);
+  background: var(--hk-superficie);
+  color: var(--hk-texto);
+  break-inside: avoid;
+}
+
+.hk-etiqueta svg {
+  flex: none;
+  width: var(--etiqueta-qr);
+  height: var(--etiqueta-qr);
+}
+
+.hk-etiqueta figcaption {
+  display: grid;
+  gap: 1mm;
+  min-width: 0;
+}
+
+.hk-etiqueta-nome {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 9pt;
+  font-weight: 600;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.hk-etiqueta-codigo {
+  font-family: ui-monospace, monospace;
+  font-size: 8pt;
+}
+
+@media print {
+  .hk-etiquetas .hk-etiqueta {
+    page-break-inside: avoid;
+  }
+}
