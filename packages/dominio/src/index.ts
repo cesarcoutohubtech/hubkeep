@@ -673,3 +673,15 @@ export type {
   SituacaoDaLinha,
 } from './importacao-de-ativos';
 export { sha256, tamanhoUtf8 } from './resumo-sha256';
+export {
+  copiasDoPacote,
+  podeAplicarPacote,
+  podeGerirPacote,
+  vaiParaOHotel,
+  validarPlanoPadrao,
+} from './pacote-da-bandeira';
+export type {
+  ChecklistParaPlanoPadrao,
+  CopiaDoPlanoPadrao,
+  PlanoPadrao,
+} from './pacote-da-bandeira';
