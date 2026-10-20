@@ -2,11 +2,14 @@
 // Painel de implantação do hotel (fase 1a, A5): o que falta para o hotel
 // operar (inclusive o modelo contratual não informado, I2). O Implantador
 // cadastra as pessoas pela tela de membros, abaixo do próprio papel. Só o visual do pacote de interface (ADR-038, U4b); o
-// conteúdo é o mesmo.
+// conteúdo é o mesmo. O pacote da bandeira (PB1): a prévia do que aplicar
+// copia e o botão de aplicar, para o Admin e o Implantador.
 import { MensagemDeErro, MensagemVazia, Nota, Painel, comoBotao } from '@hubkeep/ui';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
+import { AplicacaoDoPacote, type CopiaDoPacote } from '../../../../cliente/pacote-da-bandeira';
 import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
 import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
@@ -47,6 +50,28 @@ export default function PainelDeImplantacao() {
   const { hoteis, hotelId, setHotelId, erro: erroDosHoteis } = useHoteis();
   const [painel, setPainel] = useState<PainelDoHotel | null>(null);
   const [erro, setErro] = useState<ErroDaApi | null>(null);
+  // null: sem o pacote (quem não aplica recebe 403 e não vê o quadro).
+  const [copias, setCopias] = useState<CopiaDoPacote[] | null>(null);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
+
+  const carregarPacote = useCallback(async () => {
+    if (!hotelId) return;
+    const r = await chamarApi<{ copias: CopiaDoPacote[] }>(`/api/v1/hoteis/${hotelId}/pacote`);
+    setCopias(r.ok ? r.dados.copias : null);
+  }, [hotelId]);
+
+  useEffect(() => {
+    setAviso(null);
+    void carregarPacote();
+  }, [carregarPacote]);
+
+  async function aplicarPacote() {
+    const r = await chamarApi<unknown>(`/api/v1/hoteis/${hotelId}/pacote/aplicacao`, {
+      method: 'POST',
+    });
+    setAviso(r.ok ? { tipo: 'ok' } : { tipo: 'erro', erro: r.erro });
+    await carregarPacote();
+  }
 
   useEffect(() => {
     if (!hotelId) return;
@@ -109,6 +134,12 @@ export default function PainelDeImplantacao() {
               </p>
             </Painel>
           </div>
+          {copias ? (
+            <Painel titulo={t('admin.pacote.aplicacao.titulo')}>
+              <AplicacaoDoPacote copias={copias} aplicar={aplicarPacote} />
+              <Aviso aviso={aviso} />
+            </Painel>
+          ) : null}
           <Painel
             titulo={t('admin.implantacao.pessoas')}
             acoes={

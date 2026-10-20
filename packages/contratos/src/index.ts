@@ -388,3 +388,14 @@ export {
 
 export { LinhaDoStatusMewsApi, RespostaDoStatusMews } from './mews-admin';
 export { CandidatoHotelMewsApi, RespostaDeCandidatosMews } from './mews-admin';
+export {
+  CopiaDoPacoteApi,
+  PedidoDeAlteracaoDePlanoPadrao,
+  PedidoDePlanoPadrao,
+  PedidoDeVersaoDePlanoPadrao,
+  PlanoPadraoApi,
+  RespostaDaAplicacaoDoPacote,
+  RespostaDaPreviaDoPacote,
+  RespostaDePlanoPadraoGravado,
+  RespostaDePlanosPadrao,
+} from './pacote-da-bandeira';

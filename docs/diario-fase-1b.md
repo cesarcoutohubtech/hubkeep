@@ -1122,3 +1122,29 @@ Pela ordem dos PRs do desenho, a PB1 vem depois da M4 e da M2, e antes da M3. Co
 - **Ajuste de implementação:** a bandeira não recebe UPDATE nas três tabelas. Ela é campo de escopo no meta-teste 18 (ADR-011), e abrir exceção pediria mudar o ADR. Para levar um modelo a outra bandeira, o Admin desativa e cria outro. A origem do plano copiado também não muda.
 - pgTAP 062 (30 asserções) e o meta-teste 28 com a tabela nova. Tipos do Kysely atualizados. Sem ADR novo.
 - **Depois do merge e do `db push` da 0059:** a PB1 fora da zona (filtro por bandeira nos modelos, cadastro do pacote, aplicar o pacote ao hotel pelo painel de implantação), a partir da `main` com a M4a e a M2.
+
+### PB1a — planos do pacote e aplicação ao hotel (20/10/2026)
+
+Na branch `claude/1b-pb1`, montada sobre a `claude/1b-m2` e a `claude/1b-pb1-zona`. O PR abre depois dos merges do #337, do PR da M2 e do #340, com o `db push` da 0059.
+- **Domínio (`pacote-da-bandeira.ts`):**
+  - `vaiParaOHotel`: o item do grupo vale para todo hotel, e o da bandeira só para os hotéis dela;
+  - quem mantém o pacote: só o Admin do grupo (`pacote_so_do_admin`);
+  - quem aplica: o Admin e o Implantador vigente do hotel (`pacote_fora_do_escopo`);
+  - o plano do pacote é validado como o do hotel. O checklist precisa estar ativo, ser da categoria (ou de nenhuma) e ir para os mesmos hotéis do plano;
+  - `copiasDoPacote`: copia os planos ativos que valem para o hotel e ainda não estão nele. Cada cópia sai pausada, sem responsável e com início no dia do hotel.
+- **Aplicação:** os planos do pacote (criar, alterar pela versão, desativar e reativar), a prévia e a aplicação, com uma unit of work por plano. A cópia que outro envio gravou volta como já copiada.
+- **db:**
+  - `criarPlanoPreventivo` recebe a origem; a repetida no hotel (`plano_preventivo_padrao_unico`) vira `plano_ja_copiado`;
+  - auditoria da entidade nova `plano_padrao`;
+  - integração em `pacote-da-bandeira.test.ts`, só na CI.
+- **API:**
+  - `GET` e `POST /api/v1/planos-do-pacote`;
+  - `PUT /api/v1/planos-do-pacote/{id}`, com `/desativacao` e `/reativacao`;
+  - `GET /api/v1/hoteis/{id}/pacote` (a prévia) e `POST /api/v1/hoteis/{id}/pacote/aplicacao`.
+- **Telas:**
+  - `/admin/pacote-da-bandeira`, no menu de cadastros. A bandeira se escolhe só na criação;
+  - no painel de implantação, o quadro do pacote com a prévia e o botão de aplicar. Ele aparece só para quem aplica.
+- **Falta (PB1b):**
+  - a bandeira na criação dos modelos de ativo e de checklist;
+  - o filtro pela bandeira do hotel nas listas usadas no hotel: o cadastro do ativo, o PWA, o checklist da OS e os planos.
+- **A confirmar com o Cesar:** o desenho pede que o painel registre quando o hotel entrou em implantação e quando ficou pronto, para medir a meta de 1 dia. A proposta é tirar isso da auditoria da mudança de situação do hotel, sem migração.
