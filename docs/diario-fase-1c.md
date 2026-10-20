@@ -936,3 +936,44 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
   - Os três mexem nas listas de exportação e nos catálogos: o que entrar depois do primeiro pode precisar de nova atualização com a `main`.
 - **Pergunta ao Cesar:** o proprietário vê o custo informado na ficha da OS; só a impressão o esconde. Esconder também na ficha é decisão de quem vê.
 - **Próximo:** o PR 2 do item 9, o CSV da lista de chamados e o aviso do número de linhas (também na auditoria geral). O CSV do painel espera o merge do #282. Primeiro passo: o modo de exportação na consulta da lista de chamados, como o da auditoria geral (`LIMITES_DA_AUDITORIA`).
+
+## Catálogo completo (item 10): termos dos catálogos (19/10/2026)
+
+**Área compartilhada (catálogos), registrada antes de mexer.** Este PR, na branch `claude/1c-idiomas`, troca textos em en, es e fr de telas da 1b e da 1c. Não muda chave nem variável.
+
+**Levantamento:**
+- Os quatro catálogos têm as mesmas 1.557 chaves.
+- Nenhum texto em português sobra nos outros idiomas. Os valores iguais ao pt-BR são cognatos ("Hotel", "Checklist", "PDF").
+- Datas, números e moeda saem do `Intl` com o idioma de quem lê. Os `'pt-BR'` fixos nos apps são só o idioma padrão de reserva dos nomes cadastrados.
+- O problema eram os termos: o mesmo conceito com dois nomes no mesmo idioma.
+
+**Feito:**
+- **`docs/referencia/termos-dos-catalogos.md`:** um termo por conceito e por idioma, pelo uso da maioria das telas. Também traz o volume para a cotação da tradução profissional: cerca de 9.400 palavras, sendo 7.000 do núcleo.
+- **Textos alinhados** (55 textos):
+  - en: "ticket" passa a "request"; "landlord" passa a "lessor"; "tenant operator" passa a "lessee";
+  - es: "orden de servicio" passa a "orden de trabajo"; "OS" passa a "OT"; "ticket" passa a "solicitud";
+  - fr: "ordre de service" passa a "ordre de travail"; "OS" passa a "OT"; "ticket" passa a "demande"; "prestataire" passa a "fournisseur".
+- **`packages/i18n/test/termos.test.ts`:** reprova as variantes barradas fora de `inteligencia.*`.
+
+### Pedido ao agente do Intelligence (Kaio): termos nos textos `inteligencia.*` (19/10/2026)
+
+Os textos do Intelligence são do Kaio (ADR-033), então este PR não os toca. Para seguir `docs/referencia/termos-dos-catalogos.md`, faltaria:
+- en: "tickets" em `inteligencia.detalhamento.impacto_pelos_chamados` e `inteligencia.impacto.resumo`;
+- es e fr: "tickets" em `inteligencia.detalhamento.impacto_pelos_chamados`;
+- fr: "marque" no lugar de "enseigne" (bandeira) em `inteligencia.escopo.rede_bandeira` e `inteligencia.quem_decide.rede_bandeira`, e "prestataire" em `inteligencia.sistemico.regra`.
+
+Se o Kaio quiser, o teste de termos pode passar a valer também para `inteligencia.*` depois da troca.
+
+### Ponto de retomada (19/10/2026, termos dos catálogos)
+
+- **`main`:** 2003828. A CI do merge do #281 ainda rodava às 19h50; a mesma `main`, rodada aqui, passou em lint, typecheck e testes.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, no head 4947c41;
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), o CSV de chamados, no head ca6a159;
+  - o PR destes termos, que abre agora.
+- **Pergunta ao Cesar, ainda sem resposta:** esconder também na ficha da OS o custo informado, para o proprietário.
+- **Fica da 1c:**
+  - o CSV do painel, depois do merge do #282;
+  - a tradução profissional, que é contratação externa: o volume está na referência de termos;
+  - os gráficos do painel;
+  - a tolerância da preventiva na tela de configuração.
