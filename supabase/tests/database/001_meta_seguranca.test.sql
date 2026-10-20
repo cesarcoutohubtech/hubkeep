@@ -462,7 +462,7 @@ select is(
    from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname in ('app', 'staging', 'licenca') and c.relkind in ('r', 'p')),
   array[
-    'app.anexo', 'app.ativo', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
+    'app.anexo', 'app.ativo', 'app.ativo_decisao_cadastro', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
     'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.checklist_modelo',
     'app.codigo_manutencao', 'app.envio_notificacao', 'app.equipe',
     'app.equipe_membro', 'app.evento_dominio', 'app.feriado_hotel', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
@@ -529,9 +529,9 @@ select is_empty($$
   cross join (values ('app.auditoria'), ('app.ativo_movimentacao'), ('app.metrica_ativo_diaria'),
                      ('app.os_apontamento'), ('app.os_material'), ('app.os_transicao'),
                      ('app.sla_alerta'), ('app.envio_notificacao'),
-                     ('app.sinal_hospede_chamado')) t(tabela)
+                     ('app.sinal_hospede_chamado'), ('app.ativo_decisao_cadastro')) t(tabela)
   where has_any_column_privilege(r.papel, t.tabela, 'UPDATE')
-$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA, envio de notificação, ligação da reclamação com o chamado)');
+$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA, envio de notificação, ligação da reclamação com o chamado, decisão do cadastro do ativo)');
 
 select * from finish();
 rollback;
