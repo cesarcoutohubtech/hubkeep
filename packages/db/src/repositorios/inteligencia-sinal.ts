@@ -482,40 +482,54 @@ export async function chamadoDaReclamacao(tx: Tx, sinalId: string): Promise<stri
 }
 
 /**
- * Liga a reclamação ao chamado que quem pede abriu a partir dela (0057), com a
- * auditoria sem hotel (como a da classificação) e o evento.
+ * Liga as reclamações ao chamado que quem pede abriu a partir delas (0057),
+ * numa transação, com a auditoria sem hotel de cada uma (como a da
+ * classificação) e o evento.
  */
+export async function ligarChamadosNoBanco(
+  uow: UnidadeDeTrabalho,
+  ls: readonly LigacaoDoChamadoNoBanco[],
+): Promise<void> {
+  if (!ls.length) return;
+  const tx = transacaoDe(uow);
+  await tx
+    .insertInto('app.sinal_hospede_chamado')
+    .values(
+      ls.map((l) => ({
+        id: novoId(),
+        tenant_id: uow.tenantId,
+        hotel_id: l.hotelId,
+        sinal_id: l.sinalId,
+        chamado_id: l.chamadoId,
+        ligado_por: l.ligadoPor,
+        criado_em: l.em,
+      })),
+    )
+    .execute()
+    .catch(jaTemChamado);
+  for (const l of ls) {
+    uow.auditar({
+      entidade: 'sinal_hospede',
+      registroId: l.sinalId,
+      acao: 'ligar_chamado',
+      hotelId: null,
+      depois: { chamadoId: l.chamadoId },
+    });
+    uow.publicar({
+      tipo: 'sinal_hospede.chamado_ligado',
+      entidade: 'sinal_hospede',
+      registroId: l.sinalId,
+      payload: { hotelId: l.hotelId, chamadoId: l.chamadoId },
+    });
+  }
+}
+
+/** Liga uma reclamação ao chamado que quem pede abriu a partir dela. */
 export async function ligarChamadoNoBanco(
   uow: UnidadeDeTrabalho,
   l: LigacaoDoChamadoNoBanco,
 ): Promise<void> {
-  const tx = transacaoDe(uow);
-  await tx
-    .insertInto('app.sinal_hospede_chamado')
-    .values({
-      id: novoId(),
-      tenant_id: uow.tenantId,
-      hotel_id: l.hotelId,
-      sinal_id: l.sinalId,
-      chamado_id: l.chamadoId,
-      ligado_por: l.ligadoPor,
-      criado_em: l.em,
-    })
-    .execute()
-    .catch(jaTemChamado);
-  uow.auditar({
-    entidade: 'sinal_hospede',
-    registroId: l.sinalId,
-    acao: 'ligar_chamado',
-    hotelId: null,
-    depois: { chamadoId: l.chamadoId },
-  });
-  uow.publicar({
-    tipo: 'sinal_hospede.chamado_ligado',
-    entidade: 'sinal_hospede',
-    registroId: l.sinalId,
-    payload: { hotelId: l.hotelId, chamadoId: l.chamadoId },
-  });
+  await ligarChamadosNoBanco(uow, [l]);
 }
 
 export interface ReclamacaoParaChamadoNoBanco {

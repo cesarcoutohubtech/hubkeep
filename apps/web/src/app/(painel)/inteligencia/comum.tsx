@@ -498,6 +498,14 @@ export function TabelaDeReclamacoes({
                   </Selo>
                 </>
               )}
+              {s.chamadoId && (
+                <>
+                  <br />
+                  <Link href={`/chamados/${s.chamadoId}`}>
+                    {t('inteligencia.sinais.chamado.ver')}
+                  </Link>
+                </>
+              )}
             </td>
             <td>
               {s.texto ?? (

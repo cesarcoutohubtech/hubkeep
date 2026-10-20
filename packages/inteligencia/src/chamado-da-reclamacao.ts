@@ -10,9 +10,15 @@
 //   não tem chamado; quem abre é quem decide insight no hotel (a fila);
 // - o texto do hóspede não vai para o chamado: o Técnico e a Solicitante leem
 //   o chamado, mas não a reclamação. A descrição é da pessoa.
-import { Conflito, NaoEncontrado, RegraViolada } from '@hubkeep/dominio';
+// Um chamado para as reclamações do insight sistêmico (proposta de 19/10/2026,
+// item 1): a pessoa escolhe o local (as reclamações costumam ser de UHs
+// diferentes) e o ativo, se quiser; as reclamações da evidência que ela lê,
+// de manutenção e ainda sem chamado, são ligadas a ele numa transação só.
+import { Conflito, NaoEncontrado, PermissaoNegada, RegraViolada } from '@hubkeep/dominio';
 import { podeDecidirInsight } from './insight';
-import { type PortasDoPainel, exigirPainel } from './painel';
+import { type PortasDoPainel, exigirPainel, insightNaoEncontrado } from './painel';
+import { sinaisDaEvidencia } from './painel-reclamacoes';
+import type { PortasDoSinalDoHospede, SinalDaFila } from './sinal-hospede';
 
 export interface ReclamacaoParaChamado {
   id: string;
@@ -130,4 +136,114 @@ export async function ligarChamadoDaReclamacao(
     ligadoPor: l.usuarioId,
     em: agora,
   });
+}
+
+export interface PortasDoChamadoDoInsight
+  extends PortasDoChamadoDaReclamacao, Pick<PortasDoSinalDoHospede, 'referenciasDaClassificacao'> {
+  /** As reclamações destes ids que quem pede lê, da mais recente, até `limite`. */
+  sinaisPorIds(ids: readonly string[], limite: number): Promise<readonly SinalDaFila[]>;
+  /** Grava as ligações numa transação, com a auditoria e o evento de cada uma. */
+  ligarChamados(ls: readonly LigacaoDoChamado[]): Promise<void>;
+}
+
+export interface PedidoDoChamadoDoInsight {
+  insightId: string;
+  /** A UH ou a área comum do hotel do insight. */
+  localId: string;
+  ativoId: string | null;
+  descricao: string;
+}
+
+interface InsightDasReclamacoes {
+  hotelId: string;
+  /** As reclamações da evidência que quem pede lê, de manutenção e sem chamado. */
+  semChamado: readonly SinalDaFila[];
+}
+
+/** O insight da regra das reclamações, de um hotel, que quem pede decide. */
+async function insightDasReclamacoes(
+  p: PortasDoChamadoDoInsight,
+  insightId: string,
+  agora: Date,
+): Promise<InsightDasReclamacoes> {
+  const atribuicoes = await exigirPainel(p, agora);
+  const insight = await p.insight(insightId);
+  if (!insight) throw insightNaoEncontrado();
+  const ids = sinaisDaEvidencia(insight.evidencia);
+  const hotelId = insight.hotelId;
+  if (ids === null || hotelId === null) {
+    throw new RegraViolada('insight_sem_reclamacoes', 'O insight não é o das reclamações.');
+  }
+  if (
+    !podeDecidirInsight(
+      atribuicoes,
+      { tipo: 'hotel', hotelId, bandeiraId: insight.bandeiraId },
+      agora,
+    )
+  ) {
+    throw new PermissaoNegada('insight_fora_do_escopo', 'Você não decide insights neste escopo.');
+  }
+  const lidas = ids.length ? await p.sinaisPorIds(ids, ids.length) : [];
+  return {
+    hotelId,
+    semChamado: lidas.filter((s) => s.manutencao === true && s.chamadoId === null),
+  };
+}
+
+/**
+ * Confere o insight, o local e o ativo e monta o pedido do chamado, sem gravar
+ * nada. Precisa haver ao menos uma reclamação da evidência sem chamado.
+ */
+export async function prepararChamadoDoInsight(
+  p: PortasDoChamadoDoInsight,
+  pedido: PedidoDoChamadoDoInsight,
+  agora: Date,
+): Promise<AberturaDoChamadoDaReclamacao> {
+  const i = await insightDasReclamacoes(p, pedido.insightId, agora);
+  if (!i.semChamado.length) {
+    throw new RegraViolada(
+      'insight_sem_reclamacao_para_chamado',
+      'Nenhuma reclamação do insight está sem chamado.',
+    );
+  }
+  const ref = await p.referenciasDaClassificacao({
+    ativoId: pedido.ativoId,
+    uhId: pedido.localId,
+    categoriaId: null,
+  });
+  if (!ref.uh || ref.uh.hotelId !== i.hotelId) {
+    throw new NaoEncontrado('local_nao_encontrado', 'Local não encontrado.');
+  }
+  if (pedido.ativoId && (!ref.ativo || ref.ativo.hotelId !== i.hotelId)) {
+    throw new NaoEncontrado('ativo_nao_encontrado', 'Ativo não encontrado.');
+  }
+  return {
+    localId: pedido.localId,
+    ativoId: pedido.ativoId,
+    descricao: pedido.descricao,
+    impactoHospede: true,
+  };
+}
+
+/**
+ * Liga ao chamado que quem pede abriu as reclamações do insight ainda sem
+ * chamado; devolve quantas ligou (nenhuma, se todas já têm).
+ */
+export async function ligarChamadoDoInsight(
+  p: PortasDoChamadoDoInsight,
+  l: { insightId: string; chamadoId: string; usuarioId: string },
+  agora: Date,
+): Promise<number> {
+  const i = await insightDasReclamacoes(p, l.insightId, agora);
+  if (!i.semChamado.length) return 0;
+  await p.ligarChamados(
+    i.semChamado.map((s) => ({
+      sinalId: s.id,
+      hotelId: i.hotelId,
+      chamadoId: l.chamadoId,
+      ligadoPor: l.usuarioId,
+      em: agora,
+    })),
+  );
+  return i.semChamado.length;
 }

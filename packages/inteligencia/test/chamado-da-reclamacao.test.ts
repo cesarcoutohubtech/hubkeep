@@ -4,11 +4,16 @@
 import type { Atribuicao, Escopo, Papel } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import {
+  type InsightComEvidencia,
   type LigacaoDoChamado,
   type PortasDoChamadoDaReclamacao,
+  type PortasDoChamadoDoInsight,
   type ReclamacaoParaChamado,
+  type SinalDaFila,
   ligarChamadoDaReclamacao,
+  ligarChamadoDoInsight,
   prepararChamadoDaReclamacao,
+  prepararChamadoDoInsight,
 } from '../src/index';
 
 const agora = new Date('2026-10-19T12:00:00Z');
@@ -142,5 +147,168 @@ describe('a ligação do chamado aberto', () => {
       codigo: 'reclamacao_ja_tem_chamado',
       parametros: { chamadoId: 'c1' },
     });
+  });
+});
+
+const insight = (evidencia: unknown, hotelId: string | null = 'h1'): InsightComEvidencia => ({
+  id: 'i1',
+  hotelId,
+  bandeiraId: null,
+  hotelIds: ['h1'],
+  tipo: 'sistemico',
+  escopo: { regra: 'reclamacoes_categoria' },
+  estado: 'novo',
+  faixa: 'atencao',
+  valor: null,
+  versaoScore: 5,
+  anteriorId: null,
+  primeiraDeteccaoEm: antes(2),
+  ultimaDeteccaoEm: antes(1),
+  responsavelId: null,
+  encerradoEm: null,
+  encerradoPor: null,
+  nota: null,
+  motivoDeDescarte: null,
+  versao: 1,
+  detalhe: null,
+  evidencia,
+});
+
+const daFila = (id: string, s: Partial<SinalDaFila> = {}): SinalDaFila => ({
+  id,
+  hotelId: 'h1',
+  fonte: 'google',
+  idExterno: id,
+  ocorridoEm: antes(3),
+  nota: 2,
+  escala: 5,
+  texto: 'Chuveiro fraco',
+  textoApagadoEm: null,
+  idioma: 'pt-BR',
+  uhCitada: null,
+  manutencao: true,
+  categoriaId: 'k1',
+  uhId: 'uh1',
+  ativoId: null,
+  ligacao: 'sem_ligacao',
+  classificadoEm: antes(2),
+  classificadoPor: 'u2',
+  importadoEm: antes(2),
+  versao: 2,
+  chamadoId: null,
+  ...s,
+});
+
+function doInsight(
+  i: InsightComEvidencia | null,
+  sinais: SinalDaFila[],
+  atribuicoes: Atribuicao[] = [atribuicao('gerente_hotel', { tipo: 'hotel', hotelId: 'h1' })],
+): PortasDoChamadoDoInsight & { lotes: LigacaoDoChamado[][] } {
+  const base = emMemoria(null, atribuicoes);
+  const lotes: LigacaoDoChamado[][] = [];
+  return {
+    ...base,
+    lotes,
+    insight: async (id) => (i && i.id === id ? i : null),
+    sinaisPorIds: async (ids, limite) => sinais.filter((x) => ids.includes(x.id)).slice(0, limite),
+    referenciasDaClassificacao: async (r) => ({
+      ativo:
+        r.ativoId === 'bomba'
+          ? { id: 'bomba', hotelId: 'h1', categoriaId: 'k1', desativadoEm: null }
+          : null,
+      uh:
+        r.uhId === 'uh1' || r.uhId === 'area'
+          ? { id: r.uhId, hotelId: 'h1', tipo: r.uhId === 'uh1' ? 'uh' : 'area_comum' }
+          : r.uhId === 'uh-de-outro'
+            ? { id: r.uhId, hotelId: 'h2', tipo: 'uh' }
+            : null,
+      categoria: null,
+    }),
+    ligarChamados: async (ls) => {
+      lotes.push([...ls]);
+    },
+  };
+}
+
+describe('um chamado para as reclamações do insight sistêmico', () => {
+  const evidencia = { sinalIds: ['s1', 's2', 's3', 's4'], corretivaIds: [] };
+  const sinais = [
+    daFila('s1'),
+    daFila('s2', { uhId: 'uh2' }),
+    daFila('s3', { chamadoId: 'c0' }),
+    daFila('s4', { manutencao: false, categoriaId: null }),
+  ];
+
+  it('o local escolhido, o ativo e "afeta hóspede"', async () => {
+    const abertura = await prepararChamadoDoInsight(
+      doInsight(insight(evidencia), sinais),
+      { insightId: 'i1', localId: 'area', ativoId: 'bomba', descricao: 'Chuveiros fracos' },
+      agora,
+    );
+    expect(abertura).toEqual({
+      localId: 'area',
+      ativoId: 'bomba',
+      descricao: 'Chuveiros fracos',
+      impactoHospede: true,
+    });
+  });
+
+  it('liga numa transação só as de manutenção ainda sem chamado', async () => {
+    const p = doInsight(insight(evidencia), sinais);
+    expect(
+      await ligarChamadoDoInsight(p, { insightId: 'i1', chamadoId: 'c1', usuarioId: 'u1' }, agora),
+    ).toBe(2);
+    expect(p.lotes).toEqual([
+      [
+        { sinalId: 's1', hotelId: 'h1', chamadoId: 'c1', ligadoPor: 'u1', em: agora },
+        { sinalId: 's2', hotelId: 'h1', chamadoId: 'c1', ligadoPor: 'u1', em: agora },
+      ],
+    ]);
+  });
+
+  it('sem reclamação sem chamado: recusa abrir, e ligar não grava', async () => {
+    const todas = sinais.map((x) => ({ ...x, chamadoId: 'c0' }));
+    const p = doInsight(insight(evidencia), todas);
+    await expect(
+      prepararChamadoDoInsight(
+        p,
+        { insightId: 'i1', localId: 'uh1', ativoId: null, descricao: 'x' },
+        agora,
+      ),
+    ).rejects.toMatchObject({ codigo: 'insight_sem_reclamacao_para_chamado' });
+    expect(
+      await ligarChamadoDoInsight(p, { insightId: 'i1', chamadoId: 'c1', usuarioId: 'u1' }, agora),
+    ).toBe(0);
+    expect(p.lotes).toEqual([]);
+  });
+
+  it.each([
+    [insight({ corretivaIds: [] }), 'uh1', null, 'insight_sem_reclamacoes'],
+    [insight(evidencia, null), 'uh1', null, 'insight_sem_reclamacoes'],
+    [null, 'uh1', null, 'insight_nao_encontrado'],
+    [insight(evidencia), 'uh-de-outro', null, 'local_nao_encontrado'],
+    [insight(evidencia), 'sumiu', null, 'local_nao_encontrado'],
+    [insight(evidencia), 'uh1', 'outro-ativo', 'ativo_nao_encontrado'],
+  ])('recusa: %#', async (i, localId, ativoId, codigo) => {
+    await expect(
+      prepararChamadoDoInsight(
+        doInsight(i, sinais),
+        { insightId: 'i1', localId, ativoId, descricao: 'x' },
+        agora,
+      ),
+    ).rejects.toMatchObject({ codigo });
+  });
+
+  it('quem lê o insight, mas não decide no hotel: insight_fora_do_escopo', async () => {
+    const p = doInsight(insight(evidencia), sinais, [
+      atribuicao('gerente_hotel', { tipo: 'hotel', hotelId: 'h2' }),
+    ]);
+    await expect(
+      prepararChamadoDoInsight(
+        p,
+        { insightId: 'i1', localId: 'uh1', ativoId: null, descricao: 'x' },
+        agora,
+      ),
+    ).rejects.toMatchObject({ codigo: 'insight_fora_do_escopo' });
   });
 });

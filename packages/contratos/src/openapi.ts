@@ -208,10 +208,12 @@ import {
   RespostaDaAberturaDoIntelligence,
   ConsultaDaFilaDeSinais,
   PedidoDeChamadoDaReclamacao,
+  PedidoDeChamadoDoInsight,
   PedidoDeClassificacaoDeSinal,
   PedidoDeImportacaoDeSinais,
   RespostaDaClassificacaoDeSinal,
   RespostaDoChamadoDaReclamacao,
+  RespostaDoChamadoDoInsight,
   PedidoDeLigacaoDoChamado,
   RespostaDaFilaDeSinais,
   RespostaDaImportacaoDeSinais,
@@ -2598,6 +2600,45 @@ export const ROTAS: readonly Rota[] = [
         'Outra pessoa decidiu antes (conflito_de_versao) ou a ação não vale no estado (transicao_invalida).',
       ),
       422: ERRO('motivo_obrigatorio, motivo_de_descarte_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/insights/{id}/chamado',
+    resumo:
+      'Um chamado para as reclamações do insight sistêmico da regra das reclamações (proposta de 19/10/2026): a pessoa escolhe a UH ou a área comum do hotel do insight e o ativo, se quiser. O chamado abre pelo caso de uso do núcleo (POST /api/v1/chamados), com "afeta hóspede" e a descrição da pessoa; o texto do hóspede não vai junto. Depois, numa transação só, as reclamações da evidência que a pessoa lê, de manutenção e ainda sem chamado, são ligadas a ele. Se a ligação falhar, o chamado fica aberto e a resposta é chamado_sem_ligacao, com o id dele.',
+    exigeTenant: true,
+    corpo: PedidoDeChamadoDoInsight,
+    respostas: {
+      201: {
+        descricao: 'Chamado aberto e reclamações ligadas',
+        esquema: RespostaDoChamadoDoInsight,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('insight_fora_do_escopo ou os erros de permissão da abertura do chamado.'),
+      404: ERRO(
+        'inteligencia_indisponivel, insight_nao_encontrado, local_nao_encontrado, ativo_nao_encontrado ou os da abertura do chamado.',
+      ),
+      409: ERRO('chamado_sem_ligacao (com o id do chamado).'),
+      422: ERRO(
+        'insight_sem_reclamacoes, insight_sem_reclamacao_para_chamado, entrada_invalida ou os da abertura do chamado.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/insights/{id}/chamado/ligacao',
+    resumo:
+      'Liga ao chamado que quem pede abriu as reclamações do insight ainda sem chamado, quando a ligação falhou (chamado_sem_ligacao). Sem reclamação sem chamado, não muda nada (ligadas 0).',
+    exigeTenant: true,
+    corpo: PedidoDeLigacaoDoChamado,
+    respostas: {
+      200: { descricao: 'Reclamações ligadas ao chamado', esquema: RespostaDoChamadoDoInsight },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('insight_fora_do_escopo.'),
+      404: ERRO('inteligencia_indisponivel ou insight_nao_encontrado.'),
+      409: ERRO('reclamacao_ja_tem_chamado.'),
+      422: ERRO('insight_sem_reclamacoes ou entrada_invalida.'),
     },
   },
   {
