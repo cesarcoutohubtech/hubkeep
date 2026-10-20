@@ -5,7 +5,9 @@
 //     um prazo refeito não conta;
 //   - a OS na pausa que parou o relógio congela a solução vencida;
 //   - o Técnico do hotel não vê o painel e, na ficha, recebe a lista vazia;
-//   - o hotel de outro tenant é não encontrado.
+//   - o hotel de outro tenant é não encontrado;
+//   - os próximos prazos da tela inicial: o do atendimento em risco, a solução
+//     do chamado de atendimento vencido e o atendimento refeito, sem o pausado.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -205,6 +207,19 @@ describe.skipIf(!temBanco)('avisos de SLA em aberto (hk_app)', { timeout: 60_000
     expect((await casos.doChamado(ctx(U.gerente), C.vencido)).avisos.map((a) => a.tipo)).toEqual([
       'atendimento_vencido',
     ]);
+  });
+
+  it('os próximos prazos: do mais perto, com o em risco gravado, sem o pausado', async () => {
+    const { prazos } = await casos.proximosPrazos(ctx(U.gerente));
+    expect(prazos.map((p) => [p.chamadoId, p.tipo, p.emRisco, p.prazo.toISOString()])).toEqual([
+      [C.emRisco, 'atendimento', true, em(0.1).toISOString()],
+      [C.vencido, 'solucao', false, em(3).toISOString()],
+      [C.refeito, 'atendimento', false, em(5).toISOString()],
+    ]);
+    expect(prazos[0]?.hotelNome).toBe('Hotel');
+    await expect(casos.proximosPrazos(ctx(U.tecnico))).rejects.toMatchObject({
+      codigo: 'prazos_sem_permissao',
+    });
   });
 
   it('o hotel de outro tenant é não encontrado', async () => {

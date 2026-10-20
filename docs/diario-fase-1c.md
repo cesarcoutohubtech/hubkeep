@@ -1245,3 +1245,50 @@ Para a aprovação de Cesar e Kaio, como versão nova do glossário, junto com "
 - **Os três mexem no diário**, e dois mexem nos catálogos, em lugares diferentes. Depois de cada merge, os outros são atualizados com a `main`.
 - **Esperando Cesar e Kaio:** a versão nova do glossário com "Onde mais quebra" (Cesar já aprovou), "Chamado crítico" e "Situação do hotel".
 - **Próximo:** a tela inicial, PR 2 (próximos prazos e "Últimos eventos"). Primeiro passo: ver como a lista de chamados e o painel dos avisos de SLA leem os prazos, e como a auditoria geral lê as linhas no escopo.
+
+## Tela inicial, PR 2: próximos prazos e últimos eventos (20/10/2026)
+
+**Área compartilhada (chamado, catálogos e `packages/dominio`), registrada antes do commit:**
+- regra nova no domínio, ao lado dos avisos de SLA (`proximoPrazo` e `podeVerOsProximosPrazos`, em `monitor-sla.ts`);
+- uma leitura nova na porta dos avisos;
+- chaves novas `inicio.prazos.*`, `inicio.eventos.*` e `erro.prazos_sem_permissao`.
+
+Branch `claude/1c-inicio-prazos`, a partir da `main` 6d3905e. Sem migração: a leitura usa as tabelas e a RLS de hoje.
+
+**Feito:**
+- **Próximos prazos** (`GET /api/v1/chamados/proximos-prazos`): no máximo seis chamados em curso, do prazo mais perto ao mais longe.
+  - Cada chamado entra com o prazo que ainda deve: o do atendimento até a primeira OS, o da solução até o serviço concluído, como nos avisos.
+  - Com o relógio parado pela pausa, o prazo da solução está congelado e fica de fora.
+  - O selo "Em risco" aparece quando o monitor já gravou o aviso para aquele prazo.
+  - A tela mostra o tempo que falta, que anda a cada minuto.
+- **Últimos eventos:** os 5 registros mais recentes da auditoria geral nos últimos 30 dias, pela API que já existe. São lidos ao abrir e a cada 60 segundos, sem "ao vivo" (decisão 5).
+- **Quem vê:** os dois blocos são da gestão (Admin do grupo, Gestor CSC e Gerente do hotel), como os avisos de SLA e a auditoria geral. Quem não é da gestão recebe 403 da API, e o bloco não aparece. **Escolha para o Cesar confirmar:** a paridade diz "todos menos o técnico, cada um no seu escopo". Mostrar ao proprietário e ao solicitante pediria outra regra de quem vê a auditoria e os prazos; ficou de fora.
+- **Testes:**
+  - o domínio, no `monitor-sla.test.ts`;
+  - o caso de uso, no `packages/aplicacao/test/avisos-de-sla.test.ts`;
+  - o SQL, no teste de integração dos avisos, que roda só na CI;
+  - o contrato contra o domínio;
+  - as telas, no `apps/web/test/prazos-e-eventos.test.tsx`.
+- **A tela não foi aberta no navegador.**
+- **Conflito esperado:** a tela inicial (`apps/web/src/app/(painel)/page.tsx`) também muda no [#347](https://github.com/cesarcoutohubtech/hubkeep/pull/347). Depois do merge de um, o outro é atualizado com a `main`.
+
+### Ponto de retomada (20/10/2026, tela inicial PR 2)
+
+- **`main`:** 6d3905e, com o [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332) (CSVs) e o #348 da 1b.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345), o custo fora da ficha do proprietário;
+  - [#347](https://github.com/cesarcoutohubtech/hubkeep/pull/347), o resumo da tela inicial;
+  - o PR destes prazos e eventos, que abre agora.
+
+  Os três são atualizados com a `main` depois de cada merge.
+- **Esperando:**
+  - Cesar e Kaio: o glossário com "Onde mais quebra", "Chamado crítico" e "Situação do hotel";
+  - o Cesar: quem vê os prazos e os eventos (acima) e a série diária do SLA, do tempo de reparo e da preventiva.
+- **Próximo:** a tela inicial, PR 3 ("Situação por hotel" e os cartões do proprietário e do locador), depois da aprovação do glossário. Antes, atualizar o #345 e o #347 com a `main`.
+
+### Ponto de retomada (20/10/2026, depois do merge do #347)
+
+- **`main`:** 890bc69, com o [#347](https://github.com/cesarcoutohubtech/hubkeep/pull/347) (resumo da tela inicial) e o #346 do Intelligence. O Cesar conferiu o `supabase migration list` do dev.
+- **Este PR ([#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349)) foi atualizado com a `main`:** a tela inicial mostra o resumo, depois os próximos prazos e os últimos eventos, depois os hotéis. Os catálogos ficaram com as chaves dos dois PRs.
+- **Esperando o merge do Cesar:** [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345) e [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349), fora da zona protegida.
+- **Decisões pendentes e próximo passo:** os mesmos do ponto anterior.

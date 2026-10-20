@@ -533,16 +533,20 @@ export {
 export {
   DESTINATARIOS_DO_AVISO,
   ESCALONAMENTO_PADRAO,
+  LIMITE_DOS_PROXIMOS_PRAZOS,
   LIMITES_DO_ESCALONAMENTO,
   NIVEIS_DO_AVISO,
   PAPEIS_QUE_VEEM_OS_AVISOS,
   TIPOS_DE_ALERTA_DE_SLA,
+  TIPOS_DE_PRAZO,
   avisosDeSla,
   avisosEmAberto,
   destinatariosDoAviso,
   ehTipoDeAlertaDeSla,
   escalonamentoValido,
   podeVerAvisosDeSla,
+  podeVerOsProximosPrazos,
+  proximoPrazo,
 } from './monitor-sla';
 export type {
   AvisoDeSla,
@@ -551,7 +555,9 @@ export type {
   DestinatarioDoAviso,
   EscalonamentoDeSla,
   NivelDoAviso,
+  ProximoPrazo,
   TipoDeAlertaDeSla,
+  TipoDePrazo,
 } from './monitor-sla';
 export {
   LIMITE_DO_ACEITE_AUTOMATICO_POR_RODADA,
