@@ -4,22 +4,23 @@
 ## Evidências confirmadas
 - PR #351 mergeado (merge commit `99b1ed20b3a1588f008a6b9669744bdc3206b9cb`).
 - CRM consultado: 22 Companies no portal, sendo 20 na base HubKeep e 7 P1.
-- As descrições atuais das sete P1 foram consultadas em modo leitura. Não há comprador/decisor confirmado.
+- As descrições e os campos customizados `hk_proxima_acao`, `hk_evidencia_url` e `hk_status_qualificacao` das sete P1 foram consultados em modo leitura. Não há comprador/decisor confirmado.
 - A existência do JSON n8n na Biblioteca não comprova execução no workspace; homologação segue pendente.
 
-## Proposta para revisão — **não aplicar ainda**
-Somente depois de autorização explícita e de nova leitura dos valores dos campos de destino.
-| Company ID | Rede | Campo proposto | Valor proposto (sujeito a aprovação) | Situação atual |
-|---|---|---|---|---|
-| 59121067805 | Falcon Hotéis | hk_proxima_acao | Validar quem controla CMMS, consolidação de manutenção e alçada de contratação | Próxima descoberta já descrita no campo `description`; valor atual do campo customizado ainda precisa de leitura |
-| 59100503688 | Bristol Hotéis & Resorts | hk_proxima_acao | Identificar área corporativa que avalia sistemas de manutenção e confirmar plataforma atual | Próxima descoberta já descrita no `description`; campo customizado a ler |
-| 59102366642 | Tri Hotéis | hk_proxima_acao | Confirmar área central de manutenção, software em uso e alçada de compra | Próxima descoberta no `description`; campo customizado a ler |
-| 59144772716 | Nord Hotels | hk_proxima_acao | Localizar operação/engenharia corporativa e validar centralização de manutenção | Próxima descoberta no `description`; campo customizado a ler |
-| 59122615116 | Rede Pires Hotéis | hk_proxima_acao | Identificar responsável pela contratação entre rede, marcas e unidades | Próxima descoberta no `description`; campo customizado a ler |
-| 59113327537 | Master Hotéis | hk_proxima_acao | Confirmar alçada de compra, sistema de manutenção e área de operações | Próxima descoberta no `description`; campo customizado a ler |
-| Hot Beach (ID a reconfirmar) | Hot Beach Parques & Resorts | hk_proxima_acao | Identificar engenharia corporativa e manutenção de resorts/parque | ID e valor de campo customizado a conferir |
+## Comparativo real de CRM — **não aplicar alterações sem aprovação**
+Todos os valores de `hk_status_qualificacao` são `pesquisa`; todas as sete empresas possuem `hk_evidencia_url` preenchida. Não há motivo para substituir URLs oficiais válidas automaticamente.
 
-**Não sobrescrever** `description`, `hk_status_qualificacao`, `hk_cmms_status`, tarefas, prioridade ou evidências existentes sem comparar valor anterior e novo. Se um campo já contiver informação mais completa, manter e marcar como sem alteração.
+| Rede / ID | `hk_proxima_acao` atual (lido do CRM) | Proposta | Decisão recomendada |
+|---|---|---|---|
+| Falcon / 59121067805 | Confirmar CMMS, centralização e alçada tecnológica. | Identificar decisor e alçada de compra antes de abordagem | Complementar só se aprovado |
+| Bristol / 59100503688 | Confirmar software de manutenção; propor medição de recorrência e avaliações. | Remover promessa implícita de mensuração antes de validar o produto; identificar decisor | Revisar com aprovação |
+| Tri / 59102366642 | Confirmar central de manutenção e CMMS; contagem de hotéis discrepante. | Acrescentar identificação da área central e responsável de compras | Manter até haver contato validado |
+| Nord / 59144772716 | Priorizar rede independente; validar gestão de manutenção e custos. | Identificar quem decide solução para vários empreendimentos | Complementar se aprovado |
+| Rede Pires / 59122615116 | Confirmar se decisões de engenharia são da Rede Pires ou das marcas. | Manter investigação da alçada sem pressupor comprador | Sem alteração |
+| Master / 59113327537 | Confirmar grupo comprador e autonomia de aquisição; verificar CMMS. | Manter pergunta objetiva sobre grupo comprador | Sem alteração |
+| Hot Beach / 59122146165 | Foco Guest Impact em piscinas, água quente, climatização e indisponibilidade. | Identificar responsável pela manutenção e confirmar escopo antes de alegar impacto | Revisar com aprovação |
+
+**Dado confirmado para Hot Beach:** `hk_rede_id=HK-R060`, `hk_evidencia_url=https://hotbeach.com.br/nossos-resorts/`. Nenhuma propriedade alterada na consulta. Em todos os casos, realizar nova leitura imediatamente antes de eventual write e apresentar valor antigo e valor novo exatos.
 
 ## Homologação segura do n8n — apenas leitura
 1. Conferir workspace autenticado, workflow importado e estado inativo.
