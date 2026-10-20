@@ -17,7 +17,7 @@
     "@hubkeep/i18n": "workspace:*",
     "@hubkeep/imagem": "workspace:*",
     "@hubkeep/ui": "workspace:*",
-    "@supabase/supabase-js": "^2.117.3",
+    "@supabase/supabase-js": "^2.118.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-intl": "^12.1.4",
@@ -31,7 +31,7 @@
     "fake-indexeddb": "^6.2.5",
     "vite": "^8.3.4",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^5.0.3",
+    "vitest": "^5.0.5",
     "workbox-build": "^7.4.1"
   }
 }
