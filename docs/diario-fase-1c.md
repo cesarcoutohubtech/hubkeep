@@ -1102,3 +1102,42 @@ Para a aprovação de Cesar e Kaio, como versão nova do glossário:
   - os termos nos textos `inteligencia.*`;
   - a proposta de "Onde mais quebra" para o glossário.
 - **Próximo:** a tolerância da preventiva na tela de configuração. Primeiro passo: achar a tela das políticas do hotel e ver como ela edita as outras chaves.
+
+## Tolerância da preventiva na tela de configuração (decisão 11; 20/10/2026)
+
+O #339 (gráficos) entrou na `main` em 20/10/2026, e a `main` está em 2580431, com o #337 e o #341 da 1b. **Área compartilhada (políticas e catálogos), registrada antes de mexer:** só um bloco novo na tela `/admin/configuracao` para a chave `preventiva.tolerancia_dias`, que já existe no domínio, no contrato e na API, e chaves novas `admin.configuracao.tolerancia.*`. Sem mudança no domínio, na API nem no banco. Branch `claude/1c-tolerancia`, a partir da `main` 2580431.
+
+**Feito:**
+- **Bloco novo** na tela de configuração (`BlocoDaTolerancia`, `apps/web/src/cliente/bloco-da-tolerancia.tsx`), logo depois do aceite automático:
+  - o valor que vale e de onde ele vem (hotel, bandeira, grupo ou padrão);
+  - o campo dos dias, de 0 a 30, e os botões de gravar no grupo, no hotel e na bandeira do hotel, como nas outras políticas;
+  - os botões de voltar a herdar, em cada nível que tem valor.
+- **A dica fala só do painel de indicadores**, porque é só ele que lê a política hoje (abaixo).
+- **Testes:** `apps/web/test/bloco-da-tolerancia.test.tsx`, nos quatro idiomas e no pseudo-idioma, com o padrão, o valor do hotel e o singular.
+- **A tela não foi aberta no navegador.**
+
+### Aviso ao agente do Intelligence (Kaio): a política da tolerância existe (20/10/2026)
+
+O Intelligence usa a tolerância 0 numa constante (`TOLERANCIA_DA_PREVENTIVA_DIAS`, em `packages/inteligencia/src/atencao.ts`) até a política existir, pelo aviso do diário do Intelligence de 16/10/2026. Ela existe:
+- **Na `main`:** a chave `preventiva.tolerancia_dias` está no domínio e no contrato desde o painel de indicadores (#282): `{ dias }`, de 0 a 30, padrão 0, com o nível da bandeira. O caso de uso dos indicadores resolve por hotel com `resolverPolitica`.
+- **Na tela:** entra com este PR.
+
+Ler a política no job, no lugar da constante, é do Kaio. Até lá, o painel e a atenção do ativo podem divergir num hotel com tolerância diferente de 0.
+
+### Ponto de retomada (20/10/2026, tolerância da preventiva)
+
+- **`main`:** 2580431, com o #339 (gráficos), o #337 e o #341. A mesma `main`, rodada aqui com o #332 mesclado, passou em lint, typecheck e testes.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel, atualizado com a `main` 2580431;
+  - o PR desta tolerância, que abre agora.
+- **Os dois mexem nos catálogos**, em lugares diferentes. Depois de um merge, o outro é atualizado com a `main`.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial (seção 4 da paridade);
+  - "Onde mais quebra" para o glossário.
+- **Pedidos e avisos ao Kaio:**
+  - os termos nos textos `inteligencia.*`;
+  - a proposta de "Onde mais quebra" para o glossário;
+  - a política da tolerância, que o Intelligence pode passar a ler.
+- **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR; o que vier depois depende das respostas acima.
+- **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.
