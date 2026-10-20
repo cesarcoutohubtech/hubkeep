@@ -3237,3 +3237,19 @@ O Cesar decidiu "Particionada" (20/10/2026). A opção A de `docs/referencia/ret
 - **PR aberto:** o `int:` do (n), de zona protegida. O merge é do Cesar e falha no check "zona protegida" por desenho.
 - **Esperando:** o "aprovo" dos dois no adendo ao ADR-033; o merge e o `db push`; as decisões do particionamento (pa, pb, pc); se a tela de reclamações abre antes da data de abertura das telas; os detalhes do Kaio.
 - **Próximo:** com as decisões do particionamento, a migração 0061, depois do merge do (n). Primeiro passo: conferir na `main` a última migração e os meta-testes 1, 2, 28 e 32 em `supabase/tests/database/001_meta_seguranca.test.sql`.
+
+### O merge do #350, o "aprovo" do Cesar no adendo ao ADR-033 e as respostas de 20/10/2026
+
+**Do Cesar** (20/10/2026, nesta sessão): "Cesar aqui. 350 mergeado e db push feito. Aprovo o escrito no adendo ao ADR-033". Sobre a tela de reclamações antes da data de abertura das telas: "Sim, deve". Sobre o particionamento, pediu a recomendação.
+- **#350 mergeado,** com a 0060 no dev pelo `db push` do Cesar. A conferência no `supabase migration list` também é do Cesar.
+- **O adendo de 20/10/2026 ao ADR-033** (o número do insight) tem o "aprovo" do Cesar e falta o do Kaio. O status no `docs/03` muda num PR de zona protegida, com os dois.
+
+**Do Kaio** (20/10/2026, nesta sessão): "Kaio aqui. Quais sao os detalhes pendentes? Qual recomendação?". A lista e a recomendação estão na resposta desta sessão. A recomendação é manter os detalhes como estão até haver dados do piloto, e os 365 dias da retenção até a resposta da pergunta 38.
+
+**A tela de reclamações antes da abertura: proposta.** Muda o adendo de 12/10/2026 ao ADR-035 (a visibilidade das telas no piloto) e muda quem vê e quando. Por isso precisa do "sim" do Kaio e de um adendo com o "aprovo" dos dois.
+- **Desde quando:** desde o início do contrato do módulo, sem esperar a data de abertura. O que muda é só a tela de reclamações: a importação, a fila, a classificação e o abrir chamado da reclamação.
+- **Para quem:** os mesmos papéis da política de abertura (padrão: Admin do grupo e Gestor CSC; o Gerente, se o Admin incluir), e só quem decide insight no hotel, como hoje.
+- **O que continua fechado até a data:** a lista de insights, a página do insight e a do ativo, e o abrir chamado do insight. Antes da data, a tela de reclamações não mostra o link "Voltar aos insights".
+- **No menu, antes da data:** o item do módulo aparece para esses papéis e leva às reclamações. Para o Admin, também à página Abertura das telas.
+- **O job não muda:** as reclamações classificadas já entram no score e na regra sistêmica. Os insights que elas abrem aparecem na data de abertura, como os outros.
+- **Sem migração.** É um PR `int:` fora da zona protegida (motor, web, menu e textos), mais o adendo ao ADR-035 num PR de zona protegida.
