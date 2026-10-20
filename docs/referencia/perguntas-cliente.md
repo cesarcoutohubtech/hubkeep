@@ -4,7 +4,7 @@ Perguntas ao grupo Slaviero reunidas dos docs e dos diários (29/09/2026), agrup
 
 Pergunta nova para o cliente entra aqui, e não espalhada pelos docs.
 
-Atualizado em 08/10/2026 com a revisão de escopo de 07/10 (`docs/referencia/documento-projeto.md`, seção "Pendências"). Em 13/10/2026, entraram as configurações do piloto (30 a 34). **A primeira pergunta da reunião é o acesso ao sistema hoteleiro (12),** porque é a pendência que mais pesa no calendário.
+Atualizado em 08/10/2026 com a revisão de escopo de 07/10 (`docs/referencia/documento-projeto.md`, seção "Pendências"). Em 13/10/2026, entraram as configurações do piloto (30 a 34). Em 20/10/2026, as reclamações e avaliações de hóspedes (35 a 39), pedidas pelo agente do Intelligence em 16/10/2026. **A primeira pergunta da reunião é o acesso ao sistema hoteleiro (12),** porque é a pendência que mais pesa no calendário.
 
 ## Proprietários e condo-hotel
 
@@ -143,6 +143,26 @@ Decisão do Cesar (13/10/2026, no chat do agente do Kaio): estas cinco configura
     - Param o relógio as pausas por "Aguardando peça", "Aguardando fornecedor" e "UH ocupada, sem acesso". A meta do % de SLA é 90%.
     - O aviso de prazo em risco sai com 80% do tempo gasto (`chamado.escalonamento`, sem tela).
     - Fontes: `packages/dominio/src/sla.ts` (`SLA_PADRAO`, `HORARIO_PADRAO`), `docs/03-decisoes-tecnicas.md` (ADR-042 e ADR-043), `docs/piloto/guia-implantacao-hotel.md` (etapa 8).
+
+## Reclamações e avaliações de hóspedes (HubKeep Intelligence, 20/10/2026)
+
+Pedidas pelo agente do Intelligence em 16/10/2026 (`docs/diario-intelligence.md`, "A 1.5 sem IA: o sinal do hóspede") e escritas aqui por ele, com a decisão do Kaio de 20/10/2026. A importação por CSV, a classificação à mão, o Guest Impact Score, a regra sistêmica das reclamações e o abrir chamado da reclamação já existem (ADR-047, `docs/piloto/README.md`). Até a resposta, valem as colunas fixas do HubKeep e os padrões abaixo.
+
+35. **Ferramentas de pesquisa e avaliação.** Que ferramentas o grupo usa hoje (pesquisa própria, NPS ou CSAT, TrustYou, ReviewPro, myHotel, MARA, Google, Booking, central de atendimento) e em quais hotéis do piloto?
+    - Hoje: a fonte é um texto livre na coluna `fonte` do CSV (por exemplo, `google` ou `booking`). Não há integração com nenhuma ferramenta.
+    - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-047), `docs/diario-intelligence.md` (16/10/2026).
+36. **Exportação e acesso.** Cada ferramenta exporta planilha (CSV ou Excel) ou tem API? Com que frequência dá para exportar, e quem tem o acesso (o hotel ou o CSC)?
+    - Hoje: só CSV, até 1000 linhas por arquivo, separado por vírgula ou ponto e vírgula, importado pela tela. A entrada por API e webhook (IX1 a IX3) fica para depois do piloto (Cesar, 30/09/2026).
+    - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-047), `docs/piloto/manual-por-papel.md` (Gerente do hotel, reclamações de hóspedes).
+37. **O que vem na exportação.** Vem a data, a nota e a escala, o texto, o idioma, a UH citada e o código da avaliação? Vem nome ou contato do hóspede?
+    - Hoje: as colunas fixas `id_externo, data, fonte, nota, escala, texto, idioma, uh`; o mapeamento das colunas de cada ferramenta depende desta resposta. O HubKeep não guarda nome, contato nem reserva do hóspede: as colunas fora do modelo ficam de fora na importação.
+    - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-047), `docs/exemplos/reclamacoes-hospede.csv`.
+38. **Retenção do texto (LGPD).** Por quanto tempo o texto da avaliação pode ficar no HubKeep, e quem no grupo responde por isso?
+    - Hoje: o texto é apagado 365 dias depois da data da avaliação; a classificação, a nota e as datas ficam. O prazo vai de 30 a 1825 dias, pela política `inteligencia.sinal_hospede` (sem tela), e os 365 dias são provisórios até esta resposta.
+    - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-047), `docs/diario-intelligence.md` (PR C1a, 17/10/2026).
+39. **Quem importa e classifica.** Em cada hotel, quem vai importar as avaliações e classificar as de manutenção: o Gerente do hotel ou o CSC?
+    - Hoje: quem decide insight no hotel e vê as telas do módulo. No padrão da abertura das telas, são o Admin do grupo e o Gestor CSC; o Gerente do hotel só entra se o Admin incluir o papel. As telas abrem 60 dias depois da ativação do módulo, e as avaliações de antes entram depois, cada uma com a data dela.
+    - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-047 e o adendo de 12/10/2026 ao ADR-035), `docs/piloto/README.md` (HubKeep Intelligence no piloto).
 
 ## Fora da reunião
 

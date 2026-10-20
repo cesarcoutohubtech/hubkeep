@@ -1,6 +1,6 @@
 # Guia de implantação de um hotel (piloto)
 
-Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que existem na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228). Repetir o guia para cada hotel do piloto. O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (plano em `docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface (catálogo pt-BR).
+Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que existem na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228; em 20/10/2026, só com as reclamações de hóspedes do HubKeep Intelligence, até o #338). Repetir o guia para cada hotel do piloto. O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (plano em `docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface (catálogo pt-BR).
 
 ## 1. Quem faz o quê
 
@@ -17,6 +17,7 @@ Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que ex
 | Políticas | Admin do grupo | nada |
 | Ativação do hotel | Admin do grupo (consome licença) | nada |
 | Teste de ponta a ponta e treinamento | CSC conduz | Gerente, técnicos e solicitantes participam |
+| Reclamações de hóspedes (HubKeep Intelligence, depois da abertura das telas) | Admin do grupo ou Gestor CSC importam e classificam, no padrão | exporta as avaliações da ferramenta de pesquisa, se o acesso for do hotel; o Gerente classifica só se o Admin incluir o Gerente na abertura das telas (perguntas 35 a 39 de `docs/referencia/perguntas-cliente.md`) |
 
 ## 2. Pré-requisitos do grupo (uma vez, antes do primeiro hotel)
 
@@ -127,6 +128,7 @@ Em **Configuração e políticas**, painel **Políticas**:
 - **Códigos obrigatórios no aceite** ("Exigir falha, causa e solução no aceite"): existe (I6), desligado por padrão. Ligar ou não no piloto: **[a definir]** com o Cesar; ligado, o aceite sem os três códigos é recusado.
 - **Foto de depois na conclusão** e **Assinatura no aceite:** existem (I8), desligadas por padrão. Ligar ou não no piloto: **[a definir]** na reunião com a Slaviero (perguntas 31 e 32 de `docs/referencia/perguntas-cliente.md`). Ligadas, a conclusão sem foto de depois e o aceite sem assinatura são recusados.
 - **Checklist completo na conclusão:** existe (PV1), desligado por padrão; desligado, o PWA só avisa os itens obrigatórios que faltam. Ligar ou não no piloto: **[a definir]** na reunião com a Slaviero (pergunta 33 de `docs/referencia/perguntas-cliente.md`).
+- **HubKeep Intelligence:** as políticas do módulo não têm tela, menos a **Abertura das telas** (Admin do grupo). Sem gravação, vale o padrão: a retenção do texto da reclamação de hóspede em 365 dias, contados da data da avaliação (`inteligencia.sinal_hospede`, provisória até a pergunta 38 de `docs/referencia/perguntas-cliente.md`), e o Guest Impact Score na janela de 90 dias (`inteligencia.impacto_hospede`). A importação das reclamações não entra na implantação do hotel: a tela só abre na data de abertura, e as avaliações dos dias anteriores entram depois, cada uma com a data dela.
 - **Planos preventivos:** em **Preventivas**, cadastrar os planos do hotel (por ativo ou por categoria, com a periodicidade, a primeira data, o checklist e o responsável) e ativar. Quais planos o piloto começa: **[a definir]** na reunião com a Slaviero (pergunta 30 de `docs/referencia/perguntas-cliente.md`). O plano ainda não gera OS **[vai mudar na 1b]** (PV3). Modelos por categoria: **[ainda não existe]** (M1).
 
 ### Etapa 9. Ativar o hotel
