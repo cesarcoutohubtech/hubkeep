@@ -61,6 +61,13 @@ export function SeloDoEstado({ estado }: { estado: string }) {
   );
 }
 
+/** O número que as pessoas citam: "INS-0133", com quatro dígitos ao menos. */
+export function useNumeroDoInsight() {
+  const t = useT();
+  return (numero: number) =>
+    t('inteligencia.insight.numero', { numero: String(numero).padStart(4, '0') });
+}
+
 /** O título do insight: o nome do ativo, ou o nome da regra sistêmica. */
 export function useTituloDoInsight() {
   const t = useT();

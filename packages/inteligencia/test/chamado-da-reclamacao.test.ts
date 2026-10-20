@@ -153,6 +153,7 @@ describe('a ligação do chamado aberto', () => {
 
 const insight = (evidencia: unknown, hotelId: string | null = 'h1'): InsightComEvidencia => ({
   id: 'i1',
+  numero: 133,
   hotelId,
   bandeiraId: null,
   hotelIds: ['h1'],

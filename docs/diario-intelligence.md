@@ -3222,3 +3222,18 @@ O Cesar decidiu "Particionada" (20/10/2026). A opção A de `docs/referencia/ret
 **Detalhe do Kaio** (ADR-033): o texto do aviso no registro da execução.
 
 **Também entra:** o adendo ao ADR-036, com a aprovação escrita dos dois, e o `docs/referencia/retencao-metrica-diaria.md` atualizado.
+
+### O merge do #346 e o PR do (n) (20/10/2026)
+
+- **#346 mergeado** (Cesar, 20/10/2026), com os cinco checks verdes no head bad86b51.
+- **O PR do (n):** a branch recomeçou da `main` (890bc69), e o (n) da branch local entrou sem conflito. É PR de zona protegida (migração 0060, pgTAP 031 e `docs/03`). Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona. O #349 e o #345 (1c) não tocam, e o #310 passa no check.
+- **Verificação local:** lint e typecheck verdes. 5.565 testes: 5.201 passaram, 0 falhas e 364 pulados (a integração do banco, que roda só na CI).
+- **Para aprovar, depois de lido:** o adendo de 20/10/2026 ao ADR-033 (o número do insight), com o "aprovo" escrito de Cesar e de Kaio. Merge não aprova ADR.
+- **Detalhe do Kaio** (ADR-033): o formato "INS-0133", com quatro dígitos ao menos, e o rótulo "Número do insight".
+
+### Ponto de retomada (20/10/2026, PR do (n))
+
+- **`main`:** 890bc69 (#346). Última migração na `main`: 0059. **Dev:** a 0060 vai pelo `db push` do Cesar depois do merge, com a conferência no `supabase migration list`.
+- **PR aberto:** o `int:` do (n), de zona protegida. O merge é do Cesar e falha no check "zona protegida" por desenho.
+- **Esperando:** o "aprovo" dos dois no adendo ao ADR-033; o merge e o `db push`; as decisões do particionamento (pa, pb, pc); se a tela de reclamações abre antes da data de abertura das telas; os detalhes do Kaio.
+- **Próximo:** com as decisões do particionamento, a migração 0061, depois do merge do (n). Primeiro passo: conferir na `main` a última migração e os meta-testes 1, 2, 28 e 32 em `supabase/tests/database/001_meta_seguranca.test.sql`.
