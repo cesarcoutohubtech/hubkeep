@@ -5,15 +5,16 @@
 // bandeiras, a série e a produtividade somam só os hotéis da visão completa.
 import {
   type Contexto,
-  type DiaDaSerie,
   type FaixaDeIdade,
   type Indicadores,
+  type IndicadoresDoDia,
   type ParcialDeIndicadores,
   type PeriodoDoPainel,
   type ProdutividadeDaEquipe,
   type VisaoDoHotel,
   exigir,
   indicadoresDaParcial,
+  indicadoresDoDia,
   intervaloNoFuso,
   parcialDoHotel,
   podeVerIndicadores,
@@ -61,7 +62,8 @@ export interface PainelDeIndicadores {
   hoteis: IndicadoresDoHotel[];
   /** A comparação na bandeira: cada bandeira com hotel na visão completa. */
   bandeiras: IndicadoresDaBandeira[];
-  serie: DiaDaSerie[];
+  /** Os dias do período até hoje, com os indicadores de cada dia. */
+  serie: IndicadoresDoDia[];
   produtividade: (ProdutividadeDaEquipe & { equipeNome: string | null })[];
 }
 
@@ -190,7 +192,7 @@ export function criarCasosDeUsoDeIndicadores(deps: {
             indicadores: indicadoresDaParcial(somarParciais(b.parciais)),
           }))
           .sort((a, b) => a.nome.localeCompare(b.nome)),
-        serie: rede.serie,
+        serie: rede.serie.map(indicadoresDoDia),
         produtividade: rede.produtividade.map((p) => ({
           ...p,
           equipeNome: p.equipeId === null ? null : (nomeDaEquipe.get(p.equipeId) ?? null),
