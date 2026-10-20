@@ -578,6 +578,7 @@ export {
   validarDecisaoDoCadastro,
 } from './aprovacao-do-cadastro';
 export type { DecisaoDoCadastro, SituacaoDoCadastro } from './aprovacao-do-cadastro';
+export {
   FAIXAS_DE_IDADE,
   LIMITES_DO_PAINEL,
   amostraSuficiente,
