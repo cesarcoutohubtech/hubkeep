@@ -348,6 +348,21 @@ export type {
   HistoricoDoRegistro,
 } from './casos-de-uso/historico';
 export type {
+  DadosDoHotel,
+  HotelDoPainel,
+  JanelaDosIndicadores,
+  PortaIndicadores,
+} from './portas/indicadores';
+export { criarCasosDeUsoDeIndicadores } from './casos-de-uso/indicadores';
+export type {
+  CartoesDoHotel,
+  CasosDeUsoDeIndicadores,
+  FiltroDosIndicadores,
+  IndicadoresDaBandeira,
+  IndicadoresDoHotel,
+  PainelDeIndicadores,
+} from './casos-de-uso/indicadores';
+export type {
   ModeloDeAtivoGravado,
   MudancaDeModeloDeAtivo,
   PortaModelosDeAtivo,

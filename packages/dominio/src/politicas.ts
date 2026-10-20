@@ -96,6 +96,15 @@ export type PrioridadePadraoPorCategoria = Record<string, string>;
  */
 export type NomesDeCriticidade = Partial<Record<`${Criticidade}`, Rotulos>>;
 
+/**
+ * Tolerância da preventiva em dia (1c, decisão 11 do Cesar, de 13/10/2026): os
+ * dias depois do dia previsto em que a conclusão ainda conta como em dia.
+ * Padrão 0.
+ */
+export interface ToleranciaDaPreventiva {
+  dias: number;
+}
+
 export interface ValoresDePolitica {
   'os.aceite_automatico': AceiteAutomatico;
   'os.codigos_obrigatorios': CodigosObrigatorios;
@@ -113,6 +122,8 @@ export interface ValoresDePolitica {
   'chamado.escalonamento': EscalonamentoDeSla;
   /** Matriz do arrendado (1c, decisão 5): por categoria, a arrendatária ou o locador. */
   'hotel.matriz_arrendamento': MatrizDeArrendamento;
+  /** Tolerância da preventiva em dia (1c, painel de indicadores, decisão 11). */
+  'preventiva.tolerancia_dias': ToleranciaDaPreventiva;
 }
 export type ChaveDePolitica = keyof ValoresDePolitica;
 
@@ -203,6 +214,15 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
     // Herança só grupo → hotel (decisão 5 do Cesar, de 13/10/2026).
     escopos: ['hotel', 'grupo'],
   },
+  'preventiva.tolerancia_dias': {
+    padrao: { dias: 0 },
+    valido: (v): v is ToleranciaDaPreventiva =>
+      objeto(v) &&
+      Object.keys(v).length === 1 &&
+      Number.isInteger(v['dias']) &&
+      (v['dias'] as number) >= 0 &&
+      (v['dias'] as number) <= 30,
+  },
 };
 
 export const CHAVES_DE_POLITICA = Object.keys(POLITICAS) as ChaveDePolitica[];
@@ -251,7 +271,7 @@ export function resolverPolitica<C extends ChaveDePolitica>(
 }
 
 /** Prefixos das chaves do núcleo; extensão nenhuma usa um deles. */
-export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.', 'hotel.'] as const;
+export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.', 'hotel.', 'preventiva.'] as const;
 
 const PREFIXO = /^[a-z][a-z_]*\.$/;
 

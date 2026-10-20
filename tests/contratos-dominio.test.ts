@@ -297,6 +297,17 @@ describe('contratos × domínio', () => {
         'locador',
         null,
       ],
+      'preventiva.tolerancia_dias': [
+        { dias: 0 },
+        { dias: 30 },
+        { dias: 31 },
+        { dias: -1 },
+        { dias: 1.5 },
+        { dias: '1' },
+        { dias: 1, extra: 1 },
+        {},
+        null,
+      ],
     };
     for (const chave of CHAVES_DE_POLITICA) {
       expect(FORMATOS_DE_POLITICA_API[chave].safeParse(POLITICAS[chave].padrao).success).toBe(true);

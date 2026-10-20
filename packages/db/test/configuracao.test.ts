@@ -238,6 +238,7 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
         'chamado.sla',
         'hotel.horario_atendimento',
         'hotel.matriz_arrendamento',
+        'preventiva.tolerancia_dias',
       ].sort(),
     );
   });
