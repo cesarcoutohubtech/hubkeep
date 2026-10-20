@@ -1033,3 +1033,14 @@ Na branch `claude/1b-m1-app`, PR fora da zona protegida.
   - pgTAP 061 (34 asserções) e os meta-testes 28 e 32 com a tabela nova. Tipos do Kysely atualizados.
   - Sem ADR novo: o desenho e as decisões 15 a 19 cobrem a M4 e a M2.
 - **Depois do merge e do `db push` da 0058:** a M4 e a M2 fora da zona (domínio, aplicação, API e telas da fila de aprovação e da importação), e o ativo pendente fora das sugestões de plano da M1c.
+
+## PB1, zona protegida (20/10/2026)
+
+Pela ordem dos PRs do desenho, a PB1 vem depois da M4 e da M2, e antes da M3. Conferido no GitHub em 20/10/2026: nenhum PR de zona protegida aberto (#310, #332 e #339 não tocam a zona).
+- **Migração 0059** (`20261020150000_pacote_da_bandeira.sql`), na branch `claude/1b-pb1-zona`:
+  - `bandeira_id` anulável em `app.modelo_ativo` e `app.checklist_modelo` (nulo vale para o grupo), com FK composta;
+  - `app.plano_padrao` (decisão 20): o plano por categoria do pacote, da bandeira ou do grupo, com periodicidade, checklist, versão e ativa. Lê o Admin, o Gestor CSC, o Gerente e o Implantador; grava só o Admin; o worker não lê;
+  - `app.plano_preventivo.plano_padrao_id`: de que plano do pacote o plano do hotel foi copiado, único por hotel, para reaplicar não duplicar.
+- **Ajuste de implementação:** a bandeira não recebe UPDATE nas três tabelas. Ela é campo de escopo no meta-teste 18 (ADR-011), e abrir exceção pediria mudar o ADR. Para levar um modelo a outra bandeira, o Admin desativa e cria outro. A origem do plano copiado também não muda.
+- pgTAP 062 (30 asserções) e o meta-teste 28 com a tabela nova. Tipos do Kysely atualizados. Sem ADR novo.
+- **Depois do merge e do `db push` da 0059:** a PB1 fora da zona (filtro por bandeira nos modelos, cadastro do pacote, aplicar o pacote ao hotel pelo painel de implantação), a partir da `main` com a M4a e a M2.
