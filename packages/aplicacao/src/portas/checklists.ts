@@ -19,6 +19,8 @@ export interface ModeloDeChecklistGravado {
   itens: unknown;
   versao: number;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo; não muda depois de criado. */
+  bandeiraId: string | null;
 }
 
 export interface ChecklistDaOsGravado {
@@ -65,10 +67,12 @@ export interface PortaChecklists {
   /** Idioma padrão do tenant, para a volta dos nomes (ADR-027). */
   idiomaPadrao(ctx: Contexto): Promise<Idioma>;
   listarModelos(ctx: Contexto): Promise<ModeloDeChecklistGravado[]>;
-  /** Na unit of work, com auditoria e evento. */
+  /** A bandeira existe e é visível a quem pede (PB1b). */
+  bandeira(ctx: Contexto, id: string): Promise<boolean>;
+  /** Na unit of work, com auditoria e evento. A bandeira só se escolhe aqui. */
   criarModelo(
     ctx: Contexto,
-    m: { categoriaId: string | null; nomes: object; itens: object[] },
+    m: { categoriaId: string | null; bandeiraId: string | null; nomes: object; itens: object[] },
   ): Promise<{ id: string }>;
   /** Na unit of work. Nada alterado (RLS): NaoEncontrado checklist_nao_encontrado. */
   alterarModelo(

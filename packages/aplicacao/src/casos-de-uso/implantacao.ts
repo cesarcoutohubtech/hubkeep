@@ -7,9 +7,11 @@ import {
   NaoEncontrado,
   type Resultado,
   type ResumoDeImplantacao,
+  type TempoDeImplantacao,
   exigir,
   podeVerImplantacao,
   resumirImplantacao,
+  tempoDaImplantacao,
 } from '@hubkeep/dominio';
 import type { HotelEmImplantacao, PortaImplantacao } from '../portas/implantacao';
 import type { PortaMembros } from '../portas/membros';
@@ -19,7 +21,7 @@ export interface CasosDeUsoDeImplantacao {
   painel(
     ctx: Contexto,
     hotelId: string,
-  ): Promise<ResumoDeImplantacao & { hotel: HotelEmImplantacao }>;
+  ): Promise<ResumoDeImplantacao & { hotel: HotelEmImplantacao; tempo: TempoDeImplantacao }>;
 }
 
 export function criarCasosDeUsoDeImplantacao(deps: {
@@ -35,16 +37,19 @@ export function criarCasosDeUsoDeImplantacao(deps: {
     async painel(ctx, hotelId) {
       const agora = deps.relogio.agora();
       exigir(podeVer(await deps.atribuicoes.doUsuario(ctx), hotelId, agora));
-      const hotel = await deps.implantacao.hotel(ctx, hotelId);
-      if (!hotel) throw new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
-      const [locais, pessoas, ativos, planos] = await Promise.all([
+      const daPorta = await deps.implantacao.hotel(ctx, hotelId);
+      if (!daPorta) throw new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
+      const { criadoEm, ...hotel } = daPorta;
+      const [locais, pessoas, ativos, planos, mudancas] = await Promise.all([
         deps.implantacao.locais(ctx, hotelId),
         deps.membros.listar(ctx),
         deps.implantacao.ativos(ctx, hotelId),
         deps.implantacao.planos(ctx, hotelId),
+        deps.implantacao.mudancasDeSituacao(ctx, hotelId),
       ]);
       return {
         hotel,
+        tempo: tempoDaImplantacao({ status: hotel.status, criadoEm }, mudancas, agora),
         ...resumirImplantacao(hotelId, locais, pessoas, agora, ativos, hotel, planos),
       };
     },

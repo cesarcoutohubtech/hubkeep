@@ -86,7 +86,13 @@ export interface PortaAtivos {
   modelo(
     ctx: Contexto,
     modeloId: string,
-  ): Promise<{ id: string; categoriaId: string; ativa: boolean } | null>;
+  ): Promise<{
+    id: string;
+    categoriaId: string;
+    ativa: boolean;
+    /** PB1b: nulo vale para o grupo. */
+    bandeiraId: string | null;
+  } | null>;
   /** Com `termo` (já normalizado, B6), só os que o têm na coluna `busca`. */
   ativos(ctx: Contexto, hotelId: string, termo?: string): Promise<AtivoGravado[]>;
   ativo(ctx: Contexto, ativoId: string): Promise<AtivoGravado | null>;

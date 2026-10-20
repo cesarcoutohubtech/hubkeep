@@ -27,6 +27,8 @@ export const ModeloDeAtivoApi = z
     /** Sobe a cada gravação; a alteração leva a versão vista (ADR-029). */
     versao: z.int(),
     ativa: z.boolean(),
+    /** PB1b: nulo vale para o grupo inteiro; não muda depois de criado. */
+    bandeiraId: z.guid().nullable(),
   })
   .meta({ id: 'ModeloDeAtivoApi' });
 
@@ -45,6 +47,11 @@ export const PedidoDeModeloDeAtivo = z
     planoSugerido: z.object({ intervalo: z.number(), unidade: z.string().max(16) }).nullable(),
   })
   .meta({ id: 'PedidoDeModeloDeAtivo' });
+
+/** A bandeira (PB1b) só se escolhe na criação; ausente ou nula: do grupo. */
+export const PedidoDeCriacaoDeModeloDeAtivo = PedidoDeModeloDeAtivo.extend({
+  bandeiraId: z.guid().nullable().optional(),
+}).meta({ id: 'PedidoDeCriacaoDeModeloDeAtivo' });
 
 export const PedidoDeAlteracaoDeModeloDeAtivo = PedidoDeModeloDeAtivo.extend({
   versao: z.int(),

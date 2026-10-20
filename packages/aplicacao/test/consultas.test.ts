@@ -1,7 +1,11 @@
 // Consultas da corretiva (C7): o filtro chega à porta, a página tem o tamanho
 // do domínio e o cursor, o período inválido para antes do banco, e o chamado
 // fora do escopo dá 404 (a linha do tempo não é lida).
-import { type FiltroDaLista, TAMANHO_DA_PAGINA } from '@hubkeep/dominio';
+import {
+  type FiltroDaLista,
+  LIMITES_DA_EXPORTACAO_DA_LISTA,
+  TAMANHO_DA_PAGINA,
+} from '@hubkeep/dominio';
 import { describe, expect, it, vi } from 'vitest';
 import { criarCasosDeUsoDeConsultas } from '../src/casos-de-uso/consultas';
 import type { ChamadoResumido, PortaConsultasDaCorretiva } from '../src/portas/consultas';
@@ -94,6 +98,19 @@ describe('consultas da corretiva (C7)', () => {
       expect.objectContaining({ doLocador: true }),
       TAMANHO_DA_PAGINA + 1,
     );
+  });
+
+  it('a exportação da lista de chamados pede 1.000 por página (1c, item 9)', async () => {
+    const p = porta(TAMANHO_DA_PAGINA + 5);
+    const uc = criarCasosDeUsoDeConsultas({ consultas: p });
+    const r = await uc.listarChamados(ctx, { exportacao: true });
+    expect(p.chamados).toHaveBeenCalledWith(
+      ctx,
+      expect.any(Object),
+      LIMITES_DA_EXPORTACAO_DA_LISTA.porPagina + 1,
+    );
+    expect(r.itens).toHaveLength(TAMANHO_DA_PAGINA + 5);
+    expect(r.proximo).toBeNull();
   });
 
   it('com mais que a página: devolve a página e o id do último como próximo', async () => {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { podeVerImplantacao, resumirImplantacao } from '../src/implantacao';
+import {
+  META_DA_IMPLANTACAO_MS,
+  podeVerImplantacao,
+  resumirImplantacao,
+  tempoDaImplantacao,
+} from '../src/implantacao';
 import type { Atribuicao } from '../src/index';
 
 const AGORA = new Date('2026-09-27T12:00:00Z');
@@ -194,5 +199,64 @@ describe('painel de implantação (A5)', () => {
         resumirImplantacao(H1, [], [], AGORA, [], { modeloContratual }).pendencias,
       ).not.toContain('modelo_contratual_nao_informado');
     }
+  });
+});
+
+describe('tempo de implantação (PB1)', () => {
+  const h = (horas: number) => new Date(AGORA.getTime() + horas * 3_600_000);
+  const criado = { status: 'em_implantacao', criadoEm: h(-30) };
+
+  it('em implantação: conta da entrada até agora, e passa da meta depois de 1 dia', () => {
+    const t = tempoDaImplantacao(criado, [{ em: h(-30), status: 'em_implantacao' }], AGORA);
+    expect(t).toEqual({
+      entrouEm: h(-30),
+      prontoEm: null,
+      duracaoMs: 30 * 3_600_000,
+      dentroDaMeta: false,
+    });
+    const recente = tempoDaImplantacao({ ...criado, criadoEm: h(-2) }, [], AGORA);
+    expect(recente).toMatchObject({
+      entrouEm: h(-2),
+      duracaoMs: 2 * 3_600_000,
+      dentroDaMeta: true,
+    });
+  });
+
+  it('pronto: da entrada até a primeira ativação, fora de ordem na entrada', () => {
+    const t = tempoDaImplantacao(
+      { status: 'ativo', criadoEm: h(-50) },
+      [
+        { em: h(-10), status: 'ativo' },
+        { em: h(-40), status: 'em_implantacao' },
+        { em: h(-20), status: 'ativo' },
+      ],
+      AGORA,
+    );
+    expect(t).toEqual({
+      entrouEm: h(-40),
+      prontoEm: h(-20),
+      duracaoMs: 20 * 3_600_000,
+      dentroDaMeta: true,
+    });
+  });
+
+  it('exatamente 1 dia ainda está na meta', () => {
+    const t = tempoDaImplantacao(
+      { status: 'ativo', criadoEm: h(-24) },
+      [{ em: AGORA, status: 'ativo' }],
+      AGORA,
+    );
+    expect(t.duracaoMs).toBe(META_DA_IMPLANTACAO_MS);
+    expect(t.dentroDaMeta).toBe(true);
+  });
+
+  it('sem entrada na auditoria, vale a criação; ativação anterior à entrada não conta', () => {
+    const t = tempoDaImplantacao(criado, [{ em: h(-40), status: 'ativo' }], AGORA);
+    expect(t).toMatchObject({ entrouEm: h(-30), prontoEm: null, duracaoMs: 30 * 3_600_000 });
+  });
+
+  it('hotel já ativo sem a ativação registrada: sem duração', () => {
+    const t = tempoDaImplantacao({ status: 'ativo', criadoEm: h(-100) }, [], AGORA);
+    expect(t).toEqual({ entrouEm: h(-100), prontoEm: null, duracaoMs: null, dentroDaMeta: null });
   });
 });

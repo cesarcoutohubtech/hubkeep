@@ -4,7 +4,8 @@
 //   - concessão acima do próprio papel ou em outro hotel é 403 com código, e
 //     ativar hotel é só do Admin;
 //   - implantador vencido e gerente não veem o painel; com a checagem
-//     removida, a RLS ainda esconde o hotel de outro escopo.
+//     removida, a RLS ainda esconde o hotel de outro escopo;
+//   - o tempo de implantação sai da auditoria do hotel (PB1, sem migração).
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -231,5 +232,35 @@ describe.skipIf(!temBanco)('A5 — Implantador e painel de implantação', { tim
     const p = await painel.painel(ctx(U.implantador), H1);
     expect(p.hotel.modeloContratual).toBe('administrado');
     expect(p.pendencias).not.toContain('modelo_contratual_nao_informado');
+  });
+
+  it('o tempo de implantação sai da auditoria do hotel (PB1)', async () => {
+    const { rows } = await dono.query(`select criado_em from app.hotel where id = $1`, [H1]);
+    const criadoEm = new Date(rows[0].criado_em);
+    const emCurso = await painel.painel(ctx(U.implantador), H1);
+    expect(emCurso.tempo).toMatchObject({ entrouEm: criadoEm, prontoEm: null });
+    expect(emCurso.tempo.duracaoMs).toBeGreaterThanOrEqual(0);
+
+    // A entrada e a ativação como as grava o repositório de hotéis.
+    const entrou = new Date(Date.now() - 30 * 3_600_000);
+    const pronto = new Date(Date.now() - 10 * 3_600_000);
+    for (const [acao, status, em] of [
+      ['importar_do_sistema_hoteleiro', 'em_implantacao', entrou],
+      ['ativar', 'ativo', pronto],
+    ] as const) {
+      await dono.query(
+        `insert into app.auditoria (id, tenant_id, usuario_id, entidade, registro_id, acao, hotel_id, depois, em)
+         values ($1, $2, $3, 'hotel', $4, $5, $4, jsonb_build_object('status', $6::text), $7)`,
+        [randomUUID(), TENANT, U.admin, H1, acao, status, em],
+      );
+    }
+    await dono.query(`update app.hotel set status = 'ativo' where id = $1`, [H1]);
+    const p = await painel.painel(ctx(U.implantador), H1);
+    expect(p.tempo).toEqual({
+      entrouEm: entrou,
+      prontoEm: pronto,
+      duracaoMs: 20 * 3_600_000,
+      dentroDaMeta: true,
+    });
   });
 });

@@ -2,11 +2,16 @@
 // Painel de implantação do hotel (fase 1a, A5): o que falta para o hotel
 // operar (inclusive o modelo contratual não informado, I2). O Implantador
 // cadastra as pessoas pela tela de membros, abaixo do próprio papel. Só o visual do pacote de interface (ADR-038, U4b); o
-// conteúdo é o mesmo.
+// conteúdo é o mesmo. O pacote da bandeira (PB1): a prévia do que aplicar
+// copia e o botão de aplicar, para o Admin e o Implantador; e o tempo de
+// implantação contra a meta de 1 dia, tirado da auditoria do hotel.
 import { MensagemDeErro, MensagemVazia, Nota, Painel, comoBotao } from '@hubkeep/ui';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
+import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
+import { AplicacaoDoPacote, type CopiaDoPacote } from '../../../../cliente/pacote-da-bandeira';
 import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
 import { useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
@@ -39,6 +44,54 @@ interface PainelDoHotel {
   papeis: { papel: Papel; pessoas: number }[];
   pessoasSemPapelVigente: { usuarioId: string; nome: string }[];
   pendencias: Pendencia[];
+  tempo: {
+    entrouEm: string;
+    prontoEm: string | null;
+    duracaoMs: number | null;
+    metaMs: number;
+    dentroDaMeta: boolean | null;
+  };
+}
+
+function TempoDeImplantacao({ tempo }: { tempo: PainelDoHotel['tempo'] }) {
+  const t = useT();
+  const intl = useIntl();
+  const data = (iso: string) => intl.formatDate(iso, { dateStyle: 'short', timeStyle: 'short' });
+  const duracao = (ms: number) => {
+    const minutos = Math.floor(ms / 60_000);
+    return t('admin.ativos.parada.duracao', {
+      horas: Math.floor(minutos / 60),
+      minutos: minutos % 60,
+    });
+  };
+  const horas = Math.round(tempo.metaMs / 3_600_000);
+  return (
+    <Painel titulo={t('admin.implantacao.tempo.titulo')}>
+      <p>{t('admin.implantacao.tempo.entrou', { em: data(tempo.entrouEm) })}</p>
+      {tempo.duracaoMs === null ? (
+        <p className="hk-suave">{t('admin.implantacao.tempo.sem_registro')}</p>
+      ) : (
+        <>
+          <p>
+            {tempo.prontoEm
+              ? t('admin.implantacao.tempo.pronto', {
+                  em: data(tempo.prontoEm),
+                  duracao: duracao(tempo.duracaoMs),
+                })
+              : t('admin.implantacao.tempo.em_curso', { duracao: duracao(tempo.duracaoMs) })}
+          </p>
+          <Nota tom={tempo.dentroDaMeta ? 'ok' : 'atencao'}>
+            {t(
+              tempo.dentroDaMeta
+                ? 'admin.implantacao.tempo.na_meta'
+                : 'admin.implantacao.tempo.fora_da_meta',
+              { horas },
+            )}
+          </Nota>
+        </>
+      )}
+    </Painel>
+  );
 }
 
 export default function PainelDeImplantacao() {
@@ -47,6 +100,28 @@ export default function PainelDeImplantacao() {
   const { hoteis, hotelId, setHotelId, erro: erroDosHoteis } = useHoteis();
   const [painel, setPainel] = useState<PainelDoHotel | null>(null);
   const [erro, setErro] = useState<ErroDaApi | null>(null);
+  // null: sem o pacote (quem não aplica recebe 403 e não vê o quadro).
+  const [copias, setCopias] = useState<CopiaDoPacote[] | null>(null);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
+
+  const carregarPacote = useCallback(async () => {
+    if (!hotelId) return;
+    const r = await chamarApi<{ copias: CopiaDoPacote[] }>(`/api/v1/hoteis/${hotelId}/pacote`);
+    setCopias(r.ok ? r.dados.copias : null);
+  }, [hotelId]);
+
+  useEffect(() => {
+    setAviso(null);
+    void carregarPacote();
+  }, [carregarPacote]);
+
+  async function aplicarPacote() {
+    const r = await chamarApi<unknown>(`/api/v1/hoteis/${hotelId}/pacote/aplicacao`, {
+      method: 'POST',
+    });
+    setAviso(r.ok ? { tipo: 'ok' } : { tipo: 'erro', erro: r.erro });
+    await carregarPacote();
+  }
 
   useEffect(() => {
     if (!hotelId) return;
@@ -87,6 +162,7 @@ export default function PainelDeImplantacao() {
               </ul>
             )}
           </Painel>
+          <TempoDeImplantacao tempo={painel.tempo} />
           <div className="hk-grade" data-colunas="2">
             <Painel titulo={t('admin.implantacao.locais')}>
               <p>{t('admin.implantacao.resumo_locais', painel.locais)}</p>
@@ -109,6 +185,12 @@ export default function PainelDeImplantacao() {
               </p>
             </Painel>
           </div>
+          {copias ? (
+            <Painel titulo={t('admin.pacote.aplicacao.titulo')}>
+              <AplicacaoDoPacote copias={copias} aplicar={aplicarPacote} />
+              <Aviso aviso={aviso} />
+            </Painel>
+          ) : null}
           <Painel
             titulo={t('admin.implantacao.pessoas')}
             acoes={

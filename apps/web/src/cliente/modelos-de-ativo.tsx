@@ -2,11 +2,14 @@
 // O formulário do modelo de ativo (fase 1b, M1), novo ou existente: a
 // categoria escolhida decide os campos pré-preenchidos (nenhum obrigatório,
 // porque o modelo só sugere) e os checklists que cabem nela. Vazio na
-// periodicidade é "sem sugestão". Usado pela tela /admin/modelos-de-ativo.
+// periodicidade é "sem sugestão". A bandeira (PB1b) se escolhe só na criação,
+// e o checklist tem de ir para os mesmos hotéis. Usado pela tela
+// /admin/modelos-de-ativo.
 import type { Idioma } from '@hubkeep/i18n';
 import { Botao, Campo as CampoDoFormulario, Entrada, Selecao } from '@hubkeep/ui';
 import { type FormEvent, useState } from 'react';
 import { useT } from '../i18n/cliente';
+import { type Bandeira, CampoDaBandeira } from './cadastro';
 import {
   CamposDaCategoria,
   type DefinicaoDeCampo,
@@ -28,6 +31,8 @@ export interface Checklist {
   categoriaId: string | null;
   nomes: Rotulos;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo. */
+  bandeiraId: string | null;
 }
 export interface Modelo {
   id: string;
@@ -40,6 +45,8 @@ export interface Modelo {
   planoSugerido: { intervalo: number; unidade: (typeof UNIDADES)[number] } | null;
   versao: number;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo; não muda depois de criado. */
+  bandeiraId: string | null;
 }
 
 const texto = (f: FormData, campo: string) => {
@@ -51,6 +58,7 @@ export function FormularioDeModelo({
   modelo,
   categorias,
   checklists,
+  bandeiras,
   nomeDaCategoria,
   rotulo,
   executar,
@@ -58,6 +66,7 @@ export function FormularioDeModelo({
   modelo: Modelo | null;
   categorias: readonly Categoria[];
   checklists: readonly Checklist[];
+  bandeiras: readonly Bandeira[];
   nomeDaCategoria: (c: Categoria) => string;
   rotulo: (r: Rotulos, reserva: string) => string;
   executar: (caminho: string, init: RequestInit) => Promise<void>;
@@ -67,6 +76,8 @@ export function FormularioDeModelo({
   const [categoriaId, setCategoriaId] = useState<string>(
     modelo?.categoriaId ?? ativas[0]?.id ?? '',
   );
+  const [bandeiraNova, setBandeiraNova] = useState('');
+  const bandeiraId = modelo ? modelo.bandeiraId : bandeiraNova || null;
   const definicoes = categorias.find((c) => c.id === categoriaId)?.campos ?? [];
   const valorDe = (chave: string) =>
     categoriaId === modelo?.categoriaId ? modelo?.campos[chave] : undefined;
@@ -92,11 +103,17 @@ export function FormularioDeModelo({
           method: 'PUT',
           body: JSON.stringify({ ...gravacao, versao: modelo.versao }),
         })
-      : executar('/api/v1/modelos-de-ativo', { method: 'POST', body: JSON.stringify(gravacao) }));
+      : executar('/api/v1/modelos-de-ativo', {
+          method: 'POST',
+          body: JSON.stringify({ ...gravacao, bandeiraId }),
+        }));
   }
 
   return (
     <form onSubmit={enviar} className="hk-em-linha">
+      {modelo ? null : (
+        <CampoDaBandeira bandeiras={bandeiras} valor={bandeiraNova} aoEscolher={setBandeiraNova} />
+      )}
       <CampoDoFormulario rotulo={t('admin.modelos_de_ativo.campo.categoria')}>
         {(p) => (
           <Selecao
@@ -132,7 +149,7 @@ export function FormularioDeModelo({
         {(p) => (
           <Selecao
             {...p}
-            key={`checklist|${categoriaId}`}
+            key={`checklist|${categoriaId}|${bandeiraId ?? ''}`}
             name="checklist"
             defaultValue={modelo?.checklistModeloId ?? ''}
           >
@@ -140,7 +157,9 @@ export function FormularioDeModelo({
             {checklists
               .filter(
                 (c) =>
-                  (c.ativa && (c.categoriaId === null || c.categoriaId === categoriaId)) ||
+                  (c.ativa &&
+                    (c.categoriaId === null || c.categoriaId === categoriaId) &&
+                    (c.bandeiraId === null || c.bandeiraId === bandeiraId)) ||
                   c.id === modelo?.checklistModeloId,
               )
               .map((c) => (
