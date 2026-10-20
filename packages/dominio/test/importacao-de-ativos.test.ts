@@ -3,6 +3,7 @@
 // de importação e a análise linha a linha contra as referências do hotel.
 import { describe, expect, it } from 'vitest';
 import {
+  type Atribuicao,
   type CategoriaDaImportacao,
   type DefinicaoDeCampo,
   LIMITES_DA_IMPORTACAO,
@@ -14,6 +15,7 @@ import {
   lerDataDaPlanilha,
   lerValorDaPlanilha,
   modeloDaPlanilha,
+  podeImportarAtivos,
   sha256,
   tamanhoUtf8,
 } from '../src/index';
@@ -305,5 +307,28 @@ describe('analisarImportacao', () => {
     expect(codigo(() => analisarImportacao('local;nome;campo.cor\nA;B;C', REFS))).toBe(
       'importacao_coluna_desconhecida',
     );
+  });
+});
+
+describe('podeImportarAtivos', () => {
+  const AGORA = new Date('2026-10-20T12:00:00Z');
+  const HOTEL = { id: 'h1', bandeiraId: null };
+  const atr = (papel: Atribuicao['papel']): Atribuicao => ({
+    id: 'a',
+    usuarioId: 'u',
+    papel,
+    escopo: { tipo: 'hotel', hotelId: 'h1' },
+    validoAte: null,
+    revogadoEm: null,
+  });
+  it('o Implantador e a gestão do hotel importam; o Técnico não', () => {
+    for (const p of ['admin_grupo', 'gestor_csc', 'implantador', 'gerente_hotel'] as const) {
+      expect(podeImportarAtivos([atr(p)], HOTEL, AGORA).permitido).toBe(true);
+    }
+    const r = podeImportarAtivos([atr('tecnico')], HOTEL, AGORA);
+    expect(r.permitido ? null : r.erro.codigo).toBe('importacao_fora_do_escopo');
+  });
+  it('o modelo sai com vírgula para quem usa vírgula', () => {
+    expect(modeloDaPlanilha([], ',')).toMatch(/^﻿local,edificacao,/);
   });
 });

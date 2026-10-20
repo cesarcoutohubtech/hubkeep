@@ -30,10 +30,41 @@ import {
   validarCriticidade,
   validarDatasDoAtivo,
 } from './ativos';
-import { ErroDeDominio, type Parametros, RegraViolada } from './erros';
+import { escopoCobreHotel } from './equipes';
+import { ErroDeDominio, type Parametros, PermissaoNegada, RegraViolada } from './erros';
+import { PAPEIS_QUE_GERENCIAM_LOCAIS } from './locais';
+import { type Resultado, vigente } from './permissoes';
+import type { Atribuicao } from './tipos';
 import type { StatusDeLocal } from './licenca';
 import { preencherComModelo, validarModeloDoAtivo } from './modelos-de-ativo';
 import { sha256, tamanhoUtf8 } from './resumo-sha256';
+
+/**
+ * Quem importa: o Implantador e a gestão do hotel (os que gerem locais); o
+ * Técnico cadastra um a um pelo celular. Os importados nascem aprovados (M4).
+ */
+export function podeImportarAtivos(
+  minhas: readonly Atribuicao[],
+  hotel: { id: string; bandeiraId: string | null },
+  agora: Date,
+): Resultado {
+  const pode = minhas.some(
+    (a) =>
+      vigente(a, agora) &&
+      PAPEIS_QUE_GERENCIAM_LOCAIS.includes(a.papel) &&
+      escopoCobreHotel(a, hotel),
+  );
+  return pode
+    ? { permitido: true }
+    : {
+        permitido: false,
+        erro: new PermissaoNegada(
+          'importacao_fora_do_escopo',
+          'Você não importa ativos neste hotel.',
+          { hotelId: hotel.id },
+        ),
+      };
+}
 
 export const LIMITES_DA_IMPORTACAO = { linhas: 2000, bytes: 2 * 1024 * 1024 } as const;
 
@@ -211,13 +242,17 @@ export function lerCabecalho(
   return colunas;
 }
 
-/** O cabeçalho do modelo da planilha, com o BOM para o Excel ler em UTF-8. */
+/**
+ * O cabeçalho do modelo da planilha, com o BOM para o Excel ler em UTF-8. O
+ * separador é o do formato regional de quem baixa (separadorDeCsv do i18n).
+ */
 export function modeloDaPlanilha(
   categorias: readonly { definicoes: readonly DefinicaoDeCampo[] }[],
-) {
+  separador: ',' | ';' = SEPARADOR_DO_MODELO,
+): string {
   const chaves = [...new Set(categorias.flatMap((c) => c.definicoes.map((d) => d.chave)))];
   const colunas = [...COLUNAS_DA_IMPORTACAO, ...chaves.map((c) => `${PREFIXO_DE_CAMPO}${c}`)];
-  return `﻿${colunas.join(SEPARADOR_DO_MODELO)}\r\n`;
+  return `\uFEFF${colunas.join(separador)}\r\n`;
 }
 
 const DATA_BR = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;

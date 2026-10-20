@@ -658,6 +658,7 @@ export {
   lerValorDaPlanilha,
   modeloDaPlanilha,
   paraComparar,
+  podeImportarAtivos,
 } from './importacao-de-ativos';
 export type {
   AtivoDaImportacao,

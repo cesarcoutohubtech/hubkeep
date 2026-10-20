@@ -19,6 +19,7 @@ import type {
   PortaModelosDeAtivo,
   PortaSugestoesDePlano,
   PortaCadastrosDeAtivos,
+  PortaImportacaoDeAtivos,
   PortaChamados,
   PlanoGravado,
   PortaPlanosPreventivos,
@@ -2623,5 +2624,83 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
     criar: (ctx, dados) => banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados)),
     alterar: (ctx, id, versao, mudanca) =>
       banco.executar(ctx, (uow) => alterarModeloDeAtivo(uow, id, versao, mudanca)),
+  };
+}
+
+/** Importação de ativos por planilha (M2): as referências do hotel e a gravação por linha. */
+export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportacaoDeAtivos {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    locais: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        tx
+          .selectFrom('app.local')
+          .select(['id', 'nome', 'edificacao', 'status'])
+          .where('hotel_id', '=', hotelId)
+          .execute(),
+      ),
+    categorias: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.categoria_ativo')
+            .select(['id', 'ativa', 'campos', 'nomes', 'chave_padrao'])
+            .execute()
+        ).map((c) => ({
+          id: c.id,
+          ativa: c.ativa,
+          campos: c.campos,
+          nomes: c.nomes,
+          chavePadrao: c.chave_padrao,
+        })),
+      ),
+    modelos: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.modelo_ativo')
+            .select(['id', 'categoria_id', 'nome', 'ativa', 'fabricante', 'modelo', 'campos'])
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          categoriaId: m.categoria_id,
+          nome: m.nome,
+          ativa: m.ativa,
+          fabricante: m.fabricante,
+          modelo: m.modelo,
+          campos: m.campos,
+        })),
+      ),
+    chaves: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.ativo')
+            .select('chave_importacao')
+            .where('hotel_id', '=', hotelId)
+            .where('chave_importacao', 'is not', null)
+            .execute()
+        ).flatMap((a) => (a.chave_importacao === null ? [] : [a.chave_importacao])),
+      ),
+    criar: async (ctx, hotelId, a) => {
+      const { localId, chaveImportacao, ...dados } = a;
+      try {
+        const { id } = await banco.executar(ctx, (uow) =>
+          criarAtivo(uow, hotelId, localId, dados, 'aprovado', chaveImportacao),
+        );
+        return { id };
+      } catch (e) {
+        if (e instanceof Conflito && e.codigo === 'importacao_ja_importada') return 'ja_importada';
+        throw e;
+      }
+    },
   };
 }

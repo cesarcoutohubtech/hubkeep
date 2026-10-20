@@ -25,6 +25,7 @@ export {
   criarPortaModelosDeAtivo,
   criarPortaSugestoesDePlano,
   criarPortaCadastrosDeAtivos,
+  criarPortaImportacaoDeAtivos,
   criarPortaPlanosPreventivos,
   criarPortaCodigos,
   criarPortaModulos,
