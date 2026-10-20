@@ -1165,13 +1165,10 @@ Na branch `claude/1b-pb1b`, sobre a `claude/1b-pb1`. O PR abre depois dos PRs do
 - **Telas filtram pela bandeira do hotel:** o cadastro do ativo (web e PWA), o checklist do plano e o checklist da OS. O PWA guarda a bandeira do hotel e do modelo na referência; a referência guardada antes da PB1b vale como do grupo até a próxima leitura.
 - Testes: domínio e aplicação com os casos novos; integração em `bandeira-nos-modelos.test.ts`, só na CI; telas do web e do PWA.
 
-## Ponto de retomada (20/10/2026, PB1b na branch)
+## Ponto de retomada (20/10/2026, PR da PB1b)
 
-- **`main`:** com o #337 (M4a), o #341 (M2), o #342 e o #343. **Dev:** o `db push` da 0058 e da 0059 não foram confirmados aqui; o Cesar disse "merge e db push pronto" em 20/10, mas o #340 seguia aberto na conferência.
-- **PR aberto:** o [#340](https://github.com/cesarcoutohubtech/hubkeep/pull/340) (zona da PB1, `claude/1b-pb1-zona`), verde fora o check "zona protegida", que falha por desenho.
-- **Trabalho não enviado em PR:**
-  - a PB1a na `claude/1b-pb1`, com o tempo de implantação;
-  - a PB1b na `claude/1b-pb1b`, sobre ela.
-  - Validação local verde nas duas (typecheck, lint e testes); a integração do banco só roda na CI.
-- **Espera o Cesar:** o merge do #340 e o `db push` da 0059 (e a confirmação da 0058); as escolhas da M1c e as decisões da PV3c.
-- **Próxima tarefa:** depois do merge do #340, trazer a `main` para a `claude/1b-pb1` e abrir o PR `1b:` da PB1a; depois do merge dele, o da PB1b. Em seguida, a M3 (QR em lote; decisão 21 já aprovada: a etiqueta reservada é só para ativo novo).
+- **`main`:** com o #340 (zona da PB1, migração 0059) e o #344 (PB1a). **Dev:** o `db push` da 0058 e da 0059 não foram confirmados aqui.
+- **PR aberto:** o da PB1b (`claude/1b-pb1b`), fora da zona protegida.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** confirmar a 0058 e a 0059 no dev; o merge do PR da PB1b; as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** a M3 (QR em lote; decisão 21 já aprovada: a etiqueta reservada é só para ativo novo), numa branch a partir da `main`.
