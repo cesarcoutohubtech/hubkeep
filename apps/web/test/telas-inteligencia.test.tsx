@@ -15,7 +15,10 @@ import type {
 } from '../src/app/(painel)/inteligencia/comum';
 import { type Abertura, ConteudoDaAbertura } from '../src/app/(painel)/inteligencia/abertura/tela';
 import { ConteudoDoAtivo } from '../src/app/(painel)/inteligencia/ativos/[id]/tela';
-import { ConteudoDoInsight } from '../src/app/(painel)/inteligencia/insights/[id]/tela';
+import {
+  ConteudoDoInsight,
+  FormularioDoChamadoDoInsight,
+} from '../src/app/(painel)/inteligencia/insights/[id]/tela';
 import {
   AtivosEncontrados,
   SecaoDaEfetividade,
@@ -259,6 +262,30 @@ const nomesDasReclamacoes = {
   uhs: { [UH]: 'UH 1204' },
 };
 
+/** Os locais do hotel, como a rota do hotel os devolve. */
+const LOCAIS_DO_HOTEL = [
+  {
+    id: UH,
+    nome: 'UH 1204',
+    tipo: 'uh' as const,
+    andar: '12',
+    edificacao: null,
+    status: 'ativo' as const,
+    origem: 'sistema_hoteleiro' as const,
+    editavel: false,
+  },
+  {
+    id: '88888888-8888-4888-8888-888888888883',
+    nome: 'Casa de máquinas',
+    tipo: 'area_comum' as const,
+    andar: null,
+    edificacao: null,
+    status: 'ativo' as const,
+    origem: 'manual' as const,
+    editavel: true,
+  },
+];
+
 const dasReclamacoes: PaginaDoInsight = {
   ...sistemico,
   insight: {
@@ -430,6 +457,17 @@ describe('telas do Intelligence em todos os idiomas, sem chave crua', () => {
       renderizar(idioma, <ConteudoDoInsight pagina={sistemico} aoDecidir={nada} />),
       renderizar(idioma, <ConteudoDoAtivo pagina={ativo} />),
       renderizar(idioma, <ConteudoDoInsight pagina={dasReclamacoes} aoDecidir={nada} />),
+      renderizar(
+        idioma,
+        <FormularioDoChamadoDoInsight
+          insightId={dasReclamacoes.insight.id}
+          hotelId={H1}
+          reclamacoes={dasReclamacoes.reclamacoes as Reclamacoes}
+          aoCancelar={nada}
+          aoAbrir={nada}
+          locaisIniciais={LOCAIS_DO_HOTEL}
+        />,
+      ),
       renderizar(idioma, <ConteudoDoAtivo pagina={ativoComReclamacoes} />),
       renderizar(idioma, <ConteudoDaAbertura abertura={fechada} aoGravar={nada} />),
       renderizar(idioma, <SecaoDaEfetividade efetividade={efetividade} />),
@@ -515,6 +553,58 @@ describe('as reclamações de hóspede (C2 do ADR-047)', () => {
     expect(html).toContain('href="/inteligencia/sinais"');
     expect(html).not.toContain('Chamados por semana');
     expect(html).not.toContain('Pesa no score');
+  });
+
+  it('quem decide o insight abre um chamado para as reclamações sem chamado; quem não decide, não', () => {
+    const decide = (podeDecidir: boolean) =>
+      renderizar(
+        'pt-BR',
+        <ConteudoDoInsight
+          pagina={{ ...dasReclamacoes, insight: { ...dasReclamacoes.insight, podeDecidir } }}
+          aoDecidir={nada}
+        />,
+      );
+    expect(decide(true)).toContain('Abrir um chamado para a reclamação sem chamado');
+    expect(decide(false)).not.toContain('Abrir um chamado para');
+    const C = '99999999-9999-4999-8999-999999999999';
+    const comChamado = renderizar(
+      'pt-BR',
+      <ConteudoDoInsight
+        pagina={{
+          ...dasReclamacoes,
+          insight: { ...dasReclamacoes.insight, podeDecidir: true },
+          reclamacoes: {
+            ...(dasReclamacoes.reclamacoes as Reclamacoes),
+            sinais: [reclamacao({ chamadoId: C })],
+          },
+        }}
+        aoDecidir={nada}
+      />,
+    );
+    expect(comChamado).not.toContain('Abrir um chamado para');
+    expect(comChamado).toContain(`href="/chamados/${C}"`);
+  });
+
+  it('o formulário do chamado do insight: o local, o ativo comum, a sugestão sem o texto e quantas liga', () => {
+    const html = renderizar(
+      'pt-BR',
+      <FormularioDoChamadoDoInsight
+        insightId={dasReclamacoes.insight.id}
+        hotelId={H1}
+        reclamacoes={dasReclamacoes.reclamacoes as Reclamacoes}
+        aoCancelar={nada}
+        aoAbrir={nada}
+        locaisIniciais={LOCAIS_DO_HOTEL}
+      />,
+    );
+    expect(html).toContain('Local do chamado (UH ou área comum)');
+    expect(html).toContain('Casa de máquinas');
+    expect(html).toContain('Com o ativo Elevador social 2');
+    expect(html).toContain(
+      'Reclamações de hóspede do insight sistêmico: 1 reclamação nas UHs UH 1204.',
+    );
+    expect(html).not.toContain('O elevador parou com hóspedes dentro');
+    expect(html).toContain('1 reclamação sem chamado vai ser ligada a este chamado.');
   });
 
   it('quem não lê as reclamações do hotel vê só o total', () => {
