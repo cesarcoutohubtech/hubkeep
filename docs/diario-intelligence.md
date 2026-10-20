@@ -3071,3 +3071,54 @@ Preparado a partir do "sim" do Cesar na (i); o PR só abre depois do "sim" do Ka
 - **Para Cesar e Kaio decidirem:** se a tela de reclamações deve abrir antes da data de abertura das telas (hoje não abre; ver o ponto achado acima). A decisão sobre particionar ou reter a métrica diária é do Cesar.
 - **Pendências do Kaio:** os detalhes dos PRs A e B, do C1a (3/2/14 e 365 dias), do C1b (pesos, limites, 90 dias e severidade) e os textos do chamado do insight.
 - **Próximo:** o item 2 da proposta, o PR de zona protegida só de status no `docs/03`, na vez que o Cesar der (o #340 é de zona protegida e está aberto). Depois, o item 3, com proposta antes do código. Primeiro passo do item 2: listar no `docs/03` os status "aguarda aprovação" do Intelligence e achar a aprovação escrita de cada um no diário.
+
+### O merge do #342 e o item 2 da proposta (20/10/2026)
+
+- **#342 mergeado** (Cesar, 20/10/2026), com os cinco checks verdes no head a8ba1f2. A branch recomeçou da `main` (5de68ac, com o #343 da 1c).
+- **Do Cesar** (20/10/2026, nesta sessão): "Cesar aqui. Continue. Merge e db push e migration list pronto." O `db push` da 0057 está no dev e conferido no `supabase migration list`. Abrir chamado da reclamação e do insight já funciona no dev.
+
+**Correção do levantamento de 20/10/2026.** Chamei de "já decididos" os quatro status do `docs/03` que seguem "aguarda". Relendo o diário, não achei a aprovação escrita que falta em nenhum deles:
+1. **Quem lê o insight** (ADR-033): a decisão do Cesar de 10/10 está registrada; falta o "aprovo" escrito do Kaio, porque muda quem vê.
+2. **Quem lê a métrica diária** (ADR-036): a decisão do Cesar de 10/10 está registrada, com a frase "a métrica nunca tem mais leitores que o insight"; falta o "aprovo" escrito do Kaio.
+3. **Texto do adendo de 08/10 ao ADR-034** (atenção versão 2): o conteúdo foi aprovado pelos dois em 10/10; falta o "aprovo" escrito dos dois no texto.
+4. **Texto do adendo de 08/10 ao ADR-036** (versões gravadas por área e formato das políticas): o mesmo caso do 3.
+
+A issue #169 (os "aprovado por Kaio" deste diário) espera o comentário do Kaio. O PR de status só muda o que tiver o "aprovo" escrito. Ele também espera a vez da zona protegida, porque o #340 (`1b:`, migração 0059) está aberto.
+
+Há outra correção, sobre o recálculo. O que o levantamento chamou de "aprovado só pelo Kaio em 07/10" já está aprovado pelos dois no ADR-036: o Kaio em 07/10 e o Cesar em 10/10, na #166. O que falta é a tela, e isso vai no item 3.
+
+### O item 3: recálculo na tela ou número do insight, proposta (20/10/2026)
+
+**(r) Os recálculos na página do ativo.** O ADR-036 diz que o painel mostra o resultado original gravado de cada dia e que os recálculos "aparecem só no painel de investigação, sob demanda e identificados como recálculo". Hoje a página do ativo lê só o original (`recalculo = false`) e mostra "Original, do job diário". Os recálculos existem quando o backoffice roda o `pnpm ops:recalcular-inteligencia`.
+
+A proposta é o botão "Ver os recálculos deste dia", no bloco "Como este resultado foi gravado". Ele lista as linhas de recálculo do ativo naquele dia: o número do cálculo, quando, as versões da fórmula e da política e os scores. Cada linha leva o selo de recálculo, e o original continua sendo o que o painel usa.
+- Só leitura, pela RLS da métrica: quem lê é quem lê o original.
+- Sem migração e fora da zona protegida.
+- Nenhum botão dispara recálculo pela tela. O recálculo segue só pelo script do backoffice.
+
+**(n) O número do insight** ("INS-0133" na proposta das telas). A `app.insight` não tem número.
+- Precisa de migração: a coluna `numero`, única por tenant, e a FK sem mudança. Isso pede PR de zona protegida, pgTAP e um adendo ao ADR-033.
+- O job grava o número ao abrir o insight (o maior do tenant mais um, na mesma transação, com a chave única barrando a corrida), sem função nem trigger no banco.
+- Os insights que já existem recebem número na própria migração, pela ordem de abertura. É UPDATE de dado numa migração nova, sem editar migração aplicada.
+- A tela mostra o número na lista e na página, e a busca acha pelo número.
+
+**Recomendação:** fazer o (r) antes do piloto, porque ele é pequeno, não tem migração e fecha o que o ADR-036 aprovado já descreve. O (n) fica para depois do piloto. Ele toca a zona protegida, que tem fila, e no piloto o insight se acha pelo título e pelo link. Se o suporte do piloto pedir um número para citar por telefone, o (n) sobe.
+
+**Para decidir (Cesar e Kaio):** (r) agora e (n) depois do piloto; ou os dois agora; ou nenhum antes do piloto.
+
+**Detalhes do Kaio** (ADR-033): o rótulo do botão, as colunas da lista e o formato do número ("INS-0133", com quatro dígitos).
+
+### Ponto de retomada (20/10/2026, depois do #342)
+
+- **`main`:** 5de68ac (#343). **Dev:** com a 0057, conferida pelo Cesar.
+- **PRs abertos de outros agentes:** #340 (zona protegida, 1b), #332 (1c) e #310 (`eu:`). Nenhum PR do Intelligence aberto.
+- **Nesta branch:** só este registro, sem PR; entra no próximo PR do Intelligence.
+- **Esperando:**
+  - o "aprovo" escrito do Kaio em quem lê o insight e a métrica diária;
+  - o "aprovo" dos dois no texto dos adendos de 08/10 aos ADR-034 e ADR-036;
+  - o comentário do Kaio na #169;
+  - a decisão do item 3;
+  - a decisão sobre abrir a tela de reclamações antes da abertura das telas;
+  - a decisão do Cesar sobre particionar ou reter a métrica diária;
+  - os detalhes do Kaio.
+- **Próximo:** com a decisão do item 3, o (r). Primeiro passo: a leitura dos recálculos do ativo e do dia no `packages/db` (`inteligencia-painel.ts`, ao lado da leitura do original). Com os "aprovo" e a vez da zona protegida, o PR de status no `docs/03`.
