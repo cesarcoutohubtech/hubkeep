@@ -1612,6 +1612,8 @@
   "indicadores.serie.coluna.abertos": "Abiertas",
   "indicadores.serie.coluna.encerrados": "Concluidas",
   "indicadores.serie.coluna.backlog": "Pendientes al final del día",
+  "indicadores.grafico.fluxo.titulo": "Flujo de solicitudes",
+  "indicadores.grafico.ver_tabela": "Ver los números de cada día",
   "indicadores.comparacao.titulo": "Comparación en la marca",
   "indicadores.comparacao.dica": "Destacado, el mejor resultado de la marca en cada columna. Los hoteles solo se comparan dentro de la misma marca.",
   "indicadores.comparacao.bandeira": "Marca",
