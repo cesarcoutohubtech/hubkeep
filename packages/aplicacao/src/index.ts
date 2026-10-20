@@ -368,6 +368,16 @@ export type {
   PortaModelosDeAtivo,
 } from './portas/modelos-de-ativo';
 export type {
+  CadastroDoAtivo,
+  CadastroPendente,
+  PortaCadastrosDeAtivos,
+} from './portas/cadastros-de-ativos';
+export { criarCasosDeUsoDeCadastrosDeAtivos } from './casos-de-uso/cadastros-de-ativos';
+export type {
+  CasosDeUsoDeCadastrosDeAtivos,
+  PedidoDeDecisaoDoCadastro,
+} from './casos-de-uso/cadastros-de-ativos';
+export type {
   AtivoComSugestao,
   ModeloDaSugestao,
   PortaSugestoesDePlano,

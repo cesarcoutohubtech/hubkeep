@@ -1033,3 +1033,37 @@ Na branch `claude/1b-m1-app`, PR fora da zona protegida.
   - pgTAP 061 (34 asserções) e os meta-testes 28 e 32 com a tabela nova. Tipos do Kysely atualizados.
   - Sem ADR novo: o desenho e as decisões 15 a 19 cobrem a M4 e a M2.
 - **Depois do merge e do `db push` da 0058:** a M4 e a M2 fora da zona (domínio, aplicação, API e telas da fila de aprovação e da importação), e o ativo pendente fora das sugestões de plano da M1c.
+
+### M4a — aprovação do cadastro fora da zona (19/10/2026)
+
+Na branch `claude/1b-m4`, montada sobre a `claude/1b-m4-zona`. O PR abre depois do merge do #335 e do `db push` da 0058.
+- **Domínio (`aprovacao-do-cadastro.ts`):**
+  - situação efetiva (a decisão, quando há; senão, a inicial);
+  - situação inicial no PWA pela política `ativo.aprovacao_do_cadastro` (desligada por padrão);
+  - quem decide (`cadastro_fora_do_escopo`): Admin, Gestor CSC e Gerente;
+  - a decisão: só o pendente (`cadastro_ja_decidido`), motivo na recusa (`motivo_obrigatorio`), valor válido (`decisao_do_cadastro_invalida`).
+  - O ativo pendente sai das sugestões de plano e do contador do painel (`cadastroPendente`).
+- **Política:** a chave nova no domínio, nos contratos, na tela de configuração e nos catálogos.
+- **Aplicação:**
+  - `prepararCadastro` devolve a situação do PWA, e a operação `ativo.cadastrar` grava com ela; o web grava aprovado;
+  - `criarCasosDeUsoDeCadastrosDeAtivos`, com a fila e a decisão pela versão do ativo.
+- **db:**
+  - a decisão sobe a versão do ativo, desativa na recusa, grava a decisão, a auditoria `aprovar_cadastro` ou `recusar_cadastro` e o evento `ativo.cadastro_decidido`;
+  - a leitura do ativo traz a situação e o motivo da recusa;
+  - a geração preventiva só pega o ativo aprovado.
+- **API:** `GET /api/v1/hoteis/{id}/cadastros-pendentes` e `POST /api/v1/ativos/{id}/decisao-do-cadastro`, no OpenAPI. `AtivoApi` ganha `situacaoCadastro` e `motivoDaRecusa`, opcionais na leitura.
+- **Telas:**
+  - `/admin/aprovacao-de-ativos`, no menu de cadastros, com aprovar e recusar com motivo;
+  - as marcas de pendente e recusado na lista de ativos do web e do PWA.
+- **Depois:** a M2 (importação por CSV, com a `chave_importacao`).
+
+## Ponto de retomada (20/10/2026, PR da M4a)
+
+- **`main`:** em `bf9b3c0`, com o #335 (migração 0058) mergeado pelo Cesar em 20/10/2026.
+- **Dev:** o `db push` da 0058 é do Cesar e ainda não foi confirmado aqui. O PR da M4a lê e grava as colunas novas, então o merge dele espera a 0058 no dev.
+- **PR aberto:** o da M4a (`1b:`), da branch `claude/1b-m4`, com a `main` trazida (conflitos no índice do domínio e no catálogo `es`, com o painel da 1c). Fora da zona protegida. Validação local verde: typecheck, lint e testes (577 na raiz).
+- **Espera o Cesar:**
+  - o `db push` da 0058 e o merge do PR da M4a;
+  - as escolhas pendentes da M1c (lista = contador; modelo desativado sugere; sem desfazer o descarte);
+  - as decisões da PV3c (parada na preventiva, o Gerente aceita a própria, `paradoDesde` na fila).
+- **Próxima tarefa:** a M2 (importação de ativos por CSV, com a `chave_importacao`; o local que falta recusa a linha). Primeiro passo: a branch `claude/1b-m2` a partir da `claude/1b-m4`, começando pelo domínio da leitura e validação do CSV.

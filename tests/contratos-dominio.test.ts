@@ -37,10 +37,14 @@ import {
   PENDENCIAS_DO_PLANO_API,
   SITUACOES_DO_PLANO_API,
   UNIDADES_DE_PERIODICIDADE_API,
+  DECISOES_DO_CADASTRO_API,
+  SITUACOES_DO_CADASTRO_API,
 } from '../packages/contratos/src/index';
 import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
   CATEGORIAS_PADRAO,
+  DECISOES_DO_CADASTRO,
+  SITUACOES_DO_CADASTRO,
   IDIOMAS_DE_ROTULO,
   TIPOS_DE_CAMPO,
   CHAVES_DE_POLITICA,
@@ -149,6 +153,15 @@ describe('contratos × domínio', () => {
         { ligado: false, extra: 1 },
         {},
         [],
+        null,
+      ],
+      'ativo.aprovacao_do_cadastro': [
+        { ligado: true },
+        { ligado: false },
+        { ligado: 0 },
+        { ligado: true, extra: 1 },
+        {},
+        'sim',
         null,
       ],
       'os.checklist_completo_obrigatorio': [
@@ -334,6 +347,11 @@ describe('contratos × domínio', () => {
     expect([...UNIDADES_DE_PERIODICIDADE_API]).toEqual([...UNIDADES_DE_PERIODICIDADE]);
     expect([...SITUACOES_DO_PLANO_API]).toEqual([...SITUACOES_DO_PLANO]);
     expect([...ACOES_DO_PLANO_API]).toEqual([...ACOES_DO_PLANO]);
+  });
+
+  it('as situações e as decisões do cadastro do ativo da API são as do domínio (M4)', () => {
+    expect([...SITUACOES_DO_CADASTRO_API]).toEqual([...SITUACOES_DO_CADASTRO]);
+    expect([...DECISOES_DO_CADASTRO_API]).toEqual([...DECISOES_DO_CADASTRO]);
   });
 
   it('as pendências do plano preventivo da API são as do domínio (PV3c)', () => {

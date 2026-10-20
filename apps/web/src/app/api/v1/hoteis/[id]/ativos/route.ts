@@ -41,6 +41,8 @@ export const GET = rota('ativos.listar', async (r) => {
       ativo: a.desativadoEm === null,
       codigoQr: a.codigoQr,
       paradoDesde: a.paradoDesde?.toISOString() ?? null,
+      situacaoCadastro: a.situacaoCadastro,
+      motivoDaRecusa: a.motivoDaRecusa ?? null,
     })),
   });
 });

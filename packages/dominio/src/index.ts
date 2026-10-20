@@ -122,6 +122,7 @@ export {
 export type { MatrizDeArrendamento, ResponsavelDoArrendamento } from './arrendamento';
 export type {
   AceiteAutomatico,
+  AprovacaoDoCadastro,
   AssinaturaNoAceite,
   ChecklistCompletoObrigatorio,
   ChaveDePolitica,
@@ -566,6 +567,17 @@ export {
   validarPeriodoDaAuditoria,
 } from './auditoria-geral';
 export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
+export {
+  DECISOES_DO_CADASTRO,
+  PAPEIS_QUE_DECIDEM_O_CADASTRO,
+  SITUACOES_DO_CADASTRO,
+  ehDecisaoDoCadastro,
+  podeDecidirCadastro,
+  situacaoDoCadastro,
+  situacaoInicialNoPwa,
+  validarDecisaoDoCadastro,
+} from './aprovacao-do-cadastro';
+export type { DecisaoDoCadastro, SituacaoDoCadastro } from './aprovacao-do-cadastro';
 export {
   FAIXAS_DE_IDADE,
   LIMITES_DO_PAINEL,

@@ -136,6 +136,12 @@ export {
 } from './chamados';
 export {
   AtivoApi,
+  CadastroPendenteApi,
+  DECISOES_DO_CADASTRO_API,
+  PedidoDeDecisaoDoCadastro,
+  RespostaDeCadastrosPendentes,
+  RespostaDeDecisaoDoCadastro,
+  SITUACOES_DO_CADASTRO_API,
   PedidoDeAlteracaoDeAtivo,
   MovimentacaoDeAtivoApi,
   PedidoDeCadastroDeAtivo,
