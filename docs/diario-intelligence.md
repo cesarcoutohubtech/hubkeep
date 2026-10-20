@@ -3180,3 +3180,45 @@ Preparado a partir do "Ambos agora" do Cesar. O PR só abre depois do "sim" do K
 - O PR do (r) abre agora, fora da zona protegida. O #340 já entrou (f6236e7), e a `main` foi juntada sem conflito.
 - Depois do merge do (r), abre um PR de zona protegida com o (n), os status dos itens 1 a 4 no `docs/03` e o adendo ao ADR-033, que entra como proposta. A branch é uma só, por isso esse PR espera.
 - **O particionamento** pede migração, meta-testes e um adendo ao ADR-036. Vai com proposta antes do código, num PR de zona protegida próprio, depois do (n).
+
+### O (n) pronto numa branch local (20/10/2026)
+
+O (n) está pronto em `local-numero-insight` (b995f5f), a partir da `main` f6236e7, para ir à `claude/vigilant-cray-l06ew1` depois do merge do #346. A branch do agente é uma só, e o #346 está aberto nela. É PR de zona protegida, e a zona está livre: o #340 entrou, e o #344, o #332 e o #310 não tocam a zona. O registro completo vai no diário quando o PR abrir. Em resumo:
+- a migração 0060, com a coluna `numero` em `app.insight`, a numeração dos que já existem, `not null`, `>= 1` e a chave única por tenant;
+- o pgTAP 031 com 68 casos: o número em todos os inserts e seis casos novos;
+- o tipo do Kysely;
+- o `abrirInsight` com o maior do tenant mais um e o número na auditoria;
+- o número na leitura do painel, no contrato, na lista, na página do insight e nos insights do ativo, mais o filtro "Número do insight", em qualquer estado;
+- textos nos quatro idiomas;
+- no `docs/03`: o adendo ao ADR-033 (aguarda o "aprovo" dos dois), os status dos itens 1 a 4 e a decisão de particionar no ADR-036. No `docs/02`, as menções.
+
+Verificação local: lint e typecheck verdes, sem falhas nos testes. O pgTAP e a integração do banco rodam só na CI.
+
+### O particionamento da métrica diária: proposta (20/10/2026)
+
+O Cesar decidiu "Particionada" (20/10/2026). A opção A de `docs/referencia/retencao-metrica-diaria.md` vira desenho. É proposta antes do código, para Cesar e Kaio.
+
+**Como fica (migração 0061, zona protegida, depois do PR do (n)):**
+1. A `app.metrica_ativo_diaria` vira tabela particionada por intervalo de `dia`, uma partição por mês. A migração cria a tabela nova com as mesmas colunas, checks, FKs, grants e policies, copia as linhas, apaga a antiga e dá à nova o nome de sempre. O nome e as colunas não mudam, então o Kysely, o job e o painel não mudam.
+2. **Chaves com o dia**, porque a chave de tabela particionada precisa levar a coluna da partição:
+   - a PK passa de `id` para `(id, dia)`;
+   - `unique (tenant_id, id)` passa a `unique (tenant_id, id, dia)`;
+   - `unique (hotel_id, ativo_id, dia, calculo)` já leva o dia.
+   - Nenhuma tabela aponta FK para a métrica. As FKs da métrica para o hotel e o ativo continuam.
+3. **RLS em cada partição.** A RLS fica habilitada e forçada também nas partições, sem grant nelas, para ninguém ler por fora da mãe. As policies e os grants ficam na mãe, como hoje.
+4. **Meta-testes:**
+   - o 1, o 2, o 28 e o 32 passam a olhar a mãe e a ignorar as partições (`relispartition`);
+   - um meta-teste novo confere que toda partição de `app` tem RLS forçada e nenhum grant;
+   - o pgTAP 032 ganha os casos da partição (ler direto pela partição é recusado, e a linha cai no mês certo).
+5. **Quem cria as partições.** Nenhum papel da aplicação faz DDL, nem o job. A migração cria os meses do primeiro dia gravado até dezembro de 2027. A partir daí, uma migração nova por ano cria o ano seguinte.
+6. **A partição padrão** (`default`) guarda a linha que caia fora dos meses criados. Assim o job não falha se a migração do ano atrasar. O registro da execução do job passa a dizer quantas linhas foram para ela, e isso vira o aviso para criar o ano.
+7. **Remover partição antiga** continua fora: "nada é apagado" (opção B, aprovada). A remoção fica para quando o Cesar decidir, por script de operação dele.
+
+**Para decidir:**
+- **(pa) Até quando a migração cria as partições** (decisão do Cesar, que faz a operação): dezembro de 2027, como proposto, ou outro horizonte.
+- **(pb) A partição padrão** (Cesar e Kaio, porque o job passa a avisar): com ela, como proposto, ou sem. Sem ela, o job falha no primeiro dia sem partição.
+- **(pc) A ordem:** a 0061 depois do PR do (n), como proposto, ou antes.
+
+**Detalhe do Kaio** (ADR-033): o texto do aviso no registro da execução.
+
+**Também entra:** o adendo ao ADR-036, com a aprovação escrita dos dois, e o `docs/referencia/retencao-metrica-diaria.md` atualizado.
