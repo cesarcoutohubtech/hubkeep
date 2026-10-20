@@ -1,7 +1,8 @@
 // Modelos de ativo (M1) com portas em memória: só o Admin gere; a categoria e
 // o checklist vêm do que ele enxerga; a leitura filtra os campos pela
 // definição atual e a periodicidade gravada fora da regra vira "sem
-// sugestão"; a alteração e a desativação levam a versão.
+// sugestão"; a alteração e a desativação levam a versão. A bandeira (PB1b)
+// só entra na criação, e o checklist tem de valer para ela.
 import type { Atribuicao, Contexto } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import {
@@ -54,9 +55,11 @@ function montar(minhas: Atribuicao[]) {
       planoSugerido: { intervalo: 3, unidade: 'ano' },
       versao: 4,
       ativa: true,
+      bandeiraId: 'b-1',
     },
   ];
   const criados: object[] = [];
+  const bandeiras: (string | null)[] = [];
   const alteracoes: { id: string; versao: number; mudanca: MudancaDeModeloDeAtivo }[] = [];
   const casos = criarCasosDeUsoDeModelosDeAtivo({
     modelos: {
@@ -66,11 +69,14 @@ function montar(minhas: Atribuicao[]) {
         { id: 'cat-velha', ativa: false, campos: [] },
       ],
       checklists: async () => [
-        { id: 'ck-ar', ativa: true, categoriaId: 'cat-ar' },
-        { id: 'ck-porta', ativa: true, categoriaId: 'cat-porta' },
+        { id: 'ck-ar', ativa: true, categoriaId: 'cat-ar', bandeiraId: null },
+        { id: 'ck-porta', ativa: true, categoriaId: 'cat-porta', bandeiraId: null },
+        { id: 'ck-b2', ativa: true, categoriaId: 'cat-ar', bandeiraId: 'b-2' },
       ],
-      criar: async (_c, d) => {
+      bandeira: async (_c, id) => id === 'b-1' || id === 'b-2',
+      criar: async (_c, d, bandeiraId) => {
         criados.push(d);
+        bandeiras.push(bandeiraId);
         return { id: 'novo' };
       },
       alterar: async (_c, id, versao, mudanca) => {
@@ -81,7 +87,7 @@ function montar(minhas: Atribuicao[]) {
     atribuicoes: { doUsuario: async () => minhas },
     relogio: { agora: () => AGORA },
   });
-  return { casos, criados, alteracoes };
+  return { casos, criados, alteracoes, bandeiras };
 }
 
 const PEDIDO = {
@@ -95,6 +101,27 @@ const PEDIDO = {
 };
 
 describe('modelos de ativo (M1)', () => {
+  it('a bandeira entra só na criação; o checklist de outra bandeira recusa (PB1b)', async () => {
+    const { casos, bandeiras, alteracoes } = montar([atr('admin_grupo')]);
+    await casos.criar(ctx, PEDIDO);
+    await casos.criar(ctx, { ...PEDIDO, bandeiraId: 'b-2', checklistModeloId: 'ck-b2' });
+    expect(bandeiras).toEqual([null, 'b-2']);
+    expect(await codigoDe(casos.criar(ctx, { ...PEDIDO, bandeiraId: 'b-x' }))).toBe(
+      'bandeira_nao_encontrada',
+    );
+    expect(await codigoDe(casos.criar(ctx, { ...PEDIDO, checklistModeloId: 'ck-b2' }))).toBe(
+      'modelo_ativo_checklist_invalido',
+    );
+    // m1 é da b-1: o checklist da b-2 não vai para os mesmos hotéis.
+    expect(
+      await codigoDe(
+        casos.alterar(ctx, 'm1', { ...PEDIDO, checklistModeloId: 'ck-b2', versao: 4 }),
+      ),
+    ).toBe('modelo_ativo_checklist_invalido');
+    expect(alteracoes).toEqual([]);
+    expect((await casos.listar(ctx))[0]?.bandeiraId).toBe('b-1');
+  });
+
   it('a leitura filtra os campos pela categoria e ignora a periodicidade inválida', async () => {
     const { casos } = montar([atr('tecnico')]);
     const [m] = await casos.listar(ctx);

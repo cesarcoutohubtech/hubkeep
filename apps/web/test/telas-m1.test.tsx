@@ -55,20 +55,31 @@ const CHECKLISTS: Checklist[] = [
     categoriaId: AR,
     nomes: { 'pt-BR': 'Inspeção do ar' },
     ativa: true,
+    bandeiraId: null,
   },
   {
     id: 'cc000000-0000-4000-8000-000000000002',
     categoriaId: 'cb000000-0000-4000-8000-000000000009',
     nomes: { 'pt-BR': 'Porta corta-fogo' },
     ativa: true,
+    bandeiraId: null,
   },
   {
     id: 'cc000000-0000-4000-8000-000000000003',
     categoriaId: null,
     nomes: { 'pt-BR': 'Antigo' },
     ativa: false,
+    bandeiraId: null,
+  },
+  {
+    id: 'cc000000-0000-4000-8000-000000000004',
+    categoriaId: AR,
+    nomes: { 'pt-BR': 'Inspeção da bandeira Y' },
+    ativa: true,
+    bandeiraId: 'bb000000-0000-4000-8000-000000000002',
   },
 ];
+const BANDEIRAS = [{ id: 'bb000000-0000-4000-8000-000000000001', nome: 'Bandeira X' }];
 const MODELO: Modelo = {
   id: '3a000000-0000-4000-8000-000000000001',
   categoriaId: AR,
@@ -80,6 +91,7 @@ const MODELO: Modelo = {
   planoSugerido: { intervalo: 3, unidade: 'mes' },
   versao: 2,
   ativa: true,
+  bandeiraId: null,
 };
 
 const formulario = (modelo: Modelo | null) => (
@@ -87,6 +99,7 @@ const formulario = (modelo: Modelo | null) => (
     modelo={modelo}
     categorias={CATEGORIAS}
     checklists={CHECKLISTS}
+    bandeiras={BANDEIRAS}
     nomeDaCategoria={(c) => c.nomes['pt-BR'] ?? c.id}
     rotulo={(r, reserva) => r['pt-BR'] ?? reserva}
     executar={async () => {}}
@@ -109,6 +122,17 @@ describe('modelos de ativo no web (M1)', () => {
     expect(html).toContain('Inspeção do ar');
     expect(html).not.toContain('Porta corta-fogo');
     expect(html).not.toContain('Antigo');
+    // PB1b: o modelo do grupo não leva checklist de bandeira.
+    expect(html).not.toContain('Inspeção da bandeira Y');
+  });
+
+  it('a bandeira se escolhe só na criação (PB1b)', () => {
+    const m = mensagensDe('pt-BR');
+    const novo = renderizar('pt-BR', formulario(null));
+    expect(novo).toContain('name="bandeira"');
+    expect(novo).toContain('Bandeira X');
+    expect(novo).toContain(m['admin.pacote.todo_o_grupo']);
+    expect(renderizar('pt-BR', formulario(MODELO))).not.toContain('name="bandeira"');
   });
 
   it('o modelo existente vem com os valores, a periodicidade e desativar', () => {

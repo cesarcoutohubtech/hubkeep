@@ -880,7 +880,7 @@ export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
         (
           await tx
             .selectFrom('app.checklist_modelo')
-            .select(['id', 'categoria_id', 'nomes', 'itens', 'versao', 'ativa'])
+            .select(['id', 'categoria_id', 'nomes', 'itens', 'versao', 'ativa', 'bandeira_id'])
             .orderBy('criado_em')
             .orderBy('id')
             .execute()
@@ -891,7 +891,14 @@ export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
           itens: m.itens,
           versao: m.versao,
           ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
         })),
+      ),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) =>
+        Boolean(
+          await tx.selectFrom('app.bandeira').select('id').where('id', '=', id).executeTakeFirst(),
+        ),
       ),
     criarModelo: (ctx, m) => banco.executar(ctx, (uow) => criarModeloDeChecklist(uow, m)),
     alterarModelo: (ctx, id, mudanca) =>
@@ -1035,10 +1042,10 @@ export function criarPortaPlanosPreventivos(banco: AcessoBanco): PortaPlanosPrev
       banco.withContext(ctx, async (tx) => {
         const m = await tx
           .selectFrom('app.checklist_modelo')
-          .select('ativa')
+          .select(['ativa', 'bandeira_id'])
           .where('id', '=', id)
           .executeTakeFirst();
-        return m ? { ativa: m.ativa } : null;
+        return m ? { ativa: m.ativa, bandeiraId: m.bandeira_id } : null;
       }),
     criar: (ctx, p) => banco.executar(ctx, (uow) => criarPlanoPreventivo(uow, p)),
     alterar: (ctx, id, versao, mudanca) =>
@@ -2088,10 +2095,12 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
       banco.withContext(ctx, async (tx) => {
         const m = await tx
           .selectFrom('app.modelo_ativo')
-          .select(['id', 'categoria_id', 'ativa'])
+          .select(['id', 'categoria_id', 'ativa', 'bandeira_id'])
           .where('id', '=', modeloId)
           .executeTakeFirst();
-        return m ? { id: m.id, categoriaId: m.categoria_id, ativa: m.ativa } : null;
+        return m
+          ? { id: m.id, categoriaId: m.categoria_id, ativa: m.ativa, bandeiraId: m.bandeira_id }
+          : null;
       }),
     ativos: (ctx, hotelId, termo) =>
       banco.withContext(ctx, async (tx) =>
@@ -2609,6 +2618,7 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
               'plano_sugerido',
               'versao',
               'ativa',
+              'bandeira_id',
             ])
             .orderBy('nome')
             .orderBy('id')
@@ -2624,6 +2634,7 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
           planoSugerido: m.plano_sugerido,
           versao: m.versao,
           ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
         })),
       ),
     categorias: (ctx) =>
@@ -2635,11 +2646,23 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
         (
           await tx
             .selectFrom('app.checklist_modelo')
-            .select(['id', 'ativa', 'categoria_id'])
+            .select(['id', 'ativa', 'categoria_id', 'bandeira_id'])
             .execute()
-        ).map((c) => ({ id: c.id, ativa: c.ativa, categoriaId: c.categoria_id })),
+        ).map((c) => ({
+          id: c.id,
+          ativa: c.ativa,
+          categoriaId: c.categoria_id,
+          bandeiraId: c.bandeira_id,
+        })),
       ),
-    criar: (ctx, dados) => banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados)),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) =>
+        Boolean(
+          await tx.selectFrom('app.bandeira').select('id').where('id', '=', id).executeTakeFirst(),
+        ),
+      ),
+    criar: (ctx, dados, bandeiraId) =>
+      banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados, bandeiraId)),
     alterar: (ctx, id, versao, mudanca) =>
       banco.executar(ctx, (uow) => alterarModeloDeAtivo(uow, id, versao, mudanca)),
   };
@@ -2685,13 +2708,23 @@ export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportaca
         (
           await tx
             .selectFrom('app.modelo_ativo')
-            .select(['id', 'categoria_id', 'nome', 'ativa', 'fabricante', 'modelo', 'campos'])
+            .select([
+              'id',
+              'categoria_id',
+              'nome',
+              'ativa',
+              'bandeira_id',
+              'fabricante',
+              'modelo',
+              'campos',
+            ])
             .execute()
         ).map((m) => ({
           id: m.id,
           categoriaId: m.categoria_id,
           nome: m.nome,
           ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
           fabricante: m.fabricante,
           modelo: m.modelo,
           campos: m.campos,

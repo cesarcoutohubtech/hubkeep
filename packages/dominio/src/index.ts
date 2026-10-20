@@ -684,6 +684,7 @@ export type {
 export { sha256, tamanhoUtf8 } from './resumo-sha256';
 export {
   copiasDoPacote,
+  exigirDaBandeiraDoHotel,
   podeAplicarPacote,
   podeGerirPacote,
   vaiParaOHotel,

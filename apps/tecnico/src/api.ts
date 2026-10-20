@@ -157,7 +157,7 @@ export async function lerReferencia(
     const modelos = await ler('/api/v1/modelos-de-ativo')
       .then((d) =>
         RespostaDeModelosDeAtivo.parse(d).modelos.map(
-          ({ id, categoriaId, nome, fabricante, modelo, campos, ativa }) => ({
+          ({ id, categoriaId, nome, fabricante, modelo, campos, ativa, bandeiraId }) => ({
             id,
             categoriaId,
             nome,
@@ -165,6 +165,7 @@ export async function lerReferencia(
             modelo,
             campos,
             ativa,
+            bandeiraId,
           }),
         ),
       )
@@ -184,7 +185,7 @@ export async function lerReferencia(
     return {
       usuarioId,
       tenantId,
-      hoteis: hoteis.map(({ id, nome }) => ({ id, nome })),
+      hoteis: hoteis.map(({ id, nome, bandeiraId }) => ({ id, nome, bandeiraId })),
       locais,
       ativos,
       nomesDeCriticidade,

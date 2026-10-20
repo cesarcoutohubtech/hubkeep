@@ -11,6 +11,8 @@ import type { ValorDeCampo } from '@hubkeep/dominio';
 export interface HotelGuardado {
   id: string;
   nome: string;
+  /** PB1b. Opcional: a referência guardada antes da PB1b não tem. */
+  bandeiraId?: string | null;
 }
 
 export interface LocalGuardado {
@@ -83,6 +85,8 @@ export interface ModeloGuardado {
   modelo: string | null;
   campos: Record<string, ValorDeCampo>;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo. Opcional: a referência guardada antes da PB1b não tem. */
+  bandeiraId?: string | null;
 }
 
 /** Nome de cada nível da criticidade por idioma (política ativo.criticidade do hotel, I1). */

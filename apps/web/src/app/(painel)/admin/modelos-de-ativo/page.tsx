@@ -5,12 +5,14 @@
 // periodicidade sugerida para o plano. Só o Admin do grupo grava; a
 // alteração leva a versão vista (ADR-029). No cadastro do ativo, escolher o
 // modelo preenche só o que está vazio; os ativos que já nasceram do modelo
-// ficam com o que foi copiado (ADR-026).
+// ficam com o que foi copiado (ADR-026). A bandeira (PB1b) se escolhe na
+// criação; nula, o modelo vale para o grupo inteiro.
 import { CATALOGOS, IDIOMAS, type Idioma, resolverNome } from '@hubkeep/i18n';
 import { MensagemDeErro, MensagemVazia, Painel, Selo } from '@hubkeep/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { chamarApi } from '../../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
+import { useBandeiras, useNomeDaBandeira } from '../../../../cliente/cadastro';
 import {
   type Categoria,
   type Checklist,
@@ -29,6 +31,8 @@ export default function ModelosDeAtivo() {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [idiomaPadrao, setIdiomaPadrao] = useState<Idioma>('pt-BR');
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
+  const bandeiras = useBandeiras();
+  const nomeDaBandeira = useNomeDaBandeira(bandeiras);
 
   const carregar = useCallback(async () => {
     const [m, c, k] = await Promise.all([
@@ -85,6 +89,7 @@ export default function ModelosDeAtivo() {
             modelo={null}
             categorias={categorias}
             checklists={checklists}
+            bandeiras={bandeiras}
             nomeDaCategoria={nomeDaCategoria}
             rotulo={rotulo}
             executar={executar}
@@ -108,6 +113,7 @@ export default function ModelosDeAtivo() {
               acoes={
                 <>
                   {c && <Selo tom="azul">{nomeDaCategoria(c)}</Selo>}
+                  <Selo tom="cinza">{nomeDaBandeira(m.bandeiraId)}</Selo>
                   {m.planoSugerido && (
                     <Selo tom="cinza">
                       {t('admin.preventivas.periodicidade', {
@@ -128,6 +134,7 @@ export default function ModelosDeAtivo() {
                 modelo={m}
                 categorias={categorias}
                 checklists={checklists}
+                bandeiras={bandeiras}
                 nomeDaCategoria={nomeDaCategoria}
                 rotulo={rotulo}
                 executar={executar}
