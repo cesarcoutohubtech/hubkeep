@@ -184,6 +184,7 @@ export interface AppChamado {
 export interface AppChecklistModelo {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
+  bandeira_id: string | null;
   categoria_id: string | null;
   criado_em: Generated<Timestamp>;
   id: string;
@@ -453,6 +454,7 @@ export interface AppMewsVinculo {
 export interface AppModeloAtivo {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
+  bandeira_id: string | null;
   campos: Generated<Json>;
   categoria_id: string;
   checklist_modelo_id: string | null;
@@ -571,6 +573,21 @@ export interface AppParadaAtivo {
   tenant_id: string;
 }
 
+export interface AppPlanoPadrao {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  bandeira_id: string | null;
+  categoria_id: string;
+  checklist_modelo_id: string | null;
+  criado_em: Generated<Timestamp>;
+  id: string;
+  intervalo: number;
+  nome: string;
+  tenant_id: string;
+  unidade: string;
+  versao: Generated<number>;
+}
+
 export interface AppPlanoPreventivo {
   ativo_id: string | null;
   atualizado_em: Generated<Timestamp>;
@@ -584,6 +601,7 @@ export interface AppPlanoPreventivo {
   inicio: Timestamp;
   intervalo: number;
   nome: string;
+  plano_padrao_id: string | null;
   situacao: string;
   tecnico_id: string | null;
   tenant_id: string;
@@ -807,6 +825,7 @@ export interface DB {
   "app.os_material": AppOsMaterial;
   "app.os_transicao": AppOsTransicao;
   "app.parada_ativo": AppParadaAtivo;
+  "app.plano_padrao": AppPlanoPadrao;
   "app.plano_preventivo": AppPlanoPreventivo;
   "app.politica": AppPolitica;
   "app.preferencia_membro": AppPreferenciaMembro;

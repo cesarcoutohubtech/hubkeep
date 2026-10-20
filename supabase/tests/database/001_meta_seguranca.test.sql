@@ -471,7 +471,7 @@ select is(
     'app.modelo_ativo',
     'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_checklist', 'app.os_material', 'app.os_transicao', 'app.parada_ativo',
-    'app.plano_preventivo', 'app.politica',
+    'app.plano_padrao', 'app.plano_preventivo', 'app.politica',
     'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.sinal_hospede', 'app.sinal_hospede_chamado', 'app.situacao', 'app.sla_alerta',
     'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'licenca.modulo', 'staging.carga', 'staging.credencial_agente',
     'staging.registro_externo'
