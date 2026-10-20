@@ -256,7 +256,15 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]
       return sinais.filter((x) => x.ativoId === ativoId).slice(0, limite);
     },
     nomesDasUhs: async (_ctx, ids) => Object.fromEntries(ids.map((id) => [id, 'UH 101'])),
-    referenciasDaClassificacao: async () => ({ ativo: null, uh: null, categoria: null }),
+    referenciasDaClassificacao: async (_ctx, r) => ({
+      ativo: null,
+      // O local do chamado do insight sistêmico (a UH do Hotel 1).
+      uh:
+        r.uhId === '77700000-0000-0000-0000-000000000001'
+          ? { id: r.uhId, hotelId: H1, tipo: 'uh' }
+          : null,
+      categoria: null,
+    }),
     classificar: async (_ctx, c) => {
       classificacoes.push(c);
       return { versao: c.versaoEsperada + 1 };
@@ -265,6 +273,10 @@ function portaEmMemoria(insights: InsightComEvidenciaNoBanco[], sinais = [SINAL]
     ligarChamado: async (_ctx, l) => {
       if (chamado.falharLigacao) throw new Error('conexão caiu');
       chamado.ligacoes.push(l);
+    },
+    ligarChamados: async (_ctx, ls) => {
+      if (chamado.falharLigacao) throw new Error('conexão caiu');
+      chamado.ligacoes.push(...ls);
     },
   };
   return { porta, decisoes, buscas, importacoes, classificacoes, filas, doAtivo, chamado };
@@ -671,6 +683,47 @@ describe('o painel sobre a porta do banco', () => {
     chamado.falharLigacao = false;
     await casos.ligarChamadoDaReclamacao(ctx, S1, '99900000-0000-0000-0000-000000000001');
     expect(chamado.ligacoes).toHaveLength(1);
+  });
+
+  it('um chamado para as reclamações do insight sistêmico: abre pelo núcleo e liga as sem chamado', async () => {
+    const doInsight = linha({
+      tipo: 'sistemico',
+      escopo: { regra: 'reclamacoes_categoria' },
+      evidencia: { sinalIds: [S1], corretivaIds: [] },
+    });
+    const { casos, chamado } = painel(
+      [doInsight],
+      true,
+      COM_O_GERENTE,
+      [gerente],
+      [
+        {
+          ...SINAL,
+          manutencao: true,
+          categoriaId: null,
+          classificadoEm: agora,
+          classificadoPor: U1,
+        },
+      ],
+    );
+    expect(
+      await casos.abrirChamadoDoInsight(ctx, I1, {
+        localId: '77700000-0000-0000-0000-000000000001',
+        ativoId: null,
+        descricao: 'Chuveiros fracos',
+      }),
+    ).toEqual({ chamadoId: '99900000-0000-0000-0000-000000000001', ligadas: 1 });
+    expect(chamado.abertos).toEqual([
+      {
+        localId: '77700000-0000-0000-0000-000000000001',
+        ativoId: null,
+        descricao: 'Chuveiros fracos',
+        impactoHospede: true,
+      },
+    ]);
+    expect(chamado.ligacoes.map((l) => [l.sinalId, l.chamadoId, l.ligadoPor])).toEqual([
+      [S1, '99900000-0000-0000-0000-000000000001', U1],
+    ]);
   });
 
   it('linha do banco fora das listas do motor é defeito, não dado', async () => {

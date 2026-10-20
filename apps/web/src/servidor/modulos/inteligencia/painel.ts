@@ -24,9 +24,11 @@ import type {
 import { Conflito, type Contexto, ErroDeDominio } from '@hubkeep/dominio';
 import {
   type AberturaDoPainel,
-  type PortasDoChamadoDaReclamacao,
+  type PortasDoChamadoDoInsight,
   ligarChamadoDaReclamacao,
+  ligarChamadoDoInsight,
   prepararChamadoDaReclamacao,
+  prepararChamadoDoInsight,
   type AtivosEncontrados,
   type FilaDoSinal,
   type LigacaoDoSinal,
@@ -114,6 +116,13 @@ export interface PedidoDeChamadoDaReclamacaoDoPainel {
   descricao: string;
 }
 
+export interface PedidoDeChamadoDoInsightDoPainel {
+  /** A UH ou a área comum do hotel do insight. */
+  localId: string;
+  ativoId: string | null;
+  descricao: string;
+}
+
 export interface CasosDeUsoDoPainel {
   abertura(ctx: Contexto): Promise<AberturaDoPainel>;
   resumo(ctx: Contexto): Promise<ResumoDoPainel>;
@@ -167,6 +176,21 @@ export interface CasosDeUsoDoPainel {
   ): Promise<{ chamadoId: string }>;
   /** Liga de novo a reclamação ao chamado que quem pede abriu a partir dela. */
   ligarChamadoDaReclamacao(ctx: Contexto, sinalId: string, chamadoId: string): Promise<void>;
+  /**
+   * Um chamado para as reclamações do insight sistêmico, e as ligações das que
+   * ainda não têm chamado. Se a ligação falhar: chamado_sem_ligacao, com o id.
+   */
+  abrirChamadoDoInsight(
+    ctx: Contexto,
+    insightId: string,
+    pedido: PedidoDeChamadoDoInsightDoPainel,
+  ): Promise<{ chamadoId: string; ligadas: number }>;
+  /** Liga ao chamado que quem pede abriu as reclamações do insight ainda sem chamado. */
+  ligarChamadoDoInsight(
+    ctx: Contexto,
+    insightId: string,
+    chamadoId: string,
+  ): Promise<{ chamadoId: string; ligadas: number }>;
 }
 
 /** A linha do banco na forma do motor; valor fora das listas é defeito, não dado. */
@@ -191,10 +215,7 @@ function sinalNoMotor(s: SinalDaFilaNoBanco): SinalDaFila {
 export function portasDoPainel(
   deps: DepsDoPainel,
   ctx: Contexto,
-): PortasDasReclamacoes &
-  PortasDaBuscaDeAtivos &
-  PortasDaFilaDoSinal &
-  PortasDoChamadoDaReclamacao {
+): PortasDasReclamacoes & PortasDaBuscaDeAtivos & PortasDaFilaDoSinal & PortasDoChamadoDoInsight {
   const { porta } = deps;
   return {
     modulos: () => deps.modulos.contratados(ctx),
@@ -247,7 +268,23 @@ export function portasDoPainel(
     classificar: (c) => porta.classificar(ctx, c),
     reclamacaoParaChamado: (id) => porta.reclamacaoParaChamado(ctx, id),
     ligarChamado: (l) => porta.ligarChamado(ctx, l),
+    ligarChamados: (ls) => porta.ligarChamados(ctx, ls),
   };
+}
+
+/**
+ * A ligação, numa segunda transação, depois do chamado aberto (adendo de
+ * 19/10/2026 ao ADR-047): se falhar, o chamado fica aberto, e o erro diz qual.
+ */
+async function ligarDepoisDeAbrir<T>(chamadoId: string, ligar: () => Promise<T>): Promise<T> {
+  try {
+    return await ligar();
+  } catch (e) {
+    throw new Conflito('chamado_sem_ligacao', 'O chamado abriu, mas a ligação falhou.', {
+      chamadoId,
+      ...(e instanceof ErroDeDominio ? { causa: e.codigo } : {}),
+    });
+  }
 }
 
 export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
@@ -299,18 +336,13 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
       const portas = portasDoPainel(deps, ctx);
       const abertura = await prepararChamadoDaReclamacao(portas, { ...pedido, sinalId }, agora());
       const { id } = await deps.chamados.abrir(ctx, abertura);
-      try {
-        await ligarChamadoDaReclamacao(
+      await ligarDepoisDeAbrir(id, () =>
+        ligarChamadoDaReclamacao(
           portas,
           { sinalId, chamadoId: id, usuarioId: ctx.usuarioId },
           agora(),
-        );
-      } catch (e) {
-        throw new Conflito('chamado_sem_ligacao', 'O chamado abriu, mas a ligação falhou.', {
-          chamadoId: id,
-          ...(e instanceof ErroDeDominio ? { causa: e.codigo } : {}),
-        });
-      }
+        ),
+      );
       return { chamadoId: id };
     },
     ligarChamadoDaReclamacao: (ctx, sinalId, chamadoId) =>
@@ -319,5 +351,28 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
         { sinalId, chamadoId, usuarioId: ctx.usuarioId },
         agora(),
       ),
+    abrirChamadoDoInsight: async (ctx, insightId, pedido) => {
+      const portas = portasDoPainel(deps, ctx);
+      const abertura = await prepararChamadoDoInsight(portas, { ...pedido, insightId }, agora());
+      const { id } = await deps.chamados.abrir(ctx, abertura);
+      return {
+        chamadoId: id,
+        ligadas: await ligarDepoisDeAbrir(id, () =>
+          ligarChamadoDoInsight(
+            portas,
+            { insightId, chamadoId: id, usuarioId: ctx.usuarioId },
+            agora(),
+          ),
+        ),
+      };
+    },
+    ligarChamadoDoInsight: async (ctx, insightId, chamadoId) => ({
+      chamadoId,
+      ligadas: await ligarChamadoDoInsight(
+        portasDoPainel(deps, ctx),
+        { insightId, chamadoId, usuarioId: ctx.usuarioId },
+        agora(),
+      ),
+    }),
   };
 }
