@@ -1167,7 +1167,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/implantacao',
     resumo:
-      'Painel de implantação do hotel: locais, papéis vigentes e pendências. Admin do grupo ou Implantador do hotel.',
+      'Painel de implantação do hotel: locais, papéis vigentes, pendências e o tempo de implantação contra a meta de 1 dia. Admin do grupo ou Implantador do hotel.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Resumo da implantação', esquema: RespostaDeImplantacao },

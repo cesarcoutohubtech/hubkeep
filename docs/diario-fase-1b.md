@@ -1147,4 +1147,16 @@ Na branch `claude/1b-pb1`, montada sobre a `claude/1b-m2` e a `claude/1b-pb1-zon
 - **Falta (PB1b):**
   - a bandeira na criação dos modelos de ativo e de checklist;
   - o filtro pela bandeira do hotel nas listas usadas no hotel: o cadastro do ativo, o PWA, o checklist da OS e os planos.
-- **A confirmar com o Cesar:** o desenho pede que o painel registre quando o hotel entrou em implantação e quando ficou pronto, para medir a meta de 1 dia. A proposta é tirar isso da auditoria da mudança de situação do hotel, sem migração.
+- **Tempo de implantação (decisão do Cesar de 20/10/2026, nesta sessão: "Continue como proposta"):** o painel mostra quando o hotel entrou em implantação e quando ficou pronto, contra a meta de 1 dia, tirado da auditoria do hotel, sem migração.
+  - Domínio (`tempoDaImplantacao`, `META_DA_IMPLANTACAO_MS` de 24 h). A entrada é a primeira mudança para `em_implantacao` (a auditoria da importação do sistema hoteleiro); sem ela, a criação do hotel, que nasce em implantação. O pronto é a primeira ativação depois da entrada;
+  - enquanto em implantação, a duração conta até agora. O hotel que já saiu da implantação sem a ativação na auditoria fica sem duração, e a tela diz que não há como medir;
+  - a porta do painel lê a auditoria pela RLS (Admin e quem escreve no hotel, o que cobre o Implantador). O contrato ganha `tempo` (`entrouEm`, `prontoEm`, `duracaoMs`, `metaMs`, `dentroDaMeta`);
+  - a meta é do produto, não do cliente, e fica como constante do domínio.
+
+## Ponto de retomada (20/10/2026, PB1a com o tempo de implantação)
+
+- **`main`:** com o #337 (M4a) e o #341 (M2). **Dev:** o `db push` da 0058 ainda não foi confirmado aqui.
+- **PR aberto:** o [#340](https://github.com/cesarcoutohubtech/hubkeep/pull/340) (zona da PB1, `claude/1b-pb1-zona`), verde fora o check "zona protegida", que falha por desenho.
+- **Trabalho não enviado em PR:** a PB1a na `claude/1b-pb1`, com o tempo de implantação. Validação local verde (typecheck, lint e testes); a integração do banco só roda na CI.
+- **Espera o Cesar:** confirmar o `db push` da 0058; o merge do #340 e o `db push` da 0059; as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** depois do merge do #340, trazer a `main` para a `claude/1b-pb1` e abrir o PR `1b:` da PB1a. Enquanto isso, a PB1b numa branch sobre a `claude/1b-pb1`.

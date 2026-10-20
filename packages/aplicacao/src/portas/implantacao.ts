@@ -6,6 +6,7 @@ import type {
   Contexto,
   LocalParaImplantacao,
   ModeloContratual,
+  MudancaDeSituacaoDoHotel,
   PlanoQueCobre,
 } from '@hubkeep/dominio';
 
@@ -17,11 +18,21 @@ export interface HotelEmImplantacao {
   modeloContratual: ModeloContratual | null;
 }
 
+export interface HotelDaPorta extends HotelEmImplantacao {
+  /** O hotel nasce em implantação: a entrada, quando a auditoria não tem. */
+  criadoEm: Date;
+}
+
 export interface PortaImplantacao {
   /** Hotel visível a quem pede; senão null. */
-  hotel(ctx: Contexto, hotelId: string): Promise<HotelEmImplantacao | null>;
+  hotel(ctx: Contexto, hotelId: string): Promise<HotelDaPorta | null>;
   locais(ctx: Contexto, hotelId: string): Promise<LocalParaImplantacao[]>;
   ativos(ctx: Contexto, hotelId: string): Promise<AtivoParaImplantacao[]>;
   /** Os planos do hotel, pela RLS, para o contador de ativos com modelo e sem plano (M1). */
   planos(ctx: Contexto, hotelId: string): Promise<PlanoQueCobre[]>;
+  /**
+   * As mudanças de situação do hotel na auditoria (importação e ativação),
+   * para o tempo de implantação (PB1, sem migração).
+   */
+  mudancasDeSituacao(ctx: Contexto, hotelId: string): Promise<MudancaDeSituacaoDoHotel[]>;
 }

@@ -388,7 +388,7 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
       banco.withContext(ctx, async (tx) => {
         const h = await tx
           .selectFrom('app.hotel')
-          .select(['id', 'nome', 'status', 'modelo_contratual'])
+          .select(['id', 'nome', 'status', 'modelo_contratual', 'criado_em'])
           .where('id', '=', hotelId)
           .executeTakeFirst();
         return h
@@ -396,6 +396,7 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
               id: h.id,
               nome: h.nome,
               status: h.status,
+              criadoEm: new Date(h.criado_em),
               modeloContratual: ehModeloContratual(h.modelo_contratual)
                 ? h.modelo_contratual
                 : null,
@@ -439,6 +440,21 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
         })),
       ),
     planos: (ctx, hotelId) => planosQueCobrem(banco, ctx, hotelId),
+    // A auditoria do hotel é lida por quem escreve no hotel e pelo Admin (RLS),
+    // o que cobre quem vê o painel.
+    mudancasDeSituacao: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.auditoria')
+            .select(['em', sql<string | null>`depois->>'status'`.as('status')])
+            .where('entidade', '=', 'hotel')
+            .where('registro_id', '=', hotelId)
+            .where('acao', 'in', ['importar_do_sistema_hoteleiro', 'ativar'])
+            .orderBy('em')
+            .execute()
+        ).map((m) => ({ em: new Date(m.em), status: m.status })),
+      ),
   };
 }
 
