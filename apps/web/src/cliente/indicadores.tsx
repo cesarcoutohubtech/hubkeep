@@ -4,7 +4,9 @@
 // por idade, os gráficos dos chamados por dia (decisão 6), a comparação na bandeira com o melhor de
 // cada coluna em destaque e a produtividade por equipe e hotel. O proprietário
 // vê só os cartões dos hotéis dele. Os números chegam calculados da API; aqui
-// só se formatam, no idioma de quem vê.
+// só se formatam, no idioma de quem vê. A tela inicial (1c, seção 4 da
+// paridade) usa os mesmos cartões, no resumo: os quatro primeiros e a linha do
+// backlog dos últimos 14 dias; e só o gráfico do fluxo.
 import type { RespostaDosIndicadores, z } from '@hubkeep/contratos';
 import { FAIXAS_DE_IDADE_API } from '@hubkeep/contratos';
 import { amostraSuficiente } from '@hubkeep/dominio';
@@ -13,6 +15,7 @@ import {
   Indicador,
   Indicadores,
   MensagemVazia,
+  MiniLinha,
   Painel,
   Tabela,
 } from '@hubkeep/ui';
@@ -26,6 +29,8 @@ type HotelCompleto = Extract<HotelNaTela, { visao: 'completa' }>;
 type HotelDoProprietario = Extract<HotelNaTela, { visao: 'cartoes' }>;
 
 const HORA = 3600;
+/** Os dias da linha do backlog no resumo da tela inicial. */
+export const DIAS_DA_TENDENCIA = 14;
 
 function useFormatos() {
   const t = useT();
@@ -67,10 +72,13 @@ export function CartoesDoPeriodo({
   atual,
   anterior,
   meta,
+  resumo,
 }: {
   atual: IndicadoresNaTela;
   anterior: IndicadoresNaTela | null;
   meta: number;
+  /** Na tela inicial: só os quatro primeiros, e o backlog com a linha dos últimos dias. */
+  resumo?: { serie: PainelDeIndicadores['serie'] };
 }) {
   const t = useT();
   const f = useFormatos();
@@ -84,6 +92,14 @@ export function CartoesDoPeriodo({
         rotulo={t('indicadores.backlog')}
         valor={f.numero(atual.backlog)}
         detalhe={variacao(atual.backlog, anterior?.backlog)}
+        tendencia={
+          resumo ? (
+            <MiniLinha
+              rotulo={t('indicadores.backlog.tendencia', { dias: DIAS_DA_TENDENCIA })}
+              valores={resumo.serie.slice(-DIAS_DA_TENDENCIA).map((d) => d.backlog)}
+            />
+          ) : undefined
+        }
       />
       <Indicador
         rotulo={t('indicadores.sla')}
@@ -129,6 +145,25 @@ export function CartoesDoPeriodo({
           variacao(atual.percentualDePreventivaEmDia, anterior?.percentualDePreventivaEmDia, true),
         )}
       />
+      {resumo ? null : <CartoesDoRestoDoPeriodo atual={atual} anterior={anterior} />}
+    </Indicadores>
+  );
+}
+
+/** Os cartões que só o painel de indicadores mostra, depois dos quatro do resumo. */
+function CartoesDoRestoDoPeriodo({
+  atual,
+  anterior,
+}: {
+  atual: IndicadoresNaTela;
+  anterior: IndicadoresNaTela | null;
+}) {
+  const t = useT();
+  const f = useFormatos();
+  const variacao = useVariacao();
+  const juntar = (...partes: (string | undefined)[]) => partes.filter(Boolean).join(' · ');
+  return (
+    <>
       <Indicador
         rotulo={t('indicadores.razao')}
         valor={f.opcional(atual.preventivasPorCorretiva, 2)}
@@ -157,7 +192,7 @@ export function CartoesDoPeriodo({
           variacao(atual.chamadosPor100Uhs, anterior?.chamadosPor100Uhs),
         )}
       />
-    </Indicadores>
+    </>
   );
 }
 
@@ -193,7 +228,14 @@ export function BacklogPorIdade({ faixas }: { faixas: IndicadoresNaTela['backlog
  * fluxo (abertos e concluídos no dia) e o backlog no fim do dia. A tabela com
  * os números fica abaixo do primeiro.
  */
-export function ChamadosPorDia({ serie }: { serie: PainelDeIndicadores['serie'] }) {
+export function ChamadosPorDia({
+  serie,
+  soFluxo = false,
+}: {
+  serie: PainelDeIndicadores['serie'];
+  /** Na tela inicial: só o fluxo de chamados, sem o backlog. */
+  soFluxo?: boolean;
+}) {
   const t = useT();
   const intl = useIntl();
   const f = useFormatos();
@@ -253,20 +295,22 @@ export function ChamadosPorDia({ serie }: { serie: PainelDeIndicadores['serie'] 
           verTabela={t('indicadores.grafico.ver_tabela')}
         />
       </Painel>
-      <Painel titulo={t('indicadores.serie.coluna.backlog')} nivel={3}>
-        <GraficoDeLinhas
-          rotulo={t('indicadores.serie.coluna.backlog')}
-          eixoX={eixoX}
-          formatar={formatar}
-          series={[
-            {
-              chave: 'backlog',
-              rotulo: t('indicadores.serie.coluna.backlog'),
-              valores: serie.map((d) => d.backlog),
-            },
-          ]}
-        />
-      </Painel>
+      {soFluxo ? null : (
+        <Painel titulo={t('indicadores.serie.coluna.backlog')} nivel={3}>
+          <GraficoDeLinhas
+            rotulo={t('indicadores.serie.coluna.backlog')}
+            eixoX={eixoX}
+            formatar={formatar}
+            series={[
+              {
+                chave: 'backlog',
+                rotulo: t('indicadores.serie.coluna.backlog'),
+                valores: serie.map((d) => d.backlog),
+              },
+            ]}
+          />
+        </Painel>
+      )}
     </>
   );
 }
