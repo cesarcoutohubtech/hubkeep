@@ -1004,6 +1004,28 @@ O Cesar vai testar a tela no dev com o grupo do histórico de demonstração; da
 - **Pergunta ao Cesar:** o proprietário vê o custo informado na ficha da OS; só a impressão o esconde. Esconder também na ficha é decisão de quem vê.
 - **Próximo:** o PR 2 do item 9, o CSV da lista de chamados e o aviso do número de linhas (também na auditoria geral). O CSV do painel espera o merge do #282. Primeiro passo: o modo de exportação na consulta da lista de chamados, como o da auditoria geral (`LIMITES_DA_AUDITORIA`).
 
+## CSV da lista de chamados e aviso de linhas (item 9, PR 2; 19/10/2026)
+
+O registro da área compartilhada (OS e catálogos) e as escolhas do item 9 estão no começo do item, acima; o PR 1 ([#331](https://github.com/cesarcoutohubtech/hubkeep/pull/331)) entrou na `main` em 19/10/2026. Este PR mexe na lista de chamados e nos catálogos.
+
+**Feito na branch `claude/1c-csv`:**
+- **Domínio:** `LIMITES_DA_EXPORTACAO_DA_LISTA` (`packages/dominio/src/consultas.ts`), com páginas de 1.000 e até 50 mil linhas no CSV. São os limites da decisão 13, da auditoria geral, aplicados à lista de chamados.
+- **API:** `GET /api/v1/chamados?exportacao=1` traz 1.000 por página, com os mesmos filtros e o mesmo escopo da RLS. Contrato `ConsultaDaListaDeChamados` e OpenAPI.
+- **Tela:**
+  - o botão "Exportar CSV" na lista de chamados, que junta as páginas no navegador, como a auditoria geral;
+  - o CSV com o BOM e o separador pelo formato regional de quem exporta (decisão 7);
+  - as colunas: aberto em, hotel, local, ativo, descrição, situação, prioridade e identificador.
+- **Aviso depois de exportar:** "N linhas exportadas em arquivo.csv, só com o que o seu perfil enxerga", na lista de chamados e na auditoria geral.
+- **A tela não foi aberta no navegador.**
+
+**Fica para depois:** o CSV do painel de indicadores, que espera o merge do #282.
+
+### Ponto de retomada (19/10/2026, CSV)
+
+- **`main`:** af1b9aa.
+- **PRs da 1c esperando o merge do Cesar, todos fora da zona protegida:** #281 (push), #282 (painel), #331 (impressão da OS) e o deste CSV. Os quatro mexem nas listas de exportação e nos catálogos: depois de cada merge, os outros podem precisar de atualização com a `main`.
+- **Pergunta ao Cesar (no #331):** esconder também na ficha da OS o custo informado do proprietário.
+- **Próximo:** depois do merge do #282, o CSV do painel de indicadores. Em seguida, o catálogo completo (item 10).
 ## Catálogo completo (item 10): termos dos catálogos (19/10/2026)
 
 **Área compartilhada (catálogos), registrada antes de mexer.** Este PR, na branch `claude/1c-idiomas`, troca textos em en, es e fr de telas da 1b e da 1c. Não muda chave nem variável.
@@ -1044,6 +1066,30 @@ Se o Kaio quiser, o teste de termos pode passar a valer também para `inteligenc
   - a tradução profissional, que é contratação externa: o volume está na referência de termos;
   - os gráficos do painel;
   - a tolerância da preventiva na tela de configuração.
+
+## CSV do painel de indicadores (item 9, PR 2; 20/10/2026)
+
+O #282 (painel), o #336 (termos) e o #335 da 1b entraram na `main` em 20/10/2026 (bf9b3c0). O CSV do painel entra no mesmo PR do CSV de chamados ([#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332)), que o item 9 previa junto. **Área compartilhada (catálogos), registrada antes de mexer:** só chaves novas `indicadores.acao.exportar` e `indicadores.csv.*`.
+
+**Feito na branch `claude/1c-csv`:**
+- **O arquivo:** uma linha por hotel do período e, no fim, o total do escopo. As colunas: hotel, bandeira, UHs ativas, backlog, % de SLA e os chamados na conta, MTTR e mediana em horas, % de preventiva em dia e as preventivas na conta, preventivas por corretiva, UH-dias perdidos, chamados abertos e chamados por 100 UHs.
+- **Escopo:** sai o que a tela recebeu da API, sem consulta nova. O hotel que o proprietário só vê pelos cartões leva só o backlog, os UH-dias perdidos e os chamados abertos; as outras colunas ficam vazias, e o total do escopo não sai para ele.
+- **Números:** sem separador de milhar e com o decimal do formato regional de quem exporta, o mesmo que escolhe o separador (decisão 7). Sem dado, a célula fica vazia.
+- **Aviso:** o mesmo `comum.csv_exportado` da lista de chamados e da auditoria geral.
+- **Código comum:** a leitura do formato regional para o CSV (`formatoDeQuemExporta`, em `apps/web/src/cliente/csv.ts`) passou a servir a auditoria geral, a lista de chamados e o painel.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, CSV do painel)
+
+- **`main`:** bf9b3c0. A CI do merge do #335 rodava às 11h30; a mesma `main`, rodada aqui, passou em lint, typecheck e testes.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel.
+- **Pergunta ao Cesar, ainda sem resposta:** esconder também na ficha da OS o custo informado, para o proprietário.
+- **Pedido ao Kaio:** os termos nos textos `inteligencia.*` (seção do item 10, acima).
+- **Fica da 1c:**
+  - os gráficos do painel;
+  - a tolerância da preventiva na tela de configuração;
+  - a tradução profissional, que é contratação externa.
+- **Próximo:** os gráficos do painel. Primeiro passo: conferir na seção 5 de `docs/referencia/paridade-mock-1c.md` e no mock quais gráficos o painel mostra (a linha de 14 dias e os chamados por dia) e se o `packages/ui` já tem um componente de gráfico.
 
 ## Gráficos do painel de indicadores (decisão 6; 20/10/2026)
 
@@ -1140,4 +1186,16 @@ Ler a política no job, no lugar da constante, é do Kaio. Até lá, o painel e 
   - a proposta de "Onde mais quebra" para o glossário;
   - a política da tolerância, que o Intelligence pode passar a ler.
 - **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR; o que vier depois depende das respostas acima.
+- **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.
+
+### Ponto de retomada (20/10/2026, depois do merge do #343)
+
+- **`main`:** 5de68ac, com o #343 (tolerância) e o #342 do Intelligence. Às 15h, o CI e a segurança da `main` tinham passado, e o banco ainda rodava. O Cesar avisou que o `db push` está feito.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel, atualizado com a `main` 5de68ac; aqui, lint, typecheck e testes passaram.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial (seção 4 da paridade);
+  - "Onde mais quebra" para o glossário.
+- **Pedidos e avisos ao Kaio:** os termos nos textos `inteligencia.*`; "Onde mais quebra"; a política da tolerância, que o Intelligence pode passar a ler.
+- **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR.
 - **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.

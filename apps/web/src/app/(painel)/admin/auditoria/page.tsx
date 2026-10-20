@@ -28,7 +28,7 @@ import { type FormEvent, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type ErroDaApi, type RespostaDaApi, chamarApi } from '../../../../cliente/api';
 import { useHoteis } from '../../../../cliente/cadastro';
-import { arquivoCsv } from '../../../../cliente/csv';
+import { arquivoCsv, baixarCsv, formatoDeQuemExporta } from '../../../../cliente/csv';
 import {
   chaveDaAcao,
   useCriarFormatadorDeValor,
@@ -94,6 +94,7 @@ export default function AuditoriaGeral() {
   const [abertas, setAbertas] = useState<ReadonlySet<string>>(new Set());
   const [erro, setErro] = useState<ErroDaApi | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [exportado, setExportado] = useState<string | null>(null);
   const [exportadas, setExportadas] = useState<number | null>(null);
 
   async function consultar(f: Filtro, cursor: string | null) {
@@ -143,12 +144,10 @@ export default function AuditoriaGeral() {
   async function exportar() {
     setErro(null);
     setAviso(null);
+    setExportado(null);
     setExportadas(0);
     try {
-      const preferencias = await chamarApi<{ formatoRegional: string }>('/api/v1/preferencias');
-      const separador = separadorDeCsv(
-        preferencias.ok ? preferencias.dados.formatoRegional : intl.locale,
-      );
+      const separador = separadorDeCsv(await formatoDeQuemExporta(intl.locale));
       const linhas: Linha[] = [];
       let referencias: Resposta['referencias'] = {};
       let idiomaPadrao = 'pt-BR';
@@ -191,12 +190,9 @@ export default function AuditoriaGeral() {
         ],
         separador,
       );
-      const url = URL.createObjectURL(new Blob([conteudo], { type: 'text/csv;charset=utf-8' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = t('admin.auditoria.arquivo', { de: filtro.de, ate: filtro.ate });
-      a.click();
-      URL.revokeObjectURL(url);
+      const arquivo = t('admin.auditoria.arquivo', { de: filtro.de, ate: filtro.ate });
+      baixarCsv(conteudo, arquivo);
+      setExportado(t('comum.csv_exportado', { n: linhas.length, arquivo }));
     } finally {
       setExportadas(null);
     }
@@ -290,6 +286,7 @@ export default function AuditoriaGeral() {
           <Nota tom="info">{t('admin.auditoria.exportando', { n: exportadas })}</Nota>
         )}
         {aviso && <Nota tom="atencao">{aviso}</Nota>}
+        {exportado && <Nota tom="ok">{exportado}</Nota>}
         {erro && <MensagemDeErro>{mensagemDeErro(erro)}</MensagemDeErro>}
       </Painel>
 

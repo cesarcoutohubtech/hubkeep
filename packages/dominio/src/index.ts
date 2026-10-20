@@ -439,6 +439,7 @@ export {
 export type { OrigemDoChamado, PoliticaAplicadaNaAbertura } from './chamados';
 export {
   ENTIDADES_DA_LINHA_DO_TEMPO,
+  LIMITES_DA_EXPORTACAO_DA_LISTA,
   TAMANHO_DA_PAGINA,
   motivoDaAuditoria,
   validarPeriodoDaLista,

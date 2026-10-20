@@ -129,6 +129,8 @@ export function caminhoDaLista(
   caminho: string,
   filtro: FiltroDaTela,
   depoisDe: string | null = null,
+  /** A página da exportação, de 1.000 (só a lista de chamados; 1c, item 9). */
+  exportacao = false,
 ): string {
   const q = new URLSearchParams();
   if (filtro.hotelId) q.set('hotelId', filtro.hotelId);
@@ -138,6 +140,7 @@ export function caminhoDaLista(
   if (filtro.ate) q.set('ate', inicioDoDia(filtro.ate, 1));
   if (filtro.doLocador) q.set('doLocador', '1');
   if (depoisDe) q.set('depoisDe', depoisDe);
+  if (exportacao) q.set('exportacao', '1');
   const texto = q.toString();
   return texto ? `${caminho}?${texto}` : caminho;
 }
