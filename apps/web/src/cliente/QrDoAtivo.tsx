@@ -1,8 +1,8 @@
 'use client';
 // QR individual do ativo (fase 1a, B5): a imagem é gerada no navegador (uqr
 // calcula a matriz; o SVG sai daqui), com o endereço do PWA do técnico e o
-// caminho /q/<codigo>. O código não revela o id do ativo. A etiqueta de
-// impressão e o QR em lote ficam para a 1b. O quadro fica branco com módulos
+// caminho /q/<codigo>. O código não revela o id do ativo. A folha de
+// etiquetas do QR em lote (M3) está em etiquetas.tsx. O quadro fica branco com módulos
 // pretos nos dois temas, para a leitura pela câmera.
 import { caminhoDoQr } from '@hubkeep/dominio';
 import { Botao, MensagemDeErro } from '@hubkeep/ui';
@@ -11,7 +11,7 @@ import { encode } from 'uqr';
 import { useT } from '../i18n/cliente';
 
 /** Endereço público do PWA (ex.: https://tecnico.hubkeep.com.br); no dev, o Vite. */
-const URL_DO_TECNICO = process.env.NEXT_PUBLIC_URL_DO_TECNICO;
+export const URL_DO_TECNICO = process.env.NEXT_PUBLIC_URL_DO_TECNICO;
 
 export function enderecoDoQr(base: string, codigo: string): string {
   return `${base.replace(/\/+$/, '')}${caminhoDoQr(codigo)}`;

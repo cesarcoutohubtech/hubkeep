@@ -21,6 +21,7 @@ import { useIntl } from 'react-intl';
 import { chamarApi } from './api';
 import { Aviso, type AvisoDeAcao } from './aviso';
 import { SeletorDeHotel, useHoteis } from './cadastro';
+import { EtiquetasDaImportacao } from './etiquetas';
 import { useMensagemDeErro, useT } from '../i18n/cliente';
 
 export type SituacaoDaLinhaNaTela = 'nova' | 'criada' | 'ja_importada' | 'invalida';
@@ -113,7 +114,7 @@ interface RespostaDaPrevia {
   invalidas: number;
 }
 interface RespostaDaGravacao {
-  linhas: LinhaDaPlanilha[];
+  linhas: (LinhaDaPlanilha & { ativoId?: string | null })[];
   criadas: number;
   jaImportadas: number;
   invalidas: number;
@@ -128,6 +129,7 @@ export function ImportacaoDeAtivos() {
   const [gravacao, setGravacao] = useState<RespostaDaGravacao | null>(null);
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [imprimindo, setImprimindo] = useState(false);
 
   async function baixarModelo() {
     const r = await chamarApi<{ categorias: { ativa: boolean; campos: unknown }[] }>(
@@ -149,6 +151,7 @@ export function ImportacaoDeAtivos() {
   async function escolher(arquivo: File | undefined) {
     setPrevia(null);
     setGravacao(null);
+    setImprimindo(false);
     setAviso(null);
     setCsv(arquivo ? await arquivo.text() : null);
   }
@@ -180,87 +183,98 @@ export function ImportacaoDeAtivos() {
     const r = await enviar<RespostaDaGravacao>(`/api/v1/hoteis/${hotelId}/importacao-de-ativos`);
     if (r) {
       setPrevia(null);
+      setImprimindo(false);
       setGravacao(r);
     }
   }
 
+  const criados = (gravacao?.linhas ?? []).flatMap((l) =>
+    l.situacao === 'criada' && l.ativoId ? [l.ativoId] : [],
+  );
+
   return (
     <Painel>
-      <div className="hk-filtros">
-        <SeletorDeHotel
-          rotulo={t('admin.importacao.escolher_hotel')}
-          hoteis={hoteis}
-          valor={hotelId}
-          aoEscolher={(id) => {
-            setHotelId(id);
-            setPrevia(null);
-            setGravacao(null);
-          }}
-        />
-      </div>
-      <p className="hk-suave">
-        {t('admin.importacao.dica', {
-          linhas: LIMITES_DA_IMPORTACAO.linhas,
-          mb: LIMITES_DA_IMPORTACAO.bytes / (1024 * 1024),
-        })}
-      </p>
-      <div className="hk-linha-de-botoes">
-        <Botao tamanho="pequeno" onClick={() => void baixarModelo()}>
-          {t('admin.importacao.baixar_modelo')}
-        </Botao>
-      </div>
-      <Campo rotulo={t('admin.importacao.arquivo')}>
-        {(p) => (
-          <Entrada
-            {...p}
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(ev) => void escolher(ev.currentTarget.files?.[0])}
+      <div className={imprimindo ? 'hk-nao-imprimir' : undefined}>
+        <div className="hk-filtros">
+          <SeletorDeHotel
+            rotulo={t('admin.importacao.escolher_hotel')}
+            hoteis={hoteis}
+            valor={hotelId}
+            aoEscolher={(id) => {
+              setHotelId(id);
+              setPrevia(null);
+              setGravacao(null);
+              setImprimindo(false);
+            }}
           />
-        )}
-      </Campo>
-      <div className="hk-linha-de-botoes">
-        <Botao
-          tamanho="pequeno"
-          disabled={!hotelId || csv === null || ocupado}
-          onClick={() => void prever()}
-        >
-          {t('admin.importacao.prever')}
-        </Botao>
-        {previa && previa.novas > 0 ? (
+        </div>
+        <p className="hk-suave">
+          {t('admin.importacao.dica', {
+            linhas: LIMITES_DA_IMPORTACAO.linhas,
+            mb: LIMITES_DA_IMPORTACAO.bytes / (1024 * 1024),
+          })}
+        </p>
+        <div className="hk-linha-de-botoes">
+          <Botao tamanho="pequeno" onClick={() => void baixarModelo()}>
+            {t('admin.importacao.baixar_modelo')}
+          </Botao>
+        </div>
+        <Campo rotulo={t('admin.importacao.arquivo')}>
+          {(p) => (
+            <Entrada
+              {...p}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(ev) => void escolher(ev.currentTarget.files?.[0])}
+            />
+          )}
+        </Campo>
+        <div className="hk-linha-de-botoes">
           <Botao
             tamanho="pequeno"
-            variante="primario"
-            disabled={ocupado}
-            onClick={() => void importar()}
+            disabled={!hotelId || csv === null || ocupado}
+            onClick={() => void prever()}
           >
-            {t('admin.importacao.importar', { novas: previa.novas })}
+            {t('admin.importacao.prever')}
           </Botao>
+          {previa && previa.novas > 0 ? (
+            <Botao
+              tamanho="pequeno"
+              variante="primario"
+              disabled={ocupado}
+              onClick={() => void importar()}
+            >
+              {t('admin.importacao.importar', { novas: previa.novas })}
+            </Botao>
+          ) : null}
+        </div>
+        <Aviso aviso={erroDosHoteis ? { tipo: 'erro', erro: erroDosHoteis } : aviso} />
+        {ocupado ? <MensagemVazia>{t('comum.carregando')}</MensagemVazia> : null}
+        {previa ? (
+          <ResultadoDaPlanilha
+            gravada={false}
+            resumo={{
+              prontas: previa.novas,
+              jaImportadas: previa.jaImportadas,
+              invalidas: previa.invalidas,
+            }}
+            linhas={previa.linhas}
+          />
+        ) : null}
+        {gravacao ? (
+          <ResultadoDaPlanilha
+            gravada
+            resumo={{
+              prontas: gravacao.criadas,
+              jaImportadas: gravacao.jaImportadas,
+              invalidas: gravacao.invalidas,
+            }}
+            linhas={gravacao.linhas}
+          />
         ) : null}
       </div>
-      <Aviso aviso={erroDosHoteis ? { tipo: 'erro', erro: erroDosHoteis } : aviso} />
-      {ocupado ? <MensagemVazia>{t('comum.carregando')}</MensagemVazia> : null}
-      {previa ? (
-        <ResultadoDaPlanilha
-          gravada={false}
-          resumo={{
-            prontas: previa.novas,
-            jaImportadas: previa.jaImportadas,
-            invalidas: previa.invalidas,
-          }}
-          linhas={previa.linhas}
-        />
-      ) : null}
-      {gravacao ? (
-        <ResultadoDaPlanilha
-          gravada
-          resumo={{
-            prontas: gravacao.criadas,
-            jaImportadas: gravacao.jaImportadas,
-            invalidas: gravacao.invalidas,
-          }}
-          linhas={gravacao.linhas}
-        />
+      {hotelId && criados.length > 0 ? (
+        <EtiquetasDaImportacao hotelId={hotelId} ids={criados} aoAbrir={setImprimindo} />
       ) : null}
     </Painel>
   );

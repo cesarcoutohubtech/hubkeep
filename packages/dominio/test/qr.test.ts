@@ -4,6 +4,7 @@ import {
   TAMANHO_DO_CODIGO_QR,
   caminhoDoQr,
   codigoQrDeBytes,
+  codigoQrLegivel,
   lerCodigoQr,
 } from '../src/qr';
 
@@ -48,5 +49,16 @@ describe('lerCodigoQr', () => {
 describe('caminhoDoQr', () => {
   it('é relativo ao endereço do PWA', () => {
     expect(caminhoDoQr('7K3M9QX2AB')).toBe('/q/7K3M9QX2AB');
+  });
+});
+
+describe('codigoQrLegivel', () => {
+  it('separa em dois grupos de cinco, e a leitura aceita de volta', () => {
+    expect(codigoQrLegivel('7K3M9QX2AB')).toBe('7K3M9-QX2AB');
+    expect(lerCodigoQr(codigoQrLegivel('7K3M9QX2AB'))).toBe('7K3M9QX2AB');
+  });
+
+  it('deixa como está o que não tem o tamanho do código', () => {
+    expect(codigoQrLegivel('ABC')).toBe('ABC');
   });
 });
