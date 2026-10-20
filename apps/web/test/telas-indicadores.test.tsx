@@ -11,6 +11,7 @@ import {
   BacklogPorIdade,
   CartoesDoPeriodo,
   CartoesDoProprietario,
+  ChamadosPorDia,
   ComparacaoNaBandeira,
   type IndicadoresNaTela,
   type PainelDeIndicadores,
@@ -85,6 +86,12 @@ const hoteis: PainelDeIndicadores['hoteis'] = [
   },
 ];
 
+const SERIE: PainelDeIndicadores['serie'] = [
+  { dia: '2026-10-18', backlog: 10, abertos: 4, encerrados: 2 },
+  { dia: '2026-10-19', backlog: 11, abertos: 3, encerrados: 2 },
+  { dia: '2026-10-20', backlog: 9, abertos: 1, encerrados: 3 },
+];
+
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
   renderToString(
     <ProvedorDeIdioma idioma={idioma} mensagens={mensagensDe(idioma)} pseudoLiberado>
@@ -108,6 +115,7 @@ describe('painel de indicadores em cada idioma', () => {
             meta={90}
           />
           <BacklogPorIdade faixas={indicadores().backlogPorIdade} />
+          <ChamadosPorDia serie={SERIE} />
           <ComparacaoNaBandeira bandeira={bandeira} hoteis={completos} />
           <Produtividade
             linhas={[
@@ -129,6 +137,10 @@ describe('painel de indicadores em cada idioma', () => {
       expect(html.match(/data-faixa=/g)).toHaveLength(5);
       expect(html).toContain('Hotel Praia');
       expect(html).toContain('Hotel do Dono');
+      // Os dois gráficos da série, com a tabela dos números.
+      expect(html.match(/role="img"/g)).toHaveLength(2);
+      expect(html.match(/<polyline/g)).toHaveLength(3);
+      expect(html).toContain('<summary>');
     },
   );
 

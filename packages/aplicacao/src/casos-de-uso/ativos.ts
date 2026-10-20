@@ -30,6 +30,7 @@ import {
   podeGerirAtivos,
   podeMoverAtivo,
   resolverPolitica,
+  situacaoInicialNoPwa,
   validarCamposDoAtivo,
   validarCriticidade,
   validarDatasDoAtivo,
@@ -85,6 +86,11 @@ export interface CadastroPreparado {
   hotelId: string;
   localId: string;
   dados: DadosDeAtivo;
+  /**
+   * Com que situação nasce o cadastro que chega pelo PWA (M4), pela política
+   * ativo.aprovacao_do_cadastro do hotel. O cadastro no web nasce aprovado.
+   */
+  situacaoNoPwa?: 'pendente' | 'aprovado';
 }
 
 export interface AlteracaoPreparada {
@@ -244,7 +250,17 @@ export function criarCasosDeUsoDeAtivos(deps: {
       if (!local) throw new NaoEncontrado('local_nao_encontrado', 'Local não encontrado.');
       await exigirNoHotel(ctx, local.hotelId);
       exigirLocalParaAtivo(local);
-      return { hotelId: local.hotelId, localId: local.id, dados: await dadosDe(ctx, p, null) };
+      const chave = 'ativo.aprovacao_do_cadastro';
+      const aprovacao = resolverPolitica(
+        chave,
+        await deps.ativos.politica(ctx, local.hotelId, chave),
+      );
+      return {
+        hotelId: local.hotelId,
+        localId: local.id,
+        dados: await dadosDe(ctx, p, null),
+        situacaoNoPwa: situacaoInicialNoPwa(aprovacao),
+      };
     },
     async cadastrar(ctx, p) {
       const c = await casos.prepararCadastro(ctx, p);

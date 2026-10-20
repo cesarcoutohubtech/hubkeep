@@ -81,12 +81,13 @@ type Politica =
 type Origem = 'hotel' | 'bandeira' | 'grupo' | 'padrao';
 type EscopoDoBotao = 'grupo' | 'bandeira' | 'hotel';
 
-/** As políticas de ligar ou desligar (I6, I8 e PV1), com os textos de cada uma. */
+/** As políticas de ligar ou desligar (I6, I8, PV1 e M4), com os textos de cada uma. */
 const POLITICAS_LIGADAS = [
   'os.codigos_obrigatorios',
   'os.foto_depois_obrigatoria',
   'os.assinatura_no_aceite',
   'os.checklist_completo_obrigatorio',
+  'ativo.aprovacao_do_cadastro',
 ] as const;
 type ChaveLigada = (typeof POLITICAS_LIGADAS)[number];
 const TEXTOS_LIGADOS: Record<
@@ -116,6 +117,12 @@ const TEXTOS_LIGADOS: Record<
     resumo: 'admin.configuracao.checklist.resumo',
     dica: 'admin.configuracao.checklist.dica',
     ligado: 'admin.configuracao.checklist.ligado',
+  },
+  'ativo.aprovacao_do_cadastro': {
+    titulo: 'admin.configuracao.aprovacao_cadastro.titulo',
+    resumo: 'admin.configuracao.aprovacao_cadastro.resumo',
+    dica: 'admin.configuracao.aprovacao_cadastro.dica',
+    ligado: 'admin.configuracao.aprovacao_cadastro.ligado',
   },
 };
 const NIVEIS = [1, 2, 3, 4, 5] as const;

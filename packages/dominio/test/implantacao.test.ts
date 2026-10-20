@@ -5,7 +5,12 @@ import type { Atribuicao } from '../src/index';
 const AGORA = new Date('2026-09-27T12:00:00Z');
 const H1 = 'h1';
 let seq = 0;
-const semModelo = (id: string) => ({ id, modeloId: null, sugestaoDescartada: false });
+const semModelo = (id: string) => ({
+  id,
+  modeloId: null,
+  sugestaoDescartada: false,
+  cadastroPendente: false,
+});
 const atr = (
   usuarioId: string,
   papel: Atribuicao['papel'],
@@ -146,7 +151,7 @@ describe('painel de implantação (A5)', () => {
     ]);
   });
 
-  it('ativos com modelo e sem plano (M1): plano que cobre, descarte e desativado não contam', () => {
+  it('ativos com modelo e sem plano (M1): plano que cobre, descarte, pendente e desativado não contam', () => {
     const ativo = (id: string, extra: object = {}) => ({
       id,
       localId: 'l1',
@@ -154,6 +159,7 @@ describe('painel de implantação (A5)', () => {
       modeloId: 'm-ar',
       ativo: true,
       sugestaoDescartada: false,
+      cadastroPendente: false,
       ...extra,
     });
     const r = resumirImplantacao(
@@ -168,6 +174,7 @@ describe('painel de implantação (A5)', () => {
         ativo('a4', { ativo: false }),
         ativo('a5', { modeloId: null }),
         ativo('a6', { categoriaId: 'cat-porta' }),
+        ativo('a7', { cadastroPendente: true }),
       ],
       { modeloContratual: 'proprio' },
       [

@@ -206,3 +206,30 @@ describe('modelo de ativo no PWA (M1)', () => {
     expect(modeloDaGravacao({ ...guardado, modeloId: 'm1' }, null)).toEqual({ modeloId: null });
   });
 });
+
+describe('situação do cadastro no PWA (M4)', () => {
+  const comSituacao = (
+    situacaoCadastro: 'pendente' | 'aprovado' | 'recusado',
+    motivoDaRecusa: string | null,
+  ): Referencia => ({
+    ...referencia,
+    ativos: {
+      h1: referencia.ativos.h1?.map((a) => ({ ...a, situacaoCadastro, motivoDaRecusa })) ?? [],
+    },
+  });
+
+  it.each(IDIOMAS)('%s: pendente e recusado com o motivo; aprovado sem marca', (idioma) => {
+    const m = mensagensDe(idioma);
+    expect(renderizar(idioma, comSituacao('pendente', null))).toContain(
+      m['tecnico.ativos.cadastro_pendente'],
+    );
+    const recusado = renderizar(idioma, comSituacao('recusado', 'Local errado'));
+    expect(recusado).toContain('data-cadastro="recusado"');
+    expect(recusado).toContain('Local errado');
+    expect(renderizar(idioma, comSituacao('aprovado', null))).not.toContain('data-cadastro');
+  });
+
+  it('referência anterior à M4: sem marca', () => {
+    expect(renderizar('pt-BR', referencia)).not.toContain('data-cadastro');
+  });
+});
