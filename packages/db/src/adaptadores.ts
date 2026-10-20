@@ -20,6 +20,7 @@ import type {
   PortaSugestoesDePlano,
   PortaCadastrosDeAtivos,
   PortaImportacaoDeAtivos,
+  PortaPacoteDaBandeira,
   PortaChamados,
   PlanoGravado,
   PortaPlanosPreventivos,
@@ -119,6 +120,7 @@ import {
 import { criarChamado } from './repositorios/chamados';
 import { alterarModeloDeAtivo, criarModeloDeAtivo } from './repositorios/modelos-de-ativo';
 import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
+import { alterarPlanoPadrao, criarPlanoPadrao } from './repositorios/pacote-da-bandeira';
 import { alterarFeriadoDoHotel, criarFeriadoDoHotel } from './repositorios/feriados-do-hotel';
 import {
   ajustarArrendamento,
@@ -386,7 +388,7 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
       banco.withContext(ctx, async (tx) => {
         const h = await tx
           .selectFrom('app.hotel')
-          .select(['id', 'nome', 'status', 'modelo_contratual'])
+          .select(['id', 'nome', 'status', 'modelo_contratual', 'criado_em'])
           .where('id', '=', hotelId)
           .executeTakeFirst();
         return h
@@ -394,6 +396,7 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
               id: h.id,
               nome: h.nome,
               status: h.status,
+              criadoEm: new Date(h.criado_em),
               modeloContratual: ehModeloContratual(h.modelo_contratual)
                 ? h.modelo_contratual
                 : null,
@@ -437,6 +440,21 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
         })),
       ),
     planos: (ctx, hotelId) => planosQueCobrem(banco, ctx, hotelId),
+    // A auditoria do hotel é lida por quem escreve no hotel e pelo Admin (RLS),
+    // o que cobre quem vê o painel.
+    mudancasDeSituacao: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.auditoria')
+            .select(['em', sql<string | null>`depois->>'status'`.as('status')])
+            .where('entidade', '=', 'hotel')
+            .where('registro_id', '=', hotelId)
+            .where('acao', 'in', ['importar_do_sistema_hoteleiro', 'ativar'])
+            .orderBy('em')
+            .execute()
+        ).map((m) => ({ em: new Date(m.em), status: m.status })),
+      ),
   };
 }
 
@@ -862,7 +880,7 @@ export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
         (
           await tx
             .selectFrom('app.checklist_modelo')
-            .select(['id', 'categoria_id', 'nomes', 'itens', 'versao', 'ativa'])
+            .select(['id', 'categoria_id', 'nomes', 'itens', 'versao', 'ativa', 'bandeira_id'])
             .orderBy('criado_em')
             .orderBy('id')
             .execute()
@@ -873,7 +891,14 @@ export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
           itens: m.itens,
           versao: m.versao,
           ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
         })),
+      ),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) =>
+        Boolean(
+          await tx.selectFrom('app.bandeira').select('id').where('id', '=', id).executeTakeFirst(),
+        ),
       ),
     criarModelo: (ctx, m) => banco.executar(ctx, (uow) => criarModeloDeChecklist(uow, m)),
     alterarModelo: (ctx, id, mudanca) =>
@@ -1017,10 +1042,10 @@ export function criarPortaPlanosPreventivos(banco: AcessoBanco): PortaPlanosPrev
       banco.withContext(ctx, async (tx) => {
         const m = await tx
           .selectFrom('app.checklist_modelo')
-          .select('ativa')
+          .select(['ativa', 'bandeira_id'])
           .where('id', '=', id)
           .executeTakeFirst();
-        return m ? { ativa: m.ativa } : null;
+        return m ? { ativa: m.ativa, bandeiraId: m.bandeira_id } : null;
       }),
     criar: (ctx, p) => banco.executar(ctx, (uow) => criarPlanoPreventivo(uow, p)),
     alterar: (ctx, id, versao, mudanca) =>
@@ -2070,10 +2095,12 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
       banco.withContext(ctx, async (tx) => {
         const m = await tx
           .selectFrom('app.modelo_ativo')
-          .select(['id', 'categoria_id', 'ativa'])
+          .select(['id', 'categoria_id', 'ativa', 'bandeira_id'])
           .where('id', '=', modeloId)
           .executeTakeFirst();
-        return m ? { id: m.id, categoriaId: m.categoria_id, ativa: m.ativa } : null;
+        return m
+          ? { id: m.id, categoriaId: m.categoria_id, ativa: m.ativa, bandeiraId: m.bandeira_id }
+          : null;
       }),
     ativos: (ctx, hotelId, termo) =>
       banco.withContext(ctx, async (tx) =>
@@ -2591,6 +2618,7 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
               'plano_sugerido',
               'versao',
               'ativa',
+              'bandeira_id',
             ])
             .orderBy('nome')
             .orderBy('id')
@@ -2606,6 +2634,7 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
           planoSugerido: m.plano_sugerido,
           versao: m.versao,
           ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
         })),
       ),
     categorias: (ctx) =>
@@ -2617,11 +2646,23 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
         (
           await tx
             .selectFrom('app.checklist_modelo')
-            .select(['id', 'ativa', 'categoria_id'])
+            .select(['id', 'ativa', 'categoria_id', 'bandeira_id'])
             .execute()
-        ).map((c) => ({ id: c.id, ativa: c.ativa, categoriaId: c.categoria_id })),
+        ).map((c) => ({
+          id: c.id,
+          ativa: c.ativa,
+          categoriaId: c.categoria_id,
+          bandeiraId: c.bandeira_id,
+        })),
       ),
-    criar: (ctx, dados) => banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados)),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) =>
+        Boolean(
+          await tx.selectFrom('app.bandeira').select('id').where('id', '=', id).executeTakeFirst(),
+        ),
+      ),
+    criar: (ctx, dados, bandeiraId) =>
+      banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados, bandeiraId)),
     alterar: (ctx, id, versao, mudanca) =>
       banco.executar(ctx, (uow) => alterarModeloDeAtivo(uow, id, versao, mudanca)),
   };
@@ -2667,13 +2708,23 @@ export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportaca
         (
           await tx
             .selectFrom('app.modelo_ativo')
-            .select(['id', 'categoria_id', 'nome', 'ativa', 'fabricante', 'modelo', 'campos'])
+            .select([
+              'id',
+              'categoria_id',
+              'nome',
+              'ativa',
+              'bandeira_id',
+              'fabricante',
+              'modelo',
+              'campos',
+            ])
             .execute()
         ).map((m) => ({
           id: m.id,
           categoriaId: m.categoria_id,
           nome: m.nome,
           ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
           fabricante: m.fabricante,
           modelo: m.modelo,
           campos: m.campos,
@@ -2699,6 +2750,141 @@ export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportaca
         return { id };
       } catch (e) {
         if (e instanceof Conflito && e.codigo === 'importacao_ja_importada') return 'ja_importada';
+        throw e;
+      }
+    },
+  };
+}
+
+/** Pacote da bandeira (PB1): os planos do pacote e a cópia para o hotel. */
+export function criarPortaPacoteDaBandeira(banco: AcessoBanco): PortaPacoteDaBandeira {
+  const colunas = [
+    'id',
+    'bandeira_id',
+    'categoria_id',
+    'nome',
+    'intervalo',
+    'unidade',
+    'checklist_modelo_id',
+    'ativa',
+    'versao',
+  ] as const;
+  const paraPlano = (p: {
+    id: string;
+    bandeira_id: string | null;
+    categoria_id: string;
+    nome: string;
+    intervalo: number;
+    unidade: string;
+    checklist_modelo_id: string | null;
+    ativa: boolean;
+    versao: number;
+  }) => ({
+    id: p.id,
+    bandeiraId: p.bandeira_id,
+    categoriaId: p.categoria_id,
+    nome: p.nome,
+    intervalo: p.intervalo,
+    // O check do banco só aceita as três unidades.
+    unidade: p.unidade as 'dia' | 'semana' | 'mes',
+    checklistModeloId: p.checklist_modelo_id,
+    ativa: p.ativa,
+    versao: p.versao,
+  });
+  return {
+    planos: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.plano_padrao')
+            .select(colunas)
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map(paraPlano),
+      ),
+    plano: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const p = await tx
+          .selectFrom('app.plano_padrao')
+          .select(colunas)
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return p ? paraPlano(p) : null;
+      }),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const b = await tx
+          .selectFrom('app.bandeira')
+          .select('id')
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return b ? { id: b.id } : null;
+      }),
+    categoria: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.categoria_ativo')
+          .select(['id', 'ativa'])
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return c ? { id: c.id, ativa: c.ativa } : null;
+      }),
+    checklist: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.checklist_modelo')
+          .select(['ativa', 'categoria_id', 'bandeira_id'])
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return c
+          ? { ativa: c.ativa, categoriaId: c.categoria_id, bandeiraId: c.bandeira_id }
+          : null;
+      }),
+    criar: (ctx, d) => banco.executar(ctx, (uow) => criarPlanoPadrao(uow, d)),
+    alterar: (ctx, id, versao, mudanca) =>
+      banco.executar(ctx, (uow) => alterarPlanoPadrao(uow, id, versao, mudanca)),
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id', 'fuso'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id, fuso: h.fuso } : null;
+      }),
+    copiados: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.plano_preventivo')
+            .select('plano_padrao_id')
+            .where('hotel_id', '=', hotelId)
+            .where('plano_padrao_id', 'is not', null)
+            .execute()
+        ).flatMap((p) => (p.plano_padrao_id === null ? [] : [p.plano_padrao_id])),
+      ),
+    copiar: async (ctx, hotelId, c) => {
+      try {
+        const { id } = await banco.executar(ctx, (uow) =>
+          criarPlanoPreventivo(uow, {
+            hotelId,
+            ativoId: null,
+            categoriaId: c.categoriaId,
+            situacao: c.situacao,
+            planoPadraoId: c.planoPadraoId,
+            nome: c.nome,
+            intervalo: c.intervalo,
+            unidade: c.unidade,
+            inicio: c.inicio,
+            checklistModeloId: c.checklistModeloId,
+            tecnicoId: c.tecnicoId,
+            equipeId: c.equipeId,
+          }),
+        );
+        return { id };
+      } catch (e) {
+        if (e instanceof Conflito && e.codigo === 'plano_ja_copiado') return 'ja_copiado';
         throw e;
       }
     },

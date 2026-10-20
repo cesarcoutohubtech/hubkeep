@@ -71,7 +71,8 @@ export type SituacoesEPrioridades = z.infer<typeof RespostaDeSituacoesEPrioridad
 
 /** Hotéis visíveis (GET /api/v1/hoteis) e as situações e prioridades do tenant. */
 export interface Referencias {
-  hoteis: { id: string; nome: string }[];
+  /** A bandeira (PB1b) filtra os checklists que a OS do hotel aceita. */
+  hoteis: { id: string; nome: string; bandeiraId?: string | null }[];
   corretiva: SituacoesEPrioridades;
 }
 
@@ -85,7 +86,7 @@ export const CORRETIVA_VAZIA: SituacoesEPrioridades = {
 /** Carrega as referências das telas; a que falhar fica vazia (os nomes caem para o catálogo). */
 export async function carregarReferencias(): Promise<Referencias> {
   const [h, c] = await Promise.all([
-    chamarApi<{ hoteis: { id: string; nome: string }[] }>('/api/v1/hoteis'),
+    chamarApi<{ hoteis: Referencias['hoteis'] }>('/api/v1/hoteis'),
     chamarApi<SituacoesEPrioridades>('/api/v1/situacoes-e-prioridades'),
   ]);
   return {
@@ -129,6 +130,8 @@ export function caminhoDaLista(
   caminho: string,
   filtro: FiltroDaTela,
   depoisDe: string | null = null,
+  /** A página da exportação, de 1.000 (só a lista de chamados; 1c, item 9). */
+  exportacao = false,
 ): string {
   const q = new URLSearchParams();
   if (filtro.hotelId) q.set('hotelId', filtro.hotelId);
@@ -138,6 +141,7 @@ export function caminhoDaLista(
   if (filtro.ate) q.set('ate', inicioDoDia(filtro.ate, 1));
   if (filtro.doLocador) q.set('doLocador', '1');
   if (depoisDe) q.set('depoisDe', depoisDe);
+  if (exportacao) q.set('exportacao', '1');
   const texto = q.toString();
   return texto ? `${caminho}?${texto}` : caminho;
 }
@@ -747,7 +751,12 @@ export function BlocoDaOs<O extends OsNoBloco>(props: {
         </p>
       )}
       <CodigosDaOs os={o} codigos={props.codigos} />
-      <ChecklistDaOs key={`checklist-${o.id}-${o.versao}`} osId={o.id} estado={o.estado} />
+      <ChecklistDaOs
+        key={`checklist-${o.id}-${o.versao}`}
+        osId={o.id}
+        estado={o.estado}
+        bandeiraDoHotel={props.refs?.hoteis.find((h) => h.id === o.hotelId)?.bandeiraId}
+      />
       {o.assinaturaAceiteId && <AssinaturaDoAceite anexoId={o.assinaturaAceiteId} />}
       {o.motivoReabertura && (
         <p className="hk-suave">

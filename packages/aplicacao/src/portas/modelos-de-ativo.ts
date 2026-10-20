@@ -17,6 +17,8 @@ export interface ModeloDeAtivoGravado {
   planoSugerido: unknown;
   versao: number;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo; não muda depois de criado. */
+  bandeiraId: string | null;
 }
 
 export type MudancaDeModeloDeAtivo = DadosDoModeloDeAtivo | { ativa: boolean };
@@ -26,9 +28,19 @@ export interface PortaModelosDeAtivo {
   /** Categorias do tenant, com as definições como estão no banco. */
   categorias(ctx: Contexto): Promise<{ id: string; ativa: boolean; campos: unknown }[]>;
   /** Os modelos de checklist que quem pede enxerga (a gestão e o Implantador). */
-  checklists(ctx: Contexto): Promise<{ id: string; ativa: boolean; categoriaId: string | null }[]>;
-  /** Na unit of work, com auditoria e evento. */
-  criar(ctx: Contexto, dados: DadosDoModeloDeAtivo): Promise<{ id: string }>;
+  checklists(
+    ctx: Contexto,
+  ): Promise<
+    { id: string; ativa: boolean; categoriaId: string | null; bandeiraId: string | null }[]
+  >;
+  /** A bandeira existe e é visível a quem pede (PB1b). */
+  bandeira(ctx: Contexto, id: string): Promise<boolean>;
+  /** Na unit of work, com auditoria e evento. A bandeira só se escolhe aqui. */
+  criar(
+    ctx: Contexto,
+    dados: DadosDoModeloDeAtivo,
+    bandeiraId: string | null,
+  ): Promise<{ id: string }>;
   /**
    * Na unit of work, só se a versão ainda for a esperada (ADR-029); a versão
    * sobe a cada gravação. Versão diferente: Conflito conflito_de_versao; nada

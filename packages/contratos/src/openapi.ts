@@ -16,6 +16,7 @@ import {
 } from './anexos';
 import {
   PedidoDeChecklistNaOs,
+  PedidoDeCriacaoDeModeloDeChecklist,
   PedidoDeModeloDeChecklist,
   RespostaDeChecklistAplicado,
   RespostaDeChecklistDaOs,
@@ -24,11 +25,20 @@ import {
 } from './checklists';
 import {
   PedidoDeAlteracaoDeModeloDeAtivo,
-  PedidoDeModeloDeAtivo,
+  PedidoDeCriacaoDeModeloDeAtivo,
   PedidoDeVersaoDeModeloDeAtivo,
   RespostaDeModeloDeAtivoGravado,
   RespostaDeModelosDeAtivo,
 } from './modelos-de-ativo';
+import {
+  PedidoDeAlteracaoDePlanoPadrao,
+  PedidoDePlanoPadrao,
+  PedidoDeVersaoDePlanoPadrao,
+  RespostaDaAplicacaoDoPacote,
+  RespostaDaPreviaDoPacote,
+  RespostaDePlanoPadraoGravado,
+  RespostaDePlanosPadrao,
+} from './pacote-da-bandeira';
 import {
   PedidoDeAlteracaoDePlanoPreventivo,
   PedidoDeNovoPlanoPreventivo,
@@ -77,7 +87,7 @@ import {
   RespostaDeSituacoesEPrioridadesPadrao,
 } from './situacoes';
 import {
-  ConsultaDaLista,
+  ConsultaDaListaDeChamados,
   ConsultaDaListaDeOs,
   RespostaDeLinhaDoTempo,
   RespostaDeListaDeChamados,
@@ -1158,7 +1168,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/implantacao',
     resumo:
-      'Painel de implantação do hotel: locais, papéis vigentes e pendências. Admin do grupo ou Implantador do hotel.',
+      'Painel de implantação do hotel: locais, papéis vigentes, pendências e o tempo de implantação contra a meta de 1 dia. Admin do grupo ou Implantador do hotel.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Resumo da implantação', esquema: RespostaDeImplantacao },
@@ -1503,13 +1513,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/modelos-de-checklist',
     resumo:
-      'Cria um modelo de checklist: nomes, categoria sugerida (nula: todas) e itens tipados (ADR-028), até 50, com a marca de obrigatório. Começa na versão 1. Só o Admin do grupo.',
+      'Cria um modelo de checklist: nomes, categoria sugerida (nula: todas) e itens tipados (ADR-028), até 50, com a marca de obrigatório, e a bandeira (PB1b; nula: do grupo, e não muda depois). Começa na versão 1. Só o Admin do grupo.',
     exigeTenant: true,
-    corpo: PedidoDeModeloDeChecklist,
+    corpo: PedidoDeCriacaoDeModeloDeChecklist,
     respostas: {
       201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeChecklistAlterado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
+      404: ERRO('Bandeira não encontrada (bandeira_nao_encontrada).'),
       422: ERRO('checklist_nome_invalido, definicao_de_campo_invalida ou entrada_invalida.'),
     },
   },
@@ -1559,6 +1570,105 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/planos-do-pacote',
+    resumo:
+      'Os planos por categoria do pacote da bandeira (PB1), da bandeira ou do grupo inteiro (bandeiraId nulo), inclusive os desativados. Leem o Admin do grupo, o Gestor CSC, o Gerente do hotel e o Implantador; para os outros, a lista vem vazia.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Planos do pacote', esquema: RespostaDePlanosPadrao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote',
+    resumo:
+      'Cria um plano do pacote: bandeira (nula para o grupo; não muda depois), categoria, nome, periodicidade e checklist opcional, da categoria e que vá para os mesmos hotéis. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDePlanoPadrao,
+    respostas: {
+      201: { descricao: 'Plano do pacote criado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('bandeira_nao_encontrada ou categoria_nao_encontrada.'),
+      422: ERRO(
+        'plano_nome_invalido, periodicidade_invalida, plano_checklist_invalido, ativo_categoria_inativa ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/planos-do-pacote/{id}',
+    resumo:
+      'Altera o plano do pacote, com a versão vista (ADR-029). Os planos já copiados para os hotéis não mudam (ADR-026).',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote alterado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado ou categoria_nao_encontrada.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+      422: ERRO('Os mesmos da criação.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote/{id}/desativacao',
+    resumo:
+      'Desativa o plano do pacote: ele deixa de ser copiado; as cópias que já estão nos hotéis ficam. Com a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote desativado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote/{id}/reativacao',
+    resumo: 'Reativa o plano do pacote. Com a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote reativado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/pacote',
+    resumo:
+      'A prévia do pacote no hotel (PB1): os planos do pacote que valem para ele (da bandeira dele ou do grupo), ativos e ainda não copiados. O Admin do grupo e o Implantador vigente do hotel.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'O que aplicar copiaria', esquema: RespostaDaPreviaDoPacote },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (pacote_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/pacote/aplicacao',
+    resumo:
+      'Aplica o pacote ao hotel: copia os planos da prévia, pausados e sem responsável, com início no dia do hotel. Reaplicar só acrescenta o que falta.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Planos copiados', esquema: RespostaDaAplicacaoDoPacote },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (pacote_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/modelos-de-ativo',
     resumo:
       'Modelos de ativo do grupo, inclusive os desativados (M1). Leem quem cadastra ativo: o Admin do grupo, o Gestor CSC, o Gerente do hotel, o Implantador e o Técnico (o PWA baixa os modelos para cadastrar offline); para os outros, a lista vem vazia. Os campos vêm filtrados pela definição atual da categoria.',
@@ -1572,14 +1682,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/modelos-de-ativo',
     resumo:
-      'Cria um modelo de ativo: categoria (obrigatória), nome, fabricante, modelo, campos pré-preenchidos da categoria (nenhum obrigatório), checklist e periodicidade sugerida. Começa na versão 1. Só o Admin do grupo.',
+      'Cria um modelo de ativo: categoria (obrigatória), nome, fabricante, modelo, campos pré-preenchidos da categoria (nenhum obrigatório), checklist, periodicidade sugerida e a bandeira (PB1b; nula: do grupo, e não muda depois). Começa na versão 1. Só o Admin do grupo.',
     exigeTenant: true,
-    corpo: PedidoDeModeloDeAtivo,
+    corpo: PedidoDeCriacaoDeModeloDeAtivo,
     respostas: {
       201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeAtivoGravado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
-      404: ERRO('categoria_nao_encontrada ou checklist_nao_encontrado.'),
+      404: ERRO('categoria_nao_encontrada, checklist_nao_encontrado ou bandeira_nao_encontrada.'),
       422: ERRO(
         'ativo_nome_invalido, ativo_texto_invalido, campo_desconhecido, valor_de_campo_invalido, periodicidade_invalida, modelo_ativo_categoria_inativa, modelo_ativo_checklist_invalido ou entrada_invalida.',
       ),
@@ -1660,7 +1770,7 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
       422: ERRO(
-        'Dados inválidos: plano_alvo_invalido, plano_ativo_invalido, plano_categoria_invalida, plano_checklist_invalido, plano_tecnico_invalido, plano_equipe_invalida, plano_responsavel_duplo, plano_sem_responsavel, periodicidade_invalida, plano_inicio_invalido ou plano_nome_invalido.',
+        'Dados inválidos: plano_alvo_invalido, plano_ativo_invalido, plano_categoria_invalida, plano_checklist_invalido, checklist_de_outra_bandeira, plano_tecnico_invalido, plano_equipe_invalida, plano_responsavel_duplo, plano_sem_responsavel, periodicidade_invalida, plano_inicio_invalido ou plano_nome_invalido.',
       ),
     },
   },
@@ -2043,9 +2153,9 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/chamados',
     resumo:
-      'Lista os chamados no escopo de quem pede (C7): cada papel vê os dos hotéis que lê, e o proprietário, os das UHs e do hotel inteiro dele (RLS). Filtros opcionais: hotel, situação, prioridade e período pela data de abertura (de inclusive, ate exclusive). Do mais novo para o mais antigo, 50 por página; a seguinte com depoisDe = proximo.',
+      'Lista os chamados no escopo de quem pede (C7): cada papel vê os dos hotéis que lê, e o proprietário, os das UHs e do hotel inteiro dele (RLS). Filtros opcionais: hotel, situação, prioridade e período pela data de abertura (de inclusive, ate exclusive). Do mais novo para o mais antigo, 50 por página; a seguinte com depoisDe = proximo. Com exportacao=1, 1.000 por página, que a tela junta no CSV (1c, item 9).',
     exigeTenant: true,
-    consulta: ConsultaDaLista,
+    consulta: ConsultaDaListaDeChamados,
     respostas: {
       200: { descricao: 'Uma página de chamados', esquema: RespostaDeListaDeChamados },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
@@ -2486,7 +2596,7 @@ export const ROTAS: readonly Rota[] = [
         'OS fora do escopo (os_nao_encontrada) ou modelo não encontrado (checklist_nao_encontrado).',
       ),
       409: ERRO('transicao_invalida ou checklist_ja_respondido.'),
-      422: ERRO('checklist_modelo_inativo ou entrada_invalida.'),
+      422: ERRO('checklist_modelo_inativo, checklist_de_outra_bandeira ou entrada_invalida.'),
     },
   },
   {

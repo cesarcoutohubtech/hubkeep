@@ -54,7 +54,11 @@ function cenario(minhas: Atribuicao[] = [gerente]) {
         })[id] ?? null,
       categoriaExiste: async (_c, id) => id === 'cat',
       modeloDeChecklist: async (_c, id) =>
-        id in mundo.modeloAtivo ? { ativa: mundo.modeloAtivo[id] ?? false } : null,
+        id === 'da-outra'
+          ? { ativa: true, bandeiraId: 'b-outra' }
+          : id in mundo.modeloAtivo
+            ? { ativa: mundo.modeloAtivo[id] ?? false, bandeiraId: null }
+            : null,
       conferencia: async (_c, lista) =>
         new Map(
           lista.map((p) => {
@@ -151,6 +155,11 @@ describe('planos preventivos: cadastro', () => {
     ['dois alvos', { categoriaId: 'cat' }, 'plano_alvo_invalido'],
     ['checklist desativado', { checklistModeloId: 'antigo' }, 'plano_checklist_invalido'],
     ['checklist que não existe', { checklistModeloId: 'x' }, 'plano_checklist_invalido'],
+    [
+      'checklist de outra bandeira',
+      { checklistModeloId: 'da-outra' },
+      'checklist_de_outra_bandeira',
+    ],
     ['técnico de outro hotel', { tecnicoId: 'outro' }, 'plano_tecnico_invalido'],
     ['equipe de outro hotel', { equipeId: 'e2' }, 'plano_equipe_invalida'],
     ['equipe desativada', { equipeId: 'parada' }, 'plano_equipe_invalida'],

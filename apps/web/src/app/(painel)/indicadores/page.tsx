@@ -4,13 +4,15 @@
 // período anterior do mesmo tamanho. A gestão vê os cartões da rede, o
 // backlog por idade, os chamados por dia, a comparação na bandeira e a
 // produtividade; o proprietário, só os cartões dos hotéis dele. Quem não pode
-// ver recebe o código da API.
+// ver recebe o código da API. O CSV (1c, item 9) leva o que a tela recebeu,
+// uma linha por hotel (exportar-indicadores).
 import { diasDoPeriodo, somarDias } from '@hubkeep/dominio';
-import { Botao, Campo, Entrada, MensagemVazia, Painel, Selecao } from '@hubkeep/ui';
+import { Botao, Campo, Entrada, MensagemVazia, Nota, Painel, Selecao } from '@hubkeep/ui';
 import { type FormEvent, useEffect, useState } from 'react';
 import { chamarApi } from '../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../cliente/aviso';
 import { useHoteis } from '../../../cliente/cadastro';
+import { useExportarIndicadores } from '../../../cliente/exportar-indicadores';
 import {
   BacklogPorIdade,
   CartoesDoPeriodo,
@@ -59,6 +61,7 @@ export default function PainelDosIndicadores() {
   } | null>(null);
   const [bandeiraId, setBandeiraId] = useState('');
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
+  const { exportado, exportar } = useExportarIndicadores();
 
   useEffect(() => {
     let vale = true;
@@ -118,6 +121,16 @@ export default function PainelDosIndicadores() {
           </Campo>
           <Botao type="submit">{t('indicadores.filtro.consultar')}</Botao>
         </form>
+        <div className="hk-linha-de-botoes">
+          <Botao
+            tamanho="pequeno"
+            disabled={!atual || atual.hoteis.length === 0}
+            onClick={() => atual && void exportar(atual)}
+          >
+            {t('indicadores.acao.exportar')}
+          </Botao>
+        </div>
+        {exportado && <Nota tom="ok">{exportado}</Nota>}
         <Aviso aviso={aviso} />
         {!atual ? (
           !aviso && <MensagemVazia>{t('comum.carregando')}</MensagemVazia>

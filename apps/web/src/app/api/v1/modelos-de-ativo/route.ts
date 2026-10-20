@@ -1,9 +1,10 @@
 // GET /api/v1/modelos-de-ativo — modelos de ativo do grupo, inclusive os
 // desativados (M1). Leem quem cadastra ativo, inclusive o Técnico (o PWA
 // baixa os modelos para cadastrar offline).
-// POST /api/v1/modelos-de-ativo — cria um modelo. Só o Admin do grupo.
+// POST /api/v1/modelos-de-ativo — cria um modelo, com a bandeira (PB1b). Só o
+// Admin do grupo.
 import {
-  PedidoDeModeloDeAtivo,
+  PedidoDeCriacaoDeModeloDeAtivo,
   RespostaDeModeloDeAtivoGravado,
   RespostaDeModelosDeAtivo,
 } from '@hubkeep/contratos';
@@ -21,7 +22,7 @@ export const GET = rota('modelos_de_ativo.listar', async (r) => {
 
 export const POST = rota('modelos_de_ativo.criar', async (r) => {
   const ctx = await r.contexto();
-  const pedido = await r.corpo(PedidoDeModeloDeAtivo);
+  const pedido = await r.corpo(PedidoDeCriacaoDeModeloDeAtivo);
   const { id } = await (await casosDeUsoDeModelosDeAtivo()).criar(ctx, pedido);
   return r.responder(201, RespostaDeModeloDeAtivoGravado, { id, versao: 1 });
 });

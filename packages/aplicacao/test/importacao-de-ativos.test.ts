@@ -31,9 +31,21 @@ const codigoDe = async (p: Promise<unknown>) => {
   }
 };
 
+const modeloDe = (id: string, nome: string, bandeiraId: string | null) => ({
+  id,
+  categoriaId: 'c-ar',
+  nome,
+  ativa: true,
+  bandeiraId,
+  fabricante: null,
+  modelo: null,
+  campos: {},
+});
+
 function montar(
   minhas: Atribuicao[] = [papel('implantador')],
   criar?: (a: AtivoDaImportacao) => { id: string } | 'ja_importada',
+  modelos: ReturnType<typeof modeloDe>[] = [],
 ) {
   const criados: AtivoDaImportacao[] = [];
   const casos = criarCasosDeUsoDeImportacaoDeAtivos({
@@ -45,7 +57,7 @@ function montar(
       categorias: async () => [
         { id: 'c-ar', ativa: true, campos: [], nomes: {}, chavePadrao: 'refrigeracao' },
       ],
-      modelos: async () => [],
+      modelos: async () => modelos,
       chaves: async () => [],
       criar: async (_c, _h, a) => {
         const r = criar ? criar(a) : { id: `novo-${criados.length + 1}` };
@@ -81,6 +93,22 @@ describe('importação de ativos (M2)', () => {
     expect(criados.map((a) => a.chaveImportacao)).toEqual([
       expect.stringMatching(/^v1:[0-9a-f]{64}$/),
       expect.stringMatching(/^v1:[0-9a-f]{64}$/),
+    ]);
+  });
+
+  it('o modelo de outra bandeira que a do hotel não é achado (PB1b)', async () => {
+    const { casos } = montar(undefined, undefined, [
+      modeloDe('m-grupo', 'Split grupo', null),
+      modeloDe('m-outra', 'Split outra', 'b-outra'),
+    ]);
+    const r = await casos.prever(
+      ctx,
+      HOTEL.id,
+      'local;nome;modelo\nCasa de máquinas;A;Split grupo\nCasa de máquinas;B;Split outra',
+    );
+    expect(r.linhas.map((l) => l.erros.map((e) => e.codigo))).toEqual([
+      [],
+      ['importacao_modelo_nao_encontrado'],
     ]);
   });
 
