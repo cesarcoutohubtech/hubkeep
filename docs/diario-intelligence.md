@@ -3227,7 +3227,7 @@ O Cesar decidiu "Particionada" (20/10/2026). A opção A de `docs/referencia/ret
 
 - **#346 mergeado** (Cesar, 20/10/2026), com os cinco checks verdes no head bad86b51.
 - **O PR do (n):** a branch recomeçou da `main` (890bc69), e o (n) da branch local entrou sem conflito. É PR de zona protegida (migração 0060, pgTAP 031 e `docs/03`). Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona. O #349 e o #345 (1c) não tocam, e o #310 passa no check.
-- **Verificação local:** lint e typecheck verdes. 6.234 testes: 5.826 passaram, 0 falhas e 364 pulados (a integração do banco, que roda só na CI).
+- **Verificação local:** lint e typecheck verdes. 5.565 testes: 5.201 passaram, 0 falhas e 364 pulados (a integração do banco, que roda só na CI).
 - **Para aprovar, depois de lido:** o adendo de 20/10/2026 ao ADR-033 (o número do insight), com o "aprovo" escrito de Cesar e de Kaio. Merge não aprova ADR.
 - **Detalhe do Kaio** (ADR-033): o formato "INS-0133", com quatro dígitos ao menos, e o rótulo "Número do insight".
 
