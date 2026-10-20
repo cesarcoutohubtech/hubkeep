@@ -472,7 +472,7 @@ select is(
     'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_checklist', 'app.os_material', 'app.os_transicao', 'app.parada_ativo',
     'app.plano_padrao', 'app.plano_preventivo', 'app.politica',
-    'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.sinal_hospede', 'app.sinal_hospede_chamado', 'app.situacao', 'app.sla_alerta',
+    'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.qr_reservado', 'app.sinal_hospede', 'app.sinal_hospede_chamado', 'app.situacao', 'app.sla_alerta',
     'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'licenca.modulo', 'staging.carga', 'staging.credencial_agente',
     'staging.registro_externo'
   ]::text[],
@@ -529,9 +529,10 @@ select is_empty($$
   cross join (values ('app.auditoria'), ('app.ativo_movimentacao'), ('app.metrica_ativo_diaria'),
                      ('app.os_apontamento'), ('app.os_material'), ('app.os_transicao'),
                      ('app.sla_alerta'), ('app.envio_notificacao'),
-                     ('app.sinal_hospede_chamado'), ('app.ativo_decisao_cadastro')) t(tabela)
+                     ('app.sinal_hospede_chamado'), ('app.ativo_decisao_cadastro'),
+                     ('app.qr_reservado')) t(tabela)
   where has_any_column_privilege(r.papel, t.tabela, 'UPDATE')
-$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA, envio de notificação, ligação da reclamação com o chamado, decisão do cadastro do ativo)');
+$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA, envio de notificação, ligação da reclamação com o chamado, decisão do cadastro do ativo, código de QR reservado)');
 
 select * from finish();
 rollback;
