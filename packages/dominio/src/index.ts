@@ -162,14 +162,22 @@ export {
 export type { ContatoDeFornecedor, DadosDeFornecedor } from './fornecedores';
 export { MODELOS_CONTRATUAIS, ehModeloContratual, validarModeloContratual } from './hoteis';
 export type { ModeloContratual } from './hoteis';
-export { PENDENCIAS_DE_IMPLANTACAO, podeVerImplantacao, resumirImplantacao } from './implantacao';
+export {
+  META_DA_IMPLANTACAO_MS,
+  PENDENCIAS_DE_IMPLANTACAO,
+  podeVerImplantacao,
+  resumirImplantacao,
+  tempoDaImplantacao,
+} from './implantacao';
 export type {
   AtivoParaImplantacao,
   HotelParaImplantacao,
   LocalParaImplantacao,
+  MudancaDeSituacaoDoHotel,
   PendenciaDeImplantacao,
   PessoaParaImplantacao,
   ResumoDeImplantacao,
+  TempoDeImplantacao,
 } from './implantacao';
 export { podeAlterarAtivoDoMembro, podeAlterarValidade, podeGerirMembros } from './membros';
 export {
@@ -673,3 +681,15 @@ export type {
   SituacaoDaLinha,
 } from './importacao-de-ativos';
 export { sha256, tamanhoUtf8 } from './resumo-sha256';
+export {
+  copiasDoPacote,
+  podeAplicarPacote,
+  podeGerirPacote,
+  vaiParaOHotel,
+  validarPlanoPadrao,
+} from './pacote-da-bandeira';
+export type {
+  ChecklistParaPlanoPadrao,
+  CopiaDoPlanoPadrao,
+  PlanoPadrao,
+} from './pacote-da-bandeira';

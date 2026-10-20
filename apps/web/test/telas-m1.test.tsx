@@ -20,6 +20,7 @@ import {
   ListaDeCadastrosPendentes,
 } from '../src/cliente/aprovacao-de-cadastros';
 import { ResultadoDaPlanilha } from '../src/cliente/importacao-de-ativos';
+import { AplicacaoDoPacote, FormularioDePlanoPadrao } from '../src/cliente/pacote-da-bandeira';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
@@ -248,5 +249,74 @@ describe('importação de ativos por planilha no web (M2)', () => {
         />,
       ),
     ).toContain(m['admin.importacao.sem_problemas']);
+  });
+});
+
+describe('pacote da bandeira no web (PB1)', () => {
+  const BX = 'bb000000-0000-4000-8000-000000000001';
+  it.each(IDIOMAS)(
+    '%s: o plano novo escolhe a bandeira ou o grupo; o existente não troca',
+    (idioma) => {
+      const m = mensagensDe(idioma);
+      const props = {
+        bandeiras: [{ id: BX, nome: 'Bandeira X' }],
+        categorias: CATEGORIAS,
+        checklists: [],
+        nomeDaCategoria: (c: Categoria) => c.nomes['pt-BR'] ?? c.id,
+        rotulo: (_r: unknown, reserva: string) => reserva,
+        executar: async () => {},
+      };
+      const novo = renderizar(idioma, <FormularioDePlanoPadrao plano={null} {...props} />);
+      expect(novo).toContain('name="bandeira"');
+      expect(novo).toContain('Bandeira X');
+      expect(novo).toContain(m['admin.pacote.todo_o_grupo']);
+      expect(novo).toContain(m['admin.pacote.acao.criar']);
+      const existente = renderizar(
+        idioma,
+        <FormularioDePlanoPadrao
+          plano={{
+            id: 'pa000000-0000-4000-8000-000000000001',
+            bandeiraId: BX,
+            categoriaId: AR,
+            nome: 'Limpeza de filtros',
+            intervalo: 1,
+            unidade: 'mes',
+            checklistModeloId: null,
+            ativa: true,
+            versao: 2,
+          }}
+          {...props}
+        />,
+      );
+      expect(existente).not.toContain('name="bandeira"');
+      expect(existente).toContain('Limpeza de filtros');
+      expect(existente).toContain(m['admin.pacote.acao.desativar']);
+    },
+  );
+
+  it('a aplicação mostra os planos a copiar e o botão; sem nada, a mensagem', () => {
+    const m = mensagensDe('pt-BR');
+    const html = renderizar(
+      'pt-BR',
+      <AplicacaoDoPacote
+        copias={[
+          {
+            planoPadraoId: 'pa000000-0000-4000-8000-000000000001',
+            categoriaId: AR,
+            nome: 'Limpeza de filtros',
+            intervalo: 1,
+            unidade: 'mes',
+            checklistModeloId: null,
+            inicio: '2026-10-20',
+          },
+        ]}
+        aplicar={async () => {}}
+      />,
+    );
+    expect(html).toContain('Limpeza de filtros');
+    expect(html).toContain('Aplicar o pacote (1 plano)');
+    expect(
+      renderizar('pt-BR', <AplicacaoDoPacote copias={[]} aplicar={async () => {}} />),
+    ).toContain(m['admin.pacote.aplicacao.nada']);
   });
 });

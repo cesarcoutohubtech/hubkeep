@@ -2,7 +2,7 @@
 // e evento. A RLS decide por último: a gestão do hotel e o Implantador gravam
 // os planos dos hotéis deles; para os outros, o INSERT é recusado (42501) e o
 // UPDATE não acha linha.
-import { NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
+import { Conflito, NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import { novoId } from '../ids';
 import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
@@ -37,24 +37,35 @@ export async function criarPlanoPreventivo(
     ativoId: string | null;
     categoriaId: string | null;
     situacao: Situacao;
+    /** O plano do pacote de que este é cópia (PB1); repetido no hotel: Conflito plano_ja_copiado. */
+    planoPadraoId?: string | null;
   },
 ): Promise<{ id: string; versao: number }> {
   // Quem cadastra é sempre uma pessoa, pelo hk_app; o worker não grava plano.
   if (uow.usuarioId === null) throw new Error('Plano preventivo sem usuário.');
   const id = novoId();
-  await transacaoDe(uow)
-    .insertInto('app.plano_preventivo')
-    .values({
-      id,
-      tenant_id: uow.tenantId,
-      hotel_id: p.hotelId,
-      ativo_id: p.ativoId,
-      categoria_id: p.categoriaId,
-      situacao: p.situacao,
-      criado_por: uow.usuarioId,
-      ...colunasDeDados(p),
-    })
-    .execute();
+  try {
+    await transacaoDe(uow)
+      .insertInto('app.plano_preventivo')
+      .values({
+        id,
+        tenant_id: uow.tenantId,
+        hotel_id: p.hotelId,
+        ativo_id: p.ativoId,
+        categoria_id: p.categoriaId,
+        situacao: p.situacao,
+        criado_por: uow.usuarioId,
+        plano_padrao_id: p.planoPadraoId ?? null,
+        ...colunasDeDados(p),
+      })
+      .execute();
+  } catch (e) {
+    const { code, constraint } = e as { code?: string; constraint?: string };
+    if (code === '23505' && constraint === 'plano_preventivo_padrao_unico') {
+      throw new Conflito('plano_ja_copiado', 'O plano do pacote já foi copiado para o hotel.');
+    }
+    throw e;
+  }
   uow.auditar({
     entidade: 'plano_preventivo',
     registroId: id,

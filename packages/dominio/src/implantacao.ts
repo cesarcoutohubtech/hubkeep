@@ -157,3 +157,55 @@ export function resumirImplantacao(
     pendencias,
   };
 }
+
+/**
+ * A meta do produto para a implantação (PB1): o hotel pronto em até 1 dia,
+ * sem contar o levantamento de ativos.
+ */
+export const META_DA_IMPLANTACAO_MS = 24 * 60 * 60 * 1000;
+
+/** Uma mudança de situação do hotel, tirada da auditoria (sem migração, PB1). */
+export interface MudancaDeSituacaoDoHotel {
+  em: Date;
+  /** A situação depois da mudança (`depois.status` da auditoria). */
+  status: string | null;
+}
+
+export interface TempoDeImplantacao {
+  /** Quando o hotel entrou em implantação. */
+  entrouEm: Date;
+  /** Quando ficou pronto (ativado); nulo enquanto não fica. */
+  prontoEm: Date | null;
+  /**
+   * Do início até o pronto, ou até agora enquanto está em implantação. Nulo
+   * quando o hotel já saiu da implantação sem a ativação na auditoria (hotel
+   * anterior ao registro), porque não há como medir.
+   */
+  duracaoMs: number | null;
+  /** A duração dentro da meta; nulo quando não há duração. */
+  dentroDaMeta: boolean | null;
+}
+
+/**
+ * O tempo de implantação do hotel. Entrou: a primeira mudança para
+ * em_implantacao na auditoria; sem ela, a criação do hotel, que já nasce em
+ * implantação. Pronto: a primeira ativação depois disso.
+ */
+export function tempoDaImplantacao(
+  hotel: { status: string; criadoEm: Date },
+  mudancas: readonly MudancaDeSituacaoDoHotel[],
+  agora: Date,
+): TempoDeImplantacao {
+  const emOrdem = [...mudancas].sort((a, b) => a.em.getTime() - b.em.getTime());
+  const entrouEm = emOrdem.find((m) => m.status === 'em_implantacao')?.em ?? hotel.criadoEm;
+  const prontoEm =
+    emOrdem.find((m) => m.status === 'ativo' && m.em.getTime() >= entrouEm.getTime())?.em ?? null;
+  const fim = prontoEm ?? (hotel.status === 'em_implantacao' ? agora : null);
+  const duracaoMs = fim ? Math.max(0, fim.getTime() - entrouEm.getTime()) : null;
+  return {
+    entrouEm,
+    prontoEm,
+    duracaoMs,
+    dentroDaMeta: duracaoMs === null ? null : duracaoMs <= META_DA_IMPLANTACAO_MS,
+  };
+}

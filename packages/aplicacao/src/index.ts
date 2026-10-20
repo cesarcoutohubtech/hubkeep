@@ -320,7 +320,7 @@ export type {
 } from './portas/locais';
 export { criarCasosDeUsoDeLocais } from './casos-de-uso/locais';
 export type { CasosDeUsoDeLocais, LocalListado } from './casos-de-uso/locais';
-export type { HotelEmImplantacao, PortaImplantacao } from './portas/implantacao';
+export type { HotelDaPorta, HotelEmImplantacao, PortaImplantacao } from './portas/implantacao';
 export { criarCasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export type { CasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
@@ -408,3 +408,16 @@ export type {
   ResultadoDaGravacao,
   SituacaoDaLinhaGravada,
 } from './casos-de-uso/importacao-de-ativos';
+export type {
+  DadosDoPlanoPadrao,
+  MudancaDePlanoPadrao,
+  PlanoPadraoGravado,
+  PortaPacoteDaBandeira,
+} from './portas/pacote-da-bandeira';
+export { criarCasosDeUsoDoPacoteDaBandeira } from './casos-de-uso/pacote-da-bandeira';
+export type {
+  CasosDeUsoDoPacoteDaBandeira,
+  PedidoDeNovoPlanoPadrao,
+  PedidoDePlanoPadrao,
+  ResultadoDaAplicacao,
+} from './casos-de-uso/pacote-da-bandeira';

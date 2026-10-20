@@ -30,6 +30,15 @@ import {
   RespostaDeModelosDeAtivo,
 } from './modelos-de-ativo';
 import {
+  PedidoDeAlteracaoDePlanoPadrao,
+  PedidoDePlanoPadrao,
+  PedidoDeVersaoDePlanoPadrao,
+  RespostaDaAplicacaoDoPacote,
+  RespostaDaPreviaDoPacote,
+  RespostaDePlanoPadraoGravado,
+  RespostaDePlanosPadrao,
+} from './pacote-da-bandeira';
+import {
   PedidoDeAlteracaoDePlanoPreventivo,
   PedidoDeNovoPlanoPreventivo,
   PedidoDeDescarteDaSugestao,
@@ -1158,7 +1167,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/implantacao',
     resumo:
-      'Painel de implantação do hotel: locais, papéis vigentes e pendências. Admin do grupo ou Implantador do hotel.',
+      'Painel de implantação do hotel: locais, papéis vigentes, pendências e o tempo de implantação contra a meta de 1 dia. Admin do grupo ou Implantador do hotel.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Resumo da implantação', esquema: RespostaDeImplantacao },
@@ -1555,6 +1564,105 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
       404: ERRO('Modelo não encontrado (checklist_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/planos-do-pacote',
+    resumo:
+      'Os planos por categoria do pacote da bandeira (PB1), da bandeira ou do grupo inteiro (bandeiraId nulo), inclusive os desativados. Leem o Admin do grupo, o Gestor CSC, o Gerente do hotel e o Implantador; para os outros, a lista vem vazia.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Planos do pacote', esquema: RespostaDePlanosPadrao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote',
+    resumo:
+      'Cria um plano do pacote: bandeira (nula para o grupo; não muda depois), categoria, nome, periodicidade e checklist opcional, da categoria e que vá para os mesmos hotéis. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDePlanoPadrao,
+    respostas: {
+      201: { descricao: 'Plano do pacote criado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('bandeira_nao_encontrada ou categoria_nao_encontrada.'),
+      422: ERRO(
+        'plano_nome_invalido, periodicidade_invalida, plano_checklist_invalido, ativo_categoria_inativa ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/planos-do-pacote/{id}',
+    resumo:
+      'Altera o plano do pacote, com a versão vista (ADR-029). Os planos já copiados para os hotéis não mudam (ADR-026).',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote alterado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado ou categoria_nao_encontrada.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+      422: ERRO('Os mesmos da criação.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote/{id}/desativacao',
+    resumo:
+      'Desativa o plano do pacote: ele deixa de ser copiado; as cópias que já estão nos hotéis ficam. Com a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote desativado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote/{id}/reativacao',
+    resumo: 'Reativa o plano do pacote. Com a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote reativado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/pacote',
+    resumo:
+      'A prévia do pacote no hotel (PB1): os planos do pacote que valem para ele (da bandeira dele ou do grupo), ativos e ainda não copiados. O Admin do grupo e o Implantador vigente do hotel.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'O que aplicar copiaria', esquema: RespostaDaPreviaDoPacote },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (pacote_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/pacote/aplicacao',
+    resumo:
+      'Aplica o pacote ao hotel: copia os planos da prévia, pausados e sem responsável, com início no dia do hotel. Reaplicar só acrescenta o que falta.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Planos copiados', esquema: RespostaDaAplicacaoDoPacote },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (pacote_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
     },
   },
   {
