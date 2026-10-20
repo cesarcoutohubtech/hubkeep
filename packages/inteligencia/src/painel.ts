@@ -330,21 +330,43 @@ async function abertura(
   return { config, abertura: aberturaDasTelas(modulos, config, fuso) };
 }
 
+/** O módulo vigente e algum papel da política que decide insight; senão, nada do módulo existe. */
+async function quemVeOModulo(
+  p: PortasDoPainel,
+  agora: Date,
+): Promise<{ atribuicoes: readonly Atribuicao[]; telasAbertas: boolean }> {
+  const [modulos, atribuicoes] = await Promise.all([p.modulos(), p.atribuicoes()]);
+  if (!modulosVigentes(modulos, agora).has('inteligencia')) throw indisponivel();
+  const v = await abertura(p, modulos);
+  const queVeem = atribuicoesQueVeem(atribuicoes, v.config, agora).filter((a) =>
+    PAPEIS_DO_INSIGHT.includes(a.papel),
+  );
+  if (!queVeem.length) throw indisponivel();
+  return { atribuicoes: queVeem, telasAbertas: telasAbertas(v.abertura, agora) };
+}
+
 /**
  * O módulo vigente, a abertura das telas e algum papel da política que decide
  * insight; senão, o painel não existe. Devolve só as atribuições dos papéis
  * da política: é por elas que se decide.
  */
 export async function exigirPainel(p: PortasDoPainel, agora: Date): Promise<readonly Atribuicao[]> {
-  const [modulos, atribuicoes] = await Promise.all([p.modulos(), p.atribuicoes()]);
-  if (!modulosVigentes(modulos, agora).has('inteligencia')) throw indisponivel();
-  const v = await abertura(p, modulos);
-  if (!telasAbertas(v.abertura, agora)) throw indisponivel();
-  const queVeem = atribuicoesQueVeem(atribuicoes, v.config, agora).filter((a) =>
-    PAPEIS_DO_INSIGHT.includes(a.papel),
-  );
-  if (!queVeem.length) throw indisponivel();
-  return queVeem;
+  const v = await quemVeOModulo(p, agora);
+  if (!v.telasAbertas) throw indisponivel();
+  return v.atribuicoes;
+}
+
+/**
+ * A tela de reclamações de hóspedes (adendo de 20/10/2026 ao ADR-035, Cesar e
+ * Kaio): os mesmos papéis da política, desde o contrato do módulo, sem esperar
+ * a data de abertura das telas. O resto do painel continua fechado até ela;
+ * `telasAbertas` diz à tela se ela pode levar aos insights.
+ */
+export async function exigirReclamacoes(
+  p: PortasDoPainel,
+  agora: Date,
+): Promise<{ atribuicoes: readonly Atribuicao[]; telasAbertas: boolean }> {
+  return quemVeOModulo(p, agora);
 }
 
 export interface AberturaDoPainel {

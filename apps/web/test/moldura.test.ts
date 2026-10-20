@@ -8,9 +8,11 @@ vi.mock('../src/cliente/sessao', () => ({ sair: vi.fn() }));
 
 const {
   HREF_DA_ABERTURA,
+  HREF_DAS_RECLAMACOES,
   ITEM_DO_INTELLIGENCE,
   ITEM_DA_MEWS,
   MENU,
+  destinoDoIntelligence,
   intelligenceAtivo,
   itemAtivo,
   tituloDaRota,
@@ -65,6 +67,18 @@ describe('o item do HubKeep Intelligence', () => {
     expect(tituloDaRota('/inteligencia/insights')).toBe('menu.inteligencia');
     expect(tituloDaRota('/inteligencia/insights/0190a')).toBe('inteligencia.pagina.titulo');
     expect(tituloDaRota('/inteligencia/ativos/0190a')).toBe('inteligencia.ativo.titulo');
+  });
+
+  it('para onde o item leva: os insights, a abertura (Admin) ou as reclamações, antes da data', () => {
+    const v = { abertos: null, soAbertura: false, soReclamacoes: false };
+    expect(destinoDoIntelligence({ ...v, abertos: 3 })).toBe(ITEM_DO_INTELLIGENCE.href);
+    expect(destinoDoIntelligence({ ...v, soAbertura: true, soReclamacoes: true })).toBe(
+      HREF_DA_ABERTURA,
+    );
+    expect(destinoDoIntelligence({ ...v, soReclamacoes: true })).toBe(HREF_DAS_RECLAMACOES);
+    expect(destinoDoIntelligence(v)).toBeNull();
+    expect(existsSync(`src/app/(painel)${HREF_DAS_RECLAMACOES}/page.tsx`)).toBe(true);
+    expect(intelligenceAtivo(HREF_DAS_RECLAMACOES)).toBe(true);
   });
 
   it('antes da abertura, o Admin do grupo vai à página da abertura', () => {

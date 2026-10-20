@@ -1445,6 +1445,7 @@
   "inteligencia.sinais.titulo": "Reclamaciones de huéspedes",
   "inteligencia.sinais.link": "Reclamaciones de huéspedes: importar y clasificar",
   "inteligencia.sinais.voltar": "Volver a los insights",
+  "inteligencia.sinais.antes_da_abertura": "Las demás pantallas de HubKeep Intelligence se abren en la fecha de apertura. Hasta entonces, los reclamos ya se importan y se clasifican, y el cálculo diario ya los usa.",
   "inteligencia.sinais.intro": "Importe las evaluaciones y reclamaciones exportadas de las herramientas de encuesta y clasifique las que son de mantenimiento. Nada vincula una reclamación a un activo sin que una persona lo confirme: correlación no es causa. HubKeep no guarda el nombre, el contacto ni la reserva del huésped.",
   "inteligencia.sinais.hotel": "Hotel",
   "inteligencia.sinais.importacao.titulo": "Importar archivo CSV",
