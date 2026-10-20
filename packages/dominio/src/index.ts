@@ -595,6 +595,7 @@ export {
 } from './aprovacao-do-cadastro';
 export type { DecisaoDoCadastro, SituacaoDoCadastro } from './aprovacao-do-cadastro';
 export {
+  CATEGORIAS_DO_GRAFICO,
   FAIXAS_DE_IDADE,
   LIMITES_DO_PAINEL,
   amostraSuficiente,
@@ -604,6 +605,7 @@ export {
   indicadoresDaParcial,
   intervaloNoFuso,
   noBacklog,
+  ondeMaisQuebra,
   parcialDoHotel,
   parcialVazia,
   podeVerIndicadores,
@@ -615,6 +617,7 @@ export {
 export type {
   ApontamentoDoIndicador,
   ChamadoDoIndicador,
+  ChamadosDaCategoria,
   DiaDaSerie,
   EntradaDoHotel,
   FaixaDeIdade,

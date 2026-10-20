@@ -136,6 +136,8 @@ export interface ChamadoDoIndicador {
   abertoEm: Date;
   /** null no chamado sem SLA (aberto antes do calendário, ADR-042). */
   prazoSolucao: Date | null;
+  /** A categoria de agora, depois da troca na triagem; null sem categoria. */
+  categoriaId: string | null;
   pausadoSegundos: number;
   os: readonly OsDoIndicador[];
 }
@@ -223,6 +225,13 @@ export interface DiaDaSerie {
   encerrados: number;
 }
 
+/** Os chamados abertos no período de uma categoria (termo "chamados por categoria"). */
+export interface ChamadosDaCategoria {
+  /** null: os chamados sem categoria. */
+  categoriaId: string | null;
+  chamados: number;
+}
+
 export interface ProdutividadeDaEquipe {
   hotelId: string;
   /** null: as OS sem equipe. */
@@ -249,6 +258,19 @@ export interface ParcialDeIndicadores {
   uhDias: number;
   serie: DiaDaSerie[];
   produtividade: ProdutividadeDaEquipe[];
+  /** Os chamados abertos no período, por categoria, sem ordem. */
+  porCategoria: ChamadosDaCategoria[];
+}
+
+/** Junta as contagens por categoria, somando as da mesma categoria. */
+function juntarCategorias(
+  listas: readonly (readonly ChamadosDaCategoria[])[],
+): ChamadosDaCategoria[] {
+  const por = new Map<string | null, number>();
+  for (const l of listas) {
+    for (const c of l) por.set(c.categoriaId, (por.get(c.categoriaId) ?? 0) + c.chamados);
+  }
+  return [...por.entries()].map(([categoriaId, chamados]) => ({ categoriaId, chamados }));
 }
 
 const faixasZeradas = (): Record<FaixaDeIdade, number> =>
@@ -384,6 +406,11 @@ export function parcialDoHotel(
     ),
     serie,
     produtividade: [...porEquipe.values()],
+    porCategoria: juntarCategorias([
+      chamados
+        .filter((c) => dentro(c.abertoEm, de, ate))
+        .map((c) => ({ categoriaId: c.categoriaId, chamados: 1 })),
+    ]),
   };
 }
 
@@ -402,6 +429,7 @@ export const parcialVazia = (): ParcialDeIndicadores => ({
   uhDias: 0,
   serie: [],
   produtividade: [],
+  porCategoria: [],
 });
 
 /** A soma das parciais: a rede, ou a bandeira. A série soma pelo dia local de cada hotel. */
@@ -437,7 +465,37 @@ export function somarParciais(parciais: readonly ParcialDeIndicadores[]): Parcia
   }
   s.uhDias = umaCasa(s.uhDias);
   s.serie = [...serie.values()].sort((a, b) => (a.dia < b.dia ? -1 : 1));
+  s.porCategoria = juntarCategorias(parciais.map((p) => p.porCategoria));
   return s;
+}
+
+/** Quantas categorias o gráfico "Onde mais quebra" mostra; o resto se soma em "outras". */
+export const CATEGORIAS_DO_GRAFICO = 8;
+
+/**
+ * "Onde mais quebra" (glossário de métricas, versão 4): as categorias com mais
+ * chamados abertos no período, da maior para a menor, no máximo 8, e o resto
+ * somado em "outras". O empate vai pela categoria, e os sem categoria por último.
+ */
+export function ondeMaisQuebra(p: Pick<ParcialDeIndicadores, 'porCategoria'>): {
+  categorias: ChamadosDaCategoria[];
+  outras: number;
+} {
+  const ordenadas = p.porCategoria
+    .filter((c) => c.chamados > 0)
+    .sort(
+      (a, b) =>
+        b.chamados - a.chamados ||
+        (a.categoriaId === null
+          ? 1
+          : b.categoriaId === null
+            ? -1
+            : a.categoriaId.localeCompare(b.categoriaId)),
+    );
+  return {
+    categorias: ordenadas.slice(0, CATEGORIAS_DO_GRAFICO).map((c) => ({ ...c })),
+    outras: ordenadas.slice(CATEGORIAS_DO_GRAFICO).reduce((s, c) => s + c.chamados, 0),
+  };
 }
 
 // ---------------------------------------------------------------------------

@@ -4,6 +4,7 @@
 // proprietário só os cartões (backlog, UH-dias e chamados). A rede, as
 // bandeiras, a série e a produtividade somam só os hotéis da visão completa.
 import {
+  type ChamadosDaCategoria,
   type Contexto,
   type DiaDaSerie,
   type FaixaDeIdade,
@@ -15,6 +16,7 @@ import {
   exigir,
   indicadoresDaParcial,
   intervaloNoFuso,
+  ondeMaisQuebra,
   parcialDoHotel,
   podeVerIndicadores,
   resolverPolitica,
@@ -63,6 +65,8 @@ export interface PainelDeIndicadores {
   bandeiras: IndicadoresDaBandeira[];
   serie: DiaDaSerie[];
   produtividade: (ProdutividadeDaEquipe & { equipeNome: string | null })[];
+  /** "Onde mais quebra": as 8 categorias com mais chamados abertos na rede, e o resto. */
+  ondeMaisQuebra: { categorias: ChamadosDaCategoria[]; outras: number };
 }
 
 export interface FiltroDosIndicadores {
@@ -111,6 +115,7 @@ export function criarCasosDeUsoDeIndicadores(deps: {
         bandeiras: [],
         serie: [],
         produtividade: [],
+        ondeMaisQuebra: { categorias: [], outras: 0 },
       };
       if (hoteis.length === 0) return vazio;
 
@@ -191,6 +196,7 @@ export function criarCasosDeUsoDeIndicadores(deps: {
           }))
           .sort((a, b) => a.nome.localeCompare(b.nome)),
         serie: rede.serie,
+        ondeMaisQuebra: ondeMaisQuebra(rede),
         produtividade: rede.produtividade.map((p) => ({
           ...p,
           equipeNome: p.equipeId === null ? null : (nomeDaEquipe.get(p.equipeId) ?? null),

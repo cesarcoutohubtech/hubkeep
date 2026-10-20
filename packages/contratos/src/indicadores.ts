@@ -102,6 +102,13 @@ export const RespostaDosIndicadores = z
         encerrados: z.int().min(0),
       }),
     ),
+    /** "Onde mais quebra": as categorias com mais chamados abertos no período, e o resto. */
+    ondeMaisQuebra: z.object({
+      categorias: z
+        .array(z.object({ categoriaId: z.guid().nullable(), chamados: z.int().min(1) }))
+        .max(8),
+      outras: z.int().min(0),
+    }),
     produtividade: z.array(
       z.object({
         hotelId: z.guid(),

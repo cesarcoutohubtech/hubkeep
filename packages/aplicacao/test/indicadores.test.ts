@@ -47,6 +47,7 @@ const concluido = (id: string, abertoEm: string, concluidoEm: string, prazo?: st
   abertoEm: new Date(abertoEm),
   prazoSolucao: prazo ? new Date(prazo) : null,
   pausadoSegundos: 0,
+  categoriaId: null,
   os: [
     {
       id: `os-${id}`,
@@ -146,6 +147,11 @@ describe('a visão de cada hotel', () => {
       ['Bandeira 2', 20],
     ]);
     expect(r.serie.find((d) => d.dia === '2026-10-02')?.encerrados).toBe(2);
+    // Os dois chamados, sem categoria, em "Onde mais quebra" da rede.
+    expect(r.ondeMaisQuebra).toEqual({
+      categorias: [{ categoriaId: null, chamados: 2 }],
+      outras: 0,
+    });
     expect(r.produtividade).toEqual([
       {
         hotelId: 'h1',

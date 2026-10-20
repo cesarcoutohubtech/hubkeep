@@ -6,11 +6,13 @@ import { IDIOMAS, type IdiomaDeExibicao, PSEUDO_IDIOMA, mensagensDe } from '@hub
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { IndicadoresNaTela, PainelDeIndicadores } from '../src/cliente/indicadores';
+import { OndeMaisQuebra } from '../src/cliente/onde-mais-quebra';
 import { ResumoDoInicio, periodosDoResumo } from '../src/cliente/resumo-do-inicio';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
 const H1 = '0193a000-0000-4000-8000-000000000001';
 const H3 = '0193a000-0000-4000-8000-000000000003';
+const CAT = '0193a000-0000-4000-8000-0000000000c1';
 
 const indicadores = (extra: Partial<IndicadoresNaTela> = {}): IndicadoresNaTela => ({
   backlog: 12,
@@ -65,6 +67,13 @@ const DA_GESTAO: PainelDeIndicadores = {
   bandeiras: [],
   serie: SERIE,
   produtividade: [],
+  ondeMaisQuebra: {
+    categorias: [
+      { categoriaId: CAT, chamados: 5 },
+      { categoriaId: null, chamados: 2 },
+    ],
+    outras: 3,
+  },
 };
 
 const DO_PROPRIETARIO: PainelDeIndicadores = {
@@ -138,5 +147,28 @@ describe('resumo da tela inicial', () => {
       atual: { inicio: '2026-09-21', fim: '2026-10-20' },
       anterior: { inicio: '2026-08-22', fim: '2026-09-20' },
     });
+  });
+});
+
+describe('onde mais quebra', () => {
+  it('na tela inicial da gestão: as categorias, os sem categoria e as outras', () => {
+    const html = renderizar('pt-BR', DA_GESTAO);
+    expect(html).toContain('Onde mais quebra');
+    // Sem rede no teste, os nomes do grupo não chegam: a categoria fica sem nome.
+    expect(html).toContain('Categoria sem nome');
+    expect(html).toContain('Sem categoria');
+    expect(html).toContain('Outras categorias');
+    expect(html.match(/class="hk-barras-item"/g)).toHaveLength(3);
+  });
+
+  it('com o nome da categoria, e nada sem nenhum chamado', () => {
+    const com = (dados: PainelDeIndicadores['ondeMaisQuebra']) =>
+      renderToString(
+        <ProvedorDeIdioma idioma="pt-BR" mensagens={mensagensDe('pt-BR')} pseudoLiberado>
+          <OndeMaisQuebra dados={dados} nomes={new Map([[CAT, 'Elevadores']])} />
+        </ProvedorDeIdioma>,
+      );
+    expect(com(DA_GESTAO.ondeMaisQuebra)).toContain('Elevadores');
+    expect(com({ categorias: [], outras: 0 })).toBe('');
   });
 });

@@ -95,6 +95,7 @@ export function criarPortaIndicadores(banco: AcessoBanco): PortaIndicadores {
             'c.criado_em',
             'c.prazo_solucao',
             'c.pausado_segundos',
+            'c.categoria_id',
           ])
           .where('c.hotel_id', 'in', ids)
           .where('c.estado', '<>', 'cancelado')
@@ -150,6 +151,7 @@ export function criarPortaIndicadores(banco: AcessoBanco): PortaIndicadores {
             estado: c.estado as EstadoDoChamado,
             abertoEm: c.criado_em,
             prazoSolucao: c.prazo_solucao,
+            categoriaId: c.categoria_id,
             pausadoSegundos: c.pausado_segundos,
             os: osDoChamado.get(c.id) ?? [],
           });

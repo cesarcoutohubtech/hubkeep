@@ -3,8 +3,8 @@
 // variação contra os 30 anteriores, pela mesma API do painel de indicadores.
 // A gestão vê os quatro indicadores do topo (backlog, % de SLA, tempo de reparo
 // e % de preventiva em dia), o backlog com a linha dos últimos 14 dias e o
-// fluxo de chamados; o proprietário, os cartões dos hotéis dele. O resto fica
-// no painel de indicadores, que o link abre.
+// fluxo de chamados e "Onde mais quebra"; o proprietário, os cartões dos hotéis
+// dele. O resto fica no painel de indicadores, que o link abre.
 import { somarDias } from '@hubkeep/dominio';
 import { Painel } from '@hubkeep/ui';
 import Link from 'next/link';
@@ -16,6 +16,7 @@ import {
   type PainelDeIndicadores,
   separarHoteis,
 } from './indicadores';
+import { OndeMaisQuebra, useNomesDasCategorias } from './onde-mais-quebra';
 
 /** Os dias do resumo, até hoje inclusive. */
 export const DIAS_DO_RESUMO = 30;
@@ -42,6 +43,7 @@ export function ResumoDoInicio({
 }) {
   const t = useT();
   const { doProprietario } = separarHoteis(atual.hoteis);
+  const nomes = useNomesDasCategorias();
   return (
     <>
       {atual.rede ? (
@@ -57,6 +59,7 @@ export function ResumoDoInicio({
             resumo={{ serie: atual.serie }}
           />
           <ChamadosPorDia serie={atual.serie} soFluxo />
+          <OndeMaisQuebra dados={atual.ondeMaisQuebra} nomes={nomes} />
         </Painel>
       ) : null}
       <CartoesDoProprietario hoteis={doProprietario} />

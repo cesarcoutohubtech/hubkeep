@@ -464,6 +464,37 @@
   overflow: visible;
 }
 
+/* As barras horizontais (BarrasHorizontais): nome, barra e número em cada linha. */
+.hk-barras {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hk-barras-item {
+  display: grid;
+  grid-template-columns: minmax(7rem, 14rem) 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.hk-barras-barra {
+  display: block;
+  width: 100%;
+  height: 12px;
+}
+
+.hk-barras-barra rect.hk-grafico-serie-1 {
+  fill: var(--hk-serie-1);
+}
+
+.hk-barras-valor {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 /* A fileira de indicadores: tantas colunas quantas couberem. */
 .hk-indicadores {
   display: grid;
