@@ -12,7 +12,9 @@
 //     para o prazo de agora, enquanto o chamado ainda deve o atendimento ou a
 //     solução, e o vencido pelo próprio prazo, sem esperar o cron;
 //   - quem vê os avisos: a gestão do hotel, os mesmos papéis da policy de
-//     app.sla_alerta (migração 0044).
+//     app.sla_alerta (migração 0044);
+//   - o próximo prazo a vencer de cada chamado, para a contagem regressiva da
+//     tela inicial (1c, seção 4 da paridade), vista pelos mesmos papéis.
 import type { EstadoDoChamado } from './corretiva';
 import { escopoCobreHotel } from './equipes';
 import { PermissaoNegada } from './erros';
@@ -212,6 +214,51 @@ export function avisosEmAberto(p: {
   return avisos;
 }
 
+export const TIPOS_DE_PRAZO = ['atendimento', 'solucao'] as const;
+export type TipoDePrazo = (typeof TIPOS_DE_PRAZO)[number];
+
+export interface ProximoPrazo {
+  tipo: TipoDePrazo;
+  prazo: Date;
+  /** O monitor já gravou o aviso "em risco" para este prazo. */
+  emRisco: boolean;
+}
+
+/** Quantos prazos a contagem regressiva da tela inicial mostra (seção 4 da paridade). */
+export const LIMITE_DOS_PROXIMOS_PRAZOS = 6;
+
+/**
+ * O próximo prazo que o chamado ainda deve e que não passou, para a contagem
+ * regressiva: o do atendimento até a primeira OS, o da solução até o serviço
+ * concluído, como nos avisos. No instante exato do prazo ele ainda não
+ * venceu. Com o relógio parado pela pausa, o prazo da solução está congelado
+ * até a retomada e fica de fora. Null sem prazo a vencer.
+ */
+export function proximoPrazo(p: {
+  chamado: ChamadoNoMonitor;
+  gravados: readonly AvisoGravado[];
+  agora: Date;
+}): ProximoPrazo | null {
+  const { chamado, gravados, agora } = p;
+  const candidatos: ProximoPrazo[] = [];
+  const avaliar = (tipo: TipoDePrazo, prazo: Date | null, emRisco: TipoDeAlertaDeSla) => {
+    if (prazo === null || prazo.getTime() < agora.getTime()) return;
+    const doPrazo = gravados.filter((g) => g.prazo.getTime() === prazo.getTime());
+    if (doPrazo.some((g) => NIVEL_DO_TIPO[g.tipo] === 'vencido' && g.tipo.startsWith(tipo))) {
+      return;
+    }
+    candidatos.push({ tipo, prazo, emRisco: doPrazo.some((g) => g.tipo === emRisco) });
+  };
+  if (SEM_OS.includes(chamado.estado) && !chamado.jaTeveOs) {
+    avaliar('atendimento', chamado.prazoAtendimento, 'atendimento_em_risco');
+  }
+  if (SEM_SERVICO_CONCLUIDO.includes(chamado.estado) && !chamado.relogioParado) {
+    avaliar('solucao', chamado.prazoSolucao, 'solucao_em_risco');
+  }
+  candidatos.sort((a, b) => a.prazo.getTime() - b.prazo.getTime());
+  return candidatos[0] ?? null;
+}
+
 /** Quem vê os avisos (M4): a gestão do hotel, como a policy de app.sla_alerta. */
 export const PAPEIS_QUE_VEEM_OS_AVISOS: readonly Papel[] = [
   'admin_grupo',
@@ -238,6 +285,19 @@ export function podeVerAvisosDeSla(
           'avisos_sla_fora_do_escopo',
           'Você não vê os avisos de SLA deste hotel.',
           { hotelId: hotel.id },
+        ),
+      };
+}
+
+/** A contagem regressiva da tela inicial: quem é da gestão de algum hotel. */
+export function podeVerOsProximosPrazos(minhas: readonly Atribuicao[], agora: Date): Resultado {
+  return minhas.some((a) => vigente(a, agora) && PAPEIS_QUE_VEEM_OS_AVISOS.includes(a.papel))
+    ? { permitido: true }
+    : {
+        permitido: false,
+        erro: new PermissaoNegada(
+          'prazos_sem_permissao',
+          'Só o Admin do grupo, o Gestor CSC e o Gerente do hotel veem os próximos prazos.',
         ),
       };
 }

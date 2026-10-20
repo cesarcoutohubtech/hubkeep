@@ -357,9 +357,12 @@ export {
   AvisoDeSlaApi,
   ChamadoNoPainelDeSlaApi,
   NIVEIS_DO_AVISO_API,
+  PrazoAVencerApi,
   RespostaDoPainelDeSla,
   RespostaDosAvisosDoChamado,
+  RespostaDosProximosPrazos,
   TIPOS_DE_ALERTA_DE_SLA_API,
+  TIPOS_DE_PRAZO_API,
 } from './avisos-de-sla';
 export {
   ConsultaDosIndicadores,

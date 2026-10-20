@@ -1,7 +1,8 @@
 // Monitor de SLA (fase 1c; ADR-043): a política do escalonamento e os avisos
 // devidos, no relógio 24x7 e no de atendimento, com a janela do atendimento
 // (até a primeira OS), a da solução (até o serviço concluído) e o relógio
-// parado pela pausa.
+// parado pela pausa. E o próximo prazo a vencer, da contagem regressiva da tela
+// inicial.
 import { describe, expect, it } from 'vitest';
 import {
   type Atribuicao,
@@ -13,6 +14,8 @@ import {
   destinatariosDoAviso,
   escalonamentoValido,
   podeVerAvisosDeSla,
+  podeVerOsProximosPrazos,
+  proximoPrazo,
 } from '../src/index';
 
 const H = 3_600_000;
@@ -190,5 +193,73 @@ describe('quem vê os avisos (M4)', () => {
     expect(podeVerAvisosDeSla([papel('tecnico')], hotel, agora).permitido).toBe(false);
     const negado = podeVerAvisosDeSla([papel('implantador')], hotel, agora);
     expect(negado.permitido ? null : negado.erro.codigo).toBe('avisos_sla_fora_do_escopo');
+  });
+});
+
+describe('o próximo prazo a vencer (contagem regressiva da tela inicial)', () => {
+  const em = (horas: number) => new Date(ABERTO.getTime() + horas * H);
+  const proximo = (
+    c: ChamadoNoMonitor,
+    depoisDe: number,
+    gravados: Parameters<typeof proximoPrazo>[0]['gravados'] = [],
+  ) => proximoPrazo({ chamado: c, gravados, agora: em(depoisDe) });
+
+  it('sem OS, o do atendimento; passado o atendimento, o da solução', () => {
+    expect(proximo(chamado(), 0.5)).toEqual({ tipo: 'atendimento', prazo: em(1), emRisco: false });
+    expect(proximo(chamado(), 2)).toEqual({ tipo: 'solucao', prazo: em(10), emRisco: false });
+  });
+
+  it('no instante exato do prazo, ainda vale; depois dos dois, nada', () => {
+    expect(proximo(chamado(), 1)?.tipo).toBe('atendimento');
+    expect(proximo(chamado(), 11)).toBeNull();
+  });
+
+  it('com OS, o atendimento não conta; com o serviço concluído, nada', () => {
+    expect(proximo(chamado({ jaTeveOs: true }), 0.5)?.tipo).toBe('solucao');
+    expect(proximo(chamado({ estado: 'em_execucao', jaTeveOs: true }), 0.5)?.tipo).toBe('solucao');
+    expect(proximo(chamado({ estado: 'aguardando_aceite', jaTeveOs: true }), 0.5)).toBeNull();
+  });
+
+  it('com o relógio parado, o prazo da solução está congelado e fica de fora', () => {
+    expect(
+      proximo(chamado({ estado: 'em_execucao', jaTeveOs: true, relogioParado: true }), 2),
+    ).toBeNull();
+  });
+
+  it('em risco pelo aviso gravado para o mesmo prazo; o vencido gravado tira o prazo', () => {
+    expect(proximo(chamado(), 0.9, [{ tipo: 'atendimento_em_risco', prazo: em(1) }])?.emRisco).toBe(
+      true,
+    );
+    expect(proximo(chamado(), 0.9, [{ tipo: 'atendimento_em_risco', prazo: em(2) }])?.emRisco).toBe(
+      false,
+    );
+    expect(proximo(chamado(), 0.9, [{ tipo: 'atendimento_vencido', prazo: em(1) }])?.tipo).toBe(
+      'solucao',
+    );
+  });
+});
+
+describe('quem vê os próximos prazos', () => {
+  const agora = new Date('2026-10-13T12:00:00Z');
+  const papel = (p: Atribuicao['papel'], extra: Partial<Atribuicao> = {}): Atribuicao => ({
+    id: 'a1',
+    usuarioId: 'u1',
+    papel: p,
+    escopo: { tipo: 'hotel', hotelId: 'h1' },
+    validoAte: null,
+    revogadoEm: null,
+    ...extra,
+  });
+
+  it('a gestão de algum hotel vê; o técnico, o proprietário e o papel vencido, não', () => {
+    expect(podeVerOsProximosPrazos([papel('gerente_hotel')], agora).permitido).toBe(true);
+    for (const a of [
+      papel('tecnico'),
+      papel('proprietario'),
+      papel('gestor_csc', { validoAte: new Date('2026-10-01T00:00:00Z') }),
+    ]) {
+      const r = podeVerOsProximosPrazos([a], agora);
+      expect(r.permitido ? null : r.erro.codigo).toBe('prazos_sem_permissao');
+    }
   });
 });

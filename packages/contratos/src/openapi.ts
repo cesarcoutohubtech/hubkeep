@@ -116,7 +116,11 @@ import {
 } from './chamados';
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
 import { RespostaDoStatusMews, RespostaDeCandidatosMews } from './mews-admin';
-import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
+import {
+  RespostaDoPainelDeSla,
+  RespostaDosAvisosDoChamado,
+  RespostaDosProximosPrazos,
+} from './avisos-de-sla';
 import { ConsultaDosIndicadores, RespostaDosIndicadores } from './indicadores';
 import {
   ConfiguracaoDoPushApi,
@@ -2284,6 +2288,18 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'Período acima de 92 dias ou com o fim antes do início (indicadores_periodo_invalido, com maximoDias) ou filtro fora do formato (entrada_invalida).',
       ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/chamados/proximos-prazos',
+    resumo:
+      'Os próximos prazos de SLA a vencer, para a contagem regressiva da tela inicial (1c, seção 4 da paridade): no máximo seis chamados em curso, do prazo mais perto ao mais longe, cada um com o prazo que ainda deve (o atendimento até a primeira OS, a solução até o serviço concluído). Com o relógio parado pela pausa, a solução fica de fora. Só a gestão: Admin do grupo, Gestor CSC e Gerente do hotel, nos hotéis do escopo dela.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Os próximos prazos', esquema: RespostaDosProximosPrazos },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão (prazos_sem_permissao).'),
     },
   },
   {

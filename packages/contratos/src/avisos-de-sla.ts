@@ -1,6 +1,8 @@
 // Avisos de SLA em aberto (fase 1c; ADR-043, M4): o painel do hotel e o selo
 // da ficha do chamado. O tipo e o nível são os do domínio
-// (TIPOS_DE_ALERTA_DE_SLA, NIVEIS_DO_AVISO; tests/contratos-dominio).
+// (TIPOS_DE_ALERTA_DE_SLA, NIVEIS_DO_AVISO; tests/contratos-dominio). E os
+// próximos prazos a vencer, da contagem regressiva da tela inicial (1c, seção
+// 4 da paridade), com o tipo de prazo do domínio (TIPOS_DE_PRAZO).
 import { z } from 'zod';
 import { ESTADOS_DO_CHAMADO_API } from './situacoes';
 
@@ -38,6 +40,30 @@ export const RespostaDoPainelDeSla = z
     chamados: z.array(ChamadoNoPainelDeSlaApi),
   })
   .meta({ id: 'RespostaDoPainelDeSla' });
+
+export const TIPOS_DE_PRAZO_API = ['atendimento', 'solucao'] as const;
+
+export const PrazoAVencerApi = z
+  .object({
+    chamadoId: z.guid(),
+    hotelId: z.guid(),
+    hotelNome: z.string(),
+    descricao: z.string(),
+    prioridadeId: z.guid().nullable(),
+    tipo: z.enum(TIPOS_DE_PRAZO_API),
+    /** O prazo, que ainda não passou. */
+    prazo: z.iso.datetime(),
+    /** O monitor já gravou o aviso "em risco" para este prazo. */
+    emRisco: z.boolean(),
+  })
+  .meta({ id: 'PrazoAVencerApi' });
+
+export const RespostaDosProximosPrazos = z
+  .object({
+    /** Do mais perto ao mais longe, no máximo seis. */
+    prazos: z.array(PrazoAVencerApi).max(6),
+  })
+  .meta({ id: 'RespostaDosProximosPrazos' });
 
 export const RespostaDosAvisosDoChamado = z
   .object({

@@ -1,7 +1,8 @@
 // Avisos de SLA em aberto (fase 1c; ADR-043, M4), com a porta em memória: o
 // painel do hotel só para a gestão, com os vencidos primeiro e depois pelo
 // prazo, e sem os chamados sem aviso; na ficha, quem não é da gestão recebe a
-// lista vazia, sem erro. O SQL e a RLS são do teste de integração
+// lista vazia, sem erro. Os próximos prazos da tela inicial: só os hotéis da
+// gestão de quem pede, do mais perto, no máximo seis. O SQL e a RLS são do teste de integração
 // (packages/db/test/avisos-de-sla.test.ts).
 import { type Atribuicao, HORARIO_PADRAO, SLA_PADRAO } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
@@ -48,6 +49,8 @@ function casos(chamados: ChamadoComAvisos[], papel: Atribuicao['papel'] = 'geren
     avisos: {
       hotel: async (_c, id) => (id === 'h1' ? { id, bandeiraId: null } : null),
       chamadosDoHotel: async () => chamados,
+      chamadosComPrazoAVencer: async () =>
+        chamados.map((c) => ({ ...c, hotelNome: `Hotel ${c.hotelId}`, bandeiraId: null })),
       chamado: async (_c, id) => {
         const c = chamados.find((x) => x.id === id);
         return c ? { ...c, bandeiraId: null } : null;
@@ -126,6 +129,41 @@ describe('selo da ficha (M4)', () => {
   it('o chamado que não se lê é não encontrado', async () => {
     await expect(casos(lista).doChamado(ctx, 'outro')).rejects.toMatchObject({
       codigo: 'chamado_nao_encontrado',
+    });
+  });
+});
+
+describe('os próximos prazos (tela inicial)', () => {
+  it('do mais perto ao mais longe, no máximo seis, só nos hotéis da gestão de quem pede', async () => {
+    const lista = [
+      ...[7, 2, 5, 1, 6, 4, 3].map((h) => chamado({ id: `c${h}`, prazoSolucao: em(h) })),
+      chamado({ id: 'outro-hotel', hotelId: 'h2', prazoSolucao: em(0.5) }),
+      chamado({ id: 'vencido', prazoSolucao: em(-1) }),
+    ];
+    const { prazos } = await casos(lista).proximosPrazos(ctx);
+    expect(prazos.map((p) => p.chamadoId)).toEqual(['c1', 'c2', 'c3', 'c4', 'c5', 'c6']);
+    expect(prazos[0]).toEqual({
+      chamadoId: 'c1',
+      hotelId: 'h1',
+      hotelNome: 'Hotel h1',
+      descricao: 'Ar não liga',
+      prioridadeId: P,
+      tipo: 'solucao',
+      prazo: em(1),
+      emRisco: false,
+    });
+  });
+
+  it('a pausa que parou o relógio tira o prazo da solução', async () => {
+    const { prazos } = await casos([
+      chamado({ id: 'pausado', pausaEmCurso: { motivo: 'aguardando_peca' } }),
+    ]).proximosPrazos(ctx);
+    expect(prazos).toEqual([]);
+  });
+
+  it('quem não é da gestão recebe 403', async () => {
+    await expect(casos([chamado({})], 'tecnico').proximosPrazos(ctx)).rejects.toMatchObject({
+      codigo: 'prazos_sem_permissao',
     });
   });
 });

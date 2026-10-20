@@ -13,6 +13,8 @@ import {
   DESTINATARIOS_DO_AVISO_API,
   NIVEIS_DO_AVISO_API,
   TIPOS_DE_ALERTA_DE_SLA_API,
+  TIPOS_DE_PRAZO_API,
+  RespostaDosProximosPrazos,
   PAPEIS_API,
   CATEGORIAS_PADRAO_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
@@ -61,6 +63,8 @@ import {
   DESTINATARIOS_DO_AVISO,
   NIVEIS_DO_AVISO,
   TIPOS_DE_ALERTA_DE_SLA,
+  TIPOS_DE_PRAZO,
+  LIMITE_DOS_PROXIMOS_PRAZOS,
   ESCALONAMENTO_PADRAO,
   HORARIO_PADRAO,
   POLITICAS,
@@ -331,6 +335,27 @@ describe('contratos × domínio', () => {
   it('os tipos e os níveis dos avisos de SLA da API são os do domínio (ADR-043, M4)', () => {
     expect([...TIPOS_DE_ALERTA_DE_SLA_API]).toEqual([...TIPOS_DE_ALERTA_DE_SLA]);
     expect([...NIVEIS_DO_AVISO_API]).toEqual([...NIVEIS_DO_AVISO]);
+  });
+
+  it('o tipo e o limite dos próximos prazos da API são os do domínio (tela inicial)', () => {
+    expect([...TIPOS_DE_PRAZO_API]).toEqual([...TIPOS_DE_PRAZO]);
+    const prazo = {
+      chamadoId: '0193a000-0000-4000-8000-000000000001',
+      hotelId: '0193a000-0000-4000-8000-000000000002',
+      hotelNome: 'Hotel',
+      descricao: 'Ar',
+      prioridadeId: null,
+      tipo: 'solucao',
+      prazo: '2026-10-20T12:00:00.000Z',
+      emRisco: false,
+    };
+    const lista = (n: number) => ({ prazos: Array.from({ length: n }, () => prazo) });
+    expect(RespostaDosProximosPrazos.safeParse(lista(LIMITE_DOS_PROXIMOS_PRAZOS)).success).toBe(
+      true,
+    );
+    expect(RespostaDosProximosPrazos.safeParse(lista(LIMITE_DOS_PROXIMOS_PRAZOS + 1)).success).toBe(
+      false,
+    );
   });
 
   it('os responsáveis do arrendado da API são os do domínio (decisão 5)', () => {

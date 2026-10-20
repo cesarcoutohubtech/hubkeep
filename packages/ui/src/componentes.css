@@ -1000,6 +1000,29 @@ fieldset.hk-em-linha > legend {
   border-bottom: none;
 }
 
+/* A lista da tela inicial (próximos prazos, últimos eventos): o texto à
+   esquerda, em duas linhas, e o valor (o tempo ou a hora) à direita. */
+.hk-lista-do-inicio > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+}
+
+.hk-lista-do-inicio-principal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.hk-lista-do-inicio-valor {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Nota: aviso que não é erro ---------- */
 .hk-nota {
   margin: 10px 0;
