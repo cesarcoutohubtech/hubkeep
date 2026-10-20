@@ -352,7 +352,14 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
     consultas: uma(() =>
       criarCasosDeUsoDeConsultas({ consultas: criarPortaConsultasDaCorretiva(banco) }),
     ),
-    historico: uma(() => criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(banco) })),
+    historico: uma(() =>
+      criarCasosDeUsoDeHistorico({
+        historico: criarPortaHistorico(banco),
+        triagem: criarPortaTriagem(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
     auditoriaGeral: uma(() =>
       criarCasosDeUsoDeAuditoriaGeral({
         auditoria: criarPortaAuditoriaGeral(banco),

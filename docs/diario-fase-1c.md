@@ -1141,3 +1141,43 @@ Ler a política no job, no lugar da constante, é do Kaio. Até lá, o painel e 
   - a política da tolerância, que o Intelligence pode passar a ler.
 - **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR; o que vier depois depende das respostas acima.
 - **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.
+
+## Decisões do Cesar (20/10/2026)
+
+Cesar, no chat da 1c em 20/10/2026, sobre as três recomendações do agente: "Cesar aqui. Prossiga confoem recomendações."
+1. **Tela inicial (seção 4 da paridade):** entra agora na 1c, em dois ou três PRs. O quadro por hotel se chama **"Situação por hotel"**.
+2. **"Onde mais quebra" (chamados por categoria):** a proposta da seção "Proposta para o glossário de métricas", acima, tem a aprovação do Cesar. **Falta a do Kaio:** o glossário só ganha a versão nova com os dois. Até lá, a tela inicial sai sem esse gráfico.
+3. **Custo informado:** some também da ficha da OS de quem só enxerga o hotel como proprietário, como já some da impressão.
+
+## Custo informado fora da ficha do proprietário (decisão 3 acima; 20/10/2026)
+
+**Área compartilhada (OS e `packages/dominio`), registrada antes do commit:**
+- a regra do domínio muda só de nome: `custoNaImpressao` passa a `custoInformadoVisivel`;
+- as leituras da OS em `packages/aplicacao` passam a usá-la.
+
+Branch `claude/1c-custo-na-ficha`, a partir da `main` f6236e7 (com o #340 da 1b).
+
+**Feito:**
+- **Ficha da OS e detalhe do chamado:** `os` e `osDoChamado` (`packages/aplicacao/src/casos-de-uso/triagem.ts`) devolvem a OS com o custo nulo para quem não tem papel vigente, que não o de proprietário, com escopo sobre o hotel. A tela já não mostra a linha do custo quando ele é nulo, então não muda.
+- **Histórico da OS:** a RLS de `app.auditoria` deixa o proprietário ler a auditoria da OS, e o aceite grava o custo no antes e no depois. O caso de uso do histórico agora tira o campo `custoInformado` das mudanças da OS para essas pessoas, pela mesma regra. Para isso, recebe a porta da triagem, as atribuições e o relógio.
+- **Fica igual:**
+  - a auditoria geral, que o proprietário não abre;
+  - o evento `os.aceita`, que não vai para a tela.
+- **Testes:**
+  - `packages/aplicacao/test/impressao-da-os.test.ts`: a ficha e as OS do chamado;
+  - `packages/aplicacao/test/historico.test.ts`: o histórico da OS.
+
+**Aviso ao Kaio:** as telas do Intelligence mostram o custo da OS (a efetividade da intervenção). Se a abertura das telas (`inteligencia.visibilidade_telas`) puder chegar ao proprietário, vale a mesma regra; a decisão é dele.
+
+### Ponto de retomada (20/10/2026, custo na ficha)
+
+- **`main`:** f6236e7, com o #340 (pacote da bandeira, migração 0059) e o #343. O Cesar avisou que o merge e o `db push` estão feitos.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs;
+  - o PR deste custo, que abre agora.
+- **Pedidos e avisos ao Kaio:**
+  - os termos nos textos `inteligencia.*`;
+  - a aprovação de "Onde mais quebra", que já tem a do Cesar;
+  - a política da tolerância, que o Intelligence pode passar a ler;
+  - o custo nas telas do Intelligence.
+- **Próximo:** a tela inicial, PR 1. Primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md`, a tela inicial de hoje e as rotas do painel de indicadores, e dividir os PRs.

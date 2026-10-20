@@ -1,7 +1,7 @@
 // Impressão da OS (1c, item 9): o custo sai para quem tem papel vigente, que
 // não o de proprietário, com escopo sobre o hotel; o aceite no papel.
 import { describe, expect, it } from 'vitest';
-import { type Atribuicao, aceiteNaImpressao, custoNaImpressao } from '../src/index';
+import { type Atribuicao, aceiteNaImpressao, custoInformadoVisivel } from '../src/index';
 
 const AGORA = new Date('2026-10-19T12:00:00Z');
 const HOTEL = { id: 'h1', bandeiraId: 'b1' };
@@ -20,7 +20,7 @@ const atr = (
   ...extra,
 });
 
-describe('o custo na impressão', () => {
+describe('o custo na impressão e na ficha da OS', () => {
   it('a gestão, o técnico do hotel e a bandeira do hotel veem o custo', () => {
     for (const a of [
       atr('admin_grupo', { tipo: 'grupo' }),
@@ -28,16 +28,16 @@ describe('o custo na impressão', () => {
       atr('gerente_hotel', { tipo: 'hotel', hotelId: 'h1' }),
       atr('tecnico', { tipo: 'hotel', hotelId: 'h1' }),
     ]) {
-      expect(custoNaImpressao([a], HOTEL, AGORA)).toBe(true);
+      expect(custoInformadoVisivel([a], HOTEL, AGORA)).toBe(true);
     }
   });
 
   it('quem só enxerga o hotel como proprietário não vê o custo', () => {
     expect(
-      custoNaImpressao([atr('proprietario', { tipo: 'hotel', hotelId: 'h1' })], HOTEL, AGORA),
+      custoInformadoVisivel([atr('proprietario', { tipo: 'hotel', hotelId: 'h1' })], HOTEL, AGORA),
     ).toBe(false);
     expect(
-      custoNaImpressao(
+      custoInformadoVisivel(
         [atr('proprietario', { tipo: 'proprietario', proprietarioId: 'p1' })],
         HOTEL,
         AGORA,
@@ -47,7 +47,7 @@ describe('o custo na impressão', () => {
 
   it('o papel de outro hotel, o revogado e o vencido não contam', () => {
     expect(
-      custoNaImpressao(
+      custoInformadoVisivel(
         [
           atr('proprietario', { tipo: 'hotel', hotelId: 'h1' }),
           atr('gerente_hotel', { tipo: 'hotel', hotelId: 'h2' }),
@@ -67,7 +67,7 @@ describe('o custo na impressão', () => {
 
   it('o proprietário que também é Gerente do hotel vê o custo', () => {
     expect(
-      custoNaImpressao(
+      custoInformadoVisivel(
         [
           atr('proprietario', { tipo: 'hotel', hotelId: 'h1' }),
           atr('gerente_hotel', { tipo: 'hotel', hotelId: 'h1' }),
