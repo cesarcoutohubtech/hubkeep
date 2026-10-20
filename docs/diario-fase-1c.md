@@ -1332,3 +1332,27 @@ Branch `claude/1c-inicio-prazos`, a partir da `main` 6d3905e. Sem migração: a 
 - **Este PR ([#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349)) foi atualizado com a `main`:** a tela inicial mostra o resumo, depois os próximos prazos e os últimos eventos, depois os hotéis. Os catálogos ficaram com as chaves dos dois PRs.
 - **Esperando o merge do Cesar:** [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345) e [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349), fora da zona protegida.
 - **Decisões pendentes e próximo passo:** os mesmos do ponto anterior.
+
+## Glossário de métricas, versão 4 (20/10/2026)
+
+**Aprovação:** Cesar e Kaio, no chat da 1c, em 20/10/2026: "Cesar aqui. Aprovo." e "Kaio aqui. Arpovo", na mesma mensagem. O agente perguntou se a linha do Kaio tinha sido digitada por ele. A resposta foi "Sim, foi o Kaio", e, a pedido do agente, "Cesar aqui. Continue". Com isso, a aprovação do Kaio fica registrada como escrita por ele, com a confirmação do Cesar.
+
+Branch `claude/1c-glossario-v4`, a partir da `main` 5f915d1. Só documento.
+
+**Feito:** `docs/referencia/glossario-metricas.md` ganha a versão 4, com três termos no painel da 1c, no texto das propostas deste diário:
+- "Chamados por categoria" ("Onde mais quebra"), da proposta de 20/10/2026;
+- "Chamado crítico" e "Situação do hotel", da proposta da tela inicial.
+
+Nenhum termo das versões anteriores mudou de texto. Os três são do núcleo, e o código entra no PR 3 da tela inicial.
+
+**Pedido ao agente do Kaio:** pela regra 4 do glossário, a versão nova fica registrada nos dois diários. Este registro é o da 1c. Falta o do `docs/diario-intelligence.md`, que só o agente do Kaio escreve.
+
+### Ponto de retomada (20/10/2026, glossário versão 4)
+
+- **`main`:** 5f915d1.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356), a série diária;
+  - o PR deste glossário, que abre agora.
+
+  Os dois mexem no diário. Depois do merge de um, o outro é atualizado com a `main`.
+- **Próximo:** a tela inicial, PR 3, com a "Situação por hotel", "Onde mais quebra" e os cartões do proprietário e do locador. Primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` (o quadro e os cartões) e como o painel lê as prioridades e os avisos de SLA.
