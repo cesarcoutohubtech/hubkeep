@@ -3006,3 +3006,30 @@ O adendo deixou para depois "um chamado para várias reclamações de uma vez (o
 - **(ii)** No 2, (2a), (2b) ou deixar para depois do piloto? Proposta: deixar para depois do piloto, porque o 1 e o #334 cobrem o caso comum e o 2 muda a 0057, recém-aprovada.
 
 **Detalhes do Kaio** (ADR-033): os rótulos e a sugestão da descrição do 1.
+
+**O merge do #334** (Cesar, 19/10/2026), com "lint, typecheck e testes" e o pgTAP ainda rodando no head (só o commit do diário depois do código verificado); conferência única agendada.
+
+**Respostas do Cesar** (19/10/2026, "Cesar aqui. Vamos dar sequencia nos trabalhos.", nas perguntas do agente do Intelligence nesta sessão): (i) sim, seguir com um chamado para as reclamações do insight sistêmico; (ii) ligar a um chamado que já existe fica para depois do piloto. **Falta o Kaio** nas duas.
+
+### Um chamado para as reclamações do insight sistêmico (19/10/2026)
+
+Preparado a partir do "sim" do Cesar na (i); o PR só abre depois do "sim" do Kaio. Sem migração e fora da zona protegida.
+
+**O que traz:**
+- **Motor:** `prepararChamadoDoInsight` confere o insight da regra das reclamações, de um hotel, que quem pede decide (`insight_fora_do_escopo` se não decide), o local escolhido e o ativo, do hotel do insight, e que há reclamação da evidência de manutenção sem chamado; `ligarChamadoDoInsight` liga, numa transação, as que a pessoa lê, de manutenção e ainda sem chamado, e devolve quantas.
+- **`packages/db`:** `ligarChamadosNoBanco`, as ligações em lote com a auditoria e o evento de cada uma (a de uma reclamação passa a usar a mesma).
+- **Web e API:** `POST /api/v1/inteligencia/insights/{id}/chamado` (o local, o ativo e a descrição; abre pelo `abrir` do núcleo e liga) e `.../chamado/ligacao`, com o mesmo `chamado_sem_ligacao` do #334.
+- **Página do insight:** o botão "Abrir um chamado para as reclamações sem chamado", para quem decide; o formulário com o local (as UHs e as áreas comuns do hotel), o ativo comum das reclamações, a descrição com a sugestão sem o texto do hóspede e quantas vão ser ligadas; o link "Ver o chamado" nas listas de reclamações.
+- **Textos** nos quatro idiomas (`inteligencia.reclamacoes.chamado.*` e dois erros novos).
+
+**Respostas do Kaio** (20/10/2026, "kaio aqui. sim para os item (i) e no (ii).", nesta sessão): (i) sim; (ii) sim, ligar a um chamado que já existe fica para depois do piloto. Com o "sim" do Cesar, as duas estão decididas. Os rótulos e a sugestão da descrição ficam como estão até o Kaio pedir outro texto (ADR-033).
+
+**O PR** sai da `claude/vigilant-cray-l06ew1`, com a `main` de bf9b3c0 (com a 0058 da 1b e os termos dos catálogos da 1c) juntada sem conflito. Local: lint e typecheck verdes; 5.399 testes, 5.052 passaram, 0 falhas, 347 pulados (a integração do banco, que roda só na CI).
+
+### Ponto de retomada (20/10/2026, PR do chamado do insight)
+
+- **`main`:** bf9b3c0. **Dev:** falta o Cesar confirmar o `db push` da 0057 no `supabase migration list` (sem ela, abrir chamado da reclamação e do insight falha no dev).
+- **PR aberto:** o `int:` do chamado do insight, fora da zona protegida, esperando os checks e o merge do Cesar.
+- **Decidido:** (ii) ligar a chamado existente fica para depois do piloto.
+- **Pendências do Kaio:** os limites dos PRs A e B; no C1a, 3/2/14 e 365 dias; no C1b, os pesos, os limites, os 90 dias e a gravidade; os textos do chamado do insight, se quiser outros.
+- **Próxima tarefa:** depois do merge, propor o que vem a seguir no Intelligence; primeiro passo, reler a seção "O PR C do sinal do hóspede: proposta" e o plano do Intelligence para o que falta antes do piloto.
