@@ -1,5 +1,6 @@
-// A OS para imprimir (1c, item 9): a mesma OS da página, sem o custo para quem
-// só enxerga o hotel como proprietário; 404 quando a OS não é visível.
+// A OS para imprimir (1c, item 9) e a da ficha: sem o custo para quem só
+// enxerga o hotel como proprietário (na ficha desde 20/10/2026, pelo Cesar);
+// 404 quando a OS não é visível.
 import type { Atribuicao, Contexto } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import { type OsGravada, type PortaTriagem, criarCasosDeUsoDeTriagem } from '../src';
@@ -47,6 +48,7 @@ function casos(minhas: Atribuicao[]) {
   return criarCasosDeUsoDeTriagem({
     triagem: {
       os: async (_c: Contexto, id: string) => (id === OS.id ? OS : null),
+      osDoChamado: async (_c: Contexto, id: string) => (id === OS.chamadoId ? [OS] : []),
     } as unknown as PortaTriagem,
     situacoes: { listar: naoUsado },
     prioridades: { listar: naoUsado },
@@ -78,5 +80,25 @@ describe('a OS para imprimir', () => {
     await expect(casos([atr('gerente_hotel')]).osParaImpressao(ctx, 'outra')).rejects.toMatchObject(
       { codigo: 'os_nao_encontrada' },
     );
+  });
+});
+
+describe('a OS na ficha', () => {
+  it('o Gerente do hotel vê o custo, na OS e nas OS do chamado', async () => {
+    const c = casos([atr('gerente_hotel')]);
+    expect(await c.os(ctx, OS.id)).toEqual(OS);
+    expect(await c.osDoChamado(ctx, 'c-1')).toEqual([OS]);
+  });
+
+  it('o proprietário do hotel recebe a OS sem o custo, na OS e nas OS do chamado', async () => {
+    const c = casos([atr('proprietario')]);
+    expect(await c.os(ctx, OS.id)).toEqual({ ...OS, custoInformado: null });
+    expect(await c.osDoChamado(ctx, 'c-1')).toEqual([{ ...OS, custoInformado: null }]);
+  });
+
+  it('a OS que não é visível é 404', async () => {
+    await expect(casos([atr('gerente_hotel')]).os(ctx, 'outra')).rejects.toMatchObject({
+      codigo: 'os_nao_encontrada',
+    });
   });
 });

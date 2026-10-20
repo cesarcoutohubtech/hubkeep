@@ -299,7 +299,7 @@ export {
   normalizarCustoInformado,
 } from './executor-e-custo';
 export type { ExecutadoPor, QuemExecuta } from './executor-e-custo';
-export { aceiteNaImpressao, custoNaImpressao } from './impressao-da-os';
+export { aceiteNaImpressao, custoInformadoVisivel } from './impressao-da-os';
 export type { AceiteNaImpressao } from './impressao-da-os';
 export {
   CODIGOS_PADRAO,

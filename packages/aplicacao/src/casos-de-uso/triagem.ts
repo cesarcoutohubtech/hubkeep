@@ -43,6 +43,7 @@
 // teste de aceite provar que a RLS recusa sozinha.
 import {
   type AtorDaCorretiva,
+  type Atribuicao,
   avisaOLocador,
   type CandidatoAResponsavel,
   type CodigosDaOs,
@@ -55,7 +56,7 @@ import {
   type QuemExecuta,
   RegraViolada,
   conflitoDeVersao,
-  custoNaImpressao,
+  custoInformadoVisivel,
   decidirNaOs,
   decidirNoChamado,
   decidirQuemExecuta,
@@ -308,6 +309,24 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
   /** O hotel da OS, no formato da regra de papel (a corretiva e a preventiva). */
   const hotelDa = (os: OsGravada) => ({ hotel: { id: os.hotelId, bandeiraId: os.bandeiraId } });
+
+  /**
+   * O custo informado some da OS de quem só enxerga o hotel como proprietário,
+   * na ficha e na impressão (custoInformadoVisivel, do domínio).
+   */
+  function semCustoOculto<O extends OsGravada>(os: O, minhas: readonly Atribuicao[], agora: Date) {
+    const custoOculto = !custoInformadoVisivel(minhas, hotelDa(os).hotel, agora);
+    return { os: custoOculto ? { ...os, custoInformado: null } : os, custoOculto };
+  }
+
+  async function osComCusto(ctx: Contexto, osId: string) {
+    const [os, minhas] = await Promise.all([
+      deps.triagem.os(ctx, osId),
+      deps.atribuicoes.doUsuario(ctx),
+    ]);
+    if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
+    return semCustoOculto(os, minhas, deps.relogio.agora());
+  }
 
   async function osNaVersao(ctx: Contexto, osId: string, versao: number) {
     const lida = await lerOsComOrigem(deps.triagem, ctx, osId);
@@ -710,22 +729,22 @@ export function criarCasosDeUsoDeTriagem(deps: {
     },
 
     // Quem vê o chamado vê as OS dele (policy de app.os); a rota confere o chamado antes.
-    osDoChamado: (ctx, chamadoId) => deps.triagem.osDoChamado(ctx, chamadoId),
+    // O custo informado sai como na impressão (1c, Cesar, 20/10/2026).
+    async osDoChamado(ctx, chamadoId) {
+      const [lista, minhas] = await Promise.all([
+        deps.triagem.osDoChamado(ctx, chamadoId),
+        deps.atribuicoes.doUsuario(ctx),
+      ]);
+      const agora = deps.relogio.agora();
+      return lista.map((os) => semCustoOculto(os, minhas, agora).os);
+    },
 
     async os(ctx, osId) {
-      const os = await deps.triagem.os(ctx, osId);
-      if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-      return os;
+      return (await osComCusto(ctx, osId)).os;
     },
 
     async osParaImpressao(ctx, osId) {
-      const [os, minhas] = await Promise.all([
-        deps.triagem.os(ctx, osId),
-        deps.atribuicoes.doUsuario(ctx),
-      ]);
-      if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-      const custoOculto = !custoNaImpressao(minhas, hotelDa(os).hotel, deps.relogio.agora());
-      return { os: custoOculto ? { ...os, custoInformado: null } : os, custoOculto };
+      return osComCusto(ctx, osId);
     },
   };
 }
