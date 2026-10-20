@@ -31,6 +31,7 @@ const ativo = (id: string, extra: Partial<AtivoComSugestao> = {}): AtivoComSuges
   versao: 3,
   ativo: true,
   sugestaoDescartada: false,
+  cadastroPendente: false,
   ...extra,
 });
 

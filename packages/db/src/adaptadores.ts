@@ -18,6 +18,8 @@ import type {
   PortaChecklists,
   PortaModelosDeAtivo,
   PortaSugestoesDePlano,
+  PortaCadastrosDeAtivos,
+  PortaImportacaoDeAtivos,
   PortaChamados,
   PlanoGravado,
   PortaPlanosPreventivos,
@@ -60,13 +62,16 @@ import {
   type EstadoDoChamado,
   type ExecutadoPor,
   type TipoDeCodigoDeManutencao,
+  ehDecisaoDoCadastro,
   ehModeloContratual,
+  situacaoDoCadastro,
   ehResponsavelDoArrendamento,
   ehMomentoDaFoto,
   ehMotivoDePausa,
 } from '@hubkeep/dominio';
 import { type NotNull, sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
+import { cadastroPendente } from './cadastro-aprovado';
 import type { Tx } from './conexao';
 import {
   dadosDoCalendarioNaTransacao,
@@ -104,6 +109,7 @@ import {
   moverAtivo,
 } from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
+import { decidirCadastroDeAtivo } from './repositorios/cadastros-de-ativos';
 import {
   alterarModeloDeChecklist,
   aplicarChecklist,
@@ -408,16 +414,17 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
       banco.withContext(ctx, async (tx) =>
         (
           await tx
-            .selectFrom('app.ativo')
+            .selectFrom('app.ativo as a')
             .select([
-              'id',
-              'local_id',
-              'categoria_id',
-              'modelo_id',
-              'desativado_em',
-              'sugestao_descartada_em',
+              'a.id',
+              'a.local_id',
+              'a.categoria_id',
+              'a.modelo_id',
+              'a.desativado_em',
+              'a.sugestao_descartada_em',
             ])
-            .where('hotel_id', '=', hotelId)
+            .select(cadastroPendente)
+            .where('a.hotel_id', '=', hotelId)
             .execute()
         ).map((a) => ({
           id: a.id,
@@ -426,6 +433,7 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
           modeloId: a.modelo_id,
           ativo: a.desativado_em === null,
           sugestaoDescartada: a.sugestao_descartada_em !== null,
+          cadastroPendente: a.cadastro_pendente,
         })),
       ),
     planos: (ctx, hotelId) => planosQueCobrem(banco, ctx, hotelId),
@@ -1333,6 +1341,16 @@ function paraOs<C extends string | null, A extends string | null>(o: {
  * Início da parada aberta do ativo (C5), como subconsulta da leitura; null se
  * não está parado. A RLS da parada vale para quem lê.
  */
+/** A decisão sobre o cadastro do ativo (M4) e o motivo da recusa; null sem decisão. */
+const decisaoDoCadastro = (hotel: string, ativo: string) => [
+  sql<string | null>`(select d.decisao from app.ativo_decisao_cadastro d
+    where d.hotel_id = ${sql.ref(hotel)} and d.ativo_id = ${sql.ref(ativo)})`.as(
+    'decisao_cadastro',
+  ),
+  sql<string | null>`(select d.motivo from app.ativo_decisao_cadastro d
+    where d.hotel_id = ${sql.ref(hotel)} and d.ativo_id = ${sql.ref(ativo)})`.as('motivo_recusa'),
+];
+
 const paradoDesde = (hotel: string, ativo: string) =>
   sql<Date | null>`(select p.inicio from app.parada_ativo p
     where p.hotel_id = ${sql.ref(hotel)} and p.ativo_id = ${sql.ref(ativo)} and p.fim is null
@@ -1972,6 +1990,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     'versao',
     'desativado_em',
     'codigo_qr',
+    'situacao_cadastro',
   ] as const;
   // As datas saem como aaaa-mm-dd, sem passar por Date e fuso.
   const datas = [
@@ -1996,6 +2015,9 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     desativado_em: Date | null;
     codigo_qr: string;
     parado_desde: Date | null;
+    situacao_cadastro: string;
+    decisao_cadastro: string | null;
+    motivo_recusa: string | null;
   }): AtivoGravado => ({
     id: a.id,
     hotelId: a.hotel_id,
@@ -2014,6 +2036,11 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     desativadoEm: a.desativado_em,
     codigoQr: a.codigo_qr,
     paradoDesde: a.parado_desde,
+    situacaoCadastro: situacaoDoCadastro(
+      a.situacao_cadastro === 'pendente' ? 'pendente' : 'aprovado',
+      ehDecisaoDoCadastro(a.decisao_cadastro) ? a.decisao_cadastro : null,
+    ),
+    motivoDaRecusa: a.decisao_cadastro === 'recusado' ? a.motivo_recusa : null,
   });
   return {
     hotel: (ctx, hotelId) =>
@@ -2056,6 +2083,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
             .select(colunas)
             .select(datas)
             .select(paradoDesde('a.hotel_id', 'a.id'))
+            .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
             .where('hotel_id', '=', hotelId)
             .$if(termo !== undefined, (q) => q.where('busca', 'ilike', trecho(termo ?? '')))
             .orderBy('nome')
@@ -2070,6 +2098,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
           .select(colunas)
           .select(datas)
           .select(paradoDesde('a.hotel_id', 'a.id'))
+          .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
           .where('id', '=', ativoId)
           .executeTakeFirst();
         return a ? paraAtivo(a) : null;
@@ -2082,6 +2111,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
           .select(colunas)
           .select(datas)
           .select(paradoDesde('a.hotel_id', 'a.id'))
+          .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
           .where('codigo_qr', '=', codigoQr)
           .executeTakeFirst();
         return a ? paraAtivo(a) : null;
@@ -2194,7 +2224,8 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
         return await banco.executar(ctx, async (uow) => {
           const resposta = await efeito({
             gravarPreferencias: (p) => gravarPreferencias(uow, p),
-            cadastrarAtivo: (hotelId, localId, dados) => criarAtivo(uow, hotelId, localId, dados),
+            cadastrarAtivo: (hotelId, localId, dados, situacao) =>
+              criarAtivo(uow, hotelId, localId, dados, situacao),
             alterarAtivo: (ativoId, versaoEsperada, mudanca) =>
               alterarAtivo(uow, ativoId, versaoEsperada, mudanca),
             abrirChamado: (hotelId, dados) => criarChamado(uow, hotelId, dados),
@@ -2360,6 +2391,94 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
   };
 }
 
+/** Aprovação do cadastro dos ativos (fase 1b, M4; migração 0058), pelo hk_app. */
+export function criarPortaCadastrosDeAtivos(banco: AcessoBanco): PortaCadastrosDeAtivos {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    pendentes: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.ativo as a')
+            .innerJoin('app.local as l', (j) =>
+              j.onRef('l.hotel_id', '=', 'a.hotel_id').onRef('l.id', '=', 'a.local_id'),
+            )
+            .select([
+              'a.id',
+              'a.hotel_id',
+              'a.local_id',
+              'l.nome as local_nome',
+              'a.categoria_id',
+              'a.nome',
+              'a.fabricante',
+              'a.modelo',
+              'a.numero_serie',
+              'a.versao',
+              'a.criado_em',
+            ])
+            .where('a.hotel_id', '=', hotelId)
+            .where('a.situacao_cadastro', '=', 'pendente')
+            .where('a.desativado_em', 'is', null)
+            .where(({ not, exists, selectFrom }) =>
+              not(
+                exists(
+                  selectFrom('app.ativo_decisao_cadastro as d')
+                    .select('d.id')
+                    .whereRef('d.hotel_id', '=', 'a.hotel_id')
+                    .whereRef('d.ativo_id', '=', 'a.id'),
+                ),
+              ),
+            )
+            .orderBy('a.criado_em')
+            .orderBy('a.id')
+            .execute()
+        ).map((a) => ({
+          id: a.id,
+          hotelId: a.hotel_id,
+          localId: a.local_id,
+          localNome: a.local_nome,
+          categoriaId: a.categoria_id,
+          nome: a.nome,
+          fabricante: a.fabricante,
+          modelo: a.modelo,
+          numeroSerie: a.numero_serie,
+          versao: a.versao,
+          criadoEm: a.criado_em,
+        })),
+      ),
+    ativo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await tx
+          .selectFrom('app.ativo as a')
+          .select(['a.id', 'a.hotel_id', 'a.versao', 'a.situacao_cadastro', 'a.desativado_em'])
+          .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
+          .where('a.id', '=', ativoId)
+          .executeTakeFirst();
+        return a
+          ? {
+              id: a.id,
+              hotelId: a.hotel_id,
+              versao: a.versao,
+              situacao: situacaoDoCadastro(
+                a.situacao_cadastro === 'pendente' ? 'pendente' : 'aprovado',
+                ehDecisaoDoCadastro(a.decisao_cadastro) ? a.decisao_cadastro : null,
+              ),
+              ativo: a.desativado_em === null,
+            }
+          : null;
+      }),
+    decidir: (ctx, d) => banco.executar(ctx, (uow) => decidirCadastroDeAtivo(uow, d)),
+  };
+}
+
 /** Os planos do hotel que a regra do plano que cobre o ativo lê (M1), pela RLS. */
 const planosQueCobrem = (banco: AcessoBanco, ctx: Contexto, hotelId: string) =>
   banco.withContext(ctx, async (tx) =>
@@ -2380,17 +2499,18 @@ const planosQueCobrem = (banco: AcessoBanco, ctx: Contexto, hotelId: string) =>
 export function criarPortaSugestoesDePlano(banco: AcessoBanco): PortaSugestoesDePlano {
   const selecionar = (tx: Tx) =>
     tx
-      .selectFrom('app.ativo')
+      .selectFrom('app.ativo as a')
       .select([
-        'id',
-        'hotel_id',
-        'nome',
-        'categoria_id',
-        'modelo_id',
-        'versao',
-        'desativado_em',
-        'sugestao_descartada_em',
-      ]);
+        'a.id',
+        'a.hotel_id',
+        'a.nome',
+        'a.categoria_id',
+        'a.modelo_id',
+        'a.versao',
+        'a.desativado_em',
+        'a.sugestao_descartada_em',
+      ])
+      .select(cadastroPendente);
   type Linha = Awaited<ReturnType<ReturnType<typeof selecionar>['executeTakeFirstOrThrow']>>;
   const paraAtivo = (a: Linha) => ({
     id: a.id,
@@ -2401,22 +2521,23 @@ export function criarPortaSugestoesDePlano(banco: AcessoBanco): PortaSugestoesDe
     versao: a.versao,
     ativo: a.desativado_em === null,
     sugestaoDescartada: a.sugestao_descartada_em !== null,
+    cadastroPendente: a.cadastro_pendente,
   });
   return {
     ativos: (ctx, hotelId) =>
       banco.withContext(ctx, async (tx) =>
         (
           await selecionar(tx)
-            .where('hotel_id', '=', hotelId)
-            .where('modelo_id', 'is not', null)
-            .orderBy('nome')
-            .orderBy('id')
+            .where('a.hotel_id', '=', hotelId)
+            .where('a.modelo_id', 'is not', null)
+            .orderBy('a.nome')
+            .orderBy('a.id')
             .execute()
         ).map(paraAtivo),
       ),
     ativo: (ctx, id) =>
       banco.withContext(ctx, async (tx) => {
-        const a = await selecionar(tx).where('id', '=', id).executeTakeFirst();
+        const a = await selecionar(tx).where('a.id', '=', id).executeTakeFirst();
         return a ? paraAtivo(a) : null;
       }),
     modelos: (ctx, ids) =>
@@ -2503,5 +2624,83 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
     criar: (ctx, dados) => banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados)),
     alterar: (ctx, id, versao, mudanca) =>
       banco.executar(ctx, (uow) => alterarModeloDeAtivo(uow, id, versao, mudanca)),
+  };
+}
+
+/** Importação de ativos por planilha (M2): as referências do hotel e a gravação por linha. */
+export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportacaoDeAtivos {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    locais: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        tx
+          .selectFrom('app.local')
+          .select(['id', 'nome', 'edificacao', 'status'])
+          .where('hotel_id', '=', hotelId)
+          .execute(),
+      ),
+    categorias: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.categoria_ativo')
+            .select(['id', 'ativa', 'campos', 'nomes', 'chave_padrao'])
+            .execute()
+        ).map((c) => ({
+          id: c.id,
+          ativa: c.ativa,
+          campos: c.campos,
+          nomes: c.nomes,
+          chavePadrao: c.chave_padrao,
+        })),
+      ),
+    modelos: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.modelo_ativo')
+            .select(['id', 'categoria_id', 'nome', 'ativa', 'fabricante', 'modelo', 'campos'])
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          categoriaId: m.categoria_id,
+          nome: m.nome,
+          ativa: m.ativa,
+          fabricante: m.fabricante,
+          modelo: m.modelo,
+          campos: m.campos,
+        })),
+      ),
+    chaves: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.ativo')
+            .select('chave_importacao')
+            .where('hotel_id', '=', hotelId)
+            .where('chave_importacao', 'is not', null)
+            .execute()
+        ).flatMap((a) => (a.chave_importacao === null ? [] : [a.chave_importacao])),
+      ),
+    criar: async (ctx, hotelId, a) => {
+      const { localId, chaveImportacao, ...dados } = a;
+      try {
+        const { id } = await banco.executar(ctx, (uow) =>
+          criarAtivo(uow, hotelId, localId, dados, 'aprovado', chaveImportacao),
+        );
+        return { id };
+      } catch (e) {
+        if (e instanceof Conflito && e.codigo === 'importacao_ja_importada') return 'ja_importada';
+        throw e;
+      }
+    },
   };
 }

@@ -122,6 +122,7 @@ export {
 export type { MatrizDeArrendamento, ResponsavelDoArrendamento } from './arrendamento';
 export type {
   AceiteAutomatico,
+  AprovacaoDoCadastro,
   AssinaturaNoAceite,
   ChecklistCompletoObrigatorio,
   ChaveDePolitica,
@@ -567,6 +568,17 @@ export {
 } from './auditoria-geral';
 export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
 export {
+  DECISOES_DO_CADASTRO,
+  PAPEIS_QUE_DECIDEM_O_CADASTRO,
+  SITUACOES_DO_CADASTRO,
+  ehDecisaoDoCadastro,
+  podeDecidirCadastro,
+  situacaoDoCadastro,
+  situacaoInicialNoPwa,
+  validarDecisaoDoCadastro,
+} from './aprovacao-do-cadastro';
+export type { DecisaoDoCadastro, SituacaoDoCadastro } from './aprovacao-do-cadastro';
+export {
   FAIXAS_DE_IDADE,
   LIMITES_DO_PAINEL,
   amostraSuficiente,
@@ -632,3 +644,32 @@ export {
   validarPeriodoDaContagem,
 } from './comunicacao';
 export type { CanalDeEnvio, ResponsavelDaOsAtiva, SituacaoDeEnvio } from './comunicacao';
+export {
+  COLUNAS_DA_IMPORTACAO,
+  COLUNAS_OBRIGATORIAS,
+  LIMITES_DA_IMPORTACAO,
+  PREFIXO_DE_CAMPO,
+  SEPARADOR_DO_MODELO,
+  analisarImportacao,
+  chaveDeImportacao,
+  lerCabecalho,
+  lerCsv,
+  lerDataDaPlanilha,
+  lerValorDaPlanilha,
+  modeloDaPlanilha,
+  paraComparar,
+  podeImportarAtivos,
+} from './importacao-de-ativos';
+export type {
+  AtivoDaImportacao,
+  CategoriaDaImportacao,
+  ColunaDaImportacao,
+  ErroDaLinha,
+  LinhaAnalisada,
+  LocalDaImportacao,
+  ModeloDaImportacao,
+  ReferenciasDaImportacao,
+  ResultadoDaImportacao,
+  SituacaoDaLinha,
+} from './importacao-de-ativos';
+export { sha256, tamanhoUtf8 } from './resumo-sha256';
