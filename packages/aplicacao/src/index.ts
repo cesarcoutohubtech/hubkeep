@@ -408,3 +408,16 @@ export type {
   ResultadoDaGravacao,
   SituacaoDaLinhaGravada,
 } from './casos-de-uso/importacao-de-ativos';
+export type {
+  DadosDoPlanoPadrao,
+  MudancaDePlanoPadrao,
+  PlanoPadraoGravado,
+  PortaPacoteDaBandeira,
+} from './portas/pacote-da-bandeira';
+export { criarCasosDeUsoDoPacoteDaBandeira } from './casos-de-uso/pacote-da-bandeira';
+export type {
+  CasosDeUsoDoPacoteDaBandeira,
+  PedidoDeNovoPlanoPadrao,
+  PedidoDePlanoPadrao,
+  ResultadoDaAplicacao,
+} from './casos-de-uso/pacote-da-bandeira';

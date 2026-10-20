@@ -20,6 +20,7 @@ import type {
   PortaSugestoesDePlano,
   PortaCadastrosDeAtivos,
   PortaImportacaoDeAtivos,
+  PortaPacoteDaBandeira,
   PortaChamados,
   PlanoGravado,
   PortaPlanosPreventivos,
@@ -119,6 +120,7 @@ import {
 import { criarChamado } from './repositorios/chamados';
 import { alterarModeloDeAtivo, criarModeloDeAtivo } from './repositorios/modelos-de-ativo';
 import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
+import { alterarPlanoPadrao, criarPlanoPadrao } from './repositorios/pacote-da-bandeira';
 import { alterarFeriadoDoHotel, criarFeriadoDoHotel } from './repositorios/feriados-do-hotel';
 import {
   ajustarArrendamento,
@@ -2699,6 +2701,141 @@ export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportaca
         return { id };
       } catch (e) {
         if (e instanceof Conflito && e.codigo === 'importacao_ja_importada') return 'ja_importada';
+        throw e;
+      }
+    },
+  };
+}
+
+/** Pacote da bandeira (PB1): os planos do pacote e a cópia para o hotel. */
+export function criarPortaPacoteDaBandeira(banco: AcessoBanco): PortaPacoteDaBandeira {
+  const colunas = [
+    'id',
+    'bandeira_id',
+    'categoria_id',
+    'nome',
+    'intervalo',
+    'unidade',
+    'checklist_modelo_id',
+    'ativa',
+    'versao',
+  ] as const;
+  const paraPlano = (p: {
+    id: string;
+    bandeira_id: string | null;
+    categoria_id: string;
+    nome: string;
+    intervalo: number;
+    unidade: string;
+    checklist_modelo_id: string | null;
+    ativa: boolean;
+    versao: number;
+  }) => ({
+    id: p.id,
+    bandeiraId: p.bandeira_id,
+    categoriaId: p.categoria_id,
+    nome: p.nome,
+    intervalo: p.intervalo,
+    // O check do banco só aceita as três unidades.
+    unidade: p.unidade as 'dia' | 'semana' | 'mes',
+    checklistModeloId: p.checklist_modelo_id,
+    ativa: p.ativa,
+    versao: p.versao,
+  });
+  return {
+    planos: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.plano_padrao')
+            .select(colunas)
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map(paraPlano),
+      ),
+    plano: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const p = await tx
+          .selectFrom('app.plano_padrao')
+          .select(colunas)
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return p ? paraPlano(p) : null;
+      }),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const b = await tx
+          .selectFrom('app.bandeira')
+          .select('id')
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return b ? { id: b.id } : null;
+      }),
+    categoria: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.categoria_ativo')
+          .select(['id', 'ativa'])
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return c ? { id: c.id, ativa: c.ativa } : null;
+      }),
+    checklist: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.checklist_modelo')
+          .select(['ativa', 'categoria_id', 'bandeira_id'])
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return c
+          ? { ativa: c.ativa, categoriaId: c.categoria_id, bandeiraId: c.bandeira_id }
+          : null;
+      }),
+    criar: (ctx, d) => banco.executar(ctx, (uow) => criarPlanoPadrao(uow, d)),
+    alterar: (ctx, id, versao, mudanca) =>
+      banco.executar(ctx, (uow) => alterarPlanoPadrao(uow, id, versao, mudanca)),
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id', 'fuso'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id, fuso: h.fuso } : null;
+      }),
+    copiados: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.plano_preventivo')
+            .select('plano_padrao_id')
+            .where('hotel_id', '=', hotelId)
+            .where('plano_padrao_id', 'is not', null)
+            .execute()
+        ).flatMap((p) => (p.plano_padrao_id === null ? [] : [p.plano_padrao_id])),
+      ),
+    copiar: async (ctx, hotelId, c) => {
+      try {
+        const { id } = await banco.executar(ctx, (uow) =>
+          criarPlanoPreventivo(uow, {
+            hotelId,
+            ativoId: null,
+            categoriaId: c.categoriaId,
+            situacao: c.situacao,
+            planoPadraoId: c.planoPadraoId,
+            nome: c.nome,
+            intervalo: c.intervalo,
+            unidade: c.unidade,
+            inicio: c.inicio,
+            checklistModeloId: c.checklistModeloId,
+            tecnicoId: c.tecnicoId,
+            equipeId: c.equipeId,
+          }),
+        );
+        return { id };
+      } catch (e) {
+        if (e instanceof Conflito && e.codigo === 'plano_ja_copiado') return 'ja_copiado';
         throw e;
       }
     },
