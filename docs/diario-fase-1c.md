@@ -1044,3 +1044,100 @@ Se o Kaio quiser, o teste de termos pode passar a valer também para `inteligenc
   - a tradução profissional, que é contratação externa: o volume está na referência de termos;
   - os gráficos do painel;
   - a tolerância da preventiva na tela de configuração.
+
+## Gráficos do painel de indicadores (decisão 6; 20/10/2026)
+
+**Área compartilhada (catálogos), registrada antes de mexer:** só chaves novas `indicadores.grafico.*`. O `packages/ui` ganha um componente e dois tokens. Branch `claude/1c-graficos`, a partir da `main` bf9b3c0.
+
+**Feito:**
+- **`GraficoDeLinhas` (`packages/ui/src/grafico.tsx`):**
+  - um eixo só, com a grade discreta e três rótulos no eixo X;
+  - a legenda quando há mais de uma série;
+  - ao passar o ponteiro, ou com as setas e o foco no gráfico, a linha vertical e a dica com o valor de cada série;
+  - a tabela dos números logo abaixo, num "Ver os números de cada dia";
+  - a largura acompanha a do painel.
+- **Cores:** os tokens `--hk-serie-1` (azul) e `--hk-serie-2` (laranja), da paleta de referência de gráficos, validados contra a superfície de cada tema para daltonismo e contraste. O laranja do tema claro escureceu um pouco para chegar a 3:1 sobre a superfície 2; o `tests/ui-contraste.test.ts` agora confere as duas séries.
+- **No painel (`/indicadores`):** a tabela "Chamados por dia" virou dois gráficos, porque as escalas não se misturam:
+  - "Fluxo de chamados": abertos e concluídos por dia;
+  - "Backlog no fim do dia".
+- **Conferido:** um print do gráfico, renderizado no servidor, nos dois temas. A dica do ponteiro não foi vista no navegador.
+
+**Fica para depois:**
+- **"Onde mais quebra"** (chamados por categoria), a terceira peça da decisão 6. Não está no glossário de métricas, e a definição é um termo novo: precisa de uma versão nova do glossário, com a aprovação de Cesar e Kaio. A proposta está abaixo.
+- **A tela inicial (seção 4 da paridade).** Hoje é só a lista de hotéis. Faltam:
+  - os quatro indicadores do topo, com a linha de 14 dias;
+  - o quadro por hotel, com a regra de situação;
+  - a contagem regressiva dos 6 próximos prazos;
+  - os cartões do proprietário e do locador;
+  - os "Últimos eventos" da auditoria (decisão 5);
+  - os gráficos.
+
+  Não é um dos dez itens da ordem da 1c, mas as decisões 4, 5 e 6 citam o painel. Pergunta ao Cesar, abaixo.
+
+### Proposta para o glossário de métricas: "Chamados por categoria" ("Onde mais quebra")
+
+Para a aprovação de Cesar e Kaio, como versão nova do glossário:
+- **Definição:** os chamados abertos no período, sem os cancelados, contados pela categoria do chamado.
+- **Categoria que conta:** a de agora, depois da troca na triagem, e não a da abertura.
+- **No gráfico:** barras horizontais, da categoria com mais chamados para a com menos. São as 8 primeiras, e o resto se soma em "Outras categorias".
+- **Quem vê:** o mesmo escopo dos cartões da rede, ou seja, a gestão. O proprietário não vê.
+
+### Perguntas ao Cesar (20/10/2026)
+
+1. **Tela inicial:** a seção 4 da paridade (o painel de cada persona) entra agora na 1c, como um item depois do 10? Se entrar, falta também o nome da seção do quadro por hotel. A sugestão da paridade é "Situação por hotel".
+2. **"Onde mais quebra":** a proposta acima, para o glossário.
+
+### Ponto de retomada (20/10/2026, gráficos)
+
+- **`main`:** bf9b3c0, com a CI verde nos três workflows.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel;
+  - o PR destes gráficos, que abre agora.
+- **Os dois mexem nos catálogos**, em lugares diferentes. Depois de um merge, o outro é atualizado com a `main`.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial;
+  - "Onde mais quebra".
+- **Pedido ao Kaio:**
+  - os termos nos textos `inteligencia.*`;
+  - a proposta de "Onde mais quebra" para o glossário.
+- **Próximo:** a tolerância da preventiva na tela de configuração. Primeiro passo: achar a tela das políticas do hotel e ver como ela edita as outras chaves.
+
+## Tolerância da preventiva na tela de configuração (decisão 11; 20/10/2026)
+
+O #339 (gráficos) entrou na `main` em 20/10/2026, e a `main` está em 2580431, com o #337 e o #341 da 1b. **Área compartilhada (políticas e catálogos), registrada antes de mexer:** só um bloco novo na tela `/admin/configuracao` para a chave `preventiva.tolerancia_dias`, que já existe no domínio, no contrato e na API, e chaves novas `admin.configuracao.tolerancia.*`. Sem mudança no domínio, na API nem no banco. Branch `claude/1c-tolerancia`, a partir da `main` 2580431.
+
+**Feito:**
+- **Bloco novo** na tela de configuração (`BlocoDaTolerancia`, `apps/web/src/cliente/bloco-da-tolerancia.tsx`), logo depois do aceite automático:
+  - o valor que vale e de onde ele vem (hotel, bandeira, grupo ou padrão);
+  - o campo dos dias, de 0 a 30, e os botões de gravar no grupo, no hotel e na bandeira do hotel, como nas outras políticas;
+  - os botões de voltar a herdar, em cada nível que tem valor.
+- **A dica fala só do painel de indicadores**, porque é só ele que lê a política hoje (abaixo).
+- **Testes:** `apps/web/test/bloco-da-tolerancia.test.tsx`, nos quatro idiomas e no pseudo-idioma, com o padrão, o valor do hotel e o singular.
+- **A tela não foi aberta no navegador.**
+
+### Aviso ao agente do Intelligence (Kaio): a política da tolerância existe (20/10/2026)
+
+O Intelligence usa a tolerância 0 numa constante (`TOLERANCIA_DA_PREVENTIVA_DIAS`, em `packages/inteligencia/src/atencao.ts`) até a política existir, pelo aviso do diário do Intelligence de 16/10/2026. Ela existe:
+- **Na `main`:** a chave `preventiva.tolerancia_dias` está no domínio e no contrato desde o painel de indicadores (#282): `{ dias }`, de 0 a 30, padrão 0, com o nível da bandeira. O caso de uso dos indicadores resolve por hotel com `resolverPolitica`.
+- **Na tela:** entra com este PR.
+
+Ler a política no job, no lugar da constante, é do Kaio. Até lá, o painel e a atenção do ativo podem divergir num hotel com tolerância diferente de 0.
+
+### Ponto de retomada (20/10/2026, tolerância da preventiva)
+
+- **`main`:** 2580431, com o #339 (gráficos), o #337 e o #341. A mesma `main`, rodada aqui com o #332 mesclado, passou em lint, typecheck e testes.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel, atualizado com a `main` 2580431;
+  - o PR desta tolerância, que abre agora.
+- **Os dois mexem nos catálogos**, em lugares diferentes. Depois de um merge, o outro é atualizado com a `main`.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial (seção 4 da paridade);
+  - "Onde mais quebra" para o glossário.
+- **Pedidos e avisos ao Kaio:**
+  - os termos nos textos `inteligencia.*`;
+  - a proposta de "Onde mais quebra" para o glossário;
+  - a política da tolerância, que o Intelligence pode passar a ler.
+- **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR; o que vier depois depende das respostas acima.
+- **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.

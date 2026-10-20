@@ -12,6 +12,7 @@ import {
   comoBotao,
   Entrada,
   Estrutura,
+  GraficoDeLinhas,
   GrupoDeMenu,
   Dados,
   Indicador,
@@ -23,6 +24,7 @@ import {
   NIVEIS_DE_PRIORIDADE,
   Nota,
   Painel,
+  passoDaGrade,
   Selecao,
   Selo,
   SeloDePrioridade,
@@ -282,5 +284,54 @@ describe('Nota', () => {
     expect(html(<Nota>Dica</Nota>)).toBe('<p class="hk-nota" data-tom="info">Dica</p>');
     expect(html(<Nota tom="ok">Feito</Nota>)).toContain('role="status"');
     expect(html(<Nota tom="atencao">Cuidado</Nota>)).toContain('role="status"');
+  });
+});
+
+describe('GraficoDeLinhas', () => {
+  const eixoX = ['01/10', '02/10', '03/10'];
+  const formatar = (n: number) => String(n);
+
+  it('duas séries: a legenda, uma linha por série com a cor na ordem, a grade e a tabela', () => {
+    const saida = html(
+      <GraficoDeLinhas
+        rotulo="Fluxo"
+        eixoX={eixoX}
+        formatar={formatar}
+        series={[
+          { chave: 'a', rotulo: 'Abertos', valores: [3, 9, 4] },
+          { chave: 'b', rotulo: 'Concluídos', valores: [1, 2, 7] },
+        ]}
+        tabela={<table />}
+        verTabela="Ver os números"
+      />,
+    );
+    expect(saida).toContain('role="img"');
+    expect(saida).toContain('aria-label="Fluxo"');
+    expect(saida).toContain('class="hk-grafico-legenda"');
+    expect(saida.match(/<polyline/g)).toHaveLength(2);
+    expect(saida).toContain('hk-grafico-linha hk-grafico-serie-1');
+    expect(saida).toContain('hk-grafico-linha hk-grafico-serie-2');
+    // Topo 10 com passo 5 (até 9): grade em 0, 5 e 10; o primeiro, o do meio e o último dia.
+    expect(saida.match(/class="hk-grafico-grade"/g)).toHaveLength(3);
+    for (const d of eixoX) expect(saida).toContain(`>${d}</text>`);
+    expect(saida).toContain('<summary>Ver os números</summary>');
+  });
+
+  it('uma série: sem legenda; um ponto só vira marcador', () => {
+    const saida = html(
+      <GraficoDeLinhas
+        rotulo="Backlog"
+        eixoX={['01/10']}
+        formatar={formatar}
+        series={[{ chave: 'b', rotulo: 'Backlog', valores: [2] }]}
+      />,
+    );
+    expect(saida).not.toContain('hk-grafico-legenda');
+    expect(saida).not.toContain('<polyline');
+    expect(saida).toContain('<circle');
+  });
+
+  it('o passo da grade: 1 até quatro, depois 1, 2 ou 5 vezes uma potência de dez', () => {
+    expect([0, 3, 4, 7, 9, 18, 40, 130].map(passoDaGrade)).toEqual([1, 1, 1, 2, 5, 5, 10, 50]);
   });
 });

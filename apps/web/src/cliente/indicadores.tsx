@@ -1,14 +1,21 @@
 'use client';
 // Painel de indicadores (1c, item 8; glossário único de métricas, versão 3):
 // os cartões do período com a variação contra o período anterior, o backlog
-// por idade, os chamados por dia, a comparação na bandeira com o melhor de
+// por idade, os gráficos dos chamados por dia (decisão 6), a comparação na bandeira com o melhor de
 // cada coluna em destaque e a produtividade por equipe e hotel. O proprietário
 // vê só os cartões dos hotéis dele. Os números chegam calculados da API; aqui
 // só se formatam, no idioma de quem vê.
 import type { RespostaDosIndicadores, z } from '@hubkeep/contratos';
 import { FAIXAS_DE_IDADE_API } from '@hubkeep/contratos';
 import { amostraSuficiente } from '@hubkeep/dominio';
-import { Indicador, Indicadores, MensagemVazia, Painel, Tabela } from '@hubkeep/ui';
+import {
+  GraficoDeLinhas,
+  Indicador,
+  Indicadores,
+  MensagemVazia,
+  Painel,
+  Tabela,
+} from '@hubkeep/ui';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/cliente';
 
@@ -181,42 +188,86 @@ export function BacklogPorIdade({ faixas }: { faixas: IndicadoresNaTela['backlog
   );
 }
 
+/**
+ * Os chamados por dia em dois gráficos, porque as escalas não se misturam: o
+ * fluxo (abertos e concluídos no dia) e o backlog no fim do dia. A tabela com
+ * os números fica abaixo do primeiro.
+ */
 export function ChamadosPorDia({ serie }: { serie: PainelDeIndicadores['serie'] }) {
   const t = useT();
   const intl = useIntl();
   const f = useFormatos();
   if (serie.length === 0) return null;
-  return (
-    <Painel titulo={t('indicadores.serie.titulo')} nivel={3}>
-      <Tabela legenda={t('indicadores.serie.titulo')}>
-        <thead>
-          <tr>
-            <th scope="col">{t('indicadores.serie.coluna.dia')}</th>
-            <th scope="col" className="hk-num">
-              {t('indicadores.serie.coluna.abertos')}
-            </th>
-            <th scope="col" className="hk-num">
-              {t('indicadores.serie.coluna.encerrados')}
-            </th>
-            <th scope="col" className="hk-num">
-              {t('indicadores.serie.coluna.backlog')}
-            </th>
+  const dia = (d: string) =>
+    intl.formatDate(`${d}T12:00:00Z`, { dateStyle: 'short', timeZone: 'UTC' });
+  const eixoX = serie.map((d) => dia(d.dia));
+  const formatar = (n: number) => f.numero(n, 0);
+  const tabela = (
+    <Tabela legenda={t('indicadores.serie.titulo')}>
+      <thead>
+        <tr>
+          <th scope="col">{t('indicadores.serie.coluna.dia')}</th>
+          <th scope="col" className="hk-num">
+            {t('indicadores.serie.coluna.abertos')}
+          </th>
+          <th scope="col" className="hk-num">
+            {t('indicadores.serie.coluna.encerrados')}
+          </th>
+          <th scope="col" className="hk-num">
+            {t('indicadores.serie.coluna.backlog')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {serie.map((d) => (
+          <tr key={d.dia}>
+            <td>{dia(d.dia)}</td>
+            <td className="hk-num">{f.numero(d.abertos)}</td>
+            <td className="hk-num">{f.numero(d.encerrados)}</td>
+            <td className="hk-num">{f.numero(d.backlog)}</td>
           </tr>
-        </thead>
-        <tbody>
-          {serie.map((d) => (
-            <tr key={d.dia}>
-              <td>
-                {intl.formatDate(`${d.dia}T12:00:00Z`, { dateStyle: 'short', timeZone: 'UTC' })}
-              </td>
-              <td className="hk-num">{f.numero(d.abertos)}</td>
-              <td className="hk-num">{f.numero(d.encerrados)}</td>
-              <td className="hk-num">{f.numero(d.backlog)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Tabela>
-    </Painel>
+        ))}
+      </tbody>
+    </Tabela>
+  );
+  return (
+    <>
+      <Painel titulo={t('indicadores.grafico.fluxo.titulo')} nivel={3}>
+        <GraficoDeLinhas
+          rotulo={t('indicadores.grafico.fluxo.titulo')}
+          eixoX={eixoX}
+          formatar={formatar}
+          series={[
+            {
+              chave: 'abertos',
+              rotulo: t('indicadores.serie.coluna.abertos'),
+              valores: serie.map((d) => d.abertos),
+            },
+            {
+              chave: 'encerrados',
+              rotulo: t('indicadores.serie.coluna.encerrados'),
+              valores: serie.map((d) => d.encerrados),
+            },
+          ]}
+          tabela={tabela}
+          verTabela={t('indicadores.grafico.ver_tabela')}
+        />
+      </Painel>
+      <Painel titulo={t('indicadores.serie.coluna.backlog')} nivel={3}>
+        <GraficoDeLinhas
+          rotulo={t('indicadores.serie.coluna.backlog')}
+          eixoX={eixoX}
+          formatar={formatar}
+          series={[
+            {
+              chave: 'backlog',
+              rotulo: t('indicadores.serie.coluna.backlog'),
+              valores: serie.map((d) => d.backlog),
+            },
+          ]}
+        />
+      </Painel>
+    </>
   );
 }
 
