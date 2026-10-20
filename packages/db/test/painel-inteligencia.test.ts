@@ -140,11 +140,11 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
       dias: number;
     }) =>
       q(
-        `insert into app.insight (id, tenant_id, hotel_id, bandeira_id, hotel_ids, tipo, familia, chave,
-           escopo, faixa, valor, versao_score, detalhe, evidencia, anterior_id,
+        `insert into app.insight (numero, id, tenant_id, hotel_id, bandeira_id, hotel_ids, tipo, familia,
+           chave, escopo, faixa, valor, versao_score, detalhe, evidencia, anterior_id,
            primeira_deteccao_em, ultima_deteccao_em)
-         values ($1, $2, $3, $4, $5::uuid[], $6, $7, $8, '{}', 'alta_atencao', 75, 2,
-           '{"chave": "x"}', $9, $10, $11, $11)`,
+         values ((select coalesce(max(numero), 0) + 1 from app.insight where tenant_id = $2), $1, $2, $3, $4,
+           $5::uuid[], $6, $7, $8, '{}', 'alta_atencao', 75, 2, '{"chave": "x"}', $9, $10, $11, $11)`,
         [
           p.id,
           TENANT,
@@ -247,6 +247,16 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
       [],
     );
     expect(await porta.insights(ctx(U.admin), { estados: ['resolvido'] }, 500)).toEqual([]);
+    // O número do insight (0060): um por tenant, e o filtro acha o insight dele.
+    const todos = await porta.insights(ctx(U.admin), { estados: ABERTOS }, 500);
+    const numeros = todos.map((i) => i.numero);
+    expect(new Set(numeros).size).toBe(numeros.length);
+    const numero = todos.find((i) => i.id === I.hotel)?.numero ?? 0;
+    expect(ids(await porta.insights(ctx(U.admin), { estados: ABERTOS, numero }, 500))).toEqual([
+      I.hotel,
+    ]);
+    // O técnico não lê o insight, nem pelo número.
+    expect(await porta.insights(ctx(U.tecnico), { estados: ABERTOS, numero }, 500)).toEqual([]);
     const contagens = await porta.contagens(ctx(U.gerente), ABERTOS);
     expect(contagens).toEqual([
       { tipo: 'atencao_ativo', faixa: 'alta_atencao', comResponsavel: false, quantidade: 2 },
@@ -403,10 +413,10 @@ describe.skipIf(!temBanco)('painel do Intelligence', { timeout: 60_000 }, () => 
     // O dia que o job nunca gravou: o recálculo 1 é o único registro dele (ADR-036).
     await metrica('2026-10-03', 1, true, 70);
     await q(
-      `insert into app.insight (id, tenant_id, hotel_id, bandeira_id, hotel_ids, tipo, familia, chave,
-         escopo, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em)
-       values ($1, $2, $3, $4, array[$3]::uuid[], 'atencao_ativo', 'f-ativo', $5, $6, 'atencao', 60, 2,
-         now(), now())`,
+      `insert into app.insight (numero, id, tenant_id, hotel_id, bandeira_id, hotel_ids, tipo, familia,
+         chave, escopo, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em)
+       values ((select coalesce(max(numero), 0) + 1 from app.insight where tenant_id = $2), $1, $2, $3, $4,
+         array[$3]::uuid[], 'atencao_ativo', 'f-ativo', $5, $6, 'atencao', 60, 2, now(), now())`,
       [
         IA,
         TENANT,

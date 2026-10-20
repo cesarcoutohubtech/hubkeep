@@ -20,6 +20,8 @@ import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 
 export interface InsightDoPainelNoBanco {
   id: string;
+  /** O número que as pessoas citam, sequencial no tenant (0060). */
+  numero: number;
   hotelId: string | null;
   bandeiraId: string | null;
   hotelIds: string[];
@@ -50,6 +52,8 @@ export interface FiltroDeInsightsNoBanco {
   tipo?: string;
   faixa?: string;
   hotelId?: string;
+  /** O insight deste número, se quem pede o lê. */
+  numero?: number;
 }
 
 export interface ContagemDeInsightsNoBanco {
@@ -129,6 +133,7 @@ const data = (v: Date | string) => (v instanceof Date ? v : new Date(v));
 
 const COLUNAS = [
   'id',
+  'numero',
   'hotel_id',
   'bandeira_id',
   'hotel_ids',
@@ -151,6 +156,7 @@ const COLUNAS = [
 
 type LinhaDoInsight = {
   id: string;
+  numero: number;
   hotel_id: string | null;
   bandeira_id: string | null;
   hotel_ids: string[];
@@ -174,6 +180,7 @@ type LinhaDoInsight = {
 function doBanco(i: LinhaDoInsight): InsightDoPainelNoBanco {
   return {
     id: i.id,
+    numero: i.numero,
     hotelId: i.hotel_id,
     bandeiraId: i.bandeira_id,
     hotelIds: i.hotel_ids,
@@ -229,6 +236,7 @@ export async function insightsDoPainel(
   if (filtro.tipo) q = q.where('tipo', '=', filtro.tipo);
   if (filtro.faixa) q = q.where('faixa', '=', filtro.faixa);
   if (filtro.hotelId) q = q.where(sql<boolean>`hotel_ids @> array[${filtro.hotelId}]::uuid[]`);
+  if (filtro.numero !== undefined) q = q.where('numero', '=', filtro.numero);
   const linhas = await q
     .orderBy('ultima_deteccao_em', 'desc')
     .orderBy('id')

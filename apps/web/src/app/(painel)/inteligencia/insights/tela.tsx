@@ -16,6 +16,7 @@ import type {
 } from '@hubkeep/contratos';
 import {
   Campo,
+  Entrada,
   Indicador,
   Indicadores,
   MensagemVazia,
@@ -37,6 +38,7 @@ import {
   TabelaDeEfetividade,
   useDatas,
   useEscopoDoInsight,
+  useNumeroDoInsight,
   useTituloDoInsight,
 } from '../comum';
 
@@ -63,11 +65,26 @@ interface Filtro {
   tipo: string;
   faixa: string;
   hotelId: string;
+  /** O número digitado: "INS-0133", "0133" ou "133". */
+  numero: string;
+}
+
+/** O número do insight no que a pessoa digitou, sem o prefixo e os zeros; null sem número. */
+export function numeroDigitado(texto: string): number | null {
+  const digitos = texto.replace(/\D/g, '');
+  const n = Number(digitos);
+  return digitos !== '' && n >= 1 && digitos.length <= 9 ? n : null;
 }
 
 export function caminhoDaLista(f: Filtro): string {
   const q = new URLSearchParams();
-  for (const [k, v] of Object.entries(f)) if (v) q.set(k, v);
+  const numero = numeroDigitado(f.numero);
+  for (const [k, v] of Object.entries(f)) {
+    // Com o número, o insight aparece em qualquer estado: o filtro de estado não vai.
+    if (k === 'numero' || (k === 'estado' && numero !== null)) continue;
+    if (v) q.set(k, v);
+  }
+  if (numero !== null) q.set('numero', String(numero));
   const texto = q.toString();
   return `/api/v1/inteligencia/insights${texto ? `?${texto}` : ''}`;
 }
@@ -79,6 +96,7 @@ export function TelaDeInsights() {
     tipo: '',
     faixa: '',
     hotelId: '',
+    numero: '',
   });
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [hoteis, setHoteis] = useState<Hoteis['hoteis']>([]);
@@ -152,9 +170,26 @@ export function TelaDeInsights() {
       <ProcurarAtivo />
       <Painel titulo={t('inteligencia.lista.titulo')}>
         <form className="hk-filtros" onSubmit={(e) => e.preventDefault()}>
+          <Campo rotulo={t('inteligencia.filtro.numero')}>
+            {(p) => (
+              <Entrada
+                {...p}
+                type="search"
+                inputMode="numeric"
+                value={filtro.numero}
+                onChange={mudar('numero')}
+                placeholder={t('inteligencia.filtro.numero.exemplo')}
+              />
+            )}
+          </Campo>
           <Campo rotulo={t('inteligencia.filtro.estado')}>
             {(p) => (
-              <Selecao {...p} value={filtro.estado} onChange={mudar('estado')}>
+              <Selecao
+                {...p}
+                value={filtro.estado}
+                onChange={mudar('estado')}
+                disabled={numeroDigitado(filtro.numero) !== null}
+              >
                 {ESTADOS.map((e) => (
                   <option key={e} value={e}>
                     {e === 'abertos' || e === 'encerrados'
@@ -298,6 +333,7 @@ export function TabelaDeInsights({ lista }: { lista: Lista }) {
   const t = useT();
   const titulo = useTituloDoInsight();
   const escopo = useEscopoDoInsight();
+  const numero = useNumeroDoInsight();
   const { data } = useDatas();
   return (
     <Tabela legenda={t('inteligencia.lista.titulo')}>
@@ -321,7 +357,12 @@ export function TabelaDeInsights({ lista }: { lista: Lista }) {
               <SeloDaFaixa faixa={i.faixa} />
             </td>
             <td>
-              <span className="hk-suave">{t('inteligencia.insight.tipo', { tipo: i.tipo })}</span>
+              <span className="hk-suave">
+                {t('inteligencia.insight.numero_e_tipo', {
+                  numero: numero(i.numero),
+                  tipo: t('inteligencia.insight.tipo', { tipo: i.tipo }),
+                })}
+              </span>
               <br />
               <Link href={`/inteligencia/insights/${i.id}`}>{titulo(i, lista.nomes)}</Link>
               {i.substitui && (

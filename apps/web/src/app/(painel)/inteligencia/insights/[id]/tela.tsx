@@ -44,6 +44,7 @@ import {
   useDatas,
   useEscopoDoInsight,
   useNomeDaFaixa,
+  useNumeroDoInsight,
   useTituloDoInsight,
 } from '../../comum';
 
@@ -110,6 +111,7 @@ export function ConteudoDoInsight({
   const t = useT();
   const titulo = useTituloDoInsight();
   const escopo = useEscopoDoInsight();
+  const numero = useNumeroDoInsight();
   const { data } = useDatas();
   const { insight, nomes } = pagina;
   const sistemico = insight.tipo === 'sistemico';
@@ -117,7 +119,10 @@ export function ConteudoDoInsight({
     <>
       <Painel
         titulo={titulo(insight, nomes)}
-        dica={t('inteligencia.insight.tipo', { tipo: insight.tipo })}
+        dica={t('inteligencia.insight.numero_e_tipo', {
+          numero: numero(insight.numero),
+          tipo: t('inteligencia.insight.tipo', { tipo: insight.tipo }),
+        })}
         acoes={
           <span className="hk-em-linha">
             <SeloDaFaixa faixa={insight.faixa} />

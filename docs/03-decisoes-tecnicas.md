@@ -817,7 +817,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - um conjunto com hotel a mais abre um insight novo, ligado ao aberto mais recente da família;
   - sem insight aberto na família, abre um novo, ligado ao último encerrado, salvo o silêncio de 30 dias depois do descarte "não relevante", a menos que a faixa suba. O descarte "substituído" e o resolvido não silenciam.
 - **Motivo do descarte:** `nao_relevante` ou `substituido`, canônico no domínio, com teste de paridade com o banco, e só no insight descartado. Quem descarta escolhe o motivo e escreve a nota, que continua obrigatória.
-- **Quem lê o insight** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence; aguarda a aprovação escrita do Kaio, porque muda quem vê): só quem decide.
+- **Quem lê o insight** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence, e aprovação escrita do Kaio de 20/10/2026, no mesmo chat: "Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169"; aprovado pelos dois): só quem decide.
   - Insight de hotel: o Admin do grupo, o Gestor CSC e o Gerente com o hotel.
   - Insight de rede: o Admin do grupo e o Gestor CSC que cobrem todos os hotéis do insight.
   - O Técnico, o solicitante, o implantador e o proprietário não leem, nem o proprietário do hotel inteiro: o Intelligence é gerencial.
@@ -858,6 +858,16 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Ressalva:** toda exibição diz que a variação observada não prova que a intervenção foi a causa.
 - **Sem o código de solução, a intervenção não aparece.** O piloto treina o preenchimento desde o primeiro dia, mesmo com a política "Códigos obrigatórios no aceite" desligada (`docs/piloto/`).
 
+**Adendo de 20/10/2026 — o número do insight.** Status: aguarda a aprovação escrita de Cesar e de Kaio. O desenho foi decidido pelos dois em 20/10/2026, no chat do agente do Intelligence ("Cesar aqui. Ambos agora." e "Kaio aqui. Sim, continue como cesar quer. (r) e (n) agora"), sobre a proposta registrada em `docs/diario-intelligence.md`, "O item 3: recálculo na tela ou número do insight, proposta".
+- **O que é:** um número sequencial por tenant, o que as pessoas citam ("INS-0133"). O id continua sendo a chave e o link.
+- **Estrutura (migração 0060):** a coluna `app.insight.numero`, obrigatória, a partir de 1, única por tenant (`unique (tenant_id, numero)`). Nenhum papel a atualiza: o `hk_app` e o `hk_worker` mantêm só as colunas que já atualizavam.
+- **Quem dá o número:** o job, ao abrir o insight, com o maior do tenant mais um, na mesma transação (`packages/db`, `abrirInsight`). Não há sequência, função nem trigger no banco. Se dois jobs do mesmo tenant correrem juntos, a chave única recusa o segundo número igual, e aquele job falha e roda de novo.
+- **Os que já existiam:** recebem o número na própria migração, pela ordem de abertura (primeira detecção, criação e id) em cada tenant.
+- **Quem vê:** quem lê o insight. O número segue a RLS da `app.insight`.
+- **Na tela:** "INS-0133 · tipo" na lista, na página do insight e nos insights do ativo, com quatro dígitos ao menos. O texto "INS-{numero}" fica no catálogo (regra 11).
+- **Procurar pelo número:** o campo "Número do insight" da lista aceita "INS-0133", "0133" ou "133". Com o número, a lista procura em qualquer estado e o filtro de estado fica desligado. A API recebe `numero` em `GET /api/v1/inteligencia/insights`.
+- **Por tenant, e não global:** um número global (identity) daria a cada grupo uma ideia do volume dos outros pelos saltos da sequência.
+
 ## ADR-034 — Intelligence: scores determinísticos, versionados e explicáveis, calculados na aplicação
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-2, e por Cesar em 07/10/2026. Aprovada pelos dois.
@@ -876,7 +886,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **"Por que estou vendo isso?"** sai de `motivosDoScore`, com a frase no catálogo, nos quatro idiomas.
 - Sem view materializada e sem função SQL nova.
 
-**Adendo — atenção ao ativo na versão 2 (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026; o texto deste adendo aguarda a aprovação escrita de Cesar e de Kaio. O motor mudou nos PRs #157 (atenção), #158 (efetividade) e #159 (padrão sistêmico).
+**Adendo — atenção ao ativo na versão 2 (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026. O texto deste adendo foi aprovado por escrito em 20/10/2026, no chat do agente do Intelligence, pelo Kaio ("Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169") e pelo Cesar ("Cesar aqui: aprovo no texto dos adendos de 08/10 aos ADR-034 e ADR-036"). Aprovado pelos dois. O motor mudou nos PRs #157 (atenção), #158 (efetividade) e #159 (padrão sistêmico).
 - **Oito componentes com peso e os UH-dias com peso 0**, nove no motor. Os pesos padrão são política (ADR-035) e somam 100:
 
   | Componente | Peso | Origem |
@@ -966,7 +976,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **O painel mostra o resultado original gravado de cada dia** (decisão de 07/10/2026). Os recálculos seguem guardados e aparecem só no painel de investigação, sob demanda e identificados como recálculo. O recálculo de um dia nunca gravado é o único registro do dia e aparece como tal.
 - O recálculo grava só métrica: não abre nem atualiza insight.
 
-**Quem lê a métrica diária** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence; aguarda a aprovação escrita do Kaio, porque muda quem vê): só quem decide, como no insight de hotel (ADR-033).
+**Quem lê a métrica diária** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence, e aprovação escrita do Kaio de 20/10/2026, no mesmo chat: "Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169"; aprovado pelos dois): só quem decide, como no insight de hotel (ADR-033).
 - O Admin do grupo, o Gestor CSC e o Gerente com o hotel.
 - O Técnico, o solicitante, o implantador e o proprietário não leem, nem o proprietário do hotel inteiro: o Intelligence é gerencial.
 - Na migração 0039, a policy de leitura usa os papéis em lista explícita, e não `authz.hoteis_leitura()`, que inclui o proprietário com escopo de hotel (pgTAP 032).
@@ -988,10 +998,11 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - Quando o volume pedir, a tabela passa a ser particionada por mês. A partição que sair da janela poderá ser removida por operação do responsável (o Cesar), nunca por papel da aplicação.
   - Isso pede ajuste nos meta-testes 1, 2 e 28, porque cada partição é vista como tabela. Também pede RLS forçada em cada partição e PK com o dia.
   - A análise está em `docs/referencia/retencao-metrica-diaria.md` (opção A). A decisão é do Cesar, antes do piloto ou quando o volume pedir.
+  - **Decidido pelo Cesar em 20/10/2026**, no chat do agente do Intelligence: "Particionada", antes do piloto. O desenho (a migração, as partições, os meta-testes e quem cria a partição de cada mês) vai em proposta própria e entra como adendo a este ADR, com a aprovação escrita de Cesar e de Kaio.
 - Toda tabela com `tenant_id NOT NULL`, RLS forçada, policies por papel e os seis casos de isolamento.
 - **Recálculo pontual** por handler do outbox, nunca por trigger. Nenhuma IA em request de painel.
 
-**Adendo — versões gravadas por área e formato das políticas (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026; o texto deste adendo aguarda a aprovação escrita de Cesar e de Kaio.
+**Adendo — versões gravadas por área e formato das políticas (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026. O texto deste adendo foi aprovado por escrito em 20/10/2026, no chat do agente do Intelligence, pelo Kaio ("Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169") e pelo Cesar ("Cesar aqui: aprovo no texto dos adendos de 08/10 aos ADR-034 e ADR-036"). Aprovado pelos dois.
 - **Versões vigentes:** reincidência 1, atenção ao ativo 2, efetividade 2 e sinal sistêmico 2.
   - A métrica diária grava `versao_formula_reincidencia` e `versao_formula_atencao`.
   - O insight grava a versão da detecção que o abriu (`versao_score`: a da atenção, ou a do sinal sistêmico).
