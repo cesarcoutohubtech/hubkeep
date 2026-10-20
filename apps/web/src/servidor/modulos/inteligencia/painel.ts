@@ -41,6 +41,7 @@ import {
   type ResultadoDaImportacao,
   type SinalDaFila,
   type SituacaoDaFila,
+  acessoAsReclamacoes,
   classificarSinal,
   ehLigacaoDoSinal,
   importarSinais,
@@ -155,6 +156,8 @@ export interface CasosDeUsoDoPainel {
     hotelId: string,
     linhas: readonly LinhaDoCsv[],
   ): Promise<ResultadoDaImportacao>;
+  /** Se usa a tela de reclamações, e se as outras telas já abriram (adendo ao ADR-035). */
+  acessoAsReclamacoes(ctx: Contexto): Promise<{ telasAbertas: boolean }>;
   /** A fila de classificação do hotel no recorte (as sem classificação, sem ele). */
   filaDeSinais(
     ctx: Contexto,
@@ -323,6 +326,7 @@ export function criarPainel(deps: DepsDoPainel): CasosDeUsoDoPainel {
         { hotelId, usuarioId: ctx.usuarioId, linhas },
         agora(),
       ),
+    acessoAsReclamacoes: (ctx) => acessoAsReclamacoes(portasDoPainel(deps, ctx), agora()),
     filaDeSinais: (ctx, hotelId, situacao) =>
       listarSinais(
         portasDoPainel(deps, ctx),

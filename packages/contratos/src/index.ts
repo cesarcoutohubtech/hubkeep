@@ -333,6 +333,7 @@ export {
   RespostaDoChamadoDaReclamacao,
   RespostaDoChamadoDoInsight,
   RespostaDaFilaDeSinais,
+  RespostaDoAcessoAsReclamacoes,
   RespostaDaImportacaoDeSinais,
   SITUACOES_DA_FILA_API,
   SinalDaFilaApi,

@@ -1445,6 +1445,7 @@
   "inteligencia.sinais.titulo": "Réclamations des clients",
   "inteligencia.sinais.link": "Réclamations des clients : importer et classer",
   "inteligencia.sinais.voltar": "Retour aux insights",
+  "inteligencia.sinais.antes_da_abertura": "Les autres écrans de HubKeep Intelligence s'ouvrent à la date d'ouverture. D'ici là, les réclamations sont déjà importées et classées, et le calcul quotidien les utilise déjà.",
   "inteligencia.sinais.intro": "Importez les avis et réclamations exportés de vos outils d'enquête et classez ceux qui relèvent de la maintenance. Rien ne lie une réclamation à un équipement sans la confirmation d'une personne : corrélation n'est pas causalité. HubKeep ne conserve ni le nom, ni les coordonnées, ni la réservation du client.",
   "inteligencia.sinais.hotel": "Hôtel",
   "inteligencia.sinais.importacao.titulo": "Importer un fichier CSV",

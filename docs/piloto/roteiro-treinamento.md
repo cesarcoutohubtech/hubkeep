@@ -75,7 +75,7 @@ Para o Admin do grupo e o Gestor CSC, acrescentar 30 min: **Membros e papéis**,
 - o texto do hóspede não vai para o chamado, porque o técnico não lê a reclamação;
 - o HubKeep não guarda nome, contato nem reserva do hóspede, e o texto é apagado depois do prazo de retenção (hoje 365 dias, provisório).
 
-A tela também só abre na data de abertura: as avaliações dos primeiros 60 dias do piloto entram depois, com a data de cada uma. O formato da exportação de cada ferramenta ainda não é conhecido (perguntas 35 a 37); até a resposta, o treino usa o CSV de exemplo.
+A tela de reclamações abre desde o primeiro dia do piloto, antes da data de abertura das outras telas; antes dela, a tela não leva aos insights nem à página do ativo. O formato da exportação de cada ferramenta ainda não é conhecido (perguntas 35 a 37); até a resposta, o treino usa o CSV de exemplo.
 
 **Código de solução desde o primeiro dia.** Em toda OS corretiva, o técnico escolhe a **Solução** no PWA, e quem aceita confere a **Solução** no aceite, mesmo com a política "Códigos obrigatórios no aceite" desligada. Treinar isso nos exercícios 4, 6 e 15, nas duas sessões. O motivo para dizer à turma: a efetividade do HubKeep Intelligence compara os chamados do ativo antes e depois de uma troca do equipamento, e só reconhece a troca pelo código "Troca do equipamento". No "Grupo Demonstração — Intelligence", a modernização do elevador do hotel 5 mostra a tabela. OS sem código não aparece, e o que ficou sem código não se recupera depois.
 
@@ -168,7 +168,7 @@ Não incluir no treinamento, porque **[ainda não existe]**: importação de ati
 | "O arquivo passa de 1000 linhas. Divida em arquivos menores." | Dividir a exportação em arquivos de até 1000 linhas |
 | "A reclamação não tem UH nem ativo: classifique a UH antes de abrir o chamado." | **Alterar** a classificação, escolher a **UH** e abrir o chamado de novo |
 | "O chamado foi aberto, mas a reclamação não ficou ligada a ele. Ligue de novo." | Tocar em **Ligar de novo**; não abrir outro chamado |
-| A tela de reclamações não abre, ou o item **HubKeep Intelligence** não aparece | Antes da data de abertura das telas, ou para um papel fora da política de abertura, é normal. O Admin do grupo confere em **Abertura das telas** |
+| A tela de reclamações não abre, ou o item **HubKeep Intelligence** não aparece | Para um papel fora da política de abertura, ou sem o módulo contratado, é normal. O Admin do grupo confere em **Abertura das telas**. Antes da data de abertura, o item leva só às reclamações, e a lista de insights ainda não aparece |
 | Não consegue entrar, esqueceu a senha | No treinamento, as contas de demonstração têm senha conhecida: o instrutor informa. No piloto isso não deve acontecer, porque ele só começa depois da 1c, que traz o e-mail próprio e a recuperação de senha (**[ainda não existe]** hoje). Se acontecer antes, anotar e escalar ao suporte |
 | QR não abre o ativo | Sem rede e sem o ativo guardado: conectar e ler de novo. "Ativo não encontrado": conferir se o ativo é do hotel do técnico e se a etiqueta é a do ativo |
 

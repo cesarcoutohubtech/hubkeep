@@ -3237,3 +3237,37 @@ O Cesar decidiu "Particionada" (20/10/2026). A opção A de `docs/referencia/ret
 - **PR aberto:** o `int:` do (n), de zona protegida. O merge é do Cesar e falha no check "zona protegida" por desenho.
 - **Esperando:** o "aprovo" dos dois no adendo ao ADR-033; o merge e o `db push`; as decisões do particionamento (pa, pb, pc); se a tela de reclamações abre antes da data de abertura das telas; os detalhes do Kaio.
 - **Próximo:** com as decisões do particionamento, a migração 0061, depois do merge do (n). Primeiro passo: conferir na `main` a última migração e os meta-testes 1, 2, 28 e 32 em `supabase/tests/database/001_meta_seguranca.test.sql`.
+
+### O merge do #350, o "aprovo" do Cesar no adendo ao ADR-033 e as respostas de 20/10/2026
+
+**Do Cesar** (20/10/2026, nesta sessão): "Cesar aqui. 350 mergeado e db push feito. Aprovo o escrito no adendo ao ADR-033". Sobre a tela de reclamações antes da data de abertura das telas: "Sim, deve". Sobre o particionamento, pediu a recomendação.
+- **#350 mergeado,** com a 0060 no dev pelo `db push` do Cesar. A conferência no `supabase migration list` também é do Cesar.
+- **O adendo de 20/10/2026 ao ADR-033** (o número do insight) tem o "aprovo" do Cesar e falta o do Kaio. O status no `docs/03` muda num PR de zona protegida, com os dois.
+
+**Do Kaio** (20/10/2026, nesta sessão): "Kaio aqui. Quais sao os detalhes pendentes? Qual recomendação?". A lista e a recomendação estão na resposta desta sessão. A recomendação é manter os detalhes como estão até haver dados do piloto, e os 365 dias da retenção até a resposta da pergunta 38.
+
+**A tela de reclamações antes da abertura: proposta.** Muda o adendo de 12/10/2026 ao ADR-035 (a visibilidade das telas no piloto) e muda quem vê e quando. Por isso precisa do "sim" do Kaio e de um adendo com o "aprovo" dos dois.
+- **Desde quando:** desde o início do contrato do módulo, sem esperar a data de abertura. O que muda é só a tela de reclamações: a importação, a fila, a classificação e o abrir chamado da reclamação.
+- **Para quem:** os mesmos papéis da política de abertura (padrão: Admin do grupo e Gestor CSC; o Gerente, se o Admin incluir), e só quem decide insight no hotel, como hoje.
+- **O que continua fechado até a data:** a lista de insights, a página do insight e a do ativo, e o abrir chamado do insight. Antes da data, a tela de reclamações não mostra o link "Voltar aos insights".
+- **No menu, antes da data:** o item do módulo aparece para esses papéis e leva às reclamações. Para o Admin, também à página Abertura das telas.
+- **O job não muda:** as reclamações classificadas já entram no score e na regra sistêmica. Os insights que elas abrem aparecem na data de abertura, como os outros.
+- **Sem migração.** É um PR `int:` fora da zona protegida (motor, web, menu e textos), mais o adendo ao ADR-035 num PR de zona protegida.
+
+### As respostas do Kaio e o PR das reclamações antes da abertura (20/10/2026)
+
+**Do Cesar** (20/10/2026, nesta sessão): "Mantem tudo. Cesar aqui." Foi registrado como concordância nos detalhes, que são do Kaio (ADR-033). O agente perguntou se a frase também cobre a (pa), a (pb) e a (pc) do particionamento, e a resposta ainda não veio.
+
+**Do Kaio** (20/10/2026, nesta sessão): "Kaio aqui.: mantém tudo; aprovo o adendo ao ADR-033 (número do insight); sim para a tela de reclamações antes da abertura; sim na (pb)."
+- **Os detalhes** das entregas da 1.5, do (r) e do (n) ficam como estão (ADR-033). A retenção de 365 dias continua provisória até a pergunta 38.
+- **O adendo de 20/10/2026 ao ADR-033** (o número do insight) fica aprovado pelos dois. O status muda no próximo PR de zona protegida.
+- **A tela de reclamações antes da abertura** tem o "sim" dos dois sobre a proposta registrada acima. O texto vai como adendo ao ADR-035, no próximo PR de zona protegida, para o "aprovo" escrito dos dois.
+- **A (pb), a partição padrão,** tem o "sim" do Kaio. Falta o Cesar confirmar a (pa), a (pb) e a (pc).
+
+**O PR das reclamações antes da abertura** (`int:`, sem migração, fora da zona protegida):
+- **Motor:** `exigirReclamacoes`, com o módulo vigente e os papéis da política, sem a data de abertura. Passam a usá-lo a importação, a fila, a classificação e o abrir chamado da reclamação. O chamado do insight, as páginas do insight e do ativo e as listas de reclamações dessas páginas continuam com o `exigirPainel`. A função nova `acessoAsReclamacoes` diz se as telas já abriram.
+- **API:** `GET /api/v1/inteligencia/sinais/acesso`, no OpenAPI.
+- **Menu:** antes da data, o item leva às reclamações. O Admin vai à Abertura das telas, que ganhou o link das reclamações.
+- **Tela:** antes da data, a tela de reclamações não mostra "Voltar aos insights" e mostra uma frase sobre a data. O nome do ativo na fila aparece sem o link da página dele. A frase vai nos quatro idiomas (`inteligencia.sinais.antes_da_abertura`).
+- **Material do piloto e perguntas ao cliente:** as frases que diziam que as reclamações só entravam depois da abertura.
+- **Verificação local:** lint e typecheck verdes. 5.605 testes: 5.240 passaram, 0 falhas e 365 pulados (a integração do banco, que roda só na CI).
