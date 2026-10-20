@@ -34,6 +34,8 @@ export interface PortaAvisosDeSla {
     ctx: Contexto,
     agora: Date,
   ): Promise<(ChamadoComAvisos & { hotelNome: string; bandeiraId: string | null })[]>;
+  /** Os chamados em curso, com ou sem prazo, de todos os hotéis que quem pede lê. Sem ordem. */
+  chamadosEmCurso(ctx: Contexto): Promise<ChamadoComAvisos[]>;
   /** O chamado, se quem pede o lê, com a bandeira do hotel. */
   chamado(
     ctx: Contexto,

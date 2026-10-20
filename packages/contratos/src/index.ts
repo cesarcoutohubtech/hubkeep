@@ -360,7 +360,10 @@ export {
   PrazoAVencerApi,
   RespostaDoPainelDeSla,
   RespostaDosAvisosDoChamado,
+  RespostaDaSituacaoPorHotel,
   RespostaDosProximosPrazos,
+  SITUACOES_DO_HOTEL_API,
+  SituacaoDoHotelApi,
   TIPOS_DE_ALERTA_DE_SLA_API,
   TIPOS_DE_PRAZO_API,
 } from './avisos-de-sla';

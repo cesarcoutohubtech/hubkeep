@@ -50,6 +50,21 @@ export interface CasosDeUsoDeAvisosDeSla {
   doChamado(ctx: Contexto, chamadoId: string): Promise<{ avisos: AvisoDeSla[] }>;
 }
 
+/** Como o monitor: a pausa para o relógio pela cópia do SLA e pelo motivo. */
+export function relogioParadoDoChamado(
+  c: ChamadoComAvisos,
+  prioridades: readonly PrioridadeParaSla[],
+): boolean {
+  if (c.pausaEmCurso === null || c.prioridadeId === null) return false;
+  const sla = slaDoChamado({
+    politicaAplicada: c.politicaAplicada,
+    prioridadeId: c.prioridadeId,
+    prioridades,
+    categoriaId: c.categoriaId,
+  });
+  return pausaDoChamadoParaORelogio(sla, c.prazoSolucao, c.pausaEmCurso.motivo);
+}
+
 const primeiroPrazo = (avisos: readonly AvisoDeSla[]) =>
   Math.min(...avisos.map((a) => a.prazo.getTime()));
 const temVencido = (avisos: readonly AvisoDeSla[]) => avisos.some((a) => a.nivel === 'vencido');
@@ -61,24 +76,13 @@ export function criarCasosDeUsoDeAvisosDeSla(deps: {
   prioridades: Pick<PortaPrioridades, 'listar'>;
   relogio: Relogio;
 }): CasosDeUsoDeAvisosDeSla {
-  /** Como o monitor: a pausa para o relógio pela cópia do SLA e pelo motivo. */
-  const relogioParado = (c: ChamadoComAvisos, prioridades: readonly PrioridadeParaSla[]) => {
-    if (c.pausaEmCurso === null || c.prioridadeId === null) return false;
-    const sla = slaDoChamado({
-      politicaAplicada: c.politicaAplicada,
-      prioridadeId: c.prioridadeId,
-      prioridades,
-      categoriaId: c.categoriaId,
-    });
-    return pausaDoChamadoParaORelogio(sla, c.prazoSolucao, c.pausaEmCurso.motivo);
-  };
   const prioridadesSeHaPausa = async (ctx: Contexto, lista: readonly ChamadoComAvisos[]) =>
     lista.some((c) => c.pausaEmCurso !== null) ? await deps.prioridades.listar(ctx) : [];
   const emAberto = async (ctx: Contexto, lista: readonly ChamadoComAvisos[], agora: Date) => {
     const prioridades = await prioridadesSeHaPausa(ctx, lista);
     return lista.map((c) =>
       avisosEmAberto({
-        chamado: { ...c, relogioParado: relogioParado(c, prioridades) },
+        chamado: { ...c, relogioParado: relogioParadoDoChamado(c, prioridades) },
         gravados: c.gravados,
         agora,
       }),
@@ -100,7 +104,7 @@ export function criarCasosDeUsoDeAvisosDeSla(deps: {
       const prazos = lista
         .flatMap((c): PrazoAVencer[] => {
           const p = proximoPrazo({
-            chamado: { ...c, relogioParado: relogioParado(c, prioridades) },
+            chamado: { ...c, relogioParado: relogioParadoDoChamado(c, prioridades) },
             gravados: c.gravados,
             agora,
           });

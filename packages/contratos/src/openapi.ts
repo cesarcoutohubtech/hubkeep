@@ -119,6 +119,7 @@ import { RespostaDoStatusMews, RespostaDeCandidatosMews } from './mews-admin';
 import {
   RespostaDoPainelDeSla,
   RespostaDosAvisosDoChamado,
+  RespostaDaSituacaoPorHotel,
   RespostaDosProximosPrazos,
 } from './avisos-de-sla';
 import { ConsultaDosIndicadores, RespostaDosIndicadores } from './indicadores';
@@ -2300,6 +2301,18 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Os próximos prazos', esquema: RespostaDosProximosPrazos },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Quem pede não é da gestão (prazos_sem_permissao).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inicio/situacao-por-hotel',
+    resumo:
+      'A situação por hotel da tela inicial (1c, seção 4 da paridade; glossário de métricas, versão 4): para cada hotel do escopo de gestão de quem pede, os chamados que vencem em breve, os fora do prazo, os críticos, as preventivas atrasadas, os abertos por dia nos últimos 14 dias locais e a situação (crítico, atenção ou ok). Do mais grave ao mais leve. O backlog e o % de SLA vêm de GET /api/v1/indicadores. Só a gestão: Admin do grupo, Gestor CSC e Gerente do hotel.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A situação de cada hotel', esquema: RespostaDaSituacaoPorHotel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão (situacao_por_hotel_sem_permissao).'),
     },
   },
   {

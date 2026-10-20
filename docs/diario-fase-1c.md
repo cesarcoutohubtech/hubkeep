@@ -1332,3 +1332,58 @@ Branch `claude/1c-inicio-prazos`, a partir da `main` 6d3905e. Sem migração: a 
 - **Este PR ([#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349)) foi atualizado com a `main`:** a tela inicial mostra o resumo, depois os próximos prazos e os últimos eventos, depois os hotéis. Os catálogos ficaram com as chaves dos dois PRs.
 - **Esperando o merge do Cesar:** [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345) e [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349), fora da zona protegida.
 - **Decisões pendentes e próximo passo:** os mesmos do ponto anterior.
+
+## Tela inicial, PR 3a: "Situação por hotel" (20/10/2026)
+
+**Área compartilhada (chamado, catálogos e `packages/dominio`), registrada antes do commit:**
+- regra nova no domínio (`situacao-do-hotel.ts`);
+- uma leitura nova na porta dos avisos de SLA (`chamadosEmCurso`);
+- o filtro de hotel pela URL na lista de chamados (`filtroDaUrl` em `cliente/corretiva.tsx`);
+- chaves novas `inicio.situacao.*` e `erro.situacao_por_hotel_sem_permissao`.
+
+Branch `claude/1c-situacao-por-hotel`, a partir da `main` 5f915d1. Sem migração. Usa os termos da versão 4 do glossário ([#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357)), aprovada por Cesar e Kaio em 20/10/2026.
+
+**O PR 3 virou três:**
+- **3a (este):** o quadro "Situação por hotel";
+- **3b:** "Onde mais quebra" (chamados por categoria), no painel de indicadores e na tela inicial;
+- **3c:** os cartões do proprietário ("UHs acompanhadas") e do locador ("Categorias sob o locador").
+
+**Feito:**
+- **Rota nova:** `GET /api/v1/inicio/situacao-por-hotel`. Para cada hotel de que quem pede é da gestão, traz:
+  - os chamados que vencem em breve e os que estão fora do prazo, pelos avisos em aberto (`avisosEmAberto`, como o painel dos avisos);
+  - os críticos;
+  - as preventivas atrasadas de agora, pela tolerância de cada hotel;
+  - os abertos por dia nos últimos 14 dias locais;
+  - a situação.
+
+  A lista vai do hotel mais grave ao mais leve e, dentro de cada situação, pelo nome.
+- **Na tela inicial,** o quadro fica entre o resumo e os próximos prazos.
+  - "Em aberto" (o backlog) e "SLA 30 dias" (com a meta de cada hotel) vêm do painel de indicadores que o resumo já lê, para os números baterem com os do painel.
+  - As quatro colunas de contagem ganham cor mais forte com mais ocorrências, pelo maior valor da coluna.
+  - O nome do hotel abre a fila dele (`/chamados?hotelId=`).
+  - O quadro é lido ao abrir e a cada 60 segundos, como os próximos prazos.
+- **Quem vê:** a gestão (Admin do grupo, Gestor CSC e Gerente do hotel), como nos avisos de SLA. Quem não é recebe 403, e o quadro não aparece.
+
+**Escolhas de detalhe, para o Cesar conferir:**
+- **Cada chamado conta uma vez nas colunas de prazo.** Com algum prazo vencido, vai para "Fora do prazo", mesmo com o outro prazo em risco. "Vencem em breve" são os que têm prazo em risco e nenhum vencido.
+- **Empate no maior peso:** se duas prioridades ativas empatam no maior peso, as duas contam como críticas. O peso não é único no banco.
+- **Crítico em curso:** o chamado crítico é o aberto, em triagem ou em execução, como nos avisos de SLA. O que espera o aceite já teve o serviço concluído.
+
+**Testes:**
+- o domínio, em `packages/dominio/test/situacao-do-hotel.test.ts`;
+- o caso de uso, em `packages/aplicacao/test/situacao-por-hotel.test.ts`;
+- o SQL, num caso novo do teste de integração dos avisos (`packages/db/test/avisos-de-sla.test.ts`), que roda só na CI;
+- a tela, em `apps/web/test/situacao-por-hotel.test.tsx`.
+
+**A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, tela inicial PR 3a)
+
+- **`main`:** 5f915d1.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356), a série diária;
+  - [#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357), o glossário versão 4;
+  - o PR deste quadro, que abre agora.
+
+  Os três mexem no diário, e o #356 e este também nos catálogos. Depois de cada merge, os outros são atualizados com a `main`. Se possível, o #357 entra antes deste, porque este cita a versão 4.
+- **Próximo:** a tela inicial, PR 3b ("Onde mais quebra"). Primeiro passo: incluir a categoria do chamado na leitura do painel de indicadores e ver como a tela resolve o nome da categoria.
