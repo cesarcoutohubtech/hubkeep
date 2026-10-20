@@ -1551,6 +1551,8 @@
   "indicadores.serie.coluna.abertos": "Abertos",
   "indicadores.serie.coluna.encerrados": "Concluídos",
   "indicadores.serie.coluna.backlog": "Backlog no fim do dia",
+  "indicadores.grafico.fluxo.titulo": "Fluxo de chamados",
+  "indicadores.grafico.ver_tabela": "Ver os números de cada dia",
   "indicadores.comparacao.titulo": "Comparação na bandeira",
   "indicadores.comparacao.dica": "Em destaque, o melhor resultado da bandeira em cada coluna. Hotéis só se comparam dentro da mesma bandeira.",
   "indicadores.comparacao.bandeira": "Bandeira",
