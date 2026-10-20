@@ -30,7 +30,12 @@ import { HistoricoDoRegistro } from '../../../../cliente/HistoricoDoRegistro';
 import { QrDoAtivo } from '../../../../cliente/QrDoAtivo';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
-import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
+import {
+  type Hotel,
+  SeletorDeHotel,
+  useHoteis,
+  valeParaOHotel,
+} from '../../../../cliente/cadastro';
 import { CampoDeBusca, comBusca } from '../../../../cliente/CampoDeBusca';
 import {
   CamposDaCategoria,
@@ -123,6 +128,8 @@ interface ModeloDeAtivo {
   modelo: string | null;
   campos: Record<string, Valor>;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo. */
+  bandeiraId?: string | null;
 }
 
 /** O que o formulário mostra: o gravado, ou o rascunho depois de escolher o modelo. */
@@ -155,10 +162,12 @@ const rascunhoDoAtivo = (a: Ativo | null): Rascunho => ({
  * campos. Escolher o modelo (M1) preenche só o que está vazio e nunca
  * sobrescreve (preencherComModelo, do domínio); sem categoria, o ativo fica
  * com a do modelo. Os campos não são controlados: o formulário remonta com o
- * rascunho preenchido.
+ * rascunho preenchido. Só os modelos do grupo e os da bandeira do hotel
+ * entram na escolha (PB1b); o que o ativo já tem continua.
  */
 function FormularioDeAtivo({
   ativo,
+  hotel,
   locais,
   categorias,
   modelos,
@@ -168,6 +177,7 @@ function FormularioDeAtivo({
   executar,
 }: {
   ativo: Ativo | null;
+  hotel: Hotel | undefined;
   locais: readonly Local[];
   categorias: readonly Categoria[];
   modelos: readonly ModeloDeAtivo[];
@@ -188,7 +198,9 @@ function FormularioDeAtivo({
     geracao > 0 || categoriaId === ativo?.categoriaId ? rascunho.campos[chave] : undefined;
   const modelosQueCabem = modelos.filter(
     (m) =>
-      (m.ativa && (categoriaId === null || m.categoriaId === categoriaId)) ||
+      (m.ativa &&
+        (categoriaId === null || m.categoriaId === categoriaId) &&
+        valeParaOHotel(m, hotel)) ||
       m.id === ativo?.modeloId,
   );
 
@@ -684,6 +696,7 @@ export default function AtivosDoHotel() {
             <FormularioDeAtivo
               key={hotelId}
               ativo={null}
+              hotel={hoteis.find((h) => h.id === hotelId)}
               locais={locais}
               categorias={categorias.categorias}
               modelos={modelos}
@@ -747,6 +760,7 @@ export default function AtivosDoHotel() {
                     </div>
                     <FormularioDeAtivo
                       ativo={a}
+                      hotel={hoteis.find((h) => h.id === hotelId)}
                       locais={locais}
                       categorias={categorias.categorias}
                       modelos={modelos}

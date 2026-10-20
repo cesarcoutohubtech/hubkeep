@@ -1153,10 +1153,25 @@ Na branch `claude/1b-pb1`, montada sobre a `claude/1b-m2` e a `claude/1b-pb1-zon
   - a porta do painel lê a auditoria pela RLS (Admin e quem escreve no hotel, o que cobre o Implantador). O contrato ganha `tempo` (`entrouEm`, `prontoEm`, `duracaoMs`, `metaMs`, `dentroDaMeta`);
   - a meta é do produto, não do cliente, e fica como constante do domínio.
 
-## Ponto de retomada (20/10/2026, PB1a com o tempo de implantação)
+### PB1b — a bandeira nos modelos e checklists, e o filtro no hotel (20/10/2026)
 
-- **`main`:** com o #337 (M4a) e o #341 (M2). **Dev:** o `db push` da 0058 ainda não foi confirmado aqui.
+Na branch `claude/1b-pb1b`, sobre a `claude/1b-pb1`. O PR abre depois dos PRs do #340 e da PB1a.
+- **Criação com a bandeira:** o Admin escolhe a bandeira ao criar o modelo de ativo e o checklist. Vazia, o item vale para o grupo inteiro. A bandeira não muda depois (é campo de escopo, sem UPDATE), e a bandeira desconhecida dá `bandeira_nao_encontrada`. A lista devolve a bandeira, e as telas mostram um selo com ela.
+- **O checklist do modelo** tem de ir para os mesmos hotéis que o modelo: o de outra bandeira dá `modelo_ativo_checklist_invalido`.
+- **No hotel, o que é de outra bandeira é recusado com código:**
+  - o modelo novo do ativo (`modelo_ativo_de_outra_bandeira`), no web, no PWA e na operação offline. O modelo que o ativo já tem continua valendo, como o desativado;
+  - o checklist do plano preventivo e o aplicado na OS (`checklist_de_outra_bandeira`);
+  - na importação por planilha, o modelo de outra bandeira não é achado (`importacao_modelo_nao_encontrado`).
+- **Telas filtram pela bandeira do hotel:** o cadastro do ativo (web e PWA), o checklist do plano e o checklist da OS. O PWA guarda a bandeira do hotel e do modelo na referência; a referência guardada antes da PB1b vale como do grupo até a próxima leitura.
+- Testes: domínio e aplicação com os casos novos; integração em `bandeira-nos-modelos.test.ts`, só na CI; telas do web e do PWA.
+
+## Ponto de retomada (20/10/2026, PB1b na branch)
+
+- **`main`:** com o #337 (M4a), o #341 (M2), o #342 e o #343. **Dev:** o `db push` da 0058 e da 0059 não foram confirmados aqui; o Cesar disse "merge e db push pronto" em 20/10, mas o #340 seguia aberto na conferência.
 - **PR aberto:** o [#340](https://github.com/cesarcoutohubtech/hubkeep/pull/340) (zona da PB1, `claude/1b-pb1-zona`), verde fora o check "zona protegida", que falha por desenho.
-- **Trabalho não enviado em PR:** a PB1a na `claude/1b-pb1`, com o tempo de implantação. Validação local verde (typecheck, lint e testes); a integração do banco só roda na CI.
-- **Espera o Cesar:** confirmar o `db push` da 0058; o merge do #340 e o `db push` da 0059; as escolhas da M1c e as decisões da PV3c.
-- **Próxima tarefa:** depois do merge do #340, trazer a `main` para a `claude/1b-pb1` e abrir o PR `1b:` da PB1a. Enquanto isso, a PB1b numa branch sobre a `claude/1b-pb1`.
+- **Trabalho não enviado em PR:**
+  - a PB1a na `claude/1b-pb1`, com o tempo de implantação;
+  - a PB1b na `claude/1b-pb1b`, sobre ela.
+  - Validação local verde nas duas (typecheck, lint e testes); a integração do banco só roda na CI.
+- **Espera o Cesar:** o merge do #340 e o `db push` da 0059 (e a confirmação da 0058); as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** depois do merge do #340, trazer a `main` para a `claude/1b-pb1` e abrir o PR `1b:` da PB1a; depois do merge dele, o da PB1b. Em seguida, a M3 (QR em lote; decisão 21 já aprovada: a etiqueta reservada é só para ativo novo).

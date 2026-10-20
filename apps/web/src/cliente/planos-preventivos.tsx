@@ -17,7 +17,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { chamarApi } from './api';
 import { Aviso, type AvisoDeAcao } from './aviso';
-import { SeletorDeHotel, useHoteis } from './cadastro';
+import { SeletorDeHotel, useHoteis, valeParaOHotel } from './cadastro';
 import { ListaDeSugestoes, type SugestaoDePlano } from './sugestoes-de-plano';
 import { useIdioma, useT } from '../i18n/cliente';
 
@@ -43,7 +43,8 @@ export interface Plano {
 export interface Apoio {
   ativos: { id: string; nome: string; ativo: boolean }[];
   categorias: { id: string; chavePadrao: string | null; nomes: Rotulos; ativa: boolean }[];
-  modelos: { id: string; nomes: Rotulos; ativa: boolean }[];
+  /** PB1b: só os do grupo e os da bandeira do hotel entram na escolha. */
+  modelos: { id: string; nomes: Rotulos; ativa: boolean; bandeiraId?: string | null }[];
   equipes: { id: string; nome: string; ativa: boolean }[];
   tecnicos: { usuarioId: string; nome: string }[];
   idiomaPadrao: Idioma;
@@ -327,7 +328,14 @@ export function PlanosPreventivos({
             <Selecao {...p} name="checklist" defaultValue={editando?.checklistModeloId ?? ''}>
               <option value="">{t('admin.preventivas.sem_checklist')}</option>
               {apoio?.modelos
-                .filter((m) => m.ativa)
+                .filter(
+                  (m) =>
+                    m.ativa &&
+                    valeParaOHotel(
+                      m,
+                      hoteis.find((h) => h.id === hotelId),
+                    ),
+                )
                 .map((m) => (
                   <option key={m.id} value={m.id}>
                     {nomeDoModelo(m)}
