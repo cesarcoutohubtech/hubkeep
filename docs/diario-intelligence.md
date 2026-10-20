@@ -3155,3 +3155,16 @@ Preparado a partir do "Ambos agora" do Cesar. O PR só abre depois do "sim" do K
 **Detalhes que o agente escolheu, para o Kaio conferir (ADR-033):** o rótulo do botão, as colunas e o limite de 20 recálculos por dia.
 
 **Verificação local:** lint e typecheck verdes. 5.491 testes: 5.135 passaram, 0 falhas e 356 pulados (a integração do banco, que roda só na CI).
+
+### Ponto de retomada (20/10/2026, o (r) pronto na branch)
+
+- **`main`:** 5de68ac (#343). **Dev:** com a 0057, conferida pelo Cesar.
+- **Nesta branch, sem PR:** o (r) (b72e33f) e os registros do diário. O PR `int:` abre com o "sim" do Kaio no item 3.
+- **Zona protegida:** o #340 (1b) está aberto. Depois do merge dele, um PR do Intelligence com o status dos itens 1 e 2, já aprovados pelos dois, e os itens 3 e 4, se o Cesar escrever o "aprovo" no texto dos adendos. Se o Kaio disser "sim" ao (n), vão no mesmo PR o número do insight (migração, pgTAP e adendo ao ADR-033) e o "aprovo" dos dois no adendo.
+- **Esperando:**
+  - o Kaio: "sim" no item 3 ((r) e (n));
+  - o Cesar: o "aprovo" no texto dos adendos de 08/10 aos ADR-034 e ADR-036;
+  - os dois: se a tela de reclamações abre antes da data de abertura das telas;
+  - o Cesar: particionar ou reter a métrica diária;
+  - os detalhes do Kaio.
+- **Próximo:** com o "sim" do Kaio, abrir o PR do (r) e preparar o (n). Primeiro passo do (n): conferir a última migração da `main` e o desenho da coluna `numero` em `app.insight` (`supabase/migrations/20261010200828_insight.sql`).
