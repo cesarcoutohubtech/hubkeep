@@ -136,7 +136,7 @@ describe.skipIf(!temBanco)('PB1 — pacote da bandeira', { timeout: 60_000 }, ()
       await pacote.alterar(ctx(U.admin), a.id, { ...pedido('Limpeza mensal', BX), versao: 1 }),
     ).toEqual({ versao: 2 });
     const { rows } = await dono.query(
-      `select acao from app.auditoria where tenant_id = $1 and entidade = 'plano_padrao' order by criado_em, acao`,
+      `select acao from app.auditoria where tenant_id = $1 and entidade = 'plano_padrao' order by em, acao`,
       [TENANT],
     );
     expect(rows.map((r) => r.acao).sort()).toEqual(['alterar', 'criar', 'criar', 'criar']);
