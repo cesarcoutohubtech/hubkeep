@@ -2083,7 +2083,6 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
             .select(datas)
             .select(paradoDesde('a.hotel_id', 'a.id'))
             .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
-            .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
             .where('hotel_id', '=', hotelId)
             .$if(termo !== undefined, (q) => q.where('busca', 'ilike', trecho(termo ?? '')))
             .orderBy('nome')
