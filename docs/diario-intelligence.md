@@ -3048,3 +3048,26 @@ Preparado a partir do "sim" do Cesar na (i); o PR só abre depois do "sim" do Ka
 1. **Agora:** o material do piloto com a 1.5 e as cinco perguntas no arquivo do cliente. São áreas do agente da 1b (preparação do piloto, perguntas ao cliente). Duas saídas: **(p1)** o agente do Intelligence escreve, num PR `int:` só de documentação, com o aviso registrado aqui; **(p2)** pedido ao agente da 1b, que escreve no PR dele. Recomendação: (p1), porque o conteúdo é do Intelligence e o agente da 1b está em outras frentes; o Cesar revisa no PR.
 2. **Depois:** um PR de zona protegida só de status no `docs/03` com as aprovações já escritas, na vez que o Cesar der.
 3. **A decidir:** recálculo sob demanda na tela ou número do insight, com proposta antes do código.
+
+### O material do piloto com a 1.5 e as perguntas do sinal do hóspede (20/10/2026)
+
+**Decisão:** "Kaio aqui. Siga como proposto" (20/10/2026, nesta sessão), sobre a proposta acima: a (p1), com o agente do Intelligence escrevendo num PR `int:` só de documentação. O Cesar não respondeu à (p1) e revisa no PR, como a proposta dizia; o merge é dele.
+
+**Área de outro agente, antes de mexer (20/10/2026):** o PR muda o `docs/piloto/` (README, manual por papel, roteiro de treinamento e guia de implantação) e o `docs/referencia/perguntas-cliente.md`, que são da 1b e administração (preparação do piloto e perguntas ao cliente). Só entra o que é do Intelligence: a 1.5 sem IA e as cinco perguntas pedidas em 16/10. O resto do material, inclusive o que a 1b e a 1c entregaram depois de 13/10, fica como está, para o agente da 1b. Nenhum PR aberto mexe nesses arquivos (#310, #332 e #340 conferidos). Aviso à 1b por este registro.
+
+**Um ponto achado ao conferir o código:** a tela de reclamações (importar, classificar e abrir chamado) passa pela mesma trava das outras telas do módulo (`exigirPainel`). Ela só abre na data de abertura das telas (padrão: 60 dias depois da ativação) e só para os papéis da política. No piloto, as reclamações dos primeiros 60 dias só entram depois da abertura, importadas com a data de cada avaliação, e o score e a regra sistêmica dependem delas. O material diz isso como está no código; mudar é decisão de Cesar e Kaio (quem vê e quando).
+
+**O que o PR traz** (`int:`, só documentação, fora da zona protegida):
+- **`docs/piloto/README.md`:** a nota de que as reclamações só entram depois da abertura das telas, seis linhas novas no quadro do Intelligence (do #308 ao #338) e a atualização de 20/10/2026 em "Como conferi".
+- **`manual-por-papel.md`:** a linha das reclamações em "Quem faz o quê"; o passo a passo das reclamações no Gerente do hotel (importar, classificar, abrir chamado, o insight sistêmico e o impacto no hóspede do ativo), com remissão no Gestor CSC e no Admin do grupo; as políticas do módulo sem tela; duas linhas em "Onde cada tarefa vive hoje".
+- **`roteiro-treinamento.md`:** os 20 minutos das reclamações na sessão A, o exercício 22 no "Grupo Demonstração — Intelligence" (com o CSV de exemplo, que já foi importado e mostra que a repetida não entra), cinco linhas em "Em caso de problema" e um item no aceite da gestão.
+- **`guia-implantacao-hotel.md`:** uma linha em "Quem faz o quê" e as políticas do módulo na etapa 8.
+- **`docs/referencia/perguntas-cliente.md`:** as perguntas 35 a 39, sobre as ferramentas, a exportação e o acesso, os campos, a retenção (LGPD) e quem importa e classifica.
+
+### Ponto de retomada (20/10/2026, material do piloto com a 1.5)
+
+- **`main`:** 2580431 (#341). Última migração na `main`: 0058; o PB1 (#340, 0059) está aberto. **Dev:** falta o Cesar confirmar o `db push` da 0057 no `supabase migration list`.
+- **PR aberto:** o `int:` do material do piloto e das perguntas 35 a 39, só documentação. Espera a revisão e o merge do Cesar.
+- **Para Cesar e Kaio decidirem:** se a tela de reclamações deve abrir antes da data de abertura das telas (hoje não abre; ver o ponto achado acima). A decisão sobre particionar ou reter a métrica diária é do Cesar.
+- **Pendências do Kaio:** os detalhes dos PRs A e B, do C1a (3/2/14 e 365 dias), do C1b (pesos, limites, 90 dias e severidade) e os textos do chamado do insight.
+- **Próximo:** o item 2 da proposta, o PR de zona protegida só de status no `docs/03`, na vez que o Cesar der (o #340 é de zona protegida e está aberto). Depois, o item 3, com proposta antes do código. Primeiro passo do item 2: listar no `docs/03` os status "aguarda aprovação" do Intelligence e achar a aprovação escrita de cada um no diário.
