@@ -1580,6 +1580,8 @@
   "indicadores.serie.coluna.abertos": "Opened",
   "indicadores.serie.coluna.encerrados": "Completed",
   "indicadores.serie.coluna.backlog": "Backlog at end of day",
+  "indicadores.grafico.fluxo.titulo": "Request flow",
+  "indicadores.grafico.ver_tabela": "See the numbers for each day",
   "indicadores.comparacao.titulo": "Comparison within the brand",
   "indicadores.comparacao.dica": "Highlighted: the brand's best result in each column. Hotels are only compared within the same brand.",
   "indicadores.comparacao.bandeira": "Brand",

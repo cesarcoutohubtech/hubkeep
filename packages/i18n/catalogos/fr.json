@@ -1580,6 +1580,8 @@
   "indicadores.serie.coluna.abertos": "Ouvertes",
   "indicadores.serie.coluna.encerrados": "Terminées",
   "indicadores.serie.coluna.backlog": "En attente en fin de journée",
+  "indicadores.grafico.fluxo.titulo": "Flux des demandes",
+  "indicadores.grafico.ver_tabela": "Voir les chiffres de chaque jour",
   "indicadores.comparacao.titulo": "Comparaison dans l’enseigne",
   "indicadores.comparacao.dica": "En évidence, le meilleur résultat de l’enseigne dans chaque colonne. Les hôtels ne se comparent qu’au sein de la même enseigne.",
   "indicadores.comparacao.bandeira": "Enseigne",
