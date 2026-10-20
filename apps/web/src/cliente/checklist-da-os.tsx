@@ -35,6 +35,8 @@ export interface Modelo {
   nomes: Rotulos;
   versao: number;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo. */
+  bandeiraId?: string | null;
 }
 
 const ESTADOS_QUE_ACEITAM = ['atribuida', 'em_execucao', 'pausada'];
@@ -42,6 +44,12 @@ const ESTADOS_QUE_ACEITAM = ['atribuida', 'em_execucao', 'pausada'];
 export function ChecklistDaOs(props: {
   osId: string;
   estado: string;
+  /**
+   * A bandeira do hotel da OS (PB1b): só os checklists do grupo e os dela
+   * entram na escolha. Ausente (ainda não se sabe), a lista não filtra, e o
+   * servidor recusa o de outra bandeira.
+   */
+  bandeiraDoHotel?: string | null | undefined;
   /** Sem aplicar nem trocar o modelo (a impressão da OS, 1c, item 9). */
   somenteLeitura?: boolean;
   /** Para testes: o checklist e os modelos já carregados (no app, vêm da API). */
@@ -75,9 +83,17 @@ export function ChecklistDaOs(props: {
     ).then((r) => {
       if (!r.ok) return;
       setIdiomaPadrao(r.dados.idiomaPadrao);
-      setModelos(r.dados.modelos.filter((m) => m.ativa));
+      setModelos(
+        r.dados.modelos.filter(
+          (m) =>
+            m.ativa &&
+            (props.bandeiraDoHotel === undefined ||
+              (m.bandeiraId ?? null) === null ||
+              m.bandeiraId === props.bandeiraDoHotel),
+        ),
+      );
     });
-  }, [aceita]);
+  }, [aceita, props.bandeiraDoHotel]);
 
   if (checklist === undefined) return null;
   const rotulo = (r: Rotulos) => resolverNome(r, idioma, { idiomaPadrao }) ?? '';

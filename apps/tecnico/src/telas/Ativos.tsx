@@ -134,6 +134,8 @@ function camposDoFormulario(f: FormData, definicoes: readonly CampoGuardado[]) {
 
 interface PropsDoFormulario {
   ativo: AtivoGuardado | null;
+  /** O hotel do cadastro: só os modelos do grupo e os da bandeira dele (PB1b). */
+  hotelId: string;
   referencia: Referencia;
   locais: readonly LocalGuardado[];
   nomeDoLocal: (id: string) => string;
@@ -168,9 +170,13 @@ function Formulario(p: PropsDoFormulario) {
         : undefined;
   const inicial = (campo: 'nome' | 'fabricante' | 'modelo' | 'numeroSerie') =>
     rascunho[campo] ?? ativo?.[campo] ?? '';
+  // PB1b: a referência guardada antes da PB1b não tem a bandeira, e vale o grupo.
+  const bandeiraDoHotel = referencia.hoteis.find((h) => h.id === p.hotelId)?.bandeiraId ?? null;
   const modelos = (referencia.modelos ?? []).filter(
     (m) =>
-      (m.ativa && (categoriaId === null || m.categoriaId === categoriaId)) ||
+      (m.ativa &&
+        (categoriaId === null || m.categoriaId === categoriaId) &&
+        ((m.bandeiraId ?? null) === null || m.bandeiraId === bandeiraDoHotel)) ||
       m.id === ativo?.modeloId,
   );
 
@@ -503,6 +509,7 @@ export function Ativos(props: {
         <Formulario
           key={editando.id}
           ativo={editando}
+          hotelId={hotelId}
           referencia={referencia}
           locais={locais}
           nomeDoLocal={nomeDoLocal}
@@ -521,6 +528,7 @@ export function Ativos(props: {
             <Formulario
               key={hotelId}
               ativo={null}
+              hotelId={hotelId}
               referencia={referencia}
               locais={locais}
               nomeDoLocal={nomeDoLocal}

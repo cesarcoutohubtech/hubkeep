@@ -55,6 +55,7 @@ export {
   ChecklistDaOsApi,
   ModeloDeChecklistApi,
   PedidoDeChecklistNaOs,
+  PedidoDeCriacaoDeModeloDeChecklist,
   PedidoDeModeloDeChecklist,
   RespostaDeChecklistAplicado,
   RespostaDeChecklistDaOs,
@@ -98,6 +99,7 @@ export {
   ChamadoApi,
   ChamadoResumidoApi,
   ConsultaDaLista,
+  ConsultaDaListaDeChamados,
   ConsultaDaListaDeOs,
   ENTIDADES_DA_LINHA_DO_TEMPO_API,
   EXECUTORES_DA_OS_API,
@@ -368,6 +370,7 @@ export {
 export {
   ModeloDeAtivoApi,
   PedidoDeAlteracaoDeModeloDeAtivo,
+  PedidoDeCriacaoDeModeloDeAtivo,
   PedidoDeModeloDeAtivo,
   PedidoDeVersaoDeModeloDeAtivo,
   PlanoSugeridoApi,
@@ -388,3 +391,14 @@ export {
 
 export { LinhaDoStatusMewsApi, RespostaDoStatusMews } from './mews-admin';
 export { CandidatoHotelMewsApi, RespostaDeCandidatosMews } from './mews-admin';
+export {
+  CopiaDoPacoteApi,
+  PedidoDeAlteracaoDePlanoPadrao,
+  PedidoDePlanoPadrao,
+  PedidoDeVersaoDePlanoPadrao,
+  PlanoPadraoApi,
+  RespostaDaAplicacaoDoPacote,
+  RespostaDaPreviaDoPacote,
+  RespostaDePlanoPadraoGravado,
+  RespostaDePlanosPadrao,
+} from './pacote-da-bandeira';

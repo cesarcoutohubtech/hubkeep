@@ -6,6 +6,7 @@
 import {
   type Contexto,
   type FiltroDaLista,
+  LIMITES_DA_EXPORTACAO_DA_LISTA,
   NaoEncontrado,
   TAMANHO_DA_PAGINA,
   validarPeriodoDaLista,
@@ -30,6 +31,8 @@ export interface PedidoDeLista {
   depoisDe?: string | null | undefined;
   /** Só as OS do locador (1c, ADR-045); só a lista de OS usa. */
   doLocador?: boolean | undefined;
+  /** A página da exportação (1c, item 9): 1.000 linhas; só a lista de chamados usa. */
+  exportacao?: boolean | undefined;
 }
 
 export interface Pagina<T> {
@@ -67,12 +70,13 @@ function filtroDe(p: PedidoDeLista): FiltroDaLista {
 /** Pede um a mais que a página para saber se há a seguinte. */
 async function paginar<T extends { id: string }>(
   ler: (limite: number) => Promise<T[]>,
+  tamanho: number = TAMANHO_DA_PAGINA,
 ): Promise<Pagina<T>> {
-  const linhas = await ler(TAMANHO_DA_PAGINA + 1);
-  const itens = linhas.slice(0, TAMANHO_DA_PAGINA);
+  const linhas = await ler(tamanho + 1);
+  const itens = linhas.slice(0, tamanho);
   return {
     itens,
-    proximo: linhas.length > TAMANHO_DA_PAGINA ? (itens.at(-1)?.id ?? null) : null,
+    proximo: linhas.length > tamanho ? (itens.at(-1)?.id ?? null) : null,
   };
 }
 
@@ -87,7 +91,10 @@ export function criarCasosDeUsoDeConsultas(deps: {
   return {
     async listarChamados(ctx, pedido) {
       const filtro = filtroDe(pedido);
-      return paginar((limite) => deps.consultas.chamados(ctx, filtro, limite));
+      return paginar(
+        (limite) => deps.consultas.chamados(ctx, filtro, limite),
+        pedido.exportacao ? LIMITES_DA_EXPORTACAO_DA_LISTA.porPagina : TAMANHO_DA_PAGINA,
+      );
     },
 
     async listarOs(ctx, pedido) {

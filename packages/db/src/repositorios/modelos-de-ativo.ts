@@ -17,21 +17,28 @@ const colunasDeDados = (d: DadosDoModeloDeAtivo) => ({
   plano_sugerido: d.planoSugerido ? JSON.stringify(d.planoSugerido) : null,
 });
 
+/** A bandeira (PB1b) só entra na criação: é campo de escopo, sem UPDATE (ADR-011). */
 export async function criarModeloDeAtivo(
   uow: UnidadeDeTrabalho,
   dados: DadosDoModeloDeAtivo,
+  bandeiraId: string | null = null,
 ): Promise<{ id: string }> {
   const id = novoId();
   await transacaoDe(uow)
     .insertInto('app.modelo_ativo')
-    .values({ id, tenant_id: uow.tenantId, ...colunasDeDados(dados) })
+    .values({ id, tenant_id: uow.tenantId, bandeira_id: bandeiraId, ...colunasDeDados(dados) })
     .execute();
-  uow.auditar({ entidade: 'modelo_ativo', registroId: id, acao: 'criar', depois: dados });
+  uow.auditar({
+    entidade: 'modelo_ativo',
+    registroId: id,
+    acao: 'criar',
+    depois: { ...dados, bandeiraId },
+  });
   uow.publicar({
     tipo: 'modelo_ativo.criado',
     entidade: 'modelo_ativo',
     registroId: id,
-    payload: { categoriaId: dados.categoriaId },
+    payload: { categoriaId: dados.categoriaId, bandeiraId },
   });
   return { id };
 }

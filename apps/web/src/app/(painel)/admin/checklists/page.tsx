@@ -4,7 +4,8 @@
 // ADR-028), com a marca de obrigatório. O item de conformidade é um atalho
 // que cria uma lista com "Conforme", "Não conforme" e "Não se aplica", com os
 // rótulos dos quatro catálogos. A versão sobe quando os itens mudam; as OS
-// que já têm o checklist ficam com a cópia delas.
+// que já têm o checklist ficam com a cópia delas. A bandeira (PB1b) se
+// escolhe na criação; nula, o checklist vale para o grupo inteiro.
 import { CATALOGOS, IDIOMAS, type Idioma, resolverNome } from '@hubkeep/i18n';
 import {
   Botao,
@@ -19,6 +20,7 @@ import {
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { chamarApi } from '../../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
+import { CampoDaBandeira, useBandeiras, useNomeDaBandeira } from '../../../../cliente/cadastro';
 import { nomeDoIdioma, useIdioma, useMensagemDeErro, useT } from '../../../../i18n/cliente';
 
 const TIPOS = ['texto', 'numero', 'data', 'lista', 'sim_nao'] as const;
@@ -40,6 +42,7 @@ interface Modelo {
   itens: Item[];
   versao: number;
   ativa: boolean;
+  bandeiraId: string | null;
 }
 interface Categoria {
   id: string;
@@ -67,6 +70,9 @@ export default function ModelosDeChecklist() {
   const [dados, setDados] = useState<{ idiomaPadrao: Idioma; modelos: Modelo[] } | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
+  const bandeiras = useBandeiras();
+  const nomeDaBandeira = useNomeDaBandeira(bandeiras);
+  const [bandeiraNova, setBandeiraNova] = useState('');
 
   const carregar = useCallback(async () => {
     const [r, c] = await Promise.all([
@@ -119,6 +125,7 @@ export default function ModelosDeChecklist() {
       body: JSON.stringify({
         nomes: { [idiomaDoTexto]: texto(f, 'nome') },
         categoriaId: texto(f, 'categoria') || null,
+        bandeiraId: bandeiraNova || null,
         itens: [],
       }),
     });
@@ -200,6 +207,11 @@ export default function ModelosDeChecklist() {
             {(p) => <Entrada {...p} name="nome" required />}
           </CampoDoFormulario>
           {seletorDeCategoria('categoria', null)}
+          <CampoDaBandeira
+            bandeiras={bandeiras}
+            valor={bandeiraNova}
+            aoEscolher={setBandeiraNova}
+          />
           <Botao type="submit" variante="primario">
             {t('admin.checklists.acao.criar')}
           </Botao>
@@ -218,6 +230,7 @@ export default function ModelosDeChecklist() {
             acoes={
               <>
                 <Selo tom="azul">{t('admin.checklists.versao', { versao: m.versao })}</Selo>
+                <Selo tom="cinza">{nomeDaBandeira(m.bandeiraId)}</Selo>
                 <Selo tom={m.ativa ? 'verde' : 'cinza'}>
                   {m.ativa ? t('admin.checklists.ativo') : t('admin.checklists.desativado')}
                 </Selo>

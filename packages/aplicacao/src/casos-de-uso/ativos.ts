@@ -176,6 +176,7 @@ export function criarCasosDeUsoDeAtivos(deps: {
   });
   const dadosDe = async (
     ctx: Contexto,
+    hotelId: string,
     p: PedidoDeGravacaoDeAtivo,
     anterior: AtivoGravado | null,
   ): Promise<DadosDeAtivo> => {
@@ -205,10 +206,13 @@ export function criarCasosDeUsoDeAtivos(deps: {
         throw new NaoEncontrado('modelo_ativo_nao_encontrado', 'Modelo de ativo não encontrado.');
       }
       // O modelo que o ativo já tinha continua valendo desativado, como a
-      // categoria; a categoria tem de ser a do modelo, sempre.
+      // categoria; a categoria tem de ser a do modelo, sempre. O modelo novo
+      // tem de valer para a bandeira do hotel (PB1b).
+      const mantido = modeloId === anterior?.modeloId;
       validarModeloDoAtivo(
-        modeloId === anterior?.modeloId ? { ...modelo, ativa: true } : modelo,
+        mantido ? { ...modelo, ativa: true } : modelo,
         p.categoriaId,
+        mantido ? undefined : await hotelVisivel(ctx, hotelId),
       );
     }
     return {
@@ -258,7 +262,7 @@ export function criarCasosDeUsoDeAtivos(deps: {
       return {
         hotelId: local.hotelId,
         localId: local.id,
-        dados: await dadosDe(ctx, p, null),
+        dados: await dadosDe(ctx, local.hotelId, p, null),
         situacaoNoPwa: situacaoInicialNoPwa(aprovacao),
       };
     },
@@ -269,7 +273,7 @@ export function criarCasosDeUsoDeAtivos(deps: {
     async prepararAlteracao(ctx, ativoId, p) {
       const a = await ativoVisivel(ctx, ativoId);
       await exigirNoHotel(ctx, a.hotelId);
-      return { ativoId, versaoEsperada: p.versao, dados: await dadosDe(ctx, p, a) };
+      return { ativoId, versaoEsperada: p.versao, dados: await dadosDe(ctx, a.hotelId, p, a) };
     },
     async alterar(ctx, ativoId, p) {
       const c = await casos.prepararAlteracao(ctx, ativoId, p);

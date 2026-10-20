@@ -61,7 +61,15 @@ function montar(opcoes: {
   preventiva?: boolean;
 }) {
   const modelos: ModeloDeChecklistGravado[] = opcoes.modelos ?? [
-    { id: 'm1', categoriaId: null, nomes: { 'pt-BR': 'Ar' }, itens: ITENS, versao: 2, ativa: true },
+    {
+      id: 'm1',
+      categoriaId: null,
+      nomes: { 'pt-BR': 'Ar' },
+      itens: ITENS,
+      versao: 2,
+      ativa: true,
+      bandeiraId: null,
+    },
     {
       id: 'm2',
       categoriaId: null,
@@ -69,6 +77,16 @@ function montar(opcoes: {
       itens: [],
       versao: 1,
       ativa: false,
+      bandeiraId: null,
+    },
+    {
+      id: 'm-outra',
+      categoriaId: null,
+      nomes: { 'pt-BR': 'Da outra bandeira' },
+      itens: ITENS,
+      versao: 1,
+      ativa: true,
+      bandeiraId: 'b-outra',
     },
   ];
   let copia = opcoes.copia ?? null;
@@ -125,6 +143,7 @@ function montar(opcoes: {
   const checklists = {
     idiomaPadrao: async () => 'pt-BR' as const,
     listarModelos: async () => modelos,
+    bandeira: async (_c: Contexto, id: string) => id === 'b-outra',
     criarModelo: async () => ({ id: 'novo' }),
     alterarModelo: async (_c: Contexto, id: string, mudanca: object) =>
       void alteracoes.push({ id, mudanca }),
@@ -172,6 +191,14 @@ describe('modelos de checklist', () => {
     expect(
       await codigoDe(admin.casos.criarModelo(ctx, { nomes: {}, categoriaId: null, itens: ITENS })),
     ).toBe('checklist_nome_invalido');
+    // PB1b: a bandeira só se escolhe na criação, e tem de existir.
+    const comBandeira = { nomes: { 'pt-BR': 'Ar' }, categoriaId: null, itens: ITENS };
+    await expect(
+      admin.casos.criarModelo(ctx, { ...comBandeira, bandeiraId: 'b-outra' }),
+    ).resolves.toEqual({ id: 'novo' });
+    expect(
+      await codigoDe(admin.casos.criarModelo(ctx, { ...comBandeira, bandeiraId: 'b-x' })),
+    ).toBe('bandeira_nao_encontrada');
     const gerente = montar({ minhas: [atr('gerente_hotel')] });
     expect(
       await codigoDe(
@@ -210,6 +237,10 @@ describe('aplicar o checklist na OS', () => {
     expect(gerente.aplicadas).toEqual([{ modeloId: 'm1', substitui: null }]);
     expect(await codigoDe(gerente.casos.aplicarNaOs(ctx, 'os-1', 'm2'))).toBe(
       'checklist_modelo_inativo',
+    );
+    // PB1b: o checklist de outra bandeira não vai para a OS do hotel.
+    expect(await codigoDe(gerente.casos.aplicarNaOs(ctx, 'os-1', 'm-outra'))).toBe(
+      'checklist_de_outra_bandeira',
     );
     const tecnico = montar({ minhas: [atr('tecnico', 'tec-1')] });
     expect(await codigoDe(tecnico.casos.aplicarNaOs(ctx, 'os-1', 'm1'))).toBe(

@@ -192,6 +192,31 @@ describe('modelo de ativo no PWA (M1)', () => {
     expect(html).not.toContain('Split antigo');
   });
 
+  it('só os modelos do grupo e os da bandeira do hotel (PB1b)', () => {
+    const daBandeira = (id: string, nome: string, bandeiraId: string) => ({
+      id,
+      categoriaId: 'cat-ar',
+      nome,
+      fabricante: null,
+      modelo: null,
+      campos: {},
+      ativa: true,
+      bandeiraId,
+    });
+    const html = renderizar('pt-BR', {
+      ...comModelos,
+      hoteis: [{ id: 'h1', nome: 'Hotel 1', bandeiraId: 'bx' }],
+      modelos: [
+        ...(comModelos.modelos ?? []),
+        daBandeira('m3', 'Split da X', 'bx'),
+        daBandeira('m4', 'Split da Y', 'by'),
+      ],
+    });
+    expect(html).toContain('Split 12.000');
+    expect(html).toContain('Split da X');
+    expect(html).not.toContain('Split da Y');
+  });
+
   it('sem modelos guardados (referência anterior à M1), sem a escolha', () => {
     const m = mensagensDe('pt-BR');
     expect(renderizar('pt-BR', referencia)).not.toContain(m['admin.ativos.sem_modelo']);

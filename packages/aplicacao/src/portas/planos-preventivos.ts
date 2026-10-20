@@ -69,7 +69,11 @@ export interface PortaPlanosPreventivos {
     planos: readonly PlanoGravado[],
   ): Promise<Map<string, { responsavel: ResponsavelDoPlano | null; modeloAtivo: boolean | null }>>;
   /** O modelo de checklist visível, e se está ativo. */
-  modeloDeChecklist(ctx: Contexto, id: string): Promise<{ ativa: boolean } | null>;
+  /** PB1b: com a bandeira (nula: do grupo). */
+  modeloDeChecklist(
+    ctx: Contexto,
+    id: string,
+  ): Promise<{ ativa: boolean; bandeiraId: string | null } | null>;
   /** Na unit of work, com auditoria e evento. */
   criar(ctx: Contexto, p: NovoPlano): Promise<{ id: string; versao: number }>;
   /**

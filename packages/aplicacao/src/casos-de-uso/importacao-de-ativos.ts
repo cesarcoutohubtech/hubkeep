@@ -19,6 +19,7 @@ import {
   exigir,
   lerDefinicoes,
   podeImportarAtivos,
+  vaiParaOHotel,
 } from '@hubkeep/dominio';
 import { CATALOGOS, IDIOMAS } from '@hubkeep/i18n';
 import type {
@@ -102,7 +103,9 @@ export function criarCasosDeUsoDeImportacaoDeAtivos(deps: {
         definicoes: lerDefinicoes(c.campos),
         nomes: nomesDaCategoria(c),
       })),
-      modelos,
+      // Só os modelos que valem para a bandeira do hotel (PB1b): o de outra
+      // bandeira não é achado, como o de nome desconhecido.
+      modelos: modelos.filter((m) => vaiParaOHotel(m, hotel)),
       chavesExistentes: new Set(chaves),
     };
     return analisarImportacao(csv, refs);

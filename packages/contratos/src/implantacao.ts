@@ -39,5 +39,18 @@ export const RespostaDeImplantacao = z
     papeis: z.array(z.object({ papel: z.enum(PAPEIS_API), pessoas: z.int() })),
     pessoasSemPapelVigente: z.array(z.object({ usuarioId: z.guid(), nome: z.string() })),
     pendencias: z.array(z.enum(PENDENCIAS_DE_IMPLANTACAO_API)),
+    /**
+     * PB1: da entrada em implantação até o hotel ficar pronto (ativado), tirado
+     * da auditoria; a meta é de 1 dia (metaMs). Enquanto em implantação, a
+     * duração conta até agora; nula quando o hotel saiu da implantação sem a
+     * ativação registrada.
+     */
+    tempo: z.object({
+      entrouEm: z.iso.datetime(),
+      prontoEm: z.iso.datetime().nullable(),
+      duracaoMs: z.int().nonnegative().nullable(),
+      metaMs: z.int().positive(),
+      dentroDaMeta: z.boolean().nullable(),
+    }),
   })
   .meta({ id: 'RespostaDeImplantacao' });
