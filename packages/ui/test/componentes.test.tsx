@@ -21,6 +21,7 @@ import {
   Marca,
   MensagemDeErro,
   MensagemVazia,
+  MiniLinha,
   NIVEIS_DE_PRIORIDADE,
   Nota,
   Painel,
@@ -333,5 +334,32 @@ describe('GraficoDeLinhas', () => {
 
   it('o passo da grade: 1 até quatro, depois 1, 2 ou 5 vezes uma potência de dez', () => {
     expect([0, 3, 4, 7, 9, 18, 40, 130].map(passoDaGrade)).toEqual([1, 1, 1, 2, 5, 5, 10, 50]);
+  });
+});
+
+describe('MiniLinha', () => {
+  it('uma linha com um ponto por valor, com nome, na cor da primeira série', () => {
+    const saida = html(<MiniLinha rotulo="Backlog, 3 dias" valores={[0, 5, 10]} />);
+    expect(saida).toContain('role="img"');
+    expect(saida).toContain('aria-label="Backlog, 3 dias"');
+    expect(saida).toContain('hk-grafico-linha hk-grafico-serie-1');
+    expect(saida).toContain('points="0,26 50,14 100,2"');
+  });
+
+  it('com menos de dois valores, nada; só zeros, a linha no chão', () => {
+    expect(html(<MiniLinha rotulo="x" valores={[3]} />)).toBe('');
+    expect(html(<MiniLinha rotulo="x" valores={[0, 0]} />)).toContain('points="0,26 100,26"');
+  });
+
+  it('no indicador, a linha vai embaixo do detalhe', () => {
+    const saida = html(
+      <Indicador
+        rotulo="Backlog"
+        valor="12"
+        detalhe="+2"
+        tendencia={<MiniLinha rotulo="x" valores={[1, 2]} />}
+      />,
+    );
+    expect(saida).toMatch(/hk-indicador-detalhe[\s\S]*hk-indicador-tendencia[\s\S]*hk-mini-linha/);
   });
 });

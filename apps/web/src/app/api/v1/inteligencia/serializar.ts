@@ -1,6 +1,7 @@
 // O painel do Intelligence na API: as datas do motor viram texto ISO 8601.
 import type {
   FilaDoSinal,
+  MetricaDoPainel,
   ReclamacoesDoPainel,
   SinalDaFila,
   SubstituicaoDoAtivo,
@@ -33,6 +34,20 @@ export function insightNaApi<T extends ComDatas>(
 }
 
 export const dataNaApi = iso;
+
+/** Os recálculos do dia na página do ativo (ADR-036): o resumo, sem o detalhe. */
+export function recalculosNaApi(recalculos: readonly MetricaDoPainel[]) {
+  return recalculos.map((m) => ({
+    calculo: m.calculo,
+    calculadoEm: iso(m.calculadoEm),
+    atencao: m.atencao,
+    faixa: m.faixa,
+    reincidencia: m.reincidencia,
+    versaoFormulaAtencao: m.versaoFormulaAtencao,
+    versaoFormulaReincidencia: m.versaoFormulaReincidencia,
+    versaoPolitica: m.versaoPolitica,
+  }));
+}
 
 /** A efetividade (adendo ao ADR-033): a data da intervenção em texto; o resto vai como o motor devolve. */
 export function efetividadesNaApi<

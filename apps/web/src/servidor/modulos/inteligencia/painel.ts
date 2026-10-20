@@ -58,6 +58,7 @@ import {
   type FiltroDeEstadoDoInsight,
   type InsightDoPainel,
   LIMITE_DA_LISTA,
+  LIMITE_DE_RECALCULOS,
   type ListaDeInsights,
   type PaginaDoAtivo,
   type PaginaDoInsight,
@@ -244,6 +245,8 @@ export function portasDoPainel(
     ativo: (id) => porta.ativo(ctx, id),
     ativosPorBusca: (termo, limite) => porta.ativosPorBusca(ctx, termo, limite),
     metricasDoAtivo: (ativoId, desde) => porta.metricasDoAtivo(ctx, ativoId, desde),
+    recalculosDoDia: (ativoId, dia) =>
+      porta.recalculosDoDia(ctx, ativoId, dia, LIMITE_DE_RECALCULOS),
     insightsDoEscopo: async (tipo, chave, valor) =>
       (await porta.insightsDoEscopo(ctx, tipo, chave, valor, LIMITE_DA_LISTA)).map(noMotor),
     politicasDaEfetividade: () => porta.politicasDaEfetividade(ctx),

@@ -124,6 +124,7 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaEfetividade & { m: Memoria
         })),
     decidir: nao,
     metricasDoAtivo: nao,
+    recalculosDoDia: nao,
     insightsDoEscopo: nao,
     nomes: async (p) => ({
       hoteis: Object.fromEntries(p.hotelIds.map((h) => [h, `Hotel ${h}`])),
