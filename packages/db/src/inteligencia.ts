@@ -32,6 +32,7 @@ import {
   insightsLigados,
   metricasDoAtivo,
   nomesDoPainel,
+  recalculosDoDia,
 } from './repositorios/inteligencia-painel';
 import {
   type ChamadoDaEfetividadeNoBanco,
@@ -109,6 +110,13 @@ export interface PortaDoPainelDoIntelligence {
   /** "Procurar ativo": os ativos sem baixa do termo (normalizado), até `limite`. */
   ativosPorBusca(ctx: Contexto, termo: string, limite: number): Promise<AtivoEncontradoNoBanco[]>;
   metricasDoAtivo(ctx: Contexto, ativoId: string, desde: string): Promise<MetricaDoPainelNoBanco[]>;
+  /** Os recálculos do dia (AAAA-MM-DD) do ativo, até `limite` (ADR-036). */
+  recalculosDoDia(
+    ctx: Contexto,
+    ativoId: string,
+    dia: string,
+    limite: number,
+  ): Promise<MetricaDoPainelNoBanco[]>;
   insightsDoEscopo(
     ctx: Contexto,
     tipo: string,
@@ -199,6 +207,8 @@ export function criarPortaDoPainelDoIntelligence(banco: AcessoBanco): PortaDoPai
       banco.withContext(ctx, (tx) => ativosPorBusca(tx, termo, limite)),
     metricasDoAtivo: (ctx, ativoId, desde) =>
       banco.withContext(ctx, (tx) => metricasDoAtivo(tx, ativoId, desde)),
+    recalculosDoDia: (ctx, ativoId, dia, limite) =>
+      banco.withContext(ctx, (tx) => recalculosDoDia(tx, ativoId, dia, limite)),
     insightsDoEscopo: (ctx, tipo, chave, valor, limite) =>
       banco.withContext(ctx, (tx) => insightsDoEscopo(tx, tipo, chave, valor, limite)),
     politicasDaEfetividade: (ctx) => banco.withContext(ctx, (tx) => politicasDaEfetividade(tx)),

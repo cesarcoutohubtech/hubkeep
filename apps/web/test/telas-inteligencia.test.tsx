@@ -14,7 +14,7 @@ import type {
   Reclamacoes,
 } from '../src/app/(painel)/inteligencia/comum';
 import { type Abertura, ConteudoDaAbertura } from '../src/app/(painel)/inteligencia/abertura/tela';
-import { ConteudoDoAtivo } from '../src/app/(painel)/inteligencia/ativos/[id]/tela';
+import { ConteudoDoAtivo, Recalculos } from '../src/app/(painel)/inteligencia/ativos/[id]/tela';
 import {
   ConteudoDoInsight,
   FormularioDoChamadoDoInsight,
@@ -347,6 +347,18 @@ const ativo: PaginaDoAtivo = {
     detalheAtencao: score,
     detalheReincidencia: {},
   },
+  recalculos: [
+    {
+      calculo: 2,
+      calculadoEm: '2026-10-12T14:00:00.000Z',
+      atencao: 64,
+      faixa: 'atencao',
+      reincidencia: null,
+      versaoFormulaAtencao: 7,
+      versaoFormulaReincidencia: 4,
+      versaoPolitica: 'padrao',
+    },
+  ],
   insights: [base],
   nomes,
   efetividade,
@@ -655,6 +667,19 @@ describe('o detalhe do ativo', () => {
     expect(html).toContain('Atenção ao ativo, versão 2');
     expect(html).toContain('1 de 3 dias no limite de 70 ou acima');
     expect(html).toContain(`href="/inteligencia/insights/${I1}"`);
+    // Os recálculos ficam atrás do botão (ADR-036): a página abre com o original.
+    expect(html).toContain('Ver os recálculos deste dia');
+    expect(html).not.toContain('Recálculos deste dia');
+  });
+
+  it('os recálculos do dia, a pedido: o selo de recálculo, a atenção com a faixa e as versões', () => {
+    const html = renderizar('pt-BR', <Recalculos recalculos={ativo.recalculos} />);
+    expect(html).toContain('Recálculos deste dia');
+    expect(html).toContain('Recálculo 2');
+    expect(html).toContain('64 (Atenção)');
+    expect(html).toContain('Sem dado');
+    expect(html).toContain('Atenção 7, reincidência 4, política padrao');
+    expect(html).toContain('O painel e os insights continuam usando o resultado acima.');
   });
 
   it('o sinal de substituição: o estado, os critérios com valor e limite, a reposição numa linha discreta e a ressalva', () => {

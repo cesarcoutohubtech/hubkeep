@@ -1239,3 +1239,49 @@ Branch `claude/1c-custo-na-ficha`, a partir da `main` f6236e7 (com o #340 da 1b)
   - a política da tolerância, que o Intelligence pode passar a ler;
   - o custo nas telas do Intelligence.
 - **Próximo:** a tela inicial, PR 1. Primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md`, a tela inicial de hoje e as rotas do painel de indicadores, e dividir os PRs.
+
+## Tela inicial (seção 4 da paridade; decisão 1 do Cesar de 20/10/2026)
+
+**Área compartilhada (catálogos), registrada antes de mexer:** chaves novas `inicio.resumo.*` e `indicadores.backlog.tendencia`. O `packages/ui` ganha a `MiniLinha` e o espaço da linha no `Indicador`.
+
+**Divisão em três PRs:**
+1. **Resumo dos últimos 30 dias** (este, branch `claude/1c-inicio-resumo`, a partir da `main` f6236e7): os quatro indicadores do topo com a variação, o backlog com a linha dos últimos 14 dias e o fluxo de chamados. Usa a API do painel de indicadores, sem consulta nova.
+2. **Próximos prazos e "Últimos eventos":**
+   - a contagem regressiva dos 6 próximos prazos, com "Ver fila completa";
+   - os 5 registros mais recentes da auditoria no escopo de quem vê, lidos ao abrir e a cada 60 segundos (decisão 5).
+
+   São termos que já existem; precisa de uma leitura nova na API.
+3. **"Situação por hotel"** e os cartões do proprietário ("UHs acompanhadas") e do locador ("Categorias sob o locador"). A situação usa termos novos e espera a aprovação abaixo.
+
+**Feito no PR 1:**
+- **Resumo (`apps/web/src/cliente/resumo-do-inicio.tsx`):** os 30 dias até hoje, no relógio de quem vê, e os 30 anteriores, pela `/api/v1/indicadores`.
+- **Gestão:** os quatro primeiros cartões do painel de indicadores e só o gráfico "Fluxo de chamados", com um link para o painel.
+- **Proprietário:** os cartões dos hotéis dele, os mesmos do painel.
+- **Sem permissão:** quem não vê os indicadores fica só com a lista de hotéis, como hoje.
+- **A linha de 14 dias está só no backlog.** A API só tem série por dia para o backlog e para os abertos e encerrados; o % de SLA, o tempo de reparo e a preventiva em dia não têm número por dia. Uma série diária desses três seria uma conta nova (por exemplo, o % de SLA dos prazos que venceram em cada dia, que oscila muito com poucos chamados). Fica registrada; entra se o Cesar quiser.
+- **`MiniLinha` (`packages/ui/src/grafico.tsx`):** a linha curta, sem eixo, na cor da primeira série, com nome para o leitor de tela.
+- **A tela não foi aberta no navegador.**
+
+### Proposta para o glossário de métricas: "Chamado crítico" e "Situação do hotel"
+
+Para a aprovação de Cesar e Kaio, como versão nova do glossário, junto com "Onde mais quebra". O quadro "Situação por hotel" usa termos que já existem e dois novos:
+- **Já existem:** "Vencem em breve" é o prazo em risco; "Fora do prazo", o prazo vencido; "Prev. atrasadas", a preventiva atrasada; "SLA 30 dias", o % de SLA dos últimos 30 dias.
+- **Chamado crítico (novo):** o chamado aberto na prioridade de maior peso entre as prioridades ativas do grupo. No padrão, é a "urgente", que o mock chama de "Crítica". Pelo peso, e não pelo nome, a prioridade própria de um grupo também vale.
+- **Situação do hotel (nova):**
+  - "crítico", com algum chamado crítico de prazo vencido, ou 3 ou mais chamados de prazo vencido;
+  - "atenção", com algum prazo vencido ou em risco, ou 2 ou mais preventivas atrasadas;
+  - "ok" nos demais casos.
+
+  Os números 3 e 2 ficam no domínio, como os do mock. Viram política se um cliente pedir outros.
+- **Quem vê:** a gestão. O proprietário vê os cartões dele, sem a coluna das preventivas atrasadas, como no mock.
+
+### Ponto de retomada (20/10/2026, tela inicial PR 1)
+
+- **`main`:** f6236e7.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs;
+  - [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345), o custo fora da ficha do proprietário;
+  - o PR do resumo da tela inicial, que abre agora.
+- **Os três mexem no diário**, e dois mexem nos catálogos, em lugares diferentes. Depois de cada merge, os outros são atualizados com a `main`.
+- **Esperando Cesar e Kaio:** a versão nova do glossário com "Onde mais quebra" (Cesar já aprovou), "Chamado crítico" e "Situação do hotel".
+- **Próximo:** a tela inicial, PR 2 (próximos prazos e "Últimos eventos"). Primeiro passo: ver como a lista de chamados e o painel dos avisos de SLA leem os prazos, e como a auditoria geral lê as linhas no escopo.

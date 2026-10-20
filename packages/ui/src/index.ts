@@ -18,7 +18,7 @@ export type { PropsDaTelaDeEntrada } from './entrada';
 export { Estrutura, GrupoDeMenu, ItemDeMenu } from './estrutura';
 export type { PropsDaEstrutura, PropsDoItemDeMenu, PropsDoLink } from './estrutura';
 export { Marca, SimboloDaMarca } from './marca';
-export { GraficoDeLinhas, passoDaGrade } from './grafico';
+export { GraficoDeLinhas, MiniLinha, passoDaGrade } from './grafico';
 export type { PropsDoGraficoDeLinhas, SerieDoGrafico } from './grafico';
 export { MensagemDeErro, MensagemVazia, Nota, TONS_DE_NOTA } from './mensagens';
 export type { PropsDaMensagem, TomDeNota } from './mensagens';
