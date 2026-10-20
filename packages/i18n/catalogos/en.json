@@ -380,6 +380,9 @@
   "inicio.grupo": "Group",
   "inicio.hoteis.titulo": "Hotels",
   "inicio.hoteis.vazio": "No hotels visible to you in this group.",
+  "inicio.resumo.titulo": "Last {dias} days",
+  "inicio.resumo.dica": "The change is against the previous {dias} days.",
+  "inicio.resumo.ver_painel": "Open the indicators dashboard",
 
   "tecnico.nome": "HubKeep Technician",
   "tecnico.descricao": "Today's maintenance work orders, online or offline.",
@@ -1625,6 +1628,7 @@
   "indicadores.rede.titulo": "Indicators for the period",
   "indicadores.rede.dica": "{hoteis, plural, one {# hotel} other {# hotels}}, each in its own time zone",
   "indicadores.backlog": "Backlog",
+  "indicadores.backlog.tendencia": "Backlog at the end of each day, over the last {dias} days",
   "indicadores.sla": "SLA %",
   "indicadores.sla.detalhe": "Target {meta}% · {dentro} of {total} on time · {ainda} still within the deadline",
   "indicadores.sla.pausado": "Paused: {soma} in total, {media} per request",

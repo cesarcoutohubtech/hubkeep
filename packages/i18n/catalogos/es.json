@@ -380,6 +380,9 @@
   "inicio.grupo": "Grupo",
   "inicio.hoteis.titulo": "Hoteles",
   "inicio.hoteis.vazio": "No hay hoteles visibles para ti en este grupo.",
+  "inicio.resumo.titulo": "Últimos {dias} días",
+  "inicio.resumo.dica": "La variación es frente a los {dias} días anteriores.",
+  "inicio.resumo.ver_painel": "Ver el panel de indicadores",
 
   "tecnico.nome": "HubKeep Técnico",
   "tecnico.descricao": "Órdenes de trabajo de mantenimiento del día, con o sin red.",
@@ -1625,6 +1628,7 @@
   "indicadores.rede.titulo": "Indicadores del período",
   "indicadores.rede.dica": "{hoteis, plural, one {# hotel} other {# hoteles}}, cada uno en su propio huso horario",
   "indicadores.backlog": "Pendientes",
+  "indicadores.backlog.tendencia": "Backlog al final de cada día, en los últimos {dias} días",
   "indicadores.sla": "% de SLA",
   "indicadores.sla.detalhe": "Meta {meta}% · {dentro} de {total} en plazo · {ainda} aún en plazo",
   "indicadores.sla.pausado": "En pausa: {soma} en total, {media} por solicitud",

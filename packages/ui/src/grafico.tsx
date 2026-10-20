@@ -32,6 +32,34 @@ export interface PropsDoGraficoDeLinhas {
   verTabela?: string;
 }
 
+/**
+ * A linha curta dos últimos dias, dentro de um indicador: sem eixo, sem grade e
+ * sem dica, na cor da primeira série. O nome vai no aria-label; os números
+ * ficam no gráfico completo ou na tabela, onde o app os mostra.
+ */
+export function MiniLinha({ rotulo, valores }: { rotulo: string; valores: readonly number[] }) {
+  if (valores.length < 2) return null;
+  const maximo = Math.max(1, ...valores);
+  const minimo = Math.min(0, ...valores);
+  const passoX = 100 / (valores.length - 1);
+  const y = (v: number) => 2 + (1 - (v - minimo) / (maximo - minimo)) * 24;
+  return (
+    <svg
+      className="hk-mini-linha"
+      viewBox="0 0 100 28"
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={rotulo}
+    >
+      <polyline
+        className="hk-grafico-linha hk-grafico-serie-1"
+        vectorEffect="non-scaling-stroke"
+        points={valores.map((v, i) => `${i * passoX},${y(v)}`).join(' ')}
+      />
+    </svg>
+  );
+}
+
 const ALTURA = 200;
 const MARGEM = { topo: 12, direita: 12, base: 28, esquerda: 44 };
 const LARGURA_PADRAO = 640;
