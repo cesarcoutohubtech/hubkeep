@@ -10,6 +10,7 @@
 import type { RespostaDosIndicadores, z } from '@hubkeep/contratos';
 import { FAIXAS_DE_IDADE_API } from '@hubkeep/contratos';
 import { amostraSuficiente } from '@hubkeep/dominio';
+import type { Chave } from '@hubkeep/i18n';
 import {
   GraficoDeLinhas,
   Indicador,
@@ -86,25 +87,30 @@ export function CartoesDoPeriodo({
   const juntar = (...partes: (string | undefined)[]) => partes.filter(Boolean).join(' · ');
   const tomDoSla =
     atual.percentualDeSla === null ? 'neutro' : atual.percentualDeSla >= meta ? 'bom' : 'atencao';
+  /** Na tela inicial, a linha dos últimos dias de um indicador. */
+  const tendencia = (
+    chave: Chave,
+    valor: (d: PainelDeIndicadores['serie'][number]) => number | null,
+  ) =>
+    resumo ? (
+      <MiniLinha
+        rotulo={t(chave, { dias: DIAS_DA_TENDENCIA })}
+        valores={resumo.serie.slice(-DIAS_DA_TENDENCIA).map(valor)}
+      />
+    ) : undefined;
   return (
     <Indicadores rotulo={t('indicadores.rede.titulo')}>
       <Indicador
         rotulo={t('indicadores.backlog')}
         valor={f.numero(atual.backlog)}
         detalhe={variacao(atual.backlog, anterior?.backlog)}
-        tendencia={
-          resumo ? (
-            <MiniLinha
-              rotulo={t('indicadores.backlog.tendencia', { dias: DIAS_DA_TENDENCIA })}
-              valores={resumo.serie.slice(-DIAS_DA_TENDENCIA).map((d) => d.backlog)}
-            />
-          ) : undefined
-        }
+        tendencia={tendencia('indicadores.backlog.tendencia', (d) => d.backlog)}
       />
       <Indicador
         rotulo={t('indicadores.sla')}
         valor={f.percentual(atual.percentualDeSla)}
         tom={tomDoSla}
+        tendencia={tendencia('indicadores.sla.tendencia', (d) => d.percentualDeSla)}
         detalhe={juntar(
           t('indicadores.sla.detalhe', {
             meta,
@@ -124,6 +130,7 @@ export function CartoesDoPeriodo({
       <Indicador
         rotulo={t('indicadores.mttr')}
         valor={f.tempo(atual.mttrHoras)}
+        tendencia={tendencia('indicadores.mttr.tendencia', (d) => d.mttrHoras)}
         detalhe={juntar(
           t('indicadores.mttr.detalhe', {
             mediana: f.tempo(atual.medianaHoras),
@@ -135,6 +142,10 @@ export function CartoesDoPeriodo({
       <Indicador
         rotulo={t('indicadores.preventiva')}
         valor={f.percentual(atual.percentualDePreventivaEmDia)}
+        tendencia={tendencia(
+          'indicadores.preventiva.tendencia',
+          (d) => d.percentualDePreventivaEmDia,
+        )}
         detalhe={juntar(
           t('indicadores.preventiva.detalhe', {
             emDia: atual.preventiva.emDia,

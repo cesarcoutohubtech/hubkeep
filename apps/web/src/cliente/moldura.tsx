@@ -19,8 +19,10 @@
 // abertura das telas (inteligencia.visibilidade_telas; adendo ao ADR-035 de
 // 12/10/2026), o resumo também responde 404; aí, se GET
 // /api/v1/inteligencia/abertura responde (só o Admin do grupo), o item aparece
-// sem contagem e leva à página da abertura. A moldura não importa o pacote do
-// módulo: fala só com a API.
+// sem contagem e leva à página da abertura. Para os outros papéis da política,
+// se GET /api/v1/inteligencia/sinais/acesso responde, o item leva à tela de
+// reclamações, que abre antes da data (adendo de 20/10/2026 ao ADR-035). A
+// moldura não importa o pacote do módulo: fala só com a API.
 import { type Chave, type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import {
   Botao,
@@ -113,6 +115,21 @@ export const ITEM_DO_INTELLIGENCE = {
 /** Para o Admin do grupo, com as telas ainda fechadas: a página da abertura. */
 export const HREF_DA_ABERTURA = '/inteligencia/abertura';
 
+/** Para os outros papéis da política, com as telas ainda fechadas: as reclamações. */
+export const HREF_DAS_RECLAMACOES = '/inteligencia/sinais';
+
+/** Para onde o item do módulo leva: os insights, a abertura (Admin) ou as reclamações. */
+export function destinoDoIntelligence(v: {
+  abertos: number | null;
+  soAbertura: boolean;
+  soReclamacoes: boolean;
+}): string | null {
+  if (v.abertos !== null) return ITEM_DO_INTELLIGENCE.href;
+  if (v.soAbertura) return HREF_DA_ABERTURA;
+  if (v.soReclamacoes) return HREF_DAS_RECLAMACOES;
+  return null;
+}
+
 /** Mews V1: item separado do MENU porque só o Admin vê (GET autenticado). */
 export const ITEM_DA_MEWS = {
   href: '/admin/mews',
@@ -198,6 +215,8 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
   const [abertos, setAbertos] = useState<number | null>(null);
   // Telas fechadas, mas quem vê é o Admin do grupo: o item leva à abertura.
   const [soAbertura, setSoAbertura] = useState(false);
+  // Telas fechadas, para os outros papéis da política: o item leva às reclamações.
+  const [soReclamacoes, setSoReclamacoes] = useState(false);
   const [mewsVisivel, setMewsVisivel] = useState(false);
 
   useEffect(() => {
@@ -236,7 +255,17 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
     if (!grupoPronto) return;
     void chamarApi<{ abertos: number }>('/api/v1/inteligencia/resumo').then(async (r) => {
       setAbertos(r.ok ? r.dados.abertos : null);
-      setSoAbertura(!r.ok && (await chamarApi('/api/v1/inteligencia/abertura')).ok);
+      if (r.ok) {
+        setSoAbertura(false);
+        setSoReclamacoes(false);
+        return;
+      }
+      const [abertura, reclamacoes] = await Promise.all([
+        chamarApi('/api/v1/inteligencia/abertura'),
+        chamarApi('/api/v1/inteligencia/sinais/acesso'),
+      ]);
+      setSoAbertura(abertura.ok);
+      setSoReclamacoes(reclamacoes.ok);
     });
   }, [grupoPronto, caminho]);
 
@@ -317,10 +346,10 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
               )}
             </GrupoDeMenu>
           ))}
-          {(abertos !== null || soAbertura) && (
+          {destinoDoIntelligence({ abertos, soAbertura, soReclamacoes }) !== null && (
             <GrupoDeMenu rotulo={t(ITEM_DO_INTELLIGENCE.grupo)}>
               <ItemDeMenu
-                href={abertos !== null ? ITEM_DO_INTELLIGENCE.href : HREF_DA_ABERTURA}
+                href={destinoDoIntelligence({ abertos, soAbertura, soReclamacoes }) ?? ''}
                 componente={Link}
                 ativo={intelligenceAtivo(caminho)}
                 {...(abertos !== null ? { contagem: abertos } : {})}

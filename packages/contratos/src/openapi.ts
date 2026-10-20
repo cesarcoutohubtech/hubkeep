@@ -242,6 +242,7 @@ import {
   RespostaDoChamadoDoInsight,
   PedidoDeLigacaoDoChamado,
   RespostaDaFilaDeSinais,
+  RespostaDoAcessoAsReclamacoes,
   RespostaDaImportacaoDeSinais,
 } from './inteligencia';
 
@@ -2884,6 +2885,18 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('inteligencia_indisponivel ou insight_nao_encontrado.'),
       409: ERRO('reclamacao_ja_tem_chamado.'),
       422: ERRO('insight_sem_reclamacoes ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/sinais/acesso',
+    resumo:
+      'Se quem pede usa a tela de reclamações de hóspedes (adendo de 20/10/2026 ao ADR-035): os papéis da política de abertura que decidem insight, desde o contrato do módulo, sem esperar a data de abertura das telas. Diz também se as outras telas do módulo já abriram.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Acesso', esquema: RespostaDoAcessoAsReclamacoes },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('inteligencia_indisponivel (sem o módulo ou sem papel que decide insight).'),
     },
   },
   {

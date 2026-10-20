@@ -161,7 +161,7 @@ Pedidas pelo agente do Intelligence em 16/10/2026 (`docs/diario-intelligence.md`
     - Hoje: o texto é apagado 365 dias depois da data da avaliação; a classificação, a nota e as datas ficam. O prazo vai de 30 a 1825 dias, pela política `inteligencia.sinal_hospede` (sem tela), e os 365 dias são provisórios até esta resposta.
     - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-047), `docs/diario-intelligence.md` (PR C1a, 17/10/2026).
 39. **Quem importa e classifica.** Em cada hotel, quem vai importar as avaliações e classificar as de manutenção: o Gerente do hotel ou o CSC?
-    - Hoje: quem decide insight no hotel e vê as telas do módulo. No padrão da abertura das telas, são o Admin do grupo e o Gestor CSC; o Gerente do hotel só entra se o Admin incluir o papel. As telas abrem 60 dias depois da ativação do módulo, e as avaliações de antes entram depois, cada uma com a data dela.
+    - Hoje: quem decide insight no hotel e vê as telas do módulo. No padrão da abertura das telas, são o Admin do grupo e o Gestor CSC; o Gerente do hotel só entra se o Admin incluir o papel. A tela de reclamações abre desde o início do contrato do módulo (decisão de Cesar e Kaio de 20/10/2026); as outras telas, 60 dias depois da ativação.
     - Fontes: `docs/03-decisoes-tecnicas.md` (ADR-047 e o adendo de 12/10/2026 ao ADR-035), `docs/piloto/README.md` (HubKeep Intelligence no piloto).
 
 ## Fora da reunião

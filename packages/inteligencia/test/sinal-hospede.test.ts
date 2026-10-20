@@ -13,12 +13,14 @@ import {
   type ReferenciasDaClassificacao,
   type SinalDaFila,
   type SituacaoDaFila,
+  acessoAsReclamacoes,
   chaveDoSinal,
   classificarSinal,
   dataDaAvaliacao,
   ehSituacaoDaFila,
   fonteNormalizada,
   importarSinais,
+  listarInsights,
   listarSinais,
   validarLinha,
 } from '../src/index';
@@ -60,6 +62,8 @@ function emMemoria(
     existentes?: string[];
     referencias?: Partial<ReferenciasDaClassificacao>;
     fila?: SinalDaFila[];
+    /** O início do contrato do módulo; as telas abrem 60 dias depois. */
+    inicioDoModulo?: Date;
   } = {},
 ): PortasDaFilaDoSinal & Gravado {
   const importacoes: ImportacaoGravada[] = [];
@@ -73,7 +77,13 @@ function emMemoria(
     importacoes,
     classificacoes,
     filas,
-    modulos: async () => [{ modulo: 'inteligencia', inicio: new Date('2026-01-01'), fim: null }],
+    modulos: async () => [
+      {
+        modulo: 'inteligencia',
+        inicio: opcoes.inicioDoModulo ?? new Date('2026-01-01'),
+        fim: null,
+      },
+    ],
     atribuicoes: async () => atribuicoes,
     visibilidade: async () => ({
       aPartirDe: null,
@@ -442,6 +452,31 @@ describe('a fila de classificação', () => {
     await expect(
       listarSinais(emMemoria(tecnico), { hotelId: 'h6', situacao: 'pendentes' }, agora),
     ).rejects.toMatchObject({ codigo: 'inteligencia_indisponivel' });
+  });
+
+  it('antes da abertura das telas, a tela de reclamações já funciona, e o painel não', async () => {
+    // Contrato de 01/10: as telas abrem em 30/11, e hoje é 16/10.
+    const p = emMemoria(gerenteH6, { inicioDoModulo: new Date('2026-10-01T03:00:00Z') });
+    expect(await acessoAsReclamacoes(p, agora)).toEqual({ telasAbertas: false });
+    const r = await importarSinais(p, { hotelId: 'h6', usuarioId: 'u1', linhas: [linha()] }, agora);
+    expect(r.entraram).toBe(1);
+    await listarSinais(p, { hotelId: 'h6', situacao: 'pendentes' }, agora);
+    expect(p.filas).toHaveLength(1);
+    await expect(listarInsights(p, {}, agora)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+  });
+
+  it('depois da abertura, o acesso diz que as telas abriram; sem o módulo ou sem papel, nada', async () => {
+    expect(await acessoAsReclamacoes(emMemoria(gerenteH6), agora)).toEqual({ telasAbertas: true });
+    const tecnico = [atribuicao('tecnico', { tipo: 'hotel', hotelId: 'h6' })];
+    await expect(acessoAsReclamacoes(emMemoria(tecnico), agora)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+    const semModulo = { ...emMemoria(gerenteH6), modulos: async () => [] };
+    await expect(acessoAsReclamacoes(semModulo, agora)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
   });
 
   it('as situações da fila', () => {
