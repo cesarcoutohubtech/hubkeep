@@ -130,6 +130,9 @@ import {
   RespostaDeMovimentacoesDoAtivo,
   PedidoDeDecisaoDoCadastro,
   RespostaDeCadastrosPendentes,
+  PedidoDeImportacaoDeAtivos,
+  RespostaDaImportacao,
+  RespostaDaPreviaDaImportacao,
   RespostaDeDecisaoDoCadastro,
 } from './ativos';
 import {
@@ -1765,6 +1768,40 @@ export const ROTAS: readonly Rota[] = [
       422: ERRO(
         'Já decidido (cadastro_ja_decidido), ativo desativado (ativo_desativado), decisão inválida (decisao_do_cadastro_invalida) ou recusa sem motivo (motivo_obrigatorio).',
       ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/importacao-de-ativos/previa',
+    resumo:
+      'A prévia da importação de ativos por planilha (M2): analisa o CSV contra o hotel, sem gravar, e devolve cada linha como nova, já importada ou inválida, com os erros por código e coluna (Implantador e gestão do hotel).',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeAtivos,
+    respostas: {
+      200: { descricao: 'Prévia da planilha', esquema: RespostaDaPreviaDaImportacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (importacao_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      413: ERRO('Corpo acima do limite (corpo_grande).'),
+      422: ERRO(
+        'Planilha vazia (importacao_vazia), acima do limite de linhas ou bytes (importacao_limite), CSV mal formado (importacao_csv_invalido) ou cabeçalho fora do modelo (importacao_coluna_desconhecida, importacao_coluna_repetida, importacao_coluna_obrigatoria).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/importacao-de-ativos',
+    resumo:
+      'Importa os ativos da planilha (M2): cria só as linhas novas, aprovadas e com a chave de importação, uma unit of work por linha; a linha já importada não duplica.',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeAtivos,
+    respostas: {
+      200: { descricao: 'Resultado por linha', esquema: RespostaDaImportacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (importacao_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      413: ERRO('Corpo acima do limite (corpo_grande).'),
+      422: ERRO('Os mesmos erros do arquivo inteiro da prévia.'),
     },
   },
   {

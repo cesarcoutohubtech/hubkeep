@@ -105,7 +105,7 @@ describe('SHA-256 e tamanho em UTF-8', () => {
 
 describe('lerCsv', () => {
   it('lê ponto e vírgula, aspas, aspa dobrada e quebra de linha dentro de aspas', () => {
-    const csv = lerCsv('﻿a;b\r\n"x;1";"diz ""oi"""\r\n\r\n"linha\num";2\n');
+    const csv = lerCsv('\uFEFFa;b\r\n"x;1";"diz ""oi"""\r\n\r\n"linha\num";2\n');
     expect(csv.separador).toBe(';');
     expect(csv.cabecalho).toEqual(['a', 'b']);
     expect(csv.linhas).toEqual([
@@ -162,7 +162,7 @@ describe('lerCabecalho', () => {
 describe('modelo da planilha', () => {
   it('tem o BOM, as colunas fixas e um campo por chave, sem repetir', () => {
     expect(modeloDaPlanilha([AR, BOMBA, AR])).toBe(
-      '﻿local;edificacao;categoria;modelo;nome;fabricante;modelo_do_fabricante;numero_serie;data_compra;garantia_ate;criticidade;campo.btu;campo.gas;campo.inverter;campo.vazao\r\n',
+      '\uFEFFlocal;edificacao;categoria;modelo;nome;fabricante;modelo_do_fabricante;numero_serie;data_compra;garantia_ate;criticidade;campo.btu;campo.gas;campo.inverter;campo.vazao\r\n',
     );
   });
 });
@@ -329,6 +329,6 @@ describe('podeImportarAtivos', () => {
     expect(r.permitido ? null : r.erro.codigo).toBe('importacao_fora_do_escopo');
   });
   it('o modelo sai com vírgula para quem usa vírgula', () => {
-    expect(modeloDaPlanilha([], ',')).toMatch(/^﻿local,edificacao,/);
+    expect(modeloDaPlanilha([], ',')).toMatch(/^\uFEFFlocal,edificacao,/);
   });
 });

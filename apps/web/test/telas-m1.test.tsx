@@ -19,6 +19,7 @@ import {
   type CadastroPendente,
   ListaDeCadastrosPendentes,
 } from '../src/cliente/aprovacao-de-cadastros';
+import { ResultadoDaPlanilha } from '../src/cliente/importacao-de-ativos';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
@@ -196,5 +197,56 @@ describe('fila de aprovação do cadastro no web (M4)', () => {
     expect(
       renderizar('pt-BR', <ListaDeCadastrosPendentes cadastros={[]} executar={async () => {}} />),
     ).toContain(m['admin.aprovacao_cadastro.vazio']);
+  });
+});
+
+describe('importação de ativos por planilha no web (M2)', () => {
+  const LINHAS = [
+    { numero: 2, situacao: 'nova' as const, nome: 'Split 1', erros: [] },
+    { numero: 3, situacao: 'ja_importada' as const, nome: 'Split 2', erros: [] },
+    {
+      numero: 4,
+      situacao: 'invalida' as const,
+      nome: 'Bomba',
+      erros: [
+        {
+          codigo: 'importacao_local_nao_encontrado',
+          coluna: 'local',
+          parametros: { local: 'Sala 9' },
+        },
+      ],
+    },
+  ];
+
+  it.each(IDIOMAS)('%s: o resumo e as linhas que pedem atenção, com o erro traduzido', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(
+      idioma,
+      <ResultadoDaPlanilha
+        gravada={false}
+        resumo={{ prontas: 1, jaImportadas: 1, invalidas: 1 }}
+        linhas={LINHAS}
+      />,
+    );
+    expect(html).not.toContain('Split 1');
+    expect(html).toContain('Split 2');
+    expect(html).toContain('Bomba');
+    expect(html).toContain('Sala 9');
+    expect(html).not.toContain('importacao_local_nao_encontrado');
+    expect(m['erro.importacao_local_nao_encontrado']).toBeTruthy();
+  });
+
+  it('sem linha com problema, a mensagem vazia', () => {
+    const m = mensagensDe('pt-BR');
+    expect(
+      renderizar(
+        'pt-BR',
+        <ResultadoDaPlanilha
+          gravada
+          resumo={{ prontas: 1, jaImportadas: 0, invalidas: 0 }}
+          linhas={[{ numero: 2, situacao: 'criada', nome: 'Split 1', erros: [] }]}
+        />,
+      ),
+    ).toContain(m['admin.importacao.sem_problemas']);
   });
 });

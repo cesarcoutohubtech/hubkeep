@@ -154,3 +154,65 @@ export const PedidoDeDecisaoDoCadastro = z
 export const RespostaDeDecisaoDoCadastro = z
   .object({ versao: z.int() })
   .meta({ id: 'RespostaDeDecisaoDoCadastro' });
+
+/** O limite da planilha (M2), igual ao do domínio (tests/contratos-dominio). */
+export const LIMITES_DA_IMPORTACAO_API = { linhas: 2000, bytes: 2 * 1024 * 1024 } as const;
+/**
+ * O corpo do pedido leva o CSV dentro do JSON, e o escape (aspas e quebras de
+ * linha) pode dobrar o tamanho; o limite do texto em si é do domínio.
+ */
+export const LIMITE_DO_CORPO_DA_IMPORTACAO = 2 * LIMITES_DA_IMPORTACAO_API.bytes + 1024;
+
+export const SITUACOES_DA_LINHA_API = ['nova', 'ja_importada', 'invalida'] as const;
+export const SITUACOES_DA_LINHA_GRAVADA_API = ['criada', 'ja_importada', 'invalida'] as const;
+
+export const PedidoDeImportacaoDeAtivos = z
+  .object({ csv: z.string() })
+  .meta({ id: 'PedidoDeImportacaoDeAtivos' });
+
+/** Um problema da linha: código, coluna (null: a linha toda) e parâmetros da mensagem. */
+export const ErroDaLinhaApi = z
+  .object({
+    codigo: z.string(),
+    coluna: z.string().nullable(),
+    parametros: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
+  })
+  .meta({ id: 'ErroDaLinhaApi' });
+
+export const LinhaDaPreviaApi = z
+  .object({
+    /** A linha do arquivo (o cabeçalho é a 1). */
+    numero: z.int(),
+    situacao: z.enum(SITUACOES_DA_LINHA_API),
+    nome: z.string().nullable(),
+    erros: z.array(ErroDaLinhaApi),
+  })
+  .meta({ id: 'LinhaDaPreviaApi' });
+
+export const RespostaDaPreviaDaImportacao = z
+  .object({
+    linhas: z.array(LinhaDaPreviaApi),
+    novas: z.int(),
+    jaImportadas: z.int(),
+    invalidas: z.int(),
+  })
+  .meta({ id: 'RespostaDaPreviaDaImportacao' });
+
+export const LinhaImportadaApi = z
+  .object({
+    numero: z.int(),
+    situacao: z.enum(SITUACOES_DA_LINHA_GRAVADA_API),
+    nome: z.string().nullable(),
+    erros: z.array(ErroDaLinhaApi),
+    ativoId: z.guid().nullable(),
+  })
+  .meta({ id: 'LinhaImportadaApi' });
+
+export const RespostaDaImportacao = z
+  .object({
+    linhas: z.array(LinhaImportadaApi),
+    criadas: z.int(),
+    jaImportadas: z.int(),
+    invalidas: z.int(),
+  })
+  .meta({ id: 'RespostaDaImportacao' });

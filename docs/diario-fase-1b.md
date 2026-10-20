@@ -1066,4 +1066,49 @@ Na branch `claude/1b-m4`, montada sobre a `claude/1b-m4-zona`. O PR abre depois 
   - o `db push` da 0058 e o merge do PR da M4a;
   - as escolhas pendentes da M1c (lista = contador; modelo desativado sugere; sem desfazer o descarte);
   - as decisões da PV3c (parada na preventiva, o Gerente aceita a própria, `paradoDesde` na fila).
-- **Próxima tarefa:** a M2 (importação de ativos por CSV, com a `chave_importacao`; o local que falta recusa a linha). Primeiro passo: a branch `claude/1b-m2` a partir da `claude/1b-m4`, começando pelo domínio da leitura e validação do CSV.
+- **Próxima tarefa:** a M2 (importação de ativos por CSV), feita na `claude/1b-m2` (seção abaixo); o PR dela abre depois do merge do PR da M4a.
+
+### M2 — importação de ativos por planilha (20/10/2026)
+
+Na branch `claude/1b-m2`, montada sobre a `claude/1b-m4`. O PR abre depois do merge do #337 (M4a).
+- **Domínio (`importacao-de-ativos.ts`, `resumo-sha256.ts`):** puro, sem biblioteca.
+  - **Leitura do CSV:**
+    - UTF-8 com ou sem BOM; o separador (`;` ou `,`) sai do cabeçalho;
+    - aspas e quebra de linha dentro de aspas;
+    - limites de 2.000 linhas e 2 MB (`importacao_limite`).
+  - **Cabeçalho:** só colunas do modelo, sem repetir, com `local` e `nome`. As colunas são `local`, `edificacao`, `categoria`, `modelo`, `nome`, `fabricante`, `modelo_do_fabricante`, `numero_serie`, `data_compra`, `garantia_ate`, `criticidade` e `campo.<chave>`. A coluna do QR reservado entra com a M3.
+  - **Local:** achado pelo nome e, se preenchida, pela edificação, sem diferença de caixa e acento. O que falta recusa a linha (decisão 18). O ambíguo e o inativo também recusam.
+  - **Categoria e modelo:**
+    - a categoria vale por qualquer nome dela, nos 4 idiomas; a padrão vale também pelos nomes do catálogo;
+    - o modelo é achado pelo nome (dentro da categoria, se ela vier) e preenche o que a linha deixou vazio, como no cadastro na tela.
+  - **Células:**
+    - datas em aaaa-mm-dd ou dd/mm/aaaa;
+    - número com ponto ou vírgula;
+    - sim e não nos 4 idiomas;
+    - opção da lista pela chave ou pelo rótulo.
+  - **Regras:** as mesmas do cadastro do ativo, com todos os erros da linha, cada um com a coluna.
+  - **Chave de importação:** `v1:` + SHA-256 do id do local, do id da categoria, do nome e da série normalizados. A linha que já está no hotel volta como já importada; a repetida no arquivo é recusada (`importacao_linha_repetida`).
+  - **Quem importa:** o Implantador e a gestão do hotel (`importacao_fora_do_escopo`).
+- **Aplicação:**
+  - `prever`: analisa sem gravar;
+  - `importar`: analisa de novo e grava uma unit of work por linha nova, aprovada (M4). A chave que outro envio gravou nesse meio-tempo volta como já importada. Erro de regra na gravação fica na linha, e o resto segue.
+- **db:**
+  - `criarAtivo` recebe a chave; a repetida (`ativo_chave_importacao_unica`) vira `importacao_ja_importada`;
+  - auditoria com a ação `importar` e o evento `ativo.criado`;
+  - integração em `importacao-de-ativos.test.ts`, só na CI.
+- **API:** `POST /api/v1/hoteis/{id}/importacao-de-ativos/previa` e `POST /api/v1/hoteis/{id}/importacao-de-ativos`, no OpenAPI. O corpo leva o CSV no JSON, com limite de 4 MB (o escape pode dobrar o texto).
+- **Tela:** `/admin/importacao-de-ativos`, no menu de cadastros. Tem:
+  - o modelo gerado no navegador, com o separador do formato regional;
+  - a prévia com as linhas já importadas e com erro;
+  - importar as novas.
+- **A conferir no piloto:** 2.000 linhas vão numa requisição só, sem `maxDuration` próprio na rota. Se o tempo da função apertar, o envio se divide em partes.
+
+## Ponto de retomada (20/10/2026, M2 na branch)
+
+- **`main`:** em `bf9b3c0`. **Dev:** o `db push` da 0058 é do Cesar e ainda não foi confirmado aqui.
+- **PR aberto:** o [#337](https://github.com/cesarcoutohubtech/hubkeep/pull/337) (M4a, `claude/1b-m4`), fora da zona protegida. O merge espera a 0058 no dev.
+- **Trabalho não enviado em PR:** a M2 na `claude/1b-m2` (enviada à branch), sobre a M4a. Validação local verde: typecheck, lint e testes (580 na raiz).
+- **Espera o Cesar:**
+  - o `db push` da 0058 e o merge do #337;
+  - as escolhas pendentes da M1c e as decisões da PV3c (seções anteriores).
+- **Próxima tarefa:** depois do merge do #337, trazer a `main` para a `claude/1b-m2` e abrir o PR `1b:` da M2. Em seguida, a M3 (QR em lote), que pede a decisão do código reservado sem ativo.

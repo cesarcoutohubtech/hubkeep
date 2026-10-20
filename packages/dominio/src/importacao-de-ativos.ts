@@ -132,8 +132,8 @@ function separadorDe(texto: string): ',' | ';' {
  */
 export function lerCsv(texto: string): CsvLido {
   if (tamanhoUtf8(texto) > LIMITES_DA_IMPORTACAO.bytes)
-    limite('bytes', LIMITES_DA_IMPORTACAO.bytes);
-  const semBom = texto.startsWith('﻿') ? texto.slice(1) : texto;
+    limite('bytes', LIMITES_DA_IMPORTACAO.bytes / (1024 * 1024)); // em MB, como a tela mostra
+  const semBom = texto.startsWith('\uFEFF') ? texto.slice(1) : texto;
   const separador = separadorDe(semBom);
   const registros: LinhaDoCsv[] = [];
   let celulas: string[] = [];
