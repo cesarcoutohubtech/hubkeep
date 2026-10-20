@@ -1348,7 +1348,7 @@ Mensagem no chat da 1c, em 20/10/2026, com "Cesar aqui", em resposta às três p
 - a série do painel em `indicadores.ts` ganha as somas de cada dia;
 - chaves novas `indicadores.sla.tendencia`, `indicadores.mttr.tendencia` e `indicadores.preventiva.tendencia`.
 
-Branch `claude/1c-serie-diaria`, a partir da `main` 5f915d1 (com o [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345)). Sem migração.
+Branch `claude/1c-serie-diaria`, a partir da `main` 5f915d1 (com o #349 e o #345). Sem migração.
 
 **Feito:**
 - **Domínio (`parcialDoHotel`):** cada dia da série guarda as somas do % de SLA, das horas até a conclusão e da preventiva em dia. A regra é a mesma do período, com o dia no lugar dele:
@@ -1365,11 +1365,7 @@ Branch `claude/1c-serie-diaria`, a partir da `main` 5f915d1 (com o [#345](https:
 
 ### Ponto de retomada (20/10/2026, série diária)
 
-- **`main`:** 5f915d1, com o #345.
-- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
-  - [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349), os prazos e os eventos;
-  - o PR desta série diária, que abre agora.
-
-  Os dois mexem no diário e nos catálogos. Depois do merge de um, o outro é atualizado com a `main`.
+- **`main`:** 5f915d1, com o [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349) (prazos e eventos) e o [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345) (custo) já mesclados.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356), esta série diária.
 - **Esperando:** a confirmação de que o próprio Kaio escreveu o "aprovo" do glossário.
 - **Próximo:** com a aprovação do Kaio, a versão nova do glossário (`docs/referencia/glossario-metricas.md`) e a tela inicial, PR 3 ("Situação por hotel" e os cartões do proprietário e do locador). Primeiro passo: escrever a versão nova do glossário com os três termos, citando as duas aprovações.
