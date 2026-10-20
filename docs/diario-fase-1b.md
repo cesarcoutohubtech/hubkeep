@@ -1016,3 +1016,20 @@ Na branch `claude/1b-m1-app`, PR fora da zona protegida.
   2. O modelo desativado continua sugerindo: o ativo segue sendo daquele modelo.
   3. Não há "desfazer descarte" nesta etapa.
   4. Enquanto a M4 não existe, todo ativo conta como aprovado.
+
+## M4 e M2, zona protegida (19/10/2026)
+
+- **0051 no dev:** o Cesar mostrou o `supabase migration list` do dev em 19/10/2026 (print no chat), com a `20261015130000` no local e no remoto, e as migrações até a `20261019120000`.
+- **Decisões do Cesar de 19/10/2026** (15 a 19 do desenho, respondidas no chat, todas pela proposta):
+  - 15: a política `ativo.aprovacao_do_cadastro` nasce desligada; o Implantador liga no hotel em implantação;
+  - 16: aprovam o Admin do grupo, o Gestor CSC e o Gerente do hotel; o Implantador não;
+  - 17: o ativo pendente já recebe chamado; só fica fora dos planos e das sugestões de plano até a aprovação;
+  - 18: a linha da planilha cujo local não existe é recusada, sem criar o local;
+  - 19: só CSV no MVP.
+- **Zona protegida, na branch `claude/1b-m4-zona`:** a migração 0058 (`20261019200000_ativo_situacao_cadastro.sql`):
+  - `app.ativo.situacao_cadastro` (pendente ou aprovado, padrão aprovado, sem GRANT de UPDATE);
+  - `app.ativo.chave_importacao`, única por hotel e sem UPDATE;
+  - `app.ativo_decisao_cadastro`, só de inserção: uma decisão por ativo, motivo só e sempre na recusa, INSERT só da gestão do hotel e em nome do usuário do contexto.
+  - pgTAP 061 (34 asserções) e os meta-testes 28 e 32 com a tabela nova. Tipos do Kysely atualizados.
+  - Sem ADR novo: o desenho e as decisões 15 a 19 cobrem a M4 e a M2.
+- **Depois do merge e do `db push` da 0058:** a M4 e a M2 fora da zona (domínio, aplicação, API e telas da fila de aprovação e da importação), e o ativo pendente fora das sugestões de plano da M1c.

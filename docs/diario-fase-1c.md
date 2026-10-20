@@ -897,6 +897,73 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
 - **Esperando o Cesar:** o `db push` da 0049; apagar a branch `claude/1c-arrendado-migracao`; a conta e o DNS do SES (F0-12); as chaves VAPID, depois do deploy do push.
 - **Próxima tarefa:** o painel de indicadores (item 8), pela versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
 
+## Painel de indicadores (item 8): o domínio, na branch (15/10/2026)
+
+**Área compartilhada (`packages/dominio`), registrada antes de mexer.** Branch `claude/1c-painel`, a partir da `main` de 15/10 (a1e155c):
+- `indicadores.ts` (novo): os indicadores do glossário versão 3, uma parcial por hotel com o período em dias locais (regra 5) e a soma das parciais para a rede e a bandeira. Também quem vê: a gestão (Admin do grupo, Gestor CSC e Gerente do hotel, no escopo) vê tudo; o proprietário do hotel ou de UHs dele vê só os cartões (backlog, UH-dias e chamados).
+- `sla.ts`: exporta `inicioDoDiaLocal`, que usa o mesmo cálculo de fuso do calendário de SLA.
+- `politicas.ts`: a chave `preventiva.tolerancia_dias` (decisão 11), `{ dias }` de 0 a 30, padrão 0, com o prefixo `preventiva.` entre os do núcleo (também em `packages/contratos`).
+
+**Escolhas de borda** (nenhuma muda o texto do glossário; respondidas pelo Cesar em 15/10/2026, na seção seguinte):
+1. **Prazo que ainda corre.** No % de SLA e no % de preventiva em dia, o chamado ou a preventiva com o prazo dentro do período que ainda não venceu e não foi concluído fica fora da conta até vencer. Aparece ao lado como "ainda no prazo". Sem isso, o período que termina hoje puxa o percentual para baixo com o que ainda pode ser cumprido.
+2. **Média da bandeira.** É o valor do conjunto: soma os chamados de todos os hotéis e calcula uma vez. Não é a média dos percentuais de cada hotel, para o hotel pequeno não pesar igual ao grande.
+3. **Idade do backlog.** Conta em dias completos desde a abertura: 0 a 2, 3 a 7, 8 a 15, 16 a 30 e mais de 30.
+4. **Produtividade.** As OS concluídas, corretivas e preventivas, e as horas apontadas, cortadas no período, ficam com a equipe da OS. A OS sem equipe aparece numa linha "sem equipe". A visão por técnico fica de fora; não há política para ligá-la nesta etapa.
+
+**Feito na branch (15/10/2026):**
+- **Leitura (`packages/db/src/indicadores.ts`):** sob a RLS, só o recorte que pode contar no período. Se o hotel é do usuário como proprietário, quem diz são `authz.hoteis_proprietario()` e `authz.locais_proprietario()`, que já existem e têm `execute` para o `hk_app`: a RLS de `app.hotel_proprietario` só mostra os vínculos ao Admin. Nenhuma função nova no banco. Teste de integração em `packages/db/test/indicadores.test.ts`, que roda só na CI.
+- **Caso de uso e API:** caso de uso em `packages/aplicacao` e `GET /api/v1/indicadores?inicio=&fim=&hotelId=&bandeiraId=`, com o OpenAPI.
+- **Tela `/indicadores`** (menu Operação):
+  - os sete cartões da rede, com a variação contra o período anterior do mesmo tamanho;
+  - o backlog por idade e os chamados por dia;
+  - a comparação na bandeira, com o melhor de cada coluna em destaque;
+  - a produtividade;
+  - os cartões do proprietário.
+  - Textos nos quatro idiomas.
+
+**Fica para depois:**
+- **Exportar CSV do painel:** item 9.
+- **Gráficos:** a série sai como tabela. Linha e barras num PR seguinte.
+- **Tolerância da preventiva na tela de configuração:** hoje só pela API de políticas.
+- **Medição da meta (decisão 9):** depende do volume de referência do Kaio.
+- **Paridade da produtividade:** o mock separa fornecedor, preventivas, corretivas e corretivas no prazo. O glossário versão 3 diz "por equipe e por hotel". Mudar é uma versão nova do glossário, que só sai com a aprovação de Cesar e Kaio.
+
+### Decisões do Cesar sobre o painel (15/10/2026)
+
+O Cesar respondeu às quatro escolhas no chat do agente da 1c ("Cesar aqui"):
+1. **Prazo que ainda corre:** fora da conta, como "ainda no prazo". Aprovado.
+2. **Média da bandeira:** sobre todos os chamados juntos. Aprovado, com um ajuste no destaque da comparação:
+   - cada percentual mostra o número de itens ao lado;
+   - só concorre ao destaque de melhor da coluna o hotel com pelo menos 10 itens no período naquela coluna;
+   - abaixo disso, o percentual aparece como "amostra pequena";
+   - o mínimo fica numa constante, para ajustar no piloto.
+   No código: `LIMITES_DO_PAINEL.amostraMinimaDoDestaque` e `amostraSuficiente` (`packages/dominio/src/indicadores.ts`). Valem para as duas colunas de percentual, o % de SLA (itens: os chamados da conta) e o % de preventiva em dia (itens: as preventivas da conta).
+3. **Idade do backlog:** em dias completos, com as faixas propostas. Aprovado.
+4. **Produtividade:** por equipe, com a linha "sem equipe", como no glossário versão 3. Aprovado. **Candidata à versão 4 do glossário, depois do piloto:** a separação por fornecedor, preventiva e corretiva, como no mock.
+
+O Cesar vai testar a tela no dev com o grupo do histórico de demonstração; daqui ela não foi aberta no navegador.
+
+### Ponto de retomada (15/10/2026, painel de indicadores)
+
+- **`main`:** a1e155c.
+- **Dev:** com a 0049, que o Cesar confirmou em 15/10.
+- **Atualização (15/10/2026, depois do merge do #277):**
+  - **`main`:** a92dc65.
+  - **PRs abertos da 1c, fora da zona e esperando o merge do Cesar:** [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, e o PR do painel, que abre em seguida.
+  - **Zona protegida:** a vez é da 1b. O painel não precisa de migração.
+  - **Próximo passo:** a impressão da OS e o CSV (item 9).
+
+### Ponto de retomada (15/10/2026, pausa pelo limite semanal)
+
+- **`main`:** a92dc65, com o #277 (e-mail do SLA). O dev tem a 0049.
+- **Com o merge do Cesar, fora da zona e verdes nos cinco checks:**
+  - [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, no head 3650e3d. Entra primeiro.
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, no head 1e9fb5b mais este registro. O Cesar faz o "Update branch" depois do #281; se der conflito, fica para a volta do agente.
+- **Decisão do Cesar (15/10/2026):** o MTTR fica sem mínimo de amostra no destaque da comparação até o piloto.
+- **Sem acompanhamento:** nenhuma conferência marcada e nenhum PR acompanhado. Na volta, conferir uma vez o estado dos dois PRs.
+- **Trabalho não enviado:** nenhum.
+- **Próximo item:** a impressão da OS e o CSV (item 9), ainda não começado. Primeiro passo: ler a seção 6 de `docs/referencia/paridade-mock-1c.md` e o item 9 do `docs/13`.
+
 ## Impressão da OS e CSV (item 9): começo (19/10/2026)
 
 **Retomada.** Na volta da pausa, o #281 e o #282 estavam abertos e em conflito com a `main` (af1b9aa). Atualizei as duas branches com merge da `main`; os conflitos eram só de listas de exportação e do fim dos catálogos. Lint, typecheck e testes passaram nas duas.
@@ -959,3 +1026,43 @@ O registro da área compartilhada (OS e catálogos) e as escolhas do item 9 est�
 - **PRs da 1c esperando o merge do Cesar, todos fora da zona protegida:** #281 (push), #282 (painel), #331 (impressão da OS) e o deste CSV. Os quatro mexem nas listas de exportação e nos catálogos: depois de cada merge, os outros podem precisar de atualização com a `main`.
 - **Pergunta ao Cesar (no #331):** esconder também na ficha da OS o custo informado do proprietário.
 - **Próximo:** depois do merge do #282, o CSV do painel de indicadores. Em seguida, o catálogo completo (item 10).
+## Catálogo completo (item 10): termos dos catálogos (19/10/2026)
+
+**Área compartilhada (catálogos), registrada antes de mexer.** Este PR, na branch `claude/1c-idiomas`, troca textos em en, es e fr de telas da 1b e da 1c. Não muda chave nem variável.
+
+**Levantamento:**
+- Os quatro catálogos têm as mesmas 1.557 chaves.
+- Nenhum texto em português sobra nos outros idiomas. Os valores iguais ao pt-BR são cognatos ("Hotel", "Checklist", "PDF").
+- Datas, números e moeda saem do `Intl` com o idioma de quem lê. Os `'pt-BR'` fixos nos apps são só o idioma padrão de reserva dos nomes cadastrados.
+- O problema eram os termos: o mesmo conceito com dois nomes no mesmo idioma.
+
+**Feito:**
+- **`docs/referencia/termos-dos-catalogos.md`:** um termo por conceito e por idioma, pelo uso da maioria das telas. Também traz o volume para a cotação da tradução profissional: cerca de 9.400 palavras, sendo 7.000 do núcleo.
+- **Textos alinhados** (55 textos):
+  - en: "ticket" passa a "request"; "landlord" passa a "lessor"; "tenant operator" passa a "lessee";
+  - es: "orden de servicio" passa a "orden de trabajo"; "OS" passa a "OT"; "ticket" passa a "solicitud";
+  - fr: "ordre de service" passa a "ordre de travail"; "OS" passa a "OT"; "ticket" passa a "demande"; "prestataire" passa a "fournisseur".
+- **`packages/i18n/test/termos.test.ts`:** reprova as variantes barradas fora de `inteligencia.*`.
+
+### Pedido ao agente do Intelligence (Kaio): termos nos textos `inteligencia.*` (19/10/2026)
+
+Os textos do Intelligence são do Kaio (ADR-033), então este PR não os toca. Para seguir `docs/referencia/termos-dos-catalogos.md`, faltaria:
+- en: "tickets" em `inteligencia.detalhamento.impacto_pelos_chamados` e `inteligencia.impacto.resumo`;
+- es e fr: "tickets" em `inteligencia.detalhamento.impacto_pelos_chamados`;
+- fr: "marque" no lugar de "enseigne" (bandeira) em `inteligencia.escopo.rede_bandeira` e `inteligencia.quem_decide.rede_bandeira`, e "prestataire" em `inteligencia.sistemico.regra`.
+
+Se o Kaio quiser, o teste de termos pode passar a valer também para `inteligencia.*` depois da troca.
+
+### Ponto de retomada (19/10/2026, termos dos catálogos)
+
+- **`main`:** 2003828. A CI do merge do #281 ainda rodava às 19h50; a mesma `main`, rodada aqui, passou em lint, typecheck e testes.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, no head 4947c41;
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), o CSV de chamados, no head ca6a159;
+  - o PR destes termos, que abre agora.
+- **Pergunta ao Cesar, ainda sem resposta:** esconder também na ficha da OS o custo informado, para o proprietário.
+- **Fica da 1c:**
+  - o CSV do painel, depois do merge do #282;
+  - a tradução profissional, que é contratação externa: o volume está na referência de termos;
+  - os gráficos do painel;
+  - a tolerância da preventiva na tela de configuração.
