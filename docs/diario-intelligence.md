@@ -3033,3 +3033,18 @@ Preparado a partir do "sim" do Cesar na (i); o PR só abre depois do "sim" do Ka
 - **Decidido:** (ii) ligar a chamado existente fica para depois do piloto.
 - **Pendências do Kaio:** os limites dos PRs A e B; no C1a, 3/2/14 e 365 dias; no C1b, os pesos, os limites, os 90 dias e a gravidade; os textos do chamado do insight, se quiser outros.
 - **Próxima tarefa:** depois do merge, propor o que vem a seguir no Intelligence; primeiro passo, reler a seção "O PR C do sinal do hóspede: proposta" e o plano do Intelligence para o que falta antes do piloto.
+
+### O merge do #338 e o que vem a seguir: proposta (20/10/2026)
+
+**O merge do #338** (Cesar, 20/10/2026), com os cinco checks verdes no head 2bced11. A branch `claude/vigilant-cray-l06ew1` recomeçou da `main` (c9db87d).
+
+**Levantamento do que falta antes do piloto.** O 1.0 e a 1.5 sem IA estão no código. O que falta é quase todo documentação, aprovação e operação:
+- **Material do piloto sem a 1.5:** nenhum arquivo do `docs/piloto/` (README, manual por papel, roteiro de treinamento, guia de implantação) fala da importação de reclamações, da fila, do impacto no hóspede ou do abrir chamado.
+- **As cinco perguntas do sinal do hóspede** (ferramentas, exportação, campos, LGPD, quem classifica), pedidas ao agente da 1b em 16/10, não estão no `docs/referencia/perguntas-cliente.md`. Delas dependem a retenção (hoje 365 dias, provisória) e o mapeamento das colunas do CSV.
+- **Status no `docs/03`** ainda "aguarda aprovação" em itens já decididos (quem lê o insight e a métrica diária; adendos de 08/10 aos ADR-034 e ADR-036; issue #169), e a decisão do Cesar sobre particionar ou reter a métrica diária "antes do piloto ou quando o volume pedir".
+- **Buracos de tela contra a proposta do 1.0:** o recálculo sob demanda na página do insight (aprovado só pelo Kaio em 07/10) e o número do insight ("INS-0133", pede migração).
+
+**Proposta, para Cesar e Kaio:**
+1. **Agora:** o material do piloto com a 1.5 e as cinco perguntas no arquivo do cliente. São áreas do agente da 1b (preparação do piloto, perguntas ao cliente). Duas saídas: **(p1)** o agente do Intelligence escreve, num PR `int:` só de documentação, com o aviso registrado aqui; **(p2)** pedido ao agente da 1b, que escreve no PR dele. Recomendação: (p1), porque o conteúdo é do Intelligence e o agente da 1b está em outras frentes; o Cesar revisa no PR.
+2. **Depois:** um PR de zona protegida só de status no `docs/03` com as aprovações já escritas, na vez que o Cesar der.
+3. **A decidir:** recálculo sob demanda na tela ou número do insight, com proposta antes do código.
