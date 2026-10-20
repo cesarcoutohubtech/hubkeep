@@ -702,3 +702,10 @@ export type {
   CopiaDoPlanoPadrao,
   PlanoPadrao,
 } from './pacote-da-bandeira';
+export {
+  LIMITE_DO_LOTE_DE_QR,
+  exigirCodigoReservadoLivre,
+  podeReservarQr,
+  validarTamanhoDoLote,
+} from './qr-reservado';
+export type { CodigoReservado } from './qr-reservado';

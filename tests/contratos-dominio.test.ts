@@ -42,6 +42,7 @@ import {
   DECISOES_DO_CADASTRO_API,
   SITUACOES_DO_CADASTRO_API,
   LIMITES_DA_IMPORTACAO_API,
+  LIMITE_DO_LOTE_DE_QR_API,
   SITUACOES_DA_LINHA_API,
 } from '../packages/contratos/src/index';
 import type { SituacaoDaLinha, StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
@@ -50,6 +51,7 @@ import {
   DECISOES_DO_CADASTRO,
   SITUACOES_DO_CADASTRO,
   LIMITES_DA_IMPORTACAO,
+  LIMITE_DO_LOTE_DE_QR,
   IDIOMAS_DE_ROTULO,
   TIPOS_DE_CAMPO,
   CHAVES_DE_POLITICA,
@@ -386,6 +388,10 @@ describe('contratos × domínio', () => {
     expect(LIMITES_DA_IMPORTACAO_API).toEqual(LIMITES_DA_IMPORTACAO);
     const situacoes: readonly SituacaoDaLinha[] = SITUACOES_DA_LINHA_API;
     expect(situacoes).toHaveLength(3);
+  });
+
+  it('o limite do lote de QR reservado da API é o do domínio (M3)', () => {
+    expect(LIMITE_DO_LOTE_DE_QR_API).toBe(LIMITE_DO_LOTE_DE_QR);
   });
 
   it('as pendências do plano preventivo da API são as do domínio (PV3c)', () => {

@@ -112,6 +112,29 @@ describe('tela de ativos do PWA', () => {
     expect(html).not.toContain(m['admin.ativos.novo']);
   });
 
+  it('aberta pela etiqueta reservada (M3): o cadastro novo mostra o código; sem rede, o aviso', () => {
+    const tela = (hotelId: string | null) =>
+      renderToString(
+        <ProvedorDeIdioma idioma="pt-BR">
+          <Ativos
+            etiqueta={{ hotelId, codigo: '7K3M9QX2AB' }}
+            idioma="pt-BR"
+            referencia={referencia}
+            pendentes={[]}
+            aoCadastrar={async () => undefined}
+            aoAlterar={async () => undefined}
+            aoVoltar={() => undefined}
+          />
+        </ProvedorDeIdioma>,
+      ).replaceAll('&#x27;', "'");
+    const m = mensagensDe('pt-BR');
+    const comRede = tela('h1');
+    expect(comRede).toContain(m['admin.ativos.novo']);
+    expect(comRede).toContain('7K3M9-QX2AB');
+    expect(comRede).not.toContain(m['tecnico.ativos.etiqueta_sem_rede']);
+    expect(tela(null)).toContain(m['tecnico.ativos.etiqueta_sem_rede']);
+  });
+
   it('pseudo-idioma: todo texto visível vem do catálogo (entre colchetes)', () => {
     const html = renderizar(PSEUDO_IDIOMA, referencia).replace(/<select[\s\S]*?<\/select>/g, '');
     const textos = [...html.matchAll(/>([^<>]+)</g)]

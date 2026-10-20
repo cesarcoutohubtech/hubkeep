@@ -21,6 +21,7 @@ import type {
   PortaCadastrosDeAtivos,
   PortaImportacaoDeAtivos,
   PortaPacoteDaBandeira,
+  PortaQrReservados,
   PortaChamados,
   PlanoGravado,
   PortaPlanosPreventivos,
@@ -118,6 +119,7 @@ import {
   responderChecklist,
 } from './repositorios/checklists';
 import { criarChamado } from './repositorios/chamados';
+import { reservarCodigos } from './repositorios/qr-reservados';
 import { alterarModeloDeAtivo, criarModeloDeAtivo } from './repositorios/modelos-de-ativo';
 import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
 import { alterarPlanoPadrao, criarPlanoPadrao } from './repositorios/pacote-da-bandeira';
@@ -2143,8 +2145,11 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
           .executeTakeFirst();
         return a ? paraAtivo(a) : null;
       }),
-    criar: (ctx, hotelId, localId, dados) =>
-      banco.executar(ctx, (uow) => criarAtivo(uow, hotelId, localId, dados)),
+    reservaDoCodigo: (ctx, codigo) => banco.withContext(ctx, (tx) => reservaDoCodigo(tx, codigo)),
+    criar: (ctx, hotelId, localId, dados, codigoQr) =>
+      banco.executar(ctx, (uow) =>
+        criarAtivo(uow, hotelId, localId, dados, 'aprovado', null, codigoQr ?? null),
+      ),
     alterar: (ctx, ativoId, versaoEsperada, mudanca) =>
       banco.executar(ctx, (uow) => alterarAtivo(uow, ativoId, versaoEsperada, mudanca)),
     mover: (ctx, ativoId, versaoEsperada, localDestinoId) =>
@@ -2251,8 +2256,8 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
         return await banco.executar(ctx, async (uow) => {
           const resposta = await efeito({
             gravarPreferencias: (p) => gravarPreferencias(uow, p),
-            cadastrarAtivo: (hotelId, localId, dados, situacao) =>
-              criarAtivo(uow, hotelId, localId, dados, situacao),
+            cadastrarAtivo: (hotelId, localId, dados, situacao, codigoQr) =>
+              criarAtivo(uow, hotelId, localId, dados, situacao, null, codigoQr ?? null),
             alterarAtivo: (ativoId, versaoEsperada, mudanca) =>
               alterarAtivo(uow, ativoId, versaoEsperada, mudanca),
             abrirChamado: (hotelId, dados) => criarChamado(uow, hotelId, dados),
@@ -2888,5 +2893,61 @@ export function criarPortaPacoteDaBandeira(banco: AcessoBanco): PortaPacoteDaBan
         throw e;
       }
     },
+  };
+}
+
+/** O código reservado (M3), se visível (RLS: quem escreve no hotel), e se já tem ativo. */
+async function reservaDoCodigo(tx: Tx, codigo: string) {
+  const r = await tx
+    .selectFrom('app.qr_reservado as r')
+    .select(['r.hotel_id', ligadoAoAtivo().as('ligado')])
+    .where('r.codigo', '=', codigo)
+    .executeTakeFirst();
+  return r ? { hotelId: r.hotel_id, ligado: r.ligado } : null;
+}
+
+/**
+ * O código tem ativo no tenant. Pela RLS do ativo, quem não lê o hotel não vê
+ * o ativo; o código reservado só é visível a quem escreve no hotel, que lê os
+ * ativos dele (e o ativo de outro hotel com o código é recusado pela unicidade).
+ */
+const ligadoAoAtivo = () =>
+  sql<boolean>`exists (select 1 from app.ativo a where a.tenant_id = r.tenant_id and a.codigo_qr = r.codigo)`;
+
+/**
+ * Códigos de QR reservados (M3; migração 0061): o lote na unit of work, a
+ * lista do hotel com o que já está ligado e a consulta de um código.
+ */
+export function criarPortaQrReservados(banco: AcessoBanco): PortaQrReservados {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    reservar: (ctx, hotelId, quantidade) =>
+      banco.executar(ctx, (uow) => reservarCodigos(uow, hotelId, quantidade)),
+    codigos: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.qr_reservado as r')
+            .select(['r.codigo', 'r.lote_id', 'r.criado_em', ligadoAoAtivo().as('ligado')])
+            .where('r.hotel_id', '=', hotelId)
+            .orderBy('r.lote_id', 'desc')
+            .orderBy('r.codigo')
+            .execute()
+        ).map((r) => ({
+          codigo: r.codigo,
+          loteId: r.lote_id,
+          criadoEm: r.criado_em,
+          ligado: r.ligado,
+        })),
+      ),
+    reserva: (ctx, codigo) => banco.withContext(ctx, (tx) => reservaDoCodigo(tx, codigo)),
   };
 }

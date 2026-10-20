@@ -8,6 +8,9 @@
 // hotel, dentro do mesmo hotel, e não vai pela fila offline (o técnico não
 // move). Abrir pelo código do QR (B5) passa pela mesma leitura: código de
 // outro tenant, fora do escopo ou mal formado dá 404, sem distinguir os casos.
+// O cadastro pode levar o código de uma etiqueta reservada (M3, decisão 21):
+// reservado no hotel do ativo e livre, senão qr_nao_reservado ou qr_ja_ligado;
+// o código do ativo que já existe não muda.
 // Compra, garantia e criticidade (fase 1b, I1): opcionais; na alteração, o
 // campo ausente do pedido mantém o valor gravado (a operação guardada no
 // aparelho antes da I1 não os traz), e null apaga.
@@ -21,6 +24,7 @@ import {
   type Resultado,
   type ValorDeCampo,
   exigir,
+  exigirCodigoReservadoLivre,
   exigirLocalParaAtivo,
   lerCodigoQr,
   lerDefinicoes,
@@ -64,6 +68,8 @@ export interface PedidoDeGravacaoDeAtivo {
 
 export interface PedidoDeCadastroDeAtivo extends PedidoDeGravacaoDeAtivo {
   localId: string;
+  /** O código da etiqueta reservada (M3); ausente ou null: o código é gerado. */
+  codigoQr?: string | null | undefined;
 }
 
 export interface PedidoDeAlteracaoDeAtivo extends PedidoDeGravacaoDeAtivo {
@@ -91,6 +97,8 @@ export interface CadastroPreparado {
    * ativo.aprovacao_do_cadastro do hotel. O cadastro no web nasce aprovado.
    */
   situacaoNoPwa?: 'pendente' | 'aprovado';
+  /** O código da etiqueta reservada (M3), já conferido; ausente: o código é gerado. */
+  codigoQr?: string;
 }
 
 export interface AlteracaoPreparada {
@@ -259,16 +267,27 @@ export function criarCasosDeUsoDeAtivos(deps: {
         chave,
         await deps.ativos.politica(ctx, local.hotelId, chave),
       );
+      const dados = await dadosDe(ctx, local.hotelId, p, null);
+      let codigoQr: string | undefined;
+      if (p.codigoQr !== undefined && p.codigoQr !== null) {
+        const lido = lerCodigoQr(p.codigoQr);
+        exigirCodigoReservadoLivre(
+          lido === null ? null : await deps.ativos.reservaDoCodigo(ctx, lido),
+          local.hotelId,
+        );
+        codigoQr = lido ?? undefined;
+      }
       return {
         hotelId: local.hotelId,
         localId: local.id,
-        dados: await dadosDe(ctx, local.hotelId, p, null),
+        dados,
         situacaoNoPwa: situacaoInicialNoPwa(aprovacao),
+        ...(codigoQr === undefined ? {} : { codigoQr }),
       };
     },
     async cadastrar(ctx, p) {
       const c = await casos.prepararCadastro(ctx, p);
-      return deps.ativos.criar(ctx, c.hotelId, c.localId, c.dados);
+      return deps.ativos.criar(ctx, c.hotelId, c.localId, c.dados, c.codigoQr);
     },
     async prepararAlteracao(ctx, ativoId, p) {
       const a = await ativoVisivel(ctx, ativoId);

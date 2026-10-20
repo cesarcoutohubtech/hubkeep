@@ -40,6 +40,7 @@ export const ENTIDADES_DA_AUDITORIA_API = [
   'preferencia_membro',
   'prioridade',
   'proprietario',
+  'qr_reservado',
   'sinal_hospede',
   'situacao',
   'tenant',

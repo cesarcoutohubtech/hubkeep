@@ -3,7 +3,8 @@
 // A RLS decide por último: quem não tem escrita no hotel tem o INSERT recusado
 // (42501) e o UPDATE sem linha. Mover (B3c) troca o local_id e grava a
 // movimentação na mesma unit of work; a FK (hotel_id, local_id) recusa local
-// de outro hotel. A importação por planilha (M2) cria com a chave da linha.
+// de outro hotel. A importação por planilha (M2) cria com a chave da linha; o
+// cadastro da etiqueta reservada (M3), com o código dela.
 import type { DadosDeAtivo, MudancaDeAtivo } from '@hubkeep/aplicacao';
 import { Conflito, NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
 import { sql } from 'kysely';
@@ -34,9 +35,15 @@ export async function criarAtivo(
    * importacao_ja_importada, e a unit of work não grava nada.
    */
   chaveImportacao: string | null = null,
+  /**
+   * O código da etiqueta reservada (M3), já conferido pela aplicação; null: o
+   * código é gerado. Já ligado a outro ativo nesse meio-tempo: Conflito
+   * qr_ja_ligado, e a unit of work não grava nada.
+   */
+  codigoReservado: string | null = null,
 ): Promise<{ id: string; versao: number }> {
   const id = novoId();
-  const codigoQr = novoCodigoQr();
+  const codigoQr = codigoReservado ?? novoCodigoQr();
   try {
     await transacaoDe(uow)
       .insertInto('app.ativo')
@@ -56,6 +63,9 @@ export async function criarAtivo(
     const { code, constraint } = e as { code?: string; constraint?: string };
     if (code === '23505' && constraint === 'ativo_chave_importacao_unica') {
       throw new Conflito('importacao_ja_importada', 'A linha da planilha já foi importada.');
+    }
+    if (code === '23505' && constraint === 'ativo_codigo_qr_unico' && codigoReservado !== null) {
+      throw new Conflito('qr_ja_ligado', 'O código já está ligado a um ativo.');
     }
     throw e;
   }

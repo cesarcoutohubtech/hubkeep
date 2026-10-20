@@ -8,8 +8,11 @@
 // já vem no hotel do ativo, com o ativo aberto. Compra, garantia e
 // criticidade (fase 1b, I1) ficam na parte recolhida do formulário; com a
 // referência guardada antes da I1, o campo deixado vazio não vai na operação,
-// para não apagar o que o servidor tem.
+// para não apagar o que o servidor tem. Aberta pela etiqueta reservada (M3),
+// o cadastro novo leva o código dela; o servidor confere que o código está
+// reservado no hotel e livre (qr_nao_reservado, qr_ja_ligado).
 import {
+  codigoQrLegivel,
   ErroDeDominio,
   NaoEncontrado,
   exigirLocalParaAtivo,
@@ -53,6 +56,8 @@ export interface GravacaoDeAtivo {
   dataCompra?: string | null;
   garantiaAte?: string | null;
   criticidade?: number | null;
+  /** O código da etiqueta reservada (M3), só no cadastro. */
+  codigoQr?: string;
 }
 
 const NIVEIS = [1, 2, 3, 4, 5] as const;
@@ -146,6 +151,8 @@ interface PropsDoFormulario {
   aoCadastrar: (localId: string, g: GravacaoDeAtivo) => Promise<void>;
   aoAlterar: (ativo: AtivoGuardado, g: GravacaoDeAtivo) => Promise<void>;
   aoCancelar: () => void;
+  /** O código da etiqueta reservada (M3) do cadastro novo; o hotel null: lido sem rede. */
+  etiqueta?: { hotelId: string | null; codigo: string } | null;
 }
 
 /** Formulário de um ativo, novo ou guardado: a categoria escolhida decide os campos. */
@@ -247,12 +254,16 @@ function Formulario(p: PropsDoFormulario) {
       const local = locais.find((l) => l.id === texto(f, 'localId'));
       if (!local) throw new NaoEncontrado('local_nao_encontrado', 'Local não encontrado.');
       exigirLocalParaAtivo(local);
-      return p.aoCadastrar(local.id, g);
+      return p.aoCadastrar(local.id, p.etiqueta ? { ...g, codigoQr: p.etiqueta.codigo } : g);
     });
   }
 
   return (
     <form key={geracao} ref={formulario} onSubmit={enviar} className="coluna">
+      {!ativo && p.etiqueta && (
+        <p>{t('tecnico.ativos.com_etiqueta', { codigo: codigoQrLegivel(p.etiqueta.codigo) })}</p>
+      )}
+      {!ativo && p.etiqueta?.hotelId === null && <p>{t('tecnico.ativos.etiqueta_sem_rede')}</p>}
       {ativo ? (
         <p>{t('admin.ativos.no_local', { local: nomeDoLocal(ativo.localId) })}</p>
       ) : (
@@ -404,6 +415,8 @@ function Formulario(p: PropsDoFormulario) {
 export function Ativos(props: {
   /** Aberta pelo QR: o hotel e o ativo que abrem primeiro. */
   aberto?: AtivoAberto | null;
+  /** Aberta pela etiqueta reservada (M3): o hotel dela (null: lida sem rede) e o código. */
+  etiqueta?: { hotelId: string | null; codigo: string } | null;
   idioma: IdiomaDeExibicao;
   referencia: Referencia | null;
   pendentes: readonly CadastroPendente[];
@@ -417,7 +430,10 @@ export function Ativos(props: {
   const t = useT();
   const intl = useIntl();
   const { referencia } = props;
-  const [hotelId, setHotelId] = useState(props.aberto?.hotelId ?? referencia?.hoteis[0]?.id ?? '');
+  const [hotelId, setHotelId] = useState(
+    props.aberto?.hotelId ?? props.etiqueta?.hotelId ?? referencia?.hoteis[0]?.id ?? '',
+  );
+  const [etiqueta, setEtiqueta] = useState(props.etiqueta ?? null);
   const [editando, setEditando] = useState<AtivoGuardado | null>(props.aberto?.ativo ?? null);
   const [fotosDe, setFotosDe] = useState<AtivoGuardado | null>(null);
   const [busca, setBusca] = useState('');
@@ -466,6 +482,7 @@ export function Ativos(props: {
       await acao();
       setAviso({ tipo: 'ok' });
       setEditando(null);
+      setEtiqueta(null);
     } catch (e) {
       if (!(e instanceof ErroDeDominio)) throw e;
       setAviso({ tipo: 'erro', codigo: e.codigo });
@@ -526,8 +543,9 @@ export function Ativos(props: {
           <section>
             <h2>{t('admin.ativos.novo')}</h2>
             <Formulario
-              key={hotelId}
+              key={`${hotelId}:${etiqueta?.codigo ?? ''}`}
               ativo={null}
+              etiqueta={etiqueta}
               hotelId={hotelId}
               referencia={referencia}
               locais={locais}
