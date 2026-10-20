@@ -1056,3 +1056,14 @@ Na branch `claude/1b-m4`, montada sobre a `claude/1b-m4-zona`. O PR abre depois 
   - `/admin/aprovacao-de-ativos`, no menu de cadastros, com aprovar e recusar com motivo;
   - as marcas de pendente e recusado na lista de ativos do web e do PWA.
 - **Depois:** a M2 (importação por CSV, com a `chave_importacao`).
+
+## Ponto de retomada (20/10/2026, PR da M4a)
+
+- **`main`:** em `bf9b3c0`, com o #335 (migração 0058) mergeado pelo Cesar em 20/10/2026.
+- **Dev:** o `db push` da 0058 é do Cesar e ainda não foi confirmado aqui. O PR da M4a lê e grava as colunas novas, então o merge dele espera a 0058 no dev.
+- **PR aberto:** o da M4a (`1b:`), da branch `claude/1b-m4`, com a `main` trazida (conflitos no índice do domínio e no catálogo `es`, com o painel da 1c). Fora da zona protegida. Validação local verde: typecheck, lint e testes (577 na raiz).
+- **Espera o Cesar:**
+  - o `db push` da 0058 e o merge do PR da M4a;
+  - as escolhas pendentes da M1c (lista = contador; modelo desativado sugere; sem desfazer o descarte);
+  - as decisões da PV3c (parada na preventiva, o Gerente aceita a própria, `paradoDesde` na fila).
+- **Próxima tarefa:** a M2 (importação de ativos por CSV, com a `chave_importacao`; o local que falta recusa a linha). Primeiro passo: a branch `claude/1b-m2` a partir da `claude/1b-m4`, começando pelo domínio da leitura e validação do CSV.
