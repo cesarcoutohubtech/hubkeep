@@ -1,7 +1,13 @@
 // Porta dos ativos do hotel (fase 1a, B3). Implementada por packages/db, com o
 // contexto do usuário: a RLS mostra os ativos dos hotéis que ele lê (e os dos
 // locais do proprietário) e só deixa gravar quem tem escrita no hotel.
-import type { Contexto, Criticidade, StatusDeLocal, ValorDeCampo } from '@hubkeep/dominio';
+import type {
+  Contexto,
+  Criticidade,
+  SituacaoDoCadastro,
+  StatusDeLocal,
+  ValorDeCampo,
+} from '@hubkeep/dominio';
 
 export interface AtivoGravado {
   id: string;
@@ -28,6 +34,10 @@ export interface AtivoGravado {
   codigoQr: string;
   /** Início da parada aberta (C5); null se não está parado. Só nas leituras. */
   paradoDesde?: Date | null;
+  /** A situação efetiva do cadastro (M4), com a decisão. Só nas leituras. */
+  situacaoCadastro?: SituacaoDoCadastro;
+  /** O motivo da recusa do cadastro (M4); null sem recusa. Só nas leituras. */
+  motivoDaRecusa?: string | null;
 }
 
 /** O que uma gravação (cadastro ou alteração) escreve, já validado pelo domínio. */

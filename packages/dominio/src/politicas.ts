@@ -77,6 +77,15 @@ export interface ChecklistCompletoObrigatorio {
   ligado: boolean;
 }
 
+/**
+ * Aprovação do cadastro do ativo (M4). Desligada por padrão (decisão 15).
+ * Ligada, o ativo que chega pelo PWA nasce pendente, e a gestão do hotel
+ * aprova ou recusa; o web e a importação nascem aprovados.
+ */
+export interface AprovacaoDoCadastro {
+  ligado: boolean;
+}
+
 /** Categoria de ativo (id) → prioridade padrão do chamado (id). As duas entram em B2 e C1. */
 export type PrioridadePadraoPorCategoria = Record<string, string>;
 
@@ -104,6 +113,7 @@ export interface ValoresDePolitica {
   'os.checklist_completo_obrigatorio': ChecklistCompletoObrigatorio;
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria;
   'ativo.criticidade': NomesDeCriticidade;
+  'ativo.aprovacao_do_cadastro': AprovacaoDoCadastro;
   /** Calendário de SLA (1c, ADR-042): prazos por prioridade e categoria, pausa, ponto facultativo e meta. */
   'chamado.sla': PoliticaDeSla;
   /** Horário de atendimento do hotel (1c, ADR-042), na hora local dele. */
@@ -180,6 +190,11 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
               texto.trim().length <= LIMITES_DE_CAMPO.rotulo,
           ),
       ),
+  },
+  'ativo.aprovacao_do_cadastro': {
+    padrao: { ligado: false },
+    valido: (v): v is AprovacaoDoCadastro =>
+      objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
   },
   'chamado.sla': {
     padrao: SLA_PADRAO,

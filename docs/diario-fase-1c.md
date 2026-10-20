@@ -1090,3 +1090,61 @@ O #282 (painel), o #336 (termos) e o #335 da 1b entraram na `main` em 20/10/2026
   - a tolerância da preventiva na tela de configuração;
   - a tradução profissional, que é contratação externa.
 - **Próximo:** os gráficos do painel. Primeiro passo: conferir na seção 5 de `docs/referencia/paridade-mock-1c.md` e no mock quais gráficos o painel mostra (a linha de 14 dias e os chamados por dia) e se o `packages/ui` já tem um componente de gráfico.
+
+## Gráficos do painel de indicadores (decisão 6; 20/10/2026)
+
+**Área compartilhada (catálogos), registrada antes de mexer:** só chaves novas `indicadores.grafico.*`. O `packages/ui` ganha um componente e dois tokens. Branch `claude/1c-graficos`, a partir da `main` bf9b3c0.
+
+**Feito:**
+- **`GraficoDeLinhas` (`packages/ui/src/grafico.tsx`):**
+  - um eixo só, com a grade discreta e três rótulos no eixo X;
+  - a legenda quando há mais de uma série;
+  - ao passar o ponteiro, ou com as setas e o foco no gráfico, a linha vertical e a dica com o valor de cada série;
+  - a tabela dos números logo abaixo, num "Ver os números de cada dia";
+  - a largura acompanha a do painel.
+- **Cores:** os tokens `--hk-serie-1` (azul) e `--hk-serie-2` (laranja), da paleta de referência de gráficos, validados contra a superfície de cada tema para daltonismo e contraste. O laranja do tema claro escureceu um pouco para chegar a 3:1 sobre a superfície 2; o `tests/ui-contraste.test.ts` agora confere as duas séries.
+- **No painel (`/indicadores`):** a tabela "Chamados por dia" virou dois gráficos, porque as escalas não se misturam:
+  - "Fluxo de chamados": abertos e concluídos por dia;
+  - "Backlog no fim do dia".
+- **Conferido:** um print do gráfico, renderizado no servidor, nos dois temas. A dica do ponteiro não foi vista no navegador.
+
+**Fica para depois:**
+- **"Onde mais quebra"** (chamados por categoria), a terceira peça da decisão 6. Não está no glossário de métricas, e a definição é um termo novo: precisa de uma versão nova do glossário, com a aprovação de Cesar e Kaio. A proposta está abaixo.
+- **A tela inicial (seção 4 da paridade).** Hoje é só a lista de hotéis. Faltam:
+  - os quatro indicadores do topo, com a linha de 14 dias;
+  - o quadro por hotel, com a regra de situação;
+  - a contagem regressiva dos 6 próximos prazos;
+  - os cartões do proprietário e do locador;
+  - os "Últimos eventos" da auditoria (decisão 5);
+  - os gráficos.
+
+  Não é um dos dez itens da ordem da 1c, mas as decisões 4, 5 e 6 citam o painel. Pergunta ao Cesar, abaixo.
+
+### Proposta para o glossário de métricas: "Chamados por categoria" ("Onde mais quebra")
+
+Para a aprovação de Cesar e Kaio, como versão nova do glossário:
+- **Definição:** os chamados abertos no período, sem os cancelados, contados pela categoria do chamado.
+- **Categoria que conta:** a de agora, depois da troca na triagem, e não a da abertura.
+- **No gráfico:** barras horizontais, da categoria com mais chamados para a com menos. São as 8 primeiras, e o resto se soma em "Outras categorias".
+- **Quem vê:** o mesmo escopo dos cartões da rede, ou seja, a gestão. O proprietário não vê.
+
+### Perguntas ao Cesar (20/10/2026)
+
+1. **Tela inicial:** a seção 4 da paridade (o painel de cada persona) entra agora na 1c, como um item depois do 10? Se entrar, falta também o nome da seção do quadro por hotel. A sugestão da paridade é "Situação por hotel".
+2. **"Onde mais quebra":** a proposta acima, para o glossário.
+
+### Ponto de retomada (20/10/2026, gráficos)
+
+- **`main`:** bf9b3c0, com a CI verde nos três workflows.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel;
+  - o PR destes gráficos, que abre agora.
+- **Os dois mexem nos catálogos**, em lugares diferentes. Depois de um merge, o outro é atualizado com a `main`.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial;
+  - "Onde mais quebra".
+- **Pedido ao Kaio:**
+  - os termos nos textos `inteligencia.*`;
+  - a proposta de "Onde mais quebra" para o glossário.
+- **Próximo:** a tolerância da preventiva na tela de configuração. Primeiro passo: achar a tela das políticas do hotel e ver como ela edita as outras chaves.

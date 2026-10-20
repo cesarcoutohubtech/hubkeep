@@ -1127,6 +1127,129 @@ fieldset.hk-em-linha > legend {
   border-bottom: 1px solid var(--hk-linha);
 }
 
+/* Gráfico de linhas (1c, decisão 6): grade e eixo discretos, linhas de 2px,
+   a dica ao lado do ponto e a tabela dos números logo abaixo. */
+.hk-grafico {
+  position: relative;
+  margin: 0;
+}
+
+.hk-grafico svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.hk-grafico svg:focus-visible {
+  outline: 2px solid var(--hk-foco);
+  outline-offset: 2px;
+}
+
+.hk-grafico-grade {
+  stroke: var(--hk-linha);
+  stroke-width: 1;
+}
+
+.hk-grafico-eixo {
+  fill: var(--hk-texto-suave);
+  font-family: var(--hk-fonte);
+  font-size: 12px;
+}
+
+.hk-grafico-cursor {
+  stroke: var(--hk-texto-apagado);
+  stroke-width: 1;
+}
+
+.hk-grafico-linha {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.hk-grafico-ponto {
+  stroke: var(--hk-superficie);
+  stroke-width: 2;
+}
+
+.hk-grafico-alvo {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.hk-grafico-linha.hk-grafico-serie-1 {
+  stroke: var(--hk-serie-1);
+}
+
+.hk-grafico-linha.hk-grafico-serie-2 {
+  stroke: var(--hk-serie-2);
+}
+
+.hk-grafico-ponto.hk-grafico-serie-1,
+.hk-grafico-amostra.hk-grafico-serie-1 {
+  fill: var(--hk-serie-1);
+  background: var(--hk-serie-1);
+}
+
+.hk-grafico-ponto.hk-grafico-serie-2,
+.hk-grafico-amostra.hk-grafico-serie-2 {
+  fill: var(--hk-serie-2);
+  background: var(--hk-serie-2);
+}
+
+.hk-grafico-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  color: var(--hk-texto-suave);
+  font-size: 13px;
+}
+
+.hk-grafico-amostra {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
+.hk-grafico-dica {
+  position: absolute;
+  top: 32px;
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--hk-linha);
+  border-radius: 6px;
+  background: var(--hk-superficie-2);
+  color: var(--hk-texto);
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.hk-grafico-dica-linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hk-grafico-tabela {
+  margin-top: 8px;
+}
+
+.hk-grafico-tabela summary {
+  color: var(--hk-texto-suave);
+  font-size: 13px;
+  cursor: pointer;
+}
+
 @media print {
   .hk-lateral,
   .hk-barra,

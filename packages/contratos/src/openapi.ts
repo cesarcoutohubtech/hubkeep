@@ -128,6 +128,12 @@ import {
   RespostaDeAtivoGravado,
   RespostaDeAtivosDoHotel,
   RespostaDeMovimentacoesDoAtivo,
+  PedidoDeDecisaoDoCadastro,
+  RespostaDeCadastrosPendentes,
+  PedidoDeImportacaoDeAtivos,
+  RespostaDaImportacao,
+  RespostaDaPreviaDaImportacao,
+  RespostaDeDecisaoDoCadastro,
 } from './ativos';
 import {
   PedidoDeAreaComum,
@@ -1731,6 +1737,73 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Planos do ativo', esquema: RespostaDePlanosPreventivos },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/cadastros-pendentes',
+    resumo:
+      'A fila de aprovação do cadastro dos ativos do hotel (M4): os que chegaram pelo PWA com a política ativo.aprovacao_do_cadastro ligada e ainda não foram decididos, do mais antigo (Admin, Gestor CSC e Gerente do hotel).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Cadastros pendentes', esquema: RespostaDeCadastrosPendentes },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (cadastro_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/decisao-do-cadastro',
+    resumo:
+      'Aprova ou recusa o cadastro do ativo pendente (M4), pela versão; a recusa exige o motivo e desativa o ativo.',
+    exigeTenant: true,
+    corpo: PedidoDeDecisaoDoCadastro,
+    respostas: {
+      200: { descricao: 'Cadastro decidido', esquema: RespostaDeDecisaoDoCadastro },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (cadastro_fora_do_escopo).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+      409: ERRO(
+        'O ativo mudou depois de lido (conflito_de_versao) ou já foi decidido (cadastro_ja_decidido).',
+      ),
+      422: ERRO(
+        'Já decidido (cadastro_ja_decidido), ativo desativado (ativo_desativado), decisão inválida (decisao_do_cadastro_invalida) ou recusa sem motivo (motivo_obrigatorio).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/importacao-de-ativos/previa',
+    resumo:
+      'A prévia da importação de ativos por planilha (M2): analisa o CSV contra o hotel, sem gravar, e devolve cada linha como nova, já importada ou inválida, com os erros por código e coluna (Implantador e gestão do hotel).',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeAtivos,
+    respostas: {
+      200: { descricao: 'Prévia da planilha', esquema: RespostaDaPreviaDaImportacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (importacao_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      413: ERRO('Corpo acima do limite (corpo_grande).'),
+      422: ERRO(
+        'Planilha vazia (importacao_vazia), acima do limite de linhas ou bytes (importacao_limite), CSV mal formado (importacao_csv_invalido) ou cabeçalho fora do modelo (importacao_coluna_desconhecida, importacao_coluna_repetida, importacao_coluna_obrigatoria).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/importacao-de-ativos',
+    resumo:
+      'Importa os ativos da planilha (M2): cria só as linhas novas, aprovadas e com a chave de importação, uma unit of work por linha; a linha já importada não duplica.',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeAtivos,
+    respostas: {
+      200: { descricao: 'Resultado por linha', esquema: RespostaDaImportacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (importacao_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      413: ERRO('Corpo acima do limite (corpo_grande).'),
+      422: ERRO('Os mesmos erros do arquivo inteiro da prévia.'),
     },
   },
   {

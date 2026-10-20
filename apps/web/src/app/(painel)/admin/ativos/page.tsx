@@ -88,6 +88,9 @@ interface Ativo {
   codigoQr: string;
   /** Início da parada aberta (C5); null se não está parado. */
   paradoDesde: string | null;
+  /** A situação do cadastro (M4) e o motivo da recusa. */
+  situacaoCadastro?: 'pendente' | 'aprovado' | 'recusado';
+  motivoDaRecusa?: string | null;
 }
 
 interface Parada {
@@ -733,6 +736,14 @@ export default function AtivosDoHotel() {
                         </Selo>
                       )}
                       {!a.ativo && <Selo tom="cinza">{t('admin.ativos.desativado')}</Selo>}
+                      {a.situacaoCadastro === 'pendente' && (
+                        <Selo tom="ambar">{t('admin.ativos.cadastro_pendente')}</Selo>
+                      )}
+                      {a.situacaoCadastro === 'recusado' && (
+                        <Selo tom="cinza">
+                          {t('admin.ativos.cadastro_recusado', { motivo: a.motivoDaRecusa ?? '' })}
+                        </Selo>
+                      )}
                     </div>
                     <FormularioDeAtivo
                       ativo={a}

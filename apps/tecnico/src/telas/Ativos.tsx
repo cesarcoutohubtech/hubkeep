@@ -568,6 +568,16 @@ export function Ativos(props: {
                       {t('tecnico.ativos.item', { ativo: a.nome, local: nomeDoLocal(a.localId) })}
                     </span>
                     {!a.ativo && <small>{t('admin.ativos.desativado')}</small>}
+                    {a.situacaoCadastro === 'pendente' && (
+                      <small data-cadastro="pendente">
+                        {t('tecnico.ativos.cadastro_pendente')}
+                      </small>
+                    )}
+                    {a.situacaoCadastro === 'recusado' && (
+                      <small data-cadastro="recusado">
+                        {t('tecnico.ativos.cadastro_recusado', { motivo: a.motivoDaRecusa ?? '' })}
+                      </small>
+                    )}
                     {a.paradoDesde && (
                       <small data-parado-desde={a.paradoDesde}>
                         {t('tecnico.ativos.parado_desde', {

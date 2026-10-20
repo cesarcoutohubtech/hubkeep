@@ -88,6 +88,9 @@ const PARES: [string, string[], number][] = [
   ['--hk-menu-texto-ativo', ['--hk-menu-fundo'], TEXTO],
   ['--hk-menu-grupo', ['--hk-menu-fundo'], TEXTO],
   ['--hk-foco', FUNDOS_GERAIS, CONTORNO],
+  // As linhas dos gráficos: elemento gráfico, 3:1 sobre o painel.
+  ['--hk-serie-1', ['--hk-superficie', '--hk-superficie-2'], CONTORNO],
+  ['--hk-serie-2', ['--hk-superficie', '--hk-superficie-2'], CONTORNO],
 ];
 
 describe.each([
