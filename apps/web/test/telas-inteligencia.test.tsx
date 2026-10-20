@@ -24,6 +24,7 @@ import {
   SecaoDaEfetividade,
   TabelaDeInsights,
   caminhoDaLista,
+  numeroDigitado,
 } from '../src/app/(painel)/inteligencia/insights/tela';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
@@ -45,6 +46,7 @@ const nomes: Nomes = {
 
 const base: Insight = {
   id: I1,
+  numero: 133,
   hotelId: H1,
   bandeiraId: B,
   hotelIds: [H1],
@@ -500,9 +502,28 @@ describe('a lista', () => {
   });
 
   it('o filtro vira query, sem os campos vazios', () => {
-    expect(caminhoDaLista({ estado: 'abertos', tipo: '', faixa: 'critico', hotelId: '' })).toBe(
-      '/api/v1/inteligencia/insights?estado=abertos&faixa=critico',
+    expect(
+      caminhoDaLista({ estado: 'abertos', tipo: '', faixa: 'critico', hotelId: '', numero: '' }),
+    ).toBe('/api/v1/inteligencia/insights?estado=abertos&faixa=critico');
+  });
+
+  it('o número do insight: "INS-0133", "0133" e "133" procuram o 133 em qualquer estado', () => {
+    for (const digitado of ['INS-0133', '0133', ' 133 ']) {
+      expect(
+        caminhoDaLista({ estado: 'abertos', tipo: '', faixa: '', hotelId: '', numero: digitado }),
+      ).toBe('/api/v1/inteligencia/insights?numero=133');
+    }
+    expect(numeroDigitado('INS-')).toBeNull();
+    expect(numeroDigitado('0000')).toBeNull();
+    expect(numeroDigitado('1234567890')).toBeNull();
+  });
+
+  it('a lista mostra o número do insight com quatro dígitos e o tipo', () => {
+    const lista = renderizar(
+      'pt-BR',
+      <TabelaDeInsights lista={{ insights: [{ ...sistemico.insight }], nomes }} />,
     );
+    expect(lista).toContain('INS-0133 · Possível problema sistêmico');
   });
 });
 

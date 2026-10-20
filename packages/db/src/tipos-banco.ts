@@ -338,6 +338,7 @@ export interface AppInsight {
   id: string;
   motivo_descarte: string | null;
   nota: string | null;
+  numero: number;
   primeira_deteccao_em: Timestamp;
   responsavel_id: string | null;
   tenant_id: string;

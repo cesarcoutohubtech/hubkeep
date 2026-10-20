@@ -81,6 +81,7 @@ const gerente: Atribuicao = {
 
 const linha = (extra: Partial<InsightComEvidenciaNoBanco> = {}): InsightComEvidenciaNoBanco => ({
   id: I1,
+  numero: 133,
   hotelId: H1,
   bandeiraId: null,
   hotelIds: [H1],

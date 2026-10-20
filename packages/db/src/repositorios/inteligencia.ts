@@ -608,11 +608,15 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
 
     async abrirInsight(n) {
       const id = novoId();
-      await tx
+      const { numero } = await tx
         .insertInto('app.insight')
         .values({
           id,
           tenant_id: uow.tenantId,
+          // O número que as pessoas citam (0060): o maior do tenant mais um, na
+          // transação do job; a chave única (tenant_id, numero) barra a corrida.
+          numero: sql<number>`(select coalesce(max(numero), 0) + 1 from app.insight
+            where tenant_id = ${uow.tenantId})`,
           hotel_id: n.hotelId,
           bandeira_id: n.bandeiraId,
           hotel_ids: [...n.hotelIds],
@@ -629,13 +633,15 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
           primeira_deteccao_em: n.em,
           ultima_deteccao_em: n.em,
         })
-        .execute();
+        .returning('numero')
+        .executeTakeFirstOrThrow();
       uow.auditar({
         entidade: 'insight',
         registroId: id,
         acao: 'abrir',
         hotelId: null,
         depois: {
+          numero,
           tipo: n.tipo,
           familia: n.familia,
           hotelIds: n.hotelIds,

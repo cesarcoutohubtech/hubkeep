@@ -85,12 +85,20 @@ export const ConsultaDeInsights = z
     faixa: z.enum(FAIXAS_DO_INSIGHT_API).optional(),
     /** Os insights que incluem este hotel. */
     hotelId: z.guid().optional(),
+    /** O insight deste número ("INS-0133" é 133), em qualquer estado se o estado não vier. */
+    numero: z
+      .string()
+      .regex(/^[1-9][0-9]{0,8}$/)
+      .transform(Number)
+      .optional(),
   })
   .meta({ id: 'ConsultaDeInsights' });
 
 export const InsightApi = z
   .object({
     id: z.guid(),
+    /** O número que as pessoas citam, sequencial no grupo; a tela mostra "INS-0133". */
+    numero: z.int().min(1),
     /** Nulo no insight de rede. */
     hotelId: z.guid().nullable(),
     bandeiraId: z.guid().nullable(),

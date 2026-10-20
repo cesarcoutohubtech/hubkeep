@@ -43,6 +43,7 @@ const ativo: AtivoDoPainel = {
 
 const insight = (evidencia: unknown): InsightComEvidencia => ({
   id: 'i1',
+  numero: 133,
   hotelId: 'h1',
   bandeiraId: null,
   hotelIds: ['h1'],

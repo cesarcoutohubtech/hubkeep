@@ -81,6 +81,8 @@ export const SEMANAS_DA_SERIE = 12;
 
 export interface InsightDoPainel {
   id: string;
+  /** O número que as pessoas citam ("INS-0133"), sequencial no tenant. */
+  numero: number;
   /** Null no insight de rede. */
   hotelId: string | null;
   bandeiraId: string | null;
@@ -132,6 +134,8 @@ export interface FiltroDeInsights {
   faixa?: string;
   /** Os insights que incluem este hotel. */
   hotelId?: string;
+  /** O insight deste número. */
+  numero?: number;
 }
 
 /** Os abertos contados por tipo, faixa e se têm responsável. */
@@ -470,15 +474,21 @@ export async function listarInsights(
     tipo?: TipoDeInsight | undefined;
     faixa?: string | undefined;
     hotelId?: string | undefined;
+    /** Procurar pelo número: acha o insight em qualquer estado, se o estado não vier. */
+    numero?: number | undefined;
   },
   agora: Date,
 ): Promise<ListaDeInsights> {
   const atribuicoes = await exigirPainel(p, agora);
   const insights = await p.insights({
-    estados: estadosDoFiltro(pedido.estado ?? 'abertos'),
+    estados:
+      pedido.numero !== undefined && !pedido.estado
+        ? ESTADOS_DO_INSIGHT
+        : estadosDoFiltro(pedido.estado ?? 'abertos'),
     ...(pedido.tipo ? { tipo: pedido.tipo } : {}),
     ...(pedido.faixa ? { faixa: pedido.faixa } : {}),
     ...(pedido.hotelId ? { hotelId: pedido.hotelId } : {}),
+    ...(pedido.numero !== undefined ? { numero: pedido.numero } : {}),
   });
   const [ligados, nomes] = await Promise.all([
     insights.length ? p.ligados(insights.map((i) => i.id)) : Promise.resolve([]),

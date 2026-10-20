@@ -40,6 +40,7 @@ const MODULO: ModuloContratado = { modulo: 'inteligencia', inicio: antes(100), f
 
 const insight = (extra: Partial<InsightComEvidencia> = {}): InsightComEvidencia => ({
   id: 'i1',
+  numero: 133,
   hotelId: 'h1',
   bandeiraId: 'b1',
   hotelIds: ['h1'],
@@ -317,6 +318,27 @@ describe('lista', () => {
       { estados: ['novo', 'em_revisao', 'aceito', 'em_acao', 'monitorando'] },
       { estados: ['resolvido', 'descartado'], tipo: 'sistemico', faixa: 'atencao' },
       { estados: ['aceito'], hotelId: 'h1' },
+    ]);
+  });
+
+  it('pelo número, o insight em qualquer estado; com o estado, só nele', async () => {
+    const p = emMemoria();
+    await listarInsights(p, { numero: 133 }, agora);
+    await listarInsights(p, { numero: 133, estado: 'abertos' }, agora);
+    expect(p.m.filtros).toEqual([
+      {
+        estados: [
+          'novo',
+          'em_revisao',
+          'aceito',
+          'em_acao',
+          'monitorando',
+          'resolvido',
+          'descartado',
+        ],
+        numero: 133,
+      },
+      { estados: ['novo', 'em_revisao', 'aceito', 'em_acao', 'monitorando'], numero: 133 },
     ]);
   });
 

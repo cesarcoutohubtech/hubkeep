@@ -192,11 +192,11 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
     );
     const insight = (id: string, familia: string, encerrado: Date | null, estado: string) =>
       q(
-        `insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, familia, chave, escopo,
-           estado, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em,
+        `insert into app.insight (numero, id, tenant_id, hotel_id, hotel_ids, tipo, familia, chave,
+           escopo, estado, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em,
            encerrado_em, encerrado_por, motivo_descarte)
-         values ($1, $2, $3, array[$3]::uuid[], 'atencao_ativo', $4, $5, '{}', $6, 'atencao', 60, 2,
-           $7, $7, $8, $9, $10)`,
+         values ((select coalesce(max(numero), 0) + 1 from app.insight where tenant_id = $2), $1, $2, $3,
+           array[$3]::uuid[], 'atencao_ativo', $4, $5, '{}', $6, 'atencao', 60, 2, $7, $7, $8, $9, $10)`,
         [
           id,
           T,
@@ -443,6 +443,16 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       chave: chave(familia, [H1]),
       evidencia: { corretivaIds: [C.recente] },
     });
+    // O número do insight (0060): o maior do tenant mais um, e só um insight com ele.
+    const n = await q(
+      `select i.numero,
+              (select max(numero) from app.insight where tenant_id = $2) as maior,
+              (select count(*)::int from app.insight where tenant_id = $2 and numero = i.numero) as iguais
+         from app.insight i where i.id = $1`,
+      [id, T],
+    );
+    expect(n.rows[0].numero).toBeGreaterThanOrEqual(1);
+    expect(n.rows[0]).toMatchObject({ maior: n.rows[0].numero, iguais: 1 });
     const auditoria = await q(
       `select entidade, acao, usuario_id, hotel_id, depois from app.auditoria where tenant_id = $1 order by em, acao`,
       [T],
@@ -457,6 +467,9 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
         ['job_inteligencia', 'calcular_dia', null, null],
       ].sort(),
     );
+    expect(
+      auditoria.rows.find((a) => a.entidade === 'insight' && a.acao === 'abrir')?.depois,
+    ).toMatchObject({ numero: n.rows[0].numero });
     // Quem disparou e as versões ficam no registro da execução.
     expect(auditoria.rows.find((a) => a.entidade === 'job_inteligencia')?.depois).toMatchObject({
       disparadoPor: 'cron',

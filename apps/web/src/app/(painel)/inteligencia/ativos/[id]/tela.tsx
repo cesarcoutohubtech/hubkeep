@@ -43,6 +43,7 @@ import {
   TabelaDeReclamacoes,
   useDatas,
   useNomeDaFaixa,
+  useNumeroDoInsight,
 } from '../../comum';
 
 type Pagina = z.infer<typeof RespostaDoAtivoNoIntelligence>;
@@ -528,6 +529,7 @@ function Gravado({ atual, limite }: { atual: NonNullable<Pagina['atual']>; limit
 
 function InsightsDoAtivo({ pagina }: { pagina: Pagina }) {
   const t = useT();
+  const numero = useNumeroDoInsight();
   const { data } = useDatas();
   return (
     <Painel titulo={t('inteligencia.ativo.insights')}>
@@ -539,7 +541,10 @@ function InsightsDoAtivo({ pagina }: { pagina: Pagina }) {
             <li key={i.id}>
               <span className="hk-em-linha">
                 <Link href={`/inteligencia/insights/${i.id}`}>
-                  {t('inteligencia.insight.tipo', { tipo: i.tipo })}
+                  {t('inteligencia.insight.numero_e_tipo', {
+                    numero: numero(i.numero),
+                    tipo: t('inteligencia.insight.tipo', { tipo: i.tipo }),
+                  })}
                 </Link>
                 <SeloDoEstado estado={i.estado} />
               </span>
