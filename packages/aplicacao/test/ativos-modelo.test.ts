@@ -1,8 +1,9 @@
 // O modelo escolhido no cadastro do ativo (M1), com portas em memória: o
 // modelo ativo e da categoria do ativo entra; desativado ou de outra
 // categoria recusa; na alteração, o ausente mantém o gravado, o modelo que o
-// ativo já tinha continua valendo desativado, e trocar a categoria sem trocar
-// o modelo recusa.
+// ativo já tinha continua valendo desativado (e de outra bandeira), e trocar
+// a categoria sem trocar o modelo recusa. O modelo novo de outra bandeira que
+// a do hotel recusa (PB1b).
 import type { Atribuicao, Contexto } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import { type AtivoGravado, type DadosDeAtivo, criarCasosDeUsoDeAtivos } from '../src/index';
@@ -19,9 +20,11 @@ const atr: Atribuicao = {
 };
 
 const MODELOS = {
-  ar: { id: 'm-ar', categoriaId: 'cat-ar', ativa: true },
-  velho: { id: 'm-velho', categoriaId: 'cat-ar', ativa: false },
-  porta: { id: 'm-porta', categoriaId: 'cat-porta', ativa: true },
+  ar: { id: 'm-ar', categoriaId: 'cat-ar', ativa: true, bandeiraId: null },
+  velho: { id: 'm-velho', categoriaId: 'cat-ar', ativa: false, bandeiraId: 'b-outra' },
+  porta: { id: 'm-porta', categoriaId: 'cat-porta', ativa: true, bandeiraId: null },
+  daBandeira: { id: 'm-dela', categoriaId: 'cat-ar', ativa: true, bandeiraId: 'b-1' },
+  deOutra: { id: 'm-outra', categoriaId: 'cat-ar', ativa: true, bandeiraId: 'b-outra' },
 };
 
 const codigoDe = async (p: Promise<unknown>) => {
@@ -56,7 +59,7 @@ function montar(gravado?: Partial<AtivoGravado>) {
   };
   const casos = criarCasosDeUsoDeAtivos({
     ativos: {
-      hotel: async () => ({ id: HOTEL, bandeiraId: null }),
+      hotel: async () => ({ id: HOTEL, bandeiraId: 'b-1' }),
       local: async () => ({ id: 'l-1', hotelId: HOTEL, status: 'ativo' }),
       politica: async () => ({}),
       categorias: async () => [
@@ -99,6 +102,18 @@ describe('modelo no cadastro do ativo (M1)', () => {
     await casos.cadastrar(ctx, { ...CADASTRO, modeloId: 'm-ar' });
     await casos.cadastrar(ctx, CADASTRO);
     expect(gravacoes.map((g) => g.modeloId)).toEqual(['m-ar', null]);
+  });
+
+  it('o modelo do grupo e o da bandeira do hotel entram; o de outra bandeira recusa (PB1b)', async () => {
+    const { casos, gravacoes } = montar();
+    await casos.cadastrar(ctx, { ...CADASTRO, modeloId: 'm-dela' });
+    expect(gravacoes.map((g) => g.modeloId)).toEqual(['m-dela']);
+    expect(await codigoDe(casos.cadastrar(ctx, { ...CADASTRO, modeloId: 'm-outra' }))).toBe(
+      'modelo_ativo_de_outra_bandeira',
+    );
+    expect(
+      await codigoDe(casos.alterar(ctx, 'a-1', { ...gravacao, modeloId: 'm-outra', versao: 1 })),
+    ).toBe('modelo_ativo_de_outra_bandeira');
   });
 
   it('desativado, de outra categoria ou inexistente recusa', async () => {

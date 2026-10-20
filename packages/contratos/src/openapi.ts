@@ -16,6 +16,7 @@ import {
 } from './anexos';
 import {
   PedidoDeChecklistNaOs,
+  PedidoDeCriacaoDeModeloDeChecklist,
   PedidoDeModeloDeChecklist,
   RespostaDeChecklistAplicado,
   RespostaDeChecklistDaOs,
@@ -24,7 +25,7 @@ import {
 } from './checklists';
 import {
   PedidoDeAlteracaoDeModeloDeAtivo,
-  PedidoDeModeloDeAtivo,
+  PedidoDeCriacaoDeModeloDeAtivo,
   PedidoDeVersaoDeModeloDeAtivo,
   RespostaDeModeloDeAtivoGravado,
   RespostaDeModelosDeAtivo,
@@ -1512,13 +1513,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/modelos-de-checklist',
     resumo:
-      'Cria um modelo de checklist: nomes, categoria sugerida (nula: todas) e itens tipados (ADR-028), até 50, com a marca de obrigatório. Começa na versão 1. Só o Admin do grupo.',
+      'Cria um modelo de checklist: nomes, categoria sugerida (nula: todas) e itens tipados (ADR-028), até 50, com a marca de obrigatório, e a bandeira (PB1b; nula: do grupo, e não muda depois). Começa na versão 1. Só o Admin do grupo.',
     exigeTenant: true,
-    corpo: PedidoDeModeloDeChecklist,
+    corpo: PedidoDeCriacaoDeModeloDeChecklist,
     respostas: {
       201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeChecklistAlterado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
+      404: ERRO('Bandeira não encontrada (bandeira_nao_encontrada).'),
       422: ERRO('checklist_nome_invalido, definicao_de_campo_invalida ou entrada_invalida.'),
     },
   },
@@ -1680,14 +1682,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/modelos-de-ativo',
     resumo:
-      'Cria um modelo de ativo: categoria (obrigatória), nome, fabricante, modelo, campos pré-preenchidos da categoria (nenhum obrigatório), checklist e periodicidade sugerida. Começa na versão 1. Só o Admin do grupo.',
+      'Cria um modelo de ativo: categoria (obrigatória), nome, fabricante, modelo, campos pré-preenchidos da categoria (nenhum obrigatório), checklist, periodicidade sugerida e a bandeira (PB1b; nula: do grupo, e não muda depois). Começa na versão 1. Só o Admin do grupo.',
     exigeTenant: true,
-    corpo: PedidoDeModeloDeAtivo,
+    corpo: PedidoDeCriacaoDeModeloDeAtivo,
     respostas: {
       201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeAtivoGravado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
-      404: ERRO('categoria_nao_encontrada ou checklist_nao_encontrado.'),
+      404: ERRO('categoria_nao_encontrada, checklist_nao_encontrado ou bandeira_nao_encontrada.'),
       422: ERRO(
         'ativo_nome_invalido, ativo_texto_invalido, campo_desconhecido, valor_de_campo_invalido, periodicidade_invalida, modelo_ativo_categoria_inativa, modelo_ativo_checklist_invalido ou entrada_invalida.',
       ),
@@ -1768,7 +1770,7 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
       422: ERRO(
-        'Dados inválidos: plano_alvo_invalido, plano_ativo_invalido, plano_categoria_invalida, plano_checklist_invalido, plano_tecnico_invalido, plano_equipe_invalida, plano_responsavel_duplo, plano_sem_responsavel, periodicidade_invalida, plano_inicio_invalido ou plano_nome_invalido.',
+        'Dados inválidos: plano_alvo_invalido, plano_ativo_invalido, plano_categoria_invalida, plano_checklist_invalido, checklist_de_outra_bandeira, plano_tecnico_invalido, plano_equipe_invalida, plano_responsavel_duplo, plano_sem_responsavel, periodicidade_invalida, plano_inicio_invalido ou plano_nome_invalido.',
       ),
     },
   },
@@ -2594,7 +2596,7 @@ export const ROTAS: readonly Rota[] = [
         'OS fora do escopo (os_nao_encontrada) ou modelo não encontrado (checklist_nao_encontrado).',
       ),
       409: ERRO('transicao_invalida ou checklist_ja_respondido.'),
-      422: ERRO('checklist_modelo_inativo ou entrada_invalida.'),
+      422: ERRO('checklist_modelo_inativo, checklist_de_outra_bandeira ou entrada_invalida.'),
     },
   },
   {

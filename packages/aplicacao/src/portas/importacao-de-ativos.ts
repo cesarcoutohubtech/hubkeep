@@ -20,6 +20,8 @@ export interface ModeloParaImportar {
   categoriaId: string;
   nome: string;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo. */
+  bandeiraId: string | null;
   fabricante: string | null;
   modelo: string | null;
   campos: unknown;

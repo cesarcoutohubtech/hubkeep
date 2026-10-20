@@ -55,6 +55,7 @@ export {
   ChecklistDaOsApi,
   ModeloDeChecklistApi,
   PedidoDeChecklistNaOs,
+  PedidoDeCriacaoDeModeloDeChecklist,
   PedidoDeModeloDeChecklist,
   RespostaDeChecklistAplicado,
   RespostaDeChecklistDaOs,
@@ -368,6 +369,7 @@ export {
 export {
   ModeloDeAtivoApi,
   PedidoDeAlteracaoDeModeloDeAtivo,
+  PedidoDeCriacaoDeModeloDeAtivo,
   PedidoDeModeloDeAtivo,
   PedidoDeVersaoDeModeloDeAtivo,
   PlanoSugeridoApi,

@@ -9,7 +9,7 @@ import { transacaoDe, type UnidadeDeTrabalho } from '../unidade-de-trabalho';
 
 export async function criarModeloDeChecklist(
   uow: UnidadeDeTrabalho,
-  m: { categoriaId: string | null; nomes: object; itens: object[] },
+  m: { categoriaId: string | null; bandeiraId: string | null; nomes: object; itens: object[] },
 ): Promise<{ id: string }> {
   const id = novoId();
   await transacaoDe(uow)
@@ -18,6 +18,8 @@ export async function criarModeloDeChecklist(
       id,
       tenant_id: uow.tenantId,
       categoria_id: m.categoriaId,
+      // PB1b: só na criação; campo de escopo, sem UPDATE (ADR-011).
+      bandeira_id: m.bandeiraId,
       nomes: JSON.stringify(m.nomes),
       itens: JSON.stringify(m.itens),
     })

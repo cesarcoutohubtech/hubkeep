@@ -17,6 +17,7 @@ import {
   diaNoFuso,
   ehTecnicoDoHotel,
   exigir,
+  exigirDaBandeiraDoHotel,
   exigirPlanoNaoEncerrado,
   exigirResponsavelParaAtivar,
   normalizarNomeDoPlano,
@@ -149,6 +150,7 @@ export function criarCasosDeUsoDePlanosPreventivos(deps: {
       if (!m?.ativa) {
         throw new RegraViolada('plano_checklist_invalido', 'Checklist indisponível para o plano.');
       }
+      exigirDaBandeiraDoHotel(m, hotel, 'checklist_de_outra_bandeira');
     }
     if (p.tecnicoId !== null) {
       const atribuicoes = await deps.triagem.atribuicoesDe(ctx, p.tecnicoId);

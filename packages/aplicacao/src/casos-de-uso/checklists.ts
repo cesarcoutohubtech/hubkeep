@@ -15,6 +15,7 @@ import {
   decidirAplicacaoDoChecklist,
   decidirRegistroNaOs,
   exigir,
+  exigirDaBandeiraDoHotel,
   horaDaResposta,
   lerDefinicoes,
   lerRespostas,
@@ -45,6 +46,8 @@ export interface ModeloDeChecklist {
   itens: DefinicaoDeCampo[];
   versao: number;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo inteiro. */
+  bandeiraId: string | null;
 }
 
 export interface PedidoDeModeloDeChecklist {
@@ -55,7 +58,11 @@ export interface PedidoDeModeloDeChecklist {
 
 export interface CasosDeUsoDeChecklists {
   listarModelos(ctx: Contexto): Promise<{ idiomaPadrao: Idioma; modelos: ModeloDeChecklist[] }>;
-  criarModelo(ctx: Contexto, p: PedidoDeModeloDeChecklist): Promise<{ id: string }>;
+  /** A bandeira (PB1b) só se escolhe na criação; ausente ou nula: do grupo. */
+  criarModelo(
+    ctx: Contexto,
+    p: PedidoDeModeloDeChecklist & { bandeiraId?: string | null | undefined },
+  ): Promise<{ id: string }>;
   /** A versão sobe só quando os itens mudam (validarItensDoChecklist). */
   alterarModelo(
     ctx: Contexto,
@@ -83,6 +90,7 @@ const paraModelo = (m: ModeloDeChecklistGravado): ModeloDeChecklist => ({
   itens: lerDefinicoes(m.itens),
   versao: m.versao,
   ativa: m.ativa,
+  bandeiraId: m.bandeiraId,
 });
 
 export const paraChecklistDaOs = (c: ChecklistDaOsGravado): ChecklistDaOs => {
@@ -141,8 +149,13 @@ export function criarCasosDeUsoDeChecklists(deps: {
     async criarModelo(ctx, p) {
       await exigirAdmin(ctx);
       const { itens } = validarItensDoChecklist(p.itens);
+      const bandeiraId = p.bandeiraId ?? null;
+      if (bandeiraId !== null && !(await deps.checklists.bandeira(ctx, bandeiraId))) {
+        throw new NaoEncontrado('bandeira_nao_encontrada', 'Bandeira não encontrada.');
+      }
       return deps.checklists.criarModelo(ctx, {
         categoriaId: p.categoriaId,
+        bandeiraId,
         nomes: validarNomesDoChecklist(p.nomes),
         itens,
       });
@@ -185,6 +198,8 @@ export function criarCasosDeUsoDeChecklists(deps: {
         throw new NaoEncontrado('checklist_nao_encontrado', 'Checklist não encontrado.');
       }
       const modelo = paraModelo(gravado);
+      // PB1b: o checklist de outra bandeira não vai para a OS deste hotel.
+      exigirDaBandeiraDoHotel(modelo, { bandeiraId: os.bandeiraId }, 'checklist_de_outra_bandeira');
       decidirAplicacaoDoChecklist({
         estadoDaOs: os.estado,
         modeloAtivo: modelo.ativa,

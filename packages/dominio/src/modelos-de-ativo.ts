@@ -20,6 +20,7 @@ import {
 } from './campos-tipados';
 import { normalizarNomeDeAtivo, normalizarTextoDoAtivo } from './ativos';
 import { PermissaoNegada, RegraViolada } from './erros';
+import { exigirDaBandeiraDoHotel } from './pacote-da-bandeira';
 import { type Resultado, ehAdminGrupo } from './permissoes';
 import { type Periodicidade, validarPeriodicidade } from './plano-preventivo';
 import type { Atribuicao } from './tipos';
@@ -49,6 +50,8 @@ export interface ChecklistDoModelo {
   id: string;
   ativa: boolean;
   categoriaId: string | null;
+  /** PB1b: nulo (ou ausente) vale para o grupo. */
+  bandeiraId?: string | null;
 }
 
 export interface DadosDoModeloDeAtivo {
@@ -82,17 +85,21 @@ export function validarModeloDeAtivo(
   categoria: CategoriaDoModelo,
   checklist: ChecklistDoModelo | null,
   categoriaAnterior: string | null = null,
+  /** A bandeira do modelo (PB1b): o checklist tem de ir para os mesmos hotéis. */
+  bandeiraDoModelo: string | null = null,
 ): DadosDoModeloDeAtivo {
   if (!categoria.ativa && categoria.id !== categoriaAnterior) {
     throw new RegraViolada('modelo_ativo_categoria_inativa', 'A categoria está desativada.');
   }
   if (
     checklist &&
-    (!checklist.ativa || (checklist.categoriaId !== null && checklist.categoriaId !== categoria.id))
+    (!checklist.ativa ||
+      (checklist.categoriaId !== null && checklist.categoriaId !== categoria.id) ||
+      ((checklist.bandeiraId ?? null) !== null && checklist.bandeiraId !== bandeiraDoModelo))
   ) {
     throw new RegraViolada(
       'modelo_ativo_checklist_invalido',
-      'O checklist está desativado ou é de outra categoria.',
+      'O checklist está desativado, é de outra categoria ou de outra bandeira.',
     );
   }
   const opcionais = categoria.definicoes.map((d) => ({ ...d, obrigatorio: false }));
@@ -174,12 +181,21 @@ export function preencherComModelo(
  * do ativo. Sem modelo, nada a conferir.
  */
 export function validarModeloDoAtivo(
-  modelo: { categoriaId: string; ativa: boolean } | null,
+  modelo: { categoriaId: string; ativa: boolean; bandeiraId?: string | null } | null,
   categoriaDoAtivo: string | null,
+  /** PB1b: com o hotel, o modelo de outra bandeira é recusado. */
+  hotel?: { bandeiraId: string | null },
 ): void {
   if (!modelo) return;
   if (!modelo.ativa) {
     throw new RegraViolada('modelo_ativo_inativo', 'O modelo de ativo está desativado.');
+  }
+  if (hotel) {
+    exigirDaBandeiraDoHotel(
+      { bandeiraId: modelo.bandeiraId ?? null },
+      hotel,
+      'modelo_ativo_de_outra_bandeira',
+    );
   }
   if (modelo.categoriaId !== categoriaDoAtivo) {
     throw new RegraViolada(

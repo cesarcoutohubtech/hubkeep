@@ -32,6 +32,20 @@ export function vaiParaOHotel(
   return item.bandeiraId === null || item.bandeiraId === hotel.bandeiraId;
 }
 
+/**
+ * O modelo de ativo ou o checklist escolhido no hotel tem de valer para ele
+ * (PB1b): o da outra bandeira é recusado, mesmo que o usuário o enxergue.
+ */
+export function exigirDaBandeiraDoHotel(
+  item: { bandeiraId: string | null },
+  hotel: { bandeiraId: string | null },
+  codigo: 'modelo_ativo_de_outra_bandeira' | 'checklist_de_outra_bandeira',
+): void {
+  if (!vaiParaOHotel(item, hotel)) {
+    throw new RegraViolada(codigo, 'O item é de outra bandeira que a do hotel.');
+  }
+}
+
 /** Quem mantém o pacote (planos do pacote e a bandeira dos modelos): só o Admin do grupo. */
 export function podeGerirPacote(minhas: readonly Atribuicao[], agora: Date): Resultado {
   return ehAdminGrupo(minhas, agora)

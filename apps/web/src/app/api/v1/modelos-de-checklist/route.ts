@@ -1,8 +1,9 @@
 // GET /api/v1/modelos-de-checklist — modelos de checklist do grupo, inclusive
 // os desativados (PV1, ADR-040). Leem a gestão e o Implantador.
-// POST /api/v1/modelos-de-checklist — cria um modelo. Só o Admin do grupo.
+// POST /api/v1/modelos-de-checklist — cria um modelo, com a bandeira (PB1b). Só
+// o Admin do grupo.
 import {
-  PedidoDeModeloDeChecklist,
+  PedidoDeCriacaoDeModeloDeChecklist,
   RespostaDeModeloDeChecklistAlterado,
   RespostaDeModelosDeChecklist,
 } from '@hubkeep/contratos';
@@ -23,7 +24,7 @@ export const GET = rota('checklists.listar', async (r) => {
 
 export const POST = rota('checklists.criar', async (r) => {
   const ctx = await r.contexto();
-  const pedido = await r.corpo(PedidoDeModeloDeChecklist);
+  const pedido = await r.corpo(PedidoDeCriacaoDeModeloDeChecklist);
   const { id } = await (await casosDeUsoDeChecklists()).criarModelo(ctx, pedido);
   return r.responder(201, RespostaDeModeloDeChecklistAlterado, { id, versao: 1 });
 });

@@ -20,6 +20,8 @@ export const ModeloDeChecklistApi = z
     /** Sobe a cada gravação que muda os itens; a OS guarda a versão aplicada. */
     versao: z.int(),
     ativa: z.boolean(),
+    /** PB1b: nulo vale para o grupo inteiro; não muda depois de criado. */
+    bandeiraId: z.guid().nullable(),
   })
   .meta({ id: 'ModeloDeChecklistApi' });
 
@@ -43,6 +45,11 @@ export const PedidoDeModeloDeChecklist = z
       .max(100),
   })
   .meta({ id: 'PedidoDeModeloDeChecklist' });
+
+/** A bandeira (PB1b) só se escolhe na criação; ausente ou nula: do grupo. */
+export const PedidoDeCriacaoDeModeloDeChecklist = PedidoDeModeloDeChecklist.extend({
+  bandeiraId: z.guid().nullable().optional(),
+}).meta({ id: 'PedidoDeCriacaoDeModeloDeChecklist' });
 
 export const RespostaDeModeloDeChecklistAlterado = z
   .object({ id: z.guid(), versao: z.int().optional() })
