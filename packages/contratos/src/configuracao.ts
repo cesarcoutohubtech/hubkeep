@@ -145,6 +145,11 @@ export const MatrizDeArrendamentoApi = z
   .refine((r) => Object.keys(r).length <= 200)
   .meta({ id: 'MatrizDeArrendamentoApi' });
 
+/** Tolerância da preventiva em dia (1c, decisão 11): de 0 a 30 dias, padrão 0. */
+export const ToleranciaDaPreventivaApi = z
+  .strictObject({ dias: z.int().min(0).max(30) })
+  .meta({ id: 'ToleranciaDaPreventivaApi' });
+
 export const FORMATOS_DE_POLITICA_API = {
   'os.aceite_automatico': AceiteAutomatico,
   'os.codigos_obrigatorios': CodigosObrigatorios,
@@ -157,6 +162,7 @@ export const FORMATOS_DE_POLITICA_API = {
   'hotel.horario_atendimento': HorarioDeAtendimentoApi,
   'chamado.escalonamento': EscalonamentoDeSlaApi,
   'hotel.matriz_arrendamento': MatrizDeArrendamentoApi,
+  'preventiva.tolerancia_dias': ToleranciaDaPreventivaApi,
 } as const;
 
 export const CHAVES_DE_POLITICA_API = Object.keys(
@@ -164,7 +170,13 @@ export const CHAVES_DE_POLITICA_API = Object.keys(
 ) as (keyof typeof FORMATOS_DE_POLITICA_API)[];
 
 /** Os prefixos das chaves do núcleo, iguais aos do domínio (tests/contratos-dominio). */
-export const PREFIXOS_DO_NUCLEO_API = ['os.', 'chamado.', 'ativo.', 'hotel.'] as const;
+export const PREFIXOS_DO_NUCLEO_API = [
+  'os.',
+  'chamado.',
+  'ativo.',
+  'hotel.',
+  'preventiva.',
+] as const;
 
 const ChaveDeExtensao = z
   .string()
@@ -235,6 +247,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('hotel.matriz_arrendamento'),
     escopo: EscopoDePolitica,
     valor: MatrizDeArrendamentoApi.nullable(),
+  }),
+  z.object({
+    chave: z.literal('preventiva.tolerancia_dias'),
+    escopo: EscopoDePolitica,
+    valor: ToleranciaDaPreventivaApi.nullable(),
   }),
 ]);
 
@@ -323,6 +340,7 @@ export const RespostaDeConfiguracao = z
         resolvida('hotel.horario_atendimento', HorarioDeAtendimentoApi),
         resolvida('chamado.escalonamento', EscalonamentoDeSlaApi),
         resolvida('hotel.matriz_arrendamento', MatrizDeArrendamentoApi),
+        resolvida('preventiva.tolerancia_dias', ToleranciaDaPreventivaApi),
       ]),
     ),
   })
