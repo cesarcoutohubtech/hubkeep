@@ -3168,3 +3168,15 @@ Preparado a partir do "Ambos agora" do Cesar. O PR só abre depois do "sim" do K
   - o Cesar: particionar ou reter a métrica diária;
   - os detalhes do Kaio.
 - **Próximo:** com o "sim" do Kaio, abrir o PR do (r) e preparar o (n). Primeiro passo do (n): conferir a última migração da `main` e o desenho da coluna `numero` em `app.insight` (`supabase/migrations/20261010200828_insight.sql`).
+
+### O "sim" do Kaio no item 3, o "aprovo" do Cesar nos adendos e a métrica particionada (20/10/2026)
+
+**Respostas** (20/10/2026, nesta sessão):
+- **Do Kaio:** "Kaio aqui. Sim, continue como cesar quer. (r) e (n) agora". O item 3 fica decidido pelos dois: o (r) e o (n) antes do piloto.
+- **Do Cesar:** "Cesar aqui: aprovo no texto dos adendos de 08/10 aos ADR-034 e ADR-036". Com o "aprovo" do Kaio, os dois adendos ficam aprovados pelos dois.
+- **Do Cesar, na mesma mensagem:** "decidir se a métrica diária vai ser particionada ou retida. Particionada". Com isso, a pendência de particionamento do ADR-036 sai do "quando o volume pedir" e entra agora.
+
+**O que segue:**
+- O PR do (r) abre agora, fora da zona protegida. O #340 já entrou (f6236e7), e a `main` foi juntada sem conflito.
+- Depois do merge do (r), abre um PR de zona protegida com o (n), os status dos itens 1 a 4 no `docs/03` e o adendo ao ADR-033, que entra como proposta. A branch é uma só, por isso esse PR espera.
+- **O particionamento** pede migração, meta-testes e um adendo ao ADR-036. Vai com proposta antes do código, num PR de zona protegida próprio, depois do (n).
