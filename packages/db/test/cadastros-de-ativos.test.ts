@@ -87,8 +87,9 @@ describe.skipIf(!temBanco)('M4 — aprovação do cadastro dos ativos', { timeou
     }
     const atribuir = (usuario: string, papel: string, escopo: string, hotel: string | null) =>
       dono.query(
-        `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, hotel_id, concedido_por)
-         values ($1, $2, $3, $4, $5, $6, $7)`,
+        `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, hotel_id, concedido_por, valido_ate)
+         values ($1, $2, $3, $4::app.papel, $5, $6, $7,
+                 case when $4::app.papel = 'implantador' then now() + interval '30 days' end)`,
         [randomUUID(), TENANT, usuario, papel, escopo, hotel, U.admin],
       );
     await atribuir(U.admin, 'admin_grupo', 'grupo', null);
