@@ -644,3 +644,32 @@ export {
   validarPeriodoDaContagem,
 } from './comunicacao';
 export type { CanalDeEnvio, ResponsavelDaOsAtiva, SituacaoDeEnvio } from './comunicacao';
+export {
+  COLUNAS_DA_IMPORTACAO,
+  COLUNAS_OBRIGATORIAS,
+  LIMITES_DA_IMPORTACAO,
+  PREFIXO_DE_CAMPO,
+  SEPARADOR_DO_MODELO,
+  analisarImportacao,
+  chaveDeImportacao,
+  lerCabecalho,
+  lerCsv,
+  lerDataDaPlanilha,
+  lerValorDaPlanilha,
+  modeloDaPlanilha,
+  paraComparar,
+  podeImportarAtivos,
+} from './importacao-de-ativos';
+export type {
+  AtivoDaImportacao,
+  CategoriaDaImportacao,
+  ColunaDaImportacao,
+  ErroDaLinha,
+  LinhaAnalisada,
+  LocalDaImportacao,
+  ModeloDaImportacao,
+  ReferenciasDaImportacao,
+  ResultadoDaImportacao,
+  SituacaoDaLinha,
+} from './importacao-de-ativos';
+export { sha256, tamanhoUtf8 } from './resumo-sha256';

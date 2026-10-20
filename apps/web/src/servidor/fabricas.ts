@@ -20,6 +20,7 @@ import {
   type CasosDeUsoDeModelosDeAtivo,
   type CasosDeUsoDeSugestoesDePlano,
   type CasosDeUsoDeCadastrosDeAtivos,
+  type CasosDeUsoDeImportacaoDeAtivos,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeConsultas,
@@ -55,6 +56,7 @@ import {
   criarCasosDeUsoDeModelosDeAtivo,
   criarCasosDeUsoDeSugestoesDePlano,
   criarCasosDeUsoDeCadastrosDeAtivos,
+  criarCasosDeUsoDeImportacaoDeAtivos,
   criarCasosDeUsoDeCodigos,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeConsultas,
@@ -92,6 +94,7 @@ import {
   criarPortaModelosDeAtivo,
   criarPortaSugestoesDePlano,
   criarPortaCadastrosDeAtivos,
+  criarPortaImportacaoDeAtivos,
   criarPortaCodigos,
   criarPortaConfiguracao,
   criarPortaConsultasDaCorretiva,
@@ -145,6 +148,7 @@ export interface FabricasDeCasosDeUso {
   planosPreventivos(): CasosDeUsoDePlanosPreventivos;
   sugestoesDePlano(): CasosDeUsoDeSugestoesDePlano;
   cadastrosDeAtivos(): CasosDeUsoDeCadastrosDeAtivos;
+  importacaoDeAtivos(): CasosDeUsoDeImportacaoDeAtivos;
   situacoes(): CasosDeUsoDeSituacoes;
   chamados(): CasosDeUsoDeChamados;
   triagem(): CasosDeUsoDeTriagem;
@@ -273,6 +277,13 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
     cadastrosDeAtivos: uma(() =>
       criarCasosDeUsoDeCadastrosDeAtivos({
         cadastros: criarPortaCadastrosDeAtivos(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
+    importacaoDeAtivos: uma(() =>
+      criarCasosDeUsoDeImportacaoDeAtivos({
+        importacao: criarPortaImportacaoDeAtivos(banco),
         atribuicoes,
         relogio,
       }),

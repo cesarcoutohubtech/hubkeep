@@ -393,3 +393,18 @@ export type {
   ModeloDeAtivo,
   PedidoDeModeloDeAtivo,
 } from './casos-de-uso/modelos-de-ativo';
+export type {
+  CategoriaParaImportar,
+  ModeloParaImportar,
+  PortaImportacaoDeAtivos,
+} from './portas/importacao-de-ativos';
+export {
+  criarCasosDeUsoDeImportacaoDeAtivos,
+  nomesDaCategoria,
+} from './casos-de-uso/importacao-de-ativos';
+export type {
+  CasosDeUsoDeImportacaoDeAtivos,
+  LinhaGravada,
+  ResultadoDaGravacao,
+  SituacaoDaLinhaGravada,
+} from './casos-de-uso/importacao-de-ativos';
