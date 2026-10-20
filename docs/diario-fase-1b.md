@@ -1194,10 +1194,10 @@ Na branch `claude/great-bohr-y0tomg`, a partir da `main` com o #352. **Zona prot
 - Testes: domínio, aplicação, telas do web e do PWA, `qr.test.ts` do PWA; integração em `qr-reservados.test.ts` e pgTAP, só na CI.
 - **Fica de fora (pendência):** a coluna QR na planilha da importação (M2), prevista no desenho como opcional. A etiqueta reservada entra hoje pelo cadastro um a um.
 
-## Ponto de retomada (20/10/2026, M3b na branch)
+## Ponto de retomada (20/10/2026, PR da M3b)
 
-- **`main`:** com o #352 (M3a). **Dev:** o Cesar conferiu o `supabase migration list` em 20/10/2026, nesta sessão; a 0061 ainda não existe na `main`.
-- **PR aberto meu:** nenhum. **Zona protegida aberta:** o #354 (Dependabot).
-- **Trabalho não enviado em PR:** a M3b, na branch `claude/great-bohr-y0tomg` (migração 0061 e o resto da M3b), com push feito.
-- **Espera o Cesar:** a vez da zona protegida (o #354 sai antes, ou a ordem que ele decidir); as escolhas da M1c e as decisões da PV3c; se a coluna QR entra na planilha da importação.
-- **Próxima tarefa:** abrir o PR da M3b (`1b:`) quando a zona estiver livre. Primeiro passo: conferir no GitHub que não há PR de zona protegida aberto e que a última migração da `main` ainda é a 0060; se outra entrou antes, renumerar o comentário da 0061 e o nome do arquivo.
+- **`main`:** com o #352 (M3a) e o #354 (Dependabot da zona). **Dev:** a 0061 só vai com o `db push` do Cesar, depois da CI do PR.
+- **PR aberto:** o da M3b (`claude/great-bohr-y0tomg`), **zona protegida**: o check "zona protegida" falha por desenho (ADR-023). Antes de abrir, nenhum outro PR de zona estava aberto, e a última migração da `main` era a 0060.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge do PR da M3b e o `db push` da 0061, com a conferência no `supabase migration list`; se a coluna QR entra na planilha da importação; as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** conferir os checks do PR da M3b uma vez; depois, a próxima linha da fila do `docs/12`.
