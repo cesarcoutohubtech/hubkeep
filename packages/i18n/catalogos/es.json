@@ -1577,6 +1577,10 @@
   "indicadores.filtro.todos_os_hoteis": "Todos los hoteles",
   "indicadores.filtro.consultar": "Actualizar",
   "indicadores.vazio": "Ningún hotel de su alcance en este panel.",
+  "indicadores.acao.exportar": "Exportar CSV",
+  "indicadores.csv.arquivo": "indicadores-{inicio}-a-{fim}.csv",
+  "indicadores.csv.total": "Total de su alcance",
+  "indicadores.csv.coluna": "{coluna, select, hotel {Hotel} bandeira {Marca} uhs {Habitaciones activas} backlog {Pendientes} sla {% de SLA} sla_itens {Solicitudes en el cálculo del SLA} mttr_horas {MTTR (horas)} mediana_horas {Mediana de la reparación (horas)} preventiva {% de preventiva al día} preventiva_itens {Preventivas en el cálculo} razao {Preventivas por correctiva} uh_dias {Habitaciones-día perdidas} abertos {Solicitudes abiertas} other {Solicitudes por 100 habitaciones}}",
 
   "menu.mews": "Integración Mews",
   "admin.mews.titulo": "Integración Mews",

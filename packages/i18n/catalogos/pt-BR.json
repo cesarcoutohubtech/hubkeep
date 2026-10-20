@@ -1577,6 +1577,10 @@
   "indicadores.filtro.todos_os_hoteis": "Todos os hotéis",
   "indicadores.filtro.consultar": "Atualizar",
   "indicadores.vazio": "Nenhum hotel do seu escopo neste painel.",
+  "indicadores.acao.exportar": "Exportar CSV",
+  "indicadores.csv.arquivo": "indicadores-{inicio}-a-{fim}.csv",
+  "indicadores.csv.total": "Total do seu escopo",
+  "indicadores.csv.coluna": "{coluna, select, hotel {Hotel} bandeira {Bandeira} uhs {UHs ativas} backlog {Backlog} sla {% de SLA} sla_itens {Chamados na conta do SLA} mttr_horas {MTTR (horas)} mediana_horas {Mediana do reparo (horas)} preventiva {% de preventiva em dia} preventiva_itens {Preventivas na conta} razao {Preventivas por corretiva} uh_dias {UH-dias perdidos} abertos {Chamados abertos} other {Chamados por 100 UHs}}",
 
   "menu.mews": "Integração Mews",
   "admin.mews.titulo": "Integração Mews",

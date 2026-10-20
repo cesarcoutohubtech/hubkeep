@@ -28,7 +28,7 @@ import { type FormEvent, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type ErroDaApi, type RespostaDaApi, chamarApi } from '../../../../cliente/api';
 import { useHoteis } from '../../../../cliente/cadastro';
-import { arquivoCsv, baixarCsv } from '../../../../cliente/csv';
+import { arquivoCsv, baixarCsv, formatoDeQuemExporta } from '../../../../cliente/csv';
 import {
   chaveDaAcao,
   useCriarFormatadorDeValor,
@@ -147,10 +147,7 @@ export default function AuditoriaGeral() {
     setExportado(null);
     setExportadas(0);
     try {
-      const preferencias = await chamarApi<{ formatoRegional: string }>('/api/v1/preferencias');
-      const separador = separadorDeCsv(
-        preferencias.ok ? preferencias.dados.formatoRegional : intl.locale,
-      );
+      const separador = separadorDeCsv(await formatoDeQuemExporta(intl.locale));
       const linhas: Linha[] = [];
       let referencias: Resposta['referencias'] = {};
       let idiomaPadrao = 'pt-BR';

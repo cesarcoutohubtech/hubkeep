@@ -1577,6 +1577,10 @@
   "indicadores.filtro.todos_os_hoteis": "All hotels",
   "indicadores.filtro.consultar": "Refresh",
   "indicadores.vazio": "No hotel in your scope for this dashboard.",
+  "indicadores.acao.exportar": "Export CSV",
+  "indicadores.csv.arquivo": "indicators-{inicio}-to-{fim}.csv",
+  "indicadores.csv.total": "Total for your scope",
+  "indicadores.csv.coluna": "{coluna, select, hotel {Hotel} bandeira {Brand} uhs {Active rooms} backlog {Backlog} sla {SLA %} sla_itens {Requests in the SLA count} mttr_horas {MTTR (hours)} mediana_horas {Median repair time (hours)} preventiva {Preventive on time %} preventiva_itens {Preventives in the count} razao {Preventive per corrective} uh_dias {Room-days lost} abertos {Requests opened} other {Requests per 100 rooms}}",
 
   "menu.mews": "Mews integration",
   "admin.mews.titulo": "Mews integration",

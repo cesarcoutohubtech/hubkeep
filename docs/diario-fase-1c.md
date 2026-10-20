@@ -1066,3 +1066,27 @@ Se o Kaio quiser, o teste de termos pode passar a valer também para `inteligenc
   - a tradução profissional, que é contratação externa: o volume está na referência de termos;
   - os gráficos do painel;
   - a tolerância da preventiva na tela de configuração.
+
+## CSV do painel de indicadores (item 9, PR 2; 20/10/2026)
+
+O #282 (painel), o #336 (termos) e o #335 da 1b entraram na `main` em 20/10/2026 (bf9b3c0). O CSV do painel entra no mesmo PR do CSV de chamados ([#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332)), que o item 9 previa junto. **Área compartilhada (catálogos), registrada antes de mexer:** só chaves novas `indicadores.acao.exportar` e `indicadores.csv.*`.
+
+**Feito na branch `claude/1c-csv`:**
+- **O arquivo:** uma linha por hotel do período e, no fim, o total do escopo. As colunas: hotel, bandeira, UHs ativas, backlog, % de SLA e os chamados na conta, MTTR e mediana em horas, % de preventiva em dia e as preventivas na conta, preventivas por corretiva, UH-dias perdidos, chamados abertos e chamados por 100 UHs.
+- **Escopo:** sai o que a tela recebeu da API, sem consulta nova. O hotel que o proprietário só vê pelos cartões leva só o backlog, os UH-dias perdidos e os chamados abertos; as outras colunas ficam vazias, e o total do escopo não sai para ele.
+- **Números:** sem separador de milhar e com o decimal do formato regional de quem exporta, o mesmo que escolhe o separador (decisão 7). Sem dado, a célula fica vazia.
+- **Aviso:** o mesmo `comum.csv_exportado` da lista de chamados e da auditoria geral.
+- **Código comum:** a leitura do formato regional para o CSV (`formatoDeQuemExporta`, em `apps/web/src/cliente/csv.ts`) passou a servir a auditoria geral, a lista de chamados e o painel.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, CSV do painel)
+
+- **`main`:** bf9b3c0. A CI do merge do #335 rodava às 11h30; a mesma `main`, rodada aqui, passou em lint, typecheck e testes.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel.
+- **Pergunta ao Cesar, ainda sem resposta:** esconder também na ficha da OS o custo informado, para o proprietário.
+- **Pedido ao Kaio:** os termos nos textos `inteligencia.*` (seção do item 10, acima).
+- **Fica da 1c:**
+  - os gráficos do painel;
+  - a tolerância da preventiva na tela de configuração;
+  - a tradução profissional, que é contratação externa.
+- **Próximo:** os gráficos do painel. Primeiro passo: conferir na seção 5 de `docs/referencia/paridade-mock-1c.md` e no mock quais gráficos o painel mostra (a linha de 14 dias e os chamados por dia) e se o `packages/ui` já tem um componente de gráfico.

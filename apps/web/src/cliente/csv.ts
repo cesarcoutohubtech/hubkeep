@@ -7,6 +7,8 @@
 // local, a descrição de um chamado) não vira fórmula na planilha de quem abre.
 // Depois de baixar, a tela avisa quantas linhas saíram e em que arquivo, só
 // com o que o perfil de quem exporta enxerga (comum.csv_exportado; 1c, item 9).
+import { chamarApi } from './api';
+
 export const BOM = '﻿';
 
 const FORMULA = /^[=+\-@\t\r]/;
@@ -33,4 +35,17 @@ export function baixarCsv(conteudo: string, nome: string): void {
   a.download = nome;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** O formato regional de quem exporta (o perfil), ou o idioma da tela se a leitura falhar. */
+export async function formatoDeQuemExporta(reserva: string): Promise<string> {
+  const r = await chamarApi<{ formatoRegional: string }>('/api/v1/preferencias');
+  return r.ok ? r.dados.formatoRegional : reserva;
+}
+
+/** A data local de hoje, AAAA-MM-DD, para o nome do arquivo. */
+export function hojeNoArquivo(): string {
+  const hoje = new Date();
+  const dois = (n: number) => String(n).padStart(2, '0');
+  return `${hoje.getFullYear()}-${dois(hoje.getMonth() + 1)}-${dois(hoje.getDate())}`;
 }

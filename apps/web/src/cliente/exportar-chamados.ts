@@ -16,7 +16,7 @@ import {
   caminhoDaLista,
   useNomes,
 } from './corretiva';
-import { arquivoCsv, baixarCsv } from './csv';
+import { arquivoCsv, baixarCsv, formatoDeQuemExporta, hojeNoArquivo } from './csv';
 import { useT } from '../i18n/cliente';
 
 interface Pagina {
@@ -73,10 +73,7 @@ export function useExportarChamados(refs: Referencias | null) {
 
   async function exportar(filtro: FiltroDaTela) {
     setEstado({ tipo: 'lendo', linhas: 0 });
-    const preferencias = await chamarApi<{ formatoRegional: string }>('/api/v1/preferencias');
-    const separador = separadorDeCsv(
-      preferencias.ok ? preferencias.dados.formatoRegional : intl.locale,
-    );
+    const separador = separadorDeCsv(await formatoDeQuemExporta(intl.locale));
     const chamados: ChamadoResumido[] = [];
     let depoisDe: string | null = null;
     do {
@@ -100,11 +97,7 @@ export function useExportarChamados(refs: Referencias | null) {
       tabelaDeChamados(chamados, t, (iso) => intl.formatDate(iso, dataEHora), nomes),
       separador,
     );
-    const hoje = new Date();
-    const dois = (n: number) => String(n).padStart(2, '0');
-    const arquivo = t('corretiva.chamados.arquivo', {
-      data: `${hoje.getFullYear()}-${dois(hoje.getMonth() + 1)}-${dois(hoje.getDate())}`,
-    });
+    const arquivo = t('corretiva.chamados.arquivo', { data: hojeNoArquivo() });
     baixarCsv(conteudo, arquivo);
     setEstado({
       tipo: 'feita',
