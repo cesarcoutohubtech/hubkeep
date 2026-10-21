@@ -5,7 +5,8 @@
 //   - reenviar a mesma planilha não duplica (já importada);
 //   - a chave repetida no hotel é recusada pelo banco (corrida entre envios);
 //   - local de outro hotel não é achado, e o Técnico não importa, nem pelo
-//     domínio nem pela RLS de outro hotel.
+//     domínio nem pela RLS de outro hotel;
+//   - a coluna codigo_qr liga o ativo à etiqueta reservada no hotel (M3).
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -113,6 +114,7 @@ describe.skipIf(!temBanco)('M2 — importação de ativos por planilha', { timeo
       'app.evento_dominio',
       'app.auditoria',
       'app.ativo',
+      'app.qr_reservado',
       'app.local',
       'app.atribuicao_escopo',
       'app.hotel',
@@ -189,8 +191,35 @@ describe.skipIf(!temBanco)('M2 — importação de ativos por planilha', { timeo
       garantiaAte: null,
       criticidade: null,
       campos: {},
+      codigoQr: null,
     });
     expect(r).toBe('ja_importada');
+  });
+
+  it('a etiqueta reservada no hotel vai para o ativo; reenviar não confere de novo', async () => {
+    await dono.query(
+      `insert into app.qr_reservado (id, tenant_id, hotel_id, codigo, lote_id, criado_por)
+       values ($1, $2, $3, 'K7K7K7K7K7', $4, $5)`,
+      [randomUUID(), TENANT, H1, randomUUID(), U.implantador],
+    );
+    const csv = 'local;nome;codigo_qr\nCasa de máquinas;Bomba da etiqueta;k7k7k-7k7k7';
+    const r = await importacao.importar(ctx(U.implantador), H1, csv);
+    expect(r).toMatchObject({ criadas: 1, invalidas: 0 });
+    const { rows } = await dono.query<{ codigo_qr: string }>(
+      `select codigo_qr from app.ativo where id = $1`,
+      [r.linhas[0]?.ativoId],
+    );
+    expect(rows).toEqual([{ codigo_qr: 'K7K7K7K7K7' }]);
+    expect(await importacao.importar(ctx(U.implantador), H1, csv)).toMatchObject({
+      criadas: 0,
+      jaImportadas: 1,
+    });
+    const outra = await importacao.prever(
+      ctx(U.implantador),
+      H1,
+      'local;nome;codigo_qr\nCasa de máquinas;Outra bomba;K7K7K7K7K7',
+    );
+    expect(outra.linhas[0]?.erros.map((e) => e.codigo)).toEqual(['qr_ja_ligado']);
   });
 
   it('o Técnico não importa; sem a regra, a RLS barra o hotel que ele não escreve', async () => {

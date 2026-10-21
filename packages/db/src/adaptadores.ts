@@ -2764,11 +2764,19 @@ export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportaca
             .execute()
         ).flatMap((a) => (a.chave_importacao === null ? [] : [a.chave_importacao])),
       ),
+    reservados: (ctx, hotelId) =>
+      banco.withContext(ctx, (tx) =>
+        tx
+          .selectFrom('app.qr_reservado as r')
+          .select(['r.codigo', ligadoAoAtivo().as('ligado')])
+          .where('r.hotel_id', '=', hotelId)
+          .execute(),
+      ),
     criar: async (ctx, hotelId, a) => {
-      const { localId, chaveImportacao, ...dados } = a;
+      const { localId, chaveImportacao, codigoQr, ...dados } = a;
       try {
         const { id } = await banco.executar(ctx, (uow) =>
-          criarAtivo(uow, hotelId, localId, dados, 'aprovado', chaveImportacao),
+          criarAtivo(uow, hotelId, localId, dados, 'aprovado', chaveImportacao, codigoQr),
         );
         return { id };
       } catch (e) {
