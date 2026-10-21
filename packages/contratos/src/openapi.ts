@@ -189,6 +189,7 @@ import {
   RespostaDeAtivoDoMembro,
   RespostaDeConcessaoDePapel,
   RespostaDeMembros,
+  RespostaDeRemocaoDoSegundoFator,
   RespostaDeRevogacaoDePapel,
   RespostaDeValidade,
 } from './membros';
@@ -1258,6 +1259,22 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Só o Admin do grupo (ativacao_de_membro_so_admin).'),
       404: ERRO('Membro não encontrado ou já desativado (membro_nao_encontrado).'),
       422: ERRO('Não altera o próprio acesso (nao_altera_o_proprio_acesso).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/membros/{usuarioId}/segundo-fator/remocao',
+    resumo:
+      'Remove os fatores do segundo fator (TOTP) do membro que perdeu o aparelho, para ele cadastrar de novo no próximo login (SP1, ADR-049 e adendo ao ADR-024). Só o Admin do grupo, em aal2, e nunca o próprio. O Auth encerra as sessões do membro. Grava a auditoria (membro, remover_segundo_fator) e o evento membro.segundo_fator_removido.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Fatores removidos', esquema: RespostaDeRemocaoDoSegundoFator },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO(
+        'Só o Admin do grupo (segundo_fator_so_admin), ou a sessão sem o segundo fator (segundo_fator_obrigatorio).',
+      ),
+      404: ERRO('Membro não encontrado no tenant (membro_nao_encontrado).'),
+      422: ERRO('Não remove o próprio segundo fator (nao_remove_o_proprio_segundo_fator).'),
     },
   },
   {

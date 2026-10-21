@@ -203,6 +203,25 @@ export default function MembrosEPapeis() {
                   >
                     {m.ativo ? t('admin.membros.acao.desativar') : t('admin.membros.acao.reativar')}
                   </Botao>
+                  {/* SP1: o membro que perdeu o aparelho cadastra de novo no próximo login. */}
+                  <Botao
+                    tamanho="pequeno"
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          t('admin.membros.confirmar_remocao_do_segundo_fator', { nome: m.nome }),
+                        )
+                      )
+                        return;
+                      void executar(
+                        `/api/v1/membros/${m.usuarioId}/segundo-fator/remocao`,
+                        { method: 'POST' },
+                        'admin.membros.segundo_fator_removido',
+                      );
+                    }}
+                  >
+                    {t('admin.membros.acao.remover_segundo_fator')}
+                  </Botao>
                 </div>
               </div>
               {m.atribuicoes.length === 0 ? (

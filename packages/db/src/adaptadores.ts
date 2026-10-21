@@ -164,6 +164,7 @@ import {
   alterarValidadeDaAtribuicao,
   concederPapel,
   definirAtivoDoMembro,
+  registrarRemocaoDoSegundoFator,
   revogarPapel,
 } from './repositorios/membros';
 import { OperacaoJaRecebida, registrarOperacao } from './repositorios/operacoes-offline';
@@ -2229,6 +2230,18 @@ export function criarPortaMembros(banco: AcessoBanco): PortaMembros {
       banco.executar(ctx, (uow) => definirAtivoDoMembro(uow, usuarioId, ativo)),
     alterarValidade: (ctx, id, validoAte) =>
       banco.executar(ctx, (uow) => alterarValidadeDaAtribuicao(uow, id, validoAte)),
+    existe: (ctx, usuarioId) =>
+      banco.withContext(ctx, async (tx) =>
+        Boolean(
+          await tx
+            .selectFrom('app.membro')
+            .select('usuario_id')
+            .where('usuario_id', '=', usuarioId)
+            .executeTakeFirst(),
+        ),
+      ),
+    registrarRemocaoDoSegundoFator: (ctx, usuarioId, removidos) =>
+      banco.executar(ctx, async (uow) => registrarRemocaoDoSegundoFator(uow, usuarioId, removidos)),
   };
 }
 

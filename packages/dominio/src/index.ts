@@ -179,7 +179,12 @@ export type {
   ResumoDeImplantacao,
   TempoDeImplantacao,
 } from './implantacao';
-export { podeAlterarAtivoDoMembro, podeAlterarValidade, podeGerirMembros } from './membros';
+export {
+  podeAlterarAtivoDoMembro,
+  podeAlterarValidade,
+  podeGerirMembros,
+  podeRemoverSegundoFator,
+} from './membros';
 export {
   MODULOS_CONTRATAVEIS,
   contaComoHotel,
@@ -727,9 +732,5 @@ export {
   validarTamanhoDoLote,
 } from './qr-reservado';
 export type { CodigoReservado } from './qr-reservado';
-export {
-  PAPEIS_COM_SEGUNDO_FATOR,
-  exigeSegundoFator,
-  exigirNivelDaSessao,
-} from './segundo-fator';
+export { PAPEIS_COM_SEGUNDO_FATOR, exigeSegundoFator, exigirNivelDaSessao } from './segundo-fator';
 export type { NivelDaSessao } from './segundo-fator';

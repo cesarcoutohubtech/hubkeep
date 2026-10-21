@@ -17,6 +17,7 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POST as convidar } from '../src/app/api/v1/convites/route';
 import { GET as hoteis } from '../src/app/api/v1/hoteis/route';
+import { POST as removerSegundoFator } from '../src/app/api/v1/membros/[usuarioId]/segundo-fator/remocao/route';
 import { GET as sessao } from '../src/app/api/v1/sessao/route';
 import { GET as openapi } from '../src/app/api/interno/openapi/route';
 import { GET as confirmar } from '../src/app/auth/confirmar/route';
@@ -602,5 +603,34 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     };
     expect(erro.codigo).toBe('entrada_invalida');
     expect(erro.parametros.problemas.map((p) => p.campo)).toEqual(['email']);
+  });
+
+  // Por último: a remoção encerra as sessões do Técnico no Auth.
+  it('SP1: o Admin do grupo remove o segundo fator do Técnico; o próprio, não', async () => {
+    const cabecalhos = { authorization: `Bearer ${tokenAdmin}`, 'x-hubkeep-tenant': A.tenant };
+    const proprio = await removerSegundoFator(
+      req(`/api/v1/membros/${A.admin}/segundo-fator/remocao`, { metodo: 'POST', cabecalhos }),
+    );
+    expect(proprio.status).toBe(422);
+    expect(await proprio.json()).toMatchObject({
+      erro: { codigo: 'nao_remove_o_proprio_segundo_fator' },
+    });
+
+    const r = await removerSegundoFator(
+      req(`/api/v1/membros/${A.tecnico}/segundo-fator/remocao`, { metodo: 'POST', cabecalhos }),
+    );
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ usuarioId: A.tecnico, removidos: 1 });
+    const fatores = await dono.query(
+      `select count(*)::int as n from auth.mfa_factors where user_id = $1`,
+      [A.tecnico],
+    );
+    expect(fatores.rows).toEqual([{ n: 0 }]);
+    const aud = await dono.query(
+      `select usuario_id, depois from app.auditoria
+       where tenant_id = $1 and registro_id = $2 and acao = 'remover_segundo_fator'`,
+      [A.tenant, A.tecnico],
+    );
+    expect(aud.rows).toEqual([{ usuario_id: A.admin, depois: { fatoresRemovidos: 1 } }]);
   });
 });
