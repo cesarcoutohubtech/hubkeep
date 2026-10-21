@@ -964,7 +964,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ### Adendo de 20/10/2026: a tela de reclamações antes da abertura
 
-**Status:** aguarda a aprovação escrita de Cesar e de Kaio. A decisão é dos dois, em 20/10/2026, no chat do agente do Intelligence: "Sim, deve" (Cesar, sobre abrir a tela de reclamações antes da data de abertura das telas) e "sim para a tela de reclamações antes da abertura" (Kaio, sobre a proposta registrada em `docs/diario-intelligence.md`, "O merge do #350, o 'aprovo' do Cesar no adendo ao ADR-033 e as respostas de 20/10/2026"). O código entrou no #358.
+**Status:** aprovado por escrito em 21/10/2026, no chat do agente do Intelligence, pelo Cesar ("Cesar aqui. 362 mergeado e db push feito. Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura).") e pelo Kaio ("KAio aqui Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura)."). Aprovado pelos dois. A decisão é dos dois, em 20/10/2026, no chat do agente do Intelligence: "Sim, deve" (Cesar, sobre abrir a tela de reclamações antes da data de abertura das telas) e "sim para a tela de reclamações antes da abertura" (Kaio, sobre a proposta registrada em `docs/diario-intelligence.md`, "O merge do #350, o 'aprovo' do Cesar no adendo ao ADR-033 e as respostas de 20/10/2026"). O código entrou no #358.
 
 **Decisão:**
 - **A tela de reclamações de hóspedes** (importação, fila, classificação e abrir chamado da reclamação, ADR-047) vale desde o início do contrato do módulo, sem esperar a data de `inteligencia.visibilidade_telas`. Ela vale para os papéis da política e, entre eles, só para quem decide insight no hotel, como antes.
@@ -1040,7 +1040,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 
 ### Adendo de 20/10/2026: a métrica diária particionada por mês
 
-**Status:** aguarda a aprovação escrita de Cesar e de Kaio. As decisões são de 20/10/2026, no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O particionamento da métrica diária: proposta":
+**Status:** aprovado por escrito em 21/10/2026, no chat do agente do Intelligence, pelo Cesar ("Cesar aqui. 362 mergeado e db push feito. Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura).") e pelo Kaio ("KAio aqui Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura)."). Aprovado pelos dois. A migração 0061 entrou no #362 e foi aplicada no dev pelo `db push` do Cesar. As decisões são de 20/10/2026, no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O particionamento da métrica diária: proposta":
 - particionar antes do piloto (Cesar: "Particionada");
 - com a partição padrão (Cesar: "Com partição padrão"; Kaio: "sim na (pb)");
 - as partições até dezembro de 2027 e a migração agora são as recomendações da proposta, que o Cesar pode mudar no PR.
