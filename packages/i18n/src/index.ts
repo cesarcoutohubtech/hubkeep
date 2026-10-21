@@ -29,7 +29,7 @@ export { criarTradutor, localeDoMotor } from './tradutor';
 export type { Tradutor, ValoresDeMensagem } from './tradutor';
 export { criarFormatador, separadorDeCsv } from './formatacao';
 export type { Formatador } from './formatacao';
-export { emailDeAvisoDeSla, emailDeConvite, escaparHtml } from './emails';
+export { emailDeAvisoDeSla, emailDeConvite, emailDeRecuperacao, escaparHtml } from './emails';
 export type { DadosDoAvisoDeSla, DadosDoConvite, Email, EmailComTexto } from './emails';
 export { pushDeAvisoDeSla, pushDeOsAtribuida } from './push';
 export type { Push } from './push';

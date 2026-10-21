@@ -6,7 +6,7 @@
 // O assunto fica no config.toml (zona protegida) e muda à mão, junto.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { emailDeConvite } from '../packages/i18n/src/index';
+import { emailDeConvite, emailDeRecuperacao } from '../packages/i18n/src/index';
 
 /** Variáveis do template do Supabase (Go), no lugar dos dados do convite. */
 const VARIAVEIS_DO_SUPABASE = {
@@ -28,5 +28,27 @@ describe('template do Supabase gerado do catálogo (pt-BR)', () => {
     const config = readFileSync('supabase/config.toml', 'utf8');
     const bloco = /\[auth\.email\.template\.invite\]\s*\nsubject = "([^"]*)"/.exec(config);
     expect(bloco?.[1]).toBe(email.assunto);
+  });
+});
+
+describe('template da recuperação de senha gerado do catálogo (pt-BR)', () => {
+  const email = emailDeRecuperacao('pt-BR', {
+    link: '{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery',
+  });
+
+  it('supabase/templates/recuperacao.html é o do catálogo', () => {
+    const arquivo = 'supabase/templates/recuperacao.html';
+    if (process.env['HK_ATUALIZAR_TEMPLATES'] === '1') writeFileSync(arquivo, email.html);
+    expect(readFileSync(arquivo, 'utf8')).toBe(email.html);
+  });
+
+  it('o assunto e o arquivo da recuperação no config.toml são os do catálogo', () => {
+    const config = readFileSync('supabase/config.toml', 'utf8');
+    const bloco =
+      /\[auth\.email\.template\.recovery\]\s*\nsubject = "([^"]*)"\s*\ncontent_path = "([^"]*)"/.exec(
+        config,
+      );
+    expect(bloco?.[1]).toBe(email.assunto);
+    expect(bloco?.[2]).toBe('./supabase/templates/recuperacao.html');
   });
 });

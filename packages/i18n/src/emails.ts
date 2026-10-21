@@ -65,6 +65,25 @@ export function emailDeConvite(idioma: IdiomaDeExibicao, dados: DadosDoConvite):
   return { assunto: t('email.convite.assunto'), html };
 }
 
+/**
+ * A recuperação de senha (C9 da comunicação da 1c, 21/10/2026): o template
+ * único do Supabase (supabase/templates/recuperacao.html), gerado em pt-BR com
+ * as variáveis do Go no link, como o do convite.
+ */
+export function emailDeRecuperacao(idioma: IdiomaDeExibicao, dados: { link: string }): Email {
+  const { t } = criarTradutor(idioma);
+  const texto = (chave: Parameters<typeof t>[0]) => escaparHtml(t(chave));
+  const html = [
+    `<h2>${texto('email.recuperacao.titulo')}</h2>`,
+    `<p>${texto('email.recuperacao.pedido')}</p>`,
+    `<p><a href="${escaparHtml(dados.link)}">${texto('email.recuperacao.acao')}</a></p>`,
+    `<p>${texto('email.recuperacao.validade')}</p>`,
+    `<p>${texto('email.recuperacao.ignorar')}</p>`,
+    '',
+  ].join('\n');
+  return { assunto: t('email.recuperacao.assunto'), html };
+}
+
 /** O aviso de SLA (1c, ADR-046): o e-mail com o texto puro ao lado do HTML. */
 export interface EmailComTexto extends Email {
   texto: string;

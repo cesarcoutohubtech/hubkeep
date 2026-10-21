@@ -150,7 +150,7 @@ Avaliação por capítulo e tema, não requisito a requisito. A conferência de 
 | | Senha | parcial | Mínimo de 8 (S1); sem composição nem senha vazada (P12) |
 | | Força bruta | parcial | Limite por IP do Auth; sem CAPTCHA (P1) |
 | | MFA | pendente | P4 |
-| | Recuperação de senha | pendente | Sem tela; o Admin reconvida (P12) |
+| | Recuperação de senha | atendido | "Esqueci a senha": 202 sempre, sem revelar conta; link por `/auth/confirmar` (C9, 21/10/2026) |
 | V7 Sessão | Token fora do alcance do JavaScript | atendido no web, pendente no PWA | S1; P5 |
 | | Rotação e encerramento | atendido | Rotação do refresh token; saída encerra a sessão no Auth (S1) |
 | | Tempo absoluto e inatividade | pendente | P4 |
@@ -370,7 +370,11 @@ A escolha de fornecedor vira ADR. **Decisão junto com a contratação do Vercel
 ### P12 — Política de senha e recuperação
 
 - `password_requirements` e proteção contra senha vazada no Auth (plano Pro).
-- Tela de "esqueci a senha". O fluxo de `recovery` já é aceito por `/auth/confirmar`.
+- **Recuperação de senha: feita em 21/10/2026** (C9 da comunicação da 1c, assumida pela 1b):
+  - "Esqueci a senha" no login chama `POST /api/v1/auth/recuperar`, que responde sempre 202, exista ou não a conta;
+  - o Auth manda o e-mail do template do catálogo (`supabase/templates/recuperacao.html`), com o link para `/auth/confirmar` (`type=recovery`) e de lá para `/definir-senha`;
+  - quem tem o segundo fator confirma o código antes da senha nova;
+  - o limite de envios é o do Auth.
 
 ### P13 — Checklist de acessos
 
