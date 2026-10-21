@@ -8,6 +8,7 @@ import { ProvedorDeIdioma, aplicarIdiomaNaPagina } from '../src/i18n';
 import { AvisosNoAparelho } from '../src/telas/AvisosNoAparelho';
 import { FilaDoDia } from '../src/telas/FilaDoDia';
 import { Login } from '../src/telas/Login';
+import { CadastreOSegundoFatorNoWeb, CodigoDoSegundoFator } from '../src/telas/SegundoFator';
 
 // O React escapa o apóstrofo ("Today's") como &#x27;.
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
@@ -36,6 +37,23 @@ const fila = (
     aoSair={() => undefined}
   />
 );
+
+describe('segundo fator no PWA (SP1)', () => {
+  it.each(IDIOMAS)('%s: o código e o aviso para cadastrar no web, do catálogo', (idioma) => {
+    const m = mensagensDe(idioma);
+    const codigo = renderizar(
+      idioma,
+      <CodigoDoSegundoFator aoConfirmar={() => undefined} aoSair={() => undefined} />,
+    );
+    expect(codigo).toContain(m['login.segundo_fator.titulo_codigo']);
+    expect(codigo).toContain('autoComplete="one-time-code"');
+    const aviso = renderizar(
+      idioma,
+      <CadastreOSegundoFatorNoWeb aoCadastrar={() => undefined} aoSair={() => undefined} />,
+    );
+    expect(aviso).toContain(m['tecnico.segundo_fator.ja_cadastrei']);
+  });
+});
 
 describe('telas do PWA em cada idioma', () => {
   it.each(IDIOMAS)('%s', (idioma) => {

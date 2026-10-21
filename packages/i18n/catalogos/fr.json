@@ -494,6 +494,8 @@
   "tecnico.fotos.fechar": "Fermer",
   "tecnico.fotos.miniatura": "Photo du {quando}",
   "tecnico.sair.pendentes": "{n, plural, one {# opération n’a pas encore été envoyée et sera supprimée de cet appareil.} other {# opérations n’ont pas encore été envoyées et seront supprimées de cet appareil.}} Se déconnecter quand même ?",
+  "tecnico.segundo_fator.cadastrar_no_web": "Votre rôle exige le second facteur. Connectez-vous une fois à HubKeep depuis un ordinateur pour le configurer, puis touchez C’est configuré.",
+  "tecnico.segundo_fator.ja_cadastrei": "C’est configuré",
   "tecnico.push.titulo": "Alertes sur cet appareil",
   "tecnico.push.ativar": "Activer les alertes",
   "tecnico.push.desativar": "Désactiver les alertes",

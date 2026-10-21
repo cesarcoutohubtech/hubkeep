@@ -494,6 +494,8 @@
   "tecnico.fotos.fechar": "Close",
   "tecnico.fotos.miniatura": "Photo from {quando}",
   "tecnico.sair.pendentes": "{n, plural, one {# operation has not been sent yet and will be deleted from this device.} other {# operations have not been sent yet and will be deleted from this device.}} Sign out anyway?",
+  "tecnico.segundo_fator.cadastrar_no_web": "Your role requires the second factor. Sign in to HubKeep once on a computer to set it up, then tap I have set it up.",
+  "tecnico.segundo_fator.ja_cadastrei": "I have set it up",
   "tecnico.push.titulo": "Alerts on this device",
   "tecnico.push.ativar": "Turn on alerts",
   "tecnico.push.desativar": "Turn off alerts",

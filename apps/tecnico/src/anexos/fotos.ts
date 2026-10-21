@@ -21,7 +21,7 @@ import {
   RespostaDeUrlDeUpload,
 } from '@hubkeep/contratos';
 import { type FotoPreparada, prepararFoto } from '@hubkeep/imagem';
-import { type Credenciais, baseDaApi, cabecalhos } from '../api';
+import { type Credenciais, baseDaApi, cabecalhos, pedeSegundoFator } from '../api';
 import type { FotoNaFila, OperacaoNaFila } from '../fila/banco';
 import { type Envio, type ResultadoDoEnvio, vaiTentarDeNovo } from '../fila/sincronizar';
 
@@ -203,7 +203,10 @@ export function criarEnvioDeFoto(c: Credenciais, requisitar: typeof fetch = fetc
     } catch {
       throw new Adiar('sem_rede');
     }
-    return { status: r.status, corpo: await corpoDe(r) };
+    const resposta = { status: r.status, corpo: await corpoDe(r) };
+    // SP1: sem o segundo fator, a foto fica na fila para depois.
+    if (pedeSegundoFator(resposta.status, resposta.corpo)) throw new Adiar('segundo_fator');
+    return resposta;
   }
 
   async function subir(f: FotoNaFila, arquivoId: string, bytes: ArrayBuffer): Promise<string> {

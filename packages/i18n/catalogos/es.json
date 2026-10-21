@@ -494,6 +494,8 @@
   "tecnico.fotos.fechar": "Cerrar",
   "tecnico.fotos.miniatura": "Foto del {quando}",
   "tecnico.sair.pendentes": "{n, plural, one {# operación todavía no se envió y se borrará de este dispositivo.} other {# operaciones todavía no se enviaron y se borrarán de este dispositivo.}} ¿Salir de todos modos?",
+  "tecnico.segundo_fator.cadastrar_no_web": "Su rol exige el segundo factor. Inicie sesión una vez en HubKeep desde la computadora para configurarlo y luego toque Ya lo configuré.",
+  "tecnico.segundo_fator.ja_cadastrei": "Ya lo configuré",
   "tecnico.push.titulo": "Avisos en este dispositivo",
   "tecnico.push.ativar": "Activar avisos",
   "tecnico.push.desativar": "Desactivar avisos",

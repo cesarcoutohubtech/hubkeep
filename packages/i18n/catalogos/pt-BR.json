@@ -494,6 +494,8 @@
   "tecnico.fotos.fechar": "Fechar",
   "tecnico.fotos.miniatura": "Foto de {quando}",
   "tecnico.sair.pendentes": "{n, plural, one {# operação ainda não foi enviada e será apagada deste aparelho.} other {# operações ainda não foram enviadas e serão apagadas deste aparelho.}} Sair mesmo assim?",
+  "tecnico.segundo_fator.cadastrar_no_web": "Seu papel exige o segundo fator. Entre uma vez no HubKeep pelo computador para cadastrá-lo e depois toque em Já cadastrei.",
+  "tecnico.segundo_fator.ja_cadastrei": "Já cadastrei",
   "tecnico.push.titulo": "Avisos neste aparelho",
   "tecnico.push.ativar": "Ativar avisos",
   "tecnico.push.desativar": "Desativar avisos",
