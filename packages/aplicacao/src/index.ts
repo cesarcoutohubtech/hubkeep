@@ -1,6 +1,7 @@
 // @hubkeep/aplicacao — casos de uso e portas (orquestração e permissão de ação).
 export { TokenInvalido } from './portas/identidade';
 export type {
+  AdministracaoDoSegundoFator,
   EnviadorDeEmail,
   EnvioDeConvite,
   PedidoDeConvite,

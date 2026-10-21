@@ -1,6 +1,6 @@
 # Proposta: SP1, MFA obrigatório (21/10/2026)
 
-**Status:** proposta, aguarda a aprovação do Cesar. Nada daqui foi implementado.
+**Status:** as seis decisões da seção 8 foram aceitas pelo Cesar em 21/10/2026 ("Cesar aqui. SP1 pelas propostas"). O texto da decisão está no ADR-049 e no adendo ao ADR-024 (`docs/03`), que aguardam a aprovação do texto.
 
 **De onde vem:** condição 4 do ADR-032 (Cesar, 29/09/2026), SP1 no `docs/05` e P4 no `docs/09`. O piloto só começa com a SP1 feita.
 
@@ -21,7 +21,7 @@
 - **O Supabase não tem códigos de recuperação.** A saída que ele recomenda é ter mais de um fator cadastrado. Para quem perde todos, quem remove o fator é a API de administração, com a secret key.
 - **Configuração:**
   - `[auth.mfa]` e `[auth.mfa.totp]` (`enroll_enabled` e `verify_enabled`) no `supabase/config.toml`, que é zona protegida;
-  - depois, o `config push`, que é do Cesar.
+  - o dev já tem o TOTP ligado (`[remotes.dev.auth.mfa.totp]`, desde 24/09/2026), então não há `config push` a fazer; só o bloco da CI muda.
   - O TOTP está no plano grátis. O limite de sessão (absoluto e por inatividade) é do Pro e fica para o portão do staging.
 
 ## 2. Onde a regra fica
@@ -100,7 +100,7 @@ O Supabase não tem códigos de recuperação. Proposta em três camadas:
    - o `config.toml` com o TOTP ligado;
    - o adendo ao ADR-024 (o reset do fator) e o registro da SP1 no `docs/03`;
    - o teste da secret key atualizado.
-   - Depois do merge, o `config push` no dev, pelo Cesar.
+   - O dev já tem o TOTP ligado: não há `config push`.
 2. **PR fora da zona:** o domínio, o portão, as telas do web, a verificação no PWA, o reset pelo Admin, o catálogo e os testes.
 
 Um item só fica para o portão do staging: o limite de sessão do Supabase Pro.

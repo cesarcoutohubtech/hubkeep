@@ -74,3 +74,14 @@ export interface PedidoDeConvite {
 export interface EnviadorDeEmail {
   enviar(mensagem: { para: string; assunto: string; texto: string; html?: string }): Promise<void>;
 }
+
+/**
+ * Administração do segundo fator (SP1, ADR-049 e adendo ao ADR-024): remove
+ * os fatores de um usuário que perdeu o aparelho, para ele cadastrar de novo.
+ * Chamada só depois de a aplicação conferir quem pede (Admin do grupo, em
+ * aal2) e que o alvo é membro do tenant dele, pela RLS no hk_app.
+ */
+export interface AdministracaoDoSegundoFator {
+  /** Remove todos os fatores do usuário e devolve quantos; o Auth encerra as sessões dele. */
+  removerFatores(usuarioId: string): Promise<number>;
+}
