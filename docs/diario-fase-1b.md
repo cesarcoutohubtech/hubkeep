@@ -1359,3 +1359,15 @@ O Cesar aceitou as seis decisões da SP1 ("Cesar aqui. SP1 pelas propostas. 366 
   - o merge do PR.
   - Não há `config push`.
 - **Próxima tarefa:** a SP1 fora da zona, numa branch a partir da `main` depois do merge. Primeiro passo: o domínio (`PAPEIS_COM_SEGUNDO_FATOR`, `exigeSegundoFator` e a tabela papel × nível) e o `aal` no verificador do token.
+
+## SP1: ADR-049 e adendo ao ADR-024 aprovados (21/10/2026)
+
+Com o #367 na `main`, o Cesar aprovou o texto dos dois ("Cesar aqui. Aprovo", 21/10/2026, em resposta ao pedido de aprovação do ADR-049 e do adendo ao ADR-024). O status vai num PR de zona protegida só de documentação, porque o `docs/03` é zona. Antes de abrir, conferi no GitHub: não havia nenhum PR aberto.
+
+## Ponto de retomada (21/10/2026, status do ADR-049)
+
+- **`main`:** com o #367 (SP1 na zona protegida). Não há `config push`: o dev já tem o TOTP ligado. A última migração segue sendo a 0061.
+- **PR aberto:** o do status do ADR-049 e do adendo ao ADR-024 (`adm:`), na zona protegida, só documentação.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge desse PR.
+- **Próxima tarefa:** a SP1 fora da zona. Primeiro passo: o domínio (`PAPEIS_COM_SEGUNDO_FATOR`, `exigeSegundoFator` e a tabela papel × nível) e o `aal` no verificador do token. O PR dela só abre depois do merge do PR do status.
