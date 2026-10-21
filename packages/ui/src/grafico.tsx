@@ -78,6 +78,49 @@ export function MiniLinha({
   );
 }
 
+/** Um item das barras horizontais: o nome, o valor e o valor já formatado. */
+export interface ItemDasBarras {
+  chave: string;
+  rotulo: string;
+  valor: number;
+  texto: string;
+}
+
+/**
+ * As barras horizontais de uma contagem por item, da maior para a menor, na
+ * ordem recebida: o nome à esquerda, a barra no meio (proporcional ao maior
+ * valor) e o número à direita. A barra é só desenho; o nome e o número ficam
+ * em texto, numa lista com nome.
+ */
+export function BarrasHorizontais({
+  rotulo,
+  itens,
+}: {
+  rotulo: string;
+  itens: readonly ItemDasBarras[];
+}) {
+  if (itens.length === 0) return null;
+  const maior = Math.max(1, ...itens.map((i) => i.valor));
+  return (
+    <ol className="hk-barras" aria-label={rotulo}>
+      {itens.map((i) => (
+        <li key={i.chave} className="hk-barras-item">
+          <span className="hk-barras-rotulo">{i.rotulo}</span>
+          <svg
+            className="hk-barras-barra"
+            viewBox="0 0 100 8"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <rect className="hk-grafico-serie-1" width={(i.valor / maior) * 100} height={8} />
+          </svg>
+          <span className="hk-barras-valor">{i.texto}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 const ALTURA = 200;
 const MARGEM = { topo: 12, direita: 12, base: 28, esquerda: 44 };
 const LARGURA_PADRAO = 640;

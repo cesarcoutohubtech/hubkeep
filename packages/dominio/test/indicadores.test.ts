@@ -13,6 +13,7 @@ import {
   indicadoresDaParcial,
   indicadoresDoDia,
   inicioDoDiaLocal,
+  ondeMaisQuebra,
   intervaloNoFuso,
   parcialDoHotel,
   podeVerIndicadores,
@@ -49,6 +50,7 @@ const chamado = (
   abertoEm: t(abertoEm),
   prazoSolucao: null,
   pausadoSegundos: 0,
+  categoriaId: null,
   os: [],
   ...extra,
 });
@@ -548,6 +550,62 @@ describe('soma das parciais (rede e bandeira)', () => {
       mttrHoras: 30,
     });
     expect(indicadoresDaParcial(somarParciais([])).percentualDeSla).toBeNull();
+  });
+});
+
+describe('onde mais quebra (chamados por categoria)', () => {
+  it('os abertos no período, sem os cancelados, pela categoria de agora, somados na rede', () => {
+    const h1 = parcialDoHotel(
+      hotel({
+        chamados: [
+          chamado('a', '2026-10-02T12:00:00Z', { categoriaId: 'elevador' }),
+          chamado('b', '2026-10-03T12:00:00Z', { categoriaId: 'elevador' }),
+          chamado('c', '2026-10-03T12:00:00Z', { categoriaId: 'ar' }),
+          chamado('d', '2026-10-04T12:00:00Z'), // sem categoria
+          chamado('e', '2026-10-04T12:00:00Z', { categoriaId: 'ar', estado: 'cancelado' }),
+          chamado('f', '2026-09-20T12:00:00Z', { categoriaId: 'ar' }), // antes do período
+        ],
+      }),
+      PERIODO,
+      AGORA,
+    );
+    const h2 = parcialDoHotel(
+      hotel({
+        hotelId: 'h2',
+        chamados: [chamado('g', '2026-10-05T12:00:00Z', { categoriaId: 'ar' })],
+      }),
+      PERIODO,
+      AGORA,
+    );
+    expect(ondeMaisQuebra(somarParciais([h1, h2]))).toEqual({
+      categorias: [
+        { categoriaId: 'ar', chamados: 2 },
+        { categoriaId: 'elevador', chamados: 2 },
+        { categoriaId: null, chamados: 1 },
+      ],
+      outras: 0,
+    });
+  });
+
+  it('as 8 primeiras, da maior para a menor, e o resto somado em "outras"', () => {
+    const porCategoria = Array.from({ length: 10 }, (_, i) => ({
+      categoriaId: `c${i}`,
+      chamados: i + 1,
+    }));
+    const r = ondeMaisQuebra({
+      porCategoria: [...porCategoria, { categoriaId: null, chamados: 0 }],
+    });
+    expect(r.categorias.map((c) => c.categoriaId)).toEqual([
+      'c9',
+      'c8',
+      'c7',
+      'c6',
+      'c5',
+      'c4',
+      'c3',
+      'c2',
+    ]);
+    expect(r.outras).toBe(3); // c1 e c0, com 2 e 1
   });
 });
 

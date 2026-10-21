@@ -23,6 +23,7 @@ import {
   Produtividade,
   separarHoteis,
 } from '../../../cliente/indicadores';
+import { OndeMaisQuebra, useNomesDasCategorias } from '../../../cliente/onde-mais-quebra';
 import { useT } from '../../../i18n/cliente';
 
 interface Filtro {
@@ -48,6 +49,7 @@ const anteriorA = (f: Filtro): Filtro => {
 
 export default function PainelDosIndicadores() {
   const t = useT();
+  const nomesDasCategorias = useNomesDasCategorias();
   const { hoteis } = useHoteis();
   const hoje = dataLocal(new Date());
   const [filtro, setFiltro] = useState<Filtro>({
@@ -151,6 +153,7 @@ export default function PainelDosIndicadores() {
           />
           <BacklogPorIdade faixas={atual.rede.backlogPorIdade} />
           <ChamadosPorDia serie={atual.serie} />
+          <OndeMaisQuebra dados={atual.ondeMaisQuebra} nomes={nomesDasCategorias} />
         </Painel>
       ) : null}
 

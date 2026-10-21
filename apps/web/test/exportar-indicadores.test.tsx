@@ -72,6 +72,7 @@ const PAINEL: PainelDeIndicadores = {
   bandeiras: [{ id: B, nome: 'Bandeira Sul', indicadores: indicadores() }],
   serie: [],
   produtividade: [],
+  ondeMaisQuebra: { categorias: [], outras: 0 },
 };
 
 const decimalComVirgula = (n: number) =>

@@ -1446,3 +1446,27 @@ Branch `claude/1c-situacao-por-hotel`, a partir da `main` 5f915d1. Sem migraçã
 
   Os dois mexem no diário. Depois de cada merge, os outros são atualizados com a `main`.
 - **Próximo:** a tela inicial, PR 3b ("Onde mais quebra"). Primeiro passo: incluir a categoria do chamado na leitura do painel de indicadores e ver como a tela resolve o nome da categoria.
+
+## Tela inicial, PR 3b: "Onde mais quebra" (20/10/2026)
+
+**Área compartilhada (`packages/dominio` e catálogos), registrada antes do commit:**
+- o chamado do painel de indicadores ganha a categoria (`ChamadoDoIndicador.categoriaId`);
+- a parcial ganha a contagem por categoria e a função `ondeMaisQuebra`;
+- chaves novas `indicadores.grafico.quebra.*`.
+
+Branch `claude/1c-onde-mais-quebra`, a partir da `main` 5f915d1. Sem migração. É o termo "chamados por categoria" da versão 4 do glossário ([#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357)).
+
+**Feito:**
+- **Domínio:** os chamados abertos no período, sem os cancelados, contados pela categoria de agora. Os sem categoria entram como "Sem categoria". A rede soma as categorias dos hotéis da visão completa. `ondeMaisQuebra` devolve as 8 maiores (o empate vai pela categoria, e os sem categoria por último) e soma o resto em "outras".
+- **API:** `GET /api/v1/indicadores` traz `ondeMaisQuebra`, só da rede. O proprietário recebe a lista vazia, porque só vê os cartões.
+- **`BarrasHorizontais` (`packages/ui`):** nome, barra e número em cada linha, numa lista com nome. A barra só desenha, e o nome e o número ficam em texto.
+- **Telas:** o gráfico aparece no painel de indicadores, depois do fluxo de chamados, e no resumo da tela inicial. O nome vem das categorias de ativo do grupo, no idioma de quem vê, como na triagem. Sem nenhum chamado, o gráfico não aparece.
+- **Conflito esperado com o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356):** os dois mexem em `indicadores.ts` do domínio, no contrato dos indicadores, no resumo da tela inicial e nos testes do resumo, em trechos diferentes. Depois do merge de um, o outro é atualizado com a `main`.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, tela inicial PR 3b)
+
+- **`main`:** 4d1a3d5, já com o [#359](https://github.com/cesarcoutohubtech/hubkeep/pull/359) (o quadro "Situação por hotel"), o [#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357) (o glossário versão 4) e o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356) (a série diária). Este PR foi atualizado com ela, e os conflitos em `indicadores.ts`, no caso de uso dos indicadores e nos testes ficaram com os dois lados.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#360](https://github.com/cesarcoutohubtech/hubkeep/pull/360), este gráfico.
+- **Esperando o Cesar:** quem vê o cartão "Categorias sob o locador" do PR 3c; não há papel de locador.
+- **Próximo:** a tela inicial, PR 3c (os cartões do proprietário e do locador). Primeiro passo: ler como a tela sabe que quem vê é proprietário de UHs e o locador do arrendamento (ADR-045), e o que o mock mostra nos dois cartões.

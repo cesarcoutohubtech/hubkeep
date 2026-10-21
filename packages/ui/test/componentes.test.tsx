@@ -7,6 +7,7 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
   AreaDeTexto,
+  BarrasHorizontais,
   Botao,
   Campo,
   comoBotao,
@@ -334,6 +335,26 @@ describe('GraficoDeLinhas', () => {
 
   it('o passo da grade: 1 até quatro, depois 1, 2 ou 5 vezes uma potência de dez', () => {
     expect([0, 3, 4, 7, 9, 18, 40, 130].map(passoDaGrade)).toEqual([1, 1, 1, 2, 5, 5, 10, 50]);
+  });
+});
+
+describe('BarrasHorizontais', () => {
+  it('uma linha por item, com o nome e o número em texto, e a barra pelo maior valor', () => {
+    const saida = html(
+      <BarrasHorizontais
+        rotulo="Onde mais quebra"
+        itens={[
+          { chave: 'a', rotulo: 'Elevadores', valor: 8, texto: '8' },
+          { chave: 'b', rotulo: 'Ar-condicionado', valor: 2, texto: '2' },
+        ]}
+      />,
+    );
+    expect(saida).toContain('aria-label="Onde mais quebra"');
+    expect(saida.match(/class="hk-barras-item"/g)).toHaveLength(2);
+    expect(saida).toContain('width="100"');
+    expect(saida).toContain('width="25"');
+    expect(saida).toContain('aria-hidden="true"');
+    expect(html(<BarrasHorizontais rotulo="x" itens={[]} />)).toBe('');
   });
 });
 
