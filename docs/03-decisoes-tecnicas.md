@@ -429,7 +429,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Regra 5 do `CLAUDE.md`:** passa a citar a conta do kit de teste, fora da Vercel.
 - **Verificação:** `packages/auth-admin/test/demonstracao.test.ts` e `apps/web/test/demonstracao-fora-da-vercel.test.ts` (com `VERCEL_ENV` de preview ou produção, as duas entradas recusam antes de tocar o Supabase); `semear.test.ts` na CI; `tests/secret-key-so-no-auth-admin.test.ts`, que continua prendendo a chave ao `auth-admin`.
 
-**Adendo — remoção do segundo fator (SP1, ADR-049).** Status: proposto em 21/10/2026, aguarda a aprovação do texto pelo Cesar. A forma foi aceita pelo Cesar em 21/10/2026, no chat do agente da 1b ("Cesar aqui. SP1 pelas propostas", decisão 5 de `docs/referencia/proposta-sp1-mfa.md`).
+**Adendo — remoção do segundo fator (SP1, ADR-049).** Status: proposto em 21/10/2026; aprovado pelo Cesar em 21/10/2026, no chat do agente da 1b, depois do merge do #367 ("Cesar aqui. Aprovo", em resposta ao pedido de aprovação do texto do ADR-049 e do adendo ao ADR-024). A forma foi aceita pelo Cesar em 21/10/2026, no chat do agente da 1b ("Cesar aqui. SP1 pelas propostas", decisão 5 de `docs/referencia/proposta-sp1-mfa.md`).
 - **Contexto:** o Supabase não tem códigos de recuperação do TOTP. Quem perde o aparelho, sem um segundo fator cadastrado, só volta a entrar se alguém remover os fatores dele, e isso só a API de administração do MFA faz, com a secret key.
 - **Decisão:** a secret key também remove os fatores de um usuário, em `criarAdministracaoDoSegundoFator` no `packages/auth-admin`, com três travas:
   - **só listar e remover:** `auth.admin.mfa.listFactors` e `deleteFactor` do usuário pedido, sem cadastrar fator nem mudar mais nada da conta. O Auth encerra as sessões dele;
@@ -1553,7 +1553,7 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 
 ## ADR-049 — MFA obrigatório para Admin do grupo, Gestor CSC e Implantador (SP1)
 
-**Status:** proposto em 21/10/2026, aguarda a aprovação do texto pelo Cesar. As seis decisões do desenho foram aceitas pelo Cesar em 21/10/2026, no chat do agente da 1b ("Cesar aqui. SP1 pelas propostas"; seção 8 de `docs/referencia/proposta-sp1-mfa.md`).
+**Status:** proposto em 21/10/2026; aprovado pelo Cesar em 21/10/2026, no chat do agente da 1b, depois do merge do #367 ("Cesar aqui. Aprovo", em resposta ao pedido de aprovação do texto do ADR-049 e do adendo ao ADR-024). As seis decisões do desenho foram aceitas pelo Cesar em 21/10/2026, no chat do agente da 1b ("Cesar aqui. SP1 pelas propostas"; seção 8 de `docs/referencia/proposta-sp1-mfa.md`).
 
 **Contexto:** a condição 4 do ADR-032 pôs o MFA antes do piloto (SP1 no `docs/05`, P4 no `docs/09`). Os três papéis concedem acesso, mudam a configuração do grupo ou cadastram em lote, e uma senha vazada desses papéis expõe o tenant inteiro.
 

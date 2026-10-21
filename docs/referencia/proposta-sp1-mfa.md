@@ -1,6 +1,6 @@
 # Proposta: SP1, MFA obrigatório (21/10/2026)
 
-**Status:** as seis decisões da seção 8 foram aceitas pelo Cesar em 21/10/2026 ("Cesar aqui. SP1 pelas propostas"). O texto da decisão está no ADR-049 e no adendo ao ADR-024 (`docs/03`), que aguardam a aprovação do texto.
+**Status:** as seis decisões da seção 8 foram aceitas pelo Cesar em 21/10/2026 ("Cesar aqui. SP1 pelas propostas"). O texto da decisão está no ADR-049 e no adendo ao ADR-024 (`docs/03`), aprovados pelo Cesar em 21/10/2026 ("Cesar aqui. Aprovo").
 
 **De onde vem:** condição 4 do ADR-032 (Cesar, 29/09/2026), SP1 no `docs/05` e P4 no `docs/09`. O piloto só começa com a SP1 feita.
 
