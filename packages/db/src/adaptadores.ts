@@ -1518,6 +1518,17 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
         // Na preventiva não há quem abriu: sem equipes, sem consulta.
         const equipes =
           g.abertoPor === null ? [] : await equipesDoUsuario(tx, g.abertoPor).execute();
+        // Na preventiva da equipe, os membros ativos dela executam a OS.
+        const membros =
+          g.equipeResponsavel === null
+            ? null
+            : await tx
+                .selectFrom('app.equipe_membro')
+                .select('usuario_id')
+                .where('hotel_id', '=', g.hotel.id)
+                .where('equipe_id', '=', g.equipeResponsavel)
+                .where('ativo', '=', true)
+                .execute();
         const gerentes = await tx
           .selectFrom('app.atribuicao_escopo as a')
           .innerJoin('app.membro as m', (j) =>
@@ -1548,6 +1559,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
         return {
           equipesDeQuemAbriu: equipes.map((e) => e.equipe_id),
           gerentes: gerentes.map(paraAtribuicao),
+          ...(membros && { membrosDaEquipeResponsavel: membros.map((m) => m.usuario_id) }),
         };
       }),
     alterarChamado: (ctx, chamadoId, versao, mudanca) =>

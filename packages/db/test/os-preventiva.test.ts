@@ -51,6 +51,7 @@ const CASA_DE_MAQUINAS = randomUUID();
 const CAT = randomUUID();
 const ATIVO = randomUUID();
 const PLANO = randomUUID();
+const EQUIPE = randomUUID();
 const U = { admin: randomUUID(), gerente: randomUUID(), tecnico: randomUUID() };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 
@@ -65,6 +66,7 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
   let execucao: ReturnType<typeof criarCasosDeUsoDeExecucao>;
   let sincronizacao: ReturnType<typeof criarCasosDeUsoDeSincronizacao>;
   let consultas: ReturnType<typeof criarCasosDeUsoDeConsultas>;
+  let portaTriagem: ReturnType<typeof criarPortaTriagem>;
   let datas = 0;
 
   /** Grava uma preventiva atribuída ao técnico, como o worker gravaria, e devolve o id. */
@@ -146,6 +148,20 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
     await atribuir(U.gerente, 'gerente_hotel', 'hotel', H1);
     await atribuir(U.tecnico, 'tecnico', 'hotel', H1);
     await dono.query(
+      `insert into app.equipe (id, tenant_id, hotel_id, nome) values ($1, $2, $3, 'Manutenção')`,
+      [EQUIPE, TENANT, H1],
+    );
+    for (const usuario of [U.gerente, U.tecnico]) {
+      await dono.query(
+        `insert into app.equipe_membro (tenant_id, hotel_id, equipe_id, usuario_id) values ($1, $2, $3, $4)`,
+        [TENANT, H1, EQUIPE, usuario],
+      );
+    }
+    await dono.query(
+      `update app.equipe_membro set ativo = false where equipe_id = $1 and usuario_id = $2`,
+      [EQUIPE, U.tecnico],
+    );
+    await dono.query(
       `insert into app.categoria_ativo (id, tenant_id, chave_padrao) values ($1, $2, 'ar_condicionado')`,
       [CAT, TENANT],
     );
@@ -171,7 +187,7 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       atribuicoes,
       relogio: relogioDoSistema,
     }).instalarPadrao(ctx(U.admin));
-    const portaTriagem = criarPortaTriagem(banco);
+    portaTriagem = criarPortaTriagem(banco);
     triagem = criarCasosDeUsoDeTriagem({
       triagem: portaTriagem,
       situacoes,
@@ -216,6 +232,8 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       'app.situacao',
       'app.prioridade',
       'app.atribuicao_escopo',
+      'app.equipe_membro',
+      'app.equipe',
       'app.local',
       'app.hotel',
       'app.membro',
@@ -284,6 +302,23 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       [TENANT, osId],
     );
     expect(aceite.rows[0]?.depois.estadoDoChamado).toBeNull();
+  });
+
+  it('o aceite da preventiva da equipe lê os membros ativos dela; o da OS do técnico, não', async () => {
+    const hotel = { id: H1, bandeiraId: null };
+    const daEquipe = await portaTriagem.dadosDoAceite(ctx(U.admin), {
+      hotel,
+      abertoPor: null,
+      equipeResponsavel: EQUIPE,
+    });
+    expect(daEquipe.membrosDaEquipeResponsavel).toEqual([U.gerente]);
+    expect(daEquipe.gerentes.map((a) => a.usuarioId)).toEqual([U.gerente]);
+    const doTecnico = await portaTriagem.dadosDoAceite(ctx(U.admin), {
+      hotel,
+      abertoPor: null,
+      equipeResponsavel: null,
+    });
+    expect(doTecnico.membrosDaEquipeResponsavel).toBeUndefined();
   });
 
   it('o técnico não cancela; o Gerente cancela, com a versão do chamado nula', async () => {
