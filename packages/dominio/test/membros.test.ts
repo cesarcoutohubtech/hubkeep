@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Atribuicao } from '../src/index';
-import { podeAlterarAtivoDoMembro, podeAlterarValidade, podeGerirMembros } from '../src/membros';
+import {
+  podeAlterarAtivoDoMembro,
+  podeAlterarValidade,
+  podeGerirMembros,
+  podeRemoverSegundoFator,
+} from '../src/membros';
 
 const AGORA = new Date('2026-09-27T12:00:00Z');
 const FUTURO = new Date('2026-12-31T00:00:00Z');
@@ -53,6 +58,24 @@ describe('desativar ou reativar membro', () => {
     ).toBe('ativacao_de_membro_so_admin');
     expect(codigo(podeAlterarAtivoDoMembro(gerenteH1, 'eu', { usuarioId: 'alvo' }, AGORA))).toBe(
       'ativacao_de_membro_so_admin',
+    );
+  });
+});
+
+describe('remover o segundo fator (SP1)', () => {
+  it('só o Admin do grupo, e nunca o próprio', () => {
+    const remover = (minhas: Atribuicao[], alvo: string) =>
+      codigo(podeRemoverSegundoFator(minhas, 'eu', { usuarioId: alvo }, AGORA));
+    expect(remover(admin, 'alvo')).toBe('ok');
+    expect(remover(admin, 'eu')).toBe('nao_remove_o_proprio_segundo_fator');
+    expect(remover(implantadorH1, 'alvo')).toBe('segundo_fator_so_admin');
+    expect(remover(gerenteH1, 'alvo')).toBe('segundo_fator_so_admin');
+  });
+
+  it('o Admin vencido ou revogado não remove', () => {
+    const revogado = [atr('admin_grupo', { tipo: 'grupo' }, { revogadoEm: PASSADO })];
+    expect(codigo(podeRemoverSegundoFator(revogado, 'eu', { usuarioId: 'alvo' }, AGORA))).toBe(
+      'segundo_fator_so_admin',
     );
   });
 });

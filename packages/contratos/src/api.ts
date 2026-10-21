@@ -95,3 +95,39 @@ export const LIMITE_MINIMO_DA_SENHA = 8;
 export const PedidoDeSenha = z.object({
   senha: z.string().min(LIMITE_MINIMO_DA_SENHA).max(72),
 });
+
+/**
+ * "Minha conta → Segurança" (SP1, ADR-049): os fatores do próprio usuário,
+ * pelas rotas /auth/segundo-fator, com a sessão do cookie.
+ */
+export const RespostaDeFatores = z.object({
+  /** Algum papel do usuário exige o segundo fator. */
+  exigido: z.boolean(),
+  fatores: z.array(
+    z.object({ id: z.guid(), nome: z.string().nullable(), criadoEm: z.iso.datetime() }),
+  ),
+});
+
+export const PedidoDeCadastroDeFator = z.object({
+  /** O nome do aparelho, para a lista; vazio fica sem nome. */
+  nome: z.string().trim().max(60).optional(),
+});
+
+export const RespostaDeCadastroDeFator = z.object({
+  fatorId: z.guid(),
+  /** O QR do cadastro, como data: (SVG). */
+  qr: z.string().startsWith('data:image/svg+xml'),
+  segredo: z.string().min(16).max(128),
+});
+
+export const PedidoDeVerificacaoDeFator = z.object({
+  fatorId: z.guid(),
+  codigo: z.string().regex(/^\d{6}$/),
+});
+
+export const PedidoDeRemocaoDeFator = z.object({ fatorId: z.guid() });
+
+/** O pedido do e-mail de recuperação de senha (C9): só o e-mail. */
+export const PedidoDeRecuperacaoDeSenha = z
+  .object({ email: z.email().max(254) })
+  .meta({ id: 'PedidoDeRecuperacaoDeSenha' });

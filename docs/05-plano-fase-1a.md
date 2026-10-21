@@ -106,7 +106,7 @@ Condições 4 e 5 da aprovação do ADR-032 (Cesar, 29/09/2026). As tarefas S1 (
 | Tarefa | O quê | Aceite | Quando | Pendência no `docs/09` |
 |---|---|---|---|---|
 | **SP1** MFA obrigatório | TOTP obrigatório para Admin do grupo, Gestor CSC e Implantador. Sem o segundo fator, a sessão desses papéis não chega ao nível exigido (AAL2) e a API recusa com código. | Cada um dos três papéis é barrado sem MFA, com teste por papel; os demais papéis seguem sem exigência. Recuperação do segundo fator definida. | Antes do piloto | P4 |
-| **SP2** CSP de script no PWA | CSP com `script-src` sem `unsafe-inline` no `apps/tecnico`, compatível com o service worker e o build do Vite. | Build de produção sem violação de CSP no console, online e offline; teste que prende os cabeçalhos do `vercel.json`. | Antes do piloto | P5 |
+| **SP2** CSP de script no PWA | CSP com `script-src` sem `unsafe-inline` no `apps/tecnico`, compatível com o service worker e o build do Vite. | Build de produção sem violação de CSP no console, online e offline; teste que prende os cabeçalhos do `vercel.json`. | Antes do piloto; **feita em 21/10/2026** (diário da 1b) | P5 |
 | **SP3** Rate limiting | Decisão de onde e com que ferramenta limitar (Auth do Supabase, Vercel Firewall, Upstash na `rota()`), junto com a contratação do Vercel Pro, e implantação do que for decidido. | Decisão registrada em ADR, com custo; limite ativo nas rotas escolhidas, com teste do 429. | Antes do piloto, com o Vercel Pro | P1 |
 | **SP4** Pentest | Teste de intrusão por terceiro, no ambiente de staging, com o escopo do `docs/09`. | Relatório recebido; achados críticos e altos corrigidos e retestados. | Antes do rollout | P3 |
 

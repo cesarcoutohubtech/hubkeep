@@ -8,18 +8,34 @@
 // entra direto do JSON (export ./catalogos/* de @hubkeep/i18n).
 import pt from '@hubkeep/i18n/catalogos/pt-BR.json' with { type: 'json' };
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { politicaDeConexao } from './csp';
 
 // O petróleo do cabeçalho do PWA (--hk-menu-fundo do tema claro, ADR-038).
 const COR = '#0f3d45';
 
-export default defineConfig({
+const CHARSET = '<meta charset="UTF-8" />';
+
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     {
       name: 'hubkeep-titulo-do-catalogo',
       transformIndexHtml: (html) => html.replace('%NOME_DO_APP%', pt['tecnico.nome']),
+    },
+    {
+      // A CSP de conexão do ambiente do build (SP2, csp.ts), logo depois do
+      // charset. Só no build: o dev usa o proxy do Vite e o HMR.
+      name: 'hubkeep-csp-de-conexao',
+      apply: 'build',
+      transformIndexHtml: (html) => {
+        if (!html.includes(CHARSET)) throw new Error('index.html sem o meta charset.');
+        const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), 'VITE_');
+        const meta = `<meta http-equiv="Content-Security-Policy" content="${politicaDeConexao(env)}" />`;
+        return html.replace(CHARSET, `${CHARSET}\n    ${meta}`);
+      },
     },
     VitePWA({
       registerType: 'autoUpdate',
@@ -69,4 +85,4 @@ export default defineConfig({
     port: 4173,
     proxy: { '/api': process.env['HK_API_DEV'] ?? 'http://localhost:3000' },
   },
-});
+}));

@@ -155,6 +155,30 @@ export async function definirAtivoDoMembro(
   });
 }
 
+/**
+ * A remoção do segundo fator de um membro (SP1, ADR-049): o Auth já removeu
+ * os fatores (auth-admin), e aqui ficam a auditoria e o evento. Nada muda em
+ * tabela do HubKeep.
+ */
+export function registrarRemocaoDoSegundoFator(
+  uow: UnidadeDeTrabalho,
+  usuarioId: string,
+  removidos: number,
+): void {
+  uow.auditar({
+    entidade: 'membro',
+    registroId: usuarioId,
+    acao: 'remover_segundo_fator',
+    depois: { fatoresRemovidos: removidos },
+  });
+  uow.publicar({
+    tipo: 'membro.segundo_fator_removido',
+    entidade: 'membro',
+    registroId: usuarioId,
+    payload: { usuarioId, removidos },
+  });
+}
+
 /** Muda a validade de uma atribuição vigente (fase 1a, A3). */
 export async function alterarValidadeDaAtribuicao(
   uow: UnidadeDeTrabalho,

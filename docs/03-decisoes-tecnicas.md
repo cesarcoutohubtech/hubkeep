@@ -429,6 +429,15 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Regra 5 do `CLAUDE.md`:** passa a citar a conta do kit de teste, fora da Vercel.
 - **Verificação:** `packages/auth-admin/test/demonstracao.test.ts` e `apps/web/test/demonstracao-fora-da-vercel.test.ts` (com `VERCEL_ENV` de preview ou produção, as duas entradas recusam antes de tocar o Supabase); `semear.test.ts` na CI; `tests/secret-key-so-no-auth-admin.test.ts`, que continua prendendo a chave ao `auth-admin`.
 
+**Adendo — remoção do segundo fator (SP1, ADR-049).** Status: proposto em 21/10/2026; aprovado pelo Cesar em 21/10/2026, no chat do agente da 1b, depois do merge do #367 ("Cesar aqui. Aprovo", em resposta ao pedido de aprovação do texto do ADR-049 e do adendo ao ADR-024). A forma foi aceita pelo Cesar em 21/10/2026, no chat do agente da 1b ("Cesar aqui. SP1 pelas propostas", decisão 5 de `docs/referencia/proposta-sp1-mfa.md`).
+- **Contexto:** o Supabase não tem códigos de recuperação do TOTP. Quem perde o aparelho, sem um segundo fator cadastrado, só volta a entrar se alguém remover os fatores dele, e isso só a API de administração do MFA faz, com a secret key.
+- **Decisão:** a secret key também remove os fatores de um usuário, em `criarAdministracaoDoSegundoFator` no `packages/auth-admin`, com três travas:
+  - **só listar e remover:** `auth.admin.mfa.listFactors` e `deleteFactor` do usuário pedido, sem cadastrar fator nem mudar mais nada da conta. O Auth encerra as sessões dele;
+  - **quem pede e o alvo são conferidos antes, pela aplicação:** o Admin do grupo, em `aal2`, e o alvo membro do tenant dele, lido pela RLS no `hk_app`. A remoção tem auditoria (`membro`, `remover_segundo_fator`) e evento de domínio pela unit of work;
+  - **o único Admin do grupo que perde tudo:** a remoção é pelo backoffice do HubKeep, com script de `scripts/ops`, rodado pelo Cesar e registrado. Não há tela para isso.
+- **Regra 5 do `CLAUDE.md`:** passa a citar a remoção do segundo fator.
+- **Verificação:** `tests/secret-key-so-no-auth-admin.test.ts` prende o export novo, as duas chamadas do MFA e a forma do objeto; o caso de uso, com a regra de quem pede, entra no PR de fora da zona.
+
 ## ADR-025 — Sincronização offline do PWA: fila no aparelho e chave de idempotência gravada com o efeito
 
 **Status:** aprovada por Cesar em 26/09/2026, depois do merge do #31, com os ajustes (a) a (d), aplicados no PR de ajustes do ADR-025. **Adendo de 28/09/2026 (dados guardados no aparelho, B3b da fase 1a):** aprovado por Cesar em 28/09/2026, depois do merge do #50.
@@ -1541,3 +1550,35 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 - `RLS FORCE`: apenas Admin do grupo vigente no tenant e com vínculo Mews **não revogado**; gerente, proprietário, implantador, tenant alheio e sessão sem contexto continuam sem acesso. Nenhuma permissão INSERT/UPDATE/DELETE nova para `hk_app`.
 - Leitura servida exclusivamente pelo backend autenticado. Não expor tabelas via Data API ou browser. Nenhuma OS, alteração de UH, escrita no PMS ou ingestão real é autorizada por esta decisão.
 - Revisão pgTAP, CI e aprovação humana de merge permanecem obrigatórias. **Aplicação em Supabase-dev/produção depende de autorização posterior e específica.**
+
+## ADR-049 — MFA obrigatório para Admin do grupo, Gestor CSC e Implantador (SP1)
+
+**Status:** proposto em 21/10/2026; aprovado pelo Cesar em 21/10/2026, no chat do agente da 1b, depois do merge do #367 ("Cesar aqui. Aprovo", em resposta ao pedido de aprovação do texto do ADR-049 e do adendo ao ADR-024). As seis decisões do desenho foram aceitas pelo Cesar em 21/10/2026, no chat do agente da 1b ("Cesar aqui. SP1 pelas propostas"; seção 8 de `docs/referencia/proposta-sp1-mfa.md`).
+
+**Contexto:** a condição 4 do ADR-032 pôs o MFA antes do piloto (SP1 no `docs/05`, P4 no `docs/09`). Os três papéis concedem acesso, mudam a configuração do grupo ou cadastram em lote, e uma senha vazada desses papéis expõe o tenant inteiro.
+
+**Decisão:**
+- **TOTP do Supabase Auth.** O cadastro e a verificação vão do navegador direto ao Auth (`mfa.enroll`, `challenge`, `verify`), com a chave pública, como o login (ADR-032). O TOTP fica ligado no dev e na CI (`supabase/config.toml`). Não depende do plano Pro; o limite de sessão, sim, e fica para o portão do staging.
+- **Quem exige:** `admin_grupo`, `gestor_csc` e `implantador`, por qualquer atribuição vigente no tenant. Quem tem dois papéis, um deles da lista, exige em tudo, inclusive no PWA. Os demais (Gerente, Técnico, Solicitante e Proprietário) podem cadastrar o TOTP, sem exigência.
+- **Portão na API, para todas as rotas:**
+  - o verificador do token passa a devolver o `aal`, conferido pela assinatura (claim ausente conta como `aal1`);
+  - com `aal1`, o `resolverContexto` lê as atribuições do usuário no tenant e recusa com 403 `segundo_fator_obrigatorio` quando alguma exige. Com `aal2`, não há leitura a mais;
+  - a regra fica no domínio (`exigeSegundoFator`), e não no banco (regra 2). O portão é geral, e não ação por ação, porque a RLS mostra os dados pelo papel: um Admin em `aal1` leria tudo pelas listas;
+  - ficam fora do portão só a leitura dos próprios papéis (para a tela decidir para onde levar) e a saída.
+- **Telas:**
+  - no web, depois do login, o cadastro do fator (QR, segredo em texto e código) ou a verificação do código. O layout do painel leva para essas telas, e a conta da pessoa lista, acrescenta e remove fatores, com a recomendação de dois aparelhos;
+  - no PWA, só a verificação do código, e o cadastro fica no web.
+- **Recuperação:** dois fatores recomendados; a remoção pelo Admin do grupo do mesmo tenant (adendo ao ADR-024); e, para o único Admin, a remoção pelo backoffice.
+- **Kit de teste:** as contas das turmas pedem o TOTP como as reais, e o treinamento ensina a cadastrar. Só a conta do roteiro de demonstração do Cesar nasce com o fator cadastrado pelo kit, com o segredo guardado como as outras credenciais do kit.
+
+**Consequências:**
+- Uma requisição de quem está em `aal1` lê as atribuições uma vez no portão. O custo é medido no dev antes do PR do código; se pesar, o resultado fica em memória por token.
+- Um papel concedido depois entra na exigência na requisição seguinte, sem sincronizar nada com o Auth.
+- As telas e as rotas do Intelligence passam pelo mesmo portão, sem mudança no módulo.
+
+**Verificação:**
+- o domínio, com a tabela papel × nível para os sete papéis;
+- o verificador, com o `aal` do token;
+- o portão, por papel, com 403 em `aal1` e passagem em `aal2`;
+- a integração na CI, com o cadastro e a verificação de um TOTP de teste no Supabase local;
+- o caso de uso da remoção, com a regra de quem pede.

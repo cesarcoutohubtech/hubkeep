@@ -83,6 +83,8 @@ describe('auth-admin: uso do Storage restrito às duas URLs assinadas (ADR-024)'
     ].map((m) => m[1]);
     expect(exportados).toEqual([
       'criarAdministracaoDoAuth',
+      // Remoção do segundo fator (SP1, ADR-049 e adendo ao ADR-024).
+      'criarAdministracaoDoSegundoFator',
       // Contas dos dados de demonstração (kit de teste), só com e-mail .test.
       'criarIdentidadeDeDemonstracao',
       'BUCKET_DE_ANEXOS',
@@ -113,5 +115,30 @@ describe('auth-admin: uso do Storage restrito às duas URLs assinadas (ADR-024)'
     const bloco = /interface ArmazenamentoDeArquivos \{([\s\S]*?)\n\}/.exec(porta)?.[1] ?? '';
     const metodos = [...bloco.matchAll(/^\s+(\w+)\(/gm)].map((m) => m[1]);
     expect(metodos).toEqual(['urlDeUpload', 'urlDeDownload']);
+  });
+});
+
+// ADR-049 e adendo ao ADR-024: no MFA, a secret key só lista e remove os
+// fatores do usuário pedido. Não cadastra fator nem mexe em outra coisa.
+describe('auth-admin: uso do MFA restrito a listar e remover fatores (ADR-049)', () => {
+  const fonte = readFileSync('packages/auth-admin/src/index.ts', 'utf8');
+
+  it('só listFactors e deleteFactor na API de administração do MFA', () => {
+    const chamadas = new Set([...fonte.matchAll(/\.admin\.mfa\.(\w+)\(/g)].map((m) => m[1]));
+    expect([...chamadas].sort()).toEqual(['deleteFactor', 'listFactors']);
+    expect(fonte).not.toMatch(/\.mfa\.(enroll|challenge|verify)\(/);
+  });
+
+  it('em execução, a administração do segundo fator entrega só a remoção', async () => {
+    const { criarAdministracaoDoSegundoFator } = await import('../packages/auth-admin/src/index');
+    const anterior = process.env.SUPABASE_SECRET_KEY;
+    process.env.SUPABASE_SECRET_KEY = 'chave-falsa-so-para-montar-o-cliente';
+    try {
+      const adm = criarAdministracaoDoSegundoFator({ url: 'http://127.0.0.1:9' });
+      expect(Object.keys(adm)).toEqual(['removerFatores']);
+    } finally {
+      if (anterior === undefined) delete process.env.SUPABASE_SECRET_KEY;
+      else process.env.SUPABASE_SECRET_KEY = anterior;
+    }
   });
 });

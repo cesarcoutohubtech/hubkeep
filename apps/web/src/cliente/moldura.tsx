@@ -45,7 +45,7 @@ import {
   useTrocarIdioma,
 } from '../i18n/cliente';
 import { COOKIE_TEMA } from '../tema';
-import { chamarApi } from './api';
+import { chamarApi, voltarAoLoginPeloSegundoFator } from './api';
 import { sair as encerrarSessao } from './sessao';
 
 interface Sessao {
@@ -178,6 +178,7 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/admin\/arrendamento$/, 'admin.arrendamento.titulo'],
   [/^\/admin\/auditoria$/, 'admin.auditoria.titulo'],
   [/^\/admin\/implantacao$/, 'admin.implantacao.titulo'],
+  [/^\/conta\/seguranca$/, 'conta.seguranca.titulo'],
   [/^\/inteligencia\/insights$/, 'menu.inteligencia'],
   [/^\/inteligencia\/insights\/[^/]+$/, 'inteligencia.pagina.titulo'],
   [/^\/inteligencia\/ativos\/[^/]+$/, 'inteligencia.ativo.titulo'],
@@ -238,6 +239,12 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
 
   const sincronizarIdioma = useCallback(async () => {
     const rp = await fetch('/api/v1/preferencias');
+    // A primeira leitura com o grupo: o portão do segundo fator responde aqui (SP1).
+    if (rp.status === 403) {
+      const corpo = (await rp.json().catch(() => null)) as { erro?: { codigo?: string } } | null;
+      if (corpo?.erro?.codigo === 'segundo_fator_obrigatorio') voltarAoLoginPeloSegundoFator();
+      return;
+    }
     if (!rp.ok) return;
     const p = (await rp.json()) as Preferencias;
     setPreferencias(p);
@@ -367,6 +374,14 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
           <Botao tamanho="pequeno" onClick={alternarTema} aria-pressed={tema === 'claro'}>
             {t('tema.claro')}
           </Botao>
+          <Link
+            href="/conta/seguranca"
+            className="hk-botao"
+            data-variante="padrao"
+            data-tamanho="pequeno"
+          >
+            {t('conta.seguranca.abrir')}
+          </Link>
           <Botao tamanho="pequeno" onClick={() => void sair()}>
             {t('inicio.sair')}
           </Botao>

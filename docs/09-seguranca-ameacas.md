@@ -80,7 +80,7 @@ O Admin do grupo e o agente conector do cliente aparecem nas tabelas como donos 
 | Id | Ameaça | Ator | Controle | Status |
 |---|---|---|---|---|
 | PWA-1 | Aparelho perdido com sessão e dados offline | Externo | A saída envia a fila e apaga a fila e a referência do usuário. Mas a sessão fica no `localStorage`, o IndexedDB não é cifrado, e a sessão não vence por inatividade | parcial (P4, P5) |
-| PWA-2 | XSS no PWA leva o token do `localStorage` | Externo | O React escapa o texto e o lint proíbe HTML cru (S1). O `vercel.json` tem cabeçalhos básicos e `frame-ancestors` (S1), mas não há CSP de script | parcial (P5) |
+| PWA-2 | XSS no PWA leva o token do `localStorage` | Externo | O React escapa o texto e o lint proíbe HTML cru (S1). CSP de script no `vercel.json`, `script-src 'self'` e `worker-src 'self'`, sem inline nem eval, e `connect-src` do build só com a própria origem, a API e o Supabase (SP2, `apps/tecnico/csp.ts`). O token segue no `localStorage` | parcial (P5) |
 | PWA-3 | Operação offline reenviada, duplicada ou fora de ordem | Técnico | Chave de idempotência (ADR-025), versão (ADR-029) e 409 quando a OS mudou | atendido |
 | PWA-4 | Operação forjada na fila: outro hotel, OS de outro técnico | Técnico | O servidor revalida tudo: é o mesmo caso de uso do web, com o contexto do token e a RLS | atendido |
 
@@ -138,7 +138,7 @@ Avaliação por capítulo e tema, não requisito a requisito. A conferência de 
 | V2 Validação e regra de negócio | Validação de entrada e saída | atendido | Contratos Zod nos dois sentidos (`packages/contratos`) |
 | | Regra de negócio fora do cliente | atendido | Domínio e aplicação no servidor; o PWA revalidado (ADR-025) |
 | | Limites contra automação | pendente | P1 |
-| V3 Segurança do front-end web | Cabeçalhos (CSP, HSTS, nosniff, frame, referrer, COOP) | atendido no web, parcial no PWA | S1; CSP de script do PWA em P5 |
+| V3 Segurança do front-end web | Cabeçalhos (CSP, HSTS, nosniff, frame, referrer, COOP) | atendido | S1; CSP de script do PWA na SP2 |
 | | Cookies (HttpOnly, Secure, SameSite) | atendido | Sessão HttpOnly (S1); `hk_tenant` e `hk_idioma` sem dado sensível, com `Secure` em HTTPS |
 | | CSRF | atendido | Origem conferida no proxy (S1) |
 | | CORS | n/a hoje | Nenhuma origem liberada. Quando o PWA for para outra origem, lista fechada (P5) |
@@ -150,7 +150,7 @@ Avaliação por capítulo e tema, não requisito a requisito. A conferência de 
 | | Senha | parcial | Mínimo de 8 (S1); sem composição nem senha vazada (P12) |
 | | Força bruta | parcial | Limite por IP do Auth; sem CAPTCHA (P1) |
 | | MFA | pendente | P4 |
-| | Recuperação de senha | pendente | Sem tela; o Admin reconvida (P12) |
+| | Recuperação de senha | atendido | "Esqueci a senha": 202 sempre, sem revelar conta; link por `/auth/confirmar` (C9, 21/10/2026) |
 | V7 Sessão | Token fora do alcance do JavaScript | atendido no web, pendente no PWA | S1; P5 |
 | | Rotação e encerramento | atendido | Rotação do refresh token; saída encerra a sessão no Auth (S1) |
 | | Tempo absoluto e inatividade | pendente | P4 |
@@ -312,7 +312,12 @@ A escolha de fornecedor vira ADR. **Decisão junto com a contratação do Vercel
 - **Sessão:** hoje fica no `localStorage`. Alternativas:
   - cookie HttpOnly no mesmo domínio da API;
   - token só em memória, com o refresh em cookie.
-- **CSP de script** no `vercel.json`, com a origem da API e do Supabase. **Decidido, antes do piloto** (condição 4 do ADR-032; SP2 no `docs/05`).
+- **CSP de script: feita na SP2 (21/10/2026).** Duas políticas, que o navegador aplica juntas:
+  - no cabeçalho do `vercel.json`, fixa: `script-src 'self'; worker-src 'self'`, mais a borda de antes (`frame-ancestors`, `object-src`, `base-uri`, `form-action`). O Vite não gera script inline, e o service worker e os scripts que ele importa são da própria origem;
+  - num `<meta>` que o build põe no HTML, logo depois do charset: `connect-src` com a própria origem e as origens de `VITE_API_URL` e `VITE_SUPABASE_URL`, só https (http só em `localhost`). Vai no build porque a origem da API muda entre o staging (`*.vercel.app`) e a produção, e o `vercel.json` não lê variável;
+  - o Zod 4 testa `Function('')` ao definir schema de objeto, e a CSP sem `unsafe-eval` registra a tentativa como violação, mesmo com o erro tratado. O PWA liga o modo sem JIT (`@hubkeep/contratos/sem-eval`) como primeiro import do `main.tsx`, e o web, no `src/instrumentation-client.ts`, que o Next roda no navegador antes do código do app. No build de produção do web, a `/` e a `/definir-senha` tinham a violação; com o `sem-eval`, nenhuma;
+  - conferido no Chromium com o build de produção e os cabeçalhos do `vercel.json`: nenhuma violação, com rede e sem rede, com o service worker ativo; sem o `sem-eval`, três violações de `script-src eval`. Os testes do `apps/tecnico` prendem o cabeçalho, a política de conexão, o HTML sem script inline e a ordem do import;
+  - fora da SP2: `style-src` e `img-src` seguem abertos (o React usa `style` em linha, e as fotos vêm por URL assinada).
 - **CORS em lista fechada** (só a origem do PWA) quando o PWA sair do mesmo domínio.
 - **Dados offline:** prazo de expiração e limpeza da referência quando a sessão vence sem saída.
 
@@ -365,7 +370,11 @@ A escolha de fornecedor vira ADR. **Decisão junto com a contratação do Vercel
 ### P12 — Política de senha e recuperação
 
 - `password_requirements` e proteção contra senha vazada no Auth (plano Pro).
-- Tela de "esqueci a senha". O fluxo de `recovery` já é aceito por `/auth/confirmar`.
+- **Recuperação de senha: feita em 21/10/2026** (C9 da comunicação da 1c, assumida pela 1b):
+  - "Esqueci a senha" no login chama `POST /api/v1/auth/recuperar`, que responde sempre 202, exista ou não a conta;
+  - o Auth manda o e-mail do template do catálogo (`supabase/templates/recuperacao.html`), com o link para `/auth/confirmar` (`type=recovery`) e de lá para `/definir-senha`;
+  - quem tem o segundo fator confirma o código antes da senha nova;
+  - o limite de envios é o do Auth.
 
 ### P13 — Checklist de acessos
 

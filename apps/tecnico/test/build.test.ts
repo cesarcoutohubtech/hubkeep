@@ -60,6 +60,20 @@ describe('build do PWA', () => {
     expect(html).toContain('rel="manifest"');
   });
 
+  it('CSP (SP2): nenhum script inline, e a política de conexão logo depois do charset', () => {
+    const html = ler('index.html');
+    for (const tag of html.match(/<script\b[^>]*>/g) ?? []) expect(tag).toMatch(/\ssrc="\//);
+    expect(html).not.toMatch(/<script\b[^>]*>[^<]+<\/script>/);
+    expect(html).toMatch(
+      /<meta charset="UTF-8" \/>\s*<meta http-equiv="Content-Security-Policy" content="connect-src 'self'[^"]*" \/>/,
+    );
+  });
+
+  it('o Zod sem JIT vem antes de qualquer schema: o primeiro import do main.tsx', () => {
+    const main = readFileSync(join(raiz, 'src/main.tsx'), 'utf8');
+    expect(main.match(/^import .*$/m)?.[0]).toBe("import '@hubkeep/contratos/sem-eval';");
+  });
+
   it('service worker com a casca offline no precache, sem a API', () => {
     const sw = ler('sw.js');
     expect(sw).toContain('index.html');

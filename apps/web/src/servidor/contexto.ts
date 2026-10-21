@@ -6,10 +6,25 @@
 //   tenant:  do cabeçalho x-hubkeep-tenant ou do cookie hk_tenant. Não precisa
 //            ser confiável: o banco só aceita tenant de que o usuário é membro
 //            ativo (authz.tenant_id()), e um tenant forjado não mostra nada.
-import { TokenInvalido } from '@hubkeep/aplicacao';
+//   segundo fator (SP1, ADR-049): com a sessão em aal1, as atribuições do
+//            usuário no tenant são lidas, e quem tem papel que exige o segundo
+//            fator recebe 403 segundo_fator_obrigatorio, em toda rota que pede
+//            o contexto. Com aal2, não há leitura a mais.
+import { TokenInvalido, relogioDoSistema } from '@hubkeep/aplicacao';
 import type { Contexto } from '@hubkeep/db';
+import {
+  type Atribuicao,
+  type NivelDaSessao,
+  exigeSegundoFator,
+  exigirNivelDaSessao,
+} from '@hubkeep/dominio';
 import { createServerClient } from '@supabase/ssr';
-import { chavePublicaSupabase, urlSupabase, verificadorDeToken } from './composicao';
+import {
+  atribuicoesDoUsuario,
+  chavePublicaSupabase,
+  urlSupabase,
+  verificadorDeToken,
+} from './composicao';
 import { ErroHttp } from './erro-http';
 import { cookiesDaRequisicao as cookies } from './sessao-supabase';
 
@@ -57,11 +72,45 @@ export function tenantDaRequisicao(req: Request): string | null {
   );
 }
 
+export interface DependenciasDoPortao {
+  atribuicoes: (ctx: Contexto) => Promise<readonly Atribuicao[]>;
+  agora: () => Date;
+}
+
+const PORTAO: DependenciasDoPortao = {
+  atribuicoes: atribuicoesDoUsuario,
+  agora: () => relogioDoSistema.agora(),
+};
+
+/** O portão do segundo fator (SP1): em aal1, recusa quem tem papel que o exige. */
+export async function exigirSegundoFatorNoContexto(
+  ctx: Contexto,
+  nivel: NivelDaSessao,
+  deps: DependenciasDoPortao = PORTAO,
+): Promise<void> {
+  if (nivel === 'aal2') return;
+  exigirNivelDaSessao(nivel, await deps.atribuicoes(ctx), deps.agora());
+}
+
+/** Algum grupo do token tem papel do usuário que exige o segundo fator (SP1). */
+export async function exigeSegundoFatorNoUsuario(
+  usuario: { usuarioId: string; tenantsSugeridos: readonly string[] },
+  deps: DependenciasDoPortao = PORTAO,
+): Promise<boolean> {
+  for (const tenantId of usuario.tenantsSugeridos) {
+    const atribuicoes = await deps.atribuicoes({ usuarioId: usuario.usuarioId, tenantId });
+    if (exigeSegundoFator(atribuicoes, deps.agora())) return true;
+  }
+  return false;
+}
+
 export async function resolverContexto(req: Request): Promise<Contexto> {
   const usuario = await usuarioDaRequisicao(req);
   const tenantId = tenantDaRequisicao(req);
   if (!tenantId) {
     throw new ErroHttp(400, 'tenant_ausente', { cabecalho: CABECALHO_TENANT });
   }
-  return { usuarioId: usuario.usuarioId, tenantId };
+  const ctx = { usuarioId: usuario.usuarioId, tenantId };
+  await exigirSegundoFatorNoContexto(ctx, usuario.nivel);
+  return ctx;
 }

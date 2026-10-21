@@ -1,4 +1,5 @@
-// GET /auth/confirmar?token_hash=...&type=invite — aceite do convite (ADR-014).
+// GET /auth/confirmar?token_hash=...&type=invite|recovery — aceite do convite
+// (ADR-014) e link da recuperação de senha (C9 da comunicação da 1c).
 // O link do e-mail traz o token_hash; aqui ele é trocado por uma sessão, gravada
 // nos cookies do @supabase/ssr (HttpOnly). O aceite NÃO grava nada nas tabelas do HubKeep:
 // o membro já existe desde o convite. Depois, a pessoa define a senha.
@@ -17,11 +18,10 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Só o convite, que tem modelo de e-mail do catálogo (supabase/templates). A
-// recuperação de senha e o link mágico sairiam com o texto padrão do Supabase,
-// em inglês; entram na fase 1c, junto com o e-mail próprio (decisão do Cesar de
-// 05/10/2026, B5 do docs/11). Até lá, o link deles cai no login com erro.
-const TIPOS_ACEITOS: readonly EmailOtpType[] = ['invite'];
+// Os tipos com modelo de e-mail do catálogo (supabase/templates): o convite e
+// a recuperação de senha. Os dois levam a /definir-senha. O link mágico, sem
+// modelo, cai no login com erro.
+const TIPOS_ACEITOS: readonly EmailOtpType[] = ['invite', 'recovery'];
 
 export async function GET(req: Request) {
   const url = new URL(req.url);

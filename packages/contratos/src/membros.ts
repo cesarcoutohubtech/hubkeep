@@ -67,3 +67,8 @@ export const RespostaDeValidade = z
 export const RespostaDeAtivoDoMembro = z
   .object({ usuarioId: z.guid(), ativo: z.boolean() })
   .meta({ id: 'RespostaDeAtivoDoMembro' });
+
+/** A remoção do segundo fator (SP1, ADR-049): quantos fatores o Auth removeu. */
+export const RespostaDeRemocaoDoSegundoFator = z
+  .object({ usuarioId: z.guid(), removidos: z.number().int().min(0) })
+  .meta({ id: 'RespostaDeRemocaoDoSegundoFator' });

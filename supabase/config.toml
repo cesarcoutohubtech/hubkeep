@@ -265,6 +265,14 @@ otp_expiry = 3600
 subject = "Convite para o HubKeep"
 content_path = "./supabase/templates/convite.html"
 
+# HubKeep: a recuperação de senha (C9 da comunicação da 1c, 21/10/2026). O
+# link leva a /auth/confirmar com o token_hash e type=recovery, e de lá a
+# /definir-senha, como o convite. Assunto e arquivo saem do catálogo pt-BR
+# (tests/i18n-templates.test.ts); no dev, chegam pelo config push (Cesar).
+[auth.email.template.recovery]
+subject = "Nova senha do HubKeep"
+content_path = "./supabase/templates/recuperacao.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true
@@ -316,9 +324,11 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
+# HubKeep: ligado na CI como no dev (SP1, ADR-049), para a integração cadastrar
+# e verificar um TOTP de teste. O TOTP não depende do plano Pro.
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]

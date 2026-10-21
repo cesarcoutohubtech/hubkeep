@@ -1,5 +1,6 @@
 // Portas de identidade (ADR-001: o Supabase Auth fica atrás de portas, para
 // poder ser trocado). Os casos de uso só conhecem estas interfaces.
+import type { NivelDaSessao } from '@hubkeep/dominio';
 
 /** Usuário que o servidor conseguiu provar pelo token — nunca pelo que o cliente disse. */
 export interface UsuarioVerificado {
@@ -11,6 +12,11 @@ export interface UsuarioVerificado {
    * (membro ativo), e um tenant daqui sem vínculo vigente não mostra nada.
    */
   tenantsSugeridos: string[];
+  /**
+   * O nível da sessão, do token assinado: aal2 com o segundo fator verificado
+   * (SP1, ADR-049). Claim ausente ou desconhecida conta como aal1.
+   */
+  nivel: NivelDaSessao;
 }
 
 /**
@@ -73,4 +79,15 @@ export interface PedidoDeConvite {
 /** Envio de e-mail transacional, para o adaptador de convite por SMTP próprio. */
 export interface EnviadorDeEmail {
   enviar(mensagem: { para: string; assunto: string; texto: string; html?: string }): Promise<void>;
+}
+
+/**
+ * Administração do segundo fator (SP1, ADR-049 e adendo ao ADR-024): remove
+ * os fatores de um usuário que perdeu o aparelho, para ele cadastrar de novo.
+ * Chamada só depois de a aplicação conferir quem pede (Admin do grupo, em
+ * aal2) e que o alvo é membro do tenant dele, pela RLS no hk_app.
+ */
+export interface AdministracaoDoSegundoFator {
+  /** Remove todos os fatores do usuário e devolve quantos; o Auth encerra as sessões dele. */
+  removerFatores(usuarioId: string): Promise<number>;
 }

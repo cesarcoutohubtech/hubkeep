@@ -18,4 +18,12 @@ export interface PortaMembros {
   definirAtivo(ctx: Contexto, usuarioId: string, ativo: boolean): Promise<void>;
   /** Grava na unit of work. Lança NaoEncontrado se a atribuição não foi alterada. */
   alterarValidade(ctx: Contexto, atribuicaoId: string, validoAte: Date | null): Promise<void>;
+  /** O membro existe no tenant e é visível a quem pede (RLS). */
+  existe(ctx: Contexto, usuarioId: string): Promise<boolean>;
+  /** Auditoria e evento da remoção do segundo fator (SP1), na unit of work. */
+  registrarRemocaoDoSegundoFator(
+    ctx: Contexto,
+    usuarioId: string,
+    removidos: number,
+  ): Promise<void>;
 }

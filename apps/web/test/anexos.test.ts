@@ -11,6 +11,7 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POST as urlDeDownload } from '../src/app/api/v1/anexos/url-de-download/route';
 import { POST as urlDeUpload } from '../src/app/api/v1/anexos/url-de-upload/route';
+import { elevarParaAal2 } from './segundo-fator-de-teste';
 
 const URL_SUPABASE = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const CHAVE_PUBLICA = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
@@ -101,7 +102,8 @@ describe.skipIf(!temAmbiente)('F0-10 — anexos por URL assinada', { timeout: 60
     });
     const { data, error } = await cliente.auth.signInWithPassword({ email: mail, password: SENHA });
     if (error || !data.session) throw new Error(`login falhou: ${error?.message}`);
-    return data.session.access_token;
+    // SP1: o portão da API pede aal2 a quem tem papel que exige o segundo fator.
+    return (await elevarParaAal2(cliente)).access_token;
   };
 
   beforeAll(async () => {

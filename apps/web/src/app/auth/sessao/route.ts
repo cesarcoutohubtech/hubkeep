@@ -4,6 +4,11 @@
 // vêm para cá, o access token é conferido pela assinatura (JWKS) e a sessão
 // vai para o cookie HttpOnly: a página não guarda nem lê token.
 //
+// Segundo fator (SP1, ADR-049): com o token em aal1, quem tem papel que exige o
+// segundo fator em algum dos grupos do token recebe 403
+// segundo_fator_obrigatorio, sem cookie. O login, que ainda tem a sessão em
+// memória, pede o código (ou o cadastro do fator) e manda os tokens em aal2.
+//
 // DELETE /auth/sessao — saída: encerra a sessão deste navegador no Auth
 // (escopo local; o PWA do mesmo usuário segue) e apaga os cookies.
 //
@@ -15,6 +20,7 @@ import {
   urlSupabase,
   verificadorDeToken,
 } from '../../../servidor/composicao';
+import { exigirSegundoFatorNoContexto } from '../../../servidor/contexto';
 import { ErroHttp, rota } from '../../../servidor/http';
 import {
   type CookieParaGravar,
@@ -30,11 +36,15 @@ const tokenInvalido = () =>
 
 export const POST = rota('auth.sessao.criar', async (r) => {
   const pedido = await r.corpo(PedidoDeSessao, { limiteBytes: 16_384 });
+  let usuario;
   try {
-    await verificadorDeToken().verificar(pedido.accessToken);
+    usuario = await verificadorDeToken().verificar(pedido.accessToken);
   } catch (e) {
     if (e instanceof TokenInvalido) throw tokenInvalido();
     throw e;
+  }
+  for (const tenantId of usuario.tenantsSugeridos) {
+    await exigirSegundoFatorNoContexto({ usuarioId: usuario.usuarioId, tenantId }, usuario.nivel);
   }
   const gravados: CookieParaGravar[] = [];
   const supabase = clienteDeSessao(urlSupabase(), chavePublicaSupabase(), null, gravados);

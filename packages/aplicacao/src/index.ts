@@ -1,6 +1,7 @@
 // @hubkeep/aplicacao — casos de uso e portas (orquestração e permissão de ação).
 export { TokenInvalido } from './portas/identidade';
 export type {
+  AdministracaoDoSegundoFator,
   EnviadorDeEmail,
   EnvioDeConvite,
   PedidoDeConvite,
@@ -324,6 +325,8 @@ export type { HotelDaPorta, HotelEmImplantacao, PortaImplantacao } from './porta
 export { criarCasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export type { CasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
+export { criarCasoDeUsoDoSegundoFator } from './casos-de-uso/segundo-fator';
+export type { CasoDeUsoDoSegundoFator } from './casos-de-uso/segundo-fator';
 export type { CasosDeUsoDeMembros, RegrasDeMembros } from './casos-de-uso/membros';
 export { termoDeBusca, textoDeBusca } from './busca';
 export type { LinhaDeAuditoria, PortaHistorico, ReferenciaDoHistorico } from './portas/historico';

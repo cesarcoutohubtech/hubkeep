@@ -1263,3 +1263,205 @@ Com o [#361](https://github.com/cesarcoutohubtech/hubkeep/pull/361) (M3b) na `ma
 - **Trabalho não enviado em PR:** nenhum.
 - **Espera o Cesar:** o merge do PR e a conferência da 0061 no dev. Não há decisão da 1b pendente.
 - **Próxima tarefa:** sem tarefa da 1b, a preparação do piloto e a segurança pré-piloto, que também são deste agente. Primeiro passo: perguntar ao Cesar por qual começar.
+
+## SP2 — CSP de script no PWA (21/10/2026)
+
+Com o #363 na `main`, a 1b ficou sem tarefa, e o Cesar pediu para seguir ("Continue", 21/10/2026). A frente seguinte deste agente é a segurança pré-piloto: SP1 a SP3 do `docs/05`. Comecei pela SP2, que não depende do staging nem do Vercel Pro. A SP3 espera a decisão do Vercel Pro, e a SP1 (MFA) é a maior das três.
+
+**O que entrou** (detalhe na P5 do `docs/09`):
+- `apps/tecnico/vercel.json`: `script-src 'self'; worker-src 'self'`, junto com a borda de antes;
+- `apps/tecnico/csp.ts`: o `connect-src` do build, com a própria origem e as de `VITE_API_URL` e `VITE_SUPABASE_URL`. O build o põe num `<meta>` logo depois do charset, porque a origem da API muda entre o staging e a produção;
+- `@hubkeep/contratos/sem-eval`: o Zod sem JIT, como primeiro import do `main.tsx`. Sem ele, a sonda `Function('')` do Zod 4 aparece como violação de `script-src eval` no console.
+
+**Conferência:** build de produção servido com os cabeçalhos do `vercel.json` e aberto no Chromium. Não houve nenhuma violação de CSP, com rede e sem rede, com o service worker ativo. O mesmo build sem o `sem-eval` deu três violações. Os testes do `apps/tecnico` prendem:
+- o cabeçalho;
+- a política de conexão;
+- o HTML sem script inline;
+- a ordem do import.
+
+**Achado, fora da SP2:** o web também carrega schemas do `@hubkeep/contratos` em componentes de cliente, e a CSP de produção dele não tem `unsafe-eval`. Deve haver a mesma violação no console do web, sem quebrar nada, porque o Zod trata o erro. A correção seria o `sem-eval` no `instrumentation-client.ts` do Next, conferida com o build de produção do web. Proponho um PR pequeno depois deste.
+
+## Ponto de retomada (21/10/2026, SP2)
+
+- **`main`:** com o #363 (resumo da 1b e as decisões de 21/10/2026). Ele não tinha migração, então não havia `db push` a fazer; a última migração continua a 0061.
+- **PR aberto:** o da SP2 (`adm:`), fora da zona protegida.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:**
+  - o merge do PR da SP2;
+  - se a correção do mesmo problema no web entra num PR pequeno;
+  - a decisão do Vercel Pro, que destrava a SP3.
+- **Próxima tarefa:** a SP1 (MFA obrigatório para Admin do grupo, Gestor CSC e Implantador). Primeiro passo: ler a P4 do `docs/09` e montar o desenho, para a aprovação do Cesar antes do código. O desenho cobre:
+  - o nível AAL2 na API;
+  - o cadastro e a verificação do TOTP no web;
+  - a recuperação do segundo fator;
+  - a configuração do Auth no `config.toml`, que é zona protegida.
+
+## SP2 no web: o Zod sem JIT (21/10/2026)
+
+Com o #365 na `main`, o Cesar aprovou a correção do web ("Cesar aqui. pode seguir", 21/10/2026).
+
+- **Reprodução:** subi o build de produção do web (`next build` e `next start`, com um Supabase fictício) e abri as páginas públicas no Chromium. A `/` (que redireciona para o login) e a `/definir-senha` registraram `script-src eval`, porque o Zod 4 testa `Function('')` ao definir schema e a CSP de produção não tem `unsafe-eval`.
+- **Correção:** `apps/web/src/instrumentation-client.ts`, que o Next 16 roda no navegador antes do código do app, importa o `@hubkeep/contratos/sem-eval`. Com ele, as três páginas abriram sem nenhuma violação. As do painel pedem login e não foram abertas, mas o `instrumentation-client` vale para todas.
+- **Teste:** o `seguranca.test.ts` prende o import e a CSP de produção sem `unsafe-eval`.
+
+## Desenhos da SP1 e da SP3 (21/10/2026)
+
+- **SP1, MFA obrigatório:** `docs/referencia/proposta-sp1-mfa.md`, com seis decisões para o Cesar:
+  - o portão na API para todas as rotas, com a consulta das atribuições só quando o token está em `aal1`;
+  - quem tem dois papéis exige o segundo fator em tudo;
+  - o PWA só verifica o código;
+  - as contas do kit de teste;
+  - a recuperação em três camadas, com adendo ao ADR-024 para o reset pelo Admin do grupo;
+  - o Gerente fora da exigência.
+- **SP3, limite de requisições:** `docs/referencia/proposta-sp3-limite-de-requisicoes.md`, para o portão do staging, em cima da P1 do `docs/09`. Não há código antes do portão.
+
+## Ponto de retomada (21/10/2026, SP2 no web e desenhos da SP1 e da SP3)
+
+- **`main`:** com o #365 (SP2 no PWA). A última migração segue sendo a 0061.
+- **PR aberto:** o #366 (`adm:`), fora da zona protegida, com a SP2 no web e os dois desenhos.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:**
+  - o merge do #366;
+  - as seis decisões da SP1 (seção 8 da proposta).
+- **Decidido em 21/10/2026:** a SP3 e o Vercel Pro ficam para o portão do staging. Antes disso, só o desenho.
+- **Próxima tarefa:** com as decisões da SP1, abrir o PR de zona protegida dela, com:
+  - o `config.toml` com o TOTP;
+  - o adendo ao ADR-024 e o registro da SP1 no `docs/03`;
+  - o teste da secret key.
+  - Primeiro passo: conferir no GitHub se há outro PR de zona protegida aberto.
+
+## SP1, zona protegida (21/10/2026)
+
+O Cesar aceitou as seis decisões da SP1 ("Cesar aqui. SP1 pelas propostas. 366 mergeado", 21/10/2026). Antes de abrir o PR, conferi no GitHub: não havia nenhum PR aberto.
+
+**O PR de zona protegida traz:**
+- `supabase/config.toml`: o TOTP ligado no bloco da CI. O dev já o tinha desde 24/09/2026 (`[remotes.dev.auth.mfa.totp]`), então não há `config push`;
+- `packages/auth-admin`: `criarAdministracaoDoSegundoFator`, que só lista e remove os fatores do usuário pedido. A porta `AdministracaoDoSegundoFator` vai no `packages/aplicacao`;
+- `tests/secret-key-so-no-auth-admin.test.ts`: o export novo e as duas chamadas do MFA;
+- `docs/03`: o ADR-049 (MFA obrigatório) e o adendo ao ADR-024 (remoção do segundo fator). Os dois estão em "proposto, aguarda a aprovação do texto", como nos adendos anteriores: a forma foi aceita, e o texto espera o "aprovo";
+- `CLAUDE.md`: a regra 5 cita a remoção do segundo fator.
+
+**Fora da zona, no PR seguinte**, depois do merge deste:
+- o domínio (`exigeSegundoFator`);
+- o `aal` no verificador e o portão no `resolverContexto`;
+- as telas do web e a verificação no PWA;
+- o caso de uso da remoção;
+- o kit de teste;
+- o catálogo e os testes.
+
+## Ponto de retomada (21/10/2026, PR de zona da SP1)
+
+- **`main`:** com o #366. A última migração segue sendo a 0061.
+- **PR aberto:** o da SP1 na zona protegida (`adm:`). O check "zona protegida" falha por desenho.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:**
+  - o "aprovo" do texto do ADR-049 e do adendo ao ADR-024;
+  - o merge do PR.
+  - Não há `config push`.
+- **Próxima tarefa:** a SP1 fora da zona, numa branch a partir da `main` depois do merge. Primeiro passo: o domínio (`PAPEIS_COM_SEGUNDO_FATOR`, `exigeSegundoFator` e a tabela papel × nível) e o `aal` no verificador do token.
+
+## SP1: ADR-049 e adendo ao ADR-024 aprovados (21/10/2026)
+
+Com o #367 na `main`, o Cesar aprovou o texto dos dois ("Cesar aqui. Aprovo", 21/10/2026, em resposta ao pedido de aprovação do ADR-049 e do adendo ao ADR-024). O status vai num PR de zona protegida só de documentação, porque o `docs/03` é zona. Antes de abrir, conferi no GitHub: não havia nenhum PR aberto.
+
+## Ponto de retomada (21/10/2026, status do ADR-049)
+
+- **`main`:** com o #367 (SP1 na zona protegida). Não há `config push`: o dev já tem o TOTP ligado. A última migração segue sendo a 0061.
+- **PR aberto:** o do status do ADR-049 e do adendo ao ADR-024 (`adm:`), na zona protegida, só documentação.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge desse PR.
+- **Próxima tarefa:** a SP1 fora da zona. Primeiro passo: o domínio (`PAPEIS_COM_SEGUNDO_FATOR`, `exigeSegundoFator` e a tabela papel × nível) e o `aal` no verificador do token. O PR dela só abre depois do merge do PR do status.
+## SP1 fora da zona protegida (21/10/2026)
+
+Feita numa branch local enquanto o #368 esperava o merge. O PR abre depois, com base na `main`. Quatro commits:
+
+1. **Regra e portão:**
+   - `exigeSegundoFator` no domínio;
+   - o `aal` no verificador do token, conferido por um token assinado de verdade no teste;
+   - o `resolverContexto` recusando com 403 `segundo_fator_obrigatorio` quem está em `aal1` e tem papel que exige.
+2. **Login do web:**
+   - O segundo fator acontece no próprio login, ainda com a sessão em memória (ADR-032: a página não guarda token):
+     - quem já tem o TOTP digita o código antes de a sessão ir para o cookie;
+     - o `POST /auth/sessao` recusa a sessão em `aal1` de quem exige, e o login cadastra o fator (QR e segredo).
+   - Se o portão recusar depois (papel concedido no meio da sessão), a moldura e o `chamarApi` encerram a sessão e levam ao login.
+   - **Desvio do desenho:** a proposta falava de uma tela separada para o cadastro. Ela exigiria o token na página, contra o ADR-032.
+3. **PWA:**
+   - só a verificação do código, com o nível lido do token, sem rede;
+   - sem fator, o aviso para cadastrar no web, com "Já cadastrei";
+   - o 403 adia a operação da fila, sem descartá-la.
+4. **Remoção pelo Admin do grupo:**
+   - o caso de uso (regra do domínio, membro visível, `auth-admin`, auditoria e evento);
+   - a rota `POST /api/v1/membros/{usuarioId}/segundo-fator/remocao`;
+   - o botão na tela de membros.
+
+**Testes de integração:** os que entram como Admin passam a elevar a sessão a `aal2` com um TOTP de teste (RFC 6238, conferido pelos vetores do apêndice B). O de autenticação ganha:
+- o Admin em `aal1`, com 403 na sessão e na API;
+- o Técnico só com a senha;
+- a remoção do fator do Técnico, com a auditoria.
+
+Rodam só na CI.
+
+**Fica para o PR seguinte, antes do piloto:**
+- "Minha conta → Segurança": listar, acrescentar (o segundo aparelho) e remover os próprios fatores;
+- a tela "Minha conta → Segurança" é a única pendência da SP1.
+
+**Decisão 4b trocada (Cesar, 21/10/2026: "Cesar aqui. Sim, concordo"):** a conta do roteiro de demonstração não nasce com o fator. O Supabase gera o segredo no cadastro e não deixa escolher, então o kit teria de imprimir o segredo no terminal. Vale o fluxo normal: o QR no primeiro login de cada conta, uma vez, e o fator segue nas próximas rodadas do kit (`docs/10`). O ADR-049 ainda descreve a 4b; a correção dele entra no próximo PR de zona protegida da 1b.
+
+## Ponto de retomada (21/10/2026, PR da SP1 fora da zona)
+
+- **`main`:** com o #368 (ADR-049 e adendo ao ADR-024 aprovados). A última migração segue sendo a 0061, e não há `config push`.
+- **PR aberto:** o da SP1 fora da zona protegida (`adm:`). A integração do web (TOTP de teste no Supabase local) roda só na CI.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge do PR.
+- **Pendências registradas:**
+  - o ADR-049 ainda descreve a decisão 4b; o texto se corrige no próximo PR de zona;
+  - a SP3 espera o portão do staging.
+- **Próxima tarefa:** a tela "Minha conta → Segurança", com listar, acrescentar e remover os próprios fatores, feita no servidor com a sessão do cookie. Primeiro passo: conferir se o `createServerClient` do `@supabase/ssr` faz `mfa.enroll` e `challengeAndVerify` com a sessão do cookie e regrava o cookie em `aal2`.
+
+## SP1: Minha conta → Segurança (21/10/2026)
+
+Feita numa branch local, sobre a do #369; o PR abre depois do merge dele. A tela fica em `/conta/seguranca`, com o link "Segurança" na barra superior. Ela lista os aparelhos do segundo fator, cadastra outro (QR, segredo e código) e remove.
+
+- **Rotas:** `/auth/segundo-fator` (GET e POST), `/auth/segundo-fator/verificacao` e `/auth/segundo-fator/remocao`. Usam a sessão do cookie HttpOnly, como o `/auth/senha`, sem o token na página.
+- **Regras:**
+  - o cadastro tira antes os fatores que ficaram sem verificar;
+  - quem tem papel que exige fica sempre com pelo menos um (`exigirFatorRestante`, 422 `segundo_fator_minimo`);
+  - o Auth só cadastra outro fator, ou remove um verificado, numa sessão em `aal2`.
+- **Integração (CI):** o Admin lista o fator, não remove o último, cadastra o segundo aparelho, erra e acerta o código, e remove o aparelho novo.
+
+Com isso, a SP1 fica completa, exceto a correção do texto da 4b no ADR-049, que espera o próximo PR de zona protegida.
+
+## Varredura das três frentes e recuperação de senha (21/10/2026)
+
+**Varredura** pedida pelo Cesar depois do merge do #370. Ela mostrou que a 1c ainda não tinha quatro itens:
+- a recuperação de senha (passo 5 da C9), que o `docs/13` põe como condição do piloto;
+- o e-mail ao locador (passo 6 da C9);
+- a tela inicial 3c;
+- o aceite automático da preventiva. A 1b o deixou para a 1c, mas a 1c não registrou.
+
+O diário da 1c diz que "os dez itens estão feitos", e isso não bate com os dois primeiros.
+
+**Recuperação de senha, assumida pela 1b** ("pode assumir a recuperação de senha. Cesar aqui.", 21/10/2026). Segue o desenho aprovado na C9 (`docs/referencia/propostas-comunicacao-1c.md`, seção 5):
+- "Esqueci a senha" no login abre `/esqueci-a-senha`, que chama `POST /api/v1/auth/recuperar`. A rota é pública e responde sempre 202, exista ou não a conta. A falha do Auth só vai para o log, sem o e-mail;
+- o servidor chama o `resetPasswordForEmail` com a chave pública. O link vai para `/auth/confirmar`, que passa a aceitar `recovery` e leva a `/definir-senha`;
+- o template e o assunto saem do catálogo, como os do convite (`supabase/templates/recuperacao.html`, `[auth.email.template.recovery]` no `config.toml`, conferidos pelo `tests/i18n-templates.test.ts`);
+- quem tem o segundo fator confirma o código em `/definir-senha` antes da senha nova, porque o link dá uma sessão em `aal1`;
+- a integração (CI, com o Mailpit) cobre três casos:
+  - o 202 para conta inexistente, sem e-mail;
+  - o 422 para e-mail fora do formato;
+  - o link do convidado levando à senha nova, com a velha deixando de valer.
+
+O PR é de zona protegida por causa do `config.toml`. O template chega ao dev pelo `config push` do Cesar. O e-mail sai em pt-BR, pela decisão C6. A comunicação é área da 1c; o registro fica aqui, como pede a regra das áreas compartilhadas.
+
+## Ponto de retomada (21/10/2026, recuperação de senha)
+
+- **`main`:** com o #370 (SP1 completa). A última migração segue sendo a 0061.
+- **PR aberto:** o da recuperação de senha (`adm:`), na zona protegida por causa do `config.toml`. O check "zona protegida" falha por desenho.
+- **Espera o Cesar:**
+  - o merge desse PR;
+  - o `config push` no dev, para o template da recuperação;
+  - as decisões da varredura: o plano do staging, quem vê o cartão do locador, o dono do aceite automático da preventiva (proposta: a 1b) e o estado real da frente Mews no dev.
+- **Pendências registradas:**
+  - o texto da 4b no ADR-049;
+  - o e-mail ao locador e a tela inicial 3c, que são da 1c.
+- **Próxima tarefa:** conforme a prioridade do Cesar. Proposta: o aceite automático da preventiva.
