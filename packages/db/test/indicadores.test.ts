@@ -4,17 +4,23 @@
 //     por 100 UHs ativas, os UH-dias e a produtividade da equipe, sem o
 //     chamado cancelado e sem o hotel que ele não lê;
 //   - o proprietário do hotel vê só os cartões;
-//   - o Técnico não abre o painel.
+//   - o Técnico não abre o painel;
+//   - o cartão "UHs acompanhadas" da tela inicial: o condômino vê as UHs dele;
+//     o dono do hotel inteiro não entra.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
-import { criarCasosDeUsoDeIndicadores } from '@hubkeep/aplicacao';
+import {
+  criarCasosDeUsoDeIndicadores,
+  criarCasosDeUsoDoInicioDoProprietario,
+} from '@hubkeep/aplicacao';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   type AcessoBanco,
   criarAcessoBanco,
   criarPortaIndicadores,
+  criarPortaInicioDoProprietario,
   criarPortasDeAplicacao,
 } from '../src/index';
 
@@ -31,7 +37,12 @@ const T = randomUUID();
 const H1 = randomUUID();
 const H2 = randomUUID();
 const UH = { a: randomUUID(), b: randomUUID(), inativa: randomUUID(), outra: randomUUID() };
-const U = { gerente: randomUUID(), tecnico: randomUUID(), dono: randomUUID() };
+const U = {
+  gerente: randomUUID(),
+  tecnico: randomUUID(),
+  dono: randomUUID(),
+  condomino: randomUUID(),
+};
 const C = {
   concluido: randomUUID(),
   vencido: randomUUID(),
@@ -41,6 +52,7 @@ const C = {
 const OS = randomUUID();
 const EQUIPE = randomUUID();
 const PROPRIETARIO = randomUUID();
+const DONO_DA_UH = randomUUID();
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: T });
 
 describe.skipIf(!temBanco)('painel de indicadores (hk_app)', { timeout: 60_000 }, () => {
@@ -103,6 +115,21 @@ describe.skipIf(!temBanco)('painel de indicadores (hk_app)', { timeout: 60_000 }
       `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, proprietario_id, concedido_por)
        values ($1, $2, $3, 'proprietario', 'proprietario', $4, $5)`,
       [randomUUID(), T, U.dono, PROPRIETARIO, U.gerente],
+    );
+    // O condômino é dono só da UH do H2.
+    await dono.query(
+      `insert into app.proprietario (id, tenant_id, nome) values ($1, $2, 'Condômino')`,
+      [DONO_DA_UH, T],
+    );
+    await dono.query(
+      `insert into app.local_proprietario (id, tenant_id, proprietario_id, local_id, vigencia_inicio)
+       values ($1, $2, $3, $4, current_date - 1)`,
+      [randomUUID(), T, DONO_DA_UH, UH.outra],
+    );
+    await dono.query(
+      `insert into app.atribuicao_escopo (id, tenant_id, usuario_id, papel, escopo_tipo, proprietario_id, concedido_por)
+       values ($1, $2, $3, 'proprietario', 'proprietario', $4, $5)`,
+      [randomUUID(), T, U.condomino, DONO_DA_UH, U.gerente],
     );
     await dono.query(
       `insert into app.equipe (id, tenant_id, hotel_id, nome) values ($1, $2, $3, 'Manutenção')`,
@@ -194,6 +221,7 @@ describe.skipIf(!temBanco)('painel de indicadores (hk_app)', { timeout: 60_000 }
       'app.prioridade',
       'app.equipe',
       'app.atribuicao_escopo',
+      'app.local_proprietario',
       'app.hotel_proprietario',
       'app.proprietario',
       'app.local',
@@ -250,6 +278,21 @@ describe.skipIf(!temBanco)('painel de indicadores (hk_app)', { timeout: 60_000 }
   it('o Técnico não abre o painel', async () => {
     await expect(casos.consultar(ctx(U.tecnico), { periodo: PERIODO })).rejects.toMatchObject({
       codigo: 'indicadores_sem_permissao',
+    });
+  });
+
+  it('"UHs acompanhadas": o condômino vê as UHs dele; o dono do hotel inteiro não entra', async () => {
+    const inicio = criarCasosDeUsoDoInicioDoProprietario({
+      inicio: criarPortaInicioDoProprietario(banco),
+      atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+      relogio: { agora: () => AGORA },
+    });
+    expect(await inicio.consultar(ctx(U.dono))).toEqual({ uhsAcompanhadas: [] });
+    expect(await inicio.consultar(ctx(U.condomino))).toEqual({
+      uhsAcompanhadas: [{ hotelId: H2, hotelNome: 'Hotel Praia', uhs: 1 }],
+    });
+    await expect(inicio.consultar(ctx(U.gerente))).rejects.toMatchObject({
+      codigo: 'inicio_do_proprietario_sem_permissao',
     });
   });
 });

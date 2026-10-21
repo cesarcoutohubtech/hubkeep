@@ -129,6 +129,7 @@ import {
   RespostaDosProximosPrazos,
 } from './avisos-de-sla';
 import { ConsultaDosIndicadores, RespostaDosIndicadores } from './indicadores';
+import { RespostaDoInicioDoProprietario } from './inicio-do-proprietario';
 import {
   ConfiguracaoDoPushApi,
   ConsultaDaContagemDeEnvios,
@@ -2396,6 +2397,18 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'A situação de cada hotel', esquema: RespostaDaSituacaoPorHotel },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Quem pede não é da gestão (situacao_por_hotel_sem_permissao).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inicio/proprietario',
+    resumo:
+      'O cartão "UHs acompanhadas" da tela inicial (1c, seção 4 da paridade): para cada hotel a que quem pede está ligado por UHs (condo-hotel), as UHs ativas dele. O hotel de que ele é dono inteiro não entra. Só o proprietário.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'As UHs acompanhadas por hotel', esquema: RespostaDoInicioDoProprietario },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é proprietário (inicio_do_proprietario_sem_permissao).'),
     },
   },
   {

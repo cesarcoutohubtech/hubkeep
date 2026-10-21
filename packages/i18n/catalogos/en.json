@@ -476,6 +476,9 @@
   "inicio.situacao.situacao": "{situacao, select, critico {Critical} atencao {Attention} other {OK}}",
   "inicio.situacao.sla": "{valor}% (target {meta}%)",
   "inicio.situacao.abertos_por_dia": "Requests opened per day at {hotel}, over the last {dias} days",
+  "inicio.proprietario.titulo": "Your units",
+  "inicio.proprietario.dica": "You only see the requests for your units.",
+  "inicio.proprietario.uhs": "Rooms followed",
 
   "tecnico.nome": "HubKeep Technician",
   "tecnico.descricao": "Today's maintenance work orders, online or offline.",
@@ -959,6 +962,7 @@
   "erro.avisos_sla_fora_do_escopo": "Only the hotel's management sees SLA alerts.",
   "erro.prazos_sem_permissao": "Only management sees upcoming SLA deadlines.",
   "erro.situacao_por_hotel_sem_permissao": "Only management sees the status by hotel.",
+  "erro.inicio_do_proprietario_sem_permissao": "Only the owner sees the units followed.",
   "erro.envios_fora_do_papel": "Only management sees the delivery count.",
 
   "menu.chamados": "Service requests",
