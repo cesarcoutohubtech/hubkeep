@@ -1417,3 +1417,16 @@ Rodam só na CI.
   - o ADR-049 ainda descreve a decisão 4b; o texto se corrige no próximo PR de zona;
   - a SP3 espera o portão do staging.
 - **Próxima tarefa:** a tela "Minha conta → Segurança", com listar, acrescentar e remover os próprios fatores, feita no servidor com a sessão do cookie. Primeiro passo: conferir se o `createServerClient` do `@supabase/ssr` faz `mfa.enroll` e `challengeAndVerify` com a sessão do cookie e regrava o cookie em `aal2`.
+
+## SP1: Minha conta → Segurança (21/10/2026)
+
+Feita numa branch local, sobre a do #369; o PR abre depois do merge dele. A tela fica em `/conta/seguranca`, com o link "Segurança" na barra superior. Ela lista os aparelhos do segundo fator, cadastra outro (QR, segredo e código) e remove.
+
+- **Rotas:** `/auth/segundo-fator` (GET e POST), `/auth/segundo-fator/verificacao` e `/auth/segundo-fator/remocao`. Usam a sessão do cookie HttpOnly, como o `/auth/senha`, sem o token na página.
+- **Regras:**
+  - o cadastro tira antes os fatores que ficaram sem verificar;
+  - quem tem papel que exige fica sempre com pelo menos um (`exigirFatorRestante`, 422 `segundo_fator_minimo`);
+  - o Auth só cadastra outro fator, ou remove um verificado, numa sessão em `aal2`.
+- **Integração (CI):** o Admin lista o fator, não remove o último, cadastra o segundo aparelho, erra e acerta o código, e remove o aparelho novo.
+
+Com isso, a SP1 fica completa, exceto a correção do texto da 4b no ADR-049, que espera o próximo PR de zona protegida.

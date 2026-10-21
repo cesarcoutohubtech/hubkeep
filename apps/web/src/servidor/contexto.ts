@@ -12,7 +12,12 @@
 //            o contexto. Com aal2, não há leitura a mais.
 import { TokenInvalido, relogioDoSistema } from '@hubkeep/aplicacao';
 import type { Contexto } from '@hubkeep/db';
-import { type Atribuicao, type NivelDaSessao, exigirNivelDaSessao } from '@hubkeep/dominio';
+import {
+  type Atribuicao,
+  type NivelDaSessao,
+  exigeSegundoFator,
+  exigirNivelDaSessao,
+} from '@hubkeep/dominio';
 import { createServerClient } from '@supabase/ssr';
 import {
   atribuicoesDoUsuario,
@@ -85,6 +90,18 @@ export async function exigirSegundoFatorNoContexto(
 ): Promise<void> {
   if (nivel === 'aal2') return;
   exigirNivelDaSessao(nivel, await deps.atribuicoes(ctx), deps.agora());
+}
+
+/** Algum grupo do token tem papel do usuário que exige o segundo fator (SP1). */
+export async function exigeSegundoFatorNoUsuario(
+  usuario: { usuarioId: string; tenantsSugeridos: readonly string[] },
+  deps: DependenciasDoPortao = PORTAO,
+): Promise<boolean> {
+  for (const tenantId of usuario.tenantsSugeridos) {
+    const atribuicoes = await deps.atribuicoes({ usuarioId: usuario.usuarioId, tenantId });
+    if (exigeSegundoFator(atribuicoes, deps.agora())) return true;
+  }
+  return false;
 }
 
 export async function resolverContexto(req: Request): Promise<Contexto> {

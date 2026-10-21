@@ -178,6 +178,7 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/admin\/arrendamento$/, 'admin.arrendamento.titulo'],
   [/^\/admin\/auditoria$/, 'admin.auditoria.titulo'],
   [/^\/admin\/implantacao$/, 'admin.implantacao.titulo'],
+  [/^\/conta\/seguranca$/, 'conta.seguranca.titulo'],
   [/^\/inteligencia\/insights$/, 'menu.inteligencia'],
   [/^\/inteligencia\/insights\/[^/]+$/, 'inteligencia.pagina.titulo'],
   [/^\/inteligencia\/ativos\/[^/]+$/, 'inteligencia.ativo.titulo'],
@@ -373,6 +374,14 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
           <Botao tamanho="pequeno" onClick={alternarTema} aria-pressed={tema === 'claro'}>
             {t('tema.claro')}
           </Botao>
+          <Link
+            href="/conta/seguranca"
+            className="hk-botao"
+            data-variante="padrao"
+            data-tamanho="pequeno"
+          >
+            {t('conta.seguranca.abrir')}
+          </Link>
           <Botao tamanho="pequeno" onClick={() => void sair()}>
             {t('inicio.sair')}
           </Botao>
