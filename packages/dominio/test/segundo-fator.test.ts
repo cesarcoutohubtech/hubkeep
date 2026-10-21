@@ -6,6 +6,7 @@ import {
   PAPEIS,
   type Papel,
   exigeSegundoFator,
+  exigirFatorRestante,
   exigirNivelDaSessao,
 } from '../src';
 
@@ -62,5 +63,13 @@ describe('regras além da tabela', () => {
 
   it('sem atribuição, não exige', () => {
     expect(exigeSegundoFator([], agora)).toBe(false);
+  });
+});
+
+describe('remover um dos próprios fatores', () => {
+  it('quem exige fica com pelo menos um; quem não exige pode ficar sem nenhum', () => {
+    expect(codigo(() => exigirFatorRestante(true, 0))).toBe('segundo_fator_minimo');
+    expect(codigo(() => exigirFatorRestante(true, 1))).toBeNull();
+    expect(codigo(() => exigirFatorRestante(false, 0))).toBeNull();
   });
 });

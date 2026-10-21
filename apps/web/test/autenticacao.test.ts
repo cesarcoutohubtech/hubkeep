@@ -24,7 +24,10 @@ import { GET as confirmar } from '../src/app/auth/confirmar/route';
 import { POST as definirSenha } from '../src/app/auth/senha/route';
 import { DELETE as encerrarSessao, POST as criarSessao } from '../src/app/auth/sessao/route';
 import { processarOutboxDoTenant } from '../src/servidor/composicao';
-import { elevarParaAal2 } from './segundo-fator-de-teste';
+import { GET as listarFatores, POST as cadastrarFator } from '../src/app/auth/segundo-fator/route';
+import { POST as removerFator } from '../src/app/auth/segundo-fator/remocao/route';
+import { POST as verificarFator } from '../src/app/auth/segundo-fator/verificacao/route';
+import { codigoTotp, elevarParaAal2 } from './segundo-fator-de-teste';
 
 const URL_SUPABASE = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const CHAVE_PUBLICA = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
@@ -603,6 +606,76 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     };
     expect(erro.codigo).toBe('entrada_invalida');
     expect(erro.parametros.problemas.map((p) => p.campo)).toEqual(['email']);
+  });
+
+  it('SP1: Minha conta → Segurança: lista, cadastra um segundo aparelho e não remove o último', async () => {
+    const s = await sessaoComSegundoFator(email.admin);
+    const entrada = await criarSessao(
+      req('/auth/sessao', {
+        metodo: 'POST',
+        corpo: { accessToken: s.access_token, refreshToken: s.refresh_token },
+      }),
+    );
+    expect(entrada.status).toBe(204);
+    // O pote de cookies: cada resposta pode regravar a sessão.
+    const pote = new Map(cookiesDe(entrada).map((c) => [c.slice(0, c.indexOf('=')), c]));
+    const juntar = (r: Response) => {
+      for (const c of cookiesDe(r)) pote.set(c.slice(0, c.indexOf('=')), c);
+    };
+    const comCookie = (caminho: string, metodo = 'GET', corpo?: unknown) =>
+      req(caminho, {
+        metodo,
+        cabecalhos: { cookie: [...pote.values()].join('; ') },
+        ...(corpo === undefined ? {} : { corpo }),
+      });
+
+    const lista = await listarFatores(comCookie('/auth/segundo-fator'));
+    expect(lista.status).toBe(200);
+    const antes = (await lista.json()) as { exigido: boolean; fatores: { id: string }[] };
+    expect(antes.exigido).toBe(true);
+    expect(antes.fatores).toHaveLength(1);
+    const [unico] = antes.fatores;
+
+    const ultimo = await removerFator(
+      comCookie('/auth/segundo-fator/remocao', 'POST', { fatorId: unico?.id }),
+    );
+    expect(ultimo.status).toBe(422);
+    expect(await ultimo.json()).toMatchObject({ erro: { codigo: 'segundo_fator_minimo' } });
+
+    const novo = await cadastrarFator(
+      comCookie('/auth/segundo-fator', 'POST', { nome: 'Celular reserva' }),
+    );
+    expect(novo.status).toBe(201);
+    juntar(novo);
+    const { fatorId, segredo, qr } = (await novo.json()) as {
+      fatorId: string;
+      segredo: string;
+      qr: string;
+    };
+    expect(qr.startsWith('data:image/svg+xml')).toBe(true);
+    const errado = await verificarFator(
+      comCookie('/auth/segundo-fator/verificacao', 'POST', { fatorId, codigo: '000000' }),
+    );
+    expect(errado.status).toBe(422);
+    const certo = await verificarFator(
+      comCookie('/auth/segundo-fator/verificacao', 'POST', {
+        fatorId,
+        codigo: codigoTotp(segredo),
+      }),
+    );
+    expect(certo.status).toBe(204);
+    juntar(certo);
+
+    const depois = (await (await listarFatores(comCookie('/auth/segundo-fator'))).json()) as {
+      fatores: { id: string; nome: string | null }[];
+    };
+    expect(depois.fatores.map((f) => f.nome)).toContain('Celular reserva');
+    expect(depois.fatores).toHaveLength(2);
+
+    const removido = await removerFator(
+      comCookie('/auth/segundo-fator/remocao', 'POST', { fatorId }),
+    );
+    expect(removido.status).toBe(204);
   });
 
   // Por último: a remoção encerra as sessões do Técnico no Auth.

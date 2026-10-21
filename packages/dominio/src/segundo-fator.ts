@@ -2,7 +2,7 @@
 // usam o HubKeep com o segundo fator verificado na sessão (aal2). Quem tem um
 // desses papéis vigente, mesmo junto de outro, exige em tudo. Os demais podem
 // cadastrar o TOTP, sem exigência.
-import { PermissaoNegada } from './erros';
+import { PermissaoNegada, RegraViolada } from './erros';
 import { vigente } from './permissoes';
 import type { Atribuicao, Papel } from './tipos';
 
@@ -31,4 +31,18 @@ export function exigirNivelDaSessao(
     'segundo_fator_obrigatorio',
     'Este papel exige o segundo fator na sessão.',
   );
+}
+
+/**
+ * A pessoa remove um dos próprios fatores (SP1, "Minha conta → Segurança"):
+ * quem exige o segundo fator fica sempre com pelo menos um verificado
+ * (422 segundo_fator_minimo).
+ */
+export function exigirFatorRestante(exige: boolean, verificadosDepois: number): void {
+  if (exige && verificadosDepois < 1) {
+    throw new RegraViolada(
+      'segundo_fator_minimo',
+      'Seu papel exige o segundo fator: cadastre outro aparelho antes de remover este.',
+    );
+  }
 }
