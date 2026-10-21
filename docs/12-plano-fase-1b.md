@@ -90,6 +90,8 @@ Fim da etapa M: resumo.
 
 Fim da etapa PB e da fase 1b: resumo, com a lista do que ficou para a 1c.
 
+**Situação (21/10/2026):** todas as tarefas da fase 1b estão na `main`, menos a T1, que depende do cliente. O resumo, o que fica para depois e as decisões que esperam o Cesar estão em `docs/diario-fase-1b.md`, na seção "Fim da fase 1b: resumo".
+
 ## Dependente do cliente: conector real do TOTVS
 
 | Tarefa | O quê | Depende de |
