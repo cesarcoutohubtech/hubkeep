@@ -1295,3 +1295,37 @@ Com o #363 na `main`, a 1b ficou sem tarefa, e o Cesar pediu para seguir ("Conti
   - o cadastro e a verificação do TOTP no web;
   - a recuperação do segundo fator;
   - a configuração do Auth no `config.toml`, que é zona protegida.
+
+## SP2 no web: o Zod sem JIT (21/10/2026)
+
+Com o #365 na `main`, o Cesar aprovou a correção do web ("Cesar aqui. pode seguir", 21/10/2026).
+
+- **Reprodução:** subi o build de produção do web (`next build` e `next start`, com um Supabase fictício) e abri as páginas públicas no Chromium. A `/` (que redireciona para o login) e a `/definir-senha` registraram `script-src eval`, porque o Zod 4 testa `Function('')` ao definir schema e a CSP de produção não tem `unsafe-eval`.
+- **Correção:** `apps/web/src/instrumentation-client.ts`, que o Next 16 roda no navegador antes do código do app, importa o `@hubkeep/contratos/sem-eval`. Com ele, as três páginas abriram sem nenhuma violação. As do painel pedem login e não foram abertas, mas o `instrumentation-client` vale para todas.
+- **Teste:** o `seguranca.test.ts` prende o import e a CSP de produção sem `unsafe-eval`.
+
+## Desenhos da SP1 e da SP3 (21/10/2026)
+
+- **SP1, MFA obrigatório:** `docs/referencia/proposta-sp1-mfa.md`, com seis decisões para o Cesar:
+  - o portão na API para todas as rotas, com a consulta das atribuições só quando o token está em `aal1`;
+  - quem tem dois papéis exige o segundo fator em tudo;
+  - o PWA só verifica o código;
+  - as contas do kit de teste;
+  - a recuperação em três camadas, com adendo ao ADR-024 para o reset pelo Admin do grupo;
+  - o Gerente fora da exigência.
+- **SP3, limite de requisições:** `docs/referencia/proposta-sp3-limite-de-requisicoes.md`, para o portão do staging, em cima da P1 do `docs/09`. Não há código antes do portão.
+
+## Ponto de retomada (21/10/2026, SP2 no web e desenhos da SP1 e da SP3)
+
+- **`main`:** com o #365 (SP2 no PWA). A última migração segue sendo a 0061.
+- **PR aberto:** o #366 (`adm:`), fora da zona protegida, com a SP2 no web e os dois desenhos.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:**
+  - o merge do #366;
+  - as seis decisões da SP1 (seção 8 da proposta).
+- **Decidido em 21/10/2026:** a SP3 e o Vercel Pro ficam para o portão do staging. Antes disso, só o desenho.
+- **Próxima tarefa:** com as decisões da SP1, abrir o PR de zona protegida dela, com:
+  - o `config.toml` com o TOTP;
+  - o adendo ao ADR-024 e o registro da SP1 no `docs/03`;
+  - o teste da secret key.
+  - Primeiro passo: conferir no GitHub se há outro PR de zona protegida aberto.
