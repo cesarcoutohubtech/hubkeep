@@ -10,13 +10,14 @@
 //   UH e o ativo, com o estado da ligação (LIGACOES_DO_SINAL). Nada liga a
 //   reclamação ao ativo sem uma pessoa ("correlação não é causa").
 // - Quem vê, importa e classifica: quem decide insight no hotel, como a
-//   página do ativo (podeDecidirInsight).
+//   página do ativo (podeDecidirInsight), desde o contrato do módulo, sem
+//   esperar a data de abertura das telas (adendo de 20/10/2026 ao ADR-035).
 // - Sem dado pessoal do hóspede: as colunas não trazem nome, contato nem
 //   reserva.
 // Sem IA: a sugestão de classificação espera o provedor (regra 9).
 import { NaoEncontrado, RegraViolada, conflitoDeVersao } from '@hubkeep/dominio';
 import { podeDecidirInsight } from './insight';
-import { type PortasDoPainel, ativoNaoEncontrado, exigirPainel } from './painel';
+import { type PortasDoPainel, ativoNaoEncontrado, exigirReclamacoes } from './painel';
 
 /** Os três estados da ligação com o ativo (ADR-033); o check da 0052 tem os mesmos. */
 export const LIGACOES_DO_SINAL = ['sem_ligacao', 'possivel', 'confirmada'] as const;
@@ -262,13 +263,25 @@ export interface PedidoDeImportacao {
 const hotelNaoEncontrado = (): NaoEncontrado =>
   new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
 
+/**
+ * Se quem pede usa a tela de reclamações, e se as outras telas do módulo já
+ * abriram: antes disso, a tela não leva aos insights nem à página do ativo.
+ */
+export async function acessoAsReclamacoes(
+  p: PortasDoPainel,
+  agora: Date,
+): Promise<{ telasAbertas: boolean }> {
+  const { telasAbertas } = await exigirReclamacoes(p, agora);
+  return { telasAbertas };
+}
+
 /** Quem decide insight no hotel; senão, o hotel "não existe" para quem pede. */
 async function exigirHotel(
   p: PortasDoSinalDoHospede,
   hotelId: string,
   agora: Date,
 ): Promise<HotelDoSinal> {
-  const atribuicoes = await exigirPainel(p, agora);
+  const { atribuicoes } = await exigirReclamacoes(p, agora);
   const hotel = await p.hotelDoSinal(hotelId);
   if (
     !hotel ||
@@ -370,7 +383,7 @@ export async function classificarSinal(
   pedido: PedidoDeClassificacao,
   agora: Date,
 ): Promise<{ versao: number }> {
-  const atribuicoes = await exigirPainel(p, agora);
+  const { atribuicoes } = await exigirReclamacoes(p, agora);
   const sinal = await p.sinalParaClassificar(pedido.sinalId);
   if (
     !sinal ||

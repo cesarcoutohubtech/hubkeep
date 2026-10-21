@@ -145,7 +145,12 @@ describe('a visão de cada hotel', () => {
       ['Bandeira 1', 10],
       ['Bandeira 2', 20],
     ]);
-    expect(r.serie.find((d) => d.dia === '2026-10-02')?.encerrados).toBe(2);
+    // O dia já sai com os indicadores do dia: o MTTR do dia soma os dois hotéis.
+    expect(r.serie.find((d) => d.dia === '2026-10-02')).toMatchObject({
+      encerrados: 2,
+      mttrHoras: 15,
+      percentualDeSla: null,
+    });
     expect(r.produtividade).toEqual([
       {
         hotelId: 'h1',

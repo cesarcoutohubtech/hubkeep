@@ -654,6 +654,16 @@ export interface AppProprietario {
   tenant_id: string;
 }
 
+export interface AppQrReservado {
+  codigo: string;
+  criado_em: Generated<Timestamp>;
+  criado_por: string;
+  hotel_id: string;
+  id: string;
+  lote_id: string;
+  tenant_id: string;
+}
+
 export interface AppSinalHospede {
   ativo_id: string | null;
   atualizado_em: Generated<Timestamp>;
@@ -832,6 +842,7 @@ export interface DB {
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.prioridade": AppPrioridade;
   "app.proprietario": AppProprietario;
+  "app.qr_reservado": AppQrReservado;
   "app.sinal_hospede": AppSinalHospede;
   "app.sinal_hospede_chamado": AppSinalHospedeChamado;
   "app.situacao": AppSituacao;

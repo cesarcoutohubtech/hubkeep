@@ -16,7 +16,12 @@
 // de manutenção e ainda sem chamado, são ligadas a ele numa transação só.
 import { Conflito, NaoEncontrado, PermissaoNegada, RegraViolada } from '@hubkeep/dominio';
 import { podeDecidirInsight } from './insight';
-import { type PortasDoPainel, exigirPainel, insightNaoEncontrado } from './painel';
+import {
+  type PortasDoPainel,
+  exigirPainel,
+  exigirReclamacoes,
+  insightNaoEncontrado,
+} from './painel';
 import { sinaisDaEvidencia } from './painel-reclamacoes';
 import type { PortasDoSinalDoHospede, SinalDaFila } from './sinal-hospede';
 
@@ -73,7 +78,9 @@ async function reclamacaoDeQuemDecide(
   sinalId: string,
   agora: Date,
 ): Promise<ReclamacaoParaChamado> {
-  const atribuicoes = await exigirPainel(p, agora);
+  // A reclamação abre chamado também antes da abertura das telas (adendo de
+  // 20/10/2026 ao ADR-035); o chamado do insight, não.
+  const { atribuicoes } = await exigirReclamacoes(p, agora);
   const r = await p.reclamacaoParaChamado(sinalId);
   if (
     !r ||

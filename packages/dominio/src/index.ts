@@ -602,6 +602,7 @@ export {
   conclusaoDoChamado,
   diasDoPeriodo,
   indicadoresDaParcial,
+  indicadoresDoDia,
   intervaloNoFuso,
   noBacklog,
   parcialDoHotel,
@@ -619,6 +620,7 @@ export type {
   EntradaDoHotel,
   FaixaDeIdade,
   Indicadores,
+  IndicadoresDoDia,
   OsDoIndicador,
   ParcialDeIndicadores,
   PeriodoDoPainel,
@@ -702,3 +704,10 @@ export type {
   CopiaDoPlanoPadrao,
   PlanoPadrao,
 } from './pacote-da-bandeira';
+export {
+  LIMITE_DO_LOTE_DE_QR,
+  exigirCodigoReservadoLivre,
+  podeReservarQr,
+  validarTamanhoDoLote,
+} from './qr-reservado';
+export type { CodigoReservado } from './qr-reservado';

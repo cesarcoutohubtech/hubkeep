@@ -2,7 +2,8 @@
 // QR em lote (fase 1b, M3): a folha de etiquetas dos ativos do hotel, com o
 // filtro por local e por categoria e o tamanho da etiqueta. A lista vem da
 // API (só o escopo de quem pede); a folha é gerada e impressa no navegador.
-// As etiquetas de uma importação saem da tela da importação (M2).
+// As etiquetas de uma importação saem da tela da importação (M2). Os códigos
+// reservados, gerados antes do cadastro, são o outro modo da tela.
 import { type Idioma, resolverNome } from '@hubkeep/i18n';
 import { Campo, MensagemVazia, Painel, Selecao } from '@hubkeep/ui';
 import { useEffect, useMemo, useState } from 'react';
@@ -17,6 +18,7 @@ import {
   type TamanhoDeEtiqueta,
   ativosDaFolha,
 } from '../../../../cliente/etiquetas';
+import { CodigosReservados } from '../../../../cliente/qr-reservados';
 import { useIdioma, useT } from '../../../../i18n/cliente';
 
 const PADRAO = [
@@ -54,6 +56,7 @@ export default function EtiquetasDosAtivos() {
   const [localId, setLocalId] = useState('');
   const [categoriaId, setCategoriaId] = useState('');
   const [tamanho, setTamanho] = useState<TamanhoDeEtiqueta>('media');
+  const [modo, setModo] = useState<'ativos' | 'reservados'>('ativos');
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
 
   useEffect(() => {
@@ -109,25 +112,16 @@ export default function EtiquetasDosAtivos() {
           valor={hotelId}
           aoEscolher={setHotelId}
         />
-        <Campo rotulo={t('etiquetas.local')}>
+        <Campo rotulo={t('etiquetas.modo')}>
           {(p) => (
-            <Selecao {...p} value={localId} onChange={(e) => setLocalId(e.target.value)}>
-              <option value="">{t('etiquetas.todos_os_locais')}</option>
-              {locais.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.nome}
-                </option>
-              ))}
-            </Selecao>
-          )}
-        </Campo>
-        <Campo rotulo={t('etiquetas.categoria')}>
-          {(p) => (
-            <Selecao {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
-              <option value="">{t('etiquetas.todas_as_categorias')}</option>
-              {(categorias?.categorias ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {nomeDaCategoria(c)}
+            <Selecao
+              {...p}
+              value={modo}
+              onChange={(e) => setModo(e.target.value === 'reservados' ? 'reservados' : 'ativos')}
+            >
+              {(['ativos', 'reservados'] as const).map((m) => (
+                <option key={m} value={m}>
+                  {t('etiquetas.modo_opcao', { modo: m })}
                 </option>
               ))}
             </Selecao>
@@ -135,16 +129,54 @@ export default function EtiquetasDosAtivos() {
         </Campo>
         <SeletorDeTamanho valor={tamanho} aoEscolher={setTamanho} />
       </div>
-      <p className="hk-suave hk-nao-imprimir">{t('etiquetas.dica')}</p>
-      <div className="hk-nao-imprimir">
-        <Aviso aviso={erroDosHoteis ? { tipo: 'erro', erro: erroDosHoteis } : aviso} />
-      </div>
-      {daFolha === null ? (
-        <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
+      {modo === 'reservados' ? (
+        hotelId ? (
+          <CodigosReservados key={hotelId} hotelId={hotelId} tamanho={tamanho} />
+        ) : null
       ) : (
         <>
-          <BarraDasEtiquetas total={daFolha.length} />
-          <FolhaDeEtiquetas ativos={daFolha} tamanho={tamanho} />
+          <div className="hk-filtros hk-nao-imprimir">
+            <Campo rotulo={t('etiquetas.local')}>
+              {(p) => (
+                <Selecao {...p} value={localId} onChange={(e) => setLocalId(e.target.value)}>
+                  <option value="">{t('etiquetas.todos_os_locais')}</option>
+                  {locais.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nome}
+                    </option>
+                  ))}
+                </Selecao>
+              )}
+            </Campo>
+            <Campo rotulo={t('etiquetas.categoria')}>
+              {(p) => (
+                <Selecao
+                  {...p}
+                  value={categoriaId}
+                  onChange={(e) => setCategoriaId(e.target.value)}
+                >
+                  <option value="">{t('etiquetas.todas_as_categorias')}</option>
+                  {(categorias?.categorias ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {nomeDaCategoria(c)}
+                    </option>
+                  ))}
+                </Selecao>
+              )}
+            </Campo>
+          </div>
+          <p className="hk-suave hk-nao-imprimir">{t('etiquetas.dica')}</p>
+          <div className="hk-nao-imprimir">
+            <Aviso aviso={erroDosHoteis ? { tipo: 'erro', erro: erroDosHoteis } : aviso} />
+          </div>
+          {daFolha === null ? (
+            <MensagemVazia>{t('comum.carregando')}</MensagemVazia>
+          ) : (
+            <>
+              <BarraDasEtiquetas total={daFolha.length} />
+              <FolhaDeEtiquetas ativos={daFolha} tamanho={tamanho} />
+            </>
+          )}
         </>
       )}
     </Painel>

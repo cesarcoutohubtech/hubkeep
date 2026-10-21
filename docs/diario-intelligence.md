@@ -3237,3 +3237,70 @@ O Cesar decidiu "Particionada" (20/10/2026). A opção A de `docs/referencia/ret
 - **PR aberto:** o `int:` do (n), de zona protegida. O merge é do Cesar e falha no check "zona protegida" por desenho.
 - **Esperando:** o "aprovo" dos dois no adendo ao ADR-033; o merge e o `db push`; as decisões do particionamento (pa, pb, pc); se a tela de reclamações abre antes da data de abertura das telas; os detalhes do Kaio.
 - **Próximo:** com as decisões do particionamento, a migração 0061, depois do merge do (n). Primeiro passo: conferir na `main` a última migração e os meta-testes 1, 2, 28 e 32 em `supabase/tests/database/001_meta_seguranca.test.sql`.
+
+### O merge do #350, o "aprovo" do Cesar no adendo ao ADR-033 e as respostas de 20/10/2026
+
+**Do Cesar** (20/10/2026, nesta sessão): "Cesar aqui. 350 mergeado e db push feito. Aprovo o escrito no adendo ao ADR-033". Sobre a tela de reclamações antes da data de abertura das telas: "Sim, deve". Sobre o particionamento, pediu a recomendação.
+- **#350 mergeado,** com a 0060 no dev pelo `db push` do Cesar. A conferência no `supabase migration list` também é do Cesar.
+- **O adendo de 20/10/2026 ao ADR-033** (o número do insight) tem o "aprovo" do Cesar e falta o do Kaio. O status no `docs/03` muda num PR de zona protegida, com os dois.
+
+**Do Kaio** (20/10/2026, nesta sessão): "Kaio aqui. Quais sao os detalhes pendentes? Qual recomendação?". A lista e a recomendação estão na resposta desta sessão. A recomendação é manter os detalhes como estão até haver dados do piloto, e os 365 dias da retenção até a resposta da pergunta 38.
+
+**A tela de reclamações antes da abertura: proposta.** Muda o adendo de 12/10/2026 ao ADR-035 (a visibilidade das telas no piloto) e muda quem vê e quando. Por isso precisa do "sim" do Kaio e de um adendo com o "aprovo" dos dois.
+- **Desde quando:** desde o início do contrato do módulo, sem esperar a data de abertura. O que muda é só a tela de reclamações: a importação, a fila, a classificação e o abrir chamado da reclamação.
+- **Para quem:** os mesmos papéis da política de abertura (padrão: Admin do grupo e Gestor CSC; o Gerente, se o Admin incluir), e só quem decide insight no hotel, como hoje.
+- **O que continua fechado até a data:** a lista de insights, a página do insight e a do ativo, e o abrir chamado do insight. Antes da data, a tela de reclamações não mostra o link "Voltar aos insights".
+- **No menu, antes da data:** o item do módulo aparece para esses papéis e leva às reclamações. Para o Admin, também à página Abertura das telas.
+- **O job não muda:** as reclamações classificadas já entram no score e na regra sistêmica. Os insights que elas abrem aparecem na data de abertura, como os outros.
+- **Sem migração.** É um PR `int:` fora da zona protegida (motor, web, menu e textos), mais o adendo ao ADR-035 num PR de zona protegida.
+
+### As respostas do Kaio e o PR das reclamações antes da abertura (20/10/2026)
+
+**Do Cesar** (20/10/2026, nesta sessão): "Mantem tudo. Cesar aqui." Foi registrado como concordância nos detalhes, que são do Kaio (ADR-033). O agente perguntou se a frase também cobre a (pa), a (pb) e a (pc) do particionamento, e a resposta ainda não veio.
+
+**Do Kaio** (20/10/2026, nesta sessão): "Kaio aqui.: mantém tudo; aprovo o adendo ao ADR-033 (número do insight); sim para a tela de reclamações antes da abertura; sim na (pb)."
+- **Os detalhes** das entregas da 1.5, do (r) e do (n) ficam como estão (ADR-033). A retenção de 365 dias continua provisória até a pergunta 38.
+- **O adendo de 20/10/2026 ao ADR-033** (o número do insight) fica aprovado pelos dois. O status muda no próximo PR de zona protegida.
+- **A tela de reclamações antes da abertura** tem o "sim" dos dois sobre a proposta registrada acima. O texto vai como adendo ao ADR-035, no próximo PR de zona protegida, para o "aprovo" escrito dos dois.
+- **A (pb), a partição padrão,** tem o "sim" do Kaio. Falta o Cesar confirmar a (pa), a (pb) e a (pc).
+
+**O PR das reclamações antes da abertura** (`int:`, sem migração, fora da zona protegida):
+- **Motor:** `exigirReclamacoes`, com o módulo vigente e os papéis da política, sem a data de abertura. Passam a usá-lo a importação, a fila, a classificação e o abrir chamado da reclamação. O chamado do insight, as páginas do insight e do ativo e as listas de reclamações dessas páginas continuam com o `exigirPainel`. A função nova `acessoAsReclamacoes` diz se as telas já abriram.
+- **API:** `GET /api/v1/inteligencia/sinais/acesso`, no OpenAPI.
+- **Menu:** antes da data, o item leva às reclamações. O Admin vai à Abertura das telas, que ganhou o link das reclamações.
+- **Tela:** antes da data, a tela de reclamações não mostra "Voltar aos insights" e mostra uma frase sobre a data. O nome do ativo na fila aparece sem o link da página dele. A frase vai nos quatro idiomas (`inteligencia.sinais.antes_da_abertura`).
+- **Material do piloto e perguntas ao cliente:** as frases que diziam que as reclamações só entravam depois da abertura.
+- **Verificação local:** lint e typecheck verdes. 5.605 testes: 5.240 passaram, 0 falhas e 365 pulados (a integração do banco, que roda só na CI).
+
+### O merge do #358 e o PR do particionamento (20/10/2026)
+
+- **#358 mergeado** (Cesar, 20/10/2026), com os cinco checks verdes no head eefb1c76. A branch recomeçou da `main` (37341f95).
+- **Do Cesar** (20/10/2026, nesta sessão): "Cesar aqui. Com partição padrão". A (pb) fica decidida pelos dois. Sobre a (pa) e a (pc), o agente segue a recomendação (partições até dezembro de 2027 e a 0061 agora) e diz no PR que o Cesar pode mudar. São parâmetros da migração, e não regra.
+
+**O PR** (`int:`, zona protegida). Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona. O #360, o #359, o #357 e o #355 não tocam, e o #310 passa no check.
+- **Migração 0061** (`20261020230000_metrica_particionada.sql`): a tabela atual vira `_antiga`, com os índices renomeados, e a nova nasce particionada por mês com o nome de sempre. Ela tem 48 partições, de 2024-01 a 2027-12, e a padrão. A PK é `(id, dia)`, a chave `(tenant_id, id, dia)`, e os checks, as FKs (com os nomes de antes), os grants e as policies são os mesmos. As partições têm RLS forçada e nenhum grant. A migração copia as linhas e apaga a antiga.
+- **Meta-testes:** o 28 passa a ignorar as partições, e o 35, novo, confere que nenhum papel da aplicação tem privilégio em partição (plano 35).
+- **pgTAP 032** (39): a tabela é particionada, a linha cai no mês dela, o dia fora dos meses cai na padrão, quem decide não lê pela partição e o worker não grava nela.
+- **Job:** o registro da execução traz `metricasNaParticaoPadrao` (as linhas do dia na partição padrão), e o teste de integração confere o zero.
+- **`docs/03`:**
+  - o adendo de 20/10/2026 ao ADR-036 (particionamento) e o de 20/10/2026 ao ADR-035 (reclamações antes da abertura) entram como "aguarda a aprovação escrita de Cesar e de Kaio";
+  - o adendo de 20/10/2026 ao ADR-033 (número do insight) passa a aprovado pelos dois.
+- **Docs:** `docs/02`, `docs/referencia/retencao-metrica-diaria.md` e `docs/referencia/observabilidade-job-inteligencia.md`.
+- **Conferência local da migração:** num Postgres 16 descartável do container, com um esquema mínimo (hotel, ativo, papéis e as funções `authz` simuladas), a 0039 e depois a 0061. Resultado:
+  - a troca roda;
+  - as linhas caem no mês e na padrão;
+  - as 49 partições têm RLS forçada e nenhum privilégio de `hk_app` nem de `hk_worker`;
+  - o worker conta as linhas da padrão pela tabela-mãe;
+  - quem decide é recusado na partição.
+  - Não substitui o pgTAP da CI.
+- **Verificação local:** lint e typecheck verdes. 5.611 testes: 5.246 passaram, 0 falhas e 365 pulados (a integração do banco, que roda só na CI).
+
+### Ponto de retomada (20/10/2026, PR do particionamento)
+
+- **`main`:** 37341f95 (#358). Última migração na `main`: 0060. **Dev:** a 0061 vai pelo `db push` do Cesar depois do merge, com a conferência no `supabase migration list`. A migração copia as linhas da métrica do dev para a tabela nova.
+- **PR aberto:** o `int:` do particionamento, de zona protegida. O merge é do Cesar, e o check "zona protegida" falha por desenho.
+- **Esperando:**
+  - o "aprovo" escrito dos dois no adendo ao ADR-036 (particionamento) e no adendo ao ADR-035 (reclamações antes da abertura);
+  - o merge e o `db push`;
+  - se o Cesar quiser outro horizonte que não dezembro de 2027.
+- **Próximo:** antes de dezembro de 2027, a migração das partições de 2028. O resto do que falta antes do piloto não é do Intelligence (staging, F0-12, as respostas do cliente).

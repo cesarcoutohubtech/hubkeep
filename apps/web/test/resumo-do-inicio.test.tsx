@@ -1,5 +1,5 @@
 // O resumo da tela inicial (1c, seção 4 da paridade): os quatro indicadores do
-// topo, o backlog com a linha dos últimos 14 dias e o fluxo de chamados para a
+// topo, cada um com a linha dos últimos 14 dias, e o fluxo de chamados para a
 // gestão; os cartões do proprietário para ele. Nos quatro idiomas e no
 // pseudo-idioma, renderizado no servidor (react-dom/server), sem rede.
 import { IDIOMAS, type IdiomaDeExibicao, PSEUDO_IDIOMA, mensagensDe } from '@hubkeep/i18n';
@@ -40,13 +40,23 @@ const indicadores = (extra: Partial<IndicadoresNaTela> = {}): IndicadoresNaTela 
   ...extra,
 });
 
-/** 30 dias: o backlog sobe de 1 em 1, de 1 a 30. */
+/**
+ * 30 dias: o backlog sobe de 1 em 1, de 1 a 30; o % de SLA fica sem conta a
+ * cada 7 dias; o tempo de reparo existe todo dia; a preventiva, nenhum dia.
+ */
 const SERIE: PainelDeIndicadores['serie'] = Array.from({ length: 30 }, (_, i) => ({
   dia: `2026-10-${String(i + 1).padStart(2, '0')}`,
   backlog: i + 1,
   abertos: 2,
   encerrados: 1,
+  percentualDeSla: i % 7 === 0 ? null : 90,
+  mttrHoras: 10 + i,
+  percentualDePreventivaEmDia: null,
 }));
+const mini = (html: string, rotulo: string) =>
+  html.match(
+    new RegExp(`<svg class="hk-mini-linha"[^>]*aria-label="${rotulo}"[^>]*>(.*?)</svg>`),
+  )?.[1];
 
 const DA_GESTAO: PainelDeIndicadores = {
   periodo: { inicio: '2026-10-01', fim: '2026-10-30' },
@@ -110,7 +120,7 @@ describe('resumo da tela inicial em cada idioma', () => {
 });
 
 describe('resumo da tela inicial', () => {
-  it('a gestão: os quatro indicadores, a linha do backlog de 14 dias e só o fluxo', () => {
+  it('a gestão: os quatro indicadores, as linhas de 14 dias e só o fluxo', () => {
     const html = renderizar('pt-BR', DA_GESTAO);
     expect(html).toContain('Últimos 30 dias');
     expect(html.match(/class="hk-indicador"/g)).toHaveLength(4);
@@ -121,7 +131,8 @@ describe('resumo da tela inicial', () => {
     const linha = html.match(/class="hk-mini-linha"[\s\S]*?points="([^"]+)"/);
     expect(linha?.[1]?.split(' ')).toHaveLength(14);
     expect(html).toContain(pt['indicadores.grafico.fluxo.titulo']);
-    expect(html.match(/<svg[^>]*role="img"/g)).toHaveLength(2);
+    // O backlog, o % de SLA, o tempo de reparo e o fluxo; a preventiva, sem dia na conta, fica sem linha.
+    expect(html.match(/<svg[^>]*role="img"/g)).toHaveLength(4);
     expect(html).toContain('href="/indicadores"');
   });
 
@@ -138,5 +149,33 @@ describe('resumo da tela inicial', () => {
       atual: { inicio: '2026-09-21', fim: '2026-10-20' },
       anterior: { inicio: '2026-08-22', fim: '2026-09-20' },
     });
+  });
+});
+
+describe('as linhas dos últimos 14 dias', () => {
+  const html = renderizar('pt-BR', DA_GESTAO);
+
+  it('o % de SLA: um vão no dia sem conta, e o último dia sozinho vira um ponto', () => {
+    // Dos dias 17 a 30, ficam sem conta os dias 22 e 29 (i = 21 e 28).
+    const sla = mini(
+      html,
+      '% de SLA de cada dia, nos últimos 14 dias; o dia sem prazo vencido fica em branco',
+    );
+    const trechos = [...(sla ?? '').matchAll(/points="([^"]+)"/g)].map(
+      (m) => m[1]?.split(' ').length,
+    );
+    expect(trechos).toEqual([5, 6, 2]);
+  });
+
+  it('o tempo de reparo: uma linha só, com os 14 dias', () => {
+    const mttr = mini(
+      html,
+      'Tempo médio de reparo dos chamados encerrados em cada dia, nos últimos 14 dias; o dia sem encerramento fica em branco',
+    );
+    expect(mttr?.match(/points="([^"]+)"/)?.[1]?.split(' ')).toHaveLength(14);
+  });
+
+  it('a preventiva sem nenhum dia na conta fica sem linha', () => {
+    expect(html).not.toContain('% de preventiva em dia pela data prevista');
   });
 });

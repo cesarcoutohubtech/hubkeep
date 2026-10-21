@@ -15,7 +15,7 @@
   "dependencies": {
     "@hubkeep/aplicacao": "workspace:*",
     "@hubkeep/dominio": "workspace:*",
-    "kysely": "^0.29.6",
+    "kysely": "^0.29.7",
     "pg": "^8.23.1",
     "uuid": "^14.0.3"
   },
@@ -23,6 +23,6 @@
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "kysely-codegen": "^0.20.0",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   }
 }

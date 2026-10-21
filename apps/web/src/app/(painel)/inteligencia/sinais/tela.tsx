@@ -74,13 +74,25 @@ export function TelaDeSinais() {
   const { hoteis, hotelId, setHotelId, erro } = useHoteis();
   // A fila relê depois de cada importação.
   const [rodada, setRodada] = useState(0);
+  // Antes da data de abertura das telas (adendo de 20/10/2026 ao ADR-035), a
+  // tela não leva aos insights nem à página do ativo, que ainda estão fechados.
+  const [telasAbertas, setTelasAbertas] = useState(false);
+  useEffect(() => {
+    void chamarApi<{ telasAbertas: boolean }>('/api/v1/inteligencia/sinais/acesso').then((r) =>
+      setTelasAbertas(r.ok && r.dados.telasAbertas),
+    );
+  }, []);
   const hotel = hoteis.find((h) => h.id === hotelId);
   return (
     <div className="hk-pilha">
       <Nota tom="info">{t('inteligencia.sinais.intro')}</Nota>
-      <p>
-        <Link href="/inteligencia/insights">{t('inteligencia.sinais.voltar')}</Link>
-      </p>
+      {telasAbertas ? (
+        <p>
+          <Link href="/inteligencia/insights">{t('inteligencia.sinais.voltar')}</Link>
+        </p>
+      ) : (
+        <p className="hk-suave">{t('inteligencia.sinais.antes_da_abertura')}</p>
+      )}
       <Aviso aviso={erro && { tipo: 'erro', erro }} />
       {hoteis.length > 1 && (
         <SeletorDeHotel
@@ -98,7 +110,12 @@ export function TelaDeSinais() {
             hotelNome={hotel.nome}
             aoImportar={() => setRodada((r) => r + 1)}
           />
-          <FilaDeSinais key={`fila-${hotel.id}`} hotelId={hotel.id} rodada={rodada} />
+          <FilaDeSinais
+            key={`fila-${hotel.id}`}
+            hotelId={hotel.id}
+            rodada={rodada}
+            telasAbertas={telasAbertas}
+          />
         </>
       )}
     </div>
@@ -323,7 +340,15 @@ export function ResultadoDaImportacao({ resultado }: { resultado: ResultadoSomad
   );
 }
 
-function FilaDeSinais({ hotelId, rodada }: { hotelId: string; rodada: number }) {
+function FilaDeSinais({
+  hotelId,
+  rodada,
+  telasAbertas,
+}: {
+  hotelId: string;
+  rodada: number;
+  telasAbertas: boolean;
+}) {
   const t = useT();
   const [situacao, setSituacao] = useState<(typeof SITUACOES)[number]>('pendentes');
   const [fila, setFila] = useState<Fila | null>(null);
@@ -389,6 +414,7 @@ function FilaDeSinais({ hotelId, rodada }: { hotelId: string; rodada: number }) 
         <TabelaDeSinais
           fila={fila}
           apoio={apoio}
+          telasAbertas={telasAbertas}
           aoEditar={(s) => {
             setAviso(null);
             setAbrindo(null);
@@ -461,11 +487,14 @@ export const podeAbrirChamado = (s: Sinal): boolean =>
 export function TabelaDeSinais({
   fila,
   apoio,
+  telasAbertas = true,
   aoEditar,
   aoAbrirChamado,
 }: {
   fila: Fila;
   apoio: Apoio | null;
+  /** Antes da abertura das telas, o ativo aparece sem o link da página dele. */
+  telasAbertas?: boolean;
   aoEditar: (s: Sinal) => void;
   aoAbrirChamado: (s: Sinal) => void;
 }) {
@@ -552,9 +581,13 @@ export function TabelaDeSinais({
               {s.ativoId && (
                 <>
                   <br />
-                  <Link href={`/inteligencia/ativos/${s.ativoId}`}>
-                    {fila.nomes.ativos[s.ativoId] ?? semValor}
-                  </Link>
+                  {telasAbertas ? (
+                    <Link href={`/inteligencia/ativos/${s.ativoId}`}>
+                      {fila.nomes.ativos[s.ativoId] ?? semValor}
+                    </Link>
+                  ) : (
+                    (fila.nomes.ativos[s.ativoId] ?? semValor)
+                  )}
                 </>
               )}
               {s.classificadoEm && (

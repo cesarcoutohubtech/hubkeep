@@ -858,7 +858,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Ressalva:** toda exibição diz que a variação observada não prova que a intervenção foi a causa.
 - **Sem o código de solução, a intervenção não aparece.** O piloto treina o preenchimento desde o primeiro dia, mesmo com a política "Códigos obrigatórios no aceite" desligada (`docs/piloto/`).
 
-**Adendo de 20/10/2026 — o número do insight.** Status: aguarda a aprovação escrita de Cesar e de Kaio. O desenho foi decidido pelos dois em 20/10/2026, no chat do agente do Intelligence ("Cesar aqui. Ambos agora." e "Kaio aqui. Sim, continue como cesar quer. (r) e (n) agora"), sobre a proposta registrada em `docs/diario-intelligence.md`, "O item 3: recálculo na tela ou número do insight, proposta".
+**Adendo de 20/10/2026 — o número do insight.** Status: aprovado por escrito em 20/10/2026, no chat do agente do Intelligence, pelo Cesar ("Cesar aqui. 350 mergeado e db push feito. Aprovo o escrito no adendo ao ADR-033") e pelo Kaio ("Kaio aqui.", com "aprovo o adendo ao ADR-033 (número do insight)"). Aprovado pelos dois. O desenho foi decidido pelos dois em 20/10/2026, no chat do agente do Intelligence ("Cesar aqui. Ambos agora." e "Kaio aqui. Sim, continue como cesar quer. (r) e (n) agora"), sobre a proposta registrada em `docs/diario-intelligence.md`, "O item 3: recálculo na tela ou número do insight, proposta".
 - **O que é:** um número sequencial por tenant, o que as pessoas citam ("INS-0133"). O id continua sendo a chave e o link.
 - **Estrutura (migração 0060):** a coluna `app.insight.numero`, obrigatória, a partir de 1, única por tenant (`unique (tenant_id, numero)`). Nenhum papel a atualiza: o `hk_app` e o `hk_worker` mantêm só as colunas que já atualizavam.
 - **Quem dá o número:** o job, ao abrir o insight, com o maior do tenant mais um, na mesma transação (`packages/db`, `abrirInsight`). Não há sequência, função nem trigger no banco. Se dois jobs do mesmo tenant correrem juntos, a chave única recusa o segundo número igual, e aquele job falha e roda de novo.
@@ -962,6 +962,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Quem tem também um papel fora da política** decide só pelos papéis dela. A leitura continua a da RLS da `app.insight`.
 - **Sem mudança no banco:** quem vê a tela é permissão de ação, na aplicação (regra 2). Nenhuma migração, policy ou função.
 
+### Adendo de 20/10/2026: a tela de reclamações antes da abertura
+
+**Status:** aguarda a aprovação escrita de Cesar e de Kaio. A decisão é dos dois, em 20/10/2026, no chat do agente do Intelligence: "Sim, deve" (Cesar, sobre abrir a tela de reclamações antes da data de abertura das telas) e "sim para a tela de reclamações antes da abertura" (Kaio, sobre a proposta registrada em `docs/diario-intelligence.md`, "O merge do #350, o 'aprovo' do Cesar no adendo ao ADR-033 e as respostas de 20/10/2026"). O código entrou no #358.
+
+**Decisão:**
+- **A tela de reclamações de hóspedes** (importação, fila, classificação e abrir chamado da reclamação, ADR-047) vale desde o início do contrato do módulo, sem esperar a data de `inteligencia.visibilidade_telas`. Ela vale para os papéis da política e, entre eles, só para quem decide insight no hotel, como antes.
+- **O resto do painel continua como no adendo de 12/10/2026:** a lista de insights, as páginas do insight e do ativo, as listas de reclamações dessas páginas e o chamado do insight abrem só na data.
+- **Antes da data:** o item do menu leva às reclamações. Para o Admin do grupo, leva à página da abertura, que tem o link delas. A tela não leva aos insights nem à página do ativo. `GET /api/v1/inteligencia/sinais/acesso` diz à tela e ao menu se as telas já abriram.
+- **O job não muda:** as reclamações classificadas entram no score e na regra sistêmica desde o primeiro dia. Os insights que elas abrem aparecem na data, com os outros.
+- **Sem mudança no banco:** é permissão de ação, na aplicação (`exigirReclamacoes` no `packages/inteligencia`; regra 2).
+
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar foi aceita por Kaio em 07/10/2026 e está aplicada no motor.
@@ -1026,6 +1037,21 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - os 3 hotéis são hotéis distintos com pelo menos um chamado contado na janela em ativos do modelo; ter o modelo instalado não basta;
   - o escopo do insight do mesmo modelo passa a `{ categoriaId, modelo }`, e a família muda junto (`sistemico|categoriaId=...|modelo=...|regra=mesmo_modelo`).
 - **O formato das políticas muda nas três chaves** (atenção: pesos; efetividade: limiares; sistêmico: `ativa` e mínimos). Quando o formato mudou, nenhum valor de política do Intelligence podia ser gravado (a extensão do módulo ainda não estava registrada), então não há valor antigo a migrar. Daqui para a frente, mudar o formato de uma chave exige versão nova da fórmula e um plano para os valores já gravados.
+
+### Adendo de 20/10/2026: a métrica diária particionada por mês
+
+**Status:** aguarda a aprovação escrita de Cesar e de Kaio. As decisões são de 20/10/2026, no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O particionamento da métrica diária: proposta":
+- particionar antes do piloto (Cesar: "Particionada");
+- com a partição padrão (Cesar: "Com partição padrão"; Kaio: "sim na (pb)");
+- as partições até dezembro de 2027 e a migração agora são as recomendações da proposta, que o Cesar pode mudar no PR.
+
+**Decisão (migração 0061):**
+- **A `app.metrica_ativo_diaria` é particionada por intervalo de `dia`,** uma partição por mês, de janeiro de 2024 a dezembro de 2027 (`app.metrica_ativo_diaria_AAAA_MM`). O nome, as colunas, os checks, as FKs, os grants e as policies da tabela não mudam. Por isso o Kysely, o job e o painel não mudam.
+- **As chaves levam o dia:** a PK é `(id, dia)`, e `unique (tenant_id, id, dia)` substitui `unique (tenant_id, id)`. Nenhuma tabela aponta FK para a métrica.
+- **A partição padrão** (`app.metrica_ativo_diaria_padrao`) recebe o dia fora dos meses criados, para o job não falhar se a migração do ano seguinte atrasar. O registro da execução do job (`job_inteligencia` na auditoria) traz `metricasNaParticaoPadrao`, as linhas do dia que foram para ela. Diferente de zero, é o aviso para criar o ano. A migração que criar um mês com linhas na padrão tira essas linhas de lá antes, na mesma migração.
+- **As partições têm RLS habilitada e forçada e nenhum grant.** Grants e policies ficam na tabela-mãe. Ninguém da aplicação lê nem grava pela partição (meta-teste 35, pgTAP 032). O meta-teste 28 lista só as tabelas-mãe.
+- **Nenhum papel da aplicação cria partição,** nem o job. O ano seguinte vem numa migração nova, antes de janeiro de 2028.
+- **Nada é apagado** (a opção B, aprovada, continua). Remover a partição que sair da janela, se um dia for decidido, é operação do responsável, nunca de papel da aplicação.
 
 ## ADR-037 — Intelligence: o módulo depende do núcleo, nunca o contrário
 

@@ -3,13 +3,15 @@
 // adendo ao ADR-035 de 12/10/2026). Só o Admin do grupo, também antes da
 // abertura (decisão 2 do Cesar): vê quando as telas abrem e para quem, e muda
 // pela política, no escopo do grupo (PUT /api/v1/politicas). A regra é do
-// motor; a tela só mostra a resposta e grava o valor.
+// motor; a tela só mostra a resposta e grava o valor. A tela de reclamações
+// abre antes da data (adendo de 20/10/2026 ao ADR-035), e o link vai daqui.
 import {
   PAPEIS_QUE_VEEM_AS_TELAS_API,
   type RespostaDaAberturaDoIntelligence,
   type z,
 } from '@hubkeep/contratos';
 import { Botao, Campo, Dados, Entrada, MensagemVazia, Nota, Painel } from '@hubkeep/ui';
+import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { chamarApi } from '../../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
@@ -47,6 +49,10 @@ export function TelaDaAbertura() {
   return (
     <div className="hk-pilha">
       <Nota tom="info">{t('inteligencia.abertura.nota')}</Nota>
+      {/* As reclamações abrem antes da data (adendo de 20/10/2026 ao ADR-035). */}
+      <p>
+        <Link href="/inteligencia/sinais">{t('inteligencia.sinais.link')}</Link>
+      </p>
       <Aviso aviso={aviso} />
       {abertura === null ? (
         aviso === null && <MensagemVazia>{t('comum.carregando')}</MensagemVazia>

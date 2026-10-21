@@ -13,7 +13,7 @@ A rota `/api/cron/inteligencia` roda uma vez por dia, às 06:00 UTC (`vercel.jso
 | Log, `inteligencia.job.rodada` | Uma linha por rodada: `resultado` (`ok` ou `falha`), `status` da resposta, `duracao_ms` e `falhas`, a lista dos tenants que falharam. |
 | Log, `http` | A linha de todo pedido, com `rota: cron.inteligencia`. |
 | Sentry, monitor `inteligencia-job-diario` | Um check-in ao fim da rodada: `ok` quando todos os tenants rodaram, `error` quando um falhou ou a rota não rodou (503 sem `CRON_SECRET`, 500). |
-| Auditoria, `job_inteligencia` | O registro de cada execução num tenant com o módulo vigente (`calcular_dia` ou `recalcular_dia`), como antes. |
+| Auditoria, `job_inteligencia` | O registro de cada execução num tenant com o módulo vigente (`calcular_dia` ou `recalcular_dia`), como antes. Desde a 0061, traz `metricasNaParticaoPadrao`: as linhas do dia que caíram na partição padrão da métrica, porque o mês delas ainda não foi criado. Diferente de zero, é hora da migração do ano seguinte. |
 
 O pedido com o segredo errado (401) não manda check-in.
 

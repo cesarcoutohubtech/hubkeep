@@ -76,3 +76,34 @@ describe('FolhaDeEtiquetas', () => {
     expect(html).toContain(mensagensDe('pt-BR')['etiquetas.vazia']);
   });
 });
+
+describe('códigos reservados (M3)', async () => {
+  const { etiquetasDoLote, lotesDosCodigos } = await import('../src/cliente/qr-reservados');
+  const L_NOVO = '01900000-0000-7000-8000-000000000002';
+  const L_VELHO = '01900000-0000-7000-8000-000000000001';
+  const CODIGOS = [
+    { codigo: 'AAAAAAAAA1', loteId: L_NOVO, criadoEm: '2026-10-20T10:00:00.000Z', ligado: false },
+    { codigo: 'AAAAAAAAA2', loteId: L_NOVO, criadoEm: '2026-10-20T10:00:00.000Z', ligado: true },
+    { codigo: 'BBBBBBBBB1', loteId: L_VELHO, criadoEm: '2026-10-19T10:00:00.000Z', ligado: false },
+  ];
+
+  it('agrupa os lotes na ordem da lista, com o total e os livres', () => {
+    expect(lotesDosCodigos(CODIGOS)).toEqual([
+      { loteId: L_NOVO, criadoEm: '2026-10-20T10:00:00.000Z', total: 2, livres: 1 },
+      { loteId: L_VELHO, criadoEm: '2026-10-19T10:00:00.000Z', total: 1, livres: 1 },
+    ]);
+  });
+
+  it('a folha do lote leva só os livres, ou todos', () => {
+    expect(etiquetasDoLote(CODIGOS, L_NOVO, true).map((e) => e.codigoQr)).toEqual(['AAAAAAAAA1']);
+    expect(etiquetasDoLote(CODIGOS, L_NOVO, false)).toHaveLength(2);
+  });
+
+  it('a etiqueta reservada leva o código e o aviso de reservada no lugar do nome', () => {
+    const html = renderizar(
+      <FolhaDeEtiquetas ativos={etiquetasDoLote(CODIGOS, L_VELHO, true)} tamanho="grande" />,
+    );
+    expect(html).toContain('BBBBB-BBBB1');
+    expect(html).toContain(mensagensDe('pt-BR')['etiquetas.reservada']);
+  });
+});
