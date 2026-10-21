@@ -1329,3 +1329,33 @@ Com o #365 na `main`, o Cesar aprovou a correção do web ("Cesar aqui. pode seg
   - o adendo ao ADR-024 e o registro da SP1 no `docs/03`;
   - o teste da secret key.
   - Primeiro passo: conferir no GitHub se há outro PR de zona protegida aberto.
+
+## SP1, zona protegida (21/10/2026)
+
+O Cesar aceitou as seis decisões da SP1 ("Cesar aqui. SP1 pelas propostas. 366 mergeado", 21/10/2026). Antes de abrir o PR, conferi no GitHub: não havia nenhum PR aberto.
+
+**O PR de zona protegida traz:**
+- `supabase/config.toml`: o TOTP ligado no bloco da CI. O dev já o tinha desde 24/09/2026 (`[remotes.dev.auth.mfa.totp]`), então não há `config push`;
+- `packages/auth-admin`: `criarAdministracaoDoSegundoFator`, que só lista e remove os fatores do usuário pedido. A porta `AdministracaoDoSegundoFator` vai no `packages/aplicacao`;
+- `tests/secret-key-so-no-auth-admin.test.ts`: o export novo e as duas chamadas do MFA;
+- `docs/03`: o ADR-049 (MFA obrigatório) e o adendo ao ADR-024 (remoção do segundo fator). Os dois estão em "proposto, aguarda a aprovação do texto", como nos adendos anteriores: a forma foi aceita, e o texto espera o "aprovo";
+- `CLAUDE.md`: a regra 5 cita a remoção do segundo fator.
+
+**Fora da zona, no PR seguinte**, depois do merge deste:
+- o domínio (`exigeSegundoFator`);
+- o `aal` no verificador e o portão no `resolverContexto`;
+- as telas do web e a verificação no PWA;
+- o caso de uso da remoção;
+- o kit de teste;
+- o catálogo e os testes.
+
+## Ponto de retomada (21/10/2026, PR de zona da SP1)
+
+- **`main`:** com o #366. A última migração segue sendo a 0061.
+- **PR aberto:** o da SP1 na zona protegida (`adm:`). O check "zona protegida" falha por desenho.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:**
+  - o "aprovo" do texto do ADR-049 e do adendo ao ADR-024;
+  - o merge do PR.
+  - Não há `config push`.
+- **Próxima tarefa:** a SP1 fora da zona, numa branch a partir da `main` depois do merge. Primeiro passo: o domínio (`PAPEIS_COM_SEGUNDO_FATOR`, `exigeSegundoFator` e a tabela papel × nível) e o `aal` no verificador do token.

@@ -1,6 +1,7 @@
 // @hubkeep/auth-admin — o ÚNICO pacote que usa a secret key do Supabase
-// (CLAUDE.md, regra 5). Ela serve para administrar o Auth (convites e, só no
-// dev e na CI, as contas dos dados de demonstração) e para emitir URL assinada
+// (CLAUDE.md, regra 5). Ela serve para administrar o Auth (convites, a remoção
+// do segundo fator e, só no dev e na CI, as contas dos dados de demonstração)
+// e para emitir URL assinada
 // do Storage (ADR-024), e nunca para ler ou gravar tabela de negócio. A chave é lida aqui dentro, da
 // variável SUPABASE_SECRET_KEY: quem compõe o app não a manipula, e a CI
 // (tests/secret-key-so-no-auth-admin.test.ts) falha se ela aparecer fora daqui.
@@ -9,6 +10,7 @@
 // de navegador.
 import { type SupabaseClient, createClient } from '@supabase/supabase-js';
 import type {
+  AdministracaoDoSegundoFator,
   ArmazenamentoDeArquivos,
   EnvioDeConvite,
   ProvedorDeIdentidade,
@@ -126,6 +128,33 @@ export function criarAdministracaoDoAuth(opcoes: { url: string }): {
   };
 
   return { identidade, envio };
+}
+
+/**
+ * Remoção do segundo fator (SP1, ADR-049 e adendo ao ADR-024): o reset para
+ * quem perdeu o aparelho. Só lista e remove os fatores do usuário pedido, pela
+ * API de administração do MFA; não lê nem muda mais nada da conta. Quem pede e
+ * o alvo são conferidos antes, pela aplicação.
+ */
+export function criarAdministracaoDoSegundoFator(opcoes: {
+  url: string;
+}): AdministracaoDoSegundoFator {
+  const admin = clienteAdmin(opcoes.url);
+  return {
+    async removerFatores(usuarioId) {
+      const lista = await admin.auth.admin.mfa.listFactors({ userId: usuarioId });
+      if (lista.error) {
+        throw new Error(`Segundo fator: não listou os fatores (${lista.error.message}).`);
+      }
+      let removidos = 0;
+      for (const fator of lista.data.factors) {
+        const r = await admin.auth.admin.mfa.deleteFactor({ userId: usuarioId, id: fator.id });
+        if (r.error) throw new Error(`Segundo fator: não removeu o fator (${r.error.message}).`);
+        removidos++;
+      }
+      return removidos;
+    },
+  };
 }
 
 /**
