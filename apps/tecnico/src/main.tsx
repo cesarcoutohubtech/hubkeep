@@ -1,3 +1,5 @@
+// Primeiro: o Zod sem JIT, antes de qualquer schema (CSP sem 'unsafe-eval', SP2).
+import '@hubkeep/contratos/sem-eval';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';

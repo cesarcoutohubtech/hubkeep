@@ -1263,3 +1263,35 @@ Com o [#361](https://github.com/cesarcoutohubtech/hubkeep/pull/361) (M3b) na `ma
 - **Trabalho não enviado em PR:** nenhum.
 - **Espera o Cesar:** o merge do PR e a conferência da 0061 no dev. Não há decisão da 1b pendente.
 - **Próxima tarefa:** sem tarefa da 1b, a preparação do piloto e a segurança pré-piloto, que também são deste agente. Primeiro passo: perguntar ao Cesar por qual começar.
+
+## SP2 — CSP de script no PWA (21/10/2026)
+
+Com o #363 na `main`, a 1b ficou sem tarefa, e o Cesar pediu para seguir ("Continue", 21/10/2026). A frente seguinte deste agente é a segurança pré-piloto: SP1 a SP3 do `docs/05`. Comecei pela SP2, que não depende do staging nem do Vercel Pro. A SP3 espera a decisão do Vercel Pro, e a SP1 (MFA) é a maior das três.
+
+**O que entrou** (detalhe na P5 do `docs/09`):
+- `apps/tecnico/vercel.json`: `script-src 'self'; worker-src 'self'`, junto com a borda de antes;
+- `apps/tecnico/csp.ts`: o `connect-src` do build, com a própria origem e as de `VITE_API_URL` e `VITE_SUPABASE_URL`. O build o põe num `<meta>` logo depois do charset, porque a origem da API muda entre o staging e a produção;
+- `@hubkeep/contratos/sem-eval`: o Zod sem JIT, como primeiro import do `main.tsx`. Sem ele, a sonda `Function('')` do Zod 4 aparece como violação de `script-src eval` no console.
+
+**Conferência:** build de produção servido com os cabeçalhos do `vercel.json` e aberto no Chromium. Não houve nenhuma violação de CSP, com rede e sem rede, com o service worker ativo. O mesmo build sem o `sem-eval` deu três violações. Os testes do `apps/tecnico` prendem:
+- o cabeçalho;
+- a política de conexão;
+- o HTML sem script inline;
+- a ordem do import.
+
+**Achado, fora da SP2:** o web também carrega schemas do `@hubkeep/contratos` em componentes de cliente, e a CSP de produção dele não tem `unsafe-eval`. Deve haver a mesma violação no console do web, sem quebrar nada, porque o Zod trata o erro. A correção seria o `sem-eval` no `instrumentation-client.ts` do Next, conferida com o build de produção do web. Proponho um PR pequeno depois deste.
+
+## Ponto de retomada (21/10/2026, SP2)
+
+- **`main`:** com o #363 (resumo da 1b e as decisões de 21/10/2026). Ele não tinha migração, então não havia `db push` a fazer; a última migração continua a 0061.
+- **PR aberto:** o da SP2 (`adm:`), fora da zona protegida.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:**
+  - o merge do PR da SP2;
+  - se a correção do mesmo problema no web entra num PR pequeno;
+  - a decisão do Vercel Pro, que destrava a SP3.
+- **Próxima tarefa:** a SP1 (MFA obrigatório para Admin do grupo, Gestor CSC e Implantador). Primeiro passo: ler a P4 do `docs/09` e montar o desenho, para a aprovação do Cesar antes do código. O desenho cobre:
+  - o nível AAL2 na API;
+  - o cadastro e a verificação do TOTP no web;
+  - a recuperação do segundo fator;
+  - a configuração do Auth no `config.toml`, que é zona protegida.
