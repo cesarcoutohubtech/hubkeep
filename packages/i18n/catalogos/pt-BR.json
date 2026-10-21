@@ -724,6 +724,7 @@
   "erro.nao_autenticado": "Sua sessão expirou. Entre de novo.",
   "erro.tenant_ausente": "Escolha um grupo para continuar.",
   "erro.sem_permissao": "Você não tem permissão para esta ação.",
+  "erro.segundo_fator_obrigatorio": "Seu papel exige o código do aplicativo autenticador. Confirme o segundo fator para continuar.",
   "erro.recusado_pela_integridade": "Os dados não puderam ser gravados porque fazem referência a algo que não existe ou não é permitido.",
   "erro.erro_interno": "Algo deu errado do nosso lado. Tente de novo em instantes.",
   "erro.origem_recusada": "O pedido veio de fora do HubKeep e foi recusado. Abra o HubKeep e tente de novo.",

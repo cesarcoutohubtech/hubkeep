@@ -724,6 +724,7 @@
   "erro.nao_autenticado": "Your session has expired. Sign in again.",
   "erro.tenant_ausente": "Choose a group to continue.",
   "erro.sem_permissao": "You don't have permission for this action.",
+  "erro.segundo_fator_obrigatorio": "Your role requires the authenticator app code. Confirm the second factor to continue.",
   "erro.recusado_pela_integridade": "The data could not be saved because it refers to something that doesn't exist or isn't allowed.",
   "erro.erro_interno": "Something went wrong on our side. Try again in a moment.",
   "erro.origem_recusada": "The request came from outside HubKeep and was refused. Open HubKeep and try again.",

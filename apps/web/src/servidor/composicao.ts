@@ -58,6 +58,7 @@ import {
 } from '@hubkeep/aplicacao';
 import {
   type AcessoBanco,
+  type Contexto,
   type ResultadoOutbox,
   criarAcessoBanco,
   criarPortaStatusAdministrativoMews,
@@ -163,6 +164,10 @@ const fabricas = memo(async () =>
 
 let auth: ReturnType<typeof criarAdministracaoDoAuth> | undefined;
 const administracaoDoAuth = () => (auth ??= criarAdministracaoDoAuth({ url: urlSupabase() }));
+
+/** As atribuições do usuário no tenant do contexto, para o portão do segundo fator (SP1). */
+export const atribuicoesDoUsuario = async (ctx: Contexto) =>
+  criarPortasDeAplicacao(await acessoBanco()).atribuicoes.doUsuario(ctx);
 
 export const casosDeUsoDePapeis = async (): Promise<CasosDeUsoDePapeis> =>
   (await fabricas()).papeis();

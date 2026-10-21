@@ -38,7 +38,9 @@ export function criarVerificadorJwks(urlSupabase: string): VerificadorDeToken {
         const tenantsSugeridos = Array.isArray(meta?.hk_tenants)
           ? meta.hk_tenants.filter((t): t is string => typeof t === 'string' && UUID.test(t))
           : [];
-        return { usuarioId: payload.sub, email, tenantsSugeridos };
+        // O nível da sessão (SP1, ADR-049): só aal2 vale como segundo fator.
+        const nivel = payload['aal'] === 'aal2' ? 'aal2' : 'aal1';
+        return { usuarioId: payload.sub, email, tenantsSugeridos, nivel };
       } catch (e) {
         if (e instanceof TokenInvalido) throw e;
         if (e instanceof errors.JWTExpired) throw new TokenInvalido('expirado');

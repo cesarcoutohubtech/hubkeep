@@ -724,6 +724,7 @@
   "erro.nao_autenticado": "Votre session a expiré. Reconnectez-vous.",
   "erro.tenant_ausente": "Choisissez un groupe pour continuer.",
   "erro.sem_permissao": "Vous n’avez pas l’autorisation pour cette action.",
+  "erro.segundo_fator_obrigatorio": "Votre rôle exige le code de l’application d’authentification. Confirmez le second facteur pour continuer.",
   "erro.recusado_pela_integridade": "Les données n’ont pas pu être enregistrées, car elles font référence à un élément inexistant ou non autorisé.",
   "erro.erro_interno": "Une erreur s’est produite de notre côté. Réessayez dans un instant.",
   "erro.origem_recusada": "La demande venait de l’extérieur de HubKeep et a été refusée. Ouvrez HubKeep et réessayez.",

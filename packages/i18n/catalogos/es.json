@@ -724,6 +724,7 @@
   "erro.nao_autenticado": "Tu sesión expiró. Ingresa de nuevo.",
   "erro.tenant_ausente": "Elige un grupo para continuar.",
   "erro.sem_permissao": "No tienes permiso para esta acción.",
+  "erro.segundo_fator_obrigatorio": "Su rol exige el código de la aplicación de autenticación. Confirme el segundo factor para continuar.",
   "erro.recusado_pela_integridade": "Los datos no se pudieron guardar porque hacen referencia a algo que no existe o no está permitido.",
   "erro.erro_interno": "Algo salió mal de nuestro lado. Inténtalo de nuevo en unos instantes.",
   "erro.origem_recusada": "La solicitud vino de fuera de HubKeep y fue rechazada. Abre HubKeep e inténtalo de nuevo.",

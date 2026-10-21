@@ -727,3 +727,9 @@ export {
   validarTamanhoDoLote,
 } from './qr-reservado';
 export type { CodigoReservado } from './qr-reservado';
+export {
+  PAPEIS_COM_SEGUNDO_FATOR,
+  exigeSegundoFator,
+  exigirNivelDaSessao,
+} from './segundo-fator';
+export type { NivelDaSessao } from './segundo-fator';
