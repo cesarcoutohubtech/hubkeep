@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POST } from '../src/app/api/v1/sincronizacao/operacoes/route';
+import { elevarParaAal2 } from './segundo-fator-de-teste';
 
 const URL_SUPABASE = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const CHAVE_PUBLICA = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
@@ -108,7 +109,8 @@ describe.skipIf(!temAmbiente)(
           password: SENHA,
         });
         if (error || !data.session) throw new Error(`login falhou: ${error?.message}`);
-        return data.session.access_token;
+        // SP1: o portão da API pede aal2 a quem tem papel que exige o segundo fator.
+        return (await elevarParaAal2(cliente)).access_token;
       };
       token.a = await entrar(email.a);
       token.b = await entrar(email.b);

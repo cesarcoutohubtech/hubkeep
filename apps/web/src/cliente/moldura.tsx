@@ -45,7 +45,7 @@ import {
   useTrocarIdioma,
 } from '../i18n/cliente';
 import { COOKIE_TEMA } from '../tema';
-import { chamarApi } from './api';
+import { chamarApi, voltarAoLoginPeloSegundoFator } from './api';
 import { sair as encerrarSessao } from './sessao';
 
 interface Sessao {
@@ -238,6 +238,12 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
 
   const sincronizarIdioma = useCallback(async () => {
     const rp = await fetch('/api/v1/preferencias');
+    // A primeira leitura com o grupo: o portão do segundo fator responde aqui (SP1).
+    if (rp.status === 403) {
+      const corpo = (await rp.json().catch(() => null)) as { erro?: { codigo?: string } } | null;
+      if (corpo?.erro?.codigo === 'segundo_fator_obrigatorio') voltarAoLoginPeloSegundoFator();
+      return;
+    }
     if (!rp.ok) return;
     const p = (await rp.json()) as Preferencias;
     setPreferencias(p);
