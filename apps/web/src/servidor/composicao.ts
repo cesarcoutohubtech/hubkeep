@@ -1,9 +1,14 @@
 // Raiz de composição do servidor: cria uma vez, por instância de função, o
 // acesso ao banco, o verificador de token e os casos de uso. Único ponto do app
 // que lê as variáveis de ambiente do servidor.
-import { criarAdministracaoDoAuth, criarArmazenamentoDeAnexos } from '@hubkeep/auth-admin';
+import {
+  criarAdministracaoDoAuth,
+  criarAdministracaoDoSegundoFator,
+  criarArmazenamentoDeAnexos,
+} from '@hubkeep/auth-admin';
 import {
   type CasoDeUsoDeConvites,
+  type CasoDeUsoDoSegundoFator,
   type CasosDeUsoDeAnexos,
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeCategorias,
@@ -47,6 +52,7 @@ import {
   type Manipulador,
   type VerificadorDeToken,
   criarCasoDeUsoDeConvites,
+  criarCasoDeUsoDoSegundoFator,
   criarCasosDeUsoDeAnexos,
   criarMonitorDeSla,
   criarAceiteAutomatico,
@@ -58,6 +64,7 @@ import {
 } from '@hubkeep/aplicacao';
 import {
   type AcessoBanco,
+  type Contexto,
   type ResultadoOutbox,
   criarAcessoBanco,
   criarPortaStatusAdministrativoMews,
@@ -73,6 +80,7 @@ import {
   criarPortaModulos,
   criarPortaAnexos,
   criarPortaEscopoDeAnexo,
+  criarPortaMembros,
   criarPortasDeAplicacao,
   criarPortasDeIngestao,
   criptografiaDoServidor,
@@ -164,6 +172,10 @@ const fabricas = memo(async () =>
 let auth: ReturnType<typeof criarAdministracaoDoAuth> | undefined;
 const administracaoDoAuth = () => (auth ??= criarAdministracaoDoAuth({ url: urlSupabase() }));
 
+/** As atribuições do usuário no tenant do contexto, para o portão do segundo fator (SP1). */
+export const atribuicoesDoUsuario = async (ctx: Contexto) =>
+  criarPortasDeAplicacao(await acessoBanco()).atribuicoes.doUsuario(ctx);
+
 export const casosDeUsoDePapeis = async (): Promise<CasosDeUsoDePapeis> =>
   (await fabricas()).papeis();
 
@@ -174,6 +186,17 @@ export const casoDeUsoDeConvites = memo<CasoDeUsoDeConvites>(async () =>
     identidade: administracaoDoAuth().identidade,
   }),
 );
+
+/** Remoção do segundo fator pelo Admin do grupo (SP1, ADR-049 e adendo ao ADR-024). */
+export const casoDeUsoDoSegundoFator = memo<CasoDeUsoDoSegundoFator>(async () => {
+  const banco = await acessoBanco();
+  return criarCasoDeUsoDoSegundoFator({
+    membros: criarPortaMembros(banco),
+    atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+    segundoFator: criarAdministracaoDoSegundoFator({ url: urlSupabase() }),
+    relogio: relogioDoSistema,
+  });
+});
 
 /** Recebimento de lotes do agente: só o pool hk_ingestao (F0-08). */
 export const recebimentoDeLotes = memo<Pick<CasosDeUsoDeIngestao, 'receberLote'>>(async () =>

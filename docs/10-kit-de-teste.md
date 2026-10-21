@@ -126,6 +126,8 @@ Um grupo fictício, **Grupo Demonstração**, no dev. Tudo passa pelos casos de 
 | Proprietário de UH | `proprietario.uh@demo.hubkeep.test` | UH 101 do Centro |
 | Proprietário de hotel inteiro | `proprietario.hotel@demo.hubkeep.test` | Hotel Praia |
 
+**Segundo fator (SP1, ADR-049):** as contas de Admin do grupo, Gestor CSC e Implantador pedem o código de um aplicativo autenticador. No primeiro login de cada uma, a tela mostra o QR: leia com o aplicativo no celular (ou digite o segredo) e informe o código. Depois disso, cada login pede só o código. Rodar o kit de novo não apaga o fator. Se o celular for trocado, um Admin do grupo remove o fator na tela de membros (**Remover o segundo fator**), e o cadastro volta no login seguinte. As outras contas entram só com a senha.
+
 Os e-mails são do domínio `.test`, que não existe: nenhum e-mail sai, e as contas já nascem confirmadas. A identidade de demonstração recusa qualquer e-mail fora do `.test`, para a senha de teste nunca cair numa conta de verdade.
 
 ### Chamados

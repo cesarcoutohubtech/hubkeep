@@ -1,5 +1,6 @@
 // Portas de identidade (ADR-001: o Supabase Auth fica atrás de portas, para
 // poder ser trocado). Os casos de uso só conhecem estas interfaces.
+import type { NivelDaSessao } from '@hubkeep/dominio';
 
 /** Usuário que o servidor conseguiu provar pelo token — nunca pelo que o cliente disse. */
 export interface UsuarioVerificado {
@@ -11,6 +12,11 @@ export interface UsuarioVerificado {
    * (membro ativo), e um tenant daqui sem vínculo vigente não mostra nada.
    */
   tenantsSugeridos: string[];
+  /**
+   * O nível da sessão, do token assinado: aal2 com o segundo fator verificado
+   * (SP1, ADR-049). Claim ausente ou desconhecida conta como aal1.
+   */
+  nivel: NivelDaSessao;
 }
 
 /**

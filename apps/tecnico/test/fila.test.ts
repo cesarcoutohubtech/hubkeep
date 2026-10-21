@@ -7,8 +7,8 @@
 // código do motivo, até o técnico dispensar.
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { criarEnvio } from '../src/api';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { EVENTO_DO_SEGUNDO_FATOR, criarEnvio } from '../src/api';
 import { type FilaDeOperacoes, abrirFila } from '../src/fila/banco';
 import { ESPERA_INICIAL_MS, sincronizar } from '../src/fila/sincronizar';
 import { apagarDadosLocais } from '../src/saida';
@@ -172,6 +172,24 @@ describe('sincronização', () => {
     ]);
     expect((await sincronizar(fila, enviar, { usuarioId: A })).enviadas).toBe(0);
     expect(s.aplicadas).toEqual(['fr']);
+  });
+
+  it('SP1: o 403 segundo_fator_obrigatorio adia a operação, avisa a tela e não descarta nada', async () => {
+    const avisos: string[] = [];
+    vi.stubGlobal('dispatchEvent', (e: Event) => avisos.push(e.type));
+    try {
+      const pedeFator: typeof fetch = async () =>
+        new Response(JSON.stringify({ erro: { codigo: 'segundo_fator_obrigatorio' } }), {
+          status: 403,
+        });
+      await fila.enfileirar(preferencia('fr'), 1_000);
+      const r = await sincronizar(fila, criarEnvio(credenciais, pedeFator), { usuarioId: A });
+      expect(r).toEqual({ enviadas: 0, recusadas: 0, adiadas: 1 });
+      expect(await fila.doUsuario(A)).toMatchObject([{ estado: 'pendente' }]);
+      expect(avisos).toEqual([EVENTO_DO_SEGUNDO_FATOR]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('fora do contrato: recusada no aparelho, sem ir à rede', async () => {

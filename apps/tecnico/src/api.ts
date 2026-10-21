@@ -24,6 +24,21 @@ export interface Credenciais {
   tenant: () => string | null;
 }
 
+/**
+ * Segundo fator (SP1, ADR-049): a API recusa com 403 segundo_fator_obrigatorio
+ * a sessão em aal1 de quem tem papel que o exige e ainda não cadastrou o TOTP.
+ * O PWA não cadastra fator: avisa a tela (evento no window), e a operação da
+ * fila fica para depois, sem ser descartada.
+ */
+export const EVENTO_DO_SEGUNDO_FATOR = 'hubkeep:segundo-fator';
+
+export function pedeSegundoFator(status: number, corpo: unknown): boolean {
+  const codigo = (corpo as { erro?: { codigo?: unknown } } | null)?.erro?.codigo;
+  if (status !== 403 || codigo !== 'segundo_fator_obrigatorio') return false;
+  globalThis.dispatchEvent?.(new Event(EVENTO_DO_SEGUNDO_FATOR));
+  return true;
+}
+
 /** Base da API: vazia no dev (o Vite repassa /api para o web) ou VITE_API_URL. */
 export const baseDaApi = (): string => import.meta.env.VITE_API_URL ?? '';
 
@@ -81,6 +96,7 @@ export function criarEnvio(
     }
     if (vaiTentarDeNovo(r.status)) return { tipo: 'tentar_depois', motivo: `http_${r.status}` };
     const erro = (await r.json().catch(() => null)) as { erro?: { codigo?: string } } | null;
+    if (pedeSegundoFator(r.status, erro)) return { tipo: 'tentar_depois', motivo: 'segundo_fator' };
     return { tipo: 'recusada', codigo: erro?.erro?.codigo ?? `http_${r.status}` };
   };
 }
@@ -99,6 +115,7 @@ export async function lerPreferencias(
   if (!h) return null;
   try {
     const r = await requisitar(`${baseDaApi()}/api/v1/preferencias`, { headers: h });
+    if (r.status === 403) pedeSegundoFator(r.status, await r.json().catch(() => null));
     return r.ok ? ((await r.json()) as PreferenciasDoServidor) : null;
   } catch {
     return null;

@@ -17,7 +17,12 @@ function montar() {
   const escopos: string[] = [];
   const deps: Dependencias = {
     resolverContexto: async () => ({ usuarioId: USUARIO, tenantId: TENANT }),
-    usuarioDaRequisicao: async () => ({ usuarioId: USUARIO, email: null, tenantsSugeridos: [] }),
+    usuarioDaRequisicao: async () => ({
+      usuarioId: USUARIO,
+      email: null,
+      tenantsSugeridos: [],
+      nivel: 'aal1' as const,
+    }),
     registrar: (nivel, evento, campos) => void logs.push({ nivel, evento, campos }),
     relatar: (erro, marcas) => void relatados.push({ erro, marcas }),
     escopoDeLeitura: async (fn) => {

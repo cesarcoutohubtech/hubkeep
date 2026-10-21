@@ -117,3 +117,32 @@ export function podeAlterarValidade(
   }
   return PERMITIDO;
 }
+
+/**
+ * Remover o segundo fator de um membro que perdeu o aparelho (SP1, ADR-049 e
+ * adendo ao ADR-024): só o Admin do grupo, e nunca o próprio (quem ainda entra
+ * troca o aparelho pela própria conta). O único Admin que perde tudo volta pelo
+ * backoffice.
+ */
+export function podeRemoverSegundoFator(
+  minhas: readonly Atribuicao[],
+  eu: string,
+  alvo: { usuarioId: string },
+  agora: Date,
+): Resultado {
+  if (alvo.usuarioId === eu) {
+    return negar(
+      new RegraViolada(
+        'nao_remove_o_proprio_segundo_fator',
+        'Você não remove o próprio segundo fator.',
+      ),
+    );
+  }
+  if (ehAdminGrupo(minhas, agora)) return PERMITIDO;
+  return negar(
+    new PermissaoNegada(
+      'segundo_fator_so_admin',
+      'Só o Admin do grupo remove o segundo fator de um membro.',
+    ),
+  );
+}

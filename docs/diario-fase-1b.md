@@ -1371,3 +1371,49 @@ Com o #367 na `main`, o Cesar aprovou o texto dos dois ("Cesar aqui. Aprovo", 21
 - **Trabalho não enviado em PR:** nenhum.
 - **Espera o Cesar:** o merge desse PR.
 - **Próxima tarefa:** a SP1 fora da zona. Primeiro passo: o domínio (`PAPEIS_COM_SEGUNDO_FATOR`, `exigeSegundoFator` e a tabela papel × nível) e o `aal` no verificador do token. O PR dela só abre depois do merge do PR do status.
+## SP1 fora da zona protegida (21/10/2026)
+
+Feita numa branch local enquanto o #368 esperava o merge. O PR abre depois, com base na `main`. Quatro commits:
+
+1. **Regra e portão:**
+   - `exigeSegundoFator` no domínio;
+   - o `aal` no verificador do token, conferido por um token assinado de verdade no teste;
+   - o `resolverContexto` recusando com 403 `segundo_fator_obrigatorio` quem está em `aal1` e tem papel que exige.
+2. **Login do web:**
+   - O segundo fator acontece no próprio login, ainda com a sessão em memória (ADR-032: a página não guarda token):
+     - quem já tem o TOTP digita o código antes de a sessão ir para o cookie;
+     - o `POST /auth/sessao` recusa a sessão em `aal1` de quem exige, e o login cadastra o fator (QR e segredo).
+   - Se o portão recusar depois (papel concedido no meio da sessão), a moldura e o `chamarApi` encerram a sessão e levam ao login.
+   - **Desvio do desenho:** a proposta falava de uma tela separada para o cadastro. Ela exigiria o token na página, contra o ADR-032.
+3. **PWA:**
+   - só a verificação do código, com o nível lido do token, sem rede;
+   - sem fator, o aviso para cadastrar no web, com "Já cadastrei";
+   - o 403 adia a operação da fila, sem descartá-la.
+4. **Remoção pelo Admin do grupo:**
+   - o caso de uso (regra do domínio, membro visível, `auth-admin`, auditoria e evento);
+   - a rota `POST /api/v1/membros/{usuarioId}/segundo-fator/remocao`;
+   - o botão na tela de membros.
+
+**Testes de integração:** os que entram como Admin passam a elevar a sessão a `aal2` com um TOTP de teste (RFC 6238, conferido pelos vetores do apêndice B). O de autenticação ganha:
+- o Admin em `aal1`, com 403 na sessão e na API;
+- o Técnico só com a senha;
+- a remoção do fator do Técnico, com a auditoria.
+
+Rodam só na CI.
+
+**Fica para o PR seguinte, antes do piloto:**
+- "Minha conta → Segurança": listar, acrescentar (o segundo aparelho) e remover os próprios fatores;
+- a tela "Minha conta → Segurança" é a única pendência da SP1.
+
+**Decisão 4b trocada (Cesar, 21/10/2026: "Cesar aqui. Sim, concordo"):** a conta do roteiro de demonstração não nasce com o fator. O Supabase gera o segredo no cadastro e não deixa escolher, então o kit teria de imprimir o segredo no terminal. Vale o fluxo normal: o QR no primeiro login de cada conta, uma vez, e o fator segue nas próximas rodadas do kit (`docs/10`). O ADR-049 ainda descreve a 4b; a correção dele entra no próximo PR de zona protegida da 1b.
+
+## Ponto de retomada (21/10/2026, PR da SP1 fora da zona)
+
+- **`main`:** com o #368 (ADR-049 e adendo ao ADR-024 aprovados). A última migração segue sendo a 0061, e não há `config push`.
+- **PR aberto:** o da SP1 fora da zona protegida (`adm:`). A integração do web (TOTP de teste no Supabase local) roda só na CI.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge do PR.
+- **Pendências registradas:**
+  - o ADR-049 ainda descreve a decisão 4b; o texto se corrige no próximo PR de zona;
+  - a SP3 espera o portão do staging.
+- **Próxima tarefa:** a tela "Minha conta → Segurança", com listar, acrescentar e remover os próprios fatores, feita no servidor com a sessão do cookie. Primeiro passo: conferir se o `createServerClient` do `@supabase/ssr` faz `mfa.enroll` e `challengeAndVerify` com a sessão do cookie e regrava o cookie em `aal2`.

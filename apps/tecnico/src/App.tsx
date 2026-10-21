@@ -49,6 +49,7 @@ import {
   tamanhoDaFoto,
 } from './armazenamento';
 import { supabase, tenantDaSessao } from './sessao';
+import { EVENTO_DO_SEGUNDO_FATOR } from './api';
 import { criarEnvioDeFoto, criarFotos, fotoParaFila } from './anexos/fotos';
 import { type EstadoDoPush, criarPush, osDoCaminho } from './push';
 import { abrirQr, codigoDoCaminho } from './qr';
@@ -62,6 +63,11 @@ import { AbrirChamado, type AberturaDeChamado } from './telas/AbrirChamado';
 import { AvisosNoAparelho } from './telas/AvisosNoAparelho';
 import { type EstadoDaFila, FilaDoDia, useMotivo } from './telas/FilaDoDia';
 import { Login } from './telas/Login';
+import {
+  CadastreOSegundoFatorNoWeb,
+  CodigoDoSegundoFator,
+  faltaOCodigo,
+} from './telas/SegundoFator';
 import { type CodigosParaSugerir, Os, type RespostasDaConclusao } from './telas/Os';
 
 const INTERVALO_MS = 30_000;
@@ -93,6 +99,10 @@ function Casca(props: {
   const motivo = useMotivo();
   const t = useT();
   const [sessao, setSessao] = useState<Session | null>(null);
+  // Segundo fator (SP1): a sessão com o TOTP em aal1 só vale depois do código;
+  // a API pediu o fator a quem ainda não cadastrou (cadastro no web).
+  const [pedeCodigo, setPedeCodigo] = useState(false);
+  const [semSegundoFator, setSemSegundoFator] = useState(false);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [estado, setEstado] = useState<EstadoDaFila>(FILA_VAZIA);
   const fila = useRef<FilaDeOperacoes | null>(null);
@@ -210,6 +220,13 @@ function Casca(props: {
     [atualizarEstado, atualizarReferencia, envio],
   );
 
+  /** A sessão só entra com o segundo fator verificado, quando o usuário já tem o TOTP (SP1). */
+  const aplicarSessao = useCallback(async (s: Session | null) => {
+    const falta = s !== null && (await faltaOCodigo());
+    setPedeCodigo(falta);
+    setSessao(falta ? null : s);
+  }, []);
+
   useEffect(() => {
     void abrirFila().then(async (f) => {
       fila.current = f;
@@ -222,12 +239,23 @@ function Casca(props: {
     });
     const { data } = supabase().auth.onAuthStateChange((_evento, s) => {
       sessaoAtual.current = s;
-      setSessao(s);
-      void atualizarEstado();
-      void lerGuardada();
+      // Outra chamada ao Auth dentro do aviso trava o supabase-js: o nível da
+      // sessão é lido logo depois, fora dele.
+      setTimeout(() => {
+        void aplicarSessao(s).then(() => {
+          void atualizarEstado();
+          void lerGuardada();
+        });
+      }, 0);
     });
     return () => data.subscription.unsubscribe();
-  }, [atualizarEstado, lerGuardada]);
+  }, [atualizarEstado, lerGuardada, aplicarSessao]);
+
+  useEffect(() => {
+    const pediu = () => setSemSegundoFator(true);
+    window.addEventListener(EVENTO_DO_SEGUNDO_FATOR, pediu);
+    return () => window.removeEventListener(EVENTO_DO_SEGUNDO_FATOR, pediu);
+  }, []);
 
   // Ao entrar: pede ao navegador para não descartar a fila (adendo ao ADR-025, (a)).
   useEffect(() => {
@@ -507,6 +535,26 @@ function Casca(props: {
     setEstadoDoPush(null);
     setInscrito(false);
     setTela('fila');
+  }
+
+  const releSessao = () =>
+    void supabase()
+      .auth.getSession()
+      .then(({ data }) => aplicarSessao(data.session));
+
+  if (pedeCodigo) {
+    return <CodigoDoSegundoFator aoConfirmar={releSessao} aoSair={() => void sair()} />;
+  }
+  if (sessao && semSegundoFator) {
+    return (
+      <CadastreOSegundoFatorNoWeb
+        aoCadastrar={() => {
+          setSemSegundoFator(false);
+          releSessao();
+        }}
+        aoSair={() => void sair()}
+      />
+    );
   }
 
   if (sessao && tela === 'ativos') {

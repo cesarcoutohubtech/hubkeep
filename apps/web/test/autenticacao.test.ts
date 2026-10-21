@@ -17,12 +17,14 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POST as convidar } from '../src/app/api/v1/convites/route';
 import { GET as hoteis } from '../src/app/api/v1/hoteis/route';
+import { POST as removerSegundoFator } from '../src/app/api/v1/membros/[usuarioId]/segundo-fator/remocao/route';
 import { GET as sessao } from '../src/app/api/v1/sessao/route';
 import { GET as openapi } from '../src/app/api/interno/openapi/route';
 import { GET as confirmar } from '../src/app/auth/confirmar/route';
 import { POST as definirSenha } from '../src/app/auth/senha/route';
 import { DELETE as encerrarSessao, POST as criarSessao } from '../src/app/auth/sessao/route';
 import { processarOutboxDoTenant } from '../src/servidor/composicao';
+import { elevarParaAal2 } from './segundo-fator-de-teste';
 
 const URL_SUPABASE = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const CHAVE_PUBLICA = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
@@ -136,15 +138,21 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     );
   };
 
-  const sessaoDoAuth = async (mail: string, senha = SENHA) => {
+  const clienteLogado = async (mail: string, senha = SENHA) => {
     const cliente = createClient(exigir(URL_SUPABASE), exigir(CHAVE_PUBLICA), {
       auth: { persistSession: false },
     });
     const { data, error } = await cliente.auth.signInWithPassword({ email: mail, password: senha });
     if (error || !data.session) throw new Error(`login de ${mail} falhou: ${error?.message}`);
-    return data.session;
+    return { cliente, sessao: data.session };
   };
-  const entrar = async (mail: string) => (await sessaoDoAuth(mail)).access_token;
+  /** Só com a senha: aal1. */
+  const sessaoDoAuth = async (mail: string, senha = SENHA) =>
+    (await clienteLogado(mail, senha)).sessao;
+  /** Com o segundo fator verificado (SP1): aal2. */
+  const sessaoComSegundoFator = async (mail: string) =>
+    elevarParaAal2((await clienteLogado(mail)).cliente);
+  const entrar = async (mail: string) => (await sessaoComSegundoFator(mail)).access_token;
 
   beforeAll(async () => {
     dono = new pg.Client({ connectionString: exigir(URL_DONO) });
@@ -381,8 +389,38 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     expect(s.user.id).toBe(idConvidado);
   });
 
-  it('S1: entrada troca os tokens do login por cookie HttpOnly; saída apaga o cookie', async () => {
+  it('SP1: o Admin do grupo só com a senha não ganha sessão; a API recusa o token em aal1', async () => {
     const s = await sessaoDoAuth(email.admin);
+    const r = await criarSessao(
+      req('/auth/sessao', {
+        metodo: 'POST',
+        corpo: { accessToken: s.access_token, refreshToken: s.refresh_token },
+      }),
+    );
+    expect(r.status).toBe(403);
+    expect(await r.json()).toMatchObject({ erro: { codigo: 'segundo_fator_obrigatorio' } });
+    expect(r.headers.getSetCookie()).toEqual([]);
+    const api = await hoteis(
+      req('/api/v1/hoteis', {
+        cabecalhos: { authorization: `Bearer ${s.access_token}`, 'x-hubkeep-tenant': A.tenant },
+      }),
+    );
+    expect(api.status).toBe(403);
+    expect(await api.json()).toMatchObject({ erro: { codigo: 'segundo_fator_obrigatorio' } });
+  });
+
+  it('SP1: o Técnico entra só com a senha', async () => {
+    const s = await sessaoDoAuth(email.tecnico);
+    const r = await hoteis(
+      req('/api/v1/hoteis', {
+        cabecalhos: { authorization: `Bearer ${s.access_token}`, 'x-hubkeep-tenant': A.tenant },
+      }),
+    );
+    expect(r.status).toBe(200);
+  });
+
+  it('S1: entrada troca os tokens do login por cookie HttpOnly; saída apaga o cookie', async () => {
+    const s = await sessaoComSegundoFator(email.admin);
     const r = await criarSessao(
       req('/auth/sessao', {
         metodo: 'POST',
@@ -565,5 +603,34 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
     };
     expect(erro.codigo).toBe('entrada_invalida');
     expect(erro.parametros.problemas.map((p) => p.campo)).toEqual(['email']);
+  });
+
+  // Por último: a remoção encerra as sessões do Técnico no Auth.
+  it('SP1: o Admin do grupo remove o segundo fator do Técnico; o próprio, não', async () => {
+    const cabecalhos = { authorization: `Bearer ${tokenAdmin}`, 'x-hubkeep-tenant': A.tenant };
+    const proprio = await removerSegundoFator(
+      req(`/api/v1/membros/${A.admin}/segundo-fator/remocao`, { metodo: 'POST', cabecalhos }),
+    );
+    expect(proprio.status).toBe(422);
+    expect(await proprio.json()).toMatchObject({
+      erro: { codigo: 'nao_remove_o_proprio_segundo_fator' },
+    });
+
+    const r = await removerSegundoFator(
+      req(`/api/v1/membros/${A.tecnico}/segundo-fator/remocao`, { metodo: 'POST', cabecalhos }),
+    );
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ usuarioId: A.tecnico, removidos: 1 });
+    const fatores = await dono.query(
+      `select count(*)::int as n from auth.mfa_factors where user_id = $1`,
+      [A.tecnico],
+    );
+    expect(fatores.rows).toEqual([{ n: 0 }]);
+    const aud = await dono.query(
+      `select usuario_id, depois from app.auditoria
+       where tenant_id = $1 and registro_id = $2 and acao = 'remover_segundo_fator'`,
+      [A.tenant, A.tecnico],
+    );
+    expect(aud.rows).toEqual([{ usuario_id: A.admin, depois: { fatoresRemovidos: 1 } }]);
   });
 });

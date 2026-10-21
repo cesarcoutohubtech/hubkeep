@@ -235,6 +235,7 @@ export {
   RespostaDeAtivoDoMembro,
   RespostaDeConcessaoDePapel,
   RespostaDeMembros,
+  RespostaDeRemocaoDoSegundoFator,
   RespostaDeRevogacaoDePapel,
   RespostaDeValidade,
 } from './membros';
