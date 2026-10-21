@@ -5,7 +5,8 @@
   "description": "Schemas Zod da API e do adaptador de sistema hoteleiro.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./sem-eval": "./src/sem-eval.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
