@@ -1378,10 +1378,14 @@ const decisaoDoCadastro = (hotel: string, ativo: string) => [
     where d.hotel_id = ${sql.ref(hotel)} and d.ativo_id = ${sql.ref(ativo)})`.as('motivo_recusa'),
 ];
 
-const paradoDesde = (hotel: string, ativo: string) =>
+const paradoDesde = <A extends string = 'parado_desde'>(
+  hotel: string,
+  ativo: string,
+  nome: A = 'parado_desde' as A,
+) =>
   sql<Date | null>`(select p.inicio from app.parada_ativo p
     where p.hotel_id = ${sql.ref(hotel)} and p.ativo_id = ${sql.ref(ativo)} and p.fim is null
-    limit 1)`.as('parado_desde');
+    limit 1)`.as(nome);
 
 /** A parada aberta do ativo é a deste chamado (a OS encerra; a conclusão pergunta). */
 const paradaDoChamado = (hotel: string, chamado: string) =>
@@ -1688,6 +1692,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             'lo.edificacao as os_local_edificacao',
           ])
           .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
+          .select(paradoDesde('o.hotel_id', 'o.ativo_id', 'preventiva_parado_desde'))
           .select(paradaDoChamado('c.hotel_id', 'c.id'))
           .select(uhIndisponivelDesde('c.hotel_id', 'c.id'))
           .select((eb) =>
@@ -1765,6 +1770,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
                   localId: o.os_local_id,
                   localNome: o.os_local_nome ?? '',
                   localEdificacao: o.os_local_edificacao,
+                  paradoDesde: o.preventiva_parado_desde,
                 },
         }));
       }),

@@ -69,6 +69,8 @@ export interface PreventivaDoDia {
   localNome: string;
   /** Edificação do local (I2); null: não informada. */
   localEdificacao: string | null;
+  /** Início da parada aberta do ativo (C5); null: não está parado (Cesar, 21/10/2026). */
+  paradoDesde: Date | null;
 }
 
 /** A OS do dia como sai do banco: sem as políticas, com o checklist cru. */

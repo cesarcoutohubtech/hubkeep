@@ -188,6 +188,14 @@ export function localDaOs(os: Pick<OsGuardada, 'chamado' | 'preventiva'>): {
   };
 }
 
+/**
+ * Desde quando o ativo da OS está parado (C5): na corretiva, o do chamado; na
+ * preventiva, o ativo da ocorrência (Cesar, 21/10/2026). null: não está parado,
+ * ou a OS foi guardada antes do campo.
+ */
+export const paradoDesdeDaOs = (os: Pick<OsGuardada, 'chamado' | 'preventiva'>): string | null =>
+  (os.chamado ? os.chamado.paradoDesde : os.preventiva?.paradoDesde) ?? null;
+
 /** O ativo da OS: o do chamado, na corretiva, ou o da ocorrência, na preventiva (PV3c). */
 export const ativoDaOs = (os: Pick<OsGuardada, 'chamado' | 'preventiva'>): string | null =>
   os.chamado ? os.chamado.ativoId : (os.preventiva?.ativoId ?? null);

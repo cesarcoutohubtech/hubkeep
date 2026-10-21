@@ -65,6 +65,7 @@ import {
   faltaFotoDepois,
   localDaOs,
   paradaPossivel,
+  paradoDesdeDaOs,
   perguntaDaUhNaConclusao,
   perguntaNaConclusao,
 } from '../os/projecao';
@@ -262,6 +263,7 @@ export function Os(
   const motivo = useMotivo();
   const { os } = props;
   const parada = paradaPossivel(os);
+  const paradoDesde = paradoDesdeDaOs(os);
   const confirmar = props.confirmar ?? ((m: string) => window.confirm(m));
   const [aviso, setAviso] = useState<{ tipo: 'ok' } | { tipo: 'erro'; codigo: string } | null>(
     null,
@@ -397,10 +399,10 @@ export function Os(
             {t('tecnico.os.reaberta', { motivo: os.motivoReabertura })}
           </p>
         )}
-        {os.chamado?.paradoDesde && (
-          <p className="tc-nota" data-parado-desde={os.chamado.paradoDesde}>
+        {paradoDesde && (
+          <p className="tc-nota" data-parado-desde={paradoDesde}>
             {t('tecnico.os.parada.desde', {
-              quando: intl.formatDate(os.chamado.paradoDesde, {
+              quando: intl.formatDate(paradoDesde, {
                 dateStyle: 'short',
                 timeStyle: 'short',
               }),

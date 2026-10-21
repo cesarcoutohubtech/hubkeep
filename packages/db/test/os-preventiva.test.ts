@@ -224,8 +224,10 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       'app.evento_dominio',
       'app.auditoria',
       'app.operacao_offline',
+      'app.parada_ativo',
       'app.os_transicao',
       'app.os',
+      'app.chamado',
       'app.plano_preventivo',
       'app.ativo',
       'app.categoria_ativo',
@@ -259,6 +261,7 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
         ativoNome: 'Chiller 1',
         localId: CASA_DE_MAQUINAS,
         localNome: 'Casa de máquinas',
+        paradoDesde: null,
       },
     });
     expect(fila.find((o) => o.id === osId)?.preventiva?.dataPrevista).toMatch(/^2026-10-\d{2}$/);
@@ -357,5 +360,42 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       ativo: 'Chiller 1',
       pessoas: { [U.tecnico]: 'tecnico' },
     });
+  });
+
+  // Por último: a parada aberta do ativo aparece em toda preventiva dele daqui em diante.
+  it('com a parada aberta do ativo, a fila do dia mostra desde quando na preventiva', async () => {
+    const osId = await preventiva();
+    const situacao = await dono.query<{ id: string }>(
+      `select id from app.situacao where tenant_id = $1 and entidade = 'chamado' and estado = 'aberto'`,
+      [TENANT],
+    );
+    const prioridade = await dono.query<{ id: string }>(
+      `select id from app.prioridade where tenant_id = $1 limit 1`,
+      [TENANT],
+    );
+    const chamado = randomUUID();
+    await dono.query(
+      `insert into app.chamado (id, tenant_id, hotel_id, local_id, ativo_id, descricao, busca, estado,
+         situacao_id, prioridade_id, politica_aplicada, aberto_por)
+       values ($1, $2, $3, $4, $5, 'Parado', 'parado', 'aberto', $6, $7, '{}', $8)`,
+      [
+        chamado,
+        TENANT,
+        H1,
+        CASA_DE_MAQUINAS,
+        ATIVO,
+        situacao.rows[0]?.id,
+        prioridade.rows[0]?.id,
+        U.gerente,
+      ],
+    );
+    const inicio = new Date('2026-10-13T09:30:00Z');
+    await dono.query(
+      `insert into app.parada_ativo (id, tenant_id, hotel_id, ativo_id, chamado_id, inicio, aberta_por)
+       values ($1, $2, $3, $4, $5, $6, $7)`,
+      [randomUUID(), TENANT, H1, ATIVO, chamado, inicio, U.gerente],
+    );
+    const fila = await execucao.osDoDia(ctx(U.tecnico), { preventiva: true });
+    expect(fila.find((o) => o.id === osId)?.preventiva?.paradoDesde).toEqual(inicio);
   });
 });
