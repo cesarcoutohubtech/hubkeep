@@ -3304,3 +3304,20 @@ O Cesar decidiu "Particionada" (20/10/2026). A opção A de `docs/referencia/ret
   - o merge e o `db push`;
   - se o Cesar quiser outro horizonte que não dezembro de 2027.
 - **Próximo:** antes de dezembro de 2027, a migração das partições de 2028. O resto do que falta antes do piloto não é do Intelligence (staging, F0-12, as respostas do cliente).
+
+### O merge do #362 e o "aprovo" dos adendos aos ADR-035 e ADR-036 (21/10/2026)
+
+- **#362 mergeado** (Cesar, 21/10/2026), com o pgTAP, os testes, o Semgrep e o gitleaks verdes. O check "zona protegida" falhou por desenho. A 0061 está no dev pelo `db push` do Cesar ("362 mergeado e db push feito"), e a conferência no `supabase migration list` é dele.
+- **Aprovação dos dois adendos de 20/10/2026**, por escrito, nesta sessão: "Cesar aqui. [...] Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura)." e "KAio aqui Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura)."
+- **O PR do status** (zona protegida, só o `docs/03` e este diário). Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona (#363, #360, #359, #357, #355 e #310).
+
+### Ponto de retomada (21/10/2026, status dos adendos)
+
+- **`main`:** d04db65b (#362). Última migração na `main`: 0061. **Dev:** com a 0061.
+- **PR aberto:** o `int:` do status dos adendos aos ADR-035 e ADR-036, de zona protegida. O merge é do Cesar.
+- **Sem decisão pendente do Intelligence.** Os ADRs e adendos do módulo no `docs/03` estão todos aprovados pelos dois.
+- **Depende de outros:**
+  - staging e F0-12;
+  - as respostas do cliente às perguntas 35 a 39 (a retenção e o mapeamento das colunas por ferramenta);
+  - a entrada por API e webhook (IX1 a IX3), a sugestão da IA (regra 9) e ligar a reclamação a um chamado que já existe, todos depois do piloto.
+- **Próximo:** a migração das partições de 2028 da métrica diária, antes de janeiro de 2028. Fora isso, esperar o piloto ou um pedido novo de Cesar e Kaio.
