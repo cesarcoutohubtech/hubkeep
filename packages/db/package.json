@@ -15,7 +15,7 @@
   "dependencies": {
     "@hubkeep/aplicacao": "workspace:*",
     "@hubkeep/dominio": "workspace:*",
-    "kysely": "^0.29.6",
+    "kysely": "^0.29.7",
     "pg": "^8.23.1",
     "uuid": "^14.0.3"
   },
