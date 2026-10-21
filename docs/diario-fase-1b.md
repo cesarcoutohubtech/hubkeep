@@ -1304,11 +1304,28 @@ Com o #365 na `main`, o Cesar aprovou a correção do web ("Cesar aqui. pode seg
 - **Correção:** `apps/web/src/instrumentation-client.ts`, que o Next 16 roda no navegador antes do código do app, importa o `@hubkeep/contratos/sem-eval`. Com ele, as três páginas abriram sem nenhuma violação. As do painel pedem login e não foram abertas, mas o `instrumentation-client` vale para todas.
 - **Teste:** o `seguranca.test.ts` prende o import e a CSP de produção sem `unsafe-eval`.
 
-## Ponto de retomada (21/10/2026, SP2 no web)
+## Desenhos da SP1 e da SP3 (21/10/2026)
+
+- **SP1, MFA obrigatório:** `docs/referencia/proposta-sp1-mfa.md`, com seis decisões para o Cesar:
+  - o portão na API para todas as rotas, com a consulta das atribuições só quando o token está em `aal1`;
+  - quem tem dois papéis exige o segundo fator em tudo;
+  - o PWA só verifica o código;
+  - as contas do kit de teste;
+  - a recuperação em três camadas, com adendo ao ADR-024 para o reset pelo Admin do grupo;
+  - o Gerente fora da exigência.
+- **SP3, limite de requisições:** `docs/referencia/proposta-sp3-limite-de-requisicoes.md`, para o portão do staging, em cima da P1 do `docs/09`. Não há código antes do portão.
+
+## Ponto de retomada (21/10/2026, SP2 no web e desenhos da SP1 e da SP3)
 
 - **`main`:** com o #365 (SP2 no PWA). A última migração segue sendo a 0061.
-- **PR aberto:** o da SP2 no web (`adm:`), fora da zona protegida.
+- **PR aberto:** o #366 (`adm:`), fora da zona protegida, com a SP2 no web e os dois desenhos.
 - **Trabalho não enviado em PR:** nenhum.
-- **Espera o Cesar:** o merge desse PR.
-- **Decidido em 21/10/2026:** a SP3 e o Vercel Pro ficam para o portão do staging. Antes disso, o agente só monta o desenho, sem código.
-- **Próxima tarefa:** o desenho da SP1 (MFA), para a aprovação do Cesar, e depois o da SP3. Primeiro passo: ler a P4 do `docs/09` e o ADR-032.
+- **Espera o Cesar:**
+  - o merge do #366;
+  - as seis decisões da SP1 (seção 8 da proposta).
+- **Decidido em 21/10/2026:** a SP3 e o Vercel Pro ficam para o portão do staging. Antes disso, só o desenho.
+- **Próxima tarefa:** com as decisões da SP1, abrir o PR de zona protegida dela, com:
+  - o `config.toml` com o TOTP;
+  - o adendo ao ADR-024 e o registro da SP1 no `docs/03`;
+  - o teste da secret key.
+  - Primeiro passo: conferir no GitHub se há outro PR de zona protegida aberto.
