@@ -86,10 +86,15 @@ const hoteis: PainelDeIndicadores['hoteis'] = [
   },
 ];
 
+const SEM_INDICADORES_DO_DIA = {
+  percentualDeSla: null,
+  mttrHoras: null,
+  percentualDePreventivaEmDia: null,
+};
 const SERIE: PainelDeIndicadores['serie'] = [
-  { dia: '2026-10-18', backlog: 10, abertos: 4, encerrados: 2 },
-  { dia: '2026-10-19', backlog: 11, abertos: 3, encerrados: 2 },
-  { dia: '2026-10-20', backlog: 9, abertos: 1, encerrados: 3 },
+  { dia: '2026-10-18', backlog: 10, abertos: 4, encerrados: 2, ...SEM_INDICADORES_DO_DIA },
+  { dia: '2026-10-19', backlog: 11, abertos: 3, encerrados: 2, ...SEM_INDICADORES_DO_DIA },
+  { dia: '2026-10-20', backlog: 9, abertos: 1, encerrados: 3, ...SEM_INDICADORES_DO_DIA },
 ];
 
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>

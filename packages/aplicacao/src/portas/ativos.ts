@@ -2,6 +2,7 @@
 // contexto do usuário: a RLS mostra os ativos dos hotéis que ele lê (e os dos
 // locais do proprietário) e só deixa gravar quem tem escrita no hotel.
 import type {
+  CodigoReservado,
   Contexto,
   Criticidade,
   SituacaoDoCadastro,
@@ -98,12 +99,19 @@ export interface PortaAtivos {
   ativo(ctx: Contexto, ativoId: string): Promise<AtivoGravado | null>;
   /** O ativo do código do QR no tenant do contexto, se visível (RLS); senão null. */
   ativoPorCodigoQr(ctx: Contexto, codigoQr: string): Promise<AtivoGravado | null>;
-  /** Na unit of work, com auditoria e evento; o código do QR é gerado aqui. */
+  /** O código de QR reservado (M3), se visível (RLS); senão null. */
+  reservaDoCodigo(ctx: Contexto, codigo: string): Promise<CodigoReservado | null>;
+  /**
+   * Na unit of work, com auditoria e evento; sem codigoQr, o código do QR é
+   * gerado aqui. Com o código reservado (M3) que outro cadastro ligou nesse
+   * meio-tempo: Conflito qr_ja_ligado.
+   */
   criar(
     ctx: Contexto,
     hotelId: string,
     localId: string,
     dados: DadosDeAtivo,
+    codigoQr?: string,
   ): Promise<{ id: string; versao: number }>;
   /**
    * Na unit of work, só se a versão ainda for a esperada (ADR-029). Versão

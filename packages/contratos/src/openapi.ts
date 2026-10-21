@@ -151,6 +151,12 @@ import {
   RespostaDeDecisaoDoCadastro,
 } from './ativos';
 import {
+  PedidoDeLoteDeQr,
+  RespostaDeCodigoReservado,
+  RespostaDeCodigosReservados,
+  RespostaDeLoteDeQr,
+} from './qr-reservados';
+import {
   PedidoDeAreaComum,
   PedidoDeEdificacao,
   RespostaDeLocaisDoHotel,
@@ -237,6 +243,7 @@ import {
   RespostaDoChamadoDoInsight,
   PedidoDeLigacaoDoChamado,
   RespostaDaFilaDeSinais,
+  RespostaDoAcessoAsReclamacoes,
   RespostaDaImportacaoDeSinais,
 } from './inteligencia';
 
@@ -389,8 +396,9 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Fora do escopo (ativos_fora_do_escopo).'),
       404: ERRO('local_nao_encontrado ou categoria_nao_encontrada.'),
+      409: ERRO('O código da etiqueta já tem ativo (qr_ja_ligado, M3).'),
       422: ERRO(
-        'ativo_nome_invalido, ativo_texto_invalido, ativo_local_inativo, ativo_categoria_inativa, campo_obrigatorio, campo_desconhecido, valor_de_campo_invalido ou entrada_invalida.',
+        'ativo_nome_invalido, ativo_texto_invalido, ativo_local_inativo, ativo_categoria_inativa, campo_obrigatorio, campo_desconhecido, valor_de_campo_invalido, qr_nao_reservado (o código da etiqueta não está reservado no hotel do local, M3) ou entrada_invalida.',
       ),
     },
   },
@@ -1922,6 +1930,45 @@ export const ROTAS: readonly Rota[] = [
     },
   },
   {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/qr-reservados',
+    resumo:
+      'Gera um lote de códigos de QR reservados para o hotel (M3): de 1 a 500, sem repetir código reservado nem de ativo; as etiquetas se imprimem antes do cadastro, e o ativo nasce depois com o código da etiqueta (Implantador e gestão do hotel).',
+    exigeTenant: true,
+    corpo: PedidoDeLoteDeQr,
+    respostas: {
+      201: { descricao: 'O lote e os códigos', esquema: RespostaDeLoteDeQr },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (qr_reserva_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      422: ERRO('Tamanho do lote fora de 1 a 500 (qr_lote_invalido) ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/qr-reservados',
+    resumo:
+      'Os códigos de QR reservados do hotel (M3), do lote mais novo para o mais velho, com o que já tem ativo. Lê quem escreve no hotel; o proprietário não lê.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Códigos do hotel', esquema: RespostaDeCodigosReservados },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/qr-reservados/{codigo}',
+    resumo:
+      'O código lido de uma etiqueta reservada (M3): o hotel e se já tem ativo, para o PWA abrir o cadastro com ele. Aceita o código como uma pessoa digitaria. Não reservado, mal formado ou fora do escopo dá o mesmo 404.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'O código reservado', esquema: RespostaDeCodigoReservado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Código não reservado ou fora do escopo (qr_nao_reservado).'),
+    },
+  },
+  {
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/sugestoes-de-plano',
     resumo:
@@ -2851,6 +2898,18 @@ export const ROTAS: readonly Rota[] = [
       404: ERRO('inteligencia_indisponivel ou insight_nao_encontrado.'),
       409: ERRO('reclamacao_ja_tem_chamado.'),
       422: ERRO('insight_sem_reclamacoes ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/sinais/acesso',
+    resumo:
+      'Se quem pede usa a tela de reclamações de hóspedes (adendo de 20/10/2026 ao ADR-035): os papéis da política de abertura que decidem insight, desde o contrato do módulo, sem esperar a data de abertura das telas. Diz também se as outras telas do módulo já abriram.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Acesso', esquema: RespostaDoAcessoAsReclamacoes },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('inteligencia_indisponivel (sem o módulo ou sem papel que decide insight).'),
     },
   },
   {

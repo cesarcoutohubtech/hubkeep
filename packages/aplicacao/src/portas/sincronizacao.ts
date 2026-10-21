@@ -23,6 +23,8 @@ export interface SessaoDeOperacao {
     localId: string,
     dados: DadosDeAtivo,
     situacao?: 'pendente' | 'aprovado',
+    /** O código da etiqueta reservada (M3), já conferido. */
+    codigoQr?: string,
   ): Promise<{ id: string; versao: number }>;
   /** Versão diferente da esperada: Conflito conflito_de_versao (ADR-029). */
   alterarAtivo(

@@ -14,6 +14,7 @@ import {
   type CasosDeUsoDeSugestoesDePlano,
   type CasosDeUsoDeCadastrosDeAtivos,
   type CasosDeUsoDeImportacaoDeAtivos,
+  type CasosDeUsoDeQrReservados,
   type CasosDeUsoDoPacoteDaBandeira,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeTriagem,
@@ -371,6 +372,10 @@ export const casosDeUsoDeCadastrosDeAtivos = async (): Promise<CasosDeUsoDeCadas
 /** Importação de ativos por planilha (fase 1b, M2), pelo hk_app. */
 export const casosDeUsoDeImportacaoDeAtivos = async (): Promise<CasosDeUsoDeImportacaoDeAtivos> =>
   (await fabricas()).importacaoDeAtivos();
+
+/** Códigos de QR reservados (fase 1b, M3), pelo hk_app. */
+export const casosDeUsoDeQrReservados = async (): Promise<CasosDeUsoDeQrReservados> =>
+  (await fabricas()).qrReservados();
 
 /** Pacote da bandeira (fase 1b, PB1), pelo hk_app. */
 export const casosDeUsoDoPacoteDaBandeira = async (): Promise<CasosDeUsoDoPacoteDaBandeira> =>

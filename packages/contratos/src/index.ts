@@ -333,6 +333,7 @@ export {
   RespostaDoChamadoDaReclamacao,
   RespostaDoChamadoDoInsight,
   RespostaDaFilaDeSinais,
+  RespostaDoAcessoAsReclamacoes,
   RespostaDaImportacaoDeSinais,
   SITUACOES_DA_FILA_API,
   SinalDaFilaApi,
@@ -408,3 +409,11 @@ export {
   RespostaDePlanoPadraoGravado,
   RespostaDePlanosPadrao,
 } from './pacote-da-bandeira';
+export {
+  CodigoReservadoApi,
+  LIMITE_DO_LOTE_DE_QR_API,
+  PedidoDeLoteDeQr,
+  RespostaDeCodigoReservado,
+  RespostaDeCodigosReservados,
+  RespostaDeLoteDeQr,
+} from './qr-reservados';

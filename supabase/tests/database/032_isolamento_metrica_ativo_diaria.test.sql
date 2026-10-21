@@ -21,7 +21,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(33);
+select plan(39);
 
 grant usage on schema extensions to hk_app, hk_worker;
 
@@ -153,6 +153,25 @@ select lives_ok(
              'a2000000-0000-0000-0000-000000000001', date '2026-09-20', 1, true, 'normal', 1, 2, 'padrao', '{}', '{}') $$,
   'recálculo de um dia que nunca foi gravado entra com o cálculo 1, marcado');
 
+-- Particionada por mês (0061, adendo de 20/10/2026 ao ADR-036): a linha cai
+-- na partição do mês dela; o dia fora dos meses criados, na partição padrão.
+select is((select relkind::text from pg_class where oid = 'app.metrica_ativo_diaria'::regclass), 'p',
+  'a métrica diária é particionada');
+select results_eq(
+  $$ select tableoid::regclass::text from app.metrica_ativo_diaria where id = '3e000000-0000-0000-0000-000000000001' $$,
+  $$ values ('app.metrica_ativo_diaria_2026_09') $$,
+  'a linha de 29/09/2026 fica na partição de setembro de 2026');
+select lives_ok(
+  $$ insert into app.metrica_ativo_diaria (id, tenant_id, hotel_id, ativo_id, dia, faixa_atencao, versao_formula_reincidencia, versao_formula_atencao, versao_politica, detalhe_reincidencia, detalhe_atencao)
+     values ('3e000000-0000-0000-0000-0000000000d0', '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
+             'a1000000-0000-0000-0000-000000000001', date '2023-06-01', 'normal', 1, 2, 'padrao', '{}', '{}') $$,
+  'um dia antes dos meses criados também entra');
+select results_eq(
+  $$ select tableoid::regclass::text from app.metrica_ativo_diaria where id = '3e000000-0000-0000-0000-0000000000d0' $$,
+  $$ values ('app.metrica_ativo_diaria_padrao') $$,
+  'o dia fora dos meses criados fica na partição padrão');
+delete from app.metrica_ativo_diaria where id = '3e000000-0000-0000-0000-0000000000d0';
+
 set local role hk_app;
 
 -- Caso 5 — sem contexto
@@ -221,10 +240,20 @@ select is_empty('select 1 from app.metrica_ativo_diaria', 'proprietário do hote
 select from (select set_config('app.usuario_id', 'aaaaaaaa-0000-0000-0000-000000000008', true)) ctx;
 select is_empty('select 1 from app.metrica_ativo_diaria', 'implantador vencido não vê nada');
 
+-- Ninguém da aplicação lê pela partição: só pela tabela-mãe, com as policies dela.
+select throws_ok(
+  $$ select 1 from app.metrica_ativo_diaria_2026_09 $$,
+  '42501', null, 'quem decide não lê direto pela partição');
+
 -- Worker: só o tenant do job, só INSERT
 reset role;
 set local role hk_worker;
 select from (select set_config('app.tenant_id', '10000000-0000-0000-0000-000000000000', true)) ctx;
+select throws_ok(
+  $$ insert into app.metrica_ativo_diaria_2026_09 (id, tenant_id, hotel_id, ativo_id, dia, faixa_atencao, versao_formula_reincidencia, versao_formula_atencao, versao_politica, detalhe_reincidencia, detalhe_atencao)
+     values (gen_random_uuid(), '10000000-0000-0000-0000-000000000000', '11100000-0000-0000-0000-000000000001',
+             'a1000000-0000-0000-0000-000000000001', date '2026-09-27', 'normal', 1, 2, 'padrao', '{}', '{}') $$,
+  '42501', null, 'o worker não grava direto na partição');
 select results_eq('select count(distinct tenant_id)::int from app.metrica_ativo_diaria', $$ values (1) $$,
   'worker vê só o tenant do job');
 select lives_ok(

@@ -91,6 +91,27 @@ describe('o pedido do chamado a partir da reclamação', () => {
     });
   });
 
+  it('antes da abertura das telas, a reclamação já abre chamado; o insight, não', async () => {
+    // Contrato de 20 dias atrás: as telas só abrem daqui a 40 dias.
+    const antesDaAbertura = <T extends PortasDoChamadoDaReclamacao>(portas: T): T => ({
+      ...portas,
+      modulos: async () => [{ modulo: 'inteligencia' as const, inicio: antes(20), fim: null }],
+    });
+    const abertura = await prepararChamadoDaReclamacao(
+      antesDaAbertura(emMemoria(reclamacao())),
+      { sinalId: 's1', comAtivo: true, descricao: 'Caldeira sem água quente' },
+      agora,
+    );
+    expect(abertura.localId).toBe('maquinas');
+    await expect(
+      prepararChamadoDoInsight(
+        antesDaAbertura(doInsight(insight({ sinalIds: ['s1'] }), [daFila('s1')])),
+        { insightId: 'i1', localId: 'area', ativoId: null, descricao: 'Chuveiros fracos' },
+        agora,
+      ),
+    ).rejects.toMatchObject({ codigo: 'inteligencia_indisponivel' });
+  });
+
   it('sem o ativo: a UH da classificação', async () => {
     const abertura = await prepararChamadoDaReclamacao(
       emMemoria(reclamacao()),

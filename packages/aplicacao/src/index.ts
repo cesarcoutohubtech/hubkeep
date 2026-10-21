@@ -431,3 +431,6 @@ export type {
   PedidoDePlanoPadrao,
   ResultadoDaAplicacao,
 } from './casos-de-uso/pacote-da-bandeira';
+export type { CodigoDoLote, PortaQrReservados } from './portas/qr-reservados';
+export { criarCasosDeUsoDeQrReservados } from './casos-de-uso/qr-reservados';
+export type { CasosDeUsoDeQrReservados } from './casos-de-uso/qr-reservados';

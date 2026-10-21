@@ -3,7 +3,8 @@
 // categoria recusa; na alteração, o ausente mantém o gravado, o modelo que o
 // ativo já tinha continua valendo desativado (e de outra bandeira), e trocar
 // a categoria sem trocar o modelo recusa. O modelo novo de outra bandeira que
-// a do hotel recusa (PB1b).
+// a do hotel recusa (PB1b). O código da etiqueta reservada (M3) entra só
+// reservado no hotel e livre.
 import type { Atribuicao, Contexto } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
 import { type AtivoGravado, type DadosDeAtivo, criarCasosDeUsoDeAtivos } from '../src/index';
@@ -36,8 +37,15 @@ const codigoDe = async (p: Promise<unknown>) => {
   }
 };
 
+const RESERVAS: Record<string, { hotelId: string; ligado: boolean }> = {
+  '7K3M9QX2AB': { hotelId: HOTEL, ligado: false },
+  '7K3M9QX2AC': { hotelId: HOTEL, ligado: true },
+  '7K3M9QX2AD': { hotelId: 'h-2', ligado: false },
+};
+
 function montar(gravado?: Partial<AtivoGravado>) {
   const gravacoes: DadosDeAtivo[] = [];
+  const codigos: (string | undefined)[] = [];
   const ativo: AtivoGravado = {
     id: 'a-1',
     hotelId: HOTEL,
@@ -70,8 +78,10 @@ function montar(gravado?: Partial<AtivoGravado>) {
       ativos: async () => [],
       ativo: async () => ativo,
       ativoPorCodigoQr: async () => null,
-      criar: async (_c, _h, _l, dados) => {
+      reservaDoCodigo: async (_c, codigo) => RESERVAS[codigo] ?? null,
+      criar: async (_c, _h, _l, dados, codigoQr) => {
         gravacoes.push(dados);
+        codigos.push(codigoQr);
         return { id: 'novo', versao: 1 };
       },
       alterar: async (_c, _id, versao, mudanca) => {
@@ -84,7 +94,7 @@ function montar(gravado?: Partial<AtivoGravado>) {
     atribuicoes: { doUsuario: async () => [atr], doMembro: async () => [] } as never,
     relogio: { agora: () => new Date('2026-10-15T12:00:00Z') },
   });
-  return { casos, gravacoes };
+  return { casos, gravacoes, codigos };
 }
 
 const gravacao = {
@@ -146,5 +156,28 @@ describe('modelo no cadastro do ativo (M1)', () => {
         casos.alterar(ctx, 'a-1', { ...gravacao, categoriaId: 'cat-porta', versao: 1 }),
       ),
     ).toBe('modelo_ativo_de_outra_categoria');
+  });
+});
+
+describe('código da etiqueta reservada no cadastro (M3)', () => {
+  it('reservado no hotel e livre: o ativo nasce com ele, como uma pessoa digitaria', async () => {
+    const { casos, codigos } = montar();
+    await casos.cadastrar(ctx, { ...CADASTRO, codigoQr: '7k3m9-qx2ab' });
+    await casos.cadastrar(ctx, { ...CADASTRO, codigoQr: null });
+    await casos.cadastrar(ctx, CADASTRO);
+    expect(codigos).toEqual(['7K3M9QX2AB', undefined, undefined]);
+  });
+
+  it('sem reserva, de outro hotel ou mal formado: qr_nao_reservado; ligado: qr_ja_ligado', async () => {
+    const { casos, codigos } = montar();
+    for (const codigoQr of ['7K3M9QX2AZ', '7K3M9QX2AD', 'x']) {
+      expect(await codigoDe(casos.cadastrar(ctx, { ...CADASTRO, codigoQr }))).toBe(
+        'qr_nao_reservado',
+      );
+    }
+    expect(await codigoDe(casos.cadastrar(ctx, { ...CADASTRO, codigoQr: '7K3M9QX2AC' }))).toBe(
+      'qr_ja_ligado',
+    );
+    expect(codigos).toEqual([]);
   });
 });

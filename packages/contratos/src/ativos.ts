@@ -85,7 +85,12 @@ const gravacao = {
 };
 
 export const PedidoDeCadastroDeAtivo = z
-  .object({ localId: z.guid(), ...gravacao })
+  .object({
+    localId: z.guid(),
+    ...gravacao,
+    /** O código da etiqueta reservada (M3); ausente ou null: o código é gerado. */
+    codigoQr: z.string().max(40).nullable().optional(),
+  })
   .meta({ id: 'PedidoDeCadastroDeAtivo' });
 
 export const PedidoDeAlteracaoDeAtivo = z

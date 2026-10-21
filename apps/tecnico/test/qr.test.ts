@@ -69,9 +69,9 @@ describe('abrirQr', () => {
     expect(requisitar).not.toHaveBeenCalled();
   });
 
-  it('fora do aparelho e sem rede: qr_sem_rede', async () => {
-    const r = await abrirQr('ZZZZZZZZZZ', { referencia, online: false, credenciais });
-    expect(r).toEqual({ tipo: 'erro', codigo: 'qr_sem_rede' });
+  it('fora do aparelho e sem rede: qr_sem_rede, com o código lido (M3)', async () => {
+    const r = await abrirQr('zzzzz-zzzzz', { referencia, online: false, credenciais });
+    expect(r).toEqual({ tipo: 'erro', codigo: 'qr_sem_rede', lido: 'ZZZZZZZZZZ' });
   });
 
   it('fora do aparelho, com rede: pergunta à API pelo código normalizado', async () => {
@@ -91,6 +91,27 @@ describe('abrirQr', () => {
   it('API responde 404 (outro tenant ou fora do escopo): ativo_nao_encontrado', async () => {
     const requisitar = vi.fn<typeof fetch>(async () =>
       json(404, { erro: { codigo: 'ativo_nao_encontrado', parametros: {} } }),
+    );
+    const r = await abrirQr('ZZZZZZZZZZ', { referencia, online: true, credenciais, requisitar });
+    expect(r).toEqual({ tipo: 'erro', codigo: 'ativo_nao_encontrado' });
+  });
+
+  it('etiqueta reservada e livre (M3): abre o cadastro no hotel dela', async () => {
+    const requisitar = vi.fn<typeof fetch>(async (url) =>
+      String(url).includes('/qr-reservados/')
+        ? json(200, { codigo: 'ZZZZZZZZZZ', hotelId: H1, ligado: false })
+        : json(404, { erro: { codigo: 'ativo_nao_encontrado', parametros: {} } }),
+    );
+    const r = await abrirQr('ZZZZZZZZZZ', { referencia, online: true, credenciais, requisitar });
+    expect(r).toEqual({ tipo: 'reservado', hotelId: H1, codigo: 'ZZZZZZZZZZ' });
+    expect(String(requisitar.mock.calls[1]?.[0])).toBe('/api/v1/qr-reservados/ZZZZZZZZZZ');
+  });
+
+  it('etiqueta ligada a ativo que quem lê não vê (M3): ativo_nao_encontrado', async () => {
+    const requisitar = vi.fn<typeof fetch>(async (url) =>
+      String(url).includes('/qr-reservados/')
+        ? json(200, { codigo: 'ZZZZZZZZZZ', hotelId: H1, ligado: true })
+        : json(404, { erro: { codigo: 'ativo_nao_encontrado', parametros: {} } }),
     );
     const r = await abrirQr('ZZZZZZZZZZ', { referencia, online: true, credenciais, requisitar });
     expect(r).toEqual({ tipo: 'erro', codigo: 'ativo_nao_encontrado' });
