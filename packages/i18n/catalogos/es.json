@@ -444,6 +444,9 @@
   "inicio.situacao.situacao": "{situacao, select, critico {Crítico} atencao {Atención} other {Ok}}",
   "inicio.situacao.sla": "{valor}% (meta {meta}%)",
   "inicio.situacao.abertos_por_dia": "Solicitudes abiertas por día en {hotel}, en los últimos {dias} días",
+  "inicio.proprietario.titulo": "Sus unidades",
+  "inicio.proprietario.dica": "Usted ve solo las solicitudes de sus unidades.",
+  "inicio.proprietario.uhs": "Habitaciones acompañadas",
 
   "tecnico.nome": "HubKeep Técnico",
   "tecnico.descricao": "Órdenes de trabajo de mantenimiento del día, con o sin red.",
@@ -909,6 +912,7 @@
   "erro.avisos_sla_fora_do_escopo": "Solo la gestión del hotel ve los avisos de SLA.",
   "erro.prazos_sem_permissao": "Solo la gestión ve los próximos plazos de SLA.",
   "erro.situacao_por_hotel_sem_permissao": "Solo la gestión ve la situación por hotel.",
+  "erro.inicio_do_proprietario_sem_permissao": "Solo el propietario ve las unidades acompañadas.",
   "erro.envios_fora_do_papel": "Solo la gestión ve el conteo de envíos.",
 
   "menu.chamados": "Solicitudes",

@@ -417,3 +417,4 @@ export {
   RespostaDeCodigosReservados,
   RespostaDeLoteDeQr,
 } from './qr-reservados';
+export { RespostaDoInicioDoProprietario } from './inicio-do-proprietario';

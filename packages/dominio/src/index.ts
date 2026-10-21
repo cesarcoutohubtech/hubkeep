@@ -707,6 +707,8 @@ export type {
   CopiaDoPlanoPadrao,
   PlanoPadrao,
 } from './pacote-da-bandeira';
+export { hoteisDasUhsAcompanhadas, podeVerOInicioDoProprietario } from './inicio-do-proprietario';
+export type { VinculoDoProprietario } from './inicio-do-proprietario';
 export {
   DIAS_DOS_ABERTOS_DO_QUADRO,
   LIMITES_DA_SITUACAO,

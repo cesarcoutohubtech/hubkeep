@@ -1482,7 +1482,36 @@ Branch `claude/1c-onde-mais-quebra`, a partir da `main` 5f915d1. Sem migração.
 **Quem é o locador:** a decisão 6 do Cesar, de 13/10/2026, já responde à pergunta do ponto de retomada do PR 3b: o locador é o proprietário do hotel inteiro, sem papel novo (ADR-031). O cartão "Categorias sob o locador" é desse proprietário, nos hotéis arrendados dele. O cartão "UHs acompanhadas" é do proprietário ligado a UHs (condo-hotel).
 
 **Área compartilhada (`packages/dominio` e catálogos), registrada antes do commit:**
-- regra nova no domínio (`inicio-do-proprietario.ts`), que lê a matriz do arrendamento (`arrendamento.ts`) sem mudá-la;
+- regra nova no domínio (`inicio-do-proprietario.ts`);
 - chaves novas `inicio.proprietario.*` e `erro.inicio_do_proprietario_sem_permissao`.
 
 Branch `claude/1c-retomada-tela-inicial`, a partir da `main` 42e0b9e. Sem migração.
+
+**Achado: o locador não lê a matriz.** A matriz do arrendamento é a política `hotel.matriz_arrendamento`, e o proprietário não lê nenhuma política desde a migração 0013 (decisão do Cesar de 28/09/2026: "no MVP o proprietário não lê políticas do hotel; não há uso concreto"). O cartão "Categorias sob o locador" é o primeiro uso concreto, e ele depende de uma decisão do Cesar. Por isso, **este PR traz só o cartão "UHs acompanhadas"**, e o domínio não lê a matriz.
+
+**Feito:**
+- **Rota nova:** `GET /api/v1/inicio/proprietario`. Para cada hotel a que quem pede está ligado por UHs, traz as UHs ativas dele, pelo nome do hotel.
+  - O hotel de que ele é dono inteiro não entra: lá ele vê o hotel todo, e o texto "Você vê só os chamados das suas unidades" não vale.
+  - Os vínculos vêm de `authz.locais_proprietario` e `authz.hoteis_proprietario`, como no painel de indicadores, porque a RLS não mostra ao proprietário as tabelas de vínculo.
+- **Quem vê:** o proprietário com papel vigente. Os outros recebem 403 (`inicio_do_proprietario_sem_permissao`), e o cartão não aparece.
+- **Tela inicial:** o cartão "Suas unidades" fica no topo, com um número de "UHs acompanhadas" por hotel e o aviso "Você vê só os chamados das suas unidades." Sem hotel ligado por UHs, o cartão não aparece.
+- **Testes:**
+  - o domínio, em `packages/dominio/test/inicio-do-proprietario.test.ts`;
+  - o caso de uso, em `packages/aplicacao/test/inicio-do-proprietario.test.ts`;
+  - o SQL e a RLS, num caso novo do teste de integração dos indicadores (`packages/db/test/indicadores.test.ts`), que roda só na CI. O caso tem um condômino dono de uma UH, e o dono do hotel inteiro fica sem o cartão;
+  - a tela, em `apps/web/test/uhs-acompanhadas.test.tsx`.
+- **A tela não foi aberta no navegador.**
+
+### Pergunta ao Cesar: como o locador vê as categorias sob ele (21/10/2026)
+
+O cartão do mock diz "Categorias sob o locador: definidas na matriz de responsabilidade do contrato de arrendamento". Há três caminhos:
+1. **Recomendado: o locador lê só a matriz do hotel dele.** É uma migração (zona protegida) que devolve ao dono do hotel inteiro a leitura de uma política só, `hotel.matriz_arrendamento`, do hotel dele e do grupo. As outras continuam fechadas, como manda a 0013. Precisa de adendo ao ADR-031 e de casos pgTAP de isolamento.
+2. **Sem migração:** o cartão mostra as categorias das OS do hotel já marcadas como do locador. Mas isso é o histórico, e não a matriz: a categoria sob o locador que ainda não teve OS não aparece.
+3. **O cartão fica fora do MVP.** O locador continua vendo, como hoje, só as OS marcadas como dele.
+
+### Ponto de retomada (21/10/2026, tela inicial PR 3c)
+
+- **`main`:** 42e0b9e. Nenhuma migração nova da 1c; o dev não muda.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** o do cartão "UHs acompanhadas", que abre agora.
+- **Esperando o Cesar:** a pergunta acima, sobre como o locador vê as categorias sob ele.
+- **Próximo:** com a resposta 1, a migração da leitura da matriz pelo locador e o cartão. O PR é de zona protegida, então antes é preciso conferir se há outro PR de zona aberto no repositório. Com a 2, só o código; com a 3, a seção 4 da paridade fecha, menos o selo "PMS lido", que depende do conector da 1b.

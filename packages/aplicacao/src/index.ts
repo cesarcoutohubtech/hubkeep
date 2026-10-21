@@ -341,6 +341,12 @@ export type {
 } from './casos-de-uso/auditoria-geral';
 export type { ChamadoComAvisos, PortaAvisosDeSla } from './portas/avisos-de-sla';
 export { criarCasosDeUsoDeAvisosDeSla } from './casos-de-uso/avisos-de-sla';
+export type { PortaInicioDoProprietario } from './portas/inicio-do-proprietario';
+export { criarCasosDeUsoDoInicioDoProprietario } from './casos-de-uso/inicio-do-proprietario';
+export type {
+  CasosDeUsoDoInicioDoProprietario,
+  InicioDoProprietario,
+} from './casos-de-uso/inicio-do-proprietario';
 export type { PortaSituacaoPorHotel, PreventivaAberta } from './portas/situacao-por-hotel';
 export { criarCasosDeUsoDaSituacaoPorHotel } from './casos-de-uso/situacao-por-hotel';
 export type {

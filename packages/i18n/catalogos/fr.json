@@ -444,6 +444,9 @@
   "inicio.situacao.situacao": "{situacao, select, critico {Critique} atencao {Attention} other {OK}}",
   "inicio.situacao.sla": "{valor} % (objectif {meta} %)",
   "inicio.situacao.abertos_por_dia": "Demandes ouvertes par jour à {hotel}, sur les {dias} derniers jours",
+  "inicio.proprietario.titulo": "Vos unités",
+  "inicio.proprietario.dica": "Vous ne voyez que les demandes de vos unités.",
+  "inicio.proprietario.uhs": "Chambres suivies",
 
   "tecnico.nome": "HubKeep Technicien",
   "tecnico.descricao": "Les ordres de travail de maintenance du jour, avec ou sans réseau.",
@@ -909,6 +912,7 @@
   "erro.avisos_sla_fora_do_escopo": "Seule la direction de l’hôtel voit les alertes SLA.",
   "erro.prazos_sem_permissao": "Seule la direction voit les prochaines échéances SLA.",
   "erro.situacao_por_hotel_sem_permissao": "Seule la direction voit la situation par hôtel.",
+  "erro.inicio_do_proprietario_sem_permissao": "Seul le propriétaire voit les unités suivies.",
   "erro.envios_fora_do_papel": "Seule la direction voit le décompte des envois.",
 
   "menu.chamados": "Demandes",
