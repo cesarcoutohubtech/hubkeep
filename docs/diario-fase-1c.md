@@ -1394,6 +1394,59 @@ Nenhum termo das versões anteriores mudou de texto. Os três são do núcleo, e
   Os dois mexem no diário. Depois do merge de um, o outro é atualizado com a `main`.
 - **Próximo:** a tela inicial, PR 3, com a "Situação por hotel", "Onde mais quebra" e os cartões do proprietário e do locador. Primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` (o quadro e os cartões) e como o painel lê as prioridades e os avisos de SLA.
 
+## Tela inicial, PR 3a: "Situação por hotel" (20/10/2026)
+
+**Área compartilhada (chamado, catálogos e `packages/dominio`), registrada antes do commit:**
+- regra nova no domínio (`situacao-do-hotel.ts`);
+- uma leitura nova na porta dos avisos de SLA (`chamadosEmCurso`);
+- o filtro de hotel pela URL na lista de chamados (`filtroDaUrl` em `cliente/corretiva.tsx`);
+- chaves novas `inicio.situacao.*` e `erro.situacao_por_hotel_sem_permissao`.
+
+Branch `claude/1c-situacao-por-hotel`, a partir da `main` 5f915d1. Sem migração. Usa os termos da versão 4 do glossário ([#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357)), aprovada por Cesar e Kaio em 20/10/2026.
+
+**O PR 3 virou três:**
+- **3a (este):** o quadro "Situação por hotel";
+- **3b:** "Onde mais quebra" (chamados por categoria), no painel de indicadores e na tela inicial;
+- **3c:** os cartões do proprietário ("UHs acompanhadas") e do locador ("Categorias sob o locador").
+
+**Feito:**
+- **Rota nova:** `GET /api/v1/inicio/situacao-por-hotel`. Para cada hotel de que quem pede é da gestão, traz:
+  - os chamados que vencem em breve e os que estão fora do prazo, pelos avisos em aberto (`avisosEmAberto`, como o painel dos avisos);
+  - os críticos;
+  - as preventivas atrasadas de agora, pela tolerância de cada hotel;
+  - os abertos por dia nos últimos 14 dias locais;
+  - a situação.
+
+  A lista vai do hotel mais grave ao mais leve e, dentro de cada situação, pelo nome.
+- **Na tela inicial,** o quadro fica entre o resumo e os próximos prazos.
+  - "Em aberto" (o backlog) e "SLA 30 dias" (com a meta de cada hotel) vêm do painel de indicadores que o resumo já lê, para os números baterem com os do painel.
+  - As quatro colunas de contagem ganham cor mais forte com mais ocorrências, pelo maior valor da coluna.
+  - O nome do hotel abre a fila dele (`/chamados?hotelId=`).
+  - O quadro é lido ao abrir e a cada 60 segundos, como os próximos prazos.
+- **Quem vê:** a gestão (Admin do grupo, Gestor CSC e Gerente do hotel), como nos avisos de SLA. Quem não é recebe 403, e o quadro não aparece.
+
+**Escolhas de detalhe, para o Cesar conferir:**
+- **Cada chamado conta uma vez nas colunas de prazo.** Com algum prazo vencido, vai para "Fora do prazo", mesmo com o outro prazo em risco. "Vencem em breve" são os que têm prazo em risco e nenhum vencido.
+- **Empate no maior peso:** se duas prioridades ativas empatam no maior peso, as duas contam como críticas. O peso não é único no banco.
+- **Crítico em curso:** o chamado crítico é o aberto, em triagem ou em execução, como nos avisos de SLA. O que espera o aceite já teve o serviço concluído.
+
+**Testes:**
+- o domínio, em `packages/dominio/test/situacao-do-hotel.test.ts`;
+- o caso de uso, em `packages/aplicacao/test/situacao-por-hotel.test.ts`;
+- o SQL, num caso novo do teste de integração dos avisos (`packages/db/test/avisos-de-sla.test.ts`), que roda só na CI;
+- a tela, em `apps/web/test/situacao-por-hotel.test.tsx`.
+
+**A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, tela inicial PR 3a)
+
+- **`main`:** 0dbacc8, já com o [#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357) (o glossário versão 4) e o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356) (a série diária). Este PR foi atualizado com ela.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - o PR deste quadro, que abre agora.
+
+  Os dois mexem no diário. Depois de cada merge, os outros são atualizados com a `main`.
+- **Próximo:** a tela inicial, PR 3b ("Onde mais quebra"). Primeiro passo: incluir a categoria do chamado na leitura do painel de indicadores e ver como a tela resolve o nome da categoria.
+
 ## Tela inicial, PR 3b: "Onde mais quebra" (20/10/2026)
 
 **Área compartilhada (`packages/dominio` e catálogos), registrada antes do commit:**
@@ -1413,10 +1466,7 @@ Branch `claude/1c-onde-mais-quebra`, a partir da `main` 5f915d1. Sem migração.
 
 ### Ponto de retomada (20/10/2026, tela inicial PR 3b)
 
-- **`main`:** 0dbacc8, já com o [#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357) (o glossário versão 4) e o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356) (a série diária). Este PR foi atualizado com ela, e os conflitos em `indicadores.ts`, no caso de uso dos indicadores e nos testes ficaram com os dois lados.
-- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
-  - [#359](https://github.com/cesarcoutohubtech/hubkeep/pull/359), o quadro "Situação por hotel";
-  - o PR deste gráfico, que abre agora.
-
-  Todos mexem no diário. Depois de cada merge, os outros são atualizados com a `main`.
+- **`main`:** 4d1a3d5, já com o [#359](https://github.com/cesarcoutohubtech/hubkeep/pull/359) (o quadro "Situação por hotel"), o [#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357) (o glossário versão 4) e o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356) (a série diária). Este PR foi atualizado com ela, e os conflitos em `indicadores.ts`, no caso de uso dos indicadores e nos testes ficaram com os dois lados.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#360](https://github.com/cesarcoutohubtech/hubkeep/pull/360), este gráfico.
+- **Esperando o Cesar:** quem vê o cartão "Categorias sob o locador" do PR 3c; não há papel de locador.
 - **Próximo:** a tela inicial, PR 3c (os cartões do proprietário e do locador). Primeiro passo: ler como a tela sabe que quem vê é proprietário de UHs e o locador do arrendamento (ADR-045), e o que o mock mostra nos dois cartões.

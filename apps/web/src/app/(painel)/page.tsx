@@ -1,7 +1,7 @@
 'use client';
-// Tela inicial (1c, seção 4 da paridade): o resumo dos últimos 30 dias, os
-// próximos prazos e os últimos eventos para a gestão, e os hotéis visíveis no
-// grupo escolhido. A sessão, o grupo e o idioma ficam na moldura
+// Tela inicial (1c, seção 4 da paridade): o resumo dos últimos 30 dias, a
+// situação por hotel, os próximos prazos e os últimos eventos para a gestão, e
+// os hotéis visíveis no grupo escolhido. A sessão, o grupo e o idioma ficam na moldura
 // (cliente/moldura.tsx); tudo passa pela API, que verifica o token no servidor.
 // Quem não vê os indicadores (a API recusa) fica sem o resumo.
 import { MensagemVazia, Painel, Selo, type TomDeSelo, Tabela } from '@hubkeep/ui';
@@ -10,6 +10,7 @@ import { chamarApi } from '../../cliente/api';
 import type { PainelDeIndicadores } from '../../cliente/indicadores';
 import { PrazosEEventos } from '../../cliente/prazos-e-eventos';
 import { ResumoDoInicio, periodosDoResumo } from '../../cliente/resumo-do-inicio';
+import { SituacaoPorHotel } from '../../cliente/situacao-por-hotel';
 import { useT } from '../../i18n/cliente';
 
 interface Hotel {
@@ -51,6 +52,7 @@ export default function Inicio() {
   return (
     <>
       {resumo ? <ResumoDoInicio atual={resumo.atual} anterior={resumo.anterior} /> : null}
+      <SituacaoPorHotel indicadores={resumo?.atual.hoteis ?? []} />
       <PrazosEEventos />
       <Painel titulo={t('inicio.hoteis.titulo')}>
         {hoteis === null ? (

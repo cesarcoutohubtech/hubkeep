@@ -464,6 +464,25 @@
   overflow: visible;
 }
 
+/* Na tabela (os abertos por dia do quadro da tela inicial), a linha tem largura mínima. */
+.hk-tabela .hk-mini-linha {
+  min-width: 96px;
+}
+
+/* A célula de contagem do quadro da tela inicial: cor mais forte com mais ocorrências. */
+.hk-celula-com-cor[data-intensidade='1'] {
+  background: color-mix(in srgb, var(--hk-perigo) 10%, transparent);
+}
+
+.hk-celula-com-cor[data-intensidade='2'] {
+  background: color-mix(in srgb, var(--hk-perigo) 20%, transparent);
+}
+
+.hk-celula-com-cor[data-intensidade='3'] {
+  background: color-mix(in srgb, var(--hk-perigo) 32%, transparent);
+  font-weight: 600;
+}
+
 /* As barras horizontais (BarrasHorizontais): nome, barra e número em cada linha. */
 .hk-barras {
   display: grid;

@@ -49,6 +49,7 @@ function casos(chamados: ChamadoComAvisos[], papel: Atribuicao['papel'] = 'geren
     avisos: {
       hotel: async (_c, id) => (id === 'h1' ? { id, bandeiraId: null } : null),
       chamadosDoHotel: async () => chamados,
+      chamadosEmCurso: async () => chamados,
       chamadosComPrazoAVencer: async () =>
         chamados.map((c) => ({ ...c, hotelNome: `Hotel ${c.hotelId}`, bandeiraId: null })),
       chamado: async (_c, id) => {

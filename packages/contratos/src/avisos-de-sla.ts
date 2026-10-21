@@ -71,3 +71,30 @@ export const RespostaDosAvisosDoChamado = z
     avisos: z.array(AvisoDeSlaApi),
   })
   .meta({ id: 'RespostaDosAvisosDoChamado' });
+
+/** A situação do hotel, do mais grave ao mais leve (glossário de métricas, versão 4). */
+export const SITUACOES_DO_HOTEL_API = ['critico', 'atencao', 'ok'] as const;
+
+export const SituacaoDoHotelApi = z
+  .object({
+    hotelId: z.guid(),
+    hotelNome: z.string(),
+    situacao: z.enum(SITUACOES_DO_HOTEL_API),
+    /** Os chamados com algum prazo em risco e nenhum vencido. */
+    vencemEmBreve: z.int().min(0),
+    /** Os chamados com algum prazo vencido. */
+    foraDoPrazo: z.int().min(0),
+    /** Os chamados críticos em curso. */
+    criticos: z.int().min(0),
+    preventivasAtrasadas: z.int().min(0),
+    /** Os chamados abertos em cada um dos últimos 14 dias locais do hotel; o último é hoje. */
+    abertosPorDia: z.array(z.int().min(0)).length(14),
+  })
+  .meta({ id: 'SituacaoDoHotelApi' });
+
+export const RespostaDaSituacaoPorHotel = z
+  .object({
+    /** Do hotel mais grave ao mais leve, e pelo nome. */
+    hoteis: z.array(SituacaoDoHotelApi),
+  })
+  .meta({ id: 'RespostaDaSituacaoPorHotel' });
