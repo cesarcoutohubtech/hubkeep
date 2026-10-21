@@ -1470,3 +1470,19 @@ Branch `claude/1c-onde-mais-quebra`, a partir da `main` 5f915d1. Sem migração.
 - **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#360](https://github.com/cesarcoutohubtech/hubkeep/pull/360), este gráfico.
 - **Esperando o Cesar:** quem vê o cartão "Categorias sob o locador" do PR 3c; não há papel de locador.
 - **Próximo:** a tela inicial, PR 3c (os cartões do proprietário e do locador). Primeiro passo: ler como a tela sabe que quem vê é proprietário de UHs e o locador do arrendamento (ADR-045), e o que o mock mostra nos dois cartões.
+
+### Ponto de retomada (21/10/2026, depois do merge do #360)
+
+- **`main`:** 42e0b9e, com o [#359](https://github.com/cesarcoutohubtech/hubkeep/pull/359) e o [#360](https://github.com/cesarcoutohubtech/hubkeep/pull/360). Nenhum PR da 1c aberto.
+- **O [#310](https://github.com/cesarcoutohubtech/hubkeep/pull/310) não é da 1c.** É o desenho da persistência Mews, em rascunho.
+- **Próximo:** a tela inicial, PR 3c.
+
+## Tela inicial, PR 3c: os cartões do proprietário e do locador (21/10/2026)
+
+**Quem é o locador:** a decisão 6 do Cesar, de 13/10/2026, já responde à pergunta do ponto de retomada do PR 3b: o locador é o proprietário do hotel inteiro, sem papel novo (ADR-031). O cartão "Categorias sob o locador" é desse proprietário, nos hotéis arrendados dele. O cartão "UHs acompanhadas" é do proprietário ligado a UHs (condo-hotel).
+
+**Área compartilhada (`packages/dominio` e catálogos), registrada antes do commit:**
+- regra nova no domínio (`inicio-do-proprietario.ts`), que lê a matriz do arrendamento (`arrendamento.ts`) sem mudá-la;
+- chaves novas `inicio.proprietario.*` e `erro.inicio_do_proprietario_sem_permissao`.
+
+Branch `claude/1c-retomada-tela-inicial`, a partir da `main` 42e0b9e. Sem migração.
