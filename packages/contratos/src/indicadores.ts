@@ -100,6 +100,10 @@ export const RespostaDosIndicadores = z
         backlog: z.int().min(0),
         abertos: z.int().min(0),
         encerrados: z.int().min(0),
+        /** Os indicadores do dia, com o dia no lugar do período; null sem item na conta. */
+        percentualDeSla: Percentual,
+        mttrHoras: z.number().min(0).nullable(),
+        percentualDePreventivaEmDia: Percentual,
       }),
     ),
     /** "Onde mais quebra": as categorias com mais chamados abertos no período, e o resto. */

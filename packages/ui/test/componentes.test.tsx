@@ -372,6 +372,13 @@ describe('MiniLinha', () => {
     expect(html(<MiniLinha rotulo="x" valores={[0, 0]} />)).toContain('points="0,26 100,26"');
   });
 
+  it('o dia sem valor deixa um vão; o valor sozinho vira um ponto; só vãos, nada', () => {
+    const saida = html(<MiniLinha rotulo="x" valores={[0, 10, null, 5, null, null, 0]} />);
+    const pontos = [...saida.matchAll(/points="([^"]+)"/g)].map((m) => m[1]);
+    expect(pontos).toEqual(['0,26 16.666666666666668,2', '50,14 50,14', '100,26 100,26']);
+    expect(html(<MiniLinha rotulo="x" valores={[null, null]} />)).toBe('');
+  });
+
   it('no indicador, a linha vai embaixo do detalhe', () => {
     const saida = html(
       <Indicador

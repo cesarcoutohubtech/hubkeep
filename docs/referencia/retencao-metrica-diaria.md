@@ -2,6 +2,12 @@
 
 **Situação:** levantamento de 06/10/2026, feito pelo agente do Kaio. A escolha é do Cesar e entra no PR da tabela (ADR-036: "o prazo de guarda da agregação mensal e a forma de tirar o que passou de 12 meses, sem DELETE para nenhum papel da aplicação").
 
+## Decisão (20/10/2026): a tabela passa a ser particionada por mês (opção A, sem remoção)
+
+- **Particionar antes do piloto** (Cesar, "Particionada"), com a partição padrão (Cesar e Kaio), as partições até dezembro de 2027 e a migração 0061. O desenho está no adendo de 20/10/2026 ao ADR-036 (`docs/03`).
+- **Nada é apagado:** a opção B abaixo continua (a janela de leitura de 180 dias e nenhuma remoção). A partição só deixa pronta a remoção barata, se um dia ela for decidida, por operação do responsável.
+- **Criar as partições:** a 0061 cria de janeiro de 2024 a dezembro de 2027. O ano seguinte vem numa migração nova. O registro da execução do job (`metricasNaParticaoPadrao`) avisa quando um dia caiu na partição padrão.
+
 ## Decisão (06/10/2026): opção B, com janela de leitura de 180 dias
 
 - **Aprovado por Kaio, aguardando Cesar.** Muda o "12 meses" do ADR-036 e por isso segue a regra de aprovação dos ADRs do Intelligence: Cesar **e** Kaio.

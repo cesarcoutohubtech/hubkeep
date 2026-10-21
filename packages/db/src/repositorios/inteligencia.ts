@@ -668,6 +668,14 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
     },
 
     async registrarExecucao(e) {
+      // O aviso da partição padrão (0061): as linhas do dia que não acharam o
+      // mês delas. Diferente de zero, é hora da migração do ano seguinte.
+      const padrao = await tx
+        .selectFrom('app.metrica_ativo_diaria')
+        .select((eb) => eb.fn.countAll<string>().as('n'))
+        .where(sql<boolean>`tableoid = 'app.metrica_ativo_diaria_padrao'::regclass`)
+        .where(sql<boolean>`dia = ${e.dia}::date`)
+        .executeTakeFirstOrThrow();
       uow.auditar({
         entidade: 'job_inteligencia',
         registroId: novoId(),
@@ -685,6 +693,7 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
           textosApagados: e.textosApagados,
           versoesDeFormula: e.versoesDeFormula,
           versoesDePolitica: e.versoesDePolitica,
+          metricasNaParticaoPadrao: Number(padrao.n),
         },
       });
     },

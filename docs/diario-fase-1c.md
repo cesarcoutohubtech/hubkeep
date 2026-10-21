@@ -1333,6 +1333,43 @@ Branch `claude/1c-inicio-prazos`, a partir da `main` 6d3905e. Sem migração: a 
 - **Esperando o merge do Cesar:** [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345) e [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349), fora da zona protegida.
 - **Decisões pendentes e próximo passo:** os mesmos do ponto anterior.
 
+## Respostas do Cesar sobre a tela inicial (20/10/2026)
+
+Mensagem no chat da 1c, em 20/10/2026, com "Cesar aqui", em resposta às três perguntas do agente:
+1. **Quem vê os próximos prazos e os últimos eventos:** "Sim", fica só a gestão (Admin do grupo, Gestor CSC e Gerente do hotel), como no [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349).
+2. **Linha de 14 dias para o % de SLA, o tempo de reparo e a preventiva em dia:** "Sim". Está na seção abaixo.
+3. **Glossário de métricas** ("Onde mais quebra", "Chamado crítico" e "Situação do hotel"): "Cesar aqui. Aprovo."
+
+**A aprovação do Kaio ainda não está registrada.** A mesma mensagem traz a linha "Kaio aqui. Arpovo", mas ela veio pelo chat da 1c, que usa a conta do Cesar. Texto colado não conta como confirmação. O agente perguntou ao Cesar se o próprio Kaio digitou a linha. Até a resposta, a versão nova do glossário e o PR 3 ("Situação por hotel") esperam.
+
+## Linha de 14 dias para o % de SLA, o tempo de reparo e a preventiva em dia (decisão 2 acima; 20/10/2026)
+
+**Área compartilhada (`packages/dominio` e catálogos), registrada antes do commit:**
+- a série do painel em `indicadores.ts` ganha as somas de cada dia;
+- chaves novas `indicadores.sla.tendencia`, `indicadores.mttr.tendencia` e `indicadores.preventiva.tendencia`.
+
+Branch `claude/1c-serie-diaria`, a partir da `main` 5f915d1 (com o #349 e o #345). Sem migração.
+
+**Feito:**
+- **Domínio (`parcialDoHotel`):** cada dia da série guarda as somas do % de SLA, das horas até a conclusão e da preventiva em dia. A regra é a mesma do período, com o dia no lugar dele:
+  - % de SLA: os chamados com o prazo de solução vencido no dia; o prazo que ainda corre fica fora até vencer;
+  - tempo de reparo: os chamados com a conclusão do serviço no dia (os "encerrados" da série);
+  - preventiva em dia: as preventivas com a data prevista no dia.
+
+  As contagens do SLA e da preventiva saíram para duas funções, usadas pelo período e pelo dia. Não há termo novo no glossário.
+- **Soma da rede:** as somas de cada dia se juntam pelo dia local de cada hotel, como o backlog. O percentual e a média saem do conjunto (`indicadoresDoDia`).
+- **API:** cada dia de `serie` em `GET /api/v1/indicadores` traz `percentualDeSla`, `mttrHoras` e `percentualDePreventivaEmDia`, nulos no dia sem item na conta.
+- **Tela inicial:** os quatro cartões do resumo têm a linha dos últimos 14 dias. O dia sem conta deixa um vão na linha (`MiniLinha` aceita null), e um dia sozinho entre dois vãos vira um ponto. Sem nenhum dia na conta, a linha não aparece.
+- **Ressalva:** num hotel pequeno, o valor de um dia sai de poucos chamados e a linha oscila muito. Se no piloto incomodar, a saída é uma janela móvel (por exemplo, os 7 dias até cada dia), que seria uma definição nova para o glossário.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, série diária)
+
+- **`main`:** 5f915d1, com o [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349) (prazos e eventos) e o [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345) (custo) já mesclados.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356), esta série diária.
+- **Esperando:** a confirmação de que o próprio Kaio escreveu o "aprovo" do glossário.
+- **Próximo:** com a aprovação do Kaio, a versão nova do glossário (`docs/referencia/glossario-metricas.md`) e a tela inicial, PR 3 ("Situação por hotel" e os cartões do proprietário e do locador). Primeiro passo: escrever a versão nova do glossário com os três termos, citando as duas aprovações.
+
 ## Tela inicial, PR 3b: "Onde mais quebra" (20/10/2026)
 
 **Área compartilhada (`packages/dominio` e catálogos), registrada antes do commit:**
@@ -1352,9 +1389,8 @@ Branch `claude/1c-onde-mais-quebra`, a partir da `main` 5f915d1. Sem migração.
 
 ### Ponto de retomada (20/10/2026, tela inicial PR 3b)
 
-- **`main`:** 5f915d1.
+- **`main`:** 8c2de14, já com o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356) (a série diária). Este PR foi atualizado com ela, e os conflitos em `indicadores.ts`, no caso de uso dos indicadores e nos testes ficaram com os dois lados.
 - **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
-  - [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356), a série diária;
   - [#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357), o glossário versão 4;
   - [#359](https://github.com/cesarcoutohubtech/hubkeep/pull/359), o quadro "Situação por hotel";
   - o PR deste gráfico, que abre agora.

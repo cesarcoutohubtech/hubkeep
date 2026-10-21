@@ -46,6 +46,7 @@ export const ENTIDADES_DA_AUDITORIA = [
   'preferencia_membro',
   'prioridade',
   'proprietario',
+  'qr_reservado',
   'sinal_hospede',
   'situacao',
   'tenant',

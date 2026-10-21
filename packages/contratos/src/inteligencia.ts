@@ -468,6 +468,17 @@ export const SinalDaFilaApi = z
   })
   .meta({ id: 'SinalDaFilaApi' });
 
+/**
+ * Se quem pede usa a tela de reclamações (adendo de 20/10/2026 ao ADR-035):
+ * desde o contrato do módulo, antes da data de abertura das telas.
+ */
+export const RespostaDoAcessoAsReclamacoes = z
+  .object({
+    /** Se as outras telas do módulo já abriram: antes, a tela não leva aos insights. */
+    telasAbertas: z.boolean(),
+  })
+  .meta({ id: 'RespostaDoAcessoAsReclamacoes' });
+
 export const RespostaDaFilaDeSinais = z
   .object({
     sinais: z.array(SinalDaFilaApi),

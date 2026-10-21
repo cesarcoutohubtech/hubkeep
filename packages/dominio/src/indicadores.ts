@@ -221,8 +221,14 @@ export interface DiaDaSerie {
   /** O backlog no fim do dia (ou agora, no dia de hoje). */
   backlog: number;
   abertos: number;
-  /** Os chamados com a conclusão do serviço no dia. */
+  /** Os chamados com a conclusão do serviço no dia (a base do MTTR do dia). */
   encerrados: number;
+  /** O % de SLA do dia: os chamados com o prazo de solução vencido no dia. */
+  sla: { total: number; dentroDoPrazo: number };
+  /** A soma das horas da abertura à conclusão dos encerrados no dia. */
+  horasAteAConclusao: number;
+  /** A preventiva em dia do dia: as preventivas com a data prevista no dia. */
+  preventiva: { total: number; emDia: number };
 }
 
 /** Os chamados abertos no período de uma categoria (termo "chamados por categoria"). */
@@ -231,6 +237,17 @@ export interface ChamadosDaCategoria {
   categoriaId: string | null;
   chamados: number;
 }
+
+/** O dia da série sem nada: a base da soma da rede. */
+const diaVazio = (dia: string): DiaDaSerie => ({
+  dia,
+  backlog: 0,
+  abertos: 0,
+  encerrados: 0,
+  sla: { total: 0, dentroDoPrazo: 0 },
+  horasAteAConclusao: 0,
+  preventiva: { total: 0, emDia: 0 },
+});
 
 export interface ProdutividadeDaEquipe {
   hotelId: string;
@@ -273,6 +290,30 @@ function juntarCategorias(
   return [...por.entries()].map(([categoriaId, chamados]) => ({ categoriaId, chamados }));
 }
 
+/**
+ * Como o chamado entra no % de SLA em `agora`: sem conclusão e com o prazo
+ * ainda correndo, fica fora da conta até vencer.
+ */
+function contaDoSla(prazo: Date, fim: Date | null, agora: Date): 'dentro' | 'fora' | 'ainda' {
+  if (!fim && prazo >= agora) return 'ainda';
+  return fim && fim <= prazo ? 'dentro' : 'fora';
+}
+
+/**
+ * Como a preventiva entra na preventiva em dia em `agora`, pelo limite no fuso
+ * do hotel: sem conclusão e com o limite ainda à frente, fica fora da conta.
+ */
+function contaDaPreventiva(
+  dataPrevista: string,
+  concluidaEm: Date | null,
+  e: Pick<EntradaDoHotel, 'fuso' | 'toleranciaDias'>,
+  agora: Date,
+): 'em_dia' | 'fora' | 'atrasada' | 'ainda' {
+  const limite = inicioDoDiaLocal(somarDias(dataPrevista, e.toleranciaDias + 1), e.fuso);
+  if (concluidaEm) return concluidaEm < limite ? 'em_dia' : 'fora';
+  return limite <= agora ? 'atrasada' : 'ainda';
+}
+
 const faixasZeradas = (): Record<FaixaDeIdade, number> =>
   Object.fromEntries(FAIXAS_DE_IDADE.map((f) => [f, 0])) as Record<FaixaDeIdade, number>;
 
@@ -304,14 +345,14 @@ export function parcialDoHotel(
   const sla: SomasDeSla = { total: 0, dentroDoPrazo: 0, aindaNoPrazo: 0, pausadoSegundos: 0 };
   for (const c of chamados) {
     if (!c.prazoSolucao || !dentro(c.prazoSolucao, de, ate)) continue;
-    const fim = conclusao.get(c.id) ?? null;
-    if (!fim && c.prazoSolucao >= agora) {
+    const conta = contaDoSla(c.prazoSolucao, conclusao.get(c.id) ?? null, agora);
+    if (conta === 'ainda') {
       sla.aindaNoPrazo += 1;
       continue;
     }
     sla.total += 1;
     sla.pausadoSegundos += c.pausadoSegundos;
-    if (fim && fim <= c.prazoSolucao) sla.dentroDoPrazo += 1;
+    if (conta === 'dentro') sla.dentroDoPrazo += 1;
   }
 
   // MTTR e a base da razão: a conclusão do serviço no período.
@@ -326,40 +367,52 @@ export function parcialDoHotel(
   // Preventiva em dia, pela data prevista no período e o limite no fuso do hotel.
   const preventiva: SomasDePreventiva = { total: 0, emDia: 0, atrasadas: 0, aindaNoPrazo: 0 };
   let preventivasConcluidas = 0;
+  const contaDoDiaPrevisto = new Map<string, { total: number; emDia: number }>();
   for (const p of e.preventivas) {
     if (p.estado === 'cancelada') continue;
     const { concluidaEm } = conclusaoEReaberturas(p.transicoes, agora);
     if (concluidaEm && dentro(concluidaEm, de, ate)) preventivasConcluidas += 1;
     if (p.dataPrevista < periodo.inicio || p.dataPrevista > periodo.fim) continue;
-    const limite = inicioDoDiaLocal(somarDias(p.dataPrevista, e.toleranciaDias + 1), e.fuso);
-    if (concluidaEm) {
-      preventiva.total += 1;
-      if (concluidaEm < limite) preventiva.emDia += 1;
-    } else if (limite <= agora) {
-      preventiva.total += 1;
-      preventiva.atrasadas += 1;
-    } else {
+    const conta = contaDaPreventiva(p.dataPrevista, concluidaEm, e, agora);
+    if (conta === 'ainda') {
       preventiva.aindaNoPrazo += 1;
+      continue;
     }
+    preventiva.total += 1;
+    if (conta === 'em_dia') preventiva.emDia += 1;
+    if (conta === 'atrasada') preventiva.atrasadas += 1;
+    const doDia = contaDoDiaPrevisto.get(p.dataPrevista) ?? { total: 0, emDia: 0 };
+    doDia.total += 1;
+    if (conta === 'em_dia') doDia.emDia += 1;
+    contaDoDiaPrevisto.set(p.dataPrevista, doDia);
   }
 
-  // A série diária: o backlog no fim de cada dia, os abertos e os encerrados.
+  // A série diária: o backlog no fim de cada dia, os abertos e os encerrados, e
+  // as somas do % de SLA, do MTTR e da preventiva em dia de cada dia, pelas
+  // mesmas regras do período, com o dia no lugar do período.
   const serie: DiaDaSerie[] = [];
   for (const dia of diasDoPeriodo(periodo)) {
     const inicioDia = inicioDoDiaLocal(dia, e.fuso);
     if (inicioDia > agora) break;
     const fimDia = inicioDoDiaLocal(somarDias(dia, 1), e.fuso);
     const instante = fimDia < agora ? fimDia : agora;
-    let b = 0;
-    let abertos = 0;
-    let encerrados = 0;
+    const d = diaVazio(dia);
     for (const c of chamados) {
-      if (noBacklog(c, instante)) b += 1;
-      if (dentro(c.abertoEm, inicioDia, fimDia)) abertos += 1;
-      const fim = conclusao.get(c.id);
-      if (fim && dentro(fim, inicioDia, fimDia)) encerrados += 1;
+      if (noBacklog(c, instante)) d.backlog += 1;
+      if (dentro(c.abertoEm, inicioDia, fimDia)) d.abertos += 1;
+      const fim = conclusao.get(c.id) ?? null;
+      if (fim && dentro(fim, inicioDia, fimDia)) {
+        d.encerrados += 1;
+        d.horasAteAConclusao += (fim.getTime() - c.abertoEm.getTime()) / HORA_MS;
+      }
+      if (c.prazoSolucao && dentro(c.prazoSolucao, inicioDia, fimDia)) {
+        const conta = contaDoSla(c.prazoSolucao, fim, agora);
+        if (conta !== 'ainda') d.sla.total += 1;
+        if (conta === 'dentro') d.sla.dentroDoPrazo += 1;
+      }
     }
-    serie.push({ dia, backlog: b, abertos, encerrados });
+    d.preventiva = { ...(contaDoDiaPrevisto.get(dia) ?? d.preventiva) };
+    serie.push(d);
   }
 
   // Produtividade: as OS concluídas no período e as horas apontadas nele, por equipe.
@@ -455,10 +508,15 @@ export function somarParciais(parciais: readonly ParcialDeIndicadores[]): Parcia
     s.corretivasConcluidas += p.corretivasConcluidas;
     s.uhDias += p.uhDias;
     for (const d of p.serie) {
-      const acumulado = serie.get(d.dia) ?? { dia: d.dia, backlog: 0, abertos: 0, encerrados: 0 };
+      const acumulado = serie.get(d.dia) ?? diaVazio(d.dia);
       acumulado.backlog += d.backlog;
       acumulado.abertos += d.abertos;
       acumulado.encerrados += d.encerrados;
+      acumulado.sla.total += d.sla.total;
+      acumulado.sla.dentroDoPrazo += d.sla.dentroDoPrazo;
+      acumulado.horasAteAConclusao += d.horasAteAConclusao;
+      acumulado.preventiva.total += d.preventiva.total;
+      acumulado.preventiva.emDia += d.preventiva.emDia;
       serie.set(d.dia, acumulado);
     }
     s.produtividade.push(...p.produtividade);
@@ -578,6 +636,34 @@ export function indicadoresDaParcial(p: ParcialDeIndicadores): Indicadores {
     hoteis: p.hoteis,
   };
 }
+
+/** Um dia da série como a tela o mostra: as contagens e os três indicadores do dia. */
+export interface IndicadoresDoDia {
+  dia: string;
+  backlog: number;
+  abertos: number;
+  encerrados: number;
+  /** null no dia sem chamado na conta. */
+  percentualDeSla: number | null;
+  /** null no dia sem chamado encerrado. */
+  mttrHoras: number | null;
+  /** null no dia sem preventiva na conta. */
+  percentualDePreventivaEmDia: number | null;
+}
+
+/**
+ * Os indicadores de um dia da série, já somado na rede ou na bandeira: o dia
+ * faz o papel do período nas definições do glossário.
+ */
+export const indicadoresDoDia = (d: DiaDaSerie): IndicadoresDoDia => ({
+  dia: d.dia,
+  backlog: d.backlog,
+  abertos: d.abertos,
+  encerrados: d.encerrados,
+  percentualDeSla: percentual(d.sla.dentroDoPrazo, d.sla.total),
+  mttrHoras: d.encerrados === 0 ? null : umaCasa(d.horasAteAConclusao / d.encerrados),
+  percentualDePreventivaEmDia: percentual(d.preventiva.emDia, d.preventiva.total),
+});
 
 // ---------------------------------------------------------------------------
 // Quem vê

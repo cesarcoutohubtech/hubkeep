@@ -11,6 +11,7 @@ import {
   type PreventivaDoIndicador,
   type TransicaoDoServico,
   indicadoresDaParcial,
+  indicadoresDoDia,
   inicioDoDiaLocal,
   ondeMaisQuebra,
   intervaloNoFuso,
@@ -352,11 +353,93 @@ describe('chamados por 100 UHs, UH-dias e série diária', () => {
       { inicio: '2026-10-01', fim: '2026-10-03' },
       AGORA,
     );
-    expect(p.serie).toEqual([
+    expect(
+      p.serie.map(({ dia, backlog, abertos, encerrados }) => ({
+        dia,
+        backlog,
+        abertos,
+        encerrados,
+      })),
+    ).toEqual([
       { dia: '2026-10-01', backlog: 2, abertos: 2, encerrados: 0 },
       { dia: '2026-10-02', backlog: 1, abertos: 0, encerrados: 1 },
       { dia: '2026-10-03', backlog: 1, abertos: 0, encerrados: 0 },
     ]);
+  });
+
+  it('a série: o % de SLA, o MTTR e a preventiva em dia de cada dia, com o dia no lugar do período', () => {
+    const p = parcialDoHotel(
+      hotel({
+        chamados: [
+          // Prazo e conclusão em 02/10 local: dentro, 26 horas.
+          chamado('x', '2026-10-01T12:00:00Z', {
+            prazoSolucao: t('2026-10-02T15:00:00Z'),
+            os: [concluida('ox', '2026-10-02T14:00:00Z')],
+          }),
+          // Concluído depois do prazo, em 02/10: fora, 30 horas.
+          chamado('y', '2026-10-01T12:00:00Z', {
+            prazoSolucao: t('2026-10-02T16:00:00Z'),
+            os: [concluida('oy', '2026-10-02T18:00:00Z')],
+          }),
+          // Vencido em 03/10 sem conclusão: fora.
+          chamado('z', '2026-10-01T12:00:00Z', { prazoSolucao: t('2026-10-03T12:00:00Z') }),
+        ],
+        preventivas: [
+          preventiva(
+            'p1',
+            '2026-10-01',
+            'concluida',
+            transicoes(['concluir', '2026-10-01T20:00:00Z']),
+          ),
+          preventiva('p2', '2026-10-01', 'atribuida'),
+          preventiva('p3', '2026-10-03', 'cancelada'),
+        ],
+      }),
+      { inicio: '2026-10-01', fim: '2026-10-03' },
+      AGORA,
+    );
+    expect(p.serie.map(indicadoresDoDia)).toEqual([
+      {
+        dia: '2026-10-01',
+        backlog: 3,
+        abertos: 3,
+        encerrados: 0,
+        percentualDeSla: null,
+        mttrHoras: null,
+        percentualDePreventivaEmDia: 50,
+      },
+      {
+        dia: '2026-10-02',
+        backlog: 1,
+        abertos: 0,
+        encerrados: 2,
+        percentualDeSla: 50,
+        mttrHoras: 28,
+        percentualDePreventivaEmDia: null,
+      },
+      {
+        dia: '2026-10-03',
+        backlog: 1,
+        abertos: 0,
+        encerrados: 0,
+        percentualDeSla: 0,
+        mttrHoras: null,
+        percentualDePreventivaEmDia: null,
+      },
+    ]);
+  });
+
+  it('o prazo do dia que ainda corre fica fora da conta do dia até vencer', () => {
+    const p = parcialDoHotel(
+      hotel({
+        chamados: [
+          chamado('a', '2026-10-14T00:00:00Z', { prazoSolucao: t('2026-10-15T18:00:00Z') }),
+        ],
+      }),
+      { inicio: '2026-10-15', fim: '2026-10-15' },
+      AGORA,
+    );
+    expect(p.serie[0]?.sla).toEqual({ total: 0, dentroDoPrazo: 0 });
   });
 
   it('a série para no dia de hoje', () => {
@@ -455,6 +538,17 @@ describe('soma das parciais (rede e bandeira)', () => {
     expect(rede.uhDias).toBe(1);
     const dia2 = somarParciais([h1, h2]).serie.find((d) => d.dia === '2026-10-02');
     expect(dia2?.abertos).toBe(2); // h1 abre em 01/10 local; h2, em 02/10 em Lisboa
+    // Em 02/10: o prazo de h1 (dentro) e as conclusões de 10 e 12 horas. Em
+    // 03/10 em Lisboa: o prazo de h2 vencido antes da conclusão de 30 horas.
+    const serie = somarParciais([h1, h2]).serie.map(indicadoresDoDia);
+    expect(serie.find((d) => d.dia === '2026-10-02')).toMatchObject({
+      percentualDeSla: 100,
+      mttrHoras: 11,
+    });
+    expect(serie.find((d) => d.dia === '2026-10-03')).toMatchObject({
+      percentualDeSla: 0,
+      mttrHoras: 30,
+    });
     expect(indicadoresDaParcial(somarParciais([])).percentualDeSla).toBeNull();
   });
 });

@@ -6,15 +6,16 @@
 import {
   type ChamadosDaCategoria,
   type Contexto,
-  type DiaDaSerie,
   type FaixaDeIdade,
   type Indicadores,
+  type IndicadoresDoDia,
   type ParcialDeIndicadores,
   type PeriodoDoPainel,
   type ProdutividadeDaEquipe,
   type VisaoDoHotel,
   exigir,
   indicadoresDaParcial,
+  indicadoresDoDia,
   intervaloNoFuso,
   ondeMaisQuebra,
   parcialDoHotel,
@@ -63,7 +64,8 @@ export interface PainelDeIndicadores {
   hoteis: IndicadoresDoHotel[];
   /** A comparação na bandeira: cada bandeira com hotel na visão completa. */
   bandeiras: IndicadoresDaBandeira[];
-  serie: DiaDaSerie[];
+  /** Os dias do período até hoje, com os indicadores de cada dia. */
+  serie: IndicadoresDoDia[];
   produtividade: (ProdutividadeDaEquipe & { equipeNome: string | null })[];
   /** "Onde mais quebra": as 8 categorias com mais chamados abertos na rede, e o resto. */
   ondeMaisQuebra: { categorias: ChamadosDaCategoria[]; outras: number };
@@ -195,7 +197,7 @@ export function criarCasosDeUsoDeIndicadores(deps: {
             indicadores: indicadoresDaParcial(somarParciais(b.parciais)),
           }))
           .sort((a, b) => a.nome.localeCompare(b.nome)),
-        serie: rede.serie,
+        serie: rede.serie.map(indicadoresDoDia),
         ondeMaisQuebra: ondeMaisQuebra(rede),
         produtividade: rede.produtividade.map((p) => ({
           ...p,
