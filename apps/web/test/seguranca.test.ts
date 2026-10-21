@@ -1,5 +1,7 @@
 // Cabeçalhos de segurança, CSRF por origem, teto do corpo e cookie de sessão
 // (S1, ADR-032).
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { LIMITE_BYTES_MAXIMO } from '@hubkeep/contratos';
 import { NextRequest } from 'next/server';
 import { describe, expect, it } from 'vitest';
@@ -178,5 +180,21 @@ describe('cookie de sessão', () => {
     expect(cookie).toMatch(/HttpOnly/i);
     expect(cookie).toMatch(/SameSite=Lax/i);
     expect(cookie).toMatch(/Secure/i);
+  });
+});
+
+describe('Zod sem JIT no navegador (SP2)', () => {
+  it('o instrumentation-client.ts carrega o sem-eval antes do app', () => {
+    const arquivo = readFileSync(
+      fileURLToPath(new URL('../src/instrumentation-client.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(arquivo.match(/^import .*$/gm)).toEqual(["import '@hubkeep/contratos/sem-eval';"]);
+  });
+
+  it('a CSP de produção segue sem unsafe-eval', () => {
+    expect(
+      politicaDeConteudo({ nonce: 'n', urlSupabase: undefined, desenvolvimento: false }),
+    ).not.toContain('unsafe-eval');
   });
 });
