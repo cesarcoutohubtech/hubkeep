@@ -54,6 +54,7 @@ const PREVENTIVA: Gravada = {
     localId: 'l-1',
     localNome: 'UH 101',
     localEdificacao: null,
+    paradoDesde: null,
   },
 };
 

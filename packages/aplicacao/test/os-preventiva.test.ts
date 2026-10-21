@@ -86,8 +86,8 @@ const naoUsado = (nome: string) => async (): Promise<never> => {
   throw new Error(`${nome} não é lido na preventiva`);
 };
 
-function montar(estado: OsGravada['estado']) {
-  const os = preventiva(estado);
+function montar(estado: OsGravada['estado'], responsavel?: OsGravada['responsavel']) {
+  const os = { ...preventiva(estado), ...(responsavel && { responsavel }) };
   const gravados: { metodo: string; g: unknown }[] = [];
   const politicasLidas: string[] = [];
   const dadosDoAceite: unknown[] = [];
@@ -277,11 +277,17 @@ describe('triagem e aceite da OS preventiva', () => {
       versao: 4,
       versaoDoChamado: null,
     });
-    expect(dadosDoAceite).toEqual([{ hotel: HOTEL, abertoPor: null }]);
+    expect(dadosDoAceite).toEqual([{ hotel: HOTEL, abertoPor: null, equipeResponsavel: null }]);
     expect(gravados[0]).toMatchObject({
       metodo: 'aceitarOs',
       g: { chamado: null, situacaoId: 's-os-aceita' },
     });
+  });
+
+  it('na OS da equipe, o aceite pede os membros da equipe responsável', async () => {
+    const { triagem, dadosDoAceite } = montar('concluida', { tipo: 'equipe', equipeId: 'eq-1' });
+    await triagem.aceitarOs(gerente, 'os-1', { versao: 3 });
+    expect(dadosDoAceite).toEqual([{ hotel: HOTEL, abertoPor: null, equipeResponsavel: 'eq-1' }]);
   });
 
   it('a reabertura volta a OS à execução; com parada pedida, recusa', async () => {

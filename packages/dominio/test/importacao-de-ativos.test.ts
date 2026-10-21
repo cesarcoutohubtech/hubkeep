@@ -81,6 +81,12 @@ const REFS: ReferenciasDaImportacao = {
     },
   ],
   chavesExistentes: new Set(),
+  hotelId: 'h-1',
+  codigosReservados: new Map([
+    ['K1K1K1K1K1', { hotelId: 'h-1', ligado: false }],
+    ['K2K2K2K2K2', { hotelId: 'h-1', ligado: true }],
+    ['K3K3K3K3K3', { hotelId: 'h-2', ligado: false }],
+  ]),
 };
 
 const CAB =
@@ -162,7 +168,7 @@ describe('lerCabecalho', () => {
 describe('modelo da planilha', () => {
   it('tem o BOM, as colunas fixas e um campo por chave, sem repetir', () => {
     expect(modeloDaPlanilha([AR, BOMBA, AR])).toBe(
-      '\uFEFFlocal;edificacao;categoria;modelo;nome;fabricante;modelo_do_fabricante;numero_serie;data_compra;garantia_ate;criticidade;campo.btu;campo.gas;campo.inverter;campo.vazao\r\n',
+      '\uFEFFlocal;edificacao;categoria;modelo;nome;fabricante;modelo_do_fabricante;numero_serie;data_compra;garantia_ate;criticidade;codigo_qr;campo.btu;campo.gas;campo.inverter;campo.vazao\r\n',
     );
   });
 });
@@ -295,6 +301,54 @@ describe('analisarImportacao', () => {
     expect(r.linhas[1]?.erros).toEqual([
       { codigo: 'importacao_linha_repetida', coluna: null, parametros: { linha: 2 } },
     ]);
+  });
+
+  describe('a coluna codigo_qr: a etiqueta reservada (M3; Cesar, 21/10/2026)', () => {
+    const CAB_QR = 'local;nome;codigo_qr';
+
+    it('sem código, o ativo nasce com o gerado; com o reservado e livre, com ele, lido como na etiqueta', () => {
+      const r = analisarImportacao(
+        `${CAB_QR}\nCasa de máquinas;A;\nCasa de máquinas;B;k1k1k-1k1k1`,
+        REFS,
+      );
+      expect(r.linhas.map((l) => l.ativo?.codigoQr)).toEqual([null, 'K1K1K1K1K1']);
+    });
+
+    it('recusa o código fora do formato, o não reservado, o de outro hotel e o já ligado', () => {
+      const r = analisarImportacao(
+        `${CAB_QR}\nCasa de máquinas;A;XYZ\nCasa de máquinas;B;K4K4K4K4K4\nCasa de máquinas;C;K3K3K3K3K3\nCasa de máquinas;D;K2K2K2K2K2`,
+        REFS,
+      );
+      expect(r.invalidas).toBe(4);
+      expect(r.linhas.map((l) => l.erros)).toEqual([
+        [{ codigo: 'importacao_qr_invalido', coluna: 'codigo_qr', parametros: { codigo: 'XYZ' } }],
+        [{ codigo: 'qr_nao_reservado', coluna: 'codigo_qr', parametros: {} }],
+        [{ codigo: 'qr_nao_reservado', coluna: 'codigo_qr', parametros: {} }],
+        [{ codigo: 'qr_ja_ligado', coluna: 'codigo_qr', parametros: {} }],
+      ]);
+    });
+
+    it('o mesmo código em duas linhas novas: a segunda é recusada', () => {
+      const r = analisarImportacao(
+        `${CAB_QR}\nCasa de máquinas;A;K1K1K1K1K1\nCasa de máquinas;B;K1K1K1K1K1`,
+        REFS,
+      );
+      expect(r.linhas.map((l) => l.situacao)).toEqual(['nova', 'invalida']);
+      expect(r.linhas[1]?.erros).toEqual([
+        { codigo: 'importacao_qr_repetido', coluna: 'codigo_qr', parametros: { linha: 2 } },
+      ]);
+    });
+
+    it('a linha já importada não confere a etiqueta, já ligada ao ativo dela', () => {
+      const linha = 'Casa de máquinas;A;K2K2K2K2K2';
+      const sem = analisarImportacao(`${CAB_QR}\nCasa de máquinas;A;`, REFS);
+      const chave = sem.linhas[0]?.ativo?.chaveImportacao ?? '';
+      const r = analisarImportacao(`${CAB_QR}\n${linha}`, {
+        ...REFS,
+        chavesExistentes: new Set([chave]),
+      });
+      expect(r.linhas[0]).toMatchObject({ situacao: 'ja_importada', erros: [] });
+    });
   });
 
   it('célula preenchida depois do cabeçalho recusa a linha; vazia não', () => {

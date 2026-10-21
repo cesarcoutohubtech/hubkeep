@@ -89,11 +89,12 @@ export function criarCasosDeUsoDeImportacaoDeAtivos(deps: {
     const hotel = await deps.importacao.hotel(ctx, hotelId);
     if (!hotel) throw new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
     exigir(podeImportar(await deps.atribuicoes.doUsuario(ctx), hotel, deps.relogio.agora()));
-    const [locais, categorias, modelos, chaves] = await Promise.all([
+    const [locais, categorias, modelos, chaves, reservados] = await Promise.all([
       deps.importacao.locais(ctx, hotelId),
       deps.importacao.categorias(ctx),
       deps.importacao.modelos(ctx),
       deps.importacao.chaves(ctx, hotelId),
+      deps.importacao.reservados(ctx, hotelId),
     ]);
     const refs: ReferenciasDaImportacao = {
       locais,
@@ -107,6 +108,8 @@ export function criarCasosDeUsoDeImportacaoDeAtivos(deps: {
       // bandeira não é achado, como o de nome desconhecido.
       modelos: modelos.filter((m) => vaiParaOHotel(m, hotel)),
       chavesExistentes: new Set(chaves),
+      hotelId,
+      codigosReservados: new Map(reservados.map((r) => [r.codigo, { hotelId, ligado: r.ligado }])),
     };
     return analisarImportacao(csv, refs);
   };

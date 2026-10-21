@@ -79,31 +79,30 @@ Hoje o cadastro é **um a um**.
 
 **No celular (PWA):** **Ativos** na fila do dia, **Cadastrar ativo**, funciona sem rede. Compra, garantia e criticidade ficam na parte recolhida "Compra, garantia e criticidade".
 
-**Importação em lote por planilha [ainda não existe]** (tarefa M2 do `docs/12`). O que já existe hoje é só o modelo da planilha, em `modelo-ativos-criticos.csv`. Quando a importação existir, o uso previsto é:
-1. Baixar o modelo na tela (cabeçalho oficial) ou usar este arquivo como base.
-2. Preencher uma linha por ativo, **uma planilha por hotel**, só com os ativos críticos no piloto.
-3. Enviar. O sistema mostra uma **prévia linha a linha**, com o erro de cada linha por código, e só então grava (com auditoria).
-4. Linha inválida não grava nada daquela linha, as outras seguem. Reenviar a mesma planilha não duplica ativo. Local de outro hotel é recusado. Há limite de linhas por envio.
-5. Quem envia: o Implantador ou quem gere o hotel.
-Hoje, o CSC pode usar o arquivo como roteiro para cadastrar um a um, ou o Implantador pode cadastrar em sequência.
+**Importação em lote por planilha** (M2), no web, menu **Importação de ativos**:
+1. Escolher o hotel e **Baixar o modelo** (o cabeçalho oficial, com uma coluna por campo estendido das categorias), ou usar `modelo-ativos-criticos.csv` como base.
+2. Preencher uma linha por ativo, **uma planilha por hotel**, só com os ativos críticos no piloto, e salvar como CSV (UTF-8).
+3. **Ver a prévia:** cada linha aparece como nova, já importada ou com erro, com a mensagem por coluna. Só então **Importar**, que grava as novas com auditoria, já aprovadas.
+4. A linha com erro fica de fora e as outras seguem. Reenviar a mesma planilha não duplica ativo. O local tem de existir no hotel (a importação não cria local). Até 2.000 linhas e 2 MB por envio.
+5. Quem importa: o Implantador ou quem gere o hotel (Admin do grupo, Gestor CSC, Gerente).
 
-**Colunas do modelo** (planilha CSV, UTF-8 com BOM, separador ponto e vírgula, primeira linha de cabeçalho, uma linha por ativo):
+**Colunas do modelo** (CSV em UTF-8, com ou sem BOM, separado por ponto e vírgula ou vírgula, primeira linha de cabeçalho, uma linha por ativo). Só `local` e `nome` são obrigatórias no cabeçalho; as outras podem faltar.
 
-| Coluna | Obrigatória | Formato | Exemplo | Situação |
-|---|---|---|---|---|
-| `local` | sim | Nome do local como está em "Locais" (UH ou área comum), no mesmo hotel | `Casa de máquinas` | Já existe como dado; a leitura da planilha é **[ainda não existe]** (M2). Se a importação cria local que falta é pergunta aberta |
-| `categoria` | recomendada | Nome da categoria como em "Categorias de ativo". Vazio vira "Sem categoria", e o painel de implantação aponta "Há ativos sem categoria." | `Elétrica` | Campo existe hoje; leitura **[ainda não existe]** (M2) |
-| `nome` | sim | Texto, até 120 caracteres | `Gerador diesel 500 kVA` | Existe hoje |
-| `fabricante` | não | Texto, até 120 caracteres | `Geradora Exemplo` | Existe hoje |
-| `modelo` | não | Texto, até 120 caracteres | `GE-500D` | Existe hoje |
-| `numero_serie` | não | Texto, até 120 caracteres | `EX-GE-0001` | Existe hoje |
-| `data_compra` | não | Data `aaaa-mm-dd` que exista no calendário | `2019-02-12` | Campo existe hoje (I1, #133); leitura **[ainda não existe]** (M2) |
-| `garantia_ate` | não | Data `aaaa-mm-dd`; não pode ser anterior a `data_compra` | `2022-02-12` | Campo existe hoje (I1); leitura **[ainda não existe]** (M2) |
-| `criticidade` | recomendada para ativo crítico | Inteiro de 1 a 5. Nomes padrão: 1 Muito baixa, 2 Baixa, 3 Média, 4 Alta, 5 Crítica; o grupo pode renomear os níveis | `5` | Campo e nomes existem hoje (I1); leitura **[ainda não existe]** (M2) |
-| `codigo_qr` | não | 10 caracteres do alfabeto `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (sem I, L, O, U). Vazio: o sistema gera | (vazio) | Formato existe hoje; uso na planilha **[a confirmar na M2]** ("QR opcional", `docs/12`) |
-| campos estendidos da categoria | conforme a categoria | Um por campo definido em "Categorias de ativo" (texto, número, data, lista, sim/não) | | **[a definir na M2]**: o formato das colunas depende da importação; não estão no modelo |
-| chave de importação por linha | n/a | Para reenviar a planilha sem duplicar | | **[a definir na M2]** (talvez migração própria) |
-| edificação do local | n/a | Hotel com mais de uma torre pode ter o mesmo nome de local em duas edificações | | **[a definir na M2]**: como a planilha distingue o local repetido |
+| Coluna | Obrigatória | Formato | Exemplo |
+|---|---|---|---|
+| `local` | sim | Nome do local como está em "Locais" (UH ou área comum), no mesmo hotel | `Casa de máquinas` |
+| `edificacao` | não | A edificação do local, quando dois locais têm o mesmo nome | `Torre A` |
+| `categoria` | recomendada | Nome da categoria em qualquer dos quatro idiomas. Vazio vira "Sem categoria", e o painel de implantação aponta "Há ativos sem categoria." | `Elétrica` |
+| `modelo` | não | Nome do modelo de ativo (M1); preenche o que a linha deixar vazio e, sem categoria, dá a dela | `Split 12.000 BTU` |
+| `nome` | sim | Texto, até 120 caracteres | `Gerador diesel 500 kVA` |
+| `fabricante` | não | Texto, até 120 caracteres | `Geradora Exemplo` |
+| `modelo_do_fabricante` | não | Texto, até 120 caracteres | `GE-500D` |
+| `numero_serie` | não | Texto, até 120 caracteres | `EX-GE-0001` |
+| `data_compra` | não | Data `aaaa-mm-dd` ou `dd/mm/aaaa` que exista no calendário | `2019-02-12` |
+| `garantia_ate` | não | Data como a da compra; não pode ser anterior a ela | `2022-02-12` |
+| `criticidade` | recomendada para ativo crítico | Inteiro de 1 a 5. Nomes padrão: 1 Muito baixa, 2 Baixa, 3 Média, 4 Alta, 5 Crítica; o grupo pode renomear os níveis | `5` |
+| `codigo_qr` | não | O código de uma etiqueta reservada no hotel (Etapa 7, item 4), com ou sem o hífen; liga o ativo à etiqueta. Vazio: o sistema gera. O código que não está reservado no hotel, que já tem ativo ou que se repete no arquivo recusa a linha | `K7K7K-7K7K7` |
+| `campo.<chave>` | conforme a categoria | Um por campo definido em "Categorias de ativo" (texto, número, data, lista, sim/não), só os da categoria da linha | `campo.btu` |
 
 Exemplo de lote: 12 ativos fictícios em `modelo-ativos-criticos.csv`, cobrindo climatização (3), caldeiras (2), elevadores (2), geradores (2), bombas (2) e SPDA (1). Os nomes de local e de categoria do arquivo são sugestões: ajustar aos do hotel. Caldeiras estão em "Hidráulica" e SPDA em "Segurança e incêndio" porque não há categoria padrão específica.
 

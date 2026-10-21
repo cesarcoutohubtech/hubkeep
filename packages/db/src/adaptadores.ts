@@ -1378,10 +1378,14 @@ const decisaoDoCadastro = (hotel: string, ativo: string) => [
     where d.hotel_id = ${sql.ref(hotel)} and d.ativo_id = ${sql.ref(ativo)})`.as('motivo_recusa'),
 ];
 
-const paradoDesde = (hotel: string, ativo: string) =>
+const paradoDesde = <A extends string = 'parado_desde'>(
+  hotel: string,
+  ativo: string,
+  nome: A = 'parado_desde' as A,
+) =>
   sql<Date | null>`(select p.inicio from app.parada_ativo p
     where p.hotel_id = ${sql.ref(hotel)} and p.ativo_id = ${sql.ref(ativo)} and p.fim is null
-    limit 1)`.as('parado_desde');
+    limit 1)`.as(nome);
 
 /** A parada aberta do ativo é a deste chamado (a OS encerra; a conclusão pergunta). */
 const paradaDoChamado = (hotel: string, chamado: string) =>
@@ -1518,6 +1522,17 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
         // Na preventiva não há quem abriu: sem equipes, sem consulta.
         const equipes =
           g.abertoPor === null ? [] : await equipesDoUsuario(tx, g.abertoPor).execute();
+        // Na preventiva da equipe, os membros ativos dela executam a OS.
+        const membros =
+          g.equipeResponsavel === null
+            ? null
+            : await tx
+                .selectFrom('app.equipe_membro')
+                .select('usuario_id')
+                .where('hotel_id', '=', g.hotel.id)
+                .where('equipe_id', '=', g.equipeResponsavel)
+                .where('ativo', '=', true)
+                .execute();
         const gerentes = await tx
           .selectFrom('app.atribuicao_escopo as a')
           .innerJoin('app.membro as m', (j) =>
@@ -1548,6 +1563,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
         return {
           equipesDeQuemAbriu: equipes.map((e) => e.equipe_id),
           gerentes: gerentes.map(paraAtribuicao),
+          ...(membros && { membrosDaEquipeResponsavel: membros.map((m) => m.usuario_id) }),
         };
       }),
     alterarChamado: (ctx, chamadoId, versao, mudanca) =>
@@ -1676,6 +1692,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             'lo.edificacao as os_local_edificacao',
           ])
           .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
+          .select(paradoDesde('o.hotel_id', 'o.ativo_id', 'preventiva_parado_desde'))
           .select(paradaDoChamado('c.hotel_id', 'c.id'))
           .select(uhIndisponivelDesde('c.hotel_id', 'c.id'))
           .select((eb) =>
@@ -1753,6 +1770,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
                   localId: o.os_local_id,
                   localNome: o.os_local_nome ?? '',
                   localEdificacao: o.os_local_edificacao,
+                  paradoDesde: o.preventiva_parado_desde,
                 },
         }));
       }),
@@ -2746,11 +2764,19 @@ export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportaca
             .execute()
         ).flatMap((a) => (a.chave_importacao === null ? [] : [a.chave_importacao])),
       ),
+    reservados: (ctx, hotelId) =>
+      banco.withContext(ctx, (tx) =>
+        tx
+          .selectFrom('app.qr_reservado as r')
+          .select(['r.codigo', ligadoAoAtivo().as('ligado')])
+          .where('r.hotel_id', '=', hotelId)
+          .execute(),
+      ),
     criar: async (ctx, hotelId, a) => {
-      const { localId, chaveImportacao, ...dados } = a;
+      const { localId, chaveImportacao, codigoQr, ...dados } = a;
       try {
         const { id } = await banco.executar(ctx, (uow) =>
-          criarAtivo(uow, hotelId, localId, dados, 'aprovado', chaveImportacao),
+          criarAtivo(uow, hotelId, localId, dados, 'aprovado', chaveImportacao, codigoQr),
         );
         return { id };
       } catch (e) {

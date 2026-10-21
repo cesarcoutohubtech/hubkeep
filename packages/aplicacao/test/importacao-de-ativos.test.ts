@@ -7,6 +7,7 @@ import {
   type AtivoDaImportacao,
   type Atribuicao,
   type Contexto,
+  Conflito,
   RegraViolada,
 } from '@hubkeep/dominio';
 import { describe, expect, it } from 'vitest';
@@ -59,6 +60,13 @@ function montar(
       ],
       modelos: async () => modelos,
       chaves: async () => [],
+      reservados: async (_c, hotelId) =>
+        hotelId === HOTEL.id
+          ? [
+              { codigo: 'K1K1K1K1K1', ligado: false },
+              { codigo: 'K2K2K2K2K2', ligado: true },
+            ]
+          : [],
       criar: async (_c, _h, a) => {
         const r = criar ? criar(a) : { id: `novo-${criados.length + 1}` };
         if (r !== 'ja_importada') criados.push(a);
@@ -109,6 +117,32 @@ describe('importação de ativos (M2)', () => {
     expect(r.linhas.map((l) => l.erros.map((e) => e.codigo))).toEqual([
       [],
       ['importacao_modelo_nao_encontrado'],
+    ]);
+  });
+
+  it('a etiqueta reservada do hotel vai para o ativo; a já ligada recusa a linha (M3)', async () => {
+    const { casos, criados } = montar();
+    const r = await casos.importar(
+      ctx,
+      HOTEL.id,
+      'local;nome;codigo_qr\nCasa de máquinas;A;K1K1K-1K1K1\nCasa de máquinas;B;K2K2K2K2K2',
+    );
+    expect(r).toMatchObject({ criadas: 1, invalidas: 1 });
+    expect(criados.map((a) => a.codigoQr)).toEqual(['K1K1K1K1K1']);
+    expect(r.linhas[1]?.erros.map((e) => e.codigo)).toEqual(['qr_ja_ligado']);
+  });
+
+  it('a etiqueta ligada a outro ativo nesse meio-tempo fica na linha (qr_ja_ligado)', async () => {
+    const { casos } = montar(undefined, () => {
+      throw new Conflito('qr_ja_ligado', 'O código já está ligado a um ativo.');
+    });
+    const r = await casos.importar(
+      ctx,
+      HOTEL.id,
+      'local;nome;codigo_qr\nCasa de máquinas;A;K1K1K1K1K1',
+    );
+    expect(r.linhas.map((l) => [l.situacao, l.erros.map((e) => e.codigo)])).toEqual([
+      ['invalida', ['qr_ja_ligado']],
     ]);
   });
 

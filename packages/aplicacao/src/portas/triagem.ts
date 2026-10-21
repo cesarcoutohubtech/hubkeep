@@ -158,11 +158,16 @@ export interface PortaTriagem {
    * Para o aceite (DadosDoAceite): as equipes ativas de quem abriu o chamado e
    * as atribuições de Gerente não revogadas, de membro ativo, que podem cobrir
    * o hotel (grupo, bandeira do hotel ou o hotel), visíveis a quem pede (0027).
-   * Na preventiva, sem quem abriu, as equipes vêm vazias.
+   * Na preventiva, sem quem abriu, as equipes vêm vazias; com a equipe
+   * responsável (equipeResponsavel), vêm os membros ativos dela.
    */
   dadosDoAceite(
     ctx: Contexto,
-    g: { hotel: { id: string; bandeiraId: string | null }; abertoPor: string | null },
+    g: {
+      hotel: { id: string; bandeiraId: string | null };
+      abertoPor: string | null;
+      equipeResponsavel: string | null;
+    },
   ): Promise<DadosDoAceite>;
   alterarChamado(
     ctx: Contexto,

@@ -45,7 +45,10 @@ export const GET = rota('os.do_dia', async (r) => {
         paradoDesde: o.chamado.paradoDesde?.toISOString() ?? null,
         uhIndisponivelDesde: o.chamado.uhIndisponivelDesde?.toISOString() ?? null,
       },
-      preventiva: o.preventiva,
+      preventiva: o.preventiva && {
+        ...o.preventiva,
+        paradoDesde: o.preventiva.paradoDesde?.toISOString() ?? null,
+      },
     })),
   });
 });

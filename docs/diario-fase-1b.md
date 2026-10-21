@@ -1201,3 +1201,65 @@ Na branch `claude/great-bohr-y0tomg`, a partir da `main` com o #352. **Zona prot
 - **Trabalho não enviado em PR:** nenhum.
 - **Espera o Cesar:** o merge do PR da M3b e o `db push` da 0061, com a conferência no `supabase migration list`; se a coluna QR entra na planilha da importação; as escolhas da M1c e as decisões da PV3c.
 - **Próxima tarefa:** conferir os checks do PR da M3b uma vez; depois, a próxima linha da fila do `docs/12`.
+
+## Fim da fase 1b: resumo (21/10/2026)
+
+Com o [#361](https://github.com/cesarcoutohubtech/hubkeep/pull/361) (M3b) na `main` e o `db push` da 0061 feito pelo Cesar em 21/10/2026, todas as tarefas do `docs/12` estão na `main`, menos a T1, que depende do cliente.
+
+**Entregue, por etapa:**
+- **I (itens novos):**
+  - I1, compra, garantia e criticidade do ativo (0030);
+  - I2, modelo contratual do hotel e edificação do local (0032);
+  - I3, fornecedores (0033);
+  - I4, origem, impacto, quem executa, custo e UH indisponível;
+  - I5, transições da OS (0031);
+  - I6, códigos de falha, causa e solução (0036);
+  - I7, módulos contratados (0037);
+  - I8, foto antes ou depois e assinatura no aceite (0041);
+  - I9, hora do aparelho nas transições offline.
+- **PV (preventiva):**
+  - PV1, checklist tipado (ADR-040);
+  - PV2, planos preventivos (ADR-041);
+  - PV3, OS preventiva gerada pelo worker (0048);
+  - PV3c, as ações na OS preventiva, as pendências do plano e a preventiva no web e no PWA.
+- **M (implantação):**
+  - M1, modelos de ativo e sugestões de plano (0050 e 0051);
+  - M4, aprovação do cadastro pelo celular, e M2, importação por CSV (0058);
+  - M3, folha de etiquetas e códigos de QR reservados (0061).
+- **PB (pacote da bandeira):** a bandeira nos modelos e checklists, os planos do pacote e a aplicação ao hotel, com o tempo de implantação no painel (0059).
+
+**Fica para depois, com dono:**
+- **Na 1c (`docs/13`):** o aceite automático da preventiva (M5 da 1c), que espera o monitor de SLA. Hoje a leitura do job ainda faz join com o chamado.
+- **Depende do cliente:**
+  - a T1, o conector real do TOTVS, que espera as views;
+  - as perguntas 22 a 24 de `docs/referencia/perguntas-cliente.md`: as periodicidades e a preventiva por uso, a preventiva atrasada e o formato da etiqueta. Os três tamanhos de etiqueta da M3 valem até a resposta.
+- **Fora do MVP, registrado:** a preventiva por uso (horas de funcionamento), o XLSX na importação (decisão 19: só CSV), o "desfazer descarte" da sugestão de plano, a parada do ativo registrada na OS preventiva (decisão PV3c-1, abaixo) e a troca do código do QR de um ativo existente (decisão 21).
+
+**Decidido pelo Cesar em 21/10/2026** ("Vamos fazer conforme proposto. Demais, pelas propostas", nesta sessão), com o que foi aplicado:
+- **PV3c (pendente desde 14/10/2026):**
+  1. **A parada na preventiva fica recusada no MVP** (`parada_na_preventiva`), sem migração em `app.parada_ativo`. Nada muda no código.
+  2. **Quem executa a preventiva não decide o aceite:** o responsável pela OS (o técnico, ou membro ativo da equipe responsável) não aceita nem reabre a própria OS, mesmo sendo Gerente do hotel. Sem outro Gerente vigente que não execute a OS, decidem o Gestor CSC e o Admin do grupo. Na OS da equipe, os dados do aceite trazem os membros ativos dela; sem eles, a regra falha fechada (o Gerente da equipe conta como outro Gerente, e o Gestor CSC não decide).
+  3. **A fila do dia mostra o ativo parado:** a preventiva traz `paradoDesde`, o início da parada aberta do ativo, registrada por uma corretiva. O PWA mostra "Equipamento parado desde" no cartão da fila (na corretiva também) e na tela da OS preventiva, que continua sem os botões de parada (item 1).
+- **M1c (escolhas do agente desde 19/10/2026), confirmadas como estão:**
+  1. o ativo cujo modelo não sugere periodicidade entra na lista, sem o botão de um clique;
+  2. o modelo desativado continua sugerindo;
+  3. não há "desfazer descarte";
+  4. o ativo pendente na aprovação fica fora das sugestões (na `main` desde a M4a).
+- **M3, coluna QR na importação:** entra. A coluna `codigo_qr`, opcional, liga o ativo à etiqueta reservada no hotel:
+  - o código é lido como na etiqueta (com ou sem hífen, minúsculas, O por 0, I e L por 1);
+  - tem de estar reservado no hotel e livre (`qr_nao_reservado`, `qr_ja_ligado`);
+  - fora do formato, `importacao_qr_invalido`; repetido no arquivo, `importacao_qr_repetido`;
+  - a linha já importada não confere a etiqueta, que já está no ativo dela, e o reenvio da planilha segue como já importada;
+  - a etiqueta ligada a outro ativo entre a prévia e a gravação volta na linha (`qr_ja_ligado`), e o resto do arquivo segue.
+
+**Achado ao aplicar a coluna QR:** o `docs/piloto/modelo-ativos-criticos.csv` usava a coluna `modelo` no sentido de modelo do fabricante. Desde a M2, `modelo` é o modelo de ativo (M1), e a do fabricante é `modelo_do_fabricante`: o exemplo do piloto seria recusado linha a linha (`importacao_modelo_nao_encontrado`). O cabeçalho foi corrigido, e a seção da importação no guia de implantação, que ainda descrevia a M2 como futura, foi reescrita com as colunas de hoje.
+
+**Onde está:** no mesmo PR deste resumo, um commit por decisão, porque este agente só tem a branch `claude/great-bohr-y0tomg` e ela já é a do PR aberto. Nada na zona protegida, sem migração.
+
+## Ponto de retomada (21/10/2026, fim da fase 1b)
+
+- **`main`:** com o #361 (M3b). **Dev:** o Cesar fez o `db push` da 0061 em 21/10/2026. A conferência no `supabase migration list` é dele.
+- **PR aberto:** o deste resumo (`1b:`), fora da zona protegida e sem migração. Ele traz o resumo da fase e as decisões de 21/10/2026, um commit por decisão: o aceite da preventiva, o ativo parado na fila do dia e a coluna `codigo_qr` na importação, com o modelo de exemplo do piloto corrigido.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge do PR e a conferência da 0061 no dev. Não há decisão da 1b pendente.
+- **Próxima tarefa:** sem tarefa da 1b, a preparação do piloto e a segurança pré-piloto, que também são deste agente. Primeiro passo: perguntar ao Cesar por qual começar.

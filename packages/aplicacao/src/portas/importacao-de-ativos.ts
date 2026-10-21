@@ -36,6 +36,8 @@ export interface PortaImportacaoDeAtivos {
   modelos(ctx: Contexto): Promise<ModeloParaImportar[]>;
   /** As chaves de importação dos ativos do hotel. */
   chaves(ctx: Contexto, hotelId: string): Promise<string[]>;
+  /** Os códigos de QR reservados no hotel (M3), e se já têm ativo. */
+  reservados(ctx: Contexto, hotelId: string): Promise<{ codigo: string; ligado: boolean }[]>;
   /**
    * Na unit of work, como o cadastro do ativo (auditoria e evento ativo.criado),
    * aprovado e com a chave. A chave que outro envio gravou nesse meio-tempo dá

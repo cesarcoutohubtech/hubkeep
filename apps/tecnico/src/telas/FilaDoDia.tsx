@@ -20,7 +20,7 @@ import type { ReactNode } from 'react';
 import { useIntl } from 'react-intl';
 import type { OperacaoNaFila } from '../fila/banco';
 import { nomeDoIdioma, opcoesDeIdioma, useT } from '../i18n';
-import { type OsNoAparelho, localDaOs } from '../os/projecao';
+import { type OsNoAparelho, localDaOs, paradoDesdeDaOs } from '../os/projecao';
 import { FaixaDaRede, TelaDoTecnico } from './TelaDoTecnico';
 import { nomeDoLocal } from '../locais';
 
@@ -187,6 +187,7 @@ export function FilaDoDia(props: {
                     {o.pendentes > 0 && (
                       <span>{t('tecnico.os.pendentes', { n: o.pendentes })}</span>
                     )}
+                    <ParadoDesde quando={paradoDesdeDaOs(o)} />
                   </span>
                 </button>
               </li>
@@ -206,6 +207,20 @@ export function FilaDoDia(props: {
       {props.avisos}
       <SeletorDeIdioma idioma={props.idioma} aoTrocar={props.aoTrocarIdioma} />
     </TelaDoTecnico>
+  );
+}
+
+/** O ativo da OS parado (C5), na corretiva e na preventiva (Cesar, 21/10/2026). */
+function ParadoDesde(props: { quando: string | null }) {
+  const t = useT();
+  const intl = useIntl();
+  if (!props.quando) return null;
+  return (
+    <span data-parado-desde={props.quando}>
+      {t('tecnico.os.parada.desde', {
+        quando: intl.formatDate(props.quando, { dateStyle: 'short', timeStyle: 'short' }),
+      })}
+    </span>
   );
 }
 

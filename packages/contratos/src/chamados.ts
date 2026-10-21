@@ -462,6 +462,11 @@ export const OsDoDiaApi = z
         localId: z.guid(),
         localNome: z.string(),
         localEdificacao: z.string().nullable(),
+        /**
+         * Início da parada aberta do ativo (C5), registrada pela corretiva;
+         * null: não está parado. Opcional para a OS guardada antes do campo.
+         */
+        paradoDesde: z.iso.datetime().nullish(),
       })
       .nullable()
       .optional(),

@@ -16,8 +16,11 @@
 //     voltam todos, por linha, com código, coluna e parâmetros;
 //   - a chave de importação é o resumo da linha normalizada (local, categoria,
 //     nome e série): a linha que já entrou volta como já importada, e a mesma
-//     linha repetida no arquivo é recusada.
-// O código QR reservado (M3) ainda não existe: a coluna entra com a M3.
+//     linha repetida no arquivo é recusada;
+//   - a coluna codigo_qr (M3; Cesar, 21/10/2026), opcional, liga o ativo à
+//     etiqueta reservada: o código tem de estar reservado no hotel e livre, como
+//     no cadastro pela etiqueta, e não se repete no arquivo. A linha já
+//     importada não confere a etiqueta, que já está no ativo dela.
 import { type ValorDeCampo, type DefinicaoDeCampo } from './campos-tipados';
 import {
   type CategoriaParaAtivo,
@@ -37,6 +40,8 @@ import { type Resultado, vigente } from './permissoes';
 import type { Atribuicao } from './tipos';
 import type { StatusDeLocal } from './licenca';
 import { preencherComModelo, validarModeloDoAtivo } from './modelos-de-ativo';
+import { lerCodigoQr } from './qr';
+import { type CodigoReservado, exigirCodigoReservadoLivre } from './qr-reservado';
 import { sha256, tamanhoUtf8 } from './resumo-sha256';
 
 /**
@@ -81,6 +86,7 @@ export const COLUNAS_DA_IMPORTACAO = [
   'data_compra',
   'garantia_ate',
   'criticidade',
+  'codigo_qr',
 ] as const;
 export type ColunaDaImportacao = (typeof COLUNAS_DA_IMPORTACAO)[number];
 
@@ -323,6 +329,10 @@ export interface ReferenciasDaImportacao {
   modelos: readonly ModeloDaImportacao[];
   /** As chaves de importação que já estão no hotel. */
   chavesExistentes: ReadonlySet<string>;
+  /** O hotel da importação, para conferir a etiqueta reservada (M3). */
+  hotelId: string;
+  /** Os códigos reservados visíveis, pelo código. */
+  codigosReservados: ReadonlyMap<string, CodigoReservado>;
 }
 
 export interface ErroDaLinha {
@@ -346,6 +356,8 @@ export interface AtivoDaImportacao {
   garantiaAte: string | null;
   criticidade: Criticidade | null;
   campos: Record<string, ValorDeCampo>;
+  /** O código da etiqueta reservada (M3); null: o código é gerado. */
+  codigoQr: string | null;
 }
 
 export type SituacaoDaLinha = 'nova' | 'ja_importada' | 'invalida';
@@ -540,6 +552,15 @@ function analisarLinha(
           numeroSerie,
         })
       : null;
+  const codigoQr = tentar('codigo_qr', () => {
+    const v = opcional('codigo_qr');
+    if (v === null) return null;
+    const codigo = lerCodigoQr(v) ?? recusa('importacao_qr_invalido', { codigo: v });
+    if (chave === null || !refs.chavesExistentes.has(chave)) {
+      exigirCodigoReservadoLivre(refs.codigosReservados.get(codigo) ?? null, refs.hotelId);
+    }
+    return codigo;
+  });
   const completo =
     erros.length === 0 &&
     local &&
@@ -551,6 +572,7 @@ function analisarLinha(
     criticidade !== undefined &&
     campos !== undefined &&
     modelo !== undefined &&
+    codigoQr !== undefined &&
     chave !== null;
   return {
     numero: linha.numero,
@@ -571,6 +593,7 @@ function analisarLinha(
           garantiaAte: datas.garantiaAte,
           criticidade,
           campos,
+          codigoQr,
         }
       : null,
   };
@@ -588,6 +611,7 @@ export function analisarImportacao(
   const chavesDeCampo = new Set(refs.categorias.flatMap((c) => c.definicoes.map((d) => d.chave)));
   const colunas = lerCabecalho(csv.cabecalho, chavesDeCampo);
   const vistas = new Map<string, number>();
+  const etiquetas = new Map<string, number>();
   const linhas = csv.linhas.map((l): LinhaAnalisada => {
     const { chave, ...analisada } = analisarLinha(l, colunas, refs);
     if (chave !== null) {
@@ -608,6 +632,25 @@ export function analisarImportacao(
     if (analisada.ativo === null) return { ...analisada, situacao: 'invalida' };
     if (chave !== null && refs.chavesExistentes.has(chave)) {
       return { ...analisada, situacao: 'ja_importada', ativo: null };
+    }
+    const codigo = analisada.ativo.codigoQr;
+    if (codigo !== null) {
+      const anterior = etiquetas.get(codigo);
+      if (anterior !== undefined) {
+        return {
+          ...analisada,
+          situacao: 'invalida',
+          ativo: null,
+          erros: [
+            {
+              codigo: 'importacao_qr_repetido',
+              coluna: 'codigo_qr',
+              parametros: { linha: anterior },
+            },
+          ],
+        };
+      }
+      etiquetas.set(codigo, l.numero);
     }
     return { ...analisada, situacao: 'nova' };
   });

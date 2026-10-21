@@ -248,10 +248,13 @@ export const LIMITE_MOTIVO = 500;
  * Gerente, de membro ativo, que podem cobrir o hotel. A RLS mostra as de
  * Gerente ao Admin e ao Gestor CSC do hotel (0027), justamente os que decidem
  * quando não há outro Gerente; para os demais a lista vem vazia, sem efeito.
+ * Na preventiva com equipe responsável, vêm também os membros ativos dela:
+ * o Gerente da equipe executa a OS e não conta como outro Gerente.
  */
 export interface DadosDoAceite {
   equipesDeQuemAbriu: readonly string[];
   gerentes: readonly Atribuicao[];
+  membrosDaEquipeResponsavel?: readonly string[];
 }
 
 /** Decidem o aceite quando quem abriu executa a OS e não há outro Gerente ativo no hotel. */
@@ -387,9 +390,9 @@ export function quemAbriuExecuta(
 
 /**
  * Na corretiva, quem abriu executa a OS e nenhum outro Gerente, vigente, cobre
- * o hotel; na preventiva, que não tem quem abriu, nenhum Gerente vigente cobre
- * o hotel. Nos dois casos, o aceite passa ao Gestor CSC e ao Admin do grupo.
- * Sem os dados, falha fechada.
+ * o hotel; na preventiva, que não tem quem abriu, nenhum Gerente vigente que
+ * não execute a OS cobre o hotel (Cesar, 21/10/2026). Nos dois casos, o aceite
+ * passa ao Gestor CSC e ao Admin do grupo. Sem os dados, falha fechada.
  */
 function aceiteSemOutroGerente(
   alvo: AlvoDaRegra,
@@ -403,9 +406,15 @@ function aceiteSemOutroGerente(
     const quemAbriu = { usuarioId: abertoPor, atribuicoes: [], equipes: dados.equipesDeQuemAbriu };
     if (!ehResponsavel(quemAbriu, r)) return false;
   }
+  const executores =
+    abertoPor !== null
+      ? [abertoPor]
+      : r.tipo === 'tecnico'
+        ? [r.usuarioId]
+        : (dados.membrosDaEquipeResponsavel ?? []);
   return !dados.gerentes.some(
     (a) =>
-      a.usuarioId !== abertoPor &&
+      !executores.includes(a.usuarioId) &&
       a.papel === 'gerente_hotel' &&
       vigente(a, agora) &&
       escopoCobreHotel(a, alvo.hotel),
@@ -431,7 +440,9 @@ function estaNoGrupo(
     case 'aceite': {
       const abriu = alvo.abertoPor === ator.usuarioId;
       const r = os?.responsavel ?? null;
-      if (abriu && ehResponsavel(ator, r)) return false;
+      // Quem executa não decide o aceite: na corretiva, se também abriu; na
+      // preventiva, que não tem quem abriu, sempre (Cesar, 21/10/2026).
+      if ((abriu || alvo.abertoPor === null) && ehResponsavel(ator, r)) return false;
       if (temPapelNoHotel(ator, ['gerente_hotel'], alvo.hotel, agora)) return true;
       if (abriu) return temPapelNoHotel(ator, PAPEIS_QUE_ABREM_CHAMADO, alvo.hotel, agora);
       return (

@@ -53,6 +53,7 @@ import {
   type ExecutadoPor,
   NaoEncontrado,
   type OrigemDaOs,
+  type Responsavel,
   type QuemExecuta,
   RegraViolada,
   conflitoDeVersao,
@@ -269,14 +270,22 @@ export function criarCasosDeUsoDeTriagem(deps: {
   }
 
   /** O ator e o que a regra do aceite lê além dele (Gerente único; Cesar, 30/09/2026). */
-  const paraOAceite = (ctx: Contexto, origem: OrigemDaOs) =>
+  const paraOAceite = (ctx: Contexto, origem: OrigemDaOs, responsavel: Responsavel) =>
     Promise.all([
       atorComEquipes(ctx),
       deps.triagem.dadosDoAceite(
         ctx,
         origem.chamado === null
-          ? { hotel: origem.hotel, abertoPor: null }
-          : { hotel: origem.chamado.hotel, abertoPor: origem.chamado.abertoPor },
+          ? {
+              hotel: origem.hotel,
+              abertoPor: null,
+              equipeResponsavel: responsavel.tipo === 'equipe' ? responsavel.equipeId : null,
+            }
+          : {
+              hotel: origem.chamado.hotel,
+              abertoPor: origem.chamado.abertoPor,
+              equipeResponsavel: null,
+            },
       ),
     ]);
 
@@ -639,7 +648,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
     async aceitarOs(ctx, osId, p) {
       const { os, chamado, origem, ativoId } = await osNaVersao(ctx, osId, p.versao);
-      const [ator, aceite] = await paraOAceite(ctx, origem);
+      const [ator, aceite] = await paraOAceite(ctx, origem, os.responsavel);
       const d = r.decidirNaOs('aceitar', {
         ator,
         ...origem,
@@ -681,7 +690,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
     async exigirQuemAceita(ctx, osId) {
       const { os, origem } = await lerOsComOrigem(deps.triagem, ctx, osId);
-      const [ator, aceite] = await paraOAceite(ctx, origem);
+      const [ator, aceite] = await paraOAceite(ctx, origem, os.responsavel);
       r.decidirNaOs('aceitar', {
         ator,
         ...origem,
@@ -699,7 +708,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
     async reabrirOs(ctx, osId, p) {
       const { os, chamado, origem } = await osNaVersao(ctx, osId, p.versao);
       const agora = deps.relogio.agora();
-      const [ator, aceite] = await paraOAceite(ctx, origem);
+      const [ator, aceite] = await paraOAceite(ctx, origem, os.responsavel);
       const d = r.decidirNaOs('reabrir', {
         ator,
         ...origem,
