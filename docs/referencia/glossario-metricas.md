@@ -15,6 +15,13 @@ Os termos fechados da versão 2 continuam sem mudança de texto.
 
 **No código (13/10/2026).** As divergências b, c, d e f entraram no [#253](https://github.com/cesarcoutohubtech/hubkeep/pull/253) (PR 1), e a a, no [#255](https://github.com/cesarcoutohubtech/hubkeep/pull/255) (PR 2). O PR 3 acerta o texto deste arquivo e o do `docs/piloto/`. Cada mudança de cálculo é uma versão nova da fórmula, e nada do que já foi gravado foi recalculado (ADR-036).
 
+**Versão 4, aprovada em 20/10/2026 pelo Cesar e pelo Kaio, no chat do agente da 1c.** As duas aprovações vieram na mesma mensagem: "Cesar aqui. Aprovo." e "Kaio aqui. Arpovo". Em seguida, o Cesar confirmou, com "Cesar aqui", que a linha do Kaio foi digitada pelo próprio Kaio. O registro está em `docs/diario-fase-1c.md`, na seção "Glossário de métricas, versão 4 (20/10/2026)". A versão 4 acrescenta três termos do painel da 1c, para a tela inicial (seção 4 de `docs/referencia/paridade-mock-1c.md`):
+- **chamados por categoria** ("Onde mais quebra");
+- **chamado crítico**;
+- **situação do hotel**.
+
+Os termos das versões anteriores não mudaram de texto.
+
 ## Regras
 
 1. **Um nome, um cálculo.** O painel de indicadores da 1c e o Intelligence usam o mesmo nome só para o mesmo cálculo. Uma métrica parecida com outra definição ganha outro nome.
@@ -62,6 +69,9 @@ Os termos fechados da versão 2 continuam sem mudança de texto.
 | **Chamados por 100 UHs** | Os chamados abertos no período, divididos pelas UHs ativas do hotel, vezes 100. | Domínio | Núcleo | Fechado (decisão 6 da paridade) |
 | **Comparação na bandeira** | Os indicadores por hotel, lado a lado, com a média da bandeira, e as contagens normalizadas por 100 UHs. Só os hotéis que o usuário lê. | Domínio | Núcleo | Fechado (decisão 10) |
 | **Produtividade por equipe e hotel** | As OS concluídas e as horas apontadas (`app.os_apontamento`), por equipe e por hotel, no período. A visão por técnico fica desligada por política. | Domínio | Núcleo | Fechado (decisão 10) |
+| **Chamados por categoria** ("Onde mais quebra") | Os chamados abertos no período, sem os cancelados, contados pela categoria de agora (depois da troca na triagem, e não a da abertura). No gráfico, barras horizontais da categoria com mais chamados para a com menos: as 8 primeiras, e o resto somado em "Outras categorias". A gestão vê, no escopo dos cartões da rede; o proprietário não vê. | Domínio | Núcleo | Fechado (versão 4, Cesar e Kaio, 20/10/2026) |
+| **Chamado crítico** | O chamado aberto na prioridade de maior peso entre as prioridades ativas do grupo. No padrão é a "urgente", que o mock chama de "Crítica". Vale o peso, e não o nome, para que a prioridade própria de um grupo também conte. | Domínio | Núcleo | Fechado (versão 4, Cesar e Kaio, 20/10/2026) |
+| **Situação do hotel** | **Crítico:** algum chamado crítico com prazo vencido, ou 3 ou mais chamados com prazo vencido. **Atenção:** algum prazo vencido ou em risco, ou 2 ou mais preventivas atrasadas. **Ok:** os demais casos. Usa os termos prazo vencido, prazo em risco e preventiva atrasada, desta lista. Os números 3 e 2 ficam no domínio, como os do mock, e viram política se um cliente pedir outros. A gestão vê; o proprietário vê os cartões dele, sem a coluna das preventivas atrasadas. | Domínio | Núcleo | Fechado (versão 4, Cesar e Kaio, 20/10/2026) |
 
 ## Pontos para o agente do Kaio
 
