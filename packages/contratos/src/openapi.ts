@@ -2,7 +2,13 @@
 // abaixo é a fonte: rota nova entra aqui junto com o handler, e o teste do
 // pacote confere que cada schema de corpo e de resposta está no documento.
 import { z } from 'zod';
-import { PedidoDeConvite, RespostaDeConvite, RespostaDeHoteis, RespostaDeSessao } from './api';
+import {
+  PedidoDeConvite,
+  PedidoDeRecuperacaoDeSenha,
+  RespostaDeConvite,
+  RespostaDeHoteis,
+  RespostaDeSessao,
+} from './api';
 import {
   PedidoDeUrlDeDownload,
   PedidoDeUrlDeUpload,
@@ -256,8 +262,8 @@ export interface Rota {
   resumo: string;
   /** Rota que precisa do tenant ativo (cabeçalho x-hubkeep-tenant ou cookie). */
   exigeTenant: boolean;
-  /** Quem chama: usuário (padrão, Bearer ou cookie) ou o agente conector. */
-  autenticacao?: 'usuario' | 'agente';
+  /** Quem chama: usuário (padrão, Bearer ou cookie), o agente conector ou ninguém (pública). */
+  autenticacao?: 'usuario' | 'agente' | 'publica';
   /** Lista que aceita ?busca= (trecho, sem acento, a partir de 3 caracteres; B6). */
   busca?: boolean;
   /** Parâmetros da query string (C7): cada campo do objeto vira um parâmetro. */
@@ -289,6 +295,19 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Status técnico por hotel', esquema: RespostaDoStatusMews },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Apenas Admin do grupo (sem_permissao).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/auth/recuperar',
+    resumo:
+      'Pede o e-mail de recuperação de senha (C9 da comunicação da 1c). Pública: responde sempre 202, exista ou não a conta, para não revelar quem tem cadastro. O Supabase Auth envia o link para /auth/confirmar (type=recovery), que leva a /definir-senha. O limite de envios é o do Auth.',
+    exigeTenant: false,
+    autenticacao: 'publica',
+    corpo: PedidoDeRecuperacaoDeSenha,
+    respostas: {
+      202: { descricao: 'Pedido recebido (o e-mail sai se a conta existir)' },
+      422: ERRO('E-mail fora do formato (entrada_invalida).'),
     },
   },
   {
@@ -3071,6 +3090,7 @@ export function gerarOpenApi(): Record<string, unknown> {
     (paths[rota.caminho] ??= {})[rota.metodo] = {
       summary: rota.resumo,
       ...(rota.autenticacao === 'agente' && { security: [{ agente: [] }] }),
+      ...(rota.autenticacao === 'publica' && { security: [] }),
       ...((rota.exigeTenant || rota.busca || rota.consulta) && {
         parameters: [
           ...(rota.exigeTenant ? [{ $ref: '#/components/parameters/Tenant' }] : []),

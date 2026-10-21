@@ -1430,3 +1430,38 @@ Feita numa branch local, sobre a do #369; o PR abre depois do merge dele. A tela
 - **Integração (CI):** o Admin lista o fator, não remove o último, cadastra o segundo aparelho, erra e acerta o código, e remove o aparelho novo.
 
 Com isso, a SP1 fica completa, exceto a correção do texto da 4b no ADR-049, que espera o próximo PR de zona protegida.
+
+## Varredura das três frentes e recuperação de senha (21/10/2026)
+
+**Varredura** pedida pelo Cesar depois do merge do #370. Ela mostrou que a 1c ainda não tinha quatro itens:
+- a recuperação de senha (passo 5 da C9), que o `docs/13` põe como condição do piloto;
+- o e-mail ao locador (passo 6 da C9);
+- a tela inicial 3c;
+- o aceite automático da preventiva. A 1b o deixou para a 1c, mas a 1c não registrou.
+
+O diário da 1c diz que "os dez itens estão feitos", e isso não bate com os dois primeiros.
+
+**Recuperação de senha, assumida pela 1b** ("pode assumir a recuperação de senha. Cesar aqui.", 21/10/2026). Segue o desenho aprovado na C9 (`docs/referencia/propostas-comunicacao-1c.md`, seção 5):
+- "Esqueci a senha" no login abre `/esqueci-a-senha`, que chama `POST /api/v1/auth/recuperar`. A rota é pública e responde sempre 202, exista ou não a conta. A falha do Auth só vai para o log, sem o e-mail;
+- o servidor chama o `resetPasswordForEmail` com a chave pública. O link vai para `/auth/confirmar`, que passa a aceitar `recovery` e leva a `/definir-senha`;
+- o template e o assunto saem do catálogo, como os do convite (`supabase/templates/recuperacao.html`, `[auth.email.template.recovery]` no `config.toml`, conferidos pelo `tests/i18n-templates.test.ts`);
+- quem tem o segundo fator confirma o código em `/definir-senha` antes da senha nova, porque o link dá uma sessão em `aal1`;
+- a integração (CI, com o Mailpit) cobre três casos:
+  - o 202 para conta inexistente, sem e-mail;
+  - o 422 para e-mail fora do formato;
+  - o link do convidado levando à senha nova, com a velha deixando de valer.
+
+O PR é de zona protegida por causa do `config.toml`. O template chega ao dev pelo `config push` do Cesar. O e-mail sai em pt-BR, pela decisão C6. A comunicação é área da 1c; o registro fica aqui, como pede a regra das áreas compartilhadas.
+
+## Ponto de retomada (21/10/2026, recuperação de senha)
+
+- **`main`:** com o #370 (SP1 completa). A última migração segue sendo a 0061.
+- **PR aberto:** o da recuperação de senha (`adm:`), na zona protegida por causa do `config.toml`. O check "zona protegida" falha por desenho.
+- **Espera o Cesar:**
+  - o merge desse PR;
+  - o `config push` no dev, para o template da recuperação;
+  - as decisões da varredura: o plano do staging, quem vê o cartão do locador, o dono do aceite automático da preventiva (proposta: a 1b) e o estado real da frente Mews no dev.
+- **Pendências registradas:**
+  - o texto da 4b no ADR-049;
+  - o e-mail ao locador e a tela inicial 3c, que são da 1c.
+- **Próxima tarefa:** conforme a prioridade do Cesar. Proposta: o aceite automático da preventiva.

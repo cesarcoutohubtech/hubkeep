@@ -5,6 +5,7 @@
 // sessão só vai para o cookie depois do código.
 import type { Chave } from '@hubkeep/i18n';
 import { Botao, Campo, Entrada, Marca, MensagemDeErro, TelaDeEntrada } from '@hubkeep/ui';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useState } from 'react';
 import { confirmarCodigo, entrar as entrarNoAuth } from '../../cliente/sessao';
@@ -113,6 +114,9 @@ function FormularioLogin() {
         <Botao type="submit" variante="primario">
           {t('login.acao.entrar')}
         </Botao>
+        <p>
+          <Link href="/esqueci-a-senha">{t('login.acao.esqueci')}</Link>
+        </p>
       </form>
     </TelaDeEntrada>
   );

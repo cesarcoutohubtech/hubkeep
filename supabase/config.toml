@@ -265,6 +265,14 @@ otp_expiry = 3600
 subject = "Convite para o HubKeep"
 content_path = "./supabase/templates/convite.html"
 
+# HubKeep: a recuperação de senha (C9 da comunicação da 1c, 21/10/2026). O
+# link leva a /auth/confirmar com o token_hash e type=recovery, e de lá a
+# /definir-senha, como o convite. Assunto e arquivo saem do catálogo pt-BR
+# (tests/i18n-templates.test.ts); no dev, chegam pelo config push (Cesar).
+[auth.email.template.recovery]
+subject = "Nova senha do HubKeep"
+content_path = "./supabase/templates/recuperacao.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true

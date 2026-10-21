@@ -126,3 +126,8 @@ export const PedidoDeVerificacaoDeFator = z.object({
 });
 
 export const PedidoDeRemocaoDeFator = z.object({ fatorId: z.guid() });
+
+/** O pedido do e-mail de recuperação de senha (C9): só o e-mail. */
+export const PedidoDeRecuperacaoDeSenha = z
+  .object({ email: z.email().max(254) })
+  .meta({ id: 'PedidoDeRecuperacaoDeSenha' });

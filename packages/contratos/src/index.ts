@@ -6,6 +6,7 @@ export {
   PAPEIS_API,
   PedidoDeConvite,
   PedidoDeCadastroDeFator,
+  PedidoDeRecuperacaoDeSenha,
   PedidoDeRemocaoDeFator,
   PedidoDeSenha,
   PedidoDeSessao,

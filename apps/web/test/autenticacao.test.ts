@@ -16,6 +16,7 @@ import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POST as convidar } from '../src/app/api/v1/convites/route';
+import { POST as recuperarSenha } from '../src/app/api/v1/auth/recuperar/route';
 import { GET as hoteis } from '../src/app/api/v1/hoteis/route';
 import { POST as removerSegundoFator } from '../src/app/api/v1/membros/[usuarioId]/segundo-fator/remocao/route';
 import { GET as sessao } from '../src/app/api/v1/sessao/route';
@@ -77,6 +78,28 @@ async function mensagensPara(para: string): Promise<{ ID: string }[]> {
     `${exigir(URL_MAILPIT)}/api/v1/search?query=${encodeURIComponent(`to:"${para}"`)}`,
   );
   return ((await r.json()) as { messages?: { ID: string }[] }).messages ?? [];
+}
+
+/** O link do e-mail de recuperação de senha (C9), pelo assunto do catálogo. */
+async function linkDaRecuperacao(para: string): Promise<string> {
+  for (let i = 0; i < 30; i++) {
+    const r = await fetch(
+      `${exigir(URL_MAILPIT)}/api/v1/search?query=${encodeURIComponent(`to:"${para}" subject:"Nova senha do HubKeep"`)}`,
+    );
+    const [m] = ((await r.json()) as { messages?: { ID: string }[] }).messages ?? [];
+    if (m) {
+      const html = (
+        (await (await fetch(`${exigir(URL_MAILPIT)}/api/v1/message/${m.ID}`)).json()) as {
+          HTML: string;
+        }
+      ).HTML;
+      const href = /href="([^"]*type=recovery[^"]*)"/.exec(html)?.[1];
+      if (!href) throw new Error('e-mail de recuperação sem link de recovery');
+      return href.replaceAll('&amp;', '&');
+    }
+    await new Promise((ok) => setTimeout(ok, 300));
+  }
+  throw new Error(`nenhum e-mail de recuperação para ${para} no Mailpit`);
 }
 
 async function linkDoConvite(para: string): Promise<string> {
@@ -676,6 +699,31 @@ describe.skipIf(!temAmbiente)('F0-05 — convite, sessão e tenant ativo', { tim
       comCookie('/auth/segundo-fator/remocao', 'POST', { fatorId }),
     );
     expect(removido.status).toBe(204);
+  });
+
+  it('C9: a recuperação responde 202 sempre; o link leva à senha nova, e a velha deixa de valer', async () => {
+    const inexistente = `ninguem-${sufixo}@hubkeep.test`;
+    const pedir = (mail: string) =>
+      recuperarSenha(req('/api/v1/auth/recuperar', { metodo: 'POST', corpo: { email: mail } }));
+    expect((await pedir(inexistente)).status).toBe(202);
+    expect((await pedir('nao-e-email')).status).toBe(422);
+
+    expect((await pedir(email.convidado)).status).toBe(202);
+    const link = await linkDaRecuperacao(email.convidado);
+    expect(link.startsWith(`${SITE}/auth/confirmar?`)).toBe(true);
+    const r = await confirmar(new Request(link));
+    expect(r.status).toBe(307);
+    expect(r.headers.get('location')).toBe(`${SITE}/definir-senha`);
+    const cookie = cookiesDe(r).join('; ');
+
+    const novaSenha = `Senha-recuperada-${sufixo}`;
+    const definida = await definirSenha(
+      req('/auth/senha', { metodo: 'POST', cabecalhos: { cookie }, corpo: { senha: novaSenha } }),
+    );
+    expect(definida.status).toBe(204);
+    expect((await sessaoDoAuth(email.convidado, novaSenha)).user.id).toBe(idConvidado);
+    await expect(sessaoDoAuth(email.convidado, SENHA_DO_CONVIDADO)).rejects.toThrow(/falhou/);
+    expect(await mensagensPara(inexistente)).toEqual([]);
   });
 
   // Por último: a remoção encerra as sessões do Técnico no Auth.
