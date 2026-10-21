@@ -106,7 +106,8 @@ export function FolhaDeEtiquetas({
   ativos,
   tamanho,
 }: {
-  ativos: readonly { id: string; nome: string; codigoQr: string }[];
+  /** nome null: a etiqueta reservada (M3), ainda sem ativo. */
+  ativos: readonly { id: string; nome: string | null; codigoQr: string }[];
   tamanho: TamanhoDeEtiqueta;
 }) {
   const t = useT();
@@ -127,7 +128,7 @@ export function FolhaDeEtiquetas({
           <figure key={a.id} className="hk-etiqueta">
             <svg
               role="img"
-              aria-label={t('admin.ativos.qr.imagem', { ativo: a.nome })}
+              aria-label={t('admin.ativos.qr.imagem', { ativo: a.nome ?? a.codigoQr })}
               viewBox={`0 0 ${svg.lado} ${svg.lado}`}
               shapeRendering="crispEdges"
             >
@@ -135,7 +136,7 @@ export function FolhaDeEtiquetas({
               <path d={svg.d} fill="#000000" />
             </svg>
             <figcaption>
-              <span className="hk-etiqueta-nome">{a.nome}</span>
+              <span className="hk-etiqueta-nome">{a.nome ?? t('etiquetas.reservada')}</span>
               <span className="hk-etiqueta-codigo">{codigoQrLegivel(a.codigoQr)}</span>
             </figcaption>
           </figure>

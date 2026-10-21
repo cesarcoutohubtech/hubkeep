@@ -1165,6 +1165,14 @@ Na branch `claude/1b-pb1b`, sobre a `claude/1b-pb1`. O PR abre depois dos PRs do
 - **Telas filtram pela bandeira do hotel:** o cadastro do ativo (web e PWA), o checklist do plano e o checklist da OS. O PWA guarda a bandeira do hotel e do modelo na referência; a referência guardada antes da PB1b vale como do grupo até a próxima leitura.
 - Testes: domínio e aplicação com os casos novos; integração em `bandeira-nos-modelos.test.ts`, só na CI; telas do web e do PWA.
 
+## Ponto de retomada (20/10/2026, PR da PB1b)
+
+- **`main`:** com o #340 (zona da PB1, migração 0059) e o #344 (PB1a). **Dev:** o `db push` da 0058 e da 0059 não foram confirmados aqui.
+- **PR aberto:** o da PB1b (`claude/1b-pb1b`), fora da zona protegida.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** confirmar a 0058 e a 0059 no dev; o merge do PR da PB1b; as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** a M3 (QR em lote; decisão 21 já aprovada: a etiqueta reservada é só para ativo novo), numa branch a partir da `main`.
+
 ### M3a — folha de etiquetas do QR em lote (20/10/2026)
 
 Na branch `claude/great-bohr-y0tomg`, a partir da `main` com o #348. Fora da zona protegida, sem migração.
@@ -1174,18 +1182,22 @@ Na branch `claude/great-bohr-y0tomg`, a partir da `main` com o #348. Fora da zon
 - **Por importação:** depois da gravação, a tela da importação abre a mesma folha com os ativos criados naquele envio.
 - **Falta (M3b, zona protegida):** os códigos reservados (`app.qr_reservado`), a geração do lote, a folha de etiquetas sem ativo e a ligação pelo PWA (`qr_nao_reservado`, `qr_ja_ligado`). Pela decisão 21, a etiqueta reservada vale só para ativo novo.
 
-## Ponto de retomada (20/10/2026, PR da M3a)
+### M3b — códigos de QR reservados (20/10/2026)
 
-- **`main`:** com o #348 (PB1b); a PB1 está completa. **Dev:** o Cesar conferiu o `supabase migration list` em 20/10/2026, nesta sessão.
-- **PR aberto:** o da M3a (`claude/great-bohr-y0tomg`), fora da zona protegida.
+Na branch `claude/great-bohr-y0tomg`, a partir da `main` com o #352. **Zona protegida** (migração 0061). O PR só abre depois do [#354](https://github.com/cesarcoutohubtech/hubkeep/pull/354) (Dependabot, mexe em `packages/auth-admin/package.json`, que é da zona), ou quando o Cesar decidir a ordem.
+- **Migração 0061 (`app.qr_reservado`), só de inserção:** o código (formato do ativo, único no tenant), o lote, o hotel e quem gerou (FK composta para o membro, igual a quem grava). Sem coluna de ligação: ligar a etiqueta é cadastrar o ativo com o código, e a unicidade de `app.ativo (tenant_id, codigo_qr)` impede ligar duas vezes, sem UPDATE (decisão 21). Lê e grava quem escreve no hotel; o proprietário e o worker não leem. Teste de isolamento `063`, meta-testes 28 e 32, tipos.
+- **Domínio:** `podeReservarQr` (Implantador e gestão do hotel, como a importação), `validarTamanhoDoLote` (1 a 500, `qr_lote_invalido`), `exigirCodigoReservadoLivre` (`qr_nao_reservado`, também para o código de outro hotel; `qr_ja_ligado`).
+- **Aplicação e banco:** gerar o lote (sem repetir código reservado nem de ativo visível; auditoria `qr_reservado` e evento `qr.reservado`), listar com o que já está ligado e consultar o código. O cadastro do ativo (web, API e operação offline `ativo.cadastrar`) aceita `codigoQr`; na corrida, a unicidade do ativo dá `qr_ja_ligado`.
+- **API:** `POST` e `GET /api/v1/hoteis/{id}/qr-reservados`, `GET /api/v1/qr-reservados/{codigo}`; `codigoQr` opcional no `POST /api/v1/ativos`.
+- **Web:** a tela **Etiquetas QR** ganha o modo "Códigos reservados": gerar, escolher o lote e imprimir (só os livres, por padrão), com "Etiqueta reservada" no lugar do nome.
+- **PWA:** o QR sem ativo visível pergunta pelo código reservado; reservado e livre, abre o cadastro no hotel dele, com o código. Sem rede, o aviso oferece cadastrar com o código lido.
+- Testes: domínio, aplicação, telas do web e do PWA, `qr.test.ts` do PWA; integração em `qr-reservados.test.ts` e pgTAP, só na CI.
+- **Fica de fora (pendência):** a coluna QR na planilha da importação (M2), prevista no desenho como opcional. A etiqueta reservada entra hoje pelo cadastro um a um.
+
+## Ponto de retomada (20/10/2026, PR da M3b)
+
+- **`main`:** com o #352 (M3a) e o #354 (Dependabot da zona). **Dev:** a 0061 só vai com o `db push` do Cesar, depois da CI do PR.
+- **PR aberto:** o da M3b (`claude/great-bohr-y0tomg`), **zona protegida**: o check "zona protegida" falha por desenho (ADR-023). Antes de abrir, nenhum outro PR de zona estava aberto, e a última migração da `main` era a 0060.
 - **Trabalho não enviado em PR:** nenhum.
-- **Espera o Cesar:** o merge do PR da M3a; as escolhas da M1c e as decisões da PV3c.
-- **Próxima tarefa:** a M3b (códigos reservados, zona protegida: migração `app.qr_reservado`, pgTAP de isolamento e meta-testes), numa branch a partir da `main`. Primeiro passo: conferir no GitHub se há PR de zona protegida aberto e a última migração da `main`.
-
-## Ponto de retomada (20/10/2026, PR da PB1b)
-
-- **`main`:** com o #340 (zona da PB1, migração 0059) e o #344 (PB1a). **Dev:** o `db push` da 0058 e da 0059 não foram confirmados aqui.
-- **PR aberto:** o da PB1b (`claude/1b-pb1b`), fora da zona protegida.
-- **Trabalho não enviado em PR:** nenhum.
-- **Espera o Cesar:** confirmar a 0058 e a 0059 no dev; o merge do PR da PB1b; as escolhas da M1c e as decisões da PV3c.
-- **Próxima tarefa:** a M3 (QR em lote; decisão 21 já aprovada: a etiqueta reservada é só para ativo novo), numa branch a partir da `main`.
+- **Espera o Cesar:** o merge do PR da M3b e o `db push` da 0061, com a conferência no `supabase migration list`; se a coluna QR entra na planilha da importação; as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** conferir os checks do PR da M3b uma vez; depois, a próxima linha da fila do `docs/12`.

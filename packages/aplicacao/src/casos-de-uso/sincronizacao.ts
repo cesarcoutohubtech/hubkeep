@@ -141,6 +141,7 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
               c.localId,
               c.dados,
               c.situacaoNoPwa ?? 'aprovado',
+              c.codigoQr,
             );
             return { id, versao };
           });
