@@ -1,4 +1,4 @@
-﻿local;categoria;nome;fabricante;modelo;numero_serie;data_compra;garantia_ate;criticidade;codigo_qr
+﻿local;categoria;nome;fabricante;modelo_do_fabricante;numero_serie;data_compra;garantia_ate;criticidade;codigo_qr
 Casa de máquinas;Refrigeração e ar-condicionado;Chiller central 1;Climatec Exemplo;CL-300;EX-CH-0001;2021-03-15;2024-03-15;5;
 Casa de máquinas;Refrigeração e ar-condicionado;Chiller central 2;Climatec Exemplo;CL-300;EX-CH-0002;2021-03-15;2024-03-15;5;
 Lobby;Refrigeração e ar-condicionado;Fan coil do lobby;Climatec Exemplo;FC-80;EX-FC-0010;2020-08-10;2023-08-10;3;

@@ -1,6 +1,6 @@
 # Manual por papel (piloto)
 
-Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228; lista no `README.md`). Os nomes de botões, menus e mensagens são os do catálogo pt-BR (`packages/i18n/catalogos/pt-BR.json`). O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]**, com a referência ao plano (`docs/12-plano-fase-1b.md`) ou ao documento que define a tarefa.
+Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228; em 20/10/2026, só com as reclamações de hóspedes do HubKeep Intelligence, até o #338; lista no `README.md`). Os nomes de botões, menus e mensagens são os do catálogo pt-BR (`packages/i18n/catalogos/pt-BR.json`). O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]**, com a referência ao plano (`docs/12-plano-fase-1b.md`) ou ao documento que define a tarefa.
 
 ## 1. O que vale para todos
 
@@ -54,6 +54,7 @@ Manual curto, um bloco por papel, escrito sobre o que existe na `main` (atualiza
 | Auditoria geral (só leitura, com CSV) | sim | sim, nos hotéis do escopo | sim, no hotel dele | não | não | não |
 | Painel de implantação | sim | não | não | não | não | sim |
 | HubKeep Intelligence: ver e decidir insights (só com o módulo contratado e depois da abertura das telas) | sim | sim, nos hotéis do escopo; o de rede, se cobre todos os hotéis dele | só se o Admin incluir o Gerente na política de abertura; aí, só o insight do hotel dele | não | não | não |
+| HubKeep Intelligence: importar e classificar reclamações de hóspedes, abrir chamado a partir delas (desde o início do contrato do módulo, também antes da abertura das telas) | sim | sim, nos hotéis do escopo | só se o Admin incluir o Gerente na política de abertura; aí, só no hotel dele | não (não lê a reclamação; vê só o chamado) | não | não |
 | HubKeep Intelligence: ver e mudar a abertura das telas | sim, também antes da abertura | não | não | não | não | não |
 
 Nota sobre o aceite: quem abriu o chamado e também executa a OS (ele ou a equipe dele) não decide o aceite. Se, além disso, não há outro Gerente ativo no hotel, decidem o Gestor CSC ou o Admin do grupo (caso especial, `corretiva.ts`).
@@ -172,6 +173,15 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 
 **HubKeep Intelligence** (só se o grupo contratou o módulo e o Admin do grupo incluiu o Gerente do hotel na política de abertura das telas; no padrão, o Gerente não vê o módulo). Menu **HubKeep Intelligence**: a lista de insights do hotel, a página de cada insight com "Por que estou vendo isso?" e a decisão (resolver ou descartar, com nota), e o detalhe do ativo. O Gerente decide só o insight do hotel dele; o insight de rede é do Admin do grupo e do Gestor CSC, e na página aparece "Você não decide este insight. Pode acompanhar a evidência.".
 
+**Reclamações de hóspedes** (no módulo, pelo link "Reclamações de hóspedes: importar e classificar", acima da lista de insights, ou, antes da data de abertura das telas, direto pelo item **HubKeep Intelligence** do menu; só no hotel dele):
+1. **Importar arquivo CSV:** exportar as avaliações da ferramenta de pesquisa e montar o arquivo com as colunas do HubKeep (`id_externo, data, fonte, nota, escala, texto, idioma, uh`; **Baixar o modelo** traz o modelo). Escolher o **Arquivo CSV** e tocar em **Importar no** hotel. O resultado diz quantas entraram, quantas já existiam (a mesma fonte e o mesmo código não entram duas vezes) e as **Linhas com erro**, com o motivo. As colunas que não são do HubKeep, como nome e contato do hóspede, ficam de fora.
+2. **Fila de classificação:** em **Mostrar**, "Sem classificação" (o padrão), "De manutenção", "Fora da manutenção" ou "Todas". Em cada reclamação, **Classificar** (ou **Alterar**): "É de manutenção?", a **Categoria do ativo**, a **UH** e, só depois de conferir, o **Ativo** e a **Ligação com o ativo** (possível ou confirmada). **Salvar a classificação**. Só a ligação confirmada pesa no impacto no hóspede do ativo.
+3. **Abrir chamado:** na reclamação de manutenção com UH ou ativo e ainda sem chamado. O chamado abre no local do ativo ou na UH, marcado como "afeta hóspede", com a descrição sugerida (sem o texto do hóspede, que o técnico não lê) e a prioridade e o prazo de sempre; depois, **Ver o chamado**. Se aparecer **Ligar de novo**, o chamado abriu, mas a ligação falhou: tocar para ligar.
+4. **Na página do insight sistêmico das reclamações:** a lista **Reclamações da evidência** e **Abrir um chamado para as reclamações sem chamado**, escolhendo o **Local do chamado (UH ou área comum)**.
+5. **Na página do ativo:** a seção **Impacto no hóspede**, com o score de 100 e os componentes, ou a porcentagem dos chamados quando o hotel não importou reclamação em 90 dias, e as reclamações ligadas ao ativo ("Pesa no score" ou "Não pesa").
+
+O texto da reclamação é apagado 365 dias depois da data da avaliação; a classificação fica (padrão provisório, pergunta 38 de `docs/referencia/perguntas-cliente.md`).
+
 **Não faz.** Ativar hotel, categorias, códigos de manutenção, modelos de checklist, políticas, membros e papéis, proprietários, bandeiras.
 
 ## 5. Gestor CSC
@@ -184,7 +194,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - **Paradas a encerrar:** acompanhar e **Encerrar parada**. **UH indisponível:** marcar e liberar pelo detalhe do chamado.
 - **Cadastros de hotel:** Locais (áreas comuns e edificação), Equipes e Ativos, nos hotéis do escopo.
 - **Fornecedores:** cadastra como o Gerente, desde que o papel alcance algum hotel do grupo. O Gestor CSC de uma bandeira ainda sem hotel recebe "Seu papel ainda não alcança nenhum hotel do grupo, então você não cadastra fornecedores..." e pede ao Admin do grupo.
-- **HubKeep Intelligence** (com o módulo, a partir da data de abertura das telas): decide os insights dos hotéis do escopo e o insight de rede quando cobre todos os hotéis dele.
+- **HubKeep Intelligence** (com o módulo, a partir da data de abertura das telas): decide os insights dos hotéis do escopo e o insight de rede quando cobre todos os hotéis dele. Importa e classifica as reclamações de hóspedes e abre chamado a partir delas, como o Gerente (seção 4), em qualquer hotel do escopo; quem vai fazer isso no piloto é a pergunta 39 de `docs/referencia/perguntas-cliente.md`.
 - **Acompanhar** pelo menu Chamados e Ordens de serviço, com filtro por hotel, situação, prioridade e período; **Linha do tempo** e **Ver histórico**.
 
 **Aceite.** O Gestor CSC aceita ou reabre só nos chamados que ele mesmo abriu ou no caso especial: quem abriu o chamado também executou a OS e não há outro Gerente ativo no hotel. Com Gerente no hotel, quem decide é o Gerente.
@@ -228,8 +238,9 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 - **Preventivas** e **Feriados do hotel:** como o Gerente (seção 4), em qualquer hotel do grupo.
 - **Auditoria:** como o Gerente (seção 4), no grupo inteiro; as linhas do grupo, sem hotel, aparecem como "Grupo".
 - **Painel de implantação:** "O que falta" por hotel (ver guia de implantação).
-- **HubKeep Intelligence → Abertura das telas** (só com o módulo contratado; também antes da abertura): "Abrem em", "De onde vem a data" (por padrão, "60 dias depois da primeira ativação do módulo") e "Quem vê as telas". Em **Mudar a abertura**: **Abrir a partir de** (em branco, conta os dias), **Dias depois da primeira ativação**, os papéis que veem (Admin do grupo, Gestor CSC, Gerente do hotel), **Salvar** e **Voltar ao padrão**. O dia começa à meia-noite de Brasília. Antes da abertura, nem o Admin vê a lista de insights; o cálculo já acontece todo dia.
-- Sem tela, só pela API ou script de operação: situações e prioridades padrão (no grupo do cliente, o provisionamento já instala, junto com as categorias, os códigos e a prioridade por categoria), credencial do agente conector (criar e revogar), gravar política de prioridade por categoria, política de SLA (`chamado.sla`) e de escalonamento (`chamado.escalonamento`), e a contratação do HubKeep Intelligence (pelo backoffice; hoje, só no dev, `pnpm ops:modulo`).
+- **HubKeep Intelligence → Abertura das telas** (só com o módulo contratado; também antes da abertura): "Abrem em", "De onde vem a data" (por padrão, "60 dias depois da primeira ativação do módulo") e "Quem vê as telas". Em **Mudar a abertura**: **Abrir a partir de** (em branco, conta os dias), **Dias depois da primeira ativação**, os papéis que veem (Admin do grupo, Gestor CSC, Gerente do hotel), **Salvar** e **Voltar ao padrão**. O dia começa à meia-noite de Brasília. Antes da abertura, nem o Admin vê a lista de insights; o cálculo já acontece todo dia. A tela de reclamações de hóspedes já abre, pelo link na própria página da abertura.
+- **HubKeep Intelligence → Reclamações de hóspedes:** como o Gerente (seção 4), em qualquer hotel do grupo.
+- Sem tela, só pela API ou script de operação: situações e prioridades padrão (no grupo do cliente, o provisionamento já instala, junto com as categorias, os códigos e a prioridade por categoria), credencial do agente conector (criar e revogar), gravar política de prioridade por categoria, política de SLA (`chamado.sla`) e de escalonamento (`chamado.escalonamento`), as políticas do HubKeep Intelligence (menos a abertura das telas), entre elas a retenção do texto da reclamação (`inteligencia.sinal_hospede`) e o Guest Impact Score (`inteligencia.impacto_hospede`), e a contratação do HubKeep Intelligence (pelo backoffice; hoje, só no dev, `pnpm ops:modulo`).
 
 **Ainda por vir.** A OS preventiva gerada pelo plano: **[vai mudar na 1b]** (PV3; o cadastro dos planos já existe). Importação de ativos por planilha, QR em lote, modelos por categoria, aprovação de ativos cadastrados pelo celular: **[ainda não existe]** (M1 a M4).
 
@@ -243,7 +254,7 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 
 | Tarefa | Onde |
 |---|---|
-| Abrir chamado | PWA (não existe tela de abertura no web) |
+| Abrir chamado | PWA (não existe tela de abertura no web); no web, só a partir de uma reclamação de hóspede, no HubKeep Intelligence |
 | Triagem, atribuição (com quem executa), checklist na OS, impacto no hóspede, aceite (com custo, códigos e assinatura), paradas | Web |
 | UH indisponível | PWA (marcar na abertura, liberar na conclusão) e web (marcar e liberar) |
 | Iniciar, pausar (com motivo), retomar, concluir, horas, material, foto da OS (antes ou depois), respostas do checklist, sugestão de falha, causa e solução | PWA |
@@ -255,3 +266,4 @@ O painel "Triagem e atribuição" aparece no detalhe para todos; para o Solicita
 | Fornecedores | Web (Admin do grupo, Gestor CSC e Gerente) |
 | HubKeep Intelligence | Web, só com o módulo contratado e depois da abertura das telas (no padrão, Admin do grupo e Gestor CSC) |
 | Abertura das telas do HubKeep Intelligence | Web (Admin do grupo), também antes da abertura |
+| Reclamações de hóspedes (importar, classificar, abrir chamado) | Web, no HubKeep Intelligence, desde o início do contrato do módulo (também antes da abertura das telas), para quem decide insight no hotel |

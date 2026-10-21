@@ -70,6 +70,9 @@ async function politicasDaChave(tx: Tx, chave: string): Promise<PoliticaDoJob[]>
   }));
 }
 
+/** As linhas ativas de inteligencia.impacto_hospede que quem pede lê (ADR-047, Guest Impact Score). */
+export const politicasDoImpacto = (tx: Tx) => politicasDaChave(tx, 'inteligencia.impacto_hospede');
+
 /** As linhas ativas de inteligencia.efetividade que quem pede lê. */
 export const politicasDaEfetividade = (tx: Tx) => politicasDaChave(tx, 'inteligencia.efetividade');
 

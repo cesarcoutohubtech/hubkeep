@@ -135,7 +135,14 @@ export function criarCasosDeUsoDeSincronizacao(deps: {
         case 'ativo.cadastrar': {
           const c = await deps.ativos.prepararCadastro(ctx, operacao.dados);
           const r = await deps.operacoes.aplicarUmaVez(ctx, operacao, async (s) => {
-            const { id, versao } = await s.cadastrarAtivo(c.hotelId, c.localId, c.dados);
+            // O PWA é a origem que a aprovação do cadastro olha (M4).
+            const { id, versao } = await s.cadastrarAtivo(
+              c.hotelId,
+              c.localId,
+              c.dados,
+              c.situacaoNoPwa ?? 'aprovado',
+              c.codigoQr,
+            );
             return { id, versao };
           });
           return { chave: operacao.chave, ...r };

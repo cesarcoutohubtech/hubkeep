@@ -5,17 +5,30 @@
 //   - o Técnico lê os modelos (o PWA baixa para cadastrar offline) e o
 //     Solicitante não;
 //   - o Gerente não grava (domínio) e, sem a regra, a RLS também não;
-//   - a gravação fica na auditoria e no outbox.
+//   - a gravação fica na auditoria e no outbox;
+//   - as sugestões de plano (M1c; 0051): o Gerente vê o ativo com modelo e
+//     sem plano, cria o plano pausado com um clique e o ativo sai da lista; o
+//     descarte grava quem, quando e o motivo; o Técnico não mexe.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
-import { criarCasosDeUsoDeModelosDeAtivo, relogioDoSistema } from '@hubkeep/aplicacao';
+import {
+  criarCasosDeUsoDeAtivos,
+  criarCasosDeUsoDeModelosDeAtivo,
+  criarCasosDeUsoDePlanosPreventivos,
+  criarCasosDeUsoDeSugestoesDePlano,
+  relogioDoSistema,
+} from '@hubkeep/aplicacao';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   type AcessoBanco,
   criarAcessoBanco,
+  criarPortaAtivos,
   criarPortaModelosDeAtivo,
+  criarPortaPlanosPreventivos,
+  criarPortaSugestoesDePlano,
+  criarPortaTriagem,
   criarPortasDeAplicacao,
 } from '../src/index';
 
@@ -29,6 +42,7 @@ if (!temBanco && process.env.HK_EXIGIR_BANCO === '1') {
 const TENANT = randomUUID();
 const H1 = randomUUID();
 const CATEGORIA = randomUUID();
+const UH = randomUUID();
 const U = {
   admin: randomUUID(),
   gerente: randomUUID(),
@@ -51,6 +65,8 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
   let banco: AcessoBanco;
   let modelos: ReturnType<typeof criarCasosDeUsoDeModelosDeAtivo>;
   let semRegra: ReturnType<typeof criarCasosDeUsoDeModelosDeAtivo>;
+  let ativos: ReturnType<typeof criarCasosDeUsoDeAtivos>;
+  let sugestoes: ReturnType<typeof criarCasosDeUsoDeSugestoesDePlano>;
 
   beforeAll(async () => {
     dono = new pg.Client({ connectionString: URL_DONO });
@@ -77,6 +93,11 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
           },
         ]),
       ],
+    );
+    await dono.query(
+      `insert into app.local (id, tenant_id, hotel_id, tipo, nome, busca, status)
+       values ($1, $2, $3, 'uh', 'UH 101', 'uh 101', 'ativo')`,
+      [UH, TENANT, H1],
     );
     for (const [nome, id] of Object.entries(U)) {
       await dono.query(`insert into auth.users (id, email) values ($1, $2)`, [
@@ -106,6 +127,24 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
       relogio: relogioDoSistema,
     };
     modelos = criarCasosDeUsoDeModelosDeAtivo(deps);
+    ativos = criarCasosDeUsoDeAtivos({
+      ativos: criarPortaAtivos(banco),
+      atribuicoes: deps.atribuicoes,
+      relogio: relogioDoSistema,
+    });
+    const planos = criarPortaPlanosPreventivos(banco);
+    sugestoes = criarCasosDeUsoDeSugestoesDePlano({
+      sugestoes: criarPortaSugestoesDePlano(banco),
+      planos,
+      criarPlano: criarCasosDeUsoDePlanosPreventivos({
+        planos,
+        triagem: criarPortaTriagem(banco),
+        atribuicoes: deps.atribuicoes,
+        relogio: relogioDoSistema,
+      }).criar,
+      atribuicoes: deps.atribuicoes,
+      relogio: relogioDoSistema,
+    });
     // Sem a regra do domínio: só a RLS decide.
     semRegra = criarCasosDeUsoDeModelosDeAtivo({
       ...deps,
@@ -119,8 +158,11 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
     for (const t of [
       'app.evento_dominio',
       'app.auditoria',
+      'app.plano_preventivo',
+      'app.ativo',
       'app.modelo_ativo',
       'app.categoria_ativo',
+      'app.local',
       'app.atribuicao_escopo',
       'app.hotel',
       'app.membro',
@@ -174,6 +216,85 @@ describe.skipIf(!temBanco)('M1 — modelos de ativo', { timeout: 60_000 }, () =>
     expect(
       await codigoDe(semRegra.alterar(ctx(U.gerente), modeloId, { ...PEDIDO, versao: 4 })),
     ).toBe('modelo_ativo_nao_encontrado');
+  });
+
+  it('o Técnico cadastra o ativo com o modelo, e o ativo guarda de que modelo nasceu', async () => {
+    const { id } = await ativos.cadastrar(ctx(U.tecnico), {
+      localId: UH,
+      categoriaId: CATEGORIA,
+      nome: 'Split UH 101',
+      fabricante: 'Fabricante X',
+      modelo: 'X-12',
+      numeroSerie: null,
+      campos: { btus: 12000 },
+      modeloId,
+    });
+    const [lido] = (await ativos.listarAtivos(ctx(U.tecnico), H1)).filter((a) => a.id === id);
+    expect(lido?.modeloId).toBe(modeloId);
+  });
+
+  const cadastrarComModelo = async (nome: string) =>
+    (
+      await ativos.cadastrar(ctx(U.tecnico), {
+        localId: UH,
+        categoriaId: CATEGORIA,
+        nome,
+        fabricante: null,
+        modelo: null,
+        numeroSerie: null,
+        campos: { btus: 12000 },
+        modeloId,
+      })
+    ).id;
+
+  it('o Gerente vê a sugestão, cria o plano pausado e o ativo sai da lista', async () => {
+    const id = await cadastrarComModelo('Split UH 101 B');
+    const antes = await sugestoes.listar(ctx(U.gerente), H1);
+    expect(antes.sugestoes.find((x) => x.ativoId === id)).toMatchObject({
+      modeloId,
+      periodicidade: { intervalo: 3, unidade: 'mes' },
+    });
+    const { id: planoId } = await sugestoes.criarPlano(ctx(U.gerente), id);
+    const plano = await dono.query<{
+      situacao: string;
+      tecnico_id: string | null;
+      criado_por: string;
+    }>(`select situacao, tecnico_id, criado_por from app.plano_preventivo where id = $1`, [
+      planoId,
+    ]);
+    expect(plano.rows).toEqual([{ situacao: 'pausado', tecnico_id: null, criado_por: U.gerente }]);
+    const depois = await sugestoes.listar(ctx(U.gerente), H1);
+    expect(depois.sugestoes.some((x) => x.ativoId === id)).toBe(false);
+    expect(await codigoDe(sugestoes.criarPlano(ctx(U.gerente), id))).toBe(
+      'sugestao_de_plano_indisponivel',
+    );
+  });
+
+  it('o descarte grava quem, quando e o motivo; o Técnico não descarta', async () => {
+    const id = await cadastrarComModelo('Split UH 101 C');
+    const { sugestoes: lista } = await sugestoes.listar(ctx(U.gerente), H1);
+    const s = lista.find((x) => x.ativoId === id);
+    expect(s).toBeDefined();
+    expect(await codigoDe(sugestoes.descartar(ctx(U.tecnico), id, s?.ativoVersao ?? 0, 'x'))).toBe(
+      'planos_fora_do_escopo',
+    );
+    await sugestoes.descartar(ctx(U.gerente), id, s?.ativoVersao ?? 0, 'Ativo reserva');
+    const linha = await dono.query<{ por: string; motivo: string; em: Date | null }>(
+      `select sugestao_descartada_por as por, sugestao_descarte_motivo as motivo,
+              sugestao_descartada_em as em
+         from app.ativo where id = $1`,
+      [id],
+    );
+    expect(linha.rows[0]).toMatchObject({ por: U.gerente, motivo: 'Ativo reserva' });
+    expect(linha.rows[0]?.em).not.toBeNull();
+    const depois = await sugestoes.listar(ctx(U.gerente), H1);
+    expect(depois.sugestoes.some((x) => x.ativoId === id)).toBe(false);
+    const auditoria = await dono.query(
+      `select 1 from app.auditoria
+        where tenant_id = $1 and entidade = 'ativo' and registro_id = $2 and acao = 'descartar_sugestao'`,
+      [TENANT, id],
+    );
+    expect(auditoria.rowCount).toBe(1);
   });
 
   it('a gravação fica na auditoria e no outbox', async () => {

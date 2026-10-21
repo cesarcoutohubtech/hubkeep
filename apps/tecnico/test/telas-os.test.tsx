@@ -114,6 +114,24 @@ describe('a OS preventiva no PWA (PV3c)', () => {
     },
   );
 
+  it('com o ativo parado, a fila e a tela mostram desde quando, sem botão de parada', () => {
+    const parada = preventiva('em_execucao');
+    const comParada: OsNoAparelho = {
+      ...parada,
+      preventiva: parada.preventiva && {
+        ...parada.preventiva,
+        paradoDesde: '2026-10-13T09:30:00.000Z',
+      },
+    };
+    const m = mensagensDe('pt-BR');
+    const naFila = renderizar('pt-BR', fila([comParada]));
+    expect(naFila).toContain('data-parado-desde="2026-10-13T09:30:00.000Z"');
+    const naTela = renderizar('pt-BR', tela(comParada));
+    expect(naTela).toContain('data-parado-desde="2026-10-13T09:30:00.000Z"');
+    expect(naTela).not.toContain(`>${m['tecnico.os.parada.registrar']}</button>`);
+    expect(naTela).not.toContain(m['tecnico.os.parada.encerrar']);
+  });
+
   it('pt-BR: a data prevista na tela da OS', () => {
     expect(renderizar('pt-BR', tela(preventiva('atribuida')))).toContain(
       'Preventiva: PMOC mensal, no ativo Split 12.000 BTU, prevista para 14/10/2026',

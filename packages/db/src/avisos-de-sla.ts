@@ -4,7 +4,11 @@
 // chamados em curso com algum prazo vêm com os avisos gravados; o domínio
 // decide quais ainda estão em aberto (avisosEmAberto). A pausa em curso vem
 // como no monitor (repositorios/monitor-sla.ts): a OS pausada e o motivo da
-// última pausa, para a aplicação saber se o relógio parou.
+// última pausa, para a aplicação saber se o relógio parou. Os chamados com
+// prazo a vencer, para a contagem regressiva da tela inicial, vêm de todos os
+// hotéis que o usuário lê, com o nome e a bandeira do hotel. Os chamados em
+// curso de todos os hotéis, com ou sem prazo, são da situação por hotel da
+// tela inicial.
 import type { ChamadoComAvisos, PortaAvisosDeSla } from '@hubkeep/aplicacao';
 import { type EstadoDoChamado, ehMotivoDePausa, ehTipoDeAlertaDeSla } from '@hubkeep/dominio';
 import { sql } from 'kysely';
@@ -116,6 +120,29 @@ export function criarPortaAvisosDeSla(banco: AcessoBanco): PortaAvisosDeSla {
             )
             .execute()
         ).map((c) => paraChamado(c as Linha)),
+      ),
+    chamadosComPrazoAVencer: (ctx, agora) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await chamados(tx)
+            .innerJoin('app.hotel as h', 'h.id', 'c.hotel_id')
+            .select(['h.nome as hotel_nome', 'h.bandeira_id'])
+            .where('c.estado', 'in', ESTADOS_EM_CURSO)
+            .where((eb) =>
+              eb.or([eb('c.prazo_atendimento', '>=', agora), eb('c.prazo_solucao', '>=', agora)]),
+            )
+            .execute()
+        ).map((c) => ({
+          ...paraChamado(c as Linha),
+          hotelNome: c.hotel_nome,
+          bandeiraId: c.bandeira_id,
+        })),
+      ),
+    chamadosEmCurso: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (await chamados(tx).where('c.estado', 'in', ESTADOS_EM_CURSO).execute()).map((c) =>
+          paraChamado(c as Linha),
+        ),
       ),
     chamado: (ctx, chamadoId) =>
       banco.withContext(ctx, async (tx) => {

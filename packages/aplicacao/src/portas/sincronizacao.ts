@@ -17,10 +17,14 @@ export type RespostaDeOperacao = Record<string, string | number | boolean | null
 /** O que uma operação offline pode escrever, dentro da unit of work dela. */
 export interface SessaoDeOperacao {
   gravarPreferencias(p: PreferenciasGravadas): Promise<void>;
+  /** `situacao`: com que situação o cadastro nasce (M4); padrão aprovado. */
   cadastrarAtivo(
     hotelId: string,
     localId: string,
     dados: DadosDeAtivo,
+    situacao?: 'pendente' | 'aprovado',
+    /** O código da etiqueta reservada (M3), já conferido. */
+    codigoQr?: string,
   ): Promise<{ id: string; versao: number }>;
   /** Versão diferente da esperada: Conflito conflito_de_versao (ADR-029). */
   alterarAtivo(

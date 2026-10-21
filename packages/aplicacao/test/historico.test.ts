@@ -1,12 +1,36 @@
 // Histórico do registro (D1): fora do escopo é 404 e a auditoria nem é lida;
 // as mudanças saem do domínio; os nomes são pedidos só dos ids que aparecem.
-import { ErroDeDominio } from '@hubkeep/dominio';
+// No histórico da OS, o custo informado some para o proprietário (1c).
+import { type Atribuicao, ErroDeDominio } from '@hubkeep/dominio';
 import { describe, expect, it, vi } from 'vitest';
 import { criarCasosDeUsoDeHistorico } from '../src/casos-de-uso/historico';
 import type { PortaHistorico } from '../src/portas/historico';
+import type { OsGravada } from '../src/portas/triagem';
 
 const ctx = { usuarioId: 'u1', tenantId: 't1' };
 const EM = new Date('2026-09-30T12:00:00Z');
+
+const atr = (papel: Atribuicao['papel']): Atribuicao => ({
+  id: `a-${papel}`,
+  usuarioId: 'u1',
+  papel,
+  escopo: { tipo: 'hotel', hotelId: 'h1' },
+  validoAte: null,
+  revogadoEm: null,
+});
+
+function criar(p: PortaHistorico, minhas: Atribuicao[] = [atr('gerente_hotel')]) {
+  const os = vi.fn(async (_c: unknown, id: string) =>
+    id === 'os1' ? ({ id, hotelId: 'h1', bandeiraId: null } as OsGravada) : null,
+  );
+  const casos = criarCasosDeUsoDeHistorico({
+    historico: p,
+    triagem: { os },
+    atribuicoes: { doUsuario: async () => minhas },
+    relogio: { agora: () => EM },
+  });
+  return { casos, os };
+}
 
 function porta(visivel: boolean): PortaHistorico {
   return {
@@ -41,8 +65,8 @@ function porta(visivel: boolean): PortaHistorico {
 describe('histórico do registro (D1)', () => {
   it('fora do escopo: 404 com a entidade, sem ler a auditoria', async () => {
     const p = porta(false);
-    const erro = await criarCasosDeUsoDeHistorico({ historico: p })
-      .historico(ctx, 'chamado', 'c1')
+    const erro = await criar(p)
+      .casos.historico(ctx, 'chamado', 'c1')
       .catch((e: unknown) => e);
     expect(erro).toBeInstanceOf(ErroDeDominio);
     expect(erro).toMatchObject({
@@ -54,7 +78,7 @@ describe('histórico do registro (D1)', () => {
 
   it('cada linha com as mudanças do domínio e os nomes dos ids que aparecem', async () => {
     const p = porta(true);
-    const h = await criarCasosDeUsoDeHistorico({ historico: p }).historico(ctx, 'chamado', 'c1');
+    const h = await criar(p).casos.historico(ctx, 'chamado', 'c1');
     expect(h.eventos.map((e) => [e.acao, e.mudancas])).toEqual([
       [
         'triar',
@@ -91,8 +115,42 @@ describe('histórico do registro (D1)', () => {
         depois: { nome: 'UH 101' },
       },
     ]);
-    const h = await criarCasosDeUsoDeHistorico({ historico: p }).historico(ctx, 'local', 'l1');
+    const h = await criar(p).casos.historico(ctx, 'local', 'l1');
     expect(h.referencias).toEqual({});
     expect(p.referencias).not.toHaveBeenCalled();
+  });
+
+  describe('o custo informado no histórico da OS', () => {
+    const aceite = [
+      {
+        id: 'a4',
+        em: EM,
+        acao: 'aceitar',
+        usuarioId: 'g1',
+        usuarioNome: 'Gerente',
+        antes: { estado: 'concluida', custo_informado: null, versao: 4 },
+        depois: { custoInformado: 350, estado: 'aceita', versao: 5 },
+      },
+    ];
+    const campos = async (minhas: Atribuicao[], entidade: 'os' | 'chamado' = 'os') => {
+      const p = porta(true);
+      vi.mocked(p.linhas).mockResolvedValueOnce(aceite);
+      const { casos, os } = criar(p, minhas);
+      const h = await casos.historico(ctx, entidade, 'os1');
+      return { campos: h.eventos.flatMap((e) => e.mudancas.map((m) => m.campo)), os };
+    };
+
+    it('o Gerente do hotel vê o custo', async () => {
+      expect((await campos([atr('gerente_hotel')])).campos).toEqual(['custoInformado', 'estado']);
+    });
+
+    it('quem só enxerga o hotel como proprietário não vê o custo', async () => {
+      expect((await campos([atr('proprietario')])).campos).toEqual(['estado']);
+    });
+
+    it('fora da OS, a OS nem é lida', async () => {
+      const { os } = await campos([atr('proprietario')], 'chamado');
+      expect(os).not.toHaveBeenCalled();
+    });
   });
 });

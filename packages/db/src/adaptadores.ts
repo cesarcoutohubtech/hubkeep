@@ -17,6 +17,11 @@ import type {
   PortaCategorias,
   PortaChecklists,
   PortaModelosDeAtivo,
+  PortaSugestoesDePlano,
+  PortaCadastrosDeAtivos,
+  PortaImportacaoDeAtivos,
+  PortaPacoteDaBandeira,
+  PortaQrReservados,
   PortaChamados,
   PlanoGravado,
   PortaPlanosPreventivos,
@@ -59,13 +64,16 @@ import {
   type EstadoDoChamado,
   type ExecutadoPor,
   type TipoDeCodigoDeManutencao,
+  ehDecisaoDoCadastro,
   ehModeloContratual,
+  situacaoDoCadastro,
   ehResponsavelDoArrendamento,
   ehMomentoDaFoto,
   ehMotivoDePausa,
 } from '@hubkeep/dominio';
 import { type NotNull, sql } from 'kysely';
 import type { AcessoBanco } from './acesso';
+import { cadastroPendente } from './cadastro-aprovado';
 import type { Tx } from './conexao';
 import {
   dadosDoCalendarioNaTransacao,
@@ -96,8 +104,14 @@ import {
 } from './repositorios/bandeiras';
 import { registrarAnexo, removerAnexo } from './repositorios/anexos';
 import { alterarFornecedor, criarFornecedor } from './repositorios/fornecedores';
-import { alterarAtivo, criarAtivo, moverAtivo } from './repositorios/ativos';
+import {
+  alterarAtivo,
+  criarAtivo,
+  descartarSugestaoDePlano,
+  moverAtivo,
+} from './repositorios/ativos';
 import { alterarCategoria, criarCategoria } from './repositorios/categorias';
+import { decidirCadastroDeAtivo } from './repositorios/cadastros-de-ativos';
 import {
   alterarModeloDeChecklist,
   aplicarChecklist,
@@ -105,8 +119,10 @@ import {
   responderChecklist,
 } from './repositorios/checklists';
 import { criarChamado } from './repositorios/chamados';
+import { reservarCodigos } from './repositorios/qr-reservados';
 import { alterarModeloDeAtivo, criarModeloDeAtivo } from './repositorios/modelos-de-ativo';
 import { alterarPlanoPreventivo, criarPlanoPreventivo } from './repositorios/planos-preventivos';
+import { alterarPlanoPadrao, criarPlanoPadrao } from './repositorios/pacote-da-bandeira';
 import { alterarFeriadoDoHotel, criarFeriadoDoHotel } from './repositorios/feriados-do-hotel';
 import {
   ajustarArrendamento,
@@ -374,7 +390,7 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
       banco.withContext(ctx, async (tx) => {
         const h = await tx
           .selectFrom('app.hotel')
-          .select(['id', 'nome', 'status', 'modelo_contratual'])
+          .select(['id', 'nome', 'status', 'modelo_contratual', 'criado_em'])
           .where('id', '=', hotelId)
           .executeTakeFirst();
         return h
@@ -382,6 +398,7 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
               id: h.id,
               nome: h.nome,
               status: h.status,
+              criadoEm: new Date(h.criado_em),
               modeloContratual: ehModeloContratual(h.modelo_contratual)
                 ? h.modelo_contratual
                 : null,
@@ -402,15 +419,43 @@ export function criarPortaImplantacao(banco: AcessoBanco): PortaImplantacao {
       banco.withContext(ctx, async (tx) =>
         (
           await tx
-            .selectFrom('app.ativo')
-            .select(['local_id', 'categoria_id', 'desativado_em'])
-            .where('hotel_id', '=', hotelId)
+            .selectFrom('app.ativo as a')
+            .select([
+              'a.id',
+              'a.local_id',
+              'a.categoria_id',
+              'a.modelo_id',
+              'a.desativado_em',
+              'a.sugestao_descartada_em',
+            ])
+            .select(cadastroPendente)
+            .where('a.hotel_id', '=', hotelId)
             .execute()
         ).map((a) => ({
+          id: a.id,
           localId: a.local_id,
           categoriaId: a.categoria_id,
+          modeloId: a.modelo_id,
           ativo: a.desativado_em === null,
+          sugestaoDescartada: a.sugestao_descartada_em !== null,
+          cadastroPendente: a.cadastro_pendente,
         })),
+      ),
+    planos: (ctx, hotelId) => planosQueCobrem(banco, ctx, hotelId),
+    // A auditoria do hotel é lida por quem escreve no hotel e pelo Admin (RLS),
+    // o que cobre quem vê o painel.
+    mudancasDeSituacao: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.auditoria')
+            .select(['em', sql<string | null>`depois->>'status'`.as('status')])
+            .where('entidade', '=', 'hotel')
+            .where('registro_id', '=', hotelId)
+            .where('acao', 'in', ['importar_do_sistema_hoteleiro', 'ativar'])
+            .orderBy('em')
+            .execute()
+        ).map((m) => ({ em: new Date(m.em), status: m.status })),
       ),
   };
 }
@@ -837,7 +882,7 @@ export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
         (
           await tx
             .selectFrom('app.checklist_modelo')
-            .select(['id', 'categoria_id', 'nomes', 'itens', 'versao', 'ativa'])
+            .select(['id', 'categoria_id', 'nomes', 'itens', 'versao', 'ativa', 'bandeira_id'])
             .orderBy('criado_em')
             .orderBy('id')
             .execute()
@@ -848,7 +893,14 @@ export function criarPortaChecklists(banco: AcessoBanco): PortaChecklists {
           itens: m.itens,
           versao: m.versao,
           ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
         })),
+      ),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) =>
+        Boolean(
+          await tx.selectFrom('app.bandeira').select('id').where('id', '=', id).executeTakeFirst(),
+        ),
       ),
     criarModelo: (ctx, m) => banco.executar(ctx, (uow) => criarModeloDeChecklist(uow, m)),
     alterarModelo: (ctx, id, mudanca) =>
@@ -992,10 +1044,10 @@ export function criarPortaPlanosPreventivos(banco: AcessoBanco): PortaPlanosPrev
       banco.withContext(ctx, async (tx) => {
         const m = await tx
           .selectFrom('app.checklist_modelo')
-          .select('ativa')
+          .select(['ativa', 'bandeira_id'])
           .where('id', '=', id)
           .executeTakeFirst();
-        return m ? { ativa: m.ativa } : null;
+        return m ? { ativa: m.ativa, bandeiraId: m.bandeira_id } : null;
       }),
     criar: (ctx, p) => banco.executar(ctx, (uow) => criarPlanoPreventivo(uow, p)),
     alterar: (ctx, id, versao, mudanca) =>
@@ -1316,10 +1368,24 @@ function paraOs<C extends string | null, A extends string | null>(o: {
  * Início da parada aberta do ativo (C5), como subconsulta da leitura; null se
  * não está parado. A RLS da parada vale para quem lê.
  */
-const paradoDesde = (hotel: string, ativo: string) =>
+/** A decisão sobre o cadastro do ativo (M4) e o motivo da recusa; null sem decisão. */
+const decisaoDoCadastro = (hotel: string, ativo: string) => [
+  sql<string | null>`(select d.decisao from app.ativo_decisao_cadastro d
+    where d.hotel_id = ${sql.ref(hotel)} and d.ativo_id = ${sql.ref(ativo)})`.as(
+    'decisao_cadastro',
+  ),
+  sql<string | null>`(select d.motivo from app.ativo_decisao_cadastro d
+    where d.hotel_id = ${sql.ref(hotel)} and d.ativo_id = ${sql.ref(ativo)})`.as('motivo_recusa'),
+];
+
+const paradoDesde = <A extends string = 'parado_desde'>(
+  hotel: string,
+  ativo: string,
+  nome: A = 'parado_desde' as A,
+) =>
   sql<Date | null>`(select p.inicio from app.parada_ativo p
     where p.hotel_id = ${sql.ref(hotel)} and p.ativo_id = ${sql.ref(ativo)} and p.fim is null
-    limit 1)`.as('parado_desde');
+    limit 1)`.as(nome);
 
 /** A parada aberta do ativo é a deste chamado (a OS encerra; a conclusão pergunta). */
 const paradaDoChamado = (hotel: string, chamado: string) =>
@@ -1456,6 +1522,17 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
         // Na preventiva não há quem abriu: sem equipes, sem consulta.
         const equipes =
           g.abertoPor === null ? [] : await equipesDoUsuario(tx, g.abertoPor).execute();
+        // Na preventiva da equipe, os membros ativos dela executam a OS.
+        const membros =
+          g.equipeResponsavel === null
+            ? null
+            : await tx
+                .selectFrom('app.equipe_membro')
+                .select('usuario_id')
+                .where('hotel_id', '=', g.hotel.id)
+                .where('equipe_id', '=', g.equipeResponsavel)
+                .where('ativo', '=', true)
+                .execute();
         const gerentes = await tx
           .selectFrom('app.atribuicao_escopo as a')
           .innerJoin('app.membro as m', (j) =>
@@ -1486,6 +1563,7 @@ export function criarPortaTriagem(banco: AcessoBanco): PortaTriagem {
         return {
           equipesDeQuemAbriu: equipes.map((e) => e.equipe_id),
           gerentes: gerentes.map(paraAtribuicao),
+          ...(membros && { membrosDaEquipeResponsavel: membros.map((m) => m.usuario_id) }),
         };
       }),
     alterarChamado: (ctx, chamadoId, versao, mudanca) =>
@@ -1614,6 +1692,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
             'lo.edificacao as os_local_edificacao',
           ])
           .select(paradoDesde('c.hotel_id', 'c.ativo_id'))
+          .select(paradoDesde('o.hotel_id', 'o.ativo_id', 'preventiva_parado_desde'))
           .select(paradaDoChamado('c.hotel_id', 'c.id'))
           .select(uhIndisponivelDesde('c.hotel_id', 'c.id'))
           .select((eb) =>
@@ -1691,6 +1770,7 @@ export function criarPortaExecucao(banco: AcessoBanco): PortaExecucao {
                   localId: o.os_local_id,
                   localNome: o.os_local_nome ?? '',
                   localEdificacao: o.os_local_edificacao,
+                  paradoDesde: o.preventiva_parado_desde,
                 },
         }));
       }),
@@ -1945,6 +2025,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     'hotel_id',
     'local_id',
     'categoria_id',
+    'modelo_id',
     'nome',
     'fabricante',
     'modelo',
@@ -1954,6 +2035,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     'versao',
     'desativado_em',
     'codigo_qr',
+    'situacao_cadastro',
   ] as const;
   // As datas saem como aaaa-mm-dd, sem passar por Date e fuso.
   const datas = [
@@ -1965,6 +2047,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     hotel_id: string;
     local_id: string;
     categoria_id: string | null;
+    modelo_id: string | null;
     nome: string;
     fabricante: string | null;
     modelo: string | null;
@@ -1977,11 +2060,15 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     desativado_em: Date | null;
     codigo_qr: string;
     parado_desde: Date | null;
+    situacao_cadastro: string;
+    decisao_cadastro: string | null;
+    motivo_recusa: string | null;
   }): AtivoGravado => ({
     id: a.id,
     hotelId: a.hotel_id,
     localId: a.local_id,
     categoriaId: a.categoria_id,
+    modeloId: a.modelo_id,
     nome: a.nome,
     fabricante: a.fabricante,
     modelo: a.modelo,
@@ -1994,6 +2081,11 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
     desativadoEm: a.desativado_em,
     codigoQr: a.codigo_qr,
     paradoDesde: a.parado_desde,
+    situacaoCadastro: situacaoDoCadastro(
+      a.situacao_cadastro === 'pendente' ? 'pendente' : 'aprovado',
+      ehDecisaoDoCadastro(a.decisao_cadastro) ? a.decisao_cadastro : null,
+    ),
+    motivoDaRecusa: a.decisao_cadastro === 'recusado' ? a.motivo_recusa : null,
   });
   return {
     hotel: (ctx, hotelId) =>
@@ -2019,6 +2111,17 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
       banco.withContext(ctx, async (tx) =>
         tx.selectFrom('app.categoria_ativo').select(['id', 'ativa', 'campos']).execute(),
       ),
+    modelo: (ctx, modeloId) =>
+      banco.withContext(ctx, async (tx) => {
+        const m = await tx
+          .selectFrom('app.modelo_ativo')
+          .select(['id', 'categoria_id', 'ativa', 'bandeira_id'])
+          .where('id', '=', modeloId)
+          .executeTakeFirst();
+        return m
+          ? { id: m.id, categoriaId: m.categoria_id, ativa: m.ativa, bandeiraId: m.bandeira_id }
+          : null;
+      }),
     ativos: (ctx, hotelId, termo) =>
       banco.withContext(ctx, async (tx) =>
         (
@@ -2027,6 +2130,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
             .select(colunas)
             .select(datas)
             .select(paradoDesde('a.hotel_id', 'a.id'))
+            .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
             .where('hotel_id', '=', hotelId)
             .$if(termo !== undefined, (q) => q.where('busca', 'ilike', trecho(termo ?? '')))
             .orderBy('nome')
@@ -2041,6 +2145,7 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
           .select(colunas)
           .select(datas)
           .select(paradoDesde('a.hotel_id', 'a.id'))
+          .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
           .where('id', '=', ativoId)
           .executeTakeFirst();
         return a ? paraAtivo(a) : null;
@@ -2053,12 +2158,16 @@ export function criarPortaAtivos(banco: AcessoBanco): PortaAtivos {
           .select(colunas)
           .select(datas)
           .select(paradoDesde('a.hotel_id', 'a.id'))
+          .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
           .where('codigo_qr', '=', codigoQr)
           .executeTakeFirst();
         return a ? paraAtivo(a) : null;
       }),
-    criar: (ctx, hotelId, localId, dados) =>
-      banco.executar(ctx, (uow) => criarAtivo(uow, hotelId, localId, dados)),
+    reservaDoCodigo: (ctx, codigo) => banco.withContext(ctx, (tx) => reservaDoCodigo(tx, codigo)),
+    criar: (ctx, hotelId, localId, dados, codigoQr) =>
+      banco.executar(ctx, (uow) =>
+        criarAtivo(uow, hotelId, localId, dados, 'aprovado', null, codigoQr ?? null),
+      ),
     alterar: (ctx, ativoId, versaoEsperada, mudanca) =>
       banco.executar(ctx, (uow) => alterarAtivo(uow, ativoId, versaoEsperada, mudanca)),
     mover: (ctx, ativoId, versaoEsperada, localDestinoId) =>
@@ -2165,7 +2274,8 @@ export function criarPortaOperacoesOffline(banco: AcessoBanco): PortaOperacoesOf
         return await banco.executar(ctx, async (uow) => {
           const resposta = await efeito({
             gravarPreferencias: (p) => gravarPreferencias(uow, p),
-            cadastrarAtivo: (hotelId, localId, dados) => criarAtivo(uow, hotelId, localId, dados),
+            cadastrarAtivo: (hotelId, localId, dados, situacao, codigoQr) =>
+              criarAtivo(uow, hotelId, localId, dados, situacao, null, codigoQr ?? null),
             alterarAtivo: (ativoId, versaoEsperada, mudanca) =>
               alterarAtivo(uow, ativoId, versaoEsperada, mudanca),
             abrirChamado: (hotelId, dados) => criarChamado(uow, hotelId, dados),
@@ -2331,6 +2441,187 @@ export function criarPortaAnexos(banco: AcessoBanco): PortaAnexos {
   };
 }
 
+/** Aprovação do cadastro dos ativos (fase 1b, M4; migração 0058), pelo hk_app. */
+export function criarPortaCadastrosDeAtivos(banco: AcessoBanco): PortaCadastrosDeAtivos {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    pendentes: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.ativo as a')
+            .innerJoin('app.local as l', (j) =>
+              j.onRef('l.hotel_id', '=', 'a.hotel_id').onRef('l.id', '=', 'a.local_id'),
+            )
+            .select([
+              'a.id',
+              'a.hotel_id',
+              'a.local_id',
+              'l.nome as local_nome',
+              'a.categoria_id',
+              'a.nome',
+              'a.fabricante',
+              'a.modelo',
+              'a.numero_serie',
+              'a.versao',
+              'a.criado_em',
+            ])
+            .where('a.hotel_id', '=', hotelId)
+            .where('a.situacao_cadastro', '=', 'pendente')
+            .where('a.desativado_em', 'is', null)
+            .where(({ not, exists, selectFrom }) =>
+              not(
+                exists(
+                  selectFrom('app.ativo_decisao_cadastro as d')
+                    .select('d.id')
+                    .whereRef('d.hotel_id', '=', 'a.hotel_id')
+                    .whereRef('d.ativo_id', '=', 'a.id'),
+                ),
+              ),
+            )
+            .orderBy('a.criado_em')
+            .orderBy('a.id')
+            .execute()
+        ).map((a) => ({
+          id: a.id,
+          hotelId: a.hotel_id,
+          localId: a.local_id,
+          localNome: a.local_nome,
+          categoriaId: a.categoria_id,
+          nome: a.nome,
+          fabricante: a.fabricante,
+          modelo: a.modelo,
+          numeroSerie: a.numero_serie,
+          versao: a.versao,
+          criadoEm: a.criado_em,
+        })),
+      ),
+    ativo: (ctx, ativoId) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await tx
+          .selectFrom('app.ativo as a')
+          .select(['a.id', 'a.hotel_id', 'a.versao', 'a.situacao_cadastro', 'a.desativado_em'])
+          .select(decisaoDoCadastro('a.hotel_id', 'a.id'))
+          .where('a.id', '=', ativoId)
+          .executeTakeFirst();
+        return a
+          ? {
+              id: a.id,
+              hotelId: a.hotel_id,
+              versao: a.versao,
+              situacao: situacaoDoCadastro(
+                a.situacao_cadastro === 'pendente' ? 'pendente' : 'aprovado',
+                ehDecisaoDoCadastro(a.decisao_cadastro) ? a.decisao_cadastro : null,
+              ),
+              ativo: a.desativado_em === null,
+            }
+          : null;
+      }),
+    decidir: (ctx, d) => banco.executar(ctx, (uow) => decidirCadastroDeAtivo(uow, d)),
+  };
+}
+
+/** Os planos do hotel que a regra do plano que cobre o ativo lê (M1), pela RLS. */
+const planosQueCobrem = (banco: AcessoBanco, ctx: Contexto, hotelId: string) =>
+  banco.withContext(ctx, async (tx) =>
+    (
+      await tx
+        .selectFrom('app.plano_preventivo')
+        .select(['ativo_id', 'categoria_id', 'situacao'])
+        .where('hotel_id', '=', hotelId)
+        .execute()
+    ).map((p) => ({
+      ativoId: p.ativo_id,
+      categoriaId: p.categoria_id,
+      situacao: p.situacao as PlanoGravado['situacao'],
+    })),
+  );
+
+/** Sugestões de plano (fase 1b, M1, caminho C; migração 0051), pelo hk_app. */
+export function criarPortaSugestoesDePlano(banco: AcessoBanco): PortaSugestoesDePlano {
+  const selecionar = (tx: Tx) =>
+    tx
+      .selectFrom('app.ativo as a')
+      .select([
+        'a.id',
+        'a.hotel_id',
+        'a.nome',
+        'a.categoria_id',
+        'a.modelo_id',
+        'a.versao',
+        'a.desativado_em',
+        'a.sugestao_descartada_em',
+      ])
+      .select(cadastroPendente);
+  type Linha = Awaited<ReturnType<ReturnType<typeof selecionar>['executeTakeFirstOrThrow']>>;
+  const paraAtivo = (a: Linha) => ({
+    id: a.id,
+    hotelId: a.hotel_id,
+    nome: a.nome,
+    categoriaId: a.categoria_id,
+    modeloId: a.modelo_id,
+    versao: a.versao,
+    ativo: a.desativado_em === null,
+    sugestaoDescartada: a.sugestao_descartada_em !== null,
+    cadastroPendente: a.cadastro_pendente,
+  });
+  return {
+    ativos: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await selecionar(tx)
+            .where('a.hotel_id', '=', hotelId)
+            .where('a.modelo_id', 'is not', null)
+            .orderBy('a.nome')
+            .orderBy('a.id')
+            .execute()
+        ).map(paraAtivo),
+      ),
+    ativo: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const a = await selecionar(tx).where('a.id', '=', id).executeTakeFirst();
+        return a ? paraAtivo(a) : null;
+      }),
+    modelos: (ctx, ids) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.modelo_ativo as m')
+            .leftJoin('app.checklist_modelo as c', (j) =>
+              j
+                .onRef('c.tenant_id', '=', 'm.tenant_id')
+                .onRef('c.id', '=', 'm.checklist_modelo_id'),
+            )
+            .select([
+              'm.id',
+              'm.nome',
+              'm.plano_sugerido',
+              'm.checklist_modelo_id',
+              'c.ativa as checklist_ativa',
+            ])
+            .where('m.id', 'in', [...ids])
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          nome: m.nome,
+          planoSugerido: m.plano_sugerido,
+          checklistModeloId: m.checklist_modelo_id,
+          checklistAtivo: m.checklist_ativa ?? null,
+        })),
+      ),
+    descartar: (ctx, ativoId, versao, motivo) =>
+      banco.executar(ctx, (uow) => descartarSugestaoDePlano(uow, ativoId, versao, motivo)),
+  };
+}
+
 /** Modelos de ativo (fase 1b, M1; migração 0050), pelo hk_app. */
 export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtivo {
   return {
@@ -2350,6 +2641,7 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
               'plano_sugerido',
               'versao',
               'ativa',
+              'bandeira_id',
             ])
             .orderBy('nome')
             .orderBy('id')
@@ -2365,6 +2657,7 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
           planoSugerido: m.plano_sugerido,
           versao: m.versao,
           ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
         })),
       ),
     categorias: (ctx) =>
@@ -2376,12 +2669,311 @@ export function criarPortaModelosDeAtivo(banco: AcessoBanco): PortaModelosDeAtiv
         (
           await tx
             .selectFrom('app.checklist_modelo')
-            .select(['id', 'ativa', 'categoria_id'])
+            .select(['id', 'ativa', 'categoria_id', 'bandeira_id'])
             .execute()
-        ).map((c) => ({ id: c.id, ativa: c.ativa, categoriaId: c.categoria_id })),
+        ).map((c) => ({
+          id: c.id,
+          ativa: c.ativa,
+          categoriaId: c.categoria_id,
+          bandeiraId: c.bandeira_id,
+        })),
       ),
-    criar: (ctx, dados) => banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados)),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) =>
+        Boolean(
+          await tx.selectFrom('app.bandeira').select('id').where('id', '=', id).executeTakeFirst(),
+        ),
+      ),
+    criar: (ctx, dados, bandeiraId) =>
+      banco.executar(ctx, (uow) => criarModeloDeAtivo(uow, dados, bandeiraId)),
     alterar: (ctx, id, versao, mudanca) =>
       banco.executar(ctx, (uow) => alterarModeloDeAtivo(uow, id, versao, mudanca)),
+  };
+}
+
+/** Importação de ativos por planilha (M2): as referências do hotel e a gravação por linha. */
+export function criarPortaImportacaoDeAtivos(banco: AcessoBanco): PortaImportacaoDeAtivos {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    locais: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        tx
+          .selectFrom('app.local')
+          .select(['id', 'nome', 'edificacao', 'status'])
+          .where('hotel_id', '=', hotelId)
+          .execute(),
+      ),
+    categorias: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.categoria_ativo')
+            .select(['id', 'ativa', 'campos', 'nomes', 'chave_padrao'])
+            .execute()
+        ).map((c) => ({
+          id: c.id,
+          ativa: c.ativa,
+          campos: c.campos,
+          nomes: c.nomes,
+          chavePadrao: c.chave_padrao,
+        })),
+      ),
+    modelos: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.modelo_ativo')
+            .select([
+              'id',
+              'categoria_id',
+              'nome',
+              'ativa',
+              'bandeira_id',
+              'fabricante',
+              'modelo',
+              'campos',
+            ])
+            .execute()
+        ).map((m) => ({
+          id: m.id,
+          categoriaId: m.categoria_id,
+          nome: m.nome,
+          ativa: m.ativa,
+          bandeiraId: m.bandeira_id,
+          fabricante: m.fabricante,
+          modelo: m.modelo,
+          campos: m.campos,
+        })),
+      ),
+    chaves: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.ativo')
+            .select('chave_importacao')
+            .where('hotel_id', '=', hotelId)
+            .where('chave_importacao', 'is not', null)
+            .execute()
+        ).flatMap((a) => (a.chave_importacao === null ? [] : [a.chave_importacao])),
+      ),
+    reservados: (ctx, hotelId) =>
+      banco.withContext(ctx, (tx) =>
+        tx
+          .selectFrom('app.qr_reservado as r')
+          .select(['r.codigo', ligadoAoAtivo().as('ligado')])
+          .where('r.hotel_id', '=', hotelId)
+          .execute(),
+      ),
+    criar: async (ctx, hotelId, a) => {
+      const { localId, chaveImportacao, codigoQr, ...dados } = a;
+      try {
+        const { id } = await banco.executar(ctx, (uow) =>
+          criarAtivo(uow, hotelId, localId, dados, 'aprovado', chaveImportacao, codigoQr),
+        );
+        return { id };
+      } catch (e) {
+        if (e instanceof Conflito && e.codigo === 'importacao_ja_importada') return 'ja_importada';
+        throw e;
+      }
+    },
+  };
+}
+
+/** Pacote da bandeira (PB1): os planos do pacote e a cópia para o hotel. */
+export function criarPortaPacoteDaBandeira(banco: AcessoBanco): PortaPacoteDaBandeira {
+  const colunas = [
+    'id',
+    'bandeira_id',
+    'categoria_id',
+    'nome',
+    'intervalo',
+    'unidade',
+    'checklist_modelo_id',
+    'ativa',
+    'versao',
+  ] as const;
+  const paraPlano = (p: {
+    id: string;
+    bandeira_id: string | null;
+    categoria_id: string;
+    nome: string;
+    intervalo: number;
+    unidade: string;
+    checklist_modelo_id: string | null;
+    ativa: boolean;
+    versao: number;
+  }) => ({
+    id: p.id,
+    bandeiraId: p.bandeira_id,
+    categoriaId: p.categoria_id,
+    nome: p.nome,
+    intervalo: p.intervalo,
+    // O check do banco só aceita as três unidades.
+    unidade: p.unidade as 'dia' | 'semana' | 'mes',
+    checklistModeloId: p.checklist_modelo_id,
+    ativa: p.ativa,
+    versao: p.versao,
+  });
+  return {
+    planos: (ctx) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.plano_padrao')
+            .select(colunas)
+            .orderBy('nome')
+            .orderBy('id')
+            .execute()
+        ).map(paraPlano),
+      ),
+    plano: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const p = await tx
+          .selectFrom('app.plano_padrao')
+          .select(colunas)
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return p ? paraPlano(p) : null;
+      }),
+    bandeira: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const b = await tx
+          .selectFrom('app.bandeira')
+          .select('id')
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return b ? { id: b.id } : null;
+      }),
+    categoria: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.categoria_ativo')
+          .select(['id', 'ativa'])
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return c ? { id: c.id, ativa: c.ativa } : null;
+      }),
+    checklist: (ctx, id) =>
+      banco.withContext(ctx, async (tx) => {
+        const c = await tx
+          .selectFrom('app.checklist_modelo')
+          .select(['ativa', 'categoria_id', 'bandeira_id'])
+          .where('id', '=', id)
+          .executeTakeFirst();
+        return c
+          ? { ativa: c.ativa, categoriaId: c.categoria_id, bandeiraId: c.bandeira_id }
+          : null;
+      }),
+    criar: (ctx, d) => banco.executar(ctx, (uow) => criarPlanoPadrao(uow, d)),
+    alterar: (ctx, id, versao, mudanca) =>
+      banco.executar(ctx, (uow) => alterarPlanoPadrao(uow, id, versao, mudanca)),
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id', 'fuso'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id, fuso: h.fuso } : null;
+      }),
+    copiados: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.plano_preventivo')
+            .select('plano_padrao_id')
+            .where('hotel_id', '=', hotelId)
+            .where('plano_padrao_id', 'is not', null)
+            .execute()
+        ).flatMap((p) => (p.plano_padrao_id === null ? [] : [p.plano_padrao_id])),
+      ),
+    copiar: async (ctx, hotelId, c) => {
+      try {
+        const { id } = await banco.executar(ctx, (uow) =>
+          criarPlanoPreventivo(uow, {
+            hotelId,
+            ativoId: null,
+            categoriaId: c.categoriaId,
+            situacao: c.situacao,
+            planoPadraoId: c.planoPadraoId,
+            nome: c.nome,
+            intervalo: c.intervalo,
+            unidade: c.unidade,
+            inicio: c.inicio,
+            checklistModeloId: c.checklistModeloId,
+            tecnicoId: c.tecnicoId,
+            equipeId: c.equipeId,
+          }),
+        );
+        return { id };
+      } catch (e) {
+        if (e instanceof Conflito && e.codigo === 'plano_ja_copiado') return 'ja_copiado';
+        throw e;
+      }
+    },
+  };
+}
+
+/** O código reservado (M3), se visível (RLS: quem escreve no hotel), e se já tem ativo. */
+async function reservaDoCodigo(tx: Tx, codigo: string) {
+  const r = await tx
+    .selectFrom('app.qr_reservado as r')
+    .select(['r.hotel_id', ligadoAoAtivo().as('ligado')])
+    .where('r.codigo', '=', codigo)
+    .executeTakeFirst();
+  return r ? { hotelId: r.hotel_id, ligado: r.ligado } : null;
+}
+
+/**
+ * O código tem ativo no tenant. Pela RLS do ativo, quem não lê o hotel não vê
+ * o ativo; o código reservado só é visível a quem escreve no hotel, que lê os
+ * ativos dele (e o ativo de outro hotel com o código é recusado pela unicidade).
+ */
+const ligadoAoAtivo = () =>
+  sql<boolean>`exists (select 1 from app.ativo a where a.tenant_id = r.tenant_id and a.codigo_qr = r.codigo)`;
+
+/**
+ * Códigos de QR reservados (M3; migração 0061): o lote na unit of work, a
+ * lista do hotel com o que já está ligado e a consulta de um código.
+ */
+export function criarPortaQrReservados(banco: AcessoBanco): PortaQrReservados {
+  return {
+    hotel: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) => {
+        const h = await tx
+          .selectFrom('app.hotel')
+          .select(['id', 'bandeira_id'])
+          .where('id', '=', hotelId)
+          .executeTakeFirst();
+        return h ? { id: h.id, bandeiraId: h.bandeira_id } : null;
+      }),
+    reservar: (ctx, hotelId, quantidade) =>
+      banco.executar(ctx, (uow) => reservarCodigos(uow, hotelId, quantidade)),
+    codigos: (ctx, hotelId) =>
+      banco.withContext(ctx, async (tx) =>
+        (
+          await tx
+            .selectFrom('app.qr_reservado as r')
+            .select(['r.codigo', 'r.lote_id', 'r.criado_em', ligadoAoAtivo().as('ligado')])
+            .where('r.hotel_id', '=', hotelId)
+            .orderBy('r.lote_id', 'desc')
+            .orderBy('r.codigo')
+            .execute()
+        ).map((r) => ({
+          codigo: r.codigo,
+          loteId: r.lote_id,
+          criadoEm: r.criado_em,
+          ligado: r.ligado,
+        })),
+      ),
+    reserva: (ctx, codigo) => banco.withContext(ctx, (tx) => reservaDoCodigo(tx, codigo)),
   };
 }

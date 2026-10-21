@@ -43,6 +43,7 @@
 // teste de aceite provar que a RLS recusa sozinha.
 import {
   type AtorDaCorretiva,
+  type Atribuicao,
   avisaOLocador,
   type CandidatoAResponsavel,
   type CodigosDaOs,
@@ -52,9 +53,11 @@ import {
   type ExecutadoPor,
   NaoEncontrado,
   type OrigemDaOs,
+  type Responsavel,
   type QuemExecuta,
   RegraViolada,
   conflitoDeVersao,
+  custoInformadoVisivel,
   decidirNaOs,
   decidirNoChamado,
   decidirQuemExecuta,
@@ -203,6 +206,11 @@ export interface CasosDeUsoDeTriagem {
   osDoChamado(ctx: Contexto, chamadoId: string): Promise<OsDaCorretiva[]>;
   /** A OS por id, a corretiva ou a preventiva (PV3c); 404 os_nao_encontrada se não é visível. */
   os(ctx: Contexto, osId: string): Promise<OsGravada>;
+  /**
+   * A OS para imprimir (1c, item 9): a mesma da página da OS, sem o custo
+   * informado para quem só enxerga o hotel como proprietário (custoOculto).
+   */
+  osParaImpressao(ctx: Contexto, osId: string): Promise<{ os: OsGravada; custoOculto: boolean }>;
 }
 
 /** As regras que o teste de aceite troca para provar a RLS sozinha. */
@@ -262,14 +270,22 @@ export function criarCasosDeUsoDeTriagem(deps: {
   }
 
   /** O ator e o que a regra do aceite lê além dele (Gerente único; Cesar, 30/09/2026). */
-  const paraOAceite = (ctx: Contexto, origem: OrigemDaOs) =>
+  const paraOAceite = (ctx: Contexto, origem: OrigemDaOs, responsavel: Responsavel) =>
     Promise.all([
       atorComEquipes(ctx),
       deps.triagem.dadosDoAceite(
         ctx,
         origem.chamado === null
-          ? { hotel: origem.hotel, abertoPor: null }
-          : { hotel: origem.chamado.hotel, abertoPor: origem.chamado.abertoPor },
+          ? {
+              hotel: origem.hotel,
+              abertoPor: null,
+              equipeResponsavel: responsavel.tipo === 'equipe' ? responsavel.equipeId : null,
+            }
+          : {
+              hotel: origem.chamado.hotel,
+              abertoPor: origem.chamado.abertoPor,
+              equipeResponsavel: null,
+            },
       ),
     ]);
 
@@ -302,6 +318,24 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
   /** O hotel da OS, no formato da regra de papel (a corretiva e a preventiva). */
   const hotelDa = (os: OsGravada) => ({ hotel: { id: os.hotelId, bandeiraId: os.bandeiraId } });
+
+  /**
+   * O custo informado some da OS de quem só enxerga o hotel como proprietário,
+   * na ficha e na impressão (custoInformadoVisivel, do domínio).
+   */
+  function semCustoOculto<O extends OsGravada>(os: O, minhas: readonly Atribuicao[], agora: Date) {
+    const custoOculto = !custoInformadoVisivel(minhas, hotelDa(os).hotel, agora);
+    return { os: custoOculto ? { ...os, custoInformado: null } : os, custoOculto };
+  }
+
+  async function osComCusto(ctx: Contexto, osId: string) {
+    const [os, minhas] = await Promise.all([
+      deps.triagem.os(ctx, osId),
+      deps.atribuicoes.doUsuario(ctx),
+    ]);
+    if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
+    return semCustoOculto(os, minhas, deps.relogio.agora());
+  }
 
   async function osNaVersao(ctx: Contexto, osId: string, versao: number) {
     const lida = await lerOsComOrigem(deps.triagem, ctx, osId);
@@ -614,7 +648,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
     async aceitarOs(ctx, osId, p) {
       const { os, chamado, origem, ativoId } = await osNaVersao(ctx, osId, p.versao);
-      const [ator, aceite] = await paraOAceite(ctx, origem);
+      const [ator, aceite] = await paraOAceite(ctx, origem, os.responsavel);
       const d = r.decidirNaOs('aceitar', {
         ator,
         ...origem,
@@ -656,7 +690,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
 
     async exigirQuemAceita(ctx, osId) {
       const { os, origem } = await lerOsComOrigem(deps.triagem, ctx, osId);
-      const [ator, aceite] = await paraOAceite(ctx, origem);
+      const [ator, aceite] = await paraOAceite(ctx, origem, os.responsavel);
       r.decidirNaOs('aceitar', {
         ator,
         ...origem,
@@ -674,7 +708,7 @@ export function criarCasosDeUsoDeTriagem(deps: {
     async reabrirOs(ctx, osId, p) {
       const { os, chamado, origem } = await osNaVersao(ctx, osId, p.versao);
       const agora = deps.relogio.agora();
-      const [ator, aceite] = await paraOAceite(ctx, origem);
+      const [ator, aceite] = await paraOAceite(ctx, origem, os.responsavel);
       const d = r.decidirNaOs('reabrir', {
         ator,
         ...origem,
@@ -704,12 +738,22 @@ export function criarCasosDeUsoDeTriagem(deps: {
     },
 
     // Quem vê o chamado vê as OS dele (policy de app.os); a rota confere o chamado antes.
-    osDoChamado: (ctx, chamadoId) => deps.triagem.osDoChamado(ctx, chamadoId),
+    // O custo informado sai como na impressão (1c, Cesar, 20/10/2026).
+    async osDoChamado(ctx, chamadoId) {
+      const [lista, minhas] = await Promise.all([
+        deps.triagem.osDoChamado(ctx, chamadoId),
+        deps.atribuicoes.doUsuario(ctx),
+      ]);
+      const agora = deps.relogio.agora();
+      return lista.map((os) => semCustoOculto(os, minhas, agora).os);
+    },
 
     async os(ctx, osId) {
-      const os = await deps.triagem.os(ctx, osId);
-      if (!os) throw new NaoEncontrado('os_nao_encontrada', 'Ordem de serviço não encontrada.');
-      return os;
+      return (await osComCusto(ctx, osId)).os;
+    },
+
+    async osParaImpressao(ctx, osId) {
+      return osComCusto(ctx, osId);
     },
   };
 }

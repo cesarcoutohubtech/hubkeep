@@ -14,7 +14,7 @@
 // hotel_id e sem o texto do hóspede, como a do insight (Cesar, 10/10/2026):
 // a RLS da app.auditoria deixaria quem não decide insight lê-las. O INSERT
 // dessa auditoria sem hotel é o caso nomeado da migração 0053.
-import { NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
+import { Conflito, NaoEncontrado, conflitoDeVersao } from '@hubkeep/dominio';
 import { sql } from 'kysely';
 import type { Tx } from '../conexao';
 import { novoId } from '../ids';
@@ -59,6 +59,31 @@ export interface ReferenciasDaClassificacaoNoBanco {
   } | null;
   uh: { id: string; hotelId: string; tipo: string } | null;
   categoria: { id: string } | null;
+}
+
+export interface SinalDaFilaNoBanco {
+  id: string;
+  hotelId: string;
+  fonte: string;
+  idExterno: string;
+  ocorridoEm: Date;
+  nota: number | null;
+  escala: number | null;
+  texto: string | null;
+  textoApagadoEm: Date | null;
+  idioma: string | null;
+  uhCitada: string | null;
+  manutencao: boolean | null;
+  categoriaId: string | null;
+  uhId: string | null;
+  ativoId: string | null;
+  ligacao: string;
+  classificadoEm: Date | null;
+  classificadoPor: string | null;
+  importadoEm: Date;
+  versao: number;
+  /** O chamado aberto a partir da reclamação (0057); null sem ligação. */
+  chamadoId: string | null;
 }
 
 export interface ClassificacaoNoBanco {
@@ -138,6 +163,179 @@ export async function gravarSinaisNoBanco(
     payload: { hotelId: i.hotelId, ...contagens },
   });
   return { loteId, inseridos: chaves };
+}
+
+const COLUNAS_DA_FILA = [
+  'id',
+  'hotel_id',
+  'fonte',
+  'id_externo',
+  'ocorrido_em',
+  'nota',
+  'escala',
+  'texto',
+  'texto_apagado_em',
+  'idioma',
+  'uh_citada',
+  'manutencao',
+  'categoria_id',
+  'uh_id',
+  'ativo_id',
+  'ligacao',
+  'classificado_em',
+  'classificado_por',
+  'criado_em',
+  'versao',
+] as const;
+
+function linhaDaFila(s: {
+  id: string;
+  hotel_id: string;
+  fonte: string;
+  id_externo: string;
+  ocorrido_em: Date | string;
+  nota: number | string | null;
+  escala: number | null;
+  texto: string | null;
+  texto_apagado_em: Date | string | null;
+  idioma: string | null;
+  uh_citada: string | null;
+  manutencao: boolean | null;
+  categoria_id: string | null;
+  uh_id: string | null;
+  ativo_id: string | null;
+  ligacao: string;
+  classificado_em: Date | string | null;
+  classificado_por: string | null;
+  criado_em: Date | string;
+  versao: number;
+}): Omit<SinalDaFilaNoBanco, 'chamadoId'> {
+  return {
+    id: s.id,
+    hotelId: s.hotel_id,
+    fonte: s.fonte,
+    idExterno: s.id_externo,
+    ocorridoEm: data(s.ocorrido_em),
+    nota: s.nota === null ? null : Number(s.nota),
+    escala: s.escala,
+    texto: s.texto,
+    textoApagadoEm: s.texto_apagado_em === null ? null : data(s.texto_apagado_em),
+    idioma: s.idioma,
+    uhCitada: s.uh_citada,
+    manutencao: s.manutencao,
+    categoriaId: s.categoria_id,
+    uhId: s.uh_id,
+    ativoId: s.ativo_id,
+    ligacao: s.ligacao,
+    classificadoEm: s.classificado_em === null ? null : data(s.classificado_em),
+    classificadoPor: s.classificado_por,
+    importadoEm: data(s.criado_em),
+    versao: s.versao,
+  };
+}
+
+/** O chamado ligado a cada reclamação da lista (0057), pela RLS de quem pede. */
+async function comChamados(
+  tx: Tx,
+  linhas: readonly Omit<SinalDaFilaNoBanco, 'chamadoId'>[],
+): Promise<SinalDaFilaNoBanco[]> {
+  const ligacoes = linhas.length
+    ? await tx
+        .selectFrom('app.sinal_hospede_chamado')
+        .select(['sinal_id', 'chamado_id'])
+        .where(
+          'sinal_id',
+          'in',
+          linhas.map((l) => l.id),
+        )
+        .execute()
+    : [];
+  const chamado = new Map(ligacoes.map((l) => [l.sinal_id, l.chamado_id]));
+  return linhas.map((l) => ({ ...l, chamadoId: chamado.get(l.id) ?? null }));
+}
+
+/**
+ * A fila de classificação do hotel: as reclamações do recorte (sem
+ * classificação, de manutenção, fora da manutenção ou todas), da data mais
+ * recente para a mais antiga, até `limite`.
+ */
+export async function sinaisDoHotel(
+  tx: Tx,
+  hotelId: string,
+  situacao: string,
+  limite: number,
+): Promise<SinalDaFilaNoBanco[]> {
+  let q = tx
+    .selectFrom('app.sinal_hospede')
+    .select(COLUNAS_DA_FILA)
+    .where('hotel_id', '=', hotelId);
+  if (situacao === 'pendentes') q = q.where('manutencao', 'is', null);
+  else if (situacao === 'manutencao') q = q.where('manutencao', '=', true);
+  else if (situacao === 'fora') q = q.where('manutencao', '=', false);
+  const linhas = await q
+    .orderBy('ocorrido_em', 'desc')
+    .orderBy('id', 'desc')
+    .limit(limite)
+    .execute();
+  return comChamados(tx, linhas.map(linhaDaFila));
+}
+
+/**
+ * As reclamações destes ids que quem pede lê (a RLS filtra), com o texto, da
+ * data mais recente para a mais antiga, até `limite`: as da evidência do
+ * insight sistêmico (C2 do ADR-047).
+ */
+export async function sinaisPorIds(
+  tx: Tx,
+  ids: readonly string[],
+  limite: number,
+): Promise<SinalDaFilaNoBanco[]> {
+  if (!ids.length) return [];
+  const linhas = await tx
+    .selectFrom('app.sinal_hospede')
+    .select(COLUNAS_DA_FILA)
+    .where('id', 'in', ids)
+    .orderBy('ocorrido_em', 'desc')
+    .orderBy('id', 'desc')
+    .limit(limite)
+    .execute();
+  return comChamados(tx, linhas.map(linhaDaFila));
+}
+
+/**
+ * As reclamações ligadas ao ativo (possível ou confirmada), avaliadas depois
+ * de `desde` e até `ate`, com o texto, da mais recente para a mais antiga,
+ * até `limite` (o índice das reclamações do ativo da 0052).
+ */
+export async function sinaisDoAtivo(
+  tx: Tx,
+  ativoId: string,
+  desde: Date,
+  ate: Date,
+  limite: number,
+): Promise<SinalDaFilaNoBanco[]> {
+  const linhas = await tx
+    .selectFrom('app.sinal_hospede')
+    .select(COLUNAS_DA_FILA)
+    .where('ativo_id', '=', ativoId)
+    .where('ocorrido_em', '>', desde)
+    .where('ocorrido_em', '<=', ate)
+    .orderBy('ocorrido_em', 'desc')
+    .orderBy('id', 'desc')
+    .limit(limite)
+    .execute();
+  return comChamados(tx, linhas.map(linhaDaFila));
+}
+
+/** O nome de cada UH destes ids que quem pede lê. */
+export async function nomesDasUhs(tx: Tx, ids: readonly string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const linhas = await tx
+    .selectFrom('app.local')
+    .select(['id', 'nome'])
+    .where('id', 'in', ids)
+    .execute();
+  return Object.fromEntries(linhas.map((l) => [l.id, l.nome]));
 }
 
 export async function sinalParaClassificar(
@@ -254,4 +452,134 @@ export async function classificarSinalNoBanco(
     payload: { hotelId: antes.hotel_id, ...depois },
   });
   return { versao: r.versao };
+}
+
+export interface LigacaoDoChamadoNoBanco {
+  sinalId: string;
+  hotelId: string;
+  chamadoId: string;
+  ligadoPor: string;
+  em: Date;
+}
+
+/** O índice único da 0057 recusou: a reclamação já tem chamado. */
+function jaTemChamado(e: unknown): never {
+  const { code, constraint } = e as { code?: string; constraint?: string };
+  if (code === '23505' && constraint === 'sinal_hospede_chamado_tenant_id_sinal_id_key') {
+    throw new Conflito('reclamacao_ja_tem_chamado', 'A reclamação já tem chamado.');
+  }
+  throw e;
+}
+
+/** O chamado já ligado à reclamação, se quem pede o lê; null sem ligação. */
+export async function chamadoDaReclamacao(tx: Tx, sinalId: string): Promise<string | null> {
+  const l = await tx
+    .selectFrom('app.sinal_hospede_chamado')
+    .select('chamado_id')
+    .where('sinal_id', '=', sinalId)
+    .executeTakeFirst();
+  return l?.chamado_id ?? null;
+}
+
+/**
+ * Liga as reclamações ao chamado que quem pede abriu a partir delas (0057),
+ * numa transação, com a auditoria sem hotel de cada uma (como a da
+ * classificação) e o evento.
+ */
+export async function ligarChamadosNoBanco(
+  uow: UnidadeDeTrabalho,
+  ls: readonly LigacaoDoChamadoNoBanco[],
+): Promise<void> {
+  if (!ls.length) return;
+  const tx = transacaoDe(uow);
+  await tx
+    .insertInto('app.sinal_hospede_chamado')
+    .values(
+      ls.map((l) => ({
+        id: novoId(),
+        tenant_id: uow.tenantId,
+        hotel_id: l.hotelId,
+        sinal_id: l.sinalId,
+        chamado_id: l.chamadoId,
+        ligado_por: l.ligadoPor,
+        criado_em: l.em,
+      })),
+    )
+    .execute()
+    .catch(jaTemChamado);
+  for (const l of ls) {
+    uow.auditar({
+      entidade: 'sinal_hospede',
+      registroId: l.sinalId,
+      acao: 'ligar_chamado',
+      hotelId: null,
+      depois: { chamadoId: l.chamadoId },
+    });
+    uow.publicar({
+      tipo: 'sinal_hospede.chamado_ligado',
+      entidade: 'sinal_hospede',
+      registroId: l.sinalId,
+      payload: { hotelId: l.hotelId, chamadoId: l.chamadoId },
+    });
+  }
+}
+
+/** Liga uma reclamação ao chamado que quem pede abriu a partir dela. */
+export async function ligarChamadoNoBanco(
+  uow: UnidadeDeTrabalho,
+  l: LigacaoDoChamadoNoBanco,
+): Promise<void> {
+  await ligarChamadosNoBanco(uow, [l]);
+}
+
+export interface ReclamacaoParaChamadoNoBanco {
+  id: string;
+  hotelId: string;
+  bandeiraId: string | null;
+  manutencao: boolean | null;
+  uhId: string | null;
+  ativoId: string | null;
+  /** O local do ativo da classificação; null sem ativo. */
+  localDoAtivo: string | null;
+  chamadoId: string | null;
+}
+
+/** A reclamação, se quem pede a lê, com o que o chamado a partir dela precisa. */
+export async function reclamacaoParaChamado(
+  tx: Tx,
+  id: string,
+): Promise<ReclamacaoParaChamadoNoBanco | null> {
+  const s = await tx
+    .selectFrom('app.sinal_hospede as s')
+    .innerJoin('app.hotel as h', 'h.id', 's.hotel_id')
+    .leftJoin('app.ativo as a', (j) =>
+      j.onRef('a.hotel_id', '=', 's.hotel_id').onRef('a.id', '=', 's.ativo_id'),
+    )
+    .leftJoin('app.sinal_hospede_chamado as l', (j) =>
+      j.onRef('l.tenant_id', '=', 's.tenant_id').onRef('l.sinal_id', '=', 's.id'),
+    )
+    .select([
+      's.id',
+      's.hotel_id',
+      'h.bandeira_id',
+      's.manutencao',
+      's.uh_id',
+      's.ativo_id',
+      'a.local_id as local_do_ativo',
+      'l.chamado_id',
+    ])
+    .where('s.id', '=', id)
+    .executeTakeFirst();
+  return s
+    ? {
+        id: s.id,
+        hotelId: s.hotel_id,
+        bandeiraId: s.bandeira_id,
+        manutencao: s.manutencao,
+        uhId: s.uh_id,
+        ativoId: s.ativo_id,
+        localDoAtivo: s.local_do_ativo,
+        chamadoId: s.chamado_id,
+      }
+    : null;
 }

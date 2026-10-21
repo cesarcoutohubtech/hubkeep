@@ -2672,3 +2672,652 @@ PR `int:` de zona protegida (migração, pgTAP e `docs/03`). Antes de abrir, nen
 - **Nesta branch:** a correção. O PR abre agora, e é o único de zona protegida aberto.
 - **Esperando o Cesar:** o merge da correção antes de qualquer outro; o `db push` (0052 e 0053); e o "aprovo" de Cesar e Kaio no ADR-047.
 - **Próximo:** o PR B (contrato, rotas, importação por CSV e fila de classificação), fora da zona protegida.
+
+## O PR B do sinal do hóspede (17/10/2026)
+
+**A `main`:** o #309 entrou ("Cesar aqui. prossiga" depois do merge), com os checks verdes; a `main` voltou a ficar verde. A branch recomeçou da `main` (`0ee359f`).
+
+**Área compartilhada, antes de mexer (17/10/2026):** o PR B acrescenta chaves `inteligencia.sinais.*` nos catálogos de texto (`packages/i18n`, nos quatro idiomas), só com textos do Intelligence; nenhuma chave do núcleo muda. A tela da fila lê, sem mudar nada, as rotas do núcleo que o Gerente e o Gestor CSC já usam: `GET /api/v1/hoteis`, `GET /api/v1/categorias-de-ativo`, `GET /api/v1/hoteis/{id}/locais` e `GET /api/v1/hoteis/{id}/ativos?busca=`. Aviso à 1b e à 1c por este registro.
+
+**O que o PR B traz:**
+- **Leitura da fila** (motor e `packages/db`, fora da zona protegida): `listarSinais` com os recortes "sem classificação" (padrão), "manutenção", "fora da manutenção" e "todas", da data da avaliação mais recente para a mais antiga, até 200, com o nome do ativo e de quem classificou.
+- **Contratos e rotas:** `GET /api/v1/inteligencia/sinais`, `POST /api/v1/inteligencia/sinais/importacoes` e `POST /api/v1/inteligencia/sinais/{id}/classificacao`, no OpenAPI.
+- **O tamanho do pedido:** o padrão do corpo é 256 KB e a Vercel não passa de 4,5 MB; 1000 linhas com texto longo estouram. A rota da importação aceita até 1 MB, e a tela manda o arquivo em partes abaixo disso. O limite de 1000 linhas por arquivo continua.
+- **A tela** `/inteligencia/sinais`: a importação do CSV (o navegador lê o arquivo e manda só as colunas do HubKeep; as outras, como nome e contato do hóspede, ficam fora) e a fila de classificação, nos quatro idiomas.
+
+**Detalhes que o agente escolheu, para o Kaio conferir (ADR-033):** a fila mostra até 200; o recorte padrão é "sem classificação"; o separador do CSV é a vírgula ou o ponto e vírgula (o do cabeçalho); as colunas fora do modelo são ignoradas, e a tela diz quais.
+
+**Verificação local:** lint e typecheck verdes; testes da raiz 559, `inteligencia` 375, `web` 449 (56 pulados), `db` 77 (268 pulados, com banco só na CI), sem falhas. A integração nova da fila (`sinal-hospede-inteligencia.test.ts`) roda só na CI.
+
+### Ponto de retomada (17/10/2026, sinal do hóspede, PR B)
+
+- **`main`:** em `0ee359f` (#309), verde.
+- **Dev:** a 0052 e a 0053 esperam o `db push` do Cesar; sem elas, a tela nova responde erro no dev.
+- **Nesta branch:** o PR B (`int:`, fora da zona protegida). O PR abre agora.
+- **Esperando:**
+  - o merge do PR B e o `db push` (0052 e 0053) pelo Cesar;
+  - o "aprovo" escrito de Cesar e de Kaio no ADR-047;
+  - o Kaio conferir os detalhes do PR A e do PR B;
+  - as perguntas ao Slaviero, pelo agente da 1b.
+- **Próximo:** a proposta do PR C (a regra sistêmica das reclamações, o Guest Impact Score v1 no lugar da porcentagem do "afeta hóspede", a atenção v7, a substituição v2 e a retenção no job). Parar na proposta antes do código. Primeiro passo: ler como a atenção e a substituição usam o "afeta hóspede" hoje (`packages/inteligencia`).
+
+### O "aprovo" do ADR-047 e o `db push` (17/10/2026)
+
+- **Aprovação do ADR-047**, por escrito, no chat do agente do Intelligence, depois do merge do #311: "Cesar aqui. O “aprovo” a ADR-047." e "kaio aqui. O “aprovo” a ADR-047." A aprovação cobre o texto do ADR na `main`, com a migração 0053. O status no `docs/03` e a menção no `docs/02` mudam num PR de zona protegida só com isso. Antes de abrir, nenhum outro PR de zona protegida estava aberto (#281, #282 e #310 passam no check da zona).
+- **#311 mergeado e `db push` feito** pelo Cesar ("311 mergeado. db push feito"): a 0052 e a 0053 vão para o dev. Falta a conferência no `supabase migration list`, que é do Cesar.
+- **O #311 entrou com o pgTAP ainda rodando** (o check que roda também a integração do `packages/db`, com o teste novo da fila). O agente conferiu o resultado depois do merge.
+
+### Ponto de retomada (17/10/2026, ADR-047 aprovado)
+
+- **`main`:** em `950ad1e` (#311).
+- **Dev:** a 0052 e a 0053 aplicadas pelo `db push` do Cesar; falta conferir no `supabase migration list`.
+- **Nesta branch:** o status do ADR-047 (`docs/03`, zona protegida) e a menção no `docs/02`. O PR abre agora.
+- **Esperando:** o merge desse PR; o Kaio conferir os detalhes do PR A e do PR B; as perguntas ao Slaviero, pelo agente da 1b.
+- **Próximo:** a proposta do PR C (a regra sistêmica das reclamações, o Guest Impact Score v1 no lugar da porcentagem do "afeta hóspede", a atenção v7, a substituição v2 e a retenção no job). Parar na proposta antes do código. Primeiro passo: ler como a atenção e a substituição usam o "afeta hóspede" hoje (`packages/inteligencia`).
+
+## O PR C do sinal do hóspede: proposta (17/10/2026)
+
+O ADR-047, aprovado, já define o rumo do PR C: a regra sistêmica das reclamações, o Guest Impact Score v1 no lugar da porcentagem do "afeta hóspede" (atenção v7 e substituição v2) e a retenção do texto no job. Esta proposta detalha o desenho e separa o que é decisão de Cesar e Kaio do que é detalhe do Kaio (ADR-033). Não precisa de migração: o `hk_worker` já lê a `app.sinal_hospede` e atualiza só o texto (0052), e o insight e a métrica guardam a evidência em JSON.
+
+**1. Guest Impact Score v1 (por ativo, de 0 a 100, determinístico).** Conta as reclamações de manutenção ligadas ao ativo, na janela da política (padrão: 90 dias pela data da avaliação). Os componentes seguem o PRD (seção 11), com o que existe sem IA:
+
+| Componente | Peso | Como entra |
+|---|---|---|
+| Volume | 30% | reclamações na janela sobre o limite (padrão 5) |
+| Severidade | 25% | média de (1 − nota/escala) das que têm nota; sem nota, sem dado e o peso redistribui |
+| Recorrência depois do reparo | 20% | reclamações depois da última corretiva concluída do ativo, sobre o limite (padrão 3) |
+| Amplitude de UHs | 15% | UHs distintas citadas na classificação, sobre o limite (padrão 3) |
+| Impacto operacional | 10% | a porcentagem atual dos chamados que afetaram hóspede (o PMS não existe no HubKeep) |
+
+A tela explica como o PRD pede: "Guest Impact 82, alto: 9 reclamações em 90 dias, 6 UHs, nota média 1,8 de 5, 4 depois do reparo".
+
+**2. Decisões para Cesar e Kaio:**
+- **D1, o hotel que não importa reclamações.** Se o score substituir a porcentagem em todos os ativos, quem não importa nada perde quase todo o componente, e a atenção cai em todos os hotéis sem importação. Recomendação: o score vale no hotel com reclamação importada na janela; no hotel sem nenhuma, o componente continua a porcentagem dos chamados, como hoje. A evidência diz a fonte (reclamações ou chamados). Alternativa: o score em todos, com a queda aceita.
+- **D2, o que conta como ligada.** Recomendação: só a ligação confirmada entra no score; a possível aparece na explicação ("2 possíveis, não contadas"), sem pesar. Alternativa: a possível com metade do peso.
+- **D3, a regra sistêmica das reclamações** (sistêmico v5, regra `reclamacoes_categoria`): X reclamações de manutenção da mesma categoria, no mesmo hotel, em Y dias, de pelo menos Z UHs distintas, com ou sem ativo ligado. Abre "possível problema sistêmico", como as outras regras. Recomendação: ligada por padrão, porque sem importação nada dispara. A evidência guarda os ids das reclamações, e a página do insight lista as reclamações (data, fonte, nota e texto), que só quem decide insight lê.
+- **D4, a ordem.** Recomendação: C1 com o motor, o job e a política de retenção, sem tela nova; C2 com as telas (a seção "Reclamações ligadas" e a explicação do score na página do ativo, e as reclamações na página do insight sistêmico).
+
+**3. Retenção (LGPD).** A política nova `inteligencia.sinal_hospede` traz `retencaoTextoDias`. O job do dia apaga o texto (UPDATE para null, com `texto_apagado_em`) das reclamações cuja data de avaliação passou do prazo. A classificação, a nota e as datas ficam. A auditoria é uma linha por tenant e por rodada, com a quantidade e sem os ids. O padrão espera a resposta do cliente (pergunta 4); até lá, a proposta é 365 dias, com mínimo de 30 e máximo de 1825.
+
+**4. Detalhes do Kaio** (ADR-033), com os padrões propostos: a janela de 90 dias; os pesos e os limites da tabela; as faixas (as mesmas FAIXAS_PADRAO); na regra sistêmica, X = 3, Y = 14 dias e Z = 2 UHs; a retenção de 365 dias contada da data da avaliação.
+
+**5. O que muda nos números.** A atenção v7 e a substituição v2 só mudam onde há reclamação confirmada; o resultado já gravado não é recalculado (ADR-036). Os testes do motor cobrem os casos do PRD: "Ar do 304 muito barulhento" sem ligação não pesa; 8 UHs com água fria em 10 dias abrem o sistêmico.
+
+### O PR C1a: a regra das reclamações e a retenção (17/10/2026)
+
+**Decisão:** "Cesar aqui. Siga" (nesta sessão, 17/10/2026), sobre a proposta do PR C. O agente seguiu só com o que o ADR-047 aprovado já cobre: a regra sistêmica das reclamações e a retenção do texto. O Guest Impact Score espera o Kaio, porque a D1 (manter a porcentagem no hotel sem importação) muda o texto do ADR ("no lugar da porcentagem") e é decisão dos dois; a D2 é detalhe do Kaio. Por isso a ordem ficou: C1a (este), depois o score (C1b) e as telas (C2).
+
+**O que o C1a traz** (sem migração, fora da zona protegida):
+- **Sistêmico versão 5:** a regra `reclamacoes_categoria`. Dispara com 3 reclamações de manutenção da mesma categoria, no mesmo hotel, em 14 dias pela data da avaliação, de pelo menos 2 UHs distintas. Vem ligada por padrão. A evidência guarda os ids das reclamações, e a explicação tem frase própria nos quatro idiomas. O campo novo da política pode faltar na política gravada antes (vale o padrão).
+- **Retenção:** a política nova `inteligencia.sinal_hospede` (`retencaoTextoDias`, de 30 a 1825, padrão 365), lida no nível do grupo. O job do dia apaga o texto das reclamações avaliadas antes do prazo (UPDATE do texto para null, com a data do apagamento, pelo `hk_worker`). A quantidade vai no resumo e na auditoria da execução. O recálculo não apaga nem lê reclamações.
+- **`packages/db`:** a leitura das reclamações (sem o texto) e o apagamento na sessão do job, com teste de integração (só na CI).
+- **Glossário de métricas:** a regra nova na linha do sinal sistêmico.
+- **Área compartilhada (catálogos de texto):** só chaves `inteligencia.*`. Uma opção nova em `inteligencia.sistemico.regra` e a chave `inteligencia.sistemico.evidencia.reclamacoes_categoria`, nos quatro idiomas. Nenhuma chave do núcleo muda. O registro deveria ter vindo antes da edição; fica aqui, com o aviso à 1b e à 1c.
+
+**Fica para o C2:** a página do insight ainda não lista as reclamações da evidência (mostra a regra e a explicação, sem os chamados).
+
+**Detalhes para o Kaio** (ADR-033): os mínimos da regra (3 reclamações, 2 UHs, 14 dias) e se ela vem ligada; a retenção de 365 dias contada da data da avaliação e lida só no grupo.
+
+### Ponto de retomada (17/10/2026, PR C1a)
+
+- **`main`:** com o #312 (ADR-047 aprovado), verde.
+- **Dev:** 0052 e 0053 aplicadas e conferidas no `supabase migration list` (print do Cesar).
+- **Nesta branch:** o C1a (`int:`, fora da zona protegida). O PR abre agora.
+- **Esperando:** o merge do C1a; o "de acordo" do Kaio na D1 a D4 do PR C; os detalhes do Kaio; as perguntas ao Slaviero, pelo agente da 1b.
+- **Próximo:** com o "de acordo" do Kaio, o C1b (Guest Impact Score v1, atenção v7 e substituição v2). Primeiro passo: a leitura das reclamações ligadas a ativo na sessão do job e a função do score em `packages/inteligencia`.
+
+### A `main` vermelha depois do #314 (17/10/2026)
+
+- **O pgTAP do #314 morreu no runner** (a porta 54322 já estava em uso no `supabase start`), antes de qualquer teste. O PR foi mergeado assim ("Cesar aqui. 314 mergeado."), e o teste novo da sessão do job rodou pela primeira vez na `main`.
+- **A falha:** o teste do sinal do hóspede no `packages/db` (`job-inteligencia.test.ts`) usava o mesmo parâmetro `$1` para o id (uuid) e para o código externo (texto), e o Postgres recusou (`42P08`, "uuid versus text"). O defeito é do teste; o código do C1a não chegou a ser exercido contra o banco.
+- **A correção:** um parâmetro próprio para o código externo. O Cesar foi avisado para não mergear outra coisa antes.
+- **Também na `main`:** o #313 (`eu:`, migração 0054) entrou junto; o run dele foi cancelado pelo do #314, que passou em tudo menos nesse teste.
+- **O Kaio deu o "de acordo" na D1 a D4** ("Kaio aqui, de acordo com as decisões D1 a D4"), depois do "Cesar aqui. Siga". O C1b (Guest Impact Score) está em andamento, guardado fora desta correção.
+
+### O PR C1b: o Guest Impact Score (17/10/2026)
+
+**Decisão:** D1 a D4 com o "de acordo" dos dois ("Cesar aqui. Siga" e "Kaio aqui, de acordo com as decisões D1 a D4"). A D1 muda o texto do ADR-047 ("no lugar da porcentagem"), e o adendo precisa entrar no `docs/03`. Mas o #315 (`eu:`, ADR-048) é um PR de zona protegida aberto, e só pode haver um por vez: o C1b sai fora da zona, e o adendo fica para um PR próprio depois do merge do #315. O texto do adendo:
+
+> **Adendo de 17/10/2026 (decisões D1 a D4 do PR C):** aprovado por Cesar ("Cesar aqui. Siga") e por Kaio ("Kaio aqui, de acordo com as decisões D1 a D4"), no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O PR C do sinal do hóspede: proposta". (D1) O score vale no hotel com alguma reclamação importada na janela; no hotel sem nenhuma, o impacto no hóspede continua a porcentagem dos chamados, e a evidência diz a fonte. (D2) Só a ligação confirmada pesa; a possível aparece na explicação. (D3) A regra sistêmica das reclamações vem ligada por padrão, e a página do insight lista as reclamações da evidência. (D4) O PR C sai em partes: C1a (a regra e a retenção), C1b (o score, a atenção versão 7 e a substituição versão 2, com a política `inteligencia.impacto_hospede`) e C2 (as telas).
+
+**O que o C1b traz:**
+- **Guest Impact Score v1** (`impacto-hospede.ts`): volume 30%, severidade pela nota 25%, recorrência depois do último reparo 20%, amplitude de UHs 15% e a porcentagem dos chamados que afetaram hóspede 10%, na janela de 90 dias. Só a ligação confirmada pesa (D2). Sem nota ou sem reparo, o componente fica sem dado e o peso redistribui.
+- **Política nova `inteligencia.impacto_hospede`** (a nona), resolvida por hotel, como a atenção: a janela, os limites, os pesos e as faixas.
+- **Atenção versão 7:** o componente do impacto no hóspede usa o score no hotel com reclamação importada na janela; no hotel sem nenhuma, a porcentagem dos chamados (D1). A evidência diz a fonte e o porquê (confirmadas, possíveis, UHs, nota média, depois do reparo). O motivo e a nota da linha no detalhamento têm frase própria nos quatro idiomas.
+- **Substituição versão 2:** o critério do impacto no hóspede usa o mesmo cálculo, com as reclamações do hotel lidas na janela da política. O rótulo virou "Impacto no hóspede", de 0 a 100.
+- **Job:** lê as reclamações da janela (sem o texto) uma vez, na maior janela entre a da regra sistêmica e a do score; o recálculo também lê, para a atenção.
+- **`packages/db`:** a leitura das reclamações do trecho (`sinaisNoTrecho`), no job e no painel, e as linhas da política nova; testes de integração (só na CI).
+- **Glossário de métricas:** a atenção 7, a substituição 2 e o Guest Impact Score.
+
+**Detalhes para o Kaio** (ADR-033): os pesos (os do PRD) e os limites (5 reclamações, 3 depois do reparo, 3 UHs), a janela de 90 dias, a severidade pela nota (1 − nota/escala) e a porcentagem dos chamados de 12 meses no critério da substituição.
+
+### Ponto de retomada (17/10/2026, PR C1b)
+
+- **`main`:** verde de novo com o merge do #316 (correção do teste).
+- **Nesta branch:** o C1b, fora da zona protegida, no PR aberto depois do merge do #316, com a branch atualizada da `main`.
+- **Esperando:** o merge do C1b; o merge do #315 (zona protegida, de outro agente), para abrir o PR do adendo ao ADR-047; os detalhes do Kaio; as perguntas ao Slaviero.
+- **Próximo:** o C2 (as telas): as reclamações da evidência na página do insight sistêmico, e as reclamações ligadas e a explicação do score na página do ativo.
+
+### O PR do adendo ao ADR-047 (17/10/2026)
+
+O #318 (C1b) e o #315 (`eu:`, ADR-048) entraram na `main`. Sem outro PR de zona protegida aberto (conferido no GitHub: #317, #310, #282 e #281 passam no check "zona protegida"), o adendo das decisões D1 a D4 entra no `docs/03`, no fim do ADR-047, com o texto registrado acima. O PR é só de documentação e falha no check "zona protegida" por desenho (ADR-023).
+
+### Ponto de retomada (17/10/2026, adendo ao ADR-047)
+
+- **`main`:** com o C1b (#318) e o ADR-048 (#315). Sem migração nova do Intelligence desde a 0053.
+- **Nesta branch:** o adendo ao ADR-047, no PR de zona protegida; o merge é do Cesar.
+- **Esperando:** o merge do adendo; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** o C2 (as telas), em branch nova a partir da `main` depois do merge do adendo. Primeiro passo: as reclamações da evidência na página do insight sistêmico (os `sinalIds` da evidência da regra `reclamacoes_categoria`).
+
+### O PR C2 do sinal do hóspede: proposta (17/10/2026)
+
+O #319 (adendo ao ADR-047) entrou. O C2 traz as telas da D3 e da explicação do score. Proposta, antes do código:
+
+**1. Página do insight sistêmico das reclamações.** Hoje a regra `reclamacoes_categoria` grava os `sinalIds` na evidência, mas a página só lista chamados (e a lista fica vazia). A proposta é uma seção "Reclamações da evidência", no lugar da tabela de chamados quando a regra é a das reclamações: data, fonte, nota, UH, ligação com o ativo (com o link do ativo) e o texto (ou "texto apagado em …"), com o link para a fila do hotel.
+
+**2. Página do ativo.** Uma seção "Impacto no hóspede", perto do "Por que":
+- o score (0 a 100) e a fonte: as reclamações (D1) ou a porcentagem dos chamados, com a frase de quando o hotel não importa reclamação;
+- os cinco componentes com o valor e o peso (volume, severidade, recorrência depois do reparo, amplitude de UHs e a porcentagem dos chamados), e o que ficou sem dado;
+- as reclamações ligadas ao ativo na janela da política, as confirmadas (que pesam) e as possíveis (que não pesam, D2), com as mesmas colunas da página do insight.
+- O indicador do topo passa a mostrar o score "de 100" quando a fonte são as reclamações, e a porcentagem quando são os chamados.
+
+**Quem vê:** não muda. A página do ativo já exige quem decide insight no hotel do ativo (Admin do grupo, Gestor CSC, Gerente com o hotel), o mesmo conjunto da fila e da RLS da `app.sinal_hospede`. Na página do insight, a leitura das reclamações passa pela RLS da `app.sinal_hospede` com o contexto do usuário: quem lê o insight mas não lê as reclamações do hotel vê só a quantidade.
+
+**O que entra:** duas leituras novas no `packages/db`, com o texto e pela RLS (`sinaisPorIds` e `sinaisDoAtivo`, pelo índice das reclamações do ativo da 0052); os campos novos nas respostas das rotas do insight e do ativo (`packages/contratos`); as seções nas duas telas; os textos nos quatro idiomas (catálogos, área compartilhada: registro aqui antes de mexer); testes. Sem migração e fora da zona protegida.
+
+**Para decidir (Cesar e Kaio):**
+- **(a)** O texto do hóspede aparece nas duas páginas, como na fila? A proposta é sim: o público é o mesmo da fila.
+- **(b)** As possíveis aparecem na página do ativo, marcadas como "não pesa"? A proposta é sim (D2: "a possível aparece na explicação").
+
+**Detalhes do Kaio** (ADR-033): o limite de linhas por lista (proposta: 50, as mais recentes), os rótulos e a ordem das seções.
+
+**Decisão (17/10/2026):** "Cesar aqui. Vamos fazer conforme proposto", com o sim nas perguntas (a) e (b); "Kaio aqui, limite de linhas por lista (proponho as 50 mais recentes), os rótulos e a ordem das seções. Fazer como proposto". O Kaio respondeu pelos detalhes, e depois confirmou a (a) e a (b): "Kaio aqui. Sim para A e B" (17/10/2026, no chat do agente do Intelligence).
+
+**Área compartilhada:** o C2 mexe nos catálogos de texto (`packages/i18n/catalogos`, chaves novas `inteligencia.reclamacoes.*` e `inteligencia.impacto.*`, só no prefixo do Intelligence). Registro antes de começar.
+
+**Como fica:**
+- **Os componentes do score na página do ativo** vêm da evidência gravada pelo job (o mesmo valor do indicador), não de um cálculo novo na leitura. A evidência do impacto no hóspede da atenção 7 ganha o valor e o peso de cada componente do Guest Impact Score (campos novos, sem mudar o cálculo nem a versão). O dia gravado antes disso mostra o resumo sem a tabela dos componentes.
+- **As reclamações** são lidas na hora, pela RLS da `app.sinal_hospede`: as da evidência do insight (até 50, as mais recentes, com o total da evidência) e as ligadas ao ativo na janela da política do score (até 50).
+
+### O PR C2: as telas do sinal do hóspede (17/10/2026)
+
+**O que traz:**
+- **Página do insight sistêmico das reclamações:** a seção "Reclamações da evidência" no lugar do gráfico e da tabela de chamados (que ficavam vazios nessa regra), com a data, a fonte, a nota, a UH, a ligação com o ativo (e o link dele) e o texto, até 50, as mais recentes, e o link da fila. Quem lê o insight mas não as reclamações do hotel vê só o total.
+- **Página do ativo:** a seção "Impacto no hóspede": a fonte e o valor (o score de 100 ou a porcentagem dos chamados, D1), a tabela dos componentes do score (valor, peso e pontos, como o job gravou) e as reclamações ligadas ao ativo na janela da política, com o selo "Pesa no score" (confirmada) ou "Não pesa" (possível, D2). O indicador do topo mostra "de 100" pelas reclamações.
+- **Motor:** `painel-reclamacoes.ts` (`reclamacoesDoInsight`, `reclamacoesDoAtivo`, limite de 50); a evidência do impacto no hóspede da atenção 7 ganha `valor*`, `peso*` e `pontos*` de cada componente, sem mudar o cálculo nem a versão.
+- **`packages/db`:** `sinaisPorIds`, `sinaisDoAtivo` e `nomesDasUhs`, pela RLS; teste de integração (só na CI).
+- **Contrato:** `ReclamacoesDoPainelApi`, e o campo `reclamacoes` nas respostas do insight (nulo fora da regra das reclamações) e do ativo. As duas respostas foram para depois do sinal do hóspede no arquivo, porque usam o esquema dele.
+- **Textos** nos quatro idiomas (`inteligencia.reclamacoes.*`, `inteligencia.impacto.*` e `inteligencia.ativo.pelas_reclamacoes`); glossário de métricas.
+
+### Ponto de retomada (17/10/2026, PR C2)
+
+- **`main`:** com o C1b (#318), o ADR-048 (#315) e o adendo ao ADR-047 (#319). Sem migração nova do Intelligence desde a 0053.
+- **Nesta branch:** o C2, fora da zona protegida, no PR aberto.
+- **Esperando:** o merge do C2; o "sim" do Kaio na (a) e na (b) da proposta do C2; os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** com o PR C fechado, a 1.5 sem IA fica completa. O que resta dela depende de outros: a entrada por API e webhook (IX1 a IX3 do núcleo) e a sugestão da IA (regra 9).
+
+### O merge do C2 (17/10/2026)
+
+- **#321 mergeado** com o pgTAP ainda rodando (o job que também roda a integração do `packages/db`, com o teste novo das leituras do C2). Os outros quatro checks passaram antes do merge. O resultado do pgTAP é conferido uma vez depois; vermelho, a correção vem antes de qualquer outro merge.
+- **O "sim" do Kaio na (a) e na (b)** veio junto com o "Cesar aqui. continue": nenhuma decisão do C2 fica pendente.
+
+### Ponto de retomada (17/10/2026, depois do C2)
+
+- **`main`:** com o C2 (#321). Sem migração nova do Intelligence desde a 0053; nada para `db push`.
+- **Nesta branch:** só este registro, sem PR; entra no próximo PR do Intelligence.
+- **Esperando:** o resultado do pgTAP do #321 (passou: success, conferido uma vez); os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** a 1.5 sem IA está completa. O que segue precisa de proposta e decisão (ver a resposta ao Cesar de 17/10/2026).
+
+
+### Reclamações no histórico de demonstração (18/10/2026)
+
+**Decisão:** "Kaio aqui. Sim, siga conforme recomendado" (18/10/2026, no chat do agente do Intelligence), para a opção 1 da resposta de 17/10/2026. Seed e mock da demonstração: detalhe do Kaio (ADR-033). Sem migração, fora da zona protegida e sem tocar em área compartilhada.
+
+**O que traz:**
+- **Roteiro** (`historico-inteligencia.ts`): os hotéis 2 e 3 importam as avaliações em lotes semanais de CSV, de 91 dias para cá (13 lotes por hotel), e a Admin classifica cada lote duas horas depois da importação. O último lote de cada hotel fica na fila, sem classificação. Os outros quatro hotéis não importam, e o impacto no hóspede deles segue a porcentagem dos chamados (D1). As reclamações sorteiam numa sequência à parte: os chamados já gravados no dev não mudam (a impressão do teste é a mesma).
+- **Fundo:** cerca de quatro avaliações por semana em cada hotel que importa: elogios e atendimento (sem manutenção), só a nota e poucas de manutenção, em categorias que giram, sem hidráulica. As de ar-condicionado vão ligadas como possíveis ao ar da UH.
+- **Cenário `impacto-caldeira`:** cada falha da caldeira do hotel 2 vira uma reclamação confirmada na caldeira ("sem água quente"), no dia da falha. No último dia, o score é 70 de 100 pelas reclamações (7 confirmadas, 5 UHs); a caldeira do hotel 1 segue pelos chamados.
+- **Cenário `sistemico-reclamacoes`:** chuveiro fraco em cinco UHs do hotel 3 numa semana; a Admin liga as três últimas à bomba de recalque como possíveis (não pesam, D2). Abre o insight da regra das reclamações, revisado e aceito.
+- **Gravação** (`gravacao-historico.ts`): o CSV de cada lote é lido como a tela lê (`lerCsvDeSinais`) e entra pelo `importarSinais` do painel; a classificação passa pelo `classificarSinal`, com o relógio do roteiro. Rodar de novo não duplica: a avaliação repetida não entra, e só a que está na fila é classificada. A retomada repassa as reclamações antes do último dia gravado. O resumo ganha as reclamações importadas e as classificadas.
+- **CSV de exemplo** em `docs/exemplos/reclamacoes-hospede.csv`: o lote do chuveiro fraco do roteiro gravado no dev, para testar a importação pela tela. O teste confere que o arquivo segue o roteiro; `HK_ATUALIZAR_EXEMPLO=1` regera (variável no `.env.example`).
+- **Testes:** a simulação sem banco passa as reclamações ao job (as importadas até cada dia, com a classificação feita até ali) e confere os cenários, nenhum insight inesperado, o impacto pelas reclamações e pelos chamados, o CSV lido e validado e a fila no fim. O teste da gravação no banco (só na CI) confere as contagens e limpa a `app.sinal_hospede`.
+
+**O grupo já gravado no dev** (fim 2026-10-13): rodar de novo o `pnpm demo:historico --ambiente dev --fim 2026-10-13` leva minutos. A retomada importa e classifica as reclamações nas datas do roteiro, e elas aparecem na fila e nas listas do insight e do ativo, que são lidas na hora. O score pelas reclamações e o insight sistêmico vêm do job, que não roda de novo nos dias já gravados: o score aparece no próximo dia em que o job rodar para o grupo, e o insight sistêmico não aparece, porque a rajada já saiu da janela de 14 dias. Para ver tudo, só num grupo novo, e o comando ainda não escolhe o grupo (seria outro PR).
+
+### Ponto de retomada (18/10/2026, reclamações na demonstração)
+
+- **`main`:** com o C2 (#321); o pgTAP do #321 passou. Sem migração nova do Intelligence desde a 0053; nada para `db push`.
+- **Nesta branch:** as reclamações no histórico de demonstração, no PR aberto (`int:`, fora da zona protegida), com os registros de 17/10 do merge do C2.
+- **Esperando:** o merge deste PR; depois dele, a decisão de Cesar e Kaio sobre o grupo do dev (retomada no grupo atual, em minutos, sem o insight sistêmico; ou um grupo novo, com outro PR para o comando escolher o grupo); os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** o que depende de outros (o mapeamento das colunas por ferramenta, a API e o webhook IX1 a IX3, a IA pela regra 9) ou a abertura de chamado a partir da reclamação, que precisa de proposta.
+
+### O merge das reclamações na demonstração (18/10/2026)
+
+- **#322 mergeado** (Cesar, 18/10/2026), com os cinco checks verdes no PR, inclusive o pgTAP, que roda o teste da gravação no banco.
+
+### Ponto de retomada (18/10/2026, depois do #322)
+
+- **`main`:** com as reclamações no histórico de demonstração (#322). Sem migração nova do Intelligence desde a 0053; nada para `db push`.
+- **Nesta branch:** só este registro, sem PR; entra no próximo PR do Intelligence.
+- **Esperando:** a decisão de Cesar e Kaio sobre o grupo do dev (retomada no grupo atual ou grupo novo); os detalhes do Kaio (os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** ver a resposta ao Cesar de 18/10/2026.
+
+### A rodada das reclamações no dev (18/10/2026)
+
+**Do Cesar** (saída colada nesta sessão, depois de "Cesar aqui. Continue"): `pnpm demo:historico --ambiente dev --fim 2026-10-13`, em 161 s. "Retomada no dia 2026-10-14: 21574 de 21574 operações já gravadas, puladas." e "126 reclamações importadas e 119 classificadas". As 126 são o total do roteiro desse fim; as 7 sem classificação são as do último lote de cada hotel, que ficam na fila. Os oito cenários de antes seguem nos mesmos estados. O `sistemico-reclamacoes` não aparece, como esperado (o job não roda de novo nos dias gravados). O score pelas reclamações da caldeira aparece no próximo dia em que o job rodar para o grupo.
+
+### Abrir chamado a partir da reclamação: proposta (18/10/2026)
+
+O ADR-047 deixou para depois "abrir chamado a partir da reclamação, que mexe no fluxo do chamado, área compartilhada". Proposta, antes do código, para Cesar e Kaio:
+
+**Como é hoje:** o chamado abre pelo caso de uso `abrir` do núcleo (`POST /api/v1/chamados`, e no PWA pela operação `chamado.abrir`). O web não tem tela de abrir chamado. O chamado não guarda nenhuma referência externa (`origem` só aceita `interno`), e o Intelligence nunca chamou caso de uso de escrita do núcleo.
+
+**O que entra:**
+1. **Na fila de reclamações,** a reclamação classificada como de manutenção, com UH ou ativo, ganha o botão "Abrir chamado". Ele abre um formulário curto: o local (a UH da classificação, ou o local do ativo), o ativo (o da ligação, possível ou confirmada, que a pessoa pode tirar), a descrição, que a pessoa escreve, e "afeta hóspede" marcado.
+2. **O chamado abre pelo caso de uso do núcleo, sem mudar o núcleo:** a mesma validação, a mesma prioridade pela categoria, o mesmo SLA, a mesma auditoria e o mesmo evento `chamado.aberto`. Quem abre é a pessoa logada, e quem vê a fila já pode abrir chamado no hotel.
+3. **A ligação fica do lado do Intelligence:** a coluna `chamado_id` na `app.sinal_hospede`, com a FK composta para `app.chamado` e o UPDATE só dela para o `hk_app`. Ela serve para a fila mostrar "chamado aberto" com o link e para não abrir dois chamados da mesma reclamação. O núcleo não fica sabendo do Intelligence.
+4. **Quem vê e quem decide:** não muda. É quem decide insight no hotel (a fila), e o chamado aberto segue as regras de sempre.
+
+**Para decidir (Cesar e Kaio):**
+- **(a)** A ligação em `app.sinal_hospede.chamado_id` (migração, pgTAP e adendo ao ADR-047: PR de zona protegida)? Proposta: sim. Sem ela, o botão só preencheria o formulário, sem registro de que a reclamação virou chamado.
+- **(b)** Abrir e ligar em duas transações (o chamado pelo caso de uso do núcleo; depois a ligação, com a trava de versão da reclamação) ou numa só (um ponto de extensão no caso de uso `abrir`, que muda o `packages/aplicacao`, área compartilhada com a 1b)? Proposta: duas. O risco é um chamado sem ligação se a segunda falhar; a tela confere a versão antes de abrir e mostra o erro, e a pessoa liga de novo.
+- **(c)** O texto do hóspede vai para a descrição do chamado? Proposta: não automaticamente. O chamado é lido pelo Técnico e pela Solicitante, que não leem a reclamação (RLS), e o texto do hóspede tem retenção própria (C1a). A descrição vem com uma sugestão sem o texto ("Reclamação de hóspede, Google, 12/09/2026: hidráulica, UH 305"), e a pessoa escreve o resto.
+- **(d)** A `origem` do chamado fica `interno`? Proposta: sim. Um valor novo muda o domínio, o check do banco e o teste de paridade do núcleo, e a IX2 vai usar esse campo para a integração.
+
+**Detalhes do Kaio** (ADR-033): os rótulos, a sugestão da descrição e se o botão também aparece nas listas da página do ativo e do insight (proposta: só na fila, por enquanto).
+
+**Fora desta proposta:** abrir um chamado para várias reclamações de uma vez (o insight sistêmico) e ligar a reclamação a um chamado que já existe.
+
+**Área compartilhada:** a proposta não muda `packages/dominio`, `packages/aplicacao` nem o fluxo do chamado; usa o caso de uso `abrir` como ele é. Se a (b) for "numa só", muda o `packages/aplicacao`, e o pedido vai para a 1b antes.
+
+**Respostas do Kaio** (19/10/2026, "Kaio aqui. Vamos dar sequencia nos trabalhos.", nas perguntas do agente do Intelligence nesta sessão): (a) sim, com a coluna `chamado_id`; (b) duas transações; (c) não copiar o texto, só a sugestão; (d) a origem continua `interno`. **Falta o Cesar** nas quatro, e o adendo ao ADR-047 precisa do "aprovo" escrito dos dois. Os detalhes do Kaio (rótulos, sugestão da descrição, botão só na fila) seguem como na proposta até ele dizer outra coisa.
+
+**Do Cesar** (19/10/2026, nesta sessão): "cesar aqui. Aprovo o adendo ao ADR-047".
+
+**Um ponto que muda a (a), ao preparar a migração (19/10/2026):** a policy de UPDATE da `app.sinal_hospede` (0052) exige, no `with check`, que `classificado_por` seja vazio ou quem grava. Quem abre o chamado nem sempre é quem classificou, e o UPDATE só do `chamado_id` por outra pessoa seria recusado. Duas saídas:
+- **(a1) Tabela de ligação `app.sinal_hospede_chamado`** (proposta): só INSERT e SELECT para o `hk_app`, sem UPDATE nem DELETE; uma ligação por reclamação (`unique (tenant_id, sinal_id)`); a FK `(hotel_id, chamado_id, ligado_por)` para `app.chamado (hotel_id, id, aberto_por)` garante na estrutura que o chamado é do mesmo hotel e que liga quem abriu; a reclamação do mesmo hotel por uma chave `(hotel_id, id)` nova na `app.sinal_hospede`. Lê e insere quem decide insight no hotel, em nome próprio. Tabela nova: RLS forçada, pgTAP de isolamento e os meta-testes.
+- **(a2) A coluna, afrouxando o `with check`:** tirar a condição de `classificado_por` da policy e deixar só na aplicação. Fica mais simples, mas o banco deixa de garantir que a classificação é gravada em nome de quem a faz.
+
+O "aprovo" do Cesar e as respostas do Kaio foram para a coluna (a). Como a (a1) muda o desenho, a escolha volta para os dois antes da migração.
+
+**Do Cesar** (19/10/2026, nesta sessão): "Cesar aqui. Vamos conforme recomendado", isto é, a (a1), a tabela de ligação. **Falta o Kaio** na (a1) e no "aprovo" do adendo.
+
+### O PR da ligação reclamação–chamado (zona protegida, 19/10/2026)
+
+Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona protegida (#310, #282 e #281 têm o check "zona protegida" verde).
+
+**O que traz:**
+- **Migração 0057** (`20261019120000_sinal_hospede_chamado.sql`): a tabela `app.sinal_hospede_chamado`, só de inserção, uma ligação por reclamação, a FK `(hotel_id, chamado_id, ligado_por)` para a chave `(hotel_id, id, aberto_por)` da `app.chamado` e a chave `(hotel_id, id)` nova na `app.sinal_hospede`. Lê e liga quem decide insight no hotel, em nome próprio; o `hk_worker` não lê.
+- **pgTAP:** o `060`, com os seis casos e mais (uma ligação por reclamação, em nome próprio, sem UPDATE nem DELETE, o worker sem acesso); a tabela nas listas dos meta-testes 28 e 32.
+- **Adendo ao ADR-047** no `docs/03` (aprovado pelo Cesar; aguarda o Kaio), a nota no `docs/02` e o tipo do Kysely no formato do gerador.
+- Não tem código de aplicação: o caso de uso, a rota, o botão e os textos vêm no PR seguinte, depois do merge e do `db push`.
+
+### Ponto de retomada (19/10/2026, PR da ligação reclamação–chamado)
+
+- **`main`:** com o #322 e os PRs do Mews até o #328. Última migração na `main`: 0056.
+- **Nesta branch:** a migração 0057, o pgTAP 060, os meta-testes, o adendo ao ADR-047, o `docs/02` e o tipo do Kysely, no PR de zona protegida aberto como rascunho.
+- **Esperando:** o merge e o `db push` do Cesar, com a conferência no `supabase migration list` do dev.
+- **Próximo:** o PR comum de abrir chamado a partir da reclamação: a porta no `packages/db` (ligar e ler as ligações), o caso de uso no `packages/inteligencia` (quem abre, quando a reclamação pode virar chamado, a sugestão da descrição), a rota que chama o `abrir` do núcleo e depois liga, o botão e o formulário na fila, os textos nos quatro idiomas e os testes. Primeiro passo: a leitura das ligações na fila (`linhaDaFila` com o chamado).
+
+**Do Kaio** (19/10/2026, nesta sessão): "Kaio aqui. Aprovo A troca da coluna pela tabela (a1) e o adendo ao ADR-047. Continue". O adendo fica aprovado pelos dois, e o #330 sai do rascunho.
+
+### O PR de abrir chamado a partir da reclamação (19/10/2026)
+
+Preparado numa branch local, sobre o #330: só vai para a branch do agente e para o PR depois do merge do #330 e do `db push`, com base na `main`.
+
+**O que traz:**
+- **`packages/db`:** a fila e as listas das reclamações trazem o chamado ligado (`chamadoId`), pela RLS da 0057; `reclamacaoParaChamado` (a reclamação com o local do ativo e o chamado já ligado) e `ligarChamadoNoBanco` (a ligação, a auditoria sem hotel `ligar_chamado` e o evento `sinal_hospede.chamado_ligado`; a ligação repetida vira `reclamacao_ja_tem_chamado`). Teste de integração (só na CI).
+- **Motor** (`chamado-da-reclamacao.ts`): `prepararChamadoDaReclamacao` confere quem decide insight no hotel, a reclamação de manutenção com UH ou ativo e sem chamado, e monta o pedido do núcleo (o local do ativo ou a UH, o ativo, a descrição da pessoa e "afeta hóspede"); `ligarChamadoDaReclamacao` liga em nome de quem abriu, e a mesma ligação de novo não faz nada.
+- **Web:** o painel recebe o caso de uso `abrir` do núcleo pela composição, sem mudança nele; abre e depois liga. Se a ligação falhar, `chamado_sem_ligacao` com o id do chamado, e a tela oferece "Ligar de novo".
+- **API:** `POST /api/v1/inteligencia/sinais/{id}/chamado` e `.../chamado/ligacao`, os contratos e o OpenAPI; o `chamadoId` no `SinalDaFilaApi`.
+- **Tela da fila:** o botão "Abrir chamado" na reclamação de manutenção com UH ou ativo e sem chamado; o formulário com o ativo (que a pessoa pode tirar), o local, a descrição com a sugestão sem o texto do hóspede e o aviso de "afeta hóspede"; o link "Ver o chamado" depois.
+- **Textos** nos quatro idiomas: `inteligencia.sinais.acao.abrir_chamado`, `inteligencia.sinais.chamado.*` e os cinco erros novos.
+- **Área compartilhada:** só os catálogos (prefixo do Intelligence e os códigos de erro novos). O chamado, o `packages/aplicacao` e o `packages/dominio` não mudam.
+
+### O merge do #330 e o PR de abrir chamado (19/10/2026)
+
+- **#330 mergeado** (Cesar, 19/10/2026): a migração 0057 na `main`. O `db push` no dev é do Cesar, com a conferência no `supabase migration list`.
+- **O PR comum** sai agora, com base na `main` (que já tem os PRs #281, #329 e #331 da 1b e da 1c): o trabalho da branch local passou para a branch do agente sem conflito.
+
+### Ponto de retomada (19/10/2026, PR de abrir chamado)
+
+- **`main`:** com o #330 (migração 0057). Última migração na `main`: 0057.
+- **Dev:** espera o `db push` da 0057 (Cesar), antes de usar a tela no dev.
+- **Nesta branch:** o PR `int:` de abrir chamado a partir da reclamação, fora da zona protegida.
+- **Esperando:** o `db push` da 0057; o merge deste PR; os detalhes do Kaio (os rótulos e a sugestão da descrição deste PR, os limites do PR A e B, o 3/2/14 e os 365 dias do C1a, os pesos, os limites, os 90 dias e a severidade do C1b); as perguntas ao Slaviero.
+- **Próximo:** o que fica para depois do adendo (um chamado para várias reclamações, ligar a um chamado que já existe) precisa de proposta; o resto depende de outros (o mapeamento das colunas por ferramenta, a API e o webhook IX1 a IX3, a IA pela regra 9).
+
+### O que fica depois do adendo de 19/10/2026: proposta (19/10/2026)
+
+O adendo deixou para depois "um chamado para várias reclamações de uma vez (o insight sistêmico) e ligar a reclamação a um chamado que já existe". Proposta, antes do código, para Cesar e Kaio:
+
+**1. Um chamado para as reclamações do insight sistêmico.** Na página do insight da regra das reclamações (a lista da evidência, C2), o botão "Abrir um chamado para estas reclamações":
+- o formulário pede o local, porque as reclamações costumam ser de UHs diferentes (o chuveiro fraco em cinco UHs): a pessoa escolhe a UH ou a área comum do hotel, e o ativo, se quiser. Quando todas as reclamações têm o mesmo ativo, ele vem sugerido;
+- o chamado abre pelo caso de uso `abrir` do núcleo, como no PR #334, com "afeta hóspede" e a descrição da pessoa (a sugestão traz a categoria, o número de reclamações e as UHs, sem o texto do hóspede);
+- depois, as reclamações da evidência que ainda não têm chamado são ligadas a ele, uma linha por reclamação na `app.sinal_hospede_chamado`. A tabela já aceita várias reclamações num chamado: **sem migração**;
+- quem vê e quem decide não mudam: quem decide o insight no hotel. Só entram as reclamações que a pessoa lê (a RLS).
+
+**2. Ligar a reclamação a um chamado que já existe.** Na fila, além de "Abrir chamado", a opção "Ligar a um chamado aberto": a lista dos chamados abertos do hotel na mesma UH ou no mesmo ativo, e a pessoa escolhe um. **Esbarra na 0057:** a FK faz quem liga ser quem abriu o chamado, e o chamado aberto por outra pessoa (o Técnico, a Solicitante) não poderia ser ligado. Duas saídas:
+- **(2a)** só os chamados que a própria pessoa abriu (sem migração; cobre pouco);
+- **(2b)** uma migração nova que troca essa FK por `(hotel_id, chamado_id)` e põe `ligado_por` como membro do tenant, com o "em nome próprio" na policy (zona protegida e outro adendo).
+
+**Para decidir (Cesar e Kaio):**
+- **(i)** Seguir com o 1 agora? Proposta: sim, é o caso do insight sistêmico, sem migração.
+- **(ii)** No 2, (2a), (2b) ou deixar para depois do piloto? Proposta: deixar para depois do piloto, porque o 1 e o #334 cobrem o caso comum e o 2 muda a 0057, recém-aprovada.
+
+**Detalhes do Kaio** (ADR-033): os rótulos e a sugestão da descrição do 1.
+
+**O merge do #334** (Cesar, 19/10/2026), com "lint, typecheck e testes" e o pgTAP ainda rodando no head (só o commit do diário depois do código verificado); conferência única agendada.
+
+**Respostas do Cesar** (19/10/2026, "Cesar aqui. Vamos dar sequencia nos trabalhos.", nas perguntas do agente do Intelligence nesta sessão): (i) sim, seguir com um chamado para as reclamações do insight sistêmico; (ii) ligar a um chamado que já existe fica para depois do piloto. **Falta o Kaio** nas duas.
+
+### Um chamado para as reclamações do insight sistêmico (19/10/2026)
+
+Preparado a partir do "sim" do Cesar na (i); o PR só abre depois do "sim" do Kaio. Sem migração e fora da zona protegida.
+
+**O que traz:**
+- **Motor:** `prepararChamadoDoInsight` confere o insight da regra das reclamações, de um hotel, que quem pede decide (`insight_fora_do_escopo` se não decide), o local escolhido e o ativo, do hotel do insight, e que há reclamação da evidência de manutenção sem chamado; `ligarChamadoDoInsight` liga, numa transação, as que a pessoa lê, de manutenção e ainda sem chamado, e devolve quantas.
+- **`packages/db`:** `ligarChamadosNoBanco`, as ligações em lote com a auditoria e o evento de cada uma (a de uma reclamação passa a usar a mesma).
+- **Web e API:** `POST /api/v1/inteligencia/insights/{id}/chamado` (o local, o ativo e a descrição; abre pelo `abrir` do núcleo e liga) e `.../chamado/ligacao`, com o mesmo `chamado_sem_ligacao` do #334.
+- **Página do insight:** o botão "Abrir um chamado para as reclamações sem chamado", para quem decide; o formulário com o local (as UHs e as áreas comuns do hotel), o ativo comum das reclamações, a descrição com a sugestão sem o texto do hóspede e quantas vão ser ligadas; o link "Ver o chamado" nas listas de reclamações.
+- **Textos** nos quatro idiomas (`inteligencia.reclamacoes.chamado.*` e dois erros novos).
+
+**Respostas do Kaio** (20/10/2026, "kaio aqui. sim para os item (i) e no (ii).", nesta sessão): (i) sim; (ii) sim, ligar a um chamado que já existe fica para depois do piloto. Com o "sim" do Cesar, as duas estão decididas. Os rótulos e a sugestão da descrição ficam como estão até o Kaio pedir outro texto (ADR-033).
+
+**O PR** sai da `claude/vigilant-cray-l06ew1`, com a `main` de bf9b3c0 (com a 0058 da 1b e os termos dos catálogos da 1c) juntada sem conflito. Local: lint e typecheck verdes; 5.399 testes, 5.052 passaram, 0 falhas, 347 pulados (a integração do banco, que roda só na CI).
+
+### Ponto de retomada (20/10/2026, PR do chamado do insight)
+
+- **`main`:** bf9b3c0. **Dev:** falta o Cesar confirmar o `db push` da 0057 no `supabase migration list` (sem ela, abrir chamado da reclamação e do insight falha no dev).
+- **PR aberto:** o `int:` do chamado do insight, fora da zona protegida, esperando os checks e o merge do Cesar.
+- **Decidido:** (ii) ligar a chamado existente fica para depois do piloto.
+- **Pendências do Kaio:** os limites dos PRs A e B; no C1a, 3/2/14 e 365 dias; no C1b, os pesos, os limites, os 90 dias e a gravidade; os textos do chamado do insight, se quiser outros.
+- **Próxima tarefa:** depois do merge, propor o que vem a seguir no Intelligence; primeiro passo, reler a seção "O PR C do sinal do hóspede: proposta" e o plano do Intelligence para o que falta antes do piloto.
+
+### O merge do #338 e o que vem a seguir: proposta (20/10/2026)
+
+**O merge do #338** (Cesar, 20/10/2026), com os cinco checks verdes no head 2bced11. A branch `claude/vigilant-cray-l06ew1` recomeçou da `main` (c9db87d).
+
+**Levantamento do que falta antes do piloto.** O 1.0 e a 1.5 sem IA estão no código. O que falta é quase todo documentação, aprovação e operação:
+- **Material do piloto sem a 1.5:** nenhum arquivo do `docs/piloto/` (README, manual por papel, roteiro de treinamento, guia de implantação) fala da importação de reclamações, da fila, do impacto no hóspede ou do abrir chamado.
+- **As cinco perguntas do sinal do hóspede** (ferramentas, exportação, campos, LGPD, quem classifica), pedidas ao agente da 1b em 16/10, não estão no `docs/referencia/perguntas-cliente.md`. Delas dependem a retenção (hoje 365 dias, provisória) e o mapeamento das colunas do CSV.
+- **Status no `docs/03`** ainda "aguarda aprovação" em itens já decididos (quem lê o insight e a métrica diária; adendos de 08/10 aos ADR-034 e ADR-036; issue #169), e a decisão do Cesar sobre particionar ou reter a métrica diária "antes do piloto ou quando o volume pedir".
+- **Buracos de tela contra a proposta do 1.0:** o recálculo sob demanda na página do insight (aprovado só pelo Kaio em 07/10) e o número do insight ("INS-0133", pede migração).
+
+**Proposta, para Cesar e Kaio:**
+1. **Agora:** o material do piloto com a 1.5 e as cinco perguntas no arquivo do cliente. São áreas do agente da 1b (preparação do piloto, perguntas ao cliente). Duas saídas: **(p1)** o agente do Intelligence escreve, num PR `int:` só de documentação, com o aviso registrado aqui; **(p2)** pedido ao agente da 1b, que escreve no PR dele. Recomendação: (p1), porque o conteúdo é do Intelligence e o agente da 1b está em outras frentes; o Cesar revisa no PR.
+2. **Depois:** um PR de zona protegida só de status no `docs/03` com as aprovações já escritas, na vez que o Cesar der.
+3. **A decidir:** recálculo sob demanda na tela ou número do insight, com proposta antes do código.
+
+### O material do piloto com a 1.5 e as perguntas do sinal do hóspede (20/10/2026)
+
+**Decisão:** "Kaio aqui. Siga como proposto" (20/10/2026, nesta sessão), sobre a proposta acima: a (p1), com o agente do Intelligence escrevendo num PR `int:` só de documentação. O Cesar não respondeu à (p1) e revisa no PR, como a proposta dizia; o merge é dele.
+
+**Área de outro agente, antes de mexer (20/10/2026):** o PR muda o `docs/piloto/` (README, manual por papel, roteiro de treinamento e guia de implantação) e o `docs/referencia/perguntas-cliente.md`, que são da 1b e administração (preparação do piloto e perguntas ao cliente). Só entra o que é do Intelligence: a 1.5 sem IA e as cinco perguntas pedidas em 16/10. O resto do material, inclusive o que a 1b e a 1c entregaram depois de 13/10, fica como está, para o agente da 1b. Nenhum PR aberto mexe nesses arquivos (#310, #332 e #340 conferidos). Aviso à 1b por este registro.
+
+**Um ponto achado ao conferir o código:** a tela de reclamações (importar, classificar e abrir chamado) passa pela mesma trava das outras telas do módulo (`exigirPainel`). Ela só abre na data de abertura das telas (padrão: 60 dias depois da ativação) e só para os papéis da política. No piloto, as reclamações dos primeiros 60 dias só entram depois da abertura, importadas com a data de cada avaliação, e o score e a regra sistêmica dependem delas. O material diz isso como está no código; mudar é decisão de Cesar e Kaio (quem vê e quando).
+
+**O que o PR traz** (`int:`, só documentação, fora da zona protegida):
+- **`docs/piloto/README.md`:** a nota de que as reclamações só entram depois da abertura das telas, seis linhas novas no quadro do Intelligence (do #308 ao #338) e a atualização de 20/10/2026 em "Como conferi".
+- **`manual-por-papel.md`:** a linha das reclamações em "Quem faz o quê"; o passo a passo das reclamações no Gerente do hotel (importar, classificar, abrir chamado, o insight sistêmico e o impacto no hóspede do ativo), com remissão no Gestor CSC e no Admin do grupo; as políticas do módulo sem tela; duas linhas em "Onde cada tarefa vive hoje".
+- **`roteiro-treinamento.md`:** os 20 minutos das reclamações na sessão A, o exercício 22 no "Grupo Demonstração — Intelligence" (com o CSV de exemplo, que já foi importado e mostra que a repetida não entra), cinco linhas em "Em caso de problema" e um item no aceite da gestão.
+- **`guia-implantacao-hotel.md`:** uma linha em "Quem faz o quê" e as políticas do módulo na etapa 8.
+- **`docs/referencia/perguntas-cliente.md`:** as perguntas 35 a 39, sobre as ferramentas, a exportação e o acesso, os campos, a retenção (LGPD) e quem importa e classifica.
+
+### Ponto de retomada (20/10/2026, material do piloto com a 1.5)
+
+- **`main`:** 2580431 (#341). Última migração na `main`: 0058; o PB1 (#340, 0059) está aberto. **Dev:** falta o Cesar confirmar o `db push` da 0057 no `supabase migration list`.
+- **PR aberto:** o `int:` do material do piloto e das perguntas 35 a 39, só documentação. Espera a revisão e o merge do Cesar.
+- **Para Cesar e Kaio decidirem:** se a tela de reclamações deve abrir antes da data de abertura das telas (hoje não abre; ver o ponto achado acima). A decisão sobre particionar ou reter a métrica diária é do Cesar.
+- **Pendências do Kaio:** os detalhes dos PRs A e B, do C1a (3/2/14 e 365 dias), do C1b (pesos, limites, 90 dias e severidade) e os textos do chamado do insight.
+- **Próximo:** o item 2 da proposta, o PR de zona protegida só de status no `docs/03`, na vez que o Cesar der (o #340 é de zona protegida e está aberto). Depois, o item 3, com proposta antes do código. Primeiro passo do item 2: listar no `docs/03` os status "aguarda aprovação" do Intelligence e achar a aprovação escrita de cada um no diário.
+
+### O merge do #342 e o item 2 da proposta (20/10/2026)
+
+- **#342 mergeado** (Cesar, 20/10/2026), com os cinco checks verdes no head a8ba1f2. A branch recomeçou da `main` (5de68ac, com o #343 da 1c).
+- **Do Cesar** (20/10/2026, nesta sessão): "Cesar aqui. Continue. Merge e db push e migration list pronto." O `db push` da 0057 está no dev e conferido no `supabase migration list`. Abrir chamado da reclamação e do insight já funciona no dev.
+
+**Correção do levantamento de 20/10/2026.** Chamei de "já decididos" os quatro status do `docs/03` que seguem "aguarda". Relendo o diário, não achei a aprovação escrita que falta em nenhum deles:
+1. **Quem lê o insight** (ADR-033): a decisão do Cesar de 10/10 está registrada; falta o "aprovo" escrito do Kaio, porque muda quem vê.
+2. **Quem lê a métrica diária** (ADR-036): a decisão do Cesar de 10/10 está registrada, com a frase "a métrica nunca tem mais leitores que o insight"; falta o "aprovo" escrito do Kaio.
+3. **Texto do adendo de 08/10 ao ADR-034** (atenção versão 2): o conteúdo foi aprovado pelos dois em 10/10; falta o "aprovo" escrito dos dois no texto.
+4. **Texto do adendo de 08/10 ao ADR-036** (versões gravadas por área e formato das políticas): o mesmo caso do 3.
+
+A issue #169 (os "aprovado por Kaio" deste diário) espera o comentário do Kaio. O PR de status só muda o que tiver o "aprovo" escrito. Ele também espera a vez da zona protegida, porque o #340 (`1b:`, migração 0059) está aberto.
+
+Há outra correção, sobre o recálculo. O que o levantamento chamou de "aprovado só pelo Kaio em 07/10" já está aprovado pelos dois no ADR-036: o Kaio em 07/10 e o Cesar em 10/10, na #166. O que falta é a tela, e isso vai no item 3.
+
+### O item 3: recálculo na tela ou número do insight, proposta (20/10/2026)
+
+**(r) Os recálculos na página do ativo.** O ADR-036 diz que o painel mostra o resultado original gravado de cada dia e que os recálculos "aparecem só no painel de investigação, sob demanda e identificados como recálculo". Hoje a página do ativo lê só o original (`recalculo = false`) e mostra "Original, do job diário". Os recálculos existem quando o backoffice roda o `pnpm ops:recalcular-inteligencia`.
+
+A proposta é o botão "Ver os recálculos deste dia", no bloco "Como este resultado foi gravado". Ele lista as linhas de recálculo do ativo naquele dia: o número do cálculo, quando, as versões da fórmula e da política e os scores. Cada linha leva o selo de recálculo, e o original continua sendo o que o painel usa.
+- Só leitura, pela RLS da métrica: quem lê é quem lê o original.
+- Sem migração e fora da zona protegida.
+- Nenhum botão dispara recálculo pela tela. O recálculo segue só pelo script do backoffice.
+
+**(n) O número do insight** ("INS-0133" na proposta das telas). A `app.insight` não tem número.
+- Precisa de migração: a coluna `numero`, única por tenant, e a FK sem mudança. Isso pede PR de zona protegida, pgTAP e um adendo ao ADR-033.
+- O job grava o número ao abrir o insight (o maior do tenant mais um, na mesma transação, com a chave única barrando a corrida), sem função nem trigger no banco.
+- Os insights que já existem recebem número na própria migração, pela ordem de abertura. É UPDATE de dado numa migração nova, sem editar migração aplicada.
+- A tela mostra o número na lista e na página, e a busca acha pelo número.
+
+**Recomendação:** fazer o (r) antes do piloto, porque ele é pequeno, não tem migração e fecha o que o ADR-036 aprovado já descreve. O (n) fica para depois do piloto. Ele toca a zona protegida, que tem fila, e no piloto o insight se acha pelo título e pelo link. Se o suporte do piloto pedir um número para citar por telefone, o (n) sobe.
+
+**Para decidir (Cesar e Kaio):** (r) agora e (n) depois do piloto; ou os dois agora; ou nenhum antes do piloto.
+
+**Detalhes do Kaio** (ADR-033): o rótulo do botão, as colunas da lista e o formato do número ("INS-0133", com quatro dígitos).
+
+### Ponto de retomada (20/10/2026, depois do #342)
+
+- **`main`:** 5de68ac (#343). **Dev:** com a 0057, conferida pelo Cesar.
+- **PRs abertos de outros agentes:** #340 (zona protegida, 1b), #332 (1c) e #310 (`eu:`). Nenhum PR do Intelligence aberto.
+- **Nesta branch:** só este registro, sem PR; entra no próximo PR do Intelligence.
+- **Esperando:**
+  - o "aprovo" escrito do Kaio em quem lê o insight e a métrica diária;
+  - o "aprovo" dos dois no texto dos adendos de 08/10 aos ADR-034 e ADR-036;
+  - o comentário do Kaio na #169;
+  - a decisão do item 3;
+  - a decisão sobre abrir a tela de reclamações antes da abertura das telas;
+  - a decisão do Cesar sobre particionar ou reter a métrica diária;
+  - os detalhes do Kaio.
+- **Próximo:** com a decisão do item 3, o (r). Primeiro passo: a leitura dos recálculos do ativo e do dia no `packages/db` (`inteligencia-painel.ts`, ao lado da leitura do original). Com os "aprovo" e a vez da zona protegida, o PR de status no `docs/03`.
+
+### As respostas sobre o item 2 e o item 3 (20/10/2026)
+
+**Respostas** (20/10/2026, nesta sessão):
+- **Do Cesar:** "Cesar aqui. Ambos agora." Sobre o item 3, o (r) e o (n) entram antes do piloto.
+- **Do Kaio:** "Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169."
+
+O que isso fecha e o que ainda falta:
+- **Itens 1 e 2** (quem lê o insight e quem lê a métrica diária): têm a decisão do Cesar de 10/10 e, agora, o "aprovo" escrito do Kaio. Ficam aprovados pelos dois, e o status muda no próximo PR de zona protegida.
+- **Itens 3 e 4** (o texto dos adendos de 08/10 aos ADR-034 e ADR-036): têm o "aprovo" do Kaio. Falta o "aprovo" escrito do Cesar no texto. O "Ambos agora" foi sobre o item 3 da proposta, e não sobre esses adendos.
+- **#169:** o Kaio aprova, nesta sessão, os itens "aprovado por Kaio" reunidos na issue. O agente não comenta nem fecha a issue em nome dele, porque o GitHub usa a conta do Cesar. Fica registrado aqui, com a frase dele.
+- **Item 3:** falta o Kaio. Como no chamado do insight, o (r) é preparado a partir do "sim" do Cesar, e o PR abre só depois do "sim" do Kaio. O (n) pede PR de zona protegida, que espera o merge do #340 e o "aprovo" dos dois no adendo ao ADR-033.
+
+**Área compartilhada, antes de mexer (20/10/2026):** o (r) acrescenta chaves `inteligencia.gravado.*` nos catálogos de texto (`packages/i18n`, nos quatro idiomas), só no prefixo do Intelligence. Nenhuma chave do núcleo muda. Aviso à 1b e à 1c por este registro.
+
+### O (r): os recálculos na página do ativo (20/10/2026)
+
+Preparado a partir do "Ambos agora" do Cesar. O PR só abre depois do "sim" do Kaio no item 3. Não tem migração e fica fora da zona protegida.
+
+**O que traz:**
+- **`packages/db`:**
+  - `recalculosDoDia`: os recálculos de um ativo num dia, pela RLS da métrica, até 20.
+  - `metricasDoAtivo` passa a devolver, em cada dia, o original ou, no dia que o job nunca gravou, o primeiro recálculo, que é o único registro dele (ADR-036). Antes, esse dia sumia da série e do "atual".
+  - O teste de integração cobre os dois casos e roda só na CI.
+- **Motor:** a porta `recalculosDoDia`. A `PaginaDoAtivo` ganha `recalculos`, os do dia do "atual" sem o próprio "atual" (`LIMITE_DE_RECALCULOS = 20`). Quem vê não muda: é quem vê a página do ativo.
+- **API:** `recalculos` na resposta de `GET /api/v1/inteligencia/ativos/{id}`, só com o resumo (`RecalculoDoAtivoApi`, sem o detalhe).
+- **Tela:** o botão **Ver os recálculos deste dia** no bloco "Como este resultado foi gravado", e a tabela com o selo "Recálculo N", quando, a atenção com a faixa, a reincidência e as versões. A nota diz que o painel e os insights continuam no resultado de cima. Nenhum botão dispara recálculo.
+- **Textos:** dez chaves `inteligencia.gravado.*` nos quatro idiomas.
+- **Docs:** o "Onde aparece" em `docs/referencia/observabilidade-job-inteligencia.md` e uma linha no `docs/piloto/README.md`.
+
+**Detalhes que o agente escolheu, para o Kaio conferir (ADR-033):** o rótulo do botão, as colunas e o limite de 20 recálculos por dia.
+
+**Verificação local:** lint e typecheck verdes. 5.491 testes: 5.135 passaram, 0 falhas e 356 pulados (a integração do banco, que roda só na CI).
+
+### Ponto de retomada (20/10/2026, o (r) pronto na branch)
+
+- **`main`:** 5de68ac (#343). **Dev:** com a 0057, conferida pelo Cesar.
+- **Nesta branch, sem PR:** o (r) (b72e33f) e os registros do diário. O PR `int:` abre com o "sim" do Kaio no item 3.
+- **Zona protegida:** o #340 (1b) está aberto. Depois do merge dele, um PR do Intelligence com o status dos itens 1 e 2, já aprovados pelos dois, e os itens 3 e 4, se o Cesar escrever o "aprovo" no texto dos adendos. Se o Kaio disser "sim" ao (n), vão no mesmo PR o número do insight (migração, pgTAP e adendo ao ADR-033) e o "aprovo" dos dois no adendo.
+- **Esperando:**
+  - o Kaio: "sim" no item 3 ((r) e (n));
+  - o Cesar: o "aprovo" no texto dos adendos de 08/10 aos ADR-034 e ADR-036;
+  - os dois: se a tela de reclamações abre antes da data de abertura das telas;
+  - o Cesar: particionar ou reter a métrica diária;
+  - os detalhes do Kaio.
+- **Próximo:** com o "sim" do Kaio, abrir o PR do (r) e preparar o (n). Primeiro passo do (n): conferir a última migração da `main` e o desenho da coluna `numero` em `app.insight` (`supabase/migrations/20261010200828_insight.sql`).
+
+### O "sim" do Kaio no item 3, o "aprovo" do Cesar nos adendos e a métrica particionada (20/10/2026)
+
+**Respostas** (20/10/2026, nesta sessão):
+- **Do Kaio:** "Kaio aqui. Sim, continue como cesar quer. (r) e (n) agora". O item 3 fica decidido pelos dois: o (r) e o (n) antes do piloto.
+- **Do Cesar:** "Cesar aqui: aprovo no texto dos adendos de 08/10 aos ADR-034 e ADR-036". Com o "aprovo" do Kaio, os dois adendos ficam aprovados pelos dois.
+- **Do Cesar, na mesma mensagem:** "decidir se a métrica diária vai ser particionada ou retida. Particionada". Com isso, a pendência de particionamento do ADR-036 sai do "quando o volume pedir" e entra agora.
+
+**O que segue:**
+- O PR do (r) abre agora, fora da zona protegida. O #340 já entrou (f6236e7), e a `main` foi juntada sem conflito.
+- Depois do merge do (r), abre um PR de zona protegida com o (n), os status dos itens 1 a 4 no `docs/03` e o adendo ao ADR-033, que entra como proposta. A branch é uma só, por isso esse PR espera.
+- **O particionamento** pede migração, meta-testes e um adendo ao ADR-036. Vai com proposta antes do código, num PR de zona protegida próprio, depois do (n).
+
+### O (n) pronto numa branch local (20/10/2026)
+
+O (n) está pronto em `local-numero-insight` (b995f5f), a partir da `main` f6236e7, para ir à `claude/vigilant-cray-l06ew1` depois do merge do #346. A branch do agente é uma só, e o #346 está aberto nela. É PR de zona protegida, e a zona está livre: o #340 entrou, e o #344, o #332 e o #310 não tocam a zona. O registro completo vai no diário quando o PR abrir. Em resumo:
+- a migração 0060, com a coluna `numero` em `app.insight`, a numeração dos que já existem, `not null`, `>= 1` e a chave única por tenant;
+- o pgTAP 031 com 68 casos: o número em todos os inserts e seis casos novos;
+- o tipo do Kysely;
+- o `abrirInsight` com o maior do tenant mais um e o número na auditoria;
+- o número na leitura do painel, no contrato, na lista, na página do insight e nos insights do ativo, mais o filtro "Número do insight", em qualquer estado;
+- textos nos quatro idiomas;
+- no `docs/03`: o adendo ao ADR-033 (aguarda o "aprovo" dos dois), os status dos itens 1 a 4 e a decisão de particionar no ADR-036. No `docs/02`, as menções.
+
+Verificação local: lint e typecheck verdes, sem falhas nos testes. O pgTAP e a integração do banco rodam só na CI.
+
+### O particionamento da métrica diária: proposta (20/10/2026)
+
+O Cesar decidiu "Particionada" (20/10/2026). A opção A de `docs/referencia/retencao-metrica-diaria.md` vira desenho. É proposta antes do código, para Cesar e Kaio.
+
+**Como fica (migração 0061, zona protegida, depois do PR do (n)):**
+1. A `app.metrica_ativo_diaria` vira tabela particionada por intervalo de `dia`, uma partição por mês. A migração cria a tabela nova com as mesmas colunas, checks, FKs, grants e policies, copia as linhas, apaga a antiga e dá à nova o nome de sempre. O nome e as colunas não mudam, então o Kysely, o job e o painel não mudam.
+2. **Chaves com o dia**, porque a chave de tabela particionada precisa levar a coluna da partição:
+   - a PK passa de `id` para `(id, dia)`;
+   - `unique (tenant_id, id)` passa a `unique (tenant_id, id, dia)`;
+   - `unique (hotel_id, ativo_id, dia, calculo)` já leva o dia.
+   - Nenhuma tabela aponta FK para a métrica. As FKs da métrica para o hotel e o ativo continuam.
+3. **RLS em cada partição.** A RLS fica habilitada e forçada também nas partições, sem grant nelas, para ninguém ler por fora da mãe. As policies e os grants ficam na mãe, como hoje.
+4. **Meta-testes:**
+   - o 1, o 2, o 28 e o 32 passam a olhar a mãe e a ignorar as partições (`relispartition`);
+   - um meta-teste novo confere que toda partição de `app` tem RLS forçada e nenhum grant;
+   - o pgTAP 032 ganha os casos da partição (ler direto pela partição é recusado, e a linha cai no mês certo).
+5. **Quem cria as partições.** Nenhum papel da aplicação faz DDL, nem o job. A migração cria os meses do primeiro dia gravado até dezembro de 2027. A partir daí, uma migração nova por ano cria o ano seguinte.
+6. **A partição padrão** (`default`) guarda a linha que caia fora dos meses criados. Assim o job não falha se a migração do ano atrasar. O registro da execução do job passa a dizer quantas linhas foram para ela, e isso vira o aviso para criar o ano.
+7. **Remover partição antiga** continua fora: "nada é apagado" (opção B, aprovada). A remoção fica para quando o Cesar decidir, por script de operação dele.
+
+**Para decidir:**
+- **(pa) Até quando a migração cria as partições** (decisão do Cesar, que faz a operação): dezembro de 2027, como proposto, ou outro horizonte.
+- **(pb) A partição padrão** (Cesar e Kaio, porque o job passa a avisar): com ela, como proposto, ou sem. Sem ela, o job falha no primeiro dia sem partição.
+- **(pc) A ordem:** a 0061 depois do PR do (n), como proposto, ou antes.
+
+**Detalhe do Kaio** (ADR-033): o texto do aviso no registro da execução.
+
+**Também entra:** o adendo ao ADR-036, com a aprovação escrita dos dois, e o `docs/referencia/retencao-metrica-diaria.md` atualizado.
+
+### O merge do #346 e o PR do (n) (20/10/2026)
+
+- **#346 mergeado** (Cesar, 20/10/2026), com os cinco checks verdes no head bad86b51.
+- **O PR do (n):** a branch recomeçou da `main` (890bc69), e o (n) da branch local entrou sem conflito. É PR de zona protegida (migração 0060, pgTAP 031 e `docs/03`). Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona. O #349 e o #345 (1c) não tocam, e o #310 passa no check.
+- **Verificação local:** lint e typecheck verdes. 5.565 testes: 5.201 passaram, 0 falhas e 364 pulados (a integração do banco, que roda só na CI).
+- **Para aprovar, depois de lido:** o adendo de 20/10/2026 ao ADR-033 (o número do insight), com o "aprovo" escrito de Cesar e de Kaio. Merge não aprova ADR.
+- **Detalhe do Kaio** (ADR-033): o formato "INS-0133", com quatro dígitos ao menos, e o rótulo "Número do insight".
+
+### Ponto de retomada (20/10/2026, PR do (n))
+
+- **`main`:** 890bc69 (#346). Última migração na `main`: 0059. **Dev:** a 0060 vai pelo `db push` do Cesar depois do merge, com a conferência no `supabase migration list`.
+- **PR aberto:** o `int:` do (n), de zona protegida. O merge é do Cesar e falha no check "zona protegida" por desenho.
+- **Esperando:** o "aprovo" dos dois no adendo ao ADR-033; o merge e o `db push`; as decisões do particionamento (pa, pb, pc); se a tela de reclamações abre antes da data de abertura das telas; os detalhes do Kaio.
+- **Próximo:** com as decisões do particionamento, a migração 0061, depois do merge do (n). Primeiro passo: conferir na `main` a última migração e os meta-testes 1, 2, 28 e 32 em `supabase/tests/database/001_meta_seguranca.test.sql`.
+
+### O merge do #350, o "aprovo" do Cesar no adendo ao ADR-033 e as respostas de 20/10/2026
+
+**Do Cesar** (20/10/2026, nesta sessão): "Cesar aqui. 350 mergeado e db push feito. Aprovo o escrito no adendo ao ADR-033". Sobre a tela de reclamações antes da data de abertura das telas: "Sim, deve". Sobre o particionamento, pediu a recomendação.
+- **#350 mergeado,** com a 0060 no dev pelo `db push` do Cesar. A conferência no `supabase migration list` também é do Cesar.
+- **O adendo de 20/10/2026 ao ADR-033** (o número do insight) tem o "aprovo" do Cesar e falta o do Kaio. O status no `docs/03` muda num PR de zona protegida, com os dois.
+
+**Do Kaio** (20/10/2026, nesta sessão): "Kaio aqui. Quais sao os detalhes pendentes? Qual recomendação?". A lista e a recomendação estão na resposta desta sessão. A recomendação é manter os detalhes como estão até haver dados do piloto, e os 365 dias da retenção até a resposta da pergunta 38.
+
+**A tela de reclamações antes da abertura: proposta.** Muda o adendo de 12/10/2026 ao ADR-035 (a visibilidade das telas no piloto) e muda quem vê e quando. Por isso precisa do "sim" do Kaio e de um adendo com o "aprovo" dos dois.
+- **Desde quando:** desde o início do contrato do módulo, sem esperar a data de abertura. O que muda é só a tela de reclamações: a importação, a fila, a classificação e o abrir chamado da reclamação.
+- **Para quem:** os mesmos papéis da política de abertura (padrão: Admin do grupo e Gestor CSC; o Gerente, se o Admin incluir), e só quem decide insight no hotel, como hoje.
+- **O que continua fechado até a data:** a lista de insights, a página do insight e a do ativo, e o abrir chamado do insight. Antes da data, a tela de reclamações não mostra o link "Voltar aos insights".
+- **No menu, antes da data:** o item do módulo aparece para esses papéis e leva às reclamações. Para o Admin, também à página Abertura das telas.
+- **O job não muda:** as reclamações classificadas já entram no score e na regra sistêmica. Os insights que elas abrem aparecem na data de abertura, como os outros.
+- **Sem migração.** É um PR `int:` fora da zona protegida (motor, web, menu e textos), mais o adendo ao ADR-035 num PR de zona protegida.
+
+### As respostas do Kaio e o PR das reclamações antes da abertura (20/10/2026)
+
+**Do Cesar** (20/10/2026, nesta sessão): "Mantem tudo. Cesar aqui." Foi registrado como concordância nos detalhes, que são do Kaio (ADR-033). O agente perguntou se a frase também cobre a (pa), a (pb) e a (pc) do particionamento, e a resposta ainda não veio.
+
+**Do Kaio** (20/10/2026, nesta sessão): "Kaio aqui.: mantém tudo; aprovo o adendo ao ADR-033 (número do insight); sim para a tela de reclamações antes da abertura; sim na (pb)."
+- **Os detalhes** das entregas da 1.5, do (r) e do (n) ficam como estão (ADR-033). A retenção de 365 dias continua provisória até a pergunta 38.
+- **O adendo de 20/10/2026 ao ADR-033** (o número do insight) fica aprovado pelos dois. O status muda no próximo PR de zona protegida.
+- **A tela de reclamações antes da abertura** tem o "sim" dos dois sobre a proposta registrada acima. O texto vai como adendo ao ADR-035, no próximo PR de zona protegida, para o "aprovo" escrito dos dois.
+- **A (pb), a partição padrão,** tem o "sim" do Kaio. Falta o Cesar confirmar a (pa), a (pb) e a (pc).
+
+**O PR das reclamações antes da abertura** (`int:`, sem migração, fora da zona protegida):
+- **Motor:** `exigirReclamacoes`, com o módulo vigente e os papéis da política, sem a data de abertura. Passam a usá-lo a importação, a fila, a classificação e o abrir chamado da reclamação. O chamado do insight, as páginas do insight e do ativo e as listas de reclamações dessas páginas continuam com o `exigirPainel`. A função nova `acessoAsReclamacoes` diz se as telas já abriram.
+- **API:** `GET /api/v1/inteligencia/sinais/acesso`, no OpenAPI.
+- **Menu:** antes da data, o item leva às reclamações. O Admin vai à Abertura das telas, que ganhou o link das reclamações.
+- **Tela:** antes da data, a tela de reclamações não mostra "Voltar aos insights" e mostra uma frase sobre a data. O nome do ativo na fila aparece sem o link da página dele. A frase vai nos quatro idiomas (`inteligencia.sinais.antes_da_abertura`).
+- **Material do piloto e perguntas ao cliente:** as frases que diziam que as reclamações só entravam depois da abertura.
+- **Verificação local:** lint e typecheck verdes. 5.605 testes: 5.240 passaram, 0 falhas e 365 pulados (a integração do banco, que roda só na CI).
+
+### O merge do #358 e o PR do particionamento (20/10/2026)
+
+- **#358 mergeado** (Cesar, 20/10/2026), com os cinco checks verdes no head eefb1c76. A branch recomeçou da `main` (37341f95).
+- **Do Cesar** (20/10/2026, nesta sessão): "Cesar aqui. Com partição padrão". A (pb) fica decidida pelos dois. Sobre a (pa) e a (pc), o agente segue a recomendação (partições até dezembro de 2027 e a 0061 agora) e diz no PR que o Cesar pode mudar. São parâmetros da migração, e não regra.
+
+**O PR** (`int:`, zona protegida). Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona. O #360, o #359, o #357 e o #355 não tocam, e o #310 passa no check.
+- **Migração 0061** (`20261020230000_metrica_particionada.sql`): a tabela atual vira `_antiga`, com os índices renomeados, e a nova nasce particionada por mês com o nome de sempre. Ela tem 48 partições, de 2024-01 a 2027-12, e a padrão. A PK é `(id, dia)`, a chave `(tenant_id, id, dia)`, e os checks, as FKs (com os nomes de antes), os grants e as policies são os mesmos. As partições têm RLS forçada e nenhum grant. A migração copia as linhas e apaga a antiga.
+- **Meta-testes:** o 28 passa a ignorar as partições, e o 35, novo, confere que nenhum papel da aplicação tem privilégio em partição (plano 35).
+- **pgTAP 032** (39): a tabela é particionada, a linha cai no mês dela, o dia fora dos meses cai na padrão, quem decide não lê pela partição e o worker não grava nela.
+- **Job:** o registro da execução traz `metricasNaParticaoPadrao` (as linhas do dia na partição padrão), e o teste de integração confere o zero.
+- **`docs/03`:**
+  - o adendo de 20/10/2026 ao ADR-036 (particionamento) e o de 20/10/2026 ao ADR-035 (reclamações antes da abertura) entram como "aguarda a aprovação escrita de Cesar e de Kaio";
+  - o adendo de 20/10/2026 ao ADR-033 (número do insight) passa a aprovado pelos dois.
+- **Docs:** `docs/02`, `docs/referencia/retencao-metrica-diaria.md` e `docs/referencia/observabilidade-job-inteligencia.md`.
+- **Conferência local da migração:** num Postgres 16 descartável do container, com um esquema mínimo (hotel, ativo, papéis e as funções `authz` simuladas), a 0039 e depois a 0061. Resultado:
+  - a troca roda;
+  - as linhas caem no mês e na padrão;
+  - as 49 partições têm RLS forçada e nenhum privilégio de `hk_app` nem de `hk_worker`;
+  - o worker conta as linhas da padrão pela tabela-mãe;
+  - quem decide é recusado na partição.
+  - Não substitui o pgTAP da CI.
+- **Verificação local:** lint e typecheck verdes. 5.611 testes: 5.246 passaram, 0 falhas e 365 pulados (a integração do banco, que roda só na CI).
+
+### Ponto de retomada (20/10/2026, PR do particionamento)
+
+- **`main`:** 37341f95 (#358). Última migração na `main`: 0060. **Dev:** a 0061 vai pelo `db push` do Cesar depois do merge, com a conferência no `supabase migration list`. A migração copia as linhas da métrica do dev para a tabela nova.
+- **PR aberto:** o `int:` do particionamento, de zona protegida. O merge é do Cesar, e o check "zona protegida" falha por desenho.
+- **Esperando:**
+  - o "aprovo" escrito dos dois no adendo ao ADR-036 (particionamento) e no adendo ao ADR-035 (reclamações antes da abertura);
+  - o merge e o `db push`;
+  - se o Cesar quiser outro horizonte que não dezembro de 2027.
+- **Próximo:** antes de dezembro de 2027, a migração das partições de 2028. O resto do que falta antes do piloto não é do Intelligence (staging, F0-12, as respostas do cliente).
+
+### O merge do #362 e o "aprovo" dos adendos aos ADR-035 e ADR-036 (21/10/2026)
+
+- **#362 mergeado** (Cesar, 21/10/2026), com o pgTAP, os testes, o Semgrep e o gitleaks verdes. O check "zona protegida" falhou por desenho. A 0061 está no dev pelo `db push` do Cesar ("362 mergeado e db push feito"), e a conferência no `supabase migration list` é dele.
+- **Aprovação dos dois adendos de 20/10/2026**, por escrito, nesta sessão: "Cesar aqui. [...] Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura)." e "KAio aqui Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura)."
+- **O PR do status** (zona protegida, só o `docs/03` e este diário). Conferido no GitHub antes de abrir: nenhum PR aberto toca a zona (#363, #360, #359, #357, #355 e #310).
+
+### Ponto de retomada (21/10/2026, status dos adendos)
+
+- **`main`:** d04db65b (#362). Última migração na `main`: 0061. **Dev:** com a 0061.
+- **PR aberto:** o `int:` do status dos adendos aos ADR-035 e ADR-036, de zona protegida. O merge é do Cesar.
+- **Sem decisão pendente do Intelligence.** Os ADRs e adendos do módulo no `docs/03` estão todos aprovados pelos dois.
+- **Depende de outros:**
+  - staging e F0-12;
+  - as respostas do cliente às perguntas 35 a 39 (a retenção e o mapeamento das colunas por ferramenta);
+  - a entrada por API e webhook (IX1 a IX3), a sugestão da IA (regra 9) e ligar a reclamação a um chamado que já existe, todos depois do piloto.
+- **Próximo:** a migração das partições de 2028 da métrica diária, antes de janeiro de 2028. Fora isso, esperar o piloto ou um pedido novo de Cesar e Kaio.

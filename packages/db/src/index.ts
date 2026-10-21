@@ -23,6 +23,11 @@ export {
   criarPortaCategorias,
   criarPortaChecklists,
   criarPortaModelosDeAtivo,
+  criarPortaSugestoesDePlano,
+  criarPortaCadastrosDeAtivos,
+  criarPortaImportacaoDeAtivos,
+  criarPortaQrReservados,
+  criarPortaPacoteDaBandeira,
   criarPortaPlanosPreventivos,
   criarPortaCodigos,
   criarPortaModulos,
@@ -53,7 +58,9 @@ export { criarPortaConsultasDaCorretiva } from './consultas-da-corretiva';
 export { criarPortaHistorico } from './historico';
 export { criarPortaAuditoriaGeral } from './auditoria-geral';
 export { criarPortaAvisosDeSla } from './avisos-de-sla';
-export { criarPortaComunicacao } from './comunicacao';
+export { criarPortaIndicadores } from './indicadores';
+export { criarPortaSituacaoPorHotel } from './situacao-por-hotel';
+export { criarPortaComunicacao, criarPortaInscricoesPush } from './comunicacao';
 export { criarPortaDoJobDoIntelligence, criarPortaDoPainelDoIntelligence } from './inteligencia';
 export type { PortaDoJobDoIntelligence, PortaDoPainelDoIntelligence } from './inteligencia';
 export type {
@@ -73,8 +80,11 @@ export type {
   ClassificacaoNoBanco,
   HotelDoSinalNoBanco,
   ImportacaoNoBanco,
+  LigacaoDoChamadoNoBanco,
+  ReclamacaoParaChamadoNoBanco,
   ReferenciasDaClassificacaoNoBanco,
   SinalNovoNoBanco,
+  SinalDaFilaNoBanco,
   SinalParaClassificarNoBanco,
 } from './repositorios/inteligencia-sinal';
 export type {
@@ -95,6 +105,7 @@ export type {
   OsDoJob,
   PoliticaDoJob,
   SessaoDoJobDoIntelligence,
+  SinalDoJob,
   TransicaoDoJob,
 } from './repositorios/inteligencia';
 export { novoId } from './ids';
@@ -103,3 +114,7 @@ export { atrasoDaTentativa, processarOutbox } from './repositorios/outbox';
 export type { ResultadoOutbox } from './repositorios/outbox';
 export type { HotelVisivel } from './consultas';
 export type { AppPapel as Papel, DB } from './tipos-banco';
+
+/** Status técnico Mews V1 — somente leitura admin, por RLS. */
+export { criarPortaStatusAdministrativoMews, criarPortaCandidatosHoteisMews } from './mews-admin';
+export type { StatusAdministrativoMews, LinhaDoStatusMews } from './mews-admin';

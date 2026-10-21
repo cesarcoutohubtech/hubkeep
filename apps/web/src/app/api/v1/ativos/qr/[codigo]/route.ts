@@ -21,6 +21,7 @@ export const GET = rota('ativos.abrir_por_qr', async (r) => {
       id: a.id,
       localId: a.localId,
       categoriaId: a.categoriaId,
+      modeloId: a.modeloId,
       nome: a.nome,
       fabricante: a.fabricante,
       modelo: a.modelo,
@@ -33,6 +34,8 @@ export const GET = rota('ativos.abrir_por_qr', async (r) => {
       ativo: a.desativadoEm === null,
       codigoQr: a.codigoQr,
       paradoDesde: a.paradoDesde?.toISOString() ?? null,
+      situacaoCadastro: a.situacaoCadastro,
+      motivoDaRecusa: a.motivoDaRecusa ?? null,
     },
   });
 });

@@ -22,6 +22,7 @@ const FotoDepoisObrigatoria = z.strictObject({ ligado: z.boolean() });
 const AssinaturaNoAceite = z.strictObject({ ligado: z.boolean() });
 /** Checklist completo obrigatório na conclusão (PV1); desligado por padrão. */
 const ChecklistCompletoObrigatorio = z.strictObject({ ligado: z.boolean() });
+const AprovacaoDoCadastro = z.strictObject({ ligado: z.boolean() });
 const PrioridadePadraoPorCategoria = z.record(z.guid(), z.guid());
 
 /** Nome de cada nível da criticidade (1 a 5) por idioma, parcial (I1). */
@@ -145,6 +146,11 @@ export const MatrizDeArrendamentoApi = z
   .refine((r) => Object.keys(r).length <= 200)
   .meta({ id: 'MatrizDeArrendamentoApi' });
 
+/** Tolerância da preventiva em dia (1c, decisão 11): de 0 a 30 dias, padrão 0. */
+export const ToleranciaDaPreventivaApi = z
+  .strictObject({ dias: z.int().min(0).max(30) })
+  .meta({ id: 'ToleranciaDaPreventivaApi' });
+
 export const FORMATOS_DE_POLITICA_API = {
   'os.aceite_automatico': AceiteAutomatico,
   'os.codigos_obrigatorios': CodigosObrigatorios,
@@ -153,10 +159,12 @@ export const FORMATOS_DE_POLITICA_API = {
   'os.checklist_completo_obrigatorio': ChecklistCompletoObrigatorio,
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria,
   'ativo.criticidade': NomesDeCriticidadeApi,
+  'ativo.aprovacao_do_cadastro': AprovacaoDoCadastro,
   'chamado.sla': PoliticaDeSlaApi,
   'hotel.horario_atendimento': HorarioDeAtendimentoApi,
   'chamado.escalonamento': EscalonamentoDeSlaApi,
   'hotel.matriz_arrendamento': MatrizDeArrendamentoApi,
+  'preventiva.tolerancia_dias': ToleranciaDaPreventivaApi,
 } as const;
 
 export const CHAVES_DE_POLITICA_API = Object.keys(
@@ -164,7 +172,13 @@ export const CHAVES_DE_POLITICA_API = Object.keys(
 ) as (keyof typeof FORMATOS_DE_POLITICA_API)[];
 
 /** Os prefixos das chaves do núcleo, iguais aos do domínio (tests/contratos-dominio). */
-export const PREFIXOS_DO_NUCLEO_API = ['os.', 'chamado.', 'ativo.', 'hotel.'] as const;
+export const PREFIXOS_DO_NUCLEO_API = [
+  'os.',
+  'chamado.',
+  'ativo.',
+  'hotel.',
+  'preventiva.',
+] as const;
 
 const ChaveDeExtensao = z
   .string()
@@ -207,6 +221,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     valor: ChecklistCompletoObrigatorio.nullable(),
   }),
   z.object({
+    chave: z.literal('ativo.aprovacao_do_cadastro'),
+    escopo: EscopoDePolitica,
+    valor: AprovacaoDoCadastro.nullable(),
+  }),
+  z.object({
     chave: z.literal('chamado.prioridade_padrao_por_categoria'),
     escopo: EscopoDePolitica,
     valor: PrioridadePadraoPorCategoria.nullable(),
@@ -235,6 +254,11 @@ const PedidoDePoliticaDoNucleo = z.discriminatedUnion('chave', [
     chave: z.literal('hotel.matriz_arrendamento'),
     escopo: EscopoDePolitica,
     valor: MatrizDeArrendamentoApi.nullable(),
+  }),
+  z.object({
+    chave: z.literal('preventiva.tolerancia_dias'),
+    escopo: EscopoDePolitica,
+    valor: ToleranciaDaPreventivaApi.nullable(),
   }),
 ]);
 
@@ -319,10 +343,12 @@ export const RespostaDeConfiguracao = z
         resolvida('os.checklist_completo_obrigatorio', ChecklistCompletoObrigatorio),
         resolvida('chamado.prioridade_padrao_por_categoria', PrioridadePadraoPorCategoria),
         resolvida('ativo.criticidade', NomesDeCriticidadeApi),
+        resolvida('ativo.aprovacao_do_cadastro', AprovacaoDoCadastro),
         resolvida('chamado.sla', PoliticaDeSlaApi),
         resolvida('hotel.horario_atendimento', HorarioDeAtendimentoApi),
         resolvida('chamado.escalonamento', EscalonamentoDeSlaApi),
         resolvida('hotel.matriz_arrendamento', MatrizDeArrendamentoApi),
+        resolvida('preventiva.tolerancia_dias', ToleranciaDaPreventivaApi),
       ]),
     ),
   })

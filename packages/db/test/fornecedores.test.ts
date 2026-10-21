@@ -22,6 +22,7 @@ import {
   criarAcessoBanco,
   criarPortaFornecedores,
   criarPortaHistorico,
+  criarPortaTriagem,
   criarPortasDeAplicacao,
 } from '../src/index';
 
@@ -120,7 +121,12 @@ describe.skipIf(!temBanco)('I3 — fornecedor mínimo do grupo', { timeout: 60_0
       podeGerir: () => ({ permitido: true }),
       exigirAlcance: () => undefined,
     });
-    historico = criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(banco) });
+    historico = criarCasosDeUsoDeHistorico({
+      historico: criarPortaHistorico(banco),
+      triagem: criarPortaTriagem(banco),
+      atribuicoes: deps.atribuicoes,
+      relogio: relogioDoSistema,
+    });
   });
 
   afterAll(async () => {

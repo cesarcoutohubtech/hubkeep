@@ -137,7 +137,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixaAtencao: a1?.atencao.faixa,
       recalculo: false,
       versaoFormulaReincidencia: 4,
-      versaoFormulaAtencao: 6,
+      versaoFormulaAtencao: 7,
       versaoPolitica: 'padrao',
       detalheReincidencia: a1?.reincidencia,
       detalheAtencao: a1?.atencao,
@@ -152,7 +152,7 @@ describe('calcularDia: scores e métrica do dia', () => {
       faixa: a1?.atencao.faixa,
       alcance: { tipo: 'hotel', hotelId: 'h1', bandeiraId: 'b1' },
       valor: a1?.atencao.valor,
-      versao: 6,
+      versao: 7,
       escopo: { ativoId: 'a1', hotelId: 'h1' },
     });
     expect(atencao[0]?.corretivaIds).toHaveLength(6);

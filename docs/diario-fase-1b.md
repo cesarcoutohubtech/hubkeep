@@ -976,3 +976,290 @@ Na branch `claude/1b-m1-app`, PR fora da zona protegida.
 - **Próximo:**
   - **M1b:** a escolha do modelo no cadastro do ativo, no web e no PWA (operação `ativo.cadastrar` com `modeloId`).
   - **M1c:** a lista de sugestões, o descarte e o contador. Depende da 0051 (#279).
+
+## Ponto de retomada (15/10/2026, pausa pelo limite semanal)
+
+- **`main` e dev:**
+  - A `main` estava em `a92dc65`. A M1 já tem nela a 0050 (#276) e a regra do plano que cobre o ativo (#278).
+  - O Cesar vai mergear o #279 (0051, colunas do descarte da sugestão, pgTAP 042 com 49 asserções) e o #280 (M1a, cadastro dos modelos de ativo), os dois verdes, e fazer o `db push` da 0051. A 0050 já foi aplicada no dev.
+- **PRs da 1b:** nenhum acompanhado. As conferências agendadas foram canceladas, e os eventos do GitHub não são acompanhados durante a pausa.
+- **Trabalho sem PR:** a M1b está pronta na branch `claude/1b-m1b`, montada sobre a M1a e com este ponto de retomada.
+  - O ativo guarda `modeloId` no cadastro, na alteração e na fila offline.
+  - O modelo precisa estar ativo e ser da categoria do ativo. O modelo que o ativo já tinha vale mesmo desativado, e o ausente na alteração mantém o gravado.
+  - Escolher o modelo preenche só o que está vazio, no web e no PWA. A referência do PWA guarda os modelos.
+  - `AtivoApi.modeloId` é opcional na leitura, para o PWA aceitar o servidor de antes da M1 durante a publicação.
+  - Lint, typecheck e testes locais estão verdes. Os testes de integração ficam para a CI.
+- **PV3c:** completa (#268 a #271), exceto o aceite automático da preventiva, que espera o acordo com a 1c.
+  - Seguem esperando a decisão do Cesar:
+    1. a parada na preventiva;
+    2. se o Gerente que é o técnico aceita a própria preventiva;
+    3. se a fila mostra `paradoDesde` na preventiva.
+- **Próxima tarefa:** abrir o PR da M1b.
+  - Primeiro passo: conferir no GitHub se o #280 entrou na `main`. Depois, fazer o merge da `main` na `claude/1b-m1b`, rodar lint, typecheck e testes, e abrir o PR (`1b:`) com base na `main`.
+- **Depois da M1b, a M1c.** Exige o #279 mergeado e o `db push` da 0051.
+  - Lista de sugestões: ativos aprovados, com modelo, sem plano que os cubra (`hotelJaTemPlanoQueCobreOAtivo`) e sem descarte.
+  - A gestão cria o plano com um clique, pelo `hk_app`, pausado e sem responsável.
+  - O descarte grava quem, quando e o motivo.
+  - O painel de implantação ganha o contador "ativos com modelo e sem plano". Atualizar os tipos do Kysely com as colunas da 0051, se ainda não estiverem na `main`.
+
+## M1b e M1c (19/10/2026)
+
+- **Retomada:** o #279 (0051) e o #280 (M1a) entraram na `main` em 15/10. A M1b foi atualizada com a `main` e virou o PR #329 (`claude/1b-m1b`). O `db push` da 0051 foi combinado com o Cesar antes da pausa; a conferência no `supabase migration list` do dev é dele.
+- **M1c, na branch `claude/1b-m1c`** (montada sobre a M1b; o PR abre depois do merge do #329, com base na `main`):
+  - **Domínio (`sugestoes-de-plano.ts`):** `ativoSemPlanoComModelo` (ativo ativo, com modelo, sem descarte e sem plano que o cubra, por `hotelJaTemPlanoQueCobreOAtivo`), `exigirPeriodicidadeSugerida` (`sugestao_sem_periodicidade`) e `nomeDoPlanoSugerido`.
+  - **Aplicação:** `criarCasosDeUsoDeSugestoesDePlano` com listar, criar o plano e descartar. Quem pode é quem gere planos (`podeGerirPlanos`). O plano nasce pelo caso de uso dos planos, com as mesmas validações: pausado, sem responsável, com a periodicidade e o checklist do modelo (só se ativo), o nome do ativo e o início no dia de hoje no fuso do hotel. O ativo que saiu da lista dá `sugestao_de_plano_indisponivel`; o motivo segue `normalizarMotivo` (`motivo_obrigatorio`, até 500).
+  - **db:** `criarPortaSugestoesDePlano` e `descartarSugestaoDePlano` (versão do ativo, quem e quando do contexto, auditoria `ativo`/`descartar_sugestao`, evento `ativo.alterado`).
+  - **API:** `GET /api/v1/hoteis/{id}/sugestoes-de-plano`, `POST /api/v1/ativos/{id}/plano-sugerido` e `POST /api/v1/ativos/{id}/plano-sugerido/descarte`, no OpenAPI.
+  - **Telas:** as sugestões ficam na tela de preventivas, acima da lista de planos; o painel de implantação ganha "ativos com modelo e sem plano" e o atalho para as sugestões.
+- **Escolhas minhas, para o Cesar confirmar:**
+  1. O contador e a lista usam o mesmo critério. O ativo cujo modelo não sugere periodicidade entra, mas sem o botão de um clique: a gestão cria o plano pela tela de preventivas ou descarta.
+  2. O modelo desativado continua sugerindo: o ativo segue sendo daquele modelo.
+  3. Não há "desfazer descarte" nesta etapa.
+  4. Enquanto a M4 não existe, todo ativo conta como aprovado.
+
+## M4 e M2, zona protegida (19/10/2026)
+
+- **0051 no dev:** o Cesar mostrou o `supabase migration list` do dev em 19/10/2026 (print no chat), com a `20261015130000` no local e no remoto, e as migrações até a `20261019120000`.
+- **Decisões do Cesar de 19/10/2026** (15 a 19 do desenho, respondidas no chat, todas pela proposta):
+  - 15: a política `ativo.aprovacao_do_cadastro` nasce desligada; o Implantador liga no hotel em implantação;
+  - 16: aprovam o Admin do grupo, o Gestor CSC e o Gerente do hotel; o Implantador não;
+  - 17: o ativo pendente já recebe chamado; só fica fora dos planos e das sugestões de plano até a aprovação;
+  - 18: a linha da planilha cujo local não existe é recusada, sem criar o local;
+  - 19: só CSV no MVP.
+- **Zona protegida, na branch `claude/1b-m4-zona`:** a migração 0058 (`20261019200000_ativo_situacao_cadastro.sql`):
+  - `app.ativo.situacao_cadastro` (pendente ou aprovado, padrão aprovado, sem GRANT de UPDATE);
+  - `app.ativo.chave_importacao`, única por hotel e sem UPDATE;
+  - `app.ativo_decisao_cadastro`, só de inserção: uma decisão por ativo, motivo só e sempre na recusa, INSERT só da gestão do hotel e em nome do usuário do contexto.
+  - pgTAP 061 (34 asserções) e os meta-testes 28 e 32 com a tabela nova. Tipos do Kysely atualizados.
+  - Sem ADR novo: o desenho e as decisões 15 a 19 cobrem a M4 e a M2.
+- **Depois do merge e do `db push` da 0058:** a M4 e a M2 fora da zona (domínio, aplicação, API e telas da fila de aprovação e da importação), e o ativo pendente fora das sugestões de plano da M1c.
+
+### M4a — aprovação do cadastro fora da zona (19/10/2026)
+
+Na branch `claude/1b-m4`, montada sobre a `claude/1b-m4-zona`. O PR abre depois do merge do #335 e do `db push` da 0058.
+- **Domínio (`aprovacao-do-cadastro.ts`):**
+  - situação efetiva (a decisão, quando há; senão, a inicial);
+  - situação inicial no PWA pela política `ativo.aprovacao_do_cadastro` (desligada por padrão);
+  - quem decide (`cadastro_fora_do_escopo`): Admin, Gestor CSC e Gerente;
+  - a decisão: só o pendente (`cadastro_ja_decidido`), motivo na recusa (`motivo_obrigatorio`), valor válido (`decisao_do_cadastro_invalida`).
+  - O ativo pendente sai das sugestões de plano e do contador do painel (`cadastroPendente`).
+- **Política:** a chave nova no domínio, nos contratos, na tela de configuração e nos catálogos.
+- **Aplicação:**
+  - `prepararCadastro` devolve a situação do PWA, e a operação `ativo.cadastrar` grava com ela; o web grava aprovado;
+  - `criarCasosDeUsoDeCadastrosDeAtivos`, com a fila e a decisão pela versão do ativo.
+- **db:**
+  - a decisão sobe a versão do ativo, desativa na recusa, grava a decisão, a auditoria `aprovar_cadastro` ou `recusar_cadastro` e o evento `ativo.cadastro_decidido`;
+  - a leitura do ativo traz a situação e o motivo da recusa;
+  - a geração preventiva só pega o ativo aprovado.
+- **API:** `GET /api/v1/hoteis/{id}/cadastros-pendentes` e `POST /api/v1/ativos/{id}/decisao-do-cadastro`, no OpenAPI. `AtivoApi` ganha `situacaoCadastro` e `motivoDaRecusa`, opcionais na leitura.
+- **Telas:**
+  - `/admin/aprovacao-de-ativos`, no menu de cadastros, com aprovar e recusar com motivo;
+  - as marcas de pendente e recusado na lista de ativos do web e do PWA.
+- **Depois:** a M2 (importação por CSV, com a `chave_importacao`).
+
+## Ponto de retomada (20/10/2026, PR da M4a)
+
+- **`main`:** em `bf9b3c0`, com o #335 (migração 0058) mergeado pelo Cesar em 20/10/2026.
+- **Dev:** o `db push` da 0058 é do Cesar e ainda não foi confirmado aqui. O PR da M4a lê e grava as colunas novas, então o merge dele espera a 0058 no dev.
+- **PR aberto:** o da M4a (`1b:`), da branch `claude/1b-m4`, com a `main` trazida (conflitos no índice do domínio e no catálogo `es`, com o painel da 1c). Fora da zona protegida. Validação local verde: typecheck, lint e testes (577 na raiz).
+- **Espera o Cesar:**
+  - o `db push` da 0058 e o merge do PR da M4a;
+  - as escolhas pendentes da M1c (lista = contador; modelo desativado sugere; sem desfazer o descarte);
+  - as decisões da PV3c (parada na preventiva, o Gerente aceita a própria, `paradoDesde` na fila).
+- **Próxima tarefa:** a M2 (importação de ativos por CSV), feita na `claude/1b-m2` (seção abaixo); o PR dela abre depois do merge do PR da M4a.
+
+### M2 — importação de ativos por planilha (20/10/2026)
+
+Na branch `claude/1b-m2`, montada sobre a `claude/1b-m4`. O PR abre depois do merge do #337 (M4a).
+- **Domínio (`importacao-de-ativos.ts`, `resumo-sha256.ts`):** puro, sem biblioteca.
+  - **Leitura do CSV:**
+    - UTF-8 com ou sem BOM; o separador (`;` ou `,`) sai do cabeçalho;
+    - aspas e quebra de linha dentro de aspas;
+    - limites de 2.000 linhas e 2 MB (`importacao_limite`).
+  - **Cabeçalho:** só colunas do modelo, sem repetir, com `local` e `nome`. As colunas são `local`, `edificacao`, `categoria`, `modelo`, `nome`, `fabricante`, `modelo_do_fabricante`, `numero_serie`, `data_compra`, `garantia_ate`, `criticidade` e `campo.<chave>`. A coluna do QR reservado entra com a M3.
+  - **Local:** achado pelo nome e, se preenchida, pela edificação, sem diferença de caixa e acento. O que falta recusa a linha (decisão 18). O ambíguo e o inativo também recusam.
+  - **Categoria e modelo:**
+    - a categoria vale por qualquer nome dela, nos 4 idiomas; a padrão vale também pelos nomes do catálogo;
+    - o modelo é achado pelo nome (dentro da categoria, se ela vier) e preenche o que a linha deixou vazio, como no cadastro na tela.
+  - **Células:**
+    - datas em aaaa-mm-dd ou dd/mm/aaaa;
+    - número com ponto ou vírgula;
+    - sim e não nos 4 idiomas;
+    - opção da lista pela chave ou pelo rótulo.
+  - **Regras:** as mesmas do cadastro do ativo, com todos os erros da linha, cada um com a coluna.
+  - **Chave de importação:** `v1:` + SHA-256 do id do local, do id da categoria, do nome e da série normalizados. A linha que já está no hotel volta como já importada; a repetida no arquivo é recusada (`importacao_linha_repetida`).
+  - **Quem importa:** o Implantador e a gestão do hotel (`importacao_fora_do_escopo`).
+- **Aplicação:**
+  - `prever`: analisa sem gravar;
+  - `importar`: analisa de novo e grava uma unit of work por linha nova, aprovada (M4). A chave que outro envio gravou nesse meio-tempo volta como já importada. Erro de regra na gravação fica na linha, e o resto segue.
+- **db:**
+  - `criarAtivo` recebe a chave; a repetida (`ativo_chave_importacao_unica`) vira `importacao_ja_importada`;
+  - auditoria com a ação `importar` e o evento `ativo.criado`;
+  - integração em `importacao-de-ativos.test.ts`, só na CI.
+- **API:** `POST /api/v1/hoteis/{id}/importacao-de-ativos/previa` e `POST /api/v1/hoteis/{id}/importacao-de-ativos`, no OpenAPI. O corpo leva o CSV no JSON, com limite de 4 MB (o escape pode dobrar o texto).
+- **Tela:** `/admin/importacao-de-ativos`, no menu de cadastros. Tem:
+  - o modelo gerado no navegador, com o separador do formato regional;
+  - a prévia com as linhas já importadas e com erro;
+  - importar as novas.
+- **A conferir no piloto:** 2.000 linhas vão numa requisição só, sem `maxDuration` próprio na rota. Se o tempo da função apertar, o envio se divide em partes.
+
+## Ponto de retomada (20/10/2026, M2 na branch)
+
+- **`main`:** em `bf9b3c0`. **Dev:** o `db push` da 0058 é do Cesar e ainda não foi confirmado aqui.
+- **PR aberto:** o [#337](https://github.com/cesarcoutohubtech/hubkeep/pull/337) (M4a, `claude/1b-m4`), fora da zona protegida. O merge espera a 0058 no dev.
+- **Trabalho não enviado em PR:** a M2 na `claude/1b-m2` (enviada à branch), sobre a M4a. Validação local verde: typecheck, lint e testes (580 na raiz).
+- **Espera o Cesar:**
+  - o `db push` da 0058 e o merge do #337;
+  - as escolhas pendentes da M1c e as decisões da PV3c (seções anteriores).
+- **Próxima tarefa:** depois do merge do #337, trazer a `main` para a `claude/1b-m2` e abrir o PR `1b:` da M2. Em seguida, a M3 (QR em lote), que pede a decisão do código reservado sem ativo.
+## PB1, zona protegida (20/10/2026)
+
+Pela ordem dos PRs do desenho, a PB1 vem depois da M4 e da M2, e antes da M3. Conferido no GitHub em 20/10/2026: nenhum PR de zona protegida aberto (#310, #332 e #339 não tocam a zona).
+- **Migração 0059** (`20261020150000_pacote_da_bandeira.sql`), na branch `claude/1b-pb1-zona`:
+  - `bandeira_id` anulável em `app.modelo_ativo` e `app.checklist_modelo` (nulo vale para o grupo), com FK composta;
+  - `app.plano_padrao` (decisão 20): o plano por categoria do pacote, da bandeira ou do grupo, com periodicidade, checklist, versão e ativa. Lê o Admin, o Gestor CSC, o Gerente e o Implantador; grava só o Admin; o worker não lê;
+  - `app.plano_preventivo.plano_padrao_id`: de que plano do pacote o plano do hotel foi copiado, único por hotel, para reaplicar não duplicar.
+- **Ajuste de implementação:** a bandeira não recebe UPDATE nas três tabelas. Ela é campo de escopo no meta-teste 18 (ADR-011), e abrir exceção pediria mudar o ADR. Para levar um modelo a outra bandeira, o Admin desativa e cria outro. A origem do plano copiado também não muda.
+- pgTAP 062 (30 asserções) e o meta-teste 28 com a tabela nova. Tipos do Kysely atualizados. Sem ADR novo.
+- **Depois do merge e do `db push` da 0059:** a PB1 fora da zona (filtro por bandeira nos modelos, cadastro do pacote, aplicar o pacote ao hotel pelo painel de implantação), a partir da `main` com a M4a e a M2.
+
+### PB1a — planos do pacote e aplicação ao hotel (20/10/2026)
+
+Na branch `claude/1b-pb1`, montada sobre a `claude/1b-m2` e a `claude/1b-pb1-zona`. O PR abre depois dos merges do #337, do PR da M2 e do #340, com o `db push` da 0059.
+- **Domínio (`pacote-da-bandeira.ts`):**
+  - `vaiParaOHotel`: o item do grupo vale para todo hotel, e o da bandeira só para os hotéis dela;
+  - quem mantém o pacote: só o Admin do grupo (`pacote_so_do_admin`);
+  - quem aplica: o Admin e o Implantador vigente do hotel (`pacote_fora_do_escopo`);
+  - o plano do pacote é validado como o do hotel. O checklist precisa estar ativo, ser da categoria (ou de nenhuma) e ir para os mesmos hotéis do plano;
+  - `copiasDoPacote`: copia os planos ativos que valem para o hotel e ainda não estão nele. Cada cópia sai pausada, sem responsável e com início no dia do hotel.
+- **Aplicação:** os planos do pacote (criar, alterar pela versão, desativar e reativar), a prévia e a aplicação, com uma unit of work por plano. A cópia que outro envio gravou volta como já copiada.
+- **db:**
+  - `criarPlanoPreventivo` recebe a origem; a repetida no hotel (`plano_preventivo_padrao_unico`) vira `plano_ja_copiado`;
+  - auditoria da entidade nova `plano_padrao`;
+  - integração em `pacote-da-bandeira.test.ts`, só na CI.
+- **API:**
+  - `GET` e `POST /api/v1/planos-do-pacote`;
+  - `PUT /api/v1/planos-do-pacote/{id}`, com `/desativacao` e `/reativacao`;
+  - `GET /api/v1/hoteis/{id}/pacote` (a prévia) e `POST /api/v1/hoteis/{id}/pacote/aplicacao`.
+- **Telas:**
+  - `/admin/pacote-da-bandeira`, no menu de cadastros. A bandeira se escolhe só na criação;
+  - no painel de implantação, o quadro do pacote com a prévia e o botão de aplicar. Ele aparece só para quem aplica.
+- **Falta (PB1b):**
+  - a bandeira na criação dos modelos de ativo e de checklist;
+  - o filtro pela bandeira do hotel nas listas usadas no hotel: o cadastro do ativo, o PWA, o checklist da OS e os planos.
+- **Tempo de implantação (decisão do Cesar de 20/10/2026, nesta sessão: "Continue como proposta"):** o painel mostra quando o hotel entrou em implantação e quando ficou pronto, contra a meta de 1 dia, tirado da auditoria do hotel, sem migração.
+  - Domínio (`tempoDaImplantacao`, `META_DA_IMPLANTACAO_MS` de 24 h). A entrada é a primeira mudança para `em_implantacao` (a auditoria da importação do sistema hoteleiro); sem ela, a criação do hotel, que nasce em implantação. O pronto é a primeira ativação depois da entrada;
+  - enquanto em implantação, a duração conta até agora. O hotel que já saiu da implantação sem a ativação na auditoria fica sem duração, e a tela diz que não há como medir;
+  - a porta do painel lê a auditoria pela RLS (Admin e quem escreve no hotel, o que cobre o Implantador). O contrato ganha `tempo` (`entrouEm`, `prontoEm`, `duracaoMs`, `metaMs`, `dentroDaMeta`);
+  - a meta é do produto, não do cliente, e fica como constante do domínio.
+
+### PB1b — a bandeira nos modelos e checklists, e o filtro no hotel (20/10/2026)
+
+Na branch `claude/1b-pb1b`, sobre a `claude/1b-pb1`. O PR abre depois dos PRs do #340 e da PB1a.
+- **Criação com a bandeira:** o Admin escolhe a bandeira ao criar o modelo de ativo e o checklist. Vazia, o item vale para o grupo inteiro. A bandeira não muda depois (é campo de escopo, sem UPDATE), e a bandeira desconhecida dá `bandeira_nao_encontrada`. A lista devolve a bandeira, e as telas mostram um selo com ela.
+- **O checklist do modelo** tem de ir para os mesmos hotéis que o modelo: o de outra bandeira dá `modelo_ativo_checklist_invalido`.
+- **No hotel, o que é de outra bandeira é recusado com código:**
+  - o modelo novo do ativo (`modelo_ativo_de_outra_bandeira`), no web, no PWA e na operação offline. O modelo que o ativo já tem continua valendo, como o desativado;
+  - o checklist do plano preventivo e o aplicado na OS (`checklist_de_outra_bandeira`);
+  - na importação por planilha, o modelo de outra bandeira não é achado (`importacao_modelo_nao_encontrado`).
+- **Telas filtram pela bandeira do hotel:** o cadastro do ativo (web e PWA), o checklist do plano e o checklist da OS. O PWA guarda a bandeira do hotel e do modelo na referência; a referência guardada antes da PB1b vale como do grupo até a próxima leitura.
+- Testes: domínio e aplicação com os casos novos; integração em `bandeira-nos-modelos.test.ts`, só na CI; telas do web e do PWA.
+
+## Ponto de retomada (20/10/2026, PR da PB1b)
+
+- **`main`:** com o #340 (zona da PB1, migração 0059) e o #344 (PB1a). **Dev:** o `db push` da 0058 e da 0059 não foram confirmados aqui.
+- **PR aberto:** o da PB1b (`claude/1b-pb1b`), fora da zona protegida.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** confirmar a 0058 e a 0059 no dev; o merge do PR da PB1b; as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** a M3 (QR em lote; decisão 21 já aprovada: a etiqueta reservada é só para ativo novo), numa branch a partir da `main`.
+
+### M3a — folha de etiquetas do QR em lote (20/10/2026)
+
+Na branch `claude/great-bohr-y0tomg`, a partir da `main` com o #348. Fora da zona protegida, sem migração.
+- **Tela `/admin/etiquetas`** (menu de cadastros, "Etiquetas QR"): o hotel, o local e a categoria (opcionais) e o tamanho da etiqueta. A folha é gerada no navegador, como o QR individual (B5), e impressa pela impressão do navegador, no tema claro. A lista vem de `GET /hoteis/{id}/ativos`, no escopo de quem pede.
+- **A etiqueta** leva o QR, o nome e o código legível (`codigoQrLegivel` no domínio, `XXXXX-XXXXX`, que a leitura aceita de volta), nunca o id. Saem os ativos em uso e não recusados.
+- **Três tamanhos** até a resposta do cliente (pergunta 24 do `docs/12`): 40 × 25, 60 × 35 e 90 × 50 mm.
+- **Por importação:** depois da gravação, a tela da importação abre a mesma folha com os ativos criados naquele envio.
+- **Falta (M3b, zona protegida):** os códigos reservados (`app.qr_reservado`), a geração do lote, a folha de etiquetas sem ativo e a ligação pelo PWA (`qr_nao_reservado`, `qr_ja_ligado`). Pela decisão 21, a etiqueta reservada vale só para ativo novo.
+
+### M3b — códigos de QR reservados (20/10/2026)
+
+Na branch `claude/great-bohr-y0tomg`, a partir da `main` com o #352. **Zona protegida** (migração 0061). O PR só abre depois do [#354](https://github.com/cesarcoutohubtech/hubkeep/pull/354) (Dependabot, mexe em `packages/auth-admin/package.json`, que é da zona), ou quando o Cesar decidir a ordem.
+- **Migração 0061 (`app.qr_reservado`), só de inserção:** o código (formato do ativo, único no tenant), o lote, o hotel e quem gerou (FK composta para o membro, igual a quem grava). Sem coluna de ligação: ligar a etiqueta é cadastrar o ativo com o código, e a unicidade de `app.ativo (tenant_id, codigo_qr)` impede ligar duas vezes, sem UPDATE (decisão 21). Lê e grava quem escreve no hotel; o proprietário e o worker não leem. Teste de isolamento `063`, meta-testes 28 e 32, tipos.
+- **Domínio:** `podeReservarQr` (Implantador e gestão do hotel, como a importação), `validarTamanhoDoLote` (1 a 500, `qr_lote_invalido`), `exigirCodigoReservadoLivre` (`qr_nao_reservado`, também para o código de outro hotel; `qr_ja_ligado`).
+- **Aplicação e banco:** gerar o lote (sem repetir código reservado nem de ativo visível; auditoria `qr_reservado` e evento `qr.reservado`), listar com o que já está ligado e consultar o código. O cadastro do ativo (web, API e operação offline `ativo.cadastrar`) aceita `codigoQr`; na corrida, a unicidade do ativo dá `qr_ja_ligado`.
+- **API:** `POST` e `GET /api/v1/hoteis/{id}/qr-reservados`, `GET /api/v1/qr-reservados/{codigo}`; `codigoQr` opcional no `POST /api/v1/ativos`.
+- **Web:** a tela **Etiquetas QR** ganha o modo "Códigos reservados": gerar, escolher o lote e imprimir (só os livres, por padrão), com "Etiqueta reservada" no lugar do nome.
+- **PWA:** o QR sem ativo visível pergunta pelo código reservado; reservado e livre, abre o cadastro no hotel dele, com o código. Sem rede, o aviso oferece cadastrar com o código lido.
+- Testes: domínio, aplicação, telas do web e do PWA, `qr.test.ts` do PWA; integração em `qr-reservados.test.ts` e pgTAP, só na CI.
+- **Fica de fora (pendência):** a coluna QR na planilha da importação (M2), prevista no desenho como opcional. A etiqueta reservada entra hoje pelo cadastro um a um.
+
+## Ponto de retomada (20/10/2026, PR da M3b)
+
+- **`main`:** com o #352 (M3a) e o #354 (Dependabot da zona). **Dev:** a 0061 só vai com o `db push` do Cesar, depois da CI do PR.
+- **PR aberto:** o da M3b (`claude/great-bohr-y0tomg`), **zona protegida**: o check "zona protegida" falha por desenho (ADR-023). Antes de abrir, nenhum outro PR de zona estava aberto, e a última migração da `main` era a 0060.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge do PR da M3b e o `db push` da 0061, com a conferência no `supabase migration list`; se a coluna QR entra na planilha da importação; as escolhas da M1c e as decisões da PV3c.
+- **Próxima tarefa:** conferir os checks do PR da M3b uma vez; depois, a próxima linha da fila do `docs/12`.
+
+## Fim da fase 1b: resumo (21/10/2026)
+
+Com o [#361](https://github.com/cesarcoutohubtech/hubkeep/pull/361) (M3b) na `main` e o `db push` da 0061 feito pelo Cesar em 21/10/2026, todas as tarefas do `docs/12` estão na `main`, menos a T1, que depende do cliente.
+
+**Entregue, por etapa:**
+- **I (itens novos):**
+  - I1, compra, garantia e criticidade do ativo (0030);
+  - I2, modelo contratual do hotel e edificação do local (0032);
+  - I3, fornecedores (0033);
+  - I4, origem, impacto, quem executa, custo e UH indisponível;
+  - I5, transições da OS (0031);
+  - I6, códigos de falha, causa e solução (0036);
+  - I7, módulos contratados (0037);
+  - I8, foto antes ou depois e assinatura no aceite (0041);
+  - I9, hora do aparelho nas transições offline.
+- **PV (preventiva):**
+  - PV1, checklist tipado (ADR-040);
+  - PV2, planos preventivos (ADR-041);
+  - PV3, OS preventiva gerada pelo worker (0048);
+  - PV3c, as ações na OS preventiva, as pendências do plano e a preventiva no web e no PWA.
+- **M (implantação):**
+  - M1, modelos de ativo e sugestões de plano (0050 e 0051);
+  - M4, aprovação do cadastro pelo celular, e M2, importação por CSV (0058);
+  - M3, folha de etiquetas e códigos de QR reservados (0061).
+- **PB (pacote da bandeira):** a bandeira nos modelos e checklists, os planos do pacote e a aplicação ao hotel, com o tempo de implantação no painel (0059).
+
+**Fica para depois, com dono:**
+- **Na 1c (`docs/13`):** o aceite automático da preventiva (M5 da 1c), que espera o monitor de SLA. Hoje a leitura do job ainda faz join com o chamado.
+- **Depende do cliente:**
+  - a T1, o conector real do TOTVS, que espera as views;
+  - as perguntas 22 a 24 de `docs/referencia/perguntas-cliente.md`: as periodicidades e a preventiva por uso, a preventiva atrasada e o formato da etiqueta. Os três tamanhos de etiqueta da M3 valem até a resposta.
+- **Fora do MVP, registrado:** a preventiva por uso (horas de funcionamento), o XLSX na importação (decisão 19: só CSV), o "desfazer descarte" da sugestão de plano, a parada do ativo registrada na OS preventiva (decisão PV3c-1, abaixo) e a troca do código do QR de um ativo existente (decisão 21).
+
+**Decidido pelo Cesar em 21/10/2026** ("Vamos fazer conforme proposto. Demais, pelas propostas", nesta sessão), com o que foi aplicado:
+- **PV3c (pendente desde 14/10/2026):**
+  1. **A parada na preventiva fica recusada no MVP** (`parada_na_preventiva`), sem migração em `app.parada_ativo`. Nada muda no código.
+  2. **Quem executa a preventiva não decide o aceite:** o responsável pela OS (o técnico, ou membro ativo da equipe responsável) não aceita nem reabre a própria OS, mesmo sendo Gerente do hotel. Sem outro Gerente vigente que não execute a OS, decidem o Gestor CSC e o Admin do grupo. Na OS da equipe, os dados do aceite trazem os membros ativos dela; sem eles, a regra falha fechada (o Gerente da equipe conta como outro Gerente, e o Gestor CSC não decide).
+  3. **A fila do dia mostra o ativo parado:** a preventiva traz `paradoDesde`, o início da parada aberta do ativo, registrada por uma corretiva. O PWA mostra "Equipamento parado desde" no cartão da fila (na corretiva também) e na tela da OS preventiva, que continua sem os botões de parada (item 1).
+- **M1c (escolhas do agente desde 19/10/2026), confirmadas como estão:**
+  1. o ativo cujo modelo não sugere periodicidade entra na lista, sem o botão de um clique;
+  2. o modelo desativado continua sugerindo;
+  3. não há "desfazer descarte";
+  4. o ativo pendente na aprovação fica fora das sugestões (na `main` desde a M4a).
+- **M3, coluna QR na importação:** entra. A coluna `codigo_qr`, opcional, liga o ativo à etiqueta reservada no hotel:
+  - o código é lido como na etiqueta (com ou sem hífen, minúsculas, O por 0, I e L por 1);
+  - tem de estar reservado no hotel e livre (`qr_nao_reservado`, `qr_ja_ligado`);
+  - fora do formato, `importacao_qr_invalido`; repetido no arquivo, `importacao_qr_repetido`;
+  - a linha já importada não confere a etiqueta, que já está no ativo dela, e o reenvio da planilha segue como já importada;
+  - a etiqueta ligada a outro ativo entre a prévia e a gravação volta na linha (`qr_ja_ligado`), e o resto do arquivo segue.
+
+**Achado ao aplicar a coluna QR:** o `docs/piloto/modelo-ativos-criticos.csv` usava a coluna `modelo` no sentido de modelo do fabricante. Desde a M2, `modelo` é o modelo de ativo (M1), e a do fabricante é `modelo_do_fabricante`: o exemplo do piloto seria recusado linha a linha (`importacao_modelo_nao_encontrado`). O cabeçalho foi corrigido, e a seção da importação no guia de implantação, que ainda descrevia a M2 como futura, foi reescrita com as colunas de hoje.
+
+**Onde está:** no mesmo PR deste resumo, um commit por decisão, porque este agente só tem a branch `claude/great-bohr-y0tomg` e ela já é a do PR aberto. Nada na zona protegida, sem migração.
+
+## Ponto de retomada (21/10/2026, fim da fase 1b)
+
+- **`main`:** com o #361 (M3b). **Dev:** o Cesar fez o `db push` da 0061 em 21/10/2026. A conferência no `supabase migration list` é dele.
+- **PR aberto:** o deste resumo (`1b:`), fora da zona protegida e sem migração. Ele traz o resumo da fase e as decisões de 21/10/2026, um commit por decisão: o aceite da preventiva, o ativo parado na fila do dia e a coluna `codigo_qr` na importação, com o modelo de exemplo do piloto corrigido.
+- **Trabalho não enviado em PR:** nenhum.
+- **Espera o Cesar:** o merge do PR e a conferência da 0061 no dev. Não há decisão da 1b pendente.
+- **Próxima tarefa:** sem tarefa da 1b, a preparação do piloto e a segurança pré-piloto, que também são deste agente. Primeiro passo: perguntar ao Cesar por qual começar.

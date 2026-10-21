@@ -6,8 +6,10 @@ import {
   CANAIS_DE_ENVIO,
   LIMITE_DE_ENVIOS_POR_DIA,
   SITUACOES_DE_ENVIO,
+  inscricaoExpirou,
   pessoasDoAviso,
   situacaoAntesDoEnvio,
+  situacaoAntesDoPush,
 } from '../src';
 
 const agora = new Date('2026-10-13T12:00:00Z');
@@ -110,5 +112,31 @@ describe('situacaoAntesDoEnvio', () => {
       'sem_provedor',
     );
     expect(situacaoAntesDoEnvio({ membroAtivo: true, email: 'a@x', comProvedor: true })).toBeNull();
+  });
+});
+
+describe('push (C4)', () => {
+  it('sem inscrição ou fora do tenant, sem endereço; sem chaves VAPID, sem provedor', () => {
+    expect(situacaoAntesDoPush({ membroAtivo: true, inscricoes: 0, comProvedor: true })).toBe(
+      'sem_endereco',
+    );
+    expect(situacaoAntesDoPush({ membroAtivo: false, inscricoes: 2, comProvedor: true })).toBe(
+      'sem_endereco',
+    );
+    expect(situacaoAntesDoPush({ membroAtivo: true, inscricoes: 1, comProvedor: false })).toBe(
+      'sem_provedor',
+    );
+    expect(situacaoAntesDoPush({ membroAtivo: true, inscricoes: 1, comProvedor: true })).toBeNull();
+  });
+
+  it('só 404 e 410 revogam a inscrição', () => {
+    expect([404, 410].map(inscricaoExpirou)).toEqual([true, true]);
+    expect([400, 401, 413, 429, 500].map(inscricaoExpirou)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 });

@@ -77,6 +77,15 @@ export interface ChecklistCompletoObrigatorio {
   ligado: boolean;
 }
 
+/**
+ * Aprovação do cadastro do ativo (M4). Desligada por padrão (decisão 15).
+ * Ligada, o ativo que chega pelo PWA nasce pendente, e a gestão do hotel
+ * aprova ou recusa; o web e a importação nascem aprovados.
+ */
+export interface AprovacaoDoCadastro {
+  ligado: boolean;
+}
+
 /** Categoria de ativo (id) → prioridade padrão do chamado (id). As duas entram em B2 e C1. */
 export type PrioridadePadraoPorCategoria = Record<string, string>;
 
@@ -87,6 +96,15 @@ export type PrioridadePadraoPorCategoria = Record<string, string>;
  */
 export type NomesDeCriticidade = Partial<Record<`${Criticidade}`, Rotulos>>;
 
+/**
+ * Tolerância da preventiva em dia (1c, decisão 11 do Cesar, de 13/10/2026): os
+ * dias depois do dia previsto em que a conclusão ainda conta como em dia.
+ * Padrão 0.
+ */
+export interface ToleranciaDaPreventiva {
+  dias: number;
+}
+
 export interface ValoresDePolitica {
   'os.aceite_automatico': AceiteAutomatico;
   'os.codigos_obrigatorios': CodigosObrigatorios;
@@ -95,6 +113,7 @@ export interface ValoresDePolitica {
   'os.checklist_completo_obrigatorio': ChecklistCompletoObrigatorio;
   'chamado.prioridade_padrao_por_categoria': PrioridadePadraoPorCategoria;
   'ativo.criticidade': NomesDeCriticidade;
+  'ativo.aprovacao_do_cadastro': AprovacaoDoCadastro;
   /** Calendário de SLA (1c, ADR-042): prazos por prioridade e categoria, pausa, ponto facultativo e meta. */
   'chamado.sla': PoliticaDeSla;
   /** Horário de atendimento do hotel (1c, ADR-042), na hora local dele. */
@@ -103,6 +122,8 @@ export interface ValoresDePolitica {
   'chamado.escalonamento': EscalonamentoDeSla;
   /** Matriz do arrendado (1c, decisão 5): por categoria, a arrendatária ou o locador. */
   'hotel.matriz_arrendamento': MatrizDeArrendamento;
+  /** Tolerância da preventiva em dia (1c, painel de indicadores, decisão 11). */
+  'preventiva.tolerancia_dias': ToleranciaDaPreventiva;
 }
 export type ChaveDePolitica = keyof ValoresDePolitica;
 
@@ -170,6 +191,11 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
           ),
       ),
   },
+  'ativo.aprovacao_do_cadastro': {
+    padrao: { ligado: false },
+    valido: (v): v is AprovacaoDoCadastro =>
+      objeto(v) && Object.keys(v).length === 1 && typeof v['ligado'] === 'boolean',
+  },
   'chamado.sla': {
     padrao: SLA_PADRAO,
     valido: (v): v is PoliticaDeSla => politicaDeSlaValida(v),
@@ -187,6 +213,15 @@ export const POLITICAS: { [C in ChaveDePolitica]: DefinicaoDePolitica<C> } = {
     valido: (v): v is MatrizDeArrendamento => matrizDeArrendamentoValida(v),
     // Herança só grupo → hotel (decisão 5 do Cesar, de 13/10/2026).
     escopos: ['hotel', 'grupo'],
+  },
+  'preventiva.tolerancia_dias': {
+    padrao: { dias: 0 },
+    valido: (v): v is ToleranciaDaPreventiva =>
+      objeto(v) &&
+      Object.keys(v).length === 1 &&
+      Number.isInteger(v['dias']) &&
+      (v['dias'] as number) >= 0 &&
+      (v['dias'] as number) <= 30,
   },
 };
 
@@ -236,7 +271,7 @@ export function resolverPolitica<C extends ChaveDePolitica>(
 }
 
 /** Prefixos das chaves do núcleo; extensão nenhuma usa um deles. */
-export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.', 'hotel.'] as const;
+export const PREFIXOS_DO_NUCLEO = ['os.', 'chamado.', 'ativo.', 'hotel.', 'preventiva.'] as const;
 
 const PREFIXO = /^[a-z][a-z_]*\.$/;
 

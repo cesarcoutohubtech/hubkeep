@@ -8,7 +8,8 @@
 // conclusão e a assinatura no aceite (I8) ligam por grupo ou hotel, no mesmo
 // bloco (BlocoLigado). Com o hotel escolhido e com bandeira, cada política
 // também grava na bandeira dele (1c): o valor da bandeira vale para os hotéis
-// dela, abaixo do valor do hotel e acima do do grupo.
+// dela, abaixo do valor do hotel e acima do do grupo. A tolerância da
+// preventiva em dia (1c, decisão 11) fica no BlocoDaTolerancia.
 import { MODELOS_CONTRATUAIS_API } from '@hubkeep/contratos';
 import { type Chave, IDIOMAS } from '@hubkeep/i18n';
 import {
@@ -24,6 +25,10 @@ import {
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { chamarApi } from '../../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
+import {
+  BlocoDaTolerancia,
+  type PoliticaDaTolerancia,
+} from '../../../../cliente/bloco-da-tolerancia';
 import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
 import { HistoricoDoRegistro } from '../../../../cliente/HistoricoDoRegistro';
 import { nomeDoIdioma, useT } from '../../../../i18n/cliente';
@@ -69,6 +74,7 @@ type PoliticaSemCriticidade =
 type NomesDeCriticidade = Partial<Record<string, Partial<Record<string, string>>>>;
 type Politica =
   | PoliticaSemCriticidade
+  | PoliticaDaTolerancia
   | {
       chave: 'ativo.criticidade';
       padrao: NomesDeCriticidade;
@@ -81,12 +87,13 @@ type Politica =
 type Origem = 'hotel' | 'bandeira' | 'grupo' | 'padrao';
 type EscopoDoBotao = 'grupo' | 'bandeira' | 'hotel';
 
-/** As políticas de ligar ou desligar (I6, I8 e PV1), com os textos de cada uma. */
+/** As políticas de ligar ou desligar (I6, I8, PV1 e M4), com os textos de cada uma. */
 const POLITICAS_LIGADAS = [
   'os.codigos_obrigatorios',
   'os.foto_depois_obrigatoria',
   'os.assinatura_no_aceite',
   'os.checklist_completo_obrigatorio',
+  'ativo.aprovacao_do_cadastro',
 ] as const;
 type ChaveLigada = (typeof POLITICAS_LIGADAS)[number];
 const TEXTOS_LIGADOS: Record<
@@ -116,6 +123,12 @@ const TEXTOS_LIGADOS: Record<
     resumo: 'admin.configuracao.checklist.resumo',
     dica: 'admin.configuracao.checklist.dica',
     ligado: 'admin.configuracao.checklist.ligado',
+  },
+  'ativo.aprovacao_do_cadastro': {
+    titulo: 'admin.configuracao.aprovacao_cadastro.titulo',
+    resumo: 'admin.configuracao.aprovacao_cadastro.resumo',
+    dica: 'admin.configuracao.aprovacao_cadastro.dica',
+    ligado: 'admin.configuracao.aprovacao_cadastro.ligado',
   },
 };
 const NIVEIS = [1, 2, 3, 4, 5] as const;
@@ -257,6 +270,7 @@ export default function ConfiguracaoDoGrupo() {
     (p) => p.chave === 'chamado.prioridade_padrao_por_categoria',
   );
   const criticidade = dados.politicas.find((p) => p.chave === 'ativo.criticidade');
+  const tolerancia = dados.politicas.find((p) => p.chave === 'preventiva.tolerancia_dias');
   const ligadas = POLITICAS_LIGADAS.flatMap((chave) => {
     const p = dados.politicas.find((x) => x.chave === chave);
     return p && (POLITICAS_LIGADAS as readonly string[]).includes(p.chave)
@@ -504,6 +518,15 @@ export default function ConfiguracaoDoGrupo() {
               </section>
             );
           })}
+          {tolerancia?.chave === 'preventiva.tolerancia_dias' && (
+            <BlocoDaTolerancia
+              key={JSON.stringify(tolerancia)}
+              politica={tolerancia}
+              temHotel={Boolean(dados.hotel)}
+              temBandeira={Boolean(dados.hotel?.bandeira)}
+              aoGravar={gravarPolitica}
+            />
+          )}
           {prioridade && (
             <section className="hk-bloco">
               <h3 className="hk-bloco-titulo">{t('admin.configuracao.prioridade.titulo')}</h3>

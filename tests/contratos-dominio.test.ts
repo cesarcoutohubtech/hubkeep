@@ -9,9 +9,12 @@ import {
   MOMENTOS_DA_FOTO_API,
   MOTIVOS_DE_PAUSA_API,
   RESPONSAVEIS_DO_ARRENDAMENTO_API,
+  CANAIS_DE_ENVIO_API,
   DESTINATARIOS_DO_AVISO_API,
   NIVEIS_DO_AVISO_API,
   TIPOS_DE_ALERTA_DE_SLA_API,
+  TIPOS_DE_PRAZO_API,
+  RespostaDosProximosPrazos,
   PAPEIS_API,
   CATEGORIAS_PADRAO_API,
   PENDENCIAS_DE_IMPLANTACAO_API,
@@ -36,10 +39,19 @@ import {
   PENDENCIAS_DO_PLANO_API,
   SITUACOES_DO_PLANO_API,
   UNIDADES_DE_PERIODICIDADE_API,
+  DECISOES_DO_CADASTRO_API,
+  SITUACOES_DO_CADASTRO_API,
+  LIMITES_DA_IMPORTACAO_API,
+  LIMITE_DO_LOTE_DE_QR_API,
+  SITUACOES_DA_LINHA_API,
 } from '../packages/contratos/src/index';
-import type { StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
+import type { SituacaoDaLinha, StatusDeLocal, TipoDeLocal } from '../packages/dominio/src/index';
 import {
   CATEGORIAS_PADRAO,
+  DECISOES_DO_CADASTRO,
+  SITUACOES_DO_CADASTRO,
+  LIMITES_DA_IMPORTACAO,
+  LIMITE_DO_LOTE_DE_QR,
   IDIOMAS_DE_ROTULO,
   TIPOS_DE_CAMPO,
   CHAVES_DE_POLITICA,
@@ -49,9 +61,12 @@ import {
   MOMENTOS_DA_FOTO,
   MOTIVOS_DE_PAUSA,
   RESPONSAVEIS_DO_ARRENDAMENTO,
+  CANAIS_DE_ENVIO,
   DESTINATARIOS_DO_AVISO,
   NIVEIS_DO_AVISO,
   TIPOS_DE_ALERTA_DE_SLA,
+  TIPOS_DE_PRAZO,
+  LIMITE_DOS_PROXIMOS_PRAZOS,
   ESCALONAMENTO_PADRAO,
   HORARIO_PADRAO,
   POLITICAS,
@@ -147,6 +162,15 @@ describe('contratos × domínio', () => {
         { ligado: false, extra: 1 },
         {},
         [],
+        null,
+      ],
+      'ativo.aprovacao_do_cadastro': [
+        { ligado: true },
+        { ligado: false },
+        { ligado: 0 },
+        { ligado: true, extra: 1 },
+        {},
+        'sim',
         null,
       ],
       'os.checklist_completo_obrigatorio': [
@@ -282,6 +306,17 @@ describe('contratos × domínio', () => {
         'locador',
         null,
       ],
+      'preventiva.tolerancia_dias': [
+        { dias: 0 },
+        { dias: 30 },
+        { dias: 31 },
+        { dias: -1 },
+        { dias: 1.5 },
+        { dias: '1' },
+        { dias: 1, extra: 1 },
+        {},
+        null,
+      ],
     };
     for (const chave of CHAVES_DE_POLITICA) {
       expect(FORMATOS_DE_POLITICA_API[chave].safeParse(POLITICAS[chave].padrao).success).toBe(true);
@@ -304,8 +339,30 @@ describe('contratos × domínio', () => {
     expect([...NIVEIS_DO_AVISO_API]).toEqual([...NIVEIS_DO_AVISO]);
   });
 
+  it('o tipo e o limite dos próximos prazos da API são os do domínio (tela inicial)', () => {
+    expect([...TIPOS_DE_PRAZO_API]).toEqual([...TIPOS_DE_PRAZO]);
+    const prazo = {
+      chamadoId: '0193a000-0000-4000-8000-000000000001',
+      hotelId: '0193a000-0000-4000-8000-000000000002',
+      hotelNome: 'Hotel',
+      descricao: 'Ar',
+      prioridadeId: null,
+      tipo: 'solucao',
+      prazo: '2026-10-20T12:00:00.000Z',
+      emRisco: false,
+    };
+    const lista = (n: number) => ({ prazos: Array.from({ length: n }, () => prazo) });
+    expect(RespostaDosProximosPrazos.safeParse(lista(LIMITE_DOS_PROXIMOS_PRAZOS)).success).toBe(
+      true,
+    );
+    expect(RespostaDosProximosPrazos.safeParse(lista(LIMITE_DOS_PROXIMOS_PRAZOS + 1)).success).toBe(
+      false,
+    );
+  });
+
   it('os responsáveis do arrendado da API são os do domínio (decisão 5)', () => {
     expect([...RESPONSAVEIS_DO_ARRENDAMENTO_API]).toEqual([...RESPONSAVEIS_DO_ARRENDAMENTO]);
+    expect([...CANAIS_DE_ENVIO_API]).toEqual([...CANAIS_DE_ENVIO]);
   });
 
   it('os motivos da pausa da API são os do domínio (ADR-042)', () => {
@@ -320,6 +377,21 @@ describe('contratos × domínio', () => {
     expect([...UNIDADES_DE_PERIODICIDADE_API]).toEqual([...UNIDADES_DE_PERIODICIDADE]);
     expect([...SITUACOES_DO_PLANO_API]).toEqual([...SITUACOES_DO_PLANO]);
     expect([...ACOES_DO_PLANO_API]).toEqual([...ACOES_DO_PLANO]);
+  });
+
+  it('as situações e as decisões do cadastro do ativo da API são as do domínio (M4)', () => {
+    expect([...SITUACOES_DO_CADASTRO_API]).toEqual([...SITUACOES_DO_CADASTRO]);
+    expect([...DECISOES_DO_CADASTRO_API]).toEqual([...DECISOES_DO_CADASTRO]);
+  });
+
+  it('os limites e as situações da linha da importação da API são os do domínio (M2)', () => {
+    expect(LIMITES_DA_IMPORTACAO_API).toEqual(LIMITES_DA_IMPORTACAO);
+    const situacoes: readonly SituacaoDaLinha[] = SITUACOES_DA_LINHA_API;
+    expect(situacoes).toHaveLength(3);
+  });
+
+  it('o limite do lote de QR reservado da API é o do domínio (M3)', () => {
+    expect(LIMITE_DO_LOTE_DE_QR_API).toBe(LIMITE_DO_LOTE_DE_QR);
   });
 
   it('as pendências do plano preventivo da API são as do domínio (PV3c)', () => {

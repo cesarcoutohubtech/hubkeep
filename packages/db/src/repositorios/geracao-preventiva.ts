@@ -27,6 +27,7 @@ import {
   ehModeloContratual,
 } from '@hubkeep/dominio';
 import { sql } from 'kysely';
+import { cadastroAprovado } from '../cadastro-aprovado';
 import type { Tx } from '../conexao';
 import { novoId } from '../ids';
 import { responsaveisDosPlanos } from '../responsaveis-do-plano';
@@ -115,6 +116,8 @@ export function sessaoDaGeracao(uow: UnidadeDeTrabalho, hotelId: string): Sessao
           .where('p.id', '=', planoId)
           .where('a.hotel_id', '=', hotelId)
           .where('a.desativado_em', 'is', null)
+          // O ativo pendente de aprovação do cadastro fica fora até ser aprovado (M4).
+          .where(cadastroAprovado)
           .orderBy('a.id')
           .execute()
       ).map((a): AtivoDoAlvo => ({

@@ -55,6 +55,7 @@ function emMemoria(
     decidir: nao,
     ativo: nao,
     metricasDoAtivo: nao,
+    recalculosDoDia: nao,
     insightsDoEscopo: nao,
     nomes: async (p) => ({
       hoteis: Object.fromEntries(p.hotelIds.map((h) => [h, `Hotel ${h}`])),

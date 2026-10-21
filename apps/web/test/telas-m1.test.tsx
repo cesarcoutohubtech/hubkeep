@@ -1,8 +1,9 @@
 // Tela dos modelos de ativo (fase 1b, M1): o formulário mostra os campos da
 // categoria sem a marca de obrigatório (o modelo só sugere), os checklists
 // que cabem na categoria e a periodicidade sugerida; o modelo existente vem
-// com os valores e com desativar. Renderiza no servidor (react-dom/server),
-// sem rede.
+// com os valores e com desativar. As sugestões de plano (M1c) mostram o
+// ativo, o modelo e a periodicidade, com criar só quando há periodicidade e
+// o descarte com motivo. Renderiza no servidor (react-dom/server), sem rede.
 import { IDIOMAS, type IdiomaDeExibicao, mensagensDe } from '@hubkeep/i18n';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -13,6 +14,13 @@ import {
   FormularioDeModelo,
   type Modelo,
 } from '../src/cliente/modelos-de-ativo';
+import { ListaDeSugestoes, type SugestaoDePlano } from '../src/cliente/sugestoes-de-plano';
+import {
+  type CadastroPendente,
+  ListaDeCadastrosPendentes,
+} from '../src/cliente/aprovacao-de-cadastros';
+import { ResultadoDaPlanilha } from '../src/cliente/importacao-de-ativos';
+import { AplicacaoDoPacote, FormularioDePlanoPadrao } from '../src/cliente/pacote-da-bandeira';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
 const renderizar = (idioma: IdiomaDeExibicao, tela: ReactNode) =>
@@ -47,20 +55,31 @@ const CHECKLISTS: Checklist[] = [
     categoriaId: AR,
     nomes: { 'pt-BR': 'Inspeção do ar' },
     ativa: true,
+    bandeiraId: null,
   },
   {
     id: 'cc000000-0000-4000-8000-000000000002',
     categoriaId: 'cb000000-0000-4000-8000-000000000009',
     nomes: { 'pt-BR': 'Porta corta-fogo' },
     ativa: true,
+    bandeiraId: null,
   },
   {
     id: 'cc000000-0000-4000-8000-000000000003',
     categoriaId: null,
     nomes: { 'pt-BR': 'Antigo' },
     ativa: false,
+    bandeiraId: null,
+  },
+  {
+    id: 'cc000000-0000-4000-8000-000000000004',
+    categoriaId: AR,
+    nomes: { 'pt-BR': 'Inspeção da bandeira Y' },
+    ativa: true,
+    bandeiraId: 'bb000000-0000-4000-8000-000000000002',
   },
 ];
+const BANDEIRAS = [{ id: 'bb000000-0000-4000-8000-000000000001', nome: 'Bandeira X' }];
 const MODELO: Modelo = {
   id: '3a000000-0000-4000-8000-000000000001',
   categoriaId: AR,
@@ -72,6 +91,7 @@ const MODELO: Modelo = {
   planoSugerido: { intervalo: 3, unidade: 'mes' },
   versao: 2,
   ativa: true,
+  bandeiraId: null,
 };
 
 const formulario = (modelo: Modelo | null) => (
@@ -79,6 +99,7 @@ const formulario = (modelo: Modelo | null) => (
     modelo={modelo}
     categorias={CATEGORIAS}
     checklists={CHECKLISTS}
+    bandeiras={BANDEIRAS}
     nomeDaCategoria={(c) => c.nomes['pt-BR'] ?? c.id}
     rotulo={(r, reserva) => r['pt-BR'] ?? reserva}
     executar={async () => {}}
@@ -101,6 +122,17 @@ describe('modelos de ativo no web (M1)', () => {
     expect(html).toContain('Inspeção do ar');
     expect(html).not.toContain('Porta corta-fogo');
     expect(html).not.toContain('Antigo');
+    // PB1b: o modelo do grupo não leva checklist de bandeira.
+    expect(html).not.toContain('Inspeção da bandeira Y');
+  });
+
+  it('a bandeira se escolhe só na criação (PB1b)', () => {
+    const m = mensagensDe('pt-BR');
+    const novo = renderizar('pt-BR', formulario(null));
+    expect(novo).toContain('name="bandeira"');
+    expect(novo).toContain('Bandeira X');
+    expect(novo).toContain(m['admin.pacote.todo_o_grupo']);
+    expect(renderizar('pt-BR', formulario(MODELO))).not.toContain('name="bandeira"');
   });
 
   it('o modelo existente vem com os valores, a periodicidade e desativar', () => {
@@ -110,5 +142,205 @@ describe('modelos de ativo no web (M1)', () => {
     expect(html).toContain('value="12000"');
     expect(html).toContain('value="3"');
     expect(html).toContain(m['admin.modelos_de_ativo.acao.desativar']);
+  });
+});
+
+const SUGESTOES: SugestaoDePlano[] = [
+  {
+    ativoId: '0a000000-0000-4000-8000-000000000001',
+    ativoNome: 'Split UH 101',
+    ativoVersao: 3,
+    modeloId: MODELO.id,
+    modeloNome: 'Split 12.000',
+    periodicidade: { intervalo: 3, unidade: 'mes' },
+    checklistModeloId: null,
+  },
+  {
+    ativoId: '0a000000-0000-4000-8000-000000000002',
+    ativoNome: 'Frigobar UH 102',
+    ativoVersao: 1,
+    modeloId: '3a000000-0000-4000-8000-000000000002',
+    modeloNome: null,
+    periodicidade: null,
+    checklistModeloId: null,
+  },
+];
+
+describe('sugestões de plano no web (M1c)', () => {
+  it.each(IDIOMAS)('%s: ativo, modelo, criar só com periodicidade e descarte', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(
+      idioma,
+      <ListaDeSugestoes sugestoes={SUGESTOES} executar={async () => {}} />,
+    );
+    expect(html).toContain('Split UH 101');
+    expect(html).toContain('Frigobar UH 102');
+    expect(html).toContain('Split 12.000');
+    expect(html).toContain(m['admin.preventivas.sugestoes.sem_periodicidade']);
+    expect(html.split(m['admin.preventivas.sugestoes.criar'] ?? '§').length - 1).toBe(1);
+    expect(html.split(m['admin.preventivas.sugestoes.descartar'] ?? '§').length - 1).toBe(2);
+    expect(html).toContain('name="motivo"');
+  });
+
+  it('sem sugestões, a mensagem vazia', () => {
+    const m = mensagensDe('pt-BR');
+    const html = renderizar('pt-BR', <ListaDeSugestoes sugestoes={[]} executar={async () => {}} />);
+    expect(html).toContain(m['admin.preventivas.sugestoes.vazio']);
+  });
+});
+
+const PENDENTE: CadastroPendente = {
+  id: '0a000000-0000-4000-8000-000000000009',
+  localId: '0b000000-0000-4000-8000-000000000001',
+  localNome: 'UH 101',
+  categoriaId: null,
+  nome: 'Split novo',
+  fabricante: 'Fabricante X',
+  modelo: 'X-12',
+  numeroSerie: null,
+  versao: 1,
+  criadoEm: '2026-10-19T12:00:00.000Z',
+};
+
+describe('fila de aprovação do cadastro no web (M4)', () => {
+  it.each(IDIOMAS)('%s: o ativo, o local, aprovar e recusar com motivo', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(
+      idioma,
+      <ListaDeCadastrosPendentes cadastros={[PENDENTE]} executar={async () => {}} />,
+    );
+    expect(html).toContain('Split novo');
+    expect(html).toContain('UH 101');
+    expect(html).toContain('Fabricante X · X-12');
+    expect(html).toContain(m['admin.aprovacao_cadastro.aprovar']);
+    expect(html).toContain(m['admin.aprovacao_cadastro.recusar']);
+    expect(html).toContain('name="motivo"');
+  });
+
+  it('sem pendentes, a mensagem vazia', () => {
+    const m = mensagensDe('pt-BR');
+    expect(
+      renderizar('pt-BR', <ListaDeCadastrosPendentes cadastros={[]} executar={async () => {}} />),
+    ).toContain(m['admin.aprovacao_cadastro.vazio']);
+  });
+});
+
+describe('importação de ativos por planilha no web (M2)', () => {
+  const LINHAS = [
+    { numero: 2, situacao: 'nova' as const, nome: 'Split 1', erros: [] },
+    { numero: 3, situacao: 'ja_importada' as const, nome: 'Split 2', erros: [] },
+    {
+      numero: 4,
+      situacao: 'invalida' as const,
+      nome: 'Bomba',
+      erros: [
+        {
+          codigo: 'importacao_local_nao_encontrado',
+          coluna: 'local',
+          parametros: { local: 'Sala 9' },
+        },
+      ],
+    },
+  ];
+
+  it.each(IDIOMAS)('%s: o resumo e as linhas que pedem atenção, com o erro traduzido', (idioma) => {
+    const m = mensagensDe(idioma);
+    const html = renderizar(
+      idioma,
+      <ResultadoDaPlanilha
+        gravada={false}
+        resumo={{ prontas: 1, jaImportadas: 1, invalidas: 1 }}
+        linhas={LINHAS}
+      />,
+    );
+    expect(html).not.toContain('Split 1');
+    expect(html).toContain('Split 2');
+    expect(html).toContain('Bomba');
+    expect(html).toContain('Sala 9');
+    expect(html).not.toContain('importacao_local_nao_encontrado');
+    expect(m['erro.importacao_local_nao_encontrado']).toBeTruthy();
+  });
+
+  it('sem linha com problema, a mensagem vazia', () => {
+    const m = mensagensDe('pt-BR');
+    expect(
+      renderizar(
+        'pt-BR',
+        <ResultadoDaPlanilha
+          gravada
+          resumo={{ prontas: 1, jaImportadas: 0, invalidas: 0 }}
+          linhas={[{ numero: 2, situacao: 'criada', nome: 'Split 1', erros: [] }]}
+        />,
+      ),
+    ).toContain(m['admin.importacao.sem_problemas']);
+  });
+});
+
+describe('pacote da bandeira no web (PB1)', () => {
+  const BX = 'bb000000-0000-4000-8000-000000000001';
+  it.each(IDIOMAS)(
+    '%s: o plano novo escolhe a bandeira ou o grupo; o existente não troca',
+    (idioma) => {
+      const m = mensagensDe(idioma);
+      const props = {
+        bandeiras: [{ id: BX, nome: 'Bandeira X' }],
+        categorias: CATEGORIAS,
+        checklists: [],
+        nomeDaCategoria: (c: Categoria) => c.nomes['pt-BR'] ?? c.id,
+        rotulo: (_r: unknown, reserva: string) => reserva,
+        executar: async () => {},
+      };
+      const novo = renderizar(idioma, <FormularioDePlanoPadrao plano={null} {...props} />);
+      expect(novo).toContain('name="bandeira"');
+      expect(novo).toContain('Bandeira X');
+      expect(novo).toContain(m['admin.pacote.todo_o_grupo']);
+      expect(novo).toContain(m['admin.pacote.acao.criar']);
+      const existente = renderizar(
+        idioma,
+        <FormularioDePlanoPadrao
+          plano={{
+            id: 'pa000000-0000-4000-8000-000000000001',
+            bandeiraId: BX,
+            categoriaId: AR,
+            nome: 'Limpeza de filtros',
+            intervalo: 1,
+            unidade: 'mes',
+            checklistModeloId: null,
+            ativa: true,
+            versao: 2,
+          }}
+          {...props}
+        />,
+      );
+      expect(existente).not.toContain('name="bandeira"');
+      expect(existente).toContain('Limpeza de filtros');
+      expect(existente).toContain(m['admin.pacote.acao.desativar']);
+    },
+  );
+
+  it('a aplicação mostra os planos a copiar e o botão; sem nada, a mensagem', () => {
+    const m = mensagensDe('pt-BR');
+    const html = renderizar(
+      'pt-BR',
+      <AplicacaoDoPacote
+        copias={[
+          {
+            planoPadraoId: 'pa000000-0000-4000-8000-000000000001',
+            categoriaId: AR,
+            nome: 'Limpeza de filtros',
+            intervalo: 1,
+            unidade: 'mes',
+            checklistModeloId: null,
+            inicio: '2026-10-20',
+          },
+        ]}
+        aplicar={async () => {}}
+      />,
+    );
+    expect(html).toContain('Limpeza de filtros');
+    expect(html).toContain('Aplicar o pacote (1 plano)');
+    expect(
+      renderizar('pt-BR', <AplicacaoDoPacote copias={[]} aplicar={async () => {}} />),
+    ).toContain(m['admin.pacote.aplicacao.nada']);
   });
 });

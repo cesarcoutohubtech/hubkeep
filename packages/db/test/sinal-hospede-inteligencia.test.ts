@@ -8,7 +8,13 @@
 //   - a classificação com a trava de versão, a auditoria e o evento; fora do
 //     escopo, a linha não aparece;
 //   - as referências da classificação (ativo, UH e categoria) e o hotel da
-//     importação, só o que quem pede lê.
+//     importação, só o que quem pede lê;
+//   - a fila de classificação do hotel, por recorte, só para quem a lê;
+//   - as reclamações do hotel no trecho, sem o texto, e as linhas da política
+//     do Guest Impact Score, para a substituição (ADR-047, PR C1b);
+//   - a ligação com o chamado aberto a partir da reclamação (0057): a
+//     reclamação com o local do ativo, a ligação com auditoria sem hotel e o
+//     evento, uma por reclamação, e o chamado na fila.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
@@ -104,6 +110,10 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
     for (const t of [
       'app.evento_dominio',
       'app.auditoria',
+      'app.sinal_hospede_chamado',
+      'app.chamado',
+      'app.situacao',
+      'app.prioridade',
       'app.sinal_hospede',
       'app.ativo',
       'app.categoria_ativo',
@@ -286,5 +296,163 @@ describe.skipIf(!temBanco)('sinal do hóspede do Intelligence', { timeout: 60_00
       [TENANT, sinalId],
     );
     expect(eventos.rows).toEqual([{ tipo: 'sinal_hospede.classificado', hotel: H1 }]);
+  });
+
+  it('a fila do hotel por recorte, só para quem a lê', async () => {
+    const todas = await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50);
+    const r1 = todas.find((s) => s.idExterno === 'r-1');
+    expect(r1).toMatchObject({
+      hotelId: H1,
+      fonte: 'google',
+      nota: 2.5,
+      escala: 5,
+      manutencao: true,
+      ligacao: 'confirmada',
+      ativoId: A1,
+      classificadoPor: U.gerente,
+      versao: 2,
+    });
+    expect(r1?.ocorridoEm).toBeInstanceOf(Date);
+    const ids = (xs: readonly { idExterno: string }[]) => xs.map((s) => s.idExterno);
+    const pendentes = await porta.sinaisDoHotel(ctx(U.gerente), H1, 'pendentes', 50);
+    expect(pendentes.length).toBe(todas.length - 1);
+    expect(ids(pendentes)).not.toContain('r-1');
+    expect(ids(await porta.sinaisDoHotel(ctx(U.gerente), H1, 'manutencao', 50))).toEqual(['r-1']);
+    expect(await porta.sinaisDoHotel(ctx(U.gerente), H1, 'fora', 50)).toEqual([]);
+    expect(await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 1)).toHaveLength(1);
+    expect(await porta.sinaisDoHotel(ctx(U.tecnico), H1, 'todas', 50)).toEqual([]);
+  });
+
+  it('as reclamações do hotel no trecho, sem o texto, para a substituição', async () => {
+    const lidas = await porta.sinaisDoHotelNaJanela(
+      ctx(U.gerente),
+      H1,
+      new Date(agora.getTime() - 30 * 86_400_000),
+      agora,
+    );
+    expect(lidas.map((s) => s.ativoId)).toContain(A1);
+    const r1 = lidas.find((s) => s.ativoId === A1);
+    expect(r1).toMatchObject({
+      hotelId: H1,
+      manutencao: true,
+      ligacao: 'confirmada',
+      nota: 2.5,
+      escala: 5,
+    });
+    expect(Object.keys(r1 ?? {})).not.toContain('texto');
+    expect(await porta.sinaisDoHotelNaJanela(ctx(U.gerente), H2, new Date(0), agora)).toEqual([]);
+    expect(await porta.sinaisDoHotelNaJanela(ctx(U.tecnico), H1, new Date(0), agora)).toEqual([]);
+    expect(await porta.politicasDoImpacto(ctx(U.gerente))).toEqual([]);
+  });
+
+  it('as reclamações da evidência e as do ativo, com o texto, só para quem as lê (C2)', async () => {
+    const todas = await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50);
+    const r1 = todas.find((s) => s.idExterno === 'r-1');
+    if (!r1) throw new Error('sem a r-1');
+    const outra = randomUUID();
+    const porIds = await porta.sinaisPorIds(ctx(U.gerente), [r1.id, outra], 50);
+    expect(porIds.map((s) => s.id)).toEqual([r1.id]);
+    expect(porIds[0]).toMatchObject({ texto: r1.texto, ligacao: 'confirmada', ativoId: A1 });
+    expect(await porta.sinaisPorIds(ctx(U.tecnico), [r1.id], 50)).toEqual([]);
+    expect(await porta.sinaisPorIds(ctx(U.gerente), [], 50)).toEqual([]);
+    const doAtivo = await porta.sinaisDoAtivo(
+      ctx(U.gerente),
+      A1,
+      new Date(agora.getTime() - 30 * 86_400_000),
+      agora,
+      50,
+    );
+    expect(doAtivo.map((s) => s.id)).toEqual([r1.id]);
+    expect(
+      await porta.sinaisDoAtivo(ctx(U.gerente), A1, agora, new Date(agora.getTime() + 1), 50),
+    ).toEqual([]);
+    expect(await porta.sinaisDoAtivo(ctx(U.tecnico), A1, new Date(0), agora, 50)).toEqual([]);
+    expect(await porta.nomesDasUhs(ctx(U.gerente), [UH1])).toEqual({ [UH1]: 'UH 101' });
+    expect(await porta.nomesDasUhs(ctx(U.gerente), [])).toEqual({});
+  });
+
+  it('a ligação com o chamado aberto a partir da reclamação (0057)', async () => {
+    const r1 = (await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50)).find(
+      (s) => s.idExterno === 'r-1',
+    );
+    if (!r1) throw new Error('sem a r-1');
+    expect(r1.chamadoId).toBeNull();
+    expect(await porta.reclamacaoParaChamado(ctx(U.gerente), r1.id)).toEqual({
+      id: r1.id,
+      hotelId: H1,
+      bandeiraId: null,
+      manutencao: true,
+      uhId: r1.uhId,
+      ativoId: A1,
+      localDoAtivo: UH1,
+      chamadoId: null,
+    });
+    expect(await porta.reclamacaoParaChamado(ctx(U.tecnico), r1.id)).toBeNull();
+
+    // O chamado que o Gerente abriu (o caso de uso do núcleo tem os testes dele).
+    const [SIT, PRI, CH] = [randomUUID(), randomUUID(), randomUUID()];
+    await q(
+      `insert into app.situacao (id, tenant_id, entidade, estado, chave_padrao, ordem, cor)
+       values ($1, $2, 'chamado', 'aberto', 'chamado_aberto', 10, '#2563eb')`,
+      [SIT, TENANT],
+    );
+    await q(
+      `insert into app.prioridade (id, tenant_id, chave_padrao, ordem, peso) values ($1, $2, 'alta', 20, 30)`,
+      [PRI, TENANT],
+    );
+    await q(
+      `insert into app.chamado (id, tenant_id, hotel_id, local_id, ativo_id, descricao, busca, estado,
+         situacao_id, prioridade_id, politica_aplicada, aberto_por, prazo_atendimento, prazo_solucao)
+       values ($1, $2, $3, $4, $5, 'Ar barulhento', 'ar barulhento', 'aberto', $6, $7, '{}', $8,
+         now() + interval '1 day', now() + interval '2 days')`,
+      [CH, TENANT, H1, UH1, A1, SIT, PRI, U.gerente],
+    );
+    await porta.ligarChamado(ctx(U.gerente), {
+      sinalId: r1.id,
+      hotelId: H1,
+      chamadoId: CH,
+      ligadoPor: U.gerente,
+      em: agora,
+    });
+    expect(
+      (await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50)).find((s) => s.id === r1.id)
+        ?.chamadoId,
+    ).toBe(CH);
+    expect((await porta.reclamacaoParaChamado(ctx(U.gerente), r1.id))?.chamadoId).toBe(CH);
+    await expect(
+      porta.ligarChamado(ctx(U.gerente), {
+        sinalId: r1.id,
+        hotelId: H1,
+        chamadoId: CH,
+        ligadoPor: U.gerente,
+        em: agora,
+      }),
+    ).rejects.toMatchObject({ codigo: 'reclamacao_ja_tem_chamado' });
+    const auditoria = await q(
+      `select hotel_id, depois from app.auditoria
+        where tenant_id = $1 and registro_id = $2 and acao = 'ligar_chamado'`,
+      [TENANT, r1.id],
+    );
+    expect(auditoria.rows).toEqual([{ hotel_id: null, depois: { chamadoId: CH } }]);
+    const eventos = await q(
+      `select payload->>'chamadoId' as chamado from app.evento_dominio
+        where tenant_id = $1 and tipo = 'sinal_hospede.chamado_ligado'`,
+      [TENANT],
+    );
+    expect(eventos.rows).toEqual([{ chamado: CH }]);
+
+    // Várias reclamações no mesmo chamado (o insight sistêmico), numa transação.
+    const r2 = (await porta.sinaisDoHotel(ctx(U.gerente), H1, 'todas', 50)).find(
+      (s) => s.idExterno === 'r-2',
+    );
+    if (!r2) throw new Error('sem a r-2');
+    await porta.ligarChamados(ctx(U.gerente), [
+      { sinalId: r2.id, hotelId: H1, chamadoId: CH, ligadoPor: U.gerente, em: agora },
+    ]);
+    const ligadas = await q(
+      `select count(*)::int as n from app.sinal_hospede_chamado where tenant_id = $1 and chamado_id = $2`,
+      [TENANT, CH],
+    );
+    expect(ligadas.rows).toEqual([{ n: 2 }]);
   });
 });

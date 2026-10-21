@@ -1,6 +1,6 @@
 # Guia de implantação de um hotel (piloto)
 
-Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que existem na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228). Repetir o guia para cada hotel do piloto. O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (plano em `docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface (catálogo pt-BR).
+Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que existem na `main` (atualizado em 12/10/2026 com as entregas da 1b até o #194 e em 13/10/2026 com as da 1b e da 1c até o #228; em 20/10/2026, só com as reclamações de hóspedes do HubKeep Intelligence, até o #338). Repetir o guia para cada hotel do piloto. O que ainda não existe ou vai mudar na fase 1b está marcado com **[ainda não existe]** ou **[vai mudar na 1b]** (plano em `docs/12-plano-fase-1b.md`). Os rótulos entre aspas são os da interface (catálogo pt-BR).
 
 ## 1. Quem faz o quê
 
@@ -17,6 +17,7 @@ Passo a passo para colocar UM hotel no ar, conferido com as telas e rotas que ex
 | Políticas | Admin do grupo | nada |
 | Ativação do hotel | Admin do grupo (consome licença) | nada |
 | Teste de ponta a ponta e treinamento | CSC conduz | Gerente, técnicos e solicitantes participam |
+| Reclamações de hóspedes (HubKeep Intelligence, desde o início do contrato do módulo) | Admin do grupo ou Gestor CSC importam e classificam, no padrão | exporta as avaliações da ferramenta de pesquisa, se o acesso for do hotel; o Gerente classifica só se o Admin incluir o Gerente na abertura das telas (perguntas 35 a 39 de `docs/referencia/perguntas-cliente.md`) |
 
 ## 2. Pré-requisitos do grupo (uma vez, antes do primeiro hotel)
 
@@ -78,31 +79,30 @@ Hoje o cadastro é **um a um**.
 
 **No celular (PWA):** **Ativos** na fila do dia, **Cadastrar ativo**, funciona sem rede. Compra, garantia e criticidade ficam na parte recolhida "Compra, garantia e criticidade".
 
-**Importação em lote por planilha [ainda não existe]** (tarefa M2 do `docs/12`). O que já existe hoje é só o modelo da planilha, em `modelo-ativos-criticos.csv`. Quando a importação existir, o uso previsto é:
-1. Baixar o modelo na tela (cabeçalho oficial) ou usar este arquivo como base.
-2. Preencher uma linha por ativo, **uma planilha por hotel**, só com os ativos críticos no piloto.
-3. Enviar. O sistema mostra uma **prévia linha a linha**, com o erro de cada linha por código, e só então grava (com auditoria).
-4. Linha inválida não grava nada daquela linha, as outras seguem. Reenviar a mesma planilha não duplica ativo. Local de outro hotel é recusado. Há limite de linhas por envio.
-5. Quem envia: o Implantador ou quem gere o hotel.
-Hoje, o CSC pode usar o arquivo como roteiro para cadastrar um a um, ou o Implantador pode cadastrar em sequência.
+**Importação em lote por planilha** (M2), no web, menu **Importação de ativos**:
+1. Escolher o hotel e **Baixar o modelo** (o cabeçalho oficial, com uma coluna por campo estendido das categorias), ou usar `modelo-ativos-criticos.csv` como base.
+2. Preencher uma linha por ativo, **uma planilha por hotel**, só com os ativos críticos no piloto, e salvar como CSV (UTF-8).
+3. **Ver a prévia:** cada linha aparece como nova, já importada ou com erro, com a mensagem por coluna. Só então **Importar**, que grava as novas com auditoria, já aprovadas.
+4. A linha com erro fica de fora e as outras seguem. Reenviar a mesma planilha não duplica ativo. O local tem de existir no hotel (a importação não cria local). Até 2.000 linhas e 2 MB por envio.
+5. Quem importa: o Implantador ou quem gere o hotel (Admin do grupo, Gestor CSC, Gerente).
 
-**Colunas do modelo** (planilha CSV, UTF-8 com BOM, separador ponto e vírgula, primeira linha de cabeçalho, uma linha por ativo):
+**Colunas do modelo** (CSV em UTF-8, com ou sem BOM, separado por ponto e vírgula ou vírgula, primeira linha de cabeçalho, uma linha por ativo). Só `local` e `nome` são obrigatórias no cabeçalho; as outras podem faltar.
 
-| Coluna | Obrigatória | Formato | Exemplo | Situação |
-|---|---|---|---|---|
-| `local` | sim | Nome do local como está em "Locais" (UH ou área comum), no mesmo hotel | `Casa de máquinas` | Já existe como dado; a leitura da planilha é **[ainda não existe]** (M2). Se a importação cria local que falta é pergunta aberta |
-| `categoria` | recomendada | Nome da categoria como em "Categorias de ativo". Vazio vira "Sem categoria", e o painel de implantação aponta "Há ativos sem categoria." | `Elétrica` | Campo existe hoje; leitura **[ainda não existe]** (M2) |
-| `nome` | sim | Texto, até 120 caracteres | `Gerador diesel 500 kVA` | Existe hoje |
-| `fabricante` | não | Texto, até 120 caracteres | `Geradora Exemplo` | Existe hoje |
-| `modelo` | não | Texto, até 120 caracteres | `GE-500D` | Existe hoje |
-| `numero_serie` | não | Texto, até 120 caracteres | `EX-GE-0001` | Existe hoje |
-| `data_compra` | não | Data `aaaa-mm-dd` que exista no calendário | `2019-02-12` | Campo existe hoje (I1, #133); leitura **[ainda não existe]** (M2) |
-| `garantia_ate` | não | Data `aaaa-mm-dd`; não pode ser anterior a `data_compra` | `2022-02-12` | Campo existe hoje (I1); leitura **[ainda não existe]** (M2) |
-| `criticidade` | recomendada para ativo crítico | Inteiro de 1 a 5. Nomes padrão: 1 Muito baixa, 2 Baixa, 3 Média, 4 Alta, 5 Crítica; o grupo pode renomear os níveis | `5` | Campo e nomes existem hoje (I1); leitura **[ainda não existe]** (M2) |
-| `codigo_qr` | não | 10 caracteres do alfabeto `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (sem I, L, O, U). Vazio: o sistema gera | (vazio) | Formato existe hoje; uso na planilha **[a confirmar na M2]** ("QR opcional", `docs/12`) |
-| campos estendidos da categoria | conforme a categoria | Um por campo definido em "Categorias de ativo" (texto, número, data, lista, sim/não) | | **[a definir na M2]**: o formato das colunas depende da importação; não estão no modelo |
-| chave de importação por linha | n/a | Para reenviar a planilha sem duplicar | | **[a definir na M2]** (talvez migração própria) |
-| edificação do local | n/a | Hotel com mais de uma torre pode ter o mesmo nome de local em duas edificações | | **[a definir na M2]**: como a planilha distingue o local repetido |
+| Coluna | Obrigatória | Formato | Exemplo |
+|---|---|---|---|
+| `local` | sim | Nome do local como está em "Locais" (UH ou área comum), no mesmo hotel | `Casa de máquinas` |
+| `edificacao` | não | A edificação do local, quando dois locais têm o mesmo nome | `Torre A` |
+| `categoria` | recomendada | Nome da categoria em qualquer dos quatro idiomas. Vazio vira "Sem categoria", e o painel de implantação aponta "Há ativos sem categoria." | `Elétrica` |
+| `modelo` | não | Nome do modelo de ativo (M1); preenche o que a linha deixar vazio e, sem categoria, dá a dela | `Split 12.000 BTU` |
+| `nome` | sim | Texto, até 120 caracteres | `Gerador diesel 500 kVA` |
+| `fabricante` | não | Texto, até 120 caracteres | `Geradora Exemplo` |
+| `modelo_do_fabricante` | não | Texto, até 120 caracteres | `GE-500D` |
+| `numero_serie` | não | Texto, até 120 caracteres | `EX-GE-0001` |
+| `data_compra` | não | Data `aaaa-mm-dd` ou `dd/mm/aaaa` que exista no calendário | `2019-02-12` |
+| `garantia_ate` | não | Data como a da compra; não pode ser anterior a ela | `2022-02-12` |
+| `criticidade` | recomendada para ativo crítico | Inteiro de 1 a 5. Nomes padrão: 1 Muito baixa, 2 Baixa, 3 Média, 4 Alta, 5 Crítica; o grupo pode renomear os níveis | `5` |
+| `codigo_qr` | não | O código de uma etiqueta reservada no hotel (Etapa 7, item 4), com ou sem o hífen; liga o ativo à etiqueta. Vazio: o sistema gera. O código que não está reservado no hotel, que já tem ativo ou que se repete no arquivo recusa a linha | `K7K7K-7K7K7` |
+| `campo.<chave>` | conforme a categoria | Um por campo definido em "Categorias de ativo" (texto, número, data, lista, sim/não), só os da categoria da linha | `campo.btu` |
 
 Exemplo de lote: 12 ativos fictícios em `modelo-ativos-criticos.csv`, cobrindo climatização (3), caldeiras (2), elevadores (2), geradores (2), bombas (2) e SPDA (1). Os nomes de local e de categoria do arquivo são sugestões: ajustar aos do hotel. Caldeiras estão em "Hidráulica" e SPDA em "Segurança e incêndio" porque não há categoria padrão específica.
 
@@ -111,9 +111,9 @@ Exemplo de lote: 12 ativos fictícios em `modelo-ativos-criticos.csv`, cobrindo 
 ### Etapa 7. Etiquetas QR
 
 1. Web, **Ativos**, no ativo: **Ver QR** (e **Ocultar QR**). Mostra a imagem e o "Código XXXXXXXXXX". O QR é gerado no navegador com o endereço do PWA e o caminho `/q/<código>`. Se o endereço do PWA não estiver configurado: "O endereço do app do técnico não está configurado; o QR não pode ser gerado."
-2. Imprimir pela impressão do navegador. **Etiqueta de impressão e QR em lote: [ainda não existe]** (M3). O código não revela o id do ativo.
+2. Web, **Etiquetas QR** (menu de cadastros): escolher o hotel e, se quiser, o local e a categoria, e o tamanho da etiqueta (pequena 40 × 25 mm, média 60 × 35 mm ou grande 90 × 50 mm). A folha traz uma etiqueta por ativo em uso, com o QR, o nome e o código em dois grupos de cinco (XXXXX-XXXXX). **Imprimir** abre a impressão do navegador; imprimir em escala de 100%. Depois de importar uma planilha (Etapa 6), a tela da importação oferece **Etiquetas dos N ativos importados**, com a mesma folha. O código não revela o id do ativo.
 3. Colar a etiqueta no equipamento. **Testar:** apontar a câmera do celular de um técnico; o PWA abre o ativo. Sem rede e sem o ativo guardado no aparelho, aparece "Este ativo não está guardado no aparelho. Abra o QR de novo quando houver conexão."
-4. Gerar códigos antes de cadastrar e ligar a etiqueta pelo celular: **[ainda não existe]** (M3).
+4. Gerar códigos antes de cadastrar: em **Etiquetas QR**, escolher "Códigos reservados (antes do cadastro)", informar a quantidade (de 1 a 500) e **Gerar códigos**. Escolher o lote, imprimir (por padrão, só os códigos ainda sem ativo) e colar as etiquetas nos equipamentos. O técnico aponta a câmera para a etiqueta: com rede, o PWA abre o cadastro do ativo novo com o código ("O ativo novo leva o código da etiqueta XXXXX-XXXXX."). Sem rede, o aviso de sempre oferece **Cadastrar ativo com este código**; o servidor confere ao receber, e o código que não está reservado no hotel ou que já tem ativo volta recusado na fila do dia. A etiqueta reservada serve só para ativo novo: o código de um ativo já cadastrado não muda.
 
 ### Etapa 8. Políticas
 
@@ -127,6 +127,7 @@ Em **Configuração e políticas**, painel **Políticas**:
 - **Códigos obrigatórios no aceite** ("Exigir falha, causa e solução no aceite"): existe (I6), desligado por padrão. Ligar ou não no piloto: **[a definir]** com o Cesar; ligado, o aceite sem os três códigos é recusado.
 - **Foto de depois na conclusão** e **Assinatura no aceite:** existem (I8), desligadas por padrão. Ligar ou não no piloto: **[a definir]** na reunião com a Slaviero (perguntas 31 e 32 de `docs/referencia/perguntas-cliente.md`). Ligadas, a conclusão sem foto de depois e o aceite sem assinatura são recusados.
 - **Checklist completo na conclusão:** existe (PV1), desligado por padrão; desligado, o PWA só avisa os itens obrigatórios que faltam. Ligar ou não no piloto: **[a definir]** na reunião com a Slaviero (pergunta 33 de `docs/referencia/perguntas-cliente.md`).
+- **HubKeep Intelligence:** as políticas do módulo não têm tela, menos a **Abertura das telas** (Admin do grupo). Sem gravação, vale o padrão: a retenção do texto da reclamação de hóspede em 365 dias, contados da data da avaliação (`inteligencia.sinal_hospede`, provisória até a pergunta 38 de `docs/referencia/perguntas-cliente.md`), e o Guest Impact Score na janela de 90 dias (`inteligencia.impacto_hospede`). A importação das reclamações não entra na implantação do hotel, mas pode começar no primeiro dia do piloto: a tela de reclamações abre no início do contrato do módulo, antes da data de abertura das outras telas. Avaliações de dias anteriores também entram, cada uma com a data dela.
 - **Planos preventivos:** em **Preventivas**, cadastrar os planos do hotel (por ativo ou por categoria, com a periodicidade, a primeira data, o checklist e o responsável) e ativar. Quais planos o piloto começa: **[a definir]** na reunião com a Slaviero (pergunta 30 de `docs/referencia/perguntas-cliente.md`). O plano ainda não gera OS **[vai mudar na 1b]** (PV3). Modelos por categoria: **[ainda não existe]** (M1).
 
 ### Etapa 9. Ativar o hotel

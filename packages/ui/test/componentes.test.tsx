@@ -7,11 +7,13 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
   AreaDeTexto,
+  BarrasHorizontais,
   Botao,
   Campo,
   comoBotao,
   Entrada,
   Estrutura,
+  GraficoDeLinhas,
   GrupoDeMenu,
   Dados,
   Indicador,
@@ -20,9 +22,11 @@ import {
   Marca,
   MensagemDeErro,
   MensagemVazia,
+  MiniLinha,
   NIVEIS_DE_PRIORIDADE,
   Nota,
   Painel,
+  passoDaGrade,
   Selecao,
   Selo,
   SeloDePrioridade,
@@ -282,5 +286,108 @@ describe('Nota', () => {
     expect(html(<Nota>Dica</Nota>)).toBe('<p class="hk-nota" data-tom="info">Dica</p>');
     expect(html(<Nota tom="ok">Feito</Nota>)).toContain('role="status"');
     expect(html(<Nota tom="atencao">Cuidado</Nota>)).toContain('role="status"');
+  });
+});
+
+describe('GraficoDeLinhas', () => {
+  const eixoX = ['01/10', '02/10', '03/10'];
+  const formatar = (n: number) => String(n);
+
+  it('duas séries: a legenda, uma linha por série com a cor na ordem, a grade e a tabela', () => {
+    const saida = html(
+      <GraficoDeLinhas
+        rotulo="Fluxo"
+        eixoX={eixoX}
+        formatar={formatar}
+        series={[
+          { chave: 'a', rotulo: 'Abertos', valores: [3, 9, 4] },
+          { chave: 'b', rotulo: 'Concluídos', valores: [1, 2, 7] },
+        ]}
+        tabela={<table />}
+        verTabela="Ver os números"
+      />,
+    );
+    expect(saida).toContain('role="img"');
+    expect(saida).toContain('aria-label="Fluxo"');
+    expect(saida).toContain('class="hk-grafico-legenda"');
+    expect(saida.match(/<polyline/g)).toHaveLength(2);
+    expect(saida).toContain('hk-grafico-linha hk-grafico-serie-1');
+    expect(saida).toContain('hk-grafico-linha hk-grafico-serie-2');
+    // Topo 10 com passo 5 (até 9): grade em 0, 5 e 10; o primeiro, o do meio e o último dia.
+    expect(saida.match(/class="hk-grafico-grade"/g)).toHaveLength(3);
+    for (const d of eixoX) expect(saida).toContain(`>${d}</text>`);
+    expect(saida).toContain('<summary>Ver os números</summary>');
+  });
+
+  it('uma série: sem legenda; um ponto só vira marcador', () => {
+    const saida = html(
+      <GraficoDeLinhas
+        rotulo="Backlog"
+        eixoX={['01/10']}
+        formatar={formatar}
+        series={[{ chave: 'b', rotulo: 'Backlog', valores: [2] }]}
+      />,
+    );
+    expect(saida).not.toContain('hk-grafico-legenda');
+    expect(saida).not.toContain('<polyline');
+    expect(saida).toContain('<circle');
+  });
+
+  it('o passo da grade: 1 até quatro, depois 1, 2 ou 5 vezes uma potência de dez', () => {
+    expect([0, 3, 4, 7, 9, 18, 40, 130].map(passoDaGrade)).toEqual([1, 1, 1, 2, 5, 5, 10, 50]);
+  });
+});
+
+describe('BarrasHorizontais', () => {
+  it('uma linha por item, com o nome e o número em texto, e a barra pelo maior valor', () => {
+    const saida = html(
+      <BarrasHorizontais
+        rotulo="Onde mais quebra"
+        itens={[
+          { chave: 'a', rotulo: 'Elevadores', valor: 8, texto: '8' },
+          { chave: 'b', rotulo: 'Ar-condicionado', valor: 2, texto: '2' },
+        ]}
+      />,
+    );
+    expect(saida).toContain('aria-label="Onde mais quebra"');
+    expect(saida.match(/class="hk-barras-item"/g)).toHaveLength(2);
+    expect(saida).toContain('width="100"');
+    expect(saida).toContain('width="25"');
+    expect(saida).toContain('aria-hidden="true"');
+    expect(html(<BarrasHorizontais rotulo="x" itens={[]} />)).toBe('');
+  });
+});
+
+describe('MiniLinha', () => {
+  it('uma linha com um ponto por valor, com nome, na cor da primeira série', () => {
+    const saida = html(<MiniLinha rotulo="Backlog, 3 dias" valores={[0, 5, 10]} />);
+    expect(saida).toContain('role="img"');
+    expect(saida).toContain('aria-label="Backlog, 3 dias"');
+    expect(saida).toContain('hk-grafico-linha hk-grafico-serie-1');
+    expect(saida).toContain('points="0,26 50,14 100,2"');
+  });
+
+  it('com menos de dois valores, nada; só zeros, a linha no chão', () => {
+    expect(html(<MiniLinha rotulo="x" valores={[3]} />)).toBe('');
+    expect(html(<MiniLinha rotulo="x" valores={[0, 0]} />)).toContain('points="0,26 100,26"');
+  });
+
+  it('o dia sem valor deixa um vão; o valor sozinho vira um ponto; só vãos, nada', () => {
+    const saida = html(<MiniLinha rotulo="x" valores={[0, 10, null, 5, null, null, 0]} />);
+    const pontos = [...saida.matchAll(/points="([^"]+)"/g)].map((m) => m[1]);
+    expect(pontos).toEqual(['0,26 16.666666666666668,2', '50,14 50,14', '100,26 100,26']);
+    expect(html(<MiniLinha rotulo="x" valores={[null, null]} />)).toBe('');
+  });
+
+  it('no indicador, a linha vai embaixo do detalhe', () => {
+    const saida = html(
+      <Indicador
+        rotulo="Backlog"
+        valor="12"
+        detalhe="+2"
+        tendencia={<MiniLinha rotulo="x" valores={[1, 2]} />}
+      />,
+    );
+    expect(saida).toMatch(/hk-indicador-detalhe[\s\S]*hk-indicador-tendencia[\s\S]*hk-mini-linha/);
   });
 });

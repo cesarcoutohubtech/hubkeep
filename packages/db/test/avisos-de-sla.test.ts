@@ -5,11 +5,18 @@
 //     um prazo refeito não conta;
 //   - a OS na pausa que parou o relógio congela a solução vencida;
 //   - o Técnico do hotel não vê o painel e, na ficha, recebe a lista vazia;
-//   - o hotel de outro tenant é não encontrado.
+//   - o hotel de outro tenant é não encontrado;
+//   - os próximos prazos da tela inicial: o do atendimento em risco, a solução
+//     do chamado de atendimento vencido e o atendimento refeito, sem o pausado;
+//   - a situação por hotel: os quatro chamados são críticos (a única prioridade),
+//     um fora do prazo e um que vence em breve, e o hotel fica crítico.
 //
 //   HK_TESTE_URL_APP, HK_TESTE_URL_DONO
 import { randomUUID } from 'node:crypto';
-import { criarCasosDeUsoDeAvisosDeSla } from '@hubkeep/aplicacao';
+import {
+  criarCasosDeUsoDaSituacaoPorHotel,
+  criarCasosDeUsoDeAvisosDeSla,
+} from '@hubkeep/aplicacao';
 import { HORARIO_PADRAO, SLA_PADRAO } from '@hubkeep/dominio';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -17,7 +24,9 @@ import {
   type AcessoBanco,
   criarAcessoBanco,
   criarPortaAvisosDeSla,
+  criarPortaIndicadores,
   criarPortaPrioridades,
+  criarPortaSituacaoPorHotel,
   criarPortasDeAplicacao,
 } from '../src/index';
 
@@ -205,6 +214,46 @@ describe.skipIf(!temBanco)('avisos de SLA em aberto (hk_app)', { timeout: 60_000
     expect((await casos.doChamado(ctx(U.gerente), C.vencido)).avisos.map((a) => a.tipo)).toEqual([
       'atendimento_vencido',
     ]);
+  });
+
+  it('os próximos prazos: do mais perto, com o em risco gravado, sem o pausado', async () => {
+    const { prazos } = await casos.proximosPrazos(ctx(U.gerente));
+    expect(prazos.map((p) => [p.chamadoId, p.tipo, p.emRisco, p.prazo.toISOString()])).toEqual([
+      [C.emRisco, 'atendimento', true, em(0.1).toISOString()],
+      [C.vencido, 'solucao', false, em(3).toISOString()],
+      [C.refeito, 'atendimento', false, em(5).toISOString()],
+    ]);
+    expect(prazos[0]?.hotelNome).toBe('Hotel');
+    await expect(casos.proximosPrazos(ctx(U.tecnico))).rejects.toMatchObject({
+      codigo: 'prazos_sem_permissao',
+    });
+  });
+
+  it('a situação por hotel: os críticos, o fora do prazo, o que vence em breve e o hotel crítico', async () => {
+    const situacao = criarCasosDeUsoDaSituacaoPorHotel({
+      situacao: criarPortaSituacaoPorHotel(banco),
+      avisos: criarPortaAvisosDeSla(banco),
+      indicadores: criarPortaIndicadores(banco),
+      atribuicoes: criarPortasDeAplicacao(banco).atribuicoes,
+      prioridades: criarPortaPrioridades(banco),
+      relogio: { agora: () => AGORA },
+    });
+    const { hoteis } = await situacao.consultar(ctx(U.gerente));
+    expect(hoteis).toHaveLength(1);
+    expect(hoteis[0]).toMatchObject({
+      hotelId: H1,
+      hotelNome: 'Hotel',
+      situacao: 'critico',
+      vencemEmBreve: 1,
+      foraDoPrazo: 1,
+      criticos: 4,
+      preventivasAtrasadas: 0,
+    });
+    // A abertura é a hora real do insert; aqui só o tamanho da coluna.
+    expect(hoteis[0]?.abertosPorDia).toHaveLength(14);
+    await expect(situacao.consultar(ctx(U.tecnico))).rejects.toMatchObject({
+      codigo: 'situacao_por_hotel_sem_permissao',
+    });
   });
 
   it('o hotel de outro tenant é não encontrado', async () => {

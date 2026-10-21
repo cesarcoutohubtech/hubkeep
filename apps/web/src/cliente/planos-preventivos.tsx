@@ -17,7 +17,8 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { chamarApi } from './api';
 import { Aviso, type AvisoDeAcao } from './aviso';
-import { SeletorDeHotel, useHoteis } from './cadastro';
+import { SeletorDeHotel, useHoteis, valeParaOHotel } from './cadastro';
+import { ListaDeSugestoes, type SugestaoDePlano } from './sugestoes-de-plano';
 import { useIdioma, useT } from '../i18n/cliente';
 
 type Situacao = 'ativo' | 'pausado' | 'encerrado';
@@ -42,7 +43,8 @@ export interface Plano {
 export interface Apoio {
   ativos: { id: string; nome: string; ativo: boolean }[];
   categorias: { id: string; chavePadrao: string | null; nomes: Rotulos; ativa: boolean }[];
-  modelos: { id: string; nomes: Rotulos; ativa: boolean }[];
+  /** PB1b: só os do grupo e os da bandeira do hotel entram na escolha. */
+  modelos: { id: string; nomes: Rotulos; ativa: boolean; bandeiraId?: string | null }[];
   equipes: { id: string; nome: string; ativa: boolean }[];
   tecnicos: { usuarioId: string; nome: string }[];
   idiomaPadrao: Idioma;
@@ -75,7 +77,11 @@ export function previa(intervalo: string, unidade: string, inicio: string, hoje:
 export function PlanosPreventivos({
   inicial,
 }: {
-  inicial?: { lista: { hoje: string; planos: Plano[] }; apoio: Apoio };
+  inicial?: {
+    lista: { hoje: string; planos: Plano[] };
+    apoio: Apoio;
+    sugestoes?: SugestaoDePlano[];
+  };
 }) {
   const t = useT();
   const intl = useIntl();
@@ -85,13 +91,14 @@ export function PlanosPreventivos({
     inicial?.lista ?? null,
   );
   const [apoio, setApoio] = useState<Apoio | null>(inicial?.apoio ?? null);
+  const [sugestoes, setSugestoes] = useState<SugestaoDePlano[]>(inicial?.sugestoes ?? []);
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
   const [editando, setEditando] = useState<Plano | null>(null);
   const [rascunho, setRascunho] = useState({ intervalo: '1', unidade: 'mes', inicio: '' });
 
   const carregar = useCallback(async () => {
     if (!hotelId) return;
-    const [p, a, c, m, e] = await Promise.all([
+    const [p, a, c, m, e, s] = await Promise.all([
       chamarApi<{ hoje: string; planos: Plano[] }>(`/api/v1/hoteis/${hotelId}/planos-preventivos`),
       chamarApi<{ ativos: Apoio['ativos'] }>(`/api/v1/hoteis/${hotelId}/ativos`),
       chamarApi<{ idiomaPadrao: Idioma; categorias: Apoio['categorias'] }>(
@@ -101,9 +108,12 @@ export function PlanosPreventivos({
       chamarApi<{ equipes: Apoio['equipes']; tecnicos: Apoio['tecnicos'] }>(
         `/api/v1/hoteis/${hotelId}/equipes`,
       ),
+      chamarApi<{ sugestoes: SugestaoDePlano[] }>(`/api/v1/hoteis/${hotelId}/sugestoes-de-plano`),
     ]);
     if (!p.ok) return setAviso({ tipo: 'erro', erro: p.erro });
     setLista(p.dados);
+    // Quem não gere planos no hotel recebe 403: a tela fica sem sugestões.
+    setSugestoes(s.ok ? s.dados.sugestoes : []);
     setApoio({
       ativos: a.ok ? a.dados.ativos : [],
       categorias: c.ok ? c.dados.categorias : [],
@@ -318,7 +328,14 @@ export function PlanosPreventivos({
             <Selecao {...p} name="checklist" defaultValue={editando?.checklistModeloId ?? ''}>
               <option value="">{t('admin.preventivas.sem_checklist')}</option>
               {apoio?.modelos
-                .filter((m) => m.ativa)
+                .filter(
+                  (m) =>
+                    m.ativa &&
+                    valeParaOHotel(
+                      m,
+                      hoteis.find((h) => h.id === hotelId),
+                    ),
+                )
                 .map((m) => (
                   <option key={m.id} value={m.id}>
                     {nomeDoModelo(m)}
@@ -367,6 +384,8 @@ export function PlanosPreventivos({
           ) : null}
         </div>
       </form>
+
+      {lista ? <ListaDeSugestoes sugestoes={sugestoes} executar={executar} /> : null}
 
       {!lista ? (
         <MensagemVazia>{t('comum.carregando')}</MensagemVazia>

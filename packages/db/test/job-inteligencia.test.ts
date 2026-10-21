@@ -6,7 +6,9 @@
 //     OS depois dele; os ativos sem baixa antes de `desde`;
 //   - os insights abertos e o último encerrado de cada família;
 //   - grava métrica, abre e atualiza insight com auditoria e evento, numa
-//     transação: se algo falha, nada fica.
+//     transação: se algo falha, nada fica;
+//   - o sinal do hóspede (ADR-047): as reclamações da janela, sem o texto, e
+//     o apagamento do texto vencido, só no tenant.
 //
 //   HK_TESTE_URL_WORKER, HK_TESTE_URL_DONO
 import { createHash, randomUUID } from 'node:crypto';
@@ -55,6 +57,15 @@ const PV = {
 };
 const I = { aberto: randomUUID(), velho: randomUUID(), novo: randomUUID() };
 const POLITICA = randomUUID();
+const CAT = randomUUID();
+const S = {
+  recente: randomUUID(),
+  semCategoria: randomUUID(),
+  fora: randomUUID(),
+  velho: randomUUID(),
+  apagado: randomUUID(),
+  outroTenant: randomUUID(),
+};
 const ABB = 'ABCDEFGHJK';
 
 // Um minuto à frente: os ativos nascem com criado_em = now(), depois deste arquivo carregar.
@@ -181,11 +192,11 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
     );
     const insight = (id: string, familia: string, encerrado: Date | null, estado: string) =>
       q(
-        `insert into app.insight (id, tenant_id, hotel_id, hotel_ids, tipo, familia, chave, escopo,
-           estado, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em,
+        `insert into app.insight (numero, id, tenant_id, hotel_id, hotel_ids, tipo, familia, chave,
+           escopo, estado, faixa, valor, versao_score, primeira_deteccao_em, ultima_deteccao_em,
            encerrado_em, encerrado_por, motivo_descarte)
-         values ($1, $2, $3, array[$3]::uuid[], 'atencao_ativo', $4, $5, '{}', $6, 'atencao', 60, 2,
-           $7, $7, $8, $9, $10)`,
+         values ((select coalesce(max(numero), 0) + 1 from app.insight where tenant_id = $2), $1, $2, $3,
+           array[$3]::uuid[], 'atencao_ativo', $4, $5, '{}', $6, 'atencao', 60, 2, $7, $7, $8, $9, $10)`,
         [
           id,
           T,
@@ -224,6 +235,7 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       'app.auditoria',
       'app.metrica_ativo_diaria',
       'app.insight',
+      'app.sinal_hospede',
       'app.parada_ativo',
       'app.os_transicao',
       'app.os',
@@ -233,6 +245,7 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       'app.situacao',
       'app.prioridade',
       'app.ativo',
+      'app.categoria_ativo',
       'app.local',
       'app.hotel',
       'licenca.modulo',
@@ -397,6 +410,7 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
         insightsAbertos: 1,
         insightsAtualizados: 1,
         insightsIgnorados: 0,
+        textosApagados: 0,
         versoesDeFormula: { reincidencia: 1, atencao: 2, sistemico: 2 },
         versoesDePolitica: { [H1]: 'padrao' },
       });
@@ -429,6 +443,16 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       chave: chave(familia, [H1]),
       evidencia: { corretivaIds: [C.recente] },
     });
+    // O número do insight (0060): o maior do tenant mais um, e só um insight com ele.
+    const n = await q(
+      `select i.numero,
+              (select max(numero) from app.insight where tenant_id = $2) as maior,
+              (select count(*)::int from app.insight where tenant_id = $2 and numero = i.numero) as iguais
+         from app.insight i where i.id = $1`,
+      [id, T],
+    );
+    expect(n.rows[0].numero).toBeGreaterThanOrEqual(1);
+    expect(n.rows[0]).toMatchObject({ maior: n.rows[0].numero, iguais: 1 });
     const auditoria = await q(
       `select entidade, acao, usuario_id, hotel_id, depois from app.auditoria where tenant_id = $1 order by em, acao`,
       [T],
@@ -443,6 +467,9 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
         ['job_inteligencia', 'calcular_dia', null, null],
       ].sort(),
     );
+    expect(
+      auditoria.rows.find((a) => a.entidade === 'insight' && a.acao === 'abrir')?.depois,
+    ).toMatchObject({ numero: n.rows[0].numero });
     // Quem disparou e as versões ficam no registro da execução.
     expect(auditoria.rows.find((a) => a.entidade === 'job_inteligencia')?.depois).toMatchObject({
       disparadoPor: 'cron',
@@ -450,6 +477,8 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       metricasGravadas: 1,
       versoesDeFormula: { reincidencia: 1, atencao: 2, sistemico: 2 },
       versoesDePolitica: { [H1]: 'padrao' },
+      // O dia de 2026 tem o mês dele (0061): nada na partição padrão.
+      metricasNaParticaoPadrao: 0,
     });
     const eventos = await q(
       `select tipo, registro_id from app.evento_dominio where tenant_id = $1 order by tipo`,
@@ -459,6 +488,103 @@ describe.skipIf(!temBanco)('sessão do job do Intelligence', { timeout: 60_000 }
       { tipo: 'insight.aberto', registro_id: id },
       { tipo: 'insight.subiu_de_faixa', registro_id: id },
     ]);
+  });
+
+  it('sinal do hóspede: as reclamações da janela, sem o texto, e a retenção do texto, só no tenant', async () => {
+    await q(
+      `insert into app.categoria_ativo (id, tenant_id, chave_padrao) values ($1, $2, 'hidraulica')`,
+      [CAT, T],
+    );
+    const sinal = (
+      id: string,
+      tenant: string,
+      hotel: string,
+      quem: string,
+      ocorrido: Date,
+      c: { manutencao: boolean | null; categoria: string | null; uh: string | null },
+      texto: string | null,
+      apagado: Date | null = null,
+    ) =>
+      q(
+        `insert into app.sinal_hospede (id, tenant_id, hotel_id, lote_id, fonte, id_externo, ocorrido_em,
+           texto, manutencao, categoria_id, uh_id, classificado_em, classificado_por, texto_apagado_em,
+           importado_por)
+         values ($1, $2, $3, $4, 'google', $14, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [
+          id,
+          tenant,
+          hotel,
+          randomUUID(),
+          ocorrido,
+          texto,
+          c.manutencao,
+          c.categoria,
+          c.uh,
+          c.manutencao === null ? null : antes(1),
+          c.manutencao === null ? null : quem,
+          apagado,
+          quem,
+          // O código externo é o id em texto: o mesmo parâmetro não pode ser uuid e text.
+          id,
+        ],
+      );
+    const manut = { manutencao: true, categoria: CAT, uh: L1 };
+    await sinal(S.recente, T, H1, U, antes(5), manut, 'Água fria');
+    await sinal(S.semCategoria, T, H1, U, antes(4), { ...manut, categoria: null }, 'Sem categoria');
+    await sinal(
+      S.fora,
+      T,
+      H1,
+      U,
+      antes(3),
+      { manutencao: false, categoria: null, uh: null },
+      'Café frio',
+    );
+    await sinal(S.velho, T, H1, U, antes(400), manut, 'Antigo');
+    await sinal(S.apagado, T, H1, U, antes(500), manut, null, antes(100));
+    const nada = { manutencao: null, categoria: null, uh: null };
+    await sinal(S.outroTenant, T2, HB, UB, antes(400), nada, 'Do outro tenant');
+
+    const apagados = await porta.noTenant(T, async (s) => {
+      const recentes = await s.sinais(agora, antes(14));
+      expect(recentes.map((r) => r.id)).toEqual([S.recente, S.semCategoria, S.fora]);
+      expect(recentes[0]).toEqual({
+        id: S.recente,
+        hotelId: H1,
+        ocorridoEm: antes(5),
+        nota: null,
+        escala: null,
+        manutencao: true,
+        categoriaId: CAT,
+        uhId: L1,
+        ativoId: null,
+        ligacao: 'sem_ligacao',
+      });
+      expect((await s.sinais(agora, antes(450))).map((r) => r.id)).toEqual([
+        S.velho,
+        S.recente,
+        S.semCategoria,
+        S.fora,
+      ]);
+      return s.apagarTextos(antes(365), agora);
+    });
+    expect(apagados).toBe(1);
+    const linhas = await q(
+      `select id, texto, texto_apagado_em, versao, manutencao, categoria_id from app.sinal_hospede
+        where tenant_id = any($1::uuid[])`,
+      [[T, T2]],
+    );
+    const porId = new Map(linhas.rows.map((r) => [r.id as string, r]));
+    expect(porId.get(S.velho)).toMatchObject({
+      texto: null,
+      texto_apagado_em: agora,
+      versao: 2,
+      manutencao: true,
+      categoria_id: CAT,
+    });
+    expect(porId.get(S.recente)).toMatchObject({ texto: 'Água fria', versao: 1 });
+    expect(porId.get(S.apagado)).toMatchObject({ texto: null, versao: 1 });
+    expect(porId.get(S.outroTenant)).toMatchObject({ texto: 'Do outro tenant', versao: 1 });
   });
 
   it('falha no meio: nada do dia fica gravado', async () => {

@@ -1,5 +1,11 @@
 // O painel do Intelligence na API: as datas do motor viram texto ISO 8601.
-import type { SubstituicaoDoAtivo } from '@hubkeep/inteligencia';
+import type {
+  FilaDoSinal,
+  MetricaDoPainel,
+  ReclamacoesDoPainel,
+  SinalDaFila,
+  SubstituicaoDoAtivo,
+} from '@hubkeep/inteligencia';
 
 const iso = (d: Date) => d.toISOString();
 
@@ -28,6 +34,20 @@ export function insightNaApi<T extends ComDatas>(
 }
 
 export const dataNaApi = iso;
+
+/** Os recálculos do dia na página do ativo (ADR-036): o resumo, sem o detalhe. */
+export function recalculosNaApi(recalculos: readonly MetricaDoPainel[]) {
+  return recalculos.map((m) => ({
+    calculo: m.calculo,
+    calculadoEm: iso(m.calculadoEm),
+    atencao: m.atencao,
+    faixa: m.faixa,
+    reincidencia: m.reincidencia,
+    versaoFormulaAtencao: m.versaoFormulaAtencao,
+    versaoFormulaReincidencia: m.versaoFormulaReincidencia,
+    versaoPolitica: m.versaoPolitica,
+  }));
+}
 
 /** A efetividade (adendo ao ADR-033): a data da intervenção em texto; o resto vai como o motor devolve. */
 export function efetividadesNaApi<
@@ -59,4 +79,26 @@ export function substituicaoNaApi(s: SubstituicaoDoAtivo) {
     criterios: criterios.map((c) => ({ ...c })),
     calculadoEm: iso(s.calculadoEm),
   };
+}
+
+/** Uma reclamação do sinal do hóspede (ADR-047): as datas em texto. */
+function sinalNaApi(s: SinalDaFila) {
+  const ouNulo = (d: Date | null) => (d === null ? null : iso(d));
+  return {
+    ...s,
+    ocorridoEm: iso(s.ocorridoEm),
+    textoApagadoEm: ouNulo(s.textoApagadoEm),
+    classificadoEm: ouNulo(s.classificadoEm),
+    importadoEm: iso(s.importadoEm),
+  };
+}
+
+/** A fila do sinal do hóspede (ADR-047): as datas em texto. */
+export function filaDeSinaisNaApi(f: FilaDoSinal) {
+  return { sinais: f.sinais.map(sinalNaApi), limitada: f.limitada, nomes: f.nomes };
+}
+
+/** As reclamações das páginas do insight e do ativo (C2 do ADR-047): as datas em texto. */
+export function reclamacoesNaApi(r: ReclamacoesDoPainel) {
+  return { ...r, sinais: r.sinais.map(sinalNaApi) };
 }

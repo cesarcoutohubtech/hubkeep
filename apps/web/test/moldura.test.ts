@@ -6,8 +6,17 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({}));
 vi.mock('../src/cliente/sessao', () => ({ sair: vi.fn() }));
 
-const { HREF_DA_ABERTURA, ITEM_DO_INTELLIGENCE, MENU, intelligenceAtivo, itemAtivo, tituloDaRota } =
-  await import('../src/cliente/moldura');
+const {
+  HREF_DA_ABERTURA,
+  HREF_DAS_RECLAMACOES,
+  ITEM_DO_INTELLIGENCE,
+  ITEM_DA_MEWS,
+  MENU,
+  destinoDoIntelligence,
+  intelligenceAtivo,
+  itemAtivo,
+  tituloDaRota,
+} = await import('../src/cliente/moldura');
 
 describe('menu da moldura', () => {
   const itens = MENU.flatMap((g) => g.itens);
@@ -60,6 +69,18 @@ describe('o item do HubKeep Intelligence', () => {
     expect(tituloDaRota('/inteligencia/ativos/0190a')).toBe('inteligencia.ativo.titulo');
   });
 
+  it('para onde o item leva: os insights, a abertura (Admin) ou as reclamações, antes da data', () => {
+    const v = { abertos: null, soAbertura: false, soReclamacoes: false };
+    expect(destinoDoIntelligence({ ...v, abertos: 3 })).toBe(ITEM_DO_INTELLIGENCE.href);
+    expect(destinoDoIntelligence({ ...v, soAbertura: true, soReclamacoes: true })).toBe(
+      HREF_DA_ABERTURA,
+    );
+    expect(destinoDoIntelligence({ ...v, soReclamacoes: true })).toBe(HREF_DAS_RECLAMACOES);
+    expect(destinoDoIntelligence(v)).toBeNull();
+    expect(existsSync(`src/app/(painel)${HREF_DAS_RECLAMACOES}/page.tsx`)).toBe(true);
+    expect(intelligenceAtivo(HREF_DAS_RECLAMACOES)).toBe(true);
+  });
+
   it('antes da abertura, o Admin do grupo vai à página da abertura', () => {
     expect(existsSync(`src/app/(painel)${HREF_DA_ABERTURA}/page.tsx`)).toBe(true);
     expect(tituloDaRota(HREF_DA_ABERTURA)).toBe('inteligencia.abertura.titulo');
@@ -71,5 +92,14 @@ describe('o item do HubKeep Intelligence', () => {
     expect(intelligenceAtivo('/inteligencia/ativos/0190a')).toBe(true);
     expect(intelligenceAtivo('/inteligencia-x')).toBe(false);
     expect(intelligenceAtivo('/admin/ativos')).toBe(false);
+  });
+});
+
+describe('Mews V1: menu autorizado pelo servidor', () => {
+  it('não aparece no MENU geral e possui rota e título próprios', () => {
+    expect(ITEM_DA_MEWS.href).toBe('/admin/mews');
+    expect(MENU.flatMap((g) => g.itens).map((i) => i.href)).not.toContain(ITEM_DA_MEWS.href);
+    expect(existsSync(`src/app/(painel)${ITEM_DA_MEWS.href}/page.tsx`)).toBe(true);
+    expect(tituloDaRota(ITEM_DA_MEWS.href)).toBe('admin.mews.titulo');
   });
 });

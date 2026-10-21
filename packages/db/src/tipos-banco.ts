@@ -19,6 +19,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
 export type Json = JsonValue;
 
 export type JsonArray = JsonValue[];
@@ -61,6 +63,7 @@ export interface AppAtivo {
   busca: string;
   campos: Generated<Json>;
   categoria_id: string | null;
+  chave_importacao: string | null;
   codigo_qr: string;
   criado_em: Generated<Timestamp>;
   criticidade: number | null;
@@ -75,11 +78,23 @@ export interface AppAtivo {
   modelo_id: string | null;
   nome: string;
   numero_serie: string | null;
+  situacao_cadastro: Generated<string>;
   sugestao_descartada_em: Timestamp | null;
   sugestao_descartada_por: string | null;
   sugestao_descarte_motivo: string | null;
   tenant_id: string;
   versao: Generated<number>;
+}
+
+export interface AppAtivoDecisaoCadastro {
+  ativo_id: string;
+  decidido_em: Generated<Timestamp>;
+  decidido_por: string;
+  decisao: string;
+  hotel_id: string;
+  id: string;
+  motivo: string | null;
+  tenant_id: string;
 }
 
 export interface AppAtivoMovimentacao {
@@ -169,6 +184,7 @@ export interface AppChamado {
 export interface AppChecklistModelo {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
+  bandeira_id: string | null;
   categoria_id: string | null;
   criado_em: Generated<Timestamp>;
   id: string;
@@ -322,6 +338,7 @@ export interface AppInsight {
   id: string;
   motivo_descarte: string | null;
   nota: string | null;
+  numero: number;
   primeira_deteccao_em: Timestamp;
   responsavel_id: string | null;
   tenant_id: string;
@@ -385,9 +402,60 @@ export interface AppMetricaAtivoDiaria {
   versao_politica: string;
 }
 
+export interface AppMewsBloqueio {
+  ativo: boolean;
+  block_id: string;
+  deleted_utc: Timestamp | null;
+  enterprise_id: string;
+  fim_utc: Timestamp;
+  hotel_id: string;
+  inicio_utc: Timestamp;
+  resource_id: string;
+  tenant_id: string;
+  tipo: string;
+  updated_utc: Timestamp;
+}
+
+export interface AppMewsCheckpoint {
+  concluido_em: Timestamp | null;
+  digest_incremental: string | null;
+  digest_sweep: string | null;
+  enterprise_id: string;
+  hotel_id: string;
+  tenant_id: string;
+  ultimo_sweep_utc: Timestamp | null;
+  ultimo_updated_utc: Timestamp | null;
+  versao: Generated<Int8>;
+}
+
+export interface AppMewsRecurso {
+  ativo: boolean;
+  deleted_utc: Timestamp | null;
+  enterprise_id: string;
+  hotel_id: string;
+  resource_id: string;
+  tenant_id: string;
+  tipo: Generated<string>;
+  updated_utc: Timestamp | null;
+}
+
+export interface AppMewsVinculo {
+  credencial_ref: string;
+  criado_em: Generated<Timestamp>;
+  enterprise_id: string;
+  hotel_id: string;
+  id: string;
+  lock_versao: Generated<Int8>;
+  revogado_em: Timestamp | null;
+  tenant_id: string;
+  validado_em: Timestamp;
+  validado_por: string;
+}
+
 export interface AppModeloAtivo {
   ativa: Generated<boolean>;
   atualizado_em: Generated<Timestamp>;
+  bandeira_id: string | null;
   campos: Generated<Json>;
   categoria_id: string;
   checklist_modelo_id: string | null;
@@ -506,6 +574,21 @@ export interface AppParadaAtivo {
   tenant_id: string;
 }
 
+export interface AppPlanoPadrao {
+  ativa: Generated<boolean>;
+  atualizado_em: Generated<Timestamp>;
+  bandeira_id: string | null;
+  categoria_id: string;
+  checklist_modelo_id: string | null;
+  criado_em: Generated<Timestamp>;
+  id: string;
+  intervalo: number;
+  nome: string;
+  tenant_id: string;
+  unidade: string;
+  versao: Generated<number>;
+}
+
 export interface AppPlanoPreventivo {
   ativo_id: string | null;
   atualizado_em: Generated<Timestamp>;
@@ -519,6 +602,7 @@ export interface AppPlanoPreventivo {
   inicio: Timestamp;
   intervalo: number;
   nome: string;
+  plano_padrao_id: string | null;
   situacao: string;
   tecnico_id: string | null;
   tenant_id: string;
@@ -570,6 +654,16 @@ export interface AppProprietario {
   tenant_id: string;
 }
 
+export interface AppQrReservado {
+  codigo: string;
+  criado_em: Generated<Timestamp>;
+  criado_por: string;
+  hotel_id: string;
+  id: string;
+  lote_id: string;
+  tenant_id: string;
+}
+
 export interface AppSinalHospede {
   ativo_id: string | null;
   atualizado_em: Generated<Timestamp>;
@@ -595,6 +689,16 @@ export interface AppSinalHospede {
   uh_citada: string | null;
   uh_id: string | null;
   versao: Generated<number>;
+}
+
+export interface AppSinalHospedeChamado {
+  chamado_id: string;
+  criado_em: Generated<Timestamp>;
+  hotel_id: string;
+  id: string;
+  ligado_por: string;
+  sinal_id: string;
+  tenant_id: string;
 }
 
 export interface AppSituacao {
@@ -697,6 +801,7 @@ export interface StagingRegistroExterno {
 export interface DB {
   "app.anexo": AppAnexo;
   "app.ativo": AppAtivo;
+  "app.ativo_decisao_cadastro": AppAtivoDecisaoCadastro;
   "app.ativo_movimentacao": AppAtivoMovimentacao;
   "app.atribuicao_escopo": AppAtribuicaoEscopo;
   "app.auditoria": AppAuditoria;
@@ -719,6 +824,10 @@ export interface DB {
   "app.local_proprietario": AppLocalProprietario;
   "app.membro": AppMembro;
   "app.metrica_ativo_diaria": AppMetricaAtivoDiaria;
+  "app.mews_bloqueio": AppMewsBloqueio;
+  "app.mews_checkpoint": AppMewsCheckpoint;
+  "app.mews_recurso": AppMewsRecurso;
+  "app.mews_vinculo": AppMewsVinculo;
   "app.modelo_ativo": AppModeloAtivo;
   "app.operacao_offline": AppOperacaoOffline;
   "app.os": AppOs;
@@ -727,12 +836,15 @@ export interface DB {
   "app.os_material": AppOsMaterial;
   "app.os_transicao": AppOsTransicao;
   "app.parada_ativo": AppParadaAtivo;
+  "app.plano_padrao": AppPlanoPadrao;
   "app.plano_preventivo": AppPlanoPreventivo;
   "app.politica": AppPolitica;
   "app.preferencia_membro": AppPreferenciaMembro;
   "app.prioridade": AppPrioridade;
   "app.proprietario": AppProprietario;
+  "app.qr_reservado": AppQrReservado;
   "app.sinal_hospede": AppSinalHospede;
+  "app.sinal_hospede_chamado": AppSinalHospedeChamado;
   "app.situacao": AppSituacao;
   "app.sla_alerta": AppSlaAlerta;
   "app.tenant": AppTenant;

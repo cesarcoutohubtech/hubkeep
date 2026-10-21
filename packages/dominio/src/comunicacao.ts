@@ -10,7 +10,10 @@
 //   - sem provedor configurado (C1), nada sai, e o envio é registrado como
 //     sem_provedor;
 //   - um envio por evento, destinatário e canal: o índice da 0049 recusa o
-//     segundo, e a falha não conta (a nova tentativa grava outra linha).
+//     segundo, e a falha não conta (a nova tentativa grava outra linha);
+//   - o push (C4) vai a cada aparelho com inscrição ativa; sem inscrição,
+//     fica o registro (sem_endereco), e a inscrição que o serviço de push
+//     recusa (404 ou 410) é revogada.
 import { escopoCobreHotel } from './equipes';
 import { PermissaoNegada, RegraViolada } from './erros';
 import { type DestinatarioDoAviso, PAPEIS_QUE_VEEM_OS_AVISOS } from './monitor-sla';
@@ -71,6 +74,27 @@ export function situacaoAntesDoEnvio(p: {
   if (!p.comProvedor) return 'sem_provedor';
   return null;
 }
+
+/**
+ * O que registrar do push a uma pessoa, antes de mandar (C1, C4): sem
+ * inscrição ativa num aparelho, ou fora do tenant, o push não tem para onde
+ * ir.
+ */
+export function situacaoAntesDoPush(p: {
+  membroAtivo: boolean;
+  inscricoes: number;
+  comProvedor: boolean;
+}): SituacaoDeEnvio | null {
+  if (!p.membroAtivo || p.inscricoes === 0) return 'sem_endereco';
+  if (!p.comProvedor) return 'sem_provedor';
+  return null;
+}
+
+/**
+ * O serviço de push recusou a inscrição para sempre (404 ou 410): o aparelho
+ * desinstalou o app ou tirou a permissão. A inscrição é revogada (C4).
+ */
+export const inscricaoExpirou = (status: number): boolean => status === 404 || status === 410;
 
 /**
  * Quem vê a contagem de envios por destinatário e por dia (C8): a gestão,

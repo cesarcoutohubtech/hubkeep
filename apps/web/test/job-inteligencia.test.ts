@@ -7,6 +7,7 @@ import type {
   ExecucaoNoBancoDoJob,
   MetricaDoJob,
   NovoInsightDoJob,
+  PoliticaDoJob,
   PortaDoJobDoIntelligence,
   SessaoDoJobDoIntelligence,
 } from '@hubkeep/db';
@@ -96,7 +97,7 @@ class SessaoEmMemoria implements SessaoDoJobDoIntelligence {
       { id: H2, bandeiraId: null, status: 'em_implantacao' as const, fuso: 'UTC' },
     ]);
   politicas = () =>
-    this.ler('politicas', [
+    this.ler<PoliticaDoJob[]>('politicas', [
       {
         id: 'p1',
         chave: 'inteligencia.atencao_ativo',
@@ -146,6 +147,12 @@ class SessaoEmMemoria implements SessaoDoJobDoIntelligence {
   atualizarInsight = async (d: DeteccaoNoInsightDoJob) => void this.atualizados.push(d);
   execucoes: ExecucaoNoBancoDoJob[] = [];
   registrarExecucao = async (e: ExecucaoNoBancoDoJob) => void this.execucoes.push(e);
+  sinais = () => this.ler('sinais', []);
+  apagamentos: { ate: Date; agora: Date }[] = [];
+  apagarTextos = async (ate: Date, agora: Date) => {
+    this.apagamentos.push({ ate, agora });
+    return 2;
+  };
 }
 
 describe('portasDoJob sobre a sessão do banco', () => {
@@ -194,6 +201,28 @@ describe('portasDoJob sobre a sessão do banco', () => {
     // Os módulos e as políticas são lidos uma vez.
     expect(sessao.lidas.filter((l) => l === 'modulos')).toHaveLength(1);
     expect(sessao.lidas.filter((l) => l === 'politicas')).toHaveLength(1);
+  });
+
+  it('a retenção do texto: a política do grupo vira o limite do apagamento, contado no resumo', async () => {
+    const sessao = new SessaoEmMemoria();
+    const politicas = sessao.politicas;
+    sessao.politicas = async () => [
+      ...(await politicas()),
+      {
+        id: 'p2',
+        chave: 'inteligencia.sinal_hospede',
+        escopo: 'grupo' as const,
+        hotelId: null,
+        bandeiraId: null,
+        valor: { retencaoTextoDias: 90 },
+        atualizadoEm: new Date('2026-09-01T00:00:00Z'),
+      },
+    ];
+    const r = await executarDiaDoTenant(portasDoJob(sessao, registros, agora), { agora });
+    expect(r.textosApagados).toBe(2);
+    expect(sessao.apagamentos).toEqual([{ ate: dia(-90), agora }]);
+    expect(sessao.execucoes[0]).toMatchObject({ textosApagados: 2 });
+    expect(sessao.lidas).toContain('sinais');
   });
 
   it('sem o módulo vigente: lê só os módulos e não grava nada', async () => {

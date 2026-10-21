@@ -18,6 +18,8 @@ export type { PropsDaTelaDeEntrada } from './entrada';
 export { Estrutura, GrupoDeMenu, ItemDeMenu } from './estrutura';
 export type { PropsDaEstrutura, PropsDoItemDeMenu, PropsDoLink } from './estrutura';
 export { Marca, SimboloDaMarca } from './marca';
+export { BarrasHorizontais, GraficoDeLinhas, MiniLinha, passoDaGrade } from './grafico';
+export type { ItemDasBarras, PropsDoGraficoDeLinhas, SerieDoGrafico } from './grafico';
 export { MensagemDeErro, MensagemVazia, Nota, TONS_DE_NOTA } from './mensagens';
 export type { PropsDaMensagem, TomDeNota } from './mensagens';
 export { Dados, Indicador, Indicadores, Painel, TONS_DE_INDICADOR } from './painel';

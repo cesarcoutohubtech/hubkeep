@@ -1,9 +1,10 @@
 // POST /api/v1/chamados — abre um chamado (C2). A prioridade e a situação
 // saem do servidor; a foto vai depois, como anexo do chamado.
 // GET /api/v1/chamados — lista os chamados no escopo de quem pede (C7), com os
-// filtros básicos e 50 por página.
+// filtros básicos e 50 por página; com exportacao=1, 1.000 por página, que a
+// tela junta no CSV (1c, item 9).
 import {
-  ConsultaDaLista,
+  ConsultaDaListaDeChamados,
   ESTADOS_DO_CHAMADO_API,
   PedidoDeAberturaDeChamado,
   RespostaDeChamadoAberto,
@@ -24,8 +25,10 @@ export const POST = rota('chamados.abrir', async (r) => {
 
 export const GET = rota('chamados.listar', async (r) => {
   const ctx = await r.contexto();
-  const pedido = r.consulta(ConsultaDaLista);
-  const pagina = await (await casosDeUsoDeConsultas()).listarChamados(ctx, pedido);
+  const { exportacao, ...filtros } = r.consulta(ConsultaDaListaDeChamados);
+  const pagina = await (
+    await casosDeUsoDeConsultas()
+  ).listarChamados(ctx, { ...filtros, exportacao: exportacao === '1' });
   return r.responder(200, RespostaDeListaDeChamados, {
     chamados: pagina.itens.map((c) => ({
       ...c,

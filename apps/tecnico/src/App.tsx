@@ -6,8 +6,11 @@
 // sessão e rede e depois de cada envio que tirou algo da fila; sem rede, vale
 // a guardada no aparelho. O QR impresso (B5) abre em /q/<codigo>: depois do
 // login e da leitura da referência guardada, o ativo abre pelo aparelho, ou
-// pela API com rede (qr.ts); o caminho volta para / em seguida. A abertura
-// de chamado (C2) também vai pela fila (chamado.abrir).
+// pela API com rede (qr.ts); o caminho volta para / em seguida. A etiqueta
+// reservada (M3) abre o cadastro do ativo com o código dela. A abertura
+// de chamado (C2) também vai pela fila (chamado.abrir). O toque no aviso de
+// push (1c, C4) abre em /os/<id>: a OS abre quando está na fila do dia do
+// aparelho, e o caminho volta para /.
 // A fila do dia (C4b) é relida da API junto com a referência e guardada no
 // aparelho; a tela mostra a guardada com a fila de operações por cima
 // (os/projecao.ts). As ações da OS, as horas, o material e as fotos vão pela
@@ -30,7 +33,13 @@ import {
   abrirReferencia,
 } from './referencia/banco';
 import { sincronizar } from './fila/sincronizar';
-import { ProvedorDeIdioma, aplicarIdiomaNaPagina, guardarIdioma, idiomaInicial } from './i18n';
+import {
+  ProvedorDeIdioma,
+  aplicarIdiomaNaPagina,
+  guardarIdioma,
+  idiomaInicial,
+  useT,
+} from './i18n';
 import { apagarDadosLocais, podeApagar } from './saida';
 import {
   conferirEspacoParaFoto,
@@ -41,6 +50,7 @@ import {
 } from './armazenamento';
 import { supabase, tenantDaSessao } from './sessao';
 import { criarEnvioDeFoto, criarFotos, fotoParaFila } from './anexos/fotos';
+import { type EstadoDoPush, criarPush, osDoCaminho } from './push';
 import { abrirQr, codigoDoCaminho } from './qr';
 import {
   Ativos,
@@ -49,6 +59,7 @@ import {
   type GravacaoDeAtivo,
 } from './telas/Ativos';
 import { AbrirChamado, type AberturaDeChamado } from './telas/AbrirChamado';
+import { AvisosNoAparelho } from './telas/AvisosNoAparelho';
 import { type EstadoDaFila, FilaDoDia, useMotivo } from './telas/FilaDoDia';
 import { Login } from './telas/Login';
 import { type CodigosParaSugerir, Os, type RespostasDaConclusao } from './telas/Os';
@@ -80,6 +91,7 @@ function Casca(props: {
   const { setIdioma, idiomaAtual } = props;
   const intl = useIntl();
   const motivo = useMotivo();
+  const t = useT();
   const [sessao, setSessao] = useState<Session | null>(null);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [estado, setEstado] = useState<EstadoDaFila>(FILA_VAZIA);
@@ -94,8 +106,18 @@ function Casca(props: {
   const [osAberta, setOsAberta] = useState<string | null>(null);
   const [referenciaLida, setReferenciaLida] = useState(false);
   const [qr, setQr] = useState<string | null>(() => codigoDoCaminho(window.location.pathname));
+  const [osDoAviso, setOsDoAviso] = useState<string | null>(() =>
+    osDoCaminho(window.location.pathname),
+  );
+  const [estadoDoPush, setEstadoDoPush] = useState<EstadoDoPush | null>(null);
+  const [inscrito, setInscrito] = useState(false);
+  const [mudandoPush, setMudandoPush] = useState(false);
   const [aberto, setAberto] = useState<AtivoAberto | null>(null);
   const [avisoDoQr, setAvisoDoQr] = useState<string | null>(null);
+  // A etiqueta reservada (M3): o cadastro abre com o código; sem rede, o
+  // aviso oferece cadastrar com o código lido.
+  const [etiqueta, setEtiqueta] = useState<{ hotelId: string | null; codigo: string } | null>(null);
+  const [lidoSemRede, setLidoSemRede] = useState<string | null>(null);
   const sessaoAtual = useRef<Session | null>(null);
   const gravadas = useRef<{ formatoRegional: string | null; fuso: string | null }>({
     formatoRegional: null,
@@ -111,6 +133,7 @@ function Casca(props: {
     [],
   );
   const fotos = useMemo(() => criarFotos(credenciais), [credenciais]);
+  const push = useMemo(() => criarPush(credenciais), [credenciais]);
   const envio = useMemo(
     () => criarEnvio(credenciais, fetch, criarEnvioDeFoto(credenciais)),
     [credenciais],
@@ -243,12 +266,52 @@ function Casca(props: {
     setQr(null);
     window.history.replaceState(null, '', '/');
     void abrirQr(codigo, { referencia, online, credenciais }).then((r) => {
+      setLidoSemRede(r.tipo === 'erro' && r.codigo === 'qr_sem_rede' ? r.lido : null);
       if (r.tipo === 'erro') return setAvisoDoQr(r.codigo);
       setAvisoDoQr(null);
-      setAberto({ hotelId: r.hotelId, ativo: r.ativo });
+      if (r.tipo === 'reservado') {
+        setAberto(null);
+        setEtiqueta({ hotelId: r.hotelId, codigo: r.codigo });
+      } else {
+        setEtiqueta(null);
+        setAberto({ hotelId: r.hotelId, ativo: r.ativo });
+      }
       setTela('ativos');
     });
   }, [sessao, qr, referenciaLida, referencia, online, credenciais]);
+
+  // O toque no aviso de push (C4): a OS abre quando a fila do dia do aparelho já foi lida.
+  useEffect(() => {
+    if (!sessao || osDoAviso === null || !referenciaLida) return;
+    const id = osDoAviso;
+    setOsDoAviso(null);
+    window.history.replaceState(null, '', '/');
+    if (os?.some((o) => o.id === id)) {
+      setOsAberta(id);
+      setTela('os');
+    }
+  }, [sessao, osDoAviso, referenciaLida, os]);
+
+  // Os avisos neste aparelho (C4): o estado ao entrar e quando a rede volta.
+  useEffect(() => {
+    if (!sessao) return;
+    void push.estado().then((e) => {
+      setEstadoDoPush(e);
+      setInscrito(e === 'ativo');
+    });
+  }, [sessao, online, push]);
+
+  async function mudarPush(ativar: boolean) {
+    setMudandoPush(true);
+    try {
+      const e = await (ativar ? push.ativar() : push.desativar());
+      setEstadoDoPush(e);
+      if (e === 'ativo') setInscrito(true);
+      if (e === 'inativo') setInscrito(false);
+    } finally {
+      setMudandoPush(false);
+    }
+  }
 
   useEffect(() => {
     const ligar = () => setOnline(true);
@@ -421,6 +484,8 @@ function Casca(props: {
         window.confirm(intl.formatMessage({ id: 'tecnico.sair.pendentes' }, { n })),
       );
       if (!confirmou) return;
+      // O próximo usuário do aparelho não recebe os avisos de quem saiu (C4).
+      await push.sair().catch(() => undefined);
       await apagarDadosLocais(
         fila.current,
         usuarioId,
@@ -437,14 +502,19 @@ function Casca(props: {
     setOsAberta(null);
     setCadastrosPendentes([]);
     setAberto(null);
+    setEtiqueta(null);
+    setLidoSemRede(null);
+    setEstadoDoPush(null);
+    setInscrito(false);
     setTela('fila');
   }
 
   if (sessao && tela === 'ativos') {
     return (
       <Ativos
-        key={aberto?.ativo.id ?? 'lista'}
+        key={aberto?.ativo.id ?? etiqueta?.codigo ?? 'lista'}
         aberto={aberto}
+        etiqueta={etiqueta}
         idioma={props.idioma}
         referencia={referencia}
         pendentes={cadastrosPendentes}
@@ -452,6 +522,7 @@ function Casca(props: {
         aoAlterar={alterarAtivo}
         aoVoltar={() => {
           setAberto(null);
+          setEtiqueta(null);
           setTela('fila');
         }}
         fotos={fotos}
@@ -506,6 +577,18 @@ function Casca(props: {
   return sessao ? (
     <>
       {avisoDoQr && <p role="alert">{motivo(avisoDoQr)}</p>}
+      {lidoSemRede && (
+        <button
+          onClick={() => {
+            setEtiqueta({ hotelId: null, codigo: lidoSemRede });
+            setLidoSemRede(null);
+            setAvisoDoQr(null);
+            setTela('ativos');
+          }}
+        >
+          {t('tecnico.ativos.cadastrar_com_etiqueta')}
+        </button>
+      )}
       <FilaDoDia
         idioma={props.idioma}
         online={online}
@@ -525,6 +608,17 @@ function Casca(props: {
         }}
         aoAbrirChamado={() => setTela('chamado')}
         aoSair={() => void sair()}
+        avisos={
+          estadoDoPush && (
+            <AvisosNoAparelho
+              estado={estadoDoPush}
+              inscrito={inscrito}
+              ocupado={mudandoPush}
+              aoAtivar={() => void mudarPush(true)}
+              aoDesativar={() => void mudarPush(false)}
+            />
+          )
+        }
       />
     </>
   ) : (

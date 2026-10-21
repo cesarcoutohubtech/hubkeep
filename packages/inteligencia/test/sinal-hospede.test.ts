@@ -8,13 +8,20 @@ import {
   LIMITE_DA_IMPORTACAO,
   type LinhaDoCsv,
   type PedidoDeClassificacao,
-  type PortasDoSinalDoHospede,
+  LIMITE_DA_FILA,
+  type PortasDaFilaDoSinal,
   type ReferenciasDaClassificacao,
+  type SinalDaFila,
+  type SituacaoDaFila,
+  acessoAsReclamacoes,
   chaveDoSinal,
   classificarSinal,
   dataDaAvaliacao,
+  ehSituacaoDaFila,
   fonteNormalizada,
   importarSinais,
+  listarInsights,
+  listarSinais,
   validarLinha,
 } from '../src/index';
 
@@ -46,14 +53,22 @@ const linha = (l: LinhaDoCsv = {}): LinhaDoCsv => ({
 interface Gravado {
   importacoes: ImportacaoGravada[];
   classificacoes: ClassificacaoGravada[];
+  filas: { hotelId: string; situacao: SituacaoDaFila; limite: number }[];
 }
 
 function emMemoria(
   atribuicoes: Atribuicao[],
-  opcoes: { existentes?: string[]; referencias?: Partial<ReferenciasDaClassificacao> } = {},
-): PortasDoSinalDoHospede & Gravado {
+  opcoes: {
+    existentes?: string[];
+    referencias?: Partial<ReferenciasDaClassificacao>;
+    fila?: SinalDaFila[];
+    /** O início do contrato do módulo; as telas abrem 60 dias depois. */
+    inicioDoModulo?: Date;
+  } = {},
+): PortasDaFilaDoSinal & Gravado {
   const importacoes: ImportacaoGravada[] = [];
   const classificacoes: ClassificacaoGravada[] = [];
+  const filas: Gravado['filas'] = [];
   const nao = async (): Promise<never> => {
     throw new Error('não usada');
   };
@@ -61,7 +76,14 @@ function emMemoria(
   return {
     importacoes,
     classificacoes,
-    modulos: async () => [{ modulo: 'inteligencia', inicio: new Date('2026-01-01'), fim: null }],
+    filas,
+    modulos: async () => [
+      {
+        modulo: 'inteligencia',
+        inicio: opcoes.inicioDoModulo ?? new Date('2026-01-01'),
+        fim: null,
+      },
+    ],
     atribuicoes: async () => atribuicoes,
     visibilidade: async () => ({
       aPartirDe: null,
@@ -77,8 +99,18 @@ function emMemoria(
     decidir: nao,
     ativo: nao,
     metricasDoAtivo: nao,
+    recalculosDoDia: nao,
     insightsDoEscopo: nao,
-    nomes: nao,
+    nomes: async (p) => ({
+      hoteis: {},
+      bandeiras: {},
+      pessoas: Object.fromEntries(p.usuarioIds.map((id) => [id, `Pessoa ${id}`])),
+      ativos: Object.fromEntries(p.ativoIds.map((id) => [id, `Ativo ${id}`])),
+    }),
+    sinaisDoHotel: async (hotelId, situacao, limite) => {
+      filas.push({ hotelId, situacao, limite });
+      return (opcoes.fila ?? []).slice(0, limite);
+    },
     hotelDoSinal: async (id) => (['h1', 'h6'].includes(id) ? { id, bandeiraId: null } : null),
     gravarSinais: async (i) => {
       importacoes.push(i);
@@ -351,5 +383,104 @@ describe('classificar a reclamação', () => {
     await expect(classificarSinal(p, pedido({ sinalId: 's9' }), agora)).rejects.toMatchObject({
       codigo: 'sinal_nao_encontrado',
     });
+  });
+});
+
+const naFila = (s: Partial<SinalDaFila> = {}): SinalDaFila => ({
+  id: 's6',
+  hotelId: 'h6',
+  fonte: 'google',
+  idExterno: 'r-1',
+  ocorridoEm: new Date('2026-10-10T12:00:00Z'),
+  nota: 2,
+  escala: 5,
+  texto: 'Ar do 304 muito barulhento',
+  textoApagadoEm: null,
+  idioma: 'pt-BR',
+  uhCitada: '304',
+  manutencao: null,
+  categoriaId: null,
+  uhId: null,
+  ativoId: null,
+  ligacao: 'sem_ligacao',
+  classificadoEm: null,
+  classificadoPor: null,
+  importadoEm: new Date('2026-10-11T09:00:00Z'),
+  versao: 1,
+  chamadoId: null,
+  ...s,
+});
+
+describe('a fila de classificação', () => {
+  it('lê o recorte do hotel, com o nome do ativo e o de quem classificou', async () => {
+    const p = emMemoria(gerenteH6, {
+      fila: [
+        naFila(),
+        naFila({
+          id: 's7',
+          manutencao: true,
+          ativoId: 'a6',
+          ligacao: 'confirmada',
+          classificadoPor: 'u1',
+          classificadoEm: new Date('2026-10-12T10:00:00Z'),
+        }),
+      ],
+    });
+    const fila = await listarSinais(p, { hotelId: 'h6', situacao: 'todas' }, agora);
+    expect(p.filas).toEqual([{ hotelId: 'h6', situacao: 'todas', limite: LIMITE_DA_FILA + 1 }]);
+    expect(fila.sinais.map((s) => s.id)).toEqual(['s6', 's7']);
+    expect(fila.limitada).toBe(false);
+    expect(fila.nomes).toEqual({ ativos: { a6: 'Ativo a6' }, pessoas: { u1: 'Pessoa u1' } });
+  });
+
+  it('mostra até o limite e diz que há mais', async () => {
+    const fila = Array.from({ length: LIMITE_DA_FILA + 1 }, (_, i) => naFila({ id: `s${i}` }));
+    const r = await listarSinais(
+      emMemoria(gerenteH6, { fila }),
+      { hotelId: 'h6', situacao: 'pendentes' },
+      agora,
+    );
+    expect(r.sinais).toHaveLength(LIMITE_DA_FILA);
+    expect(r.limitada).toBe(true);
+  });
+
+  it('o hotel fora de quem decide insight não existe, e o técnico não usa o Intelligence', async () => {
+    await expect(
+      listarSinais(emMemoria(gerenteH6), { hotelId: 'h1', situacao: 'pendentes' }, agora),
+    ).rejects.toMatchObject({ codigo: 'hotel_nao_encontrado' });
+    const tecnico = [atribuicao('tecnico', { tipo: 'hotel', hotelId: 'h6' })];
+    await expect(
+      listarSinais(emMemoria(tecnico), { hotelId: 'h6', situacao: 'pendentes' }, agora),
+    ).rejects.toMatchObject({ codigo: 'inteligencia_indisponivel' });
+  });
+
+  it('antes da abertura das telas, a tela de reclamações já funciona, e o painel não', async () => {
+    // Contrato de 01/10: as telas abrem em 30/11, e hoje é 16/10.
+    const p = emMemoria(gerenteH6, { inicioDoModulo: new Date('2026-10-01T03:00:00Z') });
+    expect(await acessoAsReclamacoes(p, agora)).toEqual({ telasAbertas: false });
+    const r = await importarSinais(p, { hotelId: 'h6', usuarioId: 'u1', linhas: [linha()] }, agora);
+    expect(r.entraram).toBe(1);
+    await listarSinais(p, { hotelId: 'h6', situacao: 'pendentes' }, agora);
+    expect(p.filas).toHaveLength(1);
+    await expect(listarInsights(p, {}, agora)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+  });
+
+  it('depois da abertura, o acesso diz que as telas abriram; sem o módulo ou sem papel, nada', async () => {
+    expect(await acessoAsReclamacoes(emMemoria(gerenteH6), agora)).toEqual({ telasAbertas: true });
+    const tecnico = [atribuicao('tecnico', { tipo: 'hotel', hotelId: 'h6' })];
+    await expect(acessoAsReclamacoes(emMemoria(tecnico), agora)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+    const semModulo = { ...emMemoria(gerenteH6), modulos: async () => [] };
+    await expect(acessoAsReclamacoes(semModulo, agora)).rejects.toMatchObject({
+      codigo: 'inteligencia_indisponivel',
+    });
+  });
+
+  it('as situações da fila', () => {
+    expect(['pendentes', 'manutencao', 'fora', 'todas'].every(ehSituacaoDaFila)).toBe(true);
+    expect(ehSituacaoDaFila('classificadas')).toBe(false);
   });
 });

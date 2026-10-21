@@ -227,6 +227,7 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
     expect(lidas.map((p) => p.chave).sort()).toEqual(
       [
         'ativo.criticidade',
+        'ativo.aprovacao_do_cadastro',
         'chamado.escalonamento',
         'chamado.prioridade_padrao_por_categoria',
         ACEITE,
@@ -237,6 +238,7 @@ describe.skipIf(!temBanco)('A7 — configuração e políticas', { timeout: 60_0
         'chamado.sla',
         'hotel.horario_atendimento',
         'hotel.matriz_arrendamento',
+        'preventiva.tolerancia_dias',
       ].sort(),
     );
   });

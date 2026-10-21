@@ -1,10 +1,12 @@
 'use client';
 // Página do insight (proposta das telas do 1.0, tela 2): o cabeçalho, "Por
 // que estou vendo isso?", os chamados por semana, os chamados da evidência
-// (sistêmico) ou o ativo (atenção), e a decisão, o único lugar de decidir no
+// (sistêmico) ou o ativo (atenção), e a decisão. No insight sistêmico das
+// reclamações, as reclamações da evidência ficam no lugar dos chamados e do
+// gráfico deles (C2 do ADR-047, D3). A decisão é o único lugar de decidir no
 // painel (decisão 2). Sem linha do tempo no 1.0 (Cesar, 10/10/2026): só as
 // datas do próprio registro.
-import type { RespostaDoInsight, z } from '@hubkeep/contratos';
+import type { RespostaDeLocaisDoHotel, RespostaDoInsight, z } from '@hubkeep/contratos';
 import type { Chave } from '@hubkeep/i18n';
 import {
   type ConfigAtencao,
@@ -27,19 +29,22 @@ import {
   Tabela,
 } from '@hubkeep/ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../../../cliente/aviso';
 import { useT } from '../../../../../i18n/cliente';
 import {
   ChamadosPorSemana,
   type Nomes,
+  type Reclamacoes,
   SeloDaFaixa,
   SeloDoEstado,
   TabelaDeEfetividade,
+  TabelaDeReclamacoes,
   useDatas,
   useEscopoDoInsight,
   useNomeDaFaixa,
+  useNumeroDoInsight,
   useTituloDoInsight,
 } from '../../comum';
 
@@ -86,6 +91,7 @@ export function TelaDoInsight({ id }: { id: string }) {
             setAviso(resultado);
             if (resultado.tipo === 'ok') await carregar();
           }}
+          aoMudar={() => void carregar()}
         />
       )}
     </div>
@@ -95,13 +101,17 @@ export function TelaDoInsight({ id }: { id: string }) {
 export function ConteudoDoInsight({
   pagina,
   aoDecidir,
+  aoMudar = () => undefined,
 }: {
   pagina: Pagina;
   aoDecidir: (resultado: AvisoDeAcao) => Promise<void>;
+  /** Depois do chamado aberto para as reclamações: a página lê de novo. */
+  aoMudar?: () => void;
 }) {
   const t = useT();
   const titulo = useTituloDoInsight();
   const escopo = useEscopoDoInsight();
+  const numero = useNumeroDoInsight();
   const { data } = useDatas();
   const { insight, nomes } = pagina;
   const sistemico = insight.tipo === 'sistemico';
@@ -109,7 +119,10 @@ export function ConteudoDoInsight({
     <>
       <Painel
         titulo={titulo(insight, nomes)}
-        dica={t('inteligencia.insight.tipo', { tipo: insight.tipo })}
+        dica={t('inteligencia.insight.numero_e_tipo', {
+          numero: numero(insight.numero),
+          tipo: t('inteligencia.insight.tipo', { tipo: insight.tipo }),
+        })}
         acoes={
           <span className="hk-em-linha">
             <SeloDaFaixa faixa={insight.faixa} />
@@ -158,18 +171,28 @@ export function ConteudoDoInsight({
       <div className="hk-grade" data-colunas="2-1">
         <div className="hk-pilha">
           <PorQue insight={insight} />
-          <Painel
-            titulo={t('inteligencia.semanas.titulo')}
-            dica={t(
-              sistemico ? 'inteligencia.semanas.dica_sistemico' : 'inteligencia.semanas.dica',
-            )}
-          >
-            <ChamadosPorSemana serie={pagina.serie} />
-          </Painel>
-          {sistemico ? (
-            <ChamadosDoInsight chamados={pagina.chamados} nomes={nomes} />
+          {pagina.reclamacoes ? (
+            <ReclamacoesDoInsight
+              reclamacoes={pagina.reclamacoes}
+              insight={insight}
+              aoMudar={aoMudar}
+            />
           ) : (
-            <AtivoDoInsight insight={insight} nomes={nomes} />
+            <>
+              <Painel
+                titulo={t('inteligencia.semanas.titulo')}
+                dica={t(
+                  sistemico ? 'inteligencia.semanas.dica_sistemico' : 'inteligencia.semanas.dica',
+                )}
+              >
+                <ChamadosPorSemana serie={pagina.serie} />
+              </Painel>
+              {sistemico ? (
+                <ChamadosDoInsight chamados={pagina.chamados} nomes={nomes} />
+              ) : (
+                <AtivoDoInsight insight={insight} nomes={nomes} />
+              )}
+            </>
           )}
           {pagina.efetividade.intervencoes.length > 0 && (
             <Painel
@@ -263,6 +286,260 @@ function ChamadosDoInsight({ chamados, nomes }: { chamados: Pagina['chamados']; 
             ))}
           </tbody>
         </Tabela>
+      )}
+    </Painel>
+  );
+}
+
+/**
+ * As reclamações da evidência, até 50, as mais recentes. Quem lê o insight
+ * mas não as reclamações do hotel vê só o total (a RLS filtra).
+ */
+/** As reclamações que o chamado do insight ligaria: de manutenção e sem chamado. */
+export const reclamacoesSemChamado = (r: Reclamacoes) =>
+  r.sinais.filter((s) => s.manutencao === true && s.chamadoId === null);
+
+export function ReclamacoesDoInsight({
+  reclamacoes,
+  insight,
+  aoMudar,
+}: {
+  reclamacoes: Reclamacoes;
+  insight: InsightDaPagina;
+  aoMudar: () => void;
+}) {
+  const t = useT();
+  const [abrindo, setAbrindo] = useState(false);
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
+  const total = reclamacoes.total ?? reclamacoes.sinais.length;
+  const semChamado = reclamacoesSemChamado(reclamacoes);
+  const podeAbrir = insight.podeDecidir && insight.hotelId !== null && semChamado.length > 0;
+  return (
+    <Painel
+      titulo={t('inteligencia.reclamacoes.insight.titulo')}
+      dica={t('inteligencia.reclamacoes.insight.dica', { total })}
+      acoes={<Link href="/inteligencia/sinais">{t('inteligencia.reclamacoes.abrir_fila')}</Link>}
+    >
+      {reclamacoes.sinais.length === 0 ? (
+        <MensagemVazia>{t('inteligencia.reclamacoes.insight.sem_acesso', { total })}</MensagemVazia>
+      ) : (
+        <>
+          <TabelaDeReclamacoes
+            reclamacoes={reclamacoes}
+            legenda={t('inteligencia.reclamacoes.insight.titulo')}
+          />
+          {reclamacoes.limitada && (
+            <Nota>
+              {t('inteligencia.reclamacoes.limitada', {
+                mostradas: reclamacoes.sinais.length,
+              })}
+            </Nota>
+          )}
+          <Aviso aviso={aviso} />
+          {podeAbrir && !abrindo && (
+            <div className="hk-linha-de-botoes">
+              <Botao
+                onClick={() => {
+                  setAviso(null);
+                  setAbrindo(true);
+                }}
+              >
+                {t('inteligencia.reclamacoes.chamado.abrir', { quantidade: semChamado.length })}
+              </Botao>
+            </div>
+          )}
+          {podeAbrir && abrindo && insight.hotelId && (
+            <FormularioDoChamadoDoInsight
+              insightId={insight.id}
+              hotelId={insight.hotelId}
+              reclamacoes={reclamacoes}
+              aoCancelar={() => setAbrindo(false)}
+              aoAbrir={(ligadas) => {
+                setAbrindo(false);
+                setAviso({
+                  tipo: 'ok',
+                  texto: t('inteligencia.reclamacoes.chamado.aberto', { ligadas }),
+                });
+                aoMudar();
+              }}
+            />
+          )}
+        </>
+      )}
+    </Painel>
+  );
+}
+
+/**
+ * A sugestão da descrição, sem o texto do hóspede (detalhe do Kaio): quantas
+ * reclamações e as UHs delas.
+ */
+export function sugestaoDoChamadoDoInsight(
+  t: ReturnType<typeof useT>,
+  reclamacoes: Reclamacoes,
+): string {
+  const semChamado = reclamacoesSemChamado(reclamacoes);
+  const uhs = [
+    ...new Set(semChamado.flatMap((s) => (s.uhId && reclamacoes.nomes.uhs[s.uhId]) || [])),
+  ];
+  return t('inteligencia.reclamacoes.chamado.sugestao', {
+    quantidade: semChamado.length,
+    temUhs: uhs.length ? 'sim' : 'nao',
+    uhs: uhs.join(', '),
+  });
+}
+
+type LocalDoHotel = z.infer<typeof RespostaDeLocaisDoHotel>['locais'][number];
+
+export function FormularioDoChamadoDoInsight({
+  insightId,
+  hotelId,
+  reclamacoes,
+  aoCancelar,
+  aoAbrir,
+  locaisIniciais,
+}: {
+  insightId: string;
+  hotelId: string;
+  reclamacoes: Reclamacoes;
+  aoCancelar: () => void;
+  aoAbrir: (ligadas: number) => void;
+  /** Para o teste da tela; na página, os locais vêm da rota do hotel. */
+  locaisIniciais?: LocalDoHotel[];
+}) {
+  const t = useT();
+  const semChamado = reclamacoesSemChamado(reclamacoes);
+  // O ativo sugerido: o mesmo em todas as reclamações sem chamado.
+  const ativos = [...new Set(semChamado.map((s) => s.ativoId))];
+  const ativoComum = ativos.length === 1 ? (ativos[0] ?? null) : null;
+  const [locais, setLocais] = useState<LocalDoHotel[] | null>(locaisIniciais ?? null);
+  const [localId, setLocalId] = useState('');
+  const [comAtivo, setComAtivo] = useState(ativoComum !== null);
+  const [descricao, setDescricao] = useState(() => sugestaoDoChamadoDoInsight(t, reclamacoes));
+  const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
+  const [semLigacao, setSemLigacao] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (locaisIniciais) return;
+    void chamarApi<z.infer<typeof RespostaDeLocaisDoHotel>>(
+      `/api/v1/hoteis/${hotelId}/locais`,
+    ).then((r) => {
+      if (!r.ok) return setAviso({ tipo: 'erro', erro: r.erro });
+      setLocais(r.dados.locais.filter((l) => l.status === 'ativo'));
+    });
+  }, [hotelId, locaisIniciais]);
+
+  const abrir = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setEnviando(true);
+    const r = await chamarApi<{ chamadoId: string; ligadas: number }>(
+      `/api/v1/inteligencia/insights/${insightId}/chamado`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          localId,
+          ativoId: comAtivo ? ativoComum : null,
+          descricao,
+        }),
+      },
+    );
+    setEnviando(false);
+    if (r.ok) return aoAbrir(r.dados.ligadas);
+    const chamadoId = r.erro.parametros['chamadoId'];
+    if (r.erro.codigo === 'chamado_sem_ligacao' && typeof chamadoId === 'string') {
+      setSemLigacao(chamadoId);
+    }
+    setAviso({ tipo: 'erro', erro: r.erro });
+  };
+
+  const ligar = async (chamadoId: string) => {
+    setEnviando(true);
+    const r = await chamarApi<{ chamadoId: string; ligadas: number }>(
+      `/api/v1/inteligencia/insights/${insightId}/chamado/ligacao`,
+      { method: 'POST', body: JSON.stringify({ chamadoId }) },
+    );
+    setEnviando(false);
+    if (r.ok) return aoAbrir(r.dados.ligadas);
+    setAviso({ tipo: 'erro', erro: r.erro });
+  };
+
+  return (
+    <Painel
+      nivel={3}
+      titulo={t('inteligencia.reclamacoes.chamado.titulo')}
+      dica={t('inteligencia.sinais.chamado.dica')}
+    >
+      {semLigacao ? (
+        <div className="hk-pilha">
+          <Aviso aviso={aviso} />
+          <p>
+            <Link href={`/chamados/${semLigacao}`}>{t('inteligencia.sinais.chamado.ver')}</Link>
+          </p>
+          <div className="hk-linha-de-botoes">
+            <Botao variante="primario" disabled={enviando} onClick={() => void ligar(semLigacao)}>
+              {t('inteligencia.sinais.chamado.ligar_de_novo')}
+            </Botao>
+            <Botao onClick={aoCancelar}>{t('inteligencia.sinais.form.cancelar')}</Botao>
+          </div>
+        </div>
+      ) : (
+        <form className="hk-pilha" onSubmit={(e) => void abrir(e)}>
+          <Campo rotulo={t('inteligencia.reclamacoes.chamado.local')}>
+            {(p) => (
+              <Selecao {...p} value={localId} onChange={(e) => setLocalId(e.target.value)}>
+                <option value="" disabled>
+                  {t('inteligencia.sinais.form.escolha')}
+                </option>
+                {(locais ?? []).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+          </Campo>
+          {ativoComum && (
+            <label className="hk-marcar">
+              <input
+                type="checkbox"
+                checked={comAtivo}
+                onChange={(e) => setComAtivo(e.target.checked)}
+              />
+              {t('inteligencia.sinais.chamado.com_ativo', {
+                ativo: reclamacoes.nomes.ativos[ativoComum] ?? t('inteligencia.sem_valor'),
+              })}
+            </label>
+          )}
+          <Campo rotulo={t('inteligencia.sinais.chamado.descricao')}>
+            {(p) => (
+              <AreaDeTexto
+                {...p}
+                value={descricao}
+                maxLength={2000}
+                rows={4}
+                onChange={(e) => setDescricao(e.target.value)}
+              />
+            )}
+          </Campo>
+          <p className="hk-suave">
+            {t('inteligencia.reclamacoes.chamado.ligara', { quantidade: semChamado.length })}
+          </p>
+          <p className="hk-suave">{t('inteligencia.sinais.chamado.afeta_hospede')}</p>
+          <Aviso aviso={aviso} />
+          <div className="hk-linha-de-botoes">
+            <Botao
+              type="submit"
+              variante="primario"
+              disabled={enviando || localId === '' || descricao.trim() === ''}
+            >
+              {t('inteligencia.sinais.chamado.abrir')}
+            </Botao>
+            <Botao type="button" onClick={aoCancelar}>
+              {t('inteligencia.sinais.form.cancelar')}
+            </Botao>
+          </div>
+        </form>
       )}
     </Painel>
   );

@@ -69,6 +69,13 @@ describe('build do PWA', () => {
     expect(sw).not.toMatch(/api\/v1/);
   });
 
+  it('o push (1c, C4): o sw.js importa o push-sw.js, que vai no build', () => {
+    expect(ler('sw.js')).toMatch(/importScripts\(["']push-sw\.js["']\)/);
+    const push = ler('push-sw.js');
+    expect(push).toContain("addEventListener('push'");
+    expect(push).toContain("addEventListener('notificationclick'");
+  });
+
   it('os quatro catálogos vão no build', () => {
     const js = readdirSync(join(saida, 'assets'))
       .filter((f) => f.endsWith('.js'))

@@ -8,6 +8,9 @@
 // hotel, dentro do mesmo hotel, e não vai pela fila offline (o técnico não
 // move). Abrir pelo código do QR (B5) passa pela mesma leitura: código de
 // outro tenant, fora do escopo ou mal formado dá 404, sem distinguir os casos.
+// O cadastro pode levar o código de uma etiqueta reservada (M3, decisão 21):
+// reservado no hotel do ativo e livre, senão qr_nao_reservado ou qr_ja_ligado;
+// o código do ativo que já existe não muda.
 // Compra, garantia e criticidade (fase 1b, I1): opcionais; na alteração, o
 // campo ausente do pedido mantém o valor gravado (a operação guardada no
 // aparelho antes da I1 não os traz), e null apaga.
@@ -21,6 +24,7 @@ import {
   type Resultado,
   type ValorDeCampo,
   exigir,
+  exigirCodigoReservadoLivre,
   exigirLocalParaAtivo,
   lerCodigoQr,
   lerDefinicoes,
@@ -30,9 +34,11 @@ import {
   podeGerirAtivos,
   podeMoverAtivo,
   resolverPolitica,
+  situacaoInicialNoPwa,
   validarCamposDoAtivo,
   validarCriticidade,
   validarDatasDoAtivo,
+  validarModeloDoAtivo,
   validarMovimentacao,
 } from '@hubkeep/dominio';
 import { termoDeBusca } from '../busca';
@@ -56,10 +62,14 @@ export interface PedidoDeGravacaoDeAtivo {
   garantiaAte?: string | null | undefined;
   /** De 1 a 5; ausente como nas datas. */
   criticidade?: number | null | undefined;
+  /** O modelo escolhido (M1); ausente como nas datas. */
+  modeloId?: string | null | undefined;
 }
 
 export interface PedidoDeCadastroDeAtivo extends PedidoDeGravacaoDeAtivo {
   localId: string;
+  /** O código da etiqueta reservada (M3); ausente ou null: o código é gerado. */
+  codigoQr?: string | null | undefined;
 }
 
 export interface PedidoDeAlteracaoDeAtivo extends PedidoDeGravacaoDeAtivo {
@@ -82,6 +92,13 @@ export interface CadastroPreparado {
   hotelId: string;
   localId: string;
   dados: DadosDeAtivo;
+  /**
+   * Com que situação nasce o cadastro que chega pelo PWA (M4), pela política
+   * ativo.aprovacao_do_cadastro do hotel. O cadastro no web nasce aprovado.
+   */
+  situacaoNoPwa?: 'pendente' | 'aprovado';
+  /** O código da etiqueta reservada (M3), já conferido; ausente: o código é gerado. */
+  codigoQr?: string;
 }
 
 export interface AlteracaoPreparada {
@@ -167,6 +184,7 @@ export function criarCasosDeUsoDeAtivos(deps: {
   });
   const dadosDe = async (
     ctx: Contexto,
+    hotelId: string,
     p: PedidoDeGravacaoDeAtivo,
     anterior: AtivoGravado | null,
   ): Promise<DadosDeAtivo> => {
@@ -189,8 +207,25 @@ export function criarCasosDeUsoDeAtivos(deps: {
         throw new NaoEncontrado('categoria_nao_encontrada', 'Categoria não encontrada.');
     }
     const campos = validarCamposDoAtivo(categoria, categoriaAnterior, p.campos);
+    const modeloId = p.modeloId === undefined ? (anterior?.modeloId ?? null) : p.modeloId;
+    if (modeloId !== null) {
+      const modelo = await deps.ativos.modelo(ctx, modeloId);
+      if (!modelo) {
+        throw new NaoEncontrado('modelo_ativo_nao_encontrado', 'Modelo de ativo não encontrado.');
+      }
+      // O modelo que o ativo já tinha continua valendo desativado, como a
+      // categoria; a categoria tem de ser a do modelo, sempre. O modelo novo
+      // tem de valer para a bandeira do hotel (PB1b).
+      const mantido = modeloId === anterior?.modeloId;
+      validarModeloDoAtivo(
+        mantido ? { ...modelo, ativa: true } : modelo,
+        p.categoriaId,
+        mantido ? undefined : await hotelVisivel(ctx, hotelId),
+      );
+    }
     return {
       categoriaId: p.categoriaId,
+      modeloId,
       nome,
       fabricante,
       modelo,
@@ -227,16 +262,37 @@ export function criarCasosDeUsoDeAtivos(deps: {
       if (!local) throw new NaoEncontrado('local_nao_encontrado', 'Local não encontrado.');
       await exigirNoHotel(ctx, local.hotelId);
       exigirLocalParaAtivo(local);
-      return { hotelId: local.hotelId, localId: local.id, dados: await dadosDe(ctx, p, null) };
+      const chave = 'ativo.aprovacao_do_cadastro';
+      const aprovacao = resolverPolitica(
+        chave,
+        await deps.ativos.politica(ctx, local.hotelId, chave),
+      );
+      const dados = await dadosDe(ctx, local.hotelId, p, null);
+      let codigoQr: string | undefined;
+      if (p.codigoQr !== undefined && p.codigoQr !== null) {
+        const lido = lerCodigoQr(p.codigoQr);
+        exigirCodigoReservadoLivre(
+          lido === null ? null : await deps.ativos.reservaDoCodigo(ctx, lido),
+          local.hotelId,
+        );
+        codigoQr = lido ?? undefined;
+      }
+      return {
+        hotelId: local.hotelId,
+        localId: local.id,
+        dados,
+        situacaoNoPwa: situacaoInicialNoPwa(aprovacao),
+        ...(codigoQr === undefined ? {} : { codigoQr }),
+      };
     },
     async cadastrar(ctx, p) {
       const c = await casos.prepararCadastro(ctx, p);
-      return deps.ativos.criar(ctx, c.hotelId, c.localId, c.dados);
+      return deps.ativos.criar(ctx, c.hotelId, c.localId, c.dados, c.codigoQr);
     },
     async prepararAlteracao(ctx, ativoId, p) {
       const a = await ativoVisivel(ctx, ativoId);
       await exigirNoHotel(ctx, a.hotelId);
-      return { ativoId, versaoEsperada: p.versao, dados: await dadosDe(ctx, p, a) };
+      return { ativoId, versaoEsperada: p.versao, dados: await dadosDe(ctx, a.hotelId, p, a) };
     },
     async alterar(ctx, ativoId, p) {
       const c = await casos.prepararAlteracao(ctx, ativoId, p);

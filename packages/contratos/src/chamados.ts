@@ -165,6 +165,19 @@ export const RespostaDeOs = z
   .meta({ id: 'RespostaDeOs' });
 
 /**
+ * A OS para imprimir (1c, item 9): a mesma da página da OS, com a descrição
+ * do chamado (null na preventiva) e o aceite no papel. Para quem só enxerga o
+ * hotel como proprietário, o custo informado vem null e custoOculto, true. O
+ * checklist e as fotos saem das rotas de sempre.
+ */
+export const RespostaDaImpressaoDaOs = RespostaDeOs.extend({
+  descricao: z.string().nullable(),
+  custoOculto: z.boolean(),
+  /** assinado: aceita com a assinatura; aceito: sem ela; pendente; null na OS cancelada. */
+  aceite: z.enum(['assinado', 'aceito', 'pendente']).nullable(),
+}).meta({ id: 'RespostaDaImpressaoDaOs' });
+
+/**
  * Filtros das listas de chamados e de OS (C7), na query string. O período é
  * pela data de criação: de (inclusive) até ate (exclusive), em ISO 8601. A
  * prioridade da OS é a do chamado. depoisDe é o `proximo` da página anterior.
@@ -179,6 +192,14 @@ export const ConsultaDaLista = z
     depoisDe: z.guid().optional(),
   })
   .meta({ id: 'ConsultaDaLista' });
+
+/**
+ * A lista de chamados tem também a página da exportação (1c, item 9):
+ * exportacao=1 traz 1.000 por página, que a tela junta no CSV.
+ */
+export const ConsultaDaListaDeChamados = ConsultaDaLista.extend({
+  exportacao: z.enum(['1']).optional(),
+}).meta({ id: 'ConsultaDaListaDeChamados' });
 
 /** A lista de OS tem também o filtro "do locador" (1c, ADR-045): doLocador=1. */
 export const ConsultaDaListaDeOs = ConsultaDaLista.extend({
@@ -204,7 +225,7 @@ export const ChamadoResumidoApi = z
 
 export const RespostaDeListaDeChamados = z
   .object({
-    /** Do mais novo para o mais antigo, até 50 por página. */
+    /** Do mais novo para o mais antigo, até 50 por página (1.000 na exportação). */
     chamados: z.array(ChamadoResumidoApi),
     /** Para a página seguinte (depoisDe); null na última. */
     proximo: z.guid().nullable(),
@@ -441,6 +462,11 @@ export const OsDoDiaApi = z
         localId: z.guid(),
         localNome: z.string(),
         localEdificacao: z.string().nullable(),
+        /**
+         * Início da parada aberta do ativo (C5), registrada pela corretiva;
+         * null: não está parado. Opcional para a OS guardada antes do campo.
+         */
+        paradoDesde: z.iso.datetime().nullish(),
       })
       .nullable()
       .optional(),

@@ -10,17 +10,20 @@
 //   UH e o ativo, com o estado da ligação (LIGACOES_DO_SINAL). Nada liga a
 //   reclamação ao ativo sem uma pessoa ("correlação não é causa").
 // - Quem vê, importa e classifica: quem decide insight no hotel, como a
-//   página do ativo (podeDecidirInsight).
+//   página do ativo (podeDecidirInsight), desde o contrato do módulo, sem
+//   esperar a data de abertura das telas (adendo de 20/10/2026 ao ADR-035).
 // - Sem dado pessoal do hóspede: as colunas não trazem nome, contato nem
 //   reserva.
 // Sem IA: a sugestão de classificação espera o provedor (regra 9).
 import { NaoEncontrado, RegraViolada, conflitoDeVersao } from '@hubkeep/dominio';
 import { podeDecidirInsight } from './insight';
-import { type PortasDoPainel, ativoNaoEncontrado, exigirPainel } from './painel';
+import { type PortasDoPainel, ativoNaoEncontrado, exigirReclamacoes } from './painel';
 
 /** Os três estados da ligação com o ativo (ADR-033); o check da 0052 tem os mesmos. */
 export const LIGACOES_DO_SINAL = ['sem_ligacao', 'possivel', 'confirmada'] as const;
 export type LigacaoDoSinal = (typeof LIGACOES_DO_SINAL)[number];
+export const ehLigacaoDoSinal = (v: string): v is LigacaoDoSinal =>
+  (LIGACOES_DO_SINAL as readonly string[]).includes(v);
 
 /** As colunas do CSV do HubKeep, na ordem do modelo. */
 export const COLUNAS_DO_CSV = [
@@ -48,7 +51,7 @@ export const ESCALA_MAXIMA = 100;
 export const FOLGA_DA_DATA_MS = 24 * 60 * 60 * 1000;
 
 /** Uma linha como veio do CSV: o texto de cada coluna, ou vazio. */
-export type LinhaDoCsv = Partial<Record<ColunaDoCsv, string>>;
+export type LinhaDoCsv = { [C in ColunaDoCsv]?: string | undefined };
 
 export const ERROS_DA_LINHA = [
   'id_externo_ausente',
@@ -260,13 +263,25 @@ export interface PedidoDeImportacao {
 const hotelNaoEncontrado = (): NaoEncontrado =>
   new NaoEncontrado('hotel_nao_encontrado', 'Hotel não encontrado.');
 
+/**
+ * Se quem pede usa a tela de reclamações, e se as outras telas do módulo já
+ * abriram: antes disso, a tela não leva aos insights nem à página do ativo.
+ */
+export async function acessoAsReclamacoes(
+  p: PortasDoPainel,
+  agora: Date,
+): Promise<{ telasAbertas: boolean }> {
+  const { telasAbertas } = await exigirReclamacoes(p, agora);
+  return { telasAbertas };
+}
+
 /** Quem decide insight no hotel; senão, o hotel "não existe" para quem pede. */
 async function exigirHotel(
   p: PortasDoSinalDoHospede,
   hotelId: string,
   agora: Date,
 ): Promise<HotelDoSinal> {
-  const atribuicoes = await exigirPainel(p, agora);
+  const { atribuicoes } = await exigirReclamacoes(p, agora);
   const hotel = await p.hotelDoSinal(hotelId);
   if (
     !hotel ||
@@ -368,7 +383,7 @@ export async function classificarSinal(
   pedido: PedidoDeClassificacao,
   agora: Date,
 ): Promise<{ versao: number }> {
-  const atribuicoes = await exigirPainel(p, agora);
+  const { atribuicoes } = await exigirReclamacoes(p, agora);
   const sinal = await p.sinalParaClassificar(pedido.sinalId);
   if (
     !sinal ||
@@ -381,7 +396,7 @@ export async function classificarSinal(
     throw sinalNaoEncontrado();
   }
   if (sinal.versao !== pedido.versao) throw conflitoDeVersao(sinal.versao);
-  if (!(LIGACOES_DO_SINAL as readonly string[]).includes(pedido.ligacao)) {
+  if (!ehLigacaoDoSinal(pedido.ligacao)) {
     throw new RegraViolada('ligacao_invalida', 'Estado de ligação inválido.');
   }
   if (!pedido.manutencao && (pedido.categoriaId || pedido.ativoId)) {
@@ -435,4 +450,90 @@ export async function classificarSinal(
     classificadoPor: pedido.usuarioId,
     em: agora,
   });
+}
+
+/** O recorte da fila: sem classificação, de manutenção, fora da manutenção ou todas. */
+export const SITUACOES_DA_FILA = ['pendentes', 'manutencao', 'fora', 'todas'] as const;
+export type SituacaoDaFila = (typeof SITUACOES_DA_FILA)[number];
+
+/** O máximo de reclamações na fila, da mais recente para a mais antiga. */
+export const LIMITE_DA_FILA = 200;
+
+/** A reclamação na fila, com a classificação que tiver. */
+export interface SinalDaFila {
+  id: string;
+  hotelId: string;
+  fonte: string;
+  idExterno: string;
+  ocorridoEm: Date;
+  nota: number | null;
+  escala: number | null;
+  /** Null sem texto na importação ou depois do apagamento da retenção. */
+  texto: string | null;
+  textoApagadoEm: Date | null;
+  idioma: string | null;
+  uhCitada: string | null;
+  /** Null enquanto ninguém classificou. */
+  manutencao: boolean | null;
+  categoriaId: string | null;
+  uhId: string | null;
+  ativoId: string | null;
+  ligacao: LigacaoDoSinal;
+  classificadoEm: Date | null;
+  classificadoPor: string | null;
+  importadoEm: Date;
+  versao: number;
+  /** O chamado aberto a partir da reclamação (adendo de 19/10/2026); null sem chamado. */
+  chamadoId: string | null;
+}
+
+export interface PortasDaFilaDoSinal extends PortasDoSinalDoHospede {
+  /** As reclamações do hotel no recorte, da mais recente para a mais antiga, até `limite`. */
+  sinaisDoHotel(
+    hotelId: string,
+    situacao: SituacaoDaFila,
+    limite: number,
+  ): Promise<readonly SinalDaFila[]>;
+}
+
+export interface FilaDoSinal {
+  sinais: SinalDaFila[];
+  /** Há mais reclamações no recorte do que a fila mostra. */
+  limitada: boolean;
+  nomes: {
+    ativos: Readonly<Record<string, string>>;
+    pessoas: Readonly<Record<string, string>>;
+  };
+}
+
+export const ehSituacaoDaFila = (v: string): v is SituacaoDaFila =>
+  (SITUACOES_DA_FILA as readonly string[]).includes(v);
+
+/**
+ * A fila de classificação de um hotel, para quem decide insight nele; o
+ * hotel fora disso "não existe". O nome do ativo e o de quem classificou vêm
+ * junto.
+ */
+export async function listarSinais(
+  p: PortasDaFilaDoSinal,
+  pedido: { hotelId: string; situacao: SituacaoDaFila },
+  agora: Date,
+): Promise<FilaDoSinal> {
+  const hotel = await exigirHotel(p, pedido.hotelId, agora);
+  const lidos = await p.sinaisDoHotel(hotel.id, pedido.situacao, LIMITE_DA_FILA + 1);
+  const sinais = lidos.slice(0, LIMITE_DA_FILA);
+  const unicos = (xs: readonly (string | null)[]) => [
+    ...new Set(xs.filter((x): x is string => x !== null)),
+  ];
+  const nomes = await p.nomes({
+    hotelIds: [],
+    bandeiraIds: [],
+    usuarioIds: unicos(sinais.map((s) => s.classificadoPor)),
+    ativoIds: unicos(sinais.map((s) => s.ativoId)),
+  });
+  return {
+    sinais,
+    limitada: lidos.length > LIMITE_DA_FILA,
+    nomes: { ativos: nomes.ativos, pessoas: nomes.pessoas },
+  };
 }

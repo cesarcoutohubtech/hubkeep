@@ -81,6 +81,8 @@ export const SEMANAS_DA_SERIE = 12;
 
 export interface InsightDoPainel {
   id: string;
+  /** O número que as pessoas citam ("INS-0133"), sequencial no tenant. */
+  numero: number;
   /** Null no insight de rede. */
   hotelId: string | null;
   bandeiraId: string | null;
@@ -132,6 +134,8 @@ export interface FiltroDeInsights {
   faixa?: string;
   /** Os insights que incluem este hotel. */
   hotelId?: string;
+  /** O insight deste número. */
+  numero?: number;
 }
 
 /** Os abertos contados por tipo, faixa e se têm responsável. */
@@ -191,10 +195,13 @@ export interface PortasDoPainel {
   /** O ativo, se quem pede o lê, com a bandeira do hotel dele. */
   ativo(id: string): Promise<AtivoDoPainel | null>;
   /**
-   * O resultado original de cada dia (o primeiro cálculo, sem recálculo) a
-   * partir de `desde` (AAAA-MM-DD), em ordem de dia.
+   * O resultado de cada dia a partir de `desde` (AAAA-MM-DD), em ordem de dia:
+   * o original (o primeiro cálculo, sem recálculo) ou, no dia que o job nunca
+   * gravou, o primeiro recálculo, que é o único registro dele (ADR-036).
    */
   metricasDoAtivo(ativoId: string, desde: string): Promise<readonly MetricaDoPainel[]>;
+  /** Os recálculos do dia (AAAA-MM-DD), do primeiro ao último, até LIMITE_DE_RECALCULOS. */
+  recalculosDoDia(ativoId: string, dia: string): Promise<readonly MetricaDoPainel[]>;
   /** Os insights de um tipo com este par no escopo, do mais novo ao mais antigo. */
   insightsDoEscopo(
     tipo: TipoDeInsight,
@@ -205,6 +212,9 @@ export interface PortasDoPainel {
 
 /** Dias da série de atenção da página do ativo. */
 export const DIAS_DA_SERIE_DO_ATIVO = 90;
+
+/** Os recálculos do último dia que a página do ativo mostra (ADR-036). */
+export const LIMITE_DE_RECALCULOS = 20;
 
 export interface AtivoDoPainel {
   id: string;
@@ -245,6 +255,11 @@ export interface PaginaDoAtivo {
   serie: { dia: string; atencao: number | null; faixa: string }[];
   /** O último dia gravado, com o detalhe; null se o job ainda não gravou nenhum. */
   atual: MetricaDoPainel | null;
+  /**
+   * Os outros cálculos do dia de `atual`, marcados como recálculo, do primeiro
+   * ao último: a tela os mostra só a pedido, e o painel segue no `atual`.
+   */
+  recalculos: MetricaDoPainel[];
   /** Os insights de atenção deste ativo, abertos e encerrados. */
   insights: ItemDaLista[];
   nomes: NomesDoPainel;
@@ -302,7 +317,8 @@ const indisponivel = () =>
     'O Intelligence não está disponível para você neste tenant.',
   );
 
-const naoEncontrado = () => new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
+export const insightNaoEncontrado = () =>
+  new NaoEncontrado('insight_nao_encontrado', 'Insight não encontrado.');
 
 /** A abertura das telas no tenant, com a política do grupo e o fuso. */
 async function abertura(
@@ -314,21 +330,43 @@ async function abertura(
   return { config, abertura: aberturaDasTelas(modulos, config, fuso) };
 }
 
+/** O módulo vigente e algum papel da política que decide insight; senão, nada do módulo existe. */
+async function quemVeOModulo(
+  p: PortasDoPainel,
+  agora: Date,
+): Promise<{ atribuicoes: readonly Atribuicao[]; telasAbertas: boolean }> {
+  const [modulos, atribuicoes] = await Promise.all([p.modulos(), p.atribuicoes()]);
+  if (!modulosVigentes(modulos, agora).has('inteligencia')) throw indisponivel();
+  const v = await abertura(p, modulos);
+  const queVeem = atribuicoesQueVeem(atribuicoes, v.config, agora).filter((a) =>
+    PAPEIS_DO_INSIGHT.includes(a.papel),
+  );
+  if (!queVeem.length) throw indisponivel();
+  return { atribuicoes: queVeem, telasAbertas: telasAbertas(v.abertura, agora) };
+}
+
 /**
  * O módulo vigente, a abertura das telas e algum papel da política que decide
  * insight; senão, o painel não existe. Devolve só as atribuições dos papéis
  * da política: é por elas que se decide.
  */
 export async function exigirPainel(p: PortasDoPainel, agora: Date): Promise<readonly Atribuicao[]> {
-  const [modulos, atribuicoes] = await Promise.all([p.modulos(), p.atribuicoes()]);
-  if (!modulosVigentes(modulos, agora).has('inteligencia')) throw indisponivel();
-  const v = await abertura(p, modulos);
-  if (!telasAbertas(v.abertura, agora)) throw indisponivel();
-  const queVeem = atribuicoesQueVeem(atribuicoes, v.config, agora).filter((a) =>
-    PAPEIS_DO_INSIGHT.includes(a.papel),
-  );
-  if (!queVeem.length) throw indisponivel();
-  return queVeem;
+  const v = await quemVeOModulo(p, agora);
+  if (!v.telasAbertas) throw indisponivel();
+  return v.atribuicoes;
+}
+
+/**
+ * A tela de reclamações de hóspedes (adendo de 20/10/2026 ao ADR-035, Cesar e
+ * Kaio): os mesmos papéis da política, desde o contrato do módulo, sem esperar
+ * a data de abertura das telas. O resto do painel continua fechado até ela;
+ * `telasAbertas` diz à tela se ela pode levar aos insights.
+ */
+export async function exigirReclamacoes(
+  p: PortasDoPainel,
+  agora: Date,
+): Promise<{ atribuicoes: readonly Atribuicao[]; telasAbertas: boolean }> {
+  return quemVeOModulo(p, agora);
 }
 
 export interface AberturaDoPainel {
@@ -469,15 +507,21 @@ export async function listarInsights(
     tipo?: TipoDeInsight | undefined;
     faixa?: string | undefined;
     hotelId?: string | undefined;
+    /** Procurar pelo número: acha o insight em qualquer estado, se o estado não vier. */
+    numero?: number | undefined;
   },
   agora: Date,
 ): Promise<ListaDeInsights> {
   const atribuicoes = await exigirPainel(p, agora);
   const insights = await p.insights({
-    estados: estadosDoFiltro(pedido.estado ?? 'abertos'),
+    estados:
+      pedido.numero !== undefined && !pedido.estado
+        ? ESTADOS_DO_INSIGHT
+        : estadosDoFiltro(pedido.estado ?? 'abertos'),
     ...(pedido.tipo ? { tipo: pedido.tipo } : {}),
     ...(pedido.faixa ? { faixa: pedido.faixa } : {}),
     ...(pedido.hotelId ? { hotelId: pedido.hotelId } : {}),
+    ...(pedido.numero !== undefined ? { numero: pedido.numero } : {}),
   });
   const [ligados, nomes] = await Promise.all([
     insights.length ? p.ligados(insights.map((i) => i.id)) : Promise.resolve([]),
@@ -500,7 +544,7 @@ export async function verInsight(
 ): Promise<PaginaDoInsight> {
   const atribuicoes = await exigirPainel(p, agora);
   const insight = await p.insight(insightId);
-  if (!insight) throw naoEncontrado();
+  if (!insight) throw insightNaoEncontrado();
   const idsDosChamados = chamadosDaEvidencia(insight.evidencia);
   const [ligados, chamados, nomes] = await Promise.all([
     p.ligados([insight.id]),
@@ -560,7 +604,7 @@ export async function decidirInsight(
 ): Promise<{ versao: number; estado: EstadoDoInsight; responsavelId: string }> {
   const atribuicoes = await exigirPainel(p, agora);
   const atual = await p.insight(pedido.insightId);
-  if (!atual) throw naoEncontrado();
+  if (!atual) throw insightNaoEncontrado();
   if (atual.versao !== pedido.versao) throw conflitoDeVersao(atual.versao);
   const r = decidirNoInsight(pedido.acao, {
     atribuicoes,
@@ -618,7 +662,8 @@ export async function verAtivo(
     p.metricasDoAtivo(ativo.id, desde),
     p.insightsDoEscopo('atencao_ativo', 'ativoId', ativo.id),
   ]);
-  const [ligados, nomes] = await Promise.all([
+  const atual = metricas.at(-1) ?? null;
+  const [ligados, nomes, recalculos] = await Promise.all([
     insights.length ? p.ligados(insights.map((i) => i.id)) : Promise.resolve([]),
     p.nomes({
       hotelIds: [ativo.hotelId],
@@ -626,11 +671,14 @@ export async function verAtivo(
       usuarioIds: unicos(insights.flatMap((i) => [i.responsavelId, i.encerradoPor])),
       ativoIds: [ativo.id],
     }),
+    atual ? p.recalculosDoDia(ativo.id, atual.dia) : Promise.resolve([]),
   ]);
   return {
     ativo,
     serie: metricas.map((m) => ({ dia: m.dia, atencao: m.atencao, faixa: m.faixa })),
-    atual: metricas.at(-1) ?? null,
+    atual,
+    // No dia que o job nunca gravou, o `atual` já é o primeiro recálculo.
+    recalculos: recalculos.filter((r) => !(atual?.recalculo && r.calculo === atual.calculo)),
     insights: insights.map((i) => ({
       ...i,
       ...vinculos(i, ligados),

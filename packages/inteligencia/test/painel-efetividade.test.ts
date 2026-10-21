@@ -124,6 +124,7 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaEfetividade & { m: Memoria
         })),
     decidir: nao,
     metricasDoAtivo: nao,
+    recalculosDoDia: nao,
     insightsDoEscopo: nao,
     nomes: async (p) => ({
       hoteis: Object.fromEntries(p.hotelIds.map((h) => [h, `Hotel ${h}`])),
@@ -248,6 +249,7 @@ describe('a seção da efetividade abaixo da lista de insights', () => {
 describe('a efetividade na página do insight (opção a: depois da primeira detecção)', () => {
   const insight = (extra: Partial<InsightComEvidencia> = {}): InsightComEvidencia => ({
     id: 'i1',
+    numero: 133,
     hotelId: 'h1',
     bandeiraId: null,
     hotelIds: ['h1'],

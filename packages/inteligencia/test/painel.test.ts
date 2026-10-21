@@ -40,6 +40,7 @@ const MODULO: ModuloContratado = { modulo: 'inteligencia', inicio: antes(100), f
 
 const insight = (extra: Partial<InsightComEvidencia> = {}): InsightComEvidencia => ({
   id: 'i1',
+  numero: 133,
   hotelId: 'h1',
   bandeiraId: 'b1',
   hotelIds: ['h1'],
@@ -74,6 +75,7 @@ interface Memoria {
   filtros: unknown[];
   ativos: AtivoDoPainel[];
   metricas: (MetricaDoPainel & { ativoId: string })[];
+  recalculos: (MetricaDoPainel & { ativoId: string })[];
   desdes: string[];
 }
 
@@ -104,6 +106,7 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDoPainel & { m: Memoria } {
       },
     ],
     metricas: [],
+    recalculos: [],
     desdes: [],
     ...m,
   };
@@ -156,6 +159,8 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDoPainel & { m: Memoria } {
       mem.desdes.push(desde);
       return mem.metricas.filter((x) => x.ativoId === ativoId && x.dia >= desde);
     },
+    recalculosDoDia: async (ativoId, dia) =>
+      mem.recalculos.filter((x) => x.ativoId === ativoId && x.dia === dia),
     insightsDoEscopo: async (tipo, chave, valor) =>
       mem.insights.filter((i) => i.tipo === tipo && i.escopo[chave] === valor),
   };
@@ -317,6 +322,27 @@ describe('lista', () => {
       { estados: ['novo', 'em_revisao', 'aceito', 'em_acao', 'monitorando'] },
       { estados: ['resolvido', 'descartado'], tipo: 'sistemico', faixa: 'atencao' },
       { estados: ['aceito'], hotelId: 'h1' },
+    ]);
+  });
+
+  it('pelo número, o insight em qualquer estado; com o estado, só nele', async () => {
+    const p = emMemoria();
+    await listarInsights(p, { numero: 133 }, agora);
+    await listarInsights(p, { numero: 133, estado: 'abertos' }, agora);
+    expect(p.m.filtros).toEqual([
+      {
+        estados: [
+          'novo',
+          'em_revisao',
+          'aceito',
+          'em_acao',
+          'monitorando',
+          'resolvido',
+          'descartado',
+        ],
+        numero: 133,
+      },
+      { estados: ['novo', 'em_revisao', 'aceito', 'em_acao', 'monitorando'], numero: 133 },
     ]);
   });
 
@@ -521,7 +547,45 @@ describe('detalhe do ativo', () => {
 
   it('sem nenhum dia gravado, a página existe sem resultado', async () => {
     const pagina = await verAtivo(emMemoria({ insights: [] }), 'a1', agora);
-    expect([pagina.serie, pagina.atual, pagina.insights]).toEqual([[], null, []]);
+    expect([pagina.serie, pagina.atual, pagina.insights, pagina.recalculos]).toEqual([
+      [],
+      null,
+      [],
+      [],
+    ]);
+  });
+
+  it('os recálculos do último dia vêm à parte, e o resultado de cima segue o original', async () => {
+    const recalculo = (calculo: number) => ({
+      ...metrica('2026-10-10', 50 + calculo),
+      calculo,
+      recalculo: true,
+    });
+    const p = emMemoria({
+      metricas: [metrica('2026-10-09', 60), metrica('2026-10-10', 75)],
+      recalculos: [recalculo(2), recalculo(3), { ...recalculo(2), dia: '2026-10-09' }],
+    });
+    const pagina = await verAtivo(p, 'a1', agora);
+    expect(pagina.atual).toMatchObject({ dia: '2026-10-10', calculo: 1, recalculo: false });
+    expect(pagina.recalculos.map((r) => [r.dia, r.calculo, r.atencao])).toEqual([
+      ['2026-10-10', 2, 52],
+      ['2026-10-10', 3, 53],
+    ]);
+  });
+
+  it('no dia que o job nunca gravou, o primeiro recálculo é o resultado e sai da lista', async () => {
+    const recalculo = (calculo: number) => ({
+      ...metrica('2026-10-10', 50 + calculo),
+      calculo,
+      recalculo: true,
+    });
+    const p = emMemoria({
+      metricas: [metrica('2026-10-09', 60), recalculo(1)],
+      recalculos: [recalculo(1), recalculo(2)],
+    });
+    const pagina = await verAtivo(p, 'a1', agora);
+    expect(pagina.atual).toMatchObject({ calculo: 1, recalculo: true });
+    expect(pagina.recalculos.map((r) => r.calculo)).toEqual([2]);
   });
 
   it('quem não decide o insight do hotel do ativo não vê a página', async () => {

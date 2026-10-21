@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(34);
+select plan(35);
 
 -- 1. RLS habilitada e forçada em toda tabela dos schemas protegidos
 select is_empty($$
@@ -456,22 +456,26 @@ $$, 'nenhuma policy chega de volta à própria tabela');
 --     tabela sem RLS ou sem tenant_id, mas não a tabela nova sem os casos de
 --     isolamento. Tabela nova entra aqui no mesmo PR que traz o pgTAP de
 --     isolamento dela ("Modelo para tabela nova", docs/02); o revisor confere
---     os dois juntos.
+--     os dois juntos. A partição de uma tabela particionada não entra: a lista
+--     é das tabelas-mãe, e a partição é conferida pelos testes 1, 2 e 35
+--     (0061, a métrica diária por mês).
 select is(
   (select array_agg(n.nspname || '.' || c.relname order by n.nspname || '.' || c.relname)
    from pg_class c join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('app', 'staging', 'licenca') and c.relkind in ('r', 'p')),
+   where n.nspname in ('app', 'staging', 'licenca') and c.relkind in ('r', 'p')
+     and not c.relispartition),
   array[
-    'app.anexo', 'app.ativo', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
+    'app.anexo', 'app.ativo', 'app.ativo_decisao_cadastro', 'app.ativo_movimentacao', 'app.atribuicao_escopo',
     'app.auditoria', 'app.bandeira', 'app.categoria_ativo', 'app.chamado', 'app.checklist_modelo',
     'app.codigo_manutencao', 'app.envio_notificacao', 'app.equipe',
     'app.equipe_membro', 'app.evento_dominio', 'app.feriado_hotel', 'app.fornecedor', 'app.hotel', 'app.hotel_proprietario',
-    'app.inscricao_push', 'app.insight', 'app.local', 'app.local_proprietario', 'app.membro', 'app.metrica_ativo_diaria',
+    'app.inscricao_push', 'app.insight', 'app.local', 'app.local_proprietario', 'app.membro',
+    'app.metrica_ativo_diaria', 'app.mews_bloqueio', 'app.mews_checkpoint', 'app.mews_recurso', 'app.mews_vinculo',
     'app.modelo_ativo',
     'app.operacao_offline', 'app.os',
     'app.os_apontamento', 'app.os_checklist', 'app.os_material', 'app.os_transicao', 'app.parada_ativo',
-    'app.plano_preventivo', 'app.politica',
-    'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.sinal_hospede', 'app.situacao', 'app.sla_alerta',
+    'app.plano_padrao', 'app.plano_preventivo', 'app.politica',
+    'app.preferencia_membro', 'app.prioridade', 'app.proprietario', 'app.qr_reservado', 'app.sinal_hospede', 'app.sinal_hospede_chamado', 'app.situacao', 'app.sla_alerta',
     'app.tenant', 'app.uh_indisponivel', 'licenca.contrato', 'licenca.modulo', 'staging.carga', 'staging.credencial_agente',
     'staging.registro_externo'
   ]::text[],
@@ -527,9 +531,24 @@ select is_empty($$
   from (values ('hk_app'), ('hk_worker'), ('hk_ingestao'), ('hk_backoffice')) r(papel)
   cross join (values ('app.auditoria'), ('app.ativo_movimentacao'), ('app.metrica_ativo_diaria'),
                      ('app.os_apontamento'), ('app.os_material'), ('app.os_transicao'),
-                     ('app.sla_alerta'), ('app.envio_notificacao')) t(tabela)
+                     ('app.sla_alerta'), ('app.envio_notificacao'),
+                     ('app.sinal_hospede_chamado'), ('app.ativo_decisao_cadastro'),
+                     ('app.qr_reservado')) t(tabela)
   where has_any_column_privilege(r.papel, t.tabela, 'UPDATE')
-$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA, envio de notificação)');
+$$, 'nenhum UPDATE nas tabelas só de inserção (auditoria, movimentação, métrica diária, apontamento, material, transição, alerta de SLA, envio de notificação, ligação da reclamação com o chamado, decisão do cadastro do ativo, código de QR reservado)');
+
+-- 35. Partição sem privilégio (0061, adendo de 20/10/2026 ao ADR-036). Os
+--     grants e as policies ficam na tabela-mãe; a partição tem RLS forçada
+--     (teste 1) e nenhum privilégio de papel da aplicação, para ninguém ler
+--     nem gravar por fora da mãe.
+select is_empty($$
+  select r.papel || ' ' || n.nspname || '.' || c.relname
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  cross join (values ('hk_app'), ('hk_worker'), ('hk_ingestao'), ('hk_backoffice')) r(papel)
+  where n.nspname in ('app', 'staging', 'licenca') and c.relispartition and c.relkind = 'r'
+    and (has_table_privilege(r.papel, c.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+         or has_any_column_privilege(r.papel, c.oid, 'SELECT, INSERT, UPDATE, REFERENCES'))
+$$, 'nenhum papel da aplicação tem privilégio em partição: só pela tabela-mãe');
 
 select * from finish();
 rollback;

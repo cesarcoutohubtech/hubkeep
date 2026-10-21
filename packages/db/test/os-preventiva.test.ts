@@ -51,6 +51,7 @@ const CASA_DE_MAQUINAS = randomUUID();
 const CAT = randomUUID();
 const ATIVO = randomUUID();
 const PLANO = randomUUID();
+const EQUIPE = randomUUID();
 const U = { admin: randomUUID(), gerente: randomUUID(), tecnico: randomUUID() };
 const ctx = (usuarioId: string) => ({ usuarioId, tenantId: TENANT });
 
@@ -65,6 +66,7 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
   let execucao: ReturnType<typeof criarCasosDeUsoDeExecucao>;
   let sincronizacao: ReturnType<typeof criarCasosDeUsoDeSincronizacao>;
   let consultas: ReturnType<typeof criarCasosDeUsoDeConsultas>;
+  let portaTriagem: ReturnType<typeof criarPortaTriagem>;
   let datas = 0;
 
   /** Grava uma preventiva atribuída ao técnico, como o worker gravaria, e devolve o id. */
@@ -146,6 +148,20 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
     await atribuir(U.gerente, 'gerente_hotel', 'hotel', H1);
     await atribuir(U.tecnico, 'tecnico', 'hotel', H1);
     await dono.query(
+      `insert into app.equipe (id, tenant_id, hotel_id, nome) values ($1, $2, $3, 'Manutenção')`,
+      [EQUIPE, TENANT, H1],
+    );
+    for (const usuario of [U.gerente, U.tecnico]) {
+      await dono.query(
+        `insert into app.equipe_membro (tenant_id, hotel_id, equipe_id, usuario_id) values ($1, $2, $3, $4)`,
+        [TENANT, H1, EQUIPE, usuario],
+      );
+    }
+    await dono.query(
+      `update app.equipe_membro set ativo = false where equipe_id = $1 and usuario_id = $2`,
+      [EQUIPE, U.tecnico],
+    );
+    await dono.query(
       `insert into app.categoria_ativo (id, tenant_id, chave_padrao) values ($1, $2, 'ar_condicionado')`,
       [CAT, TENANT],
     );
@@ -171,7 +187,7 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       atribuicoes,
       relogio: relogioDoSistema,
     }).instalarPadrao(ctx(U.admin));
-    const portaTriagem = criarPortaTriagem(banco);
+    portaTriagem = criarPortaTriagem(banco);
     triagem = criarCasosDeUsoDeTriagem({
       triagem: portaTriagem,
       situacoes,
@@ -208,14 +224,18 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       'app.evento_dominio',
       'app.auditoria',
       'app.operacao_offline',
+      'app.parada_ativo',
       'app.os_transicao',
       'app.os',
+      'app.chamado',
       'app.plano_preventivo',
       'app.ativo',
       'app.categoria_ativo',
       'app.situacao',
       'app.prioridade',
       'app.atribuicao_escopo',
+      'app.equipe_membro',
+      'app.equipe',
       'app.local',
       'app.hotel',
       'app.membro',
@@ -241,6 +261,7 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
         ativoNome: 'Chiller 1',
         localId: CASA_DE_MAQUINAS,
         localNome: 'Casa de máquinas',
+        paradoDesde: null,
       },
     });
     expect(fila.find((o) => o.id === osId)?.preventiva?.dataPrevista).toMatch(/^2026-10-\d{2}$/);
@@ -286,6 +307,23 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
     expect(aceite.rows[0]?.depois.estadoDoChamado).toBeNull();
   });
 
+  it('o aceite da preventiva da equipe lê os membros ativos dela; o da OS do técnico, não', async () => {
+    const hotel = { id: H1, bandeiraId: null };
+    const daEquipe = await portaTriagem.dadosDoAceite(ctx(U.admin), {
+      hotel,
+      abertoPor: null,
+      equipeResponsavel: EQUIPE,
+    });
+    expect(daEquipe.membrosDaEquipeResponsavel).toEqual([U.gerente]);
+    expect(daEquipe.gerentes.map((a) => a.usuarioId)).toEqual([U.gerente]);
+    const doTecnico = await portaTriagem.dadosDoAceite(ctx(U.admin), {
+      hotel,
+      abertoPor: null,
+      equipeResponsavel: null,
+    });
+    expect(doTecnico.membrosDaEquipeResponsavel).toBeUndefined();
+  });
+
   it('o técnico não cancela; o Gerente cancela, com a versão do chamado nula', async () => {
     const osId = await preventiva();
     await expect(
@@ -322,5 +360,42 @@ describe.skipIf(!temBanco)('PV3c — ações na OS preventiva', { timeout: 60_00
       ativo: 'Chiller 1',
       pessoas: { [U.tecnico]: 'tecnico' },
     });
+  });
+
+  // Por último: a parada aberta do ativo aparece em toda preventiva dele daqui em diante.
+  it('com a parada aberta do ativo, a fila do dia mostra desde quando na preventiva', async () => {
+    const osId = await preventiva();
+    const situacao = await dono.query<{ id: string }>(
+      `select id from app.situacao where tenant_id = $1 and entidade = 'chamado' and estado = 'aberto'`,
+      [TENANT],
+    );
+    const prioridade = await dono.query<{ id: string }>(
+      `select id from app.prioridade where tenant_id = $1 limit 1`,
+      [TENANT],
+    );
+    const chamado = randomUUID();
+    await dono.query(
+      `insert into app.chamado (id, tenant_id, hotel_id, local_id, ativo_id, descricao, busca, estado,
+         situacao_id, prioridade_id, politica_aplicada, aberto_por)
+       values ($1, $2, $3, $4, $5, 'Parado', 'parado', 'aberto', $6, $7, '{}', $8)`,
+      [
+        chamado,
+        TENANT,
+        H1,
+        CASA_DE_MAQUINAS,
+        ATIVO,
+        situacao.rows[0]?.id,
+        prioridade.rows[0]?.id,
+        U.gerente,
+      ],
+    );
+    const inicio = new Date('2026-10-13T09:30:00Z');
+    await dono.query(
+      `insert into app.parada_ativo (id, tenant_id, hotel_id, ativo_id, chamado_id, inicio, aberta_por)
+       values ($1, $2, $3, $4, $5, $6, $7)`,
+      [randomUUID(), TENANT, H1, ATIVO, chamado, inicio, U.gerente],
+    );
+    const fila = await execucao.osDoDia(ctx(U.tecnico), { preventiva: true });
+    expect(fila.find((o) => o.id === osId)?.preventiva?.paradoDesde).toEqual(inicio);
   });
 });

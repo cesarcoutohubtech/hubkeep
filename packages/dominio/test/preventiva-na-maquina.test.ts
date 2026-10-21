@@ -1,7 +1,7 @@
 // A OS preventiva na máquina de estados (PV3, ADR-041): sem chamado, as mesmas
 // transições da corretiva, sem reflexo em chamado; gerar fica com o worker. O
-// aceite é do Gerente do hotel; sem Gerente vigente no hotel, do Gestor CSC ou
-// do Admin do grupo (decisão 12). As tabelas esperadas são escritas à mão.
+// aceite é do Gerente do hotel que não executa a OS; sem outro Gerente vigente
+// no hotel, do Gestor CSC ou do Admin do grupo (decisão 12; Cesar, 21/10/2026). As tabelas esperadas são escritas à mão.
 import { describe, expect, it } from 'vitest';
 import {
   ACOES_DA_OS,
@@ -227,6 +227,45 @@ describe('OS preventiva: regras além da tabela', () => {
       recusa(() =>
         naPreventiva('aceitar', ATORES.solicitante, 'concluida', { aceite: SEM_GERENTE }),
       );
+    });
+  });
+
+  describe('o Gerente que executa a preventiva não decide o aceite (Cesar, 21/10/2026)', () => {
+    const recusa = (f: () => unknown) => expect(codigo(f)).toBe('acao_fora_do_papel');
+    const DO_GERENTE: Responsavel = { tipo: 'tecnico', usuarioId: 'gerente' };
+    const gerenteDaEquipe = ator('gerente', ATORES.gerente.atribuicoes, [EQUIPE]);
+    const outroGerente = ator('gerente-3', [atr('gerente-3', 'gerente_hotel', noHotel)]);
+
+    for (const acao of ['aceitar', 'reabrir'] as const) {
+      it(`${acao}: o Gerente responsável pela OS não decide; o Gestor CSC e o Admin, sim`, () => {
+        const o = { responsavel: DO_GERENTE, aceite: COM_GERENTE };
+        recusa(() => naPreventiva(acao, ATORES.gerente, 'concluida', o));
+        expect(codigo(() => naPreventiva(acao, ATORES.gestor, 'concluida', o))).toBeNull();
+        expect(codigo(() => naPreventiva(acao, ATORES.admin, 'concluida', o))).toBeNull();
+      });
+    }
+
+    it('o Gerente membro da equipe responsável não decide; o Gestor CSC, sim', () => {
+      const aceite: DadosDoAceite = { ...COM_GERENTE, membrosDaEquipeResponsavel: ['gerente'] };
+      const o = { responsavel: DA_EQUIPE, aceite };
+      recusa(() => naPreventiva('aceitar', gerenteDaEquipe, 'concluida', o));
+      expect(naPreventiva('aceitar', ATORES.gestor, 'concluida', o).estado).toBe('aceita');
+    });
+
+    it('sem os membros da equipe, o Gerente conta como outro Gerente: falha fechada', () => {
+      const o = { responsavel: DA_EQUIPE, aceite: COM_GERENTE };
+      recusa(() => naPreventiva('aceitar', gerenteDaEquipe, 'concluida', o));
+      recusa(() => naPreventiva('aceitar', ATORES.gestor, 'concluida', o));
+    });
+
+    it('com outro Gerente vigente no hotel, decide ele, e não o Gestor CSC', () => {
+      const aceite: DadosDoAceite = {
+        equipesDeQuemAbriu: [],
+        gerentes: [...ATORES.gerente.atribuicoes, ...outroGerente.atribuicoes],
+      };
+      const o = { responsavel: DO_GERENTE, aceite };
+      expect(naPreventiva('aceitar', outroGerente, 'concluida', o).estado).toBe('aceita');
+      recusa(() => naPreventiva('aceitar', ATORES.gestor, 'concluida', o));
     });
   });
 

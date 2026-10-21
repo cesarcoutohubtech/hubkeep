@@ -1,7 +1,8 @@
 // Fila do dia (F0-11; OS na C4b): as OS do técnico e das equipes dele, como
 // estão no aparelho (a última leitura da API, com o que ele fez sem rede por
 // cima; os/projecao.ts). A tela mostra o estado da rede e da fila offline, e
-// o seletor de idioma, que funciona sem rede e sincroniza quando ela volta.
+// o seletor de idioma, que funciona sem rede e sincroniza quando ela volta,
+// e os avisos neste aparelho (o push, 1c).
 // Operação recusada pelo servidor aparece aqui, com o motivo pelo código de
 // erro da API, até o técnico dispensar (ADR-025, ajuste (c)).
 import type { EstadoDaOs } from '@hubkeep/dominio';
@@ -15,10 +16,11 @@ import {
   Selo,
   type TomDeSelo,
 } from '@hubkeep/ui';
+import type { ReactNode } from 'react';
 import { useIntl } from 'react-intl';
 import type { OperacaoNaFila } from '../fila/banco';
 import { nomeDoIdioma, opcoesDeIdioma, useT } from '../i18n';
-import { type OsNoAparelho, localDaOs } from '../os/projecao';
+import { type OsNoAparelho, localDaOs, paradoDesdeDaOs } from '../os/projecao';
 import { FaixaDaRede, TelaDoTecnico } from './TelaDoTecnico';
 import { nomeDoLocal } from '../locais';
 
@@ -91,6 +93,8 @@ export function FilaDoDia(props: {
   aoAbrirAtivos: () => void;
   aoAbrirChamado: () => void;
   aoSair: () => void;
+  /** Os avisos neste aparelho (AvisosNoAparelho), acima do idioma. */
+  avisos?: ReactNode;
 }) {
   const t = useT();
   const intl = useIntl();
@@ -183,6 +187,7 @@ export function FilaDoDia(props: {
                     {o.pendentes > 0 && (
                       <span>{t('tecnico.os.pendentes', { n: o.pendentes })}</span>
                     )}
+                    <ParadoDesde quando={paradoDesdeDaOs(o)} />
                   </span>
                 </button>
               </li>
@@ -199,8 +204,23 @@ export function FilaDoDia(props: {
         </p>
       )}
 
+      {props.avisos}
       <SeletorDeIdioma idioma={props.idioma} aoTrocar={props.aoTrocarIdioma} />
     </TelaDoTecnico>
+  );
+}
+
+/** O ativo da OS parado (C5), na corretiva e na preventiva (Cesar, 21/10/2026). */
+function ParadoDesde(props: { quando: string | null }) {
+  const t = useT();
+  const intl = useIntl();
+  if (!props.quando) return null;
+  return (
+    <span data-parado-desde={props.quando}>
+      {t('tecnico.os.parada.desde', {
+        quando: intl.formatDate(props.quando, { dateStyle: 'short', timeStyle: 'short' }),
+      })}
+    </span>
   );
 }
 

@@ -32,6 +32,8 @@ export interface ModeloDeAtivo {
   planoSugerido: Periodicidade | null;
   versao: number;
   ativa: boolean;
+  /** PB1b: nulo vale para o grupo inteiro. */
+  bandeiraId: string | null;
 }
 
 export interface PedidoDeModeloDeAtivo {
@@ -46,7 +48,11 @@ export interface PedidoDeModeloDeAtivo {
 
 export interface CasosDeUsoDeModelosDeAtivo {
   listar(ctx: Contexto): Promise<ModeloDeAtivo[]>;
-  criar(ctx: Contexto, p: PedidoDeModeloDeAtivo): Promise<{ id: string }>;
+  /** A bandeira (PB1b) só se escolhe na criação; ausente ou nula: do grupo. */
+  criar(
+    ctx: Contexto,
+    p: PedidoDeModeloDeAtivo & { bandeiraId?: string | null | undefined },
+  ): Promise<{ id: string }>;
   /** Leva a versão que o Admin viu (ADR-029); a versão sobe a cada gravação. */
   alterar(
     ctx: Contexto,
@@ -93,6 +99,7 @@ export function criarCasosDeUsoDeModelosDeAtivo(deps: {
     planoSugerido: lerPlanoSugerido(m.planoSugerido),
     versao: m.versao,
     ativa: m.ativa,
+    bandeiraId: m.bandeiraId,
   });
 
   /** Valida o pedido contra a categoria e o checklist que o Admin enxerga. */
@@ -100,6 +107,7 @@ export function criarCasosDeUsoDeModelosDeAtivo(deps: {
     ctx: Contexto,
     p: PedidoDeModeloDeAtivo,
     categoriaAnterior: string | null,
+    bandeiraId: string | null,
   ) => {
     const [categorias, checklists] = await Promise.all([
       definicoesPorCategoria(ctx),
@@ -121,6 +129,7 @@ export function criarCasosDeUsoDeModelosDeAtivo(deps: {
       categoria,
       checklist,
       categoriaAnterior,
+      bandeiraId,
     );
   };
 
@@ -141,13 +150,22 @@ export function criarCasosDeUsoDeModelosDeAtivo(deps: {
 
     async criar(ctx, p) {
       await exigirAdmin(ctx);
-      return deps.modelos.criar(ctx, await validar(ctx, p, null));
+      const bandeiraId = p.bandeiraId ?? null;
+      if (bandeiraId !== null && !(await deps.modelos.bandeira(ctx, bandeiraId))) {
+        throw new NaoEncontrado('bandeira_nao_encontrada', 'Bandeira não encontrada.');
+      }
+      return deps.modelos.criar(ctx, await validar(ctx, p, null, bandeiraId), bandeiraId);
     },
 
     async alterar(ctx, id, p) {
       await exigirAdmin(ctx);
       const atual = await existente(ctx, id);
-      return deps.modelos.alterar(ctx, id, p.versao, await validar(ctx, p, atual.categoriaId));
+      return deps.modelos.alterar(
+        ctx,
+        id,
+        p.versao,
+        await validar(ctx, p, atual.categoriaId, atual.bandeiraId),
+      );
     },
 
     async desativar(ctx, id, versao) {

@@ -830,6 +830,60 @@ O Cesar respondeu ("Cesar aqui. Respostas:"):
 - **Glossário:** a versão 3 está aprovada por ele e pelo Kaio, e os termos "prazo em risco" e "prazo vencido" foram fechados no #258. O painel da 1c segue a versão 3.
 - **Enquanto a vez não chega,** seguir com o que não depende da migração: o PR 3 do arrendado ou o push. O PR 3 do arrendado já entrou (#261); o push anda numa branch que já tem a migração, porque grava em `app.inscricao_push`, e o PR abre depois do merge e do `db push` da 0049.
 
+## Comunicação, push (C4): na branch (14/10/2026)
+
+A branch `claude/1c-push` foi feita a partir da `claude/1c-email-sla`, que já tem a migração. O PR abre depois do PR do e-mail do SLA, que espera o merge e o `db push` da 0049.
+
+**Aviso de área compartilhada com a 1b (`packages/dominio`, outbox e catálogos):**
+- **Domínio:** `situacaoAntesDoPush` e `inscricaoExpirou` (404 e 410).
+- **Worker:**
+  - o aviso de SLA também vai por push, a cada aparelho inscrito das mesmas pessoas;
+  - a OS atribuída (`os.atribuida`) ganha manipulador e vai só por push, a quem a recebeu no evento: o técnico, ou os membros ativos da equipe;
+  - sem as chaves VAPID, `sem_provedor`; sem aparelho inscrito, `sem_endereco`;
+  - a inscrição que o serviço de push recusa é revogada pelo `hk_worker`.
+- **Banco:**
+  - a inscrição do próprio aparelho pelo `hk_app` (gravar e revogar);
+  - a contagem do C8 sai por canal.
+- **API:** `GET /api/v1/push/configuracao`, `POST /api/v1/push/inscricoes` e `POST /api/v1/push/inscricoes/revogacao`.
+- **Web:**
+  - o adaptador do `web-push` 3.6.7, dependência nova, só no servidor;
+  - as chaves `WEB_PUSH_VAPID_PUBLIC_KEY` e `WEB_PUSH_VAPID_PRIVATE_KEY` saem das reservadas do `.env.example`.
+- **PWA:**
+  - "Avisos neste aparelho" na fila do dia, para ativar e desativar;
+  - o `push-sw.js`, importado pelo service worker;
+  - o toque no aviso abre `/os/<id>`;
+  - ao sair, a inscrição do aparelho é revogada.
+- **Catálogos:** `push.sla.*`, `push.os_atribuida.*` e `tecnico.push.*`, nos 4 idiomas.
+
+**Detalhes para o Cesar ver no ADR-046** (na branch da migração, ainda "aguarda aprovação"):
+- **O que o push leva:** o título, o nome do hotel e o caminho da OS, sem a descrição do chamado. O C4 dizia "o título e o código do chamado", mas o chamado não tem código curto.
+- **Auditoria:** a inscrição não vai para ela, porque a própria tabela guarda a criação e a revogação.
+
+**Para ligar o push:**
+- gerar o par VAPID uma vez por ambiente, com `pnpm --filter @hubkeep/web exec web-push generate-vapid-keys`;
+- pôr as duas chaves na Vercel, e o `HK_URL_SITE` em https.
+
+Convém ligar só depois do deploy deste PR. As `os.atribuida` antigas, sem manipulador até aqui, são processadas no primeiro ciclo do outbox: sem as chaves, ficam só registradas; com as chaves, os técnicos receberiam o aviso de OS antigas.
+
+**Validação local:** lint, typecheck e testes passaram: 4.643 testes passaram e nenhum falhou. A integração nova do `packages/db` roda só na CI.
+
+### Ponto de retomada (14/10/2026, push na branch)
+- **`main`:** em `a263f1a`, com o #262 (PV3, 0048). O CI passou e o `banco` foi cancelado nesse commit. O dev espera o `db push` da 0048 pelo Cesar.
+- **PRs abertos:** nenhum da 1c. Está aberto o #263 (`adm:`), que não é zona protegida.
+- **Nas branches, sem PR, em cadeia:**
+  1. `claude/1c-comunicacao-migracao`: a 0049, o pgTAP 041, o ADR-046 e o status do ADR-045. É o PR de zona protegida, na vez que o Cesar avisar.
+  2. `claude/1c-email-sla`: abre depois do merge e do `db push` da 0049.
+  3. `claude/1c-push`: abre depois do PR do e-mail.
+- **Esperando o Cesar:**
+  - o aviso da vez da zona protegida;
+  - apagar no GitHub a branch `claude/1c-arrendado-migracao`, porque o proxy daqui recusa;
+  - a conta e o DNS do SES (F0-12);
+  - as chaves VAPID, depois do deploy do push;
+  - a aprovação do ADR-046, quando o PR abrir.
+- **Próxima tarefa:**
+  - na vez, abrir o PR da migração: conferir a última migração da `main`, fazer o merge da `main`, abrir o PR e assinar os eventos;
+  - enquanto isso, o painel de indicadores (item 8), que segue a versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
+
 ## ADR-046 aprovado (14/10/2026)
 
 O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no `docs/03` foi trocado na branch `claude/1c-comunicacao-migracao` e entra na `main` com o PR da migração 0049. A aprovação cobre os detalhes do push registrados no ADR.
@@ -842,3 +896,577 @@ O Cesar aprovou o ADR-046 no chat ("Cesar aqui. ADR-046 aprovado"). O status no 
   2. `claude/1c-push`: o PR abre depois do merge do PR do e-mail.
 - **Esperando o Cesar:** o `db push` da 0049; apagar a branch `claude/1c-arrendado-migracao`; a conta e o DNS do SES (F0-12); as chaves VAPID, depois do deploy do push.
 - **Próxima tarefa:** o painel de indicadores (item 8), pela versão 3 do glossário. Primeiro passo: ler `docs/referencia/glossario-metricas.md` e a seção do painel no `docs/13`.
+
+## Painel de indicadores (item 8): o domínio, na branch (15/10/2026)
+
+**Área compartilhada (`packages/dominio`), registrada antes de mexer.** Branch `claude/1c-painel`, a partir da `main` de 15/10 (a1e155c):
+- `indicadores.ts` (novo): os indicadores do glossário versão 3, uma parcial por hotel com o período em dias locais (regra 5) e a soma das parciais para a rede e a bandeira. Também quem vê: a gestão (Admin do grupo, Gestor CSC e Gerente do hotel, no escopo) vê tudo; o proprietário do hotel ou de UHs dele vê só os cartões (backlog, UH-dias e chamados).
+- `sla.ts`: exporta `inicioDoDiaLocal`, que usa o mesmo cálculo de fuso do calendário de SLA.
+- `politicas.ts`: a chave `preventiva.tolerancia_dias` (decisão 11), `{ dias }` de 0 a 30, padrão 0, com o prefixo `preventiva.` entre os do núcleo (também em `packages/contratos`).
+
+**Escolhas de borda** (nenhuma muda o texto do glossário; respondidas pelo Cesar em 15/10/2026, na seção seguinte):
+1. **Prazo que ainda corre.** No % de SLA e no % de preventiva em dia, o chamado ou a preventiva com o prazo dentro do período que ainda não venceu e não foi concluído fica fora da conta até vencer. Aparece ao lado como "ainda no prazo". Sem isso, o período que termina hoje puxa o percentual para baixo com o que ainda pode ser cumprido.
+2. **Média da bandeira.** É o valor do conjunto: soma os chamados de todos os hotéis e calcula uma vez. Não é a média dos percentuais de cada hotel, para o hotel pequeno não pesar igual ao grande.
+3. **Idade do backlog.** Conta em dias completos desde a abertura: 0 a 2, 3 a 7, 8 a 15, 16 a 30 e mais de 30.
+4. **Produtividade.** As OS concluídas, corretivas e preventivas, e as horas apontadas, cortadas no período, ficam com a equipe da OS. A OS sem equipe aparece numa linha "sem equipe". A visão por técnico fica de fora; não há política para ligá-la nesta etapa.
+
+**Feito na branch (15/10/2026):**
+- **Leitura (`packages/db/src/indicadores.ts`):** sob a RLS, só o recorte que pode contar no período. Se o hotel é do usuário como proprietário, quem diz são `authz.hoteis_proprietario()` e `authz.locais_proprietario()`, que já existem e têm `execute` para o `hk_app`: a RLS de `app.hotel_proprietario` só mostra os vínculos ao Admin. Nenhuma função nova no banco. Teste de integração em `packages/db/test/indicadores.test.ts`, que roda só na CI.
+- **Caso de uso e API:** caso de uso em `packages/aplicacao` e `GET /api/v1/indicadores?inicio=&fim=&hotelId=&bandeiraId=`, com o OpenAPI.
+- **Tela `/indicadores`** (menu Operação):
+  - os sete cartões da rede, com a variação contra o período anterior do mesmo tamanho;
+  - o backlog por idade e os chamados por dia;
+  - a comparação na bandeira, com o melhor de cada coluna em destaque;
+  - a produtividade;
+  - os cartões do proprietário.
+  - Textos nos quatro idiomas.
+
+**Fica para depois:**
+- **Exportar CSV do painel:** item 9.
+- **Gráficos:** a série sai como tabela. Linha e barras num PR seguinte.
+- **Tolerância da preventiva na tela de configuração:** hoje só pela API de políticas.
+- **Medição da meta (decisão 9):** depende do volume de referência do Kaio.
+- **Paridade da produtividade:** o mock separa fornecedor, preventivas, corretivas e corretivas no prazo. O glossário versão 3 diz "por equipe e por hotel". Mudar é uma versão nova do glossário, que só sai com a aprovação de Cesar e Kaio.
+
+### Decisões do Cesar sobre o painel (15/10/2026)
+
+O Cesar respondeu às quatro escolhas no chat do agente da 1c ("Cesar aqui"):
+1. **Prazo que ainda corre:** fora da conta, como "ainda no prazo". Aprovado.
+2. **Média da bandeira:** sobre todos os chamados juntos. Aprovado, com um ajuste no destaque da comparação:
+   - cada percentual mostra o número de itens ao lado;
+   - só concorre ao destaque de melhor da coluna o hotel com pelo menos 10 itens no período naquela coluna;
+   - abaixo disso, o percentual aparece como "amostra pequena";
+   - o mínimo fica numa constante, para ajustar no piloto.
+   No código: `LIMITES_DO_PAINEL.amostraMinimaDoDestaque` e `amostraSuficiente` (`packages/dominio/src/indicadores.ts`). Valem para as duas colunas de percentual, o % de SLA (itens: os chamados da conta) e o % de preventiva em dia (itens: as preventivas da conta).
+3. **Idade do backlog:** em dias completos, com as faixas propostas. Aprovado.
+4. **Produtividade:** por equipe, com a linha "sem equipe", como no glossário versão 3. Aprovado. **Candidata à versão 4 do glossário, depois do piloto:** a separação por fornecedor, preventiva e corretiva, como no mock.
+
+O Cesar vai testar a tela no dev com o grupo do histórico de demonstração; daqui ela não foi aberta no navegador.
+
+### Ponto de retomada (15/10/2026, painel de indicadores)
+
+- **`main`:** a1e155c.
+- **Dev:** com a 0049, que o Cesar confirmou em 15/10.
+- **Atualização (15/10/2026, depois do merge do #277):**
+  - **`main`:** a92dc65.
+  - **PRs abertos da 1c, fora da zona e esperando o merge do Cesar:** [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, e o PR do painel, que abre em seguida.
+  - **Zona protegida:** a vez é da 1b. O painel não precisa de migração.
+  - **Próximo passo:** a impressão da OS e o CSV (item 9).
+
+### Ponto de retomada (15/10/2026, pausa pelo limite semanal)
+
+- **`main`:** a92dc65, com o #277 (e-mail do SLA). O dev tem a 0049.
+- **Com o merge do Cesar, fora da zona e verdes nos cinco checks:**
+  - [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, no head 3650e3d. Entra primeiro.
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, no head 1e9fb5b mais este registro. O Cesar faz o "Update branch" depois do #281; se der conflito, fica para a volta do agente.
+- **Decisão do Cesar (15/10/2026):** o MTTR fica sem mínimo de amostra no destaque da comparação até o piloto.
+- **Sem acompanhamento:** nenhuma conferência marcada e nenhum PR acompanhado. Na volta, conferir uma vez o estado dos dois PRs.
+- **Trabalho não enviado:** nenhum.
+- **Próximo item:** a impressão da OS e o CSV (item 9), ainda não começado. Primeiro passo: ler a seção 6 de `docs/referencia/paridade-mock-1c.md` e o item 9 do `docs/13`.
+
+## Impressão da OS e CSV (item 9): começo (19/10/2026)
+
+**Retomada.** Na volta da pausa, o #281 e o #282 estavam abertos e em conflito com a `main` (af1b9aa). Atualizei as duas branches com merge da `main`; os conflitos eram só de listas de exportação e do fim dos catálogos. Lint, typecheck e testes passaram nas duas.
+
+**Área compartilhada (OS e catálogos), registrada antes de mexer.** O item 9 vai em dois PRs, os dois fora da zona protegida e sem migração:
+1. **Impressão da OS** (branch `claude/1c-impressao`):
+   - `GET /api/v1/os/{id}/impressao` monta a OS para imprimir com o que já existe: a OS e os nomes, a descrição do chamado, o checklist com as respostas e as fotos;
+   - a página `/os/{id}/impressao`, com o botão de imprimir e a folha de estilo de impressão;
+   - o caminho "Imprimir OS" no bloco da OS, que serve à página da OS e ao detalhe do chamado.
+2. **CSV:** a lista de chamados, o painel de indicadores (depois do merge do #282) e o aviso "N linhas exportadas, só com o que o seu perfil enxerga", também na auditoria geral.
+
+**Escolhas da impressão** (da seção 6 de `docs/referencia/paridade-mock-1c.md`):
+- **Custo informado:** some da impressão de quem só enxerga o hotel como proprietário ("Não copiar do mock"). Quem decide é o domínio (`custoNaImpressao`): o custo aparece quando quem imprime tem algum papel vigente, que não o de proprietário, com escopo sobre o hotel. O servidor já devolve a OS sem o custo nesse caso. A ficha da OS não muda: hoje o proprietário vê o custo nela.
+- **Execução:** a OS não guarda apontamento na API da ficha. A impressão mostra quem executou (equipe interna ou fornecedor), os códigos de falha, causa e solução e o motivo da reabertura, se houver.
+- **Aceite:** "Aceita com assinatura", com a imagem, quando a OS aceita tem a assinatura; "Aceita sem assinatura"; ou "Pendente". O mock diz "Assinado no celular", mas a assinatura também é desenhada no web (I8), então o texto não diz onde.
+- **Fotos:** as imagens da OS, sem a assinatura, pela miniatura quando há. O PDF anexado não entra na folha.
+
+**Feito na branch (19/10/2026), PR 1 do item 9:**
+- **Domínio (`packages/dominio/src/impressao-da-os.ts`):** `custoNaImpressao` e `aceiteNaImpressao`.
+- **Caso de uso:** `osParaImpressao` na triagem, que devolve a OS sem o custo para quem só enxerga o hotel como proprietário (`custoOculto`).
+- **API:** `GET /api/v1/os/{id}/impressao`, com o contrato e o OpenAPI.
+- **Tela:**
+  - a página `/os/{id}/impressao`, com o botão de imprimir;
+  - o caminho "Imprimir OS" no bloco da OS;
+  - a folha de estilo de impressão em `packages/ui`;
+  - o tema claro ligado no `beforeprint`, porque o CSS só aceita cor de token.
+- **Textos:** nos quatro idiomas.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (19/10/2026, impressão da OS)
+
+- **`main`:** af1b9aa.
+- **PRs da 1c esperando o merge do Cesar, todos fora da zona protegida:**
+  - [#281](https://github.com/cesarcoutohubtech/hubkeep/pull/281), o push, atualizado com a `main` no head 60bc68b.
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, atualizado com a `main` no head 540e28b.
+  - O PR da impressão da OS, que abre agora.
+  - Os três mexem nas listas de exportação e nos catálogos: o que entrar depois do primeiro pode precisar de nova atualização com a `main`.
+- **Pergunta ao Cesar:** o proprietário vê o custo informado na ficha da OS; só a impressão o esconde. Esconder também na ficha é decisão de quem vê.
+- **Próximo:** o PR 2 do item 9, o CSV da lista de chamados e o aviso do número de linhas (também na auditoria geral). O CSV do painel espera o merge do #282. Primeiro passo: o modo de exportação na consulta da lista de chamados, como o da auditoria geral (`LIMITES_DA_AUDITORIA`).
+
+## CSV da lista de chamados e aviso de linhas (item 9, PR 2; 19/10/2026)
+
+O registro da área compartilhada (OS e catálogos) e as escolhas do item 9 estão no começo do item, acima; o PR 1 ([#331](https://github.com/cesarcoutohubtech/hubkeep/pull/331)) entrou na `main` em 19/10/2026. Este PR mexe na lista de chamados e nos catálogos.
+
+**Feito na branch `claude/1c-csv`:**
+- **Domínio:** `LIMITES_DA_EXPORTACAO_DA_LISTA` (`packages/dominio/src/consultas.ts`), com páginas de 1.000 e até 50 mil linhas no CSV. São os limites da decisão 13, da auditoria geral, aplicados à lista de chamados.
+- **API:** `GET /api/v1/chamados?exportacao=1` traz 1.000 por página, com os mesmos filtros e o mesmo escopo da RLS. Contrato `ConsultaDaListaDeChamados` e OpenAPI.
+- **Tela:**
+  - o botão "Exportar CSV" na lista de chamados, que junta as páginas no navegador, como a auditoria geral;
+  - o CSV com o BOM e o separador pelo formato regional de quem exporta (decisão 7);
+  - as colunas: aberto em, hotel, local, ativo, descrição, situação, prioridade e identificador.
+- **Aviso depois de exportar:** "N linhas exportadas em arquivo.csv, só com o que o seu perfil enxerga", na lista de chamados e na auditoria geral.
+- **A tela não foi aberta no navegador.**
+
+**Fica para depois:** o CSV do painel de indicadores, que espera o merge do #282.
+
+### Ponto de retomada (19/10/2026, CSV)
+
+- **`main`:** af1b9aa.
+- **PRs da 1c esperando o merge do Cesar, todos fora da zona protegida:** #281 (push), #282 (painel), #331 (impressão da OS) e o deste CSV. Os quatro mexem nas listas de exportação e nos catálogos: depois de cada merge, os outros podem precisar de atualização com a `main`.
+- **Pergunta ao Cesar (no #331):** esconder também na ficha da OS o custo informado do proprietário.
+- **Próximo:** depois do merge do #282, o CSV do painel de indicadores. Em seguida, o catálogo completo (item 10).
+## Catálogo completo (item 10): termos dos catálogos (19/10/2026)
+
+**Área compartilhada (catálogos), registrada antes de mexer.** Este PR, na branch `claude/1c-idiomas`, troca textos em en, es e fr de telas da 1b e da 1c. Não muda chave nem variável.
+
+**Levantamento:**
+- Os quatro catálogos têm as mesmas 1.557 chaves.
+- Nenhum texto em português sobra nos outros idiomas. Os valores iguais ao pt-BR são cognatos ("Hotel", "Checklist", "PDF").
+- Datas, números e moeda saem do `Intl` com o idioma de quem lê. Os `'pt-BR'` fixos nos apps são só o idioma padrão de reserva dos nomes cadastrados.
+- O problema eram os termos: o mesmo conceito com dois nomes no mesmo idioma.
+
+**Feito:**
+- **`docs/referencia/termos-dos-catalogos.md`:** um termo por conceito e por idioma, pelo uso da maioria das telas. Também traz o volume para a cotação da tradução profissional: cerca de 9.400 palavras, sendo 7.000 do núcleo.
+- **Textos alinhados** (55 textos):
+  - en: "ticket" passa a "request"; "landlord" passa a "lessor"; "tenant operator" passa a "lessee";
+  - es: "orden de servicio" passa a "orden de trabajo"; "OS" passa a "OT"; "ticket" passa a "solicitud";
+  - fr: "ordre de service" passa a "ordre de travail"; "OS" passa a "OT"; "ticket" passa a "demande"; "prestataire" passa a "fournisseur".
+- **`packages/i18n/test/termos.test.ts`:** reprova as variantes barradas fora de `inteligencia.*`.
+
+### Pedido ao agente do Intelligence (Kaio): termos nos textos `inteligencia.*` (19/10/2026)
+
+Os textos do Intelligence são do Kaio (ADR-033), então este PR não os toca. Para seguir `docs/referencia/termos-dos-catalogos.md`, faltaria:
+- en: "tickets" em `inteligencia.detalhamento.impacto_pelos_chamados` e `inteligencia.impacto.resumo`;
+- es e fr: "tickets" em `inteligencia.detalhamento.impacto_pelos_chamados`;
+- fr: "marque" no lugar de "enseigne" (bandeira) em `inteligencia.escopo.rede_bandeira` e `inteligencia.quem_decide.rede_bandeira`, e "prestataire" em `inteligencia.sistemico.regra`.
+
+Se o Kaio quiser, o teste de termos pode passar a valer também para `inteligencia.*` depois da troca.
+
+### Ponto de retomada (19/10/2026, termos dos catálogos)
+
+- **`main`:** 2003828. A CI do merge do #281 ainda rodava às 19h50; a mesma `main`, rodada aqui, passou em lint, typecheck e testes.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#282](https://github.com/cesarcoutohubtech/hubkeep/pull/282), o painel, no head 4947c41;
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), o CSV de chamados, no head ca6a159;
+  - o PR destes termos, que abre agora.
+- **Pergunta ao Cesar, ainda sem resposta:** esconder também na ficha da OS o custo informado, para o proprietário.
+- **Fica da 1c:**
+  - o CSV do painel, depois do merge do #282;
+  - a tradução profissional, que é contratação externa: o volume está na referência de termos;
+  - os gráficos do painel;
+  - a tolerância da preventiva na tela de configuração.
+
+## CSV do painel de indicadores (item 9, PR 2; 20/10/2026)
+
+O #282 (painel), o #336 (termos) e o #335 da 1b entraram na `main` em 20/10/2026 (bf9b3c0). O CSV do painel entra no mesmo PR do CSV de chamados ([#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332)), que o item 9 previa junto. **Área compartilhada (catálogos), registrada antes de mexer:** só chaves novas `indicadores.acao.exportar` e `indicadores.csv.*`.
+
+**Feito na branch `claude/1c-csv`:**
+- **O arquivo:** uma linha por hotel do período e, no fim, o total do escopo. As colunas: hotel, bandeira, UHs ativas, backlog, % de SLA e os chamados na conta, MTTR e mediana em horas, % de preventiva em dia e as preventivas na conta, preventivas por corretiva, UH-dias perdidos, chamados abertos e chamados por 100 UHs.
+- **Escopo:** sai o que a tela recebeu da API, sem consulta nova. O hotel que o proprietário só vê pelos cartões leva só o backlog, os UH-dias perdidos e os chamados abertos; as outras colunas ficam vazias, e o total do escopo não sai para ele.
+- **Números:** sem separador de milhar e com o decimal do formato regional de quem exporta, o mesmo que escolhe o separador (decisão 7). Sem dado, a célula fica vazia.
+- **Aviso:** o mesmo `comum.csv_exportado` da lista de chamados e da auditoria geral.
+- **Código comum:** a leitura do formato regional para o CSV (`formatoDeQuemExporta`, em `apps/web/src/cliente/csv.ts`) passou a servir a auditoria geral, a lista de chamados e o painel.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, CSV do painel)
+
+- **`main`:** bf9b3c0. A CI do merge do #335 rodava às 11h30; a mesma `main`, rodada aqui, passou em lint, typecheck e testes.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel.
+- **Pergunta ao Cesar, ainda sem resposta:** esconder também na ficha da OS o custo informado, para o proprietário.
+- **Pedido ao Kaio:** os termos nos textos `inteligencia.*` (seção do item 10, acima).
+- **Fica da 1c:**
+  - os gráficos do painel;
+  - a tolerância da preventiva na tela de configuração;
+  - a tradução profissional, que é contratação externa.
+- **Próximo:** os gráficos do painel. Primeiro passo: conferir na seção 5 de `docs/referencia/paridade-mock-1c.md` e no mock quais gráficos o painel mostra (a linha de 14 dias e os chamados por dia) e se o `packages/ui` já tem um componente de gráfico.
+
+## Gráficos do painel de indicadores (decisão 6; 20/10/2026)
+
+**Área compartilhada (catálogos), registrada antes de mexer:** só chaves novas `indicadores.grafico.*`. O `packages/ui` ganha um componente e dois tokens. Branch `claude/1c-graficos`, a partir da `main` bf9b3c0.
+
+**Feito:**
+- **`GraficoDeLinhas` (`packages/ui/src/grafico.tsx`):**
+  - um eixo só, com a grade discreta e três rótulos no eixo X;
+  - a legenda quando há mais de uma série;
+  - ao passar o ponteiro, ou com as setas e o foco no gráfico, a linha vertical e a dica com o valor de cada série;
+  - a tabela dos números logo abaixo, num "Ver os números de cada dia";
+  - a largura acompanha a do painel.
+- **Cores:** os tokens `--hk-serie-1` (azul) e `--hk-serie-2` (laranja), da paleta de referência de gráficos, validados contra a superfície de cada tema para daltonismo e contraste. O laranja do tema claro escureceu um pouco para chegar a 3:1 sobre a superfície 2; o `tests/ui-contraste.test.ts` agora confere as duas séries.
+- **No painel (`/indicadores`):** a tabela "Chamados por dia" virou dois gráficos, porque as escalas não se misturam:
+  - "Fluxo de chamados": abertos e concluídos por dia;
+  - "Backlog no fim do dia".
+- **Conferido:** um print do gráfico, renderizado no servidor, nos dois temas. A dica do ponteiro não foi vista no navegador.
+
+**Fica para depois:**
+- **"Onde mais quebra"** (chamados por categoria), a terceira peça da decisão 6. Não está no glossário de métricas, e a definição é um termo novo: precisa de uma versão nova do glossário, com a aprovação de Cesar e Kaio. A proposta está abaixo.
+- **A tela inicial (seção 4 da paridade).** Hoje é só a lista de hotéis. Faltam:
+  - os quatro indicadores do topo, com a linha de 14 dias;
+  - o quadro por hotel, com a regra de situação;
+  - a contagem regressiva dos 6 próximos prazos;
+  - os cartões do proprietário e do locador;
+  - os "Últimos eventos" da auditoria (decisão 5);
+  - os gráficos.
+
+  Não é um dos dez itens da ordem da 1c, mas as decisões 4, 5 e 6 citam o painel. Pergunta ao Cesar, abaixo.
+
+### Proposta para o glossário de métricas: "Chamados por categoria" ("Onde mais quebra")
+
+Para a aprovação de Cesar e Kaio, como versão nova do glossário:
+- **Definição:** os chamados abertos no período, sem os cancelados, contados pela categoria do chamado.
+- **Categoria que conta:** a de agora, depois da troca na triagem, e não a da abertura.
+- **No gráfico:** barras horizontais, da categoria com mais chamados para a com menos. São as 8 primeiras, e o resto se soma em "Outras categorias".
+- **Quem vê:** o mesmo escopo dos cartões da rede, ou seja, a gestão. O proprietário não vê.
+
+### Perguntas ao Cesar (20/10/2026)
+
+1. **Tela inicial:** a seção 4 da paridade (o painel de cada persona) entra agora na 1c, como um item depois do 10? Se entrar, falta também o nome da seção do quadro por hotel. A sugestão da paridade é "Situação por hotel".
+2. **"Onde mais quebra":** a proposta acima, para o glossário.
+
+### Ponto de retomada (20/10/2026, gráficos)
+
+- **`main`:** bf9b3c0, com a CI verde nos três workflows.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel;
+  - o PR destes gráficos, que abre agora.
+- **Os dois mexem nos catálogos**, em lugares diferentes. Depois de um merge, o outro é atualizado com a `main`.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial;
+  - "Onde mais quebra".
+- **Pedido ao Kaio:**
+  - os termos nos textos `inteligencia.*`;
+  - a proposta de "Onde mais quebra" para o glossário.
+- **Próximo:** a tolerância da preventiva na tela de configuração. Primeiro passo: achar a tela das políticas do hotel e ver como ela edita as outras chaves.
+
+## Tolerância da preventiva na tela de configuração (decisão 11; 20/10/2026)
+
+O #339 (gráficos) entrou na `main` em 20/10/2026, e a `main` está em 2580431, com o #337 e o #341 da 1b. **Área compartilhada (políticas e catálogos), registrada antes de mexer:** só um bloco novo na tela `/admin/configuracao` para a chave `preventiva.tolerancia_dias`, que já existe no domínio, no contrato e na API, e chaves novas `admin.configuracao.tolerancia.*`. Sem mudança no domínio, na API nem no banco. Branch `claude/1c-tolerancia`, a partir da `main` 2580431.
+
+**Feito:**
+- **Bloco novo** na tela de configuração (`BlocoDaTolerancia`, `apps/web/src/cliente/bloco-da-tolerancia.tsx`), logo depois do aceite automático:
+  - o valor que vale e de onde ele vem (hotel, bandeira, grupo ou padrão);
+  - o campo dos dias, de 0 a 30, e os botões de gravar no grupo, no hotel e na bandeira do hotel, como nas outras políticas;
+  - os botões de voltar a herdar, em cada nível que tem valor.
+- **A dica fala só do painel de indicadores**, porque é só ele que lê a política hoje (abaixo).
+- **Testes:** `apps/web/test/bloco-da-tolerancia.test.tsx`, nos quatro idiomas e no pseudo-idioma, com o padrão, o valor do hotel e o singular.
+- **A tela não foi aberta no navegador.**
+
+### Aviso ao agente do Intelligence (Kaio): a política da tolerância existe (20/10/2026)
+
+O Intelligence usa a tolerância 0 numa constante (`TOLERANCIA_DA_PREVENTIVA_DIAS`, em `packages/inteligencia/src/atencao.ts`) até a política existir, pelo aviso do diário do Intelligence de 16/10/2026. Ela existe:
+- **Na `main`:** a chave `preventiva.tolerancia_dias` está no domínio e no contrato desde o painel de indicadores (#282): `{ dias }`, de 0 a 30, padrão 0, com o nível da bandeira. O caso de uso dos indicadores resolve por hotel com `resolverPolitica`.
+- **Na tela:** entra com este PR.
+
+Ler a política no job, no lugar da constante, é do Kaio. Até lá, o painel e a atenção do ativo podem divergir num hotel com tolerância diferente de 0.
+
+### Ponto de retomada (20/10/2026, tolerância da preventiva)
+
+- **`main`:** 2580431, com o #339 (gráficos), o #337 e o #341. A mesma `main`, rodada aqui com o #332 mesclado, passou em lint, typecheck e testes.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel, atualizado com a `main` 2580431;
+  - o PR desta tolerância, que abre agora.
+- **Os dois mexem nos catálogos**, em lugares diferentes. Depois de um merge, o outro é atualizado com a `main`.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial (seção 4 da paridade);
+  - "Onde mais quebra" para o glossário.
+- **Pedidos e avisos ao Kaio:**
+  - os termos nos textos `inteligencia.*`;
+  - a proposta de "Onde mais quebra" para o glossário;
+  - a política da tolerância, que o Intelligence pode passar a ler.
+- **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR; o que vier depois depende das respostas acima.
+- **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.
+
+### Ponto de retomada (20/10/2026, depois do merge do #343)
+
+- **`main`:** 5de68ac, com o #343 (tolerância) e o #342 do Intelligence. Às 15h, o CI e a segurança da `main` tinham passado, e o banco ainda rodava. O Cesar avisou que o `db push` está feito.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs de chamados e do painel, atualizado com a `main` 5de68ac; aqui, lint, typecheck e testes passaram.
+- **Perguntas ao Cesar, sem resposta:**
+  - o custo informado na ficha da OS, para o proprietário;
+  - a tela inicial (seção 4 da paridade);
+  - "Onde mais quebra" para o glossário.
+- **Pedidos e avisos ao Kaio:** os termos nos textos `inteligencia.*`; "Onde mais quebra"; a política da tolerância, que o Intelligence pode passar a ler.
+- **Fica da 1c:** a tradução profissional, que é contratação externa. Os dez itens da ordem da 1c estão feitos ou em PR.
+- **Próximo:** esperar as respostas do Cesar. Se a tela inicial entrar, primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` e listar o que o painel de cada persona já tem na API.
+
+## Decisões do Cesar (20/10/2026)
+
+Cesar, no chat da 1c em 20/10/2026, sobre as três recomendações do agente: "Cesar aqui. Prossiga confoem recomendações."
+1. **Tela inicial (seção 4 da paridade):** entra agora na 1c, em dois ou três PRs. O quadro por hotel se chama **"Situação por hotel"**.
+2. **"Onde mais quebra" (chamados por categoria):** a proposta da seção "Proposta para o glossário de métricas", acima, tem a aprovação do Cesar. **Falta a do Kaio:** o glossário só ganha a versão nova com os dois. Até lá, a tela inicial sai sem esse gráfico.
+3. **Custo informado:** some também da ficha da OS de quem só enxerga o hotel como proprietário, como já some da impressão.
+
+## Custo informado fora da ficha do proprietário (decisão 3 acima; 20/10/2026)
+
+**Área compartilhada (OS e `packages/dominio`), registrada antes do commit:**
+- a regra do domínio muda só de nome: `custoNaImpressao` passa a `custoInformadoVisivel`;
+- as leituras da OS em `packages/aplicacao` passam a usá-la.
+
+Branch `claude/1c-custo-na-ficha`, a partir da `main` f6236e7 (com o #340 da 1b).
+
+**Feito:**
+- **Ficha da OS e detalhe do chamado:** `os` e `osDoChamado` (`packages/aplicacao/src/casos-de-uso/triagem.ts`) devolvem a OS com o custo nulo para quem não tem papel vigente, que não o de proprietário, com escopo sobre o hotel. A tela já não mostra a linha do custo quando ele é nulo, então não muda.
+- **Histórico da OS:** a RLS de `app.auditoria` deixa o proprietário ler a auditoria da OS, e o aceite grava o custo no antes e no depois. O caso de uso do histórico agora tira o campo `custoInformado` das mudanças da OS para essas pessoas, pela mesma regra. Para isso, recebe a porta da triagem, as atribuições e o relógio.
+- **Fica igual:**
+  - a auditoria geral, que o proprietário não abre;
+  - o evento `os.aceita`, que não vai para a tela.
+- **Testes:**
+  - `packages/aplicacao/test/impressao-da-os.test.ts`: a ficha e as OS do chamado;
+  - `packages/aplicacao/test/historico.test.ts`: o histórico da OS.
+
+**Aviso ao Kaio:** as telas do Intelligence mostram o custo da OS (a efetividade da intervenção). Se a abertura das telas (`inteligencia.visibilidade_telas`) puder chegar ao proprietário, vale a mesma regra; a decisão é dele.
+
+### Ponto de retomada (20/10/2026, custo na ficha)
+
+- **`main`:** f6236e7, com o #340 (pacote da bandeira, migração 0059) e o #343. O Cesar avisou que o merge e o `db push` estão feitos.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs;
+  - o PR deste custo, que abre agora.
+- **Pedidos e avisos ao Kaio:**
+  - os termos nos textos `inteligencia.*`;
+  - a aprovação de "Onde mais quebra", que já tem a do Cesar;
+  - a política da tolerância, que o Intelligence pode passar a ler;
+  - o custo nas telas do Intelligence.
+- **Próximo:** a tela inicial, PR 1. Primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md`, a tela inicial de hoje e as rotas do painel de indicadores, e dividir os PRs.
+
+## Tela inicial (seção 4 da paridade; decisão 1 do Cesar de 20/10/2026)
+
+**Área compartilhada (catálogos), registrada antes de mexer:** chaves novas `inicio.resumo.*` e `indicadores.backlog.tendencia`. O `packages/ui` ganha a `MiniLinha` e o espaço da linha no `Indicador`.
+
+**Divisão em três PRs:**
+1. **Resumo dos últimos 30 dias** (este, branch `claude/1c-inicio-resumo`, a partir da `main` f6236e7): os quatro indicadores do topo com a variação, o backlog com a linha dos últimos 14 dias e o fluxo de chamados. Usa a API do painel de indicadores, sem consulta nova.
+2. **Próximos prazos e "Últimos eventos":**
+   - a contagem regressiva dos 6 próximos prazos, com "Ver fila completa";
+   - os 5 registros mais recentes da auditoria no escopo de quem vê, lidos ao abrir e a cada 60 segundos (decisão 5).
+
+   São termos que já existem; precisa de uma leitura nova na API.
+3. **"Situação por hotel"** e os cartões do proprietário ("UHs acompanhadas") e do locador ("Categorias sob o locador"). A situação usa termos novos e espera a aprovação abaixo.
+
+**Feito no PR 1:**
+- **Resumo (`apps/web/src/cliente/resumo-do-inicio.tsx`):** os 30 dias até hoje, no relógio de quem vê, e os 30 anteriores, pela `/api/v1/indicadores`.
+- **Gestão:** os quatro primeiros cartões do painel de indicadores e só o gráfico "Fluxo de chamados", com um link para o painel.
+- **Proprietário:** os cartões dos hotéis dele, os mesmos do painel.
+- **Sem permissão:** quem não vê os indicadores fica só com a lista de hotéis, como hoje.
+- **A linha de 14 dias está só no backlog.** A API só tem série por dia para o backlog e para os abertos e encerrados; o % de SLA, o tempo de reparo e a preventiva em dia não têm número por dia. Uma série diária desses três seria uma conta nova (por exemplo, o % de SLA dos prazos que venceram em cada dia, que oscila muito com poucos chamados). Fica registrada; entra se o Cesar quiser.
+- **`MiniLinha` (`packages/ui/src/grafico.tsx`):** a linha curta, sem eixo, na cor da primeira série, com nome para o leitor de tela.
+- **A tela não foi aberta no navegador.**
+
+### Proposta para o glossário de métricas: "Chamado crítico" e "Situação do hotel"
+
+Para a aprovação de Cesar e Kaio, como versão nova do glossário, junto com "Onde mais quebra". O quadro "Situação por hotel" usa termos que já existem e dois novos:
+- **Já existem:** "Vencem em breve" é o prazo em risco; "Fora do prazo", o prazo vencido; "Prev. atrasadas", a preventiva atrasada; "SLA 30 dias", o % de SLA dos últimos 30 dias.
+- **Chamado crítico (novo):** o chamado aberto na prioridade de maior peso entre as prioridades ativas do grupo. No padrão, é a "urgente", que o mock chama de "Crítica". Pelo peso, e não pelo nome, a prioridade própria de um grupo também vale.
+- **Situação do hotel (nova):**
+  - "crítico", com algum chamado crítico de prazo vencido, ou 3 ou mais chamados de prazo vencido;
+  - "atenção", com algum prazo vencido ou em risco, ou 2 ou mais preventivas atrasadas;
+  - "ok" nos demais casos.
+
+  Os números 3 e 2 ficam no domínio, como os do mock. Viram política se um cliente pedir outros.
+- **Quem vê:** a gestão. O proprietário vê os cartões dele, sem a coluna das preventivas atrasadas, como no mock.
+
+### Ponto de retomada (20/10/2026, tela inicial PR 1)
+
+- **`main`:** f6236e7.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332), os CSVs;
+  - [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345), o custo fora da ficha do proprietário;
+  - o PR do resumo da tela inicial, que abre agora.
+- **Os três mexem no diário**, e dois mexem nos catálogos, em lugares diferentes. Depois de cada merge, os outros são atualizados com a `main`.
+- **Esperando Cesar e Kaio:** a versão nova do glossário com "Onde mais quebra" (Cesar já aprovou), "Chamado crítico" e "Situação do hotel".
+- **Próximo:** a tela inicial, PR 2 (próximos prazos e "Últimos eventos"). Primeiro passo: ver como a lista de chamados e o painel dos avisos de SLA leem os prazos, e como a auditoria geral lê as linhas no escopo.
+
+## Tela inicial, PR 2: próximos prazos e últimos eventos (20/10/2026)
+
+**Área compartilhada (chamado, catálogos e `packages/dominio`), registrada antes do commit:**
+- regra nova no domínio, ao lado dos avisos de SLA (`proximoPrazo` e `podeVerOsProximosPrazos`, em `monitor-sla.ts`);
+- uma leitura nova na porta dos avisos;
+- chaves novas `inicio.prazos.*`, `inicio.eventos.*` e `erro.prazos_sem_permissao`.
+
+Branch `claude/1c-inicio-prazos`, a partir da `main` 6d3905e. Sem migração: a leitura usa as tabelas e a RLS de hoje.
+
+**Feito:**
+- **Próximos prazos** (`GET /api/v1/chamados/proximos-prazos`): no máximo seis chamados em curso, do prazo mais perto ao mais longe.
+  - Cada chamado entra com o prazo que ainda deve: o do atendimento até a primeira OS, o da solução até o serviço concluído, como nos avisos.
+  - Com o relógio parado pela pausa, o prazo da solução está congelado e fica de fora.
+  - O selo "Em risco" aparece quando o monitor já gravou o aviso para aquele prazo.
+  - A tela mostra o tempo que falta, que anda a cada minuto.
+- **Últimos eventos:** os 5 registros mais recentes da auditoria geral nos últimos 30 dias, pela API que já existe. São lidos ao abrir e a cada 60 segundos, sem "ao vivo" (decisão 5).
+- **Quem vê:** os dois blocos são da gestão (Admin do grupo, Gestor CSC e Gerente do hotel), como os avisos de SLA e a auditoria geral. Quem não é da gestão recebe 403 da API, e o bloco não aparece. **Escolha para o Cesar confirmar:** a paridade diz "todos menos o técnico, cada um no seu escopo". Mostrar ao proprietário e ao solicitante pediria outra regra de quem vê a auditoria e os prazos; ficou de fora.
+- **Testes:**
+  - o domínio, no `monitor-sla.test.ts`;
+  - o caso de uso, no `packages/aplicacao/test/avisos-de-sla.test.ts`;
+  - o SQL, no teste de integração dos avisos, que roda só na CI;
+  - o contrato contra o domínio;
+  - as telas, no `apps/web/test/prazos-e-eventos.test.tsx`.
+- **A tela não foi aberta no navegador.**
+- **Conflito esperado:** a tela inicial (`apps/web/src/app/(painel)/page.tsx`) também muda no [#347](https://github.com/cesarcoutohubtech/hubkeep/pull/347). Depois do merge de um, o outro é atualizado com a `main`.
+
+### Ponto de retomada (20/10/2026, tela inicial PR 2)
+
+- **`main`:** 6d3905e, com o [#332](https://github.com/cesarcoutohubtech/hubkeep/pull/332) (CSVs) e o #348 da 1b.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345), o custo fora da ficha do proprietário;
+  - [#347](https://github.com/cesarcoutohubtech/hubkeep/pull/347), o resumo da tela inicial;
+  - o PR destes prazos e eventos, que abre agora.
+
+  Os três são atualizados com a `main` depois de cada merge.
+- **Esperando:**
+  - Cesar e Kaio: o glossário com "Onde mais quebra", "Chamado crítico" e "Situação do hotel";
+  - o Cesar: quem vê os prazos e os eventos (acima) e a série diária do SLA, do tempo de reparo e da preventiva.
+- **Próximo:** a tela inicial, PR 3 ("Situação por hotel" e os cartões do proprietário e do locador), depois da aprovação do glossário. Antes, atualizar o #345 e o #347 com a `main`.
+
+### Ponto de retomada (20/10/2026, depois do merge do #347)
+
+- **`main`:** 890bc69, com o [#347](https://github.com/cesarcoutohubtech/hubkeep/pull/347) (resumo da tela inicial) e o #346 do Intelligence. O Cesar conferiu o `supabase migration list` do dev.
+- **Este PR ([#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349)) foi atualizado com a `main`:** a tela inicial mostra o resumo, depois os próximos prazos e os últimos eventos, depois os hotéis. Os catálogos ficaram com as chaves dos dois PRs.
+- **Esperando o merge do Cesar:** [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345) e [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349), fora da zona protegida.
+- **Decisões pendentes e próximo passo:** os mesmos do ponto anterior.
+
+## Respostas do Cesar sobre a tela inicial (20/10/2026)
+
+Mensagem no chat da 1c, em 20/10/2026, com "Cesar aqui", em resposta às três perguntas do agente:
+1. **Quem vê os próximos prazos e os últimos eventos:** "Sim", fica só a gestão (Admin do grupo, Gestor CSC e Gerente do hotel), como no [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349).
+2. **Linha de 14 dias para o % de SLA, o tempo de reparo e a preventiva em dia:** "Sim". Está na seção abaixo.
+3. **Glossário de métricas** ("Onde mais quebra", "Chamado crítico" e "Situação do hotel"): "Cesar aqui. Aprovo."
+
+**A aprovação do Kaio ainda não está registrada.** A mesma mensagem traz a linha "Kaio aqui. Arpovo", mas ela veio pelo chat da 1c, que usa a conta do Cesar. Texto colado não conta como confirmação. O agente perguntou ao Cesar se o próprio Kaio digitou a linha. Até a resposta, a versão nova do glossário e o PR 3 ("Situação por hotel") esperam.
+
+## Linha de 14 dias para o % de SLA, o tempo de reparo e a preventiva em dia (decisão 2 acima; 20/10/2026)
+
+**Área compartilhada (`packages/dominio` e catálogos), registrada antes do commit:**
+- a série do painel em `indicadores.ts` ganha as somas de cada dia;
+- chaves novas `indicadores.sla.tendencia`, `indicadores.mttr.tendencia` e `indicadores.preventiva.tendencia`.
+
+Branch `claude/1c-serie-diaria`, a partir da `main` 5f915d1 (com o #349 e o #345). Sem migração.
+
+**Feito:**
+- **Domínio (`parcialDoHotel`):** cada dia da série guarda as somas do % de SLA, das horas até a conclusão e da preventiva em dia. A regra é a mesma do período, com o dia no lugar dele:
+  - % de SLA: os chamados com o prazo de solução vencido no dia; o prazo que ainda corre fica fora até vencer;
+  - tempo de reparo: os chamados com a conclusão do serviço no dia (os "encerrados" da série);
+  - preventiva em dia: as preventivas com a data prevista no dia.
+
+  As contagens do SLA e da preventiva saíram para duas funções, usadas pelo período e pelo dia. Não há termo novo no glossário.
+- **Soma da rede:** as somas de cada dia se juntam pelo dia local de cada hotel, como o backlog. O percentual e a média saem do conjunto (`indicadoresDoDia`).
+- **API:** cada dia de `serie` em `GET /api/v1/indicadores` traz `percentualDeSla`, `mttrHoras` e `percentualDePreventivaEmDia`, nulos no dia sem item na conta.
+- **Tela inicial:** os quatro cartões do resumo têm a linha dos últimos 14 dias. O dia sem conta deixa um vão na linha (`MiniLinha` aceita null), e um dia sozinho entre dois vãos vira um ponto. Sem nenhum dia na conta, a linha não aparece.
+- **Ressalva:** num hotel pequeno, o valor de um dia sai de poucos chamados e a linha oscila muito. Se no piloto incomodar, a saída é uma janela móvel (por exemplo, os 7 dias até cada dia), que seria uma definição nova para o glossário.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, série diária)
+
+- **`main`:** 5f915d1, com o [#349](https://github.com/cesarcoutohubtech/hubkeep/pull/349) (prazos e eventos) e o [#345](https://github.com/cesarcoutohubtech/hubkeep/pull/345) (custo) já mesclados.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356), esta série diária.
+- **Esperando:** a confirmação de que o próprio Kaio escreveu o "aprovo" do glossário.
+- **Próximo:** com a aprovação do Kaio, a versão nova do glossário (`docs/referencia/glossario-metricas.md`) e a tela inicial, PR 3 ("Situação por hotel" e os cartões do proprietário e do locador). Primeiro passo: escrever a versão nova do glossário com os três termos, citando as duas aprovações.
+
+## Glossário de métricas, versão 4 (20/10/2026)
+
+**Aprovação:** Cesar e Kaio, no chat da 1c, em 20/10/2026: "Cesar aqui. Aprovo." e "Kaio aqui. Arpovo", na mesma mensagem. O agente perguntou se a linha do Kaio tinha sido digitada por ele. A resposta foi "Sim, foi o Kaio", e, a pedido do agente, "Cesar aqui. Continue". Com isso, a aprovação do Kaio fica registrada como escrita por ele, com a confirmação do Cesar.
+
+Branch `claude/1c-glossario-v4`, a partir da `main` 5f915d1. Só documento.
+
+**Feito:** `docs/referencia/glossario-metricas.md` ganha a versão 4, com três termos no painel da 1c, no texto das propostas deste diário:
+- "Chamados por categoria" ("Onde mais quebra"), da proposta de 20/10/2026;
+- "Chamado crítico" e "Situação do hotel", da proposta da tela inicial.
+
+Nenhum termo das versões anteriores mudou de texto. Os três são do núcleo, e o código entra no PR 3 da tela inicial.
+
+**Pedido ao agente do Kaio:** pela regra 4 do glossário, a versão nova fica registrada nos dois diários. Este registro é o da 1c. Falta o do `docs/diario-intelligence.md`, que só o agente do Kaio escreve.
+
+### Ponto de retomada (20/10/2026, glossário versão 4)
+
+- **`main`:** 5f915d1.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356), a série diária;
+  - o PR deste glossário, que abre agora.
+
+  Os dois mexem no diário. Depois do merge de um, o outro é atualizado com a `main`.
+- **Próximo:** a tela inicial, PR 3, com a "Situação por hotel", "Onde mais quebra" e os cartões do proprietário e do locador. Primeiro passo: ler a seção 4 de `docs/referencia/paridade-mock-1c.md` (o quadro e os cartões) e como o painel lê as prioridades e os avisos de SLA.
+
+## Tela inicial, PR 3a: "Situação por hotel" (20/10/2026)
+
+**Área compartilhada (chamado, catálogos e `packages/dominio`), registrada antes do commit:**
+- regra nova no domínio (`situacao-do-hotel.ts`);
+- uma leitura nova na porta dos avisos de SLA (`chamadosEmCurso`);
+- o filtro de hotel pela URL na lista de chamados (`filtroDaUrl` em `cliente/corretiva.tsx`);
+- chaves novas `inicio.situacao.*` e `erro.situacao_por_hotel_sem_permissao`.
+
+Branch `claude/1c-situacao-por-hotel`, a partir da `main` 5f915d1. Sem migração. Usa os termos da versão 4 do glossário ([#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357)), aprovada por Cesar e Kaio em 20/10/2026.
+
+**O PR 3 virou três:**
+- **3a (este):** o quadro "Situação por hotel";
+- **3b:** "Onde mais quebra" (chamados por categoria), no painel de indicadores e na tela inicial;
+- **3c:** os cartões do proprietário ("UHs acompanhadas") e do locador ("Categorias sob o locador").
+
+**Feito:**
+- **Rota nova:** `GET /api/v1/inicio/situacao-por-hotel`. Para cada hotel de que quem pede é da gestão, traz:
+  - os chamados que vencem em breve e os que estão fora do prazo, pelos avisos em aberto (`avisosEmAberto`, como o painel dos avisos);
+  - os críticos;
+  - as preventivas atrasadas de agora, pela tolerância de cada hotel;
+  - os abertos por dia nos últimos 14 dias locais;
+  - a situação.
+
+  A lista vai do hotel mais grave ao mais leve e, dentro de cada situação, pelo nome.
+- **Na tela inicial,** o quadro fica entre o resumo e os próximos prazos.
+  - "Em aberto" (o backlog) e "SLA 30 dias" (com a meta de cada hotel) vêm do painel de indicadores que o resumo já lê, para os números baterem com os do painel.
+  - As quatro colunas de contagem ganham cor mais forte com mais ocorrências, pelo maior valor da coluna.
+  - O nome do hotel abre a fila dele (`/chamados?hotelId=`).
+  - O quadro é lido ao abrir e a cada 60 segundos, como os próximos prazos.
+- **Quem vê:** a gestão (Admin do grupo, Gestor CSC e Gerente do hotel), como nos avisos de SLA. Quem não é recebe 403, e o quadro não aparece.
+
+**Escolhas de detalhe, para o Cesar conferir:**
+- **Cada chamado conta uma vez nas colunas de prazo.** Com algum prazo vencido, vai para "Fora do prazo", mesmo com o outro prazo em risco. "Vencem em breve" são os que têm prazo em risco e nenhum vencido.
+- **Empate no maior peso:** se duas prioridades ativas empatam no maior peso, as duas contam como críticas. O peso não é único no banco.
+- **Crítico em curso:** o chamado crítico é o aberto, em triagem ou em execução, como nos avisos de SLA. O que espera o aceite já teve o serviço concluído.
+
+**Testes:**
+- o domínio, em `packages/dominio/test/situacao-do-hotel.test.ts`;
+- o caso de uso, em `packages/aplicacao/test/situacao-por-hotel.test.ts`;
+- o SQL, num caso novo do teste de integração dos avisos (`packages/db/test/avisos-de-sla.test.ts`), que roda só na CI;
+- a tela, em `apps/web/test/situacao-por-hotel.test.tsx`.
+
+**A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, tela inicial PR 3a)
+
+- **`main`:** 0dbacc8, já com o [#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357) (o glossário versão 4) e o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356) (a série diária). Este PR foi atualizado com ela.
+- **PRs da 1c esperando o merge do Cesar, fora da zona protegida:**
+  - o PR deste quadro, que abre agora.
+
+  Os dois mexem no diário. Depois de cada merge, os outros são atualizados com a `main`.
+- **Próximo:** a tela inicial, PR 3b ("Onde mais quebra"). Primeiro passo: incluir a categoria do chamado na leitura do painel de indicadores e ver como a tela resolve o nome da categoria.
+
+## Tela inicial, PR 3b: "Onde mais quebra" (20/10/2026)
+
+**Área compartilhada (`packages/dominio` e catálogos), registrada antes do commit:**
+- o chamado do painel de indicadores ganha a categoria (`ChamadoDoIndicador.categoriaId`);
+- a parcial ganha a contagem por categoria e a função `ondeMaisQuebra`;
+- chaves novas `indicadores.grafico.quebra.*`.
+
+Branch `claude/1c-onde-mais-quebra`, a partir da `main` 5f915d1. Sem migração. É o termo "chamados por categoria" da versão 4 do glossário ([#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357)).
+
+**Feito:**
+- **Domínio:** os chamados abertos no período, sem os cancelados, contados pela categoria de agora. Os sem categoria entram como "Sem categoria". A rede soma as categorias dos hotéis da visão completa. `ondeMaisQuebra` devolve as 8 maiores (o empate vai pela categoria, e os sem categoria por último) e soma o resto em "outras".
+- **API:** `GET /api/v1/indicadores` traz `ondeMaisQuebra`, só da rede. O proprietário recebe a lista vazia, porque só vê os cartões.
+- **`BarrasHorizontais` (`packages/ui`):** nome, barra e número em cada linha, numa lista com nome. A barra só desenha, e o nome e o número ficam em texto.
+- **Telas:** o gráfico aparece no painel de indicadores, depois do fluxo de chamados, e no resumo da tela inicial. O nome vem das categorias de ativo do grupo, no idioma de quem vê, como na triagem. Sem nenhum chamado, o gráfico não aparece.
+- **Conflito esperado com o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356):** os dois mexem em `indicadores.ts` do domínio, no contrato dos indicadores, no resumo da tela inicial e nos testes do resumo, em trechos diferentes. Depois do merge de um, o outro é atualizado com a `main`.
+- **A tela não foi aberta no navegador.**
+
+### Ponto de retomada (20/10/2026, tela inicial PR 3b)
+
+- **`main`:** 4d1a3d5, já com o [#359](https://github.com/cesarcoutohubtech/hubkeep/pull/359) (o quadro "Situação por hotel"), o [#357](https://github.com/cesarcoutohubtech/hubkeep/pull/357) (o glossário versão 4) e o [#356](https://github.com/cesarcoutohubtech/hubkeep/pull/356) (a série diária). Este PR foi atualizado com ela, e os conflitos em `indicadores.ts`, no caso de uso dos indicadores e nos testes ficaram com os dois lados.
+- **PR da 1c esperando o merge do Cesar, fora da zona protegida:** [#360](https://github.com/cesarcoutohubtech/hubkeep/pull/360), este gráfico.
+- **Esperando o Cesar:** quem vê o cartão "Categorias sob o locador" do PR 3c; não há papel de locador.
+- **Próximo:** a tela inicial, PR 3c (os cartões do proprietário e do locador). Primeiro passo: ler como a tela sabe que quem vê é proprietário de UHs e o locador do arrendamento (ADR-045), e o que o mock mostra nos dois cartões.

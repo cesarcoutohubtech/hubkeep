@@ -8,20 +8,24 @@
 // já vem no hotel do ativo, com o ativo aberto. Compra, garantia e
 // criticidade (fase 1b, I1) ficam na parte recolhida do formulário; com a
 // referência guardada antes da I1, o campo deixado vazio não vai na operação,
-// para não apagar o que o servidor tem.
+// para não apagar o que o servidor tem. Aberta pela etiqueta reservada (M3),
+// o cadastro novo leva o código dela; o servidor confere que o código está
+// reservado no hotel e livre (qr_nao_reservado, qr_ja_ligado).
 import {
+  codigoQrLegivel,
   ErroDeDominio,
   NaoEncontrado,
   exigirLocalParaAtivo,
   lerDefinicoes,
   normalizarNomeDeAtivo,
   normalizarTextoDoAtivo,
+  preencherComModelo,
   validarCamposDoAtivo,
   validarCriticidade,
   validarDatasDoAtivo,
 } from '@hubkeep/dominio';
 import { type IdiomaDeExibicao, ehIdioma, resolverNome } from '@hubkeep/i18n';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n';
 import type {
@@ -46,10 +50,14 @@ export interface GravacaoDeAtivo {
   modelo: string | null;
   numeroSerie: string | null;
   campos: Record<string, Valor>;
+  /** O modelo escolhido (M1). Ausente: não muda o que o servidor tem (referência anterior à M1). */
+  modeloId?: string | null;
   /** Ausente: não muda o que o servidor tem (referência anterior à I1). */
   dataCompra?: string | null;
   garantiaAte?: string | null;
   criticidade?: number | null;
+  /** O código da etiqueta reservada (M3), só no cadastro. */
+  codigoQr?: string;
 }
 
 const NIVEIS = [1, 2, 3, 4, 5] as const;
@@ -70,6 +78,18 @@ export function camposDaI1(
     }
   }
   return saida;
+}
+
+/**
+ * O modelo que vai na operação (M1): no cadastro, sempre; na alteração de um
+ * ativo da referência guardada antes da M1 (sem o campo), só se o técnico
+ * escolheu um, para não apagar o que o servidor tem.
+ */
+export function modeloDaGravacao(
+  ativo: AtivoGuardado | null,
+  modeloId: string | null,
+): Pick<GravacaoDeAtivo, 'modeloId'> {
+  return !ativo || ativo.modeloId !== undefined || modeloId !== null ? { modeloId } : {};
 }
 
 /** O ativo aberto pelo QR (B5): pode vir da referência ou da API. */
@@ -119,6 +139,8 @@ function camposDoFormulario(f: FormData, definicoes: readonly CampoGuardado[]) {
 
 interface PropsDoFormulario {
   ativo: AtivoGuardado | null;
+  /** O hotel do cadastro: só os modelos do grupo e os da bandeira dele (PB1b). */
+  hotelId: string;
   referencia: Referencia;
   locais: readonly LocalGuardado[];
   nomeDoLocal: (id: string) => string;
@@ -129,6 +151,8 @@ interface PropsDoFormulario {
   aoCadastrar: (localId: string, g: GravacaoDeAtivo) => Promise<void>;
   aoAlterar: (ativo: AtivoGuardado, g: GravacaoDeAtivo) => Promise<void>;
   aoCancelar: () => void;
+  /** O código da etiqueta reservada (M3) do cadastro novo; o hotel null: lido sem rede. */
+  etiqueta?: { hotelId: string | null; codigo: string } | null;
 }
 
 /** Formulário de um ativo, novo ou guardado: a categoria escolhida decide os campos. */
@@ -137,10 +161,63 @@ function Formulario(p: PropsDoFormulario) {
   const { gravar } = p;
   const t = useT();
   const [categoriaId, setCategoriaId] = useState<string | null>(ativo?.categoriaId ?? null);
+  const [modeloId, setModeloId] = useState<string | null>(ativo?.modeloId ?? null);
+  // Escolher o modelo (M1) remonta o formulário com o rascunho preenchido.
+  const [rascunho, setRascunho] = useState<Record<string, string>>({});
+  const [camposDoRascunho, setCamposDoRascunho] = useState<Record<string, Valor> | null>(null);
+  const [geracao, setGeracao] = useState(0);
+  const formulario = useRef<HTMLFormElement>(null);
   const categoria = referencia.categorias.find((c) => c.id === categoriaId) ?? null;
   const definicoes = categoria?.campos ?? [];
   const valorDe = (chave: string) =>
-    categoriaId === ativo?.categoriaId ? ativo?.campos[chave] : undefined;
+    camposDoRascunho
+      ? camposDoRascunho[chave]
+      : categoriaId === ativo?.categoriaId
+        ? ativo?.campos[chave]
+        : undefined;
+  const inicial = (campo: 'nome' | 'fabricante' | 'modelo' | 'numeroSerie') =>
+    rascunho[campo] ?? ativo?.[campo] ?? '';
+  // PB1b: a referência guardada antes da PB1b não tem a bandeira, e vale o grupo.
+  const bandeiraDoHotel = referencia.hoteis.find((h) => h.id === p.hotelId)?.bandeiraId ?? null;
+  const modelos = (referencia.modelos ?? []).filter(
+    (m) =>
+      (m.ativa &&
+        (categoriaId === null || m.categoriaId === categoriaId) &&
+        ((m.bandeiraId ?? null) === null || m.bandeiraId === bandeiraDoHotel)) ||
+      m.id === ativo?.modeloId,
+  );
+
+  /** Preenche só o que está vazio e nunca sobrescreve (domínio, preencherComModelo). */
+  function escolherModelo(id: string) {
+    const m = referencia.modelos?.find((x) => x.id === id);
+    if (!m || !formulario.current) {
+      setModeloId(null);
+      return;
+    }
+    const f = new FormData(formulario.current);
+    const atual = (campo: string) => String(f.get(campo) ?? '');
+    const preenchido = preencherComModelo(
+      {
+        categoriaId,
+        nome: atual('nome'),
+        fabricante: atual('fabricante'),
+        modelo: atual('modelo'),
+        campos: camposDoFormulario(f, definicoes),
+      },
+      m,
+      lerDefinicoes(referencia.categorias.find((c) => c.id === m.categoriaId)?.campos ?? []),
+    );
+    setRascunho({
+      ...Object.fromEntries([...f.entries()].map(([k, v]) => [k, String(v)])),
+      nome: preenchido.nome,
+      fabricante: preenchido.fabricante ?? '',
+      modelo: preenchido.modelo ?? '',
+    });
+    setCamposDoRascunho(preenchido.campos);
+    setCategoriaId(preenchido.categoriaId);
+    setModeloId(m.id);
+    setGeracao((g) => g + 1);
+  }
 
   function enviar(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -159,6 +236,7 @@ function Formulario(p: PropsDoFormulario) {
           ativo?.categoriaId ?? null,
           camposDoFormulario(f, definicoes),
         ),
+        ...modeloDaGravacao(ativo, modeloId),
       };
       const criticidade = texto(f, 'criticidade');
       const datas = validarDatasDoAtivo({
@@ -176,16 +254,25 @@ function Formulario(p: PropsDoFormulario) {
       const local = locais.find((l) => l.id === texto(f, 'localId'));
       if (!local) throw new NaoEncontrado('local_nao_encontrado', 'Local não encontrado.');
       exigirLocalParaAtivo(local);
-      return p.aoCadastrar(local.id, g);
+      return p.aoCadastrar(local.id, p.etiqueta ? { ...g, codigoQr: p.etiqueta.codigo } : g);
     });
   }
 
   return (
-    <form onSubmit={enviar} className="coluna">
+    <form key={geracao} ref={formulario} onSubmit={enviar} className="coluna">
+      {!ativo && p.etiqueta && (
+        <p>{t('tecnico.ativos.com_etiqueta', { codigo: codigoQrLegivel(p.etiqueta.codigo) })}</p>
+      )}
+      {!ativo && p.etiqueta?.hotelId === null && <p>{t('tecnico.ativos.etiqueta_sem_rede')}</p>}
       {ativo ? (
         <p>{t('admin.ativos.no_local', { local: nomeDoLocal(ativo.localId) })}</p>
       ) : (
-        <select name="localId" aria-label={t('admin.ativos.campo.local')} required>
+        <select
+          name="localId"
+          defaultValue={rascunho.localId}
+          aria-label={t('admin.ativos.campo.local')}
+          required
+        >
           {locais
             .filter((l) => l.status !== 'inativo')
             .map((l) => (
@@ -197,15 +284,36 @@ function Formulario(p: PropsDoFormulario) {
       )}
       <input
         name="nome"
-        defaultValue={ativo?.nome ?? ''}
+        defaultValue={inicial('nome')}
         placeholder={t('admin.ativos.campo.nome')}
         aria-label={t('admin.ativos.campo.nome')}
         required
       />
+      {modelos.length > 0 && (
+        <select
+          aria-label={t('admin.ativos.campo.modelo_de_ativo')}
+          value={modeloId ?? ''}
+          onChange={(e) => escolherModelo(e.target.value)}
+        >
+          <option value="">{t('admin.ativos.sem_modelo')}</option>
+          {modelos.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.nome}
+            </option>
+          ))}
+        </select>
+      )}
       <select
         aria-label={t('admin.ativos.campo.categoria')}
         value={categoriaId ?? ''}
-        onChange={(e) => setCategoriaId(e.target.value || null)}
+        onChange={(e) => {
+          const nova = e.target.value || null;
+          setCategoriaId(nova);
+          // O modelo é de uma categoria só: trocar a categoria tira o modelo.
+          if (referencia.modelos?.find((m) => m.id === modeloId)?.categoriaId !== nova) {
+            setModeloId(null);
+          }
+        }}
       >
         <option value="">{t('admin.ativos.sem_categoria')}</option>
         {referencia.categorias
@@ -220,7 +328,7 @@ function Formulario(p: PropsDoFormulario) {
         <input
           key={campo}
           name={campo}
-          defaultValue={ativo?.[campo] ?? ''}
+          defaultValue={inicial(campo)}
           placeholder={t(`admin.ativos.campo.${campo}`)}
           aria-label={t(`admin.ativos.campo.${campo}`)}
         />
@@ -231,12 +339,19 @@ function Formulario(p: PropsDoFormulario) {
           {(['dataCompra', 'garantiaAte'] as const).map((campo) => (
             <label key={campo} className="coluna">
               {t(`admin.ativos.campo.${campo}`)}
-              <input type="date" name={campo} defaultValue={ativo?.[campo] ?? ''} />
+              <input
+                type="date"
+                name={campo}
+                defaultValue={rascunho[campo] ?? ativo?.[campo] ?? ''}
+              />
             </label>
           ))}
           <label className="coluna">
             {t('admin.ativos.campo.criticidade')}
-            <select name="criticidade" defaultValue={String(ativo?.criticidade ?? '')}>
+            <select
+              name="criticidade"
+              defaultValue={rascunho.criticidade ?? String(ativo?.criticidade ?? '')}
+            >
               <option value="">{t('admin.ativos.sem_criticidade')}</option>
               {NIVEIS.map((n) => (
                 <option key={n} value={n}>
@@ -252,7 +367,7 @@ function Formulario(p: PropsDoFormulario) {
         const etiqueta = rotulo(d.rotulos, d.chave) + (d.unidade ? ` (${d.unidade})` : '');
         const atual = valorDe(d.chave);
         return (
-          <label key={`${categoriaId}|${d.chave}`} className="coluna">
+          <label key={`${geracao}|${categoriaId}|${d.chave}`} className="coluna">
             {d.obrigatorio ? t('admin.ativos.obrigatorio', { campo: etiqueta }) : etiqueta}
             {d.tipo === 'lista' ? (
               <select name={nome} defaultValue={typeof atual === 'string' ? atual : ''}>
@@ -300,6 +415,8 @@ function Formulario(p: PropsDoFormulario) {
 export function Ativos(props: {
   /** Aberta pelo QR: o hotel e o ativo que abrem primeiro. */
   aberto?: AtivoAberto | null;
+  /** Aberta pela etiqueta reservada (M3): o hotel dela (null: lida sem rede) e o código. */
+  etiqueta?: { hotelId: string | null; codigo: string } | null;
   idioma: IdiomaDeExibicao;
   referencia: Referencia | null;
   pendentes: readonly CadastroPendente[];
@@ -313,7 +430,10 @@ export function Ativos(props: {
   const t = useT();
   const intl = useIntl();
   const { referencia } = props;
-  const [hotelId, setHotelId] = useState(props.aberto?.hotelId ?? referencia?.hoteis[0]?.id ?? '');
+  const [hotelId, setHotelId] = useState(
+    props.aberto?.hotelId ?? props.etiqueta?.hotelId ?? referencia?.hoteis[0]?.id ?? '',
+  );
+  const [etiqueta, setEtiqueta] = useState(props.etiqueta ?? null);
   const [editando, setEditando] = useState<AtivoGuardado | null>(props.aberto?.ativo ?? null);
   const [fotosDe, setFotosDe] = useState<AtivoGuardado | null>(null);
   const [busca, setBusca] = useState('');
@@ -362,6 +482,7 @@ export function Ativos(props: {
       await acao();
       setAviso({ tipo: 'ok' });
       setEditando(null);
+      setEtiqueta(null);
     } catch (e) {
       if (!(e instanceof ErroDeDominio)) throw e;
       setAviso({ tipo: 'erro', codigo: e.codigo });
@@ -405,6 +526,7 @@ export function Ativos(props: {
         <Formulario
           key={editando.id}
           ativo={editando}
+          hotelId={hotelId}
           referencia={referencia}
           locais={locais}
           nomeDoLocal={nomeDoLocal}
@@ -421,8 +543,10 @@ export function Ativos(props: {
           <section>
             <h2>{t('admin.ativos.novo')}</h2>
             <Formulario
-              key={hotelId}
+              key={`${hotelId}:${etiqueta?.codigo ?? ''}`}
               ativo={null}
+              etiqueta={etiqueta}
+              hotelId={hotelId}
               referencia={referencia}
               locais={locais}
               nomeDoLocal={nomeDoLocal}
@@ -470,6 +594,16 @@ export function Ativos(props: {
                       {t('tecnico.ativos.item', { ativo: a.nome, local: nomeDoLocal(a.localId) })}
                     </span>
                     {!a.ativo && <small>{t('admin.ativos.desativado')}</small>}
+                    {a.situacaoCadastro === 'pendente' && (
+                      <small data-cadastro="pendente">
+                        {t('tecnico.ativos.cadastro_pendente')}
+                      </small>
+                    )}
+                    {a.situacaoCadastro === 'recusado' && (
+                      <small data-cadastro="recusado">
+                        {t('tecnico.ativos.cadastro_recusado', { motivo: a.motivoDaRecusa ?? '' })}
+                      </small>
+                    )}
                     {a.paradoDesde && (
                       <small data-parado-desde={a.paradoDesde}>
                         {t('tecnico.ativos.parado_desde', {

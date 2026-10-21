@@ -34,12 +34,19 @@ export type {
 } from './casos-de-uso/eventos';
 export { criarCasosDeUsoDeComunicacao } from './casos-de-uso/comunicacao';
 export type { CasosDeUsoDeComunicacao, ContagemNoPeriodo } from './casos-de-uso/comunicacao';
+export { criarCasosDeUsoDePush } from './casos-de-uso/push';
+export type { CasosDeUsoDePush } from './casos-de-uso/push';
 export type {
   ChamadoDoAviso,
   ContagemDeEnvios,
+  EnviadorDePush,
   EnvioRegistrado,
+  InscricaoAtiva,
+  MensagemDePush,
+  OsDoAviso,
   PessoaDoEnvio,
   PortaComunicacao,
+  PortaInscricoesPush,
 } from './portas/comunicacao';
 export { CredencialInvalida, formatarCredencial, lerCredencial } from './credencial-agente';
 export type {
@@ -313,7 +320,7 @@ export type {
 } from './portas/locais';
 export { criarCasosDeUsoDeLocais } from './casos-de-uso/locais';
 export type { CasosDeUsoDeLocais, LocalListado } from './casos-de-uso/locais';
-export type { HotelEmImplantacao, PortaImplantacao } from './portas/implantacao';
+export type { HotelDaPorta, HotelEmImplantacao, PortaImplantacao } from './portas/implantacao';
 export { criarCasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export type { CasosDeUsoDeImplantacao } from './casos-de-uso/implantacao';
 export { REGRAS_DE_MEMBROS, criarCasosDeUsoDeMembros } from './casos-de-uso/membros';
@@ -334,20 +341,96 @@ export type {
 } from './casos-de-uso/auditoria-geral';
 export type { ChamadoComAvisos, PortaAvisosDeSla } from './portas/avisos-de-sla';
 export { criarCasosDeUsoDeAvisosDeSla } from './casos-de-uso/avisos-de-sla';
-export type { CasosDeUsoDeAvisosDeSla, ChamadoNoPainelDeSla } from './casos-de-uso/avisos-de-sla';
+export type { PortaSituacaoPorHotel, PreventivaAberta } from './portas/situacao-por-hotel';
+export { criarCasosDeUsoDaSituacaoPorHotel } from './casos-de-uso/situacao-por-hotel';
+export type {
+  CasosDeUsoDaSituacaoPorHotel,
+  SituacaoDeUmHotel,
+} from './casos-de-uso/situacao-por-hotel';
+export type {
+  CasosDeUsoDeAvisosDeSla,
+  ChamadoNoPainelDeSla,
+  PrazoAVencer,
+} from './casos-de-uso/avisos-de-sla';
 export type {
   CasosDeUsoDeHistorico,
   EventoDoHistorico,
   HistoricoDoRegistro,
 } from './casos-de-uso/historico';
 export type {
+  DadosDoHotel,
+  HotelDoPainel,
+  JanelaDosIndicadores,
+  PortaIndicadores,
+} from './portas/indicadores';
+export { criarCasosDeUsoDeIndicadores } from './casos-de-uso/indicadores';
+export type {
+  CartoesDoHotel,
+  CasosDeUsoDeIndicadores,
+  FiltroDosIndicadores,
+  IndicadoresDaBandeira,
+  IndicadoresDoHotel,
+  PainelDeIndicadores,
+} from './casos-de-uso/indicadores';
+export type {
   ModeloDeAtivoGravado,
   MudancaDeModeloDeAtivo,
   PortaModelosDeAtivo,
 } from './portas/modelos-de-ativo';
+export type {
+  CadastroDoAtivo,
+  CadastroPendente,
+  PortaCadastrosDeAtivos,
+} from './portas/cadastros-de-ativos';
+export { criarCasosDeUsoDeCadastrosDeAtivos } from './casos-de-uso/cadastros-de-ativos';
+export type {
+  CasosDeUsoDeCadastrosDeAtivos,
+  PedidoDeDecisaoDoCadastro,
+} from './casos-de-uso/cadastros-de-ativos';
+export type {
+  AtivoComSugestao,
+  ModeloDaSugestao,
+  PortaSugestoesDePlano,
+} from './portas/sugestoes-de-plano';
+export { criarCasosDeUsoDeSugestoesDePlano } from './casos-de-uso/sugestoes-de-plano';
+export type {
+  CasosDeUsoDeSugestoesDePlano,
+  SugestaoDePlano,
+} from './casos-de-uso/sugestoes-de-plano';
 export { criarCasosDeUsoDeModelosDeAtivo } from './casos-de-uso/modelos-de-ativo';
 export type {
   CasosDeUsoDeModelosDeAtivo,
   ModeloDeAtivo,
   PedidoDeModeloDeAtivo,
 } from './casos-de-uso/modelos-de-ativo';
+export type {
+  CategoriaParaImportar,
+  ModeloParaImportar,
+  PortaImportacaoDeAtivos,
+} from './portas/importacao-de-ativos';
+export {
+  criarCasosDeUsoDeImportacaoDeAtivos,
+  nomesDaCategoria,
+} from './casos-de-uso/importacao-de-ativos';
+export type {
+  CasosDeUsoDeImportacaoDeAtivos,
+  LinhaGravada,
+  ResultadoDaGravacao,
+  SituacaoDaLinhaGravada,
+} from './casos-de-uso/importacao-de-ativos';
+export type {
+  DadosDoPlanoPadrao,
+  MudancaDePlanoPadrao,
+  PlanoPadraoGravado,
+  PortaPacoteDaBandeira,
+} from './portas/pacote-da-bandeira';
+export { criarCasosDeUsoDoPacoteDaBandeira } from './casos-de-uso/pacote-da-bandeira';
+export type {
+  CasosDeUsoDoPacoteDaBandeira,
+  PedidoDeNovoPlanoPadrao,
+  PedidoDePlanoPadrao,
+  ResultadoDaAplicacao,
+} from './casos-de-uso/pacote-da-bandeira';
+export type { CodigoDoLote, PortaQrReservados } from './portas/qr-reservados';
+export { criarCasosDeUsoDeQrReservados } from './casos-de-uso/qr-reservados';
+export type { CasosDeUsoDeQrReservados } from './casos-de-uso/qr-reservados';

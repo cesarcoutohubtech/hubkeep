@@ -16,6 +16,7 @@ import {
 } from './anexos';
 import {
   PedidoDeChecklistNaOs,
+  PedidoDeCriacaoDeModeloDeChecklist,
   PedidoDeModeloDeChecklist,
   RespostaDeChecklistAplicado,
   RespostaDeChecklistDaOs,
@@ -24,17 +25,29 @@ import {
 } from './checklists';
 import {
   PedidoDeAlteracaoDeModeloDeAtivo,
-  PedidoDeModeloDeAtivo,
+  PedidoDeCriacaoDeModeloDeAtivo,
   PedidoDeVersaoDeModeloDeAtivo,
   RespostaDeModeloDeAtivoGravado,
   RespostaDeModelosDeAtivo,
 } from './modelos-de-ativo';
 import {
+  PedidoDeAlteracaoDePlanoPadrao,
+  PedidoDePlanoPadrao,
+  PedidoDeVersaoDePlanoPadrao,
+  RespostaDaAplicacaoDoPacote,
+  RespostaDaPreviaDoPacote,
+  RespostaDePlanoPadraoGravado,
+  RespostaDePlanosPadrao,
+} from './pacote-da-bandeira';
+import {
   PedidoDeAlteracaoDePlanoPreventivo,
   PedidoDeNovoPlanoPreventivo,
+  PedidoDeDescarteDaSugestao,
   PedidoDeSituacaoDoPlano,
+  RespostaDeDescarteDaSugestao,
   RespostaDePlanoAlterado,
   RespostaDePlanosPreventivos,
+  RespostaDeSugestoesDePlano,
 } from './planos-preventivos';
 import {
   PedidoDeBandeira,
@@ -74,7 +87,7 @@ import {
   RespostaDeSituacoesEPrioridadesPadrao,
 } from './situacoes';
 import {
-  ConsultaDaLista,
+  ConsultaDaListaDeChamados,
   ConsultaDaListaDeOs,
   RespostaDeLinhaDoTempo,
   RespostaDeListaDeChamados,
@@ -92,6 +105,7 @@ import {
   PedidoDeReaberturaDeOs,
   PedidoDeTriagem,
   RespostaDeChamado,
+  RespostaDaImpressaoDaOs,
   RespostaDeOs,
   RespostaDeChamadoAberto,
   RespostaDeChamadoAlterado,
@@ -101,8 +115,23 @@ import {
   RespostaDeReaberturaDeOs,
 } from './chamados';
 import { ConsultaDaAuditoriaGeral, RespostaDaAuditoriaGeral } from './auditoria-geral';
-import { RespostaDoPainelDeSla, RespostaDosAvisosDoChamado } from './avisos-de-sla';
-import { ConsultaDaContagemDeEnvios, RespostaDaContagemDeEnvios } from './comunicacao';
+import { RespostaDoStatusMews, RespostaDeCandidatosMews } from './mews-admin';
+import {
+  RespostaDoPainelDeSla,
+  RespostaDosAvisosDoChamado,
+  RespostaDaSituacaoPorHotel,
+  RespostaDosProximosPrazos,
+} from './avisos-de-sla';
+import { ConsultaDosIndicadores, RespostaDosIndicadores } from './indicadores';
+import {
+  ConfiguracaoDoPushApi,
+  ConsultaDaContagemDeEnvios,
+  PedidoDeInscricaoPush,
+  PedidoDeRevogacaoPush,
+  RespostaDaContagemDeEnvios,
+  RespostaDaInscricaoPush,
+  RespostaDaRevogacaoPush,
+} from './comunicacao';
 import { ConsultaDoHistorico, RespostaDoHistorico } from './historico';
 import { PedidoDeCredencial, RespostaDeCredencial, RespostaDeRevogacao } from './credenciais';
 import {
@@ -114,7 +143,19 @@ import {
   RespostaDeAtivoGravado,
   RespostaDeAtivosDoHotel,
   RespostaDeMovimentacoesDoAtivo,
+  PedidoDeDecisaoDoCadastro,
+  RespostaDeCadastrosPendentes,
+  PedidoDeImportacaoDeAtivos,
+  RespostaDaImportacao,
+  RespostaDaPreviaDaImportacao,
+  RespostaDeDecisaoDoCadastro,
 } from './ativos';
+import {
+  PedidoDeLoteDeQr,
+  RespostaDeCodigoReservado,
+  RespostaDeCodigosReservados,
+  RespostaDeLoteDeQr,
+} from './qr-reservados';
 import {
   PedidoDeAreaComum,
   PedidoDeEdificacao,
@@ -192,6 +233,18 @@ import {
   RespostaDoInsight,
   RespostaDoResumoDoIntelligence,
   RespostaDaAberturaDoIntelligence,
+  ConsultaDaFilaDeSinais,
+  PedidoDeChamadoDaReclamacao,
+  PedidoDeChamadoDoInsight,
+  PedidoDeClassificacaoDeSinal,
+  PedidoDeImportacaoDeSinais,
+  RespostaDaClassificacaoDeSinal,
+  RespostaDoChamadoDaReclamacao,
+  RespostaDoChamadoDoInsight,
+  PedidoDeLigacaoDoChamado,
+  RespostaDaFilaDeSinais,
+  RespostaDoAcessoAsReclamacoes,
+  RespostaDaImportacaoDeSinais,
 } from './inteligencia';
 
 type Esquema = z.ZodType;
@@ -215,6 +268,28 @@ export interface Rota {
 const ERRO = (descricao: string) => ({ descricao, esquema: ErroApi });
 
 export const ROTAS: readonly Rota[] = [
+  {
+    metodo: 'get',
+    caminho: '/api/v1/mews/candidatos',
+    resumo: 'Hotéis fictícios candidatos a integração Mews Demo (somente Admin).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Candidatos informativos por hotel', esquema: RespostaDeCandidatosMews },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Apenas Admin do grupo (sem_permissao).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/mews/status',
+    resumo: 'Mews V1: checkpoints, horários e contagens técnicas (somente Admin do grupo).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Status técnico por hotel', esquema: RespostaDoStatusMews },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Apenas Admin do grupo (sem_permissao).'),
+    },
+  },
   {
     metodo: 'get',
     caminho: '/api/v1/sessao',
@@ -321,8 +396,9 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Fora do escopo (ativos_fora_do_escopo).'),
       404: ERRO('local_nao_encontrado ou categoria_nao_encontrada.'),
+      409: ERRO('O código da etiqueta já tem ativo (qr_ja_ligado, M3).'),
       422: ERRO(
-        'ativo_nome_invalido, ativo_texto_invalido, ativo_local_inativo, ativo_categoria_inativa, campo_obrigatorio, campo_desconhecido, valor_de_campo_invalido ou entrada_invalida.',
+        'ativo_nome_invalido, ativo_texto_invalido, ativo_local_inativo, ativo_categoria_inativa, campo_obrigatorio, campo_desconhecido, valor_de_campo_invalido, qr_nao_reservado (o código da etiqueta não está reservado no hotel do local, M3) ou entrada_invalida.',
       ),
     },
   },
@@ -1105,7 +1181,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/implantacao',
     resumo:
-      'Painel de implantação do hotel: locais, papéis vigentes e pendências. Admin do grupo ou Implantador do hotel.',
+      'Painel de implantação do hotel: locais, papéis vigentes, pendências e o tempo de implantação contra a meta de 1 dia. Admin do grupo ou Implantador do hotel.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Resumo da implantação', esquema: RespostaDeImplantacao },
@@ -1450,13 +1526,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/modelos-de-checklist',
     resumo:
-      'Cria um modelo de checklist: nomes, categoria sugerida (nula: todas) e itens tipados (ADR-028), até 50, com a marca de obrigatório. Começa na versão 1. Só o Admin do grupo.',
+      'Cria um modelo de checklist: nomes, categoria sugerida (nula: todas) e itens tipados (ADR-028), até 50, com a marca de obrigatório, e a bandeira (PB1b; nula: do grupo, e não muda depois). Começa na versão 1. Só o Admin do grupo.',
     exigeTenant: true,
-    corpo: PedidoDeModeloDeChecklist,
+    corpo: PedidoDeCriacaoDeModeloDeChecklist,
     respostas: {
       201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeChecklistAlterado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (checklists_so_admin).'),
+      404: ERRO('Bandeira não encontrada (bandeira_nao_encontrada).'),
       422: ERRO('checklist_nome_invalido, definicao_de_campo_invalida ou entrada_invalida.'),
     },
   },
@@ -1506,6 +1583,105 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/planos-do-pacote',
+    resumo:
+      'Os planos por categoria do pacote da bandeira (PB1), da bandeira ou do grupo inteiro (bandeiraId nulo), inclusive os desativados. Leem o Admin do grupo, o Gestor CSC, o Gerente do hotel e o Implantador; para os outros, a lista vem vazia.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Planos do pacote', esquema: RespostaDePlanosPadrao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote',
+    resumo:
+      'Cria um plano do pacote: bandeira (nula para o grupo; não muda depois), categoria, nome, periodicidade e checklist opcional, da categoria e que vá para os mesmos hotéis. Só o Admin do grupo.',
+    exigeTenant: true,
+    corpo: PedidoDePlanoPadrao,
+    respostas: {
+      201: { descricao: 'Plano do pacote criado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('bandeira_nao_encontrada ou categoria_nao_encontrada.'),
+      422: ERRO(
+        'plano_nome_invalido, periodicidade_invalida, plano_checklist_invalido, ativo_categoria_inativa ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'put',
+    caminho: '/api/v1/planos-do-pacote/{id}',
+    resumo:
+      'Altera o plano do pacote, com a versão vista (ADR-029). Os planos já copiados para os hotéis não mudam (ADR-026).',
+    exigeTenant: true,
+    corpo: PedidoDeAlteracaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote alterado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado ou categoria_nao_encontrada.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+      422: ERRO('Os mesmos da criação.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote/{id}/desativacao',
+    resumo:
+      'Desativa o plano do pacote: ele deixa de ser copiado; as cópias que já estão nos hotéis ficam. Com a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote desativado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/planos-do-pacote/{id}/reativacao',
+    resumo: 'Reativa o plano do pacote. Com a versão vista.',
+    exigeTenant: true,
+    corpo: PedidoDeVersaoDePlanoPadrao,
+    respostas: {
+      200: { descricao: 'Plano do pacote reativado', esquema: RespostaDePlanoPadraoGravado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Só o Admin do grupo (pacote_so_do_admin).'),
+      404: ERRO('plano_padrao_nao_encontrado.'),
+      409: ERRO('O plano mudou depois de lido (conflito_de_versao).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/pacote',
+    resumo:
+      'A prévia do pacote no hotel (PB1): os planos do pacote que valem para ele (da bandeira dele ou do grupo), ativos e ainda não copiados. O Admin do grupo e o Implantador vigente do hotel.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'O que aplicar copiaria', esquema: RespostaDaPreviaDoPacote },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (pacote_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/pacote/aplicacao',
+    resumo:
+      'Aplica o pacote ao hotel: copia os planos da prévia, pausados e sem responsável, com início no dia do hotel. Reaplicar só acrescenta o que falta.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Planos copiados', esquema: RespostaDaAplicacaoDoPacote },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (pacote_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/modelos-de-ativo',
     resumo:
       'Modelos de ativo do grupo, inclusive os desativados (M1). Leem quem cadastra ativo: o Admin do grupo, o Gestor CSC, o Gerente do hotel, o Implantador e o Técnico (o PWA baixa os modelos para cadastrar offline); para os outros, a lista vem vazia. Os campos vêm filtrados pela definição atual da categoria.',
@@ -1519,14 +1695,14 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'post',
     caminho: '/api/v1/modelos-de-ativo',
     resumo:
-      'Cria um modelo de ativo: categoria (obrigatória), nome, fabricante, modelo, campos pré-preenchidos da categoria (nenhum obrigatório), checklist e periodicidade sugerida. Começa na versão 1. Só o Admin do grupo.',
+      'Cria um modelo de ativo: categoria (obrigatória), nome, fabricante, modelo, campos pré-preenchidos da categoria (nenhum obrigatório), checklist, periodicidade sugerida e a bandeira (PB1b; nula: do grupo, e não muda depois). Começa na versão 1. Só o Admin do grupo.',
     exigeTenant: true,
-    corpo: PedidoDeModeloDeAtivo,
+    corpo: PedidoDeCriacaoDeModeloDeAtivo,
     respostas: {
       201: { descricao: 'Modelo criado', esquema: RespostaDeModeloDeAtivoGravado },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Só o Admin do grupo (modelos_de_ativo_so_admin).'),
-      404: ERRO('categoria_nao_encontrada ou checklist_nao_encontrado.'),
+      404: ERRO('categoria_nao_encontrada, checklist_nao_encontrado ou bandeira_nao_encontrada.'),
       422: ERRO(
         'ativo_nome_invalido, ativo_texto_invalido, campo_desconhecido, valor_de_campo_invalido, periodicidade_invalida, modelo_ativo_categoria_inativa, modelo_ativo_checklist_invalido ou entrada_invalida.',
       ),
@@ -1607,7 +1783,7 @@ export const ROTAS: readonly Rota[] = [
       403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
       422: ERRO(
-        'Dados inválidos: plano_alvo_invalido, plano_ativo_invalido, plano_categoria_invalida, plano_checklist_invalido, plano_tecnico_invalido, plano_equipe_invalida, plano_responsavel_duplo, plano_sem_responsavel, periodicidade_invalida, plano_inicio_invalido ou plano_nome_invalido.',
+        'Dados inválidos: plano_alvo_invalido, plano_ativo_invalido, plano_categoria_invalida, plano_checklist_invalido, checklist_de_outra_bandeira, plano_tecnico_invalido, plano_equipe_invalida, plano_responsavel_duplo, plano_sem_responsavel, periodicidade_invalida, plano_inicio_invalido ou plano_nome_invalido.',
       ),
     },
   },
@@ -1684,6 +1860,159 @@ export const ROTAS: readonly Rota[] = [
       200: { descricao: 'Planos do ativo', esquema: RespostaDePlanosPreventivos },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/cadastros-pendentes',
+    resumo:
+      'A fila de aprovação do cadastro dos ativos do hotel (M4): os que chegaram pelo PWA com a política ativo.aprovacao_do_cadastro ligada e ainda não foram decididos, do mais antigo (Admin, Gestor CSC e Gerente do hotel).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Cadastros pendentes', esquema: RespostaDeCadastrosPendentes },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (cadastro_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/decisao-do-cadastro',
+    resumo:
+      'Aprova ou recusa o cadastro do ativo pendente (M4), pela versão; a recusa exige o motivo e desativa o ativo.',
+    exigeTenant: true,
+    corpo: PedidoDeDecisaoDoCadastro,
+    respostas: {
+      200: { descricao: 'Cadastro decidido', esquema: RespostaDeDecisaoDoCadastro },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (cadastro_fora_do_escopo).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+      409: ERRO(
+        'O ativo mudou depois de lido (conflito_de_versao) ou já foi decidido (cadastro_ja_decidido).',
+      ),
+      422: ERRO(
+        'Já decidido (cadastro_ja_decidido), ativo desativado (ativo_desativado), decisão inválida (decisao_do_cadastro_invalida) ou recusa sem motivo (motivo_obrigatorio).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/importacao-de-ativos/previa',
+    resumo:
+      'A prévia da importação de ativos por planilha (M2): analisa o CSV contra o hotel, sem gravar, e devolve cada linha como nova, já importada ou inválida, com os erros por código e coluna (Implantador e gestão do hotel).',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeAtivos,
+    respostas: {
+      200: { descricao: 'Prévia da planilha', esquema: RespostaDaPreviaDaImportacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (importacao_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      413: ERRO('Corpo acima do limite (corpo_grande).'),
+      422: ERRO(
+        'Planilha vazia (importacao_vazia), acima do limite de linhas ou bytes (importacao_limite), CSV mal formado (importacao_csv_invalido) ou cabeçalho fora do modelo (importacao_coluna_desconhecida, importacao_coluna_repetida, importacao_coluna_obrigatoria).',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/importacao-de-ativos',
+    resumo:
+      'Importa os ativos da planilha (M2): cria só as linhas novas, aprovadas e com a chave de importação, uma unit of work por linha; a linha já importada não duplica.',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeAtivos,
+    respostas: {
+      200: { descricao: 'Resultado por linha', esquema: RespostaDaImportacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (importacao_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      413: ERRO('Corpo acima do limite (corpo_grande).'),
+      422: ERRO('Os mesmos erros do arquivo inteiro da prévia.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/hoteis/{id}/qr-reservados',
+    resumo:
+      'Gera um lote de códigos de QR reservados para o hotel (M3): de 1 a 500, sem repetir código reservado nem de ativo; as etiquetas se imprimem antes do cadastro, e o ativo nasce depois com o código da etiqueta (Implantador e gestão do hotel).',
+    exigeTenant: true,
+    corpo: PedidoDeLoteDeQr,
+    respostas: {
+      201: { descricao: 'O lote e os códigos', esquema: RespostaDeLoteDeQr },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (qr_reserva_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+      422: ERRO('Tamanho do lote fora de 1 a 500 (qr_lote_invalido) ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/qr-reservados',
+    resumo:
+      'Os códigos de QR reservados do hotel (M3), do lote mais novo para o mais velho, com o que já tem ativo. Lê quem escreve no hotel; o proprietário não lê.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Códigos do hotel', esquema: RespostaDeCodigosReservados },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/qr-reservados/{codigo}',
+    resumo:
+      'O código lido de uma etiqueta reservada (M3): o hotel e se já tem ativo, para o PWA abrir o cadastro com ele. Aceita o código como uma pessoa digitaria. Não reservado, mal formado ou fora do escopo dá o mesmo 404.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'O código reservado', esquema: RespostaDeCodigoReservado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('Código não reservado ou fora do escopo (qr_nao_reservado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/hoteis/{id}/sugestoes-de-plano',
+    resumo:
+      'Sugestões de plano (M1): os ativos do hotel com modelo, sem plano que os cubra e sem descarte, com a periodicidade e o checklist do modelo (quem gere planos).',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Sugestões do hotel', esquema: RespostaDeSugestoesDePlano },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/plano-sugerido',
+    resumo:
+      'Cria o plano sugerido do ativo com um clique: pausado, sem responsável, com a periodicidade e o checklist do modelo e o nome do ativo.',
+    exigeTenant: true,
+    respostas: {
+      201: { descricao: 'Plano cadastrado', esquema: RespostaDePlanoAlterado },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+      422: ERRO(
+        'Sem sugestão (sugestao_de_plano_indisponivel), modelo sem periodicidade (sugestao_sem_periodicidade) ou os erros do cadastro do plano.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/ativos/{id}/plano-sugerido/descarte',
+    resumo:
+      'Descarta a sugestão de plano do ativo, com o motivo; quem e quando ficam no ativo, e ele sai da lista.',
+    exigeTenant: true,
+    corpo: PedidoDeDescarteDaSugestao,
+    respostas: {
+      200: { descricao: 'Sugestão descartada', esquema: RespostaDeDescarteDaSugestao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Fora do escopo (planos_fora_do_escopo).'),
+      404: ERRO('Ativo fora do escopo (ativo_nao_encontrado).'),
+      409: ERRO('O ativo mudou depois de lido (conflito_de_versao).'),
+      422: ERRO(
+        'Sem sugestão (sugestao_de_plano_indisponivel) ou motivo vazio (motivo_obrigatorio).',
+      ),
     },
   },
   {
@@ -1850,6 +2179,18 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/os/{id}/impressao',
+    resumo:
+      'A OS para imprimir (1c, item 9): a mesma da página da OS, com a descrição do chamado e o aceite no papel (assinado, aceito ou pendente). Para quem só enxerga o hotel como proprietário, sem o custo informado (custoOculto). O checklist e as fotos saem das rotas da OS.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A OS para imprimir', esquema: RespostaDaImpressaoDaOs },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('OS fora do escopo (os_nao_encontrada).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/chamados/{id}',
     resumo:
       'O chamado e as OS dele, se visível a quem pede: quem lê o hotel, o proprietário da UH do chamado ou do hotel inteiro. Com os nomes do hotel, do local, do ativo, de quem abriu e dos responsáveis (C7); o que quem pede não lê vem null ou fica de fora.',
@@ -1864,9 +2205,9 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/chamados',
     resumo:
-      'Lista os chamados no escopo de quem pede (C7): cada papel vê os dos hotéis que lê, e o proprietário, os das UHs e do hotel inteiro dele (RLS). Filtros opcionais: hotel, situação, prioridade e período pela data de abertura (de inclusive, ate exclusive). Do mais novo para o mais antigo, 50 por página; a seguinte com depoisDe = proximo.',
+      'Lista os chamados no escopo de quem pede (C7): cada papel vê os dos hotéis que lê, e o proprietário, os das UHs e do hotel inteiro dele (RLS). Filtros opcionais: hotel, situação, prioridade e período pela data de abertura (de inclusive, ate exclusive). Do mais novo para o mais antigo, 50 por página; a seguinte com depoisDe = proximo. Com exportacao=1, 1.000 por página, que a tela junta no CSV (1c, item 9).',
     exigeTenant: true,
-    consulta: ConsultaDaLista,
+    consulta: ConsultaDaListaDeChamados,
     respostas: {
       200: { descricao: 'Uma página de chamados', esquema: RespostaDeListaDeChamados },
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
@@ -1933,6 +2274,43 @@ export const ROTAS: readonly Rota[] = [
   },
   {
     metodo: 'get',
+    caminho: '/api/v1/push/configuracao',
+    resumo:
+      'A chave pública VAPID do push do PWA do técnico (1c, ADR-046, C4), para o aparelho se inscrever no serviço de push do navegador. Null: o push não está ligado neste ambiente.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A configuração do push', esquema: ConfiguracaoDoPushApi },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/push/inscricoes',
+    resumo:
+      'Grava a inscrição de push do aparelho de quem pede (C4). A mesma inscrição já ativa não grava de novo; com chaves novas, a antiga é revogada. Cada pessoa grava só as próprias (RLS).',
+    exigeTenant: true,
+    corpo: PedidoDeInscricaoPush,
+    respostas: {
+      201: { descricao: 'Inscrição gravada', esquema: RespostaDaInscricaoPush },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO('Endpoint que não é https ou chaves fora do formato (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/push/inscricoes/revogacao',
+    resumo:
+      'Revoga a inscrição de push ativa do aparelho de quem pede, pelo endpoint (C4). Sem inscrição ativa, não faz nada.',
+    exigeTenant: true,
+    corpo: PedidoDeRevogacaoPush,
+    respostas: {
+      200: { descricao: 'Inscrição revogada', esquema: RespostaDaRevogacaoPush },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      422: ERRO('Endpoint que não é https (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'get',
     caminho: '/api/v1/hoteis/{id}/avisos-sla',
     resumo:
       'O painel dos avisos de SLA do hotel (1c, ADR-043, M4): os chamados em curso com prazo em risco ou vencido, os vencidos primeiro e depois pelo prazo mais próximo, no máximo um aviso por prazo. O vencido sai do próprio prazo, sem esperar o monitor; o em risco, do aviso que o monitor gravou para o prazo de agora. Só a gestão do hotel: Admin do grupo, Gestor CSC e Gerente do hotel.',
@@ -1942,6 +2320,46 @@ export const ROTAS: readonly Rota[] = [
       401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
       403: ERRO('Quem pede não é da gestão do hotel (avisos_sla_fora_do_escopo).'),
       404: ERRO('Hotel fora do escopo (hotel_nao_encontrado).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/indicadores',
+    resumo:
+      'O painel de indicadores (1c, item 8), pelas definições do glossário único de métricas: backlog e backlog por idade, % de SLA com o tempo pausado ao lado, MTTR com a mediana, % de preventiva em dia, razão preventiva/corretiva, chamados por 100 UHs, UH-dias perdidos, a série diária, a comparação na bandeira e a produtividade por equipe. O período é de dias locais (até 92), contados no fuso de cada hotel. A gestão vê tudo no escopo dela; o proprietário vê só os cartões dos hotéis dele (backlog, UH-dias e chamados). A rede, as bandeiras, a série e a produtividade somam só os hotéis da visão completa.',
+    exigeTenant: true,
+    consulta: ConsultaDosIndicadores,
+    respostas: {
+      200: { descricao: 'Os indicadores do período', esquema: RespostaDosIndicadores },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão nem proprietário (indicadores_sem_permissao).'),
+      422: ERRO(
+        'Período acima de 92 dias ou com o fim antes do início (indicadores_periodo_invalido, com maximoDias) ou filtro fora do formato (entrada_invalida).',
+      ),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/chamados/proximos-prazos',
+    resumo:
+      'Os próximos prazos de SLA a vencer, para a contagem regressiva da tela inicial (1c, seção 4 da paridade): no máximo seis chamados em curso, do prazo mais perto ao mais longe, cada um com o prazo que ainda deve (o atendimento até a primeira OS, a solução até o serviço concluído). Com o relógio parado pela pausa, a solução fica de fora. Só a gestão: Admin do grupo, Gestor CSC e Gerente do hotel, nos hotéis do escopo dela.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Os próximos prazos', esquema: RespostaDosProximosPrazos },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão (prazos_sem_permissao).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inicio/situacao-por-hotel',
+    resumo:
+      'A situação por hotel da tela inicial (1c, seção 4 da paridade; glossário de métricas, versão 4): para cada hotel do escopo de gestão de quem pede, os chamados que vencem em breve, os fora do prazo, os críticos, as preventivas atrasadas, os abertos por dia nos últimos 14 dias locais e a situação (crítico, atenção ou ok). Do mais grave ao mais leve. O backlog e o % de SLA vêm de GET /api/v1/indicadores. Só a gestão: Admin do grupo, Gestor CSC e Gerente do hotel.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'A situação de cada hotel', esquema: RespostaDaSituacaoPorHotel },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Quem pede não é da gestão (situacao_por_hotel_sem_permissao).'),
     },
   },
   {
@@ -2254,14 +2672,14 @@ export const ROTAS: readonly Rota[] = [
         'OS fora do escopo (os_nao_encontrada) ou modelo não encontrado (checklist_nao_encontrado).',
       ),
       409: ERRO('transicao_invalida ou checklist_ja_respondido.'),
-      422: ERRO('checklist_modelo_inativo ou entrada_invalida.'),
+      422: ERRO('checklist_modelo_inativo, checklist_de_outra_bandeira ou entrada_invalida.'),
     },
   },
   {
     metodo: 'post',
     caminho: '/api/v1/os/{id}/aceite',
     resumo:
-      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Com custoInformado, o custo em reais (I4), opcional, sem aprovação nem alçada. Com codigos (I6), falha, causa e solução substituem os sugeridos pelo técnico; com a política os.codigos_obrigatorios ligada no hotel, o aceite exige os três. Com assinaturaCaminho (I8), o PNG enviado pela URL da assinatura, registrado como anexo da OS no mesmo aceite; com a política os.assinatura_no_aceite ligada no hotel, o aceite exige a assinatura. É evidência do aceite, e não assinatura digital ICP-Brasil. Leva a versão vista da OS.',
+      'Aceita a OS concluída; o chamado fica concluído (C6). Quem abriu o chamado, se ainda escreve no hotel, ou o Gerente do hotel; quem abriu e executa a OS (responsável, ou membro da equipe responsável) não decide, só outro Gerente do hotel; sem outro Gerente ativo no hotel, o Gestor CSC ou o Admin do grupo. Na OS preventiva, sem chamado, quem executa nunca decide: o Gerente do hotel que não é o responsável nem membro da equipe responsável; sem outro, o Gestor CSC ou o Admin do grupo. Com custoInformado, o custo em reais (I4), opcional, sem aprovação nem alçada. Com codigos (I6), falha, causa e solução substituem os sugeridos pelo técnico; com a política os.codigos_obrigatorios ligada no hotel, o aceite exige os três. Com assinaturaCaminho (I8), o PNG enviado pela URL da assinatura, registrado como anexo da OS no mesmo aceite; com a política os.assinatura_no_aceite ligada no hotel, o aceite exige a assinatura. É evidência do aceite, e não assinatura digital ICP-Brasil. Leva a versão vista da OS.',
     exigeTenant: true,
     corpo: PedidoDeAceiteDeOs,
     respostas: {
@@ -2375,7 +2793,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/inteligencia/insights/{id}',
     resumo:
-      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê, a série de chamados por semana nas últimas 12 semanas e a efetividade das intervenções nos ativos do insight concluídas depois da primeira detecção.',
+      'A página do insight: o registro, o detalhe e a evidência como o job gravou, as ações que o estado permite (vazias para quem não decide), os chamados da evidência que quem pede vê, as reclamações de hóspede da evidência no insight sistêmico das reclamações (até 50, as mais recentes, com o total; quem não lê as reclamações do hotel vê só o total), a série de chamados por semana nas últimas 12 semanas e a efetividade das intervenções nos ativos do insight concluídas depois da primeira detecção.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Insight', esquema: RespostaDoInsight },
@@ -2403,7 +2821,7 @@ export const ROTAS: readonly Rota[] = [
     metodo: 'get',
     caminho: '/api/v1/inteligencia/ativos/{id}',
     resumo:
-      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, os insights de atenção do ativo, a efetividade das intervenções no ativo nos últimos 180 dias e o sinal de substituição, calculado na leitura (nulo no ativo baixado). Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
+      'O detalhe do ativo no Intelligence: a atenção de cada dia gravado nos últimos 90 dias (o resultado original, sem recálculo), o último dia com o detalhe do score e as versões da fórmula e da política, os insights de atenção do ativo, a efetividade das intervenções no ativo nos últimos 180 dias o sinal de substituição, calculado na leitura (nulo no ativo baixado), e as reclamações de hóspede ligadas ao ativo na janela do Guest Impact Score (até 50, as mais recentes, com o texto). Só para quem decide o insight do hotel do ativo: a métrica nunca tem mais leitores que o insight.',
     exigeTenant: true,
     respostas: {
       200: { descricao: 'Ativo', esquema: RespostaDoAtivoNoIntelligence },
@@ -2441,6 +2859,142 @@ export const ROTAS: readonly Rota[] = [
         'Outra pessoa decidiu antes (conflito_de_versao) ou a ação não vale no estado (transicao_invalida).',
       ),
       422: ERRO('motivo_obrigatorio, motivo_de_descarte_invalido ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/insights/{id}/chamado',
+    resumo:
+      'Um chamado para as reclamações do insight sistêmico da regra das reclamações (proposta de 19/10/2026): a pessoa escolhe a UH ou a área comum do hotel do insight e o ativo, se quiser. O chamado abre pelo caso de uso do núcleo (POST /api/v1/chamados), com "afeta hóspede" e a descrição da pessoa; o texto do hóspede não vai junto. Depois, numa transação só, as reclamações da evidência que a pessoa lê, de manutenção e ainda sem chamado, são ligadas a ele. Se a ligação falhar, o chamado fica aberto e a resposta é chamado_sem_ligacao, com o id dele.',
+    exigeTenant: true,
+    corpo: PedidoDeChamadoDoInsight,
+    respostas: {
+      201: {
+        descricao: 'Chamado aberto e reclamações ligadas',
+        esquema: RespostaDoChamadoDoInsight,
+      },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('insight_fora_do_escopo ou os erros de permissão da abertura do chamado.'),
+      404: ERRO(
+        'inteligencia_indisponivel, insight_nao_encontrado, local_nao_encontrado, ativo_nao_encontrado ou os da abertura do chamado.',
+      ),
+      409: ERRO('chamado_sem_ligacao (com o id do chamado).'),
+      422: ERRO(
+        'insight_sem_reclamacoes, insight_sem_reclamacao_para_chamado, entrada_invalida ou os da abertura do chamado.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/insights/{id}/chamado/ligacao',
+    resumo:
+      'Liga ao chamado que quem pede abriu as reclamações do insight ainda sem chamado, quando a ligação falhou (chamado_sem_ligacao). Sem reclamação sem chamado, não muda nada (ligadas 0).',
+    exigeTenant: true,
+    corpo: PedidoDeLigacaoDoChamado,
+    respostas: {
+      200: { descricao: 'Reclamações ligadas ao chamado', esquema: RespostaDoChamadoDoInsight },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('insight_fora_do_escopo.'),
+      404: ERRO('inteligencia_indisponivel ou insight_nao_encontrado.'),
+      409: ERRO('reclamacao_ja_tem_chamado.'),
+      422: ERRO('insight_sem_reclamacoes ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/sinais/acesso',
+    resumo:
+      'Se quem pede usa a tela de reclamações de hóspedes (adendo de 20/10/2026 ao ADR-035): os papéis da política de abertura que decidem insight, desde o contrato do módulo, sem esperar a data de abertura das telas. Diz também se as outras telas do módulo já abriram.',
+    exigeTenant: true,
+    respostas: {
+      200: { descricao: 'Acesso', esquema: RespostaDoAcessoAsReclamacoes },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('inteligencia_indisponivel (sem o módulo ou sem papel que decide insight).'),
+    },
+  },
+  {
+    metodo: 'get',
+    caminho: '/api/v1/inteligencia/sinais',
+    resumo:
+      'A fila de classificação das reclamações de hóspede de um hotel (ADR-047): as sem classificação por padrão, ou as de manutenção, as fora da manutenção ou todas, da data da avaliação mais recente para a mais antiga, até 200, com o nome do ativo ligado e o de quem classificou. Só para quem decide insight no hotel (Admin do grupo, Gestor CSC e Gerente do hotel).',
+    exigeTenant: true,
+    consulta: ConsultaDaFilaDeSinais,
+    respostas: {
+      200: { descricao: 'Reclamações', esquema: RespostaDaFilaDeSinais },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, ou hotel_nao_encontrado (fora de quem decide insight ou inexistente).',
+      ),
+      422: ERRO('Sem o hotel ou filtro fora do formato (entrada_invalida).'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/importacoes',
+    resumo:
+      'Importa as linhas de um CSV de reclamações e avaliações de hóspede num hotel (ADR-047), com as colunas do HubKeep (id_externo, data, fonte, nota, escala, texto, idioma, uh), até 1000 linhas e 1 MB por pedido. Cada linha é validada à parte: a resposta diz, por linha, se entrou, se era repetida (a mesma fonte e o mesmo código externo no hotel; a reimportação não muda a que existe) ou o código do erro. Grava o lote com auditoria (sem o texto) e o evento sinal_hospede.importado; sem nenhuma linha nova, não grava nada.',
+    exigeTenant: true,
+    corpo: PedidoDeImportacaoDeSinais,
+    respostas: {
+      200: { descricao: 'Resultado por linha', esquema: RespostaDaImportacaoDeSinais },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, ou hotel_nao_encontrado (fora de quem decide insight ou inexistente).',
+      ),
+      413: ERRO('O pedido passou de 1 MB (corpo_grande).'),
+      422: ERRO('importacao_vazia, importacao_grande ou entrada_invalida.'),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/{id}/classificacao',
+    resumo:
+      'Uma pessoa classifica a reclamação (ADR-047): se é manutenção e, sendo, a categoria, a UH e o ativo, com o estado da ligação (sem ligação, possível ou confirmada). Nada liga a reclamação ao ativo sem uma pessoa. Sem manutenção, sem categoria nem ativo; com ativo, a ligação é possível ou confirmada e a categoria é a do ativo; o ativo e a UH são do hotel da reclamação. Reclassificar é permitido. Grava com a trava de versão, auditoria e o evento sinal_hospede.classificado.',
+    exigeTenant: true,
+    corpo: PedidoDeClassificacaoDeSinal,
+    respostas: {
+      200: { descricao: 'Reclamação classificada', esquema: RespostaDaClassificacaoDeSinal },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO(
+        'inteligencia_indisponivel, sinal_nao_encontrado, ativo_nao_encontrado, uh_nao_encontrada ou categoria_nao_encontrada.',
+      ),
+      409: ERRO('Outra pessoa classificou antes (conflito_de_versao).'),
+      422: ERRO(
+        'ligacao_invalida, classificacao_sem_manutencao, ligacao_sem_ativo, ativo_baixado, categoria_do_ativo ou entrada_invalida.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/{id}/chamado',
+    resumo:
+      'Abre o chamado a partir da reclamação (adendo de 19/10/2026 ao ADR-047): a reclamação de manutenção, com UH ou ativo, que ainda não tem chamado. O chamado abre pelo caso de uso do núcleo (POST /api/v1/chamados), no local do ativo ou na UH da classificação, com "afeta hóspede" e a descrição da pessoa; o texto do hóspede não vai junto. Depois, numa segunda transação, a reclamação é ligada ao chamado. Se a ligação falhar, o chamado fica aberto e a resposta é chamado_sem_ligacao, com o id dele.',
+    exigeTenant: true,
+    corpo: PedidoDeChamadoDaReclamacao,
+    respostas: {
+      201: { descricao: 'Chamado aberto e ligado', esquema: RespostaDoChamadoDaReclamacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      403: ERRO('Os erros de permissão da abertura do chamado.'),
+      404: ERRO('inteligencia_indisponivel, sinal_nao_encontrado ou os da abertura do chamado.'),
+      409: ERRO('reclamacao_ja_tem_chamado ou chamado_sem_ligacao (com o id do chamado).'),
+      422: ERRO(
+        'reclamacao_sem_manutencao, reclamacao_sem_ativo, reclamacao_sem_local, entrada_invalida ou os da abertura do chamado.',
+      ),
+    },
+  },
+  {
+    metodo: 'post',
+    caminho: '/api/v1/inteligencia/sinais/{id}/chamado/ligacao',
+    resumo:
+      'Liga de novo a reclamação ao chamado que quem pede abriu a partir dela, quando a ligação falhou (chamado_sem_ligacao). A mesma ligação de novo não muda nada; o banco recusa o chamado de outro hotel ou aberto por outra pessoa.',
+    exigeTenant: true,
+    corpo: PedidoDeLigacaoDoChamado,
+    respostas: {
+      200: { descricao: 'Reclamação ligada ao chamado', esquema: RespostaDoChamadoDaReclamacao },
+      401: ERRO('Sem sessão ou token inválido (nao_autenticado).'),
+      404: ERRO('inteligencia_indisponivel ou sinal_nao_encontrado.'),
+      409: ERRO('reclamacao_ja_tem_chamado.'),
+      422: ERRO('entrada_invalida.'),
     },
   },
 ];

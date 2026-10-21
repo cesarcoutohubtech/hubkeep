@@ -122,6 +122,7 @@ export {
 export type { MatrizDeArrendamento, ResponsavelDoArrendamento } from './arrendamento';
 export type {
   AceiteAutomatico,
+  AprovacaoDoCadastro,
   AssinaturaNoAceite,
   ChecklistCompletoObrigatorio,
   ChaveDePolitica,
@@ -132,6 +133,7 @@ export type {
   NiveisDePolitica,
   NivelDePolitica,
   NomesDeCriticidade,
+  ToleranciaDaPreventiva,
   PrioridadePadraoPorCategoria,
   RegistroDePoliticas,
   RegistrosDePoliticas,
@@ -160,14 +162,22 @@ export {
 export type { ContatoDeFornecedor, DadosDeFornecedor } from './fornecedores';
 export { MODELOS_CONTRATUAIS, ehModeloContratual, validarModeloContratual } from './hoteis';
 export type { ModeloContratual } from './hoteis';
-export { PENDENCIAS_DE_IMPLANTACAO, podeVerImplantacao, resumirImplantacao } from './implantacao';
+export {
+  META_DA_IMPLANTACAO_MS,
+  PENDENCIAS_DE_IMPLANTACAO,
+  podeVerImplantacao,
+  resumirImplantacao,
+  tempoDaImplantacao,
+} from './implantacao';
 export type {
   AtivoParaImplantacao,
   HotelParaImplantacao,
   LocalParaImplantacao,
+  MudancaDeSituacaoDoHotel,
   PendenciaDeImplantacao,
   PessoaParaImplantacao,
   ResumoDeImplantacao,
+  TempoDeImplantacao,
 } from './implantacao';
 export { podeAlterarAtivoDoMembro, podeAlterarValidade, podeGerirMembros } from './membros';
 export {
@@ -198,6 +208,7 @@ export {
   TAMANHO_DO_CODIGO_QR,
   caminhoDoQr,
   codigoQrDeBytes,
+  codigoQrLegivel,
   lerCodigoQr,
 } from './qr';
 export {
@@ -288,6 +299,8 @@ export {
   normalizarCustoInformado,
 } from './executor-e-custo';
 export type { ExecutadoPor, QuemExecuta } from './executor-e-custo';
+export { aceiteNaImpressao, custoInformadoVisivel } from './impressao-da-os';
+export type { AceiteNaImpressao } from './impressao-da-os';
 export {
   CODIGOS_PADRAO,
   LIMITE_DO_NOME_DE_CODIGO,
@@ -427,6 +440,7 @@ export {
 export type { OrigemDoChamado, PoliticaAplicadaNaAbertura } from './chamados';
 export {
   ENTIDADES_DA_LINHA_DO_TEMPO,
+  LIMITES_DA_EXPORTACAO_DA_LISTA,
   TAMANHO_DA_PAGINA,
   motivoDaAuditoria,
   validarPeriodoDaLista,
@@ -473,6 +487,7 @@ export {
   TIPOS_DE_FERIADO_OFICIAL,
   anosDoCalendario,
   calcularPrazo,
+  inicioDoDiaLocal,
   calendarioDeSla,
   datasSemAtendimento,
   ehMotivoDePausa,
@@ -519,16 +534,20 @@ export {
 export {
   DESTINATARIOS_DO_AVISO,
   ESCALONAMENTO_PADRAO,
+  LIMITE_DOS_PROXIMOS_PRAZOS,
   LIMITES_DO_ESCALONAMENTO,
   NIVEIS_DO_AVISO,
   PAPEIS_QUE_VEEM_OS_AVISOS,
   TIPOS_DE_ALERTA_DE_SLA,
+  TIPOS_DE_PRAZO,
   avisosDeSla,
   avisosEmAberto,
   destinatariosDoAviso,
   ehTipoDeAlertaDeSla,
   escalonamentoValido,
   podeVerAvisosDeSla,
+  podeVerOsProximosPrazos,
+  proximoPrazo,
 } from './monitor-sla';
 export type {
   AvisoDeSla,
@@ -537,7 +556,9 @@ export type {
   DestinatarioDoAviso,
   EscalonamentoDeSla,
   NivelDoAviso,
+  ProximoPrazo,
   TipoDeAlertaDeSla,
+  TipoDePrazo,
 } from './monitor-sla';
 export {
   LIMITE_DO_ACEITE_AUTOMATICO_POR_RODADA,
@@ -563,6 +584,62 @@ export {
 } from './auditoria-geral';
 export type { CursorDaAuditoria, EntidadeDaAuditoria } from './auditoria-geral';
 export {
+  DECISOES_DO_CADASTRO,
+  PAPEIS_QUE_DECIDEM_O_CADASTRO,
+  SITUACOES_DO_CADASTRO,
+  ehDecisaoDoCadastro,
+  podeDecidirCadastro,
+  situacaoDoCadastro,
+  situacaoInicialNoPwa,
+  validarDecisaoDoCadastro,
+} from './aprovacao-do-cadastro';
+export type { DecisaoDoCadastro, SituacaoDoCadastro } from './aprovacao-do-cadastro';
+export {
+  CATEGORIAS_DO_GRAFICO,
+  FAIXAS_DE_IDADE,
+  LIMITES_DO_PAINEL,
+  amostraSuficiente,
+  PAPEIS_DO_PAINEL,
+  conclusaoDoChamado,
+  diasDoPeriodo,
+  indicadoresDaParcial,
+  indicadoresDoDia,
+  intervaloNoFuso,
+  noBacklog,
+  ondeMaisQuebra,
+  parcialDoHotel,
+  parcialVazia,
+  podeVerIndicadores,
+  somarDias,
+  somarParciais,
+  validarPeriodoDoPainel,
+  visaoDoHotel,
+} from './indicadores';
+export type {
+  ApontamentoDoIndicador,
+  ChamadoDoIndicador,
+  ChamadosDaCategoria,
+  DiaDaSerie,
+  EntradaDoHotel,
+  FaixaDeIdade,
+  Indicadores,
+  IndicadoresDoDia,
+  OsDoIndicador,
+  ParcialDeIndicadores,
+  PeriodoDoPainel,
+  PreventivaDoIndicador,
+  ProdutividadeDaEquipe,
+  SomasDePreventiva,
+  SomasDeSla,
+  VisaoDoHotel,
+} from './indicadores';
+export {
+  ativoSemPlanoComModelo,
+  exigirPeriodicidadeSugerida,
+  nomeDoPlanoSugerido,
+} from './sugestoes-de-plano';
+export type { AtivoParaSugestao } from './sugestoes-de-plano';
+export {
   lerPlanoSugerido,
   podeGerirModelosDeAtivo,
   preencherComModelo,
@@ -580,9 +657,73 @@ export {
   LIMITE_DE_ENVIOS_POR_DIA,
   LIMITE_DO_PERIODO_DA_CONTAGEM_DIAS,
   SITUACOES_DE_ENVIO,
+  inscricaoExpirou,
   pessoasDoAviso,
   podeVerContagemDeEnvios,
   situacaoAntesDoEnvio,
+  situacaoAntesDoPush,
   validarPeriodoDaContagem,
 } from './comunicacao';
 export type { CanalDeEnvio, ResponsavelDaOsAtiva, SituacaoDeEnvio } from './comunicacao';
+export {
+  COLUNAS_DA_IMPORTACAO,
+  COLUNAS_OBRIGATORIAS,
+  LIMITES_DA_IMPORTACAO,
+  PREFIXO_DE_CAMPO,
+  SEPARADOR_DO_MODELO,
+  analisarImportacao,
+  chaveDeImportacao,
+  lerCabecalho,
+  lerCsv,
+  lerDataDaPlanilha,
+  lerValorDaPlanilha,
+  modeloDaPlanilha,
+  paraComparar,
+  podeImportarAtivos,
+} from './importacao-de-ativos';
+export type {
+  AtivoDaImportacao,
+  CategoriaDaImportacao,
+  ColunaDaImportacao,
+  ErroDaLinha,
+  LinhaAnalisada,
+  LocalDaImportacao,
+  ModeloDaImportacao,
+  ReferenciasDaImportacao,
+  ResultadoDaImportacao,
+  SituacaoDaLinha,
+} from './importacao-de-ativos';
+export { sha256, tamanhoUtf8 } from './resumo-sha256';
+export {
+  copiasDoPacote,
+  exigirDaBandeiraDoHotel,
+  podeAplicarPacote,
+  podeGerirPacote,
+  vaiParaOHotel,
+  validarPlanoPadrao,
+} from './pacote-da-bandeira';
+export type {
+  ChecklistParaPlanoPadrao,
+  CopiaDoPlanoPadrao,
+  PlanoPadrao,
+} from './pacote-da-bandeira';
+export {
+  DIAS_DOS_ABERTOS_DO_QUADRO,
+  LIMITES_DA_SITUACAO,
+  SITUACOES_DO_HOTEL,
+  abertosPorDia,
+  contarChamadosDoHotel,
+  contarPreventivasAtrasadas,
+  diasDosAbertosDoQuadro,
+  podeVerASituacaoPorHotel,
+  prioridadesCriticas,
+  situacaoDoHotel,
+} from './situacao-do-hotel';
+export type { ContagemDoHotel, SituacaoDoHotel } from './situacao-do-hotel';
+export {
+  LIMITE_DO_LOTE_DE_QR,
+  exigirCodigoReservadoLivre,
+  podeReservarQr,
+  validarTamanhoDoLote,
+} from './qr-reservado';
+export type { CodigoReservado } from './qr-reservado';

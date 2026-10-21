@@ -6,6 +6,7 @@ import {
   RespostaDeAtivosDoHotel,
   RespostaDeCategorias,
   RespostaDeCodigosDeManutencao,
+  RespostaDeModelosDeAtivo,
   RespostaDeHoteis,
   RespostaDeLocaisDoHotel,
   RespostaDeOperacaoOffline,
@@ -128,8 +129,8 @@ export async function lerOsDoDia(
  * Referência do técnico (B3b): hotéis visíveis, com locais e ativos de cada um,
  * e as categorias do tenant, validados pelos contratos. null sem rede, sem
  * sessão ou com qualquer resposta que não seja 200: fica valendo a guardada.
- * Os códigos de manutenção (I6) são sugestão: se a leitura deles falhar, a
- * referência segue sem eles.
+ * Os códigos de manutenção (I6) e os modelos de ativo (M1) são sugestão: se a
+ * leitura deles falhar, a referência segue sem eles.
  */
 export async function lerReferencia(
   c: Credenciais,
@@ -152,6 +153,23 @@ export async function lerReferencia(
         .then((d) => RespostaDeCodigosDeManutencao.parse(d).codigos)
         .catch(() => undefined),
     ]);
+    // Os modelos de ativo (M1) também são sugestão: sem eles, o cadastro segue à mão.
+    const modelos = await ler('/api/v1/modelos-de-ativo')
+      .then((d) =>
+        RespostaDeModelosDeAtivo.parse(d).modelos.map(
+          ({ id, categoriaId, nome, fabricante, modelo, campos, ativa, bandeiraId }) => ({
+            id,
+            categoriaId,
+            nome,
+            fabricante,
+            modelo,
+            campos,
+            ativa,
+            bandeiraId,
+          }),
+        ),
+      )
+      .catch(() => undefined);
     const locais: Referencia['locais'] = {};
     const ativos: Referencia['ativos'] = {};
     const nomesDeCriticidade: NonNullable<Referencia['nomesDeCriticidade']> = {};
@@ -167,13 +185,14 @@ export async function lerReferencia(
     return {
       usuarioId,
       tenantId,
-      hoteis: hoteis.map(({ id, nome }) => ({ id, nome })),
+      hoteis: hoteis.map(({ id, nome, bandeiraId }) => ({ id, nome, bandeiraId })),
       locais,
       ativos,
       nomesDeCriticidade,
       idiomaPadrao: categorias.idiomaPadrao,
       categorias: categorias.categorias,
       ...(codigos ? { codigos } : {}),
+      ...(modelos ? { modelos } : {}),
       lidaEm: Date.now(),
     };
   } catch {

@@ -817,7 +817,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - um conjunto com hotel a mais abre um insight novo, ligado ao aberto mais recente da família;
   - sem insight aberto na família, abre um novo, ligado ao último encerrado, salvo o silêncio de 30 dias depois do descarte "não relevante", a menos que a faixa suba. O descarte "substituído" e o resolvido não silenciam.
 - **Motivo do descarte:** `nao_relevante` ou `substituido`, canônico no domínio, com teste de paridade com o banco, e só no insight descartado. Quem descarta escolhe o motivo e escreve a nota, que continua obrigatória.
-- **Quem lê o insight** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence; aguarda a aprovação escrita do Kaio, porque muda quem vê): só quem decide.
+- **Quem lê o insight** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence, e aprovação escrita do Kaio de 20/10/2026, no mesmo chat: "Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169"; aprovado pelos dois): só quem decide.
   - Insight de hotel: o Admin do grupo, o Gestor CSC e o Gerente com o hotel.
   - Insight de rede: o Admin do grupo e o Gestor CSC que cobrem todos os hotéis do insight.
   - O Técnico, o solicitante, o implantador e o proprietário não leem, nem o proprietário do hotel inteiro: o Intelligence é gerencial.
@@ -858,6 +858,16 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Ressalva:** toda exibição diz que a variação observada não prova que a intervenção foi a causa.
 - **Sem o código de solução, a intervenção não aparece.** O piloto treina o preenchimento desde o primeiro dia, mesmo com a política "Códigos obrigatórios no aceite" desligada (`docs/piloto/`).
 
+**Adendo de 20/10/2026 — o número do insight.** Status: aprovado por escrito em 20/10/2026, no chat do agente do Intelligence, pelo Cesar ("Cesar aqui. 350 mergeado e db push feito. Aprovo o escrito no adendo ao ADR-033") e pelo Kaio ("Kaio aqui.", com "aprovo o adendo ao ADR-033 (número do insight)"). Aprovado pelos dois. O desenho foi decidido pelos dois em 20/10/2026, no chat do agente do Intelligence ("Cesar aqui. Ambos agora." e "Kaio aqui. Sim, continue como cesar quer. (r) e (n) agora"), sobre a proposta registrada em `docs/diario-intelligence.md`, "O item 3: recálculo na tela ou número do insight, proposta".
+- **O que é:** um número sequencial por tenant, o que as pessoas citam ("INS-0133"). O id continua sendo a chave e o link.
+- **Estrutura (migração 0060):** a coluna `app.insight.numero`, obrigatória, a partir de 1, única por tenant (`unique (tenant_id, numero)`). Nenhum papel a atualiza: o `hk_app` e o `hk_worker` mantêm só as colunas que já atualizavam.
+- **Quem dá o número:** o job, ao abrir o insight, com o maior do tenant mais um, na mesma transação (`packages/db`, `abrirInsight`). Não há sequência, função nem trigger no banco. Se dois jobs do mesmo tenant correrem juntos, a chave única recusa o segundo número igual, e aquele job falha e roda de novo.
+- **Os que já existiam:** recebem o número na própria migração, pela ordem de abertura (primeira detecção, criação e id) em cada tenant.
+- **Quem vê:** quem lê o insight. O número segue a RLS da `app.insight`.
+- **Na tela:** "INS-0133 · tipo" na lista, na página do insight e nos insights do ativo, com quatro dígitos ao menos. O texto "INS-{numero}" fica no catálogo (regra 11).
+- **Procurar pelo número:** o campo "Número do insight" da lista aceita "INS-0133", "0133" ou "133". Com o número, a lista procura em qualquer estado e o filtro de estado fica desligado. A API recebe `numero` em `GET /api/v1/inteligencia/insights`.
+- **Por tenant, e não global:** um número global (identity) daria a cada grupo uma ideia do volume dos outros pelos saltos da sequência.
+
 ## ADR-034 — Intelligence: scores determinísticos, versionados e explicáveis, calculados na aplicação
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-2, e por Cesar em 07/10/2026. Aprovada pelos dois.
@@ -876,7 +886,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **"Por que estou vendo isso?"** sai de `motivosDoScore`, com a frase no catálogo, nos quatro idiomas.
 - Sem view materializada e sem função SQL nova.
 
-**Adendo — atenção ao ativo na versão 2 (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026; o texto deste adendo aguarda a aprovação escrita de Cesar e de Kaio. O motor mudou nos PRs #157 (atenção), #158 (efetividade) e #159 (padrão sistêmico).
+**Adendo — atenção ao ativo na versão 2 (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026. O texto deste adendo foi aprovado por escrito em 20/10/2026, no chat do agente do Intelligence, pelo Kaio ("Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169") e pelo Cesar ("Cesar aqui: aprovo no texto dos adendos de 08/10 aos ADR-034 e ADR-036"). Aprovado pelos dois. O motor mudou nos PRs #157 (atenção), #158 (efetividade) e #159 (padrão sistêmico).
 - **Oito componentes com peso e os UH-dias com peso 0**, nove no motor. Os pesos padrão são política (ADR-035) e somam 100:
 
   | Componente | Peso | Origem |
@@ -952,6 +962,17 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **Quem tem também um papel fora da política** decide só pelos papéis dela. A leitura continua a da RLS da `app.insight`.
 - **Sem mudança no banco:** quem vê a tela é permissão de ação, na aplicação (regra 2). Nenhuma migração, policy ou função.
 
+### Adendo de 20/10/2026: a tela de reclamações antes da abertura
+
+**Status:** aprovado por escrito em 21/10/2026, no chat do agente do Intelligence, pelo Cesar ("Cesar aqui. 362 mergeado e db push feito. Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura).") e pelo Kaio ("KAio aqui Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura)."). Aprovado pelos dois. A decisão é dos dois, em 20/10/2026, no chat do agente do Intelligence: "Sim, deve" (Cesar, sobre abrir a tela de reclamações antes da data de abertura das telas) e "sim para a tela de reclamações antes da abertura" (Kaio, sobre a proposta registrada em `docs/diario-intelligence.md`, "O merge do #350, o 'aprovo' do Cesar no adendo ao ADR-033 e as respostas de 20/10/2026"). O código entrou no #358.
+
+**Decisão:**
+- **A tela de reclamações de hóspedes** (importação, fila, classificação e abrir chamado da reclamação, ADR-047) vale desde o início do contrato do módulo, sem esperar a data de `inteligencia.visibilidade_telas`. Ela vale para os papéis da política e, entre eles, só para quem decide insight no hotel, como antes.
+- **O resto do painel continua como no adendo de 12/10/2026:** a lista de insights, as páginas do insight e do ativo, as listas de reclamações dessas páginas e o chamado do insight abrem só na data.
+- **Antes da data:** o item do menu leva às reclamações. Para o Admin do grupo, leva à página da abertura, que tem o link delas. A tela não leva aos insights nem à página do ativo. `GET /api/v1/inteligencia/sinais/acesso` diz à tela e ao menu se as telas já abriram.
+- **O job não muda:** as reclamações classificadas entram no score e na regra sistêmica desde o primeiro dia. Os insights que elas abrem aparecem na data, com os outros.
+- **Sem mudança no banco:** é permissão de ação, na aplicação (`exigirReclamacoes` no `packages/inteligencia`; regra 2).
+
 ## ADR-036 — Intelligence: resultados diários e mensais gravados por job do worker
 
 **Status:** aprovada por Kaio em 05/10/2026, como ADR-INT-4, com a retenção e a agregação mensal decididas no mesmo dia; aprovada por Cesar em 07/10/2026, com a condição abaixo. Revisão de 06/10/2026, que troca a guarda de 12 meses pela janela de leitura e registra a pendência de particionamento: aprovada por Kaio e por Cesar (07/10/2026). A condição do Cesar foi aceita por Kaio em 07/10/2026 e está aplicada no motor.
@@ -966,7 +987,7 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
 - **O painel mostra o resultado original gravado de cada dia** (decisão de 07/10/2026). Os recálculos seguem guardados e aparecem só no painel de investigação, sob demanda e identificados como recálculo. O recálculo de um dia nunca gravado é o único registro do dia e aparece como tal.
 - O recálculo grava só métrica: não abre nem atualiza insight.
 
-**Quem lê a métrica diária** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence; aguarda a aprovação escrita do Kaio, porque muda quem vê): só quem decide, como no insight de hotel (ADR-033).
+**Quem lê a métrica diária** (decisão do Cesar de 10/10/2026, no chat do agente do Intelligence, e aprovação escrita do Kaio de 20/10/2026, no mesmo chat: "Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169"; aprovado pelos dois): só quem decide, como no insight de hotel (ADR-033).
 - O Admin do grupo, o Gestor CSC e o Gerente com o hotel.
 - O Técnico, o solicitante, o implantador e o proprietário não leem, nem o proprietário do hotel inteiro: o Intelligence é gerencial.
 - Na migração 0039, a policy de leitura usa os papéis em lista explícita, e não `authz.hoteis_leitura()`, que inclui o proprietário com escopo de hotel (pgTAP 032).
@@ -988,10 +1009,11 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - Quando o volume pedir, a tabela passa a ser particionada por mês. A partição que sair da janela poderá ser removida por operação do responsável (o Cesar), nunca por papel da aplicação.
   - Isso pede ajuste nos meta-testes 1, 2 e 28, porque cada partição é vista como tabela. Também pede RLS forçada em cada partição e PK com o dia.
   - A análise está em `docs/referencia/retencao-metrica-diaria.md` (opção A). A decisão é do Cesar, antes do piloto ou quando o volume pedir.
+  - **Decidido pelo Cesar em 20/10/2026**, no chat do agente do Intelligence: "Particionada", antes do piloto. O desenho (a migração, as partições, os meta-testes e quem cria a partição de cada mês) vai em proposta própria e entra como adendo a este ADR, com a aprovação escrita de Cesar e de Kaio.
 - Toda tabela com `tenant_id NOT NULL`, RLS forçada, policies por papel e os seis casos de isolamento.
 - **Recálculo pontual** por handler do outbox, nunca por trigger. Nenhuma IA em request de painel.
 
-**Adendo — versões gravadas por área e formato das políticas (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026; o texto deste adendo aguarda a aprovação escrita de Cesar e de Kaio.
+**Adendo — versões gravadas por área e formato das políticas (08/10/2026).** Status: o conteúdo (as propostas de 08/10 e as respostas do Kaio de 10/10) foi aprovado por Cesar e Kaio em 10/10/2026. O texto deste adendo foi aprovado por escrito em 20/10/2026, no chat do agente do Intelligence, pelo Kaio ("Kaio aqui. aprovo dos itens 1 a 4 acima e o comentário na #169") e pelo Cesar ("Cesar aqui: aprovo no texto dos adendos de 08/10 aos ADR-034 e ADR-036"). Aprovado pelos dois.
 - **Versões vigentes:** reincidência 1, atenção ao ativo 2, efetividade 2 e sinal sistêmico 2.
   - A métrica diária grava `versao_formula_reincidencia` e `versao_formula_atencao`.
   - O insight grava a versão da detecção que o abriu (`versao_score`: a da atenção, ou a do sinal sistêmico).
@@ -1015,6 +1037,21 @@ Decisões de engenharia que o código deve respeitar. Mudança em qualquer uma d
   - os 3 hotéis são hotéis distintos com pelo menos um chamado contado na janela em ativos do modelo; ter o modelo instalado não basta;
   - o escopo do insight do mesmo modelo passa a `{ categoriaId, modelo }`, e a família muda junto (`sistemico|categoriaId=...|modelo=...|regra=mesmo_modelo`).
 - **O formato das políticas muda nas três chaves** (atenção: pesos; efetividade: limiares; sistêmico: `ativa` e mínimos). Quando o formato mudou, nenhum valor de política do Intelligence podia ser gravado (a extensão do módulo ainda não estava registrada), então não há valor antigo a migrar. Daqui para a frente, mudar o formato de uma chave exige versão nova da fórmula e um plano para os valores já gravados.
+
+### Adendo de 20/10/2026: a métrica diária particionada por mês
+
+**Status:** aprovado por escrito em 21/10/2026, no chat do agente do Intelligence, pelo Cesar ("Cesar aqui. 362 mergeado e db push feito. Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura).") e pelo Kaio ("KAio aqui Aprovo escrito nos adendos de 20/10/2026 aos ADR-036 (particionamento) e ADR-035 (reclamações antes da abertura)."). Aprovado pelos dois. A migração 0061 entrou no #362 e foi aplicada no dev pelo `db push` do Cesar. As decisões são de 20/10/2026, no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O particionamento da métrica diária: proposta":
+- particionar antes do piloto (Cesar: "Particionada");
+- com a partição padrão (Cesar: "Com partição padrão"; Kaio: "sim na (pb)");
+- as partições até dezembro de 2027 e a migração agora são as recomendações da proposta, que o Cesar pode mudar no PR.
+
+**Decisão (migração 0061):**
+- **A `app.metrica_ativo_diaria` é particionada por intervalo de `dia`,** uma partição por mês, de janeiro de 2024 a dezembro de 2027 (`app.metrica_ativo_diaria_AAAA_MM`). O nome, as colunas, os checks, as FKs, os grants e as policies da tabela não mudam. Por isso o Kysely, o job e o painel não mudam.
+- **As chaves levam o dia:** a PK é `(id, dia)`, e `unique (tenant_id, id, dia)` substitui `unique (tenant_id, id)`. Nenhuma tabela aponta FK para a métrica.
+- **A partição padrão** (`app.metrica_ativo_diaria_padrao`) recebe o dia fora dos meses criados, para o job não falhar se a migração do ano seguinte atrasar. O registro da execução do job (`job_inteligencia` na auditoria) traz `metricasNaParticaoPadrao`, as linhas do dia que foram para ela. Diferente de zero, é o aviso para criar o ano. A migração que criar um mês com linhas na padrão tira essas linhas de lá antes, na mesma migração.
+- **As partições têm RLS habilitada e forçada e nenhum grant.** Grants e policies ficam na tabela-mãe. Ninguém da aplicação lê nem grava pela partição (meta-teste 35, pgTAP 032). O meta-teste 28 lista só as tabelas-mãe.
+- **Nenhum papel da aplicação cria partição,** nem o job. O ano seguinte vem numa migração nova, antes de janeiro de 2028.
+- **Nada é apagado** (a opção B, aprovada, continua). Remover a partição que sair da janela, se um dia for decidido, é operação do responsável, nunca de papel da aplicação.
 
 ## ADR-037 — Intelligence: o módulo depende do núcleo, nunca o contrário
 
@@ -1424,7 +1461,7 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 
 ## ADR-047 — Intelligence: o sinal do hóspede, importado e classificado sem IA
 
-**Status:** aguarda aprovação de Cesar e de Kaio, por escrito (ADR-033, "Quem aprova ADR do Intelligence"). A decisão de trazer agora a parte da 1.5 que não precisa de IA foi dada pelos dois em 16/10/2026, no chat do agente do Intelligence ("Cesar aqui. De acordo. Prossiga" e "Kaio aqui. De acordo. Prossiga"), sobre a proposta registrada em `docs/diario-intelligence.md`, "A 1.5 sem IA: o sinal do hóspede". Esse "de acordo" aprova o rumo; o texto deste ADR só vale com o "aprovo" dos dois depois de lido.
+**Status:** aprovado por Cesar e por Kaio em 17/10/2026, por escrito, no chat do agente do Intelligence ("Cesar aqui. O “aprovo” a ADR-047." e "kaio aqui. O “aprovo” a ADR-047."), como pede o ADR-033 ("Quem aprova ADR do Intelligence"). A aprovação veio depois do merge do #308 (migração 0052), do #309 (migração 0053) e do #311 (as rotas e a tela), e cobre o texto deste ADR na `main`, com a migração 0053. A decisão de trazer agora a parte da 1.5 que não precisa de IA já tinha sido dada pelos dois em 16/10/2026, no mesmo chat ("Cesar aqui. De acordo. Prossiga" e "Kaio aqui. De acordo. Prossiga"), sobre a proposta registrada em `docs/diario-intelligence.md`, "A 1.5 sem IA: o sinal do hóspede".
 
 **Contexto:**
 - O PRD do Intelligence põe o feedback do hóspede na 1.5 (seções 10, 11, 26 e 33): fontes por CSV, API e webhook, classificação por IA, associação a hotel, UH e ativo, e o Guest Impact Score. O ADR-033 já diz que "a tabela de sinais nasce na 1.5, só para o feedback externo, com os três estados de associação".
@@ -1460,3 +1497,47 @@ As decisões 5 a 8, de que este ADR parte, já tinham sido aprovadas por ele no 
 - **Riscos aceitos:**
   - a classificação à mão dá trabalho ao gerente e ao CSC, e o volume do piloto ainda não é conhecido. O tamanho da fila mostra se a sugestão da IA precisa vir antes;
   - sem as respostas do cliente, o CSV de colunas fixas pode pedir conversão da exportação de cada ferramenta.
+
+**Adendo de 17/10/2026 (decisões D1 a D4 do PR C):** aprovado por Cesar ("Cesar aqui. Siga") e por Kaio ("Kaio aqui, de acordo com as decisões D1 a D4"), no chat do agente do Intelligence, sobre a proposta registrada em `docs/diario-intelligence.md`, "O PR C do sinal do hóspede: proposta".
+- **D1:** o score vale no hotel com alguma reclamação importada na janela; no hotel sem nenhuma, o impacto no hóspede continua a porcentagem dos chamados, e a evidência diz a fonte. Isso ajusta o "no lugar da porcentagem" da decisão acima.
+- **D2:** só a ligação confirmada pesa; a possível aparece na explicação.
+- **D3:** a regra sistêmica das reclamações vem ligada por padrão, e a página do insight lista as reclamações da evidência.
+- **D4:** o PR C sai em partes: C1a (a regra e a retenção, #314), C1b (o score, a atenção versão 7 e a substituição versão 2, com a política `inteligencia.impacto_hospede`, #318) e C2 (as telas).
+
+**Adendo de 19/10/2026 (abrir chamado a partir da reclamação):** aprovado pelo Cesar ("cesar aqui. Aprovo o adendo ao ADR-047" e, na tabela de ligação, "Cesar aqui. Vamos conforme recomendado"), e pelo Kaio ("Kaio aqui. Aprovo A troca da coluna pela tabela (a1) e o adendo ao ADR-047"), em 19/10/2026, no chat do agente do Intelligence. Proposta em `docs/diario-intelligence.md`, "Abrir chamado a partir da reclamação: proposta".
+- **O chamado abre pelo caso de uso `abrir` do núcleo**, sem mudança nele: a mesma validação, a mesma prioridade pela categoria, o mesmo SLA, a mesma auditoria e o mesmo evento `chamado.aberto`. Quem abre é a pessoa logada, e a `origem` continua `interno` (d): a IX2 usa esse campo para a integração.
+- **A ligação fica do lado do Intelligence**, na tabela `app.sinal_hospede_chamado` (migração 0057, a1): uma ligação por reclamação, só de inserção; a reclamação e o chamado do mesmo hotel, e liga quem abriu o chamado (FK para a chave `(hotel_id, id, aberto_por)` da `app.chamado`). Lê e liga quem decide insight no hotel, em nome próprio. A tabela, e não uma coluna na `app.sinal_hospede`, porque a policy de UPDATE da reclamação só aceita a gravação de quem classificou. O núcleo não fica sabendo do Intelligence.
+- **Duas transações (b):** o chamado pelo caso de uso do núcleo; depois a ligação, conferindo antes que a reclamação ainda não tem chamado. Se a ligação falhar, o chamado fica sem ligação, e a tela mostra o erro.
+- **O texto do hóspede não vai para a descrição do chamado (c):** o Técnico e a Solicitante leem o chamado, mas não a reclamação, e o texto tem retenção própria. A descrição vem com uma sugestão sem o texto (fonte, data, categoria e UH), e a pessoa escreve o resto.
+- **Onde:** na fila de reclamações, para a reclamação classificada como de manutenção, com UH ou ativo. Os rótulos, a sugestão da descrição e onde mais o botão aparece são detalhe do Kaio.
+- **Fica para depois:** um chamado para várias reclamações de uma vez (o insight sistêmico) e ligar a reclamação a um chamado que já existe.
+
+## ADR-048 — Mews V1: checkpoints duráveis, isolamento e sincronização somente leitura
+
+**Status:** aprovado por Cesar em 17/10/2026, na conversa de revisão da migração Mews, com resposta expressa **“Simm aprovo”** à pergunta de aprovação formal da ADR. **A aprovação não autoriza aplicação de migração no Supabase-dev, staging ou produção, nem uso de credenciais reais.** Documentação de referência: `docs/referencia/laboratorio-eu/mews-poc/ADR-CHECKPOINTS-DURAVEIS-PROPOSTA.md` (histórico e adendo de aprovação).
+
+**Contexto:** o laboratório da Mews (PRs #304 e #305) demonstrou leitura, projeção, tratamento de falhas, checkpoints e reconciliação em memória. A migração 0054 do PR #313 foi incorporada à `main` com a estrutura física, testes pgTAP e tipos Kysely, mas isso não confirma a aplicação em Supabase-dev. É necessário um driver transacional durável antes de sincronizar dados reais.
+
+**Decisão:**
+- Mews é conector **somente leitura**; a V1 aparece inicialmente apenas em administração. Não cria OS, não atualiza status de quarto/UH, licença ou PMS, não insere hóspedes/notas/PII, não guarda credenciais em claro.
+- Escopo estrito `tenant_id + hotel_id + enterprise_id`; vínculo válido/revogado é verificado pelo servidor e revalidado dentro da transação. Recursos permitidos são **Space** previamente validados; bloqueios permitidos `OutOfOrder` e `InternalUse`. Nenhuma informação de payload sintético prova autorização de recurso.
+- Persistência técnica usa `app.mews_vinculo`, `app.mews_checkpoint`, `app.mews_recurso`, `app.mews_bloqueio`, com FKs compostas, RLS `ENABLE/FORCE`, `hk_worker` segregado por tenant e privilégios mínimos. `hk_app` recebe só o necessário para o vínculo administrativo; referência do cofre não é legível por esse papel.
+- **Duas marcas independentes:** `ultimo_updated_utc` para sincronização incremental e `ultimo_sweep_utc` para varredura de bloqueios futuros. Cada commit aplica projeção e watermark correspondente **na mesma transação**, com controle CAS de versão e replay idempotente por digest. Falha encerra com `ROLLBACK` completo.
+- Tombstone prevalece sobre evento ativo com o **mesmo** `UpdatedUtc`; só uma versão temporal estritamente posterior pode substituí-lo de acordo com a regra validada do domínio. Ausência num delta/sweep não é exclusão.
+- O driver pertence à camada `packages/db` e respeita `withSistema`, Unit of Work, auditoria/outbox e limites de payload/observabilidade. Não criar trigger, nova função SQL nem automação operacional sem nova decisão.
+- A migração 0054 já mergeada **não será editada retroativamente**. Correções futuras no banco devem ocorrer por nova migração e PR de zona protegida.
+
+**Antes do primeiro uso em DEV:** conferir o estado atual de migrações sem executar SQL; concluir driver, testes de concorrência, perda de conexão, revogação e rollback, política GDPR/retenção e cofre de segredos; exigir CI verde, revisão técnica e **autorização específica** do Cesar para o `db push`. DEV, staging e produção não recebem autorização automática por esta ADR.
+
+**Riscos aceitos no desenho:** latência de reconciliação de acordo com janela e rate limit Mews; a atualização do estado técnico depende de validação de recursos por propriedade e de transações idempotentes. A operação hoteleira permanece desacoplada nesta V1.
+
+### Adendo ADR-048 — leitura administrativa de estado Mews (aprovação de 17/10/2026)
+
+**Aprovação expressa do Cesar nesta conversa (17/10/2026):** respondeu **“Sim, autorizo”** à pergunta: “Você aprova formalmente que somente o Admin do grupo visualize os horários e a versão da sincronização Mews, além das contagens de recursos e bloqueios técnicos?”. A aprovação é **apenas dessa consulta administrativa**; não autoriza merge, `db push`, uso de credenciais reais ou ativação de conector.
+
+**Decisão autorizada para a migração 0056, no PR #323:**
+- `hk_app` consulta `app.mews_checkpoint` somente nas colunas de escopo, versão, marcas UTC e conclusão; não lê digest.
+- `hk_app` consulta `app.mews_recurso` apenas colunas de escopo e `ativo`, e `app.mews_bloqueio` apenas colunas de escopo, tipo e `ativo`, para **contagens**; não recebe `resource_id`, `block_id`, intervalos ou dados operacionais.
+- `RLS FORCE`: apenas Admin do grupo vigente no tenant e com vínculo Mews **não revogado**; gerente, proprietário, implantador, tenant alheio e sessão sem contexto continuam sem acesso. Nenhuma permissão INSERT/UPDATE/DELETE nova para `hk_app`.
+- Leitura servida exclusivamente pelo backend autenticado. Não expor tabelas via Data API ou browser. Nenhuma OS, alteração de UH, escrita no PMS ou ingestão real é autorizada por esta decisão.
+- Revisão pgTAP, CI e aprovação humana de merge permanecem obrigatórias. **Aplicação em Supabase-dev/produção depende de autorização posterior e específica.**

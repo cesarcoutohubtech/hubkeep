@@ -10,6 +10,7 @@
 // aceita da gestão do hotel. Visual do pacote de interface (ADR-038, U4b).
 // Compra, garantia e criticidade (fase 1b, I1): o nome de cada nível vem da
 // política do hotel (na resposta da lista) ou do catálogo.
+import { preencherComModelo } from '@hubkeep/dominio';
 import { type Idioma, resolverNome } from '@hubkeep/i18n';
 import {
   Botao,
@@ -22,14 +23,19 @@ import {
   Selo,
   type TomDeSelo,
 } from '@hubkeep/ui';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { AnexosDoRegistro } from '../../../../cliente/AnexosDoRegistro';
 import { HistoricoDoRegistro } from '../../../../cliente/HistoricoDoRegistro';
 import { QrDoAtivo } from '../../../../cliente/QrDoAtivo';
 import { type ErroDaApi, chamarApi } from '../../../../cliente/api';
 import { Aviso, type AvisoDeAcao } from '../../../../cliente/aviso';
-import { SeletorDeHotel, useHoteis } from '../../../../cliente/cadastro';
+import {
+  type Hotel,
+  SeletorDeHotel,
+  useHoteis,
+  valeParaOHotel,
+} from '../../../../cliente/cadastro';
 import { CampoDeBusca, comBusca } from '../../../../cliente/CampoDeBusca';
 import {
   CamposDaCategoria,
@@ -73,6 +79,7 @@ interface Ativo {
   id: string;
   localId: string;
   categoriaId: string | null;
+  modeloId: string | null;
   nome: string;
   fabricante: string | null;
   modelo: string | null;
@@ -86,6 +93,9 @@ interface Ativo {
   codigoQr: string;
   /** Início da parada aberta (C5); null se não está parado. */
   paradoDesde: string | null;
+  /** A situação do cadastro (M4) e o motivo da recusa. */
+  situacaoCadastro?: 'pendente' | 'aprovado' | 'recusado';
+  motivoDaRecusa?: string | null;
 }
 
 interface Parada {
@@ -109,19 +119,68 @@ const texto = (f: FormData, campo: string) => {
   return v === '' ? null : v;
 };
 
-/** Formulário de um ativo, novo ou existente: a categoria escolhida decide os campos. */
+/** O modelo de ativo (M1) que o cadastro oferece. */
+interface ModeloDeAtivo {
+  id: string;
+  categoriaId: string;
+  nome: string;
+  fabricante: string | null;
+  modelo: string | null;
+  campos: Record<string, Valor>;
+  ativa: boolean;
+  /** PB1b: nulo vale para o grupo. */
+  bandeiraId?: string | null;
+}
+
+/** O que o formulário mostra: o gravado, ou o rascunho depois de escolher o modelo. */
+interface Rascunho {
+  localId: string;
+  nome: string;
+  fabricante: string;
+  modelo: string;
+  numeroSerie: string;
+  dataCompra: string;
+  garantiaAte: string;
+  criticidade: string;
+  campos: Record<string, Valor>;
+}
+
+const rascunhoDoAtivo = (a: Ativo | null): Rascunho => ({
+  localId: '',
+  nome: a?.nome ?? '',
+  fabricante: a?.fabricante ?? '',
+  modelo: a?.modelo ?? '',
+  numeroSerie: a?.numeroSerie ?? '',
+  dataCompra: a?.dataCompra ?? '',
+  garantiaAte: a?.garantiaAte ?? '',
+  criticidade: a?.criticidade === null || a?.criticidade === undefined ? '' : String(a.criticidade),
+  campos: a?.campos ?? {},
+});
+
+/**
+ * Formulário de um ativo, novo ou existente: a categoria escolhida decide os
+ * campos. Escolher o modelo (M1) preenche só o que está vazio e nunca
+ * sobrescreve (preencherComModelo, do domínio); sem categoria, o ativo fica
+ * com a do modelo. Os campos não são controlados: o formulário remonta com o
+ * rascunho preenchido. Só os modelos do grupo e os da bandeira do hotel
+ * entram na escolha (PB1b); o que o ativo já tem continua.
+ */
 function FormularioDeAtivo({
   ativo,
+  hotel,
   locais,
   categorias,
+  modelos,
   nomeDaCategoria,
   nomeDaCriticidade,
   rotulo,
   executar,
 }: {
   ativo: Ativo | null;
+  hotel: Hotel | undefined;
   locais: readonly Local[];
   categorias: readonly Categoria[];
+  modelos: readonly ModeloDeAtivo[];
   nomeDaCategoria: (c: Categoria) => string;
   nomeDaCriticidade: (nivel: number) => string;
   rotulo: (r: Rotulos, reserva: string) => string;
@@ -130,9 +189,55 @@ function FormularioDeAtivo({
   const t = useT();
   const categoria = (id: string | null) => categorias.find((c) => c.id === id) ?? null;
   const [categoriaId, setCategoriaId] = useState<string | null>(ativo?.categoriaId ?? null);
+  const [modeloId, setModeloId] = useState<string | null>(ativo?.modeloId ?? null);
+  const [rascunho, setRascunho] = useState<Rascunho>(() => rascunhoDoAtivo(ativo));
+  const [geracao, setGeracao] = useState(0);
+  const formulario = useRef<HTMLFormElement>(null);
   const definicoes = categoria(categoriaId)?.campos ?? [];
   const valorDe = (chave: string) =>
-    categoriaId === ativo?.categoriaId ? ativo?.campos[chave] : undefined;
+    geracao > 0 || categoriaId === ativo?.categoriaId ? rascunho.campos[chave] : undefined;
+  const modelosQueCabem = modelos.filter(
+    (m) =>
+      (m.ativa &&
+        (categoriaId === null || m.categoriaId === categoriaId) &&
+        valeParaOHotel(m, hotel)) ||
+      m.id === ativo?.modeloId,
+  );
+
+  function escolherModelo(id: string) {
+    const m = modelos.find((x) => x.id === id);
+    if (!m || !formulario.current) {
+      setModeloId(null);
+      return;
+    }
+    const f = new FormData(formulario.current);
+    const atual = (campo: string) => String(f.get(campo) ?? '');
+    const preenchido = preencherComModelo(
+      {
+        categoriaId,
+        nome: atual('nome'),
+        fabricante: atual('fabricante'),
+        modelo: atual('modelo'),
+        campos: camposDoFormulario(f, definicoes),
+      },
+      m,
+      categoria(m.categoriaId)?.campos ?? [],
+    );
+    setRascunho({
+      localId: atual('localId'),
+      nome: preenchido.nome,
+      fabricante: preenchido.fabricante ?? '',
+      modelo: preenchido.modelo ?? '',
+      numeroSerie: atual('numeroSerie'),
+      dataCompra: atual('dataCompra'),
+      garantiaAte: atual('garantiaAte'),
+      criticidade: atual('criticidade'),
+      campos: preenchido.campos,
+    });
+    setCategoriaId(preenchido.categoriaId);
+    setModeloId(m.id);
+    setGeracao((g) => g + 1);
+  }
 
   function enviar(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -147,6 +252,7 @@ function FormularioDeAtivo({
       garantiaAte: texto(f, 'garantiaAte'),
       criticidade: texto(f, 'criticidade') === null ? null : Number(texto(f, 'criticidade')),
       campos: camposDoFormulario(f, definicoes),
+      modeloId,
     };
     void (ativo
       ? executar(`/api/v1/ativos/${ativo.id}`, {
@@ -160,11 +266,11 @@ function FormularioDeAtivo({
   }
 
   return (
-    <form onSubmit={enviar} className="hk-em-linha">
+    <form key={geracao} ref={formulario} onSubmit={enviar} className="hk-em-linha">
       {!ativo && (
         <CampoDoFormulario rotulo={t('admin.ativos.campo.local')}>
           {(p) => (
-            <Selecao {...p} name="localId" required>
+            <Selecao {...p} name="localId" defaultValue={rascunho.localId || undefined} required>
               {locais
                 .filter((l) => l.status !== 'inativo')
                 .map((l) => (
@@ -177,14 +283,33 @@ function FormularioDeAtivo({
         </CampoDoFormulario>
       )}
       <CampoDoFormulario rotulo={t('admin.ativos.campo.nome')}>
-        {(p) => <Entrada {...p} name="nome" defaultValue={ativo?.nome ?? ''} required />}
+        {(p) => <Entrada {...p} name="nome" defaultValue={rascunho.nome} required />}
       </CampoDoFormulario>
+      {modelosQueCabem.length > 0 && (
+        <CampoDoFormulario rotulo={t('admin.ativos.campo.modelo_de_ativo')}>
+          {(p) => (
+            <Selecao {...p} value={modeloId ?? ''} onChange={(e) => escolherModelo(e.target.value)}>
+              <option value="">{t('admin.ativos.sem_modelo')}</option>
+              {modelosQueCabem.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </Selecao>
+          )}
+        </CampoDoFormulario>
+      )}
       <CampoDoFormulario rotulo={t('admin.ativos.campo.categoria')}>
         {(p) => (
           <Selecao
             {...p}
             value={categoriaId ?? ''}
-            onChange={(e) => setCategoriaId(e.target.value || null)}
+            onChange={(e) => {
+              const nova = e.target.value || null;
+              setCategoriaId(nova);
+              // O modelo é de uma categoria só: trocar a categoria tira o modelo.
+              if (modelos.find((m) => m.id === modeloId)?.categoriaId !== nova) setModeloId(null);
+            }}
           >
             <option value="">{t('admin.ativos.sem_categoria')}</option>
             {categorias
@@ -199,17 +324,17 @@ function FormularioDeAtivo({
       </CampoDoFormulario>
       {(['fabricante', 'modelo', 'numeroSerie'] as const).map((campo) => (
         <CampoDoFormulario key={campo} rotulo={t(`admin.ativos.campo.${campo}`)}>
-          {(p) => <Entrada {...p} name={campo} defaultValue={ativo?.[campo] ?? ''} />}
+          {(p) => <Entrada {...p} name={campo} defaultValue={rascunho[campo]} />}
         </CampoDoFormulario>
       ))}
       {(['dataCompra', 'garantiaAte'] as const).map((campo) => (
         <CampoDoFormulario key={campo} rotulo={t(`admin.ativos.campo.${campo}`)}>
-          {(p) => <Entrada {...p} type="date" name={campo} defaultValue={ativo?.[campo] ?? ''} />}
+          {(p) => <Entrada {...p} type="date" name={campo} defaultValue={rascunho[campo]} />}
         </CampoDoFormulario>
       ))}
       <CampoDoFormulario rotulo={t('admin.ativos.campo.criticidade')}>
         {(p) => (
-          <Selecao {...p} name="criticidade" defaultValue={String(ativo?.criticidade ?? '')}>
+          <Selecao {...p} name="criticidade" defaultValue={rascunho.criticidade}>
             <option value="">{t('admin.ativos.sem_criticidade')}</option>
             {NIVEIS.map((n) => (
               <option key={n} value={n}>
@@ -223,7 +348,7 @@ function FormularioDeAtivo({
         definicoes={definicoes}
         valorDe={valorDe}
         rotulo={rotulo}
-        prefixoDaChave={String(categoriaId)}
+        prefixoDaChave={`${geracao}|${categoriaId}`}
       />
       <div className="hk-linha-de-botoes">
         <Botao type="submit" variante={ativo ? 'padrao' : 'primario'}>
@@ -494,6 +619,7 @@ export default function AtivosDoHotel() {
     categorias: Categoria[];
   } | null>(null);
   const [ativos, setAtivos] = useState<Ativo[] | null>(null);
+  const [modelos, setModelos] = useState<ModeloDeAtivo[]>([]);
   const [nomesDeCriticidade, setNomesDeCriticidade] = useState<NomesDeCriticidade>({});
   const [busca, setBusca] = useState('');
   const [aviso, setAviso] = useState<AvisoDeAcao | null>(null);
@@ -502,6 +628,10 @@ export default function AtivosDoHotel() {
     void chamarApi<{ idiomaPadrao: Idioma; categorias: Categoria[] }>(
       '/api/v1/categorias-de-ativo',
     ).then((r) => (r.ok ? setCategorias(r.dados) : setAviso({ tipo: 'erro', erro: r.erro })));
+    // Os modelos de ativo (M1) são opcionais no cadastro: sem eles, a escolha some.
+    void chamarApi<{ modelos: ModeloDeAtivo[] }>('/api/v1/modelos-de-ativo').then((r) => {
+      if (r.ok) setModelos(r.dados.modelos);
+    });
   }, []);
 
   const carregar = useCallback(async () => {
@@ -566,8 +696,10 @@ export default function AtivosDoHotel() {
             <FormularioDeAtivo
               key={hotelId}
               ativo={null}
+              hotel={hoteis.find((h) => h.id === hotelId)}
               locais={locais}
               categorias={categorias.categorias}
+              modelos={modelos}
               nomeDaCategoria={nomeDaCategoria}
               nomeDaCriticidade={nomeDaCriticidade}
               rotulo={rotulo}
@@ -617,11 +749,21 @@ export default function AtivosDoHotel() {
                         </Selo>
                       )}
                       {!a.ativo && <Selo tom="cinza">{t('admin.ativos.desativado')}</Selo>}
+                      {a.situacaoCadastro === 'pendente' && (
+                        <Selo tom="ambar">{t('admin.ativos.cadastro_pendente')}</Selo>
+                      )}
+                      {a.situacaoCadastro === 'recusado' && (
+                        <Selo tom="cinza">
+                          {t('admin.ativos.cadastro_recusado', { motivo: a.motivoDaRecusa ?? '' })}
+                        </Selo>
+                      )}
                     </div>
                     <FormularioDeAtivo
                       ativo={a}
+                      hotel={hoteis.find((h) => h.id === hotelId)}
                       locais={locais}
                       categorias={categorias.categorias}
+                      modelos={modelos}
                       nomeDaCategoria={nomeDaCategoria}
                       nomeDaCriticidade={nomeDaCriticidade}
                       rotulo={rotulo}

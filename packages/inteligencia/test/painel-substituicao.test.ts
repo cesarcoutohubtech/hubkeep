@@ -9,9 +9,11 @@ import {
   DIAS_DA_SUBSTITUICAO,
   type LinhaDePolitica,
   type MetricaDoPainel,
+  PADRAO_IMPACTO_HOSPEDE,
   PADRAO_SUBSTITUICAO,
   type ParadaDoAtivo,
   type PortasDaSubstituicao,
+  type SinalDaFonte,
   anosCompletos,
   substituicaoDoAtivo,
 } from '../src/index';
@@ -100,6 +102,10 @@ interface Memoria {
   linhas: LinhaDePolitica[];
   historico: { chamados: ChamadoDaEfetividade[]; paradas: ParadaDoAtivo[] };
   metricas: MetricaDoPainel[];
+  /** As reclamações do hotel (ADR-047) e as linhas de inteligencia.impacto_hospede. */
+  sinais: SinalDaFonte[];
+  linhasDoImpacto: LinhaDePolitica[];
+  leiturasDeSinais: { hotelId: string; desde: Date; ate: Date }[];
   leituras: { ativoIds: readonly string[]; desde: Date; ate: Date }[];
   series: { ativoId: string; desde: string }[];
 }
@@ -111,6 +117,9 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaSubstituicao & { m: Memori
     linhas: [],
     historico: { chamados: [], paradas: [] },
     metricas: [],
+    sinais: [],
+    linhasDoImpacto: [],
+    leiturasDeSinais: [],
     leituras: [],
     series: [],
     ...m,
@@ -143,11 +152,17 @@ function emMemoria(m: Partial<Memoria> = {}): PortasDaSubstituicao & { m: Memori
       mem.series.push({ ativoId, desde });
       return mem.metricas;
     },
+    recalculosDoDia: nao,
     historicoDosAtivos: async (ativoIds, desde, ate) => {
       mem.leituras.push({ ativoIds, desde, ate });
       return mem.historico;
     },
     politicasDaSubstituicao: async () => mem.linhas,
+    politicasDoImpacto: async () => mem.linhasDoImpacto,
+    sinaisDoHotelNaJanela: async (hotelId, desde, ate) => {
+      mem.leiturasDeSinais.push({ hotelId, desde, ate });
+      return mem.sinais.filter((x) => x.hotelId === hotelId);
+    },
   };
 }
 
@@ -165,7 +180,7 @@ describe('sinal de substituição no detalhe do ativo', () => {
     const p = emMemoria({ historico: lavaRoupa(), metricas: [metrica(64)] });
     const r = await substituicaoDoAtivo(p, 'a1', agora);
     expect(r?.substituicao.sinal).toBe('avaliar_substituicao');
-    expect(r?.substituicao.versao).toBe(1);
+    expect(r?.substituicao.versao).toBe(2);
     expect(r?.calculadoEm).toEqual(agora);
     expect(r?.substituicao.criterios.map((c) => [c.chave, c.valor, c.limite, c.atingido])).toEqual([
       ['corretivas12m', 7, 6, true],
@@ -203,7 +218,7 @@ describe('sinal de substituição no detalhe do ativo', () => {
     expect(criterio(r, 'horasParadas12m')?.valor).toBe(42);
   });
 
-  it('o impacto no hóspede é a porcentagem dos chamados de 12 meses que afetaram hóspede', async () => {
+  it('sem reclamação no hotel, o impacto no hóspede é a porcentagem dos chamados de 12 meses (D1)', async () => {
     const p = emMemoria({
       historico: {
         chamados: [
@@ -217,6 +232,43 @@ describe('sinal de substituição no detalhe do ativo', () => {
     });
     const r = await substituicaoDoAtivo(p, 'a1', agora);
     expect(criterio(r, 'impactoHospede')).toMatchObject({ valor: 75, atingido: true });
+  });
+
+  it('com reclamação no hotel, o Guest Impact Score na janela da política do hotel (v2)', async () => {
+    const sinal = (n: number, p: Partial<SinalDaFonte> = {}): SinalDaFonte => ({
+      id: `s${n}`,
+      hotelId: 'h1',
+      ocorridoEm: antes(n),
+      nota: 0,
+      escala: 5,
+      manutencao: true,
+      categoriaId: 'lavanderia',
+      uhId: `uh${n}`,
+      ativoId: 'a1',
+      ligacao: 'confirmada',
+      ...p,
+    });
+    const p = emMemoria({
+      historico: lavaRoupa(),
+      sinais: [sinal(1), sinal(2), sinal(3), sinal(4), sinal(5), sinal(6, { ativoId: 'a2' })],
+      linhasDoImpacto: [
+        {
+          id: 'pi',
+          chave: 'inteligencia.impacto_hospede',
+          escopo: 'grupo',
+          hotelId: null,
+          bandeiraId: null,
+          valor: { ...PADRAO_IMPACTO_HOSPEDE, janelaDias: 30 },
+          atualizadoEm: antes(10),
+        },
+      ],
+    });
+    const r = await substituicaoDoAtivo(p, 'a1', agora);
+    expect(p.m.leiturasDeSinais).toEqual([{ hotelId: 'h1', desde: antes(30), ate: agora }]);
+    const c = criterio(r, 'impactoHospede');
+    // Volume, severidade e amplitude cheios; recorrência: as 5 são depois da última corretiva.
+    expect(c?.atingido).toBe(true);
+    expect(c?.valor).toBeGreaterThanOrEqual(70);
   });
 
   it('na garantia, com dois critérios atingidos: revisão necessária; a garantia vale até o fim do dia no fuso do hotel', async () => {

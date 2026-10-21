@@ -50,6 +50,14 @@ import {
   situacaoDaGarantia,
 } from './historico';
 import {
+  type ConfigImpactoHospede,
+  PADRAO_IMPACTO_HOSPEDE,
+  type SinalDaFonte,
+  hoteisComReclamacao,
+  impactoNoHospede,
+  ultimoReparo,
+} from './impacto-hospede';
+import {
   type AlcanceDoInsight,
   type Deteccao,
   familiaDoInsight,
@@ -67,6 +75,7 @@ import { diaNoFuso, inicioDoDiaNoFuso } from './visibilidade';
 import {
   type ConfigSistemico,
   PADRAO_SISTEMICO,
+  type ReclamacaoAnalisada,
   type RegraSistemica,
   type SinalSistemico,
   detectarSistemicos,
@@ -90,6 +99,8 @@ export interface HotelDoDia {
   /** Políticas do hotel, já resolvidas (hotel → bandeira → grupo → padrão). */
   reincidencia?: ConfigReincidencia;
   atencao?: ConfigAtencao;
+  /** O Guest Impact Score (ADR-047), resolvido como as outras; ausente, o padrão. */
+  impactoHospede?: ConfigImpactoHospede;
   /**
    * Identifica as linhas de app.politica que resolveram as duas políticas (por
    * exemplo, o id e o tualizado_em de cada uma), montado por quem lê o banco;
@@ -138,6 +149,13 @@ export interface EntradaDoDia {
   sistemico?: ConfigSistemico;
   /** O chamado mais antigo de cada hotel entre os lidos, com o cancelado (sistêmico v4). */
   primeiroChamadoPorHotel?: ReadonlyMap<string, Date>;
+  /**
+   * As reclamações de hóspede do tenant, sem o texto (ADR-047): as de
+   * manutenção com categoria entram no sistêmico v5; as ligadas a ativo, no
+   * Guest Impact Score da atenção v7; e todas dizem que hotel tem reclamação
+   * importada na janela.
+   */
+  sinais?: readonly SinalDaFonte[];
 }
 
 export interface ResultadoDoAtivo {
@@ -193,6 +211,23 @@ function porChave<T, K>(xs: readonly T[], k: (x: T) => K): Map<K, T[]> {
   return m;
 }
 
+/** As reclamações de manutenção com categoria, para a regra sistêmica (v5). */
+function reclamacoesDoSistemico(sinais: readonly SinalDaFonte[]): ReclamacaoAnalisada[] {
+  return sinais.flatMap((x) =>
+    x.manutencao === true && x.categoriaId !== null
+      ? [
+          {
+            id: x.id,
+            hotelId: x.hotelId,
+            categoriaId: x.categoriaId,
+            uhId: x.uhId,
+            ocorridoEm: x.ocorridoEm,
+          },
+        ]
+      : [],
+  );
+}
+
 function alcanceDoSinal(
   s: SinalSistemico,
   hoteis: ReadonlyMap<string, HotelDoDia>,
@@ -226,6 +261,18 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
   );
   const dia = [...diaDoHotel.values()].sort()[0] ?? e.agora.toISOString().slice(0, 10);
   const custoDoTenant = custoNaJanela(e.corretivas, e.agora, JANELA_CUSTO_DIAS);
+  const sinais = (e.sinais ?? []).filter((x) => hoteis.has(x.hotelId));
+  const configDoImpacto = (hotelId: string) =>
+    hoteis.get(hotelId)?.impactoHospede ?? PADRAO_IMPACTO_HOSPEDE;
+  const comReclamacao = hoteisComReclamacao(
+    sinais,
+    e.agora,
+    (hotelId) => configDoImpacto(hotelId).janelaDias,
+  );
+  const sinaisDoAtivo = porChave(
+    sinais.filter((x) => x.ativoId !== null),
+    (x) => x.ativoId as string,
+  );
   const comMedicao = new Set(e.categoriasComMedicao ?? []);
 
   const resultados = [...emUso]
@@ -254,7 +301,16 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
             ativo: custoNaJanela(cs, e.agora, JANELA_CUSTO_DIAS),
             tenant: custoDoTenant,
           },
-          impactoHospede: impactoHospedeDosChamados(cs, e.agora, cfgR.janelaDias),
+          impactoHospede: impactoNoHospede(
+            {
+              hotelComReclamacao: comReclamacao.has(a.hotelId),
+              reclamacoes: sinaisDoAtivo.get(a.id) ?? [],
+              ultimoReparoEm: ultimoReparo(cs, e.agora),
+              percentualDosChamados: impactoHospedeDosChamados(cs, e.agora, cfgR.janelaDias),
+            },
+            e.agora,
+            configDoImpacto(a.hotelId),
+          ),
           preventivaAtrasada: a.preventivas?.length
             ? a.preventivas.some((p) =>
                 preventivaAtrasada(p, {
@@ -311,6 +367,7 @@ export function calcularDia(e: EntradaDoDia): ResultadoDoDia {
       ativos,
       locais: e.locais.filter((l) => hoteis.has(l.hotelId)),
       ...(e.primeiroChamadoPorHotel ? { primeiroChamadoPorHotel: e.primeiroChamadoPorHotel } : {}),
+      reclamacoes: reclamacoesDoSistemico(sinais),
     },
     e.agora,
     e.sistemico ?? PADRAO_SISTEMICO,

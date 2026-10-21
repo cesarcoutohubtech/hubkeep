@@ -46,6 +46,8 @@ export interface PropsDoIndicador {
   detalhe?: ReactNode;
   /** A cor da borda; o significado também precisa estar no texto (WCAG 1.4.1). */
   tom?: TomDeIndicador;
+  /** A linha dos últimos dias (MiniLinha), embaixo do detalhe. */
+  tendencia?: ReactNode;
 }
 
 export interface PropsDosIndicadores {
@@ -86,7 +88,14 @@ export function Dados({ itens }: PropsDosDados) {
   );
 }
 
-export function Indicador({ rotulo, valor, unidade, detalhe, tom = 'neutro' }: PropsDoIndicador) {
+export function Indicador({
+  rotulo,
+  valor,
+  unidade,
+  detalhe,
+  tom = 'neutro',
+  tendencia,
+}: PropsDoIndicador) {
   return (
     <div className="hk-indicador" data-tom={tom}>
       <span className="hk-indicador-valor">
@@ -95,6 +104,7 @@ export function Indicador({ rotulo, valor, unidade, detalhe, tom = 'neutro' }: P
       </span>
       <span className="hk-indicador-rotulo">{rotulo}</span>
       {detalhe !== undefined ? <span className="hk-indicador-detalhe">{detalhe}</span> : null}
+      {tendencia !== undefined ? <span className="hk-indicador-tendencia">{tendencia}</span> : null}
     </div>
   );
 }

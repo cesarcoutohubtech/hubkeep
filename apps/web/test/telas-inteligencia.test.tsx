@@ -7,15 +7,24 @@ import { IDIOMAS, type IdiomaDeExibicao, PSEUDO_IDIOMA, mensagensDe } from '@hub
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { Efetividades, Insight, Nomes } from '../src/app/(painel)/inteligencia/comum';
+import type {
+  Efetividades,
+  Insight,
+  Nomes,
+  Reclamacoes,
+} from '../src/app/(painel)/inteligencia/comum';
 import { type Abertura, ConteudoDaAbertura } from '../src/app/(painel)/inteligencia/abertura/tela';
-import { ConteudoDoAtivo } from '../src/app/(painel)/inteligencia/ativos/[id]/tela';
-import { ConteudoDoInsight } from '../src/app/(painel)/inteligencia/insights/[id]/tela';
+import { ConteudoDoAtivo, Recalculos } from '../src/app/(painel)/inteligencia/ativos/[id]/tela';
+import {
+  ConteudoDoInsight,
+  FormularioDoChamadoDoInsight,
+} from '../src/app/(painel)/inteligencia/insights/[id]/tela';
 import {
   AtivosEncontrados,
   SecaoDaEfetividade,
   TabelaDeInsights,
   caminhoDaLista,
+  numeroDigitado,
 } from '../src/app/(painel)/inteligencia/insights/tela';
 import { ProvedorDeIdioma } from '../src/i18n/cliente';
 
@@ -37,6 +46,7 @@ const nomes: Nomes = {
 
 const base: Insight = {
   id: I1,
+  numero: 133,
   hotelId: H1,
   bandeiraId: B,
   hotelIds: [H1],
@@ -167,6 +177,7 @@ const insightDeAtencao = (extra: Partial<Insight> = {}): PaginaDoInsight => ({
     acoes: (extra.podeDecidir ?? true) ? ['revisar', 'aceitar', 'descartar'] : [],
   },
   chamados: [],
+  reclamacoes: null,
   serie,
   nomes,
   efetividade,
@@ -211,9 +222,103 @@ const sistemico: PaginaDoInsight = {
       descricao: 'Porta não fecha',
     },
   ],
+  reclamacoes: null,
   serie,
   nomes,
   efetividade: semEfetividade,
+};
+
+const S = '88888888-8888-4888-8888-888888888881';
+const UH = '88888888-8888-4888-8888-888888888882';
+/** Uma reclamação de hóspede ligada ao ativo, como a API a devolve. */
+const reclamacao = (
+  extra: Partial<Reclamacoes['sinais'][number]> = {},
+): Reclamacoes['sinais'][number] => ({
+  id: S,
+  hotelId: H1,
+  fonte: 'google',
+  idExterno: 'r-1',
+  ocorridoEm: '2026-10-08T12:00:00.000Z',
+  nota: 2,
+  escala: 5,
+  texto: 'O elevador parou com hóspedes dentro',
+  textoApagadoEm: null,
+  idioma: 'pt-BR',
+  uhCitada: '1204',
+  manutencao: true,
+  categoriaId: null,
+  uhId: UH,
+  ativoId: A,
+  ligacao: 'confirmada',
+  classificadoEm: '2026-10-09T10:00:00.000Z',
+  classificadoPor: null,
+  importadoEm: '2026-10-09T09:00:00.000Z',
+  versao: 2,
+  chamadoId: null,
+  ...extra,
+});
+
+const nomesDasReclamacoes = {
+  ativos: { [A]: 'Elevador social 2' },
+  pessoas: {},
+  uhs: { [UH]: 'UH 1204' },
+};
+
+/** Os locais do hotel, como a rota do hotel os devolve. */
+const LOCAIS_DO_HOTEL = [
+  {
+    id: UH,
+    nome: 'UH 1204',
+    tipo: 'uh' as const,
+    andar: '12',
+    edificacao: null,
+    status: 'ativo' as const,
+    origem: 'sistema_hoteleiro' as const,
+    editavel: false,
+  },
+  {
+    id: '88888888-8888-4888-8888-888888888883',
+    nome: 'Casa de máquinas',
+    tipo: 'area_comum' as const,
+    andar: null,
+    edificacao: null,
+    status: 'ativo' as const,
+    origem: 'manual' as const,
+    editavel: true,
+  },
+];
+
+const dasReclamacoes: PaginaDoInsight = {
+  ...sistemico,
+  insight: {
+    ...sistemico.insight,
+    hotelId: H1,
+    hotelIds: [H1],
+    escopo: { regra: 'reclamacoes_categoria', categoriaId: K },
+    detalhe: {
+      regra: 'reclamacoes_categoria',
+      situacao: 'possivel',
+      versao: 5,
+      chave: {},
+      evidencia: {
+        quantidade: 3,
+        distintos: 2,
+        janelaDias: 14,
+        hotelIds: [H1],
+        corretivaIds: [],
+        sinalIds: [S],
+      },
+    },
+    evidencia: { sinalIds: [S], corretivaIds: [] },
+  },
+  chamados: [],
+  reclamacoes: {
+    sinais: [reclamacao()],
+    total: 3,
+    limitada: false,
+    janelaDias: null,
+    nomes: nomesDasReclamacoes,
+  },
 };
 
 const ativo: PaginaDoAtivo = {
@@ -244,6 +349,18 @@ const ativo: PaginaDoAtivo = {
     detalheAtencao: score,
     detalheReincidencia: {},
   },
+  recalculos: [
+    {
+      calculo: 2,
+      calculadoEm: '2026-10-12T14:00:00.000Z',
+      atencao: 64,
+      faixa: 'atencao',
+      reincidencia: null,
+      versaoFormulaAtencao: 7,
+      versaoFormulaReincidencia: 4,
+      versaoPolitica: 'padrao',
+    },
+  ],
   insights: [base],
   nomes,
   efetividade,
@@ -263,6 +380,70 @@ const ativo: PaginaDoAtivo = {
       { chave: 'reincidencia', valor: null, limite: 70, atingido: null },
     ],
     calculadoEm: '2026-10-10T15:00:00.000Z',
+  },
+  reclamacoes: {
+    sinais: [],
+    total: null,
+    limitada: false,
+    janelaDias: 90,
+    nomes: nomesDasReclamacoes,
+  },
+};
+
+/** A atenção 7 pelas reclamações: o score e os componentes gravados na evidência. */
+const scorePelasReclamacoes = {
+  ...score,
+  componentes: score.componentes.map((c) =>
+    c.chave === 'impacto_hospede'
+      ? componente('impacto_hospede', 0.15, 0.62, {
+          score: 62,
+          fonte: 'reclamacoes',
+          versaoImpacto: 1,
+          confirmadas: 3,
+          possiveis: 1,
+          janelaDias: 90,
+          uhs: 2,
+          depoisDoReparo: null,
+          notaMediaEm5: 2,
+          percentualDosChamados: 40,
+          valorVolume: 0.6,
+          pesoVolume: 0.3,
+          pontosVolume: 22.5,
+          valorSeveridade: 0.6,
+          pesoSeveridade: 0.25,
+          pontosSeveridade: 18.8,
+          valorRecorrencia: null,
+          pesoRecorrencia: 0.2,
+          pontosRecorrencia: 0,
+          valorAmplitude: 0.67,
+          pesoAmplitude: 0.15,
+          pontosAmplitude: 12.5,
+          valorOperacional: 0.4,
+          pesoOperacional: 0.1,
+          pontosOperacional: 5,
+        })
+      : c,
+  ),
+};
+
+const ativoComReclamacoes: PaginaDoAtivo = {
+  ...ativo,
+  atual: {
+    ...(ativo.atual as NonNullable<PaginaDoAtivo['atual']>),
+    detalheAtencao: scorePelasReclamacoes,
+  },
+  reclamacoes: {
+    ...ativo.reclamacoes,
+    sinais: [
+      reclamacao(),
+      reclamacao({
+        id: '88888888-8888-4888-8888-888888888883',
+        ligacao: 'possivel',
+        texto: null,
+        textoApagadoEm: '2026-10-09T03:00:00.000Z',
+        uhId: null,
+      }),
+    ],
   },
 };
 
@@ -289,6 +470,19 @@ describe('telas do Intelligence em todos os idiomas, sem chave crua', () => {
       renderizar(idioma, <ConteudoDoInsight pagina={insightDeAtencao()} aoDecidir={nada} />),
       renderizar(idioma, <ConteudoDoInsight pagina={sistemico} aoDecidir={nada} />),
       renderizar(idioma, <ConteudoDoAtivo pagina={ativo} />),
+      renderizar(idioma, <ConteudoDoInsight pagina={dasReclamacoes} aoDecidir={nada} />),
+      renderizar(
+        idioma,
+        <FormularioDoChamadoDoInsight
+          insightId={dasReclamacoes.insight.id}
+          hotelId={H1}
+          reclamacoes={dasReclamacoes.reclamacoes as Reclamacoes}
+          aoCancelar={nada}
+          aoAbrir={nada}
+          locaisIniciais={LOCAIS_DO_HOTEL}
+        />,
+      ),
+      renderizar(idioma, <ConteudoDoAtivo pagina={ativoComReclamacoes} />),
       renderizar(idioma, <ConteudoDaAbertura abertura={fechada} aoGravar={nada} />),
       renderizar(idioma, <SecaoDaEfetividade efetividade={efetividade} />),
       renderizar(idioma, <SecaoDaEfetividade efetividade={semEfetividade} />),
@@ -320,9 +514,28 @@ describe('a lista', () => {
   });
 
   it('o filtro vira query, sem os campos vazios', () => {
-    expect(caminhoDaLista({ estado: 'abertos', tipo: '', faixa: 'critico', hotelId: '' })).toBe(
-      '/api/v1/inteligencia/insights?estado=abertos&faixa=critico',
+    expect(
+      caminhoDaLista({ estado: 'abertos', tipo: '', faixa: 'critico', hotelId: '', numero: '' }),
+    ).toBe('/api/v1/inteligencia/insights?estado=abertos&faixa=critico');
+  });
+
+  it('o número do insight: "INS-0133", "0133" e "133" procuram o 133 em qualquer estado', () => {
+    for (const digitado of ['INS-0133', '0133', ' 133 ']) {
+      expect(
+        caminhoDaLista({ estado: 'abertos', tipo: '', faixa: '', hotelId: '', numero: digitado }),
+      ).toBe('/api/v1/inteligencia/insights?numero=133');
+    }
+    expect(numeroDigitado('INS-')).toBeNull();
+    expect(numeroDigitado('0000')).toBeNull();
+    expect(numeroDigitado('1234567890')).toBeNull();
+  });
+
+  it('a lista mostra o número do insight com quatro dígitos e o tipo', () => {
+    const lista = renderizar(
+      'pt-BR',
+      <TabelaDeInsights lista={{ insights: [{ ...sistemico.insight }], nomes }} />,
     );
+    expect(lista).toContain('INS-0133 · Possível problema sistêmico');
   });
 });
 
@@ -359,6 +572,111 @@ describe('a página do insight', () => {
   });
 });
 
+describe('as reclamações de hóspede (C2 do ADR-047)', () => {
+  it('o insight das reclamações: a evidência no lugar dos chamados, com o texto e o link da fila', () => {
+    const html = renderizar(
+      'pt-BR',
+      <ConteudoDoInsight pagina={dasReclamacoes} aoDecidir={nada} />,
+    );
+    expect(html).toContain('Reclamações da evidência');
+    expect(html).toContain('As 3 reclamações de hóspede que abriram este insight');
+    expect(html).toContain('O elevador parou com hóspedes dentro');
+    expect(html).toContain('UH 1204');
+    expect(html).toContain('Ligação confirmada');
+    expect(html).toContain('href="/inteligencia/sinais"');
+    expect(html).not.toContain('Chamados por semana');
+    expect(html).not.toContain('Pesa no score');
+  });
+
+  it('quem decide o insight abre um chamado para as reclamações sem chamado; quem não decide, não', () => {
+    const decide = (podeDecidir: boolean) =>
+      renderizar(
+        'pt-BR',
+        <ConteudoDoInsight
+          pagina={{ ...dasReclamacoes, insight: { ...dasReclamacoes.insight, podeDecidir } }}
+          aoDecidir={nada}
+        />,
+      );
+    expect(decide(true)).toContain('Abrir um chamado para a reclamação sem chamado');
+    expect(decide(false)).not.toContain('Abrir um chamado para');
+    const C = '99999999-9999-4999-8999-999999999999';
+    const comChamado = renderizar(
+      'pt-BR',
+      <ConteudoDoInsight
+        pagina={{
+          ...dasReclamacoes,
+          insight: { ...dasReclamacoes.insight, podeDecidir: true },
+          reclamacoes: {
+            ...(dasReclamacoes.reclamacoes as Reclamacoes),
+            sinais: [reclamacao({ chamadoId: C })],
+          },
+        }}
+        aoDecidir={nada}
+      />,
+    );
+    expect(comChamado).not.toContain('Abrir um chamado para');
+    expect(comChamado).toContain(`href="/chamados/${C}"`);
+  });
+
+  it('o formulário do chamado do insight: o local, o ativo comum, a sugestão sem o texto e quantas liga', () => {
+    const html = renderizar(
+      'pt-BR',
+      <FormularioDoChamadoDoInsight
+        insightId={dasReclamacoes.insight.id}
+        hotelId={H1}
+        reclamacoes={dasReclamacoes.reclamacoes as Reclamacoes}
+        aoCancelar={nada}
+        aoAbrir={nada}
+        locaisIniciais={LOCAIS_DO_HOTEL}
+      />,
+    );
+    expect(html).toContain('Local do chamado (UH ou área comum)');
+    expect(html).toContain('Casa de máquinas');
+    expect(html).toContain('Com o ativo Elevador social 2');
+    expect(html).toContain(
+      'Reclamações de hóspede do insight sistêmico: 1 reclamação nas UHs UH 1204.',
+    );
+    expect(html).not.toContain('O elevador parou com hóspedes dentro');
+    expect(html).toContain('1 reclamação sem chamado vai ser ligada a este chamado.');
+  });
+
+  it('quem não lê as reclamações do hotel vê só o total', () => {
+    const html = renderizar(
+      'pt-BR',
+      <ConteudoDoInsight
+        pagina={{
+          ...dasReclamacoes,
+          reclamacoes: { ...(dasReclamacoes.reclamacoes as Reclamacoes), sinais: [] },
+        }}
+        aoDecidir={nada}
+      />,
+    );
+    expect(html).toContain('3 reclamações na evidência. Você não lê as reclamações deste hotel.');
+    expect(html).not.toContain('O elevador parou');
+  });
+
+  it('o ativo: o score de 100, os componentes gravados e as reclamações que pesam e as que não', () => {
+    const html = renderizar('pt-BR', <ConteudoDoAtivo pagina={ativoComReclamacoes} />);
+    expect(html).toContain('Pelas reclamações de hóspede.');
+    expect(html).toContain('Guest Impact Score: 62 de 100');
+    expect(html).toContain('Recorrência depois do reparo');
+    expect(html).toContain('Sem dado');
+    expect(html).toContain('Reclamações ligadas ao ativo nos últimos 90 dias');
+    expect(html).toContain('Pesa no score');
+    expect(html).toContain('Não pesa');
+    expect(html).toContain('Texto apagado em');
+  });
+
+  it('o ativo pelos chamados: a porcentagem, sem componentes, e a lista vazia', () => {
+    const html = renderizar('pt-BR', <ConteudoDoAtivo pagina={ativo} />);
+    expect(html).toContain('Dos chamados na janela do score.');
+    expect(html).not.toContain('Componentes do Guest Impact Score');
+    expect(html).toContain(
+      'Nenhuma reclamação de hóspede ligada a este ativo nos últimos 90 dias.',
+    );
+  });
+});
+
 describe('o detalhe do ativo', () => {
   it('os indicadores, a composição sem a linha dos UH-dias, o gravado e os insights', () => {
     const html = renderizar('pt-BR', <ConteudoDoAtivo pagina={ativo} />);
@@ -370,6 +688,19 @@ describe('o detalhe do ativo', () => {
     expect(html).toContain('Atenção ao ativo, versão 2');
     expect(html).toContain('1 de 3 dias no limite de 70 ou acima');
     expect(html).toContain(`href="/inteligencia/insights/${I1}"`);
+    // Os recálculos ficam atrás do botão (ADR-036): a página abre com o original.
+    expect(html).toContain('Ver os recálculos deste dia');
+    expect(html).not.toContain('Recálculos deste dia');
+  });
+
+  it('os recálculos do dia, a pedido: o selo de recálculo, a atenção com a faixa e as versões', () => {
+    const html = renderizar('pt-BR', <Recalculos recalculos={ativo.recalculos} />);
+    expect(html).toContain('Recálculos deste dia');
+    expect(html).toContain('Recálculo 2');
+    expect(html).toContain('64 (Atenção)');
+    expect(html).toContain('Sem dado');
+    expect(html).toContain('Atenção 7, reincidência 4, política padrao');
+    expect(html).toContain('O painel e os insights continuam usando o resultado acima.');
   });
 
   it('o sinal de substituição: o estado, os critérios com valor e limite, a reposição numa linha discreta e a ressalva', () => {

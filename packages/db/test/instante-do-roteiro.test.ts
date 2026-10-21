@@ -53,6 +53,7 @@ async function gravar(relogioDoRoteiro?: { agora(): Date }) {
     await criarAtivo(uow, HOTEL, LOCAL, {
       nome: 'Split',
       categoriaId: null,
+      modeloId: null,
       fabricante: null,
       modelo: null,
       numeroSerie: null,

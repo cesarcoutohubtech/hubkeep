@@ -176,6 +176,7 @@ export interface ExecucaoNoBancoDoJob {
   insightsAbertos: number;
   insightsAtualizados: number;
   insightsIgnorados: number;
+  textosApagados: number;
   versoesDeFormula: Readonly<Record<string, number>>;
   versoesDePolitica: Readonly<Record<string, string>>;
 }
@@ -203,6 +204,62 @@ export interface SessaoDoJobDoIntelligence {
   atualizarInsight(deteccao: DeteccaoNoInsightDoJob): Promise<void>;
   /** A auditoria da execução no tenant. */
   registrarExecucao(execucao: ExecucaoNoBancoDoJob): Promise<void>;
+  /** As reclamações de hóspede avaliadas depois de `desde` e até `agora`, sem o texto (ADR-047). */
+  sinais(agora: Date, desde: Date): Promise<SinalDoJob[]>;
+  /** Apaga o texto das reclamações avaliadas antes de `ate`; devolve quantas. */
+  apagarTextos(ate: Date, agora: Date): Promise<number>;
+}
+
+export interface SinalDoJob {
+  id: string;
+  hotelId: string;
+  ocorridoEm: Date;
+  nota: number | null;
+  escala: number | null;
+  manutencao: boolean | null;
+  categoriaId: string | null;
+  uhId: string | null;
+  ativoId: string | null;
+  ligacao: string;
+}
+
+/** As reclamações do trecho, sem o texto (ADR-047), na forma do motor. */
+export async function sinaisNoTrecho(
+  tx: Tx,
+  desde: Date,
+  ate: Date,
+  hotelId?: string,
+): Promise<SinalDoJob[]> {
+  let q = tx
+    .selectFrom('app.sinal_hospede')
+    .select([
+      'id',
+      'hotel_id',
+      'ocorrido_em',
+      'nota',
+      'escala',
+      'manutencao',
+      'categoria_id',
+      'uh_id',
+      'ativo_id',
+      'ligacao',
+    ])
+    .where('ocorrido_em', '>', desde)
+    .where('ocorrido_em', '<=', ate);
+  if (hotelId) q = q.where('hotel_id', '=', hotelId);
+  const linhas = await q.orderBy('ocorrido_em').orderBy('id').execute();
+  return linhas.map((r) => ({
+    id: r.id,
+    hotelId: r.hotel_id,
+    ocorridoEm: data(r.ocorrido_em),
+    nota: r.nota === null ? null : Number(r.nota),
+    escala: r.escala,
+    manutencao: r.manutencao,
+    categoriaId: r.categoria_id,
+    uhId: r.uh_id,
+    ativoId: r.ativo_id,
+    ligacao: r.ligacao,
+  }));
 }
 
 const LOTE_DE_METRICAS = 500;
@@ -494,6 +551,23 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
       }));
     },
 
+    sinais: (agora, desde) => sinaisNoTrecho(tx, desde, agora),
+
+    async apagarTextos(ate, agora) {
+      const r = await tx
+        .updateTable('app.sinal_hospede')
+        .set({
+          texto: null,
+          texto_apagado_em: agora,
+          versao: sql<number>`versao + 1`,
+          atualizado_em: agora,
+        })
+        .where('texto', 'is not', null)
+        .where('ocorrido_em', '<', ate)
+        .executeTakeFirst();
+      return Number(r.numUpdatedRows);
+    },
+
     async calculosDoDia(dia) {
       const linhas = await tx
         .selectFrom('app.metrica_ativo_diaria')
@@ -534,11 +608,15 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
 
     async abrirInsight(n) {
       const id = novoId();
-      await tx
+      const { numero } = await tx
         .insertInto('app.insight')
         .values({
           id,
           tenant_id: uow.tenantId,
+          // O número que as pessoas citam (0060): o maior do tenant mais um, na
+          // transação do job; a chave única (tenant_id, numero) barra a corrida.
+          numero: sql<number>`(select coalesce(max(numero), 0) + 1 from app.insight
+            where tenant_id = ${uow.tenantId})`,
           hotel_id: n.hotelId,
           bandeira_id: n.bandeiraId,
           hotel_ids: [...n.hotelIds],
@@ -555,13 +633,15 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
           primeira_deteccao_em: n.em,
           ultima_deteccao_em: n.em,
         })
-        .execute();
+        .returning('numero')
+        .executeTakeFirstOrThrow();
       uow.auditar({
         entidade: 'insight',
         registroId: id,
         acao: 'abrir',
         hotelId: null,
         depois: {
+          numero,
           tipo: n.tipo,
           familia: n.familia,
           hotelIds: n.hotelIds,
@@ -588,6 +668,14 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
     },
 
     async registrarExecucao(e) {
+      // O aviso da partição padrão (0061): as linhas do dia que não acharam o
+      // mês delas. Diferente de zero, é hora da migração do ano seguinte.
+      const padrao = await tx
+        .selectFrom('app.metrica_ativo_diaria')
+        .select((eb) => eb.fn.countAll<string>().as('n'))
+        .where(sql<boolean>`tableoid = 'app.metrica_ativo_diaria_padrao'::regclass`)
+        .where(sql<boolean>`dia = ${e.dia}::date`)
+        .executeTakeFirstOrThrow();
       uow.auditar({
         entidade: 'job_inteligencia',
         registroId: novoId(),
@@ -602,8 +690,10 @@ export function sessaoDoJobDoIntelligence(uow: UnidadeDeTrabalho): SessaoDoJobDo
           insightsAbertos: e.insightsAbertos,
           insightsAtualizados: e.insightsAtualizados,
           insightsIgnorados: e.insightsIgnorados,
+          textosApagados: e.textosApagados,
           versoesDeFormula: e.versoesDeFormula,
           versoesDePolitica: e.versoesDePolitica,
+          metricasNaParticaoPadrao: Number(padrao.n),
         },
       });
     },

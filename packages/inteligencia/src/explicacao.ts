@@ -25,7 +25,10 @@ export function explicacaoDoScore(score: Score, quantos = 3): Explicacao[] {
     const valores: Record<string, string | number> = {};
     for (const [k, v] of Object.entries(c.evidencia))
       if (typeof v === 'number' || typeof v === 'string') valores[k] = v;
-    return { chave: `inteligencia.motivo.${score.chave}.${c.chave}`, valores };
+    // O impacto no hóspede pelas reclamações (atenção versão 7) tem frase própria.
+    const sufixo =
+      c.chave === 'impacto_hospede' && c.evidencia['fonte'] === 'reclamacoes' ? '_reclamacoes' : '';
+    return { chave: `inteligencia.motivo.${score.chave}.${c.chave}${sufixo}`, valores };
   });
 }
 
@@ -52,7 +55,8 @@ export interface LinhaDoDetalhamento {
   /**
    * O que a linha precisa dizer além do valor, pronto para o catálogo: o custo
    * informado em X de Y corretivas, o custo sem dado no tenant, as medições
-   * abaixo do mínimo e a garantia sem data. null quando não há.
+   * abaixo do mínimo, a garantia sem data e a fonte do impacto no hóspede
+   * (atenção versão 7). null quando não há.
    */
   nota: Explicacao | null;
 }
@@ -107,6 +111,19 @@ function notaDaLinha(score: Pick<Score, 'chave'>, c: Componente): Explicacao | n
       chave: 'inteligencia.detalhamento.medicoes_abaixo_do_minimo',
       valores: { total: n('total'), minimo: n('minimo') },
     };
+  // Atenção versão 7 (ADR-047): de onde veio o impacto no hóspede.
+  if (c.chave === 'impacto_hospede' && ev['fonte'] === 'reclamacoes')
+    return {
+      chave: 'inteligencia.detalhamento.impacto_pelas_reclamacoes',
+      valores: {
+        confirmadas: n('confirmadas'),
+        possiveis: n('possiveis'),
+        uhs: n('uhs'),
+        janelaDias: n('janelaDias'),
+      },
+    };
+  if (c.chave === 'impacto_hospede' && ev['fonte'] === 'chamados')
+    return { chave: 'inteligencia.detalhamento.impacto_pelos_chamados', valores: {} };
   if (c.chave === 'garantia_vencida' && ev['semData'] === true)
     return { chave: 'inteligencia.detalhamento.garantia_sem_data', valores: {} };
   return null;
@@ -157,8 +174,9 @@ export function detalhamentoDoScore(score: Score): Detalhamento {
 
 /**
  * A evidência do sinal sistêmico, pronta para o catálogo. A regra do mesmo
- * modelo tem frase própria, com as taxas; as outras, a genérica (chamados,
- * hotéis e janela), até ganharem a sua.
+ * modelo tem frase própria, com as taxas, e a das reclamações de hóspede
+ * (sistêmico v5), com as UHs; as outras, a genérica (chamados, hotéis e
+ * janela), até ganharem a sua.
  */
 export function explicacaoDoSinal(sinal: Pick<SinalSistemico, 'regra' | 'evidencia'>): Explicacao {
   const e = sinal.evidencia;
@@ -174,6 +192,12 @@ export function explicacaoDoSinal(sinal: Pick<SinalSistemico, 'regra' | 'evidenc
         taxa: e.taxaPorAtivo ?? 0,
         base: e.basePorAtivo ?? 0,
       },
+    };
+  }
+  if (sinal.regra === 'reclamacoes_categoria') {
+    return {
+      chave: 'inteligencia.sistemico.evidencia.reclamacoes_categoria',
+      valores: { quantidade: e.quantidade, uhs: e.distintos, janelaDias: e.janelaDias },
     };
   }
   return { chave: 'inteligencia.sistemico.evidencia.generica', valores: comuns };

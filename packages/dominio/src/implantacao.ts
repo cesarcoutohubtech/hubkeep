@@ -11,6 +11,8 @@ import { PermissaoNegada } from './erros';
 import type { ModeloContratual } from './hoteis';
 import { type Resultado, ehAdminGrupo, hoteisComoImplantador, vigente } from './permissoes';
 import type { Atribuicao, Papel } from './tipos';
+import type { PlanoQueCobre } from './plano-preventivo';
+import { type AtivoParaSugestao, ativoSemPlanoComModelo } from './sugestoes-de-plano';
 
 export const PENDENCIAS_DE_IMPLANTACAO = [
   'modelo_contratual_nao_informado',
@@ -35,11 +37,9 @@ export interface LocalParaImplantacao {
   status: 'ativo' | 'pendente_licenca' | 'inativo';
 }
 
-export interface AtivoParaImplantacao {
+/** O ativo do painel; id, modelo e descarte dão o contador de sem plano (M1). */
+export interface AtivoParaImplantacao extends AtivoParaSugestao {
   localId: string;
-  categoriaId: string | null;
-  /** false: desativado; não conta. */
-  ativo: boolean;
 }
 
 export interface PessoaParaImplantacao {
@@ -51,8 +51,16 @@ export interface PessoaParaImplantacao {
 
 export interface ResumoDeImplantacao {
   locais: { uhsAtivas: number; uhsPendentes: number; areasComuns: number; inativos: number };
-  /** Ativos ativos, os sem categoria e os locais não inativos sem nenhum ativo ativo. */
-  ativos: { ativos: number; semCategoria: number; locaisSemAtivo: number };
+  /**
+   * Ativos ativos, os sem categoria, os locais não inativos sem nenhum ativo
+   * ativo e os ativos com modelo e sem plano que os cubra, sem descarte (M1).
+   */
+  ativos: {
+    ativos: number;
+    semCategoria: number;
+    locaisSemAtivo: number;
+    comModeloSemPlano: number;
+  };
   /** Pessoas distintas com papel vigente no hotel (escopo hotel), por papel. */
   papeis: { papel: Papel; pessoas: number }[];
   /** Tiveram papel no hotel, mas nenhum vigente (vencido ou revogado), ou o membro está inativo. */
@@ -83,6 +91,7 @@ export function resumirImplantacao(
   agora: Date,
   ativos: readonly AtivoParaImplantacao[] = [],
   hotel: HotelParaImplantacao = { modeloContratual: null },
+  planos: readonly PlanoQueCobre[] = [],
 ): ResumoDeImplantacao {
   const contar = (f: (l: LocalParaImplantacao) => boolean) => locais.filter(f).length;
   const resumoLocais = {
@@ -97,6 +106,7 @@ export function resumirImplantacao(
     ativos: ativosAtivos.length,
     semCategoria: ativosAtivos.filter((a) => a.categoriaId === null).length,
     locaisSemAtivo: contar((l) => l.status !== 'inativo' && !comAtivo.has(l.id)),
+    comModeloSemPlano: ativosAtivos.filter((a) => ativoSemPlanoComModelo(a, planos)).length,
   };
 
   const noHotel = (a: Atribuicao) => a.escopo.tipo === 'hotel' && a.escopo.hotelId === hotelId;
@@ -145,5 +155,57 @@ export function resumirImplantacao(
     papeis,
     pessoasSemPapelVigente: semPapel,
     pendencias,
+  };
+}
+
+/**
+ * A meta do produto para a implantação (PB1): o hotel pronto em até 1 dia,
+ * sem contar o levantamento de ativos.
+ */
+export const META_DA_IMPLANTACAO_MS = 24 * 60 * 60 * 1000;
+
+/** Uma mudança de situação do hotel, tirada da auditoria (sem migração, PB1). */
+export interface MudancaDeSituacaoDoHotel {
+  em: Date;
+  /** A situação depois da mudança (`depois.status` da auditoria). */
+  status: string | null;
+}
+
+export interface TempoDeImplantacao {
+  /** Quando o hotel entrou em implantação. */
+  entrouEm: Date;
+  /** Quando ficou pronto (ativado); nulo enquanto não fica. */
+  prontoEm: Date | null;
+  /**
+   * Do início até o pronto, ou até agora enquanto está em implantação. Nulo
+   * quando o hotel já saiu da implantação sem a ativação na auditoria (hotel
+   * anterior ao registro), porque não há como medir.
+   */
+  duracaoMs: number | null;
+  /** A duração dentro da meta; nulo quando não há duração. */
+  dentroDaMeta: boolean | null;
+}
+
+/**
+ * O tempo de implantação do hotel. Entrou: a primeira mudança para
+ * em_implantacao na auditoria; sem ela, a criação do hotel, que já nasce em
+ * implantação. Pronto: a primeira ativação depois disso.
+ */
+export function tempoDaImplantacao(
+  hotel: { status: string; criadoEm: Date },
+  mudancas: readonly MudancaDeSituacaoDoHotel[],
+  agora: Date,
+): TempoDeImplantacao {
+  const emOrdem = [...mudancas].sort((a, b) => a.em.getTime() - b.em.getTime());
+  const entrouEm = emOrdem.find((m) => m.status === 'em_implantacao')?.em ?? hotel.criadoEm;
+  const prontoEm =
+    emOrdem.find((m) => m.status === 'ativo' && m.em.getTime() >= entrouEm.getTime())?.em ?? null;
+  const fim = prontoEm ?? (hotel.status === 'em_implantacao' ? agora : null);
+  const duracaoMs = fim ? Math.max(0, fim.getTime() - entrouEm.getTime()) : null;
+  return {
+    entrouEm,
+    prontoEm,
+    duracaoMs,
+    dentroDaMeta: duracaoMs === null ? null : duracaoMs <= META_DA_IMPLANTACAO_MS,
   };
 }

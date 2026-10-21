@@ -55,6 +55,8 @@ export default defineConfig({
         // A API nunca é servida pelo service worker.
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [],
+        // O push (1c, C4): o aviso chega e o toque abre o PWA (public/push-sw.js).
+        importScripts: ['push-sw.js'],
       },
     }),
   ],

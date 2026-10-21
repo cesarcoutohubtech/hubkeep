@@ -11,12 +11,19 @@ import {
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeAuditoriaGeral,
   type CasosDeUsoDeAvisosDeSla,
+  type CasosDeUsoDaSituacaoPorHotel,
+  type CasosDeUsoDeIndicadores,
   type CasosDeUsoDeComunicacao,
   type CasosDeUsoDeBandeiras,
   type CasosDeUsoDeCategorias,
   type CasosDeUsoDeChamados,
   type CasosDeUsoDeChecklists,
   type CasosDeUsoDeModelosDeAtivo,
+  type CasosDeUsoDeSugestoesDePlano,
+  type CasosDeUsoDeCadastrosDeAtivos,
+  type CasosDeUsoDeImportacaoDeAtivos,
+  type CasosDeUsoDeQrReservados,
+  type CasosDeUsoDoPacoteDaBandeira,
   type CasosDeUsoDeCodigos,
   type CasosDeUsoDeConfiguracao,
   type CasosDeUsoDeConsultas,
@@ -45,10 +52,17 @@ import {
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeAvisosDeSla,
+  criarCasosDeUsoDaSituacaoPorHotel,
+  criarCasosDeUsoDeIndicadores,
   criarCasosDeUsoDeComunicacao,
   criarCasosDeUsoDeChamados,
   criarCasosDeUsoDeChecklists,
   criarCasosDeUsoDeModelosDeAtivo,
+  criarCasosDeUsoDeSugestoesDePlano,
+  criarCasosDeUsoDeCadastrosDeAtivos,
+  criarCasosDeUsoDeImportacaoDeAtivos,
+  criarCasosDeUsoDeQrReservados,
+  criarCasosDeUsoDoPacoteDaBandeira,
   criarCasosDeUsoDeCodigos,
   criarCasosDeUsoDeConfiguracao,
   criarCasosDeUsoDeConsultas,
@@ -77,12 +91,19 @@ import {
   criarPortaAtivos,
   criarPortaAuditoriaGeral,
   criarPortaAvisosDeSla,
+  criarPortaIndicadores,
+  criarPortaSituacaoPorHotel,
   criarPortaComunicacao,
   criarPortaBandeiras,
   criarPortaCategorias,
   criarPortaChamados,
   criarPortaChecklists,
   criarPortaModelosDeAtivo,
+  criarPortaSugestoesDePlano,
+  criarPortaCadastrosDeAtivos,
+  criarPortaImportacaoDeAtivos,
+  criarPortaQrReservados,
+  criarPortaPacoteDaBandeira,
   criarPortaCodigos,
   criarPortaConfiguracao,
   criarPortaConsultasDaCorretiva,
@@ -134,6 +155,11 @@ export interface FabricasDeCasosDeUso {
   checklists(): CasosDeUsoDeChecklists;
   modelosDeAtivo(): CasosDeUsoDeModelosDeAtivo;
   planosPreventivos(): CasosDeUsoDePlanosPreventivos;
+  sugestoesDePlano(): CasosDeUsoDeSugestoesDePlano;
+  cadastrosDeAtivos(): CasosDeUsoDeCadastrosDeAtivos;
+  importacaoDeAtivos(): CasosDeUsoDeImportacaoDeAtivos;
+  qrReservados(): CasosDeUsoDeQrReservados;
+  pacoteDaBandeira(): CasosDeUsoDoPacoteDaBandeira;
   situacoes(): CasosDeUsoDeSituacoes;
   chamados(): CasosDeUsoDeChamados;
   triagem(): CasosDeUsoDeTriagem;
@@ -142,6 +168,8 @@ export interface FabricasDeCasosDeUso {
   historico(): CasosDeUsoDeHistorico;
   auditoriaGeral(): CasosDeUsoDeAuditoriaGeral;
   avisosDeSla(): CasosDeUsoDeAvisosDeSla;
+  indicadores(): CasosDeUsoDeIndicadores;
+  situacaoPorHotel(): CasosDeUsoDaSituacaoPorHotel;
   comunicacao(): CasosDeUsoDeComunicacao;
   paradas(): CasosDeUsoDeParadas;
   uhIndisponivel(): CasosDeUsoDeUhIndisponivel;
@@ -258,6 +286,50 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
         relogio,
       }),
     ),
+    cadastrosDeAtivos: uma(() =>
+      criarCasosDeUsoDeCadastrosDeAtivos({
+        cadastros: criarPortaCadastrosDeAtivos(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
+    importacaoDeAtivos: uma(() =>
+      criarCasosDeUsoDeImportacaoDeAtivos({
+        importacao: criarPortaImportacaoDeAtivos(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
+    qrReservados: uma(() =>
+      criarCasosDeUsoDeQrReservados({
+        qr: criarPortaQrReservados(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
+    pacoteDaBandeira: uma(() =>
+      criarCasosDeUsoDoPacoteDaBandeira({
+        pacote: criarPortaPacoteDaBandeira(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
+    sugestoesDePlano: uma(() => {
+      const planos = criarPortaPlanosPreventivos(banco);
+      const casosDosPlanos = criarCasosDeUsoDePlanosPreventivos({
+        planos,
+        triagem: criarPortaTriagem(banco),
+        atribuicoes,
+        relogio,
+      });
+      return criarCasosDeUsoDeSugestoesDePlano({
+        sugestoes: criarPortaSugestoesDePlano(banco),
+        planos,
+        criarPlano: casosDosPlanos.criar,
+        atribuicoes,
+        relogio,
+      });
+    }),
     situacoes: uma(() =>
       criarCasosDeUsoDeSituacoes({
         situacoes: criarPortaSituacoes(banco),
@@ -306,7 +378,14 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
     consultas: uma(() =>
       criarCasosDeUsoDeConsultas({ consultas: criarPortaConsultasDaCorretiva(banco) }),
     ),
-    historico: uma(() => criarCasosDeUsoDeHistorico({ historico: criarPortaHistorico(banco) })),
+    historico: uma(() =>
+      criarCasosDeUsoDeHistorico({
+        historico: criarPortaHistorico(banco),
+        triagem: criarPortaTriagem(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
     auditoriaGeral: uma(() =>
       criarCasosDeUsoDeAuditoriaGeral({
         auditoria: criarPortaAuditoriaGeral(banco),
@@ -318,6 +397,23 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
     avisosDeSla: uma(() =>
       criarCasosDeUsoDeAvisosDeSla({
         avisos: criarPortaAvisosDeSla(banco),
+        atribuicoes,
+        prioridades: criarPortaPrioridades(banco),
+        relogio,
+      }),
+    ),
+    indicadores: uma(() =>
+      criarCasosDeUsoDeIndicadores({
+        indicadores: criarPortaIndicadores(banco),
+        atribuicoes,
+        relogio,
+      }),
+    ),
+    situacaoPorHotel: uma(() =>
+      criarCasosDeUsoDaSituacaoPorHotel({
+        situacao: criarPortaSituacaoPorHotel(banco),
+        avisos: criarPortaAvisosDeSla(banco),
+        indicadores: criarPortaIndicadores(banco),
         atribuicoes,
         prioridades: criarPortaPrioridades(banco),
         relogio,

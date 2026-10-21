@@ -1,13 +1,22 @@
 // Porta dos ativos do hotel (fase 1a, B3). Implementada por packages/db, com o
 // contexto do usuário: a RLS mostra os ativos dos hotéis que ele lê (e os dos
 // locais do proprietário) e só deixa gravar quem tem escrita no hotel.
-import type { Contexto, Criticidade, StatusDeLocal, ValorDeCampo } from '@hubkeep/dominio';
+import type {
+  CodigoReservado,
+  Contexto,
+  Criticidade,
+  SituacaoDoCadastro,
+  StatusDeLocal,
+  ValorDeCampo,
+} from '@hubkeep/dominio';
 
 export interface AtivoGravado {
   id: string;
   hotelId: string;
   localId: string;
   categoriaId: string | null;
+  /** O modelo de que o ativo nasceu (M1). */
+  modeloId: string | null;
   nome: string;
   fabricante: string | null;
   modelo: string | null;
@@ -26,11 +35,16 @@ export interface AtivoGravado {
   codigoQr: string;
   /** Início da parada aberta (C5); null se não está parado. Só nas leituras. */
   paradoDesde?: Date | null;
+  /** A situação efetiva do cadastro (M4), com a decisão. Só nas leituras. */
+  situacaoCadastro?: SituacaoDoCadastro;
+  /** O motivo da recusa do cadastro (M4); null sem recusa. Só nas leituras. */
+  motivoDaRecusa?: string | null;
 }
 
 /** O que uma gravação (cadastro ou alteração) escreve, já validado pelo domínio. */
 export interface DadosDeAtivo {
   categoriaId: string | null;
+  modeloId: string | null;
   nome: string;
   fabricante: string | null;
   modelo: string | null;
@@ -69,17 +83,35 @@ export interface PortaAtivos {
   ): Promise<{ hotel?: unknown; grupo?: unknown }>;
   /** Categorias do tenant, com as definições como estão no banco. */
   categorias(ctx: Contexto): Promise<{ id: string; ativa: boolean; campos: unknown }[]>;
+  /** O modelo de ativo (M1), se visível a quem pede; senão null. */
+  modelo(
+    ctx: Contexto,
+    modeloId: string,
+  ): Promise<{
+    id: string;
+    categoriaId: string;
+    ativa: boolean;
+    /** PB1b: nulo vale para o grupo. */
+    bandeiraId: string | null;
+  } | null>;
   /** Com `termo` (já normalizado, B6), só os que o têm na coluna `busca`. */
   ativos(ctx: Contexto, hotelId: string, termo?: string): Promise<AtivoGravado[]>;
   ativo(ctx: Contexto, ativoId: string): Promise<AtivoGravado | null>;
   /** O ativo do código do QR no tenant do contexto, se visível (RLS); senão null. */
   ativoPorCodigoQr(ctx: Contexto, codigoQr: string): Promise<AtivoGravado | null>;
-  /** Na unit of work, com auditoria e evento; o código do QR é gerado aqui. */
+  /** O código de QR reservado (M3), se visível (RLS); senão null. */
+  reservaDoCodigo(ctx: Contexto, codigo: string): Promise<CodigoReservado | null>;
+  /**
+   * Na unit of work, com auditoria e evento; sem codigoQr, o código do QR é
+   * gerado aqui. Com o código reservado (M3) que outro cadastro ligou nesse
+   * meio-tempo: Conflito qr_ja_ligado.
+   */
   criar(
     ctx: Contexto,
     hotelId: string,
     localId: string,
     dados: DadosDeAtivo,
+    codigoQr?: string,
   ): Promise<{ id: string; versao: number }>;
   /**
    * Na unit of work, só se a versão ainda for a esperada (ADR-029). Versão

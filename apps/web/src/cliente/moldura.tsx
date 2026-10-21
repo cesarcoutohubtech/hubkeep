@@ -19,8 +19,10 @@
 // abertura das telas (inteligencia.visibilidade_telas; adendo ao ADR-035 de
 // 12/10/2026), o resumo também responde 404; aí, se GET
 // /api/v1/inteligencia/abertura responde (só o Admin do grupo), o item aparece
-// sem contagem e leva à página da abertura. A moldura não importa o pacote do
-// módulo: fala só com a API.
+// sem contagem e leva à página da abertura. Para os outros papéis da política,
+// se GET /api/v1/inteligencia/sinais/acesso responde, o item leva à tela de
+// reclamações, que abre antes da data (adendo de 20/10/2026 ao ADR-035). A
+// moldura não importa o pacote do módulo: fala só com a API.
 import { type Chave, type IdiomaDeExibicao, PSEUDO_IDIOMA, ehIdioma } from '@hubkeep/i18n';
 import {
   Botao,
@@ -64,6 +66,7 @@ export const MENU: readonly { grupo: Chave; itens: readonly { href: string; chav
       { href: '/chamados', chave: 'menu.chamados' },
       { href: '/os', chave: 'menu.os' },
       { href: '/sla', chave: 'menu.avisos_sla' },
+      { href: '/indicadores', chave: 'menu.indicadores' },
       { href: '/admin/paradas', chave: 'menu.paradas' },
     ],
   },
@@ -76,8 +79,12 @@ export const MENU: readonly { grupo: Chave; itens: readonly { href: string; chav
       { href: '/admin/codigos', chave: 'menu.codigos' },
       { href: '/admin/checklists', chave: 'menu.checklists' },
       { href: '/admin/modelos-de-ativo', chave: 'menu.modelos_de_ativo' },
+      { href: '/admin/pacote-da-bandeira', chave: 'menu.pacote_da_bandeira' },
       { href: '/admin/preventivas', chave: 'menu.preventivas' },
       { href: '/admin/ativos', chave: 'menu.ativos' },
+      { href: '/admin/importacao-de-ativos', chave: 'menu.importacao_de_ativos' },
+      { href: '/admin/etiquetas', chave: 'menu.etiquetas' },
+      { href: '/admin/aprovacao-de-ativos', chave: 'menu.aprovacao_de_ativos' },
       { href: '/admin/equipes', chave: 'menu.equipes' },
       { href: '/admin/proprietarios', chave: 'menu.proprietarios' },
       { href: '/admin/fornecedores', chave: 'menu.fornecedores' },
@@ -108,6 +115,27 @@ export const ITEM_DO_INTELLIGENCE = {
 /** Para o Admin do grupo, com as telas ainda fechadas: a página da abertura. */
 export const HREF_DA_ABERTURA = '/inteligencia/abertura';
 
+/** Para os outros papéis da política, com as telas ainda fechadas: as reclamações. */
+export const HREF_DAS_RECLAMACOES = '/inteligencia/sinais';
+
+/** Para onde o item do módulo leva: os insights, a abertura (Admin) ou as reclamações. */
+export function destinoDoIntelligence(v: {
+  abertos: number | null;
+  soAbertura: boolean;
+  soReclamacoes: boolean;
+}): string | null {
+  if (v.abertos !== null) return ITEM_DO_INTELLIGENCE.href;
+  if (v.soAbertura) return HREF_DA_ABERTURA;
+  if (v.soReclamacoes) return HREF_DAS_RECLAMACOES;
+  return null;
+}
+
+/** Mews V1: item separado do MENU porque só o Admin vê (GET autenticado). */
+export const ITEM_DA_MEWS = {
+  href: '/admin/mews',
+  chave: 'menu.mews',
+} as const satisfies { href: string; chave: Chave };
+
 /** O item do Intelligence fica ativo em todas as telas do módulo. */
 export const intelligenceAtivo = (caminho: string) =>
   caminho === '/inteligencia' || caminho.startsWith('/inteligencia/');
@@ -122,9 +150,12 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/chamados$/, 'corretiva.chamados.titulo'],
   [/^\/chamados\/[^/]+$/, 'corretiva.chamado.titulo'],
   [/^\/os$/, 'corretiva.os.titulo'],
+  [/^\/os\/[^/]+\/impressao$/, 'impressao_os.titulo'],
   [/^\/sla$/, 'sla.painel.titulo'],
+  [/^\/indicadores$/, 'indicadores.titulo'],
   [/^\/admin\/paradas$/, 'admin.paradas.titulo'],
   [/^\/admin\/hoteis$/, 'admin.hoteis.titulo'],
+  [/^\/admin\/mews$/, 'admin.mews.titulo'],
   [/^\/admin\/locais$/, 'admin.locais.titulo'],
   [/^\/admin\/categorias$/, 'admin.categorias.titulo'],
   [/^\/admin\/codigos$/, 'admin.codigos.titulo'],
@@ -132,6 +163,10 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/admin\/modelos-de-ativo$/, 'admin.modelos_de_ativo.titulo'],
   [/^\/admin\/preventivas$/, 'admin.preventivas.titulo'],
   [/^\/admin\/ativos$/, 'admin.ativos.titulo'],
+  [/^\/admin\/importacao-de-ativos$/, 'admin.importacao.titulo'],
+  [/^\/admin\/etiquetas$/, 'admin.etiquetas.titulo'],
+  [/^\/admin\/pacote-da-bandeira$/, 'admin.pacote.titulo'],
+  [/^\/admin\/aprovacao-de-ativos$/, 'admin.aprovacao_cadastro.titulo'],
   [/^\/admin\/equipes$/, 'admin.equipes.titulo'],
   [/^\/admin\/proprietarios$/, 'admin.proprietarios.titulo'],
   [/^\/admin\/fornecedores$/, 'admin.fornecedores.titulo'],
@@ -147,6 +182,7 @@ const TITULOS: readonly (readonly [RegExp, Chave])[] = [
   [/^\/inteligencia\/insights\/[^/]+$/, 'inteligencia.pagina.titulo'],
   [/^\/inteligencia\/ativos\/[^/]+$/, 'inteligencia.ativo.titulo'],
   [/^\/inteligencia\/abertura$/, 'inteligencia.abertura.titulo'],
+  [/^\/inteligencia\/sinais$/, 'inteligencia.sinais.titulo'],
 ];
 
 export const tituloDaRota = (caminho: string): Chave | undefined =>
@@ -179,6 +215,9 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
   const [abertos, setAbertos] = useState<number | null>(null);
   // Telas fechadas, mas quem vê é o Admin do grupo: o item leva à abertura.
   const [soAbertura, setSoAbertura] = useState(false);
+  // Telas fechadas, para os outros papéis da política: o item leva às reclamações.
+  const [soReclamacoes, setSoReclamacoes] = useState(false);
+  const [mewsVisivel, setMewsVisivel] = useState(false);
 
   useEffect(() => {
     const salvo = lerCookie(COOKIE_TENANT);
@@ -216,9 +255,35 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
     if (!grupoPronto) return;
     void chamarApi<{ abertos: number }>('/api/v1/inteligencia/resumo').then(async (r) => {
       setAbertos(r.ok ? r.dados.abertos : null);
-      setSoAbertura(!r.ok && (await chamarApi('/api/v1/inteligencia/abertura')).ok);
+      if (r.ok) {
+        setSoAbertura(false);
+        setSoReclamacoes(false);
+        return;
+      }
+      const [abertura, reclamacoes] = await Promise.all([
+        chamarApi('/api/v1/inteligencia/abertura'),
+        chamarApi('/api/v1/inteligencia/sinais/acesso'),
+      ]);
+      setSoAbertura(abertura.ok);
+      setSoReclamacoes(reclamacoes.ok);
     });
   }, [grupoPronto, caminho]);
+
+  useEffect(() => {
+    if (!grupoPronto || !tenant) {
+      setMewsVisivel(false);
+      return;
+    }
+    let valido = true;
+    // O servidor valida Admin com authz.eh_admin_grupo() e RLS.
+    // Nao mostrar sequer o item a gerentes, tecnicos ou sem contexto.
+    void chamarApi('/api/v1/mews/status').then((r) => {
+      if (valido) setMewsVisivel(r.ok);
+    });
+    return () => {
+      valido = false;
+    };
+  }, [grupoPronto, tenant]);
 
   function trocarGrupo(tn: string) {
     gravarCookieTenant(tn);
@@ -270,12 +335,21 @@ export function Moldura({ temaInicial, children }: { temaInicial: Tema; children
                   {t(i.chave)}
                 </ItemDeMenu>
               ))}
+              {g.grupo === 'menu.grupo.configuracao' && mewsVisivel && (
+                <ItemDeMenu
+                  href={ITEM_DA_MEWS.href}
+                  componente={Link}
+                  ativo={itemAtivo(caminho, ITEM_DA_MEWS.href)}
+                >
+                  {t(ITEM_DA_MEWS.chave)}
+                </ItemDeMenu>
+              )}
             </GrupoDeMenu>
           ))}
-          {(abertos !== null || soAbertura) && (
+          {destinoDoIntelligence({ abertos, soAbertura, soReclamacoes }) !== null && (
             <GrupoDeMenu rotulo={t(ITEM_DO_INTELLIGENCE.grupo)}>
               <ItemDeMenu
-                href={abertos !== null ? ITEM_DO_INTELLIGENCE.href : HREF_DA_ABERTURA}
+                href={destinoDoIntelligence({ abertos, soAbertura, soReclamacoes }) ?? ''}
                 componente={Link}
                 ativo={intelligenceAtivo(caminho)}
                 {...(abertos !== null ? { contagem: abertos } : {})}
