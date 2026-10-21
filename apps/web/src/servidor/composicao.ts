@@ -24,6 +24,7 @@ import {
   type CasosDeUsoDeConsultas,
   type CasosDeUsoDeAuditoriaGeral,
   type CasosDeUsoDeAvisosDeSla,
+  type CasosDeUsoDaSituacaoPorHotel,
   type CasosDeUsoDeIndicadores,
   type CasosDeUsoDeComunicacao,
   type CasosDeUsoDePush,
@@ -419,6 +420,9 @@ export const casosDeUsoDeAvisosDeSla = async (): Promise<CasosDeUsoDeAvisosDeSla
 /** Painel de indicadores (1c, item 8), pelo hk_app: a gestão vê tudo; o proprietário, os cartões. */
 export const casosDeUsoDeIndicadores = async (): Promise<CasosDeUsoDeIndicadores> =>
   (await fabricas()).indicadores();
+/** A situação por hotel da tela inicial (1c, seção 4 da paridade), pelo hk_app: só a gestão. */
+export const casosDeUsoDaSituacaoPorHotel = async (): Promise<CasosDeUsoDaSituacaoPorHotel> =>
+  (await fabricas()).situacaoPorHotel();
 /** A contagem de envios por destinatário e por dia (1c, C8), pelo hk_app. */
 export const casosDeUsoDeComunicacao = async (): Promise<CasosDeUsoDeComunicacao> =>
   (await fabricas()).comunicacao();

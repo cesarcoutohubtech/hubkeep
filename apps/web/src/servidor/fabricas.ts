@@ -11,6 +11,7 @@ import {
   type CasosDeUsoDeAtivos,
   type CasosDeUsoDeAuditoriaGeral,
   type CasosDeUsoDeAvisosDeSla,
+  type CasosDeUsoDaSituacaoPorHotel,
   type CasosDeUsoDeIndicadores,
   type CasosDeUsoDeComunicacao,
   type CasosDeUsoDeBandeiras,
@@ -51,6 +52,7 @@ import {
   criarCasosDeUsoDeBandeiras,
   criarCasosDeUsoDeCategorias,
   criarCasosDeUsoDeAvisosDeSla,
+  criarCasosDeUsoDaSituacaoPorHotel,
   criarCasosDeUsoDeIndicadores,
   criarCasosDeUsoDeComunicacao,
   criarCasosDeUsoDeChamados,
@@ -90,6 +92,7 @@ import {
   criarPortaAuditoriaGeral,
   criarPortaAvisosDeSla,
   criarPortaIndicadores,
+  criarPortaSituacaoPorHotel,
   criarPortaComunicacao,
   criarPortaBandeiras,
   criarPortaCategorias,
@@ -166,6 +169,7 @@ export interface FabricasDeCasosDeUso {
   auditoriaGeral(): CasosDeUsoDeAuditoriaGeral;
   avisosDeSla(): CasosDeUsoDeAvisosDeSla;
   indicadores(): CasosDeUsoDeIndicadores;
+  situacaoPorHotel(): CasosDeUsoDaSituacaoPorHotel;
   comunicacao(): CasosDeUsoDeComunicacao;
   paradas(): CasosDeUsoDeParadas;
   uhIndisponivel(): CasosDeUsoDeUhIndisponivel;
@@ -402,6 +406,16 @@ export function criarFabricas(d: DependenciasDasFabricas): FabricasDeCasosDeUso 
       criarCasosDeUsoDeIndicadores({
         indicadores: criarPortaIndicadores(banco),
         atribuicoes,
+        relogio,
+      }),
+    ),
+    situacaoPorHotel: uma(() =>
+      criarCasosDeUsoDaSituacaoPorHotel({
+        situacao: criarPortaSituacaoPorHotel(banco),
+        avisos: criarPortaAvisosDeSla(banco),
+        indicadores: criarPortaIndicadores(banco),
+        atribuicoes,
+        prioridades: criarPortaPrioridades(banco),
         relogio,
       }),
     ),

@@ -2,6 +2,8 @@
 // Lista de chamados (fase 1a, C7): os do escopo de quem vê (a API recorta pela
 // RLS), com os filtros básicos e 50 por página. Cada chamado abre o detalhe.
 // A exportação (1c, item 9) leva ao CSV os mesmos filtros (exportar-chamados).
+// O hotel pode vir na URL (?hotelId=), para o quadro da tela inicial abrir a
+// fila do hotel; a lista só carrega depois de ler a URL.
 import { Botao, MensagemVazia, Nota, Painel, Tabela } from '@hubkeep/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { type ErroDaApi, chamarApi } from '../../../cliente/api';
@@ -16,6 +18,7 @@ import {
   type Referencias,
   caminhoDaLista,
   carregarReferencias,
+  filtroDaUrl,
 } from '../../../cliente/corretiva';
 import { useExportarChamados } from '../../../cliente/exportar-chamados';
 import { useT } from '../../../i18n/cliente';
@@ -28,7 +31,7 @@ interface Pagina {
 export default function Chamados() {
   const t = useT();
   const [refs, setRefs] = useState<Referencias | null>(null);
-  const [filtro, setFiltro] = useState<FiltroDaTela>(FILTRO_VAZIO);
+  const [filtro, setFiltro] = useState<FiltroDaTela | null>(null);
   const [chamados, setChamados] = useState<ChamadoResumido[] | null>(null);
   const [proximo, setProximo] = useState<string | null>(null);
   const [erro, setErro] = useState<ErroDaApi | null>(null);
@@ -49,19 +52,22 @@ export default function Chamados() {
 
   useEffect(() => {
     void carregarReferencias().then(setRefs);
+    setFiltro(filtroDaUrl(window.location.search));
   }, []);
   useEffect(() => {
-    void carregar(filtro, null);
+    if (filtro) void carregar(filtro, null);
   }, [carregar, filtro]);
 
   return (
     <Painel>
-      <FiltrosDaLista entidade="chamado" refs={refs} aoFiltrar={setFiltro} />
+      {filtro && (
+        <FiltrosDaLista entidade="chamado" refs={refs} aoFiltrar={setFiltro} inicial={filtro} />
+      )}
       <div className="hk-linha-de-botoes">
         <Botao
           tamanho="pequeno"
           disabled={exportacao?.tipo === 'lendo'}
-          onClick={() => void exportar(filtro)}
+          onClick={() => void exportar(filtro ?? FILTRO_VAZIO)}
         >
           {t('corretiva.chamados.acao.exportar')}
         </Botao>
@@ -89,7 +95,7 @@ export default function Chamados() {
       )}
       {proximo && (
         <div className="hk-mensagem-acao">
-          <Botao onClick={() => void carregar(filtro, proximo)}>
+          <Botao onClick={() => void carregar(filtro ?? FILTRO_VAZIO, proximo)}>
             {t('corretiva.carregar_mais')}
           </Botao>
         </div>

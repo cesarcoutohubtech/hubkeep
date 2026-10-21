@@ -115,6 +115,14 @@ export const FILTRO_VAZIO: FiltroDaTela = {
   doLocador: '',
 };
 
+/**
+ * O filtro que chega pela URL da lista: por ora só o hotel, para o quadro da
+ * tela inicial abrir a fila do hotel (1c, seção 4 da paridade).
+ */
+export function filtroDaUrl(busca: string): FiltroDaTela {
+  return { ...FILTRO_VAZIO, hotelId: new URLSearchParams(busca).get('hotelId') ?? '' };
+}
+
 /** Meia-noite local da data do calendário, em ISO 8601. */
 const inicioDoDia = (data: string, diasDepois = 0): string => {
   const [a, m, d] = data.split('-').map(Number);
@@ -237,10 +245,12 @@ export function FiltrosDaLista(props: {
   entidade: 'chamado' | 'os';
   refs: Referencias | null;
   aoFiltrar: (filtro: FiltroDaTela) => void;
+  /** O filtro com que a lista abriu (o da URL). */
+  inicial?: FiltroDaTela;
 }) {
   const t = useT();
   const nomes = useNomes(props.refs);
-  const [f, setF] = useState<FiltroDaTela>(FILTRO_VAZIO);
+  const [f, setF] = useState<FiltroDaTela>(props.inicial ?? FILTRO_VAZIO);
   const mudar = (campo: keyof FiltroDaTela) => (valor: string) =>
     setF((atual) => ({ ...atual, [campo]: valor }));
 

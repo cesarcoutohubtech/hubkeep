@@ -705,6 +705,19 @@ export type {
   PlanoPadrao,
 } from './pacote-da-bandeira';
 export {
+  DIAS_DOS_ABERTOS_DO_QUADRO,
+  LIMITES_DA_SITUACAO,
+  SITUACOES_DO_HOTEL,
+  abertosPorDia,
+  contarChamadosDoHotel,
+  contarPreventivasAtrasadas,
+  diasDosAbertosDoQuadro,
+  podeVerASituacaoPorHotel,
+  prioridadesCriticas,
+  situacaoDoHotel,
+} from './situacao-do-hotel';
+export type { ContagemDoHotel, SituacaoDoHotel } from './situacao-do-hotel';
+export {
   LIMITE_DO_LOTE_DE_QR,
   exigirCodigoReservadoLivre,
   podeReservarQr,
