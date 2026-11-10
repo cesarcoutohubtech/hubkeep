@@ -13,10 +13,10 @@
   },
   "dependencies": {
     "@hubkeep/aplicacao": "workspace:*",
-    "@supabase/supabase-js": "^2.118.0"
+    "@supabase/supabase-js": "^2.119.0"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
-    "vitest": "^5.0.5"
+    "@types/node": "^26.6.6",
+    "vitest": "^5.1.0"
   }
 }

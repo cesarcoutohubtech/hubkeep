@@ -17,8 +17,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.13.0(supports-color@8.1.1))
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: ^26.6.6
+        version: 26.6.6
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
@@ -56,8 +56,8 @@ importers:
         specifier: ^8.71.2
         version: 8.71.2(eslint@10.13.0(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
 
   apps/conector:
     dependencies:
@@ -66,11 +66,11 @@ importers:
         version: link:../../packages/contratos
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: ^26.6.6
+        version: 26.6.6
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
 
   apps/tecnico:
     dependencies:
@@ -90,8 +90,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@supabase/supabase-js':
-        specifier: ^2.118.0
-        version: 2.118.0(@opentelemetry/api@1.9.1)
+        specifier: ^2.119.0
+        version: 2.119.0(@opentelemetry/api@1.9.1)
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -106,8 +106,8 @@ importers:
         version: 7.4.1
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: ^26.6.6
+        version: 26.6.6
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0
@@ -116,19 +116,19 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.1.2
-        version: 6.1.2(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        version: 6.1.2(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
       fake-indexeddb:
         specifier: ^6.2.6
         version: 6.2.6
       vite:
         specifier: ^8.3.4
-        version: 8.3.4(@types/node@26.6.5)(terser@5.51.2)
+        version: 8.3.4(@types/node@26.6.6)(terser@5.51.2)
       vite-plugin-pwa:
         specifier: ^2.0.0
-        version: 2.0.0(supports-color@8.1.1)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))(workbox-build@7.4.1(@types/babel__core@7.20.5)(supports-color@8.1.1))(workbox-window@7.4.1)
+        version: 2.0.0(supports-color@8.1.1)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))(workbox-build@7.4.1(@types/babel__core@7.20.5)(supports-color@8.1.1))(workbox-window@7.4.1)
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
       workbox-build:
         specifier: ^7.4.1
         version: 7.4.1(@types/babel__core@7.20.5)(supports-color@8.1.1)
@@ -164,13 +164,13 @@ importers:
         version: link:../../packages/ui
       '@sentry/nextjs':
         specifier: ^11.8.0
-        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
       '@supabase/ssr':
         specifier: ^0.12.7
-        version: 0.12.7(@supabase/supabase-js@2.118.0(@opentelemetry/api@1.9.1))
+        version: 0.12.7(@supabase/supabase-js@2.119.0(@opentelemetry/api@1.9.1))
       '@supabase/supabase-js':
-        specifier: ^2.118.0
-        version: 2.118.0(@opentelemetry/api@1.9.1)
+        specifier: ^2.119.0
+        version: 2.119.0(@opentelemetry/api@1.9.1)
       date-holidays:
         specifier: 3.37.0
         version: 3.37.0
@@ -179,7 +179,7 @@ importers:
         version: 6.2.12
       next:
         specifier: ^16.4.2
-        version: 16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -197,8 +197,8 @@ importers:
         version: 3.6.7(supports-color@8.1.1)
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: ^26.6.6
+        version: 26.6.6
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
@@ -215,8 +215,8 @@ importers:
         specifier: ^8.23.1
         version: 8.23.1
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
 
   packages/aplicacao:
     dependencies:
@@ -233,15 +233,15 @@ importers:
         specifier: workspace:*
         version: link:../aplicacao
       '@supabase/supabase-js':
-        specifier: ^2.118.0
-        version: 2.118.0(@opentelemetry/api@1.9.1)
+        specifier: ^2.119.0
+        version: 2.119.0(@opentelemetry/api@1.9.1)
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: ^26.6.6
+        version: 26.6.6
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
 
   packages/contratos:
     dependencies:
@@ -268,8 +268,8 @@ importers:
         version: 14.0.3
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: ^26.6.6
+        version: 26.6.6
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
@@ -277,8 +277,8 @@ importers:
         specifier: ^0.20.0
         version: 0.20.0(kysely@0.29.7)(pg@8.23.1)(typescript@6.0.3)
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
 
   packages/dominio: {}
 
@@ -292,14 +292,14 @@ importers:
         version: 6.1.3
     devDependencies:
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
 
   packages/imagem:
     devDependencies:
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
 
   packages/inteligencia:
     dependencies:
@@ -333,8 +333,8 @@ importers:
         specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
       vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
 
 packages:
 
@@ -1739,23 +1739,23 @@ packages:
     resolution: {integrity: sha512-Gc9Ej4P5BRBcVtZzNWW1WzjeoH2lakYXdw7gxS2dLyPATkTYnMVFmd/i0NyJdAjYBCUFlnSHtnGwqVku9Jrqvw==}
     engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
 
-  '@supabase/auth-js@2.118.0':
-    resolution: {integrity: sha512-xWfPXyhS2KDSfAneMtI6p/tBnbdiz/5vaRKXEqUfzfC9WCniKr2Ds5o5G7RIGig0bom4z6wUY9zaV07WDVTfnQ==}
+  '@supabase/auth-js@2.119.0':
+    resolution: {integrity: sha512-WI7KqJRxqZjm77PlRO/VfKretL4SG8g8stWfBmpyx9To+fFapZlSbXA8QkduoMvr72rRpIF24ZLrjktBrp+ZFA==}
     engines: {node: '>=22.0.0'}
 
-  '@supabase/functions-js@2.118.0':
-    resolution: {integrity: sha512-4ofletPa/noKAU6KHeqsd3FztGzRPUEJRey1MKY0o+PIHaVePqRPShIXtl37gcVyIWaFM+zNg6r9zh0uUSFOSA==}
+  '@supabase/functions-js@2.119.0':
+    resolution: {integrity: sha512-0aOdF/Y4lA+62K02nwZClfAthXmFEml0od42q3yy/9t3bBitomAOYEatTFSnxT/5UeeIDNn2DOnXTdAP0sqGNQ==}
     engines: {node: '>=22.0.0'}
 
   '@supabase/phoenix@0.4.5':
     resolution: {integrity: sha512-aAn9H9ovVyeApKy11OWOrrOGq8DV68yWeH4ud2lN9fzn4aO8Zb5GLL9m1pUg9nLqIcT+ZDfAcsZe0E/nqdv2lw==}
 
-  '@supabase/postgrest-js@2.118.0':
-    resolution: {integrity: sha512-JXy+37KPApHsyotaQACovv/Jy9E22rfiWLRuT+2UjoEAcAIelDFIrsF/FY47Dy19mO7lI0Tq+zDCX8oJ2Ozfiw==}
+  '@supabase/postgrest-js@2.119.0':
+    resolution: {integrity: sha512-qBmcjEFO7Ptyf5qvOXYJa1s4bfA4zsMIFf2i+h2zd6RRTDLwquX8z1mnS9djNOJjbiO1OGFh5Y2Lc2k2pA8TMw==}
     engines: {node: '>=22.0.0'}
 
-  '@supabase/realtime-js@2.118.0':
-    resolution: {integrity: sha512-pzCIEWjqD5/xqEZQerpt+q9rsgYkcrkgCJgf0W2ULqC4fYUeB/p9CFa3t9vn+IVh6dMN9r4ZCE262lZvUC+Bfw==}
+  '@supabase/realtime-js@2.119.0':
+    resolution: {integrity: sha512-fPzxt+SAYweqsZUCSZma2dvN+HT6lVjwWj8BbkVwapW6wNf1odUi+ATYN7svX4Zm9vt0kz0l0VzINAUAA38FEg==}
     engines: {node: '>=22.0.0'}
 
   '@supabase/ssr@0.12.7':
@@ -1763,12 +1763,12 @@ packages:
     peerDependencies:
       '@supabase/supabase-js': ^2.114.0
 
-  '@supabase/storage-js@2.118.0':
-    resolution: {integrity: sha512-5MNkKt2Moy7Jud/sPX7/28BwdDxZMCVHGJT00b8op3KRa9LKSjOAYU5IcfGWIstaasAqY8GkbA6oI3IRDgB1YQ==}
+  '@supabase/storage-js@2.119.0':
+    resolution: {integrity: sha512-htx1dSCnSJVPlx2BNSgLSUDvLMxuGbYa6pUPl5xoCs4as4cIhBVwuxj78zbggCyPHxLnEXjsV/qvlDsVjpodKw==}
     engines: {node: '>=22.0.0'}
 
-  '@supabase/supabase-js@2.118.0':
-    resolution: {integrity: sha512-FxI8UXMVC2UG7IkeiI8fuQZqq2oI3JeSuN8MPIC2RLVaoEAxKS0nqE6kii9Ewpq8f9gNPM6git1Y8f0vN/QLFw==}
+  '@supabase/supabase-js@2.119.0':
+    resolution: {integrity: sha512-MKP49G6bJbPhvsZDegZ/IXS/ITApPgplDCF5+F65KZ5kIArS5Y90WFxwvWYALx2bsxdrSuHvkCiXHYr3dU8+sw==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0'
@@ -1849,8 +1849,8 @@ packages:
   '@types/node@24.13.6':
     resolution: {integrity: sha512-SGrw/h3KPFshy3OE6ZL53LMBG5vGQQ8/gIpiqz/kRZhPJ7HgwCEs8LBuNtWLa8dvGZVpSF7+Bf+c11HUrCb/yg==}
 
-  '@types/node@26.6.5':
-    resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
+  '@types/node@26.6.6':
+    resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
 
   '@types/pg@8.23.1':
     resolution: {integrity: sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A==}
@@ -2193,8 +2193,8 @@ packages:
       oxc-transform-react:
         optional: true
 
-  '@vitest/mocker@5.0.5':
-    resolution: {integrity: sha512-xLL3lkDegJZw+MGoGaCCsFayDZthGgpAtr3Vziyfc4p7xH89K7KRPcRBBh/kEYm0Aqkt5DtTmkYpBtRV/FrHZg==}
+  '@vitest/mocker@5.1.0':
+    resolution: {integrity: sha512-5umB9/jlWcqVS6fsrFmv5Gdnpu6wAUio/lEOwAmvB7v+lFo/IW2B9FhAD0p19GCULTgMzLCdUmuCDCnAzWgppQ==}
     peerDependencies:
       msw: ^2.4.9 || ^3.0.0
       vite: ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -2204,8 +2204,8 @@ packages:
       vite:
         optional: true
 
-  '@vitest/spy@5.0.5':
-    resolution: {integrity: sha512-lwJRExuH417257Q5wv9QYugN9IMJkoxcrKrYxGPQkBzl7wlNpTUxD/5yNX4ESKVUIShKPgkGchYPFMWOOk0wzw==}
+  '@vitest/spy@5.1.0':
+    resolution: {integrity: sha512-2DPO5OMHWKrBngC+fCmTQqemNF0gidRhp3lxbBmRhW+M1XJrfgPpqNqWVevXtn2f2ufD5ZaR1B6B641aAlcX5A==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -3932,20 +3932,20 @@ packages:
       yaml:
         optional: true
 
-  vitest@5.0.5:
-    resolution: {integrity: sha512-cPODOMF8YnkiiYtDdHo6n4wWmBrOBBbOIYH2d33M4l3CdNn72h+qMmO6uXffUN6A5AZFXNND/d+krS9mgkXRfg==}
+  vitest@5.1.0:
+    resolution: {integrity: sha512-MzmNFnrwa8v8lF1bLxw3UJ4EREwVOVb75VqJZmUDRjJ6EluK/x9th7qTbaeDk41WxE1GxWqmTXcdsfobfH5sOA==}
     engines: {node: ^22.12.0 || ^24.0.0 || >=26.0.0}
     hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@opentelemetry/api': ^1.9.0
       '@types/node': ^22.0.0 || >=24.0.0
-      '@vitest/browser-playwright': 5.0.5
-      '@vitest/browser-preview': 5.0.5
+      '@vitest/browser-playwright': 5.1.0
+      '@vitest/browser-preview': 5.1.0
       '@vitest/browser-webdriverio': ^5.0.0-beta.5 || >=5.0.0
-      '@vitest/coverage-istanbul': 5.0.5
-      '@vitest/coverage-v8': 5.0.5
-      '@vitest/ui': 5.0.5
+      '@vitest/coverage-istanbul': 5.1.0
+      '@vitest/coverage-v8': 5.1.0
+      '@vitest/ui': 5.1.0
       happy-dom: '*'
       jsdom: '*'
       vite: ^6.4.0 || ^7.0.0 || ^8.0.0
@@ -5317,7 +5317,7 @@ snapshots:
       '@babel/core': 7.29.7(supports-color@8.1.1)
       rollup: 4.63.5
 
-  '@sentry/cloudflare@11.8.0(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))':
+  '@sentry/cloudflare@11.8.0(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@sentry/conventions': 0.27.0
@@ -5326,7 +5326,7 @@ snapshots:
       '@sentry/server-utils': 11.8.0
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.3.4(@types/node@26.6.5)(terser@5.51.2)
+      vite: 8.3.4(@types/node@26.6.6)(terser@5.51.2)
 
   '@sentry/conventions@0.27.0': {}
 
@@ -5338,13 +5338,13 @@ snapshots:
     dependencies:
       '@sentry/core': 11.8.0
 
-  '@sentry/nextjs@11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))':
+  '@sentry/nextjs@11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@rollup/plugin-commonjs': 28.0.1(rollup@4.63.5)
       '@sentry/browser-utils': 11.8.0
       '@sentry/bundler-plugins': 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(rollup@4.63.5)
-      '@sentry/cloudflare': 11.8.0(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+      '@sentry/cloudflare': 11.8.0(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
       '@sentry/conventions': 0.27.0
       '@sentry/core': 11.8.0
       '@sentry/node': 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(rollup@4.63.5)
@@ -5353,7 +5353,7 @@ snapshots:
       '@sentry/server-runtime-injection': 11.8.0
       '@sentry/server-utils': 11.8.0
       '@sentry/vercel-edge': 11.8.0
-      next: 16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      next: 16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       rollup: 4.63.5
       stacktrace-parser: 0.1.11
     transitivePeerDependencies:
@@ -5419,42 +5419,42 @@ snapshots:
       '@sentry/core': 11.8.0
       '@sentry/server-utils': 11.8.0
 
-  '@supabase/auth-js@2.118.0':
+  '@supabase/auth-js@2.119.0':
     dependencies:
       tslib: 2.8.1
 
-  '@supabase/functions-js@2.118.0':
+  '@supabase/functions-js@2.119.0':
     dependencies:
       tslib: 2.8.1
 
   '@supabase/phoenix@0.4.5': {}
 
-  '@supabase/postgrest-js@2.118.0':
+  '@supabase/postgrest-js@2.119.0':
     dependencies:
       tslib: 2.8.1
 
-  '@supabase/realtime-js@2.118.0':
+  '@supabase/realtime-js@2.119.0':
     dependencies:
       '@supabase/phoenix': 0.4.5
       tslib: 2.8.1
 
-  '@supabase/ssr@0.12.7(@supabase/supabase-js@2.118.0(@opentelemetry/api@1.9.1))':
+  '@supabase/ssr@0.12.7(@supabase/supabase-js@2.119.0(@opentelemetry/api@1.9.1))':
     dependencies:
-      '@supabase/supabase-js': 2.118.0(@opentelemetry/api@1.9.1)
+      '@supabase/supabase-js': 2.119.0(@opentelemetry/api@1.9.1)
       cookie: 1.1.1
 
-  '@supabase/storage-js@2.118.0':
+  '@supabase/storage-js@2.119.0':
     dependencies:
       iceberg-js: 0.8.1
       tslib: 2.8.1
 
-  '@supabase/supabase-js@2.118.0(@opentelemetry/api@1.9.1)':
+  '@supabase/supabase-js@2.119.0(@opentelemetry/api@1.9.1)':
     dependencies:
-      '@supabase/auth-js': 2.118.0
-      '@supabase/functions-js': 2.118.0
-      '@supabase/postgrest-js': 2.118.0
-      '@supabase/realtime-js': 2.118.0
-      '@supabase/storage-js': 2.118.0
+      '@supabase/auth-js': 2.119.0
+      '@supabase/functions-js': 2.119.0
+      '@supabase/postgrest-js': 2.119.0
+      '@supabase/realtime-js': 2.119.0
+      '@supabase/storage-js': 2.119.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
 
@@ -5534,13 +5534,13 @@ snapshots:
     dependencies:
       undici-types: 7.18.2
 
-  '@types/node@26.6.5':
+  '@types/node@26.6.6':
     dependencies:
       undici-types: 8.9.0
 
   '@types/pg@8.23.1':
     dependencies:
-      '@types/node': 26.6.5
+      '@types/node': 26.6.6
       pg-protocol: 1.16.0
       pg-types: 2.2.0
 
@@ -5560,7 +5560,7 @@ snapshots:
 
   '@types/web-push@3.6.4':
     dependencies:
-      '@types/node': 26.6.5
+      '@types/node': 26.6.6
 
   '@typescript-eslint/eslint-plugin@8.71.2(@typescript-eslint/parser@8.71.2(eslint@10.13.0(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3))(eslint@10.13.0(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)':
     dependencies:
@@ -5785,21 +5785,21 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
-  '@vitejs/plugin-react@6.1.2(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))':
+  '@vitejs/plugin-react@6.1.2(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.4(@types/node@26.6.5)(terser@5.51.2)
+      vite: 8.3.4(@types/node@26.6.6)(terser@5.51.2)
 
-  '@vitest/mocker@5.0.5(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))':
+  '@vitest/mocker@5.1.0(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
-      '@vitest/spy': 5.0.5
+      '@vitest/spy': 5.1.0
       estree-walker: 3.0.3
       magic-string: 1.4.3
     optionalDependencies:
-      vite: 8.3.4(@types/node@26.6.5)(terser@5.51.2)
+      vite: 8.3.4(@types/node@26.6.6)(terser@5.51.2)
 
-  '@vitest/spy@5.0.5': {}
+  '@vitest/spy@5.1.0': {}
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:
@@ -6939,7 +6939,7 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 16.4.2
       '@swc/helpers': 0.5.23
@@ -6959,7 +6959,7 @@ snapshots:
       '@next/swc-win32-arm64-msvc': 16.4.2
       '@next/swc-win32-x64-msvc': 16.4.2
       '@opentelemetry/api': 1.9.1
-      sharp: 0.35.5(@types/node@26.6.5)
+      sharp: 0.35.5(@types/node@26.6.6)
     transitivePeerDependencies:
       - '@babel/core'
       - '@types/node'
@@ -7316,7 +7316,7 @@ snapshots:
       es-errors: 1.3.0
       es-object-atoms: 1.1.2
 
-  sharp@0.35.5(@types/node@26.6.5):
+  sharp@0.35.5(@types/node@26.6.6):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -7347,7 +7347,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.5
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
-      '@types/node': 26.6.5
+      '@types/node': 26.6.6
     optional: true
 
   shebang-command@2.0.0:
@@ -7673,18 +7673,18 @@ snapshots:
 
   uuid@14.0.3: {}
 
-  vite-plugin-pwa@2.0.0(supports-color@8.1.1)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))(workbox-build@7.4.1(@types/babel__core@7.20.5)(supports-color@8.1.1))(workbox-window@7.4.1):
+  vite-plugin-pwa@2.0.0(supports-color@8.1.1)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))(workbox-build@7.4.1(@types/babel__core@7.20.5)(supports-color@8.1.1))(workbox-window@7.4.1):
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
       pretty-bytes: 6.1.1
       tinyglobby: 0.2.17
-      vite: 8.3.4(@types/node@26.6.5)(terser@5.51.2)
+      vite: 8.3.4(@types/node@26.6.6)(terser@5.51.2)
       workbox-build: 7.4.1(@types/babel__core@7.20.5)(supports-color@8.1.1)
       workbox-window: 7.4.1
     transitivePeerDependencies:
       - supports-color
 
-  vite@8.3.4(@types/node@26.6.5)(terser@5.51.2):
+  vite@8.3.4(@types/node@26.6.6)(terser@5.51.2):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -7692,14 +7692,14 @@ snapshots:
       rolldown: 1.2.13
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 26.6.5
+      '@types/node': 26.6.6
       fsevents: 2.3.3
       terser: 5.51.2
 
-  vitest@5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2)):
+  vitest@5.1.0(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.5(vite@8.3.4(@types/node@26.6.5)(terser@5.51.2))
+      '@vitest/mocker': 5.1.0(vite@8.3.4(@types/node@26.6.6)(terser@5.51.2))
       chai: 6.3.0
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -7710,11 +7710,11 @@ snapshots:
       tinybench: 6.2.2
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
-      vite: 8.3.4(@types/node@26.6.5)(terser@5.51.2)
+      vite: 8.3.4(@types/node@26.6.6)(terser@5.51.2)
       why-is-node-running: 3.2.1
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
-      '@types/node': 26.6.5
+      '@types/node': 26.6.6
     transitivePeerDependencies:
       - msw
 
