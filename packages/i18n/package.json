@@ -14,8 +14,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@formatjs/icu-messageformat-parser": "^3.5.21",
-    "@formatjs/intl": "^6.1.3"
+    "@formatjs/icu-messageformat-parser": "^3.5.22",
+    "@formatjs/intl": "^6.1.4"
   },
   "devDependencies": {
     "vitest": "^5.0.5"
